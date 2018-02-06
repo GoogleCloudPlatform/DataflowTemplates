@@ -1,0 +1,18 @@
+{
+  "name": "Text to Pub/Sub",
+  "description": "A pipeline which reads a text file and outputs each line to a Pub/Sub topic.",
+  "parameters": [{
+    "name": "inputFilePattern",
+    "label": "Input Cloud Storage File(s)",
+    "help_text": "Path of the file pattern glob to read from. ex: gs://bucket-name/path/*.csv",
+    "regexes": ["^gs:\/\/[^\n\r]+$"],
+    "is_optional": false
+  },
+  {
+    "name": "outputTopic",
+    "label": "Output Pub/Sub Topic",
+    "help_text": "The name of the topic which data should be published to. The name should be in the format of projects/<project-id>/topics/<topic-name>.",
+    "regexes": ["^projects\/[^\n\r]+\/topics\/[^\n\r]+$"],
+    "is_optional": false
+  }]
+}

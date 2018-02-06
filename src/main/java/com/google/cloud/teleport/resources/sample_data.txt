@@ -1,0 +1,3 @@
+nyc,Adam,30,blue,black
+nyc,Josh,34,red,milk
+sfo,Ryan,30,green,sugar

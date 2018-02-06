@@ -1,0 +1,36 @@
+{
+  "name": "Cloud Pub/Sub to Text",
+  "description": "A pipeline reads from a Pub/Sub topic and writes messages out to a text file. Note that this pipeline assumes no newlines in the body of the Pub/Sub message and thus each message becomes a single line in the output file.",
+  "parameters": [{
+    "name": "inputTopic",
+    "label": "Input Cloud Pub/Sub topic",
+    "help_text": "Cloud Pub/Sub topic to read the input from. The topic name should be in the format of projects/<project-id>/topics/<topic-name>.",
+    "regexes": ["^projects\/[^\n\r]+\/topics\/[^\n\r]+$"],
+    "is_optional": false
+  },
+  {
+    "name": "outputDirectory",
+    "label": "Output Cloud Storage directory",
+    "help_text": "Path and filename prefix for writing output files (ex: gs://bucket-name/path/). This value must end in a slash.",
+    "regexes": ["^gs:\/\/[^\n\r]+\/$"],
+    "is_optional": false
+  },
+  {
+    "name": "outputFilenamePrefix",
+    "label": "Output file prefix",
+    "help_text": "The prefix to place on each windowed file (ex: output-).",
+    "is_optional": false
+  },
+  {
+    "name": "outputFilenameSuffix",
+    "label": "Output file suffix",
+    "help_text": "The suffix to place on each windowed file. Typically a file extension (.txt, .csv, etc.).",
+    "is_optional": true
+  },
+  {
+    "name": "shardTemplate",
+    "label": "The shard template",
+    "help_text": "The shard template defines the unique/dynamic portion of each windowed file. Recommended to use the default (W-P-SS-of-NN). At runtime, 'W' is replaced with the window date range and 'P' is replaced with the pane info. Repeating sequences of the letters 'S' or 'N' (example: SSS-NNN) are replaced with the shard number and number of shards respectively. The pipeline assumes a single file output and thus will produce the text of '00-of-01' by default.",
+    "is_optional": true
+  }]
+}
