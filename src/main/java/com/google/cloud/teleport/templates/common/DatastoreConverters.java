@@ -76,6 +76,16 @@ public class DatastoreConverters {
     @Description("GCP Project Id of where to write the datastore entities")
     ValueProvider<String> getDatastoreWriteProjectId();
     void setDatastoreWriteProjectId(ValueProvider<String> datstoreWriteProjectId);
+
+    @Description("Kind of the Datastore entity")
+    ValueProvider<String> getDatastoreWriteEntityKind();
+
+    void setDatastoreWriteEntityKind(ValueProvider<String> value);
+
+    @Description("Namespace of the Datastore entity")
+    ValueProvider<String> getDatastoreWriteNamespace();
+
+    void setDatastoreWriteNamespace(ValueProvider<String> value);
   }
 
   /** Options for deleting Datastore Entities. */
@@ -494,5 +504,103 @@ public class DatastoreConverters {
       return entityBuilter.build();
     }
 
+  }
+
+  /** Writes Entities to Datastore. */
+  @AutoValue
+  public abstract static class WriteEntities
+      extends PTransform<PCollection<Entity>, PCollectionTuple> {
+    public abstract ValueProvider<String> projectId();
+
+    public abstract TupleTag<String> errorTag();
+
+    /** Builder for WriteJsonEntities. */
+    @AutoValue.Builder
+    public abstract static class Builder {
+      public abstract Builder setProjectId(ValueProvider<String> projectId);
+
+      public abstract Builder setErrorTag(TupleTag<String> errorTag);
+
+      public abstract WriteEntities build();
+    }
+
+    public static Builder newBuilder() {
+      return new AutoValue_DatastoreConverters_WriteEntities.Builder();
+    }
+
+    @Override
+    public PCollectionTuple expand(PCollection<Entity> entity) {
+      TupleTag<Entity> goodTag = new TupleTag<>();
+
+      // Due to the fact that DatastoreIO does non-transactional writing to Datastore, writing the
+      // same entity more than once in the same commit is not supported (error "A non-transactional
+      // commit may not contain multiple mutations affecting the same entity). Messages with the
+      // same key are thus not written to Datastore and instead routed to an error PCollection for
+      // further handlig downstream.
+      PCollectionTuple entities =
+          entity.apply(
+              "CheckSameKey",
+              CheckSameKey.newBuilder().setErrorTag(errorTag()).setGoodTag(goodTag).build());
+      entities
+          .get(goodTag)
+          .apply("WriteToDatastore", DatastoreIO.v1().write().withProjectId(projectId()));
+      return entities;
+    }
+  }
+
+  /** Removes any invalid entities that don't have a key. */
+  @AutoValue
+  public abstract static class CheckNoKey
+      extends PTransform<PCollection<Entity>, PCollectionTuple> {
+
+    abstract TupleTag<Entity> successTag();
+
+    abstract TupleTag<String> failureTag();
+
+    /** Builder for {@link CheckNoKey}. */
+    @AutoValue.Builder
+    public abstract static class Builder {
+      public abstract Builder setSuccessTag(TupleTag<Entity> successTag);
+
+      public abstract Builder setFailureTag(TupleTag<String> failureTag);
+
+      public abstract CheckNoKey build();
+    }
+
+    public static Builder newBuilder() {
+      return new AutoValue_DatastoreConverters_CheckNoKey.Builder();
+    }
+
+    @Override
+    public PCollectionTuple expand(PCollection<Entity> entities) {
+      return entities.apply(
+          "DetectInvalidEntities",
+          ParDo.of(
+                  new DoFn<Entity, Entity>() {
+                    private EntityJsonPrinter entityJsonPrinter;
+
+                    @Setup
+                    public void setup() {
+                      entityJsonPrinter = new EntityJsonPrinter();
+                    }
+
+                    @ProcessElement
+                    public void processElement(ProcessContext c) throws IOException {
+                      Entity entity = c.element();
+                      if (entity.hasKey()) {
+                        c.output(entity);
+                      } else {
+                        ErrorMessage errorMessage =
+                            ErrorMessage.newBuilder()
+                                .setMessage("Datastore Entity Without Key")
+                                .setTextElementType("entity")
+                                .setTextElementData(entityJsonPrinter.print(entity))
+                                .build();
+                        c.output(failureTag(), errorMessage.toJson());
+                      }
+                    }
+                  })
+              .withOutputTags(successTag(), TupleTagList.of(failureTag())));
+    }
   }
 }

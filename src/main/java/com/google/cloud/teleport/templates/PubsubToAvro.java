@@ -23,6 +23,8 @@ import com.google.cloud.teleport.util.DurationUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.AvroIO;
+import org.apache.beam.sdk.io.FileBasedSink;
+import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.options.Default;
@@ -32,8 +34,10 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.options.ValueProvider.NestedValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
 
@@ -72,7 +76,8 @@ import org.apache.beam.sdk.transforms.windowing.Window;
  *   --topic=projects/${PROJECT_ID}/topics/windowed-files \
  *   --outputDirectory=gs://${PROJECT_ID}/temp/ \
  *   --outputFilenamePrefix=windowed-file \
- *   --outputFilenameSuffix=.avro"
+ *   --outputFilenameSuffix=.avro
+ *   --avroTempDirectory=gs://${PROJECT_ID}/avro-temp-dir/"
  * </pre>
  */
 public class PubsubToAvro {
@@ -97,7 +102,6 @@ public class PubsubToAvro {
 
     @Description("The filename prefix of the files to write to.")
     @Default.String("output")
-    @Required
     ValueProvider<String> getOutputFilenamePrefix();
 
     void setOutputFilenamePrefix(ValueProvider<String> value);
@@ -133,6 +137,13 @@ public class PubsubToAvro {
     String getWindowDuration();
 
     void setWindowDuration(String value);
+
+    @Description("The Avro Write Temporary Directory. Must end with /")
+    @Required
+    ValueProvider<String> getAvroTempDirectory();
+
+    void setAvroTempDirectory(ValueProvider<String> value);
+
   }
 
   /**
@@ -178,14 +189,22 @@ public class PubsubToAvro {
         .apply(
             "Write File(s)",
             AvroIO.write(AvroPubsubMessageRecord.class)
-                .withWindowedWrites()
-                .withNumShards(options.getNumShards())
                 .to(
                     new WindowedFilenamePolicy(
                         options.getOutputDirectory(),
                         options.getOutputFilenamePrefix(),
                         options.getOutputShardTemplate(),
-                        options.getOutputFilenameSuffix())));
+                        options.getOutputFilenameSuffix()))
+                .withTempDirectory(NestedValueProvider.of(
+                    options.getAvroTempDirectory(),
+                    (SerializableFunction<String, ResourceId>) input ->
+                        FileBasedSink.convertToFileResourceIfPossible(input)))
+                /*.withTempDirectory(FileSystems.matchNewResource(
+                    options.getAvroTempDirectory(),
+                    Boolean.TRUE))
+                    */
+                .withWindowedWrites()
+                .withNumShards(options.getNumShards()));
 
     // Execute the pipeline and return the result.
     return pipeline.run();

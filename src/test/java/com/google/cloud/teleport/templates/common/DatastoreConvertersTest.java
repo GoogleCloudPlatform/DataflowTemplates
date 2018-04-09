@@ -16,6 +16,7 @@
 
 package com.google.cloud.teleport.templates.common;
 
+import com.google.cloud.teleport.templates.common.DatastoreConverters.CheckNoKey;
 import com.google.cloud.teleport.templates.common.DatastoreConverters.CheckSameKey;
 import com.google.cloud.teleport.templates.common.DatastoreConverters.EntityJsonPrinter;
 import com.google.cloud.teleport.templates.common.DatastoreConverters.EntityToJson;
@@ -197,6 +198,123 @@ public class DatastoreConvertersTest implements Serializable {
     PAssert.that(results.get(goodTag)).containsInAnyOrder(entities.subList(1, entities.size()));
     PAssert.that(results.get(errorTag)).containsInAnyOrder(expectedErrors);
 
+    pipeline.run();
+  }
+
+  /** Test {@link DatastoreConverters.CheckNoKey} with only correct entities. */
+  @Test
+  @Category(NeedsRunner.class)
+  public void testCheckNoKeyAllCorrect() throws Exception {
+
+    // Create test data
+    List<Entity> testEntitiesWithKey = new ArrayList<>(entities);
+
+    // Run the test
+    TupleTag<Entity> successTag = new TupleTag<Entity>("entities") {};
+    TupleTag<String> failureTag = new TupleTag<String>("failures") {};
+    PCollectionTuple results =
+        pipeline
+            .apply("Create", Create.of(testEntitiesWithKey))
+            .apply(
+                "RemoveNoKeys",
+                CheckNoKey.newBuilder()
+                    .setSuccessTag(successTag)
+                    .setFailureTag(failureTag)
+                    .build());
+
+    // Check the results
+    PAssert.that(results.get(successTag)).containsInAnyOrder(testEntitiesWithKey);
+    PAssert.that(results.get(failureTag)).empty();
+    pipeline.run();
+  }
+
+  /** Test {@link DatastoreConverters.CheckNoKey} with only invalid entities. */
+  @Test
+  @Category(NeedsRunner.class)
+  public void testCheckNoKeyAllInvalid() throws Exception {
+
+    // Create test data
+    List<Entity> testEntitiesWithNoKey = new ArrayList<>();
+    List<String> expectedErrors = new ArrayList<>();
+    EntityJsonPrinter entityJsonPrinter = new EntityJsonPrinter();
+    for (int i = 0; i < entities.size(); i++) {
+      Entity noKeyEntity =
+          Entity.newBuilder()
+              .putProperties("street", Value.newBuilder().setStringValue("Some street").build())
+              .putProperties("number", Value.newBuilder().setIntegerValue(1L).build())
+              .build();
+      testEntitiesWithNoKey.add(noKeyEntity);
+      expectedErrors.add(
+          ErrorMessage.newBuilder()
+              .setMessage("Datastore Entity Without Key")
+              .setTextElementType("entity")
+              .setTextElementData(entityJsonPrinter.print(noKeyEntity))
+              .build()
+              .toJson());
+    }
+
+    // Run the test
+    TupleTag<Entity> successTag = new TupleTag<Entity>("entities") {};
+    TupleTag<String> failureTag = new TupleTag<String>("failures") {};
+    PCollectionTuple results =
+        pipeline
+            .apply("Create", Create.of(testEntitiesWithNoKey))
+            .apply(
+                "RemoveNoKeys",
+                CheckNoKey.newBuilder()
+                    .setSuccessTag(successTag)
+                    .setFailureTag(failureTag)
+                    .build());
+
+    // Check the results
+    PAssert.that(results.get(successTag)).empty();
+    PAssert.that(results.get(failureTag)).containsInAnyOrder(expectedErrors);
+    pipeline.run();
+  }
+
+  /** Test {@link DatastoreConverters.CheckNoKey} with both correct and invalid entities. */
+  @Test
+  @Category(NeedsRunner.class)
+  public void testCheckNoKeyBothCorrectAndInvalid() throws Exception {
+
+    // Create test data
+    List<Entity> testEntitiesWithNoKey = new ArrayList<>();
+    List<String> expectedErrors = new ArrayList<>();
+    EntityJsonPrinter entityJsonPrinter = new EntityJsonPrinter();
+    for (int i = 0; i < entities.size(); i++) {
+      Entity noKeyEntity =
+          Entity.newBuilder()
+              .putProperties("street", Value.newBuilder().setStringValue("Some street").build())
+              .putProperties("number", Value.newBuilder().setIntegerValue(i).build())
+              .build();
+      testEntitiesWithNoKey.add(noKeyEntity);
+      expectedErrors.add(
+          ErrorMessage.newBuilder()
+              .setMessage("Datastore Entity Without Key")
+              .setTextElementType("entity")
+              .setTextElementData(entityJsonPrinter.print(noKeyEntity))
+              .build()
+              .toJson());
+    }
+    List<Entity> testEntities = new ArrayList<>(entities);
+    testEntities.addAll(testEntitiesWithNoKey);
+
+    // Run the test
+    TupleTag<Entity> successTag = new TupleTag<Entity>("entities") {};
+    TupleTag<String> failureTag = new TupleTag<String>("failures") {};
+    PCollectionTuple results =
+        pipeline
+            .apply("Create", Create.of(testEntities))
+            .apply(
+                "RemoveNoKeys",
+                CheckNoKey.newBuilder()
+                    .setSuccessTag(successTag)
+                    .setFailureTag(failureTag)
+                    .build());
+
+    // Check the results
+    PAssert.that(results.get(successTag)).containsInAnyOrder(entities);
+    PAssert.that(results.get(failureTag)).containsInAnyOrder(expectedErrors);
     pipeline.run();
   }
 }

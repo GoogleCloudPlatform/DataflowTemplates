@@ -20,7 +20,6 @@ import com.google.common.collect.ImmutableList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import org.apache.beam.examples.PubsubToPubsub;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.NeedsRunner;
@@ -37,7 +36,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Test class for {@link PubsubToPubsub} */
+/** Test class for {@link PubsubToPubsub}. */
 @RunWith(JUnit4.class)
 public final class PubsubToPubsubTest {
 
@@ -72,7 +71,7 @@ public final class PubsubToPubsubTest {
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
-  /** Tests whether all messages flow through when no filter is provided */
+  /** Tests whether all messages flow through when no filter is provided. */
   @Test
   @Category(NeedsRunner.class)
   public void testNoInputFilterProvided() {
@@ -87,7 +86,7 @@ public final class PubsubToPubsubTest {
     pipeline.run(options);
   }
 
-  /** Tests whether only the valid messages flow through when a filter is provided */
+  /** Tests whether only the valid messages flow through when a filter is provided. */
   @Test
   @Category(NeedsRunner.class)
   public void testInputFilterProvided() {
@@ -106,7 +105,7 @@ public final class PubsubToPubsubTest {
   }
 
   /**
-   * Utility method to create test PubsubMessages
+   * Utility method to create test PubsubMessages.
    *
    * @param payloadString String payload for the test message
    * @param attributeKey Header key for the test message

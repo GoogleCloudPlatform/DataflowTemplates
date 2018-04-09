@@ -14,8 +14,6 @@
  * the License.
  */
 
-
-
 package com.google.cloud.teleport.io;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -25,15 +23,13 @@ import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import org.apache.beam.sdk.io.FileBasedSink;
-import org.apache.beam.sdk.io.FileBasedSink.FilenamePolicy.Context;
-import org.apache.beam.sdk.io.FileBasedSink.FilenamePolicy.WindowedContext;
+import java.io.IOException;
+import org.apache.beam.sdk.io.FileBasedSink.OutputFileHints;
 import org.apache.beam.sdk.io.LocalResources;
 import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.fs.ResourceId;
-import org.apache.beam.sdk.options.ValueProvider.NestedValueProvider;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
-import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.DoFn.WindowedContext;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.IntervalWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
@@ -52,6 +48,17 @@ import org.junit.runners.JUnit4;
  */
 @RunWith(JUnit4.class)
 public class WindowedFilenamePolicyTest {
+
+  private class TestOutputFileHints implements OutputFileHints {
+
+    public String getMimeType() {
+      return "";
+    }
+
+    public String getSuggestedFilenameSuffix() {
+      return "";
+    }
+  }
 
   /**
    * Rule for exception testing.
@@ -84,39 +91,29 @@ public class WindowedFilenamePolicyTest {
         .resolve(TEMP_DIRECTORY_NAME, StandardResolveOptions.RESOLVE_DIRECTORY);
   }
 
-
   /**
-   * Tests that windowedFilename() constructs the filename
-   * correctly according to the parameters when using ValueProviders.
+   * Tests that windowedFilename() constructs the filename correctly according to the parameters
+   * when using ValueProviders.
    */
   @Test
-  public void testWindowedFilenameFormatValueProvider() {
+  public void testWindowedFilenameFormatValueProvider() throws IOException {
     // Arrange
     //
     ResourceId outputDirectory = getBaseTempDirectory();
     WindowedContext context = mock(WindowedContext.class);
     BoundedWindow window = mock(BoundedWindow.class);
     PaneInfo paneInfo = PaneInfo.createPane(false, true, Timing.ON_TIME, 0, 0);
-    String extension = "";
-
-    when(context.getShardNumber()).thenReturn(1);
-    when(context.getNumShards()).thenReturn(1);
-    when(context.getWindow()).thenReturn(window);
-    when(window.maxTimestamp()).thenReturn(
-        new DateTime(2017, 1, 8, 10, 56, 45).toInstant());
-    when(context.getPaneInfo()).thenReturn(paneInfo);
-
-    WindowedFilenamePolicy policy = new WindowedFilenamePolicy(
-        NestedValueProvider.of(
+    WindowedFilenamePolicy policy =
+        new WindowedFilenamePolicy(
+            StaticValueProvider.of(outputDirectory.toString()),
             StaticValueProvider.of("output"),
-            (SerializableFunction<String, ResourceId>) input ->
-                FileBasedSink.convertToFileResourceIfPossible(input)),
-        StaticValueProvider.of("-SSS-of-NNN"),
-        StaticValueProvider.of(".txt"));
+            StaticValueProvider.of("-SSS-of-NNN"),
+            StaticValueProvider.of(".txt"));
 
     // Act
     //
-    ResourceId filename = policy.windowedFilename(outputDirectory, context, extension);
+    ResourceId filename =
+        policy.windowedFilename(1, 1, window, paneInfo, new TestOutputFileHints());
 
     // Assert
     //
@@ -125,32 +122,24 @@ public class WindowedFilenamePolicyTest {
   }
 
   /**
-   * Tests that windowedFilename() constructs the filename
-   * correctly according to the parameters when using Strings.
+   * Tests that windowedFilename() constructs the filename correctly according to the parameters
+   * when using Strings.
    */
   @Test
-  public void testWindowedFilenameFormatString() {
+  public void testWindowedFilenameFormatString() throws IOException {
     // Arrange
     //
     ResourceId outputDirectory = getBaseTempDirectory();
     WindowedContext context = mock(WindowedContext.class);
     BoundedWindow window = mock(BoundedWindow.class);
     PaneInfo paneInfo = PaneInfo.createPane(false, true, Timing.ON_TIME, 0, 0);
-    String extension = "";
-
-    when(context.getShardNumber()).thenReturn(1);
-    when(context.getNumShards()).thenReturn(1);
-    when(context.getWindow()).thenReturn(window);
-    when(window.maxTimestamp()).thenReturn(
-        new DateTime(2017, 1, 8, 10, 56, 45).toInstant());
-    when(context.getPaneInfo()).thenReturn(paneInfo);
-
-    WindowedFilenamePolicy policy = new WindowedFilenamePolicy(
-        FileBasedSink.convertToFileResourceIfPossible("string-output"), "-SSS-of-NNN", ".csv");
-
+    WindowedFilenamePolicy policy =
+        new WindowedFilenamePolicy(
+            outputDirectory.toString(), "string-output", "-SSS-of-NNN", ".csv");
     // Act
     //
-    ResourceId filename = policy.windowedFilename(outputDirectory, context, extension);
+    ResourceId filename =
+        policy.windowedFilename(1, 1, window, paneInfo, new TestOutputFileHints());
 
     // Assert
     //
@@ -159,39 +148,28 @@ public class WindowedFilenamePolicyTest {
   }
 
   /**
-   * Tests that windowedFilename() constructs the filename
-   * correctly according to the parameters when the filename
-   * suffix is a null value.
+   * Tests that windowedFilename() constructs the filename correctly according to the parameters
+   * when the filename suffix is a null value.
    */
   @Test
-  public void testWindowedFilenameNullSuffix() {
+  public void testWindowedFilenameNullSuffix() throws IOException {
     // Arrange
     //
     ResourceId outputDirectory = getBaseTempDirectory();
     WindowedContext context = mock(WindowedContext.class);
     BoundedWindow window = mock(BoundedWindow.class);
     PaneInfo paneInfo = PaneInfo.createPane(false, true, Timing.ON_TIME, 0, 0);
-    String extension = "";
-
-    when(context.getShardNumber()).thenReturn(1);
-    when(context.getNumShards()).thenReturn(1);
-    when(context.getWindow()).thenReturn(window);
-    when(window.maxTimestamp()).thenReturn(
-        new DateTime(2017, 1, 8, 10, 56, 45).toInstant());
-    when(context.getPaneInfo()).thenReturn(paneInfo);
-
-    WindowedFilenamePolicy policy = new WindowedFilenamePolicy(
-        NestedValueProvider.of(
+    WindowedFilenamePolicy policy =
+        new WindowedFilenamePolicy(
+            StaticValueProvider.of(outputDirectory.toString()),
             StaticValueProvider.of("output"),
-            (SerializableFunction<String, ResourceId>) input ->
-                FileBasedSink.convertToFileResourceIfPossible(input)),
-        StaticValueProvider.of("-SSS-of-NNN"),
-        StaticValueProvider.of(null));
+            StaticValueProvider.of("-SSS-of-NNN"),
+            StaticValueProvider.of(null));
 
     // Act
     //
-    ResourceId filename = policy.windowedFilename(outputDirectory, context, extension);
-
+    ResourceId filename =
+        policy.windowedFilename(1, 1, window, paneInfo, new TestOutputFileHints());
     // Assert
     //
     assertThat(filename, is(notNullValue()));
@@ -199,11 +177,11 @@ public class WindowedFilenamePolicyTest {
   }
 
   /**
-   * Tests that windowedFilename() produces the correct directory when
-   * the directory has dynamic date variables.
+   * Tests that windowedFilename() produces the correct directory when the directory has dynamic
+   * date variables.
    */
   @Test
-  public void testWithDynamicDirectory() {
+  public void testWithDynamicDirectory() throws IOException {
     // Arrange
     //
     ResourceId outputDirectory = getBaseTempDirectory()
@@ -211,30 +189,23 @@ public class WindowedFilenamePolicyTest {
     WindowedContext context = mock(WindowedContext.class);
     IntervalWindow window = mock(IntervalWindow.class);
     PaneInfo paneInfo = PaneInfo.createPane(false, true, Timing.ON_TIME, 0, 0);
-    String extension = "";
-
     Instant windowBegin = new DateTime(2017, 1, 8, 10, 55, 0).toInstant();
     Instant windowEnd = new DateTime(2017, 1, 8, 10, 56, 0).toInstant();
-
-    when(context.getShardNumber()).thenReturn(1);
-    when(context.getNumShards()).thenReturn(1);
-    when(context.getPaneInfo()).thenReturn(paneInfo);
-    when(context.getWindow()).thenReturn(window);
     when(window.maxTimestamp()).thenReturn(windowEnd);
     when(window.start()).thenReturn(windowBegin);
     when(window.end()).thenReturn(windowEnd);
 
-    WindowedFilenamePolicy policy = new WindowedFilenamePolicy(
-        NestedValueProvider.of(
+    WindowedFilenamePolicy policy =
+        new WindowedFilenamePolicy(
+            StaticValueProvider.of(outputDirectory.toString()),
             StaticValueProvider.of("output"),
-            (SerializableFunction<String, ResourceId>) input ->
-                FileBasedSink.convertToFileResourceIfPossible(input)),
-        StaticValueProvider.of("-SSS-of-NNN"),
-        StaticValueProvider.of(null));
+            StaticValueProvider.of("-SSS-of-NNN"),
+            StaticValueProvider.of(null));
 
     // Act
     //
-    ResourceId filename = policy.windowedFilename(outputDirectory, context, extension);
+    ResourceId filename =
+        policy.windowedFilename(1, 1, window, paneInfo, new TestOutputFileHints());
 
     // Assert
     //
@@ -250,17 +221,11 @@ public class WindowedFilenamePolicyTest {
    */
   @Test
   public void testUnwindowedFilenameFails() {
-    // Arrange
-    //
-    ResourceId resourceId = null;
-    Context context = null;
-    String extension = ".txt";
-
     // Act
     //
     exception.expect(UnsupportedOperationException.class);
-    WindowedFilenamePolicy policy = new WindowedFilenamePolicy(
-        FileBasedSink.convertToFileResourceIfPossible("string-output"), "-SSS-of-NNN", ".csv");
-    policy.unwindowedFilename(resourceId, context, extension);
+    WindowedFilenamePolicy policy =
+        new WindowedFilenamePolicy(null, "string-output", "-SSS-of-NNN", ".csv");
+    policy.unwindowedFilename(1, 1, new TestOutputFileHints());
   }
 }

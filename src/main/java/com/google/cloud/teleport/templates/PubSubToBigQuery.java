@@ -17,6 +17,8 @@
 package com.google.cloud.teleport.templates;
 
 import com.google.cloud.teleport.templates.common.BigQueryConverters;
+import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.JavascriptTextTransformerOptions;
+import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.TransformTextViaJavascript;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
@@ -36,7 +38,7 @@ public class PubSubToBigQuery {
   /**
    * Options supported by {@link PubSubToBigQuery}.
    */
-  public interface Options extends PipelineOptions {
+  public interface Options extends PipelineOptions, JavascriptTextTransformerOptions {
     @Description("Table spec to write the output to")
     ValueProvider<String> getOutputTableSpec();
     void setOutputTableSpec(ValueProvider<String> value);
@@ -47,20 +49,17 @@ public class PubSubToBigQuery {
   }
 
   public static void main(String[] args) {
-    Options options = PipelineOptionsFactory.fromArgs(args).withValidation()
-      .as(Options.class);
+    Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     Pipeline pipeline = Pipeline.create(options);
-    final ValueProvider<String> tableSpec = options.getOutputTableSpec();
-
-    pipeline
-        .apply("ReadPubsub", PubsubIO.readStrings()
-            .fromTopic(options.getInputTopic()))
+    pipeline.apply("ReadPubsub", PubsubIO.readStrings().fromTopic(options.getInputTopic()))
+        .apply(TransformTextViaJavascript.newBuilder()
+            .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
+            .setFunctionName(options.getJavascriptTextTransformFunctionName())
+            .build())
         .apply(BigQueryConverters.jsonToTableRow())
-        .apply("WriteBigQuery", BigQueryIO.writeTableRows()
-            .withoutValidation()
+        .apply("WriteBigQuery", BigQueryIO.writeTableRows().withoutValidation()
             .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER)
             .to(options.getOutputTableSpec()));
-
     pipeline.run();
   }
 }

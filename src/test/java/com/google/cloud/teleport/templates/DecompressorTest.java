@@ -22,13 +22,9 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.teleport.templates.Decompressor.Decompress;
-import com.google.common.io.ByteStreams;
-import java.io.ByteArrayInputStream;
+import com.google.cloud.teleport.util.TestUtils;
 import java.io.File;
 import java.io.IOException;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -37,8 +33,7 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.io.CompressedSource.CompressionMode;
-import org.apache.beam.sdk.io.FileBasedSink.CompressionType;
-import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.Compression;
 import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
@@ -46,7 +41,6 @@ import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFnTester;
-import org.apache.beam.sdk.util.MimeTypes;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.junit.BeforeClass;
@@ -58,7 +52,9 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Test cases for the {@link Decompressor} class. */
+/** Test cases for the {@link Decompressor} class.
+ *  TODO: Refactor CompressionMode -> Compression when the {@link Decompressor} is updated.
+ */
 @RunWith(JUnit4.class)
 public class DecompressorTest {
 
@@ -83,12 +79,35 @@ public class DecompressorTest {
     tempFolderOutputPath = tempFolder.newFolder("output").toPath();
 
     // test files
-    compressedFile1 = writeToFile(FILE_CONTENT, FILE_BASE_NAME + ".gz", CompressionType.GZIP);
-    compressedFile2 = writeToFile(FILE_CONTENT, FILE_BASE_NAME + ".deflate", CompressionType.BZIP2);
+    compressedFile1 =
+        TestUtils.writeToFile(
+            tempFolderRootPath
+                .resolve(FILE_BASE_NAME + Compression.GZIP.getSuggestedSuffix())
+                .toString(),
+            FILE_CONTENT,
+            Compression.GZIP);
+
+    compressedFile2 =
+        TestUtils.writeToFile(
+            tempFolderRootPath
+                .resolve(FILE_BASE_NAME + Compression.DEFLATE.getSuggestedSuffix())
+                .toString(),
+            FILE_CONTENT,
+            Compression.BZIP2);
+
     uncompressedFile =
-        writeToFile(FILE_CONTENT, FILE_BASE_NAME + ".bz2", CompressionType.UNCOMPRESSED);
+        TestUtils.writeToFile(
+            tempFolderRootPath
+                .resolve(FILE_BASE_NAME + Compression.BZIP2.getSuggestedSuffix())
+                .toString(),
+            FILE_CONTENT,
+            Compression.UNCOMPRESSED);
+
     unknownCompressionFile =
-        writeToFile(FILE_CONTENT, FILE_BASE_NAME, CompressionType.UNCOMPRESSED);
+        TestUtils.writeToFile(
+            tempFolderRootPath.resolve(FILE_BASE_NAME).toString(),
+            FILE_CONTENT,
+            Compression.UNCOMPRESSED);
   }
 
   /**
@@ -240,39 +259,5 @@ public class DecompressorTest {
 
     // Assert on the results
     PAssert.that(output).containsInAnyOrder(kv1, kv2);
-  }
-
-  //////////////////// Helpers ///////////////////////////
-
-  /**
-   * Helper to generate files for testing.
-   *
-   * @param lines The lines to write.
-   * @param filename The filename of the file to write.
-   * @param compression The compression type of the file.
-   * @return The file written.
-   * @throws IOException If an error occurs while creating or writing the file.
-   */
-  private static ResourceId writeToFile(
-      List<String> lines, String filename, CompressionType compression) throws IOException {
-
-    String filePath = tempFolderRootPath.resolve(filename).toString();
-    String fileContents = String.join(System.lineSeparator(), lines);
-
-    ResourceId resourceId = FileSystems.matchNewResource(filePath, false);
-
-    String mimeType =
-        compression == CompressionType.UNCOMPRESSED ? MimeTypes.TEXT : compression.getMimeType();
-
-    // Write the file contents to the channel and close.
-    try (ReadableByteChannel readChannel =
-        Channels.newChannel(new ByteArrayInputStream(fileContents.getBytes()))) {
-      try (WritableByteChannel writeChannel =
-          compression.create(FileSystems.create(resourceId, mimeType))) {
-        ByteStreams.copy(readChannel, writeChannel);
-      }
-    }
-
-    return resourceId;
   }
 }
