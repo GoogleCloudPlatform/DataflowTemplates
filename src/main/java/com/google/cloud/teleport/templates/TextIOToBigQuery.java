@@ -135,7 +135,7 @@ public class TextIOToBigQuery {
                                   field.setMode(inputField.getString(MODE));
                                 }
 
-                                fields.add(field)
+                                fields.add(field);
                               }
                               tableSchema.setFields(fields);
 
