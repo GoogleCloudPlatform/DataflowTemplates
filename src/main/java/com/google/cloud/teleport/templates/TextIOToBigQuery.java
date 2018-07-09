@@ -87,6 +87,7 @@ public class TextIOToBigQuery {
   private static final String BIGQUERY_SCHEMA = "BigQuery Schema";
   private static final String NAME = "name";
   private static final String TYPE = "type";
+  private static final String MODE = "mode";
 
   public static void main(String[] args) {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
@@ -124,11 +125,17 @@ public class TextIOToBigQuery {
                                   jsonSchema.getJSONArray(BIGQUERY_SCHEMA);
 
                               for (int i = 0; i < bqSchemaJsonArray.length(); i++) {
-                                fields.add(
+                                JSONObject inputField = bqSchemaJsonArray.getJSONObject(i);
+                                TableFieldSchema field =
                                     new TableFieldSchema()
-                                        .setName(bqSchemaJsonArray.getJSONObject(i).getString(NAME))
-                                        .setType(
-                                            bqSchemaJsonArray.getJSONObject(i).getString(TYPE)));
+                                        .setName(inputField.getString(NAME))
+                                        .setType(inputField.getString(TYPE));
+
+                                if (inputField.has(MODE)) {
+                                  field.setMode(inputField.getString(MODE));
+                                }
+
+                                fields.add(field)
                               }
                               tableSchema.setFields(fields);
 
