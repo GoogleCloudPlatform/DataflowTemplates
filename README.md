@@ -13,7 +13,7 @@ their functionality.
 ## Template Pipelines
 
 * [Bulk Compressor](src/main/java/com/google/cloud/teleport/templates/BulkCompressor.java)
-* [Bulk Decompressor](src/main/java/com/google/cloud/teleport/templates/Decompressor.java)
+* [Bulk Decompressor](src/main/java/com/google/cloud/teleport/templates/BulkDecompressor.java)
 * [Datastore Bulk Delete](src/main/java/com/google/cloud/teleport/templates/DatastoreToDatastoreDelete.java) *
 * [Datastore to Pub/Sub](src/main/java/com/google/cloud/teleport/templates/DatastoreToPubsub.java) *
 * [Datastore to GCS Text](src/main/java/com/google/cloud/teleport/templates/DatastoreToText.java) *

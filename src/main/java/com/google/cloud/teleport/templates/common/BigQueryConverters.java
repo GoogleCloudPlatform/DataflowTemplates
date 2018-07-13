@@ -20,6 +20,8 @@ import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.templates.common.DatastoreConverters.CheckNoKey;
+import com.google.cloud.teleport.values.FailsafeElement;
+import com.google.common.base.Throwables;
 import com.google.datastore.v1.Entity;
 import com.google.datastore.v1.Key;
 import com.google.datastore.v1.Key.PathElement;
@@ -42,16 +44,19 @@ import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
 
-/** Common Code for Teleport BigQueryIO. */
+/** Common transforms for Teleport BigQueryIO. */
 public class BigQueryConverters {
 
   public static final int MAX_STRING_SIZE_BYTES = 1500;
@@ -100,22 +105,69 @@ public class BigQueryConverters {
 
     @Override
     public PCollection<TableRow> expand(PCollection<String> stringPCollection) {
-      return stringPCollection.apply("JsonToTableRow", MapElements.<String, TableRow>via(
-          new SimpleFunction<String, TableRow>() {
-            @Override
-            public TableRow apply(String json) {
-                try {
-
-                  InputStream inputStream = new ByteArrayInputStream(
-                      json.getBytes(StandardCharsets.UTF_8.name()));
-
-                  //OUTER is used here to prevent EOF exception
-                  return TableRowJsonCoder.of().decode(inputStream, Context.OUTER);
-                } catch (IOException e) {
-                  throw new RuntimeException("Unable to parse input", e);
+      return stringPCollection.apply(
+          "JsonToTableRow",
+          MapElements.via(
+              new SimpleFunction<String, TableRow>() {
+                @Override
+                public TableRow apply(String json) {
+                  return convertJsonToTableRow(json);
                 }
-            }
-          }));
+              }));
+    }
+  }
+
+  /**
+   * The {@link FailsafeJsonToTableRow} transform converts JSON strings to {@link TableRow} objects.
+   * The transform accepts a {@link FailsafeElement} object so the original payload of the incoming
+   * record can be maintained across multiple series of transforms.
+   */
+  @AutoValue
+  public abstract static class FailsafeJsonToTableRow<T>
+      extends PTransform<PCollection<FailsafeElement<T, String>>, PCollectionTuple> {
+
+    public abstract TupleTag<TableRow> successTag();
+
+    public abstract TupleTag<FailsafeElement<T, String>> failureTag();
+
+    public static <T> Builder<T> newBuilder() {
+      return new AutoValue_BigQueryConverters_FailsafeJsonToTableRow.Builder<>();
+    }
+
+    /** Builder for {@link FailsafeJsonToTableRow}. */
+    @AutoValue.Builder
+    public abstract static class Builder<T> {
+      public abstract Builder<T> setSuccessTag(TupleTag<TableRow> successTag);
+
+      public abstract Builder<T> setFailureTag(TupleTag<FailsafeElement<T, String>> failureTag);
+
+      public abstract FailsafeJsonToTableRow<T> build();
+    }
+
+    @Override
+    public PCollectionTuple expand(PCollection<FailsafeElement<T, String>> failsafeElements) {
+      return failsafeElements.apply(
+          "JsonToTableRow",
+          ParDo.of(
+                  new DoFn<FailsafeElement<T, String>, TableRow>() {
+                    @ProcessElement
+                    public void processElement(ProcessContext context) {
+                      FailsafeElement<T, String> element = context.element();
+                      String json = element.getPayload();
+
+                      try {
+                        TableRow row = convertJsonToTableRow(json);
+                        context.output(row);
+                      } catch (Exception e) {
+                        context.output(
+                            failureTag(),
+                            FailsafeElement.of(element)
+                                .setErrorMessage(e.getMessage())
+                                .setStacktrace(Throwables.getStackTraceAsString(e)));
+                      }
+                    }
+                  })
+              .withOutputTags(successTag(), TupleTagList.of(failureTag())));
     }
   }
 
@@ -260,6 +312,27 @@ public class BigQueryConverters {
         return entityBuilder.build();
       }
     }
+  }
+
+  /**
+   * Converts a JSON string to a {@link TableRow} object. If the data fails to convert, a {@link
+   * RuntimeException} will be thrown.
+   *
+   * @param json The JSON string to parse.
+   * @return The parsed {@link TableRow} object.
+   */
+  private static TableRow convertJsonToTableRow(String json) {
+    TableRow row;
+    // Parse the JSON into a {@link TableRow} object.
+    try (InputStream inputStream =
+        new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8))) {
+      row = TableRowJsonCoder.of().decode(inputStream, Context.OUTER);
+
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to serialize json to table row: " + json, e);
+    }
+
+    return row;
   }
 
   /**

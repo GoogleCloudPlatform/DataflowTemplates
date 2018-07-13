@@ -19,14 +19,15 @@ package com.google.cloud.teleport.templates.common;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.values.FailsafeElement;
 import com.google.common.base.Strings;
+import com.google.common.base.Throwables;
 import com.google.common.io.CharStreams;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
-import java.security.GeneralSecurityException;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -47,48 +48,55 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
 
-/**
- * A Text UDF Transform Function.
- * Note that this class's implementation is not threadsafe
- */
+/** A Text UDF Transform Function. Note that this class's implementation is not threadsafe */
 @AutoValue
 public abstract class JavascriptTextTransformer {
 
-  /**
-   * Necessary CLI options for running UDF function.
-   */
+  /** Necessary CLI options for running UDF function. */
   public interface JavascriptTextTransformerOptions extends PipelineOptions {
     @Description("Gcs path to javascript udf source")
     ValueProvider<String> getJavascriptTextTransformGcsPath();
+
     void setJavascriptTextTransformGcsPath(ValueProvider<String> javascriptTextTransformGcsPath);
 
     @Description("UDF Javascript Function Name")
     ValueProvider<String> getJavascriptTextTransformFunctionName();
+
     void setJavascriptTextTransformFunctionName(
         ValueProvider<String> javascriptTextTransformFunctionName);
   }
 
   /**
-   * Grabs code from a FileSystem, loads it into the Nashorn Javascript Engine, and
-   * executes Javascript Functions.
+   * Grabs code from a FileSystem, loads it into the Nashorn Javascript Engine, and executes
+   * Javascript Functions.
    */
   @AutoValue
   public abstract static class JavascriptRuntime {
-    @Nullable public abstract String fileSystemPath();
-    @Nullable public abstract String functionName();
+    @Nullable
+    public abstract String fileSystemPath();
+
+    @Nullable
+    public abstract String functionName();
+
     private Invocable invocable;
 
     /** Builder for {@link JavascriptTextTransformer}. */
     @AutoValue.Builder
     public abstract static class Builder {
       public abstract Builder setFileSystemPath(@Nullable String fileSystemPath);
+
       public abstract Builder setFunctionName(@Nullable String functionName);
+
       public abstract JavascriptRuntime build();
     }
 
     /**
      * Factory method for generating a JavascriptTextTransformer.Builder.
+     *
      * @return a JavascriptTextTransformer builder
      */
     public static Builder newBuilder() {
@@ -101,8 +109,7 @@ public abstract class JavascriptTextTransformer {
      * @return a Javascript Invocable or null
      */
     @Nullable
-    public Invocable getInvocable()
-        throws ScriptException, IOException {
+    public Invocable getInvocable() throws ScriptException, IOException {
 
       // return null if no UDF path specified.
       if (Strings.isNullOrEmpty(fileSystemPath())) {
@@ -161,30 +168,34 @@ public abstract class JavascriptTextTransformer {
     }
 
     /**
-     * Loads into memory scripts from a File System from a given path.
-     * Supports any file system that {@link FileSystems} supports.
+     * Loads into memory scripts from a File System from a given path. Supports any file system that
+     * {@link FileSystems} supports.
      *
      * @return a collection of scripts loaded as UF8 Strings
      */
     private static Collection<String> getScripts(String path) throws IOException {
       MatchResult result = FileSystems.match(path);
-      checkArgument(result.status() == Status.OK && !result.metadata().isEmpty(),
+      checkArgument(
+          result.status() == Status.OK && !result.metadata().isEmpty(),
           "Failed to match any files with the pattern: " + path);
 
-      List<String> scripts = result
-          .metadata()
-          .stream()
-          .filter(metadata -> metadata.resourceId().getFilename().endsWith(".js"))
-          .map(Metadata::resourceId)
-          .map(resourceId -> {
-            try (Reader reader = Channels.newReader(
-                FileSystems.open(resourceId), StandardCharsets.UTF_8.name())) {
-              return CharStreams.toString(reader);
-            } catch (IOException e) {
-              throw new UncheckedIOException(e);
-            }
-          })
-          .collect(Collectors.toList());
+      List<String> scripts =
+          result
+              .metadata()
+              .stream()
+              .filter(metadata -> metadata.resourceId().getFilename().endsWith(".js"))
+              .map(Metadata::resourceId)
+              .map(
+                  resourceId -> {
+                    try (Reader reader =
+                        Channels.newReader(
+                            FileSystems.open(resourceId), StandardCharsets.UTF_8.name())) {
+                      return CharStreams.toString(reader);
+                    } catch (IOException e) {
+                      throw new UncheckedIOException(e);
+                    }
+                  })
+              .collect(Collectors.toList());
 
       return scripts;
     }
@@ -195,13 +206,16 @@ public abstract class JavascriptTextTransformer {
   public abstract static class TransformTextViaJavascript
       extends PTransform<PCollection<String>, PCollection<String>> {
     public abstract @Nullable ValueProvider<String> fileSystemPath();
+
     public abstract @Nullable ValueProvider<String> functionName();
 
     /** Builder for {@link TransformTextViaJavascript}. */
     @AutoValue.Builder
     public abstract static class Builder {
       public abstract Builder setFileSystemPath(@Nullable ValueProvider<String> fileSystemPath);
+
       public abstract Builder setFunctionName(@Nullable ValueProvider<String> functionName);
+
       public abstract TransformTextViaJavascript build();
     }
 
@@ -219,21 +233,14 @@ public abstract class JavascriptTextTransformer {
                 @Setup
                 public void setup() {
                   if (fileSystemPath() != null && functionName() != null) {
-                    if (!Strings.isNullOrEmpty(fileSystemPath().get())
-                        && !Strings.isNullOrEmpty(functionName().get())) {
-                      javascriptRuntime =
-                          JavascriptRuntime.newBuilder()
-                              .setFunctionName(functionName().get())
-                              .setFileSystemPath(fileSystemPath().get())
-                              .build();
-                    }
+                    javascriptRuntime =
+                        getJavascriptRuntime(fileSystemPath().get(), functionName().get());
                   }
                 }
 
                 @ProcessElement
                 public void processElement(ProcessContext c)
-                    throws GeneralSecurityException, IOException, NoSuchMethodException,
-                        ScriptException {
+                    throws IOException, NoSuchMethodException, ScriptException {
                   String element = c.element();
 
                   if (javascriptRuntime != null) {
@@ -246,5 +253,106 @@ public abstract class JavascriptTextTransformer {
                 }
               }));
     }
+  }
+
+  /**
+   * The {@link FailsafeJavascriptUdf} class processes user-defined functions is a fail-safe manner
+   * by maintaining the original payload post-transformation and outputting to a dead-letter on
+   * failure.
+   */
+  @AutoValue
+  public abstract static class FailsafeJavascriptUdf<T>
+      extends PTransform<PCollection<FailsafeElement<T, String>>, PCollectionTuple> {
+    public abstract @Nullable ValueProvider<String> fileSystemPath();
+
+    public abstract @Nullable ValueProvider<String> functionName();
+
+    public abstract TupleTag<FailsafeElement<T, String>> successTag();
+
+    public abstract TupleTag<FailsafeElement<T, String>> failureTag();
+
+    public static <T> Builder<T> newBuilder() {
+      return new AutoValue_JavascriptTextTransformer_FailsafeJavascriptUdf.Builder<>();
+    }
+
+    /** Builder for {@link FailsafeJavascriptUdf}. */
+    @AutoValue.Builder
+    public abstract static class Builder<T> {
+      public abstract Builder<T> setFileSystemPath(@Nullable ValueProvider<String> fileSystemPath);
+
+      public abstract Builder<T> setFunctionName(@Nullable ValueProvider<String> functionName);
+
+      public abstract Builder<T> setSuccessTag(TupleTag<FailsafeElement<T, String>> successTag);
+
+      public abstract Builder<T> setFailureTag(TupleTag<FailsafeElement<T, String>> failureTag);
+
+      public abstract FailsafeJavascriptUdf<T> build();
+    }
+
+    @Override
+    public PCollectionTuple expand(PCollection<FailsafeElement<T, String>> elements) {
+      return elements.apply(
+          "ProcessUdf",
+          ParDo.of(
+                  new DoFn<FailsafeElement<T, String>, FailsafeElement<T, String>>() {
+                    private JavascriptRuntime javascriptRuntime;
+
+                    @Setup
+                    public void setup() {
+                      if (fileSystemPath() != null && functionName() != null) {
+                        javascriptRuntime =
+                            getJavascriptRuntime(fileSystemPath().get(), functionName().get());
+                      }
+                    }
+
+                    @ProcessElement
+                    public void processElement(ProcessContext context) {
+                      FailsafeElement<T, String> element = context.element();
+                      String payloadStr = element.getPayload();
+
+                      try {
+                        if (javascriptRuntime != null) {
+                          payloadStr = javascriptRuntime.invoke(payloadStr);
+                        }
+
+                        if (!Strings.isNullOrEmpty(payloadStr)) {
+                          context.output(
+                              FailsafeElement.of(element.getOriginalPayload(), payloadStr));
+                        }
+                      } catch (Exception e) {
+                        context.output(
+                            failureTag(),
+                            FailsafeElement.of(element)
+                                .setErrorMessage(e.getMessage())
+                                .setStacktrace(Throwables.getStackTraceAsString(e)));
+                      }
+                    }
+                  })
+              .withOutputTags(successTag(), TupleTagList.of(failureTag())));
+    }
+  }
+
+  /**
+   * Retrieves a {@link JavascriptRuntime} configured to invoke the specified function within the
+   * script. If either the fileSystemPath or functionName is null or empty, this method will return
+   * null indicating that a runtime was unable to be created within the given parameters.
+   *
+   * @param fileSystemPath The file path to the JavaScript file to execute.
+   * @param functionName The function name which will be invoked within the JavaScript script.
+   * @return The {@link JavascriptRuntime} instance.
+   */
+  private static JavascriptRuntime getJavascriptRuntime(
+      String fileSystemPath, String functionName) {
+    JavascriptRuntime javascriptRuntime = null;
+
+    if (!Strings.isNullOrEmpty(fileSystemPath) && !Strings.isNullOrEmpty(functionName)) {
+      javascriptRuntime =
+          JavascriptRuntime.newBuilder()
+              .setFunctionName(functionName)
+              .setFileSystemPath(fileSystemPath)
+              .build();
+    }
+
+    return javascriptRuntime;
   }
 }

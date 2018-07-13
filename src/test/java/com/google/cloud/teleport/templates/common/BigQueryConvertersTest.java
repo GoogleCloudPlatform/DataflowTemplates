@@ -16,15 +16,23 @@
 
 package com.google.cloud.teleport.templates.common;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
+import com.google.cloud.teleport.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.templates.common.BigQueryConverters.AvroToEntity;
+import com.google.cloud.teleport.templates.common.BigQueryConverters.FailsafeJsonToTableRow;
+import com.google.cloud.teleport.values.FailsafeElement;
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableMap;
 import com.google.datastore.v1.Entity;
 import com.google.datastore.v1.Value;
 import com.google.protobuf.NullValue;
@@ -39,8 +47,12 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData.Record;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.beam.sdk.coders.Coder.Context;
+import org.apache.beam.sdk.coders.CoderRegistry;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.bigquery.SchemaAndRecord;
 import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesCoder;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.testing.NeedsRunner;
@@ -48,6 +60,8 @@ import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTag;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -55,12 +69,19 @@ import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Unit Tests for {@link BigQueryConverters}. */
+/** Unit tests for {@link BigQueryConverters}. */
 @RunWith(JUnit4.class)
 public class BigQueryConvertersTest {
-  @Rule
-  public final transient TestPipeline pipeline = TestPipeline.create();
+
+  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
   @Rule public ExpectedException expectedException = ExpectedException.none();
+
+  // Define the TupleTag's here otherwise the anonymous class will force the test method to
+  // be serialized.
+  private static final TupleTag<TableRow> TABLE_ROW_TAG = new TupleTag<TableRow>() {};
+
+  private static final TupleTag<FailsafeElement<PubsubMessage, String>> FAILSAFE_ELM_TAG =
+      new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
 
   private ValueProvider<String> entityKind = StaticValueProvider.of("TestEntity");
   private ValueProvider<String> uniqueNameColumn = StaticValueProvider.of("id");
@@ -154,12 +175,107 @@ public class BigQueryConvertersTest {
     TableRowJsonCoder.of().encode(expectedRow, jsonStream, Context.OUTER);
     String expectedJson = new String(jsonStream.toByteArray(), StandardCharsets.UTF_8.name());
 
-    PCollection<TableRow> transformedJson = pipeline
-        .apply("Create", Create.of(expectedJson))
-        .apply(BigQueryConverters.jsonToTableRow());
+    PCollection<TableRow> transformedJson =
+        pipeline
+            .apply("Create", Create.of(expectedJson))
+            .apply(BigQueryConverters.jsonToTableRow());
 
     PAssert.that(transformedJson).containsInAnyOrder(expectedRow);
 
+    pipeline.run();
+  }
+
+  /** Tests the {@link BigQueryConverters.FailsafeJsonToTableRow} transform with good input. */
+  @Test
+  @Category(NeedsRunner.class)
+  public void testFailsafeJsonToTableRowValidInput() {
+    // Test input
+    final String payload = "{\"ticker\": \"GOOGL\", \"price\": 1006.94}";
+    final Map<String, String> attributes = ImmutableMap.of("id", "0xDb12", "type", "stock");
+    final PubsubMessage message = new PubsubMessage(payload.getBytes(), attributes);
+
+    final FailsafeElement<PubsubMessage, String> input = FailsafeElement.of(message, payload);
+
+    // Expected Output
+    TableRow expectedRow = new TableRow().set("ticker", "GOOGL").set("price", 1006.94);
+
+    // Register the coder for the pipeline. This prevents having to invoke .setCoder() on
+    // many transforms.
+    FailsafeElementCoder<PubsubMessage, String> coder =
+        FailsafeElementCoder.of(PubsubMessageWithAttributesCoder.of(), StringUtf8Coder.of());
+
+    CoderRegistry coderRegistry = pipeline.getCoderRegistry();
+    coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
+
+    // Build the pipeline
+    PCollectionTuple output =
+        pipeline
+            .apply("CreateInput", Create.of(input).withCoder(coder))
+            .apply(
+                "JsonToTableRow",
+                FailsafeJsonToTableRow.<PubsubMessage>newBuilder()
+                    .setSuccessTag(TABLE_ROW_TAG)
+                    .setFailureTag(FAILSAFE_ELM_TAG)
+                    .build());
+
+    // Assert
+    PAssert.that(output.get(TABLE_ROW_TAG)).containsInAnyOrder(expectedRow);
+    PAssert.that(output.get(FAILSAFE_ELM_TAG)).empty();
+
+    // Execute the test
+    pipeline.run();
+  }
+
+  /**
+   * Tests the {@link BigQueryConverters.FailsafeJsonToTableRow} transform with invalid JSON input.
+   */
+  @Test
+  @Category(NeedsRunner.class)
+  public void testFailsafeJsonToTableRowInvalidJSON() {
+    // Test input
+    final String payload = "{\"ticker\": \"GOOGL\", \"price\": 1006.94";
+    final Map<String, String> attributes = ImmutableMap.of("id", "0xDb12", "type", "stock");
+    final PubsubMessage message = new PubsubMessage(payload.getBytes(), attributes);
+
+    final FailsafeElement<PubsubMessage, String> input = FailsafeElement.of(message, payload);
+
+    // Register the coder for the pipeline. This prevents having to invoke .setCoder() on
+    // many transforms.
+    FailsafeElementCoder<PubsubMessage, String> coder =
+        FailsafeElementCoder.of(PubsubMessageWithAttributesCoder.of(), StringUtf8Coder.of());
+
+    CoderRegistry coderRegistry = pipeline.getCoderRegistry();
+    coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
+
+    // Build the pipeline
+    PCollectionTuple output =
+        pipeline
+            .apply("CreateInput", Create.of(input).withCoder(coder))
+            .apply(
+                "JsonToTableRow",
+                FailsafeJsonToTableRow.<PubsubMessage>newBuilder()
+                    .setSuccessTag(TABLE_ROW_TAG)
+                    .setFailureTag(FAILSAFE_ELM_TAG)
+                    .build());
+
+    // Assert
+    PAssert.that(output.get(TABLE_ROW_TAG)).empty();
+    PAssert.that(output.get(FAILSAFE_ELM_TAG))
+        .satisfies(
+            collection -> {
+              final FailsafeElement<PubsubMessage, String> result = collection.iterator().next();
+              // Check the individual elements of the PubsubMessage since the message above won't be
+              // serializable.
+              assertThat(
+                  new String(result.getOriginalPayload().getPayload()), is(equalTo(payload)));
+              assertThat(result.getOriginalPayload().getAttributeMap(), is(equalTo(attributes)));
+              assertThat(result.getPayload(), is(equalTo(payload)));
+              assertThat(result.getErrorMessage(), is(notNullValue()));
+              assertThat(result.getStacktrace(), is(notNullValue()));
+              return null;
+            });
+
+    // Execute the test
     pipeline.run();
   }
 

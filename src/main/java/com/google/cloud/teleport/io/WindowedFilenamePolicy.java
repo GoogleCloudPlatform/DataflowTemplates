@@ -34,31 +34,27 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link WindowedFilenamePolicy} class outputs filenames for
- * file sinks which handle windowed writes.
+ * The {@link WindowedFilenamePolicy} class outputs filenames for file sinks which handle windowed
+ * writes.
  */
 @SuppressWarnings("serial")
 public class WindowedFilenamePolicy extends FilenamePolicy {
-  /**
-   * The logger to output status messages to.
-   */
+  /** The logger to output status messages to. */
   private static final Logger LOG = LoggerFactory.getLogger(WindowedFilenamePolicy.class);
+
   private static final DateTimeFormatter YEAR = DateTimeFormat.forPattern("YYYY");
   private static final DateTimeFormatter MONTH = DateTimeFormat.forPattern("MM");
   private static final DateTimeFormatter DAY = DateTimeFormat.forPattern("dd");
   private static final DateTimeFormatter HOUR = DateTimeFormat.forPattern("HH");
   /** The filename baseFile. */
   private final ValueProvider<String> outputDirectory;
-
+  /** The prefix of the file to output. */
   private final ValueProvider<String> outputFilenamePrefix;
-  /**
-   * The filenmae suffix.
-   */
+  /** The filename suffix. */
   private final ValueProvider<String> suffix;
-  /**
-   * The shard template used during file formatting.
-   */
+  /** The shard template used during file formatting. */
   private final ValueProvider<String> shardTemplate;
+
   /**
    * Constructs a new {@link WindowedFilenamePolicy} with the supplied baseFile used for output
    * files.
@@ -76,6 +72,7 @@ public class WindowedFilenamePolicy extends FilenamePolicy {
         StaticValueProvider.of(shardTemplate),
         StaticValueProvider.of(suffix));
   }
+
   /**
    * Constructs a new {@link WindowedFilenamePolicy} with the supplied baseFile used for output
    * files.
@@ -95,6 +92,7 @@ public class WindowedFilenamePolicy extends FilenamePolicy {
     this.shardTemplate = shardTemplate;
     this.suffix = suffix;
   }
+
   /**
    * The windowed filename method will construct filenames per window according to the baseFile,
    * suffix, and shardTemplate supplied. Directories with date templates in them will automatically
@@ -121,6 +119,7 @@ public class WindowedFilenamePolicy extends FilenamePolicy {
     LOG.debug("Windowed file name policy created: {}", result.toString());
     return result;
   }
+
   /**
    * Unwindowed writes are unsupported by this filename policy so an {@link
    * UnsupportedOperationException} will be thrown if invoked.
@@ -128,10 +127,12 @@ public class WindowedFilenamePolicy extends FilenamePolicy {
   @Override
   public ResourceId unwindowedFilename(
       int shardNumber, int numShards, OutputFileHints outputFileHints) {
-    throw new UnsupportedOperationException("There is no windowed filename policy for "
-        + "unwindowed file output. Please use the WindowedFilenamePolicy with windowed "
-        + "writes or switch filename policies.");
+    throw new UnsupportedOperationException(
+        "There is no windowed filename policy for "
+            + "unwindowed file output. Please use the WindowedFilenamePolicy with windowed "
+            + "writes or switch filename policies.");
   }
+
   /**
    * Resolves any date variables which exist in the output directory path. This allows for the
    * dynamically changing of the output location based on the window end time.
