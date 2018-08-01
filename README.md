@@ -26,6 +26,9 @@ their functionality.
 * [Pub/Sub to Datastore](src/main/java/com/google/cloud/teleport/templates/PubsubToDatastore.java) *
 * [Pub/Sub to GCS Avro](src/main/java/com/google/cloud/teleport/templates/PubsubToAvro.java)
 * [Pub/Sub to GCS Text](src/main/java/com/google/cloud/teleport/templates/PubsubToText.java)
+* [Spanner to GCS Avro](src/main/java/com/google/cloud/teleport/spanner/ExportPipeline.java)
+* [GCS Avro to Spanner](src/main/java/com/google/cloud/teleport/spanner/ImportPipeline.java)
+
 
 \* Supports user-defined functions (UDFs).
 

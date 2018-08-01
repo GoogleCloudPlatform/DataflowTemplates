@@ -59,7 +59,8 @@
     <joda.version>2.4</joda.version>
     <datastore.proto.version>1.3.0</datastore.proto.version>
     <spanner.version>0.20.0b-beta</spanner.version>
-    <bigtable.version>1.4.0</bigtable.version>
+    <spanner-admin.version>0.1.9</spanner-admin.version>
+    <bigtable.version>1.5.0</bigtable.version>
     <bigquery.version>v2-rev374-1.22.0</bigquery.version>
     <protobuf-util.version>3.3.1</protobuf-util.version>
     <protobuf.version>3.4.0</protobuf.version>
@@ -70,6 +71,8 @@
     <jackson.version>2.8.8</jackson.version>
     <commons-csv.version>1.5</commons-csv.version>
     <google.cloud.core>1.0.2</google.cloud.core>
+    <grpc.version>1.2.0</grpc.version>
+    <google-storage-api.version>v1-rev124-1.23.0</google-storage-api.version>
   </properties>
 
   <dependencies>
@@ -89,6 +92,11 @@
           <artifactId>junit</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-extensions-google-cloud-platform-core</artifactId>
+      <version>${beam.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.beam</groupId>
@@ -145,6 +153,11 @@
       <version>${joda.version}</version>
     </dependency>
     <dependency>
+      <groupId>com.google.apis</groupId>
+      <artifactId>google-api-services-storage</artifactId>
+      <version>${google-storage-api.version}</version>
+    </dependency>
+    <dependency>
       <groupId>com.google.cloud.datastore</groupId>
       <artifactId>datastore-v1-protos</artifactId>
       <version>${datastore.proto.version}</version>
@@ -153,6 +166,11 @@
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-spanner</artifactId>
       <version>${spanner.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.api.grpc</groupId>
+      <artifactId>proto-google-cloud-spanner-admin-database-v1</artifactId>
+      <version>${spanner-admin.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.cloud.bigtable</groupId>
@@ -311,7 +329,7 @@
               <ignoreNonCompile>true</ignoreNonCompile>
               <failOnWarning>true</failOnWarning>
               <ignoredDependencies>
-                <ignoredDependency>com.google.cloud.bigtable:bigtable-beam-import:jar:1.4.0</ignoredDependency>
+                <ignoredDependency>com.google.cloud.bigtable:bigtable-beam-import:jar:${bigtable.version}</ignoredDependency>
               </ignoredDependencies>
             </configuration>
           </execution>
@@ -470,6 +488,36 @@
             <version>1.0-beta-6</version>
           </dependency>
         </dependencies>
+      </plugin>
+      <plugin>
+        <groupId>org.xolstice.maven.plugins</groupId>
+        <artifactId>protobuf-maven-plugin</artifactId>
+        <configuration>
+          <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
+          <pluginId>grpc-java</pluginId>
+          <pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}</pluginArtifact>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>compile</goal>
+              <goal>compile-custom</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <!-- Exclude Cloud Spanner integration tests that require a GCP project to run.
+          They can be run run manually using 'mvn -Dtest=<testname> test' -->
+          <excludes>
+            <exclude>**/CopyDbTest.java</exclude>
+            <exclude>**/ImportFromAvroTest.java</exclude>
+            <exclude>**/InformationSchemaScannerTest.java</exclude>
+          </excludes>
+        </configuration>
       </plugin>
     </plugins>
   </build>
