@@ -3,8 +3,9 @@
 These Dataflow templates are an effort to solve simple, but large, in-Cloud data
 tasks, including data import/export/backup/restore and bulk API operations,
 without a development environment. The technology under the hood which makes
-these operations possible is the Google Cloud Dataflow service combined with a
-set of Apache Beam SDK templated pipelines.
+these operations possible is the
+[Google Cloud Dataflow](https://cloud.google.com/dataflow/) service combined
+with a set of [Apache Beam](https://beam.apache.org/) SDK templated pipelines.
 
 Google is providing this collection of pre-implemented Dataflow templates as a
 reference and to provide easy customization for developers wanting to extend
@@ -45,8 +46,9 @@ the official [docs](https://cloud.google.com/dataflow/docs/templates/provided-te
 ### Building the Project
 
 Build the entire project using the maven compile command.
+
 ```sh
-mvn clean && mvn compile
+mvn clean compile
 ```
 
 ### Creating a Template File
@@ -72,9 +74,10 @@ mvn compile exec:java \
 ### Executing a Template File
 
 Once the template is staged on Google Cloud Storage, it can then be
-executed using the gcloud CLI tool. The runtime parameters required by
-the template can be passed in the parameters field via comma-separated
-list of paramName=Value.
+executed using the
+[gcloud CLI](https://cloud.google.com/sdk/gcloud/reference/dataflow/jobs/run)
+tool. The runtime parameters required by the template can be passed in the
+parameters field via comma-separated list of `paramName=Value`.
 
 ```sh
 gcloud dataflow jobs run <job-name> \

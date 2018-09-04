@@ -16,8 +16,9 @@
 
 package com.google.cloud.teleport.spanner;
 
-import com.google.cloud.teleport.spanner.connector.spanner.SpannerConfig;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -55,6 +56,12 @@ public class ExportPipeline {
     ValueProvider<String> getSpannerHost();
 
     void setSpannerHost(ValueProvider<String> value);
+
+    @Description("If true, wait for job finish")
+    @Default.Boolean(true)
+    boolean getWaitUntilFinish();
+
+    void setWaitUntilFinish(boolean value);
   }
 
   /**
@@ -78,6 +85,9 @@ public class ExportPipeline {
         .apply(
             "Run Export",
             new ExportTransform(spannerConfig, options.getOutputDir(), options.getTestJobId()));
-    p.run().waitUntilFinish();
+    PipelineResult result = p.run();
+    if (options.getWaitUntilFinish()) {
+      result.waitUntilFinish();
+    }
   }
 }

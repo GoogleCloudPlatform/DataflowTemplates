@@ -46,7 +46,8 @@ public class SchemaParser{
       ReadableByteChannel readableByteChannel =
           FileSystems.open(FileSystems.matchNewResource(pathToJSON, false));
 
-      String json = new String(StreamUtils.getBytes(Channels.newInputStream(readableByteChannel)));
+      String json = new String(
+          StreamUtils.getBytesWithoutClosing(Channels.newInputStream(readableByteChannel)));
 
       return new JSONObject(json);
     } catch (Exception e) {

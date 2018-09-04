@@ -39,14 +39,11 @@ import org.junit.runners.JUnit4;
 /** Test class for {@link PubsubToPubsub}. */
 @RunWith(JUnit4.class)
 public final class PubsubToPubsubTest {
-
   private static List<PubsubMessage> goodTestMessages;
   private static List<PubsubMessage> badTestMessages;
   private static List<PubsubMessage> allTestMessages;
   private static final String FILTER_KEY = "team";
   private static final String FILTER_VALUE = "falcon";
-  private static final PubsubToPubsub.Options options =
-      TestPipeline.testingPipelineOptions().as(PubsubToPubsub.Options.class);
 
   @Before
   public void setUp() {
@@ -75,6 +72,8 @@ public final class PubsubToPubsubTest {
   @Test
   @Category(NeedsRunner.class)
   public void testNoInputFilterProvided() {
+    PubsubToPubsub.Options options =
+        TestPipeline.testingPipelineOptions().as(PubsubToPubsub.Options.class);
     PCollection<Long> pc =
         pipeline
             .apply(Create.of(allTestMessages))
@@ -90,6 +89,8 @@ public final class PubsubToPubsubTest {
   @Test
   @Category(NeedsRunner.class)
   public void testInputFilterProvided() {
+    PubsubToPubsub.Options options =
+        TestPipeline.testingPipelineOptions().as(PubsubToPubsub.Options.class);
     PCollection<Long> pc =
         pipeline
             .apply(Create.of(allTestMessages))

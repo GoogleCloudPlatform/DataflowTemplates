@@ -38,13 +38,14 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <avro.version>1.8.2</avro.version>
     <checkstyle.version>8.7</checkstyle.version>
-    <beam.version>2.5.0</beam.version>
+    <beam.version>2.6.0</beam.version>
     <commons.lang.version>3.5</commons.lang.version>
     <hamcrest.version>1.3</hamcrest.version>
     <java.version>1.8</java.version>
     <j2v8.version>4.8.0</j2v8.version>
     <junit.version>4.12</junit.version>
     <junit-dep.version>4.10</junit-dep.version>
+    <surefire.version>2.21.0</surefire.version>
     <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
     <maven-compiler-plugin.version>3.6.2</maven-compiler-plugin.version>
     <maven-dependency-plugin.version>3.0.1</maven-dependency-plugin.version>
@@ -73,6 +74,10 @@
     <google.cloud.core>1.0.2</google.cloud.core>
     <grpc.version>1.2.0</grpc.version>
     <google-storage-api.version>v1-rev124-1.23.0</google-storage-api.version>
+    <mvn-target-dir>${basedir}/target</mvn-target-dir>
+    <derby.version>10.12.1.1</derby.version>
+    <commons-pool2.version>2.4.2</commons-pool2.version>
+    <commons-dbcp2.version>2.1.1</commons-dbcp2.version>
   </properties>
 
   <dependencies>
@@ -101,6 +106,11 @@
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
+      <version>${beam.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-io-jdbc</artifactId>
       <version>${beam.version}</version>
     </dependency>
 
@@ -133,6 +143,24 @@
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-runners-direct-java</artifactId>
       <version>${beam.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.derby</groupId>
+      <artifactId>derby</artifactId>
+      <version>${derby.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.derby</groupId>
+      <artifactId>derbyclient</artifactId>
+      <version>${derby.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.derby</groupId>
+      <artifactId>derbynet</artifactId>
+      <version>${derby.version}</version>
       <scope>test</scope>
     </dependency>
 
@@ -235,6 +263,16 @@
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
+      <artifactId>commons-pool2</artifactId>
+      <version>${commons-pool2.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-dbcp2</artifactId>
+      <version>${commons-dbcp2.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
       <artifactId>commons-csv</artifactId>
       <version>${commons-csv.version}</version>
     </dependency>
@@ -253,6 +291,7 @@
   </dependencies>
 
   <build>
+    <directory>${mvn-target-dir}</directory>
     <extensions>
       <extension>
         <groupId>kr.motd.maven</groupId>
@@ -276,7 +315,7 @@
               </goals>
               <configuration>
                 <dependencyReducedPomLocation>
-                  ${basedir}/target/dependency-reduced-pom.xml
+                  ${mvn-target-dir}/dependency-reduced-pom.xml
                 </dependencyReducedPomLocation>
                 <shadeTestJar>true</shadeTestJar>
                 <artifactSet>
@@ -492,6 +531,7 @@
       <plugin>
         <groupId>org.xolstice.maven.plugins</groupId>
         <artifactId>protobuf-maven-plugin</artifactId>
+        <version>0.5.1</version>
         <configuration>
           <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
           <pluginId>grpc-java</pluginId>
@@ -509,17 +549,32 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
+        <version>${surefire.version}</version>
         <configuration>
           <!-- Exclude Cloud Spanner integration tests that require a GCP project to run.
           They can be run run manually using 'mvn -Dtest=<testname> test' -->
-          <excludes>
-            <exclude>**/CopyDbTest.java</exclude>
-            <exclude>**/ImportFromAvroTest.java</exclude>
-            <exclude>**/InformationSchemaScannerTest.java</exclude>
-          </excludes>
+          <excludedGroups>com.google.cloud.teleport.spanner.IntegrationTest</excludedGroups>
         </configuration>
       </plugin>
     </plugins>
   </build>
 
+  <profiles>
+    <!-- The following snapshot profile allows us to test teleport with
+         unreleased apache sw. E.g. to test with a snapshot version of beam we
+         could do
+              mvn test -Psnapshot -Dbeam.version=A.B.C-SNAPSHOT
+      -->
+    <profile>
+      <id>snapshot</id>
+      <repositories>
+        <repository>
+          <id>apache.snapshots</id>
+          <url>https://repository.apache.org/content/repositories/snapshots</url>
+        </repository>
+      </repositories>
+    </profile>
+  </profiles>
+
 </project>
+

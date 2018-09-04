@@ -18,25 +18,22 @@ package com.google.cloud.teleport.spanner;
 import com.google.api.services.storage.model.StorageObject;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.spanner.ExportProtos.TableManifest;
-import com.google.cloud.teleport.spanner.connector.spanner.ReadOperation;
-import com.google.cloud.teleport.spanner.connector.spanner.SpannerConfig;
-import com.google.cloud.teleport.spanner.connector.spanner.SpannerIO;
-import com.google.cloud.teleport.spanner.connector.spanner.Transaction;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.common.base.Strings;
 import com.google.common.base.Supplier;
+import com.google.common.collect.Iterables;
 import com.google.common.hash.Hashing;
 import com.google.common.io.Files;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -47,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.apache.avro.Schema;
+import org.apache.avro.SchemaBuilder;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
@@ -65,6 +63,10 @@ import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.WriteFilesResult;
 import org.apache.beam.sdk.io.fs.ResolveOptions;
 import org.apache.beam.sdk.io.fs.ResourceId;
+import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
+import org.apache.beam.sdk.io.gcp.spanner.Transaction;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Combine;
 import org.apache.beam.sdk.transforms.Contextful;
@@ -89,13 +91,13 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * Exports all data from {@link SpannerConfig} to Avro files.
- *
- * <p>The pipeline exports the content of the Cloud Spanner database. Each table is exported a set
- * of Avro files. In addition to Avro files the pipeline also exports a manifest.json file per
- * table, and an export summary file 'spanner-export.json'.
+ * This pipeline exports the complete contents of a Cloud Spanner database to GCS. Each table is
+ * exported as a set of Avro files. In addition to Avro files the pipeline also exports a
+ * manifest.json file per table, and an export summary file 'spanner-export.json'.
  *
  * <p>For example, for a database with two tables Users and Singers, the pipeline will export the
  * following file set. <code>
@@ -110,6 +112,7 @@ import org.apache.beam.sdk.values.TupleTag;
  * </code>
  */
 public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>> {
+  private static final Logger LOG = LoggerFactory.getLogger(ExportTransform.class);
 
   private static final String EMPTY_EXPORT_FILE = "empty-cloud-spanner-export";
 
@@ -233,9 +236,9 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
             .apply("Group with all tables", CoGroupByKey.create());
 
     // The following is to export empty tables from the database.
-    PCollection<KV<String, Iterable<String>>> missingTables =
+    PCollection<KV<String, Iterable<String>>> emptyTables =
         grouppedTables.apply(
-            "Missing tables",
+            "Empty tables",
             ParDo.of(
                 new DoFn<KV<String, CoGbkResult>, KV<String, Iterable<String>>>() {
 
@@ -246,13 +249,14 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                     CoGbkResult coGbkResult = kv.getValue();
                     Iterable<String> only = coGbkResult.getOnly(nonEmptyTables, null);
                     if (only == null) {
+                      LOG.info("Exporting empty table " + table);
                       c.output(KV.of(table, Collections.singleton(table + ".avro-00000-of-00001")));
                     }
                   }
                 }));
 
-    missingTables =
-        missingTables.apply(
+    emptyTables =
+        emptyTables.apply(
             "Save empty schema files",
             ParDo.of(
                     new DoFn<KV<String, Iterable<String>>, KV<String, Iterable<String>>>() {
@@ -299,8 +303,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                               .resolve(fileName);
                         } else {
                           // Avro file path in local filesystem
-                          return java.nio.file.FileSystems.getDefault()
-                              .getPath(outputDirectoryPath, outputDirectoryName, fileName);
+                          return Paths.get(outputDirectoryPath, outputDirectoryName, fileName);
                         }
                       }
 
@@ -333,77 +336,11 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
     PCollection<KV<String, Iterable<String>>> allFiles =
         PCollectionList.of(tableFiles)
-            .and(missingTables)
+            .and(emptyTables)
             .apply("Combine all files", Flatten.pCollections());
 
     PCollection<KV<String, String>> tableManifests =
-        allFiles.apply(
-            "Build Table manifests",
-            ParDo.of(
-                new DoFn<KV<String, Iterable<String>>, KV<String, String>>() {
-
-                  @ProcessElement
-                  public void processElement(ProcessContext c) {
-                    if (Objects.equals(c.element().getKey(), EMPTY_EXPORT_FILE)) {
-                      return;
-                    }
-                    Iterable<String> files = c.element().getValue();
-                    Iterator<String> it = files.iterator();
-                    boolean gcs = it.hasNext() && GcsPath.GCS_URI.matcher(it.next()).matches();
-                    try {
-                      TableManifest proto;
-                      if (gcs) {
-                        proto = buildGcsManifest(c, files);
-                      } else {
-                        proto = buildLocalManifest(files);
-                      }
-                      c.output(KV.of(c.element().getKey(), JsonFormat.printer().print(proto)));
-                    } catch (IOException e) {
-                      throw new RuntimeException(e);
-                    }
-                  }
-
-                  private TableManifest buildLocalManifest(Iterable<String> files)
-                      throws IOException {
-                    TableManifest.Builder result = TableManifest.newBuilder();
-                    for (String filePath : files) {
-                      String fileName = extractFileName(filePath);
-                      String hash =
-                          Base64.getEncoder()
-                              .encodeToString(
-                                  Files.asByteSource(new File(filePath))
-                                      .hash(Hashing.md5())
-                                      .asBytes());
-                      result.addFilesBuilder().setName(fileName).setMd5(hash);
-                    }
-                    return result.build();
-                  }
-
-                  private TableManifest buildGcsManifest(ProcessContext c, Iterable<String> files)
-                      throws IOException {
-                    org.apache.beam.sdk.util.GcsUtil gcsUtil =
-                        c.getPipelineOptions().as(GcsOptions.class).getGcsUtil();
-                    TableManifest.Builder result = TableManifest.newBuilder();
-                    List<GcsPath> gcsPaths = new ArrayList<>();
-                    for (String filePath : files) {
-                      gcsPaths.add(GcsPath.fromUri(filePath));
-                    }
-                    List<StorageObjectOrIOException> objects = gcsUtil.getObjects(gcsPaths);
-                    for (int i = 0; i < gcsPaths.size(); i++) {
-                      StorageObjectOrIOException objectOrIOException = objects.get(i);
-                      IOException ex = objectOrIOException.ioException();
-                      if (ex != null) {
-                        throw ex;
-                      }
-                      StorageObject object = objectOrIOException.storageObject();
-                      GcsPath path = gcsPaths.get(i);
-                      String fileName = path.getFileName().getObject();
-                      String hash = object.getMd5Hash();
-                      result.addFilesBuilder().setName(fileName).setMd5(hash);
-                    }
-                    return result.build();
-                  }
-                }));
+        allFiles.apply("Build table manifests", ParDo.of(new BuildTableManifests()));
 
     Contextful.Fn<String, FileIO.Write.FileNaming> tableManifestNaming =
         (element, c) ->
@@ -446,7 +383,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
   }
 
   /**
-   * Allows to save {@link Struct} elements of PCollection of the same type to the same avro file.
+   * Saves {@link Struct} elements of PCollection of the same type to the an Avro file.
    */
   private static class SchemaBasedDynamicDestinations
       extends DynamicAvroDestinations<Struct, String, GenericRecord> {
@@ -466,19 +403,23 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
     @Override
     public Schema getSchema(String tableName) {
-      return sideInput(avroSchemas).get(tableName).get();
+      Map<String, SerializableSchemaSupplier> si = sideInput(avroSchemas);
+      // Check if there are any schemas available.
+      if (si.isEmpty()) {
+        // The EMPTY_EXPORT_FILE still needs to have a rudimentary schema for it to be created.
+        return SchemaBuilder.record("EmptyDB").fields().endRecord();
+      }
+      return si.get(tableName).get();
     }
 
     @Override
     public String getDestination(Struct element) {
-      // Table name
       return element.getString(0);
     }
 
     @Override
     public String getDefaultDestination() {
-      // TODO: Ideally, update the AvroIO transform and return null here and avoid creating any
-      // files on disk.
+      // Create a default file if there is absolutely no tables in the exported database.
       return EMPTY_EXPORT_FILE;
     }
 
@@ -601,8 +542,74 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     return tableName + "-manifest.json";
   }
 
-  private static String extractFileName(String fullPath) {
-    int i = fullPath.lastIndexOf('/');
-    return fullPath.substring(i + 1);
+  /**
+   * Given a list of Avro file names for each table, create the JSON string representing the
+   * manifest for each table.
+   */
+  static class BuildTableManifests extends DoFn<KV<String, Iterable<String>>, KV<String, String>> {
+
+    @ProcessElement
+    public void processElement(ProcessContext c) {
+      if (Objects.equals(c.element().getKey(), EMPTY_EXPORT_FILE)) {
+        return;
+      }
+      Iterable<String> files = c.element().getValue();
+      Iterator<String> it = files.iterator();
+      boolean gcs = it.hasNext() && GcsPath.GCS_URI.matcher(it.next()).matches();
+      try {
+        TableManifest proto;
+        if (gcs) {
+          Iterable<GcsPath> gcsPaths = Iterables.transform(files, s -> GcsPath.fromUri(s));
+          proto = buildGcsManifest(c, gcsPaths);
+        } else {
+          Iterable<Path> paths = Iterables.transform(files, s -> Paths.get(s));
+          proto = buildLocalManifest(paths);
+        }
+        c.output(KV.of(c.element().getKey(), JsonFormat.printer().print(proto)));
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    private TableManifest buildLocalManifest(Iterable<Path> files) throws IOException {
+      TableManifest.Builder result = TableManifest.newBuilder();
+      for (Path filePath : files) {
+        Path fileName = filePath.getFileName();
+        String hash =
+            Base64.getEncoder()
+                .encodeToString(
+                    Files.asByteSource(filePath.toFile())
+                        .hash(Hashing.md5())
+                        .asBytes());
+        result.addFilesBuilder().setName(fileName.toString()).setMd5(hash);
+      }
+      return result.build();
+    }
+
+    private TableManifest buildGcsManifest(ProcessContext c, Iterable<GcsPath> files)
+                      throws IOException {
+      org.apache.beam.sdk.util.GcsUtil gcsUtil =
+          c.getPipelineOptions().as(GcsOptions.class).getGcsUtil();
+      TableManifest.Builder result = TableManifest.newBuilder();
+
+      List<GcsPath> gcsPaths = new ArrayList<>();
+      files.forEach(gcsPaths::add);
+
+      // Fetch object metadata from GCS
+      List<StorageObjectOrIOException> objects = gcsUtil.getObjects(gcsPaths);
+      for (int i = 0; i < gcsPaths.size(); i++) {
+        StorageObjectOrIOException objectOrIOException = objects.get(i);
+        IOException ex = objectOrIOException.ioException();
+        if (ex != null) {
+          throw ex;
+        }
+        StorageObject object = objectOrIOException.storageObject();
+        GcsPath path = gcsPaths.get(i);
+        String fileName = path.getFileName().getObject();
+        String hash = object.getMd5Hash();
+        result.addFilesBuilder().setName(fileName).setMd5(hash);
+      }
+      return result.build();
+    }
   }
 }

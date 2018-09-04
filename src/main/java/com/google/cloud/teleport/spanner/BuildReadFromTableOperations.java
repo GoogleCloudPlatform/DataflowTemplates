@@ -16,12 +16,12 @@
 
 package com.google.cloud.teleport.spanner;
 
-import com.google.cloud.teleport.spanner.connector.spanner.ReadOperation;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.common.base.Joiner;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;

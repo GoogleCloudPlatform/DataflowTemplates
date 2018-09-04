@@ -22,7 +22,6 @@ import com.google.cloud.spanner.Operation;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.SpannerOptions;
-import com.google.cloud.teleport.spanner.connector.spanner.SpannerConfig;
 import com.google.common.io.Files;
 import com.google.protobuf.util.JsonFormat;
 import com.google.spanner.admin.database.v1.CreateDatabaseMetadata;
@@ -39,16 +38,19 @@ import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 /**
  * Tests import of Avro files.
  * This requires an active GCP project with a Spanner instance.
  * Hence this test can only be run locally with a project set up using 'gcloud config'.
  */
+@Category(IntegrationTest.class)
 public class ImportFromAvroTest {
   @Rule public final transient TestPipeline importPipeline = TestPipeline.create();
 

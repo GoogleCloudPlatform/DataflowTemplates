@@ -59,9 +59,6 @@ import org.slf4j.LoggerFactory;
  *                --spannerTable=table_name \
  *                --textWritePrefix=gcsOutputPath"
  * </pre>
- *
- * <p>Limitations: Because read is consistent with the timestamp that expires in one hour, the job
- * should finish within one hour interval.
  */
 public class SpannerToText {
 

@@ -36,6 +36,7 @@ import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.spanner.Type;
+import com.google.cloud.teleport.spanner.IntegrationTest;
 import com.google.common.base.Joiner;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
@@ -46,12 +47,14 @@ import java.util.List;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 /**
  * Test coverage for {@link InformationSchemaScanner}.
  * This requires an active GCP project with a Spanner instance.
  * Hence this test can only be run locally with a project set up using 'gcloud config'.
  */
+@Category(IntegrationTest.class)
 public class InformationSchemaScannerTest {
 
   private final String instanceId = "import-export-test";

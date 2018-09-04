@@ -16,8 +16,9 @@
 
 package com.google.cloud.teleport.spanner;
 
-import com.google.cloud.teleport.spanner.connector.spanner.SpannerConfig;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -56,6 +57,12 @@ public class ImportPipeline {
     ValueProvider<Boolean> getWaitForIndexes();
 
     void setWaitForIndexes(ValueProvider<Boolean> value);
+
+    @Description("If true, wait for job finish")
+    @Default.Boolean(true)
+    boolean getWaitUntilFinish();
+
+    void setWaitUntilFinish(boolean value);
   }
 
   public static void main(String[] args) {
@@ -72,6 +79,9 @@ public class ImportPipeline {
 
     p.apply(new ImportTransform(spannerConfig, options.getInputDir(), options.getWaitForIndexes()));
 
-    p.run().waitUntilFinish();
+    PipelineResult result = p.run();
+    if (options.getWaitUntilFinish()) {
+      result.waitUntilFinish();
+    }
   }
 }

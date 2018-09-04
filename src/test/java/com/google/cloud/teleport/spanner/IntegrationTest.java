@@ -14,23 +14,8 @@
  * the License.
  */
 
-package com.google.cloud.teleport.spanner.connector.spanner;
+package com.google.cloud.teleport.spanner;
 
-import com.google.auto.value.AutoValue;
+/** Mark the Spanner integration tests. */
+public interface IntegrationTest {}
 
-@AutoValue
-abstract class SerializedMutation {
-  static SerializedMutation create(String tableName, byte[] key,
-      byte[] bytes) {
-    return new AutoValue_SerializedMutation(tableName, key, bytes);
-  }
-
-  abstract String getTableName();
-
-  @SuppressWarnings("mutable")
-  abstract byte[] getEncodedKey();
-
-  @SuppressWarnings("mutable")
-  abstract byte[] getMutationGroupBytes();
-
-}

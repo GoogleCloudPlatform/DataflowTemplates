@@ -32,8 +32,6 @@ import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.spanner.Type;
-import com.google.cloud.teleport.spanner.connector.spanner.MutationGroup;
-import com.google.cloud.teleport.spanner.connector.spanner.SpannerConfig;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.InformationSchemaScanner;
 import com.google.cloud.teleport.spanner.ddl.RandomDdlGenerator;
@@ -47,6 +45,8 @@ import java.util.Collections;
 import java.util.Iterator;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
@@ -55,12 +55,14 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 /**
  * An end to end test that exports and imports a database and verifies that the content is identical
  * This requires an active GCP project with a Spanner instance.
  * Hence this test can only be run locally with a project set up using 'gcloud config'.
  */
+@Category(IntegrationTest.class)
 public class CopyDbTest {
 
   private final String instanceId = "import-export-test";
