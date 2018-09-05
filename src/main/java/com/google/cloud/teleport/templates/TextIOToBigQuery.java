@@ -88,6 +88,36 @@ public class TextIOToBigQuery {
   private static final String NAME = "name";
   private static final String TYPE = "type";
   private static final String MODE = "mode";
+  private static final String FIELDS = "fields";
+
+  public static List<TableFieldSchema> getFields(JSONArray bqSchemaJsonArray) {
+
+    TableSchema tableSchema = new TableSchema();
+    SchemaParser schemaParser = new SchemaParser();
+    JSONObject jsonSchema;
+    List<TableFieldSchema> fields = new ArrayList<>();
+
+    for (int i = 0; i < bqSchemaJsonArray.length(); i++) {
+      JSONObject inputField = bqSchemaJsonArray.getJSONObject(i);
+      TableFieldSchema field =
+          new TableFieldSchema()
+              .setName(inputField.getString(NAME))
+              .setType(inputField.getString(TYPE));
+
+      if (inputField.has(MODE)) {
+        field.setMode(inputField.getString(MODE));
+      }
+
+      if (inputField.has(FIELDS)) {
+        JSONArray subFieldsJson = inputField.getJSONArray(FIELDS);
+        List<TableFieldSchema> subFields = getFields(subFieldsJson);
+        field.setFields(subFields);
+      }
+
+      fields.add(field);
+    }
+    return fields;
+  }
 
   public static void main(String[] args) {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
@@ -113,7 +143,6 @@ public class TextIOToBigQuery {
                           public TableSchema apply(String jsonPath) {
 
                             TableSchema tableSchema = new TableSchema();
-                            List<TableFieldSchema> fields = new ArrayList<>();
                             SchemaParser schemaParser = new SchemaParser();
                             JSONObject jsonSchema;
 
@@ -124,20 +153,7 @@ public class TextIOToBigQuery {
                               JSONArray bqSchemaJsonArray =
                                   jsonSchema.getJSONArray(BIGQUERY_SCHEMA);
 
-                              for (int i = 0; i < bqSchemaJsonArray.length(); i++) {
-                                JSONObject inputField = bqSchemaJsonArray.getJSONObject(i);
-                                TableFieldSchema field =
-                                    new TableFieldSchema()
-                                        .setName(inputField.getString(NAME))
-                                        .setType(inputField.getString(TYPE));
-
-                                if (inputField.has(MODE)) {
-                                  field.setMode(inputField.getString(MODE));
-                                }
-
-                                fields.add(field);
-                              }
-                              tableSchema.setFields(fields);
+                              tableSchema.setFields(getFields(bqSchemaJsonArray));
 
                             } catch (Exception e) {
                               throw new RuntimeException(e);
