@@ -16,9 +16,9 @@
 
 package com.google.cloud.teleport.spanner.ddl;
 
-import static com.google.cloud.teleport.spanner.Matchers.equalsIgnoreWhitespace;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.text.IsEqualIgnoringWhiteSpace.equalToIgnoringWhiteSpace;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.spanner.Type;
@@ -46,11 +46,11 @@ public class DdlTest {
         .primaryKey().asc("id").end()
         .endTable()
         .build();
-    assertThat(empty.prettyPrint(), equalsIgnoreWhitespace("CREATE TABLE `Users` ("
-        + "`id`                                    INT64 NOT NULL,"
-        + "`first_name`                             STRING(10),"
-        + "`last_name`                             STRING(MAX),"
-        + ") PRIMARY KEY (`id` ASC)"));
+    assertThat(empty.prettyPrint(), equalToIgnoringWhiteSpace("CREATE TABLE `Users` ("
+        + " `id` INT64 NOT NULL,"
+        + " `first_name` STRING(10),"
+        + " `last_name` STRING(MAX),"
+        + " ) PRIMARY KEY (`id` ASC)"));
   }
 
   @Test
@@ -70,15 +70,16 @@ public class DdlTest {
         .interleaveInParent("Users")
         .endTable()
         .build();
-    assertThat(empty.prettyPrint(), equalsIgnoreWhitespace("CREATE TABLE `Users` ("
-        + "`id`                                    INT64 NOT NULL,"
-        + "`first_name`                            STRING(10),"
-        + "`last_name`                             STRING(MAX),) PRIMARY KEY (`id` ASC)"
-        + "CREATE TABLE `Account` ("
-        + "`id`                                    INT64 NOT NULL,"
-        + "`balanceId`                             INT64 NOT NULL,"
-        + "`balance`                               FLOAT64 NOT NULL,"
-        + ") PRIMARY KEY (`id` ASC), INTERLEAVE IN PARENT `Users`"
+    assertThat(empty.prettyPrint(), equalToIgnoringWhiteSpace("CREATE TABLE `Users` ("
+        + " `id`                                    INT64 NOT NULL,"
+        + " `first_name`                            STRING(10),"
+        + " `last_name`                             STRING(MAX),"
+        + " ) PRIMARY KEY (`id` ASC)"
+        + " CREATE TABLE `Account` ("
+        + " `id`                                    INT64 NOT NULL,"
+        + " `balanceId`                             INT64 NOT NULL,"
+        + " `balance`                               FLOAT64 NOT NULL,"
+        + " ) PRIMARY KEY (`id` ASC), INTERLEAVE IN PARENT `Users`"
     ));
   }
 }

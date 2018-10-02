@@ -16,7 +16,6 @@
 
 package com.google.cloud.teleport.spanner;
 
-import com.google.api.services.storage.model.StorageObject;
 import com.google.cloud.WaitForOption;
 import com.google.cloud.spanner.DatabaseAdminClient;
 import com.google.cloud.spanner.Mutation;
@@ -25,25 +24,24 @@ import com.google.cloud.teleport.spanner.ExportProtos.Export;
 import com.google.cloud.teleport.spanner.ExportProtos.TableManifest;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
+import com.google.common.base.Verify;
 import com.google.common.collect.HashMultimap;
-import com.google.common.hash.Hashing;
-import com.google.common.io.Files;
+import com.google.common.collect.Lists;
 import com.google.protobuf.util.JsonFormat;
 import com.google.spanner.admin.database.v1.UpdateDatabaseDdlMetadata;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Base64;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.apache.avro.Schema;
@@ -78,7 +76,6 @@ import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.transforms.Wait;
-import org.apache.beam.sdk.util.GcsUtil.StorageObjectOrIOException;
 import org.apache.beam.sdk.util.gcsfs.GcsPath;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PBegin;
@@ -90,7 +87,7 @@ import org.apache.beam.sdk.values.TypeDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** An import transform. */
+/** A Beam transform that imports a Cloud Spanner database from a set of Avro files. */
 public class ImportTransform extends PTransform<PBegin, PDone> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ImportTransform.class);
@@ -266,7 +263,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                       spannerAccessor.getDatabaseAdminClient();
                   List<String> createIndexStatements = ddl.createIndexStatements();
                   if (!createIndexStatements.isEmpty()) {
-                    // This just kicks off the index creation, we don't know if it will succeed.
+                    // This just kicks off the index creation, it does not wait for it to complete.
                     Operation<Void, UpdateDatabaseDdlMetadata> op =
                         databaseAdminClient.updateDatabaseDdl(
                             spannerConfig.getInstanceId().get(),
@@ -282,7 +279,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
     }
   }
 
-  /** Read a content of the manifest file. */
+  /** Read contents of the top-level manifest file. */
   private static class ReadExportManifestFile extends PTransform<PBegin, PCollection<Export>> {
 
     private final ValueProvider<String> importDirectory;
@@ -536,87 +533,76 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
 
       PCollection<KV<String, String>> expandedFromManifests =
           manifests.apply(
-              "Expand table manifest contents",
-              ParDo.of(
-                  new DoFn<KV<String, TableManifest>, KV<String, String>>() {
-
-                    @ProcessElement
-                    public void processElement(ProcessContext c) {
-                      try {
-                        KV<String, TableManifest> kv = c.element();
-                        String table = kv.getKey();
-                        TableManifest manifest = kv.getValue();
-                        boolean gcs = GcsPath.GCS_URI.matcher(importDirectory.get()).matches();
-                        if (gcs) {
-                          validateAndExpandGcs(c, table, manifest);
-                        } else {
-                          validateAndExpandLocal(c, table, manifest);
-                        }
-                      } catch (IOException e) {
-                        throw new RuntimeException(e);
-                      }
-                    }
-
-                    private void validateAndExpandGcs(
-                        ProcessContext c, String table, TableManifest manifest) throws IOException {
-                      org.apache.beam.sdk.util.GcsUtil gcsUtil =
-                          c.getPipelineOptions().as(GcsOptions.class).getGcsUtil();
-                      List<GcsPath> gcsPaths = new ArrayList<>();
-                      Map<String, String> expectedMd5 = new HashMap<>();
-                      for (TableManifest.File file : manifest.getFilesList()) {
-                        String filePath = GcsUtil.joinPath(importDirectory.get(), file.getName());
-                        gcsPaths.add(GcsPath.fromUri(filePath));
-                        expectedMd5.put(file.getName(), file.getMd5());
-                      }
-                      List<StorageObjectOrIOException> objects = gcsUtil.getObjects(gcsPaths);
-                      for (int i = 0; i < gcsPaths.size(); i++) {
-                        StorageObjectOrIOException objectOrIOException = objects.get(i);
-                        IOException ex = objectOrIOException.ioException();
-                        if (ex != null) {
-                          throw ex;
-                        }
-                        StorageObject object = objectOrIOException.storageObject();
-                        GcsPath path = gcsPaths.get(i);
-                        String fileName = path.getFileName().getObject();
-                        String hash = expectedMd5.get(fileName);
-                        if (!object.getMd5Hash().equals(hash)) {
-                          throw new IllegalStateException(
-                              "Inconsistent file "
-                                  + fileName
-                                  + " expected md5 "
-                                  + object.getMd5Hash()
-                                  + " actual "
-                                  + hash);
-                        }
-                        c.output(KV.of(table, path.toString()));
-                      }
-                    }
-
-                    private void validateAndExpandLocal(
-                        ProcessContext c, String table, TableManifest manifest) throws IOException {
-                      for (TableManifest.File file : manifest.getFilesList()) {
-                        String filePath = GcsUtil.joinPath(importDirectory.get(), file.getName());
-                        String hash =
-                            Base64.getEncoder()
-                                .encodeToString(
-                                    Files.asByteSource(new File(filePath))
-                                        .hash(Hashing.md5())
-                                        .asBytes());
-                        if (!hash.equals(file.getMd5())) {
-                          throw new IllegalStateException(
-                              "Inconsistent file "
-                                  + filePath
-                                  + " expected md5 "
-                                  + file.getMd5()
-                                  + " actual "
-                                  + hash);
-                        }
-                        c.output(KV.of(table, filePath));
-                      }
-                    }
-                  }));
+              "Validate input files",
+              ParDo.of(new ValidateInputFiles(importDirectory)));
 
       return PCollectionList.of(dataFiles).and(expandedFromManifests).apply(Flatten.pCollections());
+    }
+  }
+
+  /** Find checksums for the input files and validate against checksums in the manifests.
+   *  Returns multi-map of input files for each table.
+   */
+  @VisibleForTesting
+  static class ValidateInputFiles extends DoFn<KV<String, TableManifest>, KV<String, String>> {
+
+    private final ValueProvider<String> importDirectory;
+
+    ValidateInputFiles(ValueProvider<String> importDirectory) {
+      this.importDirectory = importDirectory;
+    }
+
+    @ProcessElement
+    public void processElement(ProcessContext c) {
+      KV<String, TableManifest> kv = c.element();
+      String table = kv.getKey();
+      TableManifest manifest = kv.getValue();
+      boolean gcs = GcsPath.GCS_URI.matcher(importDirectory.get()).matches();
+      if (gcs) {
+        validateGcsFiles(c, table, manifest);
+      } else {
+        validateLocalFiles(c, table, manifest);
+      }
+    }
+
+    private void validateGcsFiles(
+        ProcessContext c, String table, TableManifest manifest) {
+      org.apache.beam.sdk.util.GcsUtil gcsUtil =
+          c.getPipelineOptions().as(GcsOptions.class).getGcsUtil();
+      // Convert file names to GcsPaths.
+      List<GcsPath> gcsPaths =
+          Lists.transform(
+              manifest.getFilesList(),
+              f -> GcsPath.fromUri(importDirectory.get()).resolve(f.getName()));
+      List<String> checksums = FileChecksum.getGcsFileChecksums(gcsUtil, gcsPaths);
+      for (int i = 0; i < gcsPaths.size(); i++) {
+        GcsPath path = gcsPaths.get(i);
+        String fileName = gcsPaths.get(i).getFileName().getObject();
+        String expectedHash = manifest.getFiles(i).getMd5();
+        String actualHash = checksums.get(i);
+        Verify.verify(
+            expectedHash.equals(actualHash),
+            "Inconsistent file: %s expected hash %s actual hash %s",
+            fileName,
+            expectedHash,
+            actualHash);
+        c.output(KV.of(table, path.toString()));
+      }
+    }
+
+    private void validateLocalFiles(ProcessContext c, String table, TableManifest manifest) {
+      for (TableManifest.File file : manifest.getFilesList()) {
+        Path filePath = Paths.get(importDirectory.get(), file.getName());
+        String actualHash = FileChecksum.getLocalFileChecksum(filePath);
+        String expectedHash = file.getMd5();
+        Verify.verify(
+            expectedHash.equals(actualHash),
+            "Inconsistent file: %s expected hash %s actual hash %s",
+            filePath,
+            expectedHash,
+            actualHash);
+        c.output(KV.of(table, filePath.toString()));
+      }
     }
   }
 

@@ -16,9 +16,9 @@
 
 package com.google.cloud.teleport.spanner;
 
-import static com.google.cloud.teleport.spanner.Matchers.equalsIgnoreWhitespace;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.text.IsEqualIgnoringWhiteSpace.equalToIgnoringWhiteSpace;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.teleport.spanner.ddl.Ddl;
@@ -70,12 +70,12 @@ public class AvroSchemaToDdlConverterTest {
     assertThat(ddl.allTables(), hasSize(1));
     assertThat(
         ddl.prettyPrint(),
-        equalsIgnoreWhitespace(
+        equalToIgnoringWhiteSpace(
             "CREATE TABLE `Users` ("
-                + "`id`                                    INT64 NOT NULL,"
-                + "`first_name`                             STRING(10),"
-                + "`last_name`                             STRING(MAX),"
-                + ") PRIMARY KEY (`id` ASC, `last_name` DESC)"));
+                + " `id`                                    INT64 NOT NULL,"
+                + " `first_name`                             STRING(10),"
+                + " `last_name`                             STRING(MAX),"
+                + " ) PRIMARY KEY (`id` ASC, `last_name` DESC)"));
   }
 
   @Test
@@ -107,11 +107,11 @@ public class AvroSchemaToDdlConverterTest {
     assertThat(ddl.allTables(), hasSize(1));
     assertThat(
         ddl.prettyPrint(),
-        equalsIgnoreWhitespace(
+        equalToIgnoringWhiteSpace(
             "CREATE TABLE `Users` ("
-                + "`id`                                    INT64 NOT NULL,"
-                + "`first_name`                             STRING(10) "
-                + "OPTIONS (allow_commit_timestamp=TRUE,my_random_opt=\"1\"),"
-                + ") PRIMARY KEY (`id` ASC)"));
+                + " `id`                                    INT64 NOT NULL,"
+                + " `first_name`                             STRING(10) "
+                + " OPTIONS (allow_commit_timestamp=TRUE,my_random_opt=\"1\"),"
+                + " ) PRIMARY KEY (`id` ASC)"));
   }
 }

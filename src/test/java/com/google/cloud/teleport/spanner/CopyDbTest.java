@@ -16,7 +16,7 @@
 
 package com.google.cloud.teleport.spanner;
 
-import static com.google.cloud.teleport.spanner.Matchers.equalsIgnoreWhitespace;
+import static org.hamcrest.text.IsEqualIgnoringWhiteSpace.equalToIgnoringWhiteSpace;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
@@ -319,7 +319,7 @@ public class CopyDbTest {
     Ddl sourceDdl = readDdl(sourceDb);
     Ddl destinationDdl = readDdl(destinationDb);
 
-    assertThat(sourceDdl.prettyPrint(), equalsIgnoreWhitespace(destinationDdl.prettyPrint()));
+    assertThat(sourceDdl.prettyPrint(), equalToIgnoringWhiteSpace(destinationDdl.prettyPrint()));
   }
 
   private Ddl readDdl(String db) {

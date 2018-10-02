@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.spanner;
 
-import com.google.api.services.storage.model.StorageObject;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.spanner.ExportProtos.TableManifest;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
@@ -23,8 +22,6 @@ import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.common.base.Strings;
 import com.google.common.base.Supplier;
 import com.google.common.collect.Iterables;
-import com.google.common.hash.Hashing;
-import com.google.common.io.Files;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import java.io.IOException;
@@ -36,7 +33,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
@@ -83,7 +79,6 @@ import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.transforms.join.CoGbkResult;
 import org.apache.beam.sdk.transforms.join.CoGroupByKey;
 import org.apache.beam.sdk.transforms.join.KeyedPCollectionTuple;
-import org.apache.beam.sdk.util.GcsUtil.StorageObjectOrIOException;
 import org.apache.beam.sdk.util.gcsfs.GcsPath;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PBegin;
@@ -556,38 +551,31 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
       Iterable<String> files = c.element().getValue();
       Iterator<String> it = files.iterator();
       boolean gcs = it.hasNext() && GcsPath.GCS_URI.matcher(it.next()).matches();
+      TableManifest proto;
+      if (gcs) {
+        Iterable<GcsPath> gcsPaths = Iterables.transform(files, s -> GcsPath.fromUri(s));
+        proto = buildGcsManifest(c, gcsPaths);
+      } else {
+        Iterable<Path> paths = Iterables.transform(files, s -> Paths.get(s));
+        proto = buildLocalManifest(paths);
+      }
       try {
-        TableManifest proto;
-        if (gcs) {
-          Iterable<GcsPath> gcsPaths = Iterables.transform(files, s -> GcsPath.fromUri(s));
-          proto = buildGcsManifest(c, gcsPaths);
-        } else {
-          Iterable<Path> paths = Iterables.transform(files, s -> Paths.get(s));
-          proto = buildLocalManifest(paths);
-        }
         c.output(KV.of(c.element().getKey(), JsonFormat.printer().print(proto)));
-      } catch (IOException e) {
+      } catch (InvalidProtocolBufferException e) {
         throw new RuntimeException(e);
       }
     }
 
-    private TableManifest buildLocalManifest(Iterable<Path> files) throws IOException {
+    private TableManifest buildLocalManifest(Iterable<Path> files) {
       TableManifest.Builder result = TableManifest.newBuilder();
       for (Path filePath : files) {
-        Path fileName = filePath.getFileName();
-        String hash =
-            Base64.getEncoder()
-                .encodeToString(
-                    Files.asByteSource(filePath.toFile())
-                        .hash(Hashing.md5())
-                        .asBytes());
-        result.addFilesBuilder().setName(fileName.toString()).setMd5(hash);
+        String hash = FileChecksum.getLocalFileChecksum(filePath);
+        result.addFilesBuilder().setName(filePath.getFileName().toString()).setMd5(hash);
       }
       return result.build();
     }
 
-    private TableManifest buildGcsManifest(ProcessContext c, Iterable<GcsPath> files)
-                      throws IOException {
+    private TableManifest buildGcsManifest(ProcessContext c, Iterable<GcsPath> files) {
       org.apache.beam.sdk.util.GcsUtil gcsUtil =
           c.getPipelineOptions().as(GcsOptions.class).getGcsUtil();
       TableManifest.Builder result = TableManifest.newBuilder();
@@ -596,17 +584,10 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
       files.forEach(gcsPaths::add);
 
       // Fetch object metadata from GCS
-      List<StorageObjectOrIOException> objects = gcsUtil.getObjects(gcsPaths);
+      List<String> checksums = FileChecksum.getGcsFileChecksums(gcsUtil, gcsPaths);
       for (int i = 0; i < gcsPaths.size(); i++) {
-        StorageObjectOrIOException objectOrIOException = objects.get(i);
-        IOException ex = objectOrIOException.ioException();
-        if (ex != null) {
-          throw ex;
-        }
-        StorageObject object = objectOrIOException.storageObject();
-        GcsPath path = gcsPaths.get(i);
-        String fileName = path.getFileName().getObject();
-        String hash = object.getMd5Hash();
+        String fileName = gcsPaths.get(i).getFileName().getObject();
+        String hash = checksums.get(i);
         result.addFilesBuilder().setName(fileName).setMd5(hash);
       }
       return result.build();

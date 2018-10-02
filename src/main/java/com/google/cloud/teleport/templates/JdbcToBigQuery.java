@@ -90,6 +90,7 @@ public class JdbcToBigQuery {
                 .withoutValidation()
                 .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER)
                 .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
+                .withCustomGcsTempLocation(options.getBigQueryLoadingTemporaryDirectory())
                 .to(options.getOutputTable()));
 
     // Execute the pipeline and return the result.

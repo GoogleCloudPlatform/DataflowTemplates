@@ -16,7 +16,7 @@
 
 package com.google.cloud.teleport.spanner;
 
-import static com.google.cloud.teleport.spanner.Matchers.equalsIgnoreWhitespace;
+import static org.hamcrest.text.IsEqualIgnoringWhiteSpace.equalToIgnoringWhiteSpace;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.teleport.spanner.ddl.Ddl;
@@ -53,6 +53,6 @@ public class CopySchemaTest {
     Collection<Schema> schemas = ddlToAvro.convert(ddl);
     Ddl copied = avroToDdl.toDdl(schemas);
 
-    assertThat(copied.prettyPrint(), equalsIgnoreWhitespace(ddl.prettyPrint()));
+    assertThat(copied.prettyPrint(), equalToIgnoringWhiteSpace(ddl.prettyPrint()));
   }
 }

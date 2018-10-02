@@ -78,6 +78,7 @@
     <derby.version>10.12.1.1</derby.version>
     <commons-pool2.version>2.4.2</commons-pool2.version>
     <commons-dbcp2.version>2.1.1</commons-dbcp2.version>
+    <excluded.spanner.tests>com.google.cloud.teleport.spanner.IntegrationTest</excluded.spanner.tests>
   </properties>
 
   <dependencies>
@@ -204,6 +205,12 @@
       <groupId>com.google.cloud.bigtable</groupId>
       <artifactId>bigtable-beam-import</artifactId>
       <version>${bigtable.version}</version>
+    </dependency>
+    <!-- TODO: Update this to com.google.api.grpc:proto-google-cloud-bigtable-v2 -->
+    <dependency>
+      <groupId>com.google.cloud.bigtable</groupId>
+      <artifactId>bigtable-protos</artifactId>
+      <version>1.0.0-pre3</version>
     </dependency>
     <dependency>
       <groupId>com.google.apis</groupId>
@@ -552,9 +559,27 @@
         <version>${surefire.version}</version>
         <configuration>
           <!-- Exclude Cloud Spanner integration tests that require a GCP project to run.
-          They can be run run manually using 'mvn -Dtest=<testname> test' -->
-          <excludedGroups>com.google.cloud.teleport.spanner.IntegrationTest</excludedGroups>
+          They can be run run manually using
+          'mvn -Dexcluded.spanner.tests="" -Dtest=<testname> test' -->
+          <excludedGroups>${excluded.spanner.tests}</excludedGroups>
         </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.avro</groupId>
+        <artifactId>avro-maven-plugin</artifactId>
+        <version>${avro.version}</version>
+        <executions>
+          <execution>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>schema</goal>
+            </goals>
+            <configuration>
+              <sourceDirectory>${project.basedir}/src/main/resources/schema/avro</sourceDirectory>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>

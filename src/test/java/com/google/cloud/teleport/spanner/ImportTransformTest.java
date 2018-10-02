@@ -17,13 +17,13 @@
 package com.google.cloud.teleport.spanner;
 
 import com.google.cloud.teleport.spanner.ExportProtos.TableManifest;
-import com.google.cloud.teleport.spanner.ExportTransform.BuildTableManifests;
-import com.google.common.collect.ImmutableList;
+import com.google.cloud.teleport.spanner.ImportTransform.ValidateInputFiles;
 import com.google.common.collect.ImmutableMap;
-import com.google.protobuf.util.JsonFormat;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+import org.apache.beam.sdk.Pipeline.PipelineExecutionException;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
@@ -33,13 +33,13 @@ import org.apache.beam.sdk.values.PCollection;
 import org.junit.Rule;
 import org.junit.Test;
 
-/** Tests for ExportTransform. */
-public class ExportTransformTest {
+/** Tests for ImportTransform class. */
+public class ImportTransformTest {
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
   @Test
-  public void buildTableManifests() throws  Exception {
+  public void validateInputFiles() throws Exception {
     Path f1 = Files.createTempFile("table1-file", "1");
     Path f2 = Files.createTempFile("table1-file", "2");
     Path f3 = Files.createTempFile("table2-file", "1");
@@ -54,28 +54,50 @@ public class ExportTransformTest {
         .addFilesBuilder()
         .setName(f2.getFileName().toString())
         .setMd5("1B2M2Y8AsgTpgAmY7PhCfg==");
-    String manifest1 = JsonFormat.printer().print(builder.build());
+    TableManifest manifest1 = builder.build();
 
     builder = TableManifest.newBuilder();
     builder
         .addFilesBuilder()
         .setName(f3.getFileName().toString())
         .setMd5("1B2M2Y8AsgTpgAmY7PhCfg==");
-    String manifest2 = JsonFormat.printer().print(builder.build());
+    TableManifest manifest2 = builder.build();
 
-    final Map<String, Iterable<String>> tablesAndFiles =
+    final Map<String, TableManifest> tablesAndManifests =
         ImmutableMap.of(
-            "table1", ImmutableList.of(f1.toString(), f2.toString()),
-            "table2", ImmutableList.of(f3.toString()));
+            "table1", manifest1,
+            "table2", manifest2);
+    ValueProvider<String> importDirectory =
+        ValueProvider.StaticValueProvider.of(f1.getParent().toString());
 
     // Execute the transform.
-    PCollection<KV<String, String>> tableManifests =
+    PCollection<KV<String, String>> tableAndFiles =
         pipeline
-            .apply("Create", Create.of(tablesAndFiles))
-            .apply(ParDo.of(new BuildTableManifests()));
+            .apply("Create", Create.of(tablesAndManifests))
+            .apply(ParDo.of(new ValidateInputFiles(importDirectory)));
 
-    PAssert.that(tableManifests)
-        .containsInAnyOrder(KV.of("table1", manifest1), KV.of("table2", manifest2));
+    PAssert.that(tableAndFiles)
+        .containsInAnyOrder(
+            KV.of("table1", f1.toString()),
+            KV.of("table1", f2.toString()),
+            KV.of("table2", f3.toString()));
+
     pipeline.run();
+  }
+
+  @Test(expected = PipelineExecutionException.class)
+  public void validateInvalidInputFiles() throws Exception {
+    Path f1 = Files.createTempFile("table1-file", "1");
+    TableManifest.Builder builder = TableManifest.newBuilder();
+    builder.addFilesBuilder().setName(f1.getFileName().toString()).setMd5("invalid checksum");
+    TableManifest manifest1 = builder.build();
+    ValueProvider<String> importDirectory =
+        ValueProvider.StaticValueProvider.of(f1.getParent().toString());
+    // Execute the transform.
+    pipeline
+        .apply("Create", Create.of(ImmutableMap.of("table1", manifest1)))
+        .apply(ParDo.of(new ValidateInputFiles(importDirectory)));
+    pipeline.run();
+    // Pipeline should fail with an exception.
   }
 }
