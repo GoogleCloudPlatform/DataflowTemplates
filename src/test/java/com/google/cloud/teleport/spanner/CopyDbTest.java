@@ -165,6 +165,7 @@ public class CopyDbTest {
               .column("arr_date_field").type(Type.array(Type.date())).endColumn()
               .primaryKey().asc("first_name").desc("last_name").asc("id").end()
               .interleaveInParent("Users")
+              .onDeleteCascade()
             .endTable()
             .build();
     createAndPopulate(ddl, 100);

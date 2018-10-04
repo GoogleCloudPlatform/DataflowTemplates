@@ -46,8 +46,11 @@ public class DdlToAvroSchemaConverter {
           SchemaBuilder.record(table.name()).namespace(this.namespace);
       recordBuilder.prop("googleFormatVersion", version);
       recordBuilder.prop("googleStorage", "CloudSpanner");
-      recordBuilder.prop(
-          "spannerParent", table.interleaveInParent() == null ? "" : table.interleaveInParent());
+      if (table.interleaveInParent() != null) {
+        recordBuilder.prop("spannerParent", table.interleaveInParent());
+        recordBuilder.prop(
+            "spannerOnDeleteAction", table.onDeleteCascade() ? "cascade" : "no action");
+      }
       if (table.primaryKeys() != null) {
         String encodedPk =
             Joiner.on(",")

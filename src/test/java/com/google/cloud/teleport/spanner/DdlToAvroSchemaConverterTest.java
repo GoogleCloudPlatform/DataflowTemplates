@@ -19,7 +19,7 @@ package com.google.cloud.teleport.spanner;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.isEmptyString;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.spanner.Type;
@@ -83,7 +83,9 @@ public class DdlToAvroSchemaConverterTest {
     // spanner pk
     assertThat(avroSchema.getProp("spannerPrimaryKey_0"), equalTo("`id` ASC"));
     assertThat(avroSchema.getProp("spannerPrimaryKey_1"), equalTo("`last_name` DESC"));
-    assertThat(avroSchema.getProp("spannerParent"), isEmptyString());
+    assertThat(avroSchema.getProp("spannerParent"), nullValue());
+    assertThat(avroSchema.getProp("spannerOnDeleteAction"), nullValue());
+
     System.out.println(avroSchema.toString(true));
   }
 
@@ -107,6 +109,8 @@ public class DdlToAvroSchemaConverterTest {
         .column("arr_timestamp_field").type(Type.array(Type.timestamp())).endColumn()
         .column("arr_date_field").type(Type.array(Type.date())).endColumn()
         .primaryKey().asc("bool_field").end()
+        .interleaveInParent("ParentTable")
+        .onDeleteCascade()
         .endTable()
         .build();
 
@@ -179,7 +183,8 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(13).getProp("sqlType"), equalTo("ARRAY<DATE>"));
 
     assertThat(avroSchema.getProp("spannerPrimaryKey_0"), equalTo("`bool_field` ASC"));
-    assertThat(avroSchema.getProp("spannerParent"), isEmptyString());
+    assertThat(avroSchema.getProp("spannerParent"), equalTo("ParentTable"));
+    assertThat(avroSchema.getProp("spannerOnDeleteAction"), equalTo("cascade"));
 
     System.out.println(avroSchema.toString(true));
   }

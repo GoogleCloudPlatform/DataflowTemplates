@@ -194,7 +194,8 @@ public class InformationSchemaScannerTest {
                 + " id1                                   INT64 NOT NULL,"
                 + " id2_1                                 INT64 NOT NULL,"
                 + " val2                                  STRING(MAX),"
-                + " ) PRIMARY KEY (id0 ASC, id1 ASC, id2_1 ASC), INTERLEAVE IN PARENT level1");
+                + " ) PRIMARY KEY (id0 ASC, id1 ASC, id2_1 ASC),"
+                + " INTERLEAVE IN PARENT level1 ON DELETE CASCADE");
 
     DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
 
@@ -220,7 +221,9 @@ public class InformationSchemaScannerTest {
     assertThat(ddl.table("lEVEl0").interleaveInParent(), nullValue());
     assertThat(ddl.table("level1").interleaveInParent(), equalTo("lEVEl0"));
     assertThat(ddl.table("level2").interleaveInParent(), equalTo("level1"));
+    assertThat(ddl.table("level2").onDeleteCascade(), is(false));
     assertThat(ddl.table("level2_1").interleaveInParent(), equalTo("level1"));
+    assertThat(ddl.table("level2_1").onDeleteCascade(), is(true));
   }
 
   @Test
