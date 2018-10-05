@@ -18,8 +18,6 @@ package com.google.cloud.teleport.spanner;
 
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
-import com.google.common.base.Joiner;
-import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -42,24 +40,18 @@ class BuildReadFromTableOperations
               public void processElement(ProcessContext c) {
                 Ddl ddl = c.element();
                 for (Table table : ddl.allTables()) {
-                  List<String> columns =
-                      table
-                          .columns()
-                          .stream()
+                  String columnsListAsString =
+                      table.columns().stream()
                           .map(x -> "t.`" + x.name() + "`")
-                          .collect(Collectors.toList());
+                          .collect(Collectors.joining(","));
                   // Also have to export table name to be able to identify which row belongs to
                   // which table.
                   ReadOperation read =
                       ReadOperation.create()
                           .withQuery(
-                              "SELECT \""
-                                  + table.name()
-                                  + "\" AS _spanner_table, "
-                                  + Joiner.on(",").join(columns)
-                                  + " FROM `"
-                                  + table.name()
-                                  + "` AS t");
+                              String.format(
+                                  "SELECT \"%s\" AS _spanner_table, %s FROM `%s` AS t",
+                                  table.name(), columnsListAsString, table.name()));
                   c.output(read);
                 }
               }

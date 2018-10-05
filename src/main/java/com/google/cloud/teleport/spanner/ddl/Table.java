@@ -17,7 +17,6 @@
 package com.google.cloud.teleport.spanner.ddl;
 
 import com.google.auto.value.AutoValue;
-import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 import java.io.IOException;
@@ -71,7 +70,10 @@ public abstract class Table implements Serializable {
       appendable.append(",");
     }
     if (primaryKeys() != null) {
-      appendable.append("\n) PRIMARY KEY (").append(Joiner.on(", ").join(primaryKeys()));
+      appendable.append(
+          primaryKeys().stream()
+              .map(IndexColumn::toString)
+              .collect(Collectors.joining(", ", "\n) PRIMARY KEY (", "")));
     }
     appendable.append(")");
     if (interleaveInParent() != null) {

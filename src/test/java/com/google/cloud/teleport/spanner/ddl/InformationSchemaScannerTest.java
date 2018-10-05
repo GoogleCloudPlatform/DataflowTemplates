@@ -36,7 +36,6 @@ import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.spanner.Type;
 import com.google.cloud.teleport.spanner.IntegrationTest;
-import com.google.common.base.Joiner;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.spanner.admin.database.v1.CreateDatabaseMetadata;
@@ -280,7 +279,7 @@ public class InformationSchemaScannerTest {
     InformationSchemaScanner scanner = new InformationSchemaScanner(getBatchTx());
 
     Ddl ddl = scanner.scan();
-    assertThat(ddl.prettyPrint(), equalToIgnoringWhiteSpace(Joiner.on("").join(statements)));
+    assertThat(ddl.prettyPrint(), equalToIgnoringWhiteSpace(String.join("", statements)));
   }
 
   @Test
