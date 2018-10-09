@@ -356,7 +356,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
             .via(Contextful.fn(KV::getValue), TextIO.sink())
             .withTempDirectory(outputDir));
 
-    PCollection<String> metadataContent = tableManifests.apply(new PopulateManifestFile());
+    PCollection<String> metadataContent = tableManifests.apply(new PopulateDatabaseManifestFile());
 
     Contextful.Fn<String, FileIO.Write.FileNaming> manifestNaming =
         (element, c) ->
@@ -499,10 +499,10 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
   }
 
   /** Given grouped file results and number of rows per table, populates the manifest file. */
-  private static class PopulateManifestFile
+  static class PopulateDatabaseManifestFile
       extends PTransform<PCollection<KV<String, String>>, PCollection<String>> {
 
-    public PopulateManifestFile() {}
+    public PopulateDatabaseManifestFile() {}
 
     @Override
     public PCollection<String> expand(PCollection<KV<String, String>> input) {

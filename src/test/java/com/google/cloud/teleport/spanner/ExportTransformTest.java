@@ -16,10 +16,18 @@
 
 package com.google.cloud.teleport.spanner;
 
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.startsWith;
+import static org.junit.Assert.assertThat;
+
+import com.google.cloud.teleport.spanner.ExportProtos.Export;
+import com.google.cloud.teleport.spanner.ExportProtos.Export.Builder;
 import com.google.cloud.teleport.spanner.ExportProtos.TableManifest;
 import com.google.cloud.teleport.spanner.ExportTransform.BuildTableManifests;
+import com.google.cloud.teleport.spanner.ExportTransform.PopulateDatabaseManifestFile;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,6 +36,7 @@ import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.junit.Rule;
@@ -76,6 +85,45 @@ public class ExportTransformTest {
 
     PAssert.that(tableManifests)
         .containsInAnyOrder(KV.of("table1", manifest1), KV.of("table2", manifest2));
+    pipeline.run();
+  }
+
+  @Test
+  public void buildDatabaseManifestFile() throws InvalidProtocolBufferException {
+    Map<String, String> tablesAndManifests =
+        ImmutableMap.of("table1", "table1 manifest", "table2", "table2 manifest");
+
+    Export.Builder builder = Export.newBuilder();
+    builder.addTablesBuilder().setName("table1").setManifestFile("table1-manifest.json");
+    builder.addTablesBuilder().setName("table2").setManifestFile("table2-manifest.json");
+    String expectedManifest = JsonFormat.printer().print(builder.build());
+
+    PCollection<String> databaseManifest = pipeline.apply(Create.of(tablesAndManifests))
+        .apply(new PopulateDatabaseManifestFile());
+
+    // The output JSON may contain the tables in any order, so a string comparison is not
+    // sufficient. Have to convert the manifest string to a protobuf. Also for the checker function
+    // to be serializable, it has to be written as a lambda.
+    PAssert.thatSingleton(databaseManifest)
+        .satisfies( // Checker function.
+            (SerializableFunction<String, Void>)
+                input -> {
+                  Builder builder1 = Export.newBuilder();
+                  try {
+                    JsonFormat.parser().merge(input, builder1);
+                  } catch (InvalidProtocolBufferException e) {
+                    throw new RuntimeException(e);
+                  }
+                  Export manifestProto = builder1.build();
+                  assertThat(manifestProto.getTablesCount(), is(2));
+                  String table1Name = manifestProto.getTables(0).getName();
+                  assertThat(table1Name, startsWith("table"));
+                  assertThat(
+                      manifestProto.getTables(0).getManifestFile(),
+                      is(table1Name + "-manifest.json"));
+                  return null;
+                });
+
     pipeline.run();
   }
 }
