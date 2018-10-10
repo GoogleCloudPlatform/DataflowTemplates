@@ -24,7 +24,7 @@ import com.google.cloud.teleport.spanner.ExportProtos.Export;
 import com.google.cloud.teleport.spanner.ExportProtos.Export.Builder;
 import com.google.cloud.teleport.spanner.ExportProtos.TableManifest;
 import com.google.cloud.teleport.spanner.ExportTransform.BuildTableManifests;
-import com.google.cloud.teleport.spanner.ExportTransform.PopulateDatabaseManifestFile;
+import com.google.cloud.teleport.spanner.ExportTransform.CreateDatabaseManifest;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -34,6 +34,7 @@ import java.nio.file.Path;
 import java.util.Map;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
+import org.apache.beam.sdk.transforms.Combine;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
@@ -98,8 +99,10 @@ public class ExportTransformTest {
     builder.addTablesBuilder().setName("table2").setManifestFile("table2-manifest.json");
     String expectedManifest = JsonFormat.printer().print(builder.build());
 
-    PCollection<String> databaseManifest = pipeline.apply(Create.of(tablesAndManifests))
-        .apply(new PopulateDatabaseManifestFile());
+    PCollection<String> databaseManifest =
+        pipeline
+            .apply(Create.of(tablesAndManifests))
+            .apply(Combine.globally(new CreateDatabaseManifest()));
 
     // The output JSON may contain the tables in any order, so a string comparison is not
     // sufficient. Have to convert the manifest string to a protobuf. Also for the checker function

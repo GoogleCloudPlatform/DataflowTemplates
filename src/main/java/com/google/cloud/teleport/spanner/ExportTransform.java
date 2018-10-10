@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.spanner;
 
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.teleport.spanner.ExportProtos.Export;
 import com.google.cloud.teleport.spanner.ExportProtos.TableManifest;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
@@ -65,6 +66,7 @@ import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.Transaction;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Combine;
+import org.apache.beam.sdk.transforms.Combine.CombineFn;
 import org.apache.beam.sdk.transforms.Contextful;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -356,7 +358,9 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
             .via(Contextful.fn(KV::getValue), TextIO.sink())
             .withTempDirectory(outputDir));
 
-    PCollection<String> metadataContent = tableManifests.apply(new PopulateDatabaseManifestFile());
+    PCollection<String> metadataContent =
+        tableManifests.apply(
+            "Create database manifest", Combine.globally(new CreateDatabaseManifest()));
 
     Contextful.Fn<String, FileIO.Write.FileNaming> manifestNaming =
         (element, c) ->
@@ -498,38 +502,45 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     }
   }
 
-  /** Given grouped file results and number of rows per table, populates the manifest file. */
-  static class PopulateDatabaseManifestFile
-      extends PTransform<PCollection<KV<String, String>>, PCollection<String>> {
-
-    public PopulateDatabaseManifestFile() {}
+  /** Given map of table names, create the database manifest contents. */
+  static class CreateDatabaseManifest
+      extends CombineFn<KV<String, String>, List<Export.Table>, String> {
 
     @Override
-    public PCollection<String> expand(PCollection<KV<String, String>> input) {
-      PCollection<List<KV<String, String>>> apply = input.apply(Combine.globally(AsList.fn()));
-      return apply.apply(
-          ParDo.of(
-              new DoFn<List<KV<String, String>>, String>() {
+    public List<Export.Table> createAccumulator() {
+      return new ArrayList<>();
+    }
 
-                @ProcessElement
-                public void processElement(ProcessContext c) {
-                  ExportProtos.Export.Builder result = ExportProtos.Export.newBuilder();
-                  for (KV<String, String> kv : c.element()) {
-                    ExportProtos.Export.Table.Builder tablesBuilder = result.addTablesBuilder();
-                    String tableName = kv.getKey();
-                    tablesBuilder.setName(tableName);
-                    tablesBuilder.setManifestFile(tableManifestFileName(tableName));
-                    tablesBuilder.build();
-                  }
+    @Override
+    public List<Export.Table> addInput(List<Export.Table> accumulator, KV<String, String> input) {
+      ExportProtos.Export.Table.Builder tablesBuilder = ExportProtos.Export.Table.newBuilder();
 
-                  ExportProtos.Export proto = result.build();
-                  try {
-                    c.output(JsonFormat.printer().print(proto));
-                  } catch (InvalidProtocolBufferException e) {
-                    throw new RuntimeException(e);
-                  }
-                }
-              }));
+      String tableName = input.getKey();
+      tablesBuilder.setName(tableName);
+      tablesBuilder.setManifestFile(tableManifestFileName(tableName));
+
+      accumulator.add(tablesBuilder.build());
+      return accumulator;
+    }
+
+    @Override
+    public List<Export.Table> mergeAccumulators(Iterable<List<Export.Table>> accumulators) {
+      List<Export.Table> result = new ArrayList<>();
+      for (List<Export.Table> acc : accumulators) {
+        result.addAll(acc);
+      }
+      return result;
+    }
+
+    @Override
+    public String extractOutput(List<Export.Table> accumulator) {
+      ExportProtos.Export.Builder exportManifest = ExportProtos.Export.newBuilder();
+      exportManifest.addAllTables(accumulator);
+      try {
+        return JsonFormat.printer().print(exportManifest.build());
+      } catch (InvalidProtocolBufferException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 
