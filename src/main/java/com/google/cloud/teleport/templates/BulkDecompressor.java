@@ -101,7 +101,7 @@ import org.slf4j.LoggerFactory;
  *
  * <pre>
  * mvn compile exec:java \
- * -Dexec.mainClass=org.apache.beam.examples.templates.BulkDecompressor \
+ * -Dexec.mainClass=com.google.cloud.teleport.templates.BulkDecompressor \
  * -Dexec.cleanupDaemonThreads=false \
  * -Dexec.args=" \
  * --project=${PROJECT_ID} \

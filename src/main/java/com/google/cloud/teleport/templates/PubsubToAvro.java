@@ -64,7 +64,7 @@ import org.apache.beam.sdk.transforms.windowing.Window;
  *
  * <pre>
  * mvn compile exec:java \
- *   -Dexec.mainClass=org.apache.beam.examples.templates.${PIPELINE_NAME} \
+ *   -Dexec.mainClass=com.google.cloud.teleport.templates.${PIPELINE_NAME} \
  *   -Dexec.cleanupDaemonThreads=false \
  *   -Dexec.args=" \
  *   --project=${PROJECT_ID} \
