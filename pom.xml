@@ -78,6 +78,8 @@
     <derby.version>10.12.1.1</derby.version>
     <commons-pool2.version>2.4.2</commons-pool2.version>
     <commons-dbcp2.version>2.1.1</commons-dbcp2.version>
+    <kafka.clients.version>1.0.0</kafka.clients.version>
+    <spring.version>4.3.18.RELEASE</spring.version>
     <excluded.spanner.tests>com.google.cloud.teleport.spanner.IntegrationTest</excluded.spanner.tests>
   </properties>
 
@@ -288,6 +290,16 @@
       <groupId>org.apache.avro</groupId>
       <artifactId>avro</artifactId>
       <version>${avro.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka-clients</artifactId>
+      <version>${kafka.clients.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-expression</artifactId>
+      <version>${spring.version}</version>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
