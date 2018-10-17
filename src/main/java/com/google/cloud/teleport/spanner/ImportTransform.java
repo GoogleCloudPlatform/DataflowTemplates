@@ -16,7 +16,7 @@
 
 package com.google.cloud.teleport.spanner;
 
-import com.google.cloud.WaitForOption;
+import com.google.cloud.RetryOption;
 import com.google.cloud.spanner.DatabaseAdminClient;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Operation;
@@ -43,7 +43,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import org.apache.avro.Schema;
 import org.apache.avro.file.DataFileConstants;
 import org.apache.avro.generic.GenericRecord;
@@ -86,6 +85,7 @@ import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.TypeDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.threeten.bp.Duration;
 
 /** A Beam transform that imports a Cloud Spanner database from a set of Avro files. */
 public class ImportTransform extends PTransform<PBegin, PDone> {
@@ -427,7 +427,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                                     newDdl.createTableStatements(),
                                     null);
 
-                            op.waitFor(WaitForOption.timeout(5, TimeUnit.MINUTES));
+                            op.waitFor(RetryOption.totalTimeout(Duration.ofMinutes(5)));
                             c.output(mergedDdl.build());
                             return;
                           }
