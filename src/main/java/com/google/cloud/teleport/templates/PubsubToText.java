@@ -42,26 +42,6 @@ import org.apache.beam.sdk.transforms.windowing.Window;
  * This pipeline ingests incoming data from a Cloud Pub/Sub topic and
  * outputs the raw data into windowed files at the specified output
  * directory.
- *
- * <p> Example Usage:
- *
- * <pre>
- * mvn compile exec:java \
- -Dexec.mainClass=com.google.cloud.teleport.templates.${PIPELINE_NAME} \
- -Dexec.cleanupDaemonThreads=false \
- -Dexec.args=" \
- --project=${PROJECT_ID} \
- --stagingLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
- --tempLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
- --runner=DataflowRunner \
- --windowDuration=2m \
- --numShards=1 \
- --topic=projects/${PROJECT_ID}/topics/windowed-files \
- --outputDirectory=gs://${PROJECT_ID}/temp/ \
- --outputFilenamePrefix=windowed-file \
- --outputFilenameSuffix=.txt"
- * </pre>
- * </p>
  */
 public class PubsubToText {
 
