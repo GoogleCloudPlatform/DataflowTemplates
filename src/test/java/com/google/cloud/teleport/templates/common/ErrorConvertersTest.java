@@ -119,8 +119,7 @@ public class ErrorConvertersTest implements Serializable {
     ErrorMessage errorMessage =
         ErrorMessage.newBuilder()
             .setMessage("Some Message")
-            .setTextElementType("myType")
-            .setTextElementData("data 234, 2")
+            .setData("data 234, 2")
             .build();
 
     String json = errorMessage.toJson();
