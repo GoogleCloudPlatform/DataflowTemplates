@@ -88,7 +88,7 @@ public class BigQueryConverters {
 
     void setReadIdColumn(ValueProvider<String> value);
 
-    @Description("Name of the BQ column storing the unique identifier of the row")
+    @Description("Pattern of where to write errors, ex: gs://mybucket/somepath/errors.txt")
     ValueProvider<String> getInvalidOutputPath();
 
     void setInvalidOutputPath(ValueProvider<String> value);
