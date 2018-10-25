@@ -1,14 +1,16 @@
 # Contributing
 
-Thanks for your interest in contributing to the Google Cloud Teleport repo!
+Thanks for your interest in contributing to the Google Cloud Dataflow Templates
+repo!
 
-We are not currently merging pull requests, but plan to do so soon. If you have
-contributions to make or improvements to suggest, please feel free to open an
-issue or pull request; we will let you know when we are ready to accept
-improvements.
+To get started contributing:
 
-To streamline the process when we begin accepting contributions, please fill out
-a Google Contributor License Agreement. See instructions below.
+1. Sign a Contributor License Agreement (see details below).
+1. Fork the repo, develop and test your code changes.
+1. Ensure that your code adheres to the existing style.
+1. Ensure that your code has an appropriate set of unit tests which all pass.
+1. Run `mvn verify` to verify all tests and checks pass.
+1. Submit a pull request.
 
 ## Contributor License Agreement
 
