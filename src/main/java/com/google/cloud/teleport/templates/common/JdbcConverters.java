@@ -76,6 +76,11 @@ public class JdbcConverters {
     ValueProvider<String> getOutputTable();
 
     void setOutputTable(ValueProvider<String> value);
+
+    @Description("Temporary directory for BigQuery loading process")
+    ValueProvider<String> getBigQueryLoadingTemporaryDirectory();
+
+    void setBigQueryLoadingTemporaryDirectory(ValueProvider<String> directory);
   }
 
   /** Factory method for {@link ResultSetToTableRow}. */

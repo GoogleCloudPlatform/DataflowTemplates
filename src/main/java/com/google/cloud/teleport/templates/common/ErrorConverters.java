@@ -29,6 +29,7 @@ import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
@@ -62,27 +63,27 @@ public class ErrorConverters {
   /** An entry in the Error Log. */
   @AutoValue
   @JsonDeserialize(builder = ErrorMessage.Builder.class)
-  public abstract static class ErrorMessage {
+  public abstract static class ErrorMessage<T> {
     @JsonProperty
     public abstract String message();
 
     @JsonProperty
-    public abstract String textElementType();
+    public @Nullable abstract String stacktrace();
 
     @JsonProperty
-    public abstract String textElementData();
+    public abstract T data();
 
     /** Builder for {@link ErrorMessage}. */
     @AutoValue.Builder
     @JsonPOJOBuilder(withPrefix = "set")
-    public abstract static class Builder {
-      public abstract Builder setMessage(String message);
+    public abstract static class Builder<T> {
+      public abstract Builder<T> setMessage(String message);
 
-      public abstract Builder setTextElementType(String textElementType);
+      public abstract Builder<T> setStacktrace(@Nullable String stacktrace);
 
-      public abstract Builder setTextElementData(String textElementData);
+      public abstract Builder<T> setData(T data);
 
-      public abstract ErrorMessage build();
+      public abstract ErrorMessage<T> build();
 
       @JsonCreator
       public static Builder create() {
@@ -90,8 +91,8 @@ public class ErrorConverters {
       }
     }
 
-    public static Builder newBuilder() {
-      return new AutoValue_ErrorConverters_ErrorMessage.Builder();
+    public static <T> Builder<T> newBuilder() {
+      return new AutoValue_ErrorConverters_ErrorMessage.Builder<>();
     }
 
     public String toJson() throws JsonProcessingException {

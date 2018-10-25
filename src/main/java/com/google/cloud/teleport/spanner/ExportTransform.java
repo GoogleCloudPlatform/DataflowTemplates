@@ -15,16 +15,14 @@
  */
 package com.google.cloud.teleport.spanner;
 
-import com.google.api.services.storage.model.StorageObject;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.teleport.spanner.ExportProtos.Export;
 import com.google.cloud.teleport.spanner.ExportProtos.TableManifest;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.common.base.Strings;
 import com.google.common.base.Supplier;
 import com.google.common.collect.Iterables;
-import com.google.common.hash.Hashing;
-import com.google.common.io.Files;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import java.io.IOException;
@@ -36,7 +34,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
@@ -69,6 +66,7 @@ import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.Transaction;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Combine;
+import org.apache.beam.sdk.transforms.Combine.CombineFn;
 import org.apache.beam.sdk.transforms.Contextful;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -83,7 +81,6 @@ import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.transforms.join.CoGbkResult;
 import org.apache.beam.sdk.transforms.join.CoGroupByKey;
 import org.apache.beam.sdk.transforms.join.KeyedPCollectionTuple;
-import org.apache.beam.sdk.util.GcsUtil.StorageObjectOrIOException;
 import org.apache.beam.sdk.util.gcsfs.GcsPath;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PBegin;
@@ -361,7 +358,9 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
             .via(Contextful.fn(KV::getValue), TextIO.sink())
             .withTempDirectory(outputDir));
 
-    PCollection<String> metadataContent = tableManifests.apply(new PopulateManifestFile());
+    PCollection<String> metadataContent =
+        tableManifests.apply(
+            "Create database manifest", Combine.globally(new CreateDatabaseManifest()));
 
     Contextful.Fn<String, FileIO.Write.FileNaming> manifestNaming =
         (element, c) ->
@@ -503,38 +502,45 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     }
   }
 
-  /** Given grouped file results and number of rows per table, populates the manifest file. */
-  private static class PopulateManifestFile
-      extends PTransform<PCollection<KV<String, String>>, PCollection<String>> {
-
-    public PopulateManifestFile() {}
+  /** Given map of table names, create the database manifest contents. */
+  static class CreateDatabaseManifest
+      extends CombineFn<KV<String, String>, List<Export.Table>, String> {
 
     @Override
-    public PCollection<String> expand(PCollection<KV<String, String>> input) {
-      PCollection<List<KV<String, String>>> apply = input.apply(Combine.globally(AsList.fn()));
-      return apply.apply(
-          ParDo.of(
-              new DoFn<List<KV<String, String>>, String>() {
+    public List<Export.Table> createAccumulator() {
+      return new ArrayList<>();
+    }
 
-                @ProcessElement
-                public void processElement(ProcessContext c) {
-                  ExportProtos.Export.Builder result = ExportProtos.Export.newBuilder();
-                  for (KV<String, String> kv : c.element()) {
-                    ExportProtos.Export.Table.Builder tablesBuilder = result.addTablesBuilder();
-                    String tableName = kv.getKey();
-                    tablesBuilder.setName(tableName);
-                    tablesBuilder.setManifestFile(tableManifestFileName(tableName));
-                    tablesBuilder.build();
-                  }
+    @Override
+    public List<Export.Table> addInput(List<Export.Table> accumulator, KV<String, String> input) {
+      ExportProtos.Export.Table.Builder tablesBuilder = ExportProtos.Export.Table.newBuilder();
 
-                  ExportProtos.Export proto = result.build();
-                  try {
-                    c.output(JsonFormat.printer().print(proto));
-                  } catch (InvalidProtocolBufferException e) {
-                    throw new RuntimeException(e);
-                  }
-                }
-              }));
+      String tableName = input.getKey();
+      tablesBuilder.setName(tableName);
+      tablesBuilder.setManifestFile(tableManifestFileName(tableName));
+
+      accumulator.add(tablesBuilder.build());
+      return accumulator;
+    }
+
+    @Override
+    public List<Export.Table> mergeAccumulators(Iterable<List<Export.Table>> accumulators) {
+      List<Export.Table> result = new ArrayList<>();
+      for (List<Export.Table> acc : accumulators) {
+        result.addAll(acc);
+      }
+      return result;
+    }
+
+    @Override
+    public String extractOutput(List<Export.Table> accumulator) {
+      ExportProtos.Export.Builder exportManifest = ExportProtos.Export.newBuilder();
+      exportManifest.addAllTables(accumulator);
+      try {
+        return JsonFormat.printer().print(exportManifest.build());
+      } catch (InvalidProtocolBufferException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 
@@ -556,38 +562,31 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
       Iterable<String> files = c.element().getValue();
       Iterator<String> it = files.iterator();
       boolean gcs = it.hasNext() && GcsPath.GCS_URI.matcher(it.next()).matches();
+      TableManifest proto;
+      if (gcs) {
+        Iterable<GcsPath> gcsPaths = Iterables.transform(files, s -> GcsPath.fromUri(s));
+        proto = buildGcsManifest(c, gcsPaths);
+      } else {
+        Iterable<Path> paths = Iterables.transform(files, s -> Paths.get(s));
+        proto = buildLocalManifest(paths);
+      }
       try {
-        TableManifest proto;
-        if (gcs) {
-          Iterable<GcsPath> gcsPaths = Iterables.transform(files, s -> GcsPath.fromUri(s));
-          proto = buildGcsManifest(c, gcsPaths);
-        } else {
-          Iterable<Path> paths = Iterables.transform(files, s -> Paths.get(s));
-          proto = buildLocalManifest(paths);
-        }
         c.output(KV.of(c.element().getKey(), JsonFormat.printer().print(proto)));
-      } catch (IOException e) {
+      } catch (InvalidProtocolBufferException e) {
         throw new RuntimeException(e);
       }
     }
 
-    private TableManifest buildLocalManifest(Iterable<Path> files) throws IOException {
+    private TableManifest buildLocalManifest(Iterable<Path> files) {
       TableManifest.Builder result = TableManifest.newBuilder();
       for (Path filePath : files) {
-        Path fileName = filePath.getFileName();
-        String hash =
-            Base64.getEncoder()
-                .encodeToString(
-                    Files.asByteSource(filePath.toFile())
-                        .hash(Hashing.md5())
-                        .asBytes());
-        result.addFilesBuilder().setName(fileName.toString()).setMd5(hash);
+        String hash = FileChecksum.getLocalFileChecksum(filePath);
+        result.addFilesBuilder().setName(filePath.getFileName().toString()).setMd5(hash);
       }
       return result.build();
     }
 
-    private TableManifest buildGcsManifest(ProcessContext c, Iterable<GcsPath> files)
-                      throws IOException {
+    private TableManifest buildGcsManifest(ProcessContext c, Iterable<GcsPath> files) {
       org.apache.beam.sdk.util.GcsUtil gcsUtil =
           c.getPipelineOptions().as(GcsOptions.class).getGcsUtil();
       TableManifest.Builder result = TableManifest.newBuilder();
@@ -596,17 +595,10 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
       files.forEach(gcsPaths::add);
 
       // Fetch object metadata from GCS
-      List<StorageObjectOrIOException> objects = gcsUtil.getObjects(gcsPaths);
+      List<String> checksums = FileChecksum.getGcsFileChecksums(gcsUtil, gcsPaths);
       for (int i = 0; i < gcsPaths.size(); i++) {
-        StorageObjectOrIOException objectOrIOException = objects.get(i);
-        IOException ex = objectOrIOException.ioException();
-        if (ex != null) {
-          throw ex;
-        }
-        StorageObject object = objectOrIOException.storageObject();
-        GcsPath path = gcsPaths.get(i);
-        String fileName = path.getFileName().getObject();
-        String hash = object.getMd5Hash();
+        String fileName = gcsPaths.get(i).getFileName().getObject();
+        String hash = checksums.get(i);
         result.addFilesBuilder().setName(fileName).setMd5(hash);
       }
       return result.build();

@@ -74,14 +74,38 @@ public class InformationSchemaScanner {
     ResultSet resultSet =
         context.executeQuery(
             Statement.of(
-                "SELECT t.table_name, t.parent_table_name"
+                "SELECT t.table_name, t.parent_table_name, t.on_delete_action"
                     + " FROM information_schema.tables AS t"
                     + " WHERE t.table_catalog = '' AND t.table_schema = ''"));
     while (resultSet.next()) {
       String tableName = resultSet.getString(0);
       String parentTableName = resultSet.isNull(1) ? null : resultSet.getString(1);
-      LOG.debug("Adding table %s", tableName);
-      builder.createTable(tableName).interleaveInParent(parentTableName).endTable();
+      String onDeleteAction = resultSet.isNull(2) ? null : resultSet.getString(2);
+
+      // Error out when the parent table or on delete action are set incorrectly.
+      if (Strings.isNullOrEmpty(parentTableName) != Strings.isNullOrEmpty(onDeleteAction)) {
+        throw new IllegalStateException(
+            String.format(
+                "Invalid combination of parentTableName %s and onDeleteAction %s",
+                parentTableName, onDeleteAction));
+      }
+
+      boolean onDeleteCascade = false;
+      if (onDeleteAction != null) {
+        if (onDeleteAction.equals("CASCADE")) {
+          onDeleteCascade = true;
+        } else if (!onDeleteAction.equals("NO ACTION")) {
+          // This is an unknown on delete action.
+          throw new IllegalStateException("Unsupported on delete action " + onDeleteAction);
+        }
+      }
+      LOG.debug(
+          "Schema Table {} Parent {} OnDelete {} {}", tableName, parentTableName, onDeleteCascade);
+      builder
+          .createTable(tableName)
+          .interleaveInParent(parentTableName)
+          .onDeleteCascade(onDeleteCascade)
+          .endTable();
     }
   }
 

@@ -47,9 +47,7 @@ public class AvroSchemaToDdlConverter {
     if (tableName == null) {
       tableName = schema.getName();
     }
-    String spannerParent = schema.getProp("spannerParent");
-
-    LOG.debug("Converting to Ddl tableName %s", tableName);
+    LOG.debug("Converting to Ddl tableName {}", tableName);
 
     Table.Builder table = Table.builder();
     table.name(tableName);
@@ -106,9 +104,27 @@ public class AvroSchemaToDdlConverter {
       indexes.add(spannerIndex);
     }
     table.indexes(indexes.build());
+
+    // Table parent options.
+    String spannerParent = schema.getProp("spannerParent");
     if (!Strings.isNullOrEmpty(spannerParent)) {
       table.interleaveInParent(spannerParent);
+
+      // Process the on delete action.
+      String onDeleteAction = schema.getProp("spannerOnDeleteAction");
+      if (onDeleteAction == null) {
+        // Preserve behavior for old versions of exporter that did not provide the
+        // spannerOnDeleteAction property.
+        onDeleteAction = "no action";
+      }
+      if (onDeleteAction.equals("cascade")) {
+        table.onDeleteCascade();
+      } else if (!onDeleteAction.equals("no action")) {
+        // This is an unknown on delete action.
+        throw new IllegalArgumentException("Unsupported ON DELETE action " + onDeleteAction);
+      }
     }
+
     return table.build();
   }
 

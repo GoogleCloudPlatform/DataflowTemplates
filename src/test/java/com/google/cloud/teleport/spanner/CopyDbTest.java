@@ -16,7 +16,7 @@
 
 package com.google.cloud.teleport.spanner;
 
-import static com.google.cloud.teleport.spanner.Matchers.equalsIgnoreWhitespace;
+import static org.hamcrest.text.IsEqualIgnoringWhiteSpace.equalToIgnoringWhiteSpace;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
@@ -165,6 +165,7 @@ public class CopyDbTest {
               .column("arr_date_field").type(Type.array(Type.date())).endColumn()
               .primaryKey().asc("first_name").desc("last_name").asc("id").end()
               .interleaveInParent("Users")
+              .onDeleteCascade()
             .endTable()
             .build();
     createAndPopulate(ddl, 100);
@@ -319,7 +320,7 @@ public class CopyDbTest {
     Ddl sourceDdl = readDdl(sourceDb);
     Ddl destinationDdl = readDdl(destinationDb);
 
-    assertThat(sourceDdl.prettyPrint(), equalsIgnoreWhitespace(destinationDdl.prettyPrint()));
+    assertThat(sourceDdl.prettyPrint(), equalToIgnoringWhiteSpace(destinationDdl.prettyPrint()));
   }
 
   private Ddl readDdl(String db) {

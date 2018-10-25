@@ -179,8 +179,7 @@ public class DatastoreConvertersTest implements Serializable {
     for (Entity e : Arrays.asList(entities.get(0), dupKeyEntity)) {
       expectedErrors.add(ErrorMessage.newBuilder()
           .setMessage("Duplicate Datastore Key")
-          .setTextElementType("entity")
-          .setTextElementData(entityJsonPrinter.print(e))
+          .setData(entityJsonPrinter.print(e))
           .build()
           .toJson());
     }
@@ -247,8 +246,7 @@ public class DatastoreConvertersTest implements Serializable {
       expectedErrors.add(
           ErrorMessage.newBuilder()
               .setMessage("Datastore Entity Without Key")
-              .setTextElementType("entity")
-              .setTextElementData(entityJsonPrinter.print(noKeyEntity))
+              .setData(entityJsonPrinter.print(noKeyEntity))
               .build()
               .toJson());
     }
@@ -291,8 +289,7 @@ public class DatastoreConvertersTest implements Serializable {
       expectedErrors.add(
           ErrorMessage.newBuilder()
               .setMessage("Datastore Entity Without Key")
-              .setTextElementType("entity")
-              .setTextElementData(entityJsonPrinter.print(noKeyEntity))
+              .setData(entityJsonPrinter.print(noKeyEntity))
               .build()
               .toJson());
     }

@@ -16,13 +16,12 @@
 
 package com.google.cloud.teleport.spanner.ddl;
 
-import static com.google.cloud.teleport.spanner.Matchers.equalsIgnoreWhitespace;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
-import static org.junit.Assert.assertEquals;
+import static org.hamcrest.text.IsEqualIgnoringWhiteSpace.equalToIgnoringWhiteSpace;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.spanner.BatchClient;
@@ -37,7 +36,6 @@ import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.spanner.Type;
 import com.google.cloud.teleport.spanner.IntegrationTest;
-import com.google.common.base.Joiner;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.spanner.admin.database.v1.CreateDatabaseMetadata;
@@ -83,31 +81,31 @@ public class InformationSchemaScannerTest {
 
     Ddl ddl = scanner.scan();
 
-    assertEquals(ddl, Ddl.builder().build());
+    assertThat(ddl, equalTo(Ddl.builder().build()));
   }
 
   @Test
   public void testAllTypes() {
     String allTypes =
         "CREATE TABLE `alltypes` ("
-            + "`first_name`                            STRING(MAX),"
-            + "`last_name`                             STRING(5),"
-            + "`id`                                    INT64 NOT NULL,"
-            + "`bool_field`                            BOOL,"
-            + "`int64_field`                           INT64,"
-            + "`float64_field`                         FLOAT64,"
-            + "`string_field`                          STRING(76),"
-            + "`bytes_field`                           BYTES(13),"
-            + "`timestamp_field`                       TIMESTAMP,"
-            + "`date_field`                            DATE,"
-            + "`arr_bool_field`                        ARRAY<BOOL>,"
-            + "`arr_int64_field`                       ARRAY<INT64>,"
-            + "`arr_float64_field`                     ARRAY<FLOAT64>,"
-            + "`arr_string_field`                      ARRAY<STRING(15)>,"
-            + "`arr_bytes_field`                       ARRAY<BYTES(MAX)>,"
-            + "`arr_timestamp_field`                   ARRAY<TIMESTAMP>,"
-            + "`arr_date_field`                        ARRAY<DATE>,"
-            + ") PRIMARY KEY (`first_name` ASC, `last_name` DESC, `id` ASC)";
+            + " `first_name`                            STRING(MAX),"
+            + " `last_name`                             STRING(5),"
+            + " `id`                                    INT64 NOT NULL,"
+            + " `bool_field`                            BOOL,"
+            + " `int64_field`                           INT64,"
+            + " `float64_field`                         FLOAT64,"
+            + " `string_field`                          STRING(76),"
+            + " `bytes_field`                           BYTES(13),"
+            + " `timestamp_field`                       TIMESTAMP,"
+            + " `date_field`                            DATE,"
+            + " `arr_bool_field`                        ARRAY<BOOL>,"
+            + " `arr_int64_field`                       ARRAY<INT64>,"
+            + " `arr_float64_field`                     ARRAY<FLOAT64>,"
+            + " `arr_string_field`                      ARRAY<STRING(15)>,"
+            + " `arr_bytes_field`                       ARRAY<BYTES(MAX)>,"
+            + " `arr_timestamp_field`                   ARRAY<TIMESTAMP>,"
+            + " `arr_date_field`                        ARRAY<DATE>,"
+            + " ) PRIMARY KEY (`first_name` ASC, `last_name` DESC, `id` ASC)";
 
     DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
 
@@ -168,34 +166,35 @@ public class InformationSchemaScannerTest {
     assertThat(pk.get(2).order(), equalTo(IndexColumn.Order.ASC));
 
     // Verify pretty print.
-    assertThat(ddl.prettyPrint(), equalsIgnoreWhitespace(allTypes));
+    assertThat(ddl.prettyPrint(), equalToIgnoringWhiteSpace(allTypes));
   }
 
   @Test
   public void interleavedIn() {
     List<String> statements =
         Arrays.asList(
-            "CREATE TABLE lEVEl0 ("
-                + "id0                                   INT64 NOT NULL,"
-                + "val0                                  STRING(MAX),"
-                + ") PRIMARY KEY (id0 ASC)",
-            "CREATE TABLE level1 ("
-                + "id0                                   INT64 NOT NULL,"
-                + "id1                                   INT64 NOT NULL,"
-                + "val1                                  STRING(MAX),"
-                + ") PRIMARY KEY (id0 ASC, id1 ASC), INTERLEAVE IN PARENT lEVEl0",
-            "CREATE TABLE level2 ("
-                + "id0                                   INT64 NOT NULL,"
-                + "id1                                   INT64 NOT NULL,"
-                + "id2                                   INT64 NOT NULL,"
-                + "val2                                  STRING(MAX),"
-                + ") PRIMARY KEY (id0 ASC, id1 ASC, id2 ASC), INTERLEAVE IN PARENT level1",
-            "CREATE TABLE level2_1 ("
-                + "id0                                   INT64 NOT NULL,"
-                + "id1                                   INT64 NOT NULL,"
-                + "id2_1                                 INT64 NOT NULL,"
-                + "val2                                  STRING(MAX),"
-                + ") PRIMARY KEY (id0 ASC, id1 ASC, id2_1 ASC), INTERLEAVE IN PARENT level1");
+            " CREATE TABLE lEVEl0 ("
+                + " id0                                   INT64 NOT NULL,"
+                + " val0                                  STRING(MAX),"
+                + " ) PRIMARY KEY (id0 ASC)",
+            " CREATE TABLE level1 ("
+                + " id0                                   INT64 NOT NULL,"
+                + " id1                                   INT64 NOT NULL,"
+                + " val1                                  STRING(MAX),"
+                + " ) PRIMARY KEY (id0 ASC, id1 ASC), INTERLEAVE IN PARENT lEVEl0",
+            " CREATE TABLE level2 ("
+                + " id0                                   INT64 NOT NULL,"
+                + " id1                                   INT64 NOT NULL,"
+                + " id2                                   INT64 NOT NULL,"
+                + " val2                                  STRING(MAX),"
+                + " ) PRIMARY KEY (id0 ASC, id1 ASC, id2 ASC), INTERLEAVE IN PARENT level1",
+            " CREATE TABLE level2_1 ("
+                + " id0                                   INT64 NOT NULL,"
+                + " id1                                   INT64 NOT NULL,"
+                + " id2_1                                 INT64 NOT NULL,"
+                + " val2                                  STRING(MAX),"
+                + " ) PRIMARY KEY (id0 ASC, id1 ASC, id2_1 ASC),"
+                + " INTERLEAVE IN PARENT level1 ON DELETE CASCADE");
 
     DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
 
@@ -221,17 +220,19 @@ public class InformationSchemaScannerTest {
     assertThat(ddl.table("lEVEl0").interleaveInParent(), nullValue());
     assertThat(ddl.table("level1").interleaveInParent(), equalTo("lEVEl0"));
     assertThat(ddl.table("level2").interleaveInParent(), equalTo("level1"));
+    assertThat(ddl.table("level2").onDeleteCascade(), is(false));
     assertThat(ddl.table("level2_1").interleaveInParent(), equalTo("level1"));
+    assertThat(ddl.table("level2_1").onDeleteCascade(), is(true));
   }
 
   @Test
   public void reserved() {
     String statement =
         "CREATE TABLE `where` ("
-            + "`JOIN`                                  STRING(MAX) NOT NULL,"
-            + "`TABLE`                                 INT64,"
-            + "`NULL`                                  INT64,"
-            + ") PRIMARY KEY (`NULL` ASC)";
+            + " `JOIN`                                  STRING(MAX) NOT NULL,"
+            + " `TABLE`                                 INT64,"
+            + " `NULL`                                  INT64,"
+            + " ) PRIMARY KEY (`NULL` ASC)";
 
     DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
 
@@ -251,7 +252,7 @@ public class InformationSchemaScannerTest {
     assertThat(table.column("table"), notNullValue());
     assertThat(table.column("null"), notNullValue());
 
-    assertThat(ddl.prettyPrint(), equalsIgnoreWhitespace(statement));
+    assertThat(ddl.prettyPrint(), equalToIgnoringWhiteSpace(statement));
   }
 
   @Test
@@ -259,14 +260,14 @@ public class InformationSchemaScannerTest {
     // Prefix indexes to ensure ordering.
     List<String> statements = Arrays.asList(
         "CREATE TABLE `Users` ("
-            + "`id`                                    INT64 NOT NULL,"
-            + "`first_name`                            STRING(10),"
-            + "`last_name`                             STRING(MAX),"
-            + "`age`                                   INT64,"
-            + ") PRIMARY KEY (`id` ASC)",
-        "CREATE UNIQUE NULL_FILTERED INDEX `a_last_name_idx` ON "
-            + "`Users`(`last_name` ASC) STORING (`first_name`)",
-        "CREATE INDEX `b_age_idx` ON `Users`(`age` DESC)"
+            + " `id`                                    INT64 NOT NULL,"
+            + " `first_name`                            STRING(10),"
+            + " `last_name`                             STRING(MAX),"
+            + " `age`                                   INT64,"
+            + " ) PRIMARY KEY (`id` ASC)",
+        " CREATE UNIQUE NULL_FILTERED INDEX `a_last_name_idx` ON "
+            + " `Users`(`last_name` ASC) STORING (`first_name`)",
+        " CREATE INDEX `b_age_idx` ON `Users`(`age` DESC)"
     );
 
     DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
@@ -278,17 +279,17 @@ public class InformationSchemaScannerTest {
     InformationSchemaScanner scanner = new InformationSchemaScanner(getBatchTx());
 
     Ddl ddl = scanner.scan();
-    assertThat(ddl.prettyPrint(), equalsIgnoreWhitespace(Joiner.on("").join(statements)));
+    assertThat(ddl.prettyPrint(), equalToIgnoringWhiteSpace(String.join("", statements)));
   }
 
   @Test
   public void commitTimestamp() {
     String statement =
         "CREATE TABLE `Users` ("
-            + "`id`                                    INT64 NOT NULL,"
-            + "`birthday`                              TIMESTAMP NOT NULL "
-            + "OPTIONS (allow_commit_timestamp=TRUE),"
-            + ") PRIMARY KEY (`id` ASC)";
+            + " `id`                                    INT64 NOT NULL,"
+            + " `birthday`                              TIMESTAMP NOT NULL "
+            + " OPTIONS (allow_commit_timestamp=TRUE),"
+            + " ) PRIMARY KEY (`id` ASC)";
 
     DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
 
@@ -299,7 +300,7 @@ public class InformationSchemaScannerTest {
     InformationSchemaScanner scanner = new InformationSchemaScanner(getBatchTx());
 
     Ddl ddl = scanner.scan();
-    assertThat(ddl.prettyPrint(), equalsIgnoreWhitespace(statement));
+    assertThat(ddl.prettyPrint(), equalToIgnoringWhiteSpace(statement));
   }
 
   @After

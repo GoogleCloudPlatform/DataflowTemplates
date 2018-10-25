@@ -226,8 +226,7 @@ public class DatastoreConverters {
                       duplicatedKeys.inc();
                       ErrorMessage errorMessage = ErrorMessage.newBuilder()
                           .setMessage("Duplicate Datastore Key")
-                          .setTextElementType("entity")
-                          .setTextElementData(entityJsonPrinter.print(entity))
+                          .setData(entityJsonPrinter.print(entity))
                           .build();
                       c.output(errorTag(), errorMessage.toJson());
                       entity = entities.hasNext() ? entities.next() : null;
@@ -593,8 +592,7 @@ public class DatastoreConverters {
                         ErrorMessage errorMessage =
                             ErrorMessage.newBuilder()
                                 .setMessage("Datastore Entity Without Key")
-                                .setTextElementType("entity")
-                                .setTextElementData(entityJsonPrinter.print(entity))
+                                .setData(entityJsonPrinter.print(entity))
                                 .build();
                         c.output(failureTag(), errorMessage.toJson());
                       }

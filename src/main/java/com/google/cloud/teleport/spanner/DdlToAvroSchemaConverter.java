@@ -21,14 +21,13 @@ import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.spanner.ddl.Table;
-import com.google.common.base.Joiner;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.stream.Collectors;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 
-/** Converts {@link Ddl} to Avro {@link Schema}. */
+/** Converts a Spanner {@link Ddl} to Avro {@link Schema}. */
 public class DdlToAvroSchemaConverter {
   private final String namespace;
   private final String version;
@@ -46,17 +45,16 @@ public class DdlToAvroSchemaConverter {
           SchemaBuilder.record(table.name()).namespace(this.namespace);
       recordBuilder.prop("googleFormatVersion", version);
       recordBuilder.prop("googleStorage", "CloudSpanner");
-      recordBuilder.prop(
-          "spannerParent", table.interleaveInParent() == null ? "" : table.interleaveInParent());
+      if (table.interleaveInParent() != null) {
+        recordBuilder.prop("spannerParent", table.interleaveInParent());
+        recordBuilder.prop(
+            "spannerOnDeleteAction", table.onDeleteCascade() ? "cascade" : "no action");
+      }
       if (table.primaryKeys() != null) {
         String encodedPk =
-            Joiner.on(",")
-                .join(
-                    table
-                        .primaryKeys()
-                        .stream()
-                        .map(IndexColumn::prettyPrint)
-                        .collect(Collectors.toList()));
+            table.primaryKeys().stream()
+                .map(IndexColumn::prettyPrint)
+                .collect(Collectors.joining(","));
         recordBuilder.prop("spannerPrimaryKey", encodedPk);
       }
       for (int i = 0; i < table.primaryKeys().size(); i++) {

@@ -16,9 +16,9 @@
 
 package com.google.cloud.teleport.spanner.ddl;
 
-import static com.google.cloud.teleport.spanner.Matchers.equalsIgnoreWhitespace;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.text.IsEqualIgnoringWhiteSpace.equalToIgnoringWhiteSpace;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.spanner.Type;
@@ -38,7 +38,7 @@ public class DdlTest {
 
   @Test
   public void simple() {
-    Ddl empty = Ddl.builder()
+    Ddl ddl = Ddl.builder()
         .createTable("Users")
         .column("id").int64().notNull().endColumn()
         .column("first_name").string().size(10).endColumn()
@@ -46,16 +46,19 @@ public class DdlTest {
         .primaryKey().asc("id").end()
         .endTable()
         .build();
-    assertThat(empty.prettyPrint(), equalsIgnoreWhitespace("CREATE TABLE `Users` ("
-        + "`id`                                    INT64 NOT NULL,"
-        + "`first_name`                             STRING(10),"
-        + "`last_name`                             STRING(MAX),"
-        + ") PRIMARY KEY (`id` ASC)"));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToIgnoringWhiteSpace(
+            "CREATE TABLE `Users` ("
+                + " `id` INT64 NOT NULL,"
+                + " `first_name` STRING(10),"
+                + " `last_name` STRING(MAX),"
+                + " ) PRIMARY KEY (`id` ASC)"));
   }
 
   @Test
   public void interleaves() {
-    Ddl empty = Ddl.builder()
+    Ddl ddl = Ddl.builder()
         .createTable("Users")
         .column("id").int64().notNull().endColumn()
         .column("first_name").string().size(10).endColumn()
@@ -68,17 +71,22 @@ public class DdlTest {
         .column("balance").float64().notNull().endColumn()
         .primaryKey().asc("id").end()
         .interleaveInParent("Users")
+        .onDeleteCascade()
         .endTable()
         .build();
-    assertThat(empty.prettyPrint(), equalsIgnoreWhitespace("CREATE TABLE `Users` ("
-        + "`id`                                    INT64 NOT NULL,"
-        + "`first_name`                            STRING(10),"
-        + "`last_name`                             STRING(MAX),) PRIMARY KEY (`id` ASC)"
-        + "CREATE TABLE `Account` ("
-        + "`id`                                    INT64 NOT NULL,"
-        + "`balanceId`                             INT64 NOT NULL,"
-        + "`balance`                               FLOAT64 NOT NULL,"
-        + ") PRIMARY KEY (`id` ASC), INTERLEAVE IN PARENT `Users`"
-    ));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToIgnoringWhiteSpace(
+            "CREATE TABLE `Users` ("
+                + " `id`                                    INT64 NOT NULL,"
+                + " `first_name`                            STRING(10),"
+                + " `last_name`                             STRING(MAX),"
+                + " ) PRIMARY KEY (`id` ASC)"
+                + " CREATE TABLE `Account` ("
+                + " `id`                                    INT64 NOT NULL,"
+                + " `balanceId`                             INT64 NOT NULL,"
+                + " `balance`                               FLOAT64 NOT NULL,"
+                + " ) PRIMARY KEY (`id` ASC), "
+                + " INTERLEAVE IN PARENT `Users` ON DELETE CASCADE"));
   }
 }

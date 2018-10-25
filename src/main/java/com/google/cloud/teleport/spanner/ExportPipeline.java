@@ -16,6 +16,7 @@
 
 package com.google.cloud.teleport.spanner;
 
+import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -86,7 +87,11 @@ public class ExportPipeline {
             "Run Export",
             new ExportTransform(spannerConfig, options.getOutputDir(), options.getTestJobId()));
     PipelineResult result = p.run();
-    if (options.getWaitUntilFinish()) {
+    if (options.getWaitUntilFinish() &&
+        /* Only if template location is null, there is a dataflow job to wait for. Else it's
+         * template generation which doesn't start a dataflow job.
+         */
+        options.as(DataflowPipelineOptions.class).getTemplateLocation() == null) {
       result.waitUntilFinish();
     }
   }
