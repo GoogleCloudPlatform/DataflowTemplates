@@ -22,28 +22,26 @@ import static org.junit.Assert.assertThat;
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
-import com.google.cloud.teleport.templates.PubSubToBigQuery.PubsubMessageToTableRow;
-import com.google.common.collect.ImmutableMap;
+import com.google.cloud.teleport.templates.KafkaToBigQuery.MessageToTableRow;
 import com.google.common.io.Resources;
 import org.apache.beam.sdk.coders.CoderRegistry;
+import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
-import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
-import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesCoder;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollectionTuple;
-import org.apache.beam.sdk.values.TimestampedValue;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.Instant;
 import org.junit.Rule;
 import org.junit.Test;
 
-/** Test cases for the {@link PubSubToBigQuery} class. */
-public class PubsubToBigQueryTest {
+/** Test cases for the {@link KafkaToBigQueryTest} class. */
+public class KafkaToBigQueryTest {
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
@@ -52,19 +50,20 @@ public class PubsubToBigQueryTest {
   private static final String TRANSFORM_FILE_PATH =
       Resources.getResource(RESOURCES_DIR + "transform.js").getPath();
 
-  /** Tests the {@link PubSubToBigQuery} pipeline end-to-end. */
+  /** Tests the {@link KafkaToBigQueryTest} pipeline end-to-end. */
   @Test
-  public void testPubsubToBigQueryE2E() throws Exception {
+  public void testKafkaToBigQueryE2E() throws Exception {
     // Test input
+    final String key = "{\"id\": \"1001\"}";
     final String payload = "{\"ticker\": \"GOOGL\", \"price\": 1006.94}";
-    final PubsubMessage message =
-        new PubsubMessage(payload.getBytes(), ImmutableMap.of("id", "123", "type", "custom_event"));
+    final KV<String, String> message = KV.of(key, payload);
 
     final Instant timestamp =
         new DateTime(2022, 2, 22, 22, 22, 22, 222, DateTimeZone.UTC).toInstant();
 
-    final FailsafeElementCoder<PubsubMessage, String> coder =
-        FailsafeElementCoder.of(PubsubMessageWithAttributesCoder.of(), StringUtf8Coder.of());
+    final FailsafeElementCoder<KV<String, String>, String> coder =
+        FailsafeElementCoder.of(
+            KvCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()), StringUtf8Coder.of());
 
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
@@ -73,8 +72,8 @@ public class PubsubToBigQueryTest {
     ValueProvider<String> transformPath = pipeline.newProvider(TRANSFORM_FILE_PATH);
     ValueProvider<String> transformFunction = pipeline.newProvider("transform");
 
-    PubSubToBigQuery.Options options =
-        PipelineOptionsFactory.create().as(PubSubToBigQuery.Options.class);
+    KafkaToBigQuery.Options options =
+        PipelineOptionsFactory.create().as(KafkaToBigQuery.Options.class);
 
     options.setJavascriptTextTransformGcsPath(transformPath);
     options.setJavascriptTextTransformFunctionName(transformFunction);
@@ -84,14 +83,14 @@ public class PubsubToBigQueryTest {
         pipeline
             .apply(
                 "CreateInput",
-                Create.timestamped(TimestampedValue.of(message, timestamp))
-                    .withCoder(PubsubMessageWithAttributesCoder.of()))
-            .apply("ConvertMessageToTableRow", new PubsubMessageToTableRow(options));
+                Create.of(message)
+                    .withCoder(KvCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+            .apply("ConvertMessageToTableRow", new MessageToTableRow(options));
 
     // Assert
-    PAssert.that(transformOut.get(PubSubToBigQuery.UDF_DEADLETTER_OUT)).empty();
-    PAssert.that(transformOut.get(PubSubToBigQuery.TRANSFORM_DEADLETTER_OUT)).empty();
-    PAssert.that(transformOut.get(PubSubToBigQuery.TRANSFORM_OUT))
+    PAssert.that(transformOut.get(KafkaToBigQuery.UDF_DEADLETTER_OUT)).empty();
+    PAssert.that(transformOut.get(KafkaToBigQuery.TRANSFORM_DEADLETTER_OUT)).empty();
+    PAssert.that(transformOut.get(KafkaToBigQuery.TRANSFORM_OUT))
         .satisfies(
             collection -> {
               TableRow result = collection.iterator().next();
