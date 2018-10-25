@@ -25,6 +25,7 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.AvroIO;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -67,6 +68,13 @@ final class AvroToBigtable {
 
     @SuppressWarnings("unused")
     void setInputFilePattern(ValueProvider<String> inputFilePattern);
+
+    @Description("Wait for pipeline to finish.")
+    @Default.Boolean(true)
+    boolean getWaitUntilFinish();
+
+    @SuppressWarnings("unused")
+    void setWaitUntilFinish(boolean value);
   }
 
   /**
@@ -77,7 +85,11 @@ final class AvroToBigtable {
   public static void main(String[] args) {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
-    run(options).waitUntilFinish();
+    PipelineResult result = run(options);
+
+    if (options.getWaitUntilFinish()) {
+      result.waitUntilFinish();
+    }
   }
 
   public static PipelineResult run(Options options) {

@@ -68,7 +68,7 @@ public class SpannerConverterTest implements Serializable {
   public void testSchemaSave() throws IOException {
 
     ValueProvider<String> table = ValueProvider.StaticValueProvider.of(TABLE);
-    SpannerConfig spannerConfig = mock(SpannerConfig.class, withSettings().serializable());
+    SpannerConfig spannerConfig = SpannerConfig.create();
     DatabaseClient databaseClient = mock(DatabaseClient.class, withSettings().serializable());
     ReadOnlyTransaction readOnlyTransaction =
         mock(ReadOnlyTransaction.class, withSettings().serializable());
@@ -108,15 +108,17 @@ public class SpannerConverterTest implements Serializable {
         "\"true\",\"test\"",
         structCsvPrinter.print(
             Struct.newBuilder()
-                .add("bool", Value.bool(true))
-                .add("col", Value.string("test"))
+                .set("bool")
+                .to(Value.bool(true))
+                .set("col")
+                .to(Value.string("test"))
                 .build()));
   }
 
   @Test
   public void testBoolean() {
     assertEquals(
-        "\"true\"", structCsvPrinter.print(Struct.newBuilder().add("col",
+        "\"true\"",structCsvPrinter.print(Struct.newBuilder().set("col").to(
             Value.bool(true)).build()));
   }
 
@@ -124,35 +126,35 @@ public class SpannerConverterTest implements Serializable {
   public void testString() {
     assertEquals(
         "\"test\"",
-        structCsvPrinter.print(Struct.newBuilder().add("col", Value.string("test")).build()));
+        structCsvPrinter.print(Struct.newBuilder().set("col").to(Value.string("test")).build()));
   }
 
   @Test
   public void testNull() {
     assertEquals(
         "",
-        structCsvPrinter.print(Struct.newBuilder().add("col", Value.string(null)).build()));
+        structCsvPrinter.print(Struct.newBuilder().set("col").to(Value.string(null)).build()));
   }
 
   @Test
   public void testEscapingString() {
     assertEquals(
         "\"\"\" ,;\"",
-        structCsvPrinter.print(Struct.newBuilder().add("col", Value.string("\" ,;")).build()));
+        structCsvPrinter.print(Struct.newBuilder().set("col").to(Value.string("\" ,;")).build()));
   }
 
 
   @Test
   public void testInt64() {
     assertEquals(
-        "\"1\"", structCsvPrinter.print(Struct.newBuilder().add("col", Value.int64(1)).build()));
+        "\"1\"", structCsvPrinter.print(Struct.newBuilder().set("col").to(Value.int64(1)).build()));
   }
 
   @Test
   public void testFloat() {
     assertEquals(
         "\"0.1\"", structCsvPrinter.print(
-            Struct.newBuilder().add("col", Value.float64(0.1)).build()));
+            Struct.newBuilder().set("col").to(Value.float64(0.1)).build()));
   }
 
   @Test
@@ -160,7 +162,7 @@ public class SpannerConverterTest implements Serializable {
     assertEquals(
         "\"dGVzdA==\"",
         structCsvPrinter.print(
-            Struct.newBuilder().add("col", Value.bytes(ByteArray.copyFrom("test"))).build()));
+            Struct.newBuilder().set("col").to(Value.bytes(ByteArray.copyFrom("test"))).build()));
   }
 
   @Test
@@ -169,7 +171,7 @@ public class SpannerConverterTest implements Serializable {
         "\"2018-03-26\"",
         structCsvPrinter.print(
             Struct.newBuilder()
-                .add("col", Value.date(Date.fromYearMonthDay(2018, 3, 26)))
+                .set("col").to(Value.date(Date.fromYearMonthDay(2018, 3, 26)))
                 .build()));
   }
 
@@ -179,7 +181,7 @@ public class SpannerConverterTest implements Serializable {
         "\"1970-01-01T00:00:00Z\"",
         structCsvPrinter.print(
             Struct.newBuilder()
-                .add("col", Value.timestamp(Timestamp.ofTimeMicroseconds(0)))
+                .set("col").to(Value.timestamp(Timestamp.ofTimeMicroseconds(0)))
                 .build()));
   }
 
@@ -188,7 +190,7 @@ public class SpannerConverterTest implements Serializable {
     assertEquals(
         "\"[true]\"",
         structCsvPrinter.print(
-            Struct.newBuilder().add("col", Value.boolArray(new boolean[] {true})).build()));
+            Struct.newBuilder().set("col").to(Value.boolArray(new boolean[] {true})).build()));
   }
 
   @Test
@@ -197,7 +199,7 @@ public class SpannerConverterTest implements Serializable {
         "\"[\"\"test\"\"]\"",
         structCsvPrinter.print(
             Struct.newBuilder()
-                .add("col", Value.stringArray(Collections.singletonList("test")))
+                .set("col").to(Value.stringArray(Collections.singletonList("test")))
                 .build()));
   }
 
@@ -207,7 +209,7 @@ public class SpannerConverterTest implements Serializable {
         "",
         structCsvPrinter.print(
             Struct.newBuilder()
-                .add("col", Value.stringArray(null))
+                .set("col").to(Value.stringArray(null))
                 .build()));
   }
 
@@ -217,7 +219,7 @@ public class SpannerConverterTest implements Serializable {
         "\"[null]\"",
         structCsvPrinter.print(
             Struct.newBuilder()
-                .add("col", Value.stringArray(Collections.singletonList(null)))
+                .set("col").to(Value.stringArray(Collections.singletonList(null)))
                 .build()));
   }
 
@@ -227,7 +229,7 @@ public class SpannerConverterTest implements Serializable {
         "\"[\"\"\"\"]\"",
         structCsvPrinter.print(
             Struct.newBuilder()
-                .add("col", Value.stringArray(Collections.singletonList("")))
+                .set("col").to(Value.stringArray(Collections.singletonList("")))
 
                 .build()));
   }
@@ -237,7 +239,7 @@ public class SpannerConverterTest implements Serializable {
     assertEquals(
         "\"[1]\"",
         structCsvPrinter.print(
-            Struct.newBuilder().add("col", Value.int64Array(new long[] {1})).build()));
+            Struct.newBuilder().set("col").to(Value.int64Array(new long[] {1})).build()));
   }
 
   @Test
@@ -245,7 +247,7 @@ public class SpannerConverterTest implements Serializable {
     assertEquals(
         "\"[0.1]\"",
         structCsvPrinter.print(
-            Struct.newBuilder().add("col", Value.float64Array(new double[] {0.1})).build()));
+            Struct.newBuilder().set("col").to(Value.float64Array(new double[] {0.1})).build()));
   }
 
   @Test
@@ -254,8 +256,8 @@ public class SpannerConverterTest implements Serializable {
         "\"[\"\"2018-03-26\"\"]\"",
         structCsvPrinter.print(
             Struct.newBuilder()
-                .add(
-                    "col",
+                .set("col")
+                .to(
                     Value.dateArray(Collections.singletonList(Date.fromYearMonthDay(2018, 3, 26))))
                 .build()));
   }
@@ -266,8 +268,8 @@ public class SpannerConverterTest implements Serializable {
         "\"[\"\"1970-01-01T00:00:00Z\"\"]\"",
         structCsvPrinter.print(
             Struct.newBuilder()
-                .add(
-                    "col",
+                .set("col")
+                .to(
                     Value.timestampArray(
                         Collections.singletonList(Timestamp.ofTimeMicroseconds(0))))
                 .build()));
@@ -279,7 +281,8 @@ public class SpannerConverterTest implements Serializable {
         "\"[\"\"dGVzdA==\"\"]\"",
         structCsvPrinter.print(
             Struct.newBuilder()
-                .add("col", Value.bytesArray(Collections.singletonList(ByteArray.copyFrom("test"))))
+                .set("col")
+                .to(Value.bytesArray(Collections.singletonList(ByteArray.copyFrom("test"))))
                 .build()));
   }
 }

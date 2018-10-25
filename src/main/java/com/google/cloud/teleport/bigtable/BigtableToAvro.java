@@ -31,6 +31,7 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.AvroIO;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -71,6 +72,20 @@ public class BigtableToAvro {
 
     @SuppressWarnings("unused")
     void setOutputDirectory(ValueProvider<String> outputDirectory);
+
+    @Description("Wait for pipeline to finish.")
+    @Default.Boolean(true)
+    boolean getWaitUntilFinish();
+
+    @SuppressWarnings("unused")
+    void setWaitUntilFinish(boolean value);
+
+    @Description("Whether to validate input fields.")
+    @Default.Boolean(true)
+    boolean getValidateInput();
+
+    @SuppressWarnings("unused")
+    void setValidateInput(boolean value);
   }
 
   /**
@@ -81,7 +96,11 @@ public class BigtableToAvro {
   public static void main(String[] args) {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
-    run(options).waitUntilFinish();
+    PipelineResult result = run(options);
+
+    if (options.getWaitUntilFinish()) {
+      result.waitUntilFinish();
+    }
   }
 
   public static PipelineResult run(Options options) {
@@ -92,6 +111,10 @@ public class BigtableToAvro {
             .withProjectId(options.getBigtableProjectId())
             .withInstanceId(options.getBigtableInstanceId())
             .withTableId(options.getBigtableTableId());
+
+    if (!options.getValidateInput()) {
+      read = read.withoutValidation();
+    }
 
     pipeline
         .apply("Read from Bigtable", read)

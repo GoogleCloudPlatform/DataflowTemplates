@@ -1,0 +1,75 @@
+# Google Cloud Build script for Cloud Teleport
+#
+# This build script is used to build the open-source Cloud Teleport GitHub repository for every
+# change pushed. The .m2 directory is cached across steps using a mounted volume and is saved to GCS
+# for future runs.
+#
+# Manual Execution:
+# Use the below command to invoke the build manually. Note the substitutions for BRANCH_NAME and
+# REVISION_ID. These variables are normally populated when the build is executed via build triggers
+# but will be empty during manual execution. Dummy branch and revisions can be passed during manual
+# execution so the artifacts can be uploaded upon build completion.
+#
+# gcloud builds submit . \
+#   --config=cloudbuild.yaml \
+#   --substitutions=BRANCH_NAME="master",REVISION_ID="bd671f47ce9e95dce00d0c07aee08f46d65658e4"
+#
+
+steps:
+###########################################################
+# Step 1: Retrieve the cached .m2 directory from GCS
+###########################################################
+- name: 'gcr.io/cloud-builders/gsutil'
+  args:
+  - '-m'
+  - 'rsync'
+  - '-r'
+  - 'gs://${_BUCKET}/cache/.m2'
+  - '/cache/.m2'
+  volumes:
+  - path: '/cache/.m2'
+    name: 'm2_cache'
+
+###########################################################
+# Step 2: Build, Test, and Verify
+###########################################################
+- name: 'gcr.io/cloud-builders/mvn'
+  args:
+  - 'clean'
+  - 'verify'
+  - '--batch-mode'
+  volumes:
+  - path: '/cache/.m2'
+    name: 'm2_cache'
+  env:
+  - MAVEN_OPTS=-Dmaven.repo.local=/cache/.m2
+
+###########################################################
+# Step 3: Update cached .m2 directory on GCS with any
+#         additional dependencies downloaded during the
+#         build.
+###########################################################
+- name: 'gcr.io/cloud-builders/gsutil'
+  args:
+  - '-m'
+  - 'rsync'
+  - '-r'
+  - '/cache/.m2'
+  - 'gs://${_BUCKET}/cache/.m2/'
+  volumes:
+  - path: '/cache/.m2'
+    name: 'm2_cache'
+
+substitutions:
+  # Default values
+  _BUCKET: 'cloud-teleport-github_cloudbuild'
+
+artifacts:
+  # Upload the jars created during the build.
+  objects:
+    location: 'gs://${_BUCKET}/artifacts/$BRANCH_NAME/$REVISION_ID'
+    paths: ['target/*.jar']
+
+options:
+  # Use higher CPU machines so the caching and build steps are faster.
+  machineType: 'N1_HIGHCPU_32'
