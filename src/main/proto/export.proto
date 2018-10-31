@@ -10,27 +10,32 @@ message TableManifest {
   message File {
     // The avro file name. A relative path to the import directory.
     string name = 1;
-    // base64 encoded md5 checksum of the file.
+    // Base64 encoded md5 checksum of the file.
     string md5 = 2;
   }
   // Exported Avro files.
   repeated File files = 1;
 }
 
-// Protobuf schema for the content of the export summary file.
+// Protobuf schema for the content of the export summary file representing the
+// whole database.
 message Export {
   // An export summary of the table.
-  // During the import, `name` will be used as a Cloud Spanner table name
-  // and both `data_files` and `manifest_file` are used to locate the corresponding data files.
+  // During the import, `name` will be used as the Cloud Spanner table name
+  // and both `data_files` and `manifest_file` can be used to locate the
+  // corresponding data files.
   message Table {
-    // The names of the table.
+    // The name of the table.
     string name = 1;
     // Set of Avro file globs.
+    // Use `data_files` when table manifest files with checksums are not
+    // available.
     repeated string data_files = 2;
-    // A pointer to the manifest file that is a json representation of TableManifest protobuf.
+    // The name of the manifest file which is a JSON representation of
+    // TableManifest.
     string manifest_file = 3;
   }
 
-  // A set of tables that were exported.
+  // The set of tables that were exported.
   repeated Table tables = 1;
 }
