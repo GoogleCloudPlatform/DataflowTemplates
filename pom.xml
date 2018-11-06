@@ -38,7 +38,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <avro.version>1.8.2</avro.version>
     <checkstyle.version>8.7</checkstyle.version>
-    <beam.version>2.7.0</beam.version>
+    <beam.version>2.8.0</beam.version>
     <hamcrest.version>1.3</hamcrest.version>
     <java.version>1.8</java.version>
     <junit.version>4.12</junit.version>
