@@ -20,6 +20,8 @@ import com.google.bigtable.v2.Cell;
 import com.google.bigtable.v2.Column;
 import com.google.bigtable.v2.Family;
 import com.google.bigtable.v2.Row;
+import com.google.cloud.teleport.util.DualInputNestedValueProvider;
+import com.google.cloud.teleport.util.DualInputNestedValueProvider.TranslatorInput;
 import com.google.protobuf.ByteOutput;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.UnsafeByteOperations;
@@ -27,16 +29,17 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.AvroIO;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
-import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 
 /**
@@ -65,27 +68,17 @@ public class BigtableToAvro {
     @SuppressWarnings("unused")
     void setBigtableTableId(ValueProvider<String> tableId);
 
-    @Description(
-        "The output location to write to (e.g. gs://mybucket/somefolder/table1, "
-            + "where 'table1' is the prefix of the Avro files.)")
+    @Description("The output location to write to (e.g. gs://mybucket/somefolder/)")
     ValueProvider<String> getOutputDirectory();
 
     @SuppressWarnings("unused")
     void setOutputDirectory(ValueProvider<String> outputDirectory);
 
-    @Description("Wait for pipeline to finish.")
-    @Default.Boolean(true)
-    boolean getWaitUntilFinish();
+    @Description("The prefix for each exported file in outputDirectory")
+    ValueProvider<String> getFilenamePrefix();
 
     @SuppressWarnings("unused")
-    void setWaitUntilFinish(boolean value);
-
-    @Description("Whether to validate input fields.")
-    @Default.Boolean(true)
-    boolean getValidateInput();
-
-    @SuppressWarnings("unused")
-    void setValidateInput(boolean value);
+    void setFilenamePrefix(ValueProvider<String> filenamePrefix);
   }
 
   /**
@@ -98,7 +91,8 @@ public class BigtableToAvro {
 
     PipelineResult result = run(options);
 
-    if (options.getWaitUntilFinish()) {
+    // Wait for pipeline to finish only if it is not constructing a template.
+    if (options.as(DataflowPipelineOptions.class).getTemplateLocation() == null) {
       result.waitUntilFinish();
     }
   }
@@ -112,16 +106,27 @@ public class BigtableToAvro {
             .withInstanceId(options.getBigtableInstanceId())
             .withTableId(options.getBigtableTableId());
 
-    if (!options.getValidateInput()) {
+    // Do not validate input fields if it is running as a template.
+    if (options.as(DataflowPipelineOptions.class).getTemplateLocation() != null) {
       read = read.withoutValidation();
     }
+
+    ValueProvider<String> filePathPrefix = DualInputNestedValueProvider.of(
+        options.getOutputDirectory(),
+        options.getFilenamePrefix(),
+        new SerializableFunction<TranslatorInput<String, String>, String>() {
+          @Override
+          public String apply(TranslatorInput<String, String> input) {
+            return new StringBuilder(input.getX()).append(input.getY()).toString();
+          }
+        });
 
     pipeline
         .apply("Read from Bigtable", read)
         .apply("Transform to Avro", MapElements.via(new BigtableToAvroFn()))
         .apply(
             "Write to Avro in GCS",
-            AvroIO.write(BigtableRow.class).to(options.getOutputDirectory()).withSuffix(".avro"));
+            AvroIO.write(BigtableRow.class).to(filePathPrefix).withSuffix(".avro"));
 
     return pipeline.run();
   }

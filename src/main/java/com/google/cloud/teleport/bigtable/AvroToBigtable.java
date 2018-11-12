@@ -21,11 +21,11 @@ import com.google.bigtable.v2.Mutation.SetCell;
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
 import java.nio.ByteBuffer;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.AvroIO;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
-import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -68,13 +68,6 @@ final class AvroToBigtable {
 
     @SuppressWarnings("unused")
     void setInputFilePattern(ValueProvider<String> inputFilePattern);
-
-    @Description("Wait for pipeline to finish.")
-    @Default.Boolean(true)
-    boolean getWaitUntilFinish();
-
-    @SuppressWarnings("unused")
-    void setWaitUntilFinish(boolean value);
   }
 
   /**
@@ -87,7 +80,8 @@ final class AvroToBigtable {
 
     PipelineResult result = run(options);
 
-    if (options.getWaitUntilFinish()) {
+    // Wait for pipeline to finish only if it is not constructing a template.
+    if (options.as(DataflowPipelineOptions.class).getTemplateLocation() == null) {
       result.waitUntilFinish();
     }
   }
