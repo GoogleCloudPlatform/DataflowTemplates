@@ -56,7 +56,7 @@ import org.apache.beam.sdk.transforms.windowing.Window;
  --runner=DataflowRunner \
  --windowDuration=2m \
  --numShards=1 \
- --topic=projects/${PROJECT_ID}/topics/windowed-files \
+ --inputTopic=projects/${PROJECT_ID}/topics/windowed-files \
  --outputDirectory=gs://${PROJECT_ID}/temp/ \
  --outputFilenamePrefix=windowed-file \
  --outputFilenameSuffix=.txt"
