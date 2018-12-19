@@ -53,12 +53,9 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
       Column column = table.column(fieldName);
       if (column == null) {
         throw new IllegalArgumentException(
-            "Cannot find a corresponding column for field "
-                + fieldName
-                + " in table "
-                + table.prettyPrint()
-                + " schema "
-                + schema.toString(true));
+            String.format(
+                "Cannot find corresponding column for field %s in table %s schema %s",
+                fieldName, table.prettyPrint(), schema.toString(true)));
       }
 
       Schema avroFieldSchema = field.schema();
@@ -146,24 +143,17 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
                 break;
               default:
                 throw new IllegalArgumentException(
-                    "Cannot convert a field "
-                        + fieldName
-                        + " in schema "
-                        + schema.toString(true)
-                        + " table "
-                        + table.prettyPrint());
+                    String.format(
+                        "Cannot convert field %s in schema %s table %s",
+                        fieldName, schema.toString(true), table.prettyPrint()));
             }
             break;
           }
         default:
           throw new IllegalArgumentException(
-              "Cannot convert a field "
-                  + fieldName
-                  + " in schema "
-                  + " schema "
-                  + schema.toString(true)
-                  + " table "
-                  + table.prettyPrint());
+              String.format(
+                  "Cannot convert field %s in schema %s table %s",
+                  fieldName, schema.toString(true), table.prettyPrint()));
       }
     }
 
