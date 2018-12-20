@@ -30,6 +30,7 @@ import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -127,7 +128,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
   }
 
   /**
-   * Read the Cloud Spanner schema and all the rows in all the tables of the databases. Create and
+   * Read the Cloud Spanner schema and all the rows in all the tables of the database. Create and
    * write the exported Avro files to GCS.
    */
   @Override
@@ -138,7 +139,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     PCollection<Ddl> ddl =
         p.apply("Read Information Schema", new ReadInformationSchema(spannerConfig, tx));
     PCollection<ReadOperation> tables =
-        ddl.apply("Build read operations", new BuildReadFromTableOperations());
+        ddl.apply("Build table read operations", new BuildReadFromTableOperations());
 
     PCollection<KV<String, Void>> allTableNames =
         ddl.apply(
@@ -159,6 +160,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     final PCollectionView<String> outputDirectoryName =
         p.apply(Create.of(1))
             .apply(
+                "Create Avro output folder",
                 ParDo.of(
                     new DoFn<Integer, String>() {
 
@@ -205,7 +207,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
     PCollection<Struct> rows =
         tables.apply(
-            "Read all rows from the database",
+            "Read all rows from Spanner",
             SpannerIO.readAll().withTransaction(tx).withSpannerConfig(spannerConfig));
 
     ValueProvider<ResourceId> resource =
@@ -227,15 +229,15 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     final TupleTag<Void> allTables = new TupleTag<>();
     final TupleTag<Iterable<String>> nonEmptyTables = new TupleTag<>();
 
-    PCollection<KV<String, CoGbkResult>> grouppedTables =
+    PCollection<KV<String, CoGbkResult>> groupedTables =
         KeyedPCollectionTuple.of(allTables, allTableNames)
             .and(nonEmptyTables, tableFiles)
             .apply("Group with all tables", CoGroupByKey.create());
 
     // The following is to export empty tables from the database.
     PCollection<KV<String, Iterable<String>>> emptyTables =
-        grouppedTables.apply(
-            "Empty tables",
+        groupedTables.apply(
+            "Export empty tables",
             ParDo.of(
                 new DoFn<KV<String, CoGbkResult>, KV<String, Iterable<String>>>() {
 
@@ -325,7 +327,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                           return Channels.newOutputStream(gcsChannel);
                         } else {
                           // Avro file is created on local filesystem (for testing).
-                          return java.nio.file.Files.newOutputStream(outputPath);
+                          return Files.newOutputStream(outputPath);
                         }
                       }
                     })
@@ -348,7 +350,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                     tableManifestFileName(element));
 
     tableManifests.apply(
-        "Store contents",
+        "Store table manifests",
         FileIO.<String, KV<String, String>>writeDynamic()
             .by(KV::getKey)
             .withDestinationCoder(StringUtf8Coder.of())
@@ -369,7 +371,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                     outputDir.get(), c.sideInput(outputDirectoryName), "spanner-export.json");
 
     metadataContent.apply(
-        "Store the manifest file",
+        "Store the database manifest",
         FileIO.<String, String>writeDynamic()
             .by(SerializableFunctions.constant(""))
             .withDestinationCoder(StringUtf8Coder.of())
@@ -381,9 +383,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     return fileWriteResults;
   }
 
-  /**
-   * Saves {@link Struct} elements of PCollection of the same type to the an Avro file.
-   */
+  /** Saves {@link Struct} elements (rows from Spanner) to destination Avro files. */
   private static class SchemaBasedDynamicDestinations
       extends DynamicAvroDestinations<Struct, String, GenericRecord> {
 
@@ -413,6 +413,9 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
     @Override
     public String getDestination(Struct element) {
+      // The input is a PCollection of rows from all tables.
+      // That has to be demultiplexed into a separate destination for each table.
+      // This is done using the first element of each table that is the table name.
       return element.getString(0);
     }
 
