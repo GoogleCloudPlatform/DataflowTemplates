@@ -64,7 +64,7 @@ import org.slf4j.LoggerFactory;
  * <p><b>Pipeline Requirements</b>
  *
  * <ul>
- *   <li>The Pub/Sub topic exists.
+ *   <li>The Pub/Sub subscription exists.
  *   <li>The BigQuery output table exists.
  * </ul>
  *
@@ -97,7 +97,7 @@ import org.slf4j.LoggerFactory;
  * --gcs-location=${PIPELINE_FOLDER}/template \
  * --zone=us-east1-d \
  * --parameters \
- * "inputTopic=projects/data-analytics-pocs/topics/teleport-pubsub-to-bigquery,\
+ * "inputSubscription=projects/data-analytics-pocs/subscriptions/teleport-pubsub-to-bigquery-subscription,\
  * outputTableSpec=data-analytics-pocs:demo.pubsub_to_bigquery,\
  * outputDeadletterTable=data-analytics-pocs:demo.pubsub_to_bigquery_deadletter"
  * </pre>
@@ -135,10 +135,10 @@ public class PubSubToBigQuery {
 
     void setOutputTableSpec(ValueProvider<String> value);
 
-    @Description("Pub/Sub topic to read the input from")
-    ValueProvider<String> getInputTopic();
+    @Description("Pub/Sub subscription to read the input from")
+    ValueProvider<String> getInputSubscription();
 
-    void setInputTopic(ValueProvider<String> value);
+    void setInputSubscription(ValueProvider<String> value);
 
     @Description(
         "The dead-letter table to output to within BigQuery in <project-id>:<dataset>.<table> "
@@ -198,7 +198,7 @@ public class PubSubToBigQuery {
              */
             .apply(
                 "ReadPubsubMessages",
-                PubsubIO.readMessagesWithAttributes().fromTopic(options.getInputTopic()))
+                PubsubIO.readMessagesWithAttributes().fromSubscription(options.getInputSubscription()))
 
             /*
              * Step #2: Transform the PubsubMessages into TableRows
