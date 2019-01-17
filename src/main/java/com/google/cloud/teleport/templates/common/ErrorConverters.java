@@ -27,6 +27,7 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.values.FailsafeElement;
 import com.google.common.collect.Lists;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import javax.annotation.Nullable;
@@ -52,6 +53,26 @@ import org.joda.time.format.DateTimeFormatter;
 
 /** Transforms & DoFns & Options for Teleport Error logging. */
 public class ErrorConverters {
+  /**
+   * Converts a {@link PubsubMessage} attribute map into {@link TableRow} records which can be saved
+   * to BigQuery. Each entry within the attribute map is converted into a row object containing two
+   * columns: "key" & "value". This allows for the attribute map to be saved to BigQuery without
+   * needing to handle schema changes due to new attributes.
+   *
+   * @param attributeMap A key-value map of attributes from a {@link PubsubMessage}
+   * @return A list of {@link TableRow} objects, one for each map entry.
+   */
+  private static List<TableRow> attributeMapToTableRows(Map<String, String> attributeMap) {
+    final List<TableRow> attributeTableRows = Lists.newArrayList();
+    if (attributeMap != null) {
+      attributeMap.forEach(
+          (key, value) ->
+              attributeTableRows.add(new TableRow().set("key", key).set("value", value)));
+    }
+
+    return attributeTableRows;
+  }
+
   /** Options for Writing Errors to GCS. */
   public interface ErrorWriteOptions extends PipelineOptions {
     @Description("Pattern of where to write errors, ex: gs://mybucket/somepath/errors.txt")
@@ -64,6 +85,14 @@ public class ErrorConverters {
   @AutoValue
   @JsonDeserialize(builder = ErrorMessage.Builder.class)
   public abstract static class ErrorMessage<T> {
+    public static <T> Builder<T> newBuilder() {
+      return new AutoValue_ErrorConverters_ErrorMessage.Builder<>();
+    }
+
+    public static ErrorMessage fromJson(String json) throws IOException {
+      return new ObjectMapper().readValue(json, ErrorMessage.class);
+    }
+
     @JsonProperty
     public abstract String message();
 
@@ -73,10 +102,19 @@ public class ErrorConverters {
     @JsonProperty
     public abstract T data();
 
+    public String toJson() throws JsonProcessingException {
+      return new ObjectMapper().writeValueAsString(this);
+    }
+
     /** Builder for {@link ErrorMessage}. */
     @AutoValue.Builder
     @JsonPOJOBuilder(withPrefix = "set")
     public abstract static class Builder<T> {
+      @JsonCreator
+      public static Builder create() {
+        return ErrorMessage.newBuilder();
+      }
+
       public abstract Builder<T> setMessage(String message);
 
       public abstract Builder<T> setStacktrace(@Nullable String stacktrace);
@@ -84,32 +122,26 @@ public class ErrorConverters {
       public abstract Builder<T> setData(T data);
 
       public abstract ErrorMessage<T> build();
-
-      @JsonCreator
-      public static Builder create() {
-        return ErrorMessage.newBuilder();
-      }
-    }
-
-    public static <T> Builder<T> newBuilder() {
-      return new AutoValue_ErrorConverters_ErrorMessage.Builder<>();
-    }
-
-    public String toJson() throws JsonProcessingException {
-      return new ObjectMapper().writeValueAsString(this);
-    }
-
-    public static ErrorMessage fromJson(String json) throws IOException {
-      return new ObjectMapper().readValue(json, ErrorMessage.class);
     }
   }
 
   /** Writes all Errors to GCS, place at the end of your pipeline. */
   @AutoValue
   public abstract static class LogErrors extends PTransform<PCollectionTuple, PDone> {
+    public static Builder newBuilder() {
+      return new AutoValue_ErrorConverters_LogErrors.Builder();
+    }
+
     public abstract ValueProvider<String> errorWritePath();
 
     public abstract TupleTag<String> errorTag();
+
+    @Override
+    public PDone expand(PCollectionTuple pCollectionTuple) {
+      return pCollectionTuple
+          .get(errorTag())
+          .apply(TextIO.write().to(errorWritePath()).withNumShards(1));
+    }
 
     /** Builder for {@link LogErrors}. */
     @AutoValue.Builder
@@ -119,17 +151,6 @@ public class ErrorConverters {
       public abstract Builder setErrorTag(TupleTag<String> errorTag);
 
       public abstract LogErrors build();
-    }
-
-    public static Builder newBuilder() {
-      return new AutoValue_ErrorConverters_LogErrors.Builder();
-    }
-
-    @Override
-    public PDone expand(PCollectionTuple pCollectionTuple) {
-      return pCollectionTuple
-          .get(errorTag())
-          .apply(TextIO.write().to(errorWritePath()).withNumShards(1));
     }
   }
 
@@ -143,23 +164,13 @@ public class ErrorConverters {
   public abstract static class WritePubsubMessageErrors
       extends PTransform<PCollection<FailsafeElement<PubsubMessage, String>>, WriteResult> {
 
-    public abstract ValueProvider<String> getErrorRecordsTable();
-
-    public abstract String getErrorRecordsTableSchema();
-
     public static Builder newBuilder() {
       return new AutoValue_ErrorConverters_WritePubsubMessageErrors.Builder();
     }
 
-    /** Builder for {@link WritePubsubMessageErrors}. */
-    @AutoValue.Builder
-    public abstract static class Builder {
-      public abstract Builder setErrorRecordsTable(ValueProvider<String> errorRecordsTable);
+    public abstract ValueProvider<String> getErrorRecordsTable();
 
-      public abstract Builder setErrorRecordsTableSchema(String errorRecordsTableSchema);
-
-      public abstract WritePubsubMessageErrors build();
-    }
+    public abstract String getErrorRecordsTableSchema();
 
     @Override
     public WriteResult expand(PCollection<FailsafeElement<PubsubMessage, String>> failedRecords) {
@@ -173,6 +184,54 @@ public class ErrorConverters {
                   .withJsonSchema(getErrorRecordsTableSchema())
                   .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
                   .withWriteDisposition(WriteDisposition.WRITE_APPEND));
+    }
+
+    /** Builder for {@link WritePubsubMessageErrors}. */
+    @AutoValue.Builder
+    public abstract static class Builder {
+      public abstract Builder setErrorRecordsTable(ValueProvider<String> errorRecordsTable);
+
+      public abstract Builder setErrorRecordsTableSchema(String errorRecordsTableSchema);
+
+      public abstract WritePubsubMessageErrors build();
+    }
+  }
+
+  /** Same as {@link WritePubsubMessageErrors} but for string encoded messages. */
+  @AutoValue
+  public abstract static class WriteStringMessageErrors
+      extends PTransform<PCollection<FailsafeElement<String, String>>, WriteResult> {
+
+    public static Builder newBuilder() {
+      return new AutoValue_ErrorConverters_WriteStringMessageErrors.Builder();
+    }
+
+    public abstract ValueProvider<String> getErrorRecordsTable();
+
+    public abstract String getErrorRecordsTableSchema();
+
+    @Override
+    public WriteResult expand(PCollection<FailsafeElement<String, String>> failedRecords) {
+
+      return failedRecords
+          .apply("FailedRecordToTableRow", ParDo.of(new FailedStringToTableRowFn()))
+          .apply(
+              "WriteFailedRecordsToBigQuery",
+              BigQueryIO.writeTableRows()
+                  .to(getErrorRecordsTable())
+                  .withJsonSchema(getErrorRecordsTableSchema())
+                  .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
+                  .withWriteDisposition(WriteDisposition.WRITE_APPEND));
+    }
+
+    /** Builder for {@link WriteStringMessageErrors}. */
+    @AutoValue.Builder
+    public abstract static class Builder {
+      public abstract Builder setErrorRecordsTable(ValueProvider<String> errorRecordsTable);
+
+      public abstract Builder setErrorRecordsTableSchema(String errorRecordsTableSchema);
+
+      public abstract WriteStringMessageErrors build();
     }
   }
 
@@ -219,22 +278,43 @@ public class ErrorConverters {
   }
 
   /**
-   * Converts a {@link PubsubMessage} attribute map into {@link TableRow} records which can be saved
-   * to BigQuery. Each entry within the attribute map is converted into a row object containing two
-   * columns: "key" & "value". This allows for the attribute map to be saved to BigQuery without
-   * needing to handle schema changes due to new attributes.
-   *
-   * @param attributeMap A key-value map of attributes from a {@link PubsubMessage}
-   * @return A list of {@link TableRow} objects, one for each map entry.
+   * The {@link FailedStringToTableRowFn} converts string objects which have failed processing into
+   * {@link TableRow} objects which can be output to a dead-letter table.
    */
-  private static List<TableRow> attributeMapToTableRows(Map<String, String> attributeMap) {
-    final List<TableRow> attributeTableRows = Lists.newArrayList();
-    if (attributeMap != null) {
-      attributeMap.forEach(
-          (key, value) ->
-              attributeTableRows.add(new TableRow().set("key", key).set("value", value)));
-    }
+  public static class FailedStringToTableRowFn
+      extends DoFn<FailsafeElement<String, String>, TableRow> {
 
-    return attributeTableRows;
+    /**
+     * The formatter used to convert timestamps into a BigQuery compatible <a
+     * href="https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#timestamp-type">format</a>.
+     */
+    private static final DateTimeFormatter TIMESTAMP_FORMATTER =
+        DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
+
+    @ProcessElement
+    public void processElement(ProcessContext context) {
+      FailsafeElement<String, String> failsafeElement = context.element();
+      final String message = failsafeElement.getOriginalPayload();
+
+      // Format the timestamp for insertion
+      String timestamp =
+          TIMESTAMP_FORMATTER.print(context.timestamp().toDateTime(DateTimeZone.UTC));
+
+      // Build the table row
+      final TableRow failedRow =
+          new TableRow()
+              .set("timestamp", timestamp)
+              .set("errorMessage", failsafeElement.getErrorMessage())
+              .set("stacktrace", failsafeElement.getStacktrace());
+
+      // Only set the payload if it's populated on the message.
+      if (message != null) {
+        failedRow
+            .set("payloadString", message)
+            .set("payloadBytes", message.getBytes(StandardCharsets.UTF_8));
+      }
+
+      context.output(failedRow);
+    }
   }
 }

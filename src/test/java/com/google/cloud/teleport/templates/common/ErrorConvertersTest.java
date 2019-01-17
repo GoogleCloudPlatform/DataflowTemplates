@@ -19,12 +19,14 @@ package com.google.cloud.teleport.templates.common;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.templates.common.ErrorConverters.ErrorMessage;
 import com.google.cloud.teleport.templates.common.ErrorConverters.FailedPubsubMessageToTableRowFn;
+import com.google.cloud.teleport.templates.common.ErrorConverters.FailedStringToTableRowFn;
 import com.google.cloud.teleport.values.FailsafeElement;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableMap;
@@ -117,10 +119,7 @@ public class ErrorConvertersTest implements Serializable {
   @Test
   public void testErrorMessageSerialization() throws Exception {
     ErrorMessage errorMessage =
-        ErrorMessage.newBuilder()
-            .setMessage("Some Message")
-            .setData("data 234, 2")
-            .build();
+        ErrorMessage.newBuilder().setMessage("Some Message").setData("data 234, 2").build();
 
     String json = errorMessage.toJson();
     ErrorMessage dupErrorMessage = ErrorMessage.fromJson(json);
@@ -173,6 +172,59 @@ public class ErrorConvertersTest implements Serializable {
               assertThat(result.get("timestamp"), is(equalTo("2022-02-22 22:22:22.222000")));
               assertThat(result.get("attributes"), is(notNullValue()));
               assertThat(result.get("payloadString"), is(equalTo(payload)));
+              assertThat(result.get("payloadBytes"), is(notNullValue()));
+              assertThat(result.get("errorMessage"), is(equalTo(errorMessage)));
+              assertThat(result.get("stacktrace"), is(equalTo(stacktrace)));
+              return null;
+            });
+
+    // Execute pipeline
+    pipeline.run();
+  }
+
+  /**
+   * Tests that {@link ErrorConverters.FailedStringToTableRowFn} properly formats failed String
+   * objects into {@link TableRow} objects to save to BigQuery.
+   */
+  @Test
+  public void testFailedStringMessageToTableRowFn() {
+    // Test input
+    final String message = "Super secret";
+    final String errorMessage = "Failed to parse input JSON";
+    final String stacktrace = "Error at com.google.cloud.teleport.TextToBigQueryStreaming";
+
+    final FailsafeElement<String, String> input =
+        FailsafeElement.of(message, message)
+            .setErrorMessage(errorMessage)
+            .setStacktrace(stacktrace);
+
+    final Instant timestamp =
+        new DateTime(2022, 2, 22, 22, 22, 22, 222, DateTimeZone.UTC).toInstant();
+
+    // Register the coder for the pipeline. This prevents having to invoke .setCoder() on
+    // many transforms.
+    FailsafeElementCoder<String, String> coder =
+        FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
+
+    CoderRegistry coderRegistry = pipeline.getCoderRegistry();
+    coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
+
+    // Build pipeline
+    PCollection<TableRow> output =
+        pipeline
+            .apply(
+                "CreateInput",
+                Create.timestamped(TimestampedValue.of(input, timestamp)).withCoder(coder))
+            .apply("FailedRecordToTableRow", ParDo.of(new FailedStringToTableRowFn()));
+
+    // Assert
+    PAssert.that(output)
+        .satisfies(
+            collection -> {
+              final TableRow result = collection.iterator().next();
+              assertThat(result.get("timestamp"), is(equalTo("2022-02-22 22:22:22.222000")));
+              assertThat(result.get("attributes"), is(nullValue()));
+              assertThat(result.get("payloadString"), is(equalTo(message)));
               assertThat(result.get("payloadBytes"), is(notNullValue()));
               assertThat(result.get("errorMessage"), is(equalTo(errorMessage)));
               assertThat(result.get("stacktrace"), is(equalTo(stacktrace)));
