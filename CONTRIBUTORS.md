@@ -10,7 +10,7 @@
 *   Eric Anderson
 *   Jason Kuster
 *   Kevin Si
-*   Mairbek Khadikov
+*   Nithin Sujir
 *   Pramod Rao
 *   Ryan McDowell
 *   Sameer Abhyankar
