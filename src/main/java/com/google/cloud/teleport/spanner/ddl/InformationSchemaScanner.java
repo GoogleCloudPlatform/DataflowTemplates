@@ -152,7 +152,7 @@ public class InformationSchemaScanner {
         parent = null;
       }
       boolean unique = resultSet.getBoolean(3);
-      boolean nullFiltered = resultSet.getBoolean(3);
+      boolean nullFiltered = resultSet.getBoolean(4);
 
       Map<String, Index.Builder> tableIndexes =
           indexes.computeIfAbsent(tableName, k -> Maps.newTreeMap());

@@ -267,7 +267,8 @@ public class InformationSchemaScannerTest {
             + " ) PRIMARY KEY (`id` ASC)",
         " CREATE UNIQUE NULL_FILTERED INDEX `a_last_name_idx` ON "
             + " `Users`(`last_name` ASC) STORING (`first_name`)",
-        " CREATE INDEX `b_age_idx` ON `Users`(`age` DESC)"
+        " CREATE INDEX `b_age_idx` ON `Users`(`age` DESC)",
+        " CREATE UNIQUE INDEX `c_first_name_idx` ON `Users`(`first_name` ASC)"
     );
 
     DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
