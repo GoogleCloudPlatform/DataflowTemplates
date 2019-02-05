@@ -22,6 +22,7 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.common.annotations.VisibleForTesting;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Optional;
@@ -334,29 +335,28 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
     }
   }
 
+  @VisibleForTesting
   @SuppressWarnings("unchecked")
-  private Optional<List<Long>> readInt64Array(
+  static Optional<List<Long>> readInt64Array(
       GenericRecord record, Schema.Type avroType, String fieldName) {
+    Object fieldValue = record.get(fieldName);
+    if (fieldValue == null) {
+      return Optional.empty();
+    }
     switch (avroType) {
       case LONG:
+        return Optional.of((List<Long>) fieldValue);
       case INT:
         {
-          List<Object> value = (List<Object>) record.get(fieldName);
-          if (value == null) {
-            return Optional.empty();
-          }
+          List<Integer> value = (List<Integer>) fieldValue;
           return Optional.of(
-              value.stream().map(x -> x == null ? null : (long) x).collect(Collectors.toList()));
+              value.stream().map(x -> x == null ? null : new Long(x)).collect(Collectors.toList()));
         }
       case STRING:
         {
-          List<Utf8> value = (List<Utf8>) record.get(fieldName);
-          if (value == null) {
-            return Optional.empty();
-          }
+          List<Utf8> value = (List<Utf8>) fieldValue;
           return Optional.of(
-              value
-                  .stream()
+              value.stream()
                   .map(x -> x == null ? null : Long.parseLong(x.toString()))
                   .collect(Collectors.toList()));
         }

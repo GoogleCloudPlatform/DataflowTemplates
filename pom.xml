@@ -30,7 +30,7 @@
   <version>0.1-SNAPSHOT</version>
   <name>Google Cloud Teleport</name>
   <description>
-    Cloud teleport is a collection of Apache Beam pipelines for common tasks, like data movements
+    Cloud Teleport is a collection of Apache Beam pipelines for common tasks, like data movement
     across databases or batch transforms on random datasets.
   </description>
 
