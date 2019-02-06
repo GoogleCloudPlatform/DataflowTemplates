@@ -301,35 +301,42 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
     }
   }
 
+  @VisibleForTesting
   @SuppressWarnings("unchecked")
-  private Optional<List<Double>> readFloat64Array(
+  static Optional<List<Double>> readFloat64Array(
       GenericRecord record, Schema.Type avroType, String fieldName) {
+    Object fieldValue = record.get(fieldName);
+    if (fieldValue == null) {
+      return Optional.empty();
+    }
     switch (avroType) {
-      case FLOAT:
       case DOUBLE:
-      case LONG:
-      case INT:
-        {
-          // Here we rely on java type casting.
-          List<Object> value = (List) record.get(fieldName);
-          if (value == null) {
-            return Optional.empty();
-          }
+        return Optional.of((List<Double>) fieldValue);
+      case FLOAT: {
+        List<Float> value = (List<Float>) fieldValue;
+        return Optional.of(
+            value.stream().map(x -> x == null ? null : new Double(x)).collect(Collectors.toList()));
+      }
+      case INT: {
+        List<Integer> value = (List<Integer>) fieldValue;
+        return Optional.of(
+            value.stream().map(x -> x == null ? null : new Double(x)).collect(Collectors.toList()));
+      }
+      case LONG: {
+          List<Long> value = (List<Long>) record.get(fieldName);
           return Optional.of(
-              value.stream().map(x -> x == null ? null : (double) x).collect(Collectors.toList()));
-        }
-      case STRING:
-        {
+              value.stream()
+                  .map(x -> x == null ? null : new Double(x))
+                  .collect(Collectors.toList()));
+      }
+      case STRING: {
           List<Utf8> value = (List<Utf8>) record.get(fieldName);
-          if (value == null) {
-            return Optional.empty();
-          }
           return Optional.of(
               value
                   .stream()
                   .map(x -> x == null ? null : Double.parseDouble(x.toString()))
                   .collect(Collectors.toList()));
-        }
+      }
       default:
         throw new IllegalArgumentException("Cannot interpret " + avroType + " as FLOAT64");
     }
