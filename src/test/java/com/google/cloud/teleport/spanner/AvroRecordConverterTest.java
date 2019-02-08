@@ -16,6 +16,7 @@
 
 package com.google.cloud.teleport.spanner;
 
+import static org.apache.avro.Schema.Type.BOOLEAN;
 import static org.apache.avro.Schema.Type.DOUBLE;
 import static org.apache.avro.Schema.Type.FLOAT;
 import static org.apache.avro.Schema.Type.INT;
@@ -43,6 +44,7 @@ public class AvroRecordConverterTest {
   private static List<Double> doubleArray = Arrays.asList(1d, 2d, 3d, null);
   private static List<Utf8> stringArray =
       Arrays.asList(new Utf8("1"), new Utf8("2"), new Utf8("3"), null);
+  private static List<Boolean> booleanArray = Arrays.asList(true, false, null);
 
   @Test
   public void integerArray() {
@@ -62,7 +64,8 @@ public class AvroRecordConverterTest {
     // Null field
     GenericRecord avroRecord =
         new GenericRecordBuilder(schema).set("id", 0).set("arrayofint", null).build();
-    Optional<List<Long>> result = AvroRecordConverter.readInt64Array(avroRecord, INT, "arrayofint");
+    Optional<List<Long>> result =
+        AvroRecordConverter.readInt64Array(avroRecord, LONG, "arrayofint");
     assertFalse(result.isPresent());
 
     // Convert from int to Int64.
@@ -99,7 +102,7 @@ public class AvroRecordConverterTest {
     // Null field
     GenericRecord avroRecord = new GenericRecordBuilder(schema).set("id", 0).build();
     Optional<List<Double>> result =
-        AvroRecordConverter.readFloat64Array(avroRecord, FLOAT, "arrayoffloat");
+        AvroRecordConverter.readFloat64Array(avroRecord, DOUBLE, "arrayoffloat");
     assertFalse(result.isPresent());
 
     // Convert from float to Float64.
@@ -131,5 +134,60 @@ public class AvroRecordConverterTest {
         new GenericRecordBuilder(schema).set("id", 0).set("arrayoffloat", stringArray).build();
     result = AvroRecordConverter.readFloat64Array(avroRecord, STRING, "arrayoffloat");
     assertArrayEquals(doubleArray.toArray(), result.get().toArray());
+  }
+
+  @Test
+  public void stringArray() {
+    String colName = "arrayofstring";
+    Schema schema =
+        SchemaBuilder.record("record")
+            .fields()
+            .requiredLong("id")
+            .name(colName)
+            .type()
+            .optional()
+            .array()
+            .items()
+            .stringType()
+            .endRecord();
+
+    // Null field
+    GenericRecord avroRecord = new GenericRecordBuilder(schema).set("id", 0).build();
+    Optional<List<String>> result =
+        AvroRecordConverter.readStringArray(avroRecord, STRING, colName);
+    assertFalse(result.isPresent());
+
+    // Convert from float to String.
+    String[] expectedFloatStringArray = {"1.0", "2.0", "3.0", null};
+    avroRecord = new GenericRecordBuilder(schema).set("id", 0).set(colName, floatArray).build();
+    result = AvroRecordConverter.readStringArray(avroRecord, FLOAT, colName);
+    assertArrayEquals(expectedFloatStringArray, result.get().toArray());
+
+    // Convert from double to String.
+    avroRecord = new GenericRecordBuilder(schema).set("id", 0).set(colName, doubleArray).build();
+    result = AvroRecordConverter.readStringArray(avroRecord, DOUBLE, colName);
+    assertArrayEquals(expectedFloatStringArray, result.get().toArray());
+
+    // Convert from Utf8 to String.
+    String[] expectedStringArray = {"1", "2", "3", null};
+    avroRecord = new GenericRecordBuilder(schema).set("id", 0).set(colName, stringArray).build();
+    result = AvroRecordConverter.readStringArray(avroRecord, STRING, colName);
+    assertArrayEquals(expectedStringArray, result.get().toArray());
+
+    // Convert from int to String.
+    avroRecord = new GenericRecordBuilder(schema).set("id", 0).set(colName, intArray).build();
+    result = AvroRecordConverter.readStringArray(avroRecord, INT, colName);
+    assertArrayEquals(expectedStringArray, result.get().toArray());
+
+    // Convert from long to String.
+    avroRecord = new GenericRecordBuilder(schema).set("id", 0).set(colName, longArray).build();
+    result = AvroRecordConverter.readStringArray(avroRecord, LONG, colName);
+    assertArrayEquals(expectedStringArray, result.get().toArray());
+
+    // Convert from boolean to String.
+    String[] expectedBooleanArray = {"true", "false", null};
+    avroRecord = new GenericRecordBuilder(schema).set("id", 0).set(colName, booleanArray).build();
+    result = AvroRecordConverter.readStringArray(avroRecord, BOOLEAN, colName);
+    assertArrayEquals(expectedBooleanArray, result.get().toArray());
   }
 }

@@ -263,39 +263,27 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
     }
   }
 
+  @VisibleForTesting
   @SuppressWarnings("unchecked")
-  private Optional<List<String>> readStringArray(
+  static Optional<List<String>> readStringArray(
       GenericRecord record, Schema.Type avroType, String fieldName) {
-
+    List<Object> fieldValue = (List<Object>) record.get(fieldName);
+    if (fieldValue == null) {
+      return Optional.empty();
+    }
     switch (avroType) {
       case BOOLEAN:
       case FLOAT:
       case DOUBLE:
       case LONG:
       case INT:
-        {
-          List<Object> value = (List<Object>) record.get(fieldName);
-          if (value == null) {
-            return Optional.empty();
-          }
-          return Optional.of(
-              value
-                  .stream()
-                  .map(x -> x == null ? null : String.valueOf(x))
-                  .collect(Collectors.toList()));
-        }
       case STRING:
-        {
-          List<Utf8> value = (List<Utf8>) record.get(fieldName);
-          if (value == null) {
-            return Optional.empty();
-          }
-          return Optional.of(
-              value
-                  .stream()
-                  .map(x -> x == null ? null : x.toString())
-                  .collect(Collectors.toList()));
-        }
+        // This relies on the .toString() method present in all classes.
+        // It is not necessary to know the exact type of x for that.
+        return Optional.of(
+            fieldValue.stream()
+                .map(x -> x == null ? null : String.valueOf(x))
+                .collect(Collectors.toList()));
       default:
         throw new IllegalArgumentException("Cannot interpret " + avroType + " as STRING");
     }
@@ -310,23 +298,31 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
       return Optional.empty();
     }
     switch (avroType) {
+      // For type check at compile time, the type of x has to be specified (as cast) so that
+      // convertability to double can be verified.
       case DOUBLE:
         return Optional.of((List<Double>) fieldValue);
-      case FLOAT: {
-        List<Float> value = (List<Float>) fieldValue;
-        return Optional.of(
-            value.stream().map(x -> x == null ? null : new Double(x)).collect(Collectors.toList()));
-      }
-      case INT: {
-        List<Integer> value = (List<Integer>) fieldValue;
-        return Optional.of(
-            value.stream().map(x -> x == null ? null : new Double(x)).collect(Collectors.toList()));
-      }
+      case FLOAT:
+        {
+          List<Float> value = (List<Float>) fieldValue;
+          return Optional.of(
+              value.stream()
+                  .map(x -> x == null ? null : Double.valueOf(x))
+                  .collect(Collectors.toList()));
+        }
+      case INT:
+        {
+          List<Integer> value = (List<Integer>) fieldValue;
+          return Optional.of(
+              value.stream()
+                  .map(x -> x == null ? null : Double.valueOf(x))
+                  .collect(Collectors.toList()));
+        }
       case LONG: {
           List<Long> value = (List<Long>) record.get(fieldName);
           return Optional.of(
               value.stream()
-                  .map(x -> x == null ? null : new Double(x))
+                  .map(x -> x == null ? null : Double.valueOf(x))
                   .collect(Collectors.toList()));
       }
       case STRING: {
@@ -334,7 +330,7 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
           return Optional.of(
               value
                   .stream()
-                  .map(x -> x == null ? null : Double.parseDouble(x.toString()))
+                  .map(x -> x == null ? null : Double.valueOf(x.toString()))
                   .collect(Collectors.toList()));
       }
       default:
@@ -351,22 +347,24 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
       return Optional.empty();
     }
     switch (avroType) {
+      // For type check at compile time, the type of x has to be specified (as cast) so that
+      // convertability to long can be verified.
       case LONG:
         return Optional.of((List<Long>) fieldValue);
-      case INT:
-        {
+      case INT: {
           List<Integer> value = (List<Integer>) fieldValue;
           return Optional.of(
-              value.stream().map(x -> x == null ? null : new Long(x)).collect(Collectors.toList()));
-        }
-      case STRING:
-        {
+              value.stream()
+                  .map(x -> x == null ? null : Long.valueOf(x))
+                  .collect(Collectors.toList()));
+      }
+      case STRING: {
           List<Utf8> value = (List<Utf8>) fieldValue;
           return Optional.of(
               value.stream()
-                  .map(x -> x == null ? null : Long.parseLong(x.toString()))
+                  .map(x -> x == null ? null : Long.valueOf(x.toString()))
                   .collect(Collectors.toList()));
-        }
+      }
       default:
         throw new IllegalArgumentException("Cannot interpret " + avroType + " as INT64");
     }
