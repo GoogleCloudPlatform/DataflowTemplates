@@ -190,4 +190,38 @@ public class AvroRecordConverterTest {
     result = AvroRecordConverter.readStringArray(avroRecord, BOOLEAN, colName);
     assertArrayEquals(expectedBooleanArray, result.get().toArray());
   }
+
+  @Test
+  public void booleanArray() {
+    String colName = "arrayofboolean";
+    Schema schema =
+        SchemaBuilder.record("record")
+            .fields()
+            .requiredLong("id")
+            .name(colName)
+            .type()
+            .optional()
+            .array()
+            .items()
+            .booleanType()
+            .endRecord();
+
+    // Null field
+    GenericRecord avroRecord = new GenericRecordBuilder(schema).set("id", 0).build();
+    Optional<List<Boolean>> result =
+        AvroRecordConverter.readBoolArray(avroRecord, BOOLEAN, colName);
+    assertFalse(result.isPresent());
+
+    // Convert from boolean to Boolean.
+    avroRecord = new GenericRecordBuilder(schema).set("id", 0).set(colName, booleanArray).build();
+    result = AvroRecordConverter.readBoolArray(avroRecord, BOOLEAN, colName);
+    assertArrayEquals(booleanArray.toArray(), result.get().toArray());
+
+    // Convert from String to boolean.
+    List<Utf8> stringBooleanArray = Arrays.asList(new Utf8("true"), new Utf8("false"), null);
+    avroRecord =
+        new GenericRecordBuilder(schema).set("id", 0).set(colName, stringBooleanArray).build();
+    result = AvroRecordConverter.readBoolArray(avroRecord, STRING, colName);
+    assertArrayEquals(booleanArray.toArray(), result.get().toArray());
+  }
 }

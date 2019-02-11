@@ -370,8 +370,9 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
     }
   }
 
+  @VisibleForTesting
   @SuppressWarnings("unchecked")
-  private Optional<List<Boolean>> readBoolArray(
+  static Optional<List<Boolean>> readBoolArray(
       GenericRecord record, Schema.Type avroType, String fieldName) {
     switch (avroType) {
       case BOOLEAN:
@@ -385,7 +386,7 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
           List<Boolean> result =
               value
                   .stream()
-                  .map(x -> x == null ? null : Boolean.parseBoolean(x.toString()))
+                  .map(x -> x == null ? null : Boolean.valueOf(x.toString()))
                   .collect(Collectors.toList());
           return Optional.of(result);
         }
