@@ -45,13 +45,9 @@ import java.util.List;
 import java.util.Set;
 import org.apache.avro.Schema;
 import org.apache.avro.file.DataFileConstants;
-import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.BinaryDecoder;
 import org.apache.avro.io.DecoderFactory;
-import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.extensions.gcp.options.GcsOptions;
-import org.apache.beam.sdk.io.AvroSource;
-import org.apache.beam.sdk.io.BoundedSource;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;
@@ -71,8 +67,6 @@ import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.Reshuffle;
-import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.transforms.Wait;
 import org.apache.beam.sdk.util.gcsfs.GcsPath;
@@ -204,16 +198,15 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           Set<String> tables = levels.get(depth);
                           for (String table : tables) {
                             for (String file : allFiles.get(table)) {
-                              c.output(KV.of(table, file));
+                              c.output(KV.of(file, table));
                             }
                           }
                         }
                       })
                   .withSideInputs(levelsView));
       PCollection<Mutation> mutations =
-          levelFiles
-              .apply("Reshuffle files " + depth, Reshuffle.viaRandomKey())
-              .apply("Avro files as mutations " + depth, new AvroAsMutations(ddlView));
+          levelFiles.apply(
+              "Avro files as mutations " + depth, new AvroTableFileAsMutations(ddlView));
 
       SpannerWriteResult result =
           mutations
@@ -603,48 +596,6 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
             actualHash);
         c.output(KV.of(table, filePath.toString()));
       }
-    }
-  }
-
-  /** A transform that converts Avro records to Cloud Spanner mutations. */
-  public static class AvroAsMutations
-      extends PTransform<PCollection<KV<String, String>>, PCollection<Mutation>> {
-
-    private final PCollectionView<Ddl> ddlView;
-
-    public AvroAsMutations(PCollectionView<Ddl> ddlView) {
-      this.ddlView = ddlView;
-    }
-
-    @Override
-    public PCollection<Mutation> expand(PCollection<KV<String, String>> input) {
-      return input.apply(
-          ParDo.of(
-                  new DoFn<KV<String, String>, Mutation>() {
-
-                    @ProcessElement
-                    public void processElement(ProcessContext c) {
-                      KV<String, String> kv = c.element();
-                      Ddl ddl = c.sideInput(ddlView);
-                      String tableName = kv.getKey();
-                      Table table = ddl.table(tableName);
-                      SerializableFunction<GenericRecord, Mutation> parseFn =
-                          new AvroRecordConverter(table);
-                      AvroSource<Mutation> source =
-                          AvroSource.from(kv.getValue())
-                              .withParseFn(parseFn, SerializableCoder.of(Mutation.class));
-                      try {
-                        BoundedSource.BoundedReader<Mutation> reader =
-                            source.createReader(c.getPipelineOptions());
-                        for (boolean more = reader.start(); more; more = reader.advance()) {
-                          c.output(reader.getCurrent());
-                        }
-                      } catch (IOException e) {
-                        throw new RuntimeException(e);
-                      }
-                    }
-                  })
-              .withSideInputs(ddlView));
     }
   }
 }
