@@ -25,9 +25,13 @@ import static org.apache.avro.Schema.Type.STRING;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertFalse;
 
+import com.google.cloud.Timestamp;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericRecord;
@@ -48,11 +52,12 @@ public class AvroRecordConverterTest {
 
   @Test
   public void integerArray() {
+    String colName = "arrayofint";
     Schema schema =
         SchemaBuilder.record("record")
             .fields()
             .requiredLong("id")
-            .name("arrayofint")
+            .name(colName)
             .type()
             .nullable()
             .array()
@@ -63,35 +68,34 @@ public class AvroRecordConverterTest {
 
     // Null field
     GenericRecord avroRecord =
-        new GenericRecordBuilder(schema).set("id", 0).set("arrayofint", null).build();
-    Optional<List<Long>> result =
-        AvroRecordConverter.readInt64Array(avroRecord, LONG, "arrayofint");
+        new GenericRecordBuilder(schema).set("id", 0).set(colName, null).build();
+    Optional<List<Long>> result = AvroRecordConverter.readInt64Array(avroRecord, LONG, colName);
     assertFalse(result.isPresent());
 
     // Convert from int to Int64.
-    avroRecord = new GenericRecordBuilder(schema).set("id", 0).set("arrayofint", intArray).build();
-    result = AvroRecordConverter.readInt64Array(avroRecord, INT, "arrayofint");
+    avroRecord = new GenericRecordBuilder(schema).set("id", 0).set(colName, intArray).build();
+    result = AvroRecordConverter.readInt64Array(avroRecord, INT, colName);
     assertArrayEquals(longArray.toArray(), result.get().toArray());
 
     // Convert from long to Int64.
-    avroRecord = new GenericRecordBuilder(schema).set("id", 0).set("arrayofint", longArray).build();
-    result = AvroRecordConverter.readInt64Array(avroRecord, LONG, "arrayofint");
+    avroRecord = new GenericRecordBuilder(schema).set("id", 0).set(colName, longArray).build();
+    result = AvroRecordConverter.readInt64Array(avroRecord, LONG, colName);
     assertArrayEquals(longArray.toArray(), result.get().toArray());
 
     // Convert from String to Int64.
-    avroRecord =
-        new GenericRecordBuilder(schema).set("id", 0).set("arrayofint", stringArray).build();
-    result = AvroRecordConverter.readInt64Array(avroRecord, STRING, "arrayofint");
+    avroRecord = new GenericRecordBuilder(schema).set("id", 0).set(colName, stringArray).build();
+    result = AvroRecordConverter.readInt64Array(avroRecord, STRING, colName);
     assertArrayEquals(longArray.toArray(), result.get().toArray());
   }
 
   @Test
   public void floatArray() {
+    String colName = "arrayoffloat";
     Schema schema =
         SchemaBuilder.record("record")
             .fields()
             .requiredLong("id")
-            .name("arrayoffloat")
+            .name(colName)
             .type()
             .optional()
             .array()
@@ -102,37 +106,32 @@ public class AvroRecordConverterTest {
     // Null field
     GenericRecord avroRecord = new GenericRecordBuilder(schema).set("id", 0).build();
     Optional<List<Double>> result =
-        AvroRecordConverter.readFloat64Array(avroRecord, DOUBLE, "arrayoffloat");
+        AvroRecordConverter.readFloat64Array(avroRecord, DOUBLE, colName);
     assertFalse(result.isPresent());
 
     // Convert from float to Float64.
-    avroRecord =
-        new GenericRecordBuilder(schema).set("id", 0).set("arrayoffloat", floatArray).build();
-    result = AvroRecordConverter.readFloat64Array(avroRecord, FLOAT, "arrayoffloat");
+    avroRecord = new GenericRecordBuilder(schema).set("id", 0).set(colName, floatArray).build();
+    result = AvroRecordConverter.readFloat64Array(avroRecord, FLOAT, colName);
     assertArrayEquals(doubleArray.toArray(), result.get().toArray());
 
     // Convert from double to Float64.
-    avroRecord =
-        new GenericRecordBuilder(schema).set("id", 0).set("arrayoffloat", doubleArray).build();
-    result = AvroRecordConverter.readFloat64Array(avroRecord, DOUBLE, "arrayoffloat");
+    avroRecord = new GenericRecordBuilder(schema).set("id", 0).set(colName, doubleArray).build();
+    result = AvroRecordConverter.readFloat64Array(avroRecord, DOUBLE, colName);
     assertArrayEquals(doubleArray.toArray(), result.get().toArray());
 
     // Convert from int to Float64.
-    avroRecord =
-        new GenericRecordBuilder(schema).set("id", 0).set("arrayoffloat", intArray).build();
-    result = AvroRecordConverter.readFloat64Array(avroRecord, INT, "arrayoffloat");
+    avroRecord = new GenericRecordBuilder(schema).set("id", 0).set(colName, intArray).build();
+    result = AvroRecordConverter.readFloat64Array(avroRecord, INT, colName);
     assertArrayEquals(doubleArray.toArray(), result.get().toArray());
 
     // Convert from long to Float64.
-    avroRecord =
-        new GenericRecordBuilder(schema).set("id", 0).set("arrayoffloat", longArray).build();
-    result = AvroRecordConverter.readFloat64Array(avroRecord, LONG, "arrayoffloat");
+    avroRecord = new GenericRecordBuilder(schema).set("id", 0).set(colName, longArray).build();
+    result = AvroRecordConverter.readFloat64Array(avroRecord, LONG, colName);
     assertArrayEquals(doubleArray.toArray(), result.get().toArray());
 
     // Convert from String to Float64.
-    avroRecord =
-        new GenericRecordBuilder(schema).set("id", 0).set("arrayoffloat", stringArray).build();
-    result = AvroRecordConverter.readFloat64Array(avroRecord, STRING, "arrayoffloat");
+    avroRecord = new GenericRecordBuilder(schema).set("id", 0).set(colName, stringArray).build();
+    result = AvroRecordConverter.readFloat64Array(avroRecord, STRING, colName);
     assertArrayEquals(doubleArray.toArray(), result.get().toArray());
   }
 
@@ -223,5 +222,69 @@ public class AvroRecordConverterTest {
         new GenericRecordBuilder(schema).set("id", 0).set(colName, stringBooleanArray).build();
     result = AvroRecordConverter.readBoolArray(avroRecord, STRING, colName);
     assertArrayEquals(booleanArray.toArray(), result.get().toArray());
+  }
+
+  @Test
+  public void timestampArray() {
+    String colName = "arrayoftimestamp";
+    Schema schema =
+        SchemaBuilder.record("record")
+            .fields()
+            .requiredLong("id")
+            .name(colName)
+            .type()
+            .optional()
+            .array()
+            .items()
+            .stringType()
+            .endRecord();
+
+    // Null field
+    GenericRecord avroRecord = new GenericRecordBuilder(schema).set("id", 0).build();
+    Optional<List<Timestamp>> result =
+        AvroRecordConverter.readTimestampArray(avroRecord, STRING, null, colName);
+    assertFalse(result.isPresent());
+
+    // Strings as Timestamps.
+    String[] timestampStrings = {"2019-02-13T01:00:00Z", "1969-07-20T20:17:00Z", null};
+    List<Utf8> utf8Timestamps =
+        Stream.of(timestampStrings)
+            .map(x -> x == null ? null : new Utf8(x))
+            .collect(Collectors.toList());
+    Timestamp[] expectedTimestamps =
+        Stream.of(timestampStrings)
+            .map(x -> x == null ? null : Timestamp.parseTimestamp(x))
+            .toArray(Timestamp[]::new);
+    avroRecord = new GenericRecordBuilder(schema).set("id", 0).set(colName, utf8Timestamps).build();
+    result = AvroRecordConverter.readTimestampArray(avroRecord, STRING, null, colName);
+    assertArrayEquals(expectedTimestamps, result.get().toArray());
+
+    // Longs as microsecond Timestamps.
+    List<Long> longMicroTimestamps =
+        Stream.of(expectedTimestamps)
+            .map(x -> x == null ? null : x.getSeconds() * 1000000L + x.getNanos() / 1000)
+            .collect(Collectors.toList());
+    avroRecord =
+        new GenericRecordBuilder(schema).set("id", 0).set(colName, longMicroTimestamps).build();
+    result = AvroRecordConverter.readTimestampArray(avroRecord, LONG, null, colName);
+    assertArrayEquals(expectedTimestamps, result.get().toArray());
+
+    // With logical type
+    result =
+        AvroRecordConverter.readTimestampArray(
+            avroRecord, LONG, LogicalTypes.timestampMicros(), colName);
+    assertArrayEquals(expectedTimestamps, result.get().toArray());
+
+    // Longs as millisecond Timestamps.
+    List<Long> longMilliTimestamps =
+        Stream.of(expectedTimestamps)
+            .map(x -> x == null ? null : x.getSeconds() * 1000L + x.getNanos() / 1000000L)
+            .collect(Collectors.toList());
+    avroRecord =
+        new GenericRecordBuilder(schema).set("id", 0).set(colName, longMilliTimestamps).build();
+    result =
+        AvroRecordConverter.readTimestampArray(
+            avroRecord, LONG, LogicalTypes.timestampMillis(), colName);
+    assertArrayEquals(expectedTimestamps, result.get().toArray());
   }
 }

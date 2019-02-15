@@ -215,43 +215,40 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
     }
   }
 
+  @VisibleForTesting
   @SuppressWarnings("unchecked")
-  private Optional<List<Timestamp>> readTimestampArray(
+  static Optional<List<Timestamp>> readTimestampArray(
       GenericRecord record, Schema.Type avroType, LogicalType logicalType, String fieldName) {
+    Object fieldValue = record.get(fieldName);
+    if (fieldValue == null) {
+      return Optional.empty();
+    }
     switch (avroType) {
       case LONG:
         {
-          List<Long> value = (List<Long>) record.get(fieldName);
-          if (value == null) {
-            return Optional.empty();
-          }
-          if (LogicalTypes.timestampMillis().equals(logicalType)) {
-            return Optional.of(
-                value
-                    .stream()
-                    .map(x -> x == null ? null : Timestamp.ofTimeMicroseconds(1000L * x))
-                    .collect(Collectors.toList()));
-          }
-          if (LogicalTypes.timestampMicros().equals(logicalType)) {
+          List<Long> value = (List<Long>) fieldValue;
+          // Default to microseconds
+          if (logicalType == null || LogicalTypes.timestampMicros().equals(logicalType)) {
             return Optional.of(
                 value
                     .stream()
                     .map(x -> x == null ? null : Timestamp.ofTimeMicroseconds(x))
                     .collect(Collectors.toList()));
+          } else if (LogicalTypes.timestampMillis().equals(logicalType)) {
+            return Optional.of(
+                value
+                    .stream()
+                    .map(x -> x == null ? null : Timestamp.ofTimeMicroseconds(1000L * x))
+                    .collect(Collectors.toList()));
+          } else {
+            throw new IllegalArgumentException(
+                String.format(
+                    "Cannot interpret Avrotype LONG LogicalType %s as TIMESTAMP", logicalType));
           }
-          // Default to microseconds
-          return Optional.of(
-              value
-                  .stream()
-                  .map(x -> x == null ? null : Timestamp.ofTimeMicroseconds(x))
-                  .collect(Collectors.toList()));
         }
       case STRING:
         {
-          List<Utf8> value = (List<Utf8>) record.get(fieldName);
-          if (value == null) {
-            return Optional.empty();
-          }
+          List<Utf8> value = (List<Utf8>) fieldValue;
           return Optional.of(
               value
                   .stream()
