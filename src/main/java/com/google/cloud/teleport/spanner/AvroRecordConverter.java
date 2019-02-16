@@ -91,7 +91,9 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
               .to(readTimestamp(record, avroType, logicalType, fieldName).orElse(null));
           break;
         case DATE:
-          builder.set(column.name()).to(readDate(record, avroType, fieldName).orElse(null));
+          builder
+              .set(column.name())
+              .to(readDate(record, avroType, logicalType, fieldName).orElse(null));
           break;
         case ARRAY:
           {
@@ -392,8 +394,19 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
     }
   }
 
-  private Optional<Date> readDate(GenericRecord record, Schema.Type avroType, String fieldName) {
+  private Optional<Date> readDate(
+      GenericRecord record, Schema.Type avroType, LogicalType logicalType, String fieldName) {
     switch (avroType) {
+      case INT:
+        if (logicalType == null || !LogicalTypes.date().equals(logicalType)) {
+          throw new IllegalArgumentException(
+              "Cannot interpret Avrotype INT Logicaltype " + logicalType + " as DATE");
+        }
+        // Avro Date is number of days since Jan 1, 1970.
+        // Have to convert to Java Date first before creating google.cloud.core.Date
+        return Optional.ofNullable((Integer) record.get(fieldName))
+            .map(x -> new java.util.Date((long) x * 24L * 3600L * 1000L))
+            .map(Date::fromJavaUtilDate);
       case STRING:
         return Optional.ofNullable((Utf8) record.get(fieldName))
             .map(Utf8::toString)

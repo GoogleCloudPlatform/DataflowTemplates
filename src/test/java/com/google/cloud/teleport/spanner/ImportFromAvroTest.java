@@ -31,6 +31,7 @@ import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.file.DataFileWriter;
@@ -317,31 +318,41 @@ public class ImportFromAvroTest {
 
   @Test
   public void dates() throws IOException {
-    SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("dates");
-    SchemaBuilder.FieldAssembler<Schema> fieldAssembler = record.fields();
-
-    fieldAssembler
-        // Primary key.
-        .requiredLong("id")
-        // String columns
-        .optionalString("optional_string")
-        .requiredString("required_string");
-    Schema schema = fieldAssembler.endRecord();
+    // Unfortunately Avro SchemaBuilder has a limitation of not allowing nullable LogicalTypes.
+    Schema dateType = LogicalTypes.date().addToSchema(Schema.create(Schema.Type.INT));
+    Schema schema =
+        SchemaBuilder.record("dates")
+            .fields()
+            // Primary key.
+            .requiredLong("id")
+            // String columns
+            .optionalString("optional_string")
+            .requiredString("required_string")
+            .name("required_int").type(dateType).noDefault()
+            .endRecord();
     String spannerSchema =
         "CREATE TABLE `AvroTable` (" + "`id`                                    INT64 NOT NULL,"
             + "`optional_string`                       DATE,"
             + "`required_string`                       DATE NOT NULL,"
+            + "`required_int`                          DATE NOT NULL,"
             + ") PRIMARY KEY (`id`)";
 
-    runTest(schema, spannerSchema, Arrays.asList(new GenericRecordBuilder(schema)
-        .set("id", 1L)
-        .set("optional_string", "2018-03-04")
-        .set("required_string", "2018-04-04")
-        .build(), new GenericRecordBuilder(schema)
-        .set("id", 2L)
-        .set("optional_string", "2017-03-04")
-        .set("required_string", "2018-01-02")
-        .build()));
+    runTest(
+        schema,
+        spannerSchema,
+        Arrays.asList(
+            new GenericRecordBuilder(schema)
+                .set("id", 1L)
+                .set("optional_string", "2018-03-04")
+                .set("required_string", "2018-04-04")
+                .set("required_int", 2)
+                .build(),
+            new GenericRecordBuilder(schema)
+                .set("id", 2L)
+                .set("optional_string", null)
+                .set("required_string", "2018-01-02")
+                .set("required_int", 3)
+                .build()));
   }
 
   private void runTest(Schema schema, String spannerSchema, List<GenericRecord> records)
