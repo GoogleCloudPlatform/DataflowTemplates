@@ -212,7 +212,8 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
           mutations
               .apply("Wait for previous depth " + depth, Wait.on(previousComputation))
               .apply(
-                  "Write mutations " + depth, SpannerIO.write().withSpannerConfig(spannerConfig));
+                  "Write mutations " + depth,
+                  SpannerIO.write().withSchemaReadySignal(ddl).withSpannerConfig(spannerConfig));
       previousComputation = result.getOutput();
     }
     ddl.apply(Wait.on(previousComputation))
