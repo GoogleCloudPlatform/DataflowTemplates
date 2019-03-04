@@ -81,6 +81,7 @@
     <autovalue.annotations.version>1.6</autovalue.annotations.version>
     <autovalue.version>1.6.2</autovalue.version>
     <excluded.spanner.tests>com.google.cloud.teleport.spanner.IntegrationTest</excluded.spanner.tests>
+  	<dlp.version>0.79.0-beta</dlp.version>
   </properties>
 
   <dependencies>
@@ -344,6 +345,17 @@
       <version>${junit.version}</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-dlp</artifactId>
+      <version>${dlp.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>io.grpc</groupId>
+          <artifactId>grpc-core</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
   </dependencies>
 
   <build>
@@ -423,6 +435,14 @@
               <!-- Ignore runtime-only dependencies in analysis -->
               <ignoreNonCompile>true</ignoreNonCompile>
               <failOnWarning>true</failOnWarning>
+              <ignoredUsedUndeclaredDependencies>
+                <ignoredUsedUndeclaredDependency>
+                  com.google.api.grpc:proto-google-cloud-dlp-v2
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  org.apache.beam:beam-model-pipeline
+                </ignoredUsedUndeclaredDependency>
+             </ignoredUsedUndeclaredDependencies>
             </configuration>
           </execution>
         </executions>
