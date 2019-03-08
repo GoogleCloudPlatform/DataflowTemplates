@@ -217,60 +217,8 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
       previousComputation = result.getOutput();
     }
     ddl.apply(Wait.on(previousComputation))
-        .apply("Create Indexes", new CreateIndexes(spannerConfig, waitForIndexes));
+        .apply("Create Indexes", new CreateIndexesTransform(spannerConfig, waitForIndexes));
     return PDone.in(begin.getPipeline());
-  }
-
-  private static class CreateIndexes extends PTransform<PCollection<Ddl>, PCollection<Void>> {
-
-    private final SpannerConfig spannerConfig;
-    private final ValueProvider<Boolean> waitForIndexes;
-
-    private CreateIndexes(SpannerConfig spannerConfig, ValueProvider<Boolean> waitForIndexes) {
-      this.spannerConfig = spannerConfig;
-      this.waitForIndexes = waitForIndexes;
-    }
-
-    @Override
-    public PCollection<Void> expand(PCollection<Ddl> input) {
-      return input.apply(
-          "Create Indexes",
-          ParDo.of(
-              new DoFn<Ddl, Void>() {
-
-                private transient SpannerAccessor spannerAccessor;
-
-                @Setup
-                public void setup() {
-                  spannerAccessor = spannerConfig.connectToSpanner();
-                }
-
-                @Teardown
-                public void teardown() {
-                  spannerAccessor.close();
-                }
-
-                @ProcessElement
-                public void processElement(ProcessContext c) {
-                  Ddl ddl = c.element();
-                  DatabaseAdminClient databaseAdminClient =
-                      spannerAccessor.getDatabaseAdminClient();
-                  List<String> createIndexStatements = ddl.createIndexStatements();
-                  if (!createIndexStatements.isEmpty()) {
-                    // This just kicks off the index creation, it does not wait for it to complete.
-                    Operation<Void, UpdateDatabaseDdlMetadata> op =
-                        databaseAdminClient.updateDatabaseDdl(
-                            spannerConfig.getInstanceId().get(),
-                            spannerConfig.getDatabaseId().get(),
-                            createIndexStatements,
-                            null);
-                    if (waitForIndexes.get()) {
-                      op.waitFor();
-                    }
-                  }
-                }
-              }));
-    }
   }
 
   /** Read contents of the top-level manifest file. */
