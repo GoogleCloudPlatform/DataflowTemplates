@@ -1,6 +1,3 @@
-// INTERNAL USE ONLY! This pipeline is for internal usage for the time being.
-// TODO: Please remove this comment when this is ready for public launch.
-
 /*
  * Copyright (C) 2019 Google Inc.
  *
@@ -30,7 +27,10 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.options.ValueProvider;
 
-/** Text files to Cloud Spanner Import pipeline. */
+/**
+ * Text files to Cloud Spanner Import pipeline. INTERNAL USE ONLY! This pipeline is for internal
+ * usage for the time being. TODO: Please remove this comment when this is ready for public launch.
+ */
 public class TextImportPipeline {
 
   /** Options for {@link ImportPipeline}. */
