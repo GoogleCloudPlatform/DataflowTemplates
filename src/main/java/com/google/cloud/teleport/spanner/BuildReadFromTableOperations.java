@@ -16,6 +16,7 @@
 
 package com.google.cloud.teleport.spanner;
 
+import com.google.cloud.spanner.PartitionOptions;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import java.util.stream.Collectors;
@@ -28,6 +29,10 @@ import org.apache.beam.sdk.values.PCollection;
 /** Given a Cloud Spanner {@link Ddl} generates a "read all" operation per table. */
 class BuildReadFromTableOperations
     extends PTransform<PCollection<Ddl>, PCollection<ReadOperation>> {
+
+  // The number of read partitions have to be capped so that in case the Partition token is large
+  // (which can happen with a table with a lot of columns), the PartitionResponse size is bounded.
+  private static final int maxPartitions = 1000;
 
   @Override
   public PCollection<ReadOperation> expand(PCollection<Ddl> ddl) {
@@ -44,6 +49,10 @@ class BuildReadFromTableOperations
                       table.columns().stream()
                           .map(x -> "t.`" + x.name() + "`")
                           .collect(Collectors.joining(","));
+
+                  PartitionOptions partitionOptions =
+                      PartitionOptions.newBuilder().setMaxPartitions(maxPartitions).build();
+
                   // Also have to export table name to be able to identify which row belongs to
                   // which table.
                   ReadOperation read =
@@ -51,7 +60,8 @@ class BuildReadFromTableOperations
                           .withQuery(
                               String.format(
                                   "SELECT \"%s\" AS _spanner_table, %s FROM `%s` AS t",
-                                  table.name(), columnsListAsString, table.name()));
+                                  table.name(), columnsListAsString, table.name()))
+                          .withPartitionOptions(partitionOptions);
                   c.output(read);
                 }
               }
