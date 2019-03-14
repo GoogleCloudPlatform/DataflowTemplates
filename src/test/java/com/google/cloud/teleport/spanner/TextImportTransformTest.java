@@ -167,10 +167,43 @@ public class TextImportTransformTest {
     pipeline.run();
   }
 
+  @Test(expected = PipelineExecutionException.class)
+  public void readImportManifestInvalidTable() throws Exception {
+    Path f11 = Files.createTempFile("table1-file", "1");
+
+    Path manifestFile = Files.createTempFile("import-manifest", ".json");
+    Charset charset = Charset.forName("UTF-8");
+    try (BufferedWriter writer = Files.newBufferedWriter(manifestFile, charset)) {
+      // An invalid json string (missing the ending close "}").
+      String jsonString =
+          String.format(
+              "{\"tables\": ["
+                  + "{\"table_name\": \"NON_EXIST_TABLE\","
+                  + "\"file_patterns\":[\"%s\"]}"
+                  + "]",
+              f11.toString());
+      writer.write(jsonString, 0, jsonString.length());
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    ValueProvider<String> importManifest =
+        ValueProvider.StaticValueProvider.of(manifestFile.toString());
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("ddl", Create.of(getTestDdl())).apply(View.asSingleton());
+
+    PCollection<KV<String, String>> tableAndFiles =
+        pipeline
+            .apply("Read manifest file", new ReadImportManifest(importManifest))
+            .apply("Resolve data files", new ResolveDataFiles(importManifest, ddlView));
+
+    pipeline.run();
+  }
+
   private static Ddl getTestDdl() {
     Ddl ddl =
         Ddl.builder()
-            .createTable("testTableName")
+            .createTable("table1")
             .column("int_col")
             .int64()
             .notNull()
@@ -190,6 +223,15 @@ public class TextImportTransformTest {
             .endColumn()
             .column("timestamp_col")
             .timestamp()
+            .endColumn()
+            .primaryKey()
+            .asc("int_col")
+            .end()
+            .endTable()
+            .createTable("table2")
+            .column("int_col")
+            .int64()
+            .notNull()
             .endColumn()
             .primaryKey()
             .asc("int_col")

@@ -82,16 +82,9 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
 
   private final ValueProvider<String> importManifest;
 
-  // If true wait for indexes, useful for testing not recommended in practice.
-  private final ValueProvider<Boolean> waitForIndexes;
-
-  public TextImportTransform(
-      SpannerConfig spannerConfig,
-      ValueProvider<String> importManifest,
-      ValueProvider<Boolean> waitForIndexes) {
+  public TextImportTransform(SpannerConfig spannerConfig, ValueProvider<String> importManifest) {
     this.spannerConfig = spannerConfig;
     this.importManifest = importManifest;
-    this.waitForIndexes = waitForIndexes;
   }
 
   @Override
@@ -191,9 +184,6 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
                   "Write mutations " + depth, SpannerIO.write().withSpannerConfig(spannerConfig));
       previousComputation = result.getOutput();
     }
-
-    ddl.apply(Wait.on(previousComputation))
-        .apply("Create Indexes", new CreateIndexesTransform(spannerConfig, waitForIndexes));
 
     return PDone.in(begin.getPipeline());
   }
@@ -359,12 +349,9 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
                       GcsUtil gcsUtil = c.getPipelineOptions().as(GcsOptions.class).getGcsUtil();
                       ImportManifest manifest = c.element();
                       Ddl ddl = c.sideInput(ddlView);
-
-                      for (ImportManifest.TableManifest table : manifest.getTablesList()) {
-                        validateColumnSchema(
-                            table.getColumnsList(), ddl.table(table.getTableName()));
-
-                        for (String pattern : table.getFilePatternsList()) {
+                      for (ImportManifest.TableManifest tableManifest : manifest.getTablesList()) {
+                        validateManifest(tableManifest, ddl);
+                        for (String pattern : tableManifest.getFilePatternsList()) {
                           try {
                             if (isGcs) {
                               gcsUtil
@@ -373,7 +360,7 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
                                       path ->
                                           c.output(
                                               KV.of(
-                                                  table.getTableName().toLowerCase(),
+                                                  tableManifest.getTableName().toLowerCase(),
                                                   path.toString())));
                             } else {
                               File file = new File(pattern);
@@ -383,7 +370,10 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
                                     Files.newDirectoryStream(
                                         Paths.get(file.getParent()), file.getName());
                                 for (Path p : matchingFiles) {
-                                  c.output(KV.of(table.getTableName().toLowerCase(), p.toString()));
+                                  c.output(
+                                      KV.of(
+                                          tableManifest.getTableName().toLowerCase(),
+                                          p.toString()));
                                 }
                               }
                             }
@@ -416,9 +406,16 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
       }
     }
 
-    private static void validateColumnSchema(
-        List<TableManifest.Column> manifestColumns, Table table) {
-      for (TableManifest.Column manifiestColumn : manifestColumns) {
+    private static void validateManifest(TableManifest tableManifest, Ddl ddl) {
+      Table table = ddl.table(tableManifest.getTableName());
+      if (table == null) {
+        throw new RuntimeException(
+            String.format(
+                "Table %s not found in the database. Table must be pre-created in database",
+                tableManifest.getTableName()));
+      }
+
+      for (TableManifest.Column manifiestColumn : tableManifest.getColumnsList()) {
         Column dbColumn = table.column(manifiestColumn.getColumnName());
         if (dbColumn == null) {
           throw new RuntimeException(

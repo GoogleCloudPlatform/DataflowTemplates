@@ -33,7 +33,7 @@ import org.apache.beam.sdk.options.ValueProvider;
  */
 public class TextImportPipeline {
 
-  /** Options for {@link ImportPipeline}. */
+  /** Options for {@link TextImportPipeline}. */
   public interface Options extends PipelineOptions {
 
     @Description("Instance ID to write to Spanner")
@@ -89,12 +89,6 @@ public class TextImportPipeline {
 
     void setNullString(ValueProvider<String> value);
 
-    @Description("If true, wait until indexes are finished. Useful for testing.")
-    @Default.Boolean(false)
-    ValueProvider<Boolean> getWaitForIndexes();
-
-    void setWaitForIndexes(ValueProvider<Boolean> value);
-
     @Description("If true, wait for job finish")
     @Default.Boolean(true)
     boolean getWaitUntilFinish();
@@ -114,9 +108,7 @@ public class TextImportPipeline {
             .withInstanceId(options.getInstanceId())
             .withDatabaseId(options.getDatabaseId());
 
-    p.apply(
-        new TextImportTransform(
-            spannerConfig, options.getImportManifest(), options.getWaitForIndexes()));
+    p.apply(new TextImportTransform(spannerConfig, options.getImportManifest()));
 
     PipelineResult result = p.run();
     if (options.getWaitUntilFinish()
