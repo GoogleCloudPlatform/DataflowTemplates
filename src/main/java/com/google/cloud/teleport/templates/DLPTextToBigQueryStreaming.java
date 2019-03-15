@@ -82,13 +82,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link DLPTextToBigQueryStreaming} is a streaming pipeline that reads CSV files from a storage
- * location (e.g. Google Cloud Storage), uses Cloud DLP API to inspect, classify, and mask sensitive
- * information (e.g. PII Data like passport or SIN number) and at the end stores obfuscated data in
- * BigQuery (Dynamic Table Creation) to be used for various purposes. e.g. data analytics, ML model.
- * Cloud DLP inspection and masking can be configured by the user and can make use of over 90 built
- * in detectors and masking techniques like tokenization, secure hashing, date shifting, partial
- * masking, and more.
+ * The {@link DLPTextToBigQueryStreaming} is a streaming pipeline that reads CSV files from a
+ * storage location (e.g. Google Cloud Storage), uses Cloud DLP API to inspect, classify, and mask
+ * sensitive information (e.g. PII Data like passport or SIN number) and at the end stores
+ * obfuscated data in BigQuery (Dynamic Table Creation) to be used for various purposes. e.g. data
+ * analytics, ML model. Cloud DLP inspection and masking can be configured by the user and can make
+ * use of over 90 built in detectors and masking techniques like tokenization, secure hashing, date
+ * shifting, partial masking, and more.
  *
  * <p><b>Pipeline Requirements</b>
  *
@@ -134,7 +134,7 @@ public class DLPTextToBigQueryStreaming {
 
   public static final Logger LOG = LoggerFactory.getLogger(DLPTextToBigQueryStreaming.class);
   /** Default interval for polling files in GCS. */
-  private static final Duration DEFAULT_POLL_INTERVAL = Duration.standardSeconds(300);
+  private static final Duration DEFAULT_POLL_INTERVAL = Duration.standardSeconds(30);
   /** Expected only CSV file in GCS bucket. */
   private static final String ALLOWED_FILE_EXTENSION = String.valueOf("csv");
   /** Regular expression that matches valid BQ table IDs. */
@@ -196,10 +196,10 @@ public class DLPTextToBigQueryStreaming {
                     .filepattern(options.getInputFilePattern())
                     .continuously(DEFAULT_POLL_INTERVAL, Watch.Growth.never()))
             .apply("Find Pattern Match", FileIO.readMatches().withCompression(Compression.AUTO))
-            .apply(WithKeys.of(file -> getFileName(file)))
+            .apply("Add File Name as Key",WithKeys.of(file -> getFileName(file)))
             .setCoder(KvCoder.of(StringUtf8Coder.of(), ReadableFileCoder.of()))
             .apply(
-                "30 sec window",
+                "Fixed Window(30 Sec)",
                 Window.<KV<String, ReadableFile>>into(FixedWindows.of(WINDOW_INTERVAL))
                     .triggering(
                         AfterProcessingTime.pastFirstElementInPane().plusDelayOf(Duration.ZERO))
@@ -281,7 +281,7 @@ public class DLPTextToBigQueryStreaming {
                 "DLP-Tokenization",
                 ParDo.of(
                     new DLPTokenizationDoFn(
-                        options.getProject(),
+                        options.getDlpProjectId(),
                         options.getDeidentifyTemplateName(),
                         options.getInspectTemplateName())))
 
@@ -292,7 +292,7 @@ public class DLPTextToBigQueryStreaming {
     bqDataMap.apply(
         "Write To BQ",
         BigQueryIO.<KV<String, TableRow>>write()
-            .to(new BQDestination(options.getDatasetName(), options.getProject()))
+            .to(new BQDestination(options.getDatasetName(), options.getDlpProjectId()))
             .withFormatFunction(
                 element -> {
                   return element.getValue();
@@ -312,7 +312,6 @@ public class DLPTextToBigQueryStreaming {
   public interface TokenizePipelineOptions extends DataflowPipelineOptions {
 
     @Description("The file pattern to read records from (e.g. gs://bucket/file-*.csv)")
-   
     ValueProvider<String> getInputFilePattern();
 
     void setInputFilePattern(ValueProvider<String> value);
@@ -346,6 +345,11 @@ public class DLPTextToBigQueryStreaming {
     ValueProvider<String> getDatasetName();
 
     void setDatasetName(ValueProvider<String> value);
+
+    @Description("Project id to be used for DLP Tokenization")
+    ValueProvider<String> getDlpProjectId();
+
+    void setDlpProjectId(ValueProvider<String> value);
   }
 
   /**
@@ -513,7 +517,7 @@ public class DLPTextToBigQueryStreaming {
    * received, this DoFn ouptputs KV of new table with table id as key.
    */
   static class DLPTokenizationDoFn extends DoFn<KV<String, Table>, KV<String, Table>> {
-    private String projectId;
+    private ValueProvider<String> dlpProjectId;
     private DlpServiceClient dlpServiceClient;
     private ValueProvider<String> deIdentifyTemplateName;
     private ValueProvider<String> inspectTemplateName;
@@ -525,10 +529,10 @@ public class DLPTextToBigQueryStreaming {
         Metrics.distribution(DLPTokenizationDoFn.class, "numberOfBytesTokenizedDistro");
 
     public DLPTokenizationDoFn(
-        String projectId,
+        ValueProvider<String> dlpProjectId,
         ValueProvider<String> deIdentifyTemplateName,
         ValueProvider<String> inspectTemplateName) {
-      this.projectId = projectId;
+      this.dlpProjectId = dlpProjectId;
       this.dlpServiceClient = null;
       this.deIdentifyTemplateName = deIdentifyTemplateName;
       this.inspectTemplateName = inspectTemplateName;
@@ -546,7 +550,7 @@ public class DLPTextToBigQueryStreaming {
         if (this.deIdentifyTemplateName.get() != null) {
           this.requestBuilder =
               DeidentifyContentRequest.newBuilder()
-                  .setParent(ProjectName.of(this.projectId).toString())
+                  .setParent(ProjectName.of(this.dlpProjectId.get()).toString())
                   .setDeidentifyTemplateName(this.deIdentifyTemplateName.get());
           if (this.inspectTemplateExist) {
             this.requestBuilder.setInspectTemplateName(this.inspectTemplateName.get());
@@ -642,9 +646,9 @@ public class DLPTextToBigQueryStreaming {
       extends DynamicDestinations<KV<String, TableRow>, KV<String, TableRow>> {
 
     private ValueProvider<String> datasetName;
-    private String projectId;
+    private ValueProvider<String> projectId;
 
-    public BQDestination(ValueProvider<String> datasetName, String projectId) {
+    public BQDestination(ValueProvider<String> datasetName, ValueProvider<String> projectId) {
       this.datasetName = datasetName;
       this.projectId = projectId;
     }
@@ -652,7 +656,7 @@ public class DLPTextToBigQueryStreaming {
     @Override
     public KV<String, TableRow> getDestination(ValueInSingleWindow<KV<String, TableRow>> element) {
       String key = element.getValue().getKey();
-      String tableName = String.format("%s:%s.%s", projectId, datasetName.get(), key);
+      String tableName = String.format("%s:%s.%s", projectId.get(), datasetName.get(), key);
       LOG.debug("Table Name {}", tableName);
       return KV.of(tableName, element.getValue().getValue());
     }
