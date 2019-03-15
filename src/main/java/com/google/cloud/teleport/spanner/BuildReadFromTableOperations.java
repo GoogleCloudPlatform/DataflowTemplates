@@ -32,7 +32,7 @@ class BuildReadFromTableOperations
 
   // The number of read partitions have to be capped so that in case the Partition token is large
   // (which can happen with a table with a lot of columns), the PartitionResponse size is bounded.
-  private static final int maxPartitions = 1000;
+  private static final int MAX_PARTITIONS = 1000;
 
   @Override
   public PCollection<ReadOperation> expand(PCollection<Ddl> ddl) {
@@ -51,7 +51,7 @@ class BuildReadFromTableOperations
                           .collect(Collectors.joining(","));
 
                   PartitionOptions partitionOptions =
-                      PartitionOptions.newBuilder().setMaxPartitions(maxPartitions).build();
+                      PartitionOptions.newBuilder().setMaxPartitions(MAX_PARTITIONS).build();
 
                   // Also have to export table name to be able to identify which row belongs to
                   // which table.
