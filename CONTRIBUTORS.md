@@ -3,6 +3,7 @@
 *   Adam Najman
 *   Andrew Mo
 *   Biswa Nag
+*   Changming Ma
 *   Colin Bookman
 *   Dan Anghel
 *   Daniel De Leo
@@ -12,9 +13,9 @@
 *   Kevin Si
 *   Nithin Sujir
 *   Pramod Rao
+*   Roderick Yao
 *   Ryan McDowell
 *   Sameer Abhyankar
 *   Vitalii Fedorenko
 *   Yunqing Zhou
-*   Roderick Yao
 

@@ -300,7 +300,7 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
     @Override
     public PCollection<ImportManifest> expand(PBegin input) {
       return input
-          .apply("Read manifest", FileIO.match().filepattern(importManifest.get()))
+          .apply("Read manifest", FileIO.match().filepattern(importManifest))
           .apply(
               "Resource id",
               MapElements.into(TypeDescriptor.of(ResourceId.class))
@@ -337,7 +337,6 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
 
     @Override
     public PCollection<KV<String, String>> expand(PCollection<ImportManifest> input) {
-      boolean isGcs = GcsPath.GCS_URI.matcher(importManifest.get()).matches();
 
       return input.apply(
           "Resolve manifest to table name and file name",
@@ -349,6 +348,8 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
                       GcsUtil gcsUtil = c.getPipelineOptions().as(GcsOptions.class).getGcsUtil();
                       ImportManifest manifest = c.element();
                       Ddl ddl = c.sideInput(ddlView);
+                      boolean isGcs = GcsPath.GCS_URI.matcher(importManifest.get()).matches();
+
                       for (ImportManifest.TableManifest tableManifest : manifest.getTablesList()) {
                         validateManifest(tableManifest, ddl);
                         for (String pattern : tableManifest.getFilePatternsList()) {
