@@ -24,7 +24,6 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.options.ValueProvider;
 
 /**
@@ -58,7 +57,6 @@ public class TextImportPipeline {
     void setImportManifest(ValueProvider<String> value);
 
     @Description("Column delimiter of the data files")
-    @Validation.Required
     @Default.Character(',')
     ValueProvider<Character> getColumnDelimiter();
 
