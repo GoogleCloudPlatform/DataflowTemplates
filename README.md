@@ -24,6 +24,7 @@ their functionality.
 * [Datastore Unique Schema Count](src/main/java/com/google/cloud/teleport/templates/DatastoreSchemasCountToText.java)
 * [GCS Avro to Bigtable](src/main/java/com/google/cloud/teleport/bigtable/AvroToBigtable.java)
 * [GCS Avro to Spanner](src/main/java/com/google/cloud/teleport/spanner/ImportPipeline.java)
+* [GCS Text to Spanner](src/main/java/com/google/cloud/teleport/spanner/TextImportPipeline.java)
 * [GCS Text to BigQuery](src/main/java/com/google/cloud/teleport/templates/TextIOToBigQuery.java) *
 * [GCS Text to Datastore](src/main/java/com/google/cloud/teleport/templates/TextToDatastore.java)
 * [GCS Text to Pub/Sub (Batch)](src/main/java/com/google/cloud/teleport/templates/TextToPubsub.java)
