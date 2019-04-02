@@ -16,10 +16,12 @@
 
 package com.google.cloud.teleport.templates;
 
+import static com.google.cloud.teleport.templates.TextToBigQueryStreaming.wrapBigQueryInsertError;
+
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.templates.common.BigQueryConverters.FailsafeJsonToTableRow;
-import com.google.cloud.teleport.templates.common.ErrorConverters.WritePubsubMessageErrors;
+import com.google.cloud.teleport.templates.common.ErrorConverters;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.util.DualInputNestedValueProvider;
@@ -27,6 +29,7 @@ import com.google.cloud.teleport.util.DualInputNestedValueProvider.TranslatorInp
 import com.google.cloud.teleport.util.ResourceUtils;
 import com.google.cloud.teleport.util.ValueProviderUtils;
 import com.google.cloud.teleport.values.FailsafeElement;
+import com.google.common.collect.ImmutableList;
 import java.nio.charset.StandardCharsets;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -35,6 +38,9 @@ import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
+import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
+import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesCoder;
@@ -44,6 +50,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
+import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
@@ -125,6 +132,14 @@ public class PubSubToBigQuery {
   /** The default suffix for error tables if dead letter table is not specified. */
   public static final String DEFAULT_DEADLETTER_TABLE_SUFFIX = "_error_records";
 
+  /** Pubsub message/string coder for pipeline. */
+  public static final FailsafeElementCoder<PubsubMessage, String> CODER =
+      FailsafeElementCoder.of(PubsubMessageWithAttributesCoder.of(), StringUtf8Coder.of());
+
+  /** String/String Coder for FailsafeElement. */
+  public static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
+      FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
+
   /**
    * The {@link Options} class provides the custom execution options passed by the executor at the
    * command-line.
@@ -139,6 +154,20 @@ public class PubSubToBigQuery {
     ValueProvider<String> getInputTopic();
 
     void setInputTopic(ValueProvider<String> value);
+
+    @Description(
+        "The Cloud Pub/Sub subscription to consume from. "
+            + "The name should be in the format of "
+            + "projects/<project-id>/subscriptions/<subscription-name>.")
+    ValueProvider<String> getInputSubscription();
+
+    void setInputSubscription(ValueProvider<String> value);
+
+    @Description(
+        "This determines whether the template reads from " + "a pub/sub subscription or a topic")
+    Boolean getUseSubscription();
+
+    void setUseSubscription(Boolean value);
 
     @Description(
         "The dead-letter table to output to within BigQuery in <project-id>:<dataset>.<table> "
@@ -175,12 +204,8 @@ public class PubSubToBigQuery {
 
     Pipeline pipeline = Pipeline.create(options);
 
-    // Register the coder for pipeline
-    FailsafeElementCoder<PubsubMessage, String> coder =
-        FailsafeElementCoder.of(PubsubMessageWithAttributesCoder.of(), StringUtf8Coder.of());
-
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
-    coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
+    coderRegistry.registerCoderForType(CODER.getEncodedTypeDescriptor(), CODER);
 
     /*
      * Steps:
@@ -191,15 +216,28 @@ public class PubSubToBigQuery {
      *  3) Write successful records out to BigQuery
      *  4) Write failed records out to BigQuery
      */
-    PCollectionTuple transformOut =
-        pipeline
-            /*
-             * Step #1: Read messages in from Pub/Sub
-             */
-            .apply(
-                "ReadPubsubMessages",
-                PubsubIO.readMessagesWithAttributes().fromTopic(options.getInputTopic()))
 
+    /*
+     * Step #1: Read messages in from Pub/Sub
+     * Either from a Subscription or Topic
+     */
+
+    PCollection<PubsubMessage> messages = null;
+    if (options.getUseSubscription()) {
+      messages =
+          pipeline.apply(
+              "ReadPubSubSubscription",
+              PubsubIO.readMessagesWithAttributes()
+                  .fromSubscription(options.getInputSubscription()));
+    } else {
+      messages =
+          pipeline.apply(
+              "ReadPubSubTopic",
+              PubsubIO.readMessagesWithAttributes().fromTopic(options.getInputTopic()));
+    }
+
+    PCollectionTuple convertedTableRows =
+        messages
             /*
              * Step #2: Transform the PubsubMessages into TableRows
              */
@@ -208,25 +246,45 @@ public class PubSubToBigQuery {
     /*
      * Step #3: Write the successful records out to BigQuery
      */
-    transformOut
-        .get(TRANSFORM_OUT)
-        .apply(
-            "WriteSuccessfulRecords",
-            BigQueryIO.writeTableRows()
-                .withoutValidation()
-                .withCreateDisposition(CreateDisposition.CREATE_NEVER)
-                .withWriteDisposition(WriteDisposition.WRITE_APPEND)
-                .to(options.getOutputTableSpec()));
+    WriteResult writeResult =
+        convertedTableRows
+            .get(TRANSFORM_OUT)
+            .apply(
+                "WriteSuccessfulRecords",
+                BigQueryIO.writeTableRows()
+                    .withoutValidation()
+                    .withCreateDisposition(CreateDisposition.CREATE_NEVER)
+                    .withWriteDisposition(WriteDisposition.WRITE_APPEND)
+                    .withExtendedErrorInfo()
+                    .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
+                    .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
+                    .to(options.getOutputTableSpec()));
 
     /*
-     * Step #4: Write failed records out to BigQuery
+     * Step 3 Contd.
+     * Elements that failed inserts into BigQuery are extracted and converted to FailsafeElement
      */
-    PCollectionList.of(transformOut.get(UDF_DEADLETTER_OUT))
-        .and(transformOut.get(TRANSFORM_DEADLETTER_OUT))
+    PCollection<FailsafeElement<String, String>> failedInserts =
+        writeResult
+            .getFailedInsertsWithErr()
+            .apply(
+                "WrapInsertionErrors",
+                MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
+                    .via((BigQueryInsertError e) -> wrapBigQueryInsertError(e)))
+            .setCoder(FAILSAFE_ELEMENT_CODER);
+
+    /*
+     * Step #4: Write records that failed table row transformation
+     * or conversion out to BigQuery deadletter table.
+     */
+    PCollectionList.of(
+            ImmutableList.of(
+                convertedTableRows.get(UDF_DEADLETTER_OUT),
+                convertedTableRows.get(TRANSFORM_DEADLETTER_OUT)))
         .apply("Flatten", Flatten.pCollections())
         .apply(
             "WriteFailedRecords",
-            WritePubsubMessageErrors.newBuilder()
+            ErrorConverters.WritePubsubMessageErrors.newBuilder()
                 .setErrorRecordsTable(
                     ValueProviderUtils.maybeUseDefaultDeadletterTable(
                         options.getOutputDeadletterTable(),
@@ -234,6 +292,18 @@ public class PubSubToBigQuery {
                         DEFAULT_DEADLETTER_TABLE_SUFFIX))
                 .setErrorRecordsTableSchema(ResourceUtils.getDeadletterTableSchemaJson())
                 .build());
+
+    // 5) Insert records that failed insert into deadletter table
+    failedInserts.apply(
+        "WriteFailedRecords",
+        ErrorConverters.WriteStringMessageErrors.newBuilder()
+            .setErrorRecordsTable(
+                ValueProviderUtils.maybeUseDefaultDeadletterTable(
+                    options.getOutputDeadletterTable(),
+                    options.getOutputTableSpec(),
+                    DEFAULT_DEADLETTER_TABLE_SUFFIX))
+            .setErrorRecordsTableSchema(ResourceUtils.getDeadletterTableSchemaJson())
+            .build());
 
     return pipeline.run();
   }
