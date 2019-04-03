@@ -17,8 +17,12 @@
 package com.google.cloud.teleport.templates.common;
 
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.api.client.util.DateTime;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.Types;
+import java.text.SimpleDateFormat;
+
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -101,9 +105,17 @@ public class JdbcConverters {
       TableRow outputTableRow = new TableRow();
 
       for (int i = 1; i <= metaData.getColumnCount(); i++) {
-        outputTableRow.set(metaData.getColumnName(i), resultSet.getObject(i));
+         int fieldType = metaData.getColumnType(i);
+         if(fieldType == Types.DATE) {
+             SimpleDateFormat bqFormat = new SimpleDateFormat("yyyy-MM-dd");
+             outputTableRow.set(metaData.getColumnName(i), bqFormat.format(resultSet.getDate(i)));
+         } else if(fieldType == Types.TIMESTAMP) {
+             SimpleDateFormat bqFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+             outputTableRow.set(metaData.getColumnName(i), bqFormat.format(resultSet.getTimestamp(i)));
+         } else {
+             outputTableRow.set(metaData.getColumnName(i), resultSet.getObject(i));
+         }
       }
-
       return outputTableRow;
     }
   }
