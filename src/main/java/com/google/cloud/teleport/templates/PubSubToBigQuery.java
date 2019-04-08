@@ -44,6 +44,7 @@ import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesCoder;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -82,6 +83,8 @@ import org.slf4j.LoggerFactory;
  * PROJECT_ID=PROJECT ID HERE
  * BUCKET_NAME=BUCKET NAME HERE
  * PIPELINE_FOLDER=gs://${BUCKET_NAME}/dataflow/pipelines/pubsub-to-bigquery
+ * USE_SUBSCRIPTION=true or false depending on whether the pipeline should read
+ *                  from a Pub/Sub Subscription or a Pub/Sub Topic.
  *
  * # Set the runner
  * RUNNER=DataflowRunner
@@ -95,18 +98,30 @@ import org.slf4j.LoggerFactory;
  * --stagingLocation=${PIPELINE_FOLDER}/staging \
  * --tempLocation=${PIPELINE_FOLDER}/temp \
  * --templateLocation=${PIPELINE_FOLDER}/template \
- * --runner=${RUNNER}"
+ * --runner=${RUNNER}
+ * --useSubscription=${USE_SUBSCRIPTION}
+ * "
  *
  * # Execute the template
  * JOB_NAME=pubsub-to-bigquery-$USER-`date +"%Y%m%d-%H%M%S%z"`
  *
+ * # Execute a pipeline to read from a Topic.
  * gcloud dataflow jobs run ${JOB_NAME} \
  * --gcs-location=${PIPELINE_FOLDER}/template \
  * --zone=us-east1-d \
  * --parameters \
- * "inputTopic=projects/data-analytics-pocs/topics/teleport-pubsub-to-bigquery,\
- * outputTableSpec=data-analytics-pocs:demo.pubsub_to_bigquery,\
- * outputDeadletterTable=data-analytics-pocs:demo.pubsub_to_bigquery_deadletter"
+ * "inputTopic=projects/${PROJECT_ID}/topics/input-topic-name,\
+ * outputTableSpec=${PROJECT_ID}:dataset-id.output-table,\
+ * outputDeadletterTable=${PROJECT_ID}:dataset-id.deadletter-table"
+ *
+ * # Execute a pipeline to read from a Subscription.
+ * gcloud dataflow jobs run ${JOB_NAME} \
+ * --gcs-location=${PIPELINE_FOLDER}/template \
+ * --zone=us-east1-d \
+ * --parameters \
+ * "inputSubscription=projects/${PROJECT_ID}/subscriptions/input-subscription-name,\
+ * outputTableSpec=${PROJECT_ID}:dataset-id.output-table,\
+ * outputDeadletterTable=${PROJECT_ID}:dataset-id.deadletter-table"
  * </pre>
  */
 public class PubSubToBigQuery {
@@ -165,6 +180,7 @@ public class PubSubToBigQuery {
 
     @Description(
         "This determines whether the template reads from " + "a pub/sub subscription or a topic")
+    @Default.Boolean(false)
     Boolean getUseSubscription();
 
     void setUseSubscription(Boolean value);
