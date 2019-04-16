@@ -61,6 +61,7 @@
     <spanner.version>0.54.0-beta</spanner.version>
     <bigtable.version>1.5.0</bigtable.version>
     <bigquery.version>v2-rev374-1.22.0</bigquery.version>
+    <google-api-services-pubsub.version>v1-rev20181105-1.27.0</google-api-services-pubsub.version>
     <protobuf-util.version>3.6.1</protobuf-util.version>
     <protobuf.version>3.6.0</protobuf.version>
     <findbugs.version>3.0.1</findbugs.version>
@@ -262,6 +263,11 @@
           <artifactId>guava-jdk5</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.google.apis</groupId>
+      <artifactId>google-api-services-pubsub</artifactId>
+      <version>${google-api-services-pubsub.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.protobuf</groupId>
