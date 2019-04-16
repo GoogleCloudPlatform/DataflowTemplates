@@ -1,4 +1,6 @@
 target/
 bin/
 dependency-reduced-pom.xml
-
+tmp/
+.idea/
+*.iml
