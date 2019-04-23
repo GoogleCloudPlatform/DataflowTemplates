@@ -11,6 +11,8 @@ Google is providing this collection of pre-implemented Dataflow templates as a
 reference and to provide easy customization for developers wanting to extend
 their functionality.
 
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git)
+
 ## Template Pipelines
 
 * [BigQuery to Datastore](src/main/java/com/google/cloud/teleport/templates/BigQueryToDatastore.java)
