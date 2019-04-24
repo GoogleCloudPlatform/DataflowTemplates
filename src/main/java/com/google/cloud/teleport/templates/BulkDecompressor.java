@@ -231,9 +231,10 @@ public class BulkDecompressor {
                             new CSVPrinter(
                                 stringWriter,
                                 CSVFormat.DEFAULT
+                                    .withEscape('\\')
                                     .withQuoteMode(QuoteMode.NONE)
                                     .withRecordSeparator('\n')
-                                    .withEscape('\\'));
+                            );
                         printer.printRecord(kv.getKey(), kv.getValue());
                       } catch (IOException e) {
                         throw new RuntimeException(e);
