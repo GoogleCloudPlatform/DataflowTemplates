@@ -156,3 +156,10 @@ function transform(inJson) {
   }
 }
 ```
+
+## Infusionsoft Specific
+
+Dataflow templates may be found in `infusionsoft.dataflow.templates`
+
+JavaScript transformers may be found in `resources/infusionsoft/js`
+
