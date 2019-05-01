@@ -30,6 +30,7 @@ import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.util.RetryHttpRequestInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -219,6 +220,7 @@ public class FilterPubsubTriggers {
     pipeline
         .apply("Read Events", PubsubIO.readStrings()
             .fromTopic(options.getPubsubReadTopic()))
+        .apply("Shard Events", Reshuffle.viaRandomKey())  // this ensures that we filter the events in parallel
         .apply("Filter Events", ParDo.of(new ExtractAndFilterEventsFn()))
         .apply("Write Events", PubsubIO.writeStrings()
             .to(options.getPubsubWriteTopic()));

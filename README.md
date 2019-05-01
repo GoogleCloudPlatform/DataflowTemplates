@@ -161,5 +161,7 @@ function transform(inJson) {
 
 Dataflow templates may be found in `infusionsoft.dataflow.templates`
 
+Dataflow template metadatas may be found in `resources/infusionsoft/json`
+
 JavaScript transformers may be found in `resources/infusionsoft/js`
 

@@ -1,0 +1,30 @@
+{
+  "name": "Custom PubSub to PubSub",
+  "description": "A pipeline that reads pubsub events, transforms them, and then writes to another topic",
+  "parameters": [
+    {
+      "name": "pubsubReadTopic",
+      "label": "Pubsub topic to read data from",
+      "help_text": "projects/<project-id>/topics/<topic-name>",
+      "is_optional": false
+    },
+    {
+      "name": "javascriptTextTransformGcsPath",
+      "label": "GCS location of your Javascript UDF",
+      "help_text": "gs://my_bucket/my_function.js",
+      "is_optional": false
+    },
+    {
+      "name": "javascriptTextTransformFunctionName",
+      "label": "The name of the Javascript function you wish to call as your UDF",
+      "help_text": "transform",
+      "is_optional": false
+    },
+    {
+      "name": "pubsubWriteTopic",
+      "label": "Pubsub topic to write data to",
+      "help_text": "projects/<project-id>/topics/<topic-name>",
+      "is_optional": false
+    }
+  ]
+}
