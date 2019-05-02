@@ -42,7 +42,7 @@ function toAny(event) {
     any.account_id = event.accountId;
     any.contact_id = event.contactId;
     any.channel_name = 'pages';
-    any.event_type = 'any_form_submitted';
+    any.event_type = 'form_submitted';
     any.event_data = toEventData(event);
 
     return any;

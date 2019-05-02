@@ -6,6 +6,10 @@ function transform(message) {
     pubsub.events.push(toSpecific(event));
     pubsub.events.push(toAny(event));
 
+    if (event.category) {
+        pubsub.events.push(toCategory(event));
+    }
+
     return JSON.stringify(pubsub);
 }
 
@@ -22,13 +26,26 @@ function toSpecific(event) {
     return specific;
 }
 
+function toCategory(event) {
+    var category = {};
+
+    category.account_id = event.accountId;
+    category.contact_id = event.contactId;
+    category.channel_name = 'email';
+    category.event_type = 'link_clicked';
+    category.source_type = 'email_category';
+    category.source_id = event.category;
+
+    return category;
+}
+
 function toAny(event) {
     var any = {};
 
     any.account_id = event.accountId;
     any.contact_id = event.contactId;
     any.channel_name = 'email';
-    any.event_type = 'any_link_clicked';
+    any.event_type = 'link_clicked';
 
     return any;
 }
