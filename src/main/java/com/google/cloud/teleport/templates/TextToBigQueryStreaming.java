@@ -16,6 +16,7 @@
 
 package com.google.cloud.teleport.templates;
 
+import com.google.api.client.json.JsonFactory;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.templates.common.BigQueryConverters.FailsafeJsonToTableRow;
@@ -36,6 +37,7 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.extensions.gcp.util.Transport;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.fs.ResourceId;
@@ -262,17 +264,13 @@ public class TextToBigQueryStreaming {
    * @return FailsafeElement object.
    * @throws IOException
    */
-  protected static FailsafeElement<String, String> wrapBigQueryInsertError(
-      BigQueryInsertError insertError) {
-
+  protected static FailsafeElement<String, String> wrapBigQueryInsertError(BigQueryInsertError insertError) {
     FailsafeElement<String, String> failsafeElement;
+
     try {
-
-      failsafeElement =
-          FailsafeElement.of(
-              insertError.getRow().toPrettyString(), insertError.getRow().toPrettyString());
-      failsafeElement.setErrorMessage(insertError.getError().toPrettyString());
-
+      JsonFactory factory = Transport.getJsonFactory();
+      failsafeElement = FailsafeElement.of(factory.toPrettyString(insertError.getRow()), factory.toPrettyString(insertError.getRow()));
+      failsafeElement.setErrorMessage(factory.toPrettyString(insertError.getError()));
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
