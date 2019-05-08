@@ -133,6 +133,9 @@ public class FilterPubsubTriggers {
       if (StringUtils.isNotBlank(sourceType) && StringUtils.isNotBlank(sourceId)) {
         gql.append(" AND ").append(String.format("sourceType = '%s'", sourceType));
         gql.append(" AND ").append(String.format("sourceIds = '%s'", sourceId));
+
+      } else {
+        gql.append(" AND ").append("sourceType = null");
       }
 
       LOG.debug(gql.toString());
