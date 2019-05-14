@@ -20,6 +20,8 @@ function transform(message) {
 
                     contact.account_id = accountId;
                     contact.contact_id = attendee.contactId;
+                    contact.actor_type = 'appointment';
+                    contact.actor_id = eventData.appointment_id;
                     contact.channel_name = 'appointments';
                     contact.event_type = eventType;
                     contact.event_data = eventData;

@@ -10,6 +10,7 @@ function transform(message) {
 
 function toCanonical(event) {
     var canonical = {};
+    var eventData = event.event_data;
 
     canonical.account_id = event.account_id;
     canonical.contact_id = event.contact_id;
@@ -17,6 +18,18 @@ function toCanonical(event) {
     canonical.event_type = event.event_type;
     canonical.source_type = event.source_type;
     canonical.source_id = event.source_id;
+    canonical.event_data = eventData;
+
+    if (eventData) {
+        if (eventData.quote_id) {
+            canonical.actor_type = 'quote';
+            canonical.actor_id = eventData.quote_id;
+
+        } else if (eventData.invoice_id) {
+            canonical.actor_type = 'invoice';
+            canonical.actor_id = eventData.invoice_id;
+        }
+    }
 
     return canonical;
 }
