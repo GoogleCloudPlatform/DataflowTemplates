@@ -16,10 +16,9 @@
 
 package com.google.cloud.teleport.spanner;
 
-import com.google.cloud.RetryOption;
+import com.google.api.gax.longrunning.OperationFuture;
 import com.google.cloud.spanner.DatabaseAdminClient;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.Operation;
 import com.google.cloud.teleport.spanner.ExportProtos.Export;
 import com.google.cloud.teleport.spanner.ExportProtos.TableManifest;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
@@ -43,6 +42,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.apache.avro.Schema;
 import org.apache.avro.file.DataFileConstants;
 import org.apache.avro.io.BinaryDecoder;
@@ -79,7 +81,6 @@ import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.TypeDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.threeten.bp.Duration;
 
 /** A Beam transform that imports a Cloud Spanner database from a set of Avro files. */
 public class ImportTransform extends PTransform<PBegin, PDone> {
@@ -362,14 +363,21 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
 
                             Ddl newDdl = builder.build();
 
-                            Operation<Void, UpdateDatabaseDdlMetadata> op =
+                            OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
                                 databaseAdminClient.updateDatabaseDdl(
                                     spannerConfig.getInstanceId().get(),
                                     spannerConfig.getDatabaseId().get(),
                                     newDdl.createTableStatements(),
                                     null);
 
-                            op.waitFor(RetryOption.totalTimeout(Duration.ofMinutes(5)));
+                            try {
+                              op.get(5, TimeUnit.MINUTES);
+                            } catch (InterruptedException
+                                | ExecutionException
+                                | TimeoutException e) {
+                              throw new RuntimeException(e);
+                            }
+
                             c.output(mergedDdl.build());
                             return;
                           }

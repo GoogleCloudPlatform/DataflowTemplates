@@ -24,12 +24,12 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.text.IsEqualIgnoringWhiteSpace.equalToIgnoringWhiteSpace;
 import static org.junit.Assert.assertThat;
 
+import com.google.api.gax.longrunning.OperationFuture;
 import com.google.cloud.spanner.BatchClient;
 import com.google.cloud.spanner.BatchReadOnlyTransaction;
 import com.google.cloud.spanner.Database;
 import com.google.cloud.spanner.DatabaseAdminClient;
 import com.google.cloud.spanner.DatabaseId;
-import com.google.cloud.spanner.Operation;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.SpannerOptions;
@@ -70,12 +70,12 @@ public class InformationSchemaScannerTest {
   }
 
   @Test
-  public void testEmpty() {
+  public void testEmpty() throws Exception {
     DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
 
-    Operation<Database, CreateDatabaseMetadata> op =
+    OperationFuture<Database, CreateDatabaseMetadata> op =
         databaseAdminClient.createDatabase(instanceId, dbId, Collections.emptyList());
-    op.waitFor();
+    op.get();
 
     InformationSchemaScanner scanner = new InformationSchemaScanner(getBatchTx());
 
@@ -85,7 +85,7 @@ public class InformationSchemaScannerTest {
   }
 
   @Test
-  public void testAllTypes() {
+  public void testAllTypes() throws Exception {
     String allTypes =
         "CREATE TABLE `alltypes` ("
             + " `first_name`                            STRING(MAX),"
@@ -109,9 +109,9 @@ public class InformationSchemaScannerTest {
 
     DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
 
-    Operation<Database, CreateDatabaseMetadata> op =
+    OperationFuture<Database, CreateDatabaseMetadata> op =
         databaseAdminClient.createDatabase(instanceId, dbId, Collections.singleton(allTypes));
-    op.waitFor();
+    op.get();
 
     InformationSchemaScanner scanner = new InformationSchemaScanner(getBatchTx());
 
@@ -170,7 +170,7 @@ public class InformationSchemaScannerTest {
   }
 
   @Test
-  public void interleavedIn() {
+  public void interleavedIn() throws Exception {
     List<String> statements =
         Arrays.asList(
             " CREATE TABLE lEVEl0 ("
@@ -198,9 +198,9 @@ public class InformationSchemaScannerTest {
 
     DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
 
-    Operation<Database, CreateDatabaseMetadata> op =
+    OperationFuture<Database, CreateDatabaseMetadata> op =
         databaseAdminClient.createDatabase(instanceId, dbId, statements);
-    op.waitFor();
+    op.get();
 
     InformationSchemaScanner scanner = new InformationSchemaScanner(getBatchTx());
 
@@ -226,7 +226,7 @@ public class InformationSchemaScannerTest {
   }
 
   @Test
-  public void reserved() {
+  public void reserved() throws Exception {
     String statement =
         "CREATE TABLE `where` ("
             + " `JOIN`                                  STRING(MAX) NOT NULL,"
@@ -236,9 +236,9 @@ public class InformationSchemaScannerTest {
 
     DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
 
-    Operation<Database, CreateDatabaseMetadata> op =
+    OperationFuture<Database, CreateDatabaseMetadata> op =
         databaseAdminClient.createDatabase(instanceId, dbId, Collections.singleton(statement));
-    op.waitFor();
+    op.get();
 
     InformationSchemaScanner scanner = new InformationSchemaScanner(getBatchTx());
 
@@ -256,7 +256,7 @@ public class InformationSchemaScannerTest {
   }
 
   @Test
-  public void indexes() {
+  public void indexes() throws Exception {
     // Prefix indexes to ensure ordering.
     List<String> statements = Arrays.asList(
         "CREATE TABLE `Users` ("
@@ -273,9 +273,9 @@ public class InformationSchemaScannerTest {
 
     DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
 
-    Operation<Database, CreateDatabaseMetadata> op = databaseAdminClient
-        .createDatabase(instanceId, dbId, statements);
-    op.waitFor();
+    OperationFuture<Database, CreateDatabaseMetadata> op =
+        databaseAdminClient.createDatabase(instanceId, dbId, statements);
+    op.get();
 
     InformationSchemaScanner scanner = new InformationSchemaScanner(getBatchTx());
 
@@ -284,7 +284,7 @@ public class InformationSchemaScannerTest {
   }
 
   @Test
-  public void commitTimestamp() {
+  public void commitTimestamp() throws Exception {
     String statement =
         "CREATE TABLE `Users` ("
             + " `id`                                    INT64 NOT NULL,"
@@ -294,9 +294,9 @@ public class InformationSchemaScannerTest {
 
     DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
 
-    Operation<Database, CreateDatabaseMetadata> op = databaseAdminClient
-        .createDatabase(instanceId, dbId, Collections.singleton(statement));
-    op.waitFor();
+    OperationFuture<Database, CreateDatabaseMetadata> op =
+        databaseAdminClient.createDatabase(instanceId, dbId, Collections.singleton(statement));
+    op.get();
 
     InformationSchemaScanner scanner = new InformationSchemaScanner(getBatchTx());
 

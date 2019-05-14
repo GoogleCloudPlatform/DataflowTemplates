@@ -16,9 +16,9 @@
 
 package com.google.cloud.teleport.spanner;
 
+import com.google.api.gax.longrunning.OperationFuture;
 import com.google.cloud.spanner.Database;
 import com.google.cloud.spanner.DatabaseAdminClient;
-import com.google.cloud.spanner.Operation;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.SpannerOptions;
@@ -26,7 +26,6 @@ import com.google.common.io.Files;
 import com.google.protobuf.util.JsonFormat;
 import com.google.spanner.admin.database.v1.CreateDatabaseMetadata;
 import java.io.File;
-import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Collections;
@@ -59,7 +58,7 @@ public class ImportFromAvroTest {
   private final String sourceDb = "importdbtest";
 
   @Test
-  public void booleans() throws IOException {
+  public void booleans() throws Exception {
     SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("booleans");
     SchemaBuilder.FieldAssembler<Schema> fieldAssembler = record.fields();
 
@@ -96,7 +95,7 @@ public class ImportFromAvroTest {
   }
 
   @Test
-  public void integers() throws IOException {
+  public void integers() throws Exception {
     SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("integers");
     SchemaBuilder.FieldAssembler<Schema> fieldAssembler = record.fields();
 
@@ -141,7 +140,7 @@ public class ImportFromAvroTest {
   }
 
   @Test
-  public void floats() throws IOException {
+  public void floats() throws Exception {
     SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("floats");
     SchemaBuilder.FieldAssembler<Schema> fieldAssembler = record.fields();
 
@@ -203,7 +202,7 @@ public class ImportFromAvroTest {
   }
 
   @Test
-  public void strings() throws IOException {
+  public void strings() throws Exception {
     SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("strings");
     SchemaBuilder.FieldAssembler<Schema> fieldAssembler = record.fields();
 
@@ -266,7 +265,7 @@ public class ImportFromAvroTest {
   }
 
   @Test
-  public void timestamps() throws IOException {
+  public void timestamps() throws Exception {
     SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("timestamps");
     SchemaBuilder.FieldAssembler<Schema> fieldAssembler = record.fields();
 
@@ -317,7 +316,7 @@ public class ImportFromAvroTest {
   }
 
   @Test
-  public void dates() throws IOException {
+  public void dates() throws Exception {
     // Unfortunately Avro SchemaBuilder has a limitation of not allowing nullable LogicalTypes.
     Schema dateType = LogicalTypes.date().addToSchema(Schema.create(Schema.Type.INT));
     Schema schema =
@@ -356,7 +355,7 @@ public class ImportFromAvroTest {
   }
 
   private void runTest(Schema schema, String spannerSchema, List<GenericRecord> records)
-      throws IOException {
+      throws Exception {
     // Create the Avro file to be imported.
     String fileName = "avroFile.avro";
     ExportProtos.Export exportProto = ExportProtos.Export.newBuilder()
@@ -396,10 +395,10 @@ public class ImportFromAvroTest {
       // Does not exist, ignore.
     }
 
-    Operation<Database, CreateDatabaseMetadata> op = databaseAdminClient
-        .createDatabase(instanceId, sourceDb, Collections.singleton(
-            spannerSchema));
-    op.waitFor();
+    OperationFuture<Database, CreateDatabaseMetadata> op =
+        databaseAdminClient.createDatabase(
+            instanceId, sourceDb, Collections.singleton(spannerSchema));
+    op.get();
     SpannerConfig sourceConfig = SpannerConfig.create().withInstanceId(instanceId)
         .withDatabaseId(sourceDb);
 

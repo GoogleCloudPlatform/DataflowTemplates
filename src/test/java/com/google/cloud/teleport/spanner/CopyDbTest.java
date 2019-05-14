@@ -20,11 +20,11 @@ import static org.hamcrest.text.IsEqualIgnoringWhiteSpace.equalToIgnoringWhiteSp
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
+import com.google.api.gax.longrunning.OperationFuture;
 import com.google.cloud.spanner.Database;
 import com.google.cloud.spanner.DatabaseAdminClient;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.DatabaseId;
-import com.google.cloud.spanner.Operation;
 import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerException;
@@ -77,7 +77,7 @@ public class CopyDbTest {
   public void setup() {
   }
 
-  private void createAndPopulate(Ddl ddl, int numBatches) {
+  private void createAndPopulate(Ddl ddl, int numBatches) throws Exception {
     SpannerOptions spannerOptions = SpannerOptions.newBuilder().build();
     Spanner client = spannerOptions.getService();
 
@@ -94,9 +94,9 @@ public class CopyDbTest {
       e.printStackTrace();
     }
 
-    Operation<Database, CreateDatabaseMetadata> op = databaseAdminClient
-        .createDatabase(instanceId, sourceDb, ddl.statements());
-    op.waitFor();
+    OperationFuture<Database, CreateDatabaseMetadata> op =
+        databaseAdminClient.createDatabase(instanceId, sourceDb, ddl.statements());
+    op.get();
 
     try {
       databaseAdminClient.dropDatabase(instanceId, destinationDb);
@@ -106,7 +106,7 @@ public class CopyDbTest {
 
     op = databaseAdminClient
         .createDatabase(instanceId, destinationDb, Collections.emptyList());
-    op.waitFor();
+    op.get();
 
     DatabaseClient dbClient = client
         .getDatabaseClient(DatabaseId.of(spannerOptions.getProjectId(), instanceId, sourceDb));
@@ -137,7 +137,7 @@ public class CopyDbTest {
   }
 
   @Test
-  public void allTypesSchema() {
+  public void allTypesSchema() throws Exception {
         Ddl ddl = Ddl.builder()
             .createTable("Users")
               .column("first_name").string().max().endColumn()
@@ -173,7 +173,7 @@ public class CopyDbTest {
   }
 
   @Test
-  public void emptyTables() {
+  public void emptyTables() throws Exception {
         Ddl ddl = Ddl.builder()
             .createTable("Users")
               .column("first_name").string().max().endColumn()
@@ -223,15 +223,16 @@ public class CopyDbTest {
           .primaryKey().asc("first").end()
           .endTable()
         .build();
-    Operation<Void, UpdateDatabaseDdlMetadata> op = databaseAdminClient
-        .updateDatabaseDdl(instanceId, sourceDb, emptyTables.createTableStatements(), null);
-    op.waitFor();
+    OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
+        databaseAdminClient.updateDatabaseDdl(
+            instanceId, sourceDb, emptyTables.createTableStatements(), null);
+    op.get();
 
     runTest();
   }
 
   @Test
-  public void allEmptyTables() {
+  public void allEmptyTables() throws Exception {
         Ddl ddl = Ddl.builder()
             .createTable("Users")
               .column("first_name").string().max().endColumn()
@@ -266,7 +267,7 @@ public class CopyDbTest {
   }
 
   @Test
-  public void emptyDb() {
+  public void emptyDb() throws Exception {
         Ddl ddl = Ddl.builder()
             .build();
     createAndPopulate(ddl, 0);
@@ -274,14 +275,14 @@ public class CopyDbTest {
   }
 
   @Test
-  public void randomSchema() {
+  public void randomSchema() throws Exception {
     Ddl ddl = RandomDdlGenerator.builder().build().generate();
     createAndPopulate(ddl, 100);
     runTest();
   }
 
   @Test
-  public void randomSchemaNoData() {
+  public void randomSchemaNoData() throws Exception {
     Ddl ddl = RandomDdlGenerator.builder().build().generate();
     createAndPopulate(ddl, 0);
     runTest();

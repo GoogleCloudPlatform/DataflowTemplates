@@ -16,11 +16,12 @@
 
 package com.google.cloud.teleport.spanner;
 
+import com.google.api.gax.longrunning.OperationFuture;
 import com.google.cloud.spanner.DatabaseAdminClient;
-import com.google.cloud.spanner.Operation;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.spanner.admin.database.v1.UpdateDatabaseDdlMetadata;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -67,14 +68,18 @@ class CreateIndexesTransform extends PTransform<PCollection<Ddl>, PCollection<Vo
                 List<String> createIndexStatements = ddl.createIndexStatements();
                 if (!createIndexStatements.isEmpty()) {
                   // This just kicks off the index creation, it does not wait for it to complete.
-                  Operation<Void, UpdateDatabaseDdlMetadata> op =
+                  OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
                       databaseAdminClient.updateDatabaseDdl(
                           spannerConfig.getInstanceId().get(),
                           spannerConfig.getDatabaseId().get(),
                           createIndexStatements,
                           null);
                   if (waitForIndexes.get()) {
-                    op.waitFor();
+                    try {
+                      op.get();
+                    } catch (InterruptedException | ExecutionException e) {
+                      throw new RuntimeException(e);
+                    }
                   }
                 }
               }
