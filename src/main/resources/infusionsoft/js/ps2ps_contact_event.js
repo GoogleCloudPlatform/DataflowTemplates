@@ -10,7 +10,7 @@ function transform(message) {
 
 function toCanonical(event) {
     var canonical = {};
-    var eventData = event.event_data;
+    var eventData = event.source_data;
 
     canonical.account_id = event.account_id;
     canonical.contact_id = event.contact_id;
