@@ -499,6 +499,12 @@
       <artifactId>proto</artifactId>
       <version>${tensorflow.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-extensions-json-jackson</artifactId>
+      <version>2.10.0</version>
+      <scope>compile</scope>
+    </dependency>
   </dependencies>
 
   <build>
