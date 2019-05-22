@@ -2,18 +2,21 @@ package com.infusionsoft.dataflow.templates;
 
 import com.infusionsoft.dataflow.utils.DatastoreUtils;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.templates.common.PubsubConverters.PubsubReadOptions;
-import com.google.cloud.teleport.templates.common.PubsubConverters.PubsubWriteOptions;
+import com.google.datastore.v1.CommitRequest;
+import com.google.datastore.v1.Entity;
+import com.google.datastore.v1.EntityResult;
 import com.google.datastore.v1.GqlQuery;
 import com.google.datastore.v1.QueryResultBatch;
 import com.google.datastore.v1.RunQueryRequest;
 import com.google.datastore.v1.RunQueryResponse;
+import com.google.datastore.v1.Value;
 import com.google.datastore.v1.client.Datastore;
 import com.google.datastore.v1.client.DatastoreException;
-import org.apache.beam.repackaged.beam_sdks_java_core.org.apache.commons.lang3.StringUtils;
+import com.google.datastore.v1.client.DatastoreHelper;
+import com.google.protobuf.util.Timestamps;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
@@ -29,26 +32,26 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.ZonedDateTime;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import javax.annotation.Nullable;
 
 /**
- * A template that filters pubsub triggers so we only hit GAE with the ones we actually need to do
- * something with.
+ * A template that listens to pubsub and marks emails as opened, as appropriate.
  *
- * Used by strategy-engine-api
+ * Used by email-history-api
  *
  */
-public class FilterPubsubTriggers {
+public class PubsubMarkEmailsOpened {
 
   /**
-   * Options supported by {@link FilterPubsubTriggers}.
+   * Options supported by {@link PubsubMarkEmailsOpened}.
    *
    * <p>Inherits standard configuration options.
    */
   public interface Options extends PipelineOptions, StreamingOptions,
-      PubsubReadOptions, PubsubWriteOptions {
+      PubsubReadOptions {
 
     @Description("GCP Project Id of where the datastore entities live")
     ValueProvider<String> getDatastoreProjectId();
@@ -56,9 +59,9 @@ public class FilterPubsubTriggers {
 
   }
 
-  public static class ExtractAndFilterEventsFn extends DoFn<String, String> {
+  public static class ExtractAndHandleEventsFn extends DoFn<String, String> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(ExtractAndFilterEventsFn.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ExtractAndHandleEventsFn.class);
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
         .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
@@ -89,44 +92,45 @@ public class FilterPubsubTriggers {
     }
 
     private void processEvent(ProcessContext context, Map<String, Object> json) {
-      final String channelName = (String) json.get("channel_name");
-      final String eventType = (String) json.get("event_type");
-      final String accountId = (String) json.get("account_id");
-      final String sourceType = (String) json.get("source_type");
-      final String sourceId = (String) json.get("source_id");
+      final String accountId = (String) json.get("accountId");
+      final String pixelId = (String) json.get("pixelId");
+      final String contactId = (String) json.get("contactId");
+      final ZonedDateTime timestamp = ZonedDateTime.parse((String) json.get("timestamp"));
 
       final Datastore datastore = DatastoreUtils.getDatastore(context.getPipelineOptions(), projectId);
 
-      if (hasTriggers(datastore, channelName, eventType, accountId, sourceType, sourceId)) {
-        LOG.info("has triggers: {}", json);
-        try {
-          context.output(OBJECT_MAPPER.writeValueAsString(json));
-        } catch (JsonProcessingException e) {
-          LOG.error("FATAL! unable to re-emit: " + json, e);
-        }
-      } else {
-        LOG.info("no triggers found: {}", json);
+      findEmails(datastore, accountId, pixelId, contactId).stream()
+          .forEach(entity -> markOpened(datastore, entity, timestamp));
+    }
+
+    private void markOpened(Datastore datastore, Entity entity, ZonedDateTime timestamp) {
+      final Entity updated = entity.toBuilder()
+          .putProperties("opened", Value.newBuilder()
+              .setTimestampValue(Timestamps.fromMillis(timestamp.toInstant().toEpochMilli()))
+              .build())
+          .build();
+
+      final CommitRequest request = CommitRequest.newBuilder()
+          .addMutations(DatastoreHelper.makeUpdate(updated))
+          .setMode(CommitRequest.Mode.NON_TRANSACTIONAL)
+          .build();
+
+      try {
+        datastore.commit(request);
+      } catch (DatastoreException e) {
+        LOG.error("Unable to mark opened: " + entity, e);
       }
     }
 
-    private boolean hasTriggers(Datastore datastore,
-                                String channelName, String eventType, String accountId,
-                                @Nullable String sourceType, @Nullable String sourceId) {
+    private List<Entity> findEmails(Datastore datastore,
+                                    String accountId, String pixelId, String contactId) {
 
-      boolean triggers = true;  // in case of error, assume there are triggers
+      final List<Entity> entities = new LinkedList<>();
 
-      final StringBuilder gql = new StringBuilder("SELECT __key__ FROM Trigger")
+      final StringBuilder gql = new StringBuilder("SELECT * FROM Email")
           .append(" WHERE ").append(String.format("accountId = '%s'", accountId))
-          .append(" AND ").append(String.format("channelName = '%s'", channelName))
-          .append(" AND ").append(String.format("eventType = '%s'", eventType));
-
-      if (StringUtils.isNotBlank(sourceType) && StringUtils.isNotBlank(sourceId)) {
-        gql.append(" AND ").append(String.format("sourceType = '%s'", sourceType));
-        gql.append(" AND ").append(String.format("sourceIds = '%s'", sourceId));
-
-      } else {
-        gql.append(" AND ").append("sourceType = null");
-      }
+          .append(" AND ").append(String.format("pixelId = '%s'", pixelId))
+          .append(" AND ").append(String.format("contactId = '%s'", contactId));
 
       LOG.debug(gql.toString());
 
@@ -140,15 +144,16 @@ public class FilterPubsubTriggers {
       try {
         final RunQueryResponse response = datastore.runQuery(request);
         final QueryResultBatch batch = response.getBatch();
-        final int numTriggers = batch.getEntityResultsCount();
 
-        triggers = numTriggers > 0;
+        batch.getEntityResultsList().stream()
+            .map(EntityResult::getEntity)
+            .forEach(entities::add);
 
       } catch (DatastoreException e) {
-        LOG.error("Couldn't tell if there were any triggers or not... Assuming there are.", e);
+        LOG.error("Couldn't find emails", e);
       }
 
-      return triggers;
+      return entities;
     }
   }
 
@@ -180,10 +185,8 @@ public class FilterPubsubTriggers {
     pipeline
         .apply("Read Events", PubsubIO.readStrings()
             .fromTopic(options.getPubsubReadTopic()))
-        .apply("Shard Events", Reshuffle.viaRandomKey())  // this ensures that we filter the events in parallel
-        .apply("Filter Events", ParDo.of(new ExtractAndFilterEventsFn()))
-        .apply("Write Events", PubsubIO.writeStrings()
-            .to(options.getPubsubWriteTopic()));
+        .apply("Shard Events", Reshuffle.viaRandomKey())  // this ensures that we handle the events in parallel
+        .apply("Handle Events", ParDo.of(new ExtractAndHandleEventsFn()));
 
     // Execute the pipeline and return the result.
     return pipeline.run();
