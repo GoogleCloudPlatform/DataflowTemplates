@@ -1,0 +1,12 @@
+{
+  "name": "PubSub Mark Email",
+  "description": "A pipeline that reads pubsub events and updates the status of emails accordingly",
+  "parameters": [
+    {
+      "name": "pubsubReadTopic",
+      "label": "Pubsub topic to read data from",
+      "help_text": "projects/<project-id>/topics/<topic-name>",
+      "is_optional": false
+    }
+  ]
+}
