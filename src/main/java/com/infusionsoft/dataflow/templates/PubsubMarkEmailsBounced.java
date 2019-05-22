@@ -42,6 +42,16 @@ import java.util.Map;
  *
  * Used by email-history-api
  *
+ * Deploy to sand:
+ * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.PubsubMarkEmailsBounced -Dexec.args="--project=is-email-history-api-sand --stagingLocation=gs://dataflow-is-email-history-api-sand/staging --templateLocation=gs://dataflow-is-email-history-api-sand/templates/ps_mark_email_bounced --runner=DataflowRunner --serviceAccount=is-email-history-api-sand@appspot.gserviceaccount.com --datastoreProjectId=is-email-history-api-sand"
+ *
+ * projects/is-flagship-events-sand/topics/v1.bounce-event
+ *
+ * Deploy to prod:
+ * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.PubsubMarkEmailsBounced -Dexec.args="--project=is-email-history-api-prod --stagingLocation=gs://dataflow-is-email-history-api-prod/staging --templateLocation=gs://dataflow-is-email-history-api-prod/templates/ps_mark_email_bounced --runner=DataflowRunner --serviceAccount=is-email-history-api-prod@appspot.gserviceaccount.com --datastoreProjectId=is-email-history-api-prod"
+ *
+ * projects/is-flagship-events-prod/topics/v1.bounce-event
+ *
  */
 public class PubsubMarkEmailsBounced {
 
@@ -85,10 +95,8 @@ public class PubsubMarkEmailsBounced {
       LOG.debug("processing... {}", message);
 
       final Map<String, Object> json = OBJECT_MAPPER.readValue(message, Map.class);
-      final List<Map<String, Object>> events = (List<Map<String, Object>>) json.get("events");
 
-      events.stream()
-          .forEach(map -> processEvent(context, map));
+      processEvent(context, json);
     }
 
     private void processEvent(ProcessContext context, Map<String, Object> json) {

@@ -39,6 +39,18 @@ import javax.annotation.Nullable;
  *
  * Used by strategy-engine-api
  *
+ * Deploy to sand:
+ * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.FilterPubsubTriggers -Dexec.args="--project=is-strategy-engine-api-sand --stagingLocation=gs://dataflow-is-strategy-engine-api-sand/staging --templateLocation=gs://dataflow-is-strategy-engine-api-sand/templates/filter --runner=DataflowRunner --serviceAccount=is-strategy-engine-api-sand@appspot.gserviceaccount.com --datastoreProjectId=is-strategy-engine-api-sand"
+ *
+ * projects/is-tactics-api-sand/topics/v1.contact-events
+ * projects/is-strategy-engine-api-sand/topics/v1.filtered
+ *
+ * Deploy to prod:
+ * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.FilterPubsubTriggers -Dexec.args="--project=is-strategy-engine-api-prod --stagingLocation=gs://dataflow-is-strategy-engine-api-prod/staging --templateLocation=gs://dataflow-is-strategy-engine-api-prod/templates/filter --runner=DataflowRunner --serviceAccount=is-strategy-engine-api-prod@appspot.gserviceaccount.com --datastoreProjectId=is-strategy-engine-api-prod"
+ *
+ * projects/is-tactics-api-prod/topics/v1.contact-events
+ * projects/is-strategy-engine-api-prod/topics/v1.filtered
+ *
  */
 public class FilterPubsubTriggers {
 
