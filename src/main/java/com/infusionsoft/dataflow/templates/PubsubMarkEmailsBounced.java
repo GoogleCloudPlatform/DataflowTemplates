@@ -99,10 +99,10 @@ public class PubsubMarkEmailsBounced {
       final Datastore datastore = DatastoreUtils.getDatastore(context.getPipelineOptions(), projectId);
 
       findEmails(datastore, accountId, bounceId).stream()
-          .forEach(entity -> markOpened(datastore, entity, timestamp));
+          .forEach(entity -> markBounced(datastore, entity, timestamp));
     }
 
-    private void markOpened(Datastore datastore, Entity entity, ZonedDateTime timestamp) {
+    private void markBounced(Datastore datastore, Entity entity, ZonedDateTime timestamp) {
       final Entity updated = entity.toBuilder()
           .putProperties("bounced", Value.newBuilder()
               .setTimestampValue(Timestamps.fromMillis(timestamp.toInstant().toEpochMilli()))

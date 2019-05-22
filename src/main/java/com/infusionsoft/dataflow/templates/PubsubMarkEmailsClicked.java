@@ -100,10 +100,10 @@ public class PubsubMarkEmailsClicked {
       final Datastore datastore = DatastoreUtils.getDatastore(context.getPipelineOptions(), projectId);
 
       findEmails(datastore, accountId, linkId, contactId).stream()
-          .forEach(entity -> markOpened(datastore, entity, timestamp));
+          .forEach(entity -> markClicked(datastore, entity, timestamp));
     }
 
-    private void markOpened(Datastore datastore, Entity entity, ZonedDateTime timestamp) {
+    private void markClicked(Datastore datastore, Entity entity, ZonedDateTime timestamp) {
       final Entity updated = entity.toBuilder()
           .putProperties("clicked", Value.newBuilder()
               .setTimestampValue(Timestamps.fromMillis(timestamp.toInstant().toEpochMilli()))
