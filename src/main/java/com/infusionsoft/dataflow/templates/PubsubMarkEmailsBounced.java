@@ -117,7 +117,7 @@ public class PubsubMarkEmailsBounced {
       try {
         datastore.commit(request);
       } catch (DatastoreException e) {
-        LOG.error("Unable to mark opened: " + entity, e);
+        LOG.error("Unable to mark bounced: " + entity, e);
       }
     }
 
