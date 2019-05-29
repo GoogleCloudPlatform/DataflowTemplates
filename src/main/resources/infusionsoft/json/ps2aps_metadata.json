@@ -1,0 +1,24 @@
+{
+  "name": "Aggregate PubSub",
+  "description": "A pipeline that reads pubsub events, groups them by accountId, and then writes to another topic",
+  "parameters": [
+    {
+      "name": "pubsubReadTopic",
+      "label": "Pubsub topic to read data from",
+      "help_text": "projects/<project-id>/topics/<topic-name>",
+      "is_optional": false
+    },
+    {
+      "name": "windowDuration",
+      "label": "Duration in which data will be written. Defaults to 5 minutes.",
+      "help_text": "Allowed formats are:\nNs (for seconds, example: 5s),\nNm (for minutes, example: 12m),\nNh (for hours, example: 2h).",
+      "is_optional": true
+    },
+    {
+      "name": "pubsubWriteTopic",
+      "label": "Pubsub topic to write data to",
+      "help_text": "projects/<project-id>/topics/<topic-name>",
+      "is_optional": false
+    }
+  ]
+}
