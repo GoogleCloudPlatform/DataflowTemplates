@@ -113,9 +113,9 @@ public class AggregatePubsub {
         public String apply(KV<String, Iterable<String>> kv) {
           final Iterable<String> iterable = kv.getValue();
           final Iterator<String> iterator = iterable.iterator();
+          final AtomicReference<String> accountId = new AtomicReference<>();
 
           final Map<String, Object> json = new LinkedHashMap<>();
-          final AtomicReference<String> accountId = new AtomicReference<>();
           json.put("messages", StreamSupport
               .stream(Spliterators.spliteratorUnknownSize(iterator, Spliterator.ORDERED), false)
               .map(message -> {
