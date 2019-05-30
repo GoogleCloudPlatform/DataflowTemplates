@@ -123,7 +123,7 @@ public class AggregatePubsub {
                   final Map<String, Object> map = objectMapper.readValue(message, Map.class);
                   accountId.compareAndSet(null, (String) map.get("accountId"));
 
-                  return message;
+                  return map;
                 } catch (IOException e) {
                   LOG.error("unable to deserialize: " + message, e);
                   throw new IllegalStateException(e);
