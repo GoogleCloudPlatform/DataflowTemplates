@@ -11,7 +11,6 @@ import com.google.cloud.teleport.util.DurationUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
-import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -46,7 +45,7 @@ import java.util.stream.StreamSupport;
  * Used by event-bridge-api
  *
  * Deploy to sand:
- * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.AggregatePubsub -Dexec.args="--project=is-event-bridge-api-sand --stagingLocation=gs://dataflow-is-event-bridge-api-sand/staging --templateLocation=gs://dataflow-is-event-bridge-api-sand/templates/ps2aps --runner=DataflowRunner --serviceAccount=is-event-bridge-api-sand@appspot.gserviceaccount.com"
+ * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.AggregatePubsub -Dexec.args="--project=is-event-bridge-api-sand --stagingLocation=gs://dataflow-is-event-bridge-api-sand/staging --templateLocation=gs://dataflow-is-event-bridge-api-sand/templates/ps2aps_5m --runner=DataflowRunner --serviceAccount=is-event-bridge-api-sand@appspot.gserviceaccount.com --windowDuration=5m"
  *
  * projects/is-tracking-pixel-api-sand/topics/v1.render
  * projects/is-event-bridge-api-sand/topics/v1.renders
@@ -55,7 +54,7 @@ import java.util.stream.StreamSupport;
  * projects/is-event-bridge-api-sand/topics/v1.clicks
  *
  * Deploy to prod:
- * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.AggregatePubsub -Dexec.args="--project=is-event-bridge-api-prod --stagingLocation=gs://dataflow-is-event-bridge-api-prod/staging --templateLocation=gs://dataflow-is-event-bridge-api-prod/templates/ps2aps --runner=DataflowRunner --serviceAccount=is-event-bridge-api-prod@appspot.gserviceaccount.com"
+ * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.AggregatePubsub -Dexec.args="--project=is-event-bridge-api-prod --stagingLocation=gs://dataflow-is-event-bridge-api-prod/staging --templateLocation=gs://dataflow-is-event-bridge-api-prod/templates/ps2aps_5m --runner=DataflowRunner --serviceAccount=is-event-bridge-api-prod@appspot.gserviceaccount.com --windowDuration=5m"
  *
  * projects/is-tracking-pixel-api-prod/topics/v1.render
  * projects/is-event-bridge-api-prod/topics/v1.renders
@@ -73,12 +72,11 @@ public class AggregatePubsub {
   public interface Options extends PipelineOptions, StreamingOptions,
       PubsubReadOptions, PubsubWriteOptions {
 
-    @Description("The window duration in which data will be written. Defaults to 5m. "
+    @Description("The window duration in which data will be written. "
         + "Allowed formats are: "
-        + "Ns (for seconds, example: 5s), "
-        + "Nm (for minutes, example: 12m), "
+        + "Ns (for seconds, example: 30s), "
+        + "Nm (for minutes, example: 5m), "
         + "Nh (for hours, example: 2h).")
-    @Default.String("5m")
     String getWindowDuration();
     void setWindowDuration(String value);
   }
@@ -92,8 +90,6 @@ public class AggregatePubsub {
       return input
           .apply(WithKeys.of(new GetAccountIdFn(OBJECT_MAPPER)))
           .apply(GroupByKey.create())
-//          .apply(Values.create())
-//          .apply(Flatten.iterables());
           .apply(new AggregateFn(OBJECT_MAPPER));
     }
   }
