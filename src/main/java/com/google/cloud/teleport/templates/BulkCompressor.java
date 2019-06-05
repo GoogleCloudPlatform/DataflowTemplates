@@ -109,7 +109,7 @@ public class BulkCompressor {
   private static final Logger LOG = LoggerFactory.getLogger(BulkCompressor.class);
 
   /** The tag used to identify the main output of the {@link Compressor}. */
-  private static final TupleTag<String> COMPRESOR_MAIN_OUT = new TupleTag<String>() {};
+  private static final TupleTag<String> COMPRESSOR_MAIN_OUT = new TupleTag<String>() {};
 
   /** The tag used to identify the dead-letter output of the {@link Compressor}. */
   private static final TupleTag<KV<String, String>> DEADLETTER_TAG =
@@ -189,7 +189,7 @@ public class BulkCompressor {
             .apply(
                 "Compress File(s)",
                 ParDo.of(new Compressor(options.getOutputDirectory(), options.getCompression()))
-                    .withOutputTags(COMPRESOR_MAIN_OUT, TupleTagList.of(DEADLETTER_TAG)));
+                    .withOutputTags(COMPRESSOR_MAIN_OUT, TupleTagList.of(DEADLETTER_TAG)));
 
     compressOut
         .get(DEADLETTER_TAG)

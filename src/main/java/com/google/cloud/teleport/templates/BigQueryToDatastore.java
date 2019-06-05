@@ -71,7 +71,7 @@ public class BigQueryToDatastore {
             .setErrorTag(failureTag)
             .build());
 
-    // Write valid entites to Datastore
+    // Write valid entities to Datastore
     TupleTag<String> errorTag = new TupleTag<String>("errors") {};
     entities
         .get(successTag)
