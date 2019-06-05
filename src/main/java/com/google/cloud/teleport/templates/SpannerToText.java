@@ -52,7 +52,7 @@ import org.slf4j.LoggerFactory;
  * mvn compile exec:java \
  *   -Dexec.mainClass=com.google.cloud.teleport.templates.SpannerToText \
  *   -Dexec.args="--runner=DataflowRunner \
- *                --spannerProjectId=projectId
+ *                --spannerProjectId=projectId \
  *                --gcpTempLocation=gs://gsTmpLocation \
  *                --spannerInstanceId=instanceId \
  *                --spannerDatabaseId=databaseId \
