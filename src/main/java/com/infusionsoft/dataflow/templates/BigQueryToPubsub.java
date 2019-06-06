@@ -58,6 +58,7 @@ public class BigQueryToPubsub {
         .apply("BigQuery Read", BigQueryIO.readTableRows()
             .fromQuery(options.getReadQuery())
             .withoutValidation()
+            .withTemplateCompatibility()
             .usingStandardSql())
         // Transforms TableRow into JSON-formatted String
         .apply("JSON Transform", AsJsons.of(TableRow.class))
