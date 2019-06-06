@@ -7,6 +7,7 @@ import com.google.api.client.http.HttpRequestInitializer;
 import com.google.auth.Credentials;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.cloud.hadoop.util.ChainingHttpRequestInitializer;
+import com.google.datastore.v1.Key;
 import com.google.datastore.v1.client.Datastore;
 import com.google.datastore.v1.client.DatastoreFactory;
 import com.google.datastore.v1.client.DatastoreOptions;
@@ -58,5 +59,23 @@ public class DatastoreUtils {
     }
 
     return StringUtils.join(items, ":");
+  }
+
+  public static long getId(Key key) {
+    checkNotNull(key, "key must not be null");
+
+    final List<Key.PathElement> elementList = key.getPathList();
+    final Key.PathElement lastElement = elementList.get(elementList.size() - 1);
+
+    return lastElement.getId();
+  }
+
+  public static String getName(Key key) {
+    checkNotNull(key, "key must not be null");
+
+    final List<Key.PathElement> elementList = key.getPathList();
+    final Key.PathElement lastElement = elementList.get(elementList.size() - 1);
+
+    return lastElement.getName();
   }
 }
