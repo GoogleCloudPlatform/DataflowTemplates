@@ -123,9 +123,9 @@ public class PubsubToAvro {
 
     @Description("The maximum number of output shards produced when writing.")
     @Default.Integer(1)
-    Integer getNumShards();
+    ValueProvider<Integer> getNumShards();
 
-    void setNumShards(Integer value);
+    void setNumShards(ValueProvider<Integer> value);
 
     @Description(
         "The window duration in which data will be written. Defaults to 5m. "
@@ -134,9 +134,9 @@ public class PubsubToAvro {
             + "Nm (for minutes, example: 12m), "
             + "Nh (for hours, example: 2h).")
     @Default.String("5m")
-    String getWindowDuration();
+    ValueProvider<String> getWindowDuration();
 
-    void setWindowDuration(String value);
+    void setWindowDuration(ValueProvider<String> value);
 
     @Description("The Avro Write Temporary Directory. Must end with /")
     @Required
