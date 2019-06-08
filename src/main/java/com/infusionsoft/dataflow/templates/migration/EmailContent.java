@@ -31,12 +31,12 @@ import java.util.Map;
  * Deploy to sand:
  * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.migration.EmailContent -Dexec.args="--project=is-email-history-api-sand --stagingLocation=gs://dataflow-is-email-history-api-sand/staging --templateLocation=gs://dataflow-is-email-history-api-sand/templates/migration_content --runner=DataflowRunner --serviceAccount=is-email-history-api-sand@appspot.gserviceaccount.com --datastoreProjectId=is-email-history-api-sand --cloudStorageProjectId=is-email-history-api-sand --cloudStorageBucketName=is-email-history-api-sand.appspot.com"
  *
- * n1-highcpu-64
+ * n1-highcpu-32
  *
  * Deploy to prod:
  * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.migration.EmailContent -Dexec.args="--project=is-email-history-api-prod --stagingLocation=gs://dataflow-is-email-history-api-prod/staging --templateLocation=gs://dataflow-is-email-history-api-prod/templates/migration_content --runner=DataflowRunner --serviceAccount=is-email-history-api-prod@appspot.gserviceaccount.com --datastoreProjectId=is-email-history-api-prod --cloudStorageProjectId=is-email-history-api-prod --cloudStorageBucketName=is-email-history-api-prod.appspot.com"
  *
- * n1-highcpu-96
+ * n1-highcpu-64
  *
  */
 public class EmailContent {
