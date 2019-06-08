@@ -69,6 +69,8 @@
     <commons-text.version>1.9</commons-text.version>
     <google-cloud-bigquery.version>1.108.0</google-cloud-bigquery.version>
     <grpc.version>1.13.1</grpc.version>
+    <google-storage-api.version>v1-rev20181013-1.27.0</google-storage-api.version>
+    <google-storage.version>1.29.0</google-storage.version>
     <mvn-target-dir>${basedir}/target</mvn-target-dir>
     <derby.version>10.14.2.0</derby.version>
     <commons-codec.version>1.14</commons-codec.version>
@@ -344,6 +346,17 @@
       <artifactId>cql-antlr</artifactId>
       <version>${scassandra.version}</version>
       <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.google.apis</groupId>
+      <artifactId>google-api-services-storage</artifactId>
+      <version>${google-storage-api.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-storage</artifactId>
+      <version>${google-storage.version}</version>
     </dependency>
 
     <!-- Misc -->
