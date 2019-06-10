@@ -3,6 +3,7 @@ package com.infusionsoft.dataflow.templates.migration;
 import com.google.datastore.v1.ArrayValue;
 import com.google.datastore.v1.Entity;
 import com.google.datastore.v1.Value;
+import org.apache.beam.repackaged.beam_sdks_java_core.org.apache.commons.lang3.StringUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.datastore.DatastoreIO;
 import org.apache.beam.sdk.options.Description;
@@ -14,6 +15,8 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
+
 /**
  * A template that populates the toAddresses field for emails with data in the legacy toAddress field
  *
@@ -22,8 +25,12 @@ import org.slf4j.LoggerFactory;
  * Deploy to sand:
  * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.migration.EmailToAddresses -Dexec.args="--project=is-email-history-api-sand --stagingLocation=gs://dataflow-is-email-history-api-sand/staging --templateLocation=gs://dataflow-is-email-history-api-sand/templates/migration_to_addresses --runner=DataflowRunner --serviceAccount=is-email-history-api-sand@appspot.gserviceaccount.com --datastoreProjectId=is-email-history-api-sand"
  *
+ * n1-highcpu-32
+ *
  * Deploy to prod:
  * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.migration.EmailToAddresses -Dexec.args="--project=is-email-history-api-prod --stagingLocation=gs://dataflow-is-email-history-api-prod/staging --templateLocation=gs://dataflow-is-email-history-api-prod/templates/migration_to_addresses --runner=DataflowRunner --serviceAccount=is-email-history-api-prod@appspot.gserviceaccount.com --datastoreProjectId=is-email-history-api-prod"
+ *
+ * n1-highcpu-64
  *
  */
 public class EmailToAddresses {
@@ -43,20 +50,30 @@ public class EmailToAddresses {
     @ProcessElement
     public void processElement(ProcessContext context) {
       final Entity original = context.element();
-      final String toAddress = original.getPropertiesOrThrow("toAddress").getStringValue();
+      final Map<String, Value> properties = original.getProperties();
 
-      final Entity modified = original.toBuilder()
-          .putProperties("toAddresses", Value.newBuilder()
-              .setArrayValue(ArrayValue.newBuilder()
-                  .addValues(Value.newBuilder()
-                      .setStringValue(toAddress)
+      if (properties.containsKey("toAddress")) {
+        final String toAddress = properties.containsKey("toAddress") ? properties.get("toAddress").getStringValue() : null;
+        final Entity.Builder builder = original.toBuilder()
+            .removeProperties("toAddress");
+
+        if (StringUtils.isNotBlank(toAddress)) {
+          builder
+              .putProperties("toAddresses", Value.newBuilder()
+                  .setArrayValue(ArrayValue.newBuilder()
+                      .addValues(Value.newBuilder()
+                          .setStringValue(toAddress)
+                          .build())
                       .build())
                   .build())
-              .build())
-          .build();
+              .build();
+        }
 
-      LOG.debug("migrated: {} -> {}", original, modified);
-      context.output(modified);
+        final Entity modified = builder.build();
+
+        LOG.debug("migrated: {} -> {}", original, modified);
+        context.output(modified);
+      }
     }
   }
 
@@ -69,7 +86,7 @@ public class EmailToAddresses {
     pipeline
         .apply("Load Emails", DatastoreIO.v1().read()
             .withProjectId(projectId)
-            .withLiteralGqlQuery("SELECT * FROM Email WHERE toAddress > null"))
+            .withLiteralGqlQuery("SELECT * FROM Email"))
         .apply("Do Migration", ParDo.of(new MigrateEmailFn()))
         .apply("Save Emails", DatastoreIO.v1().write()
                 .withProjectId(projectId));

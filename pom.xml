@@ -72,6 +72,7 @@
     <google.cloud.core>1.61.0</google.cloud.core>
     <grpc.version>1.13.1</grpc.version>
     <google-storage-api.version>v1-rev20181013-1.27.0</google-storage-api.version>
+    <google-storage.version>1.29.0</google-storage.version>
     <mvn-target-dir>${basedir}/target</mvn-target-dir>
     <derby.version>10.12.1.1</derby.version>
     <commons-pool2.version>2.4.2</commons-pool2.version>
@@ -204,6 +205,11 @@
       <groupId>com.google.apis</groupId>
       <artifactId>google-api-services-storage</artifactId>
       <version>${google-storage-api.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-storage</artifactId>
+      <version>${google-storage.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.api.grpc</groupId>
