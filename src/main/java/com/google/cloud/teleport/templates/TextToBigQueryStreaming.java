@@ -265,7 +265,8 @@ public class TextToBigQueryStreaming {
    * @return FailsafeElement object.
    * @throws IOException
    */
-  static FailsafeElement<String, String> wrapBigQueryInsertError(BigQueryInsertError insertError) {
+  public static FailsafeElement<String, String> wrapBigQueryInsertError(
+      BigQueryInsertError insertError) {
 
     FailsafeElement<String, String> failsafeElement;
     try {
