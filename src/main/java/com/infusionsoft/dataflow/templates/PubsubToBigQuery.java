@@ -4,6 +4,8 @@ import static com.google.cloud.teleport.templates.TextToBigQueryStreaming.wrapBi
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.templates.PubSubToBigQuery;
+import com.google.cloud.teleport.templates.PubSubToBigQuery.Options;
 import com.google.cloud.teleport.templates.common.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.JavascriptTextTransformerOptions;
@@ -172,6 +174,12 @@ public class PubsubToBigQuery {
         ValueProvider<String> getOutputDeadletterTable();
 
         void setOutputDeadletterTable(ValueProvider<String> value);
+
+        void setMaxNumWorkers(int value);
+
+        void setWorkerMachineType(String value);
+
+        void setNumWorkers(int value);
     }
 
     /**
@@ -183,9 +191,11 @@ public class PubsubToBigQuery {
      * @param args The command-line args passed by the executor.
      */
     public static void main(String[] args) {
-        com.google.cloud.teleport.templates.PubSubToBigQuery.Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(
-            com.google.cloud.teleport.templates.PubSubToBigQuery.Options.class);
-
+        Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(
+           Options.class);
+        options.setMaxNumWorkers(9);
+        options.setWorkerMachineType("n1-standard-1");
+        options.setNumWorkers(1);
         run(options);
     }
 
@@ -199,7 +209,7 @@ public class PubsubToBigQuery {
      * @return The pipeline result.
      */
     public static PipelineResult run(
-        com.google.cloud.teleport.templates.PubSubToBigQuery.Options options) {
+        Options options) {
 
         Pipeline pipeline = Pipeline.create(options);
 
@@ -228,6 +238,7 @@ public class PubsubToBigQuery {
                     "ReadPubSubTopic",
                     PubsubIO.readMessagesWithAttributes().fromTopic(options.getInputTopic()));
         }
+
         PCollectionTuple convertedTableRows =
             messages
                 /*
@@ -264,7 +275,7 @@ public class PubsubToBigQuery {
                                 table_name = "user_logout";
                             }
                             else if (event.equals("api_call_made")) {
-                                table_name = "user_logout";
+                                table_name = "api_call_made";
                             }
                             String destination = String.format("%s.%s", projectAndDataset, table_name);
                             return new TableDestination(destination, null);
@@ -290,9 +301,9 @@ public class PubsubToBigQuery {
     static class PubsubMessageToTableRow
         extends PTransform<PCollection<PubsubMessage>, PCollectionTuple> {
 
-        private final com.google.cloud.teleport.templates.PubSubToBigQuery.Options options;
+        private final Options options;
 
-        PubsubMessageToTableRow(com.google.cloud.teleport.templates.PubSubToBigQuery.Options options) {
+        PubsubMessageToTableRow(Options options) {
             this.options = options;
         }
 
