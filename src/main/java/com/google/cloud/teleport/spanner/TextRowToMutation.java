@@ -23,6 +23,7 @@ import com.google.cloud.teleport.spanner.TextImportProtos.ImportManifest.TableMa
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.common.base.Strings;
+import com.google.common.primitives.Longs;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
@@ -199,12 +200,20 @@ class TextRowToMutation extends DoFn<KV<String, String>, Mutation> {
                   : Value.date(com.google.cloud.Date.parseDate(dt));
           break;
         case TIMESTAMP:
-          columnValue =
-              isNullValue
-                  ? Value.timestamp(null)
-                  : Value.timestamp(
-                      com.google.cloud.Timestamp.parseTimestamp(
-                          cellValue.replaceAll("\"", "").trim()));
+          if (isNullValue) {
+            columnValue = Value.timestamp(null);
+          } else {
+            // Timestamp is either a string in the RFC 3339 format without the timezone offset
+            // (always ends in "Z", e.g., 2018-12-31T23:59:59.78Z) or a long integer representing
+            // the microseconds since 1970-01-01 00:00:00 UTC.
+            Long microseconds = Longs.tryParse(cellValue);
+            columnValue =
+                microseconds != null
+                    ? Value.timestamp(com.google.cloud.Timestamp.ofTimeMicroseconds(microseconds))
+                    : Value.timestamp(
+                        com.google.cloud.Timestamp.parseTimestamp(
+                            cellValue.replaceAll("\"", "").trim()));
+          }
           break;
         default:
           throw new IllegalArgumentException(

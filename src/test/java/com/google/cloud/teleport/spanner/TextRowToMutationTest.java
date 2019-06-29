@@ -78,7 +78,8 @@ public final class TextRowToMutationTest {
             Create.of(
                 KV.of(
                     testTableName,
-                    "123,a string,`another string`,1.23,True,2019-01-01,2018-12-31T23:59:59Z,")));
+                    "123,a string,`another"
+                        + " string`,1.23,True,2019-01-01,2018-12-31T23:59:59Z,1567637083,")));
     PCollection<Mutation> mutations =
         input.apply(
             ParDo.of(
@@ -109,6 +110,8 @@ public final class TextRowToMutationTest {
                 .to(Value.date(Date.parseDate("2019-01-01")))
                 .set("timestamp_col")
                 .to(Value.timestamp(Timestamp.parseTimestamp("2018-12-31T23:59:59Z")))
+                .set("timestamp_col_epoch")
+                .to(Value.timestamp(Timestamp.ofTimeMicroseconds(1567637083)))
                 .build());
 
     pipeline.run();
@@ -176,7 +179,7 @@ public final class TextRowToMutationTest {
             .apply("Map as view", View.asSingleton());
 
     PCollection<KV<String, String>> input =
-        pipeline.apply("input", Create.of(KV.of(testTableName, "123||\\NA||||")));
+        pipeline.apply("input", Create.of(KV.of(testTableName, "123||\\NA|||||")));
     PCollection<Mutation> mutations =
         input.apply(
             ParDo.of(
@@ -206,6 +209,8 @@ public final class TextRowToMutationTest {
                 .set("date_col")
                 .to(Value.date(null))
                 .set("timestamp_col")
+                .to(Value.timestamp(null))
+                .set("timestamp_col_epoch")
                 .to(Value.timestamp(null))
                 .build());
 
@@ -309,6 +314,9 @@ public final class TextRowToMutationTest {
             .date()
             .endColumn()
             .column("timestamp_col")
+            .timestamp()
+            .endColumn()
+            .column("timestamp_col_epoch")
             .timestamp()
             .endColumn()
             .primaryKey()
