@@ -17,6 +17,20 @@ function toSpecific(event) {
     specific.event_type = 'smart_form_submitted';
     specific.source_type = 'smart_form';
     specific.source_id = event.formInstanceId;
+    specific.event_data = toEventData(event);
 
     return specific;
+}
+
+function toEventData(event) {
+    var eventData = {};
+
+    if (event.data) {
+        eventData.data = event.data;
+
+    } else {
+        eventData.data = {};
+    }
+
+    return eventData;
 }
