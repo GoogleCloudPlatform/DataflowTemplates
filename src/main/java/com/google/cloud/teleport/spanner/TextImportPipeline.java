@@ -63,8 +63,8 @@ public class TextImportPipeline {
     void setColumnDelimiter(ValueProvider<Character> value);
 
     @Description(
-        "Field qualifier used by the source file, the default value is double quote. Field "
-            + "qualifier should be used when character needs to be escaped.")
+        "Field qualifier used by the source file. Field qualifier should be used when character"
+            + " needs to be escaped.")
     ValueProvider<Character> getFieldQualifier();
 
     void setFieldQualifier(ValueProvider<Character> value);
