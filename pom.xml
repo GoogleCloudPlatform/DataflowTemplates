@@ -40,6 +40,7 @@
     <checkstyle.version>8.7</checkstyle.version>
     <beam.version>2.12.0</beam.version>
     <beam-vendor-guava.version>0.1</beam-vendor-guava.version>
+    <bigtable-hbase-beam.version>1.12.0</bigtable-hbase-beam.version>
     <hamcrest.version>1.3</hamcrest.version>
     <java.version>1.8</java.version>
     <junit.version>4.12</junit.version>
@@ -139,6 +140,11 @@
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-vendor-guava-20_0</artifactId>
       <version>${beam-vendor-guava.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud.bigtable</groupId>
+      <artifactId>bigtable-hbase-beam</artifactId>
+      <version>${bigtable-hbase-beam.version}</version>
     </dependency>
 
     <!-- Test -->
