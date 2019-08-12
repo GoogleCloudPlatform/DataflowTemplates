@@ -81,6 +81,12 @@ public class JdbcConverters {
     ValueProvider<String> getBigQueryLoadingTemporaryDirectory();
 
     void setBigQueryLoadingTemporaryDirectory(ValueProvider<String> directory);
+
+    @Description(
+        "KMS Encryption Key should be in the format projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}")
+    ValueProvider<String> getKMSEncryptionKey();
+
+    void setKMSEncryptionKey(ValueProvider<String> keyName);
   }
 
   /** Factory method for {@link ResultSetToTableRow}. */

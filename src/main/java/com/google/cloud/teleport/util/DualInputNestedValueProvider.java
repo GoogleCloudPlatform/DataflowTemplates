@@ -53,7 +53,7 @@ public class DualInputNestedValueProvider<T, FirstT, SecondT>
   private final SerializableFunction<TranslatorInput<FirstT, SecondT>, T> translator;
   private transient volatile T cachedValue;
 
-  DualInputNestedValueProvider(
+  public DualInputNestedValueProvider(
       ValueProvider<FirstT> valueX,
       ValueProvider<SecondT> valueY,
       SerializableFunction<TranslatorInput<FirstT, SecondT>, T> translator) {

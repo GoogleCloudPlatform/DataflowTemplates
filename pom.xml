@@ -84,6 +84,8 @@
     <autovalue.version>1.6.2</autovalue.version>
     <excluded.spanner.tests>com.google.cloud.teleport.spanner.IntegrationTest</excluded.spanner.tests>
     <dlp.version>0.79.0-beta</dlp.version>
+    <kms.version>1.20.0</kms.version>
+    <proto-kms.version>0.67.0</proto-kms.version>
   </properties>
 
   <dependencies>
@@ -372,6 +374,16 @@
           <artifactId>grpc-core</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-kms</artifactId>
+      <version>${kms.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.api.grpc</groupId>
+      <artifactId>proto-google-cloud-kms-v1</artifactId>
+      <version>${proto-kms.version}</version>
     </dependency>
   </dependencies>
 

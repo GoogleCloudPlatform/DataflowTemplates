@@ -19,16 +19,23 @@ package com.google.cloud.teleport.templates;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.io.DynamicJdbcIO;
 import com.google.cloud.teleport.templates.common.JdbcConverters;
+import com.google.cloud.teleport.util.KMSEncryptedNestedValueProvider;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.ValueProvider;
 
 /**
  * A template that copies data from a relational database using JDBC to an existing BigQuery table.
  */
 public class JdbcToBigQuery {
+
+  private static ValueProvider<String> maybeDecrypt(
+      ValueProvider<String> unencryptedValue, ValueProvider<String> kmsKey) {
+    return new KMSEncryptedNestedValueProvider(unencryptedValue, kmsKey);
+  }
 
   /**
    * Main entry point for executing the pipeline. This will run the pipeline asynchronously. If
@@ -73,9 +80,12 @@ public class JdbcToBigQuery {
             DynamicJdbcIO.<TableRow>read()
                 .withDataSourceConfiguration(
                     DynamicJdbcIO.DynamicDataSourceConfiguration.create(
-                            options.getDriverClassName(), options.getConnectionURL())
-                        .withUsername(options.getUsername())
-                        .withPassword(options.getPassword())
+                            options.getDriverClassName(),
+                            maybeDecrypt(options.getConnectionURL(), options.getKMSEncryptionKey()))
+                        .withUsername(
+                            maybeDecrypt(options.getUsername(), options.getKMSEncryptionKey()))
+                        .withPassword(
+                            maybeDecrypt(options.getPassword(), options.getKMSEncryptionKey()))
                         .withDriverJars(options.getDriverJars())
                         .withConnectionProperties(options.getConnectionProperties()))
                 .withQuery(options.getQuery())
