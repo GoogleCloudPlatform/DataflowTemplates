@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -196,7 +197,7 @@ public class DLPTextToBigQueryStreaming {
                     .filepattern(options.getInputFilePattern())
                     .continuously(DEFAULT_POLL_INTERVAL, Watch.Growth.never()))
             .apply("Find Pattern Match", FileIO.readMatches().withCompression(Compression.AUTO))
-            .apply("Add File Name as Key",WithKeys.of(file -> getFileName(file)))
+            .apply("Add File Name as Key", WithKeys.of(file -> getFileName(file)))
             .setCoder(KvCoder.of(StringUtf8Coder.of(), ReadableFileCoder.of()))
             .apply(
                 "Fixed Window(30 Sec)",
@@ -610,6 +611,10 @@ public class DLPTextToBigQueryStreaming {
       List<Table.Row> outputRows = tokenizedData.getRowsList();
       if (outputRows.size() > 0) {
         for (Table.Row outputRow : outputRows) {
+          if (outputRow.getValuesCount() != headers.size()) {
+            throw new IllegalArgumentException(
+                "CSV file's header count must exactly match with data element count");
+          }
           c.output(
               KV.of(
                   c.element().getKey(),
@@ -620,18 +625,17 @@ public class DLPTextToBigQueryStreaming {
 
     private static TableRow createBqRow(Table.Row tokenizedValue, String[] headers) {
       TableRow bqRow = new TableRow();
-      String dlpRow =
-          tokenizedValue.getValuesList().stream()
-              .map(value -> value.getStringValue())
-              .collect(Collectors.joining(","));
-      String[] values = dlpRow.split(",");
+      AtomicInteger headerIndex = new AtomicInteger(0);
       List<TableCell> cells = new ArrayList<>();
-      for (int i = 0; i < values.length; i++) {
-        String checkedHeaderName = checkHeaderName(headers[i].toString());
-        bqRow.set(checkedHeaderName, values[i].toString());
-        /** creating a list of Table Cell to be used later to create BQ Table Schema */
-        cells.add(new TableCell().set(checkedHeaderName, values[i].toString()));
-      }
+      tokenizedValue
+          .getValuesList()
+          .forEach(
+              value -> {
+                String checkedHeaderName =
+                    checkHeaderName(headers[headerIndex.getAndIncrement()].toString());
+                bqRow.set(checkedHeaderName, value.getStringValue());
+                cells.add(new TableCell().set(checkedHeaderName, value.getStringValue()));
+              });
       bqRow.setF(cells);
       return bqRow;
     }
