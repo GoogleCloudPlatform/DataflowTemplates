@@ -1,7 +1,5 @@
 package com.infusionsoft.dataflow.templates;
 
-import com.infusionsoft.dataflow.utils.DatastoreUtils;
-
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.templates.common.PubsubConverters.PubsubReadOptions;
@@ -17,6 +15,13 @@ import com.google.datastore.v1.client.Datastore;
 import com.google.datastore.v1.client.DatastoreException;
 import com.google.datastore.v1.client.DatastoreHelper;
 import com.google.protobuf.util.Timestamps;
+import com.infusionsoft.dataflow.utils.DatastoreUtils;
+import com.infusionsoft.dataflow.utils.ZonedDateTimeUtils;
+import java.io.IOException;
+import java.time.ZonedDateTime;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
@@ -30,12 +35,6 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.time.ZonedDateTime;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
 
 /**
  * A template that listens to pubsub and marks emails as bounced, as appropriate.
@@ -102,7 +101,7 @@ public class PubsubMarkEmailsBounced {
     private void processEvent(ProcessContext context, Map<String, Object> json) {
       final String accountId = (String) json.get("accountId");
       final String bounceId = (String) json.get("bounceId");
-      final ZonedDateTime timestamp = ZonedDateTime.parse((String) json.get("timestamp"));
+      final ZonedDateTime timestamp = ZonedDateTimeUtils.parseFlagshipDate((String) json.get("timestamp"));
 
       final Datastore datastore = DatastoreUtils.getDatastore(context.getPipelineOptions(), projectId);
 
