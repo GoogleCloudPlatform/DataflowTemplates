@@ -43,6 +43,7 @@ import org.apache.beam.sdk.io.fs.MatchResult.Metadata;
 import org.apache.beam.sdk.io.fs.MatchResult.Status;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -58,11 +59,14 @@ public abstract class JavascriptTextTransformer {
 
   /** Necessary CLI options for running UDF function. */
   public interface JavascriptTextTransformerOptions extends PipelineOptions {
+    // "Required" annotation is added as a workaround for BEAM-7983.
+    @Validation.Required
     @Description("Gcs path to javascript udf source")
     ValueProvider<String> getJavascriptTextTransformGcsPath();
 
     void setJavascriptTextTransformGcsPath(ValueProvider<String> javascriptTextTransformGcsPath);
 
+    @Validation.Required
     @Description("UDF Javascript Function Name")
     ValueProvider<String> getJavascriptTextTransformFunctionName();
 
