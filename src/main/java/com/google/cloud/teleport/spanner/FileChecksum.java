@@ -23,9 +23,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-import org.apache.beam.sdk.util.GcsUtil;
-import org.apache.beam.sdk.util.GcsUtil.StorageObjectOrIOException;
-import org.apache.beam.sdk.util.gcsfs.GcsPath;
+import org.apache.beam.sdk.extensions.gcp.util.GcsUtil;
+import org.apache.beam.sdk.extensions.gcp.util.GcsUtil.StorageObjectOrIOException;
+import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
 
 /** Find the MD5 checksum for files either on local file system or on GCS. */
 public class FileChecksum {

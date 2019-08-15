@@ -28,6 +28,7 @@ import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.fs.MatchResult.Metadata;
 import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
@@ -81,7 +82,7 @@ public class BulkCompressorTest {
     final ValueProvider<String> outputDirectoryProvider =
         pipeline.newProvider(tempFolderCompressedPath.toString());
 
-    final ValueProvider<Compression> compressionProvider = pipeline.newProvider(compression);
+    final ValueProvider<Compression> compressionProvider = StaticValueProvider.of(compression);
 
     final Metadata metadata = FileSystems.matchSingleFileSpec(textFile.toString());
 

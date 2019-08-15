@@ -69,6 +69,7 @@ import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.transforms.Watch;
 import org.apache.beam.sdk.transforms.WithKeys;
 import org.apache.beam.sdk.transforms.splittabledofn.OffsetRangeTracker;
+import org.apache.beam.sdk.transforms.splittabledofn.RestrictionTracker;
 import org.apache.beam.sdk.transforms.windowing.AfterProcessingTime;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
@@ -378,7 +379,8 @@ public class DLPTextToBigQueryStreaming {
     }
 
     @ProcessElement
-    public void processElement(ProcessContext c, OffsetRangeTracker tracker) throws IOException {
+    public void processElement(ProcessContext c, RestrictionTracker<OffsetRange, Long> tracker)
+        throws IOException {
       for (long i = tracker.currentRestriction().getFrom(); tracker.tryClaim(i); ++i) {
         String fileKey = c.element().getKey();
         try (BufferedReader br = getReader(c.element().getValue())) {

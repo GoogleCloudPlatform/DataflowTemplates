@@ -50,6 +50,7 @@ import org.apache.avro.file.DataFileConstants;
 import org.apache.avro.io.BinaryDecoder;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.beam.sdk.extensions.gcp.options.GcsOptions;
+import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;
@@ -71,7 +72,6 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.transforms.Wait;
-import org.apache.beam.sdk.util.gcsfs.GcsPath;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
@@ -517,7 +517,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
 
     private void validateGcsFiles(
         ProcessContext c, String table, TableManifest manifest) {
-      org.apache.beam.sdk.util.GcsUtil gcsUtil =
+      org.apache.beam.sdk.extensions.gcp.util.GcsUtil gcsUtil =
           c.getPipelineOptions().as(GcsOptions.class).getGcsUtil();
       // Convert file names to GcsPaths.
       List<GcsPath> gcsPaths =

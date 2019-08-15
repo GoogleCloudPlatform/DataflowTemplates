@@ -51,6 +51,7 @@ import org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.extensions.gcp.options.GcsOptions;
+import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
 import org.apache.beam.sdk.io.AvroIO;
 import org.apache.beam.sdk.io.DefaultFilenamePolicy;
 import org.apache.beam.sdk.io.DynamicAvroDestinations;
@@ -82,7 +83,6 @@ import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.transforms.join.CoGbkResult;
 import org.apache.beam.sdk.transforms.join.CoGroupByKey;
 import org.apache.beam.sdk.transforms.join.KeyedPCollectionTuple;
-import org.apache.beam.sdk.util.gcsfs.GcsPath;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
@@ -319,7 +319,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                           throws IOException {
                         if (GcsPath.GCS_URI.matcher(outputPath.toString()).matches()) {
                           // Writing the Avro file to GCS.
-                          org.apache.beam.sdk.util.GcsUtil gcsUtil =
+                          org.apache.beam.sdk.extensions.gcp.util.GcsUtil gcsUtil =
                               c.getPipelineOptions().as(GcsOptions.class).getGcsUtil();
                           String gcsType = "application/octet-stream";
                           WritableByteChannel gcsChannel =
@@ -590,7 +590,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     }
 
     private TableManifest buildGcsManifest(ProcessContext c, Iterable<GcsPath> files) {
-      org.apache.beam.sdk.util.GcsUtil gcsUtil =
+      org.apache.beam.sdk.extensions.gcp.util.GcsUtil gcsUtil =
           c.getPipelineOptions().as(GcsOptions.class).getGcsUtil();
       TableManifest.Builder result = TableManifest.newBuilder();
 

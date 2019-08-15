@@ -33,7 +33,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
  */
 public class DatastoreToText {
 
-  interface DatastoreToTextOptions extends
+  public interface DatastoreToTextOptions extends
       PipelineOptions,
       DatastoreReadOptions,
       JavascriptTextTransformerOptions,
