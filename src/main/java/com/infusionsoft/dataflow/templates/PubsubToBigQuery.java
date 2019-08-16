@@ -2,6 +2,10 @@ package com.infusionsoft.dataflow.templates;
 
 import static com.google.cloud.teleport.templates.TextToBigQueryStreaming.wrapBigQueryInsertError;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.templates.PubSubToBigQuery;
@@ -10,10 +14,19 @@ import com.google.cloud.teleport.templates.common.BigQueryConverters.FailsafeJso
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.values.FailsafeElement;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.StreamSupport;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
@@ -22,6 +35,7 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.TableDestination;
+import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
@@ -31,14 +45,20 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.PInput;
+import org.apache.beam.sdk.values.POutput;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.beam.sdk.values.ValueInSingleWindow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -196,7 +216,52 @@ public class PubsubToBigQuery {
         options.setMaxNumWorkers(9);
         options.setWorkerMachineType("n1-standard-1");
         options.setNumWorkers(1);
-        run(options);
+        run2(options);
+    }
+    private static <T> Iterable<T> concat(Iterable<? extends Iterable<T>> foo) {
+        return () -> StreamSupport.stream(foo.spliterator(), false)
+            .flatMap(i -> StreamSupport.stream(i.spliterator(), false))
+            .iterator();
+    }
+    public static PipelineResult run2(Options options) {
+
+        Pipeline pipeline = Pipeline.create(options);
+        PCollection<String> messages = pipeline.apply("ReadPubSubTopic", PubsubIO.readStrings().fromTopic(options.getInputTopic()));
+        PCollection<Iterable<TableRow>> tableRows = messages.apply(batchJsonToListJson()).apply(jsonToTableRow());
+        PCollection<TableRow> tableRowPCollection = tableRows.apply("Flatten the TableRow", Flatten.iterables());
+
+        PCollectionTuple pcs = PCollectionTuple.of(TRANSFORM_OUT, tableRowPCollection);
+
+        WriteResult writeResult =
+            pcs
+                .get(TRANSFORM_OUT)
+                .apply(
+                    "WriteSuccessfulRecords",
+                    BigQueryIO.writeTableRows()
+                        .withoutValidation()
+                        .withCreateDisposition(CreateDisposition.CREATE_NEVER)
+                        .withWriteDisposition(WriteDisposition.WRITE_APPEND)
+                        .withExtendedErrorInfo()
+                        .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
+                        .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
+                        .to((SerializableFunction<ValueInSingleWindow<TableRow>, TableDestination>) element -> {
+                            TableRow row = element.getValue();
+                            String event = row.get("event").toString();
+                            String projectAndDataset = "is-events-dataflow-sand:crm_prod";
+                            String table_name = null;
+                            if (event.equals("user_login")) {
+                                table_name = "user_login";
+                            }
+                            else if (event.equals("user_logout")) {
+                                table_name = "user_logout";
+                            }
+                            else if (event.equals("api_call_made")) {
+                                table_name = "api_call_made";
+                            }
+                            String destination = String.format("%s.%s", projectAndDataset, table_name);
+                            return new TableDestination(destination, null);
+                        }));
+        return pipeline.run();
     }
 
     /**
@@ -310,6 +375,8 @@ public class PubsubToBigQuery {
         @Override
         public PCollectionTuple expand(PCollection<PubsubMessage> input) {
 
+
+
             PCollectionTuple udfOut =
                 input
                     // Map the incoming messages into FailsafeElements so we can recover from failures
@@ -350,6 +417,71 @@ public class PubsubToBigQuery {
             PubsubMessage message = context.element();
             context.output(
                 FailsafeElement.of(message, new String(message.getPayload(), StandardCharsets.UTF_8)));
+        }
+    }
+
+    public static PTransform<PCollection< Iterable<String>>, PCollection<Iterable<TableRow>>> jsonToTableRow() {
+        return new JsonToTableRow();
+    }
+
+    private static class JsonToTableRow
+        extends PTransform<PCollection< Iterable<String>>, PCollection<Iterable<TableRow>>> {
+
+        @Override
+        public PCollection<Iterable<TableRow>> expand(PCollection< Iterable<String>> stringPCollection) {
+
+            return stringPCollection.apply("JsonListToTableRow", MapElements.< Iterable<String>, Iterable<com.google.api.services.bigquery.model.TableRow>>via(
+                new SimpleFunction< Iterable<String>, Iterable<TableRow>>() {
+                    @Override
+                    public Iterable<TableRow> apply( Iterable<String> json) {
+                        List<TableRow> tableRowList = new ArrayList<>();
+                        try {
+                                for(String splitJson : json) {
+                                    InputStream inputStream = new ByteArrayInputStream(
+                                        splitJson.getBytes(StandardCharsets.UTF_8.name()));
+                                    tableRowList.add(TableRowJsonCoder.of().decode(inputStream, Coder.Context.OUTER));
+                                }
+
+                        } catch (IOException e) {
+                            throw new RuntimeException("Unable to parse input", e);
+                        }
+
+                        return tableRowList;
+                    }
+                }));
+        }
+    }
+
+    public static PTransform<PCollection<String>, PCollection< Iterable<String>>> batchJsonToListJson() {
+        return new BatchJsonToListJson();
+    }
+
+    private static class BatchJsonToListJson extends PTransform<PCollection<String>, PCollection< Iterable<String>>>{
+
+        @Override
+        public PCollection< Iterable<String>> expand(PCollection<String> input) {
+            return input.apply("BatchJsonToJsonList", MapElements.<String, Iterable<String>>via(
+                new SimpleFunction<String, Iterable<String>>() {
+                    @Override
+                    public Iterable<String> apply(String input) {
+                        String[] splitInput = input.split("&");
+                        List<String> inputList = new ArrayList<>();
+                        //Pipeline.create().apply(Create.of(inputList)).setCoder(StringUtf8Coder.of());
+                        ObjectMapper objectMapper = new ObjectMapper();
+                        objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+                        objectMapper.setPropertyNamingStrategy(PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES);
+
+                        for(String string : splitInput) {
+                            try{
+                                inputList.add(objectMapper.writeValueAsString(string));
+                            } catch (JsonProcessingException e) {
+
+                            }
+                        }
+
+                        return inputList;
+                    }
+                }));
         }
     }
 
