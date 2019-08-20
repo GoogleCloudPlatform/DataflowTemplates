@@ -20,8 +20,10 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.StreamSupport;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -156,6 +158,8 @@ public class PubsubToBigQuery {
     /** String/String Coder for FailsafeElement. */
     public static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
         FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
+
+    private static Logger logger = LoggerFactory.getLogger("PubsubToBigQuery");
 
     /**
      * The {@link com.google.cloud.teleport.templates.PubSubToBigQuery.Options} class provides the custom execution options passed by the executor at the
@@ -436,9 +440,13 @@ public class PubsubToBigQuery {
                     public Iterable<TableRow> apply( Iterable<String> json) {
                         List<TableRow> tableRowList = new ArrayList<>();
                         try {
+                            logger.info("Converting iterable to tableRow");
                                 for(String splitJson : json) {
+                                    logger.info("In iterator, going through");
+                                    logger.info(splitJson);
                                     InputStream inputStream = new ByteArrayInputStream(
                                         splitJson.getBytes(StandardCharsets.UTF_8.name()));
+                                    logger.info("Adding to tableRow list");
                                     tableRowList.add(TableRowJsonCoder.of().decode(inputStream, Coder.Context.OUTER));
                                 }
 
@@ -460,28 +468,34 @@ public class PubsubToBigQuery {
 
         @Override
         public PCollection< Iterable<String>> expand(PCollection<String> input) {
-            return input.apply("BatchJsonToJsonList", MapElements.<String, Iterable<String>>via(
-                new SimpleFunction<String, Iterable<String>>() {
-                    @Override
-                    public Iterable<String> apply(String input) {
-                        String[] splitInput = input.split("&");
-                        List<String> inputList = new ArrayList<>();
-                        //Pipeline.create().apply(Create.of(inputList)).setCoder(StringUtf8Coder.of());
-                        ObjectMapper objectMapper = new ObjectMapper();
-                        objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
-                        objectMapper.setPropertyNamingStrategy(PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES);
+      return input.apply(
+          "BatchJsonToJsonList",
+          MapElements.<String, Iterable<String>>via(
+              new SimpleFunction<String, Iterable<String>>() {
+                @Override
+                public Iterable<String> apply(String input) {
+                    logger.info("About to start splitting the input string");
+                  String[] splitInput = input.split("&");
+                  logger.info("Split input is of length "+splitInput.length);
+                  Set<String> inputSet = new HashSet<>();
+                  // Pipeline.create().apply(Create.of(inputList)).setCoder(StringUtf8Coder.of());
+                  ObjectMapper objectMapper = new ObjectMapper();
+                  objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+                  objectMapper.setPropertyNamingStrategy(
+                      PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES);
 
-                        for(String string : splitInput) {
-                            try{
-                                inputList.add(objectMapper.writeValueAsString(string));
-                            } catch (JsonProcessingException e) {
-
-                            }
-                        }
-
-                        return inputList;
+                  for (String string : splitInput) {
+                    try {
+                        logger.info("String after split "+string);
+                        inputSet.add(objectMapper.writeValueAsString(string));
+                    } catch (JsonProcessingException e) {
+                        throw new RuntimeException("Unable to parse input in BatchJsonToListJson", e);
                     }
-                }));
+                  }
+                  logger.info("Set size now is "+inputSet.size());
+                  return inputSet;
+                }
+              }));
         }
     }
 
