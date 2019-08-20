@@ -479,16 +479,16 @@ public class PubsubToBigQuery {
                   logger.info("Split input is of length "+splitInput.length);
                   Set<String> inputSet = new HashSet<>();
                   // Pipeline.create().apply(Create.of(inputList)).setCoder(StringUtf8Coder.of());
-                  ObjectMapper objectMapper = new ObjectMapper();
+                  /*ObjectMapper objectMapper = new ObjectMapper();
                   objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
                   objectMapper.setPropertyNamingStrategy(
-                      PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES);
+                      PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES);*/
 
                   for (String string : splitInput) {
                     try {
                         logger.info("String after split "+string);
-                        inputSet.add(objectMapper.writeValueAsString(string));
-                    } catch (JsonProcessingException e) {
+                        inputSet.add(string);
+                    } catch (Exception e) {
                         throw new RuntimeException("Unable to parse input in BatchJsonToListJson", e);
                     }
                   }
