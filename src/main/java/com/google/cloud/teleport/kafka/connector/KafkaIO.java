@@ -36,6 +36,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
+
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.annotations.Experimental;
 import org.apache.beam.sdk.coders.AtomicCoder;
@@ -240,7 +242,8 @@ public class KafkaIO {
 
   /**
    * Creates an uninitialized {@link Read} {@link PTransform}. Before use, basic Kafka configuration
-   * should set with {@link Read#withBootstrapServers(String)} and {@link Read#withTopics(List)}.
+   * should set with {@link Read#withBootstrapServers(String)} 
+   * and ({@link Read#withTopics(List)} / {@link Read#withTopicRegex(String)}).
    * Other optional settings include key and value {@link Deserializer}s, custom timestamp and
    * watermark functions.
    */
@@ -248,6 +251,7 @@ public class KafkaIO {
     return new AutoValue_KafkaIO_Read.Builder<K, V>()
         .setNumSplits(0)
         .setTopicPartitions(new ArrayList<>())
+        .setTopicRegexPattern(null)
         .setConsumerFactoryFn(Read.KAFKA_CONSUMER_FACTORY_FN)
         .setConsumerConfig(Read.DEFAULT_CONSUMER_PROPERTIES)
         .setMaxNumRecords(Long.MAX_VALUE)
@@ -286,8 +290,15 @@ public class KafkaIO {
 
     @Nullable
     abstract ValueProvider<List<String>> getTopics();
-
+    
+    @Nullable
     abstract List<TopicPartition> getTopicPartitions();
+
+    @Nullable
+    abstract ValueProvider<String> getTopicRegex();
+
+    @Nullable
+    abstract Pattern getTopicRegexPattern();
 
     @Nullable
     abstract Coder<K> getKeyCoder();
@@ -332,6 +343,10 @@ public class KafkaIO {
       abstract Builder<K, V> setTopics(ValueProvider<List<String>> topics);
 
       abstract Builder<K, V> setTopicPartitions(List<TopicPartition> topicPartitions);
+
+      abstract Builder<K, V> setTopicRegex(ValueProvider<String> topicRegex);
+
+      abstract Builder<K, V> setTopicRegexPattern(Pattern topicRegex);
 
       abstract Builder<K, V> setKeyCoder(Coder<K> keyCoder);
 
@@ -420,6 +435,21 @@ public class KafkaIO {
     public Read<K, V> withTopicPartitions(List<TopicPartition> topicPartitions) {
       checkState(getTopics() == null, "Only topics or topicPartitions can be set, not both");
       return toBuilder().setTopicPartitions(ImmutableList.copyOf(topicPartitions)).build();
+    }
+
+    /** ValueProvider version of {@link #withTopicRegex(String)}. */
+    public Read<K, V> withTopicRegex(ValueProvider<String> topicRegex) {
+      checkState(
+          getTopicPartitions().isEmpty(), "Cannot set topic regex with configured topicPartitions");
+      return toBuilder().setTopicRegex(topicRegex).build();
+    }
+
+    /**
+     * Sets the topic regex to read from.
+     *
+     */
+    public Read<K, V> withTopicRegex(String topicRegex) {
+      return withTopicRegex(StaticValueProvider.of(topicRegex));
     }
 
     /**
@@ -678,8 +708,8 @@ public class KafkaIO {
       checkArgument(getBootstrapServers() != null,
                     "withBootstrapServers() is required");
       checkArgument(
-          getTopics() != null || getTopicPartitions().size() > 0,
-          "Either withTopic(), withTopics() or withTopicPartitions() is required");
+          getTopics() != null || getTopicRegex() != null || getTopicPartitions().size() > 0,
+          "Either withTopic(), withTopics(), withTopicRegex(), or withTopicPartitions() is required");
       checkArgument(getKeyDeserializer() != null, "withKeyDeserializer() is required");
       checkArgument(getValueDeserializer() != null, "withValueDeserializer() is required");
       ConsumerSpEL consumerSpEL = new ConsumerSpEL();
@@ -808,6 +838,8 @@ public class KafkaIO {
       super.populateDisplayData(builder);
       ValueProvider<List<String>> topics = getTopics();
       List<TopicPartition> topicPartitions = getTopicPartitions();
+      ValueProvider<String> topicRegex = getTopicRegex();
+
       if (topics != null) {
         if (topics.isAccessible()) {
           builder.add(DisplayData.item("topics", Joiner.on(",").join(topics.get()))
@@ -819,6 +851,8 @@ public class KafkaIO {
         builder.add(
             DisplayData.item("topicPartitions", Joiner.on(",").join(topicPartitions))
                 .withLabel("Topic Partition/s"));
+      } else if (topicRegex != null) {
+        builder.add(DisplayData.item("topicRegex", topicRegex.toString()).withLabel("Topic Regex/s"));
       }
       builder.add(DisplayData.item(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, getBootstrapServers()));
       Set<String> ignoredConsumerPropertiesKeys = IGNORED_CONSUMER_PROPERTIES.keySet();

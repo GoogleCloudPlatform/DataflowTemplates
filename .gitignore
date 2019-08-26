@@ -1,4 +1,7 @@
 target/
 bin/
 dependency-reduced-pom.xml
-
+libs/
+.idea/
+.classpath
+.factorypath

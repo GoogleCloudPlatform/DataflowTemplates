@@ -47,6 +47,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
+
+import com.google.spanner.v1.DeleteSessionRequest;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.beam.sdk.io.UnboundedSource.CheckpointMark;
 import org.apache.beam.sdk.io.UnboundedSource.UnboundedReader;
@@ -83,7 +85,10 @@ class KafkaUnboundedReader<K, V> extends UnboundedReader<KafkaRecord<K, V>> {
 
     Read<K, V> spec = source.getSpec();
     consumer = spec.getConsumerFactoryFn().apply(spec.getConsumerConfig());
-    consumerSpEL.evaluateAssign(consumer, spec.getTopicPartitions());
+
+    if (spec.getTopicRegexPattern() != null)
+      consumerSpEL.evaluateSubscribe(consumer, spec.getTopicRegexPattern());
+    else consumerSpEL.evaluateAssign(consumer, spec.getTopicPartitions());
 
     try {
       keyDeserializerInstance = spec.getKeyDeserializer().getDeclaredConstructor().newInstance();
@@ -137,7 +142,9 @@ class KafkaUnboundedReader<K, V> extends UnboundedReader<KafkaRecord<K, V>> {
 
     // Start consumer read loop.
     // Note that consumer is not thread safe, should not be accessed out side consumerPollLoop().
-    consumerPollThread.submit(this::consumerPollLoop);
+    if (spec.getTopicRegexPattern() != null)
+      consumerPollThread.submit(this::consumerPollFromSubscribedTopicRegex);
+    else consumerPollThread.submit(this::consumerPollLoop);
 
     // offsetConsumer setup :
 
@@ -149,7 +156,10 @@ class KafkaUnboundedReader<K, V> extends UnboundedReader<KafkaRecord<K, V>> {
             name, (new Random()).nextInt(Integer.MAX_VALUE), (groupId == null ? "none" : groupId));
     Map<String, Object> offsetConsumerConfig = new HashMap<>(spec.getConsumerConfig());
     offsetConsumerConfig.put(ConsumerConfig.GROUP_ID_CONFIG, offsetGroupId);
-    offsetConsumerConfig.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+    if (spec.getTopicRegexPattern() != null)
+      offsetConsumerConfig.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
+    else
+      offsetConsumerConfig.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
     // Force read isolation level to 'read_uncommitted' for offset consumer. This consumer
     // fetches latest offset for two reasons : (a) to calculate backlog (number of records
     // yet to be consumed) (b) to advance watermark if the backlog is zero. The right thing to do
@@ -164,7 +174,11 @@ class KafkaUnboundedReader<K, V> extends UnboundedReader<KafkaRecord<K, V>> {
     offsetConsumerConfig.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_uncommitted");
 
     offsetConsumer = spec.getConsumerFactoryFn().apply(offsetConsumerConfig);
-    consumerSpEL.evaluateAssign(offsetConsumer, spec.getTopicPartitions());
+    
+    if (spec.getTopicRegexPattern() != null)
+      consumerSpEL.evaluateSubscribe(offsetConsumer, spec.getTopicRegexPattern());
+    else 
+      consumerSpEL.evaluateAssign(offsetConsumer, spec.getTopicPartitions());
 
     // Fetch offsets once before running periodically.
     updateLatestOffsets();
@@ -566,7 +580,33 @@ class KafkaUnboundedReader<K, V> extends UnboundedReader<KafkaRecord<K, V>> {
     backlogBytesOfSplit = SourceMetrics.backlogBytesOfSplit(splitId);
     backlogElementsOfSplit = SourceMetrics.backlogElementsOfSplit(splitId);
   }
+  private void consumerPollFromSubscribedTopicRegex(){
+    // Read in a loop and enqueue the batch of records, if any, to availableRecordsQueue.
 
+    try {
+      ConsumerRecords<byte[], byte[]> records = ConsumerRecords.empty();
+      while (!closed.get()) {
+        try {
+          if (records.isEmpty()) {
+            records = consumer.poll(KAFKA_POLL_TIMEOUT.getMillis());
+          } else if (availableRecordsQueue.offer(
+                  records, RECORDS_ENQUEUE_POLL_TIMEOUT.getMillis(), TimeUnit.MILLISECONDS)) {
+            records = ConsumerRecords.empty();
+          }
+        } catch (InterruptedException e) {
+          LOG.warn("{}: consumer thread is interrupted", this, e); // not expected
+          break;
+        } catch (WakeupException e) {
+          break;
+        }
+      }
+      LOG.info("{}: Returning from consumer pool loop", this);
+    } catch (Exception e) { // mostly an unrecoverable KafkaException.
+      LOG.error("{}: Exception while reading from Kafka", this, e);
+      consumerPollException.set(e);
+      throw e;
+    }
+  }
   private void consumerPollLoop() {
     // Read in a loop and enqueue the batch of records, if any, to availableRecordsQueue.
 

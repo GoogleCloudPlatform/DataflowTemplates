@@ -55,13 +55,13 @@
     <maven-source-plugin.version>3.0.1</maven-source-plugin.version>
     <mockito-core.version>2.25.0</mockito-core.version>
     <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
-    <slf4j.version>1.7.25</slf4j.version>
+    <slf4j.version>1.7.28</slf4j.version>
     <joda.version>2.4</joda.version>
     <generated-grpc-beta.version>0.19.0</generated-grpc-beta.version>
     <spanner.version>1.6.0</spanner.version>
     <gax.version>1.38.0</gax.version>
     <bigtable.version>1.5.0</bigtable.version>
-    <bigquery.version>v2-rev374-1.22.0</bigquery.version>
+    <bigquery.version>v2-rev438-1.25.0</bigquery.version>
     <protobuf-util.version>3.6.1</protobuf-util.version>
     <protobuf.version>3.6.0</protobuf.version>
     <findbugs.version>3.0.1</findbugs.version>
@@ -142,6 +142,7 @@
       <artifactId>beam-vendor-guava-20_0</artifactId>
       <version>${beam-vendor-guava.version}</version>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/org.apache.beam/beam-sdks-java-io-kafka -->
 
     <!-- Test -->
     <dependency>
@@ -694,6 +695,11 @@
         <repository>
           <id>apache.snapshots</id>
           <url>https://repository.apache.org/content/repositories/snapshots</url>
+        </repository>
+        <repository>
+            <id>com.google.cloud.teleport.templates</id>
+            <name>DataflowTemplates</name>
+            <url>file://${project.basedir}/libs</url>
         </repository>
       </repositories>
     </profile>

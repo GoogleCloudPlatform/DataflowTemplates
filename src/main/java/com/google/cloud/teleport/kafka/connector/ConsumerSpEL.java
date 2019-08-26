@@ -23,6 +23,9 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import java.util.Collection;
 import java.util.Map;
+import java.util.regex.Pattern;
+
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
@@ -50,6 +53,8 @@ class ConsumerSpEL {
   private Expression seek2endExpression = parser.parseExpression("#consumer.seekToEnd(#tp)");
 
   private Expression assignExpression = parser.parseExpression("#consumer.assign(#tp)");
+
+  private Expression subscribeExpression = parser.parseExpression("#consumer.subscribe(#topicRegex)");
 
   private boolean hasRecordTimestamp = false;
   private boolean hasOffsetsForTimes = false;
@@ -103,6 +108,13 @@ class ConsumerSpEL {
     mapContext.setVariable("consumer", consumer);
     mapContext.setVariable("tp", topicPartitions);
     assignExpression.getValue(mapContext);
+  }
+
+  public void evaluateSubscribe(Consumer consumer, Pattern topicRegex){
+    StandardEvaluationContext mapContext = new StandardEvaluationContext();
+    mapContext.setVariable("consumer", consumer);
+    mapContext.setVariable("topicRegex", topicRegex);
+    subscribeExpression.getValue(mapContext);
   }
 
   public long getRecordTimestamp(ConsumerRecord<byte[], byte[]> rawRecord) {

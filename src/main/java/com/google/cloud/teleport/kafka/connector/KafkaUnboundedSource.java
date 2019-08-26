@@ -25,6 +25,7 @@ import com.google.common.collect.ImmutableMap;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.beam.sdk.coders.AvroCoder;
@@ -66,7 +67,7 @@ class KafkaUnboundedSource<K, V> extends UnboundedSource<KafkaRecord<K, V>, Kafk
    * starting the reader at runtime. It fetches partitions from the Kafka if partitions
    * are not explicitly set by the user.
    * */
-  private KafkaIO.Read<K, V> updatedSpecWithAssignedPartitions() {
+  private KafkaIO.Read<K, V> updatedSpecWithAssignedPartitionsOrRegex() {
 
     // Set bootstrap servers config.
     KafkaIO.Read<K, V> updatedSpec = spec.updateConsumerProperties(
@@ -111,10 +112,15 @@ class KafkaUnboundedSource<K, V> extends UnboundedSource<KafkaRecord<K, V>, Kafk
     LOG.info("Partitions assigned to split {} (total {}): {}",
              id, assignedPartitions.size(), Joiner.on(",").join(assignedPartitions));
 
+    Pattern topicRegexPattern = null;
+    if (spec.getTopicRegex() != null && spec.getTopicRegex().get() != "")
+      topicRegexPattern = Pattern.compile(spec.getTopicRegex().get());
+
     return updatedSpec
         .toBuilder()
         .setTopics(null)
         .setTopicPartitions(assignedPartitions)
+        .setTopicRegexPattern(topicRegexPattern)
         .build();
   }
 
@@ -122,7 +128,7 @@ class KafkaUnboundedSource<K, V> extends UnboundedSource<KafkaRecord<K, V>, Kafk
   public KafkaUnboundedReader<K, V> createReader(
       PipelineOptions options, KafkaCheckpointMark checkpointMark) {
     return new KafkaUnboundedReader<>(
-        new KafkaUnboundedSource<>(updatedSpecWithAssignedPartitions(), id),
+        new KafkaUnboundedSource<>(updatedSpecWithAssignedPartitionsOrRegex(), id),
         checkpointMark);
   }
 
