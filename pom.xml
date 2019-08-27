@@ -379,6 +379,11 @@
       <version>2.10.0</version>
       <scope>compile</scope>
     </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-logging-logback</artifactId>
+      <version>0.105.0-alpha</version>
+    </dependency>
   </dependencies>
 
   <build>
