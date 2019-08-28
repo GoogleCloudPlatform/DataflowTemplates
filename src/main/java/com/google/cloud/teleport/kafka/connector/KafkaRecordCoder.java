@@ -70,6 +70,7 @@ public class KafkaRecordCoder<K, V> extends StructuredCoder<KafkaRecord<K, V>> {
   public KafkaRecord<K, V> decode(InputStream inStream) throws IOException {
     return new KafkaRecord<>(
         stringCoder.decode(inStream),
+        stringCoder.decode(inStream),
         intCoder.decode(inStream),
         longCoder.decode(inStream),
         longCoder.decode(inStream),
@@ -124,6 +125,7 @@ public class KafkaRecordCoder<K, V> extends StructuredCoder<KafkaRecord<K, V>> {
       return value;
     } else {
       return new KafkaRecord<>(
+          value.getCustomizedKey(),
           value.getTopic(),
           value.getPartition(),
           value.getOffset(),

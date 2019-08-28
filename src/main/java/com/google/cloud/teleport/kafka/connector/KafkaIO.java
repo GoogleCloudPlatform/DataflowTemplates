@@ -301,6 +301,18 @@ public class KafkaIO {
     abstract Pattern getTopicRegexPattern();
 
     @Nullable
+    abstract ValueProvider<String> getCustomizedKeyRegexProvider();
+
+    @Nullable
+    abstract ValueProvider<String> getCustomizedKeyReplacementProvider();
+
+    @Nullable
+    abstract String getCustomizedKeyRegex();
+
+    @Nullable
+    abstract String getCustomizedKeyReplacement();
+
+    @Nullable
     abstract Coder<K> getKeyCoder();
 
     @Nullable
@@ -347,6 +359,14 @@ public class KafkaIO {
       abstract Builder<K, V> setTopicRegex(ValueProvider<String> topicRegex);
 
       abstract Builder<K, V> setTopicRegexPattern(Pattern topicRegex);
+
+      abstract Builder<K, V> setCustomizedKeyRegexProvider(ValueProvider<String> customizedKeyRegex);
+
+      abstract Builder<K, V> setCustomizedKeyReplacementProvider(ValueProvider<String> customizedKeyReplacement);
+
+      abstract Builder<K, V> setCustomizedKeyRegex(String customizedKeyRegex);
+
+      abstract Builder<K, V> setCustomizedKeyReplacement(String customizedKeyReplacement);
 
       abstract Builder<K, V> setKeyCoder(Coder<K> keyCoder);
 
@@ -450,6 +470,22 @@ public class KafkaIO {
      */
     public Read<K, V> withTopicRegex(String topicRegex) {
       return withTopicRegex(StaticValueProvider.of(topicRegex));
+    }
+
+    public Read<K, V> withCustomizedKeyRegex(ValueProvider<String> customizedKeyRegex) {
+      return toBuilder().setCustomizedKeyRegexProvider(customizedKeyRegex).build();
+    }
+
+    public Read<K, V> withCustomizedKeyReplacement(ValueProvider<String> customizedKeyReplacement) {
+      return toBuilder().setCustomizedKeyReplacementProvider(customizedKeyReplacement).build();
+    }
+
+    public Read<K, V> withCustomizedKeyRegex(String customizedKeyRegex) {
+      return withCustomizedKeyRegex(StaticValueProvider.of(customizedKeyRegex));
+    }
+
+    public Read<K, V> withCustomizedKeyReplacement(String customizedKeyReplacement) {
+      return withCustomizedKeyReplacement(StaticValueProvider.of(customizedKeyReplacement));
     }
 
     /**
@@ -804,29 +840,37 @@ public class KafkaIO {
             );
 
     // set config defaults
-    private static final Map<String, Object> DEFAULT_CONSUMER_PROPERTIES =
-        ImmutableMap.of(
-            ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
-            ByteArrayDeserializer.class.getName(),
-            ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-            ByteArrayDeserializer.class.getName(),
+    private static final Map<String, Object> DEFAULT_CONSUMER_PROPERTIES;
 
-            // Use large receive buffer. Once KAFKA-3135 is fixed, this _may_ not be required.
-            // with default value of of 32K, It takes multiple seconds between successful polls.
-            // All the consumer work is done inside poll(), with smaller send buffer size, it
-            // takes many polls before a 1MB chunk from the server is fully read. In my testing
-            // about half of the time select() inside kafka consumer waited for 20-30ms, though
-            // the server had lots of data in tcp send buffers on its side. Compared to default,
-            // this setting increased throughput by many fold (3-4x).
-            ConsumerConfig.RECEIVE_BUFFER_CONFIG,
-            512 * 1024,
+    static {
+      DEFAULT_CONSUMER_PROPERTIES = ImmutableMap.of(
+              ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+              ByteArrayDeserializer.class.getName(),
+              ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+              ByteArrayDeserializer.class.getName(),
 
-            // default to latest offset when we are not resuming.
-            ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
-            "latest",
-            // disable auto commit of offsets. we don't require group_id. could be enabled by user.
-            ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,
-            false);
+              // Use large receive buffer. Once KAFKA-3135 is fixed, this _may_ not be required.
+              // with default value of of 32K, It takes multiple seconds between successful polls.
+              // All the consumer work is done inside poll(), with smaller send buffer size, it
+              // takes many polls before a 1MB chunk from the server is fully read. In my testing
+              // about half of the time select() inside kafka consumer waited for 20-30ms, though
+              // the server had lots of data in tcp send buffers on its side. Compared to default,
+              // this setting increased throughput by many fold (3-4x).
+              ConsumerConfig.RECEIVE_BUFFER_CONFIG,
+              512 * 1024,
+
+              // default to latest offset when we are not resuming.
+              ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
+              "latest",
+              /*
+              // enable auto commit of offsets. this is required for consume subscribed topic from regex formula.
+              ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,
+              true,
+              */
+              ConsumerConfig.GROUP_ID_CONFIG,
+              "multi-kafka-bq-consumer"
+      );
+    }
 
     // default Kafka 0.9 Consumer supplier.
     private static final SerializableFunction<Map<String, Object>, Consumer<byte[], byte[]>>

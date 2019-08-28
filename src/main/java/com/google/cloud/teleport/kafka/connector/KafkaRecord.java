@@ -40,6 +40,7 @@ public class KafkaRecord<K, V> implements Serializable {
   private final KV<K, V> kv;
   private final long timestamp;
   private final KafkaTimestampType timestampType;
+  private final String customizedKey;
 
   public KafkaRecord(
       String topic,
@@ -50,10 +51,24 @@ public class KafkaRecord<K, V> implements Serializable {
       @Nullable Headers headers,
       K key,
       V value) {
-    this(topic, partition, offset, timestamp, timestampType, headers, KV.of(key, value));
+    this("", topic, partition, offset, timestamp, timestampType, headers, KV.of(key, value));
   }
 
   public KafkaRecord(
+          String customizedKey,
+          String topic,
+          int partition,
+          long offset,
+          long timestamp,
+          KafkaTimestampType timestampType,
+          @Nullable Headers headers,
+          K key,
+          V value) {
+    this(customizedKey, topic, partition, offset, timestamp, timestampType, headers, KV.of(key, value));
+  }
+
+  public KafkaRecord(
+      String customizedKey,
       String topic,
       int partition,
       long offset,
@@ -61,6 +76,7 @@ public class KafkaRecord<K, V> implements Serializable {
       KafkaTimestampType timestampType,
       @Nullable Headers headers,
       KV<K, V> kv) {
+    this.customizedKey = customizedKey;
     this.topic = topic;
     this.partition = partition;
     this.offset = offset;
@@ -69,6 +85,8 @@ public class KafkaRecord<K, V> implements Serializable {
     this.headers = headers;
     this.kv = kv;
   }
+
+  public String getCustomizedKey() { return customizedKey; }
 
   public String getTopic() {
     return topic;
@@ -114,6 +132,7 @@ public class KafkaRecord<K, V> implements Serializable {
       @SuppressWarnings("unchecked")
       KafkaRecord<Object, Object> other = (KafkaRecord<Object, Object>) obj;
       return topic.equals(other.topic)
+          && customizedKey == other.customizedKey
           && partition == other.partition
           && offset == other.offset
           && timestamp == other.timestamp

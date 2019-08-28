@@ -140,22 +140,12 @@ public class MultipleKafkaTopicsToBigQuery {
 
     void setInputTopicRegex(ValueProvider<String> value);
 
-    @Description("BigQuery Project ID")
-    ValueProvider<String> getBigQueryProjectID();
-
-    void setBigQueryProjectID(ValueProvider<String> value);
-
-    @Description("Dataset")
-    ValueProvider<String> getDataset();
-
-    void setDataset(ValueProvider<String> value);
-
     @Description("Table regex pattern")
     ValueProvider<String> getOutputTableRegexPattern();
 
     void setOutputTableRegexPattern(ValueProvider<String> value);
 
-    @Description("Table regex replacement")
+    @Description("Table regex replacement (incl project id and dataset name)")
     ValueProvider<String> getOutputTableReplacement();
 
     void setOutputTableReplacement(ValueProvider<String> value);
@@ -225,6 +215,8 @@ public class MultipleKafkaTopicsToBigQuery {
                             KafkaIO.<String, String>read()
                                     .withBootstrapServers(options.getBootstrapServers())
                                     .withTopicRegex(options.getInputTopicRegex())
+                                    .withCustomizedKeyRegex(options.getOutputTableRegexPattern())
+                                    .withCustomizedKeyReplacement(options.getOutputTableReplacement())
                                     .withKeyDeserializer(StringDeserializer.class)
                                     .withValueDeserializer(StringDeserializer.class)
                                     // NumSplits is hard-coded to 1 for single-partition use cases (e.g., Debezium
@@ -235,7 +227,7 @@ public class MultipleKafkaTopicsToBigQuery {
                       @ProcessElement
                       public void processElement(ProcessContext c){
                         KafkaRecord<String, String> element = c.element();
-                        c.output(KV.of(element.getTopic(), element.getKV().getValue()));
+                        c.output(KV.of(element.getCustomizedKey(), element.getKV().getValue()));
                       }
                     }))
                     .apply("TransformMessagesUsingUDF", new TransformMessagesUsingUDF(options));
@@ -252,10 +244,8 @@ public class MultipleKafkaTopicsToBigQuery {
                             .to(new SerializableFunction<ValueInSingleWindow<FailsafeElement<KV<String, String>, String>>, TableDestination>() {
                               public TableDestination apply(ValueInSingleWindow<FailsafeElement<KV<String, String>, String>> value) {
                                 // The cast below is safe because CalendarWindows.days(1) produces IntervalWindows.
-                                String tableName = value.getValue().getOriginalPayload().getKey()
-                                                        .replaceAll(options.getOutputTableRegexPattern().get(), options.getOutputTableReplacement().get());
                                 return new TableDestination(
-                                        options.getBigQueryProjectID().get() + ":" + options.getDataset().get() + "." + tableName,
+                                        value.getValue().getOriginalPayload().getKey(),
                                         "Record from Kafka"
                                 );
                               }
@@ -277,6 +267,7 @@ public class MultipleKafkaTopicsToBigQuery {
                                 return row;
                               }
                             })
+                            .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER)
             );
 
     return pipeline.run();

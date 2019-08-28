@@ -74,54 +74,67 @@ class KafkaUnboundedSource<K, V> extends UnboundedSource<KafkaRecord<K, V>, Kafk
         ImmutableMap.of(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
                         spec.getBootstrapServers().get()));
 
-    // (a) fetch partitions for each topic
-    // (b) sort by <topic, partition>
-    // (c) round-robin assign the partitions to splits
-    List<TopicPartition> partitions = new ArrayList<>(spec.getTopicPartitions());
+    Read.Builder updatedSpecBuilder = updatedSpec.toBuilder().setTopics(null);
 
-    if (partitions.isEmpty()) {
-      try (Consumer<?, ?> consumer =
-               spec.getConsumerFactoryFn().apply(updatedSpec.getConsumerConfig())) {
-        for (String topic : spec.getTopics().get()) {
-          for (PartitionInfo p : consumer.partitionsFor(topic)) {
-            partitions.add(new TopicPartition(p.topic(), p.partition()));
+    if (spec.getCustomizedKeyRegex() != null) {
+      updatedSpecBuilder.setCustomizedKeyRegexProvider(spec.getCustomizedKeyRegexProvider());
+      updatedSpecBuilder.setCustomizedKeyRegex(spec.getCustomizedKeyRegexProvider().get());
+    }
+
+    if (spec.getCustomizedKeyReplacement() != null) {
+      updatedSpecBuilder.setCustomizedKeyReplacementProvider(spec.getCustomizedKeyReplacementProvider());
+      updatedSpecBuilder.setCustomizedKeyReplacement(spec.getCustomizedKeyReplacementProvider().get());
+    }
+
+    Pattern topicRegexPattern = null;
+    if (spec.getTopicRegex() != null && spec.getTopicRegex().get() != "") {
+      topicRegexPattern = Pattern.compile(spec.getTopicRegex().get());
+      return  updatedSpecBuilder
+              .setTopicRegexPattern(topicRegexPattern)
+              .build();
+    }
+    else {
+      // (a) fetch partitions for each topic
+      // (b) sort by <topic, partition>
+      // (c) round-robin assign the partitions to splits
+      List<TopicPartition> partitions = new ArrayList<>(spec.getTopicPartitions());
+
+      if (partitions.isEmpty()) {
+        try (Consumer<?, ?> consumer =
+                     spec.getConsumerFactoryFn().apply(updatedSpec.getConsumerConfig())) {
+          for (String topic : spec.getTopics().get()) {
+            for (PartitionInfo p : consumer.partitionsFor(topic)) {
+              partitions.add(new TopicPartition(p.topic(), p.partition()));
+            }
           }
         }
       }
+
+      int numSplits = spec.getNumSplits();
+
+      checkState(
+              partitions.size() > 0,
+              "Could not find any partitions. Please check Kafka configuration and topic names");
+      checkState(numSplits <= partitions.size(),
+              "Number of splits %s is larger than number of partitions %s.  " +
+                      "Empty splits are not supported yet. Please set number of partitions explicitly " +
+                      "using 'withNumSplits() option", numSplits, partitions.size());
+
+      partitions.sort(
+              Comparator.comparing(TopicPartition::topic)
+                      .thenComparingInt(TopicPartition::partition));
+
+      List<TopicPartition> assignedPartitions= partitions
+              .stream()
+              .filter(p -> p.partition() % numSplits == id) // round robin assignment
+              .collect(Collectors.toList());
+
+      LOG.info("Partitions assigned to split {} (total {}): {}",
+              id, assignedPartitions.size(), Joiner.on(",").join(assignedPartitions));
+      return updatedSpecBuilder
+              .setTopicPartitions(assignedPartitions)
+              .build();
     }
-
-    int numSplits = spec.getNumSplits();
-
-    checkState(
-        partitions.size() > 0,
-        "Could not find any partitions. Please check Kafka configuration and topic names");
-    checkState(numSplits <= partitions.size(),
-               "Number of splits %s is larger than number of partitions %s.  " +
-               "Empty splits are not supported yet. Please set number of partitions explicitly " +
-               "using 'withNumSplits() option", numSplits, partitions.size());
-
-    partitions.sort(
-        Comparator.comparing(TopicPartition::topic)
-            .thenComparingInt(TopicPartition::partition));
-
-    List<TopicPartition> assignedPartitions= partitions
-        .stream()
-        .filter(p -> p.partition() % numSplits == id) // round robin assignment
-        .collect(Collectors.toList());
-
-    LOG.info("Partitions assigned to split {} (total {}): {}",
-             id, assignedPartitions.size(), Joiner.on(",").join(assignedPartitions));
-
-    Pattern topicRegexPattern = null;
-    if (spec.getTopicRegex() != null && spec.getTopicRegex().get() != "")
-      topicRegexPattern = Pattern.compile(spec.getTopicRegex().get());
-
-    return updatedSpec
-        .toBuilder()
-        .setTopics(null)
-        .setTopicPartitions(assignedPartitions)
-        .setTopicRegexPattern(topicRegexPattern)
-        .build();
   }
 
   @Override
