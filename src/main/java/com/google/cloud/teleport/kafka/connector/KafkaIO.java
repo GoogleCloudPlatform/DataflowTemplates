@@ -481,11 +481,11 @@ public class KafkaIO {
     }
 
     public Read<K, V> withCustomizedKeyRegex(String customizedKeyRegex) {
-      return withCustomizedKeyRegex(StaticValueProvider.of(customizedKeyRegex));
+      return toBuilder().setCustomizedKeyRegex(customizedKeyRegex).build();
     }
 
     public Read<K, V> withCustomizedKeyReplacement(String customizedKeyReplacement) {
-      return withCustomizedKeyReplacement(StaticValueProvider.of(customizedKeyReplacement));
+      return toBuilder().setCustomizedKeyReplacement(customizedKeyReplacement).build();
     }
 
     /**
@@ -868,7 +868,7 @@ public class KafkaIO {
               true,
               */
               ConsumerConfig.GROUP_ID_CONFIG,
-              "multi-kafka-bq-consumer"
+              "multikafka-bq-" + System.currentTimeMillis()
       );
     }
 

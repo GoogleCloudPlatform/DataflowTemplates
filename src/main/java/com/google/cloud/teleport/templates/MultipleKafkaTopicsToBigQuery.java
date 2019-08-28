@@ -154,11 +154,6 @@ public class MultipleKafkaTopicsToBigQuery {
     ValueProvider<String> getBootstrapServers();
 
     void setBootstrapServers(ValueProvider<String> value);
-
-    @Description("Deadletter Table Spec")
-    ValueProvider<String> getOutputDeadletterTable();
-
-    void setOutputDeadletterTable(ValueProvider<String> value);
   }
 
   /**
@@ -223,7 +218,7 @@ public class MultipleKafkaTopicsToBigQuery {
                                     // Change Data Capture). Once Dataflow dynamic templates are available, this can
                                     // be deprecated.
                                     .withNumSplits(1))
-                    .apply(ParDo.of(new DoFn<KafkaRecord<String, String>, KV<String, String>>(){
+                    .apply("SetRecordToProperTableName", ParDo.of(new DoFn<KafkaRecord<String, String>, KV<String, String>>(){
                       @ProcessElement
                       public void processElement(ProcessContext c){
                         KafkaRecord<String, String> element = c.element();

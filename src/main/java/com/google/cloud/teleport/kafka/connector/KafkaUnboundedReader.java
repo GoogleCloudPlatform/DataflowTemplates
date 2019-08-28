@@ -89,8 +89,8 @@ class KafkaUnboundedReader<K, V> extends UnboundedReader<KafkaRecord<K, V>> {
     Read<K, V> spec = source.getSpec();
     consumer = spec.getConsumerFactoryFn().apply(spec.getConsumerConfig());
 
-    customizedKeyRegex = spec.getCustomizedKeyRegex();
-    customizedKeyReplacement = spec.getCustomizedKeyReplacement();
+    this.customizedKeyRegex = spec.getCustomizedKeyRegex();
+    this.customizedKeyReplacement = spec.getCustomizedKeyReplacement();
 
     if (spec.getTopicRegexPattern() != null)
       consumerSpEL.evaluateSubscribe(consumer, spec.getTopicRegexPattern());
@@ -147,7 +147,33 @@ class KafkaUnboundedReader<K, V> extends UnboundedReader<KafkaRecord<K, V>> {
                 pState.nextOffset);
       }
     }
+    else {
+      Future<?> future = consumerPollThread.submit(() -> setupInitialOffset());
 
+      try {
+        // Timeout : 1 minute OR 2 * Kafka consumer request timeout if it is set.
+        Integer reqTimeout =
+                (Integer) spec.getConsumerConfig().get(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG);
+        future.get(
+                reqTimeout != null
+                        ? kafkaRequestTimeoutMultiple * reqTimeout
+                        : defaultPartitionInitTimeout,
+                TimeUnit.MILLISECONDS);
+      } catch (TimeoutException e) {
+        consumer.wakeup(); // This unblocks consumer stuck on network I/O.
+        // Likely reason : Kafka servers are configured to advertise internal ips, but
+        // those ips are not accessible from workers outside.
+        String msg =
+                String.format(
+                        "%s: Timeout while initializing offset. "
+                                + "Kafka client may not be able to connect to servers.",
+                        this);
+        LOG.error("{}", msg);
+        throw new IOException(msg);
+      } catch (Exception e) {
+        throw new IOException(e);
+      }
+    }
     // Start consumer read loop.
     // Note that consumer is not thread safe, should not be accessed out side consumerPollLoop().
     if (spec.getTopicRegexPattern() != null)
@@ -185,92 +211,18 @@ class KafkaUnboundedReader<K, V> extends UnboundedReader<KafkaRecord<K, V>> {
     
     if (spec.getTopicRegexPattern() != null)
       consumerSpEL.evaluateSubscribe(offsetConsumer, spec.getTopicRegexPattern());
-    else 
+    else {
       consumerSpEL.evaluateAssign(offsetConsumer, spec.getTopicPartitions());
 
-    // Fetch offsets once before running periodically.
-    updateLatestOffsets();
+      // Fetch offsets once before running periodically.
+      updateLatestOffsets();
 
-    offsetFetcherThread.scheduleAtFixedRate(
-        this::updateLatestOffsets, 0, OFFSET_UPDATE_INTERVAL_SECONDS, TimeUnit.SECONDS);
-    if (spec.getTopicRegexPattern() != null)
-      return advanceForSubscribedTopicRegex();
-    else
-      return advance();
-  }
-
-  public boolean advanceForSubscribedTopicRegex() throws IOException {
-    /* Read first record (if any). we need to loop here because :
-     *  - (a) some records initially need to be skipped if they are before consumedOffset
-     *  - (b) if curBatch is empty, we want to fetch next batch and then advance.
-     *  - (c) curBatch is an iterator of iterators. we interleave the records from each.
-     *        curBatch.next() might return an empty iterator.
-     */
-    while (true) {
-      if (curConsumerBatch.hasNext()) {
-        PartitionState<K, V> pState = curBatch.next();
-
-        elementsRead.inc();
-        elementsReadBySplit.inc();
-
-        ConsumerRecord<byte[], byte[]> rawRecord = curConsumerBatch.next();
-        long expected = pState.nextOffset;
-        long offset = rawRecord.offset();
-
-        if (offset < expected) { // -- (a)
-          // this can happen when compression is enabled in Kafka (seems to be fixed in 0.10)
-          // should we check if the offset is way off from consumedOffset (say > 1M)?
-          LOG.warn(
-                  "{}: ignoring already consumed offset {} for {}",
-                  this,
-                  offset,
-                  pState.topicPartition);
-          continue;
-        }
-
-        long offsetGap = offset - expected; // could be > 0 when Kafka log compaction is enabled.
-
-        if (curRecord == null) {
-          LOG.info("{}: first record offset {}", name, offset);
-          offsetGap = 0;
-        }
-
-        // Apply user deserializers. User deserializers might throw, which will be propagated up
-        // and 'curRecord' remains unchanged. The runner should close this reader.
-        // TODO: write records that can't be deserialized to a "dead-letter" additional output.
-        KafkaRecord<K, V> record =
-                new KafkaRecord<>(
-                        rawRecord.topic().replaceAll(this.customizedKeyRegex, this.customizedKeyReplacement),
-                        rawRecord.topic(),
-                        rawRecord.partition(),
-                        rawRecord.offset(),
-                        consumerSpEL.getRecordTimestamp(rawRecord),
-                        consumerSpEL.getRecordTimestampType(rawRecord),
-                        ConsumerSpEL.hasHeaders ? rawRecord.headers() : null,
-                        keyDeserializerInstance.deserialize(rawRecord.topic(), rawRecord.key()),
-                        valueDeserializerInstance.deserialize(rawRecord.topic(), rawRecord.value()));
-
-        curTimestamp =
-                pState.timestampPolicy.getTimestampForRecord(pState.mkTimestampPolicyContext(), record);
-        curRecord = record;
-
-        int recordSize =
-                (rawRecord.key() == null ? 0 : rawRecord.key().length)
-                        + (rawRecord.value() == null ? 0 : rawRecord.value().length);
-        pState.recordConsumed(offset, recordSize, offsetGap);
-        bytesRead.inc(recordSize);
-        bytesReadBySplit.inc(recordSize);
-        return true;
-
-      } else { // -- (b)
-        nextConsumerBatch();
-
-        if (!curConsumerBatch.hasNext()) {
-          return false;
-        }
-      }
+      offsetFetcherThread.scheduleAtFixedRate(
+              this::updateLatestOffsets, 0, OFFSET_UPDATE_INTERVAL_SECONDS, TimeUnit.SECONDS);
     }
+    return advance();
   }
+
   @Override
   public boolean advance() throws IOException {
     /* Read first record (if any). we need to loop here because :
@@ -280,72 +232,118 @@ class KafkaUnboundedReader<K, V> extends UnboundedReader<KafkaRecord<K, V>> {
      *        curBatch.next() might return an empty iterator.
      */
     while (true) {
-      if (curBatch.hasNext()) {
-        PartitionState<K, V> pState = curBatch.next();
+      if (partitionStates != null && !partitionStates.isEmpty()){
+        if (curBatch.hasNext()) {
+          PartitionState<K, V> pState = curBatch.next();
 
-        if (!pState.recordIter.hasNext()) { // -- (c)
-          pState.recordIter = Collections.emptyIterator(); // drop ref
-          curBatch.remove();
-          continue;
+          if (!pState.recordIter.hasNext()) { // -- (c)
+            pState.recordIter = Collections.emptyIterator(); // drop ref
+            curBatch.remove();
+            continue;
+          }
+
+          elementsRead.inc();
+          elementsReadBySplit.inc();
+
+          ConsumerRecord<byte[], byte[]> rawRecord = pState.recordIter.next();
+          long expected = pState.nextOffset;
+          long offset = rawRecord.offset();
+
+          if (offset < expected) { // -- (a)
+            // this can happen when compression is enabled in Kafka (seems to be fixed in 0.10)
+            // should we check if the offset is way off from consumedOffset (say > 1M)?
+            LOG.warn(
+                    "{}: ignoring already consumed offset {} for {}",
+                    this,
+                    offset,
+                    pState.topicPartition);
+            continue;
+          }
+
+          long offsetGap = offset - expected; // could be > 0 when Kafka log compaction is enabled.
+
+          if (curRecord == null) {
+            LOG.info("{}: first record offset {}", name, offset);
+            offsetGap = 0;
+          }
+
+          // Apply user deserializers. User deserializers might throw, which will be propagated up
+          // and 'curRecord' remains unchanged. The runner should close this reader.
+          // TODO: write records that can't be deserialized to a "dead-letter" additional output.
+          KafkaRecord<K, V> record =
+                  new KafkaRecord<>(
+                          rawRecord.topic().replaceAll(this.customizedKeyRegex, this.customizedKeyReplacement),
+                          rawRecord.topic(),
+                          rawRecord.partition(),
+                          rawRecord.offset(),
+                          consumerSpEL.getRecordTimestamp(rawRecord),
+                          consumerSpEL.getRecordTimestampType(rawRecord),
+                          ConsumerSpEL.hasHeaders ? rawRecord.headers() : null,
+                          keyDeserializerInstance.deserialize(rawRecord.topic(), rawRecord.key()),
+                          valueDeserializerInstance.deserialize(rawRecord.topic(), rawRecord.value()));
+
+          curTimestamp =
+                  pState.timestampPolicy.getTimestampForRecord(pState.mkTimestampPolicyContext(), record);
+          curRecord = record;
+
+          int recordSize =
+                  (rawRecord.key() == null ? 0 : rawRecord.key().length)
+                          + (rawRecord.value() == null ? 0 : rawRecord.value().length);
+          pState.recordConsumed(offset, recordSize, offsetGap);
+          bytesRead.inc(recordSize);
+          bytesReadBySplit.inc(recordSize);
+          return true;
+
+        } else { // -- (b)
+          nextBatch();
+
+          if (!curBatch.hasNext()) {
+            return false;
+          }
         }
+      }
+      else {
+        if (curConsumerBatch.hasNext()) {
+          elementsRead.inc();
+          elementsReadBySplit.inc();
 
-        elementsRead.inc();
-        elementsReadBySplit.inc();
+          ConsumerRecord<byte[], byte[]> rawRecord = curConsumerBatch.next();
 
-        ConsumerRecord<byte[], byte[]> rawRecord = pState.recordIter.next();
-        long expected = pState.nextOffset;
-        long offset = rawRecord.offset();
+          if (rawRecord == null) {
+            LOG.info("{}: first record offset", name);
+          }
 
-        if (offset < expected) { // -- (a)
-          // this can happen when compression is enabled in Kafka (seems to be fixed in 0.10)
-          // should we check if the offset is way off from consumedOffset (say > 1M)?
-          LOG.warn(
-              "{}: ignoring already consumed offset {} for {}",
-              this,
-              offset,
-              pState.topicPartition);
-          continue;
-        }
+          // Apply user deserializers. User deserializers might throw, which will be propagated up
+          // and 'curRecord' remains unchanged. The runner should close this reader.
+          // TODO: write records that can't be deserialized to a "dead-letter" additional output.
+          KafkaRecord<K, V> record =
+                  new KafkaRecord<>(
+                          rawRecord.topic().replaceAll(this.customizedKeyRegex, this.customizedKeyReplacement),
+                          rawRecord.topic(),
+                          rawRecord.partition(),
+                          rawRecord.offset(),
+                          consumerSpEL.getRecordTimestamp(rawRecord),
+                          consumerSpEL.getRecordTimestampType(rawRecord),
+                          ConsumerSpEL.hasHeaders ? rawRecord.headers() : null,
+                          keyDeserializerInstance.deserialize(rawRecord.topic(), rawRecord.key()),
+                          valueDeserializerInstance.deserialize(rawRecord.topic(), rawRecord.value()));
 
-        long offsetGap = offset - expected; // could be > 0 when Kafka log compaction is enabled.
+          int recordSize =
+                  (rawRecord.key() == null ? 0 : rawRecord.key().length)
+                          + (rawRecord.value() == null ? 0 : rawRecord.value().length);
 
-        if (curRecord == null) {
-          LOG.info("{}: first record offset {}", name, offset);
-          offsetGap = 0;
-        }
+          bytesRead.inc(recordSize);
+          bytesReadBySplit.inc(recordSize);
 
-        // Apply user deserializers. User deserializers might throw, which will be propagated up
-        // and 'curRecord' remains unchanged. The runner should close this reader.
-        // TODO: write records that can't be deserialized to a "dead-letter" additional output.
-        KafkaRecord<K, V> record =
-            new KafkaRecord<>(
-                rawRecord.topic().replaceAll(this.customizedKeyRegex, this.customizedKeyReplacement),
-                rawRecord.topic(),
-                rawRecord.partition(),
-                rawRecord.offset(),
-                consumerSpEL.getRecordTimestamp(rawRecord),
-                consumerSpEL.getRecordTimestampType(rawRecord),
-                ConsumerSpEL.hasHeaders ? rawRecord.headers() : null,
-                keyDeserializerInstance.deserialize(rawRecord.topic(), rawRecord.key()),
-                valueDeserializerInstance.deserialize(rawRecord.topic(), rawRecord.value()));
+          curRecord = record;
+          return true;
 
-        curTimestamp =
-            pState.timestampPolicy.getTimestampForRecord(pState.mkTimestampPolicyContext(), record);
-        curRecord = record;
+        } else { // -- (b)
+          nextConsumerBatch();
 
-        int recordSize =
-            (rawRecord.key() == null ? 0 : rawRecord.key().length)
-                + (rawRecord.value() == null ? 0 : rawRecord.value().length);
-        pState.recordConsumed(offset, recordSize, offsetGap);
-        bytesRead.inc(recordSize);
-        bytesReadBySplit.inc(recordSize);
-        return true;
-
-      } else { // -- (b)
-        nextBatch();
-
-        if (!curBatch.hasNext()) {
-          return false;
+          if (!curConsumerBatch.hasNext()) {
+            return false;
+          }
         }
       }
     }
@@ -683,6 +681,8 @@ class KafkaUnboundedReader<K, V> extends UnboundedReader<KafkaRecord<K, V>> {
                   records, RECORDS_ENQUEUE_POLL_TIMEOUT.getMillis(), TimeUnit.MILLISECONDS)) {
             records = ConsumerRecords.empty();
           }
+          curConsumerBatch = records.iterator();
+
         } catch (InterruptedException e) {
           LOG.warn("{}: consumer thread is interrupted", this, e); // not expected
           break;
@@ -834,6 +834,9 @@ class KafkaUnboundedReader<K, V> extends UnboundedReader<KafkaRecord<K, V>> {
     }
   }
 
+  private void setupInitialOffset() {
+
+  }
   // Update latest offset for each partition.
   // Called from setupInitialOffset() at the start and then periodically from offsetFetcher thread.
   private void updateLatestOffsets() {
