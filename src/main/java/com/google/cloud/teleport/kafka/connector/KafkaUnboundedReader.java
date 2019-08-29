@@ -335,6 +335,7 @@ class KafkaUnboundedReader<K, V> extends UnboundedReader<KafkaRecord<K, V>> {
           bytesRead.inc(recordSize);
           bytesReadBySplit.inc(recordSize);
 
+          curTimestamp = new Instant(System.currentTimeMillis());
           curRecord = record;
           return true;
 
