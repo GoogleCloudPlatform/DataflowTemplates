@@ -862,11 +862,8 @@ public class KafkaIO {
               // default to latest offset when we are not resuming.
               ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
               "latest",
-              /*
-              // enable auto commit of offsets. this is required for consume subscribed topic from regex formula.
-              ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,
-              true,
-              */
+
+              // group id config
               ConsumerConfig.GROUP_ID_CONFIG,
               "multikafka-bq-" + System.currentTimeMillis()
       );

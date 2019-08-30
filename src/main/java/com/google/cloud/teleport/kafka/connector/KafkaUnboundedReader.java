@@ -190,10 +190,7 @@ class KafkaUnboundedReader<K, V> extends UnboundedReader<KafkaRecord<K, V>> {
             name, (new Random()).nextInt(Integer.MAX_VALUE), (groupId == null ? "none" : groupId));
     Map<String, Object> offsetConsumerConfig = new HashMap<>(spec.getConsumerConfig());
     offsetConsumerConfig.put(ConsumerConfig.GROUP_ID_CONFIG, offsetGroupId);
-    if (spec.getTopicRegexPattern() != null)
-      offsetConsumerConfig.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
-    else
-      offsetConsumerConfig.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+    offsetConsumerConfig.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
     // Force read isolation level to 'read_uncommitted' for offset consumer. This consumer
     // fetches latest offset for two reasons : (a) to calculate backlog (number of records
     // yet to be consumed) (b) to advance watermark if the backlog is zero. The right thing to do
@@ -335,7 +332,7 @@ class KafkaUnboundedReader<K, V> extends UnboundedReader<KafkaRecord<K, V>> {
           bytesRead.inc(recordSize);
           bytesReadBySplit.inc(recordSize);
 
-          curTimestamp = new Instant(System.currentTimeMillis());
+          curTimestamp = new Instant(record.getTimestamp());
           curRecord = record;
           return true;
 
@@ -445,6 +442,7 @@ class KafkaUnboundedReader<K, V> extends UnboundedReader<KafkaRecord<K, V>> {
   private Instant curTimestamp;
   private Iterator<PartitionState<K, V>> curBatch = Collections.emptyIterator();
   private Iterator<ConsumerRecord<byte[], byte[]>> curConsumerBatch = Collections.emptyIterator();
+  private Map<TopicPartition, OffsetAndMetadata> topicPartitionOffsets;
 
   private Deserializer<K> keyDeserializerInstance = null;
   private Deserializer<V> valueDeserializerInstance = null;
@@ -682,8 +680,11 @@ class KafkaUnboundedReader<K, V> extends UnboundedReader<KafkaRecord<K, V>> {
                   records, RECORDS_ENQUEUE_POLL_TIMEOUT.getMillis(), TimeUnit.MILLISECONDS)) {
             records = ConsumerRecords.empty();
           }
-          curConsumerBatch = records.iterator();
-
+          for (TopicPartition partition : records.partitions()) {
+            List<ConsumerRecord<byte[], byte[]>> partitionRecords = records.records(partition);
+            long lastOffset = partitionRecords.get(partitionRecords.size() - 1).offset();
+            consumer.commitSync(Collections.singletonMap(partition, new OffsetAndMetadata(lastOffset + 1)));
+          }
         } catch (InterruptedException e) {
           LOG.warn("{}: consumer thread is interrupted", this, e); // not expected
           break;
