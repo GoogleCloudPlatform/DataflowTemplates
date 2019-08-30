@@ -103,8 +103,10 @@ import java.nio.charset.StandardCharsets;
  * --parameters \
  * "bootstrapServers=my_host:9092,\
  * inputTopicRegex=(.*),\
- * outputTableFormat=(.*)=project-id:dataset.table_prefix_$1_suffix,\
- * outputDeadletterTableFormat=(.*)=project-id:dataset.deadletter_table_prefix_$1_suffix"
+ * outputTableRegexPattern=(.*),\
+ * outputTableReplacement=BigQueryProjectID:dataset.table_prefix_$1_suffix
+ * javascriptTextTransformGcsPath=gs://my_bucket/my_udf.js
+ * javascriptTextTransformFunctionName=myFunction
  * </pre>
  */
 public class MultipleKafkaTopicsToBigQuery {
