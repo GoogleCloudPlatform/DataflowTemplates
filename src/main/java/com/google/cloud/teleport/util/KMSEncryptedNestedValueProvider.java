@@ -79,7 +79,7 @@ public class KMSEncryptedNestedValueProvider
   }
 
   /** Creates a {@link KMSEncryptedNestedValueProvider} that wraps
-   *  the key and the encrypted value
+   *  the key and the encrypted value.
    */
   public KMSEncryptedNestedValueProvider(ValueProvider<String> value, ValueProvider<String> key) {
     super(value, key, KmsTranslatorInput.of());
