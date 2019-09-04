@@ -34,6 +34,9 @@ import org.apache.beam.sdk.values.TupleTag;
  */
 public class BigQueryToDatastore {
 
+  /**
+   * Custom PipelineOptions
+   */
   public interface BigQueryToDatastoreOptions
       extends BigQueryReadOptions, DatastoreWriteOptions, ErrorWriteOptions {}
 

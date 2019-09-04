@@ -30,6 +30,10 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
  * Dataflow template which deletes pulled Datastore Entities.
  */
 public class DatastoreToDatastoreDelete {
+
+  /**
+   * Custom PipelineOptions
+   */
   public interface DatastoreToDatastoreDeleteOptions extends
       PipelineOptions,
       DatastoreReadOptions,
