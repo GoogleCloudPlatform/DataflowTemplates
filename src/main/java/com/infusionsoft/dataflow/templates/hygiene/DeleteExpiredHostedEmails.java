@@ -1,10 +1,9 @@
-package com.infusionsoft.dataflow.templates;
+package com.infusionsoft.dataflow.templates.hygiene;
 
 import static com.infusionsoft.dataflow.utils.ZonedDateTimeUtils.UTC;
 
 import com.google.cloud.teleport.templates.common.PubsubConverters.PubsubReadOptions;
-import com.google.datastore.v1.Entity;
-import com.google.datastore.v1.Key;
+import com.infusionsoft.dataflow.shared.EntityToKey;
 import com.infusionsoft.dataflow.utils.ZonedDateTimeUtils;
 import java.time.ZonedDateTime;
 import org.apache.beam.sdk.Pipeline;
@@ -15,7 +14,6 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.options.ValueProvider.NestedValueProvider;
-import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.SerializableFunction;
@@ -26,10 +24,10 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
  * Used by hosted-email-api
  *
  * Deploy to sand:
- * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.DeleteExpiredHostedEmails -Dexec.args="--project=is-hosted-email-api-sand --stagingLocation=gs://dataflow-is-hosted-email-api-sand/staging --templateLocation=gs://dataflow-is-hosted-email-api-sand/templates/delete_expired_emails --runner=DataflowRunner --serviceAccount=is-hosted-email-api-sand@appspot.gserviceaccount.com --datastoreProjectId=is-hosted-email-api-sand"
+ * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.hygiene.DeleteExpiredHostedEmails -Dexec.args="--project=is-hosted-email-api-sand --stagingLocation=gs://dataflow-is-hosted-email-api-sand/staging --templateLocation=gs://dataflow-is-hosted-email-api-sand/templates/delete_expired_emails --runner=DataflowRunner --serviceAccount=is-hosted-email-api-sand@appspot.gserviceaccount.com --datastoreProjectId=is-hosted-email-api-sand"
  *
  * Deploy to prod:
- * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.DeleteExpiredHostedEmails -Dexec.args="--project=is-hosted-email-api-prod --stagingLocation=gs://dataflow-is-hosted-email-api-prod/staging --templateLocation=gs://dataflow-is-hosted-email-api-prod/templates/delete_expired_emails --runner=DataflowRunner --serviceAccount=is-hosted-email-api-prod@appspot.gserviceaccount.com --datastoreProjectId=is-hosted-email-api-prod"
+ * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.hygiene.DeleteExpiredHostedEmails -Dexec.args="--project=is-hosted-email-api-prod --stagingLocation=gs://dataflow-is-hosted-email-api-prod/staging --templateLocation=gs://dataflow-is-hosted-email-api-prod/templates/delete_expired_emails --runner=DataflowRunner --serviceAccount=is-hosted-email-api-prod@appspot.gserviceaccount.com --datastoreProjectId=is-hosted-email-api-prod"
  *
  */
 public class DeleteExpiredHostedEmails {
@@ -46,16 +44,6 @@ public class DeleteExpiredHostedEmails {
 
   }
 
-  public static class EntityToKey extends DoFn<Entity, Key> {
-
-    @ProcessElement
-    public void processElement(ProcessContext context) {
-      final Entity entity = context.element();
-
-      context.output(entity.getKey());
-    }
-  }
-
   public static void main(String[] args) {
     final Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     final String projectId = options.getDatastoreProjectId().get();
@@ -63,7 +51,7 @@ public class DeleteExpiredHostedEmails {
     final Pipeline pipeline = Pipeline.create(options);
 
     pipeline
-        .apply("Find Expired Emails", DatastoreIO.v1().read()
+        .apply("Find Emails", DatastoreIO.v1().read()
             .withProjectId(projectId)
             .withLiteralGqlQuery(NestedValueProvider.of(options.getExpireDays(), (SerializableFunction<Integer, String>) expireDays -> {
               final ZonedDateTime expired = ZonedDateTime.now(UTC)
