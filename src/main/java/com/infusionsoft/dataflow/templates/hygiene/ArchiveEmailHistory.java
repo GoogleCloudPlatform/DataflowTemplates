@@ -5,6 +5,7 @@ import static com.infusionsoft.dataflow.utils.JavaTimeUtils.UTC;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.teleport.templates.common.PubsubConverters.PubsubReadOptions;
@@ -77,6 +78,7 @@ public class ArchiveEmailHistory {
   public static class ArchiveEmailFn extends DoFn<Entity, Key> {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
+        .registerModule(new JavaTimeModule())
         .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
     private final String projectId;
