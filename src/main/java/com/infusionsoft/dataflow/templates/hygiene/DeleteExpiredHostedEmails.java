@@ -1,10 +1,10 @@
 package com.infusionsoft.dataflow.templates.hygiene;
 
-import static com.infusionsoft.dataflow.utils.ZonedDateTimeUtils.UTC;
+import static com.infusionsoft.dataflow.utils.JavaTimeUtils.UTC;
 
 import com.google.cloud.teleport.templates.common.PubsubConverters.PubsubReadOptions;
 import com.infusionsoft.dataflow.shared.EntityToKey;
-import com.infusionsoft.dataflow.utils.ZonedDateTimeUtils;
+import com.infusionsoft.dataflow.utils.JavaTimeUtils;
 import java.time.ZonedDateTime;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.datastore.DatastoreIO;
@@ -57,7 +57,7 @@ public class DeleteExpiredHostedEmails {
               final ZonedDateTime expired = ZonedDateTime.now(UTC)
                   .minusDays(expireDays);
 
-              return String.format("SELECT __key__ FROM Email WHERE created < %s", ZonedDateTimeUtils.formatForGql(expired));
+              return String.format("SELECT __key__ FROM Email WHERE created < %s", JavaTimeUtils.formatForGql(expired));
             })))
         .apply("Shard", Reshuffle.viaRandomKey()) // this ensures that the subsequent steps occur in parallel
         .apply("Entity To Key", ParDo.of(new EntityToKey()))

@@ -2,12 +2,12 @@ package com.infusionsoft.dataflow.templates.migration;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-import com.infusionsoft.dataflow.utils.CloudStorageUtils;
-import com.infusionsoft.dataflow.utils.DatastoreUtils;
-
 import com.google.cloud.storage.Storage;
 import com.google.datastore.v1.Entity;
 import com.google.datastore.v1.Value;
+import com.infusionsoft.dataflow.utils.CloudStorageUtils;
+import com.infusionsoft.dataflow.utils.DatastoreUtils;
+import java.util.Map;
 import org.apache.beam.repackaged.beam_sdks_java_core.org.apache.commons.lang3.StringUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.datastore.DatastoreIO;
@@ -20,8 +20,6 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.http.entity.ContentType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Map;
 
 /**
  * A template that moves email content to cloud storage (because that is 10x cheaper than using Datastore)
@@ -76,7 +74,7 @@ public class EmailContent {
     public void processElement(ProcessContext context) {
       final Entity entity = context.element();
       final long id = DatastoreUtils.getId(entity.getKey());
-      final Map<String, Value> properties = entity.getProperties();
+      final Map<String, Value> properties = entity.getPropertiesMap();
 
       if (properties.containsKey("htmlBody") && properties.containsKey("textBody")) {
         final String htmlBody = properties.get("htmlBody").getStringValue();
