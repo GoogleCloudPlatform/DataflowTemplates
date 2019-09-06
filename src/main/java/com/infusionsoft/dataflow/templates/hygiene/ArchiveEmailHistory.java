@@ -42,10 +42,10 @@ import org.apache.http.entity.ContentType;
  * Used by email-history-api
  *
  * Deploy to sand:
- * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.hygiene.ArchiveEmailHistory -Dexec.args="--project=is-email-history-api-sand --stagingLocation=gs://dataflow-is-email-history-api-sand/staging --templateLocation=gs://dataflow-is-email-history-api-sand/templates/archive_emails --runner=DataflowRunner --serviceAccount=is-email-history-api-sand@appspot.gserviceaccount.com --datastoreProjectId=is-email-history-api-sand --cloudStorageProjectId=is-email-history-api-sand --cloudStorageBucketName=is-email-history-api-sand.appspot.com"
+ * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.hygiene.ArchiveEmailHistory -Dexec.args="--project=is-email-history-api-sand --stagingLocation=gs://dataflow-is-email-history-api-sand/staging --templateLocation=gs://dataflow-is-email-history-api-sand/templates/archive_emails --runner=DataflowRunner --serviceAccount=is-email-history-api-sand@appspot.gserviceaccount.com --datastoreProjectId=is-email-history-api-sand --cloudStorageProjectId=is-email-history-api-sand --warmCloudStorageBucketName=is-email-history-api-sand.appspot.com --coldCloudStorageBucketName=icebox-is-email-history-api-sand.appspot.com"
  *
  * Deploy to prod:
- * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.hygiene.ArchiveEmailHistory -Dexec.args="--project=is-email-history-api-prod --stagingLocation=gs://dataflow-is-email-history-api-prod/staging --templateLocation=gs://dataflow-is-email-history-api-prod/templates/archive_emails --runner=DataflowRunner --serviceAccount=is-email-history-api-prod@appspot.gserviceaccount.com --datastoreProjectId=is-email-history-api-prod --cloudStorageProjectId=is-email-history-api-prod --cloudStorageBucketName=is-email-history-api-prod.appspot.com"
+ * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.hygiene.ArchiveEmailHistory -Dexec.args="--project=is-email-history-api-prod --stagingLocation=gs://dataflow-is-email-history-api-prod/staging --templateLocation=gs://dataflow-is-email-history-api-prod/templates/archive_emails --runner=DataflowRunner --serviceAccount=is-email-history-api-prod@appspot.gserviceaccount.com --datastoreProjectId=is-email-history-api-prod --cloudStorageProjectId=is-email-history-api-prod --warmCloudStorageBucketName=is-email-history-api-prod.appspot.com --coldCloudStorageBucketName=icebox-is-email-history-api-prod.appspot.com"
  *
  */
 public class ArchiveEmailHistory {
