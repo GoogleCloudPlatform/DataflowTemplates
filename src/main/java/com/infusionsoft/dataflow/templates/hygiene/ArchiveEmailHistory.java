@@ -156,7 +156,7 @@ public class ArchiveEmailHistory {
             })))
         .apply("Shard", Reshuffle.viaRandomKey()) // this ensures that the subsequent steps occur in parallel
         .apply("Upload to Cold Storage", ParDo.of(new ArchiveEmailFn(cloudStorageProjectId, warmCloudStorageBucket, coldCloudStorageBucket)))
-        .apply("Delete from Cloud Storage", ParDo.of(new DeleteEmailContent(cloudStorageProjectId, warmCloudStorageBucket)))
+        .apply("Delete from Warm Storage", ParDo.of(new DeleteEmailContent(cloudStorageProjectId, warmCloudStorageBucket)))
         .apply("Delete from Datastore", DatastoreIO.v1().deleteKey()
             .withProjectId(datastoreProjectId));
 
