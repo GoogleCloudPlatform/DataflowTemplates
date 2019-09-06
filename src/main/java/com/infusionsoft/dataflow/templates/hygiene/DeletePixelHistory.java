@@ -38,7 +38,7 @@ public class DeletePixelHistory {
     ValueProvider<String> getDatastoreProjectId();
     void setDatastoreProjectId(ValueProvider<String> datastoreProjectId);
 
-    @Description("The Account Id whose emails are being deleted")
+    @Description("The Account Id whose pixels are being deleted")
     ValueProvider<String> getAccountId();
     void setAccountId(ValueProvider<String> accountId);
 
