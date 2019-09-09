@@ -1,0 +1,12 @@
+{
+  "name": "Delete Pixel History",
+  "description": "A template that deletes pixel history by accountId",
+  "parameters": [
+    {
+      "name": "accountId",
+      "label": "The Account Id whose pixels are being deleted",
+      "help_text": "bv672",
+      "is_optional": false
+    }
+  ]
+}

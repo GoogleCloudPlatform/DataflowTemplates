@@ -1,0 +1,12 @@
+{
+  "name": "Delete Link History",
+  "description": "A template that deletes link history by accountId",
+  "parameters": [
+    {
+      "name": "accountId",
+      "label": "The Account Id whose links are being deleted",
+      "help_text": "bv672",
+      "is_optional": false
+    }
+  ]
+}

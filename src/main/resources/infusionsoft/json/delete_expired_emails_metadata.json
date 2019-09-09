@@ -1,0 +1,12 @@
+{
+  "name": "Delete Expired Hosted Emails",
+  "description": "A template that deletes expired hosted emails",
+  "parameters": [
+    {
+      "name": "expireDays",
+      "label": "How many days until an email expires",
+      "help_text": "90",
+      "is_optional": false
+    }
+  ]
+}
