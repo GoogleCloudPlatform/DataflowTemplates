@@ -15,6 +15,11 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="Maven: com.google.cloud:google-cloud-logging-logback:0.105.0-alpha" level="project" />
+    <orderEntry type="library" name="Maven: ch.qos.logback:logback-classic:1.2.3" level="project" />
+    <orderEntry type="library" name="Maven: ch.qos.logback:logback-core:1.2.3" level="project" />
+    <orderEntry type="library" name="Maven: com.google.cloud:google-cloud-logging:1.87.0" level="project" />
+    <orderEntry type="library" name="Maven: com.google.api.grpc:proto-google-cloud-logging-v2:0.70.0" level="project" />
     <orderEntry type="library" name="Maven: org.apache.beam:beam-sdks-java-core:2.10.0" level="project" />
     <orderEntry type="library" name="Maven: org.apache.beam:beam-model-pipeline:2.10.0" level="project" />
     <orderEntry type="library" name="Maven: com.google.errorprone:error_prone_annotations:2.1.2" level="project" />
