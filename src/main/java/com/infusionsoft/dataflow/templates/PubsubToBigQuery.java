@@ -2,6 +2,7 @@ package com.infusionsoft.dataflow.templates;
 
 import static com.google.cloud.teleport.templates.TextToBigQueryStreaming.wrapBigQueryInsertError;
 
+import com.fasterxml.jackson.core.io.JsonEOFException;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.templates.common.BigQueryConverters.FailsafeJsonToTableRow;
@@ -352,7 +353,9 @@ public class PubsubToBigQuery {
                         }
 
                       } catch (IOException e) {
-                        throw new RuntimeException("Unable to parse input", e);
+                        logger.error("Unable to parse input ", e);
+                      } catch (Exception e) {
+                        logger.error("Error in the JsonToTableRow step", e);
                       }
 
                       return tableRowList;
@@ -379,7 +382,7 @@ public class PubsubToBigQuery {
                     try {
                       inputSet.add(string);
                     } catch (Exception e) {
-                      throw new RuntimeException("Unable to parse input in BatchJsonToListJson", e);
+                      logger.error("Unable to parse input in BatchJsonToListJson", e);
                     }
                   }
                   return inputSet;
