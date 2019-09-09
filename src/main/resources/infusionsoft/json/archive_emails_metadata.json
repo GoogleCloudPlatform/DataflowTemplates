@@ -1,0 +1,12 @@
+{
+  "name": "Archive Email History",
+  "description": "A template that archives email history",
+  "parameters": [
+    {
+      "name": "expireMonths",
+      "label": "How many months until an email expires",
+      "help_text": "12",
+      "is_optional": false
+    }
+  ]
+}

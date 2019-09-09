@@ -14,9 +14,8 @@ import com.google.datastore.v1.Value;
 import com.google.datastore.v1.client.Datastore;
 import com.google.datastore.v1.client.DatastoreException;
 import com.google.datastore.v1.client.DatastoreHelper;
-import com.google.protobuf.util.Timestamps;
 import com.infusionsoft.dataflow.utils.DatastoreUtils;
-import com.infusionsoft.dataflow.utils.ZonedDateTimeUtils;
+import com.infusionsoft.dataflow.utils.JavaTimeUtils;
 import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.util.LinkedList;
@@ -101,7 +100,7 @@ public class PubsubMarkEmailsBounced {
     private void processEvent(ProcessContext context, Map<String, Object> json) {
       final String accountId = (String) json.get("accountId");
       final String bounceId = (String) json.get("bounceId");
-      final ZonedDateTime timestamp = ZonedDateTimeUtils.parseFlagshipDate((String) json.get("timestamp"));
+      final ZonedDateTime timestamp = JavaTimeUtils.parseFlagshipDate((String) json.get("timestamp"));
 
       final Datastore datastore = DatastoreUtils.getDatastore(context.getPipelineOptions(), projectId);
 
@@ -112,7 +111,7 @@ public class PubsubMarkEmailsBounced {
     private void markBounced(Datastore datastore, Entity entity, ZonedDateTime timestamp) {
       final Entity updated = entity.toBuilder()
           .putProperties("bounced", Value.newBuilder()
-              .setTimestampValue(Timestamps.fromMillis(timestamp.toInstant().toEpochMilli()))
+              .setTimestampValue(JavaTimeUtils.toTimestamp(timestamp))
               .build())
           .build();
 

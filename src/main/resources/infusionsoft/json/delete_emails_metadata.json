@@ -1,0 +1,12 @@
+{
+  "name": "Delete Email History",
+  "description": "A template that deletes email history by accountId",
+  "parameters": [
+    {
+      "name": "accountId",
+      "label": "The Account Id whose emails are being deleted",
+      "help_text": "bv672",
+      "is_optional": false
+    }
+  ]
+}
