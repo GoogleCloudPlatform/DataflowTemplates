@@ -27,6 +27,9 @@ import com.google.common.primitives.Longs;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -57,6 +60,8 @@ class TextRowToMutation extends DoFn<KV<String, String>, Mutation> {
   private final ValueProvider<Boolean> trailingDelimiter;
   private final ValueProvider<Character> escape;
   private final ValueProvider<String> nullString;
+  private final ValueProvider<String> dateFormat;
+  private final ValueProvider<String> timestampFormat;
 
   private Mutation.WriteBuilder writeBuilder = null;
 
@@ -67,7 +72,9 @@ class TextRowToMutation extends DoFn<KV<String, String>, Mutation> {
       ValueProvider<Character> fieldQualifier,
       ValueProvider<Boolean> trailingDelimiter,
       ValueProvider<Character> escape,
-      ValueProvider<String> nullString) {
+      ValueProvider<String> nullString,
+      ValueProvider<String> dateFormat,
+      ValueProvider<String> timestampFormat) {
     this.ddlView = ddlView;
     this.tableColumnsView = tableColumnsView;
     this.columnDelimiter = columnDelimiter;
@@ -75,6 +82,8 @@ class TextRowToMutation extends DoFn<KV<String, String>, Mutation> {
     this.trailingDelimiter = trailingDelimiter;
     this.escape = escape;
     this.nullString = nullString;
+    this.dateFormat = dateFormat;
+    this.timestampFormat = timestampFormat;
   }
 
   @ProcessElement
@@ -189,30 +198,43 @@ class TextRowToMutation extends DoFn<KV<String, String>, Mutation> {
           columnValue = Value.string(cellValue);
           break;
         case DATE:
-          // This requires date type in format of 'YYYY-[M]M-[D]D'
-          String dt = cellValue.trim();
-          if (dt.endsWith(" 00:00:00")) {
-            dt = dt.substring(0, 10);
+          if (isNullValue) {
+            columnValue = Value.date(null);
+          } else {
+            LocalDate dt =
+                LocalDate.parse(
+                    cellValue.trim(),
+                    DateTimeFormatter.ofPattern(
+                        dateFormat.get() == null
+                            ? "yyyy-M[M]-d[d][' 00:00:00']"
+                            : dateFormat.get()));
+            columnValue =
+                Value.date(
+                    com.google.cloud.Date.fromYearMonthDay(
+                        dt.getYear(), dt.getMonthValue(), dt.getDayOfMonth()));
           }
-          columnValue =
-              isNullValue
-                  ? Value.date(null)
-                  : Value.date(com.google.cloud.Date.parseDate(dt));
           break;
         case TIMESTAMP:
           if (isNullValue) {
             columnValue = Value.timestamp(null);
           } else {
-            // Timestamp is either a string in the RFC 3339 format without the timezone offset
-            // (always ends in "Z", e.g., 2018-12-31T23:59:59.78Z) or a long integer representing
-            // the microseconds since 1970-01-01 00:00:00 UTC.
+            // Timestamp is either a long integer representing Unix epoch time or a string, which
+            // will be parsed using the pattern corresponding to the timestampFormat flag.
             Long microseconds = Longs.tryParse(cellValue);
-            columnValue =
-                microseconds != null
-                    ? Value.timestamp(com.google.cloud.Timestamp.ofTimeMicroseconds(microseconds))
-                    : Value.timestamp(
-                        com.google.cloud.Timestamp.parseTimestamp(
-                            cellValue.replaceAll("\"", "").trim()));
+            if (microseconds != null) {
+              columnValue =
+                  Value.timestamp(com.google.cloud.Timestamp.ofTimeMicroseconds(microseconds));
+            } else {
+              DateTimeFormatter formatter =
+                  timestampFormat.get() == null
+                      ? DateTimeFormatter.ISO_INSTANT
+                      : DateTimeFormatter.ofPattern(timestampFormat.get());
+              Instant ts = Instant.from(formatter.parse(cellValue.trim()));
+              columnValue =
+                  Value.timestamp(
+                      com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
+                          ts.getEpochSecond(), ts.getNano()));
+            }
           }
           break;
         default:

@@ -45,18 +45,18 @@ public class TextImportPipeline {
 
     void setDatabaseId(ValueProvider<String> value);
 
-    @Description("Spanner host")
+    @Description("Spanner host. The default value is https://batch-spanner.googleapis.com.")
     @Default.String("https://batch-spanner.googleapis.com")
     ValueProvider<String> getSpannerHost();
 
     void setSpannerHost(ValueProvider<String> value);
 
-    @Description("Text Import Manifest file, storing a json-encoded {@link importManifest} object")
+    @Description("Text Import Manifest file, storing a json-encoded {@link importManifest} object.")
     ValueProvider<String> getImportManifest();
 
     void setImportManifest(ValueProvider<String> value);
 
-    @Description("Column delimiter of the data files")
+    @Description("Column delimiter of the data files. The default value is comma.")
     @Default.Character(',')
     ValueProvider<Character> getColumnDelimiter();
 
@@ -64,30 +64,51 @@ public class TextImportPipeline {
 
     @Description(
         "Field qualifier used by the source file. Field qualifier should be used when character"
-            + " needs to be escaped.")
+            + " needs to be escaped. The default value is double quote.")
+    @Default.Character('"')
     ValueProvider<Character> getFieldQualifier();
 
     void setFieldQualifier(ValueProvider<Character> value);
 
-    @Description("If true, the lines has trailing delimiters.")
+    @Description("If true, the lines has trailing delimiters. The default value is true.")
     @Default.Boolean(true)
     ValueProvider<Boolean> getTrailingDelimiter();
 
     void setTrailingDelimiter(ValueProvider<Boolean> value);
 
-    @Description("The escape character.")
+    @Description("The escape character. The default value is backslash.")
     @Default.Character('\\')
     ValueProvider<Character> getEscape();
 
     void setEscape(ValueProvider<Character> value);
 
-    @Description("The string that represents the NULL value.")
+    @Description("The string that represents the NULL value. The default value is \\N.")
     @Default.String("\\N")
     ValueProvider<String> getNullString();
 
     void setNullString(ValueProvider<String> value);
 
-    @Description("If true, wait for job finish")
+    @Description(
+        "The format used to parse date columns. By default, the pipeline will try to parse the"
+            + " date columns as \"yyyy-MM-dd[' 00:00:00']\" (e.g., 2019-01-31, or 2019-01-31"
+            + " 00:00:00). If your data format is different, please specify the format using the"
+            + " {@link DateTimeFormatter} patterns.")
+    ValueProvider<String> getDateFormat();
+
+    void setDateFormat(ValueProvider<String> value);
+
+    @Description(
+        "The format used to parse timestamp columns. If the timestamp is a long integer, then it's"
+            + " treated as Unix epoch (the microsecond since 1970-01-01T00:00:00.000Z. Otherwise,"
+            + " it parsed as a string using the {@link DateTimeFormatter#ISO_INSTANT} format. For"
+            + " other cases, please specify you own pattern string, e.g., \"MMM dd yyyy"
+            + " HH:mm:ss.SSSVV\" for timestamp in the form of \"Jan 21 1998 01:02:03.456+08:00\"."
+            + " Please refer to {@link DateTimeFormatter} for more details.")
+    ValueProvider<String> getTimestampFormat();
+
+    void setTimestampFormat(ValueProvider<String> value);
+
+    @Description("If true, wait for job finish. The default value is true.")
     @Default.Boolean(true)
     boolean getWaitUntilFinish();
 

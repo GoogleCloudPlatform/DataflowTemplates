@@ -32,6 +32,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.channels.Channels;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -273,7 +274,9 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
                           options.getFieldQualifier(),
                           options.getTrailingDelimiter(),
                           options.getEscape(),
-                          options.getNullString()))
+                          options.getNullString(),
+                          options.getDateFormat(),
+                          options.getTimestampFormat()))
                   .withSideInputs(ddlView, tableColumnsView));
     }
   }
@@ -314,10 +317,15 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
     private static ImportManifest readManifest(ResourceId fileResource) {
       ImportManifest.Builder result = ImportManifest.newBuilder();
       try (InputStream stream = Channels.newInputStream(FileSystems.open(fileResource))) {
-        Reader reader = new InputStreamReader(stream);
+        Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
         JsonFormat.parser().merge(reader, result);
       } catch (IOException e) {
-        throw new RuntimeException(e);
+        throw new RuntimeException(
+            "Failed to read manifest. Make sure it is ASCII or UTF-8 encoded and contains a"
+                + " well-formed JSON string. Please refer to"
+                + " https://cloud.google.com/spanner/docs/import-export-csv#create-json-manifest"
+                + " for the required format of the manifest file.",
+            e);
       }
       return result.build();
     }

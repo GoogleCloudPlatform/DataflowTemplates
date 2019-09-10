@@ -93,7 +93,7 @@ public class TextImportTransformTest {
     Path f11 = Files.createTempFile("table1-file", "1");
     Path f12 = Files.createTempFile("table1-file", "2");
     Path manifestFile = Files.createTempFile("import-manifest", ".json");
-    Charset charset = Charset.forName("UTF-8");
+    Charset charset = Charset.forName("US-ASCII");
     try (BufferedWriter writer = Files.newBufferedWriter(manifestFile, charset)) {
       String jsonString =
           String.format(
@@ -124,7 +124,6 @@ public class TextImportTransformTest {
     try {
       pipeline.run();
     } catch (Exception e) {
-      System.out.print("  e........" + e.getMessage());
       e.printStackTrace();
     }
   }
