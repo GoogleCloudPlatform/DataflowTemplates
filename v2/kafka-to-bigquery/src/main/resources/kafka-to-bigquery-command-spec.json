@@ -1,0 +1,4 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.KafkaToBigQuery",
+  "classPath": "/template/KafkaToBigQuery/libs/*:/template/KafkaToBigQuery/classes"
+}
