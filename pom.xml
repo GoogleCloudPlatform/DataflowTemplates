@@ -84,6 +84,7 @@
     <autovalue.annotations.version>1.6</autovalue.annotations.version>
     <autovalue.version>1.6.2</autovalue.version>
     <excluded.spanner.tests>com.google.cloud.teleport.spanner.IntegrationTest</excluded.spanner.tests>
+    <tensorflow.version>1.14.0</tensorflow.version>
     <dlp.version>0.79.0-beta</dlp.version>
     <hbase.version>1.4.5</hbase.version>
     <scassandra.version>1.1.2</scassandra.version>
@@ -450,6 +451,11 @@
       <groupId>com.google.api.grpc</groupId>
       <artifactId>proto-google-cloud-kms-v1</artifactId>
       <version>${proto-kms.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.tensorflow</groupId>
+      <artifactId>proto</artifactId>
+      <version>${tensorflow.version}</version>
     </dependency>
   </dependencies>
 
