@@ -89,6 +89,43 @@ public class TextImportTransformTest {
   }
 
   @Test
+  public void readImportManifestUtfWithBOM() throws Exception {
+    Path f11 = Files.createTempFile("table1-file", "1");
+    String tempDir = f11.getParent().toString();
+
+    Path manifestFile = Files.createTempFile("import-manifest", ".json");
+    Charset charset = Charset.forName("UTF-8");
+    try (BufferedWriter writer = Files.newBufferedWriter(manifestFile, charset)) {
+      String jsonString =
+          String.format(
+              "\uFEFF{\"tables\": ["
+                  + "{\"table_name\": \"table1\","
+                  + "\"file_patterns\":[\"%s\"]}"
+                  + "]}",
+              f11.toString());
+      writer.write(jsonString, 0, jsonString.length());
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    ValueProvider<String> importManifest =
+        ValueProvider.StaticValueProvider.of(manifestFile.toString());
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("ddl", Create.of(getTestDdl())).apply(View.asSingleton());
+
+    PCollection<KV<String, String>> tableAndFiles =
+        pipeline
+            .apply("Read manifest file", new ReadImportManifest(importManifest))
+            .apply("Resolve data files", new ResolveDataFiles(importManifest, ddlView));
+
+    PAssert.that(tableAndFiles)
+        .containsInAnyOrder(
+            KV.of("table1", f11.toString()));
+
+    pipeline.run();
+  }
+
+  @Test
   public void readImportManifestPartialMatching() throws Exception {
     Path f11 = Files.createTempFile("table1-file", "1");
     Path f12 = Files.createTempFile("table1-file", "2");
