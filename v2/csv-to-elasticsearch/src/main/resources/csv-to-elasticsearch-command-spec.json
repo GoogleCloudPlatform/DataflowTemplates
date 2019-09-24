@@ -1,0 +1,4 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.CsvToElasticsearch",
+  "classPath": "/template/CsvToElasticsearch/libs/*:/template/CsvToElasticsearch/classes"
+}

@@ -155,6 +155,11 @@
             <version>${slf4j.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+        <dependency>
             <groupId>joda-time</groupId>
             <artifactId>joda-time</artifactId>
             <version>${joda.version}</version>
@@ -312,6 +317,9 @@
                             <ignoredUnusedDeclaredDependencies>
                                 <ignoredUnusedDeclaredDependency>
                                     org.slf4j:slf4j-api
+                                </ignoredUnusedDeclaredDependency>
+                                <ignoredUnusedDeclaredDependency>
+                                    org.slf4j:slf4j-simple
                                 </ignoredUnusedDeclaredDependency>
                                 <ignoredUnusedDeclaredDependency>
                                     org.apache.beam:beam-sdks-java-extensions-google-cloud-platform-core
@@ -543,6 +551,7 @@
         <module>bigquery-to-gcs</module>
         <module>kafka-to-bigquery</module>
         <module>common</module>
+        <module>csv-to-elasticsearch</module>
     </modules>
 
 </project>
