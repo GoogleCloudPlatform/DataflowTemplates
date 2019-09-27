@@ -574,6 +574,7 @@
         <module>common</module>
         <module>csv-to-elasticsearch</module>
         <module>bigquery-to-elasticsearch</module>
+        <module>pubsub-to-elasticsearch</module>
     </modules>
 
 </project>

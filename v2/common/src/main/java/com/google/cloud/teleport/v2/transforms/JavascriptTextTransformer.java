@@ -275,9 +275,9 @@ public abstract class JavascriptTextTransformer {
       return new AutoValue_JavascriptTextTransformer_FailsafeJavascriptUdf.Builder<>();
     }
 
-    private Counter successCounter = Metrics.counter(FailsafeJavascriptUdf.class, "SuccessFailsafeUdfCounter");
+    private Counter successCounter = Metrics.counter(FailsafeJavascriptUdf.class, "udf-transform-success-count");
 
-    private Counter failedCounter = Metrics.counter(FailsafeJavascriptUdf.class, "FailedFailsafeUdfCounter");
+    private Counter failedCounter = Metrics.counter(FailsafeJavascriptUdf.class, "udf-transform-failed-count");
 
     /** Builder for {@link FailsafeJavascriptUdf}. */
     @AutoValue.Builder
