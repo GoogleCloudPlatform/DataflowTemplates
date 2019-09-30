@@ -76,14 +76,15 @@ public class TextImportPipeline {
 
     void setTrailingDelimiter(ValueProvider<Boolean> value);
 
-    @Description("The escape character. The default value is backslash.")
-    @Default.Character('\\')
+    @Description(
+        "The escape character. The default value is NULL (not using the escape character).")
     ValueProvider<Character> getEscape();
 
     void setEscape(ValueProvider<Character> value);
 
-    @Description("The string that represents the NULL value. The default value is \\N.")
-    @Default.String("\\N")
+    @Description(
+        "The string that represents the NULL value. The default value is null (not using the null"
+            + " string).")
     ValueProvider<String> getNullString();
 
     void setNullString(ValueProvider<String> value);

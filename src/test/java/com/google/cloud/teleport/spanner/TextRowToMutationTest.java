@@ -53,9 +53,9 @@ public final class TextRowToMutationTest {
 
   private final ValueProvider<Character> columnDelimiter = StaticValueProvider.of(',');
   private final ValueProvider<Character> fieldQualifier = StaticValueProvider.of('"');
-  private final ValueProvider<Boolean> trailingDelimiter = StaticValueProvider.of(true);
-  private final ValueProvider<Character> escape = StaticValueProvider.of('\\');
-  private final ValueProvider<String> nullString = StaticValueProvider.of("\\N");
+  private final ValueProvider<Boolean> trailingDelimiter = StaticValueProvider.of(false);
+  private final ValueProvider<Character> escape = StaticValueProvider.of(null);
+  private final ValueProvider<String> nullString = StaticValueProvider.of(null);
   private final ValueProvider<String> dateFormat = StaticValueProvider.of(null);
   private final ValueProvider<String> timestampFormat = StaticValueProvider.of(null);
 
@@ -90,7 +90,7 @@ public final class TextRowToMutationTest {
                         tableColumnsMapView,
                         columnDelimiter,
                         StaticValueProvider.of('`'),
-                        trailingDelimiter,
+                        StaticValueProvider.of(true),
                         escape,
                         nullString,
                         dateFormat,
@@ -152,7 +152,7 @@ public final class TextRowToMutationTest {
                         tableColumnsMapView,
                         columnDelimiter,
                         fieldQualifier,
-                        trailingDelimiter,
+                        StaticValueProvider.of(true),
                         escape,
                         nullString,
                         dateFormat,
