@@ -65,7 +65,7 @@ public class SpannerToText {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToText.class);
 
   /**
-   * Custom PipelineOptions
+   * Custom PipelineOptions.
    */
   public interface SpannerToTextOptions
       extends PipelineOptions,

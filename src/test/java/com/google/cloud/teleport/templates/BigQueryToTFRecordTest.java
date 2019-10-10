@@ -22,11 +22,10 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
@@ -44,39 +43,38 @@ import org.tensorflow.example.Features;
 public class BigQueryToTFRecordTest {
 
   final Schema schema =
-          SchemaBuilder.record("example")
-                  .namespace("test.avro")
-                  .fields()
-                  .name("int1")
-                  .type()
-                  .nullable()
-                  .intType()
-                  .noDefault()
-                  .name("float1")
-                  .type()
-                  .nullable()
-                  .floatType()
-                  .noDefault()
-                  .name("string1")
-                  .type()
-                  .nullable()
-                  .stringType()
-                  .noDefault()
-                  .name("bytes1")
-                  .type()
-                  .nullable()
-                  .bytesType()
-                  .noDefault()
-                  .name("bool1")
-                  .type()
-                  .nullable()
-                  .booleanType()
-                  .noDefault()
-                  .endRecord();
+      SchemaBuilder.record("example")
+          .namespace("test.avro")
+          .fields()
+          .name("int1")
+          .type()
+          .nullable()
+          .intType()
+          .noDefault()
+          .name("float1")
+          .type()
+          .nullable()
+          .floatType()
+          .noDefault()
+          .name("string1")
+          .type()
+          .nullable()
+          .stringType()
+          .noDefault()
+          .name("bytes1")
+          .type()
+          .nullable()
+          .bytesType()
+          .noDefault()
+          .name("bool1")
+          .type()
+          .nullable()
+          .booleanType()
+          .noDefault()
+          .endRecord();
 
   final GenericRecord record = new GenericData.Record(schema);
-
-
+  @Rule public ExpectedException expectedEx = ExpectedException.none();
 
   /** Test {@link BigQueryToTFRecord} correctly outputs TFRecord. */
   @Test
@@ -148,11 +146,8 @@ public class BigQueryToTFRecordTest {
     }
   }
 
-  @Rule
-  public ExpectedException expectedEx = ExpectedException.none();
-
   @Test
-  public void testBigQueryToTFRecordWithExeception() throws Exception{
+  public void testBigQueryToTFRecordWithExeception() throws Exception {
     expectedEx.expect(RuntimeException.class);
     expectedEx.expectMessage("Unsupported type: BOLEAN");
 
@@ -178,8 +173,5 @@ public class BigQueryToTFRecordTest {
     final SchemaAndRecord schemaAndRecord = new SchemaAndRecord(record, tableSchema);
 
     byte[] gotBytes = record2Example(schemaAndRecord);
-
   }
-
-
 }

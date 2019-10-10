@@ -32,7 +32,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 public class DatastoreToDatastoreDelete {
 
   /**
-   * Custom PipelineOptions
+   * Custom PipelineOptions.
    */
   public interface DatastoreToDatastoreDeleteOptions extends
       PipelineOptions,
