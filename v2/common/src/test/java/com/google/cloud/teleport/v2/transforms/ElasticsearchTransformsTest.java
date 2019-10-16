@@ -15,15 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import static org.hamcrest.CoreMatchers.nullValue;
-import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.assertThat;
-
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.v2.transforms.ElasticsearchTransforms.WriteToElasticsearch;
-import com.google.common.io.Resources;
-import java.io.IOException;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
@@ -33,11 +25,6 @@ import org.junit.rules.ExpectedException;
 
 /** Test cases for the {@link ElasticsearchTransforms} class. */
 public class ElasticsearchTransformsTest {
-
-  private static final String RESOURCES_DIR = "JavascriptTextTransformerTest/";
-
-  private static final String TRANSFORM_FILE_PATH =
-          Resources.getResource(RESOURCES_DIR + "transform.js").getPath();
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
@@ -129,85 +116,7 @@ public class ElasticsearchTransformsTest {
     pipeline.run();
   }
 
-  /** Tests that {@link ElasticsearchTransforms.ValueExtractorFn} returns the correct value. */
-  @Test
-  public void testValueExtractorFn() throws IOException {
 
-    final String stringifiedJsonRecord = "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
-
-    final String jsonRecord = "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23,\"someProp\":\"someValue\"}";
-
-    ObjectMapper objectMapper = new ObjectMapper();
-
-    JsonNode jsonNode = objectMapper.readTree(stringifiedJsonRecord);
-
-    String result = ElasticsearchTransforms.ValueExtractorFn.newBuilder()
-        .setFileSystemPath(TRANSFORM_FILE_PATH)
-        .setFunctionName("transform")
-        .build()
-        .apply(jsonNode);
-
-    assertThat(result, is(jsonRecord));
-  }
-
-  /** Tests that {@link ElasticsearchTransforms.ValueExtractorFn} returns null when both inputs are null. */
-  @Test
-  public void testValueExtractorFnReturnNull() throws IOException {
-
-    final String stringifiedJsonRecord = "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
-
-    final String jsonRecord = "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23,\"someProp\":\"someValue\"}";
-
-    ObjectMapper objectMapper = new ObjectMapper();
-
-    JsonNode jsonNode = objectMapper.readTree(stringifiedJsonRecord);
-
-    String result = ElasticsearchTransforms.ValueExtractorFn.newBuilder()
-            .setFileSystemPath(null)
-            .setFunctionName(null)
-            .build()
-            .apply(jsonNode);
-
-    assertThat(result, is(nullValue()));
-  }
-
-  /** Tests that {@link ElasticsearchTransforms.ValueExtractorFn} throws exception if only {@link ElasticsearchTransforms.ValueExtractorFn#fileSystemPath()} is supplied. */
-  @Test(expected = IllegalArgumentException.class)
-  public void testValueExtractorFnNullSystemPath() throws IOException {
-
-    final String stringifiedJsonRecord = "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
-
-    final String jsonRecord = "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23,\"someProp\":\"someValue\"}";
-
-    ObjectMapper objectMapper = new ObjectMapper();
-
-    JsonNode jsonNode = objectMapper.readTree(stringifiedJsonRecord);
-
-    String result = ElasticsearchTransforms.ValueExtractorFn.newBuilder()
-            .setFileSystemPath(null)
-            .setFunctionName("transform")
-            .build()
-            .apply(jsonNode);
-  }
-
-  /** Tests that {@link ElasticsearchTransforms.ValueExtractorFn} throws exception if only {@link ElasticsearchTransforms.ValueExtractorFn#functionName()} is supplied. */
-  @Test(expected = IllegalArgumentException.class)
-  public void testValueExtractorFnNullFunctionName() throws IOException {
-
-    final String stringifiedJsonRecord = "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
-
-    final String jsonRecord = "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23,\"someProp\":\"someValue\"}";
-
-    ObjectMapper objectMapper = new ObjectMapper();
-
-    JsonNode jsonNode = objectMapper.readTree(stringifiedJsonRecord);
-
-    String result = ElasticsearchTransforms.ValueExtractorFn.newBuilder()
-            .setFileSystemPath(TRANSFORM_FILE_PATH)
-            .setFunctionName(null)
-            .build()
-            .apply(jsonNode);
-  }
 
   /** Tests that {@link WriteToElasticsearch} throws an exception if {@link org.apache.beam.sdk.io.elasticsearch.ElasticsearchIO.RetryConfiguration} are invalid. */
   @Test

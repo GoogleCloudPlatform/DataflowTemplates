@@ -1,0 +1,4 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.BigQueryToElasticsearch",
+  "classPath": "/template/BigQueryToElasticsearch/libs/*:/template/BigQueryToElasticsearch/classes"
+}
