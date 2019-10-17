@@ -76,7 +76,7 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
 
   @VisibleForTesting
   protected static final ValueProvider<Integer> DEFAULT_BATCH_COUNT
-      = ValueProvider.StaticValueProvider.of(10);
+      = ValueProvider.StaticValueProvider.of(1);
 
   @VisibleForTesting
   protected static final ValueProvider<Boolean> DEFAULT_DISABLE_CERTIFICATE_VALIDATION

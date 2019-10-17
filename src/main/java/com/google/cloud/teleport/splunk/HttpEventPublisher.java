@@ -244,6 +244,13 @@ public abstract class HttpEventPublisher {
       return setDisableCertificateValidation(disableCertificateValidation);
     }
 
+    /**
+     * Method to max timeout for {@link ExponentialBackOff}. Otherwise uses the default
+     * setting for {@link ExponentialBackOff}.
+     *
+     * @param maxElapsedMillis max elapsed time in milliseconds for timeout.
+     * @return {@link Builder}
+     */
     public Builder withMaxElapsedMillis(Integer maxElapsedMillis) {
       checkNotNull(
           maxElapsedMillis, "withMaxElapsedMillis(maxElapsedMillis) called with null input.");

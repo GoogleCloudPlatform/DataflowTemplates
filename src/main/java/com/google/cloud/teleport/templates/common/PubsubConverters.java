@@ -18,6 +18,7 @@ package com.google.cloud.teleport.templates.common;
 
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.options.ValueProvider;
 
 /** Options for Teleport PubsubIO. */
@@ -27,6 +28,7 @@ public class PubsubConverters {
   public interface PubsubReadOptions extends PipelineOptions {
     @Description("Pubsub topic to read data from")
     ValueProvider<String> getPubsubReadTopic();
+
     void setPubsubReadTopic(ValueProvider<String> pubsubReadTopic);
   }
 
@@ -34,6 +36,30 @@ public class PubsubConverters {
   public interface PubsubWriteOptions extends PipelineOptions {
     @Description("Pubsub topic to write data to")
     ValueProvider<String> getPubsubWriteTopic();
+
     void setPubsubWriteTopic(ValueProvider<String> pubsubWriteTopic);
+  }
+
+  /** Options for Pubsub reads from a subscription. */
+  public interface PubsubReadSubscriptionOptions extends PipelineOptions {
+    @Description(
+        "The Cloud Pub/Sub subscription to consume from. "
+            + "The name should be in the format of "
+            + "projects/<project-id>/subscriptions/<subscription-name>.")
+    ValueProvider<String> getInputSubscription();
+
+    void setInputSubscription(ValueProvider<String> inputSubscription);
+  }
+
+  /** Options for using Pub/Sub as a deadletter sink. */
+  public interface PubsubWriteDeadletterTopicOptions extends PipelineOptions {
+    @Description(
+        "The Cloud Pub/Sub topic to publish deadletter records to. "
+            + "The name should be in the format of "
+            + "projects/<project-id>/topics/<topic-name>.")
+    @Validation.Required
+    ValueProvider<String> getOutputDeadletterTopic();
+
+    void setOutputDeadletterTopic(ValueProvider<String> deadletterTopic);
   }
 }
