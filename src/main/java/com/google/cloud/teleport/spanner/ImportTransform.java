@@ -214,7 +214,15 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
               .apply("Wait for previous depth " + depth, Wait.on(previousComputation))
               .apply(
                   "Write mutations " + depth,
-                  SpannerIO.write().withSchemaReadySignal(ddl).withSpannerConfig(spannerConfig));
+                  SpannerIO.write()
+                      .withSchemaReadySignal(ddl)
+                      .withSpannerConfig(spannerConfig)
+                      // Reduce the number of rows that SpannerIO groups together  to eliminate the
+                      // possibility of OOM errors when importing 'skinny' tables (with very few,
+                      // small columns) with many rows.
+                      // TODO(b/142641608): Remove when this is fixed in SpannerIO.
+                      .withMaxNumMutations(1000)
+                      .withGroupingFactor(100));
       previousComputation = result.getOutput();
     }
     ddl.apply(Wait.on(previousComputation))
