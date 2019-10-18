@@ -187,24 +187,25 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
       final int depth = i;
       PCollection<KV<String, String>> levelFiles =
           acc.apply(
-              "Store depth " + depth,
-              ParDo.of(
-                      new DoFn<HashMultimap<String, String>, KV<String, String>>() {
+                  "Get Avro filenames depth " + depth,
+                  ParDo.of(
+                          new DoFn<HashMultimap<String, String>, KV<String, String>>() {
 
-                        @ProcessElement
-                        public void processElement(ProcessContext c) {
-                          HashMultimap<String, String> allFiles = c.element();
-                          HashMultimap<Integer, String> levels = c.sideInput(levelsView);
+                            @ProcessElement
+                            public void processElement(ProcessContext c) {
+                              HashMultimap<String, String> allFiles = c.element();
+                              HashMultimap<Integer, String> levels = c.sideInput(levelsView);
 
-                          Set<String> tables = levels.get(depth);
-                          for (String table : tables) {
-                            for (String file : allFiles.get(table)) {
-                              c.output(KV.of(file, table));
+                              Set<String> tables = levels.get(depth);
+                              for (String table : tables) {
+                                for (String file : allFiles.get(table)) {
+                                  c.output(KV.of(file, table));
+                                }
+                              }
                             }
-                          }
-                        }
-                      })
-                  .withSideInputs(levelsView));
+                          })
+                      .withSideInputs(levelsView))
+              .apply("Wait for previous depth " + depth, Wait.on(previousComputation));
       PCollection<Mutation> mutations =
           levelFiles.apply(
               "Avro files as mutations " + depth, new AvroTableFileAsMutations(ddlView));
