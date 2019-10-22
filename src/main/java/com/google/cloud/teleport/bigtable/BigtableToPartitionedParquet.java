@@ -203,14 +203,13 @@ public class BigtableToPartitionedParquet {
     }
   }
 
-  
 
   /** Translates Bigtable {@link Row} to Avro {@link BigtableRow}. */
   static class BigtableToGenericRecord extends DoFn<Row, GenericRecord> {
     private String schemaStr;
     private Schema schema = null;
 
-    public BigtableToGenericRecord(String schemaStr) {      
+    public BigtableToGenericRecord(String schemaStr) {
       this.schemaStr = schemaStr;
     }
 

@@ -35,11 +35,10 @@ public final class BigtableToPartitionedParquetTest {
     bigtableRow2 = upsertBigtableCell(bigtableRow2, "family2", "column2", 1L, "value2");
     final List<Row> bigtableRows = ImmutableList.of(bigtableRow1, bigtableRow2);
 
-
     String schemaStr = BigtableToPartitionedParquet.getTableSchema();
     Schema schema = new Schema.Parser().parse(schemaStr);
     Schema cellsSchema = schema.getField("cells").schema().getElementType();
-    
+
     GenericRecord cell1 = new GenericData.Record(cellsSchema);
     cell1.put("family", "family1");
     cell1.put("qualifier", ByteBuffer.wrap("column1".getBytes()));
@@ -61,7 +60,6 @@ public final class BigtableToPartitionedParquetTest {
       .build();
 
     final List<GenericRecord> expectedGenericRows = ImmutableList.of(record1, record2);
-
 
     TestPipeline pipeline = TestPipeline.create();
     PCollection<GenericRecord> outputGenericRows = pipeline
