@@ -39,7 +39,7 @@ import org.joda.time.Instant;
 import org.junit.Rule;
 import org.junit.Test;
 
-/** Test cases for the {@link KafkaToBigQueryTest} class. */
+/** Test cases for the {@link KafkaToBigQuery} class. */
 public class KafkaToBigQueryTest {
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
@@ -49,7 +49,7 @@ public class KafkaToBigQueryTest {
   private static final String TRANSFORM_FILE_PATH =
           Resources.getResource(RESOURCES_DIR + "transform.js").getPath();
 
-  /** Tests the {@link KafkaToBigQueryTest} pipeline end-to-end. */
+  /** Tests the {@link KafkaToBigQuery} pipeline end-to-end. */
   @Test
   public void testKafkaToBigQueryE2E() throws Exception {
     // Test input

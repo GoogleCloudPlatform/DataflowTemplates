@@ -29,10 +29,18 @@
     <properties>
         <avro.version>1.8.2</avro.version>
         <bigquery.version>v2-rev438-1.25.0</bigquery.version>
+        <commons.version>1.7</commons.version>
+        <gson.version>2.7</gson.version>
         <guava.version>20.0</guava.version>
+        <jackson.version>2.9.9</jackson.version>
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
         <dependency>
             <groupId>com.google.apis</groupId>
             <artifactId>google-api-services-bigquery</artifactId>
@@ -45,9 +53,24 @@
             </exclusions>
         </dependency>
         <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>${gson.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.apache.avro</groupId>
             <artifactId>avro</artifactId>
             <version>${avro.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-sdks-java-io-elasticsearch</artifactId>
+            <version>${beam.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-csv</artifactId>
+            <version>${commons.version}</version>
         </dependency>
 
         <!-- Testing -->
