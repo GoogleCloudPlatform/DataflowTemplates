@@ -26,6 +26,10 @@ import com.google.common.io.Resources;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
@@ -33,6 +37,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
@@ -67,6 +72,9 @@ public class CsvConvertersTest {
 
   private static final String TEST_JSON_SCHEMA__PATH =
       Resources.getResource(CSV_RESOURCES_DIR + "testSchema.json").getPath();
+
+  private static final String TEST_AVRO_SCHEMA_PATH =
+      Resources.getResource(CSV_RESOURCES_DIR + "testAvroSchema.json").getPath();
 
   private static final String HEADER_STRING = "id,state,price";
 
@@ -168,6 +176,44 @@ public class CsvConvertersTest {
             });
 
     //  Execute pipeline
+    pipeline.run();
+  }
+
+  /**
+   * Tests if {@link CsvConverters.ReadCsv} throws an exception if no input Csv file is provided.
+   */
+  @Test(expected = NullPointerException.class)
+  public void testReadCsvWithoutInputFile() {
+    pipeline.apply(
+        "TestReadCsvWithoutInputFile",
+        CsvConverters.ReadCsv.newBuilder()
+            .setHasHeaders(false)
+            .setInputFileSpec(null)
+            .setHeaderTag(CSV_HEADERS)
+            .setLineTag(CSV_LINES)
+            .setCsvFormat("Default")
+            .setDelimiter(",")
+            .build());
+
+    pipeline.run();
+  }
+
+  /**
+   * Tests {@link CsvConverters.ReadCsv} throws an exception if no header information is provided.
+   */
+  @Test(expected = NullPointerException.class)
+  public void testReadCsvWithoutHeaderInformation() {
+    pipeline.apply(
+        "TestReadCsvWithoutHeaderInformation",
+        CsvConverters.ReadCsv.newBuilder()
+            .setHasHeaders(null)
+            .setInputFileSpec(NO_HEADER_CSV_FILE_PATH)
+            .setHeaderTag(CSV_HEADERS)
+            .setLineTag(CSV_LINES)
+            .setCsvFormat("Default")
+            .setDelimiter(",")
+            .build());
+
     pipeline.run();
   }
 
@@ -464,6 +510,68 @@ public class CsvConvertersTest {
               assertThat(result, is(equalTo(RECORD_STRING)));
               return null;
             });
+
+    pipeline.run();
+  }
+
+  /** Tests if {@link CsvConverters.StringToGenericRecordFn} creates a proper GenericRecord. */
+  @Test
+  public void testStringToGenericRecord() {
+    Schema schema = AvroConverters.getAvroSchema(TEST_AVRO_SCHEMA_PATH);
+
+    GenericRecord genericRecord = new GenericData.Record(schema);
+    genericRecord.put("id", "007");
+    genericRecord.put("state", "CA");
+    genericRecord.put("price", 26.23);
+
+    PCollection<GenericRecord> pCollection =
+        pipeline
+            .apply(
+                "ReadCsvFile",
+                CsvConverters.ReadCsv.newBuilder()
+                    .setHasHeaders(false)
+                    .setInputFileSpec(NO_HEADER_CSV_FILE_PATH)
+                    .setHeaderTag(CSV_HEADERS)
+                    .setLineTag(CSV_LINES)
+                    .setCsvFormat("Default")
+                    .setDelimiter(",")
+                    .build())
+            .get(CSV_LINES)
+            .apply(
+                "ConvertStringToGenericRecord",
+                ParDo.of(new CsvConverters.StringToGenericRecordFn(TEST_AVRO_SCHEMA_PATH, ",")))
+            .setCoder(AvroCoder.of(GenericRecord.class, schema));
+
+    PAssert.that(pCollection).containsInAnyOrder(genericRecord);
+
+    pipeline.run();
+  }
+
+  /**
+   * Tests {@link CsvConverters.StringToGenericRecordFn} throws an exception if incorrect header
+   * information is provided. (for e.g. if a Csv file containing headers is passed and hasHeaders is
+   * set to false.)
+   */
+  @Test(expected = RuntimeException.class)
+  public void testIncorrectHeaderInformation() {
+    Schema schema = AvroConverters.getAvroSchema(TEST_AVRO_SCHEMA_PATH);
+
+    pipeline
+        .apply(
+            "TestIncorrectHeaderInformation",
+            CsvConverters.ReadCsv.newBuilder()
+                .setInputFileSpec(HEADER_CSV_FILE_PATH)
+                .setHasHeaders(false)
+                .setHeaderTag(CSV_HEADERS)
+                .setLineTag(CSV_LINES)
+                .setCsvFormat("Default")
+                .setDelimiter(",")
+                .build())
+        .get(CSV_LINES)
+        .apply(
+            "ConvertStringToGenericRecord",
+            ParDo.of(new CsvConverters.StringToGenericRecordFn(TEST_AVRO_SCHEMA_PATH, ",")))
+        .setCoder(AvroCoder.of(GenericRecord.class, schema));
 
     pipeline.run();
   }

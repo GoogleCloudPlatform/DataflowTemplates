@@ -35,6 +35,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileIO.ReadableFile;
 import org.apache.beam.sdk.io.FileSystems;
@@ -47,7 +50,6 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.DefaultValueFactory;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -86,7 +88,7 @@ public class CsvConverters {
    * @return non-parsed json schema string
    * @throws IOException thrown if not able to read schema
    */
-  private static String getSchema(String jsonSchemaPath) {
+  public static String getSchema(String jsonSchemaPath) {
     MatchResult result;
     try {
       result = FileSystems.match(jsonSchemaPath);
@@ -101,7 +103,8 @@ public class CsvConverters {
 
       checkArgument(rId.size() == 1, "Multiple schemas found.");
 
-      Reader reader = Channels.newReader(FileSystems.open(rId.get(0)), StandardCharsets.UTF_8.name());
+      Reader reader =
+          Channels.newReader(FileSystems.open(rId.get(0)), StandardCharsets.UTF_8.name());
 
       return CharStreams.toString(reader);
 
@@ -226,7 +229,6 @@ public class CsvConverters {
     void setContainsHeaders(Boolean containsHeaders);
 
     @Description("Deadletter table for failed inserts in form: <project-id>:<dataset>.<table>")
-    @Required
     String getDeadletterTable();
 
     void setDeadletterTable(String deadletterTable);
@@ -538,6 +540,8 @@ public class CsvConverters {
 
         checkArgument(readCsv.csvFormat() != null, "Csv format must not be null.");
 
+        checkArgument(readCsv.hasHeaders() != null, "Header information must be provided.");
+
         return readCsv;
       }
     }
@@ -582,6 +586,62 @@ public class CsvConverters {
       }
       outputReceiver.get(this.headerTag).output(headers);
       records.forEach(r -> outputReceiver.get(this.linesTag).output(r));
+    }
+  }
+
+  /**
+   * The {@link StringToGenericRecordFn} class takes in a string as input and outputs a {@link
+   * GenericRecord}.
+   */
+  public static class StringToGenericRecordFn extends DoFn<String, GenericRecord> {
+    String schemaLocation;
+    String delimiter;
+
+    public StringToGenericRecordFn(String schemaLocation, String delimiter) {
+      this.schemaLocation = schemaLocation;
+      this.delimiter = delimiter;
+    }
+
+    @ProcessElement
+    public void processElement(ProcessContext context) throws IllegalArgumentException {
+      Schema schema = AvroConverters.getAvroSchema(schemaLocation);
+
+      GenericRecord genericRecord = new GenericData.Record(schema);
+      String[] rowValue = context.element().split(delimiter);
+      List<Schema.Field> fields = schema.getFields();
+
+      try {
+        for (int index = 0; index < fields.size(); ++index) {
+          Schema.Field field = fields.get(index);
+          String fieldType = field.schema().getType().getName().toLowerCase();
+          switch (fieldType) {
+            case "string":
+              genericRecord.put(field.name(), rowValue[index]);
+              break;
+            case "int":
+              genericRecord.put(field.name(), Integer.valueOf(rowValue[index]));
+              break;
+            case "long":
+              genericRecord.put(field.name(), Long.valueOf(rowValue[index]));
+              break;
+            case "float":
+              genericRecord.put(field.name(), Float.valueOf(rowValue[index]));
+              break;
+            case "double":
+              genericRecord.put(field.name(), Double.valueOf(rowValue[index]));
+              break;
+            case "boolean":
+              genericRecord.put(field.name(), Boolean.valueOf(rowValue[index]));
+              break;
+            default:
+              throw new IllegalArgumentException(fieldType + " field type is not supported.");
+          }
+        }
+      } catch (Exception e) {
+        LOG.error("Failed to convert Strings to GenericRecord.");
+        throw new RuntimeException("Failed to convert Strings to GenericRecord.");
+      }
+      context.output(genericRecord);
     }
   }
 }

@@ -30,8 +30,10 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.WithTimestamps;
 import org.apache.beam.sdk.values.PCollectionTuple;
@@ -264,7 +266,12 @@ public class CsvToElasticsearch {
    * executor at the command-line.
    */
   public interface CsvToElasticsearchOptions
-      extends CsvPipelineOptions,
-          PipelineOptions,
-          WriteToElasticsearchOptions { }
+      extends CsvPipelineOptions, PipelineOptions, WriteToElasticsearchOptions {
+
+    @Description("Deadletter table for failed inserts in form: <project-id>:<dataset>.<table>")
+    @Required
+    String getDeadletterTable();
+
+    void setDeadletterTable(String deadletterTable);
+  }
 }

@@ -546,12 +546,11 @@
         </profile>
     </profiles>
 
-
     <modules>
         <module>bigquery-to-gcs</module>
         <module>kafka-to-bigquery</module>
+        <module>file-format-conversion</module>
         <module>common</module>
         <module>csv-to-elasticsearch</module>
     </modules>
-
 </project>
