@@ -48,7 +48,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
  * PIPELINE_FOLDER=gs://${BUCKET_NAME}/dataflow/pipelines/kafka-to-text
  * outputFilenamePrefix
  * OUTPUT_FILENAME_PREFIX=gs://${BUCKET_NAME}/dataflow/pipelines/kafka-to-text/file
- * OUTPUT_FILENAME_SUFFIX=.json
+ * OUTPUT_FILENAME_SUFFIX=.txt
  *
  * # Set the runner
  * RUNNER=DataflowRunner
