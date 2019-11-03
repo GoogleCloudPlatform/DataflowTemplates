@@ -27,6 +27,7 @@ import com.google.datastore.v1.Key;
 import com.google.datastore.v1.Key.PathElement;
 import com.google.datastore.v1.PartitionId;
 import com.google.datastore.v1.Value;
+import com.google.datastore.v1.ArrayValue;
 import com.google.protobuf.NullValue;
 import com.google.protobuf.util.Timestamps;
 import java.io.ByteArrayInputStream;
@@ -384,10 +385,34 @@ public class BigQueryConverters {
           // Datastore string properties greater than 1500 bytes will not be indexed in order to
           // respect the limit imposed on the maximum size of index-able string properties. See
           // https://cloud.google.com/datastore/docs/concepts/limits
-          String strValue = columnValue.toString();
-          valueBuilder.setStringValue(strValue);
-          boolean excludeFromIndexes = strValue.getBytes().length > MAX_STRING_SIZE_BYTES;
-          valueBuilder.setExcludeFromIndexes(excludeFromIndexes);
+          switch (column.getMode()) {
+            case "NULLABLE":
+            case "REQUIRED":
+              String strValue = columnValue.toString();
+              valueBuilder.setStringValue(strValue);
+              boolean excludeFromIndexes = strValue.getBytes().length > MAX_STRING_SIZE_BYTES;
+              valueBuilder.setExcludeFromIndexes(excludeFromIndexes);
+              break;
+
+            case "REPEATED":
+
+              ArrayValue.Builder arrayValueBuilder = ArrayValue.newBuilder();
+              boolean excludeArrayFromIndexes = false;
+
+              @SuppressWarnings("unchecked")
+              List<Object> objectList = (List<Object>) columnValue;
+              for (Object object: objectList) {
+                String arrayStringValue = object.toString();
+                if (arrayStringValue.getBytes().length > MAX_STRING_SIZE_BYTES) {
+                  excludeArrayFromIndexes = true;
+                }
+                arrayValueBuilder.addValues(Value.newBuilder().setStringValue(arrayStringValue).build());
+              }
+              valueBuilder.setArrayValue(arrayValueBuilder.build());
+              valueBuilder.setExcludeFromIndexes(excludeArrayFromIndexes);
+              break;
+
+          }
           break;
         case "INTEGER":
         case "INT64":
