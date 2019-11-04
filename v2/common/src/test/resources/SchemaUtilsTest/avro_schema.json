@@ -1,0 +1,15 @@
+{
+  "type" : "record",
+  "name" : "test_file",
+  "namespace" : "com.test",
+  "fields" : [
+    {
+      "name": "id",
+      "type": "string"
+    },
+    {
+      "name": "price",
+      "type": "double"
+    }
+  ]
+}
