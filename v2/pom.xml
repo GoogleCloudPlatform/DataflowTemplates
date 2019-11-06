@@ -328,10 +328,31 @@
                                     org.apache.beam:beam-runners-google-cloud-dataflow-java
                                 </ignoredUnusedDeclaredDependency>
                                 <ignoredUnusedDeclaredDependency>
+                                    org.slf4j:slf4j-simple
+                                </ignoredUnusedDeclaredDependency>
+                                <ignoredUnusedDeclaredDependency>
+                                    com.google.code.findbugs:jsr305
+                                </ignoredUnusedDeclaredDependency>
+                                <ignoredUnusedDeclaredDependency>
                                     org.apache.beam:beam-runners-direct-java
                                 </ignoredUnusedDeclaredDependency>
                                 <ignoredUnusedDeclaredDependency>
                                     org.threeten:threetenbp
+                                </ignoredUnusedDeclaredDependency>
+                                <ignoredUnusedDeclaredDependency>
+                                    org.apache.beam:beam-sdks-java-core
+                                </ignoredUnusedDeclaredDependency>
+                                <ignoredUnusedDeclaredDependency>
+                                    com.google.auto.value:auto-value-annotations
+                                </ignoredUnusedDeclaredDependency>
+                                <ignoredUnusedDeclaredDependency>
+                                    joda-time:joda-time
+                                </ignoredUnusedDeclaredDependency>
+                                <ignoredUnusedDeclaredDependency>
+                                    org.apache.beam:beam-vendor-guava-20_0
+                                </ignoredUnusedDeclaredDependency>
+                                <ignoredUnusedDeclaredDependency>
+                                    org.apache.beam:beam-sdks-java-io-google-cloud-platform
                                 </ignoredUnusedDeclaredDependency>
                             </ignoredUnusedDeclaredDependencies>
                         </configuration>
@@ -552,6 +573,7 @@
         <module>kafka-to-bigquery</module>
         <module>common</module>
         <module>csv-to-elasticsearch</module>
+        <module>bigquery-to-elasticsearch</module>
     </modules>
 
 </project>

@@ -17,17 +17,12 @@ package com.google.cloud.teleport.v2.transforms;
 
 import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkArgument;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.google.auto.value.AutoValue;
-import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptRuntime;
-import java.io.IOException;
+import com.google.cloud.teleport.v2.transforms.ValueExtractorTransform.ValueExtractorFn;
 import java.util.Optional;
-import javax.annotation.Nullable;
-import javax.script.ScriptException;
 import org.apache.beam.sdk.io.elasticsearch.ElasticsearchIO;
 import org.apache.beam.sdk.io.elasticsearch.ElasticsearchIO.ConnectionConfiguration;
 import org.apache.beam.sdk.io.elasticsearch.ElasticsearchIO.RetryConfiguration;
-import org.apache.beam.sdk.io.elasticsearch.ElasticsearchIO.Write.FieldValueExtractFn;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -215,112 +210,60 @@ public class ElasticsearchTransforms {
     @AutoValue.Builder
     public abstract static class Builder {
       public abstract Builder setOptions(WriteToElasticsearchOptions options);
+      
+      abstract WriteToElasticsearchOptions options();
 
       abstract WriteToElasticsearch autoBuild();
 
       public WriteToElasticsearch build() {
 
-        WriteToElasticsearch write = autoBuild();
-
         checkArgument(
-            write.options().getNodeAddresses() != null,
+            options().getNodeAddresses() != null,
                 "Node address(es) must not be null.");
 
-        checkArgument(write.options().getDocumentType() != null,
+        checkArgument(options().getDocumentType() != null,
                 "Document type must not be null.");
 
-        checkArgument(write.options().getIndex() != null,
+        checkArgument(options().getIndex() != null,
                 "Index must not be null.");
 
         checkArgument(
-            write.options().getBatchSize() > 0,
-            "Batch size must be > 0. Got: " + write.options().getBatchSize());
+            options().getBatchSize() > 0,
+            "Batch size must be > 0. Got: " + options().getBatchSize());
 
         checkArgument(
-            write.options().getBatchSizeBytes() > 0,
-            "Batch size bytes must be > 0. Got: " + write.options().getBatchSizeBytes());
+            options().getBatchSizeBytes() > 0,
+            "Batch size bytes must be > 0. Got: " + options().getBatchSizeBytes());
 
         /* Check that both {@link RetryConfiguration} parameters are supplied. */
-        if (write.options().getMaxRetryAttempts() != null
-            || write.options().getMaxRetryDuration() != null) {
+        if (options().getMaxRetryAttempts() != null
+            || options().getMaxRetryDuration() != null) {
           checkArgument(
-              write.options().getMaxRetryDuration() != null
-                  && write.options().getMaxRetryAttempts() != null,
+              options().getMaxRetryDuration() != null
+                  && options().getMaxRetryAttempts() != null,
               "Both max retry duration and max attempts must be supplied.");
         }
 
-        if (write.options().getIdFnName() != null || write.options().getIdFnPath() != null) {
+        if (options().getIdFnName() != null || options().getIdFnPath() != null) {
           checkArgument(
-              write.options().getIdFnName() != null && write.options().getIdFnPath() != null,
+              options().getIdFnName() != null && options().getIdFnPath() != null,
               "Both IdFn name and path must be supplied.");
         }
 
-        if (write.options().getIndexFnName() != null || write.options().getIndexFnPath() != null) {
+        if (options().getIndexFnName() != null || options().getIndexFnPath() != null) {
           checkArgument(
-              write.options().getIndexFnName() != null && write.options().getIndexFnPath() != null,
+              options().getIndexFnName() != null && options().getIndexFnPath() != null,
               "Both IndexFn name and path must be supplied.");
         }
 
-        if (write.options().getTypeFnName() != null || write.options().getTypeFnPath() != null) {
+        if (options().getTypeFnName() != null || options().getTypeFnPath() != null) {
           checkArgument(
-              write.options().getTypeFnName() != null && write.options().getTypeFnPath() != null,
+              options().getTypeFnName() != null && options().getTypeFnPath() != null,
               "Both TypeFn name and path must be supplied.");
         }
 
-        return write;
+        return autoBuild();
       }
-    }
-  }
-
-  /**
-   * Class for routing functions that implements {@link FieldValueExtractFn}. {@link
-   * ValueExtractorFn#apply(JsonNode)} will return null if {@link ValueExtractorFn#functionName()}
-   * or {@link ValueExtractorFn#fileSystemPath()} are null meaning no function is applied to the
-   * document.
-   */
-  @AutoValue
-  public abstract static class ValueExtractorFn implements FieldValueExtractFn {
-    public static Builder newBuilder() {
-      return new AutoValue_ElasticsearchTransforms_ValueExtractorFn.Builder();
-    }
-
-    @Nullable
-    abstract String functionName();
-
-    @Nullable
-    abstract String fileSystemPath();
-
-    @Override
-    public String apply(JsonNode input) {
-      if (functionName() == null && fileSystemPath() == null) {
-        return null;
-      } else {
-        checkArgument(
-            functionName() != null && fileSystemPath() != null,
-            "Both function name and file system path need to be set.");
-      }
-
-      JavascriptRuntime runtime =
-          JavascriptRuntime.newBuilder()
-              .setFunctionName(functionName())
-              .setFileSystemPath(fileSystemPath())
-              .build();
-
-      try {
-        return runtime.invoke(input.toString());
-      } catch (ScriptException | IOException | NoSuchMethodException e) {
-        throw new RuntimeException("Error in processing field value extraction: " + e.getMessage());
-      }
-    }
-
-    /** Builder for {@link ValueExtractorFn}. */
-    @AutoValue.Builder
-    public abstract static class Builder {
-      public abstract Builder setFunctionName(String functionName);
-
-      public abstract Builder setFileSystemPath(String fileSystemPath);
-
-      public abstract ValueExtractorFn build();
     }
   }
 }

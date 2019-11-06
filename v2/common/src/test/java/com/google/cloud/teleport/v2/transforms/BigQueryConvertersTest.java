@@ -34,9 +34,12 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData.Record;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.beam.sdk.coders.CoderRegistry;
+import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesCoder;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.testing.NeedsRunner;
@@ -56,16 +59,39 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class BigQueryConvertersTest {
 
-  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
-  @Rule public ExpectedException expectedException = ExpectedException.none();
+  static final TableRow ROW =
+      new TableRow().set("id", "007").set("state", "CA").set("price", 26.23);
+  /** The tag for the main output of the json transformation. */
 
+  static final TupleTag<FailsafeElement<TableRow, String>> TRANSFORM_OUT =
+          new TupleTag<FailsafeElement<TableRow, String>>() {};
+  /** The tag for the dead-letter output of the json to table row transform. */
+  static final TupleTag<FailsafeElement<TableRow, String>> TRANSFORM_DEADLETTER_OUT =
+          new TupleTag<FailsafeElement<TableRow, String>>() {};
+  /** The tag for the main output of the json transformation. */
+  static final TupleTag<FailsafeElement<TableRow, String>> UDF_OUT =
+          new TupleTag<FailsafeElement<TableRow, String>>() {};
+  /** The tag for the dead-letter output of the json to table row transform. */
+  static final TupleTag<FailsafeElement<TableRow, String>> UDF_TRANSFORM_DEADLETTER_OUT =
+          new TupleTag<FailsafeElement<TableRow, String>>() {};
+  /** String/String Coder for FailsafeElement. */
+  static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
+          FailsafeElementCoder.of(
+                  NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of()));
+  /** TableRow/String Coder for FailsafeElement. */
+  static final FailsafeElementCoder<TableRow, String> FAILSAFE_TABLE_ROW_ELEMENT_CODER =
+          FailsafeElementCoder.of(TableRowJsonCoder.of(), NullableCoder.of(StringUtf8Coder.of()));
   // Define the TupleTag's here otherwise the anonymous class will force the test method to
   // be serialized.
   private static final TupleTag<TableRow> TABLE_ROW_TAG = new TupleTag<TableRow>() {};
-
   private static final TupleTag<FailsafeElement<PubsubMessage, String>> FAILSAFE_ELM_TAG =
       new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
-
+  private static final String jsonifiedTableRow =
+          "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
+  private static final String udfOutputRow =
+          "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23,\"someProp\":\"someValue\"}";
+  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
+  @Rule public ExpectedException expectedException = ExpectedException.none();
   private ValueProvider<String> entityKind = StaticValueProvider.of("TestEntity");
   private ValueProvider<String> uniqueNameColumn = StaticValueProvider.of("id");
   private ValueProvider<String> namespace = StaticValueProvider.of("bq-to-ds-test");
@@ -294,5 +320,70 @@ public class BigQueryConvertersTest {
     GenericRecordBuilder builder = new GenericRecordBuilder(avroSchema);
     builder.set("address", addressBuilder);
     return builder.build();
+  }
+
+  /**
+   * Tests {@link com.google.cloud.teleport.v2.transforms.BigQueryConverters.ReadBigQuery} throws
+   * exception when neither a query or input table is provided.
+   */
+  @Test(expected = IllegalArgumentException.class)
+  public void testReadBigQueryInvalidInput() {
+
+    BigQueryConverters.BigQueryReadOptions options =
+        PipelineOptionsFactory.create().as(BigQueryConverters.BigQueryReadOptions.class);
+
+    options.setInputTableSpec(null);
+    options.setQuery(null);
+
+    pipeline.apply(BigQueryConverters.ReadBigQuery.newBuilder().setOptions(options).build());
+
+    pipeline.run();
+  }
+
+  /** Tests that {@link BigQueryConverters.TableRowToFailsafeJsonDocument} transform returns the correct element. */
+  @Test
+  public void testTableRowToJsonDocument() {
+    CoderRegistry coderRegistry = pipeline.getCoderRegistry();
+
+    coderRegistry.registerCoderForType(
+            FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(),
+            FAILSAFE_ELEMENT_CODER);
+
+    coderRegistry.registerCoderForType(
+            FAILSAFE_TABLE_ROW_ELEMENT_CODER.getEncodedTypeDescriptor(),
+            FAILSAFE_TABLE_ROW_ELEMENT_CODER);
+
+    BigQueryConverters.BigQueryReadOptions options =
+            PipelineOptionsFactory.create().as(BigQueryConverters.BigQueryReadOptions.class);
+
+    options.setInputTableSpec(null);
+    options.setQuery(null);
+
+
+    PCollectionTuple testTuple =
+    pipeline
+        .apply("Create Input", Create.<TableRow>of(ROW).withCoder(TableRowJsonCoder.of()))
+        .apply(
+            "TestRowToDocument",
+            BigQueryConverters.TableRowToFailsafeJsonDocument.newBuilder()
+                .setTransformDeadletterOutTag(TRANSFORM_DEADLETTER_OUT)
+                .setTransformOutTag(TRANSFORM_OUT)
+                .setUdfDeadletterOutTag(UDF_TRANSFORM_DEADLETTER_OUT)
+                .setUdfOutTag(UDF_OUT)
+                .setOptions(options.as(JavascriptTextTransformer.JavascriptTextTransformerOptions.class))
+                .build());
+
+    // Assert
+    PAssert.that(testTuple.get(TRANSFORM_OUT)).satisfies(
+            collection -> {
+              FailsafeElement<TableRow, String> element = collection.iterator().next();
+              assertThat(element.getOriginalPayload(), is(equalTo(ROW)));
+              assertThat(element.getPayload(), is(equalTo(jsonifiedTableRow)));
+              return null;
+            }
+    );
+
+    // Execute pipeline
+    pipeline.run();
   }
 }

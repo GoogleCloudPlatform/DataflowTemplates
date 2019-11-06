@@ -32,6 +32,7 @@
         <commons.version>1.7</commons.version>
         <gson.version>2.7</gson.version>
         <guava.version>20.0</guava.version>
+        <http-client.version>1.27.0</http-client.version>
         <jackson.version>2.9.9</jackson.version>
     </properties>
 
