@@ -112,10 +112,10 @@ import org.apache.beam.sdk.values.TupleTag;
  * batchCount=${BATCH_COUNT},\
  * parallelism=${PARALLELISM},\
  * disableCertificateValidation=false,\
- * outputDirectory=${BUCKET_NAME}/splunk/archive/,\
+ * outputDirectory=gs://${BUCKET_NAME}/splunk/archive/,\
  * outputFilenamePrefix=splunk,\
  * outputDeadletterTopic=projects/${PROJECT_ID}/topics/deadletter-topic-name,\
- * javascriptTextTransformGcsPath=${BUCKET_NAME}/splunk/js/my-js-udf.js,\
+ * javascriptTextTransformGcsPath=gs://${BUCKET_NAME}/splunk/js/my-js-udf.js,\
  * javascriptTextTransformFunctionName=myUdf"
  * </pre>
  */
