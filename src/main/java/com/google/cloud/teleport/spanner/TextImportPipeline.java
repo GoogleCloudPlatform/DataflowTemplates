@@ -27,8 +27,58 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 
 /**
- * Text files to Cloud Spanner Import pipeline. INTERNAL USE ONLY! This pipeline is for internal
- * usage for the time being. TODO: Please remove this comment when this is ready for public launch.
+ * Text files to Cloud Spanner Import pipeline. This pipeline ingests CSV and other type of
+ * delimited data from GCS and writes data to a Cloud Spanner database table. Each row from the
+ * input CSV file will be applied to Cloudd Spanner with an InsertOrUpdate mutation, so this can be
+ * used both to populate new rows or to update columns of existing rows.
+ *
+ * <p>You can specify column delimiter other than comma. Also make sure to use field qualifier such
+ * as double quote to escape delimiter if it is in the value.
+ *
+ * <p>Text file must NOT have a header.
+ *
+ * <p>Example Usage: Here is CSV sample data simulating an account table:
+ * 1,sample_user_1,true,2018-01-01,2018-01-01T12:30:00Z
+ *
+ * <p>Schema file must have all column and type definition in one line. Schema file must use the
+ * data type names of Cloud Spanner. We currently support the following Cloud Spanner data types: -
+ * BOOL - DATE - FLOAT64 - INT64 - STRING - TIMESTAMP
+ *
+ * <p>Input format properties: - \\N in the source column will be considered as NULL value when
+ * writing to Cloud Spanner. - If you need to escape characters, you can use the "fieldQualifier"
+ * parameter to tell the pipeline. e.g. You can put all values inside double quotes like "123",
+ * "john", "true" - See the implementation of parseRow() below to see what values are accepted for
+ * each data type.
+ *
+ * <p>NOTE: BYTES, ARRAY, STRUCT types are not supported.
+ *
+ * <p>Example schema file for the CSV file above:
+ *
+ * <pre>Id:INT64,Username:STRING,Active:BOOL,CreateDate:DATE,ModifyTime:TIMESTAMP</pre>
+ *
+ * <p>Here is the DDL for creating Cloud Spanner table:
+ *
+ * <pre>CREATE TABLE example_table
+ * ( Id INT64, Username STRING(MAX), Active BOOL, CreateDate DATE, ModifyTime TIMESTAMP )
+ *  PRIMARY KEY(Id)
+ * </pre>
+ *
+ * <pre>
+ * {@code mvn compile exec:java \
+ * -Dexec.mainClass=com.google.cloud.teleport.templates.TextImportPipeline \
+ * -Dexec.args=" \
+ * --project=${PROJECT_ID} \
+ * --stagingLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
+ * --tempLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
+ * --runner=DataflowRunner \
+ * --importManifest=gs://IMPORT_MANIFEST_FILE \
+ * --spannerInstance=SPANNER_INSTANCE_NAME \
+ * --databaseName=DATABASE_NAME \
+ * --tableName=TABLE_NAME \
+ * --columnDelimiter=',' \
+ * --fieldQualifier='"'
+ * }
+ * </pre>
  */
 public class TextImportPipeline {
 
