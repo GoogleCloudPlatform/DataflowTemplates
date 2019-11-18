@@ -37,7 +37,7 @@ their functionality.
 * [Pub/Sub to GCS Avro](src/main/java/com/google/cloud/teleport/templates/PubsubToAvro.java)
 * [Pub/Sub to GCS Text](src/main/java/com/google/cloud/teleport/templates/PubsubToText.java)
 * [Pub/Sub to Pub/Sub](src/main/java/com/google/cloud/teleport/templates/PubsubToPubsub.java)
-* [Pub/Sub to Splunk](src/main/java/com/google/cloud/teleport/templates/PubSubToSplunk.java)
+* [Pub/Sub to Splunk](src/main/java/com/google/cloud/teleport/templates/PubSubToSplunk.java) *
 * [Spanner to GCS Avro](src/main/java/com/google/cloud/teleport/spanner/ExportPipeline.java)
 * [Spanner to GCS Text](src/main/java/com/google/cloud/teleport/templates/SpannerToText.java)
 * [Word Count](src/main/java/com/google/cloud/teleport/templates/WordCount.java)
@@ -123,6 +123,7 @@ the output.
 | GCS Text to BigQuery  | String         | A single-line within the input file             | String          | A JSON string which matches the destination table's schema                    |
 | Pub/Sub to BigQuery   | String         | A string representation of the incoming payload | String          | A JSON string which matches the destination table's schema                    |
 | Pub/Sub to Datastore  | String         | A string representation of the incoming payload | String          | A JSON string of the entity to write to Datastore                             |
+| Pub/Sub to Splunk  | String         | A string representation of the incoming payload | String          | The event data to be sent to Splunk HEC events endpoint. Must be a string or a stringified JSON object |
 
 
 ### UDF Examples
