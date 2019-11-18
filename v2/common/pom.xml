@@ -34,6 +34,7 @@
         <guava.version>20.0</guava.version>
         <http-client.version>1.27.0</http-client.version>
         <jackson.version>2.9.9</jackson.version>
+        <parquet.version>2.14.0</parquet.version>
     </properties>
 
     <dependencies>
@@ -80,6 +81,12 @@
             <artifactId>guava</artifactId>
             <version>${guava.version}</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-sdks-java-io-parquet</artifactId>
+            <version>${parquet.version}</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 </project>

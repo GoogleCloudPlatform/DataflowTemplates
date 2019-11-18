@@ -1,0 +1,4 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.KafkaToGCS",
+  "classPath": "/template/KafkaToGCS/libs/*:/template/KafkaToGCS/classes"
+}
