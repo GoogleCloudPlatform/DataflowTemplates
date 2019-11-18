@@ -24,6 +24,7 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -192,6 +193,50 @@ public class ErrorConverters {
   }
 
   /**
+   * The {@link WritePubsubMessageErrors} class is a transform which can be used to write messages
+   * which failed processing to an error records table. Each record is saved to the error table is
+   * enriched with the timestamp of that record and the details of the error including an error
+   * message and stacktrace for debugging.
+   */
+  @AutoValue
+  public abstract static class WritePubsubMessageErrors
+          extends PTransform<PCollection<FailsafeElement<PubsubMessage, String>>, WriteResult> {
+
+    public static Builder newBuilder() {
+      return new AutoValue_ErrorConverters_WritePubsubMessageErrors.Builder();
+    }
+
+    public abstract String getErrorRecordsTable();
+
+    public abstract String getErrorRecordsTableSchema();
+
+    @Override
+    public WriteResult expand(
+            PCollection<FailsafeElement<PubsubMessage, String>> failedRecords) {
+
+      return failedRecords
+              .apply("FailedRecordToTableRow", ParDo.of(new FailedPubsubMessageToTableRowFn()))
+              .apply(
+                      "WriteFailedRecordsToBigQuery",
+                      BigQueryIO.writeTableRows()
+                              .to(getErrorRecordsTable())
+                              .withJsonSchema(getErrorRecordsTableSchema())
+                              .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
+                              .withWriteDisposition(WriteDisposition.WRITE_APPEND));
+    }
+
+    /** Builder for {@link WritePubsubMessageErrors}. */
+    @AutoValue.Builder
+    public abstract static class Builder {
+      public abstract Builder setErrorRecordsTable(String errorRecordsTable);
+
+      public abstract Builder setErrorRecordsTableSchema(String errorRecordsTableSchema);
+
+      public abstract WritePubsubMessageErrors build();
+    }
+  }
+
+  /**
    * The {@link FailedMessageToTableRowFn} converts Kafka message which have failed processing into
    * {@link TableRow} objects which can be output to a dead-letter table.
    */
@@ -233,6 +278,47 @@ public class ErrorConverters {
               .set("stacktrace", failsafeElement.getStacktrace())
               .set("payloadString", payloadString)
               .set("payloadBytes", payloadBytes);
+
+      context.output(failedRow);
+    }
+  }
+
+  /**
+   * The {@link FailedPubsubMessageToTableRowFn} converts PubSub message which have failed processing into
+   * {@link TableRow} objects which can be output to a dead-letter table.
+   */
+  public static class FailedPubsubMessageToTableRowFn
+          extends DoFn<FailsafeElement<PubsubMessage, String>, TableRow> {
+
+    /**
+     * The formatter used to convert timestamps into a BigQuery compatible <a
+     * href="https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#timestamp-type">format</a>.
+     */
+    private static final DateTimeFormatter TIMESTAMP_FORMATTER =
+            DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
+
+    @ProcessElement
+    public void processElement(ProcessContext context) {
+      FailsafeElement<PubsubMessage, String> failsafeElement = context.element();
+      PubsubMessage pubsubMessage = failsafeElement.getOriginalPayload();
+      String message =
+              pubsubMessage.getPayload().length > 0
+                      ? new String(pubsubMessage.getPayload())
+                      : pubsubMessage.getAttributeMap().toString();
+
+      // Format the timestamp for insertion
+      String timestamp =
+              TIMESTAMP_FORMATTER.print(context.timestamp().toDateTime(DateTimeZone.UTC));
+
+
+      // Build the table row
+      TableRow failedRow =
+              new TableRow()
+                      .set("timestamp", timestamp)
+                      .set("errorMessage", failsafeElement.getErrorMessage())
+                      .set("stacktrace", failsafeElement.getStacktrace())
+                      .set("payloadString", message)
+                      .set("payloadBytes", message.getBytes(StandardCharsets.UTF_8));
 
       context.output(failedRow);
     }
