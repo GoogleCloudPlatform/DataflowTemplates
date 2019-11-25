@@ -1,0 +1,23 @@
+{
+  "type" : "record",
+  "name" : "test_file",
+  "namespace" : "com.test.avro",
+  "fields" : [
+    {
+      "name": "id",
+      "type": "string"
+    },
+    {
+      "name": "state",
+      "type": "string"
+    },
+    {
+      "name": "price",
+      "type": "double"
+    },
+    {
+      "name": "extraField",
+      "type": "int"
+    }
+  ]
+}

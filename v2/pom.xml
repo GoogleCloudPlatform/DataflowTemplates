@@ -576,6 +576,7 @@
         <module>kafka-to-bigquery</module>
         <module>kafka-to-gcs</module>
         <module>pubsub-to-elasticsearch</module>
+        <module>file-format-conversion</module>
     </modules>
 
 </project>
