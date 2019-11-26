@@ -1,0 +1,4 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.PubSubToMongoDB",
+  "classPath": "/template/PubSubToMongoDB/libs/*:/template/PubSubToMongoDB/classes"
+}
