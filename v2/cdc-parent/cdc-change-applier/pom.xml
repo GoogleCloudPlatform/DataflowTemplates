@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ~ Copyright (C) 2019 Google Inc.
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License"); you may not
+  ~ use this file except in compliance with the License. You may obtain a copy of
+  ~ the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+  ~ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+  ~ License for the specific language governing permissions and limitations under
+  ~ the License.
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>com.google.cloud.dataflow.cdc</groupId>
+    <artifactId>cdc-parent</artifactId>
+    <version>0.1</version>
+  </parent>
+  <artifactId>cdc-change-applier</artifactId>
+  <inceptionYear>2019</inceptionYear>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <configuration>
+          <executable>java</executable>
+          <mainClass>com.google.cloud.dataflow.cdc.applier.CdcToBigQueryChangeApplierPipeline</mainClass>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>com.google.cloud.tools</groupId>
+        <artifactId>jib-maven-plugin</artifactId>
+        <version>1.5.1</version>
+        <configuration>
+          <from>
+            <!--
+            The Dataflow Template base image to use. This
+             should not need to change unless we want to use the JDK11
+             -->
+            <image>gcr.io/dataflow-templates-base/java8-template-launcher-base:latest</image>
+          </from>
+          <to><image>cdc-change-applier:latest</image></to>
+          <container>
+            <!--
+            The root directory to use to expand the compiled classes and dependencies in. The
+            Jib plugin  will create the following directories under this root:
+              - resources: All the files under src/resources will be copied to this folder as-is.
+              - libs: All dependency jars needed to execute this pipeline will be copied into this
+                      folder.
+              - classes: Compiled pipeline code will be copied into this folder.
+            The libs and classes folders under appRoot should thus be added in the classpath
+            defined in src/resources/command-spec.json.
+            -->
+            <appRoot>${app-root}</appRoot>
+            <!--
+            INHERIT the base containers entrypoint. Do not override or the Dataflow service
+            will be unable to launch this template.
+            -->
+            <entrypoint>INHERIT</entrypoint>
+            <environment>
+              <!--
+              Set an environment variable called DATAFLOW_JAVA_COMMAND_SPEC that points to the
+              java-command-spec.json file inside the container. Note that since the Jib plugin
+              copies the containers of src/resources/* to appRoot/resources, the value of this
+              environment variable can be set here.
+              -->
+              <DATAFLOW_JAVA_COMMAND_SPEC>
+                ${command-spec}
+              </DATAFLOW_JAVA_COMMAND_SPEC>
+            </environment>
+          </container>
+        </configuration>
+
+      </plugin>
+    </plugins>
+  </build>
+  <licenses>
+    <license>
+      <name>The Apache Software License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+  <dependencies>
+    <dependency>
+      <groupId>com.google.cloud.dataflow.cdc</groupId>
+      <artifactId>cdc-common</artifactId>
+      <version>0.1</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
+      <version>2.13.0</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-runners-direct-java</artifactId>
+      <version>2.13.0</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
+      <version>2.13.0</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-bigquery</artifactId>
+      <version>1.82.0</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-pubsub</artifactId>
+      <version>1.82.0</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>1.7.25</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-jdk14</artifactId>
+      <version>1.7.25</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.auto.value</groupId>
+      <artifactId>auto-value-annotations</artifactId>
+      <version>1.6.2</version>
+      <scope>compile</scope>
+    </dependency>
+  </dependencies>
+</project>
