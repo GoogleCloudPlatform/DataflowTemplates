@@ -117,6 +117,12 @@ final class TestUtils {
     row.getCells().add(cell);
   }
 
+  static void addParquetCell(List<BigtableCell> cells,String family, String qualifier, long timestamp, String value){
+    BigtableCell cell =
+            new BigtableCell(family, toByteBuffer(qualifier), timestamp, toByteBuffer(value));
+    cells.add(cell);
+  }
+
   static ByteString toByteString(String string) {
     return ByteString.copyFrom(string.getBytes(Charset.forName("UTF-8")));
   }
