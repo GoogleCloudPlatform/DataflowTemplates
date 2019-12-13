@@ -131,7 +131,7 @@ final class AvroToBigtable {
   }
 
   /** Copies the content in {@code byteBuffer} into a {@link ByteString}. */
-  private static ByteString toByteString(ByteBuffer byteBuffer) {
+  protected static ByteString toByteString(ByteBuffer byteBuffer) {
     return ByteString.copyFrom(byteBuffer.array());
   }
 }
