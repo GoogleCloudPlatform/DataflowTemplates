@@ -62,14 +62,8 @@ public class SplunkConvertersTest {
     PAssert.that(tuple.get(SPLUNK_EVENT_DEADLETTER_OUT)).empty();
     PAssert.that(tuple.get(SPLUNK_EVENT_OUT))
         .containsInAnyOrder(
-            SplunkEvent.newBuilder()
-                .withEvent("hello")
-                .withHost(SplunkConverters.DEFAULT_HOST)
-                .build(),
-            SplunkEvent.newBuilder()
-                .withEvent("world")
-                .withHost(SplunkConverters.DEFAULT_HOST)
-                .build());
+            SplunkEvent.newBuilder().withEvent("hello").build(),
+            SplunkEvent.newBuilder().withEvent("world").build());
 
     pipeline.run();
   }
@@ -97,10 +91,7 @@ public class SplunkConvertersTest {
     PAssert.that(tuple.get(SPLUNK_EVENT_DEADLETTER_OUT)).empty();
     PAssert.that(tuple.get(SPLUNK_EVENT_OUT))
         .containsInAnyOrder(
-            SplunkEvent.newBuilder()
-                .withEvent("{\n" + "\t\"name\": \"Jim\",\n" + "}")
-                .withHost(SplunkConverters.DEFAULT_HOST)
-                .build());
+            SplunkEvent.newBuilder().withEvent("{\n" + "\t\"name\": \"Jim\",\n" + "}").build());
 
     pipeline.run();
   }
@@ -128,10 +119,7 @@ public class SplunkConvertersTest {
     PAssert.that(tuple.get(SPLUNK_EVENT_DEADLETTER_OUT)).empty();
     PAssert.that(tuple.get(SPLUNK_EVENT_OUT))
         .containsInAnyOrder(
-            SplunkEvent.newBuilder()
-                .withEvent("{\n" + "\t\"name\": \"Jim\"\n" + "}")
-                .withHost(SplunkConverters.DEFAULT_HOST)
-                .build());
+            SplunkEvent.newBuilder().withEvent("{\n" + "\t\"name\": \"Jim\"\n" + "}").build());
 
     pipeline.run();
   }
@@ -344,6 +332,59 @@ public class SplunkConvertersTest {
                         + "}")
                 .withHost("test-host")
                 .withIndex("test-index")
+                .build());
+
+    pipeline.run();
+  }
+
+  /** Test successful conversion of JSON messages with provided overrides
+   * for time and source. */
+  @Test
+  @Category(NeedsRunner.class)
+  public void testFailsafeStringToSplunkEventValidTimeAndSourceOverride() {
+
+    FailsafeElement<String, String> input =
+        FailsafeElement.of(
+            "",
+            "{\n"
+                + "\t\"name\": \"Jim\",\n"
+                + "\t\"host\": \"test-host\",\n"
+                + "\t\"index\": \"test-index\",\n"
+                + "\t\"timestamp\": \"2019-10-15T11:32:26.553Z\",\n"
+                + "\t\"logName\": \"test-log-name\",\n"
+                + "\t\"source\": \"test-source-name\",\n"
+                + "\t\"time\": \"2019-11-22T11:32:26.553Z\"\n"
+                + "}");
+
+    pipeline.getCoderRegistry().registerCoderForClass(SplunkEvent.class, SplunkEventCoder.of());
+
+    PCollectionTuple tuple =
+        pipeline
+            .apply(
+                Create.of(input)
+                    .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+            .apply(
+                SplunkConverters.failsafeStringToSplunkEvent(
+                    SPLUNK_EVENT_OUT, SPLUNK_EVENT_DEADLETTER_OUT));
+
+    PAssert.that(tuple.get(SPLUNK_EVENT_DEADLETTER_OUT)).empty();
+    PAssert.that(tuple.get(SPLUNK_EVENT_OUT))
+        .containsInAnyOrder(
+            SplunkEvent.newBuilder()
+                .withEvent(
+                    "{\n"
+                        + "\t\"name\": \"Jim\",\n"
+                        + "\t\"host\": \"test-host\",\n"
+                        + "\t\"index\": \"test-index\",\n"
+                        + "\t\"timestamp\": \"2019-10-15T11:32:26.553Z\",\n"
+                        + "\t\"logName\": \"test-log-name\",\n"
+                        + "\t\"source\": \"test-source-name\",\n"
+                        + "\t\"time\": \"2019-11-22T11:32:26.553Z\"\n"
+                        + "}")
+                .withHost("test-host")
+                .withIndex("test-index")
+                .withSource("test-source-name")
+                .withTime(DateTime.parseRfc3339("2019-11-22T11:32:26.553Z").getValue())
                 .build());
 
     pipeline.run();

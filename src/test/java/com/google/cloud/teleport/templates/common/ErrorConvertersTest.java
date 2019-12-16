@@ -17,9 +17,9 @@
 package com.google.cloud.teleport.templates.common;
 
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
 
 import com.google.api.services.bigquery.model.TableRow;
@@ -251,9 +251,7 @@ public class ErrorConvertersTest implements Serializable {
     Instant expectedTimestamp = Instant.now();
 
     String errorMessage = "my-error-message";
-    String stackTrace = "my-stack-trace";
     element.setErrorMessage(errorMessage);
-    element.setStacktrace(stackTrace);
 
     TimestampedValue<FailsafeElement<String, String>> input =
         TimestampedValue.of(element, expectedTimestamp);
@@ -279,9 +277,6 @@ public class ErrorConvertersTest implements Serializable {
               assertThat(
                   actual.getAttribute(FailedStringToPubsubMessageFn.ERROR_MESSAGE),
                   is(equalTo(errorMessage)));
-              assertThat(
-                  actual.getAttribute(FailedStringToPubsubMessageFn.STACK_TRACE),
-                  is(equalTo(stackTrace)));
               assertThat(
                   actual.getAttribute(FailedStringToPubsubMessageFn.TIMESTAMP),
                   is(equalTo(expectedTimestampString)));

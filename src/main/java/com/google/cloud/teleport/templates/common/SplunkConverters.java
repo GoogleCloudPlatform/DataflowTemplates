@@ -19,7 +19,7 @@ package com.google.cloud.teleport.templates.common;
 import com.google.api.client.util.DateTime;
 import com.google.cloud.teleport.splunk.SplunkEvent;
 import com.google.cloud.teleport.values.FailsafeElement;
-import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Throwables;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -44,17 +44,21 @@ import org.slf4j.LoggerFactory;
  */
 public class SplunkConverters {
 
-  @VisibleForTesting protected static final String DEFAULT_HOST = "pubsub-splunk-dataflow-sink";
-
   private static final Logger LOG = LoggerFactory.getLogger(SplunkConverters.class);
 
   // Users may use a UDF to add additional fields such as host and index
   // that can be used for routing messages to different indexes in HEC.
   private static final String HOST_KEY = "host";
   private static final String INDEX_KEY = "index";
+
+  private static final String HEC_TIME_KEY = "time";
   private static final String TIMESTAMP_KEY = "timestamp";
+
+  private static final String HEC_SOURCE_KEY = "source";
   private static final String LOG_NAME_KEY = "logName";
+
   private static final String RESOURCE_KEY = "resource";
+  private static final String HEC_SOURCE_TYPE_KEY = "sourcetype";
   private static final String TYPE_KEY = "type";
 
   /**
@@ -144,20 +148,26 @@ public class SplunkConverters {
 
                       try {
 
-                        // Start with a default host that can be overridden by the user
-                        // and the input as the event.
-                        SplunkEvent.Builder builder =
-                            SplunkEvent.newBuilder().withHost(DEFAULT_HOST).withEvent(input);
+                        // Start building a SplunkEvent with the payload as the event.
+                        SplunkEvent.Builder builder = SplunkEvent.newBuilder().withEvent(input);
 
                         // We will attempt to parse the input to see
                         // if it is a valid JSON and if so, whether we can
                         // extract some additional properties that would be
                         // present in Stackdriver's LogEntry structure.
+                        // We prioritize user provided HEC overrides (if available)
+                        // over Stackdriver's LogEntry values.
                         try {
 
                           JSONObject json = new JSONObject(input);
 
-                          String parsedTimestamp = json.optString(TIMESTAMP_KEY);
+                          // First attempt to read the HEC_TIME_KEY if provided, if that
+                          // fails, we attempt to extract the TIMESTAMP_KEY.
+                          String parsedTimestamp =
+                              MoreObjects.firstNonNull(
+                                  json.optString(HEC_TIME_KEY, null),
+                                  MoreObjects.firstNonNull(
+                                      json.optString(TIMESTAMP_KEY, null), ""));
                           if (!parsedTimestamp.isEmpty()) {
 
                             try {
@@ -170,17 +180,29 @@ public class SplunkConverters {
                             }
                           }
 
-                          String parsedLogName = json.optString(LOG_NAME_KEY);
+                          // First attempt to read the HEC_SOURCE_KEY if provided, if that
+                          // fails, we attempt to extract the LOG_NAME_KEY.
+                          String parsedLogName =
+                              MoreObjects.firstNonNull(
+                                  json.optString(HEC_SOURCE_KEY, null),
+                                  MoreObjects.firstNonNull(json.optString(LOG_NAME_KEY, null), ""));
                           if (!parsedLogName.isEmpty()) {
                             builder.withSource(parsedLogName);
                           }
 
-                          JSONObject parsedResource = json.optJSONObject(RESOURCE_KEY);
-                          if (parsedResource != null) {
+                          String parsedSourceType = json.optString(HEC_SOURCE_TYPE_KEY);
+                          if (!parsedSourceType.isEmpty()) {
+                            builder.withSourceType(parsedSourceType);
 
-                            String parsedType = parsedResource.optString(TYPE_KEY);
-                            if (!parsedType.isEmpty()) {
-                              builder.withSourceType(parsedType);
+                          } else {
+
+                            JSONObject parsedResource = json.optJSONObject(RESOURCE_KEY);
+                            if (parsedResource != null) {
+
+                              parsedSourceType = parsedResource.optString(TYPE_KEY);
+                              if (!parsedSourceType.isEmpty()) {
+                                builder.withSourceType(parsedSourceType);
+                              }
                             }
                           }
 

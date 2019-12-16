@@ -40,6 +40,8 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -333,14 +335,14 @@ public class ErrorConverters {
       return new AutoValue_ErrorConverters_WriteStringMessageErrorsToPubSub.Builder();
     }
 
-    public abstract ValueProvider<String> getErrorRecordsTopic();
+    public abstract ValueProvider<String> errorRecordsTopic();
 
     @Override
     public PDone expand(PCollection<FailsafeElement<String, String>> failedRecords) {
 
       return failedRecords
           .apply("FailedRecordToPubSubMessage", ParDo.of(new FailedStringToPubsubMessageFn()))
-          .apply("WriteFailedRecordsToPubSub", PubsubIO.writeMessages().to(getErrorRecordsTopic()));
+          .apply("WriteFailedRecordsToPubSub", PubsubIO.writeMessages().to(errorRecordsTopic()));
     }
 
     /** Builder for {@link WriteStringMessageErrorsToPubSub}. */
@@ -361,14 +363,15 @@ public class ErrorConverters {
       extends DoFn<FailsafeElement<String, String>, PubsubMessage> {
 
     @VisibleForTesting protected static final String ERROR_MESSAGE = "errorMessage";
-
-    @VisibleForTesting protected static final String STACK_TRACE = "stacktrace";
-
     @VisibleForTesting protected static final String TIMESTAMP = "timestamp";
 
     @VisibleForTesting
     protected static final DateTimeFormatter TIMESTAMP_FORMATTER =
         DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
+
+    /** Counter to track total failed messages. */
+    private static final Counter ERROR_MESSAGES_COUNTER =
+        Metrics.counter(FailedStringToPubsubMessageFn.class, "total-failed-messages");
 
     @ProcessElement
     public void processElement(ProcessContext context) {
@@ -387,11 +390,9 @@ public class ErrorConverters {
         attributes.put(ERROR_MESSAGE, failsafeElement.getErrorMessage());
       }
 
-      if (failsafeElement.getStacktrace() != null) {
-        attributes.put(STACK_TRACE, failsafeElement.getStacktrace());
-      }
-
       final PubsubMessage pubsubMessage = new PubsubMessage(message.getBytes(), attributes);
+
+      ERROR_MESSAGES_COUNTER.inc();
 
       context.output(pubsubMessage);
     }

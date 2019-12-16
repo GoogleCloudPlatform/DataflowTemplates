@@ -17,7 +17,6 @@
 package com.google.cloud.teleport.templates;
 
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
-import com.google.cloud.teleport.io.WindowedFilenamePolicy;
 import com.google.cloud.teleport.splunk.SplunkEvent;
 import com.google.cloud.teleport.splunk.SplunkEventCoder;
 import com.google.cloud.teleport.splunk.SplunkIO;
@@ -29,25 +28,23 @@ import com.google.cloud.teleport.templates.common.PubsubConverters.PubsubReadSub
 import com.google.cloud.teleport.templates.common.PubsubConverters.PubsubWriteDeadletterTopicOptions;
 import com.google.cloud.teleport.templates.common.SplunkConverters;
 import com.google.cloud.teleport.templates.common.SplunkConverters.SplunkOptions;
-import com.google.cloud.teleport.templates.common.TextConverters.FilesystemWindowedWriteOptions;
-import com.google.cloud.teleport.util.DurationUtils;
 import com.google.cloud.teleport.values.FailsafeElement;
 import com.google.common.collect.ImmutableList;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
-import org.apache.beam.sdk.io.FileBasedSink;
-import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.ValueProvider.NestedValueProvider;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.windowing.FixedWindows;
-import org.apache.beam.sdk.transforms.windowing.Window;
+import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
@@ -59,15 +56,11 @@ import org.apache.beam.sdk.values.TupleTag;
  * into Splunk's HEC endpoint. Any errors which occur in the execution of the UDF, conversion to
  * {@link SplunkEvent} or writing to HEC will be streamed into a Pub/Sub topic.
  *
- * <p>The pipeline also writes the raw input message strings into a GCS bucket using windowed
- * writes. This is primarily used for archiving the messages into Google Cloud Storage.
- *
  * <p><b>Pipeline Requirements</b>
  *
  * <ul>
  *   <li>The source Pub/Sub subscription exists.
  *   <li>HEC end-point is routable from the VPC where the Dataflow job executes.
- *   <li>GCS Archive bucket exists.
  *   <li>Deadletter topic exists.
  * </ul>
  *
@@ -112,8 +105,6 @@ import org.apache.beam.sdk.values.TupleTag;
  * batchCount=${BATCH_COUNT},\
  * parallelism=${PARALLELISM},\
  * disableCertificateValidation=false,\
- * outputDirectory=gs://${BUCKET_NAME}/splunk/archive/,\
- * outputFilenamePrefix=splunk,\
  * outputDeadletterTopic=projects/${PROJECT_ID}/topics/deadletter-topic-name,\
  * javascriptTextTransformGcsPath=gs://${BUCKET_NAME}/splunk/js/my-js-udf.js,\
  * javascriptTextTransformFunctionName=myUdf"
@@ -124,6 +115,10 @@ public class PubSubToSplunk {
   /** String/String Coder for FailsafeElement. */
   public static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
       FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
+
+  /** Counter to track inbound messages from source. */
+  private static final Counter INPUT_MESSAGES_COUNTER =
+      Metrics.counter(PubSubToSplunk.class, "inbound-pubsub-messages");
 
   /** The tag for successful {@link SplunkEvent} conversion. */
   private static final TupleTag<SplunkEvent> SPLUNK_EVENT_OUT = new TupleTag<SplunkEvent>() {};
@@ -178,49 +173,20 @@ public class PubSubToSplunk {
     /*
      * Steps:
      *  1) Read messages in from Pub/Sub
-     *
-     *  2) Write messages to GCS as windowed writes (for archiving)
-     *
-     *  3) Convert message to FailsafeElement for processing.
-     *  4) Apply user provided UDF (if any) on the input strings.
-     *  5) Convert successfully transformed messages into SplunkEvent objects
-     *  6) Write SplunkEvents to Splunk's HEC end point.
-     *  6a) Wrap write failures into a FailsafeElement.
-     *  7) Collect errors from UDF transform (#4), SplunkEvent transform (#5)
-     *     and writing to Splunk HEC (#6) and stream into a Pub/Sub deadletter topic.
+     *  2) Convert message to FailsafeElement for processing.
+     *  3) Apply user provided UDF (if any) on the input strings.
+     *  4) Convert successfully transformed messages into SplunkEvent objects
+     *  5) Write SplunkEvents to Splunk's HEC end point.
+     *  5a) Wrap write failures into a FailsafeElement.
+     *  6) Collect errors from UDF transform (#3), SplunkEvent transform (#4)
+     *     and writing to Splunk HEC (#5) and stream into a Pub/Sub deadletter topic.
      */
 
     // 1) Read messages in from Pub/Sub
     PCollection<String> stringMessages =
-        pipeline.apply(
-            "ReadFromSubscription",
-            PubsubIO.readStrings().fromSubscription(options.getInputSubscription()));
+        pipeline.apply("ReadMessages", new ReadMessages(options.getInputSubscription()));
 
-    // 2) Write messages to GCS as windowed writes (for archiving)
-    stringMessages
-        .apply(
-            options.getWindowDuration() + " Window",
-            Window.into(FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))
-
-        // Apply windowed file writes. Use a NestedValueProvider because the filename
-        // policy requires a resourceId generated from the input value at runtime.
-        .apply(
-            "Write File(s)",
-            TextIO.write()
-                .withWindowedWrites()
-                .withNumShards(options.getNumShards())
-                .to(
-                    new WindowedFilenamePolicy(
-                        options.getOutputDirectory(),
-                        options.getOutputFilenamePrefix(),
-                        options.getOutputShardTemplate(),
-                        options.getOutputFilenameSuffix()))
-                .withTempDirectory(
-                    NestedValueProvider.of(
-                        options.getOutputDirectory(),
-                        (FileBasedSink::convertToFileResourceIfPossible))));
-
-    // 3) Convert message to FailsafeElement for processing.
+    // 2) Convert message to FailsafeElement for processing.
     PCollectionTuple transformedOutput =
         stringMessages
             .apply(
@@ -228,7 +194,7 @@ public class PubSubToSplunk {
                 MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
                     .via(input -> FailsafeElement.of(input, input)))
 
-            // 4) Apply user provided UDF (if any) on the input strings.
+            // 3) Apply user provided UDF (if any) on the input strings.
             .apply(
                 "ApplyUDFTransformation",
                 FailsafeJavascriptUdf.<String>newBuilder()
@@ -238,7 +204,7 @@ public class PubSubToSplunk {
                     .setFailureTag(UDF_DEADLETTER_OUT)
                     .build());
 
-    // 5) Convert successfully transformed messages into SplunkEvent objects
+    // 4) Convert successfully transformed messages into SplunkEvent objects
     PCollectionTuple convertToEventTuple =
         transformedOutput
             .get(UDF_OUT)
@@ -247,7 +213,7 @@ public class PubSubToSplunk {
                 SplunkConverters.failsafeStringToSplunkEvent(
                     SPLUNK_EVENT_OUT, SPLUNK_EVENT_DEADLETTER_OUT));
 
-    // 6) Write SplunkEvents to Splunk's HEC end point.
+    // 5) Write SplunkEvents to Splunk's HEC end point.
     PCollection<SplunkWriteError> writeErrors =
         convertToEventTuple
             .get(SPLUNK_EVENT_OUT)
@@ -261,7 +227,7 @@ public class PubSubToSplunk {
                     .withDisableCertificateValidation(options.getDisableCertificateValidation())
                     .build());
 
-    // 6a) Wrap write failures into a FailsafeElement.
+    // 5a) Wrap write failures into a FailsafeElement.
     PCollection<FailsafeElement<String, String>> wrappedSplunkWriteErrors =
         writeErrors.apply(
             "WrapSplunkWriteErrors",
@@ -286,7 +252,7 @@ public class PubSubToSplunk {
                   }
                 }));
 
-    // 7) Collect errors from UDF transform (#4), SplunkEvent transform (#5)
+    // 6) Collect errors from UDF transform (#4), SplunkEvent transform (#5)
     //     and writing to Splunk HEC (#6) and stream into a Pub/Sub deadletter topic.
     PCollectionList.of(
             ImmutableList.of(
@@ -309,8 +275,36 @@ public class PubSubToSplunk {
    */
   public interface PubSubToSplunkOptions
       extends SplunkOptions,
-          FilesystemWindowedWriteOptions,
           PubsubReadSubscriptionOptions,
           PubsubWriteDeadletterTopicOptions,
           JavascriptTextTransformerOptions {}
+
+  /**
+   * A {@link PTransform} that reads messages from a Pub/Sub subscription, increments a counter and
+   * returns a {@link PCollection} of {@link String} messages.
+   */
+  private static class ReadMessages extends PTransform<PBegin, PCollection<String>> {
+    private ValueProvider<String> subscriptionName;
+
+    ReadMessages(ValueProvider<String> subscriptionName) {
+      this.subscriptionName = subscriptionName;
+    }
+
+    @Override
+    public PCollection<String> expand(PBegin input) {
+      return input
+          .apply(
+              "ReadMessagesFromPubSub", PubsubIO.readStrings().fromSubscription(subscriptionName))
+          .apply(
+              "CountMessages",
+              ParDo.of(
+                  new DoFn<String, String>() {
+                    @ProcessElement
+                    public void processElement(ProcessContext context) {
+                      INPUT_MESSAGES_COUNTER.inc();
+                      context.output(context.element());
+                    }
+                  }));
+    }
+  }
 }
