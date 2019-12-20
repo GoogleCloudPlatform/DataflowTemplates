@@ -55,6 +55,7 @@
   <modules>
     <module>cdc-common</module>
     <module>cdc-change-applier</module>
+    <module>cdc-embedded-connector</module>
   </modules>
 
   <dependencies>
