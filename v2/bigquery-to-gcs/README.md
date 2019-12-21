@@ -26,7 +26,7 @@ export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export APP_ROOT=/template/<template-class>
-export COMMAND_SPEC=${APP_ROOT}/resources/kafka-to-bigquery-command-spec.json
+export COMMAND_SPEC=${APP_ROOT}/resources/bigquery-to-parquet-command-spec.json
 ```
 * Build and push image to Google Container Repository
 ```sh
