@@ -16,6 +16,7 @@
 
 package com.google.cloud.teleport.spanner;
 
+import com.google.cloud.ByteArray;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Type;
 import com.google.cloud.spanner.Value;
@@ -236,6 +237,9 @@ class TextRowToMutation extends DoFn<KV<String, String>, Mutation> {
                           ts.getEpochSecond(), ts.getNano()));
             }
           }
+          break;
+        case BYTES:
+          columnValue = isNullValue ? Value.bytes(null) : Value.bytes(ByteArray.fromBase64(cellValue.trim()));
           break;
         default:
           throw new IllegalArgumentException(
