@@ -68,6 +68,7 @@ public class CopyDbTest {
   private final String instanceId = "import-export-test";
   private final String sourceDb = "copydb-source";
   private final String destinationDb = "copydb-dest";
+  private final String host = "https://spanner.googleapis.com";
 
   @Rule public final transient TestPipeline exportPipeline = TestPipeline.create();
   @Rule public final transient TestPipeline importPipeline = TestPipeline.create();
@@ -78,7 +79,7 @@ public class CopyDbTest {
   }
 
   private void createAndPopulate(Ddl ddl, int numBatches) throws Exception {
-    SpannerOptions spannerOptions = SpannerOptions.newBuilder().build();
+    SpannerOptions spannerOptions = SpannerOptions.newBuilder().setHost(host).build();
     Spanner client = spannerOptions.getService();
 
     DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
@@ -205,7 +206,7 @@ public class CopyDbTest {
             .build();
     createAndPopulate(ddl, 100);
     // Add empty tables.
-    SpannerOptions spannerOptions = SpannerOptions.newBuilder().build();
+    SpannerOptions spannerOptions = SpannerOptions.newBuilder().setHost(host).build();
     Spanner client = spannerOptions.getService();
     DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
     Ddl emptyTables = Ddl.builder()
@@ -297,13 +298,13 @@ public class CopyDbTest {
     ValueProvider.StaticValueProvider<String> source = ValueProvider.StaticValueProvider
         .of(tmpDir + "/jobid");
     SpannerConfig sourceConfig = SpannerConfig.create().withInstanceId(instanceId)
-        .withDatabaseId(sourceDb);
+        .withDatabaseId(sourceDb).withHost(ValueProvider.StaticValueProvider.of(host));;
     exportPipeline.apply("Export", new ExportTransform(sourceConfig, destination, jobId));
     PipelineResult exportResult = exportPipeline.run();
     exportResult.waitUntilFinish();
 
     SpannerConfig copyConfig = SpannerConfig.create().withInstanceId(instanceId)
-        .withDatabaseId(destinationDb);
+        .withDatabaseId(destinationDb).withHost(ValueProvider.StaticValueProvider.of(host));;
     importPipeline.apply("Import", new ImportTransform(
         copyConfig, source, ValueProvider.StaticValueProvider.of(true)));
     PipelineResult importResult = importPipeline.run();
@@ -325,7 +326,7 @@ public class CopyDbTest {
   }
 
   private Ddl readDdl(String db) {
-    SpannerOptions spannerOptions = SpannerOptions.newBuilder().build();
+    SpannerOptions spannerOptions = SpannerOptions.newBuilder().setHost(host).build();
     Spanner client = spannerOptions.getService();
     DatabaseClient dbClient = client
         .getDatabaseClient(DatabaseId.of(spannerOptions.getProjectId(), instanceId, db));

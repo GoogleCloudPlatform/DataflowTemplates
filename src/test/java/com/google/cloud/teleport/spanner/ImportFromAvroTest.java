@@ -56,6 +56,7 @@ public class ImportFromAvroTest {
 
   private final String instanceId = "import-export-test";
   private final String sourceDb = "importdbtest";
+  private final String host = "https://spanner.googleapis.com";
 
   @Test
   public void booleans() throws Exception {
@@ -385,7 +386,7 @@ public class ImportFromAvroTest {
     }
 
     // Initialize the test Spanner instance.
-    SpannerOptions spannerOptions = SpannerOptions.newBuilder().build();
+    SpannerOptions spannerOptions = SpannerOptions.newBuilder().setHost(host).build();
     Spanner client = spannerOptions.getService();
 
     DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
@@ -400,7 +401,7 @@ public class ImportFromAvroTest {
             instanceId, sourceDb, Collections.singleton(spannerSchema));
     op.get();
     SpannerConfig sourceConfig = SpannerConfig.create().withInstanceId(instanceId)
-        .withDatabaseId(sourceDb);
+        .withDatabaseId(sourceDb).withHost(ValueProvider.StaticValueProvider.of(host));
 
     // Run the import pipeline.
     importPipeline.apply(

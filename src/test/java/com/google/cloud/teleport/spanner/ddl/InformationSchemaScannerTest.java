@@ -57,13 +57,14 @@ public class InformationSchemaScannerTest {
 
   private final String instanceId = "import-export-test";
   private final String dbId = "informationschemascannertest";
+  private final String host = "https://spanner.googleapis.com";
 
   private SpannerOptions spannerOptions;
   private Spanner client;
 
   @Before
   public void setup() {
-    spannerOptions = SpannerOptions.newBuilder().build();
+    spannerOptions = SpannerOptions.newBuilder().setHost(host).build();
     client = spannerOptions.getService();
 
     deleteDb();

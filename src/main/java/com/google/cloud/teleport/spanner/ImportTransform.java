@@ -212,7 +212,6 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
 
       SpannerWriteResult result =
           mutations
-              .apply("Wait for previous depth " + depth, Wait.on(previousComputation))
               .apply(
                   "Write mutations " + depth,
                   SpannerIO.write()
