@@ -252,12 +252,6 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>com.google.truth</groupId>
-      <artifactId>truth</artifactId>
-      <version>${truth.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
       <groupId>org.mock-server</groupId>
       <artifactId>mockserver-netty</artifactId>
       <version>${mock-server-netty.version}</version>
