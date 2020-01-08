@@ -415,6 +415,8 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
         return Code.DATE;
       } else if (columnType.equalsIgnoreCase("TIMESTAMP")) {
         return Code.TIMESTAMP;
+      } else if (columnType.equalsIgnoreCase("BYTES")) {
+        return Code.BYTES;
       } else {
         throw new IllegalArgumentException(
             "Unrecognized or unsupported column data type: " + columnType);

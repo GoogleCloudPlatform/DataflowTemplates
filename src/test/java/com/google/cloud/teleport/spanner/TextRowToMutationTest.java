@@ -16,6 +16,7 @@
 
 package com.google.cloud.teleport.spanner;
 
+import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Mutation;
@@ -81,7 +82,7 @@ public final class TextRowToMutationTest {
                 KV.of(
                     testTableName,
                     "123,a string,`another"
-                        + " string`,1.23,True,2019-01-01,2018-12-31T23:59:59Z,1567637083,")));
+                        + " string`,1.23,True,2019-01-01,2018-12-31T23:59:59Z,1567637083,aGk=,")));
     PCollection<Mutation> mutations =
         input.apply(
             ParDo.of(
@@ -116,6 +117,8 @@ public final class TextRowToMutationTest {
                 .to(Value.timestamp(Timestamp.parseTimestamp("2018-12-31T23:59:59Z")))
                 .set("timestamp_col_epoch")
                 .to(Value.timestamp(Timestamp.ofTimeMicroseconds(1567637083)))
+                .set("byte_col")
+                .to(Value.bytes(ByteArray.fromBase64("aGk=")))
                 .build());
 
     pipeline.run();
@@ -143,7 +146,7 @@ public final class TextRowToMutationTest {
                 KV.of(
                     testTableName,
                     "1,str,\"str with, commas,\",1.1,False,1910-01-01"
-                        + " 00:00:00,2018-12-31T23:59:59.123Z,1567637083000,")));
+                        + " 00:00:00,2018-12-31T23:59:59.123Z,1567637083000,aGk=")));
     PCollection<Mutation> mutations =
         input.apply(
             ParDo.of(
@@ -178,6 +181,8 @@ public final class TextRowToMutationTest {
                 .to(Value.timestamp(Timestamp.parseTimestamp("2018-12-31T23:59:59.123Z")))
                 .set("timestamp_col_epoch")
                 .to(Value.timestamp(Timestamp.ofTimeMicroseconds(1567637083000L)))
+                .set("byte_col")
+                .to(Value.bytes(ByteArray.fromBase64("aGk=")))
                 .build());
 
     pipeline.run();
@@ -333,7 +338,7 @@ public final class TextRowToMutationTest {
             .apply("Map as view", View.asSingleton());
 
     PCollection<KV<String, String>> input =
-        pipeline.apply("input", Create.of(KV.of(testTableName, "123||\\NA|||||")));
+        pipeline.apply("input", Create.of(KV.of(testTableName, "123||\\NA||||||")));
     PCollection<Mutation> mutations =
         input.apply(
             ParDo.of(
@@ -368,6 +373,8 @@ public final class TextRowToMutationTest {
                 .to(Value.timestamp(null))
                 .set("timestamp_col_epoch")
                 .to(Value.timestamp(null))
+                .set("byte_col")
+                .to(Value.bytes(null))
                 .build());
 
     pipeline.run();
@@ -478,6 +485,9 @@ public final class TextRowToMutationTest {
             .endColumn()
             .column("timestamp_col_epoch")
             .timestamp()
+            .endColumn()
+            .column("byte_col")
+            .bytes()
             .endColumn()
             .primaryKey()
             .asc("int_col")
