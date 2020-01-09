@@ -19,7 +19,6 @@ package com.google.cloud.teleport.templates.common;
 import com.google.api.client.util.DateTime;
 import com.google.cloud.teleport.splunk.SplunkEvent;
 import com.google.cloud.teleport.values.FailsafeElement;
-import com.google.common.base.MoreObjects;
 import com.google.common.base.Throwables;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -46,20 +45,20 @@ public class SplunkConverters {
 
   private static final Logger LOG = LoggerFactory.getLogger(SplunkConverters.class);
 
+  // Key for grouping metadata fields.
+  private static final String METADATA_KEY = "_metadata";
+
   // Users may use a UDF to add additional fields such as host and index
   // that can be used for routing messages to different indexes in HEC.
-  private static final String HOST_KEY = "host";
-  private static final String INDEX_KEY = "index";
-
+  // These metadata fields should be added in a nested JsonObject corresponding
+  // to key _metadata.
+  private static final String HEC_HOST_KEY = "host";
+  private static final String HEC_INDEX_KEY = "index";
   private static final String HEC_TIME_KEY = "time";
-  private static final String TIMESTAMP_KEY = "timestamp";
-
   private static final String HEC_SOURCE_KEY = "source";
-  private static final String LOG_NAME_KEY = "logName";
-
-  private static final String RESOURCE_KEY = "resource";
   private static final String HEC_SOURCE_TYPE_KEY = "sourcetype";
-  private static final String TYPE_KEY = "type";
+
+  private static final String TIMESTAMP_KEY = "timestamp";
 
   /**
    * Returns a {@link FailsafeStringToSplunkEvent} {@link PTransform} that consumes {@link
@@ -154,22 +153,28 @@ public class SplunkConverters {
                         // We will attempt to parse the input to see
                         // if it is a valid JSON and if so, whether we can
                         // extract some additional properties that would be
-                        // present in Stackdriver's LogEntry structure.
-                        // We prioritize user provided HEC overrides (if available)
-                        // over Stackdriver's LogEntry values.
+                        // present in Stackdriver's LogEntry structure (timestamp) or
+                        // a user provided _metadata field.
                         try {
 
                           JSONObject json = new JSONObject(input);
 
-                          // First attempt to read the HEC_TIME_KEY if provided, if that
-                          // fails, we attempt to extract the TIMESTAMP_KEY.
-                          String parsedTimestamp =
-                              MoreObjects.firstNonNull(
-                                  json.optString(HEC_TIME_KEY, null),
-                                  MoreObjects.firstNonNull(
-                                      json.optString(TIMESTAMP_KEY, null), ""));
-                          if (!parsedTimestamp.isEmpty()) {
+                          // Check if metadata is provided via a nested _metadata
+                          // JSON object
+                          JSONObject metadata = json.optJSONObject(METADATA_KEY);
+                          boolean metadataAvailable = (metadata != null);
 
+                          // We attempt to extract the timestamp from metadata (if available)
+                          // followed by TIMESTAMP_KEY. If neither (optional) keys are available
+                          // we proceed without setting this metadata field.
+                          String parsedTimestamp;
+                          if (metadataAvailable) {
+                            parsedTimestamp = metadata.optString(HEC_TIME_KEY);
+                          } else {
+                            parsedTimestamp = json.optString(TIMESTAMP_KEY);
+                          }
+
+                          if (!parsedTimestamp.isEmpty()) {
                             try {
                               builder.withTime(DateTime.parseRfc3339(parsedTimestamp).getValue());
                             } catch (NumberFormatException n) {
@@ -180,40 +185,34 @@ public class SplunkConverters {
                             }
                           }
 
-                          // First attempt to read the HEC_SOURCE_KEY if provided, if that
-                          // fails, we attempt to extract the LOG_NAME_KEY.
-                          String parsedLogName =
-                              MoreObjects.firstNonNull(
-                                  json.optString(HEC_SOURCE_KEY, null),
-                                  MoreObjects.firstNonNull(json.optString(LOG_NAME_KEY, null), ""));
-                          if (!parsedLogName.isEmpty()) {
-                            builder.withSource(parsedLogName);
-                          }
-
-                          String parsedSourceType = json.optString(HEC_SOURCE_TYPE_KEY);
-                          if (!parsedSourceType.isEmpty()) {
-                            builder.withSourceType(parsedSourceType);
-
-                          } else {
-
-                            JSONObject parsedResource = json.optJSONObject(RESOURCE_KEY);
-                            if (parsedResource != null) {
-
-                              parsedSourceType = parsedResource.optString(TYPE_KEY);
-                              if (!parsedSourceType.isEmpty()) {
-                                builder.withSourceType(parsedSourceType);
-                              }
+                          // For the other metadata fields, we only look at the _metadata
+                          // object if present.
+                          if (metadataAvailable) {
+                            String source = metadata.optString(HEC_SOURCE_KEY);
+                            if (!source.isEmpty()) {
+                              builder.withSource(source);
                             }
-                          }
 
-                          String hostIfProvided = json.optString(HOST_KEY);
-                          if (!hostIfProvided.isEmpty()) {
-                            builder.withHost(hostIfProvided);
-                          }
+                            String sourceType = metadata.optString(HEC_SOURCE_TYPE_KEY);
+                            if (!sourceType.isEmpty()) {
+                              builder.withSourceType(sourceType);
+                            }
 
-                          String indexIfProvided = json.optString(INDEX_KEY);
-                          if (!indexIfProvided.isEmpty()) {
-                            builder.withIndex(indexIfProvided);
+                            String host = metadata.optString(HEC_HOST_KEY);
+                            if (!host.isEmpty()) {
+                              builder.withHost(host);
+                            }
+
+                            String index = metadata.optString(HEC_INDEX_KEY);
+                            if (!index.isEmpty()) {
+                              builder.withIndex(index);
+                            }
+
+                            // We remove the _metadata entry from the payload
+                            // to avoid duplicates in Splunk. The relevant entries
+                            // have been parsed and populated in the SplunkEvent metadata.
+                            json.remove(METADATA_KEY);
+                            builder.withEvent(json.toString());
                           }
 
                         } catch (JSONException je) {
