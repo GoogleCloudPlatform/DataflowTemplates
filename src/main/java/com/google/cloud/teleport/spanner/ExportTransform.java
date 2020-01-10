@@ -220,7 +220,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
             "Store Avro files",
             AvroIO.<Struct>writeCustomTypeToGenericRecords()
                 .to(new SchemaBasedDynamicDestinations(avroSchemas, outputDirectoryName, resource))
-                .withTempDirectory(resource));
+                .withTempDirectory(resource)
+                .withNoSpilling());
 
     // Generate the manifest file.
     PCollection<KV<String, Iterable<String>>> tableFiles =
