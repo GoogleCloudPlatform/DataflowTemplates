@@ -30,22 +30,25 @@ import org.apache.beam.sdk.values.Row;
 import org.joda.time.DateTimeFieldType;
 import org.joda.time.Instant;
 import org.joda.time.base.AbstractInstant;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+/**
+ * Converts from Beam Rows to Spanner mutations.
+ */
 public class SpannerConverters {
 
-  public static final FieldType SqlDateType = FieldType
+  public static final FieldType SQL_DATE_TYPE = FieldType
       .logicalType(new LogicalTypes.PassThroughLogicalType<Instant>(
           "SqlDateType", "", FieldType.DATETIME) {
       });
-  private static final Logger LOGGER = LoggerFactory.getLogger(SpannerConverters.class);
 
   public static PTransform<PCollection<Row>, PCollection<Mutation>> toMutation(String table,
       Op operation) {
     return new RowToMutation(table, operation);
   }
 
+  /**
+   * PTransform to convert Beam Rows Spanner to Mutations.
+   */
   public static class RowToMutation extends
       PTransform<PCollection<Row>, PCollection<Mutation>> {
 
@@ -63,6 +66,9 @@ public class SpannerConverters {
       return input.apply(ParDo.of(new RowToMutationDoFn(table, operation)));
     }
 
+    /**
+     * DoFn to convert a single Beam Row to a Spanner Mutation.
+     */
     public static class RowToMutationDoFn extends DoFn<Row, Mutation> {
 
       private final String table;
@@ -135,9 +141,9 @@ public class SpannerConverters {
         return optional(getValueGetter(type));
       }
 
-      private <A, B> SerializableFunction<A, Optional<B>> optional(
-          SerializableFunction<A, B> func) {
-        return (A a) -> Optional.ofNullable(a).map(func::apply);
+      private <InT, OutT> SerializableFunction<InT, Optional<OutT>> optional(
+          SerializableFunction<InT, OutT> func) {
+        return (InT a) -> Optional.ofNullable(a).map(func::apply);
       }
 
       @VisibleForTesting
@@ -173,7 +179,7 @@ public class SpannerConverters {
             return (T o) -> Value.struct(rowToStruct((Row) o));
           case LOGICAL_TYPE:
             LogicalType logicalType = Objects.requireNonNull(type.getLogicalType());
-            if (type.typesEqual(SqlDateType)) {
+            if (type.typesEqual(SQL_DATE_TYPE)) {
               return (T o) -> {
                 AbstractInstant instant = (AbstractInstant) o;
                 return Value.date(

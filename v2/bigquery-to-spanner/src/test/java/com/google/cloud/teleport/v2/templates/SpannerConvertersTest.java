@@ -55,7 +55,7 @@ public class SpannerConvertersTest {
 
   @Rule
   public final transient TestPipeline pipeline = TestPipeline.create();
-  private String TABLE = "TABLE";
+  private String table = "TABLE";
 
   @Test
   @Category(NeedsRunner.class)
@@ -63,9 +63,9 @@ public class SpannerConvertersTest {
     Schema schema = Schema.builder().build();
     Row row = Row.withSchema(schema).build();
     PCollection<Row> rows = pipeline.apply(Create.of(row).withRowSchema(schema));
-    Mutation expectedMutation = Mutation.newInsertOrUpdateBuilder(TABLE).build();
+    Mutation expectedMutation = Mutation.newInsertOrUpdateBuilder(table).build();
     PCollection<Mutation> mutations = rows
-        .apply(SpannerConverters.toMutation(TABLE, Op.INSERT_OR_UPDATE));
+        .apply(SpannerConverters.toMutation(table, Op.INSERT_OR_UPDATE));
     PAssert.that(mutations).containsInAnyOrder(expectedMutation);
     pipeline.run();
   }
@@ -95,7 +95,7 @@ public class SpannerConvertersTest {
         .addField("stringArray", FieldType.array(FieldType.STRING))
         .addField("nullable", FieldType.STRING.withNullable(true))
         .addField("nullableArray", FieldType.array(FieldType.STRING).withNullable(true))
-        .addField("date", SpannerConverters.SqlDateType)
+        .addField("date", SpannerConverters.SQL_DATE_TYPE)
         .build();
 
     Row row = Row.withSchema(schema)
@@ -123,7 +123,7 @@ public class SpannerConvertersTest {
         .addValue(DateTime.parse("2019-01-01T20:19:32Z")) // Date
         .build();
     PCollection<Row> rows = pipeline.apply(Create.of(row).withRowSchema(schema));
-    Mutation expectedMutation = Mutation.newInsertOrUpdateBuilder(TABLE)
+    Mutation expectedMutation = Mutation.newInsertOrUpdateBuilder(table)
         .set("int16").to(1L)
         .set("int32").to(1L)
         .set("int64").to(1L)
@@ -148,7 +148,7 @@ public class SpannerConvertersTest {
         .set("date").to(com.google.cloud.Date.parseDate("2019-01-01"))
         .build();
     PCollection<Mutation> mutations = rows
-        .apply(SpannerConverters.toMutation(TABLE, Op.INSERT_OR_UPDATE));
+        .apply(SpannerConverters.toMutation(table, Op.INSERT_OR_UPDATE));
     PAssert.that(mutations).containsInAnyOrder(expectedMutation);
     pipeline.run();
   }
@@ -242,7 +242,7 @@ public class SpannerConvertersTest {
   @Test
   public void testGetValueGetter_LogicalLocalDate() {
     SerializableFunction<Object, Value> getter = new RowToMutationDoFn(null, null)
-        .getValueGetter(SpannerConverters.SqlDateType);
+        .getValueGetter(SpannerConverters.SQL_DATE_TYPE);
     Date date1 = getter.apply(DateTime.parse("2019-01-01T20:19:32+08:00")).getDate();
     assertEquals(2019, date1.getYear());
     assertEquals(1, date1.getMonth());
@@ -256,19 +256,19 @@ public class SpannerConvertersTest {
 
   @Test
   public void testNewMutationBuilder() {
-    assertEquals(RowToMutationDoFn.newMutationBuilder(TABLE, Op.INSERT).build().getOperation(),
+    assertEquals(RowToMutationDoFn.newMutationBuilder(table, Op.INSERT).build().getOperation(),
         Op.INSERT);
-    assertEquals(RowToMutationDoFn.newMutationBuilder(TABLE, Op.UPDATE).build().getOperation(),
+    assertEquals(RowToMutationDoFn.newMutationBuilder(table, Op.UPDATE).build().getOperation(),
         Op.UPDATE);
     assertEquals(
-        RowToMutationDoFn.newMutationBuilder(TABLE, Op.INSERT_OR_UPDATE).build().getOperation(),
+        RowToMutationDoFn.newMutationBuilder(table, Op.INSERT_OR_UPDATE).build().getOperation(),
         Op.INSERT_OR_UPDATE);
-    assertEquals(RowToMutationDoFn.newMutationBuilder(TABLE, Op.REPLACE).build().getOperation(),
+    assertEquals(RowToMutationDoFn.newMutationBuilder(table, Op.REPLACE).build().getOperation(),
         Op.REPLACE);
   }
 
   @Test(expected = UnsupportedOperationException.class)
   public void testNewMutationBuilderDeleteNotSupported() {
-    RowToMutationDoFn.newMutationBuilder(TABLE, Op.DELETE);
+    RowToMutationDoFn.newMutationBuilder(table, Op.DELETE);
   }
 }
