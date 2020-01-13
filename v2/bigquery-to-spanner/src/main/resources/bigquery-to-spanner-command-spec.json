@@ -1,0 +1,4 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.BigQueryToSpanner",
+  "classPath": "/template/BigQueryToSpanner/libs/*:/template/BigQueryToSpanner/classes"
+}
