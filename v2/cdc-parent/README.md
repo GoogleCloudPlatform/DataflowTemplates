@@ -193,24 +193,7 @@ the Debezium connector has started**. This will allow the connector to
 append schemas to Cloud Data Catalog, and these schemas to be used for the
 pipeline.
 
-### Building Template
-
-This is a dynamic template meaning that the pipeline code will be
-containerized and the container will be run on Dataflow.
-
-```
-export PROJECT=my-project
-export IMAGE_NAME=cdc-change-applier
-export BUCKET_NAME=gs://<bucket-name>
-export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
-export BASE_CONTAINER_IMAGE_VERSION=latest
-export APP_ROOT=/template/<template-class>
-export COMMAND_SPEC=${APP_ROOT}/resources/cdc-change-applier-command-spec.json  # TODO(pabloem, MUST): Add the command-spec.
-```
-
 ### Running the Pipeline
-
-The pipeline can be run from source, or via a template.
 
 To deploy the pipeline from source, you can run the following command:
 
@@ -222,13 +205,6 @@ mvn exec:java -pl cdc-change-applier -Dexec.args="--runner=DataflowRunner \
               --replicaDataset=${REPLICA_BQ_DATASET} \
               --project=${GCP_PROJECT}"
 ```
-
-If you want to deploy as a template, you will be able to find it
-```
-TODO(pabloem, MUST): Figure out how to build / push the template.
-```
-
-
 
 ## Unsupported scenarios
 
