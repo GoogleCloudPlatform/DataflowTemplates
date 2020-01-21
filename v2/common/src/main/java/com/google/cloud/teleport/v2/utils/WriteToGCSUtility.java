@@ -15,23 +15,14 @@
  */
 package com.google.cloud.teleport.v2.utils;
 
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Maps;
+import org.apache.beam.vendor.guava.v20_0.com.google.common.collect.ImmutableMap;
+import org.apache.beam.vendor.guava.v20_0.com.google.common.collect.Maps;
 
 /**
  * The {@link WriteToGCSUtility} class provides the static values and methods to handle various File
  * Formats.
  */
 public class WriteToGCSUtility {
-
-  private WriteToGCSUtility() {}
-
-  /** Set Enum FileFormat for all supported file formats. */
-  public enum FileFormat {
-    TEXT,
-    AVRO,
-    PARQUET;
-  }
 
   /** File suffix to be set based on format of the file. */
   public static final ImmutableMap<FileFormat, String> FILE_SUFFIX_MAP =
@@ -40,12 +31,13 @@ public class WriteToGCSUtility {
               FileFormat.TEXT, ".txt",
               FileFormat.AVRO, ".avro",
               FileFormat.PARQUET, ".parquet"));
-
   /**
    * Shard Template of the output file. Specified as repeating sequences of the letters 'S' or 'N'
    * (example: SSS-NNN).
    */
   public static final String SHARD_TEMPLATE = "W-P-SS-of-NN";
+
+  private WriteToGCSUtility() {}
 
   /**
    * The isValidFileFormat() checks whether user specified file format is valid.
@@ -61,5 +53,12 @@ public class WriteToGCSUtility {
       status = false;
     }
     return status;
+  }
+
+  /** Set Enum FileFormat for all supported file formats. */
+  public enum FileFormat {
+    TEXT,
+    AVRO,
+    PARQUET;
   }
 }

@@ -21,7 +21,6 @@ import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Precondi
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.io.WindowedFilenamePolicy;
 import com.google.cloud.teleport.v2.utils.WriteToGCSUtility;
-import com.google.common.annotations.VisibleForTesting;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.io.AvroIO;
@@ -34,6 +33,7 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
+import org.apache.beam.vendor.guava.v20_0.com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +47,8 @@ public abstract class WriteToGCSAvro extends PTransform<PCollection<KV<String, S
   /* Logger for class. */
   private static final Logger LOG = LoggerFactory.getLogger(WriteToGCSAvro.class);
 
-  @VisibleForTesting protected static final String DEFAULT_OUTPUT_FILE_PREFIX = "output";
+  @VisibleForTesting
+  protected static final String DEFAULT_OUTPUT_FILE_PREFIX = "output";
 
   /**
    * The {@link WriteToGCSAvroOptions} interface provides the custom execution options passed by the
