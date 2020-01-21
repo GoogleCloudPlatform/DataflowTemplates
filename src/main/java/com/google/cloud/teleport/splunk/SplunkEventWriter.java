@@ -22,7 +22,6 @@ import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Precondi
 import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.HttpResponseException;
 import com.google.auto.value.AutoValue;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Lists;
 import java.io.IOException;
@@ -57,31 +56,19 @@ import org.slf4j.LoggerFactory;
 @AutoValue
 public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, SplunkWriteError> {
 
+  private static final Integer DEFAULT_BATCH_COUNT = 1;
+  private static final Boolean DEFAULT_DISABLE_CERTIFICATE_VALIDATION = false;
   private static final Logger LOG = LoggerFactory.getLogger(SplunkEventWriter.class);
-
   private static final long DEFAULT_FLUSH_DELAY = 2;
-
   private static final Counter INPUT_COUNTER = Metrics
       .counter(SplunkEventWriter.class, "inbound-events");
-
   private static final Counter SUCCESS_WRITES = Metrics
       .counter(SplunkEventWriter.class, "outbound-successful-events");
-
   private static final Counter FAILED_WRITES = Metrics
       .counter(SplunkEventWriter.class, "outbound-failed-events");
-
   private static final String BUFFER_STATE_NAME = "buffer";
   private static final String COUNT_STATE_NAME = "count";
   private static final String TIME_ID_NAME = "expiry";
-
-  @VisibleForTesting
-  protected static final ValueProvider<Integer> DEFAULT_BATCH_COUNT
-      = ValueProvider.StaticValueProvider.of(1);
-
-  @VisibleForTesting
-  protected static final ValueProvider<Boolean> DEFAULT_DISABLE_CERTIFICATE_VALIDATION
-      = ValueProvider.StaticValueProvider.of(false);
-
   @StateId(BUFFER_STATE_NAME)
   private final StateSpec<BagState<SplunkEvent>> buffer = StateSpecs.bag();
 
@@ -92,6 +79,7 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
   private final TimerSpec expirySpec = TimerSpecs.timer(TimeDomain.EVENT_TIME);
 
   private Integer batchCount;
+  private Boolean disableValidation;
   private HttpEventPublisher publisher;
 
   public static Builder newBuilder() {
@@ -116,14 +104,32 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
     checkArgument(url().isAccessible(), "url is required for writing events.");
     checkArgument(token().isAccessible(), "Access token is required for writing events.");
 
-    // Either user supplied or default is available.
-    batchCount = inputBatchCount().get();
+    // Either user supplied or default batchCount.
+    if (batchCount == null) {
+
+      if (inputBatchCount() != null && inputBatchCount().isAccessible()) {
+        batchCount = inputBatchCount().get();
+      } else {
+        batchCount = DEFAULT_BATCH_COUNT;
+      }
+      LOG.info("Batch count set to: {}", batchCount);
+    }
+
+    // Either user supplied or default disableValidation.
+    if (disableValidation == null) {
+      if (disableCertificateValidation() != null && disableCertificateValidation().isAccessible()) {
+        disableValidation = disableCertificateValidation().get();
+      } else {
+        disableValidation = DEFAULT_DISABLE_CERTIFICATE_VALIDATION;
+      }
+      LOG.info("Disable certificate validation set to: {}", disableValidation);
+    }
 
     try {
       HttpEventPublisher.Builder builder = HttpEventPublisher.newBuilder()
           .withUrl(url().get())
           .withToken(token().get())
-          .withDisableCertificateValidation(disableCertificateValidation().get());
+          .withDisableCertificateValidation(disableValidation);
 
       publisher = builder.build();
       LOG.info("Successfully created HttpEventPublisher");
@@ -297,11 +303,7 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
     abstract Builder setDisableCertificateValidation(
         ValueProvider<Boolean> disableCertificateValidation);
 
-    abstract ValueProvider<Boolean> disableCertificateValidation();
-
     abstract Builder setInputBatchCount(ValueProvider<Integer> inputBatchCount);
-
-    abstract ValueProvider<Integer> inputBatchCount();
 
     abstract SplunkEventWriter autoBuild();
 
@@ -356,21 +358,7 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
      * @return {@link Builder}
      */
     public Builder withInputBatchCount(ValueProvider<Integer> inputBatchCount) {
-      checkArgument(inputBatchCount != null,
-          "withInputBatchCount(inputBatchCount) called with null input.");
       return setInputBatchCount(inputBatchCount);
-    }
-
-    /**
-     * Same as {@link Builder#withInputBatchCount(ValueProvider)} but without {@link ValueProvider}.
-     *
-     * @param inputBatchCount for batching post requests.
-     * @return {@link Builder}
-     */
-    public Builder withInputBatchCount(Integer inputBatchCount) {
-      checkArgument(inputBatchCount != null,
-          "withInputBatchCount(inputBatchCount) called with null input.");
-      return setInputBatchCount(ValueProvider.StaticValueProvider.of(inputBatchCount));
     }
 
     /**
@@ -381,23 +369,7 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
      */
     public Builder withDisableCertificateValidation(
         ValueProvider<Boolean> disableCertificateValidation) {
-      checkArgument(disableCertificateValidation != null,
-          "withDisableCertificateValidation(disableCertificateValidation) called with null input.");
       return setDisableCertificateValidation(disableCertificateValidation);
-    }
-
-    /**
-     * Same as {@link Builder#withDisableCertificateValidation(ValueProvider)} but without a {@link
-     * ValueProvider}.
-     *
-     * @param disableCertificateValidation for disabling certificate validation.
-     * @return {@link Builder}
-     */
-    public Builder withDisableCertificateValidation(Boolean disableCertificateValidation) {
-      checkArgument(disableCertificateValidation != null,
-          "withDisableCertificateValidation(disableCertificateValidation) called with null input.");
-      return setDisableCertificateValidation(
-          ValueProvider.StaticValueProvider.of((disableCertificateValidation)));
     }
 
     /**
@@ -407,16 +379,6 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
       checkNotNull(url(), "url needs to be provided.");
       checkNotNull(token(), "token needs to be provided.");
 
-      if (inputBatchCount() == null) {
-        LOG.info("Defaulting batch count to: {}", DEFAULT_BATCH_COUNT.get());
-        setInputBatchCount(DEFAULT_BATCH_COUNT);
-      }
-
-      if (disableCertificateValidation() == null) {
-        LOG.info("Defaulting disable certificate validation to: {}",
-            DEFAULT_DISABLE_CERTIFICATE_VALIDATION.get());
-        setDisableCertificateValidation(DEFAULT_DISABLE_CERTIFICATE_VALIDATION);
-      }
       return autoBuild();
     }
   }

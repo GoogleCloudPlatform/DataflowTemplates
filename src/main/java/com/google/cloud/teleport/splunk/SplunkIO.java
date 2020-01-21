@@ -27,26 +27,22 @@ import org.apache.beam.sdk.annotations.Experimental.Kind;
 import org.apache.beam.sdk.coders.BigEndianIntegerCoder;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.options.ValueProvider;
-import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.TypeDescriptor;
-import org.apache.beam.sdk.values.TypeDescriptors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link SplunkIO} class provides a {@link PTransform} that allows writing
- * {@link SplunkEvent} messages into a Splunk HTTP Event Collector end point.
+ * The {@link SplunkIO} class provides a {@link PTransform} that allows writing {@link SplunkEvent}
+ * messages into a Splunk HTTP Event Collector end point.
  */
 @Experimental(Kind.SOURCE_SINK)
 public class SplunkIO {
 
   private static final Logger LOG = LoggerFactory.getLogger(SplunkIO.class);
-
-  private static final Integer DEFAULT_KEYS = 1;
 
   private SplunkIO() {
   }
@@ -57,9 +53,9 @@ public class SplunkIO {
 
   /**
    * Class {@link Write} provides a {@link PTransform} that allows writing {@link SplunkEvent}
-   * records into a Splunk HTTP Event Collector end-point using HTTP POST requests. In the event
-   * of an error, a {@link PCollection} of {@link SplunkWriteError} records are returned for
-   * further processing or storing into a deadletter sink.
+   * records into a Splunk HTTP Event Collector end-point using HTTP POST requests. In the event of
+   * an error, a {@link PCollection} of {@link SplunkWriteError} records are returned for further
+   * processing or storing into a deadletter sink.
    */
   @AutoValue
   public abstract static class Write
@@ -87,20 +83,14 @@ public class SplunkIO {
       SplunkEventWriter.Builder builder = SplunkEventWriter
           .newBuilder()
           .withUrl(url())
+          .withInputBatchCount(batchCount())
+          .withDisableCertificateValidation(disableCertificateValidation())
           .withToken((token()));
-
-      if (batchCount() != null && batchCount().isAccessible()) {
-        builder.withInputBatchCount(batchCount());
-      }
-
-      if (disableCertificateValidation() != null && disableCertificateValidation().isAccessible()) {
-        builder.withDisableCertificateValidation(disableCertificateValidation());
-      }
 
       SplunkEventWriter writer = builder.build();
       LOG.info("SplunkEventWriter configured");
 
-      // Return a PCollection<SplunkWriteError>s
+      // Return a PCollection<SplunkWriteError>
       return input
           .apply("Create KV pairs", CreateKeys.of(parallelism()))
           .apply("Write Splunk events", ParDo.of(writer)).setCoder(SplunkWriteErrorCoder.of());
@@ -123,8 +113,6 @@ public class SplunkIO {
       abstract Builder setBatchCount(ValueProvider<Integer> batchCount);
 
       abstract Builder setParallelism(ValueProvider<Integer> parallelism);
-
-      abstract ValueProvider<Integer> parallelism();
 
       abstract Builder setDisableCertificateValidation(
           ValueProvider<Boolean> disableCertificateValidation);
@@ -254,10 +242,6 @@ public class SplunkIO {
         checkNotNull(url(), "HEC url is required.");
         checkNotNull(token(), "Authorization token is required.");
 
-        if (parallelism() == null || !parallelism().isAccessible()) {
-          LOG.info("Defaulting parallelism to: {}", DEFAULT_KEYS);
-          setParallelism(ValueProvider.StaticValueProvider.of(DEFAULT_KEYS));
-        }
         return autoBuild();
       }
     }
@@ -265,14 +249,16 @@ public class SplunkIO {
     private static class CreateKeys extends
         PTransform<PCollection<SplunkEvent>, PCollection<KV<Integer, SplunkEvent>>> {
 
-      private ValueProvider<Integer> keys;
+      private static final Integer DEFAULT_PARALLELISM = 1;
 
-      private CreateKeys(ValueProvider<Integer> keys) {
-        this.keys = keys;
+      private ValueProvider<Integer> requestedKeys;
+
+      private CreateKeys(ValueProvider<Integer> requestedKeys) {
+        this.requestedKeys = requestedKeys;
       }
 
-      static CreateKeys of(ValueProvider<Integer> keys) {
-        return new CreateKeys(keys);
+      static CreateKeys of(ValueProvider<Integer> requestedKeys) {
+        return new CreateKeys(requestedKeys);
       }
 
       @Override
@@ -280,12 +266,38 @@ public class SplunkIO {
 
         return input
             .apply("Inject Keys",
-                MapElements
-                    .into(TypeDescriptors
-                        .kvs(TypeDescriptors.integers(), TypeDescriptor.of(SplunkEvent.class)))
-                    .via((SplunkEvent e) -> KV
-                        .of(ThreadLocalRandom.current().nextInt(keys.get()), e))
+                ParDo.of(new CreateKeysFn(this.requestedKeys))
             ).setCoder(KvCoder.of(BigEndianIntegerCoder.of(), SplunkEventCoder.of()));
+
+      }
+
+      private class CreateKeysFn extends DoFn<SplunkEvent, KV<Integer, SplunkEvent>> {
+
+        private ValueProvider<Integer> specifiedParallelism;
+        private Integer calculatedParallelism;
+
+        CreateKeysFn(ValueProvider<Integer> specifiedParallelism) {
+          this.specifiedParallelism = specifiedParallelism;
+        }
+
+        @Setup
+        public void setup() {
+
+          if (calculatedParallelism == null) {
+            if (specifiedParallelism != null && specifiedParallelism.isAccessible()) {
+              calculatedParallelism = specifiedParallelism.get();
+            } else {
+              calculatedParallelism = DEFAULT_PARALLELISM;
+            }
+            LOG.info("Parallelism set to: {}", calculatedParallelism);
+          }
+        }
+
+        @ProcessElement
+        public void processElement(ProcessContext context) {
+          context.output(
+              KV.of(ThreadLocalRandom.current().nextInt(calculatedParallelism), context.element()));
+        }
 
       }
     }
