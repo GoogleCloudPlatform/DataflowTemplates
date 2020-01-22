@@ -45,6 +45,8 @@ public abstract class Table implements Serializable {
 
   public abstract ImmutableList<String> indexes();
 
+  public abstract ImmutableList<String> foreignKeys();
+
   public abstract Builder autoToBuilder();
 
   public Builder toBuilder() {
@@ -59,10 +61,14 @@ public abstract class Table implements Serializable {
   }
 
   public static Builder builder() {
-    return new AutoValue_Table.Builder().indexes(ImmutableList.of()).onDeleteCascade(false);
+    return new AutoValue_Table.Builder()
+        .indexes(ImmutableList.of())
+        .foreignKeys(ImmutableList.of())
+        .onDeleteCascade(false);
   }
 
-  public void prettyPrint(Appendable appendable, boolean includeIndexes) throws IOException {
+  public void prettyPrint(Appendable appendable, boolean includeIndexes, boolean includeForeignKeys)
+      throws IOException {
     appendable.append("CREATE TABLE `").append(name()).append("` (");
     for (Column column : columns()) {
       appendable.append("\n\t");
@@ -86,12 +92,16 @@ public abstract class Table implements Serializable {
       appendable.append("\n");
       appendable.append(indexes().stream().collect(Collectors.joining("\n")));
     }
+    if (includeForeignKeys) {
+      appendable.append("\n");
+      appendable.append(foreignKeys().stream().collect(Collectors.joining("\n")));
+    }
   }
 
   public String prettyPrint() {
     StringBuilder sb = new StringBuilder();
     try {
-      prettyPrint(sb, true);
+      prettyPrint(sb, true, true);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -130,6 +140,8 @@ public abstract class Table implements Serializable {
     abstract Builder columns(ImmutableList<Column> columns);
 
     public abstract Builder indexes(ImmutableList<String> indexes);
+
+    public abstract Builder foreignKeys(ImmutableList<String> foreignKeys);
 
     abstract ImmutableList<Column> columns();
 

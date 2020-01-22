@@ -53,11 +53,23 @@ public class ImportPipeline {
 
     void setSpannerHost(ValueProvider<String> value);
 
-    @Description("If true wait until indexes are finished. Useful for testing.")
+    @Description("By default the import pipeline is not blocked on index creation, and it "
+      + "may complete with indexes still being created in the background. In testing, it may "
+      + "be useful to set this option to false so that the pipeline waits until indexes are "
+      + "finished.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getWaitForIndexes();
 
     void setWaitForIndexes(ValueProvider<Boolean> value);
+
+    @Description("By default the import pipeline is not blocked on foreign key creation, and it "
+      + "may complete with foreign keys still being created in the background. In testing, it may "
+      + "be useful to set this option to false so that the pipeline waits until foreign keys are "
+      + "finished.")
+    @Default.Boolean(false)
+    ValueProvider<Boolean> getWaitForForeignKeys();
+
+    void setWaitForForeignKeys(ValueProvider<Boolean> value);
 
     @Description("If true, wait for job finish")
     @Default.Boolean(true)
@@ -78,7 +90,12 @@ public class ImportPipeline {
             .withInstanceId(options.getInstanceId())
             .withDatabaseId(options.getDatabaseId());
 
-    p.apply(new ImportTransform(spannerConfig, options.getInputDir(), options.getWaitForIndexes()));
+    p.apply(
+        new ImportTransform(
+            spannerConfig,
+            options.getInputDir(),
+            options.getWaitForIndexes(),
+            options.getWaitForForeignKeys()));
 
     PipelineResult result = p.run();
     if (options.getWaitUntilFinish() &&

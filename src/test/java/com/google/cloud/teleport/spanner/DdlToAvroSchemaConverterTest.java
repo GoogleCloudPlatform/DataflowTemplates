@@ -24,6 +24,7 @@ import static org.junit.Assert.assertThat;
 
 import com.google.cloud.spanner.Type;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
+import com.google.common.collect.ImmutableList;
 import java.util.Collection;
 import java.util.List;
 import org.apache.avro.Schema;
@@ -50,6 +51,11 @@ public class DdlToAvroSchemaConverterTest {
         .column("first_name").string().size(10).endColumn()
         .column("last_name").type(Type.string()).max().endColumn()
         .primaryKey().asc("id").desc("last_name").end()
+        .indexes(ImmutableList.of("CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"))
+        .foreignKeys(
+            ImmutableList.of(
+                "ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
+                    + " REFERENCES `AllowedNames` (`first_name`)"))
         .endTable()
         .build();
 
@@ -85,6 +91,15 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(avroSchema.getProp("spannerPrimaryKey_1"), equalTo("`last_name` DESC"));
     assertThat(avroSchema.getProp("spannerParent"), nullValue());
     assertThat(avroSchema.getProp("spannerOnDeleteAction"), nullValue());
+
+    assertThat(
+        avroSchema.getProp("spannerIndex_0"),
+        equalTo("CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"));
+    assertThat(
+        avroSchema.getProp("spannerForeignKey_0"),
+        equalTo(
+            "ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
+                + " REFERENCES `AllowedNames` (`first_name`)"));
 
     System.out.println(avroSchema.toString(true));
   }

@@ -22,6 +22,7 @@ import static org.hamcrest.text.IsEqualIgnoringWhiteSpace.equalToIgnoringWhiteSp
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.spanner.Type;
+import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 
 /**
@@ -44,6 +45,11 @@ public class DdlTest {
         .column("first_name").string().size(10).endColumn()
         .column("last_name").type(Type.string()).max().endColumn()
         .primaryKey().asc("id").end()
+        .indexes(ImmutableList.of("CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"))
+        .foreignKeys(
+            ImmutableList.of(
+                "ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
+                    + " REFERENCES `AllowedNames` (`first_name`)"))
         .endTable()
         .build();
     assertThat(
@@ -53,7 +59,10 @@ public class DdlTest {
                 + " `id` INT64 NOT NULL,"
                 + " `first_name` STRING(10),"
                 + " `last_name` STRING(MAX),"
-                + " ) PRIMARY KEY (`id` ASC)"));
+                + " ) PRIMARY KEY (`id` ASC)"
+                + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"
+                + " ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
+                + " REFERENCES `AllowedNames` (`first_name`)"));
   }
 
   @Test

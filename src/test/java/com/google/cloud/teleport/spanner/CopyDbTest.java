@@ -36,6 +36,7 @@ import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.InformationSchemaScanner;
 import com.google.cloud.teleport.spanner.ddl.RandomDdlGenerator;
 import com.google.cloud.teleport.spanner.ddl.RandomInsertMutationGenerator;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.io.Files;
 import com.google.spanner.admin.database.v1.CreateDatabaseMetadata;
@@ -276,6 +277,34 @@ public class CopyDbTest {
   }
 
   @Test
+  public void foreignKeys() throws Exception {
+    Ddl ddl = Ddl.builder()
+        .createTable("Ref")
+        .column("id1").int64().endColumn()
+        .column("id2").int64().endColumn()
+        .primaryKey().asc("id1").asc("id2").end()
+        .endTable()
+        .createTable("Child")
+        .column("id1").int64().endColumn()
+        .column("id2").int64().endColumn()
+        .column("id3").int64().endColumn()
+        .primaryKey().asc("id1").asc("id2").asc("id3").end()
+        .interleaveInParent("Ref")
+        // Add some foreign keys that are guaranteed to be satisfied due to interleaving
+        .foreignKeys(ImmutableList.of(
+           "ALTER TABLE `Child` ADD CONSTRAINT `fk1` FOREIGN KEY (`id1`) REFERENCES `Ref` (`id1`)",
+           "ALTER TABLE `Child` ADD CONSTRAINT `fk2` FOREIGN KEY (`id2`) REFERENCES `Ref` (`id2`)",
+           "ALTER TABLE `Child` ADD CONSTRAINT `fk3` FOREIGN KEY (`id2`) REFERENCES `Ref` (`id2`)",
+           "ALTER TABLE `Child` ADD CONSTRAINT `fk4` FOREIGN KEY (`id2`, `id1`) "
+               + "REFERENCES `Ref` (`id2`, `id1`)"))
+        .endTable()
+        .build();
+
+    createAndPopulate(ddl, 100);
+    runTest();
+  }
+
+  @Test
   public void randomSchema() throws Exception {
     Ddl ddl = RandomDdlGenerator.builder().build().generate();
     createAndPopulate(ddl, 100);
@@ -298,15 +327,20 @@ public class CopyDbTest {
     ValueProvider.StaticValueProvider<String> source = ValueProvider.StaticValueProvider
         .of(tmpDir + "/jobid");
     SpannerConfig sourceConfig = SpannerConfig.create().withInstanceId(instanceId)
-        .withDatabaseId(sourceDb).withHost(ValueProvider.StaticValueProvider.of(host));;
+        .withDatabaseId(sourceDb).withHost(ValueProvider.StaticValueProvider.of(host));
     exportPipeline.apply("Export", new ExportTransform(sourceConfig, destination, jobId));
     PipelineResult exportResult = exportPipeline.run();
     exportResult.waitUntilFinish();
 
     SpannerConfig copyConfig = SpannerConfig.create().withInstanceId(instanceId)
-        .withDatabaseId(destinationDb).withHost(ValueProvider.StaticValueProvider.of(host));;
-    importPipeline.apply("Import", new ImportTransform(
-        copyConfig, source, ValueProvider.StaticValueProvider.of(true)));
+        .withDatabaseId(destinationDb).withHost(ValueProvider.StaticValueProvider.of(host));
+    importPipeline.apply(
+        "Import",
+        new ImportTransform(
+            copyConfig,
+            source,
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();
 

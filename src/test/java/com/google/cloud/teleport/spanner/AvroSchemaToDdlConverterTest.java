@@ -40,28 +40,35 @@ public class AvroSchemaToDdlConverterTest {
 
   @Test
   public void simple() {
-    String avroString = "{"
-        + "  \"type\" : \"record\","
-        + "  \"name\" : \"Users\","
-        + "  \"namespace\" : \"spannertest\","
-        + "  \"fields\" : [ {"
-        + "    \"name\" : \"id\","
-        + "    \"type\" : \"long\","
-        + "    \"sqlType\" : \"INT64\""
-        + "  }, {"
-        + "    \"name\" : \"first_name\","
-        + "    \"type\" : [ \"null\", \"string\" ],"
-        + "    \"sqlType\" : \"STRING(10)\""
-        + "  }, {"
-        + "    \"name\" : \"last_name\","
-        + "    \"type\" : [ \"null\", \"string\" ],"
-        + "    \"sqlType\" : \"STRING(MAX)\""
-        + "  } ],"
-        + "  \"googleStorage\" : \"CloudSpanner\"," + "  \"spannerParent\" : \"\","
-        + "  \"googleFormatVersion\" : \"booleans\","
-        + "  \"spannerPrimaryKey_0\" : \"`id` ASC\","
-        + "  \"spannerPrimaryKey_1\" : \"`last_name` DESC\""
-        + "}";
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Users\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"id\","
+            + "    \"type\" : \"long\","
+            + "    \"sqlType\" : \"INT64\""
+            + "  }, {"
+            + "    \"name\" : \"first_name\","
+            + "    \"type\" : [ \"null\", \"string\" ],"
+            + "    \"sqlType\" : \"STRING(10)\""
+            + "  }, {"
+            + "    \"name\" : \"last_name\","
+            + "    \"type\" : [ \"null\", \"string\" ],"
+            + "    \"sqlType\" : \"STRING(MAX)\""
+            + "  } ],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"`id` ASC\","
+            + "  \"spannerPrimaryKey_1\" : \"`last_name` DESC\","
+            + "  \"spannerIndex_0\" : "
+            + "  \"CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)\","
+            + "  \"spannerForeignKey_0\" : "
+            + "  \"ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`) "
+            + "  REFERENCES `AllowedNames` (`first_name`)\""
+            + "}";
 
     Schema schema = new Schema.Parser().parse(avroString);
 
@@ -75,7 +82,10 @@ public class AvroSchemaToDdlConverterTest {
                 + " `id`                                    INT64 NOT NULL,"
                 + " `first_name`                             STRING(10),"
                 + " `last_name`                             STRING(MAX),"
-                + " ) PRIMARY KEY (`id` ASC, `last_name` DESC)"));
+                + " ) PRIMARY KEY (`id` ASC, `last_name` DESC)"
+                + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"
+                + " ALTER TABLE `Users` ADD CONSTRAINT `fk`"
+                + " FOREIGN KEY (`first_name`) REFERENCES `AllowedNames` (`first_name`)"));
   }
 
   @Test

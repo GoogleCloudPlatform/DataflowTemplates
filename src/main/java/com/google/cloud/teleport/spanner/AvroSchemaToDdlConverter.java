@@ -105,6 +105,16 @@ public class AvroSchemaToDdlConverter {
     }
     table.indexes(indexes.build());
 
+    ImmutableList.Builder<String> foreignKeys = ImmutableList.builder();
+    for (int i = 0; ; i++) {
+      String spannerForeignKey = schema.getProp("spannerForeignKey_" + i);
+      if (spannerForeignKey == null) {
+        break;
+      }
+      foreignKeys.add(spannerForeignKey);
+    }
+    table.foreignKeys(foreignKeys.build());
+
     // Table parent options.
     String spannerParent = schema.getProp("spannerParent");
     if (!Strings.isNullOrEmpty(spannerParent)) {

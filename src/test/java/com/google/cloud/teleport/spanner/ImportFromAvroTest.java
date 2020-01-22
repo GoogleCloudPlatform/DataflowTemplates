@@ -409,6 +409,7 @@ public class ImportFromAvroTest {
         new ImportTransform(
             sourceConfig,
             ValueProvider.StaticValueProvider.of(tmpDir),
+            ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();

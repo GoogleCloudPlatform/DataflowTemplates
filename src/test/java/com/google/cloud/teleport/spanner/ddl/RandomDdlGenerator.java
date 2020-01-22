@@ -58,6 +58,8 @@ public abstract class RandomDdlGenerator {
 
   public abstract int getMaxIndex();
 
+  public abstract int getMaxForeignKeys();
+
   public static Builder builder() {
 
     return new AutoValue_RandomDdlGenerator.Builder()
@@ -66,6 +68,7 @@ public abstract class RandomDdlGenerator {
         .setMaxPkComponents(3)
         .setMaxBranchPerLevel(new int[] {3, 2, 1, 1, 1, 1, 1})
         .setMaxIndex(2)
+        .setMaxForeignKeys(2)
         .setMaxColumns(8)
         .setMaxIdLength(11);
   }
@@ -89,6 +92,8 @@ public abstract class RandomDdlGenerator {
     public abstract RandomDdlGenerator build();
 
     public abstract Builder setMaxIndex(int indexes);
+
+    public abstract Builder setMaxForeignKeys(int foreignKeys);
   }
 
   public abstract Builder toBuilder();
@@ -203,6 +208,29 @@ public abstract class RandomDdlGenerator {
       }
     }
     tableBuilder.indexes(indexes.build());
+
+    if (parent != null) {
+      // Create redundant foreign keys to the parent table.
+      int numForeignKeys = rnd.nextInt(getMaxForeignKeys());
+      ImmutableList.Builder<String> foreignKeys = ImmutableList.builder();
+      for (int i = 0; i < numForeignKeys; i++) {
+        ForeignKey.Builder foreignKeyBuilder =
+            ForeignKey.builder()
+                .name(generateIdentifier(getMaxIdLength()))
+                .table(name)
+                .referencedTable(parent.name());
+        for (IndexColumn pk : parent.primaryKeys()) {
+          foreignKeyBuilder.columnsBuilder().add(pk.name());
+          foreignKeyBuilder.referencedColumnsBuilder().add(pk.name());
+        }
+        ForeignKey foreignKey = foreignKeyBuilder.build();
+        if (foreignKey.columns().size() > 0) {
+          foreignKeys.add(foreignKey.prettyPrint());
+        }
+      }
+      tableBuilder.foreignKeys(foreignKeys.build());
+    }
+
     tableBuilder.endTable();
 
     table = tableBuilder.build();

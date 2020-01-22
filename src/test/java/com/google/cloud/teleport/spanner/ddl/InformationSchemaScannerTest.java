@@ -285,6 +285,34 @@ public class InformationSchemaScannerTest {
   }
 
   @Test
+  public void foreignKeys() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "CREATE TABLE `Ref` ("
+                + " `id1`                               INT64 NOT NULL,"
+                + " `id2`                               INT64 NOT NULL,"
+                + " ) PRIMARY KEY (`id1` ASC, `id2` ASC)",
+            " CREATE TABLE `Tab` ("
+                + " `key`                               INT64 NOT NULL,"
+                + " `id1`                               INT64 NOT NULL,"
+                + " `id2`                               INT64 NOT NULL,"
+                + " ) PRIMARY KEY (`key` ASC)",
+            " ALTER TABLE `Tab` ADD CONSTRAINT `fk` FOREIGN KEY (`id1`, `id2`)"
+                + " REFERENCES `Ref` (`id2`, `id1`)");
+
+    DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
+
+    OperationFuture<Database, CreateDatabaseMetadata> op =
+        databaseAdminClient.createDatabase(instanceId, dbId, statements);
+    op.get();
+
+    InformationSchemaScanner scanner = new InformationSchemaScanner(getBatchTx());
+
+    Ddl ddl = scanner.scan();
+    assertThat(ddl.prettyPrint(), equalToIgnoringWhiteSpace(String.join("", statements)));
+  }
+
+  @Test
   public void commitTimestamp() throws Exception {
     String statement =
         "CREATE TABLE `Users` ("

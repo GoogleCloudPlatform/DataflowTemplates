@@ -67,6 +67,20 @@ public class InformationSchemaScanner {
       builder.createTable(tableName).indexes(tableIndexes.build()).endTable();
     }
 
+    Map<String, NavigableMap<String, ForeignKey.Builder>> foreignKeys = Maps.newHashMap();
+    listForeignKeys(foreignKeys);
+
+    for (Map.Entry<String, NavigableMap<String, ForeignKey.Builder>> tableEntry :
+        foreignKeys.entrySet()) {
+      String tableName = tableEntry.getKey();
+      ImmutableList.Builder<String> tableForeignKeys = ImmutableList.builder();
+      for (Map.Entry<String, ForeignKey.Builder> entry : tableEntry.getValue().entrySet()) {
+        ForeignKey.Builder foreignKeyBuilder = entry.getValue();
+        tableForeignKeys.add(foreignKeyBuilder.build().prettyPrint());
+      }
+      builder.createTable(tableName).foreignKeys(tableForeignKeys.build()).endTable();
+    }
+
     return builder.build();
   }
 
@@ -142,6 +156,7 @@ public class InformationSchemaScanner {
                     + " t.is_unique, t.is_null_filtered"
                     + " FROM information_schema.indexes AS t "
                     + " WHERE t.table_catalog = '' AND t.table_schema = '' AND t.index_type='INDEX'"
+                    + " AND t.spanner_is_managed = FALSE"
                     + " ORDER BY t.table_name, t.index_name"));
     while (resultSet.next()) {
       String tableName = resultSet.getString(0);
@@ -193,7 +208,14 @@ public class InformationSchemaScanner {
         }
         pkBuilder.end().endTable();
       } else {
-        Index.Builder indexBuilder = indexes.get(tableName).get(indexName);
+        Map<String, Index.Builder> tableIndexes = indexes.get(tableName);
+        if (tableIndexes == null) {
+          continue;
+        }
+        Index.Builder indexBuilder = tableIndexes.get(indexName);
+        if (indexBuilder == null) {
+          continue;
+        }
         if (ordering == null) {
           indexBuilder.columns().storing(columnName).end();
         } else if (ordering.equalsIgnoreCase("ASC")) {
@@ -244,6 +266,49 @@ public class InformationSchemaScanner {
           .columnOptions(options)
           .endColumn()
           .endTable();
+    }
+  }
+
+  private void listForeignKeys(Map<String, NavigableMap<String, ForeignKey.Builder>> foreignKeys) {
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT rc.constraint_name,"
+                    + " kcu1.table_name,"
+                    + " kcu1.column_name,"
+                    + " kcu2.table_name,"
+                    + " kcu2.column_name"
+                    + " FROM information_schema.referential_constraints as rc"
+                    + " INNER JOIN information_schema.key_column_usage as kcu1"
+                    + " ON kcu1.constraint_catalog = rc.constraint_catalog"
+                    + " AND kcu1.constraint_schema = rc.constraint_schema"
+                    + " AND kcu1.constraint_name = rc.constraint_name"
+                    + " INNER JOIN information_schema.key_column_usage as kcu2"
+                    + " ON kcu2.constraint_catalog = rc.unique_constraint_catalog"
+                    + " AND kcu2.constraint_schema = rc.unique_constraint_schema"
+                    + " AND kcu2.constraint_name = rc.unique_constraint_name"
+                    + " AND kcu2.ordinal_position = kcu1.position_in_unique_constraint"
+                    + " WHERE rc.constraint_catalog = ''"
+                    + " AND rc.constraint_schema = ''"
+                    + " AND kcu1.constraint_catalog = ''"
+                    + " AND kcu1.constraint_schema = ''"
+                    + " AND kcu2.constraint_catalog = ''"
+                    + " AND kcu2.constraint_schema = ''"
+                    + " ORDER BY rc.constraint_name, kcu1.ordinal_position;"));
+    while (resultSet.next()) {
+      String name = resultSet.getString(0);
+      String table = resultSet.getString(1);
+      String column = resultSet.getString(2);
+      String referencedTable = resultSet.getString(3);
+      String referencedColumn = resultSet.getString(4);
+      Map<String, ForeignKey.Builder> tableForeignKeys =
+          foreignKeys.computeIfAbsent(table, k -> Maps.newTreeMap());
+      ForeignKey.Builder foreignKey =
+          tableForeignKeys.computeIfAbsent(
+              name,
+              k -> ForeignKey.builder().name(name).table(table).referencedTable(referencedTable));
+      foreignKey.columnsBuilder().add(column);
+      foreignKey.referencedColumnsBuilder().add(referencedColumn);
     }
   }
 }

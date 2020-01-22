@@ -97,7 +97,7 @@ public class Ddl implements Serializable {
         throw new IllegalStateException("Cycle!");
       }
       visited.add(tableName);
-      table.prettyPrint(appendable, true);
+      table.prettyPrint(appendable, true, true);
       NavigableSet<String> children = childTableNames(table.name());
       if (children != null) {
         for (String name : children.descendingSet()) {
@@ -111,6 +111,7 @@ public class Ddl implements Serializable {
     return ImmutableList.<String>builder()
         .addAll(createTableStatements())
         .addAll(createIndexStatements())
+        .addAll(addForeignKeyStatements())
         .build();
   }
 
@@ -129,7 +130,7 @@ public class Ddl implements Serializable {
       visited.add(tableName);
       StringBuilder statement = new StringBuilder();
       try {
-        table.prettyPrint(statement, false);
+        table.prettyPrint(statement, false, false);
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
@@ -148,6 +149,14 @@ public class Ddl implements Serializable {
     List<String> result = new ArrayList<>();
     for (Table table : allTables()) {
       result.addAll(table.indexes());
+    }
+    return result;
+  }
+
+  public List<String> addForeignKeyStatements() {
+    List<String> result = new ArrayList<>();
+    for (Table table : allTables()) {
+      result.addAll(table.foreignKeys());
     }
     return result;
   }

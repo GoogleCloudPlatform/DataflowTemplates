@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2020 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -29,28 +29,28 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-/**
- * A Beam transform that creates indexes for all tables in a Cloud Spanner database and outputs
- * the original {@link Ddl}.
- */
-class CreateIndexesTransform extends PTransform<PCollection<Ddl>, PCollection<Ddl>> {
+/** A Beam transform that adds foreign keys for all tables in a Cloud Spanner database. */
+class AddForeignKeysTransform extends PTransform<PCollection<Ddl>, PCollection<Void>> {
 
+  private static final Logger LOG = LoggerFactory.getLogger(AddForeignKeysTransform.class);
   private final SpannerConfig spannerConfig;
-  private final ValueProvider<Boolean> waitForIndexes;
+  private final ValueProvider<Boolean> waitForForeignKeys;
 
-  public CreateIndexesTransform(
-      SpannerConfig spannerConfig, ValueProvider<Boolean> waitForIndexes) {
+  public AddForeignKeysTransform(
+      SpannerConfig spannerConfig, ValueProvider<Boolean> waitForForeignKeys) {
     this.spannerConfig = spannerConfig;
-    this.waitForIndexes = waitForIndexes;
+    this.waitForForeignKeys = waitForForeignKeys;
   }
 
   @Override
-  public PCollection<Ddl> expand(PCollection<Ddl> input) {
+  public PCollection<Void> expand(PCollection<Ddl> input) {
     return input.apply(
-        "Create Indexes",
+        "Add Foreign Keys",
         ParDo.of(
-            new DoFn<Ddl, Ddl>() {
+            new DoFn<Ddl, Void>() {
 
               private transient SpannerAccessor spannerAccessor;
 
@@ -68,16 +68,18 @@ class CreateIndexesTransform extends PTransform<PCollection<Ddl>, PCollection<Dd
               public void processElement(ProcessContext c) {
                 Ddl ddl = c.element();
                 DatabaseAdminClient databaseAdminClient = spannerAccessor.getDatabaseAdminClient();
-                List<String> createIndexStatements = ddl.createIndexStatements();
-                if (!createIndexStatements.isEmpty()) {
-                  // This just kicks off the index creation, it does not wait for it to complete.
+                List<String> foreignKeyStatements = ddl.addForeignKeyStatements();
+                LOG.info("FOREIGN KEYS: " + String.join("; ", foreignKeyStatements));
+                if (!foreignKeyStatements.isEmpty()) {
+                  // This just kicks off the foreign key creation, it does not wait for it to
+                  // complete.
                   OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
                       databaseAdminClient.updateDatabaseDdl(
                           spannerConfig.getInstanceId().get(),
                           spannerConfig.getDatabaseId().get(),
-                          createIndexStatements,
+                          foreignKeyStatements,
                           null);
-                  if (waitForIndexes.get()) {
+                  if (waitForForeignKeys.get()) {
                     try {
                       op.get();
                     } catch (InterruptedException | ExecutionException e) {
@@ -85,7 +87,6 @@ class CreateIndexesTransform extends PTransform<PCollection<Ddl>, PCollection<Dd
                     }
                   }
                 }
-                c.output(ddl);
               }
             }));
   }

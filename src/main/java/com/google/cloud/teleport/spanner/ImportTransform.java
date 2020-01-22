@@ -90,16 +90,23 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
 
   private final SpannerConfig spannerConfig;
   private final ValueProvider<String> importDirectory;
-  // If true wait for indexes, useful for testing not recommended in practice.
+  // By default the import pipeline is not blocked on index or foreign key creation, and it
+  // may complete with indexes or foreign keys still being created in the background. In testing,
+  // it may be useful to wait until indexes and foreign keys are finished for verification.
+  // If the following two fields are true, the transform will wait until indexes and foreign keys
+  // are finished, respectively.
   private final ValueProvider<Boolean> waitForIndexes;
+  private final ValueProvider<Boolean> waitForForeignKeys;
 
   public ImportTransform(
       SpannerConfig spannerConfig,
       ValueProvider<String> importDirectory,
-      ValueProvider<Boolean> waitForIndexes) {
+      ValueProvider<Boolean> waitForIndexes,
+      ValueProvider<Boolean> waitForForeignKeys) {
     this.spannerConfig = spannerConfig;
     this.importDirectory = importDirectory;
     this.waitForIndexes = waitForIndexes;
+    this.waitForForeignKeys = waitForForeignKeys;
   }
 
   @Override
@@ -226,7 +233,8 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
       previousComputation = result.getOutput();
     }
     ddl.apply(Wait.on(previousComputation))
-        .apply("Create Indexes", new CreateIndexesTransform(spannerConfig, waitForIndexes));
+        .apply("Create Indexes", new CreateIndexesTransform(spannerConfig, waitForIndexes))
+        .apply("Add Foreign Keys", new AddForeignKeysTransform(spannerConfig, waitForForeignKeys));
     return PDone.in(begin.getPipeline());
   }
 

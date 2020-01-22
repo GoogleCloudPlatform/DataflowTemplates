@@ -63,6 +63,9 @@ public class DdlToAvroSchemaConverter {
       for (int i = 0; i < table.indexes().size(); i++) {
         recordBuilder.prop("spannerIndex_" + i, table.indexes().get(i));
       }
+      for (int i = 0; i < table.foreignKeys().size(); i++) {
+        recordBuilder.prop("spannerForeignKey_" + i, table.foreignKeys().get(i));
+      }
       SchemaBuilder.FieldAssembler<Schema> fieldsAssembler = recordBuilder.fields();
       for (Column cm : table.columns()) {
         SchemaBuilder.FieldBuilder<Schema> fieldBuilder = fieldsAssembler.name(cm.name());
