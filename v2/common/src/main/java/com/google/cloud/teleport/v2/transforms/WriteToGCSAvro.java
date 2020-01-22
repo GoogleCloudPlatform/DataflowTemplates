@@ -44,36 +44,9 @@ import org.slf4j.LoggerFactory;
 @AutoValue
 public abstract class WriteToGCSAvro extends PTransform<PCollection<KV<String, String>>, PDone> {
 
+  @VisibleForTesting protected static final String DEFAULT_OUTPUT_FILE_PREFIX = "output";
   /* Logger for class. */
   private static final Logger LOG = LoggerFactory.getLogger(WriteToGCSAvro.class);
-
-  @VisibleForTesting
-  protected static final String DEFAULT_OUTPUT_FILE_PREFIX = "output";
-
-  /**
-   * The {@link WriteToGCSAvroOptions} interface provides the custom execution options passed by the
-   * executor at the command-line.
-   */
-  public interface WriteToGCSAvroOptions extends PipelineOptions {
-
-    @Description("The directory to output files to. Must end with a slash. ")
-    String getOutputDirectory();
-
-    void setOutputDirectory(String outputDirectory);
-
-    @Description(
-        "The filename prefix of the files to write to. Default file prefix is set to \"output\". ")
-    String getOutputFilenamePrefix();
-
-    void setOutputFilenamePrefix(String outputFilenamePrefix);
-
-    @Description(
-        "The maximum number of output shards produced when writing. Default number is runner defined. ")
-    @Default.Integer(0)
-    Integer getNumShards();
-
-    void setNumShards(Integer numShards);
-  }
 
   public static WriteToGCSBuilder newBuilder() {
     return new AutoValue_WriteToGCSAvro.Builder();
@@ -117,6 +90,31 @@ public abstract class WriteToGCSAvro extends PTransform<PCollection<KV<String, S
                         .getCurrentDirectory())
                 .withWindowedWrites()
                 .withNumShards(numShards()));
+  }
+
+  /**
+   * The {@link WriteToGCSAvroOptions} interface provides the custom execution options passed by the
+   * executor at the command-line.
+   */
+  public interface WriteToGCSAvroOptions extends PipelineOptions {
+
+    @Description("The directory to output files to. Must end with a slash. ")
+    String getOutputDirectory();
+
+    void setOutputDirectory(String outputDirectory);
+
+    @Description(
+        "The filename prefix of the files to write to. Default file prefix is set to \"output\". ")
+    String getOutputFilenamePrefix();
+
+    void setOutputFilenamePrefix(String outputFilenamePrefix);
+
+    @Description(
+        "The maximum number of output shards produced when writing. Default number is runner defined. ")
+    @Default.Integer(0)
+    Integer getNumShards();
+
+    void setNumShards(Integer numShards);
   }
 
   /** Builder for {@link WriteToGCSAvro}. */

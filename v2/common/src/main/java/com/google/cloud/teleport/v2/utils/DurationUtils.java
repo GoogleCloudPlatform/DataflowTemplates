@@ -15,16 +15,15 @@
  */
 package com.google.cloud.teleport.v2.utils;
 
+import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkNotNull;
+
+import java.util.Locale;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
 import org.joda.time.MutablePeriod;
 import org.joda.time.format.PeriodFormatterBuilder;
 import org.joda.time.format.PeriodParser;
-
-import java.util.Locale;
-
-import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkArgument;
-import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * The {@link DurationUtils} class provides common utilities for manipulating and formatting {@link
