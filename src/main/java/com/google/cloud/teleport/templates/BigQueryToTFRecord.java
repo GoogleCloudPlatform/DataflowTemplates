@@ -16,11 +16,12 @@
 
 package com.google.cloud.teleport.templates;
 
+import avro.shaded.com.google.common.annotations.VisibleForTesting;
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.cloud.teleport.templates.common.BigQueryConverters.BigQueryReadOptions;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.ByteString;
 import java.util.Iterator;
+import java.util.Random;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.util.Utf8;
@@ -44,8 +45,8 @@ import org.tensorflow.example.Feature;
 import org.tensorflow.example.Features;
 
 /**
- * Dataflow template which reads BigQuery data and writes it to GCS as a TFRecord. The source is a
- * SQL query.
+ * Dataflow template which reads BigQuery data and writes it to GCS as a set of TFRecords. The
+ * source is a SQL query.
  */
 public class BigQueryToTFRecord {
 
@@ -54,6 +55,10 @@ public class BigQueryToTFRecord {
    * handles {@link GenericData.Array} that are passed into the {@link
    * BigQueryToTFRecord#buildFeature} method creating a TensorFlow feature from the record.
    */
+  private static final String TRAIN = "train/";
+  private static final String TEST = "test/";
+  private static final String VAL = "val/";
+
   private static void buildFeatureFromIterator(
       Class<?> fieldType, Object field, Feature.Builder feature) {
     ByteString byteString;
@@ -70,14 +75,14 @@ public class BigQueryToTFRecord {
         double doubleValue = doubleIterator.next();
         feature.getFloatListBuilder().addValue((float) doubleValue);
       }
-    } else if (fieldType == String.class) {
+    } else if (fieldType == String.class){
       Iterator<Utf8> stringIterator = f.iterator();
       while (stringIterator.hasNext()) {
         String stringValue = stringIterator.next().toString();
         byteString = ByteString.copyFromUtf8(stringValue);
         feature.getBytesListBuilder().addValue(byteString);
       }
-    } else if (fieldType == boolean.class) {
+    } else if (fieldType == boolean.class){
       Iterator<Boolean> booleanIterator = f.iterator();
       while (booleanIterator.hasNext()) {
         Boolean boolValue = booleanIterator.next();
@@ -85,13 +90,14 @@ public class BigQueryToTFRecord {
         feature.getInt64ListBuilder().addValue(boolAsInt);
       }
     }
+
   }
 
   /**
-   * The {@link BigQueryToTFRecord#buildFeature} method takes in an individual field and type
-   * corresponding to a column value from a SchemaAndRecord Object returned from a BigQueryIO.read()
-   * step. The method builds a TensorFlow Feature based on the type of the object- ie: STRING, TIME,
-   * INTEGER etc..
+   * The {@link BigQueryToTFRecord#buildFeature} method takes in an individual field
+   * and type corresponding to a column value from a SchemaAndRecord Object
+   * returned from a BigQueryIO.read() step. The method builds
+   * a TensorFlow Feature based on the type of the object- ie: STRING, TIME, INTEGER etc..
    */
   private static Feature buildFeature(Object field, String type) {
     Feature.Builder feature = Feature.newBuilder();
@@ -101,7 +107,7 @@ public class BigQueryToTFRecord {
       case "STRING":
       case "TIME":
       case "DATE":
-        if (field instanceof GenericData.Array) {
+        if (field instanceof GenericData.Array){
           buildFeatureFromIterator(String.class, field, feature);
         } else {
           byteString = ByteString.copyFromUtf8(field.toString());
@@ -115,7 +121,7 @@ public class BigQueryToTFRecord {
       case "INTEGER":
       case "INT64":
       case "TIMESTAMP":
-        if (field instanceof GenericData.Array) {
+        if (field instanceof GenericData.Array){
           buildFeatureFromIterator(Long.class, field, feature);
         } else {
           feature.getInt64ListBuilder().addValue((long) field);
@@ -123,7 +129,7 @@ public class BigQueryToTFRecord {
         break;
       case "FLOAT":
       case "FLOAT64":
-        if (field instanceof GenericData.Array) {
+        if (field instanceof GenericData.Array){
           buildFeatureFromIterator(double.class, field, feature);
         } else {
           feature.getFloatListBuilder().addValue((float) (double) field);
@@ -131,7 +137,7 @@ public class BigQueryToTFRecord {
         break;
       case "BOOLEAN":
       case "BOOL":
-        if (field instanceof GenericData.Array) {
+        if (field instanceof GenericData.Array){
           buildFeatureFromIterator(boolean.class, field, feature);
         } else {
           int boolAsInt = (boolean) field ? 1 : 0;
@@ -145,9 +151,9 @@ public class BigQueryToTFRecord {
   }
 
   /**
-   * The {@link BigQueryToTFRecord#record2Example(SchemaAndRecord)} method uses takes in a
-   * SchemaAndRecord Object returned from a BigQueryIO.read() step and builds a TensorFlow Example
-   * from the record.
+   * The {@link BigQueryToTFRecord#record2Example(SchemaAndRecord)} method uses takes in
+   * a SchemaAndRecord Object returned from a BigQueryIO.read() step and builds
+   * a TensorFlow Example from the record.
    */
   @VisibleForTesting
   protected static byte[] record2Example(SchemaAndRecord schemaAndRecord) {
@@ -161,35 +167,48 @@ public class BigQueryToTFRecord {
     return example.build().toByteArray();
   }
 
-  static PCollectionList<byte[]> applyTrainTestValSplit(
-      PCollection<byte[]> input,
-      ValueProvider<Float> trainingPercentage,
-      ValueProvider<Float> testingPercentage,
-      ValueProvider<Float> validationPercentage) {
-    return input.apply(
-        Partition.of(
+  /**
+   * The {@link BigQueryToTFRecord#concatURI} method uses takes in a Cloud Storage URI and a
+   * subdirectory name and safely concatenates them. The resulting String is used as a sink for
+   * TFRecords.
+   */
+  private static String concatURI(String dir, String folder) {
+    if (dir.endsWith("/")) {
+      return dir + folder;
+    } else {
+      return dir + "/" + folder;
+    }
+  }
+
+  /**
+   * The {@link BigQueryToTFRecord#applyTrainTestValSplit} method transforms the PCollection
+   * by randomly partitioning it into PCollections for each dataset.
+   */
+  static PCollectionList<byte[]> applyTrainTestValSplit(PCollection<byte[]> input,
+                                                        ValueProvider<Float> trainingPercentage,
+                                                        ValueProvider<Float> testingPercentage,
+                                                        ValueProvider<Float> validationPercentage,
+                                                        Random rand) {
+    return input
+        .apply(Partition.of(
             3,
-            (Partition.PartitionFn<byte[]>)
-                (number, numPartitions) -> {
-                  Float train = trainingPercentage.get();
-                  Float test = testingPercentage.get();
-                  Float validation = validationPercentage.get();
-                  if (train + test + validation != 1) {
-                    throw new RuntimeException(
-                        String.format(
-                            "Train %.2f, Test %.2f, Validation"
-                                + " %.2f percentages must add up to 100 percent",
-                            train, test, validation));
-                  }
-                  Double d = Math.random();
-                  if (d < train) {
-                    return 0;
-                  } else if (d >= train && d < train + test) {
-                    return 1;
-                  } else {
-                    return 2;
-                  }
-                }));
+            (Partition.PartitionFn<byte[]>) (number, numPartitions) -> {
+              Float train = trainingPercentage.get();
+              Float test = testingPercentage.get();
+              Float validation = validationPercentage.get();
+              Double d = rand.nextDouble();
+              if (train + test + validation != 1){
+                throw new RuntimeException(String.format("Train %.2f, Test %.2f, Validation"
+                    + " %.2f percentages must add up to 100 percent", train, test, validation));
+              }
+              if (d < train){
+                return 0;
+              } else if (d >= train && d < train + test){
+                return 1;
+              } else {
+                return 2;
+              }
+            }));
   }
 
   /** Run the pipeline. */
@@ -208,56 +227,55 @@ public class BigQueryToTFRecord {
    * @return The pipeline result.
    */
   public static PipelineResult run(Options options) {
+    Random rand = new Random(100); // set random seed
     Pipeline pipeline = Pipeline.create(options);
 
     PCollection<byte[]> bigQueryToExamples =
-        pipeline
-            .apply(
-                "RecordToExample",
-                BigQueryIO.read(BigQueryToTFRecord::record2Example)
-                    .fromQuery(options.getReadQuery())
-                    .withCoder(ByteArrayCoder.of())
-                    .withoutValidation()
-                    .usingStandardSql()
-                    .withMethod(
-                        BigQueryIO.TypedRead.Method.DIRECT_READ) // Enable BigQuery Storage API!!
-                )
-            .apply("ReshuffleResults", Reshuffle.viaRandomKey());
+    pipeline
+        .apply(
+            "RecordToExample",
+            BigQueryIO.read(BigQueryToTFRecord::record2Example)
+                .fromQuery(options.getReadQuery())
+                .withCoder(ByteArrayCoder.of())
+                .withoutValidation()
+                .usingStandardSql()
+                .withMethod(BigQueryIO.TypedRead.Method.DIRECT_READ) // Enable BigQuery Storage API
+        ).apply("ReshuffleResults", Reshuffle.viaRandomKey());
 
-    PCollectionList<byte[]> partitionedExamples =
-        applyTrainTestValSplit(
+    PCollectionList<byte[]> partitionedExamples = applyTrainTestValSplit(
             bigQueryToExamples,
             options.getTrainingPercentage(),
             options.getTestingPercentage(),
-            options.getValidationPercentage());
+            options.getValidationPercentage(),
+            rand);
 
-    partitionedExamples
-        .get(0)
-        .apply(
+    partitionedExamples.get(0).apply(
             "WriteTFTrainingRecord",
             FileIO.<byte[]>write()
                 .via(TFRecordIO.sink())
-                .to(options.getTrainingOutputPrefix())
+                .to(ValueProvider.NestedValueProvider.of(
+                    options.getOutputDirectory(),
+                    dir -> concatURI(dir, TRAIN)))
                 .withNumShards(0)
                 .withSuffix(options.getOutputSuffix()));
 
-    partitionedExamples
-        .get(1)
-        .apply(
+    partitionedExamples.get(1).apply(
             "WriteTFTestingRecord",
             FileIO.<byte[]>write()
                 .via(TFRecordIO.sink())
-                .to(options.getTestingOutputPrefix())
+                .to(ValueProvider.NestedValueProvider.of(
+                    options.getOutputDirectory(),
+                    dir -> concatURI(dir, TEST)))
                 .withNumShards(0)
                 .withSuffix(options.getOutputSuffix()));
 
-    partitionedExamples
-        .get(2)
-        .apply(
+    partitionedExamples.get(2).apply(
             "WriteTFValidationRecord",
             FileIO.<byte[]>write()
                 .via(TFRecordIO.sink())
-                .to(options.getValidationOutputPrefix())
+                .to(ValueProvider.NestedValueProvider.of(
+                    options.getOutputDirectory(),
+                    dir -> concatURI(dir, VAL)))
                 .withNumShards(0)
                 .withSuffix(options.getOutputSuffix()));
 
@@ -265,25 +283,12 @@ public class BigQueryToTFRecord {
   }
 
   /** Define command line arguments. */
-  public interface Options extends BigQueryReadOptions {
+  public interface Options
+      extends BigQueryReadOptions {
 
-    @Description("The training output prefix for TFRecord Files")
-    @Default.String("training/")
-    ValueProvider<String> getTrainingOutputPrefix();
-
-    void setTrainingOutputPrefix(ValueProvider<String> trainingOutputPrefix);
-
-    @Description("The testing output prefix for TFRecord Files")
-    @Default.String("testing/")
-    ValueProvider<String> getTestingOutputPrefix();
-
-    void setTestingOutputPrefix(ValueProvider<String> testingOutputPrefix);
-
-    @Description("The validation output prefix for TFRecord Files")
-    @Default.String("validation/")
-    ValueProvider<String> getValidationOutputPrefix();
-
-    void setValidationOutputPrefix(ValueProvider<String> validationOutputPrefix);
+    @Description("The GCS directory to store output TFRecord files.")
+    ValueProvider<String> getOutputDirectory();
+    void setOutputDirectory(ValueProvider<String> outputDirectory);
 
     @Description("The output suffix for TFRecord Files")
     @Default.String(".tfrecord")
