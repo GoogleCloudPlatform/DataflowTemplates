@@ -21,7 +21,6 @@ import static org.junit.Assert.assertThat;
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
-import com.google.common.collect.ImmutableList;
 import java.util.List;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.PAssert;
@@ -29,6 +28,7 @@ import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.vendor.guava.v20_0.com.google.common.collect.ImmutableList;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;

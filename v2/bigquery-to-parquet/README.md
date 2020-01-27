@@ -1,6 +1,6 @@
 # BigQuery to Google Cloud Storage Dataflow Template
 
-The [BigQueryToGCS](src/main/java/com/google/cloud/teleport/v2/templates/BigQueryToParquet.java) pipeline exports data
+The [BigQueryToParquet](src/main/java/com/google/cloud/teleport/v2/templates/BigQueryToParquet.java) pipeline exports data
 from a BigQuery table into one or more Parquet files in Google Cloud Storage. 
 
 ## Getting Started
@@ -69,7 +69,7 @@ Template can be executed using the following API call:
 ```sh
 API_ROOT_URL="https://dataflow.googleapis.com"
 TEMPLATES_LAUNCH_API="${API_ROOT_URL}/v1b3/projects/${PROJECT}/templates:launch"
-JOB_NAME="bigquery-to-gcs-`date +%Y%m%d-%H%M%S-%N`"
+JOB_NAME="bigquery-to-parquet-`date +%Y%m%d-%H%M%S-%N`"
 time curl -X POST -H "Content-Type: application/json"     \
      -H "Authorization: Bearer $(gcloud auth print-access-token)" \
      "${TEMPLATES_LAUNCH_API}"`

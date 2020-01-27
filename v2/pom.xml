@@ -461,8 +461,8 @@
                     </dependency>
                 </dependencies>
                 <configuration>
-                    <configLocation>/checkstyle/checkstyle.xml</configLocation>
-                    <suppressionsLocation>/checkstyle/suppressions.xml</suppressionsLocation>
+                    <configLocation>checkstyle/checkstyle.xml</configLocation>
+                    <suppressionsLocation>checkstyle/suppressions.xml</suppressionsLocation>
                     <consoleOutput>true</consoleOutput>
                     <failOnViolation>true</failOnViolation>
                     <includeResources>false</includeResources>
@@ -570,7 +570,7 @@
 
     <modules>
         <module>bigquery-to-elasticsearch</module>
-        <module>bigquery-to-gcs</module>
+        <module>bigquery-to-parquet</module>
         <module>common</module>
         <module>cdc-parent</module>
         <module>csv-to-elasticsearch</module>
@@ -578,6 +578,7 @@
         <module>kafka-to-bigquery</module>
         <module>kafka-to-gcs</module>
         <module>pubsub-to-elasticsearch</module>
+        <module>pubsub-to-mongodb</module>
     </modules>
 
 </project>
