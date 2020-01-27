@@ -321,7 +321,7 @@ public class BigQueryConverters {
    * @param json The JSON string to parse.
    * @return The parsed {@link TableRow} object.
    */
-  private static TableRow convertJsonToTableRow(String json) {
+  public static TableRow convertJsonToTableRow(String json) {
     TableRow row;
     // Parse the JSON into a {@link TableRow} object.
     try (InputStream inputStream =
