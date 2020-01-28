@@ -74,6 +74,11 @@ import org.slf4j.LoggerFactory;
 public class BigQueryMappers {
 
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryMappers.class);
+  private static String projectId;
+
+  public BigQueryMappers(String projectId) {
+    this.projectId = projectId;
+  }
 
   /*** Section 1: Functions to build Mapper Class for each different required input ***/
   /* Build Static TableRow BigQuery Mapper */
@@ -243,7 +248,7 @@ public class BigQueryMappers {
       if (this.bigquery == null) {
         this.bigquery =
             BigQueryOptions.newBuilder()
-                .setProjectId("alooma-pipeline-2019-05-22-1") //TODO should not be hardcoded
+                .setProjectId(projectId)
                 .build()
                 .getService();
       }
