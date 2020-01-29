@@ -21,7 +21,6 @@ import com.google.cloud.spanner.Type;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 
 /** Cloud Spanner column. */
@@ -53,7 +52,7 @@ public abstract class Column implements Serializable {
     if (columnOptions() == null) {
       return;
     }
-    String optionsString = columnOptions().stream().collect(Collectors.joining(","));
+    String optionsString = String.join(",", columnOptions());
     if (!optionsString.isEmpty()) {
       appendable.append(" OPTIONS (").append(optionsString).append(")");
     }

@@ -90,11 +90,11 @@ public abstract class Table implements Serializable {
     }
     if (includeIndexes) {
       appendable.append("\n");
-      appendable.append(indexes().stream().collect(Collectors.joining("\n")));
+      appendable.append(String.join("\n", indexes()));
     }
     if (includeForeignKeys) {
       appendable.append("\n");
-      appendable.append(foreignKeys().stream().collect(Collectors.joining("\n")));
+      appendable.append(String.join("\n", foreignKeys()));
     }
   }
 
