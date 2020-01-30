@@ -65,8 +65,9 @@ import org.junit.experimental.categories.Category;
  */
 @Category(IntegrationTest.class)
 public class CopyDbTest {
-
-  private final String instanceId = "import-export-test";
+  // Modify the following parameters to match your Cloud Spanner instance.
+  private final String projectId = "test-project";
+  private final String instanceId = "test-instance";
   private final String sourceDb = "copydb-source";
   private final String destinationDb = "copydb-dest";
   private final String host = "https://spanner.googleapis.com";
@@ -75,43 +76,64 @@ public class CopyDbTest {
   @Rule public final transient TestPipeline importPipeline = TestPipeline.create();
   @Rule public final transient TestPipeline comparePipeline = TestPipeline.create();
 
+  private Spanner client;
+  private DatabaseAdminClient databaseAdminClient;
+  private DatabaseClient dbClient;
+  private SpannerConfig sourceConfig;
+  private SpannerConfig destConfig;
+
   @Before
   public void setup() {
+    SpannerOptions spannerOptions =
+        SpannerOptions.newBuilder().setProjectId(projectId).setHost(host).build();
+    client = spannerOptions.getService();
+    databaseAdminClient = client.getDatabaseAdminClient();
+    dbClient = client.getDatabaseClient(DatabaseId.of(projectId, instanceId, sourceDb));
+    sourceConfig =
+        SpannerConfig.create()
+            .withProjectId(projectId)
+            .withInstanceId(instanceId)
+            .withDatabaseId(sourceDb)
+            .withHost(ValueProvider.StaticValueProvider.of(host));
+    destConfig =
+        SpannerConfig.create()
+            .withProjectId(projectId)
+            .withInstanceId(instanceId)
+            .withDatabaseId(destinationDb)
+            .withHost(ValueProvider.StaticValueProvider.of(host));
   }
 
-  private void createAndPopulate(Ddl ddl, int numBatches) throws Exception {
-    SpannerOptions spannerOptions = SpannerOptions.newBuilder().setHost(host).build();
-    Spanner client = spannerOptions.getService();
+  @After
+  public void teardown() {
+    dropDatabase(sourceDb);
+    dropDatabase(destinationDb);
+    client.close();
+  }
 
-    DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
+  private void dropDatabase(String dbName) {
     try {
-      databaseAdminClient.dropDatabase(instanceId, sourceDb);
+      databaseAdminClient.dropDatabase(instanceId, dbName);
     } catch (SpannerException e) {
       // Does not exist, ignore.
     }
+  }
 
+  private void createAndPopulate(Ddl ddl, int numBatches) throws Exception {
     try {
       ddl.prettyPrint(System.out);
     } catch (IOException e) {
       e.printStackTrace();
     }
 
+    dropDatabase(sourceDb);
     OperationFuture<Database, CreateDatabaseMetadata> op =
         databaseAdminClient.createDatabase(instanceId, sourceDb, ddl.statements());
     op.get();
 
-    try {
-      databaseAdminClient.dropDatabase(instanceId, destinationDb);
-    } catch (SpannerException e) {
-      // Does not exist, ignore.
-    }
-
+    dropDatabase(destinationDb);
     op = databaseAdminClient
         .createDatabase(instanceId, destinationDb, Collections.emptyList());
     op.get();
-
-    DatabaseClient dbClient = client
-        .getDatabaseClient(DatabaseId.of(spannerOptions.getProjectId(), instanceId, sourceDb));
 
     final Iterator<MutationGroup> mutations = new RandomInsertMutationGenerator(ddl).stream()
         .iterator();
@@ -131,11 +153,6 @@ public class CopyDbTest {
         }
       });
     }
-    client.close();
-  }
-
-  @After
-  public void teardown() {
   }
 
   @Test
@@ -206,10 +223,8 @@ public class CopyDbTest {
             .endTable()
             .build();
     createAndPopulate(ddl, 100);
+
     // Add empty tables.
-    SpannerOptions spannerOptions = SpannerOptions.newBuilder().setHost(host).build();
-    Spanner client = spannerOptions.getService();
-    DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
     Ddl emptyTables = Ddl.builder()
         .createTable("empty_one")
           .column("first").string().max().endColumn()
@@ -270,8 +285,7 @@ public class CopyDbTest {
 
   @Test
   public void emptyDb() throws Exception {
-        Ddl ddl = Ddl.builder()
-            .build();
+    Ddl ddl = Ddl.builder().build();
     createAndPopulate(ddl, 0);
     runTest();
   }
@@ -326,26 +340,23 @@ public class CopyDbTest {
         .of("jobid");
     ValueProvider.StaticValueProvider<String> source = ValueProvider.StaticValueProvider
         .of(tmpDir + "/jobid");
-    SpannerConfig sourceConfig = SpannerConfig.create().withInstanceId(instanceId)
-        .withDatabaseId(sourceDb).withHost(ValueProvider.StaticValueProvider.of(host));
+
     exportPipeline.apply("Export", new ExportTransform(sourceConfig, destination, jobId));
     PipelineResult exportResult = exportPipeline.run();
     exportResult.waitUntilFinish();
 
-    SpannerConfig copyConfig = SpannerConfig.create().withInstanceId(instanceId)
-        .withDatabaseId(destinationDb).withHost(ValueProvider.StaticValueProvider.of(host));
     importPipeline.apply(
         "Import",
         new ImportTransform(
-            copyConfig,
+            destConfig,
             source,
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();
 
-    PCollection<Long> mismatchCount = comparePipeline
-        .apply("Compare", new CompareDatabases(sourceConfig, copyConfig));
+    PCollection<Long> mismatchCount =
+        comparePipeline.apply("Compare", new CompareDatabases(sourceConfig, destConfig));
     PAssert.that(mismatchCount).satisfies((x) -> {
       assertEquals(Lists.newArrayList(x), Lists.newArrayList(0L));
       return null;
@@ -360,10 +371,7 @@ public class CopyDbTest {
   }
 
   private Ddl readDdl(String db) {
-    SpannerOptions spannerOptions = SpannerOptions.newBuilder().setHost(host).build();
-    Spanner client = spannerOptions.getService();
-    DatabaseClient dbClient = client
-        .getDatabaseClient(DatabaseId.of(spannerOptions.getProjectId(), instanceId, db));
+    DatabaseClient dbClient = client.getDatabaseClient(DatabaseId.of(projectId, instanceId, db));
     Ddl ddl;
     try (ReadOnlyTransaction ctx = dbClient.readOnlyTransaction()) {
       ddl = new InformationSchemaScanner(ctx).scan();
