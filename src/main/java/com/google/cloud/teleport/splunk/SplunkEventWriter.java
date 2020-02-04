@@ -107,21 +107,23 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
     // Either user supplied or default batchCount.
     if (batchCount == null) {
 
-      if (inputBatchCount() != null && inputBatchCount().isAccessible()) {
+      if (inputBatchCount() != null) {
         batchCount = inputBatchCount().get();
-      } else {
-        batchCount = DEFAULT_BATCH_COUNT;
       }
+
+      batchCount = MoreObjects.firstNonNull(batchCount, DEFAULT_BATCH_COUNT);
       LOG.info("Batch count set to: {}", batchCount);
     }
 
     // Either user supplied or default disableValidation.
     if (disableValidation == null) {
-      if (disableCertificateValidation() != null && disableCertificateValidation().isAccessible()) {
+
+      if (disableCertificateValidation() != null) {
         disableValidation = disableCertificateValidation().get();
-      } else {
-        disableValidation = DEFAULT_DISABLE_CERTIFICATE_VALIDATION;
       }
+
+      disableValidation =
+          MoreObjects.firstNonNull(disableValidation, DEFAULT_DISABLE_CERTIFICATE_VALIDATION);
       LOG.info("Disable certificate validation set to: {}", disableValidation);
     }
 

@@ -32,6 +32,7 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.vendor.guava.v20_0.com.google.common.base.MoreObjects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -284,11 +285,14 @@ public class SplunkIO {
         public void setup() {
 
           if (calculatedParallelism == null) {
-            if (specifiedParallelism != null && specifiedParallelism.isAccessible()) {
+
+            if (specifiedParallelism != null) {
               calculatedParallelism = specifiedParallelism.get();
-            } else {
-              calculatedParallelism = DEFAULT_PARALLELISM;
             }
+
+            calculatedParallelism =
+                MoreObjects.firstNonNull(calculatedParallelism, DEFAULT_PARALLELISM);
+
             LOG.info("Parallelism set to: {}", calculatedParallelism);
           }
         }
