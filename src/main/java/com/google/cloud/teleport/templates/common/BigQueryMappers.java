@@ -82,7 +82,7 @@ public class BigQueryMappers {
 
   /*** Section 1: Functions to build Mapper Class for each different required input ***/
   /* Build Static TableRow BigQuery Mapper */
-  public static PTransform<PCollection<TableRow>, PCollection<TableRow>>
+  public static PTransform<PCollection<TableRow>, PCollection<KV<TableId, TableRow>>>
           buildBigQueryTableMapper(ValueProvider<String> datasetProvider, ValueProvider<String> tableNameProvider) {
     return new BigQueryTableMapper(datasetProvider, tableNameProvider);
   }
@@ -102,7 +102,7 @@ public class BigQueryMappers {
   /*** Section 2: Extended Mapper Classes implemented for different input types ***/
   /* Dynamic TableRow BigQuery Mapper */
   public static class BigQueryTableMapper
-      extends BigQueryMapper<TableRow, TableRow> {
+      extends BigQueryMapper<TableRow, KV<TableId, TableRow>> {
 
     private ValueProvider<String> datasetProvider;
     private ValueProvider<String> tableNameProvider;
@@ -123,8 +123,11 @@ public class BigQueryMappers {
       return input;
     }
     @Override
-    public TableRow getOutputObject(TableRow input) {
-      return input;
+    public KV<TableId, TableRow> getOutputObject(TableRow input) {
+      TableId tableId = getTableId(input);
+      TableRow tableRow = getTableRow(input);
+
+      return KV.of(tableId, tableRow);
     }
     /* Return a HashMap with the Column->Column Type Mapping required from the source 
         Implementing getSchema will allow the mapper class to support your desired format
