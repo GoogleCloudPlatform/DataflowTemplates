@@ -69,7 +69,9 @@ class AddForeignKeysTransform extends PTransform<PCollection<Ddl>, PCollection<V
                 Ddl ddl = c.element();
                 DatabaseAdminClient databaseAdminClient = spannerAccessor.getDatabaseAdminClient();
                 List<String> foreignKeyStatements = ddl.addForeignKeyStatements();
-                LOG.info("FOREIGN KEYS: " + String.join("; ", foreignKeyStatements));
+                if (!foreignKeyStatements.isEmpty()) {
+                  LOG.info("FOREIGN KEYS:\n", String.join(";\n", foreignKeyStatements));
+                }
                 if (!foreignKeyStatements.isEmpty()) {
                   // This just kicks off the foreign key creation, it does not wait for it to
                   // complete.
