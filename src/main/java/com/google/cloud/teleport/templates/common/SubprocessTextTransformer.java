@@ -19,41 +19,30 @@ package com.google.cloud.teleport.templates.common;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
-import com.google.cloud.teleport.values.FailsafeElement;
 import com.google.common.base.Strings;
-import com.google.common.base.Throwables;
 import com.google.common.io.CharStreams;
-import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.lang.ProcessBuilder.*;
-import java.lang.InterruptedException;
 import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.StringJoiner;
-import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
-import javax.script.Invocable;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.concurrent.TimeUnit;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.MatchResult.Metadata;
 import org.apache.beam.sdk.io.fs.MatchResult.Status;
-import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -61,16 +50,14 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PCollectionTuple;
-import org.apache.beam.sdk.values.TupleTag;
-import org.apache.beam.sdk.values.TupleTagList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 /** A Text UDF Transform Function. Note that this class's implementation is not threadsafe */
 @AutoValue
 public abstract class SubprocessTextTransformer {
+
+  public static final String DEFAULT_PYTHON_VERSION = "python3";
 
   private static final Logger LOG = LoggerFactory.getLogger(SubprocessTextTransformer.class);
 
@@ -191,14 +178,22 @@ public abstract class SubprocessTextTransformer {
       // Creating the Process to Upgrade Apt
       LOG.info("Updating apt-get");
       // installRuntime = new ProcessBuilder().command("apt-get", "update").start();
-      installRuntime = new ProcessBuilder().command("flock", "-xn", "/tmp/apt.upgrade.lock", "apt-get", "update").start();
+      installRuntime =
+          new ProcessBuilder()
+              .command("flock", "-xn", "/tmp/apt.upgrade.lock", "apt-get", "update")
+              .start();
       installRuntime.waitFor(120L, TimeUnit.SECONDS);
       installRuntime.destroy();
 
       // Creating the Process to Install Python(3)
       LOG.info("Installing or Upgrading Python");
-      // installRuntime = new ProcessBuilder().command("apt-get", "upgrade", pythonVersion, "-y").start();
-      installRuntime = new ProcessBuilder().command("flock", "-xn", "/tmp/apt.python.lock", "apt-get", "upgrade", pythonVersion, "-y").start();
+      // installRuntime = new ProcessBuilder().command("apt-get", "upgrade", pythonVersion,
+      // "-y").start();
+      installRuntime =
+          new ProcessBuilder()
+              .command(
+                  "flock", "-xn", "/tmp/apt.python.lock", "apt-get", "upgrade", pythonVersion, "-y")
+              .start();
       installRuntime.waitFor(120L, TimeUnit.SECONDS);
       installRuntime.destroy();
 
@@ -368,6 +363,14 @@ public abstract class SubprocessTextTransformer {
       return new AutoValue_SubprocessTextTransformer_TransformTextViaSubprocess.Builder();
     }
 
+    private String getPythonVersion() {
+      if (runtimeVersion().isAccessible() && runtimeVersion().get() != null) {
+        return runtimeVersion().get();
+      } else {
+        return DEFAULT_PYTHON_VERSION;
+      }
+    }
+
     @Override
     public PCollection<String> expand(PCollection<String> strings) {
       return strings.apply(
@@ -376,14 +379,26 @@ public abstract class SubprocessTextTransformer {
                 private SubprocessRuntime subprocessRuntime;
 
                 @Setup
-                public void setup() throws IOException, NoSuchMethodException, InterruptedException {
+                public void setup()
+                    throws IOException, NoSuchMethodException, InterruptedException {
+                  String runtimeVersion = getPythonVersion();
+
                   if (fileSystemPath() != null && functionName() != null) {
                     LOG.info("getting runtime!");
                     subprocessRuntime =
-                        getSubprocessRuntime(fileSystemPath().get(), functionName().get());
+                        getSubprocessRuntime(
+                            fileSystemPath().get(), functionName().get(), runtimeVersion);
+                    LOG.info("Build Python Env for version {}", runtimeVersion);
+
+                    subprocessRuntime.buildPythonExecutable(runtimeVersion);
+                  } else {
+                    LOG.warn(
+                        "Not setting up a Python Mapper runtime, because "
+                            + "fileSystemPath={} and functionName={}",
+                        fileSystemPath(),
+                        functionName());
+                    return;
                   }
-                  LOG.info("Build Python Env");
-                  subprocessRuntime.buildPythonExecutable(runtimeVersion().get()); // TODO PYTHONVERSION
                 }
 
                 @ProcessElement
@@ -393,16 +408,17 @@ public abstract class SubprocessTextTransformer {
                   List<String> results = new ArrayList<>();
                   String jsonString = c.element();
 
-                  // LOG.info("Logging JSON String");
-                  // LOG.info(jsonString);
+                  //LOG.info("Logging JSON String");
+                  //LOG.info(jsonString);
 
                   if (subprocessRuntime != null) {
                     Integer retries = 5;
                     results = subprocessRuntime.invoke(jsonString, retries);
                   }
+                  // TODO: Handle the lack of Python Mapper runtime
 
                   LOG.info(String.format("Python Load: %d in Batch", results.size()));
-                  for (String event: results) {
+                  for (String event : results) {
                     // LOG.info("Logging Python Results");
                     // LOG.info(event);
                     c.output(event);
@@ -501,15 +517,14 @@ public abstract class SubprocessTextTransformer {
    * @return The {@link JavascriptRuntime} instance.
    */
   private static SubprocessRuntime getSubprocessRuntime(
-      String fileSystemPath, String functionName) {
+      String fileSystemPath, String functionName, String pythonVersion) {
     SubprocessRuntime runtime = null;
-    String runtimeVersion = "python3";
 
     if (!Strings.isNullOrEmpty(fileSystemPath) && !Strings.isNullOrEmpty(functionName)) {
       runtime =
           SubprocessRuntime.newBuilder()
               .setFunctionName(functionName)
-              .setRuntimeVersion(runtimeVersion)
+              .setRuntimeVersion(pythonVersion)
               .setFileSystemPath(fileSystemPath)
               .build();
     }

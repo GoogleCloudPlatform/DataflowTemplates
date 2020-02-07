@@ -16,7 +16,6 @@
 
 package com.google.cloud.teleport.templates.common;
 
-import com.google.cloud.teleport.templates.common.BigQueryConverters;
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.bigquery.BigQuery;
@@ -37,14 +36,12 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.avro.generic.GenericRecord;
 // import org.apache.avro.Schema; // if needed we need to figure out the duplicate here
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PInput;
-import org.apache.beam.sdk.values.POutput;
-import org.apache.beam.sdk.options.ValueProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,19 +81,20 @@ public class BigQueryMappers {
   /* Build Static TableRow BigQuery Mapper */
   public static PTransform<PCollection<TableRow>, PCollection<KV<TableId, TableRow>>>
           buildBigQueryTableMapper(ValueProvider<String> datasetProvider, ValueProvider<String> tableNameProvider) {
-    return new BigQueryTableMapper(datasetProvider, tableNameProvider);
+    return new BigQueryTableMapper(datasetProvider, tableNameProvider, projectId);
   }
 
   /* Build Dynamic TableRow BigQuery Mapper */
   public static PTransform<PCollection<KV<TableId, TableRow>>, PCollection<KV<TableId, TableRow>>>
           buildBigQueryDynamicTableMapper() {
-    return new BigQueryDynamicTableMapper();
+    return new BigQueryDynamicTableMapper(projectId);
   }
 
   /* Build Static GenericRecord BigQuery Mapper */
   public static PTransform<PCollection<GenericRecord>, PCollection<KV<TableId, TableRow>>>
-          buildBigQueryGenericRecordMapper(ValueProvider<String> datasetProvider, ValueProvider<String> tableNameProvider) {
-    return new BigQueryGenericRecordMapper(datasetProvider, tableNameProvider);
+      buildBigQueryGenericRecordMapper(
+          ValueProvider<String> datasetProvider, ValueProvider<String> tableNameProvider) {
+    return new BigQueryGenericRecordMapper(datasetProvider, tableNameProvider, projectId);
   }
 
   /*** Section 2: Extended Mapper Classes implemented for different input types ***/
@@ -107,8 +105,11 @@ public class BigQueryMappers {
     private ValueProvider<String> datasetProvider;
     private ValueProvider<String> tableNameProvider;
 
-    public BigQueryTableMapper(ValueProvider<String> datasetProvider, ValueProvider<String> tableNameProvider) {
-      super();
+    public BigQueryTableMapper(
+        ValueProvider<String> datasetProvider,
+        ValueProvider<String> tableNameProvider,
+        String projectId) {
+      super(projectId);
 
       this.datasetProvider = datasetProvider;
       this.tableNameProvider = tableNameProvider;
@@ -142,6 +143,10 @@ public class BigQueryMappers {
   public static class BigQueryDynamicTableMapper
       extends BigQueryMapper<KV<TableId, TableRow>, KV<TableId, TableRow>> {
 
+    private BigQueryDynamicTableMapper(String projectId) {
+      super(projectId);
+    }
+
     @Override
     public TableId getTableId(KV<TableId, TableRow> input) {
       return input.getKey();
@@ -170,8 +175,11 @@ public class BigQueryMappers {
     private ValueProvider<String> datasetProvider;
     private ValueProvider<String> tableNameProvider;
 
-    public BigQueryGenericRecordMapper(ValueProvider<String> datasetProvider, ValueProvider<String> tableNameProvider) {
-      super();
+    public BigQueryGenericRecordMapper(
+        ValueProvider<String> datasetProvider,
+        ValueProvider<String> tableNameProvider,
+        String projectId) {
+      super(projectId);
 
       this.datasetProvider = datasetProvider;
       this.tableNameProvider = tableNameProvider;
@@ -209,7 +217,11 @@ public class BigQueryMappers {
     private BigQuery bigquery;
     private Map<String, Table> tables = new HashMap<String, Table>();
 
-    public BigQueryMapper() {}
+    private final String projectId;
+
+    public BigQueryMapper(String projectId) {
+      this.projectId = projectId;
+    }
 
     public TableId getTableId(InputT input) {return null;}
     public TableRow getTableRow(InputT input) {return null;}

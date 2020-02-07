@@ -16,18 +16,15 @@
 
 package com.google.cloud.teleport.templates.common;
 
-import java.util.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import com.google.gson.Gson;
-import org.apache.beam.sdk.coders.Coder;
+import java.util.*;
 import org.apache.beam.sdk.coders.AtomicCoder;
-import org.apache.beam.sdk.coders.StringUtf8Coder;
-import org.apache.beam.sdk.coders.CoderException;
+import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderRegistry;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.transforms.Combine;
-import org.apache.beam.sdk.transforms.Combine.CombineFn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

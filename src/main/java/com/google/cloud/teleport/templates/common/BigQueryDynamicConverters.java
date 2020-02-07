@@ -17,41 +17,42 @@
 
 package com.google.cloud.teleport.templates.common;
 
-import java.util.Map;
-import java.util.List;
-import java.util.ArrayList;
-
-import com.google.cloud.bigquery.TableId;
-
 import com.google.api.services.bigquery.model.TableCell;
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
-
+import com.google.cloud.bigquery.TableId;
+import java.io.*;
+import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import org.apache.beam.sdk.io.gcp.bigquery.DynamicDestinations;
 import org.apache.beam.sdk.io.gcp.bigquery.TableDestination;
 import org.apache.beam.sdk.options.ValueProvider;
-import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.SimpleFunction;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.ValueInSingleWindow;
-import org.apache.beam.sdk.values.KV;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.*; 
-import java.util.*;
 
 public class BigQueryDynamicConverters {
 
     private static final Logger LOG = LoggerFactory.getLogger(BigQueryDynamicConverters.class);
 
-    /** Section 1: Transform PCollection<TableRow> into PCollection<KV<TableId, TableRow>> with table state added */
-    public static PTransform<PCollection<TableRow>, PCollection<KV<TableId, TableRow>>> 
-            extractTableRowDestination(ValueProvider<String> datasetField, ValueProvider<String> tableField) {
-        return new ExtractTableRowDestination(datasetField, tableField);
+  /**
+   * Section 1: Transform PCollection<TableRow> into PCollection<KV<TableId, TableRow>> with table
+   * state added
+   */
+  public static PTransform<PCollection<TableRow>, PCollection<KV<TableId, TableRow>>>
+      extractTableRowDestination(
+          ValueProvider<String> datasetField,
+          ValueProvider<String> datasetName,
+          ValueProvider<String> tableField) {
+    return new ExtractTableRowDestination(datasetField, datasetName, tableField);
     }
 
     /** Converts UTF8 encoded Json records to TableRow records. */
@@ -59,11 +60,16 @@ public class BigQueryDynamicConverters {
         extends PTransform<PCollection<TableRow>, PCollection<KV<TableId, TableRow>>> {
 
         private ValueProvider<String> datasetField;
+    private ValueProvider<String> datasetName;
         private ValueProvider<String> tableField;
 
-        // Instead of the above we will assume the fields to use are hardcoded
-        public ExtractTableRowDestination(ValueProvider<String> datasetField, ValueProvider<String> tableField) {
+    // Instead of the above we will assume the fields to use are hardcoded
+    public ExtractTableRowDestination(
+        ValueProvider<String> datasetField,
+        ValueProvider<String> datasetName,
+        ValueProvider<String> tableField) {
             this.datasetField = datasetField;
+      this.datasetName = datasetName;
             this.tableField = tableField;
         }
 
@@ -84,8 +90,14 @@ public class BigQueryDynamicConverters {
         }
 
         public TableId getDestinationTableId(TableRow element) {
-            // Grab the Dataset and Table Name to use
-            String dataset = element.get(datasetField.get()).toString();
+      // Grab the Dataset and Table Name to use
+      // TODO: CHECK THAT ONLY DATASET_NAME OR DATASET_FIELD HAVE BEEN PROVIDED.
+      String dataset;
+      if (datasetName.isAccessible() && datasetName.get() != null && !datasetName.get().isEmpty()) {
+        dataset = datasetName.get();
+      } else {
+        dataset = element.get(datasetField.get()).toString();
+      }
             String table = element.get(tableField.get()).toString();
 
             TableId tableId = TableId.of(dataset, table);
