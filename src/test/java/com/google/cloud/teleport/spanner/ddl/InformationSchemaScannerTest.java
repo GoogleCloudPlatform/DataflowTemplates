@@ -24,69 +24,61 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.text.IsEqualIgnoringWhiteSpace.equalToIgnoringWhiteSpace;
 import static org.junit.Assert.assertThat;
 
-import com.google.api.gax.longrunning.OperationFuture;
 import com.google.cloud.spanner.BatchClient;
 import com.google.cloud.spanner.BatchReadOnlyTransaction;
-import com.google.cloud.spanner.Database;
-import com.google.cloud.spanner.DatabaseAdminClient;
-import com.google.cloud.spanner.DatabaseId;
-import com.google.cloud.spanner.Spanner;
-import com.google.cloud.spanner.SpannerException;
-import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.spanner.Type;
 import com.google.cloud.teleport.spanner.IntegrationTest;
+import com.google.cloud.teleport.spanner.SpannerServerResource;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
-import com.google.spanner.admin.database.v1.CreateDatabaseMetadata;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 /**
- * Test coverage for {@link InformationSchemaScanner}.
- * This requires an active GCP project with a Spanner instance.
- * Hence this test can only be run locally with a project set up using 'gcloud config'.
+ * Test coverage for {@link InformationSchemaScanner}. This requires an active GCP project with a
+ * Spanner instance. Hence this test can only be run locally with a project set up using 'gcloud
+ * config'.
  */
 @Category(IntegrationTest.class)
 public class InformationSchemaScannerTest {
 
-  private final String instanceId = "import-export-test";
   private final String dbId = "informationschemascannertest";
-  private final String host = "https://spanner.googleapis.com";
 
-  private SpannerOptions spannerOptions;
-  private Spanner client;
+  @Rule public final SpannerServerResource spannerServer = new SpannerServerResource();
 
   @Before
   public void setup() {
-    spannerOptions = SpannerOptions.newBuilder().setHost(host).build();
-    client = spannerOptions.getService();
+    // Just to make sure an old database is not left over.
+    spannerServer.dropDatabase(dbId);
+  }
 
-    deleteDb();
+  @After
+  public void tearDown() {
+    spannerServer.dropDatabase(dbId);
+  }
+
+  private Ddl getDatabaseDdl() {
+    BatchClient batchClient = spannerServer.getBatchClient(dbId);
+    BatchReadOnlyTransaction batchTx =
+        batchClient.batchReadOnlyTransaction(TimestampBound.strong());
+    InformationSchemaScanner scanner = new InformationSchemaScanner(batchTx);
+    return scanner.scan();
   }
 
   @Test
-  public void testEmpty() throws Exception {
-    DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
-
-    OperationFuture<Database, CreateDatabaseMetadata> op =
-        databaseAdminClient.createDatabase(instanceId, dbId, Collections.emptyList());
-    op.get();
-
-    InformationSchemaScanner scanner = new InformationSchemaScanner(getBatchTx());
-
-    Ddl ddl = scanner.scan();
-
+  public void emptyDatabase() throws Exception {
+    spannerServer.createDatabase(dbId, Collections.emptyList());
+    Ddl ddl = getDatabaseDdl();
     assertThat(ddl, equalTo(Ddl.builder().build()));
   }
 
   @Test
-  public void testAllTypes() throws Exception {
+  public void tableWithAllTypes() throws Exception {
     String allTypes =
         "CREATE TABLE `alltypes` ("
             + " `first_name`                            STRING(MAX),"
@@ -108,15 +100,8 @@ public class InformationSchemaScannerTest {
             + " `arr_date_field`                        ARRAY<DATE>,"
             + " ) PRIMARY KEY (`first_name` ASC, `last_name` DESC, `id` ASC)";
 
-    DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
-
-    OperationFuture<Database, CreateDatabaseMetadata> op =
-        databaseAdminClient.createDatabase(instanceId, dbId, Collections.singleton(allTypes));
-    op.get();
-
-    InformationSchemaScanner scanner = new InformationSchemaScanner(getBatchTx());
-
-    Ddl ddl = scanner.scan();
+    spannerServer.createDatabase(dbId, Collections.singletonList(allTypes));
+    Ddl ddl = getDatabaseDdl();
 
     assertThat(ddl.allTables(), hasSize(1));
     assertThat(ddl.table("alltypes"), notNullValue());
@@ -172,8 +157,8 @@ public class InformationSchemaScannerTest {
 
   @Test
   public void interleavedIn() throws Exception {
-    List<String> statements =
-        Arrays.asList(
+    ImmutableList<String> statements =
+        ImmutableList.of(
             " CREATE TABLE lEVEl0 ("
                 + " id0                                   INT64 NOT NULL,"
                 + " val0                                  STRING(MAX),"
@@ -197,15 +182,8 @@ public class InformationSchemaScannerTest {
                 + " ) PRIMARY KEY (id0 ASC, id1 ASC, id2_1 ASC),"
                 + " INTERLEAVE IN PARENT level1 ON DELETE CASCADE");
 
-    DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
-
-    OperationFuture<Database, CreateDatabaseMetadata> op =
-        databaseAdminClient.createDatabase(instanceId, dbId, statements);
-    op.get();
-
-    InformationSchemaScanner scanner = new InformationSchemaScanner(getBatchTx());
-
-    Ddl ddl = scanner.scan();
+    spannerServer.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
 
     assertThat(ddl.allTables(), hasSize(4));
     HashMultimap<Integer, String> levels = ddl.perLevelView();
@@ -235,15 +213,8 @@ public class InformationSchemaScannerTest {
             + " `NULL`                                  INT64,"
             + " ) PRIMARY KEY (`NULL` ASC)";
 
-    DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
-
-    OperationFuture<Database, CreateDatabaseMetadata> op =
-        databaseAdminClient.createDatabase(instanceId, dbId, Collections.singleton(statement));
-    op.get();
-
-    InformationSchemaScanner scanner = new InformationSchemaScanner(getBatchTx());
-
-    Ddl ddl = scanner.scan();
+    spannerServer.createDatabase(dbId, Collections.singletonList(statement));
+    Ddl ddl = getDatabaseDdl();
 
     assertThat(ddl.allTables(), hasSize(1));
 
@@ -259,35 +230,28 @@ public class InformationSchemaScannerTest {
   @Test
   public void indexes() throws Exception {
     // Prefix indexes to ensure ordering.
-    List<String> statements = Arrays.asList(
-        "CREATE TABLE `Users` ("
-            + " `id`                                    INT64 NOT NULL,"
-            + " `first_name`                            STRING(10),"
-            + " `last_name`                             STRING(MAX),"
-            + " `age`                                   INT64,"
-            + " ) PRIMARY KEY (`id` ASC)",
-        " CREATE UNIQUE NULL_FILTERED INDEX `a_last_name_idx` ON "
-            + " `Users`(`last_name` ASC) STORING (`first_name`)",
-        " CREATE INDEX `b_age_idx` ON `Users`(`age` DESC)",
-        " CREATE UNIQUE INDEX `c_first_name_idx` ON `Users`(`first_name` ASC)"
-    );
+    ImmutableList<String> statements =
+        ImmutableList.of(
+            "CREATE TABLE `Users` ("
+                + " `id`                                    INT64 NOT NULL,"
+                + " `first_name`                            STRING(10),"
+                + " `last_name`                             STRING(MAX),"
+                + " `age`                                   INT64,"
+                + " ) PRIMARY KEY (`id` ASC)",
+            " CREATE UNIQUE NULL_FILTERED INDEX `a_last_name_idx` ON "
+                + " `Users`(`last_name` ASC) STORING (`first_name`)",
+            " CREATE INDEX `b_age_idx` ON `Users`(`age` DESC)",
+            " CREATE UNIQUE INDEX `c_first_name_idx` ON `Users`(`first_name` ASC)");
 
-    DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
-
-    OperationFuture<Database, CreateDatabaseMetadata> op =
-        databaseAdminClient.createDatabase(instanceId, dbId, statements);
-    op.get();
-
-    InformationSchemaScanner scanner = new InformationSchemaScanner(getBatchTx());
-
-    Ddl ddl = scanner.scan();
+    spannerServer.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToIgnoringWhiteSpace(String.join("", statements)));
   }
 
   @Test
   public void foreignKeys() throws Exception {
-    List<String> statements =
-        Arrays.asList(
+    ImmutableList<String> statements =
+        ImmutableList.of(
             "CREATE TABLE `Ref` ("
                 + " `id1`                               INT64 NOT NULL,"
                 + " `id2`                               INT64 NOT NULL,"
@@ -300,15 +264,8 @@ public class InformationSchemaScannerTest {
             " ALTER TABLE `Tab` ADD CONSTRAINT `fk` FOREIGN KEY (`id1`, `id2`)"
                 + " REFERENCES `Ref` (`id2`, `id1`)");
 
-    DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
-
-    OperationFuture<Database, CreateDatabaseMetadata> op =
-        databaseAdminClient.createDatabase(instanceId, dbId, statements);
-    op.get();
-
-    InformationSchemaScanner scanner = new InformationSchemaScanner(getBatchTx());
-
-    Ddl ddl = scanner.scan();
+    spannerServer.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToIgnoringWhiteSpace(String.join("", statements)));
   }
 
@@ -321,35 +278,8 @@ public class InformationSchemaScannerTest {
             + " OPTIONS (allow_commit_timestamp=TRUE),"
             + " ) PRIMARY KEY (`id` ASC)";
 
-    DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
-
-    OperationFuture<Database, CreateDatabaseMetadata> op =
-        databaseAdminClient.createDatabase(instanceId, dbId, Collections.singleton(statement));
-    op.get();
-
-    InformationSchemaScanner scanner = new InformationSchemaScanner(getBatchTx());
-
-    Ddl ddl = scanner.scan();
+    spannerServer.createDatabase(dbId, Collections.singletonList(statement));
+    Ddl ddl = getDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToIgnoringWhiteSpace(statement));
-  }
-
-  @After
-  public void tearDown() {
-    deleteDb();
-  }
-
-  private void deleteDb() {
-    DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
-    try {
-      databaseAdminClient.dropDatabase(instanceId, dbId);
-    } catch (SpannerException e) {
-      // Does not exist, ignore.
-    }
-  }
-
-  private BatchReadOnlyTransaction getBatchTx() {
-    BatchClient batchClient =
-        client.getBatchClient(DatabaseId.of(spannerOptions.getProjectId(), instanceId, dbId));
-    return batchClient.batchReadOnlyTransaction(TimestampBound.strong());
   }
 }
