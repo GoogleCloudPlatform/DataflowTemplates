@@ -1,10 +1,13 @@
 # Dataflow CDC Example
 
 This directory contains components for a Change-data Capture (CDC) solution to
-capture data from an MySQL database, and sync it into BigQuery. To implement
-the CDC solution in this repository:
+capture data from an MySQL database, and sync it into BigQuery. The solution
+relies on Cloud Dataflow, and [Debezium](https://debezium.io/), and excellent
+open source project for change data capture.
 
-1. Deploy a Debezium embedded connector for MySQL
+To implement the CDC solution in this repository:
+
+1. Deploy a [Debezium](https://debezium.io/) embedded connector for MySQL
 2. Start a Dataflow pipeline that syncs MySQL and BigQuery tables
 
 The embedded connector connects to MySQL, and tracks the binary change
