@@ -41,6 +41,11 @@ public class ExportPipeline {
 
     void setDatabaseId(ValueProvider<String> value);
 
+    @Description("GCP Project Id of where the Spanner table lives.")
+    ValueProvider<String> getSpannerProjectId();
+
+    void setSpannerProjectId(ValueProvider<String> value);
+
     @Description("Output directory in GCS")
     ValueProvider<String> getOutputDir();
 
@@ -80,6 +85,7 @@ public class ExportPipeline {
     SpannerConfig spannerConfig =
         SpannerConfig.create()
             .withHost(options.getSpannerHost())
+            .withProjectId(options.getSpannerProjectId())
             .withInstanceId(options.getInstanceId())
             .withDatabaseId(options.getDatabaseId());
     p.begin()

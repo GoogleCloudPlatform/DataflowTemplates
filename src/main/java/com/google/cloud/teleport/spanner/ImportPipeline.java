@@ -42,6 +42,11 @@ public class ImportPipeline {
 
     void setDatabaseId(ValueProvider<String> value);
 
+    @Description("GCP Project Id of where the Spanner table lives.")
+    ValueProvider<String> getSpannerProjectId();
+
+    void setSpannerProjectId(ValueProvider<String> value);
+
     @Description("Input directory")
     ValueProvider<String> getInputDir();
 
@@ -87,6 +92,7 @@ public class ImportPipeline {
     SpannerConfig spannerConfig =
         SpannerConfig.create()
             .withHost(options.getSpannerHost())
+            .withProjectId(options.getSpannerProjectId())
             .withInstanceId(options.getInstanceId())
             .withDatabaseId(options.getDatabaseId());
 
