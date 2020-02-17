@@ -66,6 +66,7 @@ public class BigQueryMapper<InputT, OutputT>
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryMapper.class);
   private BigQuery bigquery;
   private Map<String, Table> tables = new HashMap<String, Table>();
+  private Map<String, LegacySQLTypeName> defaultSchema;
 
   private final String projectId;
 
@@ -78,9 +79,32 @@ public class BigQueryMapper<InputT, OutputT>
   public OutputT getOutputObject(InputT input) {return null;}
 
   /* Return a HashMap with the Column->Column Type Mapping required from the source 
-      Implementing getSchema will allow the mapper class to support your desired format
+      Implementing getInputSchema will allow the mapper class to support your desired format
   */
-  public Map<String, LegacySQLTypeName> getInputSchema(InputT input) {return null;}
+  public Map<String, LegacySQLTypeName> getInputSchema(InputT input) {
+    return new HashMap<String, LegacySQLTypeName>();
+  }
+
+  public String getProjectId() {
+    return this.projectId;
+  }
+
+  public void withDefaultSchema(Map<String, LegacySQLTypeName> defaultSchema) {
+    this.defaultSchema = defaultSchema;
+  }
+
+  /* Return the combination of any schema returned via
+      implementing getInputSchema (for complex and dynamic cases)
+      and submitting a static default schema.
+  */
+  private Map<String, LegacySQLTypeName> getObjectSchema(InputT input) {
+    Map<String, LegacySQLTypeName> inputSchema = getInputSchema(input);
+    if (this.defaultSchema != null) {
+      inputSchema.putAll(this.defaultSchema);
+    }
+
+    return inputSchema;
+  }
 
   @Override
   public PCollection<OutputT> expand(PCollection<InputT> tableKVPCollection) {
@@ -98,7 +122,7 @@ public class BigQueryMapper<InputT, OutputT>
                 */
                 TableId tableId = getTableId(input);
                 TableRow row = getTableRow(input);
-                Map<String, LegacySQLTypeName> inputSchema = getInputSchema(input);
+                Map<String, LegacySQLTypeName> inputSchema = getObjectSchema(input);
                 // TODO the Dynamic converter needs to use the tableId object rather than a string
 
                 updateTableIfRequired(tableId, row, inputSchema);
