@@ -89,8 +89,9 @@ public class BigQueryMapper<InputT, OutputT>
     return this.projectId;
   }
 
-  public void withDefaultSchema(Map<String, LegacySQLTypeName> defaultSchema) {
+  public BigQueryMapper<InputT, OutputT> withDefaultSchema(Map<String, LegacySQLTypeName> defaultSchema) {
     this.defaultSchema = defaultSchema;
+    return this;
   }
 
   /* Return the combination of any schema returned via

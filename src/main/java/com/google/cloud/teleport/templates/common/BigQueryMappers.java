@@ -80,19 +80,20 @@ public class BigQueryMappers {
 
   /*** Section 1: Functions to build Mapper Class for each different required input ***/
   /* Build Static TableRow BigQuery Mapper */
-  public static PTransform<PCollection<TableRow>, PCollection<KV<TableId, TableRow>>>
+  public static BigQueryMapper<TableRow, KV<TableId, TableRow>>
           buildBigQueryTableMapper(ValueProvider<String> datasetProvider, ValueProvider<String> tableNameProvider) {
     return new BigQueryTableMapper(datasetProvider, tableNameProvider, projectId);
   }
 
   /* Build Dynamic TableRow BigQuery Mapper */
-  public static PTransform<PCollection<KV<TableId, TableRow>>, PCollection<KV<TableId, TableRow>>>
+  // public static PTransform<PCollection<KV<TableId, TableRow>>, PCollection<KV<TableId, TableRow>>>
+  public static BigQueryMapper<KV<TableId, TableRow>, KV<TableId, TableRow>>
           buildBigQueryDynamicTableMapper() {
     return new BigQueryDynamicTableMapper(projectId);
   }
 
   /* Build Static GenericRecord BigQuery Mapper */
-  public static PTransform<PCollection<GenericRecord>, PCollection<KV<TableId, TableRow>>>
+  public static BigQueryMapper<GenericRecord, KV<TableId, TableRow>>
       buildBigQueryGenericRecordMapper(
           ValueProvider<String> datasetProvider, ValueProvider<String> tableNameProvider) {
     return new BigQueryGenericRecordMapper(datasetProvider, tableNameProvider, projectId);
