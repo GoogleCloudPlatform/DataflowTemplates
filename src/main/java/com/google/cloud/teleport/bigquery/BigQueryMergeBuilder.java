@@ -128,9 +128,13 @@ public class BigQueryMergeBuilder {
         stagingTable, buildRetentionWhereClause(daysOfRetention));
   }
 
-  public static final String RETENTION_WHERE_TEMPLATE = String.join("",
-      "_PARTITIONTIME >= TIMESTAMP(DATE_ADD(CURRENT_DATE(), INTERVAL -%s DAY)) ",
-      "OR _PARTITIONTIME IS NULL");
+  // TODO: Deal with non-partitioned tables
+  public static final String RETENTION_WHERE_TEMPLATE =
+      String.join(
+          "",
+          "_PARTITIONTIME >= TIMESTAMP(DATE_ADD(CURRENT_DATE(), INTERVAL -%s DAY)) ",
+          "OR _PARTITIONTIME IS NULL");
+
   static String buildRetentionWhereClause(Integer daysOfRetention) {
     return String.format(RETENTION_WHERE_TEMPLATE, daysOfRetention);
   }

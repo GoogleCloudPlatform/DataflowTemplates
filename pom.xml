@@ -58,13 +58,13 @@
     <mock-server-netty.version>5.6.1</mock-server-netty.version>
     <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
     <slf4j.version>1.7.25</slf4j.version>
-    <joda.version>2.4</joda.version>
+    <joda.version>2.9.7</joda.version>
     <generated-grpc-beta.version>0.19.0</generated-grpc-beta.version>
     <spanner.version>1.6.0</spanner.version>
     <gax.version>1.38.0</gax.version>
     <bigtable.version>1.5.0</bigtable.version>
     <bigtable-beam-import.version>1.5.0</bigtable-beam-import.version>
-    <bigquery.version>v2-rev20181221-1.28.0</bigquery.version>
+    <bigquery.version>v2-rev20190917-1.30.3</bigquery.version>
     <protobuf-util.version>3.6.1</protobuf-util.version>
     <protobuf.version>3.6.0</protobuf.version>
     <findbugs.version>3.0.1</findbugs.version>
@@ -562,7 +562,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-shade-plugin</artifactId>
-          <version>3.0.0</version>
+          <version>3.2.2</version>
           <executions>
             <execution>
               <id>bundle-and-repackage</id>
@@ -669,6 +669,8 @@
         <configuration>
           <source>${java.version}</source>
           <target>${java.version}</target>
+          <parameters>true</parameters>
+          <testCompilerArgument>-parameters</testCompilerArgument>
         </configuration>
       </plugin>
 
