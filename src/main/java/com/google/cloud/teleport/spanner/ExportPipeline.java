@@ -63,6 +63,16 @@ public class ExportPipeline {
     boolean getWaitUntilFinish();
 
     void setWaitUntilFinish(boolean value);
+
+    @Description("If set, specifies the time when the snapshot must be taken."
+      + " String is in the RFC 3339 format in UTC time. "
+      + " Example - 1990-12-31T23:59:60Z"
+      + " Timestamp must be in the past and Maximum timestamp staleness applies."
+      + " https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness")
+    @Default.String(value = "")
+    ValueProvider<String> getSnapshotTime();
+
+    void setSnapshotTime(ValueProvider<String> value);
   }
 
   /**
@@ -85,7 +95,8 @@ public class ExportPipeline {
     p.begin()
         .apply(
             "Run Export",
-            new ExportTransform(spannerConfig, options.getOutputDir(), options.getTestJobId()));
+            new ExportTransform(spannerConfig, options.getOutputDir(), options.getTestJobId(),
+                                options.getSnapshotTime()));
     PipelineResult result = p.run();
     if (options.getWaitUntilFinish() &&
         /* Only if template location is null, there is a dataflow job to wait for. Else it's
