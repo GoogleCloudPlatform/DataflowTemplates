@@ -50,8 +50,10 @@ public class PubsubUtils {
       String gcpProject, String subscription) throws IOException {
     setupSubscriptionClient();
 
-    Subscription subscriptionEntity = subscriptionAdminClient.getSubscription(
-        ProjectSubscriptionName.of(gcpProject, subscription));
+    ProjectSubscriptionName subscriptionName = ProjectSubscriptionName.of(gcpProject, subscription);
+
+    LOG.info("Retrieving information about subscription {}", subscriptionName);
+    Subscription subscriptionEntity = subscriptionAdminClient.getSubscription(subscriptionName);
 
     ProjectTopicName result = ProjectTopicName.parse(subscriptionEntity.getTopic());
     LOG.info("ProjectTopicName is {} with topic {}", result, result.getTopic());

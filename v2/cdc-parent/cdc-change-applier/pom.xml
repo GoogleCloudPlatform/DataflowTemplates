@@ -23,6 +23,7 @@
     <version>0.1</version>
   </parent>
   <artifactId>cdc-change-applier</artifactId>
+  <version>0.1</version>
   <inceptionYear>2019</inceptionYear>
   <build>
     <plugins>

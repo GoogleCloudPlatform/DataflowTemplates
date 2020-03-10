@@ -23,6 +23,7 @@
     <version>0.1</version>
   </parent>
   <artifactId>cdc-common</artifactId>
+  <version>0.1</version>
   <packaging>jar</packaging>
   <inceptionYear>2019</inceptionYear>
   <licenses>

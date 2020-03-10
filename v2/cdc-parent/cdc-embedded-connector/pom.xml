@@ -23,6 +23,7 @@
     <version>0.1</version>
   </parent>
   <artifactId>cdc-embedded-connector</artifactId>
+  <version>0.1</version>
   <inceptionYear>2019</inceptionYear>
   <licenses>
     <license>
@@ -110,6 +111,11 @@
       <artifactId>google-cloud-pubsub</artifactId>
       <version>1.82.0</version>
       <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.api.grpc</groupId>
+      <artifactId>proto-google-common-protos</artifactId>
+      <version>1.17.0</version>
     </dependency>
     <dependency>
       <groupId>com.google.protobuf</groupId>

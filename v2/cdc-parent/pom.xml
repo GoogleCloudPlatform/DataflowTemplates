@@ -66,6 +66,7 @@
     <module>cdc-common</module>
     <module>cdc-change-applier</module>
     <module>cdc-embedded-connector</module>
+    <module>cdc-agg</module>
   </modules>
 
   <dependencyManagement>
@@ -78,6 +79,11 @@
       <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-core</artifactId>
+            <version>1.23.0</version>
+        </dependency>
+      <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-netty-shaded</artifactId>
             <version>1.23.0</version>
         </dependency>
       <dependency>
