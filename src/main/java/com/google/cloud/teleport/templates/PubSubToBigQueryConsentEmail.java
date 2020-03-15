@@ -1,4 +1,4 @@
-package com.infusionsoft.dataflow.templates;
+package com.google.cloud.teleport.templates;
 
 import static com.google.cloud.teleport.templates.TextToBigQueryStreaming.wrapBigQueryInsertError;
 
@@ -25,6 +25,7 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
+import org.apache.beam.sdk.io.gcp.bigquery.TableDestination;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
@@ -34,7 +35,6 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
-import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
@@ -45,12 +45,13 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.ValueInSingleWindow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PubSubToBigQueryBatchMode {
+public class PubSubToBigQueryConsentEmail {
     /** The log to output status messages to. */
-    private static final Logger LOG = LoggerFactory.getLogger(PubSubToBigQueryBatchMode.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PubSubToBigQueryConsentEmail.class);
 
     /** The tag for the main output for the UDF. */
     public static final TupleTag<FailsafeElement<PubsubMessage, String>> UDF_OUT =
@@ -79,7 +80,7 @@ public class PubSubToBigQueryBatchMode {
         FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
 
     /**
-     * The {@link PubSubToBigQueryBatchMode.Options} class provides the custom execution options passed by the executor at the
+     * The {@link PubSubToBigQueryConsentEmail.Options} class provides the custom execution options passed by the executor at the
      * command-line.
      */
     public interface Options extends PipelineOptions, JavascriptTextTransformerOptions ,
@@ -126,16 +127,14 @@ public class PubSubToBigQueryBatchMode {
     /**
      * The main entry-point for pipeline execution. This method will start the pipeline but will not
      * wait for it's execution to finish. If blocking execution is required, use the {@link
-     * PubSubToBigQueryBatchMode#run(PubSubToBigQueryBatchMode.Options)} method to start the pipeline and invoke {@code
+     * PubSubToBigQueryConsentEmail#run(PubSubToBigQueryConsentEmail.Options)} method to start the pipeline and invoke {@code
      * result.waitUntilFinish()} on the {@link PipelineResult}.
      *
      * @param args The command-line args passed by the executor.
      */
     public static void main(String[] args) {
-        PubSubToBigQueryBatchMode.Options options = PipelineOptionsFactory
-            .fromArgs(args).withValidation().as(PubSubToBigQueryBatchMode.Options.class);
-
-        options.setStreaming(false);
+        PubSubToBigQueryConsentEmail.Options options = PipelineOptionsFactory
+            .fromArgs(args).withValidation().as(PubSubToBigQueryConsentEmail.Options.class);
         options.setNumWorkers(1);
         options.setMaxNumWorkers(1);
         options.setWorkerMachineType("n1-standard-1");
@@ -152,7 +151,7 @@ public class PubSubToBigQueryBatchMode {
      * @param options The execution options.
      * @return The pipeline result.
      */
-    public static PipelineResult run(PubSubToBigQueryBatchMode.Options options) {
+    public static PipelineResult run(PubSubToBigQueryConsentEmail.Options options) {
 
         Pipeline pipeline = Pipeline.create(options);
 
@@ -193,7 +192,7 @@ public class PubSubToBigQueryBatchMode {
                 /*
                  * Step #2: Transform the PubsubMessages into TableRows
                  */
-                .apply("ConvertMessageToTableRow", new PubSubToBigQueryBatchMode.PubsubMessageToTableRow(options));
+                .apply("ConvertMessageToTableRow", new PubSubToBigQueryConsentEmail.PubsubMessageToTableRow(options));
 
         /*
          * Step #3: Write the successful records out to BigQuery
@@ -210,7 +209,25 @@ public class PubSubToBigQueryBatchMode {
                         .withExtendedErrorInfo()
                         .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
                         .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
-                        .to(options.getOutputTableSpec()));
+                        .to(
+                            (SerializableFunction<ValueInSingleWindow<TableRow>, TableDestination>)
+                                element -> {
+                                    TableRow row = element.getValue();
+                                    String event = row.get("event").toString();
+                                    String projectAndDataset = "is-consent-api-intg:email_telemetry";
+                                    String table_name = null;
+                                    if (event.equals("create")) {
+                                        table_name = "email_user_request";
+                                    } else if (event.equals("read")) {
+                                        table_name = "consent_request_from_email";
+                                    }
+                                    String destination =
+                                        String.format("%s.%s", projectAndDataset, table_name);
+                                    return new TableDestination(
+                                        destination, "Events from email create/read are added here");
+                                }));
+
+
 
         /*
          * Step 3 Contd.
@@ -285,33 +302,33 @@ public class PubSubToBigQueryBatchMode {
     }
 
     /**
-     * The {@link PubSubToBigQueryBatchMode.PubsubMessageToTableRow} class is a {@link PTransform} which transforms incoming
+     * The {@link PubSubToBigQueryConsentEmail.PubsubMessageToTableRow} class is a {@link PTransform} which transforms incoming
      * {@link PubsubMessage} objects into {@link TableRow} objects for insertion into BigQuery while
      * applying an optional UDF to the input. The executions of the UDF and transformation to {@link
      * TableRow} objects is done in a fail-safe way by wrapping the element with it's original payload
-     * inside the {@link FailsafeElement} class. The {@link PubSubToBigQueryBatchMode.PubsubMessageToTableRow} transform will
+     * inside the {@link FailsafeElement} class. The {@link PubSubToBigQueryConsentEmail.PubsubMessageToTableRow} transform will
      * output a {@link PCollectionTuple} which contains all output and dead-letter {@link
      * PCollection}.
      *
      * <p>The {@link PCollectionTuple} output will contain the following {@link PCollection}:
      *
      * <ul>
-     *   <li>{@link PubSubToBigQueryBatchMode#UDF_OUT} - Contains all {@link FailsafeElement} records
+     *   <li>{@link PubSubToBigQueryConsentEmail#UDF_OUT} - Contains all {@link FailsafeElement} records
      *       successfully processed by the optional UDF.
-     *   <li>{@link PubSubToBigQueryBatchMode#UDF_DEADLETTER_OUT} - Contains all {@link FailsafeElement}
+     *   <li>{@link PubSubToBigQueryConsentEmail#UDF_DEADLETTER_OUT} - Contains all {@link FailsafeElement}
      *       records which failed processing during the UDF execution.
-     *   <li>{@link PubSubToBigQueryBatchMode#TRANSFORM_OUT} - Contains all records successfully converted from
+     *   <li>{@link PubSubToBigQueryConsentEmail#TRANSFORM_OUT} - Contains all records successfully converted from
      *       JSON to {@link TableRow} objects.
-     *   <li>{@link PubSubToBigQueryBatchMode#TRANSFORM_DEADLETTER_OUT} - Contains all {@link FailsafeElement}
+     *   <li>{@link PubSubToBigQueryConsentEmail#TRANSFORM_DEADLETTER_OUT} - Contains all {@link FailsafeElement}
      *       records which couldn't be converted to table rows.
      * </ul>
      */
     static class PubsubMessageToTableRow
         extends PTransform<PCollection<PubsubMessage>, PCollectionTuple> {
 
-        private final PubSubToBigQueryBatchMode.Options options;
+        private final PubSubToBigQueryConsentEmail.Options options;
 
-        PubsubMessageToTableRow(PubSubToBigQueryBatchMode.Options options) {
+        PubsubMessageToTableRow(PubSubToBigQueryConsentEmail.Options options) {
             this.options = options;
         }
 
@@ -322,7 +339,7 @@ public class PubSubToBigQueryBatchMode {
                 input
                     // Map the incoming messages into FailsafeElements so we can recover from failures
                     // across multiple transforms.
-                    .apply("MapToRecord", ParDo.of(new PubSubToBigQueryBatchMode.PubsubMessageToFailsafeElementFn()))
+                    .apply("MapToRecord", ParDo.of(new PubSubToBigQueryConsentEmail.PubsubMessageToFailsafeElementFn()))
                     .apply(
                         "InvokeUDF",
                         FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
@@ -352,7 +369,7 @@ public class PubSubToBigQueryBatchMode {
     }
 
     /**
-     * The {@link PubSubToBigQueryBatchMode.PubsubMessageToFailsafeElementFn} wraps an incoming {@link PubsubMessage} with the
+     * The {@link PubSubToBigQueryConsentEmail.PubsubMessageToFailsafeElementFn} wraps an incoming {@link PubsubMessage} with the
      * {@link FailsafeElement} class so errors can be recovered from and the original message can be
      * output to a error records table.
      */
