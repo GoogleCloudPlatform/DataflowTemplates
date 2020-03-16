@@ -214,17 +214,19 @@ public class PubSubToBigQueryConsentEmail {
                                 element -> {
                                     TableRow row = element.getValue();
                                     String event = row.get("event").toString();
+                                    LOG.info("Found event "+event);
                                     String projectAndDataset = "is-consent-api-intg:email_telemetry";
                                     String table_name = null;
-                                    if (event.equals("create")) {
+                                    if (event.contains("create")) {
                                         table_name = "email_user_request";
-                                    } else if (event.equals("read")) {
+                                    } else if (event.contains("read")) {
                                         table_name = "consent_request_from_email";
                                     }
                                     String destination =
                                         String.format("%s.%s", projectAndDataset, table_name);
+                                    LOG.info("Writing to table "+destination);
                                     return new TableDestination(
-                                        destination, "Events from email create/read are added here");
+                                        destination, null);
                                 }));
 
 
