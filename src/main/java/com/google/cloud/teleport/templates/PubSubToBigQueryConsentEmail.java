@@ -216,7 +216,7 @@ public class PubSubToBigQueryConsentEmail {
                                     String event = row.get("event").toString();
                                     LOG.info("Found event "+event);
                                     String projectAndDataset = "is-consent-api-intg:email_telemetry";
-                                    String table_name = null;
+                                    String table_name = "consent_request_from_email";
                                     if (event.contains("create")) {
                                         table_name = "email_user_request";
                                     } else if (event.contains("read")) {
