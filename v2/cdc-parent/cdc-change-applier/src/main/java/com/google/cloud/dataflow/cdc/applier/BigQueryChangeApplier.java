@@ -132,7 +132,9 @@ public class BigQueryChangeApplier extends PTransform<PCollection<Row>, PDone> {
             .withMethod(Method.STREAMING_INSERTS)
         .to(new ChangelogTableDynamicDestinations(changeLogDataset, gcpProjectId, schemaMapView)));
 
-    String jobPrefix = String.format("beam_cdc_%s_%s_", gcpProjectId, replicaDataset);
+    String jobPrefix =
+        String.format(
+            "beam_cdc_%s_%s_", gcpProjectId.replace(':', '_').replace('.', '_'), replicaDataset);
 
     p.apply("MergeHeartbeat",
         GenerateSequence

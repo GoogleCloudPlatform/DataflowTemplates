@@ -1,0 +1,6 @@
+{
+  "mainClass": "com.google.cloud.dataflow.cdc.applier.CdcToBigQueryChangeApplierPipeline",
+  "classPath": "/template/cdc-agg/*:/template/cdc-agg/libs/*:/template/cdc-agg/classes"
+}
+
+
