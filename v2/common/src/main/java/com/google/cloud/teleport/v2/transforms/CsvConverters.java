@@ -56,6 +56,7 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
+import org.apache.beam.vendor.guava.v20_0.com.google.common.base.Splitter;
 import org.apache.beam.vendor.guava.v20_0.com.google.common.base.Throwables;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -200,9 +201,10 @@ public class CsvConverters {
     void setDelimiter(String delimiter);
 
     @Description(
-        "Csv format according to Apache Commons CSV format. Default is: Apache Commons CSV default\n"
-            + "https://static.javadoc.io/org.apache.commons/commons-csv/1.7/org/apache/commons/csv/CSVFormat.html#DEFAULT"
-            + "\nMust match format names exactly found at: "
+        "Csv format according to Apache Commons CSV format. Default is: Apache Commons CSV"
+            + " default\n"
+            + "https://static.javadoc.io/org.apache.commons/commons-csv/1.7/org/apache/commons/csv/CSVFormat.html#DEFAULT\n"
+            + "Must match format names exactly found at: "
             + "https://static.javadoc.io/org.apache.commons/commons-csv/1.7/org/apache/commons/csv/CSVFormat.Predefined.html")
     @Default.String("Default")
     String getCsvFormat();
@@ -571,7 +573,8 @@ public class CsvConverters {
     @ProcessElement
     public void processElement(ProcessContext context) throws IllegalArgumentException {
       GenericRecord genericRecord = new GenericData.Record(schema);
-      String[] rowValue = context.element().split(delimiter, -1);
+      String[] rowValue =
+          Splitter.on(delimiter).splitToList(context.element()).toArray(new String[0]);
       List<Schema.Field> fields = schema.getFields();
 
       try {

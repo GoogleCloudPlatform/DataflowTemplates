@@ -1,4 +1,4 @@
 {
   "mainClass": "com.google.cloud.teleport.v2.templates.FileFormatConversion",
-  "classPath": "/template/FileFormatConversion/libs/*:/template/FileFormatConversion/classes"
+  "classPath": "/template/file-format-conversion/*:/template/file-format-conversion/libs/*:/template/file-format-conversion/classes"
 }

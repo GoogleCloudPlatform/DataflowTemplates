@@ -118,6 +118,7 @@ public class FileFormatConversionTest {
     options.setOutputBucket(tempDir);
     options.setContainsHeaders(true);
     options.setSchema(SCHEMA_FILE_PATH);
+    options.setDelimiter("|");
 
     Schema schema = SchemaUtils.getAvroSchema(SCHEMA_FILE_PATH);
     GenericRecord genericRecords = new GenericData.Record(schema);
@@ -163,6 +164,7 @@ public class FileFormatConversionTest {
     options.setOutputBucket(tempDir);
     options.setContainsHeaders(true);
     options.setSchema(SCHEMA_FILE_PATH);
+    options.setDelimiter("|");
 
     Schema schema = SchemaUtils.getAvroSchema(SCHEMA_FILE_PATH);
     GenericRecord genericRecords = new GenericData.Record(schema);

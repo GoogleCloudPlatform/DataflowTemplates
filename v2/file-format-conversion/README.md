@@ -27,7 +27,7 @@ export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
-export APP_ROOT=/template/<template-class>
+export APP_ROOT=/template/file-format-conversion
 export COMMAND_SPEC=${APP_ROOT}/resources/file-format-conversion-command-spec.json
 ```
 * Build and push image to Google Container Repository
