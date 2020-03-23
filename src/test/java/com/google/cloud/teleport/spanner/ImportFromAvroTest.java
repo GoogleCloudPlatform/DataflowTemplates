@@ -16,20 +16,12 @@
 
 package com.google.cloud.teleport.spanner;
 
-import com.google.api.gax.longrunning.OperationFuture;
-import com.google.cloud.spanner.Database;
-import com.google.cloud.spanner.DatabaseAdminClient;
-import com.google.cloud.spanner.Spanner;
-import com.google.cloud.spanner.SpannerException;
-import com.google.cloud.spanner.SpannerOptions;
 import com.google.protobuf.util.JsonFormat;
-import com.google.spanner.admin.database.v1.CreateDatabaseMetadata;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
@@ -38,7 +30,6 @@ import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.junit.After;
@@ -57,43 +48,19 @@ import org.junit.rules.TemporaryFolder;
 public class ImportFromAvroTest {
   @Rule public final TestPipeline importPipeline = TestPipeline.create();
   @Rule public final TemporaryFolder tmpDir = new TemporaryFolder();
+  @Rule public final SpannerServerResource spannerServer = new SpannerServerResource();
 
-  // Modify the following parameters to match your Cloud Spanner instance.
-  private final String projectId = "test-project";
-  private final String instanceId = "test-instance";
   private final String dbName = "importdbtest";
-  private final String host = "https://spanner.googleapis.com";
-
-  private Spanner client;
-  private DatabaseAdminClient databaseAdminClient;
-  private SpannerConfig sourceConfig;
 
   @Before
   public void setup() {
-    SpannerOptions spannerOptions =
-        SpannerOptions.newBuilder().setProjectId(projectId).setHost(host).build();
-    client = spannerOptions.getService();
-    databaseAdminClient = client.getDatabaseAdminClient();
-    sourceConfig =
-        SpannerConfig.create()
-            .withProjectId(projectId)
-            .withInstanceId(instanceId)
-            .withDatabaseId(dbName)
-            .withHost(ValueProvider.StaticValueProvider.of(host));
+    // Just to make sure an old database is not left over.
+    spannerServer.dropDatabase(dbName);
   }
 
   @After
-  public void teardown() {
-    dropDatabase(dbName);
-    client.close();
-  }
-
-  private void dropDatabase(String dbName) {
-    try {
-      databaseAdminClient.dropDatabase(instanceId, dbName);
-    } catch (SpannerException e) {
-      // Does not exist, ignore.
-    }
+  public void tearDown() {
+    spannerServer.dropDatabase(dbName);
   }
 
   @Test
@@ -393,7 +360,7 @@ public class ImportFromAvroTest {
                 .build()));
   }
 
-  private void runTest(Schema schema, String spannerSchema, List<GenericRecord> records)
+  private void runTest(Schema avroSchema, String spannerSchema, Iterable<GenericRecord> records)
       throws Exception {
     // Create the Avro file to be imported.
     String fileName = "avroFile.avro";
@@ -414,27 +381,21 @@ public class ImportFromAvroTest {
 
     File avroFile = tmpDir.newFile(fileName);
     try (DataFileWriter<GenericRecord> fileWriter = new DataFileWriter<>(
-        new GenericDatumWriter<>(schema))) {
-      fileWriter.create(schema, avroFile);
+        new GenericDatumWriter<>(avroSchema))) {
+      fileWriter.create(avroSchema, avroFile);
 
       for (GenericRecord r : records) {
         fileWriter.append(r);
       }
       fileWriter.flush();
     }
-
-    // Drop the database if it exists and recreate it.
-    dropDatabase(dbName);
-    OperationFuture<Database, CreateDatabaseMetadata> op =
-        databaseAdminClient.createDatabase(
-            instanceId, dbName, Collections.singleton(spannerSchema));
-    op.get();
-
+    // Create the target database.
+    spannerServer.createDatabase(dbName, Collections.singleton(spannerSchema));
     // Run the import pipeline.
     importPipeline.apply(
         "Import",
         new ImportTransform(
-            sourceConfig,
+            spannerServer.getSpannerConfig(dbName),
             ValueProvider.StaticValueProvider.of(manifestFileLocation),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true)));

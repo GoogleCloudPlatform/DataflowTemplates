@@ -18,10 +18,13 @@ package com.google.cloud.teleport.spanner;
 
 import com.google.cloud.spanner.BatchClient;
 import com.google.cloud.spanner.DatabaseAdminClient;
+import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.DatabaseId;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.SpannerOptions;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.junit.rules.ExternalResource;
 
 /** Facilitates setup and deletion of a Spanner database for integration tests. */
@@ -35,7 +38,7 @@ public class SpannerServerResource extends ExternalResource {
   private DatabaseAdminClient databaseAdminClient;
 
   @Override
-  protected void before() throws Throwable {
+  protected void before() {
     SpannerOptions spannerOptions =
         SpannerOptions.newBuilder().setProjectId(projectId).setHost(host).build();
     client = spannerOptions.getService();
@@ -52,6 +55,10 @@ public class SpannerServerResource extends ExternalResource {
     databaseAdminClient.createDatabase(instanceId, dbName, ddlStatements).get();
   }
 
+  public void updateDatabase(String dbName, Iterable<String> ddlStatements) throws Exception  {
+    databaseAdminClient.updateDatabaseDdl(instanceId, dbName, ddlStatements, null).get();
+  }
+
   public void dropDatabase(String dbName) {
     try {
       databaseAdminClient.dropDatabase(instanceId, dbName);
@@ -62,5 +69,17 @@ public class SpannerServerResource extends ExternalResource {
 
   public BatchClient getBatchClient(String dbName) {
     return client.getBatchClient(DatabaseId.of(projectId, instanceId, dbName));
+  }
+
+  public DatabaseClient getDbClient(String dbName) {
+    return client.getDatabaseClient(DatabaseId.of(projectId, instanceId, dbName));
+  }
+
+  public SpannerConfig getSpannerConfig(String dbName) {
+    return SpannerConfig.create()
+        .withProjectId(projectId)
+        .withInstanceId(instanceId)
+        .withDatabaseId(dbName)
+        .withHost(ValueProvider.StaticValueProvider.of(host));
   }
 }

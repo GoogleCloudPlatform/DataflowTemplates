@@ -31,8 +31,9 @@ import com.google.cloud.spanner.Type;
 import com.google.cloud.teleport.spanner.IntegrationTest;
 import com.google.cloud.teleport.spanner.SpannerServerResource;
 import com.google.common.collect.HashMultimap;
-import com.google.common.collect.ImmutableList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -100,7 +101,7 @@ public class InformationSchemaScannerTest {
             + " `arr_date_field`                        ARRAY<DATE>,"
             + " ) PRIMARY KEY (`first_name` ASC, `last_name` DESC, `id` ASC)";
 
-    spannerServer.createDatabase(dbId, Collections.singletonList(allTypes));
+    spannerServer.createDatabase(dbId, Collections.singleton(allTypes));
     Ddl ddl = getDatabaseDdl();
 
     assertThat(ddl.allTables(), hasSize(1));
@@ -143,7 +144,7 @@ public class InformationSchemaScannerTest {
 
     // Check primary key.
     assertThat(table.primaryKeys(), hasSize(3));
-    ImmutableList<IndexColumn> pk = table.primaryKeys();
+    List<IndexColumn> pk = table.primaryKeys();
     assertThat(pk.get(0).name(), equalTo("first_name"));
     assertThat(pk.get(0).order(), equalTo(IndexColumn.Order.ASC));
     assertThat(pk.get(1).name(), equalTo("last_name"));
@@ -157,8 +158,8 @@ public class InformationSchemaScannerTest {
 
   @Test
   public void interleavedIn() throws Exception {
-    ImmutableList<String> statements =
-        ImmutableList.of(
+    List<String> statements =
+        Arrays.asList(
             " CREATE TABLE lEVEl0 ("
                 + " id0                                   INT64 NOT NULL,"
                 + " val0                                  STRING(MAX),"
@@ -213,7 +214,7 @@ public class InformationSchemaScannerTest {
             + " `NULL`                                  INT64,"
             + " ) PRIMARY KEY (`NULL` ASC)";
 
-    spannerServer.createDatabase(dbId, Collections.singletonList(statement));
+    spannerServer.createDatabase(dbId, Collections.singleton(statement));
     Ddl ddl = getDatabaseDdl();
 
     assertThat(ddl.allTables(), hasSize(1));
@@ -230,8 +231,8 @@ public class InformationSchemaScannerTest {
   @Test
   public void indexes() throws Exception {
     // Prefix indexes to ensure ordering.
-    ImmutableList<String> statements =
-        ImmutableList.of(
+    List<String> statements =
+        Arrays.asList(
             "CREATE TABLE `Users` ("
                 + " `id`                                    INT64 NOT NULL,"
                 + " `first_name`                            STRING(10),"
@@ -250,8 +251,8 @@ public class InformationSchemaScannerTest {
 
   @Test
   public void foreignKeys() throws Exception {
-    ImmutableList<String> statements =
-        ImmutableList.of(
+    List<String> statements =
+        Arrays.asList(
             "CREATE TABLE `Ref` ("
                 + " `id1`                               INT64 NOT NULL,"
                 + " `id2`                               INT64 NOT NULL,"
@@ -278,7 +279,7 @@ public class InformationSchemaScannerTest {
             + " OPTIONS (allow_commit_timestamp=TRUE),"
             + " ) PRIMARY KEY (`id` ASC)";
 
-    spannerServer.createDatabase(dbId, Collections.singletonList(statement));
+    spannerServer.createDatabase(dbId, Collections.singleton(statement));
     Ddl ddl = getDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToIgnoringWhiteSpace(statement));
   }

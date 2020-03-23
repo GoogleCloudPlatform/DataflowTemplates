@@ -20,15 +20,8 @@ import static org.hamcrest.text.IsEqualIgnoringWhiteSpace.equalToIgnoringWhiteSp
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
-import com.google.api.gax.longrunning.OperationFuture;
-import com.google.cloud.spanner.Database;
-import com.google.cloud.spanner.DatabaseAdminClient;
 import com.google.cloud.spanner.DatabaseClient;
-import com.google.cloud.spanner.DatabaseId;
 import com.google.cloud.spanner.ReadOnlyTransaction;
-import com.google.cloud.spanner.Spanner;
-import com.google.cloud.spanner.SpannerException;
-import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.spanner.Type;
@@ -38,9 +31,6 @@ import com.google.cloud.teleport.spanner.ddl.RandomDdlGenerator;
 import com.google.cloud.teleport.spanner.ddl.RandomInsertMutationGenerator;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import com.google.common.io.Files;
-import com.google.spanner.admin.database.v1.CreateDatabaseMetadata;
-import com.google.spanner.admin.database.v1.UpdateDatabaseDdlMetadata;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Iterator;
@@ -57,6 +47,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.TemporaryFolder;
 
 /**
  * An end to end test that exports and imports a database and verifies that the content is identical
@@ -65,57 +56,26 @@ import org.junit.experimental.categories.Category;
  */
 @Category(IntegrationTest.class)
 public class CopyDbTest {
-  // Modify the following parameters to match your Cloud Spanner instance.
-  private final String projectId = "test-project";
-  private final String instanceId = "test-instance";
   private final String sourceDb = "copydb-source";
   private final String destinationDb = "copydb-dest";
-  private final String host = "https://spanner.googleapis.com";
 
   @Rule public final transient TestPipeline exportPipeline = TestPipeline.create();
   @Rule public final transient TestPipeline importPipeline = TestPipeline.create();
   @Rule public final transient TestPipeline comparePipeline = TestPipeline.create();
-
-  private Spanner client;
-  private DatabaseAdminClient databaseAdminClient;
-  private DatabaseClient dbClient;
-  private SpannerConfig sourceConfig;
-  private SpannerConfig destConfig;
+  @Rule public final TemporaryFolder tmpDir = new TemporaryFolder();
+  @Rule public final SpannerServerResource spannerServer = new SpannerServerResource();
 
   @Before
   public void setup() {
-    SpannerOptions spannerOptions =
-        SpannerOptions.newBuilder().setProjectId(projectId).setHost(host).build();
-    client = spannerOptions.getService();
-    databaseAdminClient = client.getDatabaseAdminClient();
-    dbClient = client.getDatabaseClient(DatabaseId.of(projectId, instanceId, sourceDb));
-    sourceConfig =
-        SpannerConfig.create()
-            .withProjectId(projectId)
-            .withInstanceId(instanceId)
-            .withDatabaseId(sourceDb)
-            .withHost(ValueProvider.StaticValueProvider.of(host));
-    destConfig =
-        SpannerConfig.create()
-            .withProjectId(projectId)
-            .withInstanceId(instanceId)
-            .withDatabaseId(destinationDb)
-            .withHost(ValueProvider.StaticValueProvider.of(host));
+    // Just to make sure an old database is not left over.
+    spannerServer.dropDatabase(sourceDb);
+    spannerServer.dropDatabase(destinationDb);
   }
 
   @After
   public void teardown() {
-    dropDatabase(sourceDb);
-    dropDatabase(destinationDb);
-    client.close();
-  }
-
-  private void dropDatabase(String dbName) {
-    try {
-      databaseAdminClient.dropDatabase(instanceId, dbName);
-    } catch (SpannerException e) {
-      // Does not exist, ignore.
-    }
+    spannerServer.dropDatabase(sourceDb);
+    spannerServer.dropDatabase(destinationDb);
   }
 
   private void createAndPopulate(Ddl ddl, int numBatches) throws Exception {
@@ -125,21 +85,15 @@ public class CopyDbTest {
       e.printStackTrace();
     }
 
-    dropDatabase(sourceDb);
-    OperationFuture<Database, CreateDatabaseMetadata> op =
-        databaseAdminClient.createDatabase(instanceId, sourceDb, ddl.statements());
-    op.get();
-
-    dropDatabase(destinationDb);
-    op = databaseAdminClient
-        .createDatabase(instanceId, destinationDb, Collections.emptyList());
-    op.get();
+    spannerServer.createDatabase(sourceDb, ddl.statements());
+    spannerServer.createDatabase(destinationDb, Collections.emptyList());
 
     final Iterator<MutationGroup> mutations = new RandomInsertMutationGenerator(ddl).stream()
         .iterator();
 
     for (int i = 0; i < numBatches; i++) {
-      TransactionRunner transactionRunner = dbClient.readWriteTransaction();
+      TransactionRunner transactionRunner =
+          spannerServer.getDbClient(sourceDb).readWriteTransaction();
       transactionRunner.run(new TransactionRunner.TransactionCallable<Void>() {
 
         @Nullable
@@ -222,7 +176,7 @@ public class CopyDbTest {
               .interleaveInParent("Users")
             .endTable()
             .build();
-    createAndPopulate(ddl, 100);
+    createAndPopulate(ddl, 10);
 
     // Add empty tables.
     Ddl emptyTables = Ddl.builder()
@@ -240,11 +194,7 @@ public class CopyDbTest {
           .primaryKey().asc("first").end()
           .endTable()
         .build();
-    OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
-        databaseAdminClient.updateDatabaseDdl(
-            instanceId, sourceDb, emptyTables.createTableStatements(), null);
-    op.get();
-
+    spannerServer.updateDatabase(sourceDb, emptyTables.createTableStatements());
     runTest();
   }
 
@@ -333,18 +283,20 @@ public class CopyDbTest {
   }
 
   private void runTest() {
-    String tmpDir = Files.createTempDir().getAbsolutePath();
+    String tmpDirPath = tmpDir.getRoot().getAbsolutePath();
     ValueProvider.StaticValueProvider<String> destination = ValueProvider.StaticValueProvider
-        .of(tmpDir);
+        .of(tmpDirPath);
     ValueProvider.StaticValueProvider<String> jobId = ValueProvider.StaticValueProvider
         .of("jobid");
     ValueProvider.StaticValueProvider<String> source = ValueProvider.StaticValueProvider
-        .of(tmpDir + "/jobid");
+        .of(tmpDirPath + "/jobid");
 
+    SpannerConfig sourceConfig = spannerServer.getSpannerConfig(sourceDb);
     exportPipeline.apply("Export", new ExportTransform(sourceConfig, destination, jobId));
     PipelineResult exportResult = exportPipeline.run();
     exportResult.waitUntilFinish();
 
+    SpannerConfig destConfig = spannerServer.getSpannerConfig(destinationDb);
     importPipeline.apply(
         "Import",
         new ImportTransform(
@@ -371,7 +323,7 @@ public class CopyDbTest {
   }
 
   private Ddl readDdl(String db) {
-    DatabaseClient dbClient = client.getDatabaseClient(DatabaseId.of(projectId, instanceId, db));
+    DatabaseClient dbClient = spannerServer.getDbClient(db);
     Ddl ddl;
     try (ReadOnlyTransaction ctx = dbClient.readOnlyTransaction()) {
       ddl = new InformationSchemaScanner(ctx).scan();
