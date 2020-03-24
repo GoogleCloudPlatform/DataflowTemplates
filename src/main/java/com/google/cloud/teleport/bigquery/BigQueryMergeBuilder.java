@@ -16,8 +16,11 @@
 
 package com.google.cloud.teleport.bigquery;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+import org.apache.commons.text.StringSubstitutor;
 
 public class BigQueryMergeBuilder {
 
@@ -66,13 +69,13 @@ public class BigQueryMergeBuilder {
    *    table. <b></b>Therefore, insert this new row.</b>
    */
   public static final String MERGE_TEMPLATE = String.join("",
-      "MERGE `%s` AS %s ",
-      "USING (%s) AS %s ",
-      "ON %s ",
-      "WHEN MATCHED AND %s.%s=True THEN DELETE ",
-      "WHEN MATCHED AND %s THEN %s ",
-      "WHEN NOT MATCHED BY TARGET AND %s.%s!=True ",
-      "THEN %s");
+      "MERGE `{replicaTable}` AS {replicaAlias} ",
+      "USING ({stagingViewSql}) AS {stagingAlias} ",
+      "ON {joinCondition} ",
+      "WHEN MATCHED AND {timestampCompareSql} AND {stagingAlias}.{deleteColumn}=True THEN DELETE ", // TODO entire block should be configurably removed
+      "WHEN MATCHED AND {timestampCompareSql} THEN {mergeUpdateSql} ",
+      "WHEN NOT MATCHED BY TARGET AND {stagingAlias}.{deleteColumn}!=True ",
+      "THEN {mergeInsertSql}");
 
   public static String buildMergeStatement(
       String replicaTable,
@@ -82,15 +85,25 @@ public class BigQueryMergeBuilder {
       String timestampField,
       String deletedField,
       Integer daysOfRetention) {
-    return String.format(MERGE_TEMPLATE,
-        replicaTable, REPLICA_TABLE_NAME,
-        buildLatestViewOfStagingTable(stagingTable, allFields, primaryKeyFields,
-            timestampField, deletedField, daysOfRetention), STAGING_TABLE_NAME,
-        buildJoinConditions(primaryKeyFields, REPLICA_TABLE_NAME, STAGING_TABLE_NAME),
-        STAGING_TABLE_NAME, deletedField,
-        buildTimestampCheck(timestampField), buildUpdateStatement(allFields),
-        STAGING_TABLE_NAME, deletedField,
-        buildInsertStatement(allFields));
+    // Key/Value Map used to replace values in template
+    Map<String, String> mergeQueryValues = new HashMap<>();
+    
+    mergeQueryValues.put("replicaTable", replicaTable);
+    mergeQueryValues.put("replicaAlias", REPLICA_TABLE_NAME);
+    mergeQueryValues.put("stagingAlias", STAGING_TABLE_NAME);
+    mergeQueryValues.put("deleteColumn", deletedField); // TODO require config options
+
+    mergeQueryValues.put(
+      "stagingViewSql", 
+      buildLatestViewOfStagingTable(stagingTable, allFields, primaryKeyFields, timestampField, deletedField, daysOfRetention));
+
+    mergeQueryValues.put("joinCondition", buildJoinConditions(primaryKeyFields, REPLICA_TABLE_NAME, STAGING_TABLE_NAME));
+    mergeQueryValues.put("timestampCompareSql", buildTimestampCheck(timestampField));
+    mergeQueryValues.put("mergeUpdateSql", buildUpdateStatement(allFields));
+    mergeQueryValues.put("mergeInsertSql", buildInsertStatement(allFields));
+
+    String mergeStatement = StringSubstitutor.replace(MERGE_TEMPLATE, mergeQueryValues, "{", "}");
+    return mergeStatement;
   }
 
   static String buildTimestampCheck(String timestampField) {

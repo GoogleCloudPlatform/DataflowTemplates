@@ -26,21 +26,18 @@ import com.google.cloud.bigquery.LegacySQLTypeName;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardTableDefinition;
 import com.google.cloud.bigquery.Table;
-import com.google.cloud.bigquery.TableDefinition;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableInfo;
+import com.google.cloud.bigquery.TimePartitioning;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.avro.generic.GenericRecord;
 // import org.apache.avro.Schema; // if needed we need to figure out the duplicate here
-import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.SimpleFunction;
-import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,6 +64,7 @@ public class BigQueryMapper<InputT, OutputT>
   private BigQuery bigquery;
   private Map<String, Table> tables = new HashMap<String, Table>();
   private Map<String, LegacySQLTypeName> defaultSchema;
+  private boolean dayPartitioning = false;
 
   private final String projectId;
 
@@ -91,6 +89,11 @@ public class BigQueryMapper<InputT, OutputT>
 
   public BigQueryMapper<InputT, OutputT> withDefaultSchema(Map<String, LegacySQLTypeName> defaultSchema) {
     this.defaultSchema = defaultSchema;
+    return this;
+  }
+
+  public BigQueryMapper<InputT, OutputT> withDayPartitioning(boolean dayPartitioning) {
+    this.dayPartitioning = dayPartitioning;
     return this;
   }
 
@@ -194,8 +197,14 @@ public class BigQueryMapper<InputT, OutputT>
 
     List<Field> fieldList = new ArrayList<Field>();
     Schema schema = Schema.of(fieldList);
-    TableDefinition tableDefinition = StandardTableDefinition.of(schema);
-    TableInfo tableInfo = TableInfo.newBuilder(tableId, tableDefinition).build();
+
+    StandardTableDefinition.Builder tableDefinitionBuilder =
+        StandardTableDefinition.newBuilder().setSchema(schema);
+    if (dayPartitioning) {
+      tableDefinitionBuilder.setTimePartitioning(
+          TimePartitioning.newBuilder(TimePartitioning.Type.DAY).build());
+    }
+    TableInfo tableInfo = TableInfo.newBuilder(tableId, tableDefinitionBuilder.build()).build();
     Table table = bigquery.create(tableInfo);
 
     return table;
