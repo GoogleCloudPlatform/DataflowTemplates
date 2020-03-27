@@ -23,6 +23,13 @@ import com.google.cloud.spanner.DatabaseId;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.SpannerOptions;
+import com.google.cloud.spanner.TransactionContext;
+import com.google.cloud.spanner.TransactionRunner;
+import com.google.cloud.teleport.spanner.ddl.Ddl;
+import com.google.cloud.teleport.spanner.ddl.RandomInsertMutationGenerator;
+import java.util.Iterator;
+import javax.annotation.Nullable;
+import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.junit.rules.ExternalResource;
@@ -82,4 +89,27 @@ public class SpannerServerResource extends ExternalResource {
         .withDatabaseId(dbName)
         .withHost(ValueProvider.StaticValueProvider.of(host));
   }
+
+  public void populateRandomData(String db, Ddl ddl, int numBatches) throws Exception {
+
+    final Iterator<MutationGroup> mutations = new RandomInsertMutationGenerator(ddl).stream()
+        .iterator();
+
+    for (int i = 0; i < numBatches; i++) {
+      TransactionRunner transactionRunner = getDbClient(db).readWriteTransaction();
+      transactionRunner.run(new TransactionRunner.TransactionCallable<Void>() {
+
+        @Nullable
+        @Override
+        public Void run(TransactionContext transaction) {
+          for (int i = 0; i < 10; i++) {
+            MutationGroup m = mutations.next();
+            transaction.buffer(m);
+          }
+          return null;
+        }
+      });
+    }
+  }
+
 }

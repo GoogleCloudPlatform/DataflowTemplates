@@ -20,31 +20,18 @@ import static org.hamcrest.text.IsEqualIgnoringWhiteSpace.equalToIgnoringWhiteSp
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
-import com.google.api.gax.longrunning.OperationFuture;
-import com.google.cloud.spanner.Database;
-import com.google.cloud.spanner.DatabaseAdminClient;
-import com.google.cloud.spanner.DatabaseClient;
-import com.google.cloud.spanner.DatabaseId;
 import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.spanner.Spanner;
-import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.SpannerOptions;
-import com.google.cloud.spanner.TransactionContext;
-import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.spanner.Type;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.InformationSchemaScanner;
-import com.google.cloud.teleport.spanner.ddl.RandomInsertMutationGenerator;
 import com.google.common.collect.Lists;
 import com.google.common.io.Files;
-import com.google.spanner.admin.database.v1.CreateDatabaseMetadata;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.Collections;
-import java.util.Iterator;
-import javax.annotation.Nullable;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.PAssert;
@@ -65,8 +52,16 @@ import org.junit.experimental.categories.Category;
 @Category(IntegrationTest.class)
 public class ExportTimestampTest {
 
-  private final String instanceId = "import-export-test";
   static String tmpDir = Files.createTempDir().getAbsolutePath();
+
+  private final String sourceDb = "export";
+  private final String destDbPrefix = "import";
+  private final String chkpt1 = "chkpt1";
+  private final String chkpt2 = "chkpt2";
+  private final String chkpt3 = "chkpt3";
+  private final String chkPt1WithTs = "cp1withts";
+  private final String chkPt2WithTs = "cp2withts";
+  private final String chkPt3WithTs = "cp3withts";
 
   // Multiple pipelines needed as everything is run in a single test
   @Rule public final transient TestPipeline exportPipeline1 = TestPipeline.create();
@@ -83,80 +78,39 @@ public class ExportTimestampTest {
   @Rule public final transient TestPipeline comparePipeline2 = TestPipeline.create();
   @Rule public final transient TestPipeline comparePipeline3 = TestPipeline.create();
 
+  @Rule public final SpannerServerResource spannerServer = new SpannerServerResource();
+
   @Before
   public void setup() {
+    spannerServer.dropDatabase(sourceDb);
+    spannerServer.dropDatabase(destDbPrefix + chkpt1);
+    spannerServer.dropDatabase(destDbPrefix + chkpt2);
+    spannerServer.dropDatabase(destDbPrefix + chkpt3);
+    spannerServer.dropDatabase(destDbPrefix + chkPt1WithTs);
+    spannerServer.dropDatabase(destDbPrefix + chkPt2WithTs);
+    spannerServer.dropDatabase(destDbPrefix + chkPt3WithTs);
   }
 
-  private void populate(String db, Ddl ddl, int numBatches) throws Exception {
-    SpannerOptions spannerOptions = SpannerOptions.newBuilder().build();
-    Spanner client = spannerOptions.getService();
-
-    DatabaseClient dbClient = client
-        .getDatabaseClient(DatabaseId.of(spannerOptions.getProjectId(), instanceId, db));
-
-    final Iterator<MutationGroup> mutations = new RandomInsertMutationGenerator(ddl).stream()
-        .iterator();
-
-    for (int i = 0; i < numBatches; i++) {
-      TransactionRunner transactionRunner = dbClient.readWriteTransaction();
-      transactionRunner.run(new TransactionRunner.TransactionCallable<Void>() {
-
-        @Nullable
-        @Override
-        public Void run(TransactionContext transaction) {
-          for (int i = 0; i < 10; i++) {
-            MutationGroup m = mutations.next();
-            transaction.buffer(m);
-          }
-          return null;
-        }
-      });
-    }
-    client.close();
-  }
-
-  private void createEmptyDb(String db) throws Exception {
-    SpannerOptions spannerOptions = SpannerOptions.newBuilder().build();
-    Spanner client = spannerOptions.getService();
-
-    DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
-    try {
-      databaseAdminClient.dropDatabase(instanceId, db);
-    } catch (SpannerException e) {
-      // Does not exist, ignore.
-    }
-    OperationFuture<Database, CreateDatabaseMetadata> op = databaseAdminClient
-        .createDatabase(instanceId, db, Collections.emptyList());
-    op.get();
+  @After
+  public void teardown() {
+    spannerServer.dropDatabase(sourceDb);
+    spannerServer.dropDatabase(destDbPrefix + chkpt1);
+    spannerServer.dropDatabase(destDbPrefix + chkpt2);
+    spannerServer.dropDatabase(destDbPrefix + chkpt3);
+    spannerServer.dropDatabase(destDbPrefix + chkPt1WithTs);
+    spannerServer.dropDatabase(destDbPrefix + chkPt2WithTs);
+    spannerServer.dropDatabase(destDbPrefix + chkPt3WithTs);
   }
 
   private void createAndPopulate(String db, Ddl ddl, int numBatches) throws Exception {
-    SpannerOptions spannerOptions = SpannerOptions.newBuilder().build();
-    Spanner client = spannerOptions.getService();
-
-    DatabaseAdminClient databaseAdminClient = client.getDatabaseAdminClient();
-    try {
-      databaseAdminClient.dropDatabase(instanceId, db);
-    } catch (SpannerException e) {
-      // Does not exist, ignore.
-    }
-
     try {
       ddl.prettyPrint(System.out);
     } catch (IOException e) {
       e.printStackTrace();
     }
 
-    OperationFuture<Database, CreateDatabaseMetadata> op =
-        databaseAdminClient.createDatabase(instanceId, db, ddl.statements());
-    op.get();
-
-    populate(db, ddl, numBatches);
-
-  }
-
-  @After
-  public void teardown() {
+    spannerServer.createDatabase(db, ddl.statements());
+    spannerServer.populateRandomData(db, ddl, numBatches);
   }
 
   String getCurrentTimestamp() {
@@ -198,15 +152,12 @@ public class ExportTimestampTest {
               .onDeleteCascade()
             .endTable()
             .build();
-    String sourceDb = "export";
-    String destDbPrefix = "import";
 
     // Create initial table and populate
     createAndPopulate(sourceDb, ddl, 100);
 
     // Export the database and note the timestamp ts1
-    String chkpt1 = "chkpt1";
-    createEmptyDb(destDbPrefix + chkpt1);
+    spannerServer.createDatabase(destDbPrefix + chkpt1, Collections.emptyList());
     exportAndImportDbAtTime(sourceDb, destDbPrefix + chkpt1, chkpt1, "",
                             exportPipeline1, importPipeline1);
     String chkPt1Ts = getCurrentTimestamp();
@@ -214,36 +165,31 @@ public class ExportTimestampTest {
     Thread.sleep(2000);
 
     // Sleep for a couple of seconds and note the timestamp ts2
-    String chkpt2 = "chkpt2";
     String chkPt2Ts = getCurrentTimestamp();
 
     Thread.sleep(2000);
 
     // Add more records to the table, export the database and note the timestamp ts3
-    populate(sourceDb, ddl, 100);
-    String chkpt3 = "chkpt3";
-    createEmptyDb(destDbPrefix + chkpt3);
+    spannerServer.populateRandomData(sourceDb, ddl, 100);
+    spannerServer.createDatabase(destDbPrefix + chkpt3, Collections.emptyList());
     exportAndImportDbAtTime(sourceDb, destDbPrefix + chkpt3, chkpt3, "",
                             exportPipeline2, importPipeline2);
     String chkPt3Ts = getCurrentTimestamp();
 
     // Export timestamp with timestamp ts1
-    String chkPt1WithTs = "cp1withts";
-    createEmptyDb(destDbPrefix + chkPt1WithTs);
+    spannerServer.createDatabase(destDbPrefix + chkPt1WithTs, Collections.emptyList());
     exportAndImportDbAtTime(sourceDb, destDbPrefix + chkPt1WithTs,
                             chkPt1WithTs, chkPt1Ts,
                             exportPipeline3, importPipeline3);
 
     // Export timestamp with timestamp ts2
-    String chkPt2WithTs = "cp2withts";
-    createEmptyDb(destDbPrefix + chkPt2WithTs);
+    spannerServer.createDatabase(destDbPrefix + chkPt2WithTs, Collections.emptyList());
     exportAndImportDbAtTime(sourceDb, destDbPrefix + chkPt2WithTs,
                             chkPt2WithTs, chkPt2Ts,
                             exportPipeline4, importPipeline4);
 
     // Export timestamp with timestamp ts3
-    String chkPt3WithTs = "cp3withts";
-    createEmptyDb(destDbPrefix + chkPt3WithTs);
+    spannerServer.createDatabase(destDbPrefix + chkPt3WithTs, Collections.emptyList());
     exportAndImportDbAtTime(sourceDb, destDbPrefix + chkPt3WithTs, chkPt3WithTs, chkPt3Ts,
                             exportPipeline5, importPipeline5);
 
@@ -266,15 +212,13 @@ public class ExportTimestampTest {
     ValueProvider.StaticValueProvider<String> source = ValueProvider.StaticValueProvider
         .of(tmpDir + "/" + jobIdName);
     ValueProvider.StaticValueProvider<String> timestamp = ValueProvider.StaticValueProvider.of(ts);
-    SpannerConfig sourceConfig = SpannerConfig.create().withInstanceId(instanceId)
-        .withDatabaseId(sourceDb);
+    SpannerConfig sourceConfig = spannerServer.getSpannerConfig(sourceDb);
     exportPipeline.apply("Export", new ExportTransform(sourceConfig, destination,
                                                        jobId, timestamp));
     PipelineResult exportResult = exportPipeline.run();
     exportResult.waitUntilFinish();
 
-    SpannerConfig copyConfig = SpannerConfig.create().withInstanceId(instanceId)
-        .withDatabaseId(destDb);
+    SpannerConfig copyConfig = spannerServer.getSpannerConfig(destDb);
     importPipeline.apply("Import", new ImportTransform(
         copyConfig, source, ValueProvider.StaticValueProvider.of(true),
         ValueProvider.StaticValueProvider.of(true)));
@@ -283,10 +227,8 @@ public class ExportTimestampTest {
   }
 
   private void compareDbs(String sourceDb, String destDb, TestPipeline comparePipeline) {
-    SpannerConfig sourceConfig = SpannerConfig.create().withInstanceId(instanceId)
-        .withDatabaseId(sourceDb);
-    SpannerConfig copyConfig = SpannerConfig.create().withInstanceId(instanceId)
-        .withDatabaseId(destDb);
+    SpannerConfig sourceConfig = spannerServer.getSpannerConfig(sourceDb);
+    SpannerConfig copyConfig = spannerServer.getSpannerConfig(destDb);
     PCollection<Long> mismatchCount = comparePipeline
         .apply("Compare", new CompareDatabases(sourceConfig, copyConfig));
     PAssert.that(mismatchCount).satisfies((x) -> {
@@ -305,10 +247,8 @@ public class ExportTimestampTest {
   private Ddl readDdl(String db) {
     SpannerOptions spannerOptions = SpannerOptions.newBuilder().build();
     Spanner client = spannerOptions.getService();
-    DatabaseClient dbClient = client
-        .getDatabaseClient(DatabaseId.of(spannerOptions.getProjectId(), instanceId, db));
     Ddl ddl;
-    try (ReadOnlyTransaction ctx = dbClient.readOnlyTransaction()) {
+    try (ReadOnlyTransaction ctx = spannerServer.getDbClient(db).readOnlyTransaction()) {
       ddl = new InformationSchemaScanner(ctx).scan();
     }
     return ddl;

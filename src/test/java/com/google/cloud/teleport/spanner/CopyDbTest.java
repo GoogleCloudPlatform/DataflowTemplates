@@ -22,21 +22,15 @@ import static org.junit.Assert.assertThat;
 
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.ReadOnlyTransaction;
-import com.google.cloud.spanner.TransactionContext;
-import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.spanner.Type;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.InformationSchemaScanner;
 import com.google.cloud.teleport.spanner.ddl.RandomDdlGenerator;
-import com.google.cloud.teleport.spanner.ddl.RandomInsertMutationGenerator;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.Iterator;
-import javax.annotation.Nullable;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.PAssert;
@@ -87,26 +81,7 @@ public class CopyDbTest {
 
     spannerServer.createDatabase(sourceDb, ddl.statements());
     spannerServer.createDatabase(destinationDb, Collections.emptyList());
-
-    final Iterator<MutationGroup> mutations = new RandomInsertMutationGenerator(ddl).stream()
-        .iterator();
-
-    for (int i = 0; i < numBatches; i++) {
-      TransactionRunner transactionRunner =
-          spannerServer.getDbClient(sourceDb).readWriteTransaction();
-      transactionRunner.run(new TransactionRunner.TransactionCallable<Void>() {
-
-        @Nullable
-        @Override
-        public Void run(TransactionContext transaction) {
-          for (int i = 0; i < 10; i++) {
-            MutationGroup m = mutations.next();
-            transaction.buffer(m);
-          }
-          return null;
-        }
-      });
-    }
+    spannerServer.populateRandomData(sourceDb, ddl, numBatches);
   }
 
   @Test
