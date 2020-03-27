@@ -14,7 +14,7 @@
  * the License.
  */
 
-package com.google.cloud.teleport.bigquery;
+package com.google.cloud.teleport.cdc.merge;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.StringContains.containsString;
@@ -26,18 +26,16 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 @RunWith(JUnit4.class)
-public class BigQueryMergeBuilderTest {
+public class MergeStatementBuilderTest {
   static final String REPLICA_TABLE_ID = "myProject.myReplicaDataset.myTable";
   static final String STAGING_TABLE_ID = "myProject.myReplicaDataset.myTable_changelog";
 
   static final List<String> PRIMARY_KEY_COLUMNS = Arrays.asList("pk1", "pk2");
-  static final String TIMESTAMP_META_FIELD = "_metadata_timestamp";
-  static final String DELETED_META_FIELD = "_metadata_deleted";
+  static final MergeConfiguration MERGE_CONFIGURATION = MergeConfiguration.bigQueryConfiguration();
 
   static final List<String> FULL_COLUMN_LIST = Arrays.asList(
-      "pk1", "pk2", "col1", "col2", "col3", TIMESTAMP_META_FIELD, DELETED_META_FIELD);
-
-  static final Integer DAYS_OF_RETENTION = 5;
+      "pk1", "pk2", "col1", "col2", "col3", MERGE_CONFIGURATION.timestampFieldName(),
+      MERGE_CONFIGURATION.deletedFieldName());
 
   /**
    * The query for this test:
@@ -74,12 +72,11 @@ public class BigQueryMergeBuilderTest {
    */
   @Test
   public void testFullMergeStatement() {
+    MergeStatementBuilder builder = new MergeStatementBuilder(MERGE_CONFIGURATION);
     String fullMergeStatement =
-        BigQueryMergeBuilder.buildMergeStatement(
-                REPLICA_TABLE_ID, STAGING_TABLE_ID,
-                PRIMARY_KEY_COLUMNS, FULL_COLUMN_LIST,
-                TIMESTAMP_META_FIELD,
-                DELETED_META_FIELD, DAYS_OF_RETENTION);
+        builder.buildMergeStatement(
+            REPLICA_TABLE_ID, STAGING_TABLE_ID,
+            PRIMARY_KEY_COLUMNS, FULL_COLUMN_LIST);
 
     assertThat(fullMergeStatement,
         containsString(
@@ -88,7 +85,7 @@ public class BigQueryMergeBuilderTest {
                 + "ROW_NUMBER() OVER "
                 + "(PARTITION BY pk1, pk2 ORDER BY _metadata_timestamp DESC, _metadata_deleted ASC)"
                 + " as row_num FROM `myProject.myReplicaDataset.myTable_changelog` "
-                + "WHERE _PARTITIONTIME >= TIMESTAMP(DATE_ADD(CURRENT_DATE(), INTERVAL -5 DAY)) "
+                + "WHERE _PARTITIONTIME >= TIMESTAMP(DATE_ADD(CURRENT_DATE(), INTERVAL -3 DAY)) "
                 + "OR _PARTITIONTIME IS NULL"));
 
     assertThat(fullMergeStatement,
@@ -112,10 +109,37 @@ public class BigQueryMergeBuilderTest {
     assertThat(fullMergeStatement,
         containsString(
             "WHEN NOT MATCHED BY TARGET AND staging._metadata_deleted!=True THEN "
-            + "INSERT(pk1, pk2, col1, col2, col3, _metadata_timestamp, _metadata_deleted) "
-            + "VALUES ("
-            + "staging.pk1, staging.pk2, staging.col1, staging.col2, staging.col3, "
-            + "staging._metadata_timestamp, staging._metadata_deleted)"
+                + "INSERT(pk1, pk2, col1, col2, col3, _metadata_timestamp, _metadata_deleted) "
+                + "VALUES ("
+                + "staging.pk1, staging.pk2, staging.col1, staging.col2, staging.col3, "
+                + "staging._metadata_timestamp, staging._metadata_deleted)"
         ));
+  }
+
+  /**
+   * The query for this test is similar to the previous one, except it does not have the
+   * following section:
+   *
+   *             WHERE _PARTITIONTIME >= TIMESTAMP(DATE_ADD(CURRENT_DATE(), INTERVAL -5 DAY))
+   *                 OR _PARTITIONTIME IS NULL
+   */
+  @Test
+  public void testMergeStatementWithoutPartitionedTables() {
+    MergeConfiguration config = MERGE_CONFIGURATION.toBuilder()
+        .setSupportPartitionedTables(false)
+        .build();
+    MergeStatementBuilder builder = new MergeStatementBuilder(config);
+    String fullMergeStatement =
+        builder.buildMergeStatement(
+            REPLICA_TABLE_ID, STAGING_TABLE_ID,
+            PRIMARY_KEY_COLUMNS, FULL_COLUMN_LIST);
+
+    assertThat(fullMergeStatement,
+        containsString(
+            "SELECT "
+                + "pk1, pk2, col1, col2, col3, _metadata_timestamp, _metadata_deleted, "
+                + "ROW_NUMBER() OVER "
+                + "(PARTITION BY pk1, pk2 ORDER BY _metadata_timestamp DESC, _metadata_deleted ASC)"
+                + " as row_num FROM `myProject.myReplicaDataset.myTable_changelog` )"));
   }
 }

@@ -13,9 +13,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.templates.common;
+package com.google.cloud.teleport.cdc.merge;
 
-import com.google.cloud.teleport.templates.common.BigQueryMerger.TriggerPerKeyOnFixedIntervals;
+import com.google.cloud.teleport.cdc.merge.BigQueryMerger.TriggerPerKeyOnFixedIntervals;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.beam.sdk.coders.CannotProvideCoderException;
@@ -58,8 +58,8 @@ public class BigQueryMergerTest {
 
   static final Integer WINDOW_SIZE_MINUTES = 5;
 
-  private static BigQueryMergeInfo createMergeInfo(String table) {
-    return BigQueryMergeInfo.create(
+  private static MergeInfo createMergeInfo(String table) {
+    return MergeInfo.create(
         TIMESTAMP_META_FIELD,
         DELETED_META_FIELD,
         String.format("%s_staging", table),
@@ -70,8 +70,8 @@ public class BigQueryMergerTest {
 
   @Test
   public void testAutoValueMergeInfoClass() throws Exception {
-    BigQueryMergeInfo mergeInfo =
-        BigQueryMergeInfo.create(
+    MergeInfo mergeInfo =
+        MergeInfo.create(
             TIMESTAMP_META_FIELD,
             DELETED_META_FIELD,
             TABLE_1,
@@ -79,11 +79,11 @@ public class BigQueryMergerTest {
             FULL_COLUMN_LIST,
             PRIMARY_KEY_COLUMNS);
 
-    PCollection<KV<String, BigQueryMergeInfo>> result =
+    PCollection<KV<String, MergeInfo>> result =
         pipeline
             .apply(Create.of(mergeInfo))
             .apply(
-                WithKeys.<String, BigQueryMergeInfo>of(mi -> mi.getReplicaTable())
+                WithKeys.<String, MergeInfo>of(mi -> mi.getReplicaTable())
                     .withKeyType(TypeDescriptors.strings()))
             .apply(
                 new TriggerPerKeyOnFixedIntervals<>(Duration.standardMinutes(WINDOW_SIZE_MINUTES)));

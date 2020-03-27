@@ -14,7 +14,7 @@
  * the License.
  */
 
-package com.google.cloud.teleport.mappers;
+package com.google.cloud.teleport.cdc.mappers;
 
 
 import com.google.api.services.bigquery.model.TableRow;

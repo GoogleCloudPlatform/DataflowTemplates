@@ -13,10 +13,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.mappers;
+package com.google.cloud.teleport.cdc.mappers;
 
 import com.google.cloud.teleport.templates.common.BigQueryConverters;
-import com.google.cloud.teleport.templates.common.BigQueryMergeInfo;
+import com.google.cloud.teleport.cdc.merge.MergeInfo;
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.bigquery.TableId;
@@ -31,7 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class MergeInfoMapper
-    extends PTransform<PCollection<KV<TableId, TableRow>>, PCollection<BigQueryMergeInfo>> {
+    extends PTransform<PCollection<KV<TableId, TableRow>>, PCollection<MergeInfo>> {
 
   public static final String METADATA_TIMESTAMP = "_metadata_timestamp";
   public static final String METADATA_DELETED = "_metadata_deleted";
@@ -55,12 +55,12 @@ public class MergeInfoMapper
   }
 
   @Override
-  public PCollection<BigQueryMergeInfo> expand(PCollection<KV<TableId, TableRow>> input) {
+  public PCollection<MergeInfo> expand(PCollection<KV<TableId, TableRow>> input) {
     return input.apply(
-        MapElements.into(TypeDescriptor.of(BigQueryMergeInfo.class))
+        MapElements.into(TypeDescriptor.of(MergeInfo.class))
             .via(
                 element -> {
-                  return BigQueryMergeInfo.create(
+                  return MergeInfo.create(
                       METADATA_TIMESTAMP, // TODO should be list pulled from Datastream API
                       METADATA_DELETED,
                       String.format("%s.%s", // Staging Table // TODO these should possibly be passed separately

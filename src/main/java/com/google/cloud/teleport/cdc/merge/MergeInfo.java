@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.templates.common;
+package com.google.cloud.teleport.cdc.merge;
 
 import com.google.auto.value.AutoValue;
 import java.io.Serializable;
@@ -24,7 +24,7 @@ import org.apache.beam.sdk.schemas.annotations.SchemaCreate;
 
 @DefaultSchema(AutoValueSchema.class)
 @AutoValue
-public abstract class BigQueryMergeInfo implements Serializable {
+public abstract class MergeInfo implements Serializable {
   public abstract String getTimestampField();
 
   public abstract String getDeleteField();
@@ -38,14 +38,14 @@ public abstract class BigQueryMergeInfo implements Serializable {
   public abstract List<String> getAllPkFields();
 
   @SchemaCreate
-  public static BigQueryMergeInfo create(
+  public static MergeInfo create(
       String timestampField,
       String deleteField,
       String stagingTable,
       String replicaTable,
       List<String> allFields,
       List<String> allPkFields) {
-    return new AutoValue_BigQueryMergeInfo(
+    return new AutoValue_MergeInfo(
         timestampField, deleteField, stagingTable, replicaTable, allFields, allPkFields);
   }
 }

@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.templates.common;
+package com.google.cloud.teleport.cdc.merge;
 
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryOptions;
@@ -21,7 +21,6 @@ import com.google.cloud.bigquery.Job;
 import com.google.cloud.bigquery.JobId;
 import com.google.cloud.bigquery.QueryJobConfiguration;
 import com.google.cloud.bigquery.TableResult;
-import com.google.cloud.teleport.bigquery.BigQueryMergeBuilder;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -46,28 +45,39 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 // TODO(pabloem): Find an appropriate output type (perhaps BQ Merge job metadata).
-public class BigQueryMerger extends PTransform<PCollection<BigQueryMergeInfo>, PCollection<Void>> {
+public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollection<Void>> {
 
   private static Logger LOG = LoggerFactory.getLogger(BigQueryStatementIssuingFn.class);
 
   private Duration windowDuration;
   private BigQuery testBigQueryClient;
+  private MergeConfiguration mergeConfiguration;
 
-  public BigQueryMerger(Duration windowDuration, BigQuery testBigQueryClient) {
+  public BigQueryMerger(
+      Duration windowDuration, BigQuery testBigQueryClient, MergeConfiguration mergeConfiguration) {
     this.windowDuration = windowDuration;
     this.testBigQueryClient = testBigQueryClient;
+    this.mergeConfiguration = mergeConfiguration;
   }
 
   @Override
-  public PCollection<Void> expand(PCollection<BigQueryMergeInfo> input) {
+  public PCollection<Void> expand(PCollection<MergeInfo> input) {
+    final MergeStatementBuilder mergeBuilder = new MergeStatementBuilder(mergeConfiguration);
     return input
         .apply(
             MapElements.into(
                     TypeDescriptors.kvs(
-                        TypeDescriptors.strings(), TypeDescriptor.of(BigQueryMergeInfo.class)))
+                        TypeDescriptors.strings(), TypeDescriptor.of(MergeInfo.class)))
                 .via(mergeInfo -> KV.of(mergeInfo.getReplicaTable(), mergeInfo)))
-        .apply(new TriggerPerKeyOnFixedIntervals<String, BigQueryMergeInfo>(windowDuration))
-        .apply(Values.<BigQueryMergeInfo>create())
+        .apply(new TriggerPerKeyOnFixedIntervals<String, MergeInfo>(windowDuration))
+        .apply(Values.<MergeInfo>create())
+        .apply(MapElements.into(TypeDescriptors.strings()).via(mergeInfo -> {
+          return mergeBuilder.buildMergeStatement(
+              mergeInfo.getReplicaTable(),
+              mergeInfo.getStagingTable(),
+              mergeInfo.getAllPkFields(),
+              mergeInfo.getAllFields());
+        }))
         .apply(ParDo.of(new BigQueryStatementIssuingFn(this.testBigQueryClient)))
         .apply(
             MapElements.into(TypeDescriptors.voids())
@@ -113,7 +123,7 @@ public class BigQueryMerger extends PTransform<PCollection<BigQueryMergeInfo>, P
     }
   }
 
-  public class BigQueryStatementIssuingFn extends DoFn<BigQueryMergeInfo, Void> {
+  public class BigQueryStatementIssuingFn extends DoFn<String, Void> {
     public final String JOB_ID_PREFIX = "bigstream_to_bq";
 
     private BigQuery bigQueryClient;
@@ -131,18 +141,12 @@ public class BigQueryMerger extends PTransform<PCollection<BigQueryMergeInfo>, P
 
     @Override
     public TypeDescriptor getInputTypeDescriptor() {
-      return TypeDescriptor.of(BigQueryMergeInfo.class);
+      return TypeDescriptor.of(MergeInfo.class);
     }
 
     @ProcessElement
     public void process(ProcessContext c) throws InterruptedException {
-      BigQueryMergeInfo info = c.element();
-      String statement =
-          BigQueryMergeBuilder.buildMergeStatementWithDefaults(
-              info.getReplicaTable(),
-              info.getStagingTable(),
-              info.getAllPkFields(),
-              info.getAllFields());
+      String statement = c.element();
       Job jobInfo = issueQueryToBQ(statement);
       LOG.info("Job Info for triggered job: {}", jobInfo);
       jobInfo = jobInfo.waitFor();

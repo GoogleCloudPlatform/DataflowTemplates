@@ -14,95 +14,52 @@
  * the License.
  */
 
-package com.google.cloud.teleport.bigquery;
+package com.google.cloud.teleport.cdc.merge;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.commons.text.StringSubstitutor;
 
-public class BigQueryMergeBuilder {
+public class MergeStatementBuilder implements Serializable {
 
   public static final String STAGING_TABLE_NAME = "staging";
   public static final String REPLICA_TABLE_NAME = "replica";
 
-  public static final String DEFAULT_TIMESTAMP_FIELD = "_metadata_timestamp";
-  public static final String DEFAULT_DELETED_FIELD = "_metadata_deleted";
-  public static final Integer DEFAULT_RETENTION = 3;
+  private final MergeConfiguration configuration;
 
-  public static String buildMergeStatementWithDefaults(String replicaTable,
+  public MergeStatementBuilder(MergeConfiguration configuration) {
+    this.configuration = configuration;
+  }
+
+  public String buildMergeStatement(
+      String replicaTable,
       String stagingTable,
       List<String> primaryKeyFields,
       List<String> allFields) {
-    return buildMergeStatement(replicaTable, stagingTable, primaryKeyFields, allFields,
-        DEFAULT_TIMESTAMP_FIELD, DEFAULT_DELETED_FIELD, DEFAULT_RETENTION);
-  }
-
-  public static String buildMergeStatementWithDefaultRetention(
-      String replicaTable,
-      String stagingTable,
-      List<String> primaryKeyFields,
-      List<String> allFields,
-      String timestampField,
-      String deletedField) {
-    return buildMergeStatement(replicaTable, stagingTable, primaryKeyFields, allFields,
-        timestampField, deletedField, DEFAULT_RETENTION);
-  }
-
-  /**
-   * The top-level template for building merge statements to be issued to BigQuery.
-   *
-   * The way to read it is:
-   *
-   * Merge the REPLICA table
-   * Using a view of the STAGING table containing the latest changes
-   * On a join condition (join on all the columns of the primary key).
-   * If there is a match, and there has been a deletion:
-   * -- This means that both STAGING and REPLICA tables contain the primary key, and that the
-   *    latest change in that primary key is a deletion. <b>Therefore delete the row.</b>
-   * If there is a match, and the STAGING table contains a newer record:
-   * -- This means that both STAGING and REPLICA tables contain the primary key, and that
-   *    the STAGING table contains a newer version of the data. <b>Therefore, update the row.</b>
-   * If there has not been a match:
-   * -- This means that the REPLICA table does not contain a row that is contained in the STAGING
-   *    table. <b></b>Therefore, insert this new row.</b>
-   */
-  public static final String MERGE_TEMPLATE = String.join("",
-      "MERGE `{replicaTable}` AS {replicaAlias} ",
-      "USING ({stagingViewSql}) AS {stagingAlias} ",
-      "ON {joinCondition} ",
-      "WHEN MATCHED AND {timestampCompareSql} AND {stagingAlias}.{deleteColumn}=True THEN DELETE ", // TODO entire block should be configurably removed
-      "WHEN MATCHED AND {timestampCompareSql} THEN {mergeUpdateSql} ",
-      "WHEN NOT MATCHED BY TARGET AND {stagingAlias}.{deleteColumn}!=True ",
-      "THEN {mergeInsertSql}");
-
-  public static String buildMergeStatement(
-      String replicaTable,
-      String stagingTable,
-      List<String> primaryKeyFields,
-      List<String> allFields,
-      String timestampField,
-      String deletedField,
-      Integer daysOfRetention) {
     // Key/Value Map used to replace values in template
     Map<String, String> mergeQueryValues = new HashMap<>();
     
     mergeQueryValues.put("replicaTable", replicaTable);
     mergeQueryValues.put("replicaAlias", REPLICA_TABLE_NAME);
     mergeQueryValues.put("stagingAlias", STAGING_TABLE_NAME);
-    mergeQueryValues.put("deleteColumn", deletedField); // TODO require config options
+    mergeQueryValues.put("deleteColumn", configuration.deletedFieldName()); // TODO require config options
 
     mergeQueryValues.put(
       "stagingViewSql", 
-      buildLatestViewOfStagingTable(stagingTable, allFields, primaryKeyFields, timestampField, deletedField, daysOfRetention));
+      buildLatestViewOfStagingTable(
+          stagingTable, allFields, primaryKeyFields,
+          configuration.timestampFieldName(), configuration.deletedFieldName(),
+          configuration.partitionRetention()));
 
     mergeQueryValues.put("joinCondition", buildJoinConditions(primaryKeyFields, REPLICA_TABLE_NAME, STAGING_TABLE_NAME));
-    mergeQueryValues.put("timestampCompareSql", buildTimestampCheck(timestampField));
+    mergeQueryValues.put("timestampCompareSql", buildTimestampCheck(configuration.timestampFieldName()));
     mergeQueryValues.put("mergeUpdateSql", buildUpdateStatement(allFields));
     mergeQueryValues.put("mergeInsertSql", buildInsertStatement(allFields));
 
-    String mergeStatement = StringSubstitutor.replace(MERGE_TEMPLATE, mergeQueryValues, "{", "}");
+    String mergeStatement = StringSubstitutor.replace(configuration.mergeQueryTemplate(), mergeQueryValues, "{", "}");
     return mergeStatement;
   }
 
@@ -113,43 +70,45 @@ public class BigQueryMergeBuilder {
 
   public static final String LATEST_FROM_STAGING_TEMPLATE = "SELECT %s FROM (%s) WHERE row_num=1";
 
-  static String buildLatestViewOfStagingTable(
+  private String buildLatestViewOfStagingTable(
       String stagingTable, List<String> allFields, List<String> primaryKeyFields,
       String timestampField, String deletedField, Integer daysOfRetention) {
     String commaSeparatedFields = String.join(", ", allFields);
 
     return String.format(LATEST_FROM_STAGING_TEMPLATE,
         commaSeparatedFields, buildPartitionedByPKAndSorted(stagingTable, allFields,
-            primaryKeyFields, timestampField, deletedField, daysOfRetention));
+            primaryKeyFields));
   }
 
   public static final String PARTITION_BY_PK_AND_SORT_TEMPLATE = String.join("",
       "SELECT %s, ROW_NUMBER() OVER (",
       "PARTITION BY %s ",
       "ORDER BY %s DESC, %s ASC) as row_num ",
-      "FROM `%s` WHERE %s");
+      "FROM `%s` %s");
 
-  static String buildPartitionedByPKAndSorted(
-      String stagingTable, List<String> allFields, List<String> primaryKeyFields,
-      String timestampField, String deletedField, Integer daysOfRetention) {
+  private String buildPartitionedByPKAndSorted(
+      String stagingTable, List<String> allFields, List<String> primaryKeyFields) {
     String commaSeparatedFields = String.join(", ", allFields);
     String commaSeparatedPKFields = String.join(", ", primaryKeyFields);
     return String.format(PARTITION_BY_PK_AND_SORT_TEMPLATE,
         commaSeparatedFields,
         commaSeparatedPKFields,
-        timestampField, deletedField,
-        stagingTable, buildRetentionWhereClause(daysOfRetention));
+        configuration.timestampFieldName(), configuration.deletedFieldName(),
+        stagingTable, buildRetentionWhereClause());
   }
 
-  // TODO: Deal with non-partitioned tables
   public static final String RETENTION_WHERE_TEMPLATE =
       String.join(
           "",
-          "_PARTITIONTIME >= TIMESTAMP(DATE_ADD(CURRENT_DATE(), INTERVAL -%s DAY)) ",
+          "WHERE _PARTITIONTIME >= TIMESTAMP(DATE_ADD(CURRENT_DATE(), INTERVAL -%s DAY)) ",
           "OR _PARTITIONTIME IS NULL");
 
-  static String buildRetentionWhereClause(Integer daysOfRetention) {
-    return String.format(RETENTION_WHERE_TEMPLATE, daysOfRetention);
+  String buildRetentionWhereClause() {
+    if (configuration.supportPartitionedTables()) {
+      return String.format(RETENTION_WHERE_TEMPLATE, configuration.partitionRetention());
+    } else {
+      return "";
+    }
   }
 
   static String buildJoinConditions(
