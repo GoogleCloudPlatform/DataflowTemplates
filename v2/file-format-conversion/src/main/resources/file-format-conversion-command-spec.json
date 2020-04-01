@@ -1,4 +1,7 @@
 {
   "mainClass": "com.google.cloud.teleport.v2.templates.FileFormatConversion",
-  "classPath": "/template/file-format-conversion/*:/template/file-format-conversion/libs/*:/template/file-format-conversion/classes"
+  "classPath": "/template/file-format-conversion/*:/template/file-format-conversion/libs/*:/template/file-format-conversion/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"file_format_conversion\"}"
+  }
 }
