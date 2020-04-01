@@ -31,6 +31,11 @@ public class ExportPipeline {
 
   /** Options for Export pipeline. */
   public interface ExportPipelineOptions extends PipelineOptions {
+    @Description("GCP Project Id of where the Spanner table lives.")
+    ValueProvider<String> getSpannerProjectId();
+
+    void setSpannerProjectId(ValueProvider<String> spannerReadProjectId);
+
     @Description("Instance ID for Cloud Spanner")
     ValueProvider<String> getInstanceId();
 
@@ -90,6 +95,7 @@ public class ExportPipeline {
     SpannerConfig spannerConfig =
         SpannerConfig.create()
             .withHost(options.getSpannerHost())
+            .withProjectId(options.getSpannerProjectId())
             .withInstanceId(options.getInstanceId())
             .withDatabaseId(options.getDatabaseId());
     p.begin()
