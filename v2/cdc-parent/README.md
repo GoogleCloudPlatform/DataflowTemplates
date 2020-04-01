@@ -202,8 +202,8 @@ In this case, we’ll consider a database running on Cloud SQL, with two tables:
 - Instance name: my-mysql
 - Database name: cdc_demo
 - Tables
-  -`people` — fully qualified name is `my-mysql.cdc_demo.people`
-  -`pets` — fully qualified name is `my-mysql.cdc_demo.pets`
+  - `people` — fully qualified name is `my-mysql.cdc_demo.people`
+  - `pets` — fully qualified name is `my-mysql.cdc_demo.pets`
 
 The Debezium connector exports data for each table into a separate Pub/Sub topic
 with a prefix. We’ll choose this prefix for our Pub/Sub topics: `export_demo_`.
@@ -211,11 +211,11 @@ This prefix will be passed as an argument to the Debezium connector, along with
 a Google Cloud project. The PubSub topics that we'll create are:
 
 - Table: `my-mysql.cdc_demo.people`
- - Topic: `export_demo_my-mysql_cdc_demo_people`
- - Subscription: `cdc_demo_people_subscription`
+  - Topic: `export_demo_my-mysql_cdc_demo_people`
+  - Subscription: `cdc_demo_people_subscription`
 - Table: `my-mysql.cdc_demo.pets`
- - Topic: `export_demo_my-mysql_cdc_demo_pets`
- - Subscription: `cdc_demo_pets_subscription`
+  - Topic: `export_demo_my-mysql_cdc_demo_pets`
+  - Subscription: `cdc_demo_pets_subscription`
 
 You can then pass this prefix to the Debezium connector via properties
 `gcpPubsubTopicPrefix=export_demo_`, and the subscriptions to the Dataflow
