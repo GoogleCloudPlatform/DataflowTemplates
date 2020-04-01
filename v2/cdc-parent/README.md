@@ -54,7 +54,11 @@ a VM by executing the JAR, or as a Docker container; or on your Kubernetes clust
 be it on GKE, or on-premise.
 
 The connector can be deployed locally from source, via a docker container,
-or with high-reliability on Kubernetes. It will need to be supplied of two/three
+or with high-reliability on Kubernetes. Before deploying the connector, make
+sure to have set up the PubSub topics and subscriptions for it.
+See [Setting up PubSub topics](#setting-up-pubsub-topics).
+
+It will need to be supplied of two/three
 basic configuration files:
 
 - A properties file containing:
@@ -188,6 +192,36 @@ Kubernetes:
 ```
 kubectl apply -f app.yml
 ```
+
+### Setting up PubSub topics
+
+Let's suppose you have a MySQL database running in any environment.
+In this case, we’ll consider a database running on Cloud SQL, with two tables:
+`people` and `pets`. So we have:
+
+- Instance name: my-mysql
+- Database name: cdc_demo
+- Tables
+  -`people` — fully qualified name is `my-mysql.cdc_demo.people`
+  -`pets` — fully qualified name is `my-mysql.cdc_demo.pets`
+
+The Debezium connector exports data for each table into a separate Pub/Sub topic
+with a prefix. We’ll choose this prefix for our Pub/Sub topics: `export_demo_`.
+This prefix will be passed as an argument to the Debezium connector, along with
+a Google Cloud project. The PubSub topics that we'll create are:
+
+- Table: `my-mysql.cdc_demo.people`
+ - Topic: `export_demo_my-mysql_cdc_demo_people`
+ - Subscription: `cdc_demo_people_subscription`
+- Table: `my-mysql.cdc_demo.pets`
+ - Topic: `export_demo_my-mysql_cdc_demo_pets`
+ - Subscription: `cdc_demo_pets_subscription`
+
+You can then pass this prefix to the Debezium connector via properties
+`gcpPubsubTopicPrefix=export_demo_`, and the subscriptions to the Dataflow
+pipeline as Pipeline Options 
+`--inputSubscriptions=cdc_demo_people_subscription,cdc_demo_pets_subscription`.
+
 
 ## The Dataflow Pipeline
 
