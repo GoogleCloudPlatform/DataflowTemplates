@@ -22,6 +22,9 @@ import org.apache.beam.sdk.schemas.AutoValueSchema;
 import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 import org.apache.beam.sdk.schemas.annotations.SchemaCreate;
 
+/**
+ * Class {@link MergeInfo}.
+ */
 @DefaultSchema(AutoValueSchema.class)
 @AutoValue
 public abstract class MergeInfo implements Serializable {

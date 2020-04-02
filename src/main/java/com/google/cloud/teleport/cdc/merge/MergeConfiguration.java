@@ -19,6 +19,9 @@ package com.google.cloud.teleport.cdc.merge;
 import com.google.auto.value.AutoValue;
 import java.io.Serializable;
 
+/**
+ * Class {@link MergeConfiguration}.
+ */
 @AutoValue
 public abstract class MergeConfiguration implements Serializable {
   /**
@@ -37,7 +40,7 @@ public abstract class MergeConfiguration implements Serializable {
    *    the STAGING table contains a newer version of the data. <b>Therefore, update the row.</b>
    * If there has not been a match:
    * -- This means that the REPLICA table does not contain a row that is contained in the STAGING
-   *    table. <b></b>Therefore, insert this new row.</b>
+   *    table. <b>Therefore, insert this new row.</b>
    */
   public static final String DEFAULT_MERGE_QUERY_TEMPLATE = String.join("",
       "MERGE `{replicaTable}` AS {replicaAlias} ",

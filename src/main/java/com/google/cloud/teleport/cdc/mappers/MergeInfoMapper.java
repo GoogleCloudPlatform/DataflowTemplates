@@ -15,11 +15,10 @@
  */
 package com.google.cloud.teleport.cdc.mappers;
 
-import com.google.cloud.teleport.templates.common.BigQueryConverters;
-import com.google.cloud.teleport.cdc.merge.MergeInfo;
-
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.bigquery.TableId;
+import com.google.cloud.teleport.cdc.merge.MergeInfo;
+import com.google.cloud.teleport.templates.common.BigQueryConverters;
 import com.google.common.collect.ImmutableList;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.MapElements;
@@ -30,6 +29,9 @@ import org.apache.beam.sdk.values.TypeDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Class {@link MergeInfoMapper}.
+ */
 public class MergeInfoMapper
     extends PTransform<PCollection<KV<TableId, TableRow>>, PCollection<MergeInfo>> {
 
@@ -63,12 +65,17 @@ public class MergeInfoMapper
                   return MergeInfo.create(
                       METADATA_TIMESTAMP, // TODO should be list pulled from Datastream API
                       METADATA_DELETED,
-                      String.format("%s.%s", // Staging Table // TODO these should possibly be passed separately
-                          BigQueryConverters.formatStringTemplate(stagingDataset.get(), element.getValue()),
-                          BigQueryConverters.formatStringTemplate(stagingTable.get(), element.getValue())),
+                      String.format("%s.%s",
+                          // Staging Table // TODO these should possibly be passed separately
+                          BigQueryConverters
+                              .formatStringTemplate(stagingDataset.get(), element.getValue()),
+                          BigQueryConverters
+                              .formatStringTemplate(stagingTable.get(), element.getValue())),
                       String.format("%s.%s", // Replica Table
-                          BigQueryConverters.formatStringTemplate(replicaDataset.get(), element.getValue()),
-                          BigQueryConverters.formatStringTemplate(replicaTable.get(), element.getValue())),
+                          BigQueryConverters
+                              .formatStringTemplate(replicaDataset.get(), element.getValue()),
+                          BigQueryConverters
+                              .formatStringTemplate(replicaTable.get(), element.getValue())),
                       ImmutableList.copyOf(element.getValue().keySet()),
                       ImmutableList.of("ID"));
                 }));

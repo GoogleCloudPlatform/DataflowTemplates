@@ -26,6 +26,9 @@ import org.apache.beam.sdk.values.TypeDescriptors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Class {@link CombineJsonLines}.
+ */
 public class CombineJsonLines extends PTransform<PCollection<String>, PCollection<String>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(CombineJsonLines.class);

@@ -34,7 +34,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-// import org.apache.avro.Schema; // if needed we need to figure out the duplicate here
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.SimpleFunction;
@@ -42,41 +41,46 @@ import org.apache.beam.sdk.values.PCollection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// TODO: Class comments are required
-/*
- *
- * BigQueryMapper is intended to be easily extensible to enable BigQuery schema management
- * during pipeline execution.  New fields and tables will be automatically added to BigQuery
- * when they are detected and before data causes BQ load failures.
- *
- *    The BigQueryMapper can be easily extended by overriding:
- *    - public TableId getTableId(InputT input)
- *    - public TableRow getTableRow(InputT input)
- *    - public OutputT getOutputObject(InputT input)
- *    - public Map<String, LegacySQLTypeName> getInputSchema(InputT input)
- *
- */
+// import org.apache.avro.Schema; // if needed we need to figure out the duplicate here
 
+// TODO: Class comments are required
+
+/**
+ * BigQueryMapper is intended to be easily extensible to enable BigQuery schema management during
+ * pipeline execution.  New fields and tables will be automatically added to BigQuery when they are
+ * detected and before data causes BQ load failures.
+ *
+ * The BigQueryMapper can be easily extended by overriding: - public TableId getTableId(InputT
+ * input) - public TableRow getTableRow(InputT input) - public OutputT getOutputObject(InputT input)
+ * - public Map<String, LegacySQLTypeName> getInputSchema(InputT input)
+ */
 public class BigQueryMapper<InputT, OutputT>
     extends PTransform<PCollection<InputT>, PCollection<OutputT>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryMapper.class);
+  private final String projectId;
   private BigQuery bigquery;
   private Map<String, Table> tables = new HashMap<String, Table>();
   private Map<String, LegacySQLTypeName> defaultSchema;
   private boolean dayPartitioning = false;
 
-  private final String projectId;
-
   public BigQueryMapper(String projectId) {
     this.projectId = projectId;
   }
 
-  public TableId getTableId(InputT input) {return null;}
-  public TableRow getTableRow(InputT input) {return null;}
-  public OutputT getOutputObject(InputT input) {return null;}
+  public TableId getTableId(InputT input) {
+    return null;
+  }
 
-  /* Return a HashMap with the Column->Column Type Mapping required from the source 
+  public TableRow getTableRow(InputT input) {
+    return null;
+  }
+
+  public OutputT getOutputObject(InputT input) {
+    return null;
+  }
+
+  /* Return a HashMap with the Column->Column Type Mapping required from the source
       Implementing getInputSchema will allow the mapper class to support your desired format
   */
   public Map<String, LegacySQLTypeName> getInputSchema(InputT input) {
@@ -87,7 +91,8 @@ public class BigQueryMapper<InputT, OutputT>
     return this.projectId;
   }
 
-  public BigQueryMapper<InputT, OutputT> withDefaultSchema(Map<String, LegacySQLTypeName> defaultSchema) {
+  public BigQueryMapper<InputT, OutputT> withDefaultSchema(
+      Map<String, LegacySQLTypeName> defaultSchema) {
     this.defaultSchema = defaultSchema;
     return this;
   }
@@ -136,7 +141,8 @@ public class BigQueryMapper<InputT, OutputT>
             }));
   }
 
-  private void updateTableIfRequired(TableId tableId, TableRow row, Map<String, LegacySQLTypeName> inputSchema) {
+  private void updateTableIfRequired(TableId tableId, TableRow row,
+      Map<String, LegacySQLTypeName> inputSchema) {
     // Ensure Instance of BigQuery Exists
     if (this.bigquery == null) {
       this.bigquery =
@@ -238,7 +244,7 @@ public class BigQueryMapper<InputT, OutputT>
   }
 
   private Boolean addNewTableField(TableId tableId, TableRow row, String rowKey,
-        List<Field> newFieldList, Map<String, LegacySQLTypeName> inputSchema) {
+      List<Field> newFieldList, Map<String, LegacySQLTypeName> inputSchema) {
     // Call Get Schema and Extract New Field Type
     Field newField;
 

@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 
 
 // TODO when this is a flex template it could incorporate outputs with configurable dest?
-/*
+/**
  * The DeadLetterQueueSanitizer is an abstract handler to clean and prepare pipeline failures
  * to be stored in a GCS Dead Letter Queue.
  *
@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
  */
 public class DeadLetterQueueSanitizer<InputT, OutputT> extends SimpleFunction<InputT, OutputT> {
 
-  private static Logger LOG = LoggerFactory.getLogger(DeadLetterQueueSanitizer.class);
+  private static final Logger LOG = LoggerFactory.getLogger(DeadLetterQueueSanitizer.class);
 
   // public DeadLetterQueueSanitizer() {}
 
@@ -47,14 +47,19 @@ public class DeadLetterQueueSanitizer<InputT, OutputT> extends SimpleFunction<In
   }
 
   // NOTE: Override these 2 functions to extend this class
-  public String getJsonMessage(InputT input) {return "";}
-  public String getErrorMessageJson(InputT input) {return "";}
+  public String getJsonMessage(InputT input) {
+    return "";
+  }
+
+  public String getErrorMessageJson(InputT input) {
+    return "";
+  }
 
   // NOTE: Only override formatMessage if required or you desire a non-String output
   public OutputT formatMessage(String rawJson, String errorMessageJson) {
     String dlqRow = String.format(
-      "{\"error_message\":%s,\"message\":%s}",
-      rawJson, errorMessageJson);
+        "{\"error_message\":%s,\"message\":%s}",
+        rawJson, errorMessageJson);
 
     return (OutputT) dlqRow;
   }

@@ -21,9 +21,12 @@ import com.google.cloud.bigquery.LegacySQLTypeName;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Class {@link BigQueryDefaultSchemas}.
+ */
 public final class BigQueryDefaultSchemas {
 
-  public static final Map<String, LegacySQLTypeName> WEB_SDK_SCHEMA = new HashMap<String , LegacySQLTypeName>() {{
+  public static final Map<String, LegacySQLTypeName> WEB_SDK_SCHEMA = new HashMap<String, LegacySQLTypeName>() {{
     put("$os", LegacySQLTypeName.STRING);
     put("$browser", LegacySQLTypeName.STRING);
     put("$referrer", LegacySQLTypeName.STRING);

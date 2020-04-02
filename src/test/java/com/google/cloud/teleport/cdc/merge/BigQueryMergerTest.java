@@ -37,6 +37,9 @@ import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Test class for {@link BigQueryMerger}.
+ */
 public class BigQueryMergerTest {
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();

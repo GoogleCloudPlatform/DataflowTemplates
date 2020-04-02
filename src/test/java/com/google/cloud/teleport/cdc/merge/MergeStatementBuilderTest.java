@@ -25,6 +25,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+/**
+ * Test class for {@link MergeStatementBuilder}.
+ */
 @RunWith(JUnit4.class)
 public class MergeStatementBuilderTest {
   static final String REPLICA_TABLE_ID = "myProject.myReplicaDataset.myTable";
@@ -38,6 +41,7 @@ public class MergeStatementBuilderTest {
       MERGE_CONFIGURATION.deletedFieldName());
 
   /**
+   * Test case testFullMergeStatement.
    * The query for this test:
    *
    * MERGE `myProject.myReplicaDataset.myTable` AS replica
@@ -117,6 +121,7 @@ public class MergeStatementBuilderTest {
   }
 
   /**
+   * Test case testMergeStatementWithoutPartitionedTables.
    * The query for this test is similar to the previous one, except it does not have the
    * following section:
    *

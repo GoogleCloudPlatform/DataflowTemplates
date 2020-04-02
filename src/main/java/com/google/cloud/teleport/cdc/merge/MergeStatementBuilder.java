@@ -23,6 +23,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.commons.text.StringSubstitutor;
 
+/**
+ * Class {@link MergeStatementBuilder}.
+ */
 public class MergeStatementBuilder implements Serializable {
 
   public static final String STAGING_TABLE_NAME = "staging";
@@ -41,14 +44,14 @@ public class MergeStatementBuilder implements Serializable {
       List<String> allFields) {
     // Key/Value Map used to replace values in template
     Map<String, String> mergeQueryValues = new HashMap<>();
-    
+
     mergeQueryValues.put("replicaTable", replicaTable);
     mergeQueryValues.put("replicaAlias", REPLICA_TABLE_NAME);
     mergeQueryValues.put("stagingAlias", STAGING_TABLE_NAME);
     mergeQueryValues.put("deleteColumn", configuration.deletedFieldName()); // TODO require config options
 
     mergeQueryValues.put(
-      "stagingViewSql", 
+      "stagingViewSql",
       buildLatestViewOfStagingTable(
           stagingTable, allFields, primaryKeyFields,
           configuration.timestampFieldName(), configuration.deletedFieldName(),

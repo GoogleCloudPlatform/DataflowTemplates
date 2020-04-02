@@ -15,8 +15,6 @@
  */
 package com.google.cloud.teleport.cdc.dlq;
 
-import com.google.cloud.teleport.cdc.dlq.DeadLetterQueueSanitizer;
-
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.bigquery.model.TableRow;
@@ -27,18 +25,18 @@ import org.slf4j.LoggerFactory;
 
 
 // TODO: Jackson2 is adding \n chars into the JSON which is not desired
-/*
+
+/**
  * The BigQueryDeadLetterQueueSanitizer cleans and prepares failed BigQuery
  * inserts to be stored in a GCS Dead Letter Queue.
- *
  * NOTE: The input to a Sanitizer is flexible but the output must be a String
  * unless your override formatMessage()
  */
 public class BigQueryDeadLetterQueueSanitizer
     extends DeadLetterQueueSanitizer<BigQueryInsertError, String> {
 
-  private static Logger LOG = LoggerFactory.getLogger(BigQueryDeadLetterQueueSanitizer.class);
   private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
+  private static final Logger LOG = LoggerFactory.getLogger(BigQueryDeadLetterQueueSanitizer.class);
 
   // public BigQueryDeadLetterQueueSanitizer() {}
 
@@ -49,10 +47,10 @@ public class BigQueryDeadLetterQueueSanitizer
     try {
       row.setFactory(JSON_FACTORY);
       message = row.toPrettyString();
-    } catch(IOException e) {
+    } catch (IOException e) {
       // Ignore exception and print bad format
       message = String.format("\"%s\"", row.toString());
-    } 
+    }
 
     return message;
   }

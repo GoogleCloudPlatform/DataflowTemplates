@@ -44,10 +44,12 @@ import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// TODO(pabloem): Find an appropriate output type (perhaps BQ Merge job metadata).
+/**
+ * Class BigQueryMerger.
+ */
 public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollection<Void>> {
 
-  private static Logger LOG = LoggerFactory.getLogger(BigQueryStatementIssuingFn.class);
+  private static final Logger LOG = LoggerFactory.getLogger(BigQueryStatementIssuingFn.class);
 
   private Duration windowDuration;
   private BigQuery testBigQueryClient;
@@ -66,11 +68,11 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
     return input
         .apply(
             MapElements.into(
-                    TypeDescriptors.kvs(
-                        TypeDescriptors.strings(), TypeDescriptor.of(MergeInfo.class)))
+                TypeDescriptors.kvs(
+                    TypeDescriptors.strings(), TypeDescriptor.of(MergeInfo.class)))
                 .via(mergeInfo -> KV.of(mergeInfo.getReplicaTable(), mergeInfo)))
         .apply(new TriggerPerKeyOnFixedIntervals<String, MergeInfo>(windowDuration))
-        .apply(Values.<MergeInfo>create())
+        .apply(Values.create())
         .apply(MapElements.into(TypeDescriptors.strings()).via(mergeInfo -> {
           return mergeBuilder.buildMergeStatement(
               mergeInfo.getReplicaTable(),
@@ -86,6 +88,11 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
                         (Void) null)); // TODO(pabloem) Remove this line and find a return type
   }
 
+  /**
+   * Class {@link TriggerPerKeyOnFixedIntervals}.
+   * @param <K> key.
+   * @param <V> value.
+   */
   public static class TriggerPerKeyOnFixedIntervals<K, V>
       extends PTransform<PCollection<KV<K, V>>, PCollection<KV<K, V>>> {
 
@@ -123,8 +130,12 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
     }
   }
 
+  /**
+   * Class {@link BigQueryStatementIssuingFn}.
+   */
   public class BigQueryStatementIssuingFn extends DoFn<String, Void> {
-    public final String JOB_ID_PREFIX = "bigstream_to_bq";
+
+    public static final String JOB_ID_PREFIX = "bigstream_to_bq";
 
     private BigQuery bigQueryClient;
 

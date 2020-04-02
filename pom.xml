@@ -668,6 +668,9 @@
                 <ignoredUsedUndeclaredDependency>
                   org.apache.beam:beam-model-pipeline
                 </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  org.apache.beam:beam-vendor-guava-26_0-jre
+                </ignoredUsedUndeclaredDependency>
              </ignoredUsedUndeclaredDependencies>
              <ignoredUnusedDeclaredDependencies>
                 <ignoredUnusedDeclaredDependency>org.threeten:threetenbp</ignoredUnusedDeclaredDependency>

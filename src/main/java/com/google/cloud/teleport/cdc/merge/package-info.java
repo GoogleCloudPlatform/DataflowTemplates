@@ -14,8 +14,7 @@
  * the License.
  */
 
-
 /**
- * Utility classes for dynamic mapping of data passing through Dataflow into Outputs.
+ * CDC Merge utilities.
  */
-package com.google.cloud.teleport.cdc.mappers;
+package com.google.cloud.teleport.cdc.merge;
