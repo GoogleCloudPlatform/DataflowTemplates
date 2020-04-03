@@ -72,6 +72,12 @@ public class ExportPipeline {
     @Default.String(value = "")
     ValueProvider<String> getSnapshotTime();
 
+    @Description("GCP Project Id of where the Spanner table lives.")
+    ValueProvider<String> getSpannerProjectId();
+
+    void setSpannerProjectId(ValueProvider<String> value);
+
+
     void setSnapshotTime(ValueProvider<String> value);
   }
 
@@ -89,6 +95,7 @@ public class ExportPipeline {
 
     SpannerConfig spannerConfig =
         SpannerConfig.create()
+            .withProjectId(options.getSpannerProjectId())
             .withHost(options.getSpannerHost())
             .withInstanceId(options.getInstanceId())
             .withDatabaseId(options.getDatabaseId());

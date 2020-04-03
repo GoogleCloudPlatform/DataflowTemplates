@@ -75,6 +75,11 @@ public class ImportPipeline {
     @Default.Boolean(true)
     boolean getWaitUntilFinish();
 
+    @Description("GCP Project Id of where the Spanner table lives.")
+    ValueProvider<String> getSpannerProjectId();
+
+    void setSpannerProjectId(ValueProvider<String> value);
+
     void setWaitUntilFinish(boolean value);
   }
 
@@ -86,6 +91,7 @@ public class ImportPipeline {
 
     SpannerConfig spannerConfig =
         SpannerConfig.create()
+            .withProjectId(options.getSpannerProjectId())
             .withHost(options.getSpannerHost())
             .withInstanceId(options.getInstanceId())
             .withDatabaseId(options.getDatabaseId());
