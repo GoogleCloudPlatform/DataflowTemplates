@@ -28,13 +28,14 @@
         <autovalue.version>1.6.2</autovalue.version>
         <autovalue.annotations.version>1.6</autovalue.annotations.version>
         <checkstyle.version>8.7</checkstyle.version>
-        <beam.version>2.14.0</beam.version>
+        <beam.version>2.18.0</beam.version>
         <beam-vendor-guava.version>0.1</beam-vendor-guava.version>
         <hamcrest.version>1.3</hamcrest.version>
         <java.version>1.8</java.version>
         <jib.maven.version>1.5.1</jib.maven.version>
         <junit.version>4.12</junit.version>
         <junit-dep.version>4.10</junit-dep.version>
+        <opensensus.version>0.23.0</opensensus.version>
         <surefire.version>2.21.0</surefire.version>
         <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
         <maven-compiler-plugin.version>3.6.2</maven-compiler-plugin.version>
@@ -138,6 +139,11 @@
         </dependency>
 
         <!-- Misc -->
+        <dependency>
+            <groupId>io.opencensus</groupId>
+            <artifactId>opencensus-api</artifactId>
+            <version>${opensensus.version}</version>
+        </dependency>
         <dependency>
             <groupId>com.google.auto.value</groupId>
             <artifactId>auto-value</artifactId>
@@ -453,11 +459,6 @@
                         <groupId>com.puppycrawl.tools</groupId>
                         <artifactId>checkstyle</artifactId>
                         <version>${checkstyle.version}</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.apache.beam</groupId>
-                        <artifactId>beam-sdks-java-build-tools</artifactId>
-                        <version>${beam.version}</version>
                     </dependency>
                 </dependencies>
                 <configuration>
