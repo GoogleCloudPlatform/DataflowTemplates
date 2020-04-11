@@ -224,11 +224,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                   SpannerIO.write()
                       .withSchemaReadySignal(ddl)
                       .withSpannerConfig(spannerConfig)
-                      // Reduce the number of rows that SpannerIO groups together  to eliminate the
-                      // possibility of OOM errors when importing 'skinny' tables (with very few,
-                      // small columns) with many rows.
-                      // TODO(b/142641608): Remove when this is fixed in SpannerIO.
-                      .withMaxNumMutations(1000)
+                      .withMaxNumMutations(10000)
                       .withGroupingFactor(100));
       previousComputation = result.getOutput();
     }
