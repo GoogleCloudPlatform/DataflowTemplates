@@ -16,7 +16,6 @@
 
 package com.google.cloud.teleport.cdc.mappers;
 
-
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryOptions;
@@ -34,6 +33,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.SimpleFunction;
@@ -58,14 +59,18 @@ public class BigQueryMapper<InputT, OutputT>
     extends PTransform<PCollection<InputT>, PCollection<OutputT>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryMapper.class);
-  private final String projectId;
   private BigQuery bigquery;
   private Map<String, Table> tables = new HashMap<String, Table>();
   private Map<String, LegacySQLTypeName> defaultSchema;
   private boolean dayPartitioning = false;
+  private final ValueProvider<String> projectIdProvider;
 
   public BigQueryMapper(String projectId) {
-    this.projectId = projectId;
+    this.projectIdProvider = StaticValueProvider.of(projectId);
+  }
+
+  public BigQueryMapper(ValueProvider<String> projectId) {
+    this.projectIdProvider = projectId;
   }
 
   public TableId getTableId(InputT input) {
@@ -88,7 +93,7 @@ public class BigQueryMapper<InputT, OutputT>
   }
 
   public String getProjectId() {
-    return this.projectId;
+    return this.projectIdProvider.get();
   }
 
   public BigQueryMapper<InputT, OutputT> withDefaultSchema(
@@ -147,7 +152,7 @@ public class BigQueryMapper<InputT, OutputT>
     if (this.bigquery == null) {
       this.bigquery =
           BigQueryOptions.newBuilder()
-              .setProjectId(projectId)
+              .setProjectId(getProjectId())
               .build()
               .getService();
     }

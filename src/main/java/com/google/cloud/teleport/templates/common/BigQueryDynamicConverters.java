@@ -16,6 +16,7 @@
 
 package com.google.cloud.teleport.templates.common;
 
+// import com.google.cloud.teleport.templates.common.BigQueryConverters;
 import com.google.api.services.bigquery.model.TableCell;
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
@@ -41,91 +42,100 @@ import org.slf4j.LoggerFactory;
  */
 public class BigQueryDynamicConverters {
 
-  private static final Logger LOG = LoggerFactory.getLogger(BigQueryDynamicConverters.class);
+    private static final Logger LOG = LoggerFactory.getLogger(BigQueryDynamicConverters.class);
 
-  /**
-   * Section 1: Transform PCollection<TableRow> into PCollection<KV<TableId, TableRow>> with table
-   * state added.
-   */
-  public static PTransform<PCollection<TableRow>, PCollection<KV<TableId, TableRow>>>
-  extractTableRowDestination(
-      ValueProvider<String> datasetField,
-      ValueProvider<String> datasetName,
-      ValueProvider<String> tableField) {
-    return new ExtractTableRowDestination(datasetField, datasetName, tableField);
-  }
-
-  /**
-   * Section 2: Dynamic Destination Logic to be used in BigQueryIO.
-   */
-  public static DynamicDestinations<KV<TableId, TableRow>, KV<TableId, TableRow>> bigQueryDynamicDestination() {
-    return new BigQueryDynamicDestination();
-  }
-
-  /**
-   * Converts UTF8 encoded Json records to TableRow records.
-   */
-  private static class ExtractTableRowDestination
-      extends PTransform<PCollection<TableRow>, PCollection<KV<TableId, TableRow>>> {
-
-    private ValueProvider<String> datasetField;
-    private ValueProvider<String> datasetName;
-    private ValueProvider<String> tableField;
-
-    // Instead of the above we will assume the fields to use are hardcoded
-    public ExtractTableRowDestination(
-        ValueProvider<String> datasetField,
-        ValueProvider<String> datasetName,
-        ValueProvider<String> tableField) {
-      this.datasetField = datasetField;
-      this.datasetName = datasetName;
-      this.tableField = tableField;
+    /**
+    * Section 1: Transform PCollection<TableRow> into PCollection<KV<TableId, TableRow>> with table
+    * state added.
+    */
+    public static PTransform<PCollection<TableRow>, PCollection<KV<TableId, TableRow>>>
+            extractTableRowDestination(
+                ValueProvider<String> projectId,
+                ValueProvider<String> datasetTemplate,
+                ValueProvider<String> tableTemplate) {
+        return new ExtractTableRowDestination(projectId, datasetTemplate, tableTemplate);
     }
 
-    @Override
-    public PCollection<KV<TableId, TableRow>> expand(PCollection<TableRow> tableRowPCollection) {
-      return tableRowPCollection.apply(
-          "TableRowExtractDestination",
-          MapElements.via(
-              new SimpleFunction<TableRow, KV<TableId, TableRow>>() {
-                @Override
-                public KV<TableId, TableRow> apply(TableRow row) {
-                  TableId tableId = getDestinationTableId(row);
-                  TableRow resultTableRow = cleanTableRow(row.clone());
-
-                  return KV.of(tableId, resultTableRow);
-                }
-              }));
+    public static PTransform<PCollection<TableRow>, PCollection<KV<TableId, TableRow>>>
+            extractTableRowDestination(
+                ValueProvider<String> datasetTemplate,
+                ValueProvider<String> tableTemplate) {
+        return new ExtractTableRowDestination(datasetTemplate, tableTemplate);
     }
 
-    public TableId getDestinationTableId(TableRow element) {
-      // Grab the Dataset and Table Name to use
-      // TODO: CHECK THAT ONLY DATASET_NAME OR DATASET_FIELD HAVE BEEN PROVIDED.
-      String dataset;
-      if (datasetName.isAccessible() && datasetName.get() != null && !datasetName.get().isEmpty()) {
-        dataset = datasetName.get();
-      } else {
-        dataset = element.get(datasetField.get()).toString();
-      }
-      String table = element.get(tableField.get()).toString();
+    /** Converts UTF8 encoded Json records to TableRow records. */
+    private static class ExtractTableRowDestination
+            extends PTransform<PCollection<TableRow>, PCollection<KV<TableId, TableRow>>> {
 
-      TableId tableId = TableId.of(dataset, table);
-      return tableId;
+        private ValueProvider<String> projectId;
+        private ValueProvider<String> datasetTemplate;
+        private ValueProvider<String> tableTemplate;
+
+        public ExtractTableRowDestination(
+                ValueProvider<String> datasetTemplate,
+                ValueProvider<String> tableTemplate) {
+            this.datasetTemplate = datasetTemplate;
+            this.tableTemplate = tableTemplate;
+        }
+
+        public ExtractTableRowDestination(
+                ValueProvider<String> projectId,
+                ValueProvider<String> datasetTemplate,
+                ValueProvider<String> tableTemplate) {
+            this.projectId = projectId;
+            this.datasetTemplate = datasetTemplate;
+            this.tableTemplate = tableTemplate;
+        }
+
+        @Override
+        public PCollection<KV<TableId, TableRow>> expand(PCollection<TableRow> tableRowPCollection) {
+            return tableRowPCollection.apply(
+                "TableRowExtractDestination",
+                MapElements.via(
+                    new SimpleFunction<TableRow, KV<TableId, TableRow>>() {
+                    @Override
+                    public KV<TableId, TableRow> apply(TableRow row) {
+                        TableId tableId = getTableId(row);
+                        TableRow resultTableRow = cleanTableRow(row.clone());
+
+                        return KV.of(tableId, resultTableRow);
+                    }
+            }));
+        }
+
+        public TableId getTableId(TableRow input) {
+            String datasetName = BigQueryConverters.formatStringTemplate(datasetTemplate.get(), input);
+            String tableName = BigQueryConverters.formatStringTemplate(tableTemplate.get(), input);
+
+            if (projectId == null) {
+                return TableId.of(datasetName, tableName);
+            }
+            else {
+                return TableId.of(projectId.get(), datasetName, tableName);
+            }
+        }
+
+        public TableRow cleanTableRow(TableRow row) {
+            // Remove Table fields as we don't need them in the table
+            // TODO: how should I know to remove these?  Maybe leave them?
+            // row.remove(datasetField.get());
+            // row.remove(tableField.get());
+
+            return row;
+        }
     }
 
-    public TableRow cleanTableRow(TableRow row) {
-      // Remove Table fields as we don't need them in the table
-      row.remove(datasetField.get());
-      row.remove(tableField.get());
-
-      return row;
+    /* Section 2: Dynamic Destination Logic to be used in BigQueryIO. */
+    public static DynamicDestinations<KV<TableId, TableRow>, KV<TableId, TableRow>> bigQueryDynamicDestination() {
+        return new BigQueryDynamicDestination();
     }
-  }
 
-  /**
-   * Class {@link BigQueryDynamicDestination}.
-   */
-  public static class BigQueryDynamicDestination
+    /** 
+     * Class {@link BigQueryDynamicDestination}
+     * Class BigQueryDynamicDestination loads into BigQuery tables in a dynamic fashion.
+     * The desitination table is based on the TableId supplied by previous steps.
+     */
+    public static class BigQueryDynamicDestination
       extends DynamicDestinations<KV<TableId, TableRow>, KV<TableId, TableRow>> {
 
     // Instead of the above we will assume the fields to use are hardcoded

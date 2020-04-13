@@ -54,9 +54,9 @@ import org.slf4j.LoggerFactory;
 public class BigQueryMappers {
 
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryMappers.class);
-  private static String projectId;
+  private static ValueProvider<String> projectId;
 
-  public BigQueryMappers(String projectId) {
+  public BigQueryMappers(ValueProvider<String> projectId) {
     this.projectId = projectId;
   }
 
@@ -93,7 +93,7 @@ public class BigQueryMappers {
     public BigQueryTableMapper(
         ValueProvider<String> datasetProvider,
         ValueProvider<String> tableNameProvider,
-        String projectId) {
+        ValueProvider<String> projectId) {
       super(projectId);
 
       this.datasetProvider = datasetProvider;
@@ -129,7 +129,7 @@ public class BigQueryMappers {
   public static class BigQueryDynamicTableMapper
       extends BigQueryMapper<KV<TableId, TableRow>, KV<TableId, TableRow>> {
 
-    private BigQueryDynamicTableMapper(String projectId) {
+    private BigQueryDynamicTableMapper(ValueProvider<String> projectId) {
       super(projectId);
     }
 
@@ -166,7 +166,7 @@ public class BigQueryMappers {
     public BigQueryGenericRecordMapper(
         ValueProvider<String> datasetProvider,
         ValueProvider<String> tableNameProvider,
-        String projectId) {
+        ValueProvider<String> projectId) {
       super(projectId);
 
       this.datasetProvider = datasetProvider;
