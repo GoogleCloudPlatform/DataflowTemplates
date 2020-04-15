@@ -144,7 +144,7 @@ public class BigQueryChangeApplier extends PTransform<PCollection<Row>, PDone> {
             .withSideInputs(schemaMapView))
         .apply("BuildMergeStatements",
             ParDo.of(
-                new MergeStatementBuildingFn(replicaDataset, changeLogDataset, gcpProjectId)))
+                new MergeStatementBuildingFn(changeLogDataset, replicaDataset, gcpProjectId)))
         .setCoder(SerializableCoder.of(
             TypeDescriptors.kvs(
                 TypeDescriptors.strings(),

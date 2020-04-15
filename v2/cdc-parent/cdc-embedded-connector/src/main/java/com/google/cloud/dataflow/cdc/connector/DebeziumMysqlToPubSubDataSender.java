@@ -27,6 +27,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
@@ -63,7 +64,7 @@ public class DebeziumMysqlToPubSubDataSender implements Runnable {
 
 
   public DebeziumMysqlToPubSubDataSender(
-      String mysqlDatabaseName,
+      String mysqlInstanceName,
       String mysqlUserName,
       String mysqlUserPassword,
       String mysqlAddress,
@@ -87,17 +88,24 @@ public class DebeziumMysqlToPubSubDataSender implements Runnable {
     this.whitelistedTables = whitelistedTables;
 
 
+    // Prepare Debezium's table.whitelist property by removing
+    // instance name from each of the whitelisted tables specified.
+    String dbzWhitelistedTables = whitelistedTables.stream()
+            .map(s -> s.substring(s.indexOf(".") + 1))
+            .collect(Collectors.joining(","));
+
     Configuration.Builder configBuilder = Configuration.empty()
-        .withSystemProperties(Function.identity()).edit()
-        .with(EmbeddedEngine.CONNECTOR_CLASS, "io.debezium.connector.mysql.MySqlConnector")
-        .with(EmbeddedEngine.ENGINE_NAME, APP_NAME)
-        // Database connection information.
-        .with("database.hostname", this.mysqlAddress)
-        .with("database.port", this.mysqlPort)
-        .with("database.user", this.mysqlUserName)
-        .with("database.password", this.mysqlUserPassword)
-        .with("database.server.name", mysqlDatabaseName)
-        .with(MySqlConnectorConfig.DATABASE_HISTORY, MemoryDatabaseHistory.class.getName());
+            .withSystemProperties(Function.identity()).edit()
+            .with(EmbeddedEngine.CONNECTOR_CLASS, "io.debezium.connector.mysql.MySqlConnector")
+            .with(EmbeddedEngine.ENGINE_NAME, APP_NAME)
+            // Database connection information.
+            .with("database.hostname", this.mysqlAddress)
+            .with("database.port", this.mysqlPort)
+            .with("database.user", this.mysqlUserName)
+            .with("database.password", this.mysqlUserPassword)
+            .with("database.server.name", mysqlInstanceName)
+            .with("table.whitelist", dbzWhitelistedTables)
+            .with(MySqlConnectorConfig.DATABASE_HISTORY, MemoryDatabaseHistory.class.getName());
 
     if(this.inMemoryOffsetStorage) {
       LOG.info("Setting up in memory offset storage.");
