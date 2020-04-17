@@ -16,6 +16,7 @@
 
 package com.google.cloud.teleport.templates;
 
+import com.google.api.client.json.JsonFactory;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.templates.common.BigQueryConverters.FailsafeJsonToTableRow;
@@ -36,6 +37,7 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.extensions.gcp.util.Transport;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.fs.ResourceId;
@@ -116,6 +118,8 @@ public class TextToBigQueryStreaming {
   /** Coder for FailsafeElement. */
   private static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
       FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
+
+  private static final JsonFactory JSON_FACTORY = Transport.getJsonFactory();
 
   /**
    * Main entry point for executing the pipeline. This will run the pipeline asynchronously. If
@@ -262,16 +266,17 @@ public class TextToBigQueryStreaming {
    * @return FailsafeElement object.
    * @throws IOException
    */
-  protected static FailsafeElement<String, String> wrapBigQueryInsertError(
+  static FailsafeElement<String, String> wrapBigQueryInsertError(
       BigQueryInsertError insertError) {
 
     FailsafeElement<String, String> failsafeElement;
     try {
 
-      failsafeElement =
-          FailsafeElement.of(
-              insertError.getRow().toPrettyString(), insertError.getRow().toPrettyString());
-      failsafeElement.setErrorMessage(insertError.getError().toPrettyString());
+      String rowPayload = JSON_FACTORY.toString(insertError.getRow());
+      String errorMessage = JSON_FACTORY.toString(insertError.getError());
+
+      failsafeElement = FailsafeElement.of(rowPayload, rowPayload);
+      failsafeElement.setErrorMessage(errorMessage);
 
     } catch (IOException e) {
       throw new RuntimeException(e);
