@@ -39,6 +39,14 @@ connector in the following ways:
 - As a Docker container
 - On Kubernetes via GKE
 
+First, we suggest you run the following command from within the
+`DataflowTemplates/v2/cdc-parent` directory to ensure all dependencies are
+installed:
+
+```
+mvn install
+```
+
 Once the connector is deployed, and publishing data to PubSub, you can start the
 Dataflow pipeline.
 
