@@ -675,6 +675,7 @@
                <ignoredUnusedDeclaredDependency>org.apache.hadoop:hadoop-mapreduce-client-core</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>org.apache.hadoop:hadoop-common</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>org.codehaus.jackson:jackson-core-asl</ignoredUnusedDeclaredDependency>
+               <ignoredUnusedDeclaredDependency>org.codehaus.jackson:jackson-mapper-asl</ignoredUnusedDeclaredDependency>
              </ignoredUnusedDeclaredDependencies>
            </configuration>
           </execution>

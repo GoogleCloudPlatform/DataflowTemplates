@@ -41,14 +41,14 @@ import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import javax.annotation.Nullable;
 import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.SSLContext;
 import org.apache.beam.vendor.guava.v20_0.com.google.common.base.Joiner;
 import org.apache.beam.vendor.guava.v20_0.com.google.common.collect.ImmutableList;
 import org.apache.http.client.config.CookieSpecs;
 import org.apache.http.client.config.RequestConfig;
+import org.apache.http.conn.ssl.DefaultHostnameVerifier;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
+import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.ssl.SSLContextBuilder;
@@ -81,6 +81,8 @@ public abstract class HttpEventPublisher {
       Joiner.on('/').join(MEDIA_TYPE.getType(), MEDIA_TYPE.getSubType());
 
   private static final String AUTHORIZATION_SCHEME = "Splunk %s";
+
+  private static final String HTTPS_PROTOCOL_PREFIX = "https";
 
   public static Builder newBuilder() {
     return new AutoValue_HttpEventPublisher.Builder();
@@ -314,16 +316,23 @@ public abstract class HttpEventPublisher {
 
       HttpClientBuilder builder = ApacheHttpTransport.newDefaultHttpClientBuilder();
 
-      if (disableCertificateValidation) {
-        SSLContext sslContext =
-            SSLContextBuilder.create().loadTrustMaterial(new TrustSelfSignedStrategy()).build();
+      if (genericUrl().getScheme().equalsIgnoreCase(HTTPS_PROTOCOL_PREFIX)) {
+        LOG.info("SSL connection requested");
 
-        HostnameVerifier allowAllHosts = new NoopHostnameVerifier();
+        HostnameVerifier hostnameVerifier =
+            disableCertificateValidation
+                ? NoopHostnameVerifier.INSTANCE
+                : new DefaultHostnameVerifier();
 
-        SSLConnectionSocketFactory connectionFactory =
-            new SSLConnectionSocketFactory(sslContext, allowAllHosts);
+        SSLContextBuilder sslContextBuilder = SSLContextBuilder.create();
+        if (disableCertificateValidation) {
+          LOG.info("Certificate validation is disabled");
+          sslContextBuilder.loadTrustMaterial((TrustStrategy) (chain, authType) -> true);
+        }
 
-        builder.setSSLSocketFactory(connectionFactory);
+        SSLConnectionSocketFactory connectionSocketFactory =
+            new SSLConnectionSocketFactory(sslContextBuilder.build(), hostnameVerifier);
+        builder.setSSLSocketFactory(connectionSocketFactory);
       }
 
       builder.setMaxConnTotal(maxConnections);
