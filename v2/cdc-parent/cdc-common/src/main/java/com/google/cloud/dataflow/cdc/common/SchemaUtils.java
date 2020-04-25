@@ -40,6 +40,7 @@ public class SchemaUtils {
           .put("BOOL", org.apache.beam.sdk.schemas.Schema.TypeName.BOOLEAN)
           .put("BYTES", org.apache.beam.sdk.schemas.Schema.TypeName.BYTES)
           .put("DOUBLE", org.apache.beam.sdk.schemas.Schema.TypeName.DOUBLE)
+          .put("INT16", org.apache.beam.sdk.schemas.Schema.TypeName.INT16)
           .put("INT32", org.apache.beam.sdk.schemas.Schema.TypeName.INT32)
           .put("INT64", org.apache.beam.sdk.schemas.Schema.TypeName.INT64)
           .put("STRING", org.apache.beam.sdk.schemas.Schema.TypeName.STRING)
