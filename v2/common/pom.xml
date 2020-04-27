@@ -30,6 +30,8 @@
         <avro.version>1.8.2</avro.version>
         <bigquery.version>v2-rev438-1.25.0</bigquery.version>
         <commons.version>1.7</commons.version>
+        <commons-text.version>1.6</commons-text.version>
+        <gax.version>1.38.0</gax.version>
         <gson.version>2.7</gson.version>
         <guava.version>20.0</guava.version>
         <http-client.version>1.27.0</http-client.version>
@@ -41,6 +43,11 @@
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.api</groupId>
+            <artifactId>gax</artifactId>
+            <version>${gax.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.apis</groupId>
@@ -92,13 +99,20 @@
             <artifactId>commons-csv</artifactId>
             <version>${commons.version}</version>
         </dependency>
-
-        <!-- Testing -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
+            <version>${commons-text.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-bigquery</artifactId>
+            <version>1.102.0</version>
+        </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <version>${guava.version}</version>
-            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>

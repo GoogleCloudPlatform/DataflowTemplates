@@ -1,0 +1,46 @@
+{
+  "fields": [
+    {
+      "name": "timestamp",
+      "type": "TIMESTAMP",
+      "mode": "REQUIRED"
+    },
+    {
+      "name": "payloadString",
+      "type": "STRING",
+      "mode": "REQUIRED"
+    },
+    {
+      "name": "payloadBytes",
+      "type": "BYTES",
+      "mode": "REQUIRED"
+    },
+    {
+      "name": "attributes",
+      "type": "RECORD",
+      "mode": "REPEATED",
+      "fields": [
+        {
+          "name": "key",
+          "type": "STRING",
+          "mode": "NULLABLE"
+        },
+        {
+          "name": "value",
+          "type": "STRING",
+          "mode": "NULLABLE"
+        }
+      ]
+    },
+    {
+      "name": "errorMessage",
+      "type": "STRING",
+      "mode": "NULLABLE"
+    },
+    {
+      "name": "stacktrace",
+      "type": "STRING",
+      "mode": "NULLABLE"
+    }
+  ]
+}

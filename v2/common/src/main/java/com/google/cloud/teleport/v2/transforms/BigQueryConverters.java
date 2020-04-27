@@ -26,6 +26,9 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import org.apache.beam.sdk.coders.Coder.Context;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.TypedRead.Method;
@@ -46,6 +49,7 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.vendor.guava.v20_0.com.google.common.base.Throwables;
+import org.apache.commons.text.StringSubstitutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,7 +66,7 @@ public class BigQueryConverters {
    * @param json The JSON string to parse.
    * @return The parsed {@link TableRow} object.
    */
-  private static TableRow convertJsonToTableRow(String json) {
+  public static TableRow convertJsonToTableRow(String json) {
     TableRow row;
     // Parse the JSON into a {@link TableRow} object.
     try (InputStream inputStream =
@@ -402,5 +406,31 @@ public class BigQueryConverters {
       context.output(
           FailsafeElement.of(element.getOriginalPayload().toString(), element.getPayload()));
     }
+  }
+
+  /**
+   * Returns {@code String} using Key/Value style formatting.
+   * 
+   * @param formatTemplate a String with bracketed keys to apply "I am a {key}" 
+   * @param row is a TableRow object which is used to supply key:values to the template
+   *
+   * <p> Extracts TableRow fields and applies values to the formatTemplate.
+   * ie. formatStringTemplate("I am {key}"{"key": "formatted"}) -> "I am formatted"
+   */
+  public static String formatStringTemplate(String formatTemplate, TableRow row) {
+      // Key/Value Map used to replace values in template
+      Map<String, String> values = new HashMap<>();
+
+      // Put all column/value pairs into key/value map
+      Set<String> rowKeys = row.keySet();
+      for (String rowKey : rowKeys) {
+        // Only String types can be used in comparison
+        if(row.get(rowKey) instanceof String) {
+          values.put(rowKey, (String) row.get(rowKey));
+        }
+      }
+      // Substitute any templated values in the template
+      String result = StringSubstitutor.replace(formatTemplate, values, "{", "}");
+      return result;
   }
 }
