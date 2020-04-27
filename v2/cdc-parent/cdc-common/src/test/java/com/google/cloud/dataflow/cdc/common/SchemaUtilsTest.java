@@ -39,6 +39,7 @@ public class SchemaUtilsTest {
             .addField(Field.of("city", FieldType.STRING))
             .addStringField("country")
             .addInt32Field("year_founded")
+            .addInt16Field("tiny_int")
             .build())
         .addInt64Field("timestampMs")
         .build();
