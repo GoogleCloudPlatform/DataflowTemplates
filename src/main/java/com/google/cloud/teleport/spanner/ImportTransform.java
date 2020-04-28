@@ -56,7 +56,7 @@ import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;
 import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.ResourceId;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
+import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerWriteResult;
@@ -316,7 +316,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
     private final PCollectionView<List<KV<String, String>>> avroSchemasView;
     private final PCollectionView<Ddl> informationSchemaView;
 
-    private transient SpannerAccessor spannerAccessor;
+    private transient ExposedSpannerAccessor spannerAccessor;
 
     public CreateTables(
         SpannerConfig spannerConfig,
@@ -337,7 +337,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
 
                         @Setup
                         public void setup() {
-                          spannerAccessor = spannerConfig.connectToSpanner();
+                          spannerAccessor = ExposedSpannerAccessor.create(spannerConfig);
                         }
 
                         @Teardown

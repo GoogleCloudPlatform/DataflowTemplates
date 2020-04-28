@@ -45,8 +45,8 @@ import java.util.List;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -147,7 +147,7 @@ public class SpannerConverters {
       return new AutoValue_SpannerConverters_ExportTransform.Builder();
     }
 
-    private SpannerAccessor spannerAccessor;
+    private ExposedSpannerAccessor spannerAccessor;
     private DatabaseClient databaseClient;
 
     // SpannerAccessor is not serialiazable, thus can't be passed as a mock so we need to pass
@@ -156,7 +156,7 @@ public class SpannerConverters {
     // TODO make SpannerAccessor serializable
     DatabaseClient getDatabaseClient(SpannerConfig spannerConfig) {
       if (databaseClient == null) {
-        this.spannerAccessor = spannerConfig.connectToSpanner();
+        this.spannerAccessor = ExposedSpannerAccessor.create(spannerConfig);
         return this.spannerAccessor.getDatabaseClient();
       } else {
         return this.databaseClient;

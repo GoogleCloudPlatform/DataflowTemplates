@@ -22,7 +22,7 @@ import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.spanner.admin.database.v1.UpdateDatabaseDdlMetadata;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
+import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -52,11 +52,11 @@ class CreateIndexesTransform extends PTransform<PCollection<Ddl>, PCollection<Dd
         ParDo.of(
             new DoFn<Ddl, Ddl>() {
 
-              private transient SpannerAccessor spannerAccessor;
+              private transient ExposedSpannerAccessor spannerAccessor;
 
               @Setup
               public void setup() {
-                spannerAccessor = spannerConfig.connectToSpanner();
+                spannerAccessor = ExposedSpannerAccessor.create(spannerConfig);
               }
 
               @Teardown

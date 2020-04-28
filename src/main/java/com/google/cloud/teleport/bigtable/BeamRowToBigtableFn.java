@@ -137,7 +137,7 @@ public class BeamRowToBigtableFn extends DoFn<Row, KV<ByteString, Iterable<Mutat
    */
   private List<Mutation> createCollectionMutations(Row row, Field field) {
     List<Mutation> mutations = new ArrayList<>();
-    List<Object> list = row.getArray(field.getName());
+    List<Object> list = new ArrayList<Object>(row.getArray(field.getName()));
     TypeName collectionElementType = field.getType().getCollectionElementType().getTypeName();
     for (int i = 0; i < list.size(); i++) {
       String fieldName = field.getName() + "[" + i + "]";
