@@ -76,6 +76,7 @@ public class App {
     public static final String PASSWORD_FILE_LOCATION = "/etc/dataflow-cdc/dataflow_cdc_password.properties";
 
     public static final String DEFAULT_OFFSET_STORAGE_FILE = "/opt/dataflow-cdc/offset/offset-tracker";
+    public static final String DEFAULT_DATABASE_HISTORY_FILE = "/opt/dataflow-cdc/offset/database-history.dat";
 
     public static void main(String[] args) throws Exception {
         final Logger logger = LoggerFactory.getLogger(App.class);
@@ -104,6 +105,7 @@ public class App {
             config.getString("gcpProject"),
             config.getString("gcpPubsubTopicPrefix"),
             config.getString("offsetStorageFile", DEFAULT_OFFSET_STORAGE_FILE),
+            config.getString("databaseHistoryFile", DEFAULT_DATABASE_HISTORY_FILE),
             config.getBoolean("inMemoryOffsetStorage", false),
             config.getString("whitelistedTables"));
     }
@@ -155,6 +157,7 @@ public class App {
         String gcpProject,
         String gcpPubsubTopic,
         String offsetStorageFile,
+        String databaseHistoryFile,
         Boolean inMemoryOffsetStorage,
         String commaSeparatedWhiteListedTables) {
         DebeziumMysqlToPubSubDataSender dataSender = new DebeziumMysqlToPubSubDataSender(
@@ -166,6 +169,7 @@ public class App {
             gcpProject,
             gcpPubsubTopic,
             offsetStorageFile,
+            databaseHistoryFile,
             inMemoryOffsetStorage,
             new HashSet<>(Arrays.asList(commaSeparatedWhiteListedTables.split(","))));
         dataSender.run();

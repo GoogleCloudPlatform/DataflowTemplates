@@ -17,6 +17,7 @@ package com.google.cloud.dataflow.cdc.connector;
 
 import com.google.cloud.dataflow.cdc.common.DataCatalogSchemaUtils;
 import io.debezium.relational.history.MemoryDatabaseHistory;
+import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.util.Clock;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
@@ -58,6 +59,7 @@ public class DebeziumMysqlToPubSubDataSender implements Runnable {
   private final String gcpProject;
   private final String gcpPubsubTopicPrefix;
   private final String offsetStorageFile;
+  private final String databaseHistoryFile;
   private final Boolean inMemoryOffsetStorage;
 
   private final Set<String> whitelistedTables;
@@ -72,6 +74,7 @@ public class DebeziumMysqlToPubSubDataSender implements Runnable {
       String gcpProject,
       String gcpPubsubTopicPrefix,
       String offsetStorageFile,
+      String databaseHistoryFile,
       Boolean inMemoryOffsetStorage,
       Set<String> whitelistedTables) {
 
@@ -83,6 +86,7 @@ public class DebeziumMysqlToPubSubDataSender implements Runnable {
     this.gcpProject = gcpProject;
     this.gcpPubsubTopicPrefix = gcpPubsubTopicPrefix;
     this.offsetStorageFile = offsetStorageFile;
+    this.databaseHistoryFile = databaseHistoryFile;
     this.inMemoryOffsetStorage = inMemoryOffsetStorage;
 
     this.whitelistedTables = whitelistedTables;
@@ -95,20 +99,17 @@ public class DebeziumMysqlToPubSubDataSender implements Runnable {
             .collect(Collectors.joining(","));
 
     Configuration.Builder configBuilder = Configuration.empty()
-            .withSystemProperties(Function.identity()).edit()
-            .with(EmbeddedEngine.CONNECTOR_CLASS, "io.debezium.connector.mysql.MySqlConnector")
-            .with(EmbeddedEngine.ENGINE_NAME, APP_NAME)
-            // Database connection information.
-            .with("database.hostname", this.mysqlAddress)
-            .with("database.port", this.mysqlPort)
-            .with("database.user", this.mysqlUserName)
-            .with("database.password", this.mysqlUserPassword)
-            .with("database.server.name", mysqlDatabaseInstanceName)
-            .with(MySqlConnectorConfig.DATABASE_HISTORY, MemoryDatabaseHistory.class.getName());
-
-    if (dbzWhitelistedTables != null && !dbzWhitelistedTables.isEmpty()) {
-      configBuilder = configBuilder.with("table.whitelist", dbzWhitelistedTables);
-    }
+        .withSystemProperties(Function.identity()).edit()
+        .with(EmbeddedEngine.CONNECTOR_CLASS, "io.debezium.connector.mysql.MySqlConnector")
+        .with(EmbeddedEngine.ENGINE_NAME, APP_NAME)
+        // Database connection information.
+        .with("database.hostname", this.mysqlAddress)
+        .with("database.port", this.mysqlPort)
+        .with("database.user", this.mysqlUserName)
+        .with("database.password", this.mysqlUserPassword)
+        .with("database.server.name", mysqlDatabaseInstanceName)
+        .with("decimal.handling.mode", "string")
+        .with(MySqlConnectorConfig.DATABASE_HISTORY, MemoryDatabaseHistory.class.getName());
 
     if (this.inMemoryOffsetStorage) {
       LOG.info("Setting up in memory offset storage.");
@@ -120,9 +121,9 @@ public class DebeziumMysqlToPubSubDataSender implements Runnable {
           .with(
               EmbeddedEngine.OFFSET_STORAGE,
               "org.apache.kafka.connect.storage.FileOffsetBackingStore")
-          .with(
-              EmbeddedEngine.OFFSET_STORAGE_FILE_FILENAME,
-              this.offsetStorageFile);
+          .with(EmbeddedEngine.OFFSET_STORAGE_FILE_FILENAME, this.offsetStorageFile)
+          .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class.getName())
+          .with("database.history.file.filename", this.databaseHistoryFile);
     }
 
     config = configBuilder.build();

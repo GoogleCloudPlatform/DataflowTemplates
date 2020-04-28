@@ -261,3 +261,31 @@ This solution does not support a few particular scenarios:
   into BigQuery does **not** handle changes of schema. If you want to update the
   schema of one of your MySQL tables, it is a good idea to redeploy the Debezium
   connector, and the Dataflow pipeline.
+
+## Type Handling
+
+The template handles the conversion from MySQL types to BigQuery types based on
+Debezium-to-Beam Row type conversions, and from there to BigQuery. A valuable
+resource for this is Debezium's [MySQL connector type documentation](https://github.com/debezium/debezium/blob/1f6d53d13dd9ec1e51bb41bc7439dbbf5661bef7/documentation/modules/ROOT/partials/modules/cdc-mysql-connector/c_how-the-mysql-connector-maps-data-types.adoc).
+
+The solution ends up resolving types like this:
+
+| "Generic" Types  | MySQL Types  | BigQuery Types  | Notes |
+|---|---|---|---|
+| Integer types  | `TINYINT`,`BIGINT`,`INTEGER`, ...   | `INTEGER`  |  |
+| Float types  | `FLOAT`, `DOUBLE`  | `DOUBLE`  |   |
+| Byte types  |  `BINARY`, `VARBINARY`, `BLOB` | `BYTES` |  |
+| String types  |  `CHAR`, `VARCHAR`, `TEXT`, `ENUM` | `STRING` |  |
+| NUMERIC types  | `NUMERIC`, `DECIMAL`  | `STRING`  | Support for better conversion TBD. |
+| Time-related times  |  |  | Time-related types have specific type conversions. See detailed table below. |
+
+### Type handling for time-related types
+
+| Type  | MySQL Types  | BigQuery Types  | Notes |
+|---|---|---|---|
+| Timestamp  | `TIMESTAMP`  | `STRING`  | Support for better conversion TBD.  |
+| Year  | `YEAR`  | `INTEGER`  |   |
+| Time / time duration  | `TIME`  | `INTEGER`  | Translates a time into number of microseconds (since midnight).  |
+| Date  | `DATE`  | `INTEGER`  | Represents number of days since epoch. Better conversion TBD.  |
+| Datetime  | `DATETIME`  | `INTEGER`  | Represents number of microseconds since epoch. Better conversion TBD.  |
+

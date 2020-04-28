@@ -134,69 +134,83 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslator {
 
     org.apache.beam.sdk.schemas.Schema.Builder beamSchemaBuilder =
         org.apache.beam.sdk.schemas.Schema.builder();
-
     for (Field f : schema.fields()) {
       Schema.Type t = f.schema().type();
+      org.apache.beam.sdk.schemas.Schema.Field beamField;
       switch (t) {
         case INT8:
         case INT16:
           if (f.schema().isOptional()) {
-            beamSchemaBuilder.addNullableField(f.name(), FieldType.INT16);
+            beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
+                f.name(), FieldType.INT16);
           } else {
-            beamSchemaBuilder.addInt16Field(f.name());
+            beamField = org.apache.beam.sdk.schemas.Schema.Field.of(f.name(), FieldType.INT16);
           }
           break;
         case INT32:
           if (f.schema().isOptional()) {
-            beamSchemaBuilder.addNullableField(f.name(), FieldType.INT32);
+            beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
+                f.name(), FieldType.INT32);
           } else {
-            beamSchemaBuilder.addInt32Field(f.name());
+            beamField = org.apache.beam.sdk.schemas.Schema.Field.of(f.name(), FieldType.INT32);
           }
           break;
         case INT64:
           if (f.schema().isOptional()) {
-            beamSchemaBuilder.addNullableField(f.name(), FieldType.INT64);
+            beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
+                f.name(), FieldType.INT64);
           } else {
-            beamSchemaBuilder.addInt64Field(f.name());
+            beamField = org.apache.beam.sdk.schemas.Schema.Field.of(f.name(), FieldType.INT64);
           }
           break;
         case FLOAT32:
           if (f.schema().isOptional()) {
-            beamSchemaBuilder.addNullableField(f.name(), FieldType.FLOAT);
+            beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
+                f.name(), FieldType.FLOAT);
           } else {
-            beamSchemaBuilder.addFloatField(f.name());
+            beamField = org.apache.beam.sdk.schemas.Schema.Field.of(f.name(), FieldType.FLOAT);
           }
           break;
         case FLOAT64:
           if (f.schema().isOptional()) {
-            beamSchemaBuilder.addNullableField(f.name(), FieldType.DOUBLE);
+            beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
+                f.name(), FieldType.DOUBLE);
           } else {
-            beamSchemaBuilder.addDoubleField(f.name());
+            beamField = org.apache.beam.sdk.schemas.Schema.Field.of(f.name(), FieldType.DOUBLE);
           }
           break;
         case BOOLEAN:
           if (f.schema().isOptional()) {
-            beamSchemaBuilder.addNullableField(f.name(), FieldType.BOOLEAN);
+            beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
+                f.name(), FieldType.BOOLEAN);
           } else {
-            beamSchemaBuilder.addBooleanField(f.name());
+            beamField = org.apache.beam.sdk.schemas.Schema.Field.of(f.name(), FieldType.BOOLEAN);
           }
           break;
         case STRING:
           if (f.schema().isOptional()) {
-            beamSchemaBuilder.addNullableField(f.name(), FieldType.STRING);
+            beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
+                f.name(), FieldType.STRING);
           } else {
-            beamSchemaBuilder.addStringField(f.name());
+            beamField = org.apache.beam.sdk.schemas.Schema.Field.of(f.name(), FieldType.STRING);
           }
           break;
         case BYTES:
           if (f.schema().isOptional()) {
-            beamSchemaBuilder.addNullableField(f.name(), FieldType.BYTES);
+            beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
+                f.name(), FieldType.BYTES);
           } else {
-            beamSchemaBuilder.addByteArrayField(f.name());
+            beamField = org.apache.beam.sdk.schemas.Schema.Field.of(f.name(), FieldType.BYTES);
           }
           break;
         case STRUCT:
-          beamSchemaBuilder.addRowField(f.name(), kafkaSchemaToBeamRowSchema(f.schema()));
+          if (f.schema().isOptional()) {
+            beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
+                f.name(), FieldType.row(kafkaSchemaToBeamRowSchema(f.schema())));
+          } else {
+            beamField = org.apache.beam.sdk.schemas.Schema.Field.of(
+                f.name(), FieldType.row(kafkaSchemaToBeamRowSchema(f.schema())));
+          }
           break;
         case MAP:
           throw new DataException("Map types are not supported.");
@@ -205,6 +219,13 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslator {
         default:
           throw new DataException(String.format("Unsupported data type: {}", t));
       }
+      if (f.schema().name() != null && !f.schema().name().isEmpty()) {
+        FieldType fieldType = beamField.getType();
+        fieldType = fieldType.withMetadata("logicalType", f.schema().name());
+        beamField = beamField.withType(fieldType)
+            .withDescription(f.schema().name());
+      }
+      beamSchemaBuilder.addField(beamField);
     }
     return beamSchemaBuilder.build();
   }
