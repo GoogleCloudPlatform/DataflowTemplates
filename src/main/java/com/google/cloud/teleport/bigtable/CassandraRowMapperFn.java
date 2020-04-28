@@ -43,7 +43,6 @@ import org.apache.beam.sdk.schemas.Schema.Field;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.values.Row;
 import org.joda.time.DateTime;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /**
  * This is an implementation of the Cassandra Mapper interface which allows custom Row Mapping logic
@@ -117,13 +116,13 @@ class CassandraRowMapperFn implements Mapper<Row>, Serializable {
   /** Not used as this pipeline only reads from cassandra. */
   @Override
   public Future<Void> deleteAsync(Row entity) {
-    throw new NotImplementedException();
+    throw new UnsupportedOperationException();
   }
 
   /** Not used as this pipeline only reads from cassandra. */
   @Override
   public Future<Void> saveAsync(Row entity) {
-    throw new NotImplementedException();
+    throw new UnsupportedOperationException();
   }
 
   /**

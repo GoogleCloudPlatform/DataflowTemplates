@@ -72,7 +72,6 @@ import org.junit.Test;
 import org.scassandra.cql.CqlType;
 import org.scassandra.cql.MapType;
 import org.scassandra.http.client.PrimingRequest;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /** Tests {@link CassandraRowMapperFn}. */
 public class CassandraRowMapperFnTest extends CassandraBaseTest {
@@ -408,7 +407,7 @@ public class CassandraRowMapperFnTest extends CassandraBaseTest {
   @Test
   @Ignore
   public void testTupleColumn() {
-    throw new NotImplementedException();
+    throw new UnsupportedOperationException();
   }
 
   @Test
