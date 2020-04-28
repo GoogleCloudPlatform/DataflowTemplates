@@ -70,7 +70,7 @@ It will need to be supplied of two/three
 basic configuration files:
 
 - A properties file containing:
-  - The name of the database: `databaseName=...`
+  - The instance name for the Database instance: `databaseName=...`
   - A username to access the database changelog: `databaseUsername=...`
   - An IP address or DNS to connect to the database: `databaseAddress=...`
   - **Optionally** a port to connect to the database: `databasePort=...` (default: 3306)
@@ -219,15 +219,15 @@ This prefix will be passed as an argument to the Debezium connector, along with
 a Google Cloud project. The PubSub topics that we'll create are:
 
 - Table: `my-mysql.cdc_demo.people`
-  - Topic: `export_demo_my-mysql_cdc_demo_people`
+  - Topic: `export_demo_my-mysql.cdc_demo.people`
   - Subscription: `cdc_demo_people_subscription`
 - Table: `my-mysql.cdc_demo.pets`
-  - Topic: `export_demo_my-mysql_cdc_demo_pets`
+  - Topic: `export_demo_my-mysql.cdc_demo.pets`
   - Subscription: `cdc_demo_pets_subscription`
 
 You can then pass this prefix to the Debezium connector via properties
 `gcpPubsubTopicPrefix=export_demo_`, and the subscriptions to the Dataflow
-pipeline as Pipeline Options 
+pipeline as Pipeline Options
 `--inputSubscriptions=cdc_demo_people_subscription,cdc_demo_pets_subscription`.
 
 

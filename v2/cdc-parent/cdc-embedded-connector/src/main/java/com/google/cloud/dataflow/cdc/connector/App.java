@@ -33,7 +33,7 @@ import org.slf4j.impl.StaticLoggerBinder;
  * connector will look for a properties file in {@literal /etc/dataflow_cdc.properties}, and it
  * expects the following parameters:</p>
  *
- * * {@literal databaseName} - the string name of a MySQL database.
+ * * {@literal instanceName} - the instance name on GCP.
  * * {@literal databaseUsername} - a user with privileges to access the binary log for MySQL.
  * * {@literal databasePassword} - the password to use to log into the database. This parameter can
  *     be passed with the default properties file, or in a separate properties file
