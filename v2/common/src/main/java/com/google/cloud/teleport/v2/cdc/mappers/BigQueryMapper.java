@@ -40,9 +40,6 @@ import org.apache.beam.sdk.values.PCollection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// import org.apache.avro.Schema; // if needed we need to figure out the duplicate here
-
-// TODO: Class comments are required
 
 /**
  * BigQueryMapper is intended to be easily extensible to enable BigQuery schema management during
@@ -131,11 +128,9 @@ public class BigQueryMapper<InputT, OutputT>
                 TableId tableId = getTableId(input);
                 TableRow row = getTableRow(input);
                 Map<String, LegacySQLTypeName> inputSchema = getObjectSchema(input);
-                // TODO the Dynamic converter needs to use the tableId object rather than a string
 
                 updateTableIfRequired(tableId, row, inputSchema);
                 return getOutputObject(input);
-                // return KV.of(tableId, row);
               }
             }));
   }
@@ -181,14 +176,15 @@ public class BigQueryMapper<InputT, OutputT>
 
     // Checks that table existed in tables map
     // If not pull table from API
-    // TODO we need logic to invalidate table caches
+    // TODO: we need logic to invalidate table caches?
     if (table == null) {
-      LOG.info("Pulling Table from API");
+      LOG.info("Pulling Table from API: {}", tableId.toString());
       table = bigquery.getTable(tableId);
     }
     // Check that table exists, if not create empty table
     // the empty table will have columns automapped during updateBigQueryTable()
     if (table == null) {
+      LOG.info("Creating Table: {}", tableId.toString());
       table = createBigQueryTable(tableId);
     }
     tables.put(tableName, table);
@@ -198,8 +194,6 @@ public class BigQueryMapper<InputT, OutputT>
 
   private Table createBigQueryTable(TableId tableId) {
     // Create Blank BigQuery Table
-    LOG.info(String.format("Creating Table: %s", tableId.toString()));
-
     List<Field> fieldList = new ArrayList<Field>();
     Schema schema = Schema.of(fieldList);
 
