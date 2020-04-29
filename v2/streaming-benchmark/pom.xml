@@ -31,7 +31,7 @@
 
   <properties>
     <json-data-generator.version>1.5</json-data-generator.version>
-    <guava.version>20.0</guava.version>
+    <guava.version>26.0-jre</guava.version>
    </properties>
 
   <dependencies>
