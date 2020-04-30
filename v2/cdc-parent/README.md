@@ -22,6 +22,19 @@ having a replica table in BigQuery from your MySQL database.
 Note the [currently unsupported scenarios](#unsupported-scenarios) for
 this solution.
 
+### Upcoming Features
+
+We are working to improve the CDC solution. Please feel free to request a feature
+by filing an Issue in this repository. Also, if you are interested in any of
+the upcoming features, **please make sure to comment on their tracking issues**,
+so we can prioritize accordingly. Some planned improvements:
+
+* Multiplex out of a single PubSub topic [planned for Q2 2020](https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/106)
+* Support for Postgres [planned for Q2 2020](https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/95)
+* Support for SQL Server [planned for early Q3 2020](https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/105)
+* Support for Avro serialization instead of Beam Row [currently in backlog](https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/107)
+* Improve handling of Numeric, Time and Timestamp data types [currently backlog](https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/108)
+
 ## Requirements
 
 - Java 8
