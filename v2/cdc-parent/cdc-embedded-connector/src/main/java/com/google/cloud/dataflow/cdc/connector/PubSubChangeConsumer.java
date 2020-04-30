@@ -121,7 +121,7 @@ public class PubSubChangeConsumer implements EmbeddedEngine.ChangeConsumer {
     for (SourceRecord r : records) {
 
       // Debezium publishes updates for each table in a separate Kafka topic, which is the fully
-      // qualified name of the MySQL table (e.g. instanceName.databaseName.table_name).
+      // qualified name of the MySQL table (e.g. dbInstanceName.databaseName.table_name).
       String tableName = r.topic();
 
       if (whitelistedTables.contains(tableName)) {
