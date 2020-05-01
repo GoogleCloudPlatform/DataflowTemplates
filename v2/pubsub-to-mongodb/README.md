@@ -12,41 +12,38 @@ ingests data from a PubSub subscription, optionally applies a Javascript UDF if 
 * MongoDB host exists and is operational
 
 ### Building Template
-This is a Flex Template meaning that the pipeline code will be containerized and the container will be
-used to launch the Dataflow pipeline.
+This is a Flex Template meaning that the pipeline code will be containerized and the container will be used to launch the Dataflow pipeline.
 
 #### Building Container Image
 * Set environment variables.
 Set the pipeline vars
 ```sh
-API_ROOT_URL=https://dataflow.googleapis.com
-PROJECT_NAME=my-project
-BUCKET_NAME=my-bucket
-INPUT_SUBSCRIPTION=my-subscription
-TEMPLATES_LAUNCH_API="${API_ROOT_URL}/v1b3/projects/${PROJECT_NAME}/templates:launch"
-MONGODB_DATABASE_NAME=testdb
-MONGODB_HOSTNAME=my-host:port
-MONGODB_COLLECTION_NAME=testCollection
-DEADLETTERTABLE=project:deadletter_table_name
-```
-* Set containerization vars
- ```sh
-IMAGE_NAME=my-image-name
-TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
-BASE_CONTAINER_IMAGE=my-base-container-image
-BASE_CONTAINER_IMAGE_VERSION=my-base-container-image-version
-APP_ROOT=/path/to/app-root
-COMMAND_SPEC=/path/to/command-spec
+export PROJECT=<my-project>
+export IMAGE_NAME=<my-image-name>
+export BUCKET_NAME=gs://<bucket-name>
+export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
+export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
+export BASE_CONTAINER_IMAGE_VERSION=latest
+export TEMPLATE_MODULE=csv-to-elasticsearch
+export APP_ROOT=/template/${TEMPLATE_MODULE}
+export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_MODULE}-command-spec.json
+export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
+
+export SUBSCRIPTION=<my-subscription>
+export MONGODB_HOSTNAME=<my-host:port>
+export MONGODB_DATABASE_NAME=<testdb>
+export MONGODB_COLLECTION_NAME=<testCollection>
+export DEADLETTER_TABLE=<my-project:my-dataset.my-deadletter-table>
 ```
 
 * Build and push image to Google Container Repository
 ```sh
-mvn clean package \
--Dimage=${TARGET_GCR_IMAGE} \
--Dbase-container-image=${BASE_CONTAINER_IMAGE} \
--Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
--Dapp-root=${APP_ROOT} \
--Dcommand-spec=${COMMAND_SPEC}
+mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
+                  -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
+                  -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
+                  -Dapp-root=${APP_ROOT} \
+                  -Dcommand-spec=${COMMAND_SPEC} \
+                  -am -pl ${TEMPLATE_MODULE}
 ```
 
 #### Creating Image Spec
@@ -88,26 +85,11 @@ The template has the following optional parameters:
 * withSSLInvalidHostnameAllowed: Enable InvalidHostnameAllowed for SSL Connection. Default:false
 * Will override type provided.
 
-Template can be executed using the following API call:
+Template can be executed using the following gcloud command.
 ```sh
-API_ROOT_URL="https://dataflow.googleapis.com"
-TEMPLATES_LAUNCH_API="${API_ROOT_URL}/v1b3/projects/${PROJECT_NAME}/templates:launch"
-JOB_NAME="pubsub-to-mongodb-`date +%Y%m%d-%H%M%S-%N`"
-time curl -X POST \
-   -H "Content-Type: application/json" \
-   -H "Authorization: Bearer $(gcloud auth print-access-token)" \
-   "${TEMPLATES_LAUNCH_API}"`\
-   `"?validateOnly=false"` \
-   `"&dynamicTemplate.gcsPath=gs://${BUCKET_NAME}/pubsub-to-mongodb-image-spec.json"` \
-   `"&dynamicTemplate.stagingLocation=gs://${BUCKET_NAME}/staging" \
-   -d'{
-       "jobName":"'$JOB_NAME'",
-       "parameters": {
-            "inputSubscription":"'$INPUT_SUBSCRIPTION'",
-            "database":"'$MONGODB_DATABASE_NAME'",
-            "collection":"'$MONGODB_COLLECTION_NAME'",
-            "mongoDBUri":"'$MONGODB_HOSTNAME'",
-            "deadletterTable":"'$DEADLETTERTABLE'"
-       }
-   }'
+export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
+gcloud beta dataflow flex-template run ${JOB_NAME} \
+        --project=${PROJECT} --region=us-central1 \
+        --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
+        --parameters inputSubscription=${SUBSCRIPTION},mongoDBUri=${MONGODB_HOSTNAME},database=${MONGODB_DATABASE_NAME},collection=${MONGODB_COLLECTION_NAME},deadletterTable=${DEADLETTER_TABLE}
 ```

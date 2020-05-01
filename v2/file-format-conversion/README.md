@@ -21,14 +21,16 @@ This is a flex template meaning that the pipeline code will be containerized and
 #### Building Container Image
 * Set environment variables that will be used in the build process.
 ```sh
-export PROJECT=my-project
-export IMAGE_NAME=my-image-name
+export PROJECT=<my-project>
+export IMAGE_NAME=<my-image-name>
 export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
-export APP_ROOT=/template/file-format-conversion
-export COMMAND_SPEC=${APP_ROOT}/resources/file-format-conversion-command-spec.json
+export TEMPLATE_MODULE=file-format-conversion
+export APP_ROOT=/template/${TEMPLATE_MODULE}
+export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_MODULE}-command-spec.json
+export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
 ```
 * Build and push image to Google Container Repository
 ```sh
@@ -36,7 +38,8 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
                   -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
                   -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
                   -Dapp-root=${APP_ROOT} \
-                  -Dcommand-spec=${COMMAND_SPEC}
+                  -Dcommand-spec=${COMMAND_SPEC} \
+                  -am -pl ${TEMPLATE_MODULE}
 ```
 
 #### Creating Image Spec
@@ -107,30 +110,10 @@ The pipeline has the following optional parameters:
   
 Template can be executed using the following API call:
 ```sh
-API_ROOT_URL="https://dataflow.googleapis.com"
-TEMPLATES_LAUNCH_API="${API_ROOT_URL}/v1b3/projects/${PROJECT}/templates:launch"
-JOB_NAME="csv-to-avro-`date +%Y%m%d-%H%M%S-%N`"
-time curl -X POST -H "Content-Type: application/json"     \
-     -H "Authorization: Bearer $(gcloud auth print-access-token)" \
-     "${TEMPLATES_LAUNCH_API}"`
-     `"?validateOnly=false"`
-     `"&dynamicTemplate.gcsPath=${BUCKET_NAME}/path/to/image-spec"`
-     `"&dynamicTemplate.stagingLocation=${BUCKET_NAME}/staging" \
-     -d '
-      {
-       "jobName":"'$JOB_NAME'",
-       "parameters": {
-           "inputFileFormat":"csv",
-           "outputFileFormat":"avro",
-           "inputFileSpec":"'$BUCKET_NAME/path/to/input-file.csv'",
-           "outputBucket":"'$BUCKET_NAME/path/to/output-location'",
-           "containsHeaders":"false",
-           "schema":"'$BUCKET_NAME/path/to/avro-schema'",
-           "outputFilePrefix":"output-avro-file",
-           "numShards":"3",
-           "csvFormat":"Default",
-           "delimiter":","
-        }
-       }
-      '
+export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
+gcloud beta dataflow flex-template run ${JOB_NAME} \
+        --project=${PROJECT} --region=us-central1 \
+        --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
+        --parameters inputFileFormat=csv,outputFileFormat=avro,inputFileSpec="$BUCKET_NAME/path/to/input-file.csv",outputBucket="$BUCKET_NAME/path/to/output-location",containsHeaders=false,schema="$BUCKET_NAME/path/to/avro-schema",outputFilePrefix=output-avro-file,numShards=3,csvFormat=Default,delimiter=","
+
 ```

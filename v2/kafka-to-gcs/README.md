@@ -18,14 +18,20 @@ This is a flex template meaning that the pipeline code will be containerized and
 #### Building Container Image
 * Set environment variables that will be used in the build process.
 ```sh
-export PROJECT=my-project
-export IMAGE_NAME=my-image-name
+export PROJECT=<my-project>
+export IMAGE_NAME=<my-image-name>
 export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
-export APP_ROOT=/template/<template-class>
-export COMMAND_SPEC=${APP_ROOT}/resources/kafka-to-gcs-command-spec.json
+export TEMPLATE_MODULE=kafka-to-gcs
+export APP_ROOT=/template/${TEMPLATE_MODULE}
+export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_MODULE}-command-spec.json
+export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
+
+export BOOTSTRAP=<my-comma-separated-bootstrap-servers>
+export TOPICS=<my-topics>
+export OUTPUT_DIRECTORY=gs://<bucket-name>/path/
 ```
 * Build and push image to Google Container Repository
 ```sh
@@ -33,7 +39,8 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
                   -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
                   -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
                   -Dapp-root=${APP_ROOT} \
-                  -Dcommand-spec=${COMMAND_SPEC}
+                  -Dcommand-spec=${COMMAND_SPEC} \
+                  -am -pl ${TEMPLATE_MODULE}
 ```
 
 #### Creating Image Spec
@@ -66,32 +73,14 @@ The template has the following optional parameters:
 * outputFileFormat: The format of the file to write to. Valid formats are Text, Avro and Parquet. Default: text.
 * outputFilenamePrefix: The filename prefix of the files to write to. Default: output.
 * windowDuration: The window duration in which data will be written. Default: 5m.
-* numShards: Number of file shards to create. Default: decided by runner. 
+* numShards: Number of file shards to create. Default: decided by runner.
 
-  
-Template can be executed using the following API call:
+Template can be executed using the following gcloud command.
 ```sh
-API_ROOT_URL="https://dataflow.googleapis.com"
-TEMPLATES_LAUNCH_API="${API_ROOT_URL}/v1b3/projects/${PROJECT}/templates:launch"
-JOB_NAME="kafka-to-gcs-`date +%Y%m%d-%H%M%S-%N`"
-time curl -X POST -H "Content-Type: application/json"     \
-     -H "Authorization: Bearer $(gcloud auth print-access-token)" \
-     "${TEMPLATES_LAUNCH_API}"`
-     `"?validateOnly=false"`
-     `"&dynamicTemplate.gcsPath=${BUCKET_NAME}/path/to/image-spec"`
-     `"&dynamicTemplate.stagingLocation=${BUCKET_NAME}/staging" \
-     -d '
-      {
-       "jobName":"'$JOB_NAME'",
-       "parameters": {
-           "bootstrapServers":"broker_1:9092,broker_2:9092",
-           "inputTopics":"topic1,topic2",
-           "outputDirectory":"'$BUCKET_NAME/path/to/output-location'",
-           "outputFileFormat":"text",
-           "outputFilenamePrefix":"output",
-           "windowDuration":"5m",
-           "numShards":"5"
-        }
-       }
-      '
+export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
+gcloud beta dataflow flex-template run ${JOB_NAME} \
+        --project=${PROJECT} --region=us-central1 \
+        --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
+        --parameters inputTopics=${TOPICS},bootstrapServers=${BOOTSTRAP},outputDirectory=${OUTPUT_DIRECTORY},outputFileFormat=text,outputFilenamePrefix=output,windowDuration=5m,numShards=5
+
 ```

@@ -74,14 +74,16 @@ This is a flex template meaning that the pipeline code will be containerized and
 * Set environment variables that will be used in the build process.
 
 ```sh
-export PROJECT=my-project
-export IMAGE_NAME=my-image-name
+export PROJECT=<my-project>
+export IMAGE_NAME=<my-image-name>
 export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
-export APP_ROOT=/template/streaming-benchmark
-export COMMAND_SPEC=${APP_ROOT}/resources/streaming-benchmark-command-spec.json
+export TEMPLATE_MODULE=streaming-benchmark
+export APP_ROOT=/template/${TEMPLATE_MODULE}
+export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_MODULE}-command-spec.json
+export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
 ```
 * Build and push image to Google Container Repository
 
@@ -90,7 +92,8 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
                   -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
                   -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
                   -Dapp-root=${APP_ROOT} \
-                  -Dcommand-spec=${COMMAND_SPEC}
+                  -Dcommand-spec=${COMMAND_SPEC} \
+                  -am -pl ${TEMPLATE_MODULE}
 ```
 
 #### Creating Template Spec
@@ -164,9 +167,10 @@ SCHEMA_LOCATION=gs://path/to/schemafile.json
 PUBSUB_TOPIC=projects/$PROJECT/topics/<topic-id>
 QPS=1
 
-gcloud beta dataflow jobs run $JOB_NAME \
-        --project=$PROJECT --region=us-central1 --flex-template  \
-        --gcs-location=$TEMPLATE_SPEC_GCSPATH \
+export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
+gcloud beta dataflow flex-template run ${JOB_NAME} \
+        --project=${PROJECT} --region=us-central1 \
+        --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
         --parameters autoscalingAlgorithm="THROUGHPUT_BASED",schemaLocation=$SCHEMA_LOCATION,topic=$PUBSUB_TOPIC,qps=$QPS
 ```
  *Note*: Additional options such as max workers, service account can be specified in the parameters section as shown below:

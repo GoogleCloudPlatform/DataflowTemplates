@@ -16,20 +16,23 @@ not exist prior to execution. Both output and error tables are specified by the 
 * The Kafka brokers are reachable from the Dataflow worker machines.
 
 ### Building Template
-This template is a dynamic template meaning that the pipeline code will be containerized and the container will be 
+This template is a flex template meaning that the pipeline code will be containerized and the container will be 
 run on Dataflow. 
 
 #### Building Container Image
 * Set Environment Variables
 ```sh
-export PROJECT=my-project
-export IMAGE_NAME=my-image-name
-export OUTPUT_TABLE=${PROJECT}:dataflow_template.temperature_data
+export PROJECT=<my-project>
+export IMAGE_NAME=<my-image-name>
+export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
-export APP_ROOT=/template/<template-class>
-export COMMAND_SPEC=${APP_ROOT}/resources/kafka-to-bigquery-command-spec.json
+export TEMPLATE_MODULE=kafka-to-bigquery
+export APP_ROOT=/template/${TEMPLATE_MODULE}
+export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_MODULE}-command-spec.json
+export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
+
 export BOOTSTRAP=my-comma-separated-bootstrap-servers
 export TOPICS=my-topics
 export JS_PATH=gs://path/to/udf
@@ -41,7 +44,8 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
                   -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
                   -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
                   -Dapp-root=${APP_ROOT} \
-                  -Dcommand-spec=${COMMAND_SPEC}
+                  -Dcommand-spec=${COMMAND_SPEC} \
+                  -am -pl ${TEMPLATE_MODULE}
 ```
 
 #### Creating Image Spec
@@ -74,27 +78,12 @@ The template requires the following parameters:
 The template allows for the user to supply the following optional parameters:
 * outputDeadletterTable: BigQuery table to output deadletter records to. Default: outputTableSpec_error_records
 
-Template can be executed using the following API call.
+Template can be executed using the following gcloud command.
 ```sh
-API_ROOT_URL="https://dataflow.googleapis.com"
-TEMPLATES_LAUNCH_API="${API_ROOT_URL}/v1b3/projects/${PROJECT}/templates:launch"
-JOB_NAME="kafka-to-bigquery-`date +%Y%m%d-%H%M%S-%N`"
-time curl -X POST -H "Content-Type: application/json"     \
-     -H "Authorization: Bearer $(gcloud auth print-access-token)" \
-     "${TEMPLATES_LAUNCH_API}"`
-     `"?validateOnly=false"`
-     `"&dynamicTemplate.gcsPath=gs://path/to/kafka-image-spec"`
-     `"&dynamicTemplate.stagingLocation=gs://path/to/staging" \
-     -d '
-       {
-        "jobName":"'$JOB_NAME'",
-        "parameters": {
-            "outputTableSpec":"'$OUTPUT_TABLE'",
-            "inputTopics":"'$TOPICS'",
-            "javascriptTextTransformGcsPath":"'$JS_PATH'",
-            "javascriptTextTransformFunctionName":"'$JS_FUNC_NAME'",
-            "bootstrapServers":"'$BOOTSTRAP'",
-        }
-     }
-    '
+export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
+gcloud beta dataflow flex-template run ${JOB_NAME} \
+        --project=${PROJECT} --region=us-central1 \
+        --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
+        --parameters outputTableSpec=${OUTPUT_TABLE},inputTopics=${TOPICS},javascriptTextTransformGcsPath=${JS_PATH},javascriptTextTransformFunctionName=${JS_FUNC_NAME},bootstrapServers=${BOOTSTRAP}
+
 ```

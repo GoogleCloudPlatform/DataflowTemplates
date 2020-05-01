@@ -18,30 +18,33 @@ used to launch the Dataflow pipeline.
 #### Building Container Image
 * Set environment variables.
 ```sh
-export PROJECT=my-project
-export IMAGE_NAME=my-image-name
+export PROJECT=<my-project>
+export IMAGE_NAME=<my-image-name>
 export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
-export APP_ROOT=/template/<template-class>
-export COMMAND_SPEC=${APP_ROOT}/resources/csv-to-elasticsearch-command-spec.json
-export NODE_ADDRESSES=comma-separated-list-nodes
-export SUBSCRIPTION=my-subscription
-export INDEX=my-index
-export DOCUMENT_TYPE=my-type
-export DEADLETTER_TABLE=my-project:my-dataset.my-deadletter-table
+export TEMPLATE_MODULE=csv-to-elasticsearch
+export APP_ROOT=/template/${TEMPLATE_MODULE}
+export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_MODULE}-command-spec.json
+export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
+
+export NODE_ADDRESSES=<comma-separated-list-nodes>
+export SUBSCRIPTION=<my-subscription>
+export INDEX=<my-index>
+export DOCUMENT_TYPE=<my-type>
+export DEADLETTER_TABLE=<my-project:my-dataset.my-deadletter-table>
 ```
 
 * Build and push image to Google Container Repository
 
 ```sh
-mvn clean package \
--Dimage=${TARGET_GCR_IMAGE} \
--Dbase-container-image=${BASE_CONTAINER_IMAGE} \
--Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
--Dapp-root=${APP_ROOT} \
--Dcommand-spec=${COMMAND_SPEC}
+mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
+                  -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
+                  -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
+                  -Dapp-root=${APP_ROOT} \
+                  -Dcommand-spec=${COMMAND_SPEC} \
+                  -am -pl ${TEMPLATE_MODULE}
 ```
 
 #### Creating Image Spec
@@ -88,27 +91,11 @@ The template has the following optional parameters:
 * typeFnName: Name of javascript function to extract Type from document. Default: null
     * Will override type provided.
 
-Template can be executed using the following API call:
+Template can be executed using the following gcloud command.
 ```sh
-API_ROOT_URL="https://dataflow.googleapis.com"
-TEMPLATES_LAUNCH_API="${API_ROOT_URL}/v1b3/projects/${PROJECT_NAME}/templates:launch"
-JOB_NAME="pubsub-to-elasticsearch-`date +%Y%m%d-%H%M%S-%N`"
-time curl -X POST \
-   -H "Content-Type: application/json" \
-   -H "Authorization: Bearer $(gcloud auth print-access-token)" \
-   "${TEMPLATES_LAUNCH_API}"`\
-   `"?validateOnly=false"` \
-   `"&dynamicTemplate.gcsPath=gs://${BUCKET_NAME}/pubsub-to-elasticsearch-image-spec.json"` \
-   `"&dynamicTemplate.stagingLocation=gs://${BUCKET_NAME}/staging" \
-   -d
-   '{
-       "jobName":"$JOB_NAME",
-       "parameters": {
-           "inputSubscription":"'SUBSCRIPTION'",
-           "nodeAddresses":"'$NODE_ADDRESSES'",
-           "index":"'$INDEX'",
-           "documentType":"'$DOCUMENT_TYPE'",
-           "deadletterTable":"'$DEADLETTER_TABLE'"
-       }
-   }'
+export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
+gcloud beta dataflow flex-template run ${JOB_NAME} \
+        --project=${PROJECT} --region=us-central1 \
+        --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
+        --parameters inputSubscription=${SUBSCRIPTION},nodeAddresses=${NODE_ADDRESSES},index=${INDEX},documentType=${DOCUMENT_TYPE},deadletterTable=${DEADLETTER_TABLE}
 ```
