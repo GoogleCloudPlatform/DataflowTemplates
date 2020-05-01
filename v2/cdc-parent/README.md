@@ -107,6 +107,19 @@ basic configuration files:
 - A credentials file with privileges to push to Cloud PubSub, and update Entries in
   Google Cloud Catalog in the `GOOGLE_DEFAULT_CREDENTIALS` environment variable.
 
+#### Passing parameters directly to Debezium
+
+You may want to pass parameters directly to the Debezium connector. Parameters
+such as the offset flush interval (Debezium's `offset.flush.interval.ms` property).
+To give parameters to the connector to be passed directly to Debezium, prefix
+them with `debezium.` in the properties file. For example, by adding the
+following line in the properties file, you can set the offset flush interval to
+500 miliseconds:
+
+```
+debezium.offset.flush.interval.ms=500
+```
+
 #### Deploying from source
 
 If you would like to deploy the connector from your machine after cloning this

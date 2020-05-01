@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ConfigurationUtils;
+import org.apache.commons.configuration2.ImmutableConfiguration;
 import org.apache.commons.configuration2.builder.fluent.Configurations;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.slf4j.Logger;
@@ -71,12 +72,16 @@ public class App {
 
     private static final Object MISSING = new Object();
 
-    public static final String DEFAULT_PROPERTIES_FILE_LOCATION = "/etc/dataflow-cdc/dataflow_cdc.properties";
+  public static final String DEFAULT_PROPERTIES_FILE_LOCATION =
+      "/etc/dataflow-cdc/dataflow_cdc.properties";
 
-    public static final String PASSWORD_FILE_LOCATION = "/etc/dataflow-cdc/dataflow_cdc_password.properties";
+  public static final String PASSWORD_FILE_LOCATION =
+      "/etc/dataflow-cdc/dataflow_cdc_password.properties";
 
-    public static final String DEFAULT_OFFSET_STORAGE_FILE = "/opt/dataflow-cdc/offset/offset-tracker";
-    public static final String DEFAULT_DATABASE_HISTORY_FILE = "/opt/dataflow-cdc/offset/database-history.dat";
+  public static final String DEFAULT_OFFSET_STORAGE_FILE =
+      "/opt/dataflow-cdc/offset/offset-tracker";
+  public static final String DEFAULT_DATABASE_HISTORY_FILE =
+      "/opt/dataflow-cdc/offset/database-history.dat";
 
     public static void main(String[] args) throws Exception {
         final Logger logger = LoggerFactory.getLogger(App.class);
@@ -96,18 +101,22 @@ public class App {
         logger.info("GOOGLE_APPLICATION_CREDENTIALS: {}",
             System.getenv("GOOGLE_APPLICATION_CREDENTIALS"));
 
-        startSender(
-            config.getString("databaseName"),
-            config.getString("databaseUsername"),
-            config.getString("databasePassword"),
-            config.getString("databaseAddress"),
-            config.getString("databasePort", "3306"),  // MySQL default port is 3306
-            config.getString("gcpProject"),
-            config.getString("gcpPubsubTopicPrefix"),
-            config.getString("offsetStorageFile", DEFAULT_OFFSET_STORAGE_FILE),
-            config.getString("databaseHistoryFile", DEFAULT_DATABASE_HISTORY_FILE),
-            config.getBoolean("inMemoryOffsetStorage", false),
-            config.getString("whitelistedTables"));
+    // Properties to be passed directly to Debezium
+    ImmutableConfiguration debeziumConfig = config.immutableSubset("debezium");
+
+    startSender(
+        config.getString("databaseName"),
+        config.getString("databaseUsername"),
+        config.getString("databasePassword"),
+        config.getString("databaseAddress"),
+        config.getString("databasePort", "3306"), // MySQL default port is 3306
+        config.getString("gcpProject"),
+        config.getString("gcpPubsubTopicPrefix"),
+        config.getString("offsetStorageFile", DEFAULT_OFFSET_STORAGE_FILE),
+        config.getString("databaseHistoryFile", DEFAULT_DATABASE_HISTORY_FILE),
+        config.getBoolean("inMemoryOffsetStorage", false),
+        config.getString("whitelistedTables"),
+        debeziumConfig);
     }
 
     /**
@@ -148,19 +157,21 @@ public class App {
         return result;
     }
 
-    static void startSender(
-        String databaseName,
-        String databaseUserName,
-        String databasePassword,
-        String databaseAddress,
-        String databasePort,
-        String gcpProject,
-        String gcpPubsubTopic,
-        String offsetStorageFile,
-        String databaseHistoryFile,
-        Boolean inMemoryOffsetStorage,
-        String commaSeparatedWhiteListedTables) {
-        DebeziumMysqlToPubSubDataSender dataSender = new DebeziumMysqlToPubSubDataSender(
+  static void startSender(
+      String databaseName,
+      String databaseUserName,
+      String databasePassword,
+      String databaseAddress,
+      String databasePort,
+      String gcpProject,
+      String gcpPubsubTopic,
+      String offsetStorageFile,
+      String databaseHistoryFile,
+      Boolean inMemoryOffsetStorage,
+      String commaSeparatedWhiteListedTables,
+      ImmutableConfiguration debeziumConfig) {
+    DebeziumMysqlToPubSubDataSender dataSender =
+        new DebeziumMysqlToPubSubDataSender(
             databaseName,
             databaseUserName,
             databasePassword,
@@ -171,7 +182,8 @@ public class App {
             offsetStorageFile,
             databaseHistoryFile,
             inMemoryOffsetStorage,
-            new HashSet<>(Arrays.asList(commaSeparatedWhiteListedTables.split(","))));
+            new HashSet<>(Arrays.asList(commaSeparatedWhiteListedTables.split(","))),
+            debeziumConfig);
         dataSender.run();
     }
 }

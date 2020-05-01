@@ -16,9 +16,13 @@
 package com.google.cloud.dataflow.cdc.connector;
 
 import com.google.cloud.dataflow.cdc.common.DataCatalogSchemaUtils;
-import io.debezium.relational.history.MemoryDatabaseHistory;
+import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.MySqlConnectorConfig;
+import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.relational.history.FileDatabaseHistory;
+import io.debezium.relational.history.MemoryDatabaseHistory;
 import io.debezium.util.Clock;
+import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
@@ -29,11 +33,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import io.debezium.embedded.EmbeddedEngine;
-import io.debezium.connector.mysql.MySqlConnectorConfig;
-
-import io.debezium.config.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,6 +46,7 @@ public class DebeziumMysqlToPubSubDataSender implements Runnable {
 
   // TODO(pabloem): Expand beyond MySQL?
   public static final String APP_NAME = "debezium-mysql-to-pubsub-connector";
+  public static final Integer DEFAULT_FLUSH_INTERVAL_MS = 10000;
 
   private static final Logger LOG = LoggerFactory.getLogger(DebeziumMysqlToPubSubDataSender.class);
 
@@ -64,7 +64,6 @@ public class DebeziumMysqlToPubSubDataSender implements Runnable {
 
   private final Set<String> whitelistedTables;
 
-
   public DebeziumMysqlToPubSubDataSender(
       String mysqlDatabaseInstanceName,
       String mysqlUserName,
@@ -76,7 +75,8 @@ public class DebeziumMysqlToPubSubDataSender implements Runnable {
       String offsetStorageFile,
       String databaseHistoryFile,
       Boolean inMemoryOffsetStorage,
-      Set<String> whitelistedTables) {
+      Set<String> whitelistedTables,
+      org.apache.commons.configuration2.ImmutableConfiguration debeziumConfig) {
 
     this.mysqlUserName = mysqlUserName;
     this.mysqlUserPassword = mysqlUserPassword;
@@ -117,13 +117,21 @@ public class DebeziumMysqlToPubSubDataSender implements Runnable {
           "org.apache.kafka.connect.storage.MemoryOffsetBackingStore");
     } else {
       LOG.info("Setting up in File-based offset storage in {}.", this.offsetStorageFile);
-      configBuilder = configBuilder
-          .with(
-              EmbeddedEngine.OFFSET_STORAGE,
-              "org.apache.kafka.connect.storage.FileOffsetBackingStore")
-          .with(EmbeddedEngine.OFFSET_STORAGE_FILE_FILENAME, this.offsetStorageFile)
-          .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class.getName())
-          .with("database.history.file.filename", this.databaseHistoryFile);
+      configBuilder =
+          configBuilder
+              .with(
+                  EmbeddedEngine.OFFSET_STORAGE,
+                  "org.apache.kafka.connect.storage.FileOffsetBackingStore")
+              .with(EmbeddedEngine.OFFSET_STORAGE_FILE_FILENAME, this.offsetStorageFile)
+              .with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, DEFAULT_FLUSH_INTERVAL_MS)
+              .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class.getName())
+              .with("database.history.file.filename", this.databaseHistoryFile);
+    }
+
+    Iterator<String> keys = debeziumConfig.getKeys();
+    while (keys.hasNext()) {
+      String configKey = keys.next();
+      configBuilder = configBuilder.with(configKey, debeziumConfig.getString(configKey));
     }
 
     config = configBuilder.build();
