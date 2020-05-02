@@ -41,7 +41,7 @@ import org.slf4j.LoggerFactory;
  */
 public class BigQueryStatementIssuingFn extends DoFn<KV<String, BigQueryAction>, Void> {
 
-  private static Logger LOG = LoggerFactory.getLogger(BigQueryStatementIssuingFn.class);
+  private static final Logger LOG = LoggerFactory.getLogger(BigQueryStatementIssuingFn.class);
 
   private BigQuery bigQueryClient;
 

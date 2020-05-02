@@ -16,7 +16,7 @@
 package com.google.cloud.dataflow.cdc.connector;
 
 import com.google.api.core.ApiFuture;
-import com.google.cloud.datacatalog.Entry;
+import com.google.cloud.datacatalog.v1beta1.Entry;
 import com.google.cloud.dataflow.cdc.common.DataCatalogSchemaUtils;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.common.collect.ImmutableList;
@@ -39,7 +39,7 @@ import org.apache.beam.sdk.values.Row;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.LoggerFactory;
 
-
+/** Implements Debezium's Embedded Engine change consumer to push data to PubSub. */
 public class PubSubChangeConsumer implements EmbeddedEngine.ChangeConsumer {
 
   private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(PubSubChangeConsumer.class);
@@ -134,7 +134,8 @@ public class PubSubChangeConsumer implements EmbeddedEngine.ChangeConsumer {
         if (!observedTables.contains(tableName)) {
           String topicName = getPubsubTopicName(pubsubTopicPrefix, tableName);
 
-          LOG.info("Publishing schema for table {} corresponding to topic {}", tableName, topicName);
+          LOG.info(
+              "Publishing schema for table {} corresponding to topic {}", tableName, topicName);
           Entry result = schemaUpdater.setSchemaForPubSubTopic(
               topicName, project, updateRecord.getSchema());
           if (result == null) {

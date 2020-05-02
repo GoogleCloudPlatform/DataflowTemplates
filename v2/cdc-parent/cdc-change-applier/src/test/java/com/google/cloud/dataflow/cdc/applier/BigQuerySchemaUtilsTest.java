@@ -15,19 +15,19 @@
  */
 package com.google.cloud.dataflow.cdc.applier;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.common.collect.Lists;
+import java.util.List;
 import org.apache.beam.sdk.schemas.Schema;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
-
+/** Tests for BigQuerySchemaUtils class. */
 public class BigQuerySchemaUtilsTest {
 
   private static final Schema ALL_BEAM_SCHEMA =

@@ -15,8 +15,5 @@
  */
 package com.google.cloud.dataflow.cdc.common;
 
-import org.apache.beam.sdk.schemas.Schema;
-import org.junit.jupiter.api.Test;
-
-public class DataCatalogSchemaUtilsTest {
-}
+/** Tests for DataCatalogSchemaUtils class. */
+public class DataCatalogSchemaUtilsTest {}

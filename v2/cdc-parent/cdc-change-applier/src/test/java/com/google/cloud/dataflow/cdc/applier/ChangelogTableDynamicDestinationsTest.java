@@ -16,11 +16,11 @@
 package com.google.cloud.dataflow.cdc.applier;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 
 import org.junit.jupiter.api.Test;
-import static org.hamcrest.Matchers.*;
 
-
+/** Tests for Dynamic Destinations class for CDC template. */
 public class ChangelogTableDynamicDestinationsTest {
 
   // TODO(pabloem): Add tests that rely on BigQueryFakeServices coming from Beam 2.15.0 OR 2.16.0.

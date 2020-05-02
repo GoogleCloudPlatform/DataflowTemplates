@@ -25,6 +25,7 @@ import org.apache.beam.sdk.schemas.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/** Utilities to communicate with PubSub API. */
 public class PubsubUtils {
 
   private static final Logger LOG = LoggerFactory.getLogger(PubsubUtils.class);

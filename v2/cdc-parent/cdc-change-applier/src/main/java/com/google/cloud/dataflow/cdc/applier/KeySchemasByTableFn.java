@@ -23,6 +23,7 @@ import org.apache.beam.sdk.values.PCollectionView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/** Outputs table+schema KV-pairs from Map side input. */
 public class KeySchemasByTableFn extends DoFn<Long, KV<String, KV<Schema, Schema>>> {
   private static final Logger LOG = LoggerFactory.getLogger(KeySchemasByTableFn.class);
 

@@ -15,32 +15,25 @@
  */
 package com.google.cloud.dataflow.cdc.applier;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.equalTo;
+
 import java.util.Arrays;
 import java.util.List;
-
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.coders.KvCoder;
-import org.apache.beam.sdk.coders.SerializableCoder;
-import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.testing.PAssert;
-import org.apache.beam.sdk.testing.TestPipeline;
-import org.apache.beam.sdk.testing.TestStream;
 import org.apache.beam.sdk.transforms.Count;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.Filter;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
-import org.joda.time.Duration;
-import org.joda.time.Instant;
 import org.junit.jupiter.api.Test;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
 
-
-
+/** Tests for MergeStatementBuildingFn. */
 public class MergeStatementBuildingFnTest {
   static final String TABLE_ID = "myTable";
   static final String CHANGELOG_TABLE_ID = "myTable_changelog";
@@ -75,14 +68,14 @@ public class MergeStatementBuildingFnTest {
             TABLE_ID, PRIMARY_KEY_COLUMNS, PROJECT_ID, CHANGELOG_DATASET_ID);
 
     assertThat(getLatestElementPkQuery, containsString(
-            "(SELECT primaryKey.pk1, primaryKey.pk2, MAX(timestampMs) as max_ts_ms " +
-            "FROM `myProject.myChangelogDataset.myTable` " +
-                "GROUP BY primaryKey.pk1, primaryKey.pk2) AS ts_table"));
+            "(SELECT primaryKey.pk1, primaryKey.pk2, MAX(timestampMs) as max_ts_ms "
+            + "FROM `myProject.myChangelogDataset.myTable` "
+            + "GROUP BY primaryKey.pk1, primaryKey.pk2) AS ts_table"));
 
     assertThat(getLatestElementPkQuery, containsString(
-        "ON source_table.primaryKey.pk1 = ts_table.pk1 " +
-            "AND source_table.primaryKey.pk2 = ts_table.pk2 " +
-            "AND source_table.timestampMs = ts_table.max_ts_ms"));
+        "ON source_table.primaryKey.pk1 = ts_table.pk1 "
+            + "AND source_table.primaryKey.pk2 = ts_table.pk2 "
+            + "AND source_table.timestampMs = ts_table.max_ts_ms"));
 
     assertThat(getLatestElementPkQuery, containsString(
         "INNER JOIN `myProject.myChangelogDataset.myTable` AS source_table"));

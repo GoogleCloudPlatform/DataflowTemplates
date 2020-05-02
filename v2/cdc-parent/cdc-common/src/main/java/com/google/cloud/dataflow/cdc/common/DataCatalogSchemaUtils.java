@@ -16,15 +16,16 @@
 package com.google.cloud.dataflow.cdc.common;
 
 import com.google.api.gax.rpc.ApiException;
-import com.google.cloud.datacatalog.Entry;
-import com.google.cloud.datacatalog.LookupEntryRequest;
-import com.google.cloud.datacatalog.UpdateEntryRequest;
 import com.google.cloud.datacatalog.v1beta1.DataCatalogClient;
+import com.google.cloud.datacatalog.v1beta1.Entry;
+import com.google.cloud.datacatalog.v1beta1.LookupEntryRequest;
+import com.google.cloud.datacatalog.v1beta1.UpdateEntryRequest;
 import java.io.IOException;
 import org.apache.beam.sdk.schemas.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/** Class with utilities to communicate with Google Cloud Data Catalog. */
 public class DataCatalogSchemaUtils {
 
   private static final String DATA_CATALOG_PUBSUB_URI_TEMPLATE =
@@ -36,14 +37,17 @@ public class DataCatalogSchemaUtils {
 
   public Entry setSchemaForPubSubTopic(String pubsubTopic, String gcpProject, Schema beamSchema) {
     setupDataCatalogClient();
-    if (client == null) return null;  // TODO(pabloem) Handle a missing client
+    if (client == null) {
+      return null; // TODO(pabloem) Handle a missing client
+    }
 
     Entry beforeChangeEntry = lookupPubSubEntry(pubsubTopic, gcpProject);
     if (beforeChangeEntry == null) {
       return null; // TODO(pabloem) Handle a failed entry lookup
     }
     LOG.info("Converting Beam schema {} into a Data Catalog schema", beamSchema);
-    com.google.cloud.datacatalog.Schema newEntrySchema = SchemaUtils.fromBeamSchema(beamSchema);
+    com.google.cloud.datacatalog.v1beta1.Schema newEntrySchema =
+        SchemaUtils.fromBeamSchema(beamSchema);
     LOG.debug("Beam schema {} converted to Data Catalog schema {}", beamSchema, newEntrySchema);
 
     UpdateEntryRequest updateEntryRequest = UpdateEntryRequest.newBuilder()
@@ -56,7 +60,9 @@ public class DataCatalogSchemaUtils {
 
   public Schema getSchemaFromPubSubTopic(String gcpProject, String pubsubTopic) {
     setupDataCatalogClient();
-    if (client == null) return null;  // TODO(pabloem) Handle a missing client
+    if (client == null) {
+      return null; // TODO(pabloem) Handle a missing client
+    }
 
     Entry entry = lookupPubSubEntry(pubsubTopic, gcpProject);
     if (entry == null) {
@@ -68,7 +74,9 @@ public class DataCatalogSchemaUtils {
   }
 
   private void setupDataCatalogClient() {
-    if (client != null) return;
+    if (client != null) {
+      return;
+    }
 
     try {
       client = DataCatalogClient.create();

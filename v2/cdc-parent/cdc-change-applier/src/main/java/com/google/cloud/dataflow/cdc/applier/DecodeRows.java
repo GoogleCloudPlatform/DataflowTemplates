@@ -26,6 +26,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TypeDescriptors;
 
+/** Receives byte-encoded Rows, and returns decoded Row objects. */
 public class DecodeRows extends PTransform<PCollection<byte[]>, PCollection<Row>> {
 
   private final Coder<Row> coder;

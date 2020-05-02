@@ -18,9 +18,9 @@ package com.google.cloud.dataflow.cdc.applier;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.text.MatchesPattern.matchesPattern;
 
-
 import org.junit.jupiter.api.Test;
 
+/** Tests for BigQueryIssuingFn class. */
 public class BigQueryStatementIssuingFnTest {
 
   @Test

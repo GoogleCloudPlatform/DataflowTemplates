@@ -15,12 +15,13 @@
  */
 package com.google.cloud.dataflow.cdc.applier;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+
 import com.google.pubsub.v1.ProjectTopicName;
 import org.junit.jupiter.api.Test;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
-
+/** Tests for PubSub utilities. */
 public class PubSubUtilsTest {
 
   @Test

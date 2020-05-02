@@ -41,8 +41,8 @@ import org.slf4j.LoggerFactory;
  */
 class ChangelogTableDynamicDestinations extends DynamicDestinations<TableRow, String> {
 
-  private final static Logger LOG = LoggerFactory.getLogger(
-      ChangelogTableDynamicDestinations.class);
+  private static final Logger LOG =
+      LoggerFactory.getLogger(ChangelogTableDynamicDestinations.class);
 
   final String changeLogDataset;
   final String gcpProjectId;

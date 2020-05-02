@@ -37,10 +37,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Requires the following
+ * Implements the utilities to track Binlog and send data updates to PubSub.
  *
- * Properties of the MySQL connector for Debezium:
- * - https://debezium.io/docs/connectors/mysql/#connector-properties
+ * <p>Properties of the MySQL connector for Debezium: -
+ * https://debezium.io/docs/connectors/mysql/#connector-properties
  */
 public class DebeziumMysqlToPubSubDataSender implements Runnable {
 

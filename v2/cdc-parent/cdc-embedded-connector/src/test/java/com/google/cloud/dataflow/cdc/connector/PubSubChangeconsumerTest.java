@@ -16,7 +16,7 @@
 package com.google.cloud.dataflow.cdc.connector;
 
 import com.google.api.core.ApiFuture;
-import com.google.cloud.datacatalog.Entry;
+import com.google.cloud.datacatalog.v1beta1.Entry;
 import com.google.cloud.dataflow.cdc.common.DataCatalogSchemaUtils;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.common.collect.ImmutableList;
@@ -32,6 +32,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+/** Tests for PubSunChangeConsummer. */
 public class PubSubChangeconsumerTest {
 
   @Test

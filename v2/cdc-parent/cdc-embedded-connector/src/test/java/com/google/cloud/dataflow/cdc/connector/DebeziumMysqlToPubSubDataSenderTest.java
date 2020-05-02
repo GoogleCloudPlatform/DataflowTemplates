@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/** Tests for the main PubSub data sender. */
 public class DebeziumMysqlToPubSubDataSenderTest {
 
   private static final Logger LOG = LoggerFactory.getLogger(

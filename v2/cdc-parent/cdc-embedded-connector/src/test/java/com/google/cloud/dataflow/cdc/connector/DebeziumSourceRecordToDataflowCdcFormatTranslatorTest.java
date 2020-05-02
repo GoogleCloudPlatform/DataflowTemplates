@@ -15,6 +15,10 @@
  */
 package com.google.cloud.dataflow.cdc.connector;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.util.List;
@@ -26,10 +30,7 @@ import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.Test;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
+/** Tests for message translations. */
 public class DebeziumSourceRecordToDataflowCdcFormatTranslatorTest {
 
   private static final List<Schema> UNSUPPORTED_TYPES = ImmutableList.of(

@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
+/** Tests for BigQueryChangeApplier. */
 public class BigQueryChangeApplierTest {
 
   static final Logger LOG = LoggerFactory.getLogger(BigQueryChangeApplierTest.class);
@@ -81,7 +81,7 @@ public class BigQueryChangeApplierTest {
             testInsertRecord(
                 Row.withSchema(RECORD_SCHEMA1)
                     .addValues("k1", 2, DateTime.now(), "bytes".getBytes()).build()))
-        .advanceWatermarkTo(Instant.ofEpochSecond(1000))
+        .advanceWatermarkTo(Instant.now())
         .advanceWatermarkToInfinity();
 
     Pipeline p = Pipeline.create();
