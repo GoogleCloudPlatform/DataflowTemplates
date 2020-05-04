@@ -1,4 +1,7 @@
 {
   "mainClass": "com.google.cloud.teleport.v2.templates.KafkaToBigQuery",
-  "classPath": "/template/KafkaToBigQuery/libs/*:/template/KafkaToBigQuery/classes"
+  "classPath": "/template/kafka-to-bigquery/*:/template/kafka-to-bigquery/libs/*:/template/kafka-to-bigquery/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"kafka_to_bigquery\"}"
+  }
 }

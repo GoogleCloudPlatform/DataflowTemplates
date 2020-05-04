@@ -23,6 +23,7 @@ import com.google.cloud.teleport.v2.transforms.ErrorConverters.WriteKafkaMessage
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -55,6 +56,7 @@ import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -196,13 +198,11 @@ public class KafkaToBigQuery {
     void setOutputDeadletterTable(String outputDeadletterTable);
 
     @Description("Gcs path to javascript udf source")
-    @Required
     String getJavascriptTextTransformGcsPath();
 
     void setJavascriptTextTransformGcsPath(String javascriptTextTransformGcsPath);
 
     @Description("UDF Javascript Function Name")
-    @Required
     String getJavascriptTextTransformFunctionName();
 
     void setJavascriptTextTransformFunctionName(String javascriptTextTransformFunctionName);
@@ -266,6 +266,8 @@ public class KafkaToBigQuery {
             .apply(
                 "ReadFromKafka",
                 KafkaIO.<String, String>read()
+                    .withConsumerConfigUpdates(
+                        ImmutableMap.of(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"))
                     .withBootstrapServers(options.getBootstrapServers())
                     .withTopics(topicsList)
                     .withKeyDeserializerAndCoder(
@@ -320,8 +322,8 @@ public class KafkaToBigQuery {
             WriteKafkaMessageErrors.newBuilder()
                 .setErrorRecordsTable(
                     ObjectUtils.firstNonNull(
-                            options.getOutputDeadletterTable(), options.getOutputTableSpec())
-                        + DEFAULT_DEADLETTER_TABLE_SUFFIX)
+                        options.getOutputDeadletterTable(),
+                        options.getOutputTableSpec() + DEFAULT_DEADLETTER_TABLE_SUFFIX))
                 .setErrorRecordsTableSchema(SchemaUtils.DEADLETTER_SCHEMA)
                 .build());
 
@@ -333,8 +335,8 @@ public class KafkaToBigQuery {
         ErrorConverters.WriteStringMessageErrors.newBuilder()
             .setErrorRecordsTable(
                 ObjectUtils.firstNonNull(
-                        options.getOutputDeadletterTable(), options.getOutputTableSpec())
-                    + DEFAULT_DEADLETTER_TABLE_SUFFIX)
+                        options.getOutputDeadletterTable(),
+                        options.getOutputTableSpec() + DEFAULT_DEADLETTER_TABLE_SUFFIX))
             .setErrorRecordsTableSchema(SchemaUtils.DEADLETTER_SCHEMA)
             .build());
 
