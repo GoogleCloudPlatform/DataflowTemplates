@@ -68,6 +68,23 @@
           <artifactId>maven-failsafe-plugin</artifactId>
           <version>2.22.0</version>
         </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-dependency-plugin</artifactId>
+          <version>${maven-dependency-plugin.version}</version>
+          <executions>
+              <execution>
+                  <id>analyze-dependencies</id>
+                  <goals>
+                      <goal>analyze-only</goal>
+                  </goals>
+                  <configuration>
+                    <!-- ENABLE DEPENDENCY CHECKS ONCE THEY'RE RESOLVED -->
+                    <skip>true</skip>
+                  </configuration>
+              </execution>
+          </executions>
+      </plugin>
       </plugins>
     </pluginManagement>
   </build>
