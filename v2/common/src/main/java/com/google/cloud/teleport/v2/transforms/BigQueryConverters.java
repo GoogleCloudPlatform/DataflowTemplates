@@ -15,11 +15,13 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
+import com.google.cloud.teleport.v2.utils.SerializableSchemaSupplier;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.gson.Gson;
 import java.io.ByteArrayInputStream;
@@ -29,26 +31,34 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.Coder.Context;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.TypedRead.Method;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryUtils;
 import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
-import org.apache.beam.vendor.guava.v20_0.com.google.common.base.Throwables;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Supplier;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Suppliers;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Throwables;
 import org.apache.commons.text.StringSubstitutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,7 +101,7 @@ public class BigQueryConverters {
       context.output(tableRowToJson(row));
     }
   }
-  
+
   /** Converts a {@link TableRow} into a Json string using {@link Gson}. */
   private static String tableRowToJson(TableRow row) { return new Gson().toJson(row, TableRow.class); }
 
@@ -358,7 +368,7 @@ public class BigQueryConverters {
    */
   static class TableRowToFailsafeElementFn
       extends DoFn<TableRow, FailsafeElement<TableRow, String>> {
-    
+
     private final TupleTag<FailsafeElement<TableRow, String>> transformDeadletterOutTag;
 
     /** {@link Counter} for successfully processed elements. */
@@ -410,8 +420,8 @@ public class BigQueryConverters {
 
   /**
    * Returns {@code String} using Key/Value style formatting.
-   * 
-   * @param formatTemplate a String with bracketed keys to apply "I am a {key}" 
+   *
+   * @param formatTemplate a String with bracketed keys to apply "I am a {key}"
    * @param row is a TableRow object which is used to supply key:values to the template
    *
    * <p> Extracts TableRow fields and applies values to the formatTemplate.
@@ -432,5 +442,38 @@ public class BigQueryConverters {
       // Substitute any templated values in the template
       String result = StringSubstitutor.replace(formatTemplate, values, "{", "}");
       return result;
+  }
+
+  /**
+   * A {@link SerializableFunction} to convert a {@link TableRow} to a {@link GenericRecord}.
+   */
+  public static class TableRowToGenericRecordFn implements
+      SerializableFunction<TableRow, GenericRecord> {
+
+    /**
+     * Creates a {@link SerializableFunction} that uses a {@link Schema} to translate a
+     * {@link TableRow} into a {@link GenericRecord}.
+     *
+     * @param avroSchema schema to be used for the {@link GenericRecord}
+     * @return a {@link GenericRecord} based on the {@link TableRow}
+     */
+    public static TableRowToGenericRecordFn of(Schema avroSchema) {
+      checkNotNull(avroSchema, "avroSchema is required.");
+      return new TableRowToGenericRecordFn(avroSchema);
+    }
+
+    private final org.apache.beam.sdk.schemas.Schema beamSchema;
+    private final Supplier<Schema> avroSchemaSupplier;
+
+    private TableRowToGenericRecordFn(Schema avroSchema) {
+      avroSchemaSupplier = Suppliers.memoize(SerializableSchemaSupplier.of(avroSchema));
+      beamSchema = AvroUtils.toBeamSchema(avroSchema);
+    }
+
+    @Override
+    public GenericRecord apply(TableRow tableRow) {
+      Row row = BigQueryUtils.toBeamRow(beamSchema, tableRow);
+      return AvroUtils.toGenericRecord(row, avroSchemaSupplier.get());
+    }
   }
 }

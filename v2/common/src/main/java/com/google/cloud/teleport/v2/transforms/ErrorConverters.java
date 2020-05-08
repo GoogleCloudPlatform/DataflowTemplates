@@ -15,30 +15,51 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
+
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.collect.ImmutableMap;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.coders.CoderException;
+import org.apache.beam.sdk.coders.KvCoder;
+import org.apache.beam.sdk.coders.MapCoder;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.util.CoderUtils;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TypeDescriptor;
+import org.apache.beam.sdk.values.TypeDescriptors;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Ascii;
 import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
 /** Transforms & DoFns & Options for Teleport Error logging. */
 public class ErrorConverters {
+
+  private static final String DEFAULT_TRUNCATION_INDICATOR = "...";
+
+  // PubsubMessage attribute map only allows a value to be <= 512 characters long.
+  private static final int MAX_ATTRIBUTE_VALUE_LENGTH = 512;
 
   /** Writes strings error messages. */
   @AutoValue
@@ -200,7 +221,7 @@ public class ErrorConverters {
    */
   @AutoValue
   public abstract static class WritePubsubMessageErrors
-          extends PTransform<PCollection<FailsafeElement<PubsubMessage, String>>, WriteResult> {
+      extends PTransform<PCollection<FailsafeElement<PubsubMessage, String>>, WriteResult> {
 
     public static Builder newBuilder() {
       return new AutoValue_ErrorConverters_WritePubsubMessageErrors.Builder();
@@ -212,17 +233,17 @@ public class ErrorConverters {
 
     @Override
     public WriteResult expand(
-            PCollection<FailsafeElement<PubsubMessage, String>> failedRecords) {
+        PCollection<FailsafeElement<PubsubMessage, String>> failedRecords) {
 
       return failedRecords
-              .apply("FailedRecordToTableRow", ParDo.of(new FailedPubsubMessageToTableRowFn()))
-              .apply(
-                      "WriteFailedRecordsToBigQuery",
-                      BigQueryIO.writeTableRows()
-                              .to(getErrorRecordsTable())
-                              .withJsonSchema(getErrorRecordsTableSchema())
-                              .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
-                              .withWriteDisposition(WriteDisposition.WRITE_APPEND));
+          .apply("FailedRecordToTableRow", ParDo.of(new FailedPubsubMessageToTableRowFn()))
+          .apply(
+              "WriteFailedRecordsToBigQuery",
+              BigQueryIO.writeTableRows()
+                  .to(getErrorRecordsTable())
+                  .withJsonSchema(getErrorRecordsTableSchema())
+                  .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
+                  .withWriteDisposition(WriteDisposition.WRITE_APPEND));
     }
 
     /** Builder for {@link WritePubsubMessageErrors}. */
@@ -288,39 +309,200 @@ public class ErrorConverters {
    * {@link TableRow} objects which can be output to a dead-letter table.
    */
   public static class FailedPubsubMessageToTableRowFn
-          extends DoFn<FailsafeElement<PubsubMessage, String>, TableRow> {
+      extends DoFn<FailsafeElement<PubsubMessage, String>, TableRow> {
 
     /**
      * The formatter used to convert timestamps into a BigQuery compatible <a
      * href="https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#timestamp-type">format</a>.
      */
     private static final DateTimeFormatter TIMESTAMP_FORMATTER =
-            DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
+        DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
 
     @ProcessElement
     public void processElement(ProcessContext context) {
       FailsafeElement<PubsubMessage, String> failsafeElement = context.element();
       PubsubMessage pubsubMessage = failsafeElement.getOriginalPayload();
       String message =
-              pubsubMessage.getPayload().length > 0
-                      ? new String(pubsubMessage.getPayload())
-                      : pubsubMessage.getAttributeMap().toString();
+          pubsubMessage.getPayload().length > 0
+              ? new String(pubsubMessage.getPayload())
+              : pubsubMessage.getAttributeMap().toString();
 
       // Format the timestamp for insertion
       String timestamp =
-              TIMESTAMP_FORMATTER.print(context.timestamp().toDateTime(DateTimeZone.UTC));
+          TIMESTAMP_FORMATTER.print(context.timestamp().toDateTime(DateTimeZone.UTC));
 
 
       // Build the table row
       TableRow failedRow =
-              new TableRow()
-                      .set("timestamp", timestamp)
-                      .set("errorMessage", failsafeElement.getErrorMessage())
-                      .set("stacktrace", failsafeElement.getStacktrace())
-                      .set("payloadString", message)
-                      .set("payloadBytes", message.getBytes(StandardCharsets.UTF_8));
+          new TableRow()
+              .set("timestamp", timestamp)
+              .set("errorMessage", failsafeElement.getErrorMessage())
+              .set("stacktrace", failsafeElement.getStacktrace())
+              .set("payloadString", message)
+              .set("payloadBytes", message.getBytes(StandardCharsets.UTF_8));
 
       context.output(failedRow);
+    }
+  }
+
+  /**
+   * A {@link PTransform} that converts a {@link BigQueryInsertError} into a {@link PubsubMessage}
+   * via a user provided {@link SerializableFunction}.
+   *
+   * <p>This {@link PTransform} can be used to create a {@link PubsubMessage} with the original
+   * payload encoded via a user provided {@link Coder} and any additional error
+   * details from {@link BigQueryInsertError} added as a message attribute.
+   *
+   * @param <T> type of the original payload inserted into BigQuery
+   */
+  @AutoValue
+  public abstract static class BigQueryInsertErrorToPubsubMessage<T> extends
+      PTransform<PCollection<BigQueryInsertError>, PCollection<PubsubMessage>> {
+
+    /**
+     * Provides a builder for {@link BigQueryInsertErrorToPubsubMessage}.
+     *
+     * @param <T> type of the payload to encode
+     */
+    public static <T> Builder<T> newBuilder() {
+      return new AutoValue_ErrorConverters_BigQueryInsertErrorToPubsubMessage.Builder<>();
+    }
+
+    abstract Coder<T> payloadCoder();
+
+    abstract SerializableFunction<TableRow, T> translateFunction();
+
+    private static final String ERROR_KEY = "error";
+
+    @Override
+    public PCollection<PubsubMessage> expand(PCollection<BigQueryInsertError> errors) {
+
+      TypeDescriptor<PubsubMessage> messageTypeDescriptor
+          = new TypeDescriptor<PubsubMessage>() {};
+
+      TypeDescriptor<String> stringTypeDescriptor = TypeDescriptors.strings();
+
+      return
+          errors
+              .apply(
+                  "ConvertErrorPayload",
+                  MapElements.into(
+                      TypeDescriptors.kvs(
+                          payloadCoder().getEncodedTypeDescriptor(),
+                          TypeDescriptors.maps(stringTypeDescriptor, stringTypeDescriptor)))
+                      .via(new BigQueryInsertErrorToKv()))
+              .setCoder(
+                  KvCoder.of(
+                      payloadCoder(),
+                      MapCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+
+              .apply(
+                  "ConvertToPubsubMessage",
+                  MapElements
+                      .into(messageTypeDescriptor)
+                      .via(new KvToPubsubMessage()));
+    }
+
+    /**
+     * Builder for a {@link BigQueryInsertErrorToPubsubMessage}.
+     *
+     * @param <T> type of the payload to encode
+     */
+    @AutoValue.Builder
+    public abstract static class Builder<T> {
+
+      abstract Coder<T> payloadCoder();
+
+      abstract SerializableFunction<TableRow, T> translateFunction();
+
+      /**
+       * Sets the {@link Coder} needed to encode the original payload.
+       *
+       * @param payloadCoder coder for the payload
+       */
+      public abstract Builder<T> setPayloadCoder(Coder<T> payloadCoder);
+
+      /**
+       * Sets the {@link SerializableFunction} used to translate a {@link TableRow}
+       * to the original payload.
+       *
+       * @param translateFunction function used for the translation
+       */
+      public abstract Builder<T> setTranslateFunction(
+          SerializableFunction<TableRow, T> translateFunction);
+
+      abstract BigQueryInsertErrorToPubsubMessage<T> autoBuild();
+
+      /**
+       * Builds a {@link BigQueryInsertErrorToPubsubMessage}.
+       */
+      public BigQueryInsertErrorToPubsubMessage<T> build() {
+        checkNotNull(payloadCoder(), "payloadCoder is required.");
+        checkNotNull(translateFunction(), "translateFunction is required.");
+
+        return autoBuild();
+      }
+    }
+
+    /**
+     * Encodes the payload via user provided {@link Coder}.
+     *
+     * @param coder coder to use for the encoding
+     * @param value payload to encode
+     * @return encoded bytes
+     */
+    private static <T> byte[] encode(Coder<T> coder, T value) {
+      try {
+        return CoderUtils.encodeToByteArray(coder, value);
+      } catch (CoderException ce) {
+        // PTransform apply does not allow for checked exceptions.
+        throw new RuntimeException(ce);
+      }
+    }
+
+    /**
+     * Returns an attribute {@link Map} that is used to relay error details from {@link
+     * BigQueryInsertError}.
+     *
+     * @param error insert error payload and details
+     */
+    private static Map<String, String> attributeMap(BigQueryInsertError error) {
+      ImmutableMap.Builder<String, String> builder = ImmutableMap.builder();
+      if (error.getError() != null) {
+        // PubsubMessage attributes Map limits the size of the attribute values.
+        String errorString =
+            Ascii.truncate(
+                error.getError().toString(),
+                MAX_ATTRIBUTE_VALUE_LENGTH,
+                DEFAULT_TRUNCATION_INDICATOR);
+
+        builder.put(ERROR_KEY, errorString);
+      }
+      return builder.build();
+    }
+
+    /**
+     * A {@link SerializableFunction} to convert a {@link BigQueryInsertError} to a {@link KV}.
+     */
+    private class BigQueryInsertErrorToKv implements
+        SerializableFunction<BigQueryInsertError, KV<T, Map<String, String>>> {
+
+      @Override
+      public KV<T, Map<String, String>> apply(BigQueryInsertError error) {
+        return KV.of(translateFunction().apply(error.getRow()), attributeMap(error));
+      }
+    }
+
+    /**
+     * A {@link SerializableFunction} to convert a {@link KV} to a {@link PubsubMessage}.
+     */
+    private class KvToPubsubMessage implements
+        SerializableFunction<KV<T, Map<String, String>>, PubsubMessage> {
+
+      @Override
+      public PubsubMessage apply(KV<T, Map<String, String>> kv) {
+        return new PubsubMessage(encode(payloadCoder(), kv.getKey()), kv.getValue());
+      }
     }
   }
 }
