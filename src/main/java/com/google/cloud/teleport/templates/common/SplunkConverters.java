@@ -111,6 +111,11 @@ public class SplunkConverters {
     ValueProvider<Integer> getParallelism();
 
     void setParallelism(ValueProvider<Integer> parallelism);
+  
+    @Description("Determines whether the template forwards a PubsubMessage or just the underlying data.")
+    ValueProvider<Boolean> getIncludePubsubMessage();
+  
+    void setIncludePubsubMessage(ValueProvider<Boolean> includePubsubMessage);
   }
 
   private static class FailsafeStringToSplunkEvent

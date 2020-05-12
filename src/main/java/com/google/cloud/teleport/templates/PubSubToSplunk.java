@@ -29,12 +29,17 @@ import com.google.cloud.teleport.templates.common.PubsubConverters.PubsubWriteDe
 import com.google.cloud.teleport.templates.common.SplunkConverters;
 import com.google.cloud.teleport.templates.common.SplunkConverters.SplunkOptions;
 import com.google.cloud.teleport.values.FailsafeElement;
-import com.google.common.collect.ImmutableList;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonSerializer;
+import java.nio.charset.StandardCharsets;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -49,6 +54,10 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.MoreObjects;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The {@link PubSubToSplunk} pipeline is a streaming pipeline which ingests data from Cloud
@@ -135,6 +144,21 @@ public class PubSubToSplunk {
   private static final TupleTag<FailsafeElement<String, String>> UDF_DEADLETTER_OUT =
       new TupleTag<FailsafeElement<String, String>>() {};
 
+  /** GSON to process a {@link PubsubMessage}. */
+  private static final Gson GSON =
+      new GsonBuilder()
+          .registerTypeAdapter(
+              byte[].class,
+              (JsonSerializer<byte[]>)
+                  (bytes, type, jsonSerializationContext) ->
+                      new JsonPrimitive(new String(bytes, StandardCharsets.UTF_8)))
+          .create();
+
+  /** Logger for class. */
+  private static final Logger LOG = LoggerFactory.getLogger(PubSubToSplunk.class);
+  
+  private static final Boolean DEFAULT_INCLUDE_PUBSUBMESSAGE = false;
+  
   /**
    * The main entry-point for pipeline execution. This method will start the pipeline but will not
    * wait for it's execution to finish. If blocking execution is required, use the {@link
@@ -144,7 +168,7 @@ public class PubSubToSplunk {
    * @param args The command-line args passed by the executor.
    */
   public static void main(String[] args) {
-
+    
     PubSubToSplunkOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(PubSubToSplunkOptions.class);
 
@@ -184,7 +208,9 @@ public class PubSubToSplunk {
 
     // 1) Read messages in from Pub/Sub
     PCollection<String> stringMessages =
-        pipeline.apply("ReadMessages", new ReadMessages(options.getInputSubscription()));
+        pipeline.apply(
+            "ReadMessages",
+            new ReadMessages(options.getInputSubscription(), options.getIncludePubsubMessage()));
 
     // 2) Convert message to FailsafeElement for processing.
     PCollectionTuple transformedOutput =
@@ -265,36 +291,66 @@ public class PubSubToSplunk {
             ErrorConverters.WriteStringMessageErrorsToPubSub.newBuilder()
                 .setErrorRecordsTopic(options.getOutputDeadletterTopic())
                 .build());
-
+  
     return pipeline.run();
   }
-
+  
   /**
    * The {@link PubSubToSplunkOptions} class provides the custom options passed by the executor at
    * the command line.
    */
   public interface PubSubToSplunkOptions
       extends SplunkOptions,
-          PubsubReadSubscriptionOptions,
-          PubsubWriteDeadletterTopicOptions,
-          JavascriptTextTransformerOptions {}
-
+      PubsubReadSubscriptionOptions,
+      PubsubWriteDeadletterTopicOptions,
+      JavascriptTextTransformerOptions {}
+  
   /**
    * A {@link PTransform} that reads messages from a Pub/Sub subscription, increments a counter and
    * returns a {@link PCollection} of {@link String} messages.
    */
   private static class ReadMessages extends PTransform<PBegin, PCollection<String>> {
-    private ValueProvider<String> subscriptionName;
-
-    ReadMessages(ValueProvider<String> subscriptionName) {
+    private final ValueProvider<String> subscriptionName;
+    private final ValueProvider<Boolean> inputIncludePubsubMessageFlag;
+    private Boolean includePubsubMessage;
+  
+    ReadMessages(ValueProvider<String> subscriptionName, ValueProvider<Boolean> inputIncludePubsubMessageFlag) {
       this.subscriptionName = subscriptionName;
+      this.inputIncludePubsubMessageFlag = inputIncludePubsubMessageFlag;
     }
 
     @Override
     public PCollection<String> expand(PBegin input) {
       return input
           .apply(
-              "ReadMessagesFromPubSub", PubsubIO.readStrings().fromSubscription(subscriptionName))
+              "ReadPubsubMessage",
+              PubsubIO.readMessagesWithAttributes().fromSubscription(subscriptionName))
+          .apply(
+              "ExtractMessageIfRequired",
+              ParDo.of(
+                  new DoFn<PubsubMessage, String>() {
+                    
+                    @Setup
+                    public void setup() {
+                      if (inputIncludePubsubMessageFlag != null) {
+                        includePubsubMessage = inputIncludePubsubMessageFlag.get();
+                      }
+                      includePubsubMessage =
+                          MoreObjects.firstNonNull(
+                              includePubsubMessage, DEFAULT_INCLUDE_PUBSUBMESSAGE);
+                      LOG.info("includePubsubMessage set to: {}", includePubsubMessage);
+                    }
+
+                    @ProcessElement
+                    public void processElement(ProcessContext context) {
+                      if (includePubsubMessage) {
+                        context.output(GSON.toJson(context.element()));
+                      } else {
+                        context.output(
+                            new String(context.element().getPayload(), StandardCharsets.UTF_8));
+                      }
+                    }
+                  }))
           .apply(
               "CountMessages",
               ParDo.of(
