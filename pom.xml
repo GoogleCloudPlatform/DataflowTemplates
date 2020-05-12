@@ -63,8 +63,8 @@
     <spanner.version>1.6.0</spanner.version>
     <gax.version>1.52.0</gax.version>
     <open-census.version>0.24.0</open-census.version>
-    <bigtable.version>1.5.0</bigtable.version>
-    <bigtable-beam-import.version>1.5.0</bigtable-beam-import.version>
+    <bigtable.version>1.14.0</bigtable.version>
+    <bigtable-beam-import.version>1.14.0</bigtable-beam-import.version>
     <bigquery.version>v2-rev20190917-1.30.3</bigquery.version>
     <jackson2.version>1.34.1</jackson2.version>
     <protobuf-util.version>3.11.1</protobuf-util.version>
@@ -79,7 +79,7 @@
     <commons-csv.version>1.5</commons-csv.version>
     <commons-text.version>1.6</commons-text.version>
     <google.cloud.core>1.61.0</google.cloud.core>
-    <grpc.version>1.13.1</grpc.version>
+    <grpc.version>1.27.2</grpc.version>
     <google-storage-api.version>v1-rev20181013-1.27.0</google-storage-api.version>
     <mvn-target-dir>${basedir}/target</mvn-target-dir>
     <derby.version>10.12.1.1</derby.version>
@@ -103,6 +103,17 @@
     <proto-kms.version>0.67.0</proto-kms.version>
   </properties>
 
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>io.grpc</groupId>
+        <artifactId>grpc-bom</artifactId>
+        <version>${grpc.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
   <dependencies>
     <!-- Beam -->
     <dependency>
