@@ -79,6 +79,7 @@ import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.TypeDescriptor;
+import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -218,14 +219,15 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
               "Avro files as mutations " + depth, new AvroTableFileAsMutations(ddlView));
 
       SpannerWriteResult result =
-          mutations
-              .apply(
-                  "Write mutations " + depth,
-                  SpannerIO.write()
-                      .withSchemaReadySignal(ddl)
-                      .withSpannerConfig(spannerConfig)
-                      .withMaxNumMutations(10000)
-                      .withGroupingFactor(100));
+          mutations.apply(
+              "Write mutations " + depth,
+              SpannerIO.write()
+                  .withSchemaReadySignal(ddl)
+                  .withSpannerConfig(spannerConfig)
+                  .withCommitDeadline(Duration.standardMinutes(1))
+                  .withMaxCumulativeBackoff(Duration.standardHours(2))
+                  .withMaxNumMutations(10000)
+                  .withGroupingFactor(100));
       previousComputation = result.getOutput();
     }
     ddl.apply(Wait.on(previousComputation))

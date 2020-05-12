@@ -70,6 +70,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.TypeDescriptor;
+import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -183,11 +184,9 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
               .apply("Wait for previous depth " + depth, Wait.on(previousComputation))
               .apply(
                   "Write mutations " + depth, SpannerIO.write().withSpannerConfig(spannerConfig)
-                      // Reduce the number of rows that SpannerIO groups together  to eliminate the
-                      // possibility of OOM errors when importing 'skinny' tables (with very few,
-                      // small columns) with many rows.
-                      // TODO(b/142641608): Remove when this is fixed in SpannerIO.
-                      .withMaxNumMutations(1000)
+                      .withCommitDeadline(Duration.standardMinutes(1))
+                      .withMaxCumulativeBackoff(Duration.standardHours(2))
+                      .withMaxNumMutations(10000)
                       .withGroupingFactor(100));
       previousComputation = result.getOutput();
     }
