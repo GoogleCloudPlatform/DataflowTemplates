@@ -21,11 +21,10 @@ import static com.google.common.truth.Truth.assertThat;
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.transforms.BigQueryConverters.BigQueryTableConfigManager;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.TableRowToGenericRecordFn;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
-import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableMap;
 import java.util.Arrays;
 import java.util.Map;
 import org.apache.avro.Schema;
@@ -50,6 +49,8 @@ import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -388,6 +389,9 @@ public class BigQueryConvertersTest {
     pipeline.run();
   }
 
+  /** Tests that {@link BigQueryConverters.BigQueryTableConfigManager}
+   * returns expected table names when supplying templated values.
+   */
   @Test
   public void serializableFunctionConvertsTableRowToGenericRecordUsingSchema() {
     GenericRecord expectedRecord = generateNestedAvroRecord();
@@ -400,5 +404,39 @@ public class BigQueryConvertersTest {
     GenericRecord actualRecord = rowToGenericRecordFn.apply(inputRow);
 
     assertThat(actualRecord).isEqualTo(expectedRecord);
+  }
+
+  public void testBigQueryTableConfigManagerTemplates() {
+    String projectIdVal = "my_project";
+    String datasetTemplateVal = "my_dataset";
+    String tableTemplateVal = "my_table";
+    String outputTableSpec = "";
+
+    BigQueryTableConfigManager mgr = 
+        new BigQueryTableConfigManager(
+            projectIdVal, datasetTemplateVal,
+            tableTemplateVal, outputTableSpec);
+
+    String outputTableSpecResult = "my_project:my_dataset.my_table";
+    assertThat(mgr.getOutputTableSpec()).isEqualTo(outputTableSpecResult);
+  }
+
+  /** Tests that {@link BigQueryConverters.BigQueryTableConfigManager}
+   * returns expected table names when supplying full table path.
+   */
+  @Test
+  public void testBigQueryTableConfigManagerTableSpec() {
+    String projectIdVal = null;
+    String datasetTemplateVal = null;
+    String tableTemplateVal = null;
+    String outputTableSpec = "my_project:my_dataset.my_table";
+
+    BigQueryTableConfigManager mgr = 
+        new BigQueryTableConfigManager(
+            projectIdVal, datasetTemplateVal,
+            tableTemplateVal, outputTableSpec);
+
+    assertThat(mgr.getDatasetTemplate()).isEqualTo("my_dataset");
+    assertThat(mgr.getTableTemplate()).isEqualTo("my_table");
   }
 }

@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.transforms;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
 
+import com.google.api.client.json.JsonFactory;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
@@ -29,13 +30,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.Coder.Context;
+import org.apache.beam.sdk.extensions.gcp.util.Transport;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.TypedRead.Method;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryUtils;
 import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import org.apache.beam.sdk.metrics.Counter;
@@ -56,6 +60,8 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.CharMatcher;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Splitter;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Supplier;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Suppliers;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Throwables;
@@ -68,6 +74,8 @@ public class BigQueryConverters {
 
   /* Logger for class. */
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryConverters.class);
+
+  private static final JsonFactory JSON_FACTORY = Transport.getJsonFactory();
 
   /**
    * Converts a JSON string to a {@link TableRow} object. If the data fails to convert, a {@link
@@ -419,6 +427,32 @@ public class BigQueryConverters {
   }
 
   /**
+   * Method to wrap a {@link BigQueryInsertError} into a {@link FailsafeElement}.
+   *
+   * @param insertError BigQueryInsert error.
+   * @return FailsafeElement object.
+   * @throws IOException
+   */
+  public static FailsafeElement<String, String> wrapBigQueryInsertError(
+      BigQueryInsertError insertError) {
+
+    FailsafeElement<String, String> failsafeElement;
+    try {
+
+      String rowPayload = JSON_FACTORY.toString(insertError.getRow());
+      String errorMessage = JSON_FACTORY.toString(insertError.getError());
+
+      failsafeElement = FailsafeElement.of(rowPayload, rowPayload);
+      failsafeElement.setErrorMessage(errorMessage);
+
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+
+    return failsafeElement;
+  }
+
+  /**
    * Returns {@code String} using Key/Value style formatting.
    *
    * @param formatTemplate a String with bracketed keys to apply "I am a {key}"
@@ -474,6 +508,95 @@ public class BigQueryConverters {
     public GenericRecord apply(TableRow tableRow) {
       Row row = BigQueryUtils.toBeamRow(beamSchema, tableRow);
       return AvroUtils.toGenericRecord(row, avroSchemaSupplier.get());
+    }
+  }
+
+  /**
+   * The {@link BigQueryTableConfigManager} POJO Class to manage 
+   * the BigQuery Output Table configurations.  It allows for
+   * a full table path or a set of table template params
+   * to be supplied interchangably.
+   *
+   * <p>Optionally supply projectIdVal, datasetTemplateVal, and tableTemplateVal
+   * or the config manager will default to using outputTableSpec.
+   */
+  public static class BigQueryTableConfigManager {
+
+    public String projectId;
+    public String datasetTemplate;
+    public String tableTemplate;
+
+    /**
+     * Build a {@code BigQueryTableConfigManager} for use in pipelines.
+     *
+     * @param projectIdVal The Project ID for the GCP BigQuery project.
+     * @param datasetTemplateVal The BQ Dataset value or a templated value.
+     * @param tableTemplateVal The BQ Table value or a templated value.
+     * @param outputTableSpec The full path of a BQ Table ie. `project:dataset.table`
+     *
+     * <p>Optionally supply projectIdVal, datasetTemplateVal, and tableTemplateVal
+     * or the config manager will default to using outputTableSpec.
+     */
+    public BigQueryTableConfigManager(String projectIdVal, String datasetTemplateVal,
+                                      String tableTemplateVal, String outputTableSpec) {
+      if (datasetTemplateVal == null || tableTemplateVal == null) {
+        // Legacy Config Option
+        List<String> tableObjs = 
+            Splitter.on(CharMatcher.anyOf(":.")).splitToList(outputTableSpec);
+
+        this.projectId = tableObjs.get(0);
+        this.datasetTemplate = tableObjs.get(1);
+        this.tableTemplate = tableObjs.get(2);
+
+        // this.projectId = outputTableSpec.split(":", 2)[0];
+        // this.datasetTemplate = outputTableSpec.split(":", 2)[1].split("\\.")[0];
+        // this.tableTemplate = outputTableSpec.split(":", 2)[1].split("\\.", 2)[1];
+      } else {
+        this.projectId = projectIdVal;
+        this.datasetTemplate = datasetTemplateVal;
+        this.tableTemplate = tableTemplateVal;
+      }
+    }
+
+    public String getProjectId() {
+      return this.projectId;
+    }
+
+    public String getDatasetTemplate() {
+      return this.datasetTemplate;
+    }
+
+    public String getTableTemplate() {
+      return this.tableTemplate;
+    }
+
+    public String getOutputTableSpec() {
+      String tableSpec = 
+          String.format(
+              "%s:%s.%s", this.projectId, this.datasetTemplate, this.tableTemplate);
+      return tableSpec;
+    }
+  }
+
+  /**
+   * If deadletterTable is available, it is returned as is, otherwise outputTableSpec +
+   * defaultDeadLetterTableSuffix is returned instead.
+   */
+  /**
+     * Return a {@code String} table name to be used as a dead letter queue.
+     *
+     * @param deadletterTable Default dead letter table to use.
+     * @param outputTableSpec Name of the BigQuery output table for successful rows.
+     * @param defaultDeadLetterTableSuffix An optional suffix off the successful table.
+     */
+  public static String maybeUseDefaultDeadletterTable(
+      String deadletterTable,
+      String outputTableSpec,
+      String defaultDeadLetterTableSuffix) {
+    if (deadletterTable == null) {
+      return outputTableSpec + defaultDeadLetterTableSuffix;
+    } else {
+      return deadletterTable;
     }
   }
 }

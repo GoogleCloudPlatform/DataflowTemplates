@@ -578,6 +578,7 @@
         <module>file-format-conversion</module>
         <module>kafka-to-bigquery</module>
         <module>kafka-to-gcs</module>
+        <module>pubsub-cdc-to-bigquery</module>
         <module>pubsub-to-elasticsearch</module>
         <module>pubsub-to-mongodb</module>
         <module>streaming-benchmark</module>
