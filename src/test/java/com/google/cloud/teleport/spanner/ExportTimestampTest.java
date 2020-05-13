@@ -221,6 +221,7 @@ public class ExportTimestampTest {
     SpannerConfig copyConfig = spannerServer.getSpannerConfig(destDb);
     importPipeline.apply("Import", new ImportTransform(
         copyConfig, source, ValueProvider.StaticValueProvider.of(true),
+        ValueProvider.StaticValueProvider.of(true),
         ValueProvider.StaticValueProvider.of(true)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();

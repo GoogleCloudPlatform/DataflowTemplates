@@ -278,6 +278,7 @@ public class CopyDbTest {
             destConfig,
             source,
             ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();

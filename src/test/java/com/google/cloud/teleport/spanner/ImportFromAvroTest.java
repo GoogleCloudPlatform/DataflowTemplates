@@ -398,6 +398,7 @@ public class ImportFromAvroTest {
             spannerServer.getSpannerConfig(dbName),
             ValueProvider.StaticValueProvider.of(manifestFileLocation),
             ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();

@@ -29,6 +29,7 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionView;
 
 /**
  * A Beam transform that creates indexes for all tables in a Cloud Spanner database and outputs
@@ -37,11 +38,20 @@ import org.apache.beam.sdk.values.PCollection;
 class CreateIndexesTransform extends PTransform<PCollection<Ddl>, PCollection<Ddl>> {
 
   private final SpannerConfig spannerConfig;
+  private final PCollectionView<List<String>> pendingIndexes;
   private final ValueProvider<Boolean> waitForIndexes;
 
+  /** Default constructor.
+   * @param spannerConfig the spanner config for database.
+   * @param pendingIndexes the list of pending indexes to be created.
+   * @param waitForIndexes wait till all indexes are created.
+   */
   public CreateIndexesTransform(
-      SpannerConfig spannerConfig, ValueProvider<Boolean> waitForIndexes) {
+      SpannerConfig spannerConfig,
+      PCollectionView<List<String>> pendingIndexes,
+      ValueProvider<Boolean> waitForIndexes) {
     this.spannerConfig = spannerConfig;
+    this.pendingIndexes = pendingIndexes;
     this.waitForIndexes = waitForIndexes;
   }
 
@@ -68,7 +78,7 @@ class CreateIndexesTransform extends PTransform<PCollection<Ddl>, PCollection<Dd
               public void processElement(ProcessContext c) {
                 Ddl ddl = c.element();
                 DatabaseAdminClient databaseAdminClient = spannerAccessor.getDatabaseAdminClient();
-                List<String> createIndexStatements = ddl.createIndexStatements();
+                List<String> createIndexStatements = c.sideInput(pendingIndexes);
                 if (!createIndexStatements.isEmpty()) {
                   // This just kicks off the index creation, it does not wait for it to complete.
                   OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
@@ -87,6 +97,7 @@ class CreateIndexesTransform extends PTransform<PCollection<Ddl>, PCollection<Dd
                 }
                 c.output(ddl);
               }
-            }));
+            })
+        .withSideInputs(pendingIndexes));
   }
 }
