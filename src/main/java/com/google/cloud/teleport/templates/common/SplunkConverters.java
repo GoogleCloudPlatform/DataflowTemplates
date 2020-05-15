@@ -116,6 +116,13 @@ public class SplunkConverters {
     ValueProvider<Boolean> getIncludePubsubMessage();
   
     void setIncludePubsubMessage(ValueProvider<Boolean> includePubsubMessage);
+
+    @Description(
+        "KMS Encryption Key for the token. The Key should be in the format "
+            + "projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}")
+    ValueProvider<String> getTokenKMSEncryptionKey();
+
+    void setTokenKMSEncryptionKey(ValueProvider<String> keyName);
   }
 
   private static class FailsafeStringToSplunkEvent
