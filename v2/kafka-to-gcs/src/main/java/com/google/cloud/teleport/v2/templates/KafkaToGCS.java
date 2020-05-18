@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.options.KafkaToGCSOptions;
 import com.google.cloud.teleport.v2.transforms.FileFormatFactory;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import com.google.cloud.teleport.v2.utils.WriteToGCSUtility;
+import com.google.common.collect.ImmutableMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -34,6 +35,7 @@ import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -157,10 +159,8 @@ public class KafkaToGCS {
     Pipeline pipeline = Pipeline.create(options);
 
     /**
-     * Steps:
-     * 1) Read messages in from Kafka.
-     * 2) Window the messages into minute intervals specified by the executor.
-     * 3) Write To GCS in user defined format.
+     * Steps: 1) Read messages in from Kafka. 2) Window the messages into minute intervals specified
+     * by the executor. 3) Write To GCS in user defined format.
      */
     PCollection<KV<String, String>> records =
         pipeline
@@ -171,6 +171,8 @@ public class KafkaToGCS {
             .apply(
                 "Read From Kafka",
                 KafkaIO.<String, String>read()
+                    .withConsumerConfigUpdates(
+                        ImmutableMap.of(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"))
                     .withBootstrapServers(options.getBootstrapServers())
                     .withTopics(topicsList)
                     .withKeyDeserializerAndCoder(
