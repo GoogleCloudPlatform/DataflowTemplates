@@ -28,6 +28,7 @@ import com.google.cloud.teleport.templates.common.PubsubConverters.PubsubReadSub
 import com.google.cloud.teleport.templates.common.PubsubConverters.PubsubWriteDeadletterTopicOptions;
 import com.google.cloud.teleport.templates.common.SplunkConverters;
 import com.google.cloud.teleport.templates.common.SplunkConverters.SplunkOptions;
+import com.google.cloud.teleport.util.KMSEncryptedNestedValueProvider;
 import com.google.cloud.teleport.values.FailsafeElement;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -246,7 +247,7 @@ public class PubSubToSplunk {
             .apply(
                 "WriteToSplunk",
                 SplunkIO.writeBuilder()
-                    .withToken(options.getToken())
+                    .withToken(maybeDecrypt(options.getToken(), options.getTokenKMSEncryptionKey()))
                     .withUrl(options.getUrl())
                     .withBatchCount(options.getBatchCount())
                     .withParallelism(options.getParallelism())
@@ -362,5 +363,17 @@ public class PubSubToSplunk {
                     }
                   }));
     }
+  }
+  
+  /**
+   * Utility method to decrypt a Splunk HEC token.
+   *
+   * @param unencryptedToken The Splunk HEC token as a Base64 encoded {@link String} encrypted with a Cloud KMS Key.
+   * @param kmsKey The Cloud KMS Encryption Key to decrypt the Splunk HEC token.
+   * @return Decrypted Splunk HEC token.
+   */
+  private static ValueProvider<String> maybeDecrypt(
+      ValueProvider<String> unencryptedToken, ValueProvider<String> kmsKey) {
+    return new KMSEncryptedNestedValueProvider(unencryptedToken, kmsKey);
   }
 }
