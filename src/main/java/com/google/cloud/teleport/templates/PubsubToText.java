@@ -19,6 +19,8 @@
 package com.google.cloud.teleport.templates;
 
 import com.google.cloud.teleport.io.WindowedFilenamePolicy;
+import com.google.cloud.teleport.util.DualInputNestedValueProvider;
+import com.google.cloud.teleport.util.DualInputNestedValueProvider.TranslatorInput;
 import com.google.cloud.teleport.util.DurationUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -57,7 +59,8 @@ import org.apache.beam.sdk.transforms.windowing.Window;
  --windowDuration=2m \
  --numShards=1 \
  --inputTopic=projects/${PROJECT_ID}/topics/windowed-files \
- --outputDirectory=gs://${PROJECT_ID}/temp/ \
+ --userTempLocation=gs://${PROJECT_ID}/tmp/ \
+ --outputDirectory=gs://${PROJECT_ID}/output/ \
  --outputFilenamePrefix=windowed-file \
  --outputFilenameSuffix=.txt"
  * </pre>
@@ -80,6 +83,10 @@ public class PubsubToText {
     @Required
     ValueProvider<String> getOutputDirectory();
     void setOutputDirectory(ValueProvider<String> value);
+
+    @Description("The directory to output temporary files to. Must end with a slash.")
+    ValueProvider<String> getUserTempLocation();
+    void setUserTempLocation(ValueProvider<String> value);
 
     @Description("The filename prefix of the files to write to.")
     @Default.String("output")
@@ -166,11 +173,35 @@ public class PubsubToText {
                         options.getOutputShardTemplate(),
                         options.getOutputFilenameSuffix()))
                 .withTempDirectory(NestedValueProvider.of(
-                    options.getOutputDirectory(),
+                    maybeUseUserTempLocation(
+                        options.getUserTempLocation(),
+                        options.getOutputDirectory()),
                     (SerializableFunction<String, ResourceId>) input ->
                         FileBasedSink.convertToFileResourceIfPossible(input))));
 
     // Execute the pipeline and return the result.
     return pipeline.run();
+  }
+
+  /**
+   * Utility method for using optional parameter userTempLocation as TempDirectory.
+   * This is useful when output bucket is locked and temporary data cannot be deleted.
+   *
+   * @param userTempLocation user provided temp location
+   * @param outputLocation user provided outputDirectory to be used as the default temp location
+   * @return userTempLocation if available, otherwise outputLocation is returned.
+   */
+  private static ValueProvider<String> maybeUseUserTempLocation(
+      ValueProvider<String> userTempLocation,
+      ValueProvider<String> outputLocation) {
+    return DualInputNestedValueProvider.of(
+        userTempLocation,
+        outputLocation,
+        new SerializableFunction<TranslatorInput<String, String>, String>() {
+          @Override
+          public String apply(TranslatorInput<String, String> input) {
+            return (input.getX() != null) ? input.getX() : input.getY();
+          }
+        });
   }
 }
