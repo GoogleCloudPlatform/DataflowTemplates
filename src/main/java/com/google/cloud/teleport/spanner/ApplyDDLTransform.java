@@ -32,33 +32,33 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 
 /**
- * A Beam transform that creates indexes for all tables in a Cloud Spanner database and outputs
+ * A Beam transform that applies the DDL statements passed in a Cloud Spanner database and outputs
  * the original {@link Ddl}.
  */
-class CreateIndexesTransform extends PTransform<PCollection<Ddl>, PCollection<Ddl>> {
+class ApplyDDLTransform extends PTransform<PCollection<Ddl>, PCollection<Ddl>> {
 
   private final SpannerConfig spannerConfig;
-  private final PCollectionView<List<String>> pendingIndexes;
-  private final ValueProvider<Boolean> waitForIndexes;
+  private final PCollectionView<List<String>> pendingDDLStatements;
+  private final ValueProvider<Boolean> waitForApply;
 
   /** Default constructor.
    * @param spannerConfig the spanner config for database.
-   * @param pendingIndexes the list of pending indexes to be created.
-   * @param waitForIndexes wait till all indexes are created.
+   * @param pendingDDLStatements the list of pending DDL statements to be applied.
+   * @param waitForApply wait till all the ddl statements are committed.
    */
-  public CreateIndexesTransform(
+  public ApplyDDLTransform(
       SpannerConfig spannerConfig,
-      PCollectionView<List<String>> pendingIndexes,
-      ValueProvider<Boolean> waitForIndexes) {
+      PCollectionView<List<String>> pendingDDLStatements,
+      ValueProvider<Boolean> waitForApply) {
     this.spannerConfig = spannerConfig;
-    this.pendingIndexes = pendingIndexes;
-    this.waitForIndexes = waitForIndexes;
+    this.pendingDDLStatements = pendingDDLStatements;
+    this.waitForApply = waitForApply;
   }
 
   @Override
   public PCollection<Ddl> expand(PCollection<Ddl> input) {
     return input.apply(
-        "Create Indexes",
+        "Apply DDL statements",
         ParDo.of(
             new DoFn<Ddl, Ddl>() {
 
@@ -78,16 +78,17 @@ class CreateIndexesTransform extends PTransform<PCollection<Ddl>, PCollection<Dd
               public void processElement(ProcessContext c) {
                 Ddl ddl = c.element();
                 DatabaseAdminClient databaseAdminClient = spannerAccessor.getDatabaseAdminClient();
-                List<String> createIndexStatements = c.sideInput(pendingIndexes);
-                if (!createIndexStatements.isEmpty()) {
-                  // This just kicks off the index creation, it does not wait for it to complete.
+                List<String> statements = c.sideInput(pendingDDLStatements);
+                if (!statements.isEmpty()) {
+                  // This just kicks off the applying the DDL statements.
+                  // It does not wait for it to complete.
                   OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
                       databaseAdminClient.updateDatabaseDdl(
                           spannerConfig.getInstanceId().get(),
                           spannerConfig.getDatabaseId().get(),
-                          createIndexStatements,
+                          statements,
                           null);
-                  if (waitForIndexes.get()) {
+                  if (waitForApply.get()) {
                     try {
                       op.get();
                     } catch (InterruptedException | ExecutionException e) {
@@ -98,6 +99,6 @@ class CreateIndexesTransform extends PTransform<PCollection<Ddl>, PCollection<Dd
                 c.output(ddl);
               }
             })
-        .withSideInputs(pendingIndexes));
+        .withSideInputs(pendingDDLStatements));
   }
 }

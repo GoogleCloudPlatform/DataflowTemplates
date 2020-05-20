@@ -166,7 +166,10 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
     final PCollection<Ddl> ddl = createTableOutput.get(CreateTables.getDdlObjectTag());
     final PCollectionView<List<String>> pendingIndexes =
         createTableOutput.get(CreateTables.getPendingIndexesTag())
-            .apply("As view", View.asSingleton());
+            .apply("As Index view", View.asSingleton());
+    final PCollectionView<List<String>> pendingForeignKeys =
+        createTableOutput.get(CreateTables.getPendingForeignKeysTag())
+            .apply("As Foreign keys view", View.asSingleton());
 
     PCollectionView<Ddl> ddlView = ddl.apply("Cloud Spanner DDL as view", View.asSingleton());
 
@@ -243,9 +246,10 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
       previousComputation = result.getOutput();
     }
     ddl.apply(Wait.on(previousComputation))
-       .apply("Create Indexes", new CreateIndexesTransform(spannerConfig,
+       .apply("Create Indexes", new ApplyDDLTransform(spannerConfig,
               pendingIndexes, waitForIndexes))
-       .apply("Add Foreign Keys", new AddForeignKeysTransform(spannerConfig, waitForForeignKeys));
+       .apply("Add Foreign Keys", new ApplyDDLTransform(spannerConfig,
+              pendingForeignKeys, waitForForeignKeys));
     return PDone.in(begin.getPipeline());
   }
 
@@ -347,8 +351,14 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
       return pendingIndexesTag;
     }
 
+    public static TupleTag<List<String>> getPendingForeignKeysTag() {
+      return pendingForeignKeysTag;
+    }
+
     private static final TupleTag<Ddl> ddlObjectTag = new TupleTag<Ddl>(){};
     private static final TupleTag<List<String>> pendingIndexesTag = new TupleTag<List<String>>(){};
+    private static final TupleTag<List<String>> pendingForeignKeysTag
+        = new TupleTag<List<String>>(){};
 
     public CreateTables(
         SpannerConfig spannerConfig,
@@ -397,7 +407,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           }
                           AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
                           List<String> createIndexStatements = new ArrayList<>();
-                          int foreignKeyCreateStatementCnt = 0;
+                          List<String> createForeignKeyStatements = new ArrayList<>();
                           if (!missingTables.isEmpty()) {
                             Ddl.Builder mergedDdl = informationSchemaDdl.toBuilder();
                             Ddl.Builder builder = Ddl.builder();
@@ -407,7 +417,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                               mergedDdl.addTable(table);
                               // Account for additional DDL changes for tables being created
                               createIndexStatements.addAll(table.indexes());
-                              foreignKeyCreateStatementCnt += table.foreignKeys().size();
+                              createForeignKeyStatements.addAll(table.foreignKeys());
                             }
                             DatabaseAdminClient databaseAdminClient =
                                 spannerAccessor.getDatabaseAdminClient();
@@ -415,6 +425,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                             Ddl newDdl = builder.build();
                             List<String> ddlStatements = new ArrayList<>();
                             ddlStatements.addAll(newDdl.createTableStatements());
+
                             // If the total DDL statements exceed the threshold, execute the create
                             // index statements when tables are created.
                             // Note that foreign keys can only be created after data load
@@ -422,15 +433,16 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                             // need to load rows in a specific order (insert the referenced
                             // row first before the referencing row). This is not always
                             // possible since foreign keys may introduce circular relationships.
-
-                            if (earlyIndexCreateFlag.get() &&
-                                (foreignKeyCreateStatementCnt + createIndexStatements.size())
-                                >= EARLY_INDEX_CREATE_THRESHOLD){
+                            if (earlyIndexCreateFlag.get()
+                                    && ((createForeignKeyStatements.size()
+                                        + createIndexStatements.size())
+                                        >= EARLY_INDEX_CREATE_THRESHOLD)) {
                               ddlStatements.addAll(createIndexStatements);
                               c.output(pendingIndexesTag, new ArrayList<String>());
                             } else {
                               c.output(pendingIndexesTag, createIndexStatements);
                             }
+                            c.output(pendingForeignKeysTag, createForeignKeyStatements);
 
                             OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
                                 databaseAdminClient.updateDatabaseDdl(
@@ -451,10 +463,14 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                             return;
                           }
                           c.output(informationSchemaDdl);
-                        }
+                          // In case of no tables, add empty list
+                          c.output(pendingIndexesTag, createIndexStatements);
+                          c.output(pendingForeignKeysTag, createForeignKeyStatements);
+                      }
                       })
                   .withSideInputs(avroSchemasView, informationSchemaView)
-                  .withOutputTags(ddlObjectTag, TupleTagList.of(pendingIndexesTag)));
+                  .withOutputTags(ddlObjectTag,
+                      TupleTagList.of(pendingIndexesTag).and(pendingForeignKeysTag)));
     }
   }
 
