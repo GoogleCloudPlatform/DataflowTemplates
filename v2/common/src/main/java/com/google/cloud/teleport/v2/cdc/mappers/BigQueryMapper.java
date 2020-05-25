@@ -30,6 +30,7 @@ import com.google.cloud.bigquery.TableInfo;
 import com.google.cloud.bigquery.TimePartitioning;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -199,11 +200,10 @@ public class BigQueryMapper<InputT, OutputT>
     Boolean tableWasUpdated = false;
     List<Field> newFieldList = new ArrayList<Field>();
     for (String rowKey : rowKeys) {
-      // Check if rowKey (column from data) is in the BQ Table
-      try {
-        Field tableField = tableFields.get(rowKey);
-      } catch (IllegalArgumentException e) {
+
+      if (recursiveFieldCheck(rowKey, row.get(rowKey), tableFields)) {
         tableWasUpdated = addNewTableField(tableId, row, rowKey, newFieldList, inputSchema);
+        LOG.info("table was updated: {}", tableWasUpdated.toString());
       }
     }
 
@@ -211,6 +211,35 @@ public class BigQueryMapper<InputT, OutputT>
       LOG.info("Updating Table");
       updateBigQueryTable(tableId, table, tableFields, newFieldList);
     }
+  }
+
+  private Boolean recursiveFieldCheck(String rowKey, Object rowValue, FieldList tableFields) {
+    Boolean updateField = false;
+    try {
+      Field tableField = tableFields.get(rowKey);
+      if (rowValue instanceof List) {
+        //unpack first element so we can check if it is also an object
+        List cellList = (List) rowValue;
+        if (!cellList.isEmpty()) {
+          rowValue = cellList.get(0);
+        }
+      }
+      if (getSQLType(rowValue).equals(LegacySQLTypeName.RECORD)) {
+        LOG.info("recursing field check into object: {}", rowKey);
+        HashMap cellMap = (HashMap) rowValue;
+        Set<String> objKeys = cellMap.keySet();
+        for (String objKey : objKeys) {
+          if (recursiveFieldCheck(objKey, cellMap.get(objKey), tableField.getSubFields())) {
+            LOG.info("found nested field mismatch on {}", objKey);
+            updateField = true;
+          }
+        }
+      }
+    } catch (IllegalArgumentException e) {
+      updateField = true;
+      LOG.info("caught exception on {}", rowKey);
+    }
+    return updateField;
   }
 
   /**
@@ -292,6 +321,13 @@ public class BigQueryMapper<InputT, OutputT>
     LOG.info(tableName);
     LOG.info("Mapping New Columns:");
     for (Field field : newFieldList) {
+      // if we update a nested field, the parent is already in the list
+      // but there can only be one
+      for (Field existingField : tableFields) {
+        if (existingField.getName().equals(field.getName())) {
+          fieldList.remove(existingField);
+        }
+      }
       fieldList.add(field);
       LOG.info(field.toString());
     }
@@ -303,18 +339,102 @@ public class BigQueryMapper<InputT, OutputT>
     tables.put(tableName, updatedTable);
   }
 
+  private FieldList createNestedFields(LinkedHashMap obj) {
+    List<Field> fl = new ArrayList();
+    Field.Mode fieldMode = Field.Mode.NULLABLE;
+    LegacySQLTypeName sqlType;
+
+    Set<String> objKeys = obj.keySet();
+
+    for (String objKey : objKeys) {
+     Object cellItem = obj.get(objKey);
+     LOG.info("objKey: {}", objKey.toString());
+     LOG.info("objValue: {}", cellItem.toString());
+
+     Class cls = cellItem.getClass();
+     LOG.info("the type of cellItem is: {}", cls.getName());
+
+    if (cellItem instanceof List)
+    {
+      LOG.debug("Setting field mode to REPEATED");
+      fieldMode = Field.Mode.REPEATED;
+      //unpack first element so we can check if it is also an object
+      List cellList = (List) cellItem;
+      if (!cellList.isEmpty()) {
+        cellItem = cellList.get(0);
+      }
+    }
+
+    sqlType = getSQLType(cellItem);
+
+    if (sqlType.equals(LegacySQLTypeName.RECORD)) {
+      LOG.info("We have found an object within an object!");
+      LinkedHashMap lhm = (LinkedHashMap) cellItem;
+      FieldList sfl = createNestedFields(lhm);
+      LOG.info(sfl.toString());
+      fl.add(Field.newBuilder(objKey, sqlType, sfl).setMode(fieldMode).build());
+    } else {
+    fl.add(Field.newBuilder(objKey, sqlType).build());
+    }
+  }
+
+    return FieldList.of(fl);
+  }
+
+  private LegacySQLTypeName getSQLType(Object item) {
+    if (item instanceof Integer) {
+      return LegacySQLTypeName.INTEGER;
+    } else if (item instanceof Boolean) {
+      return LegacySQLTypeName.BOOLEAN;
+    } else if (item instanceof Double) {
+      return LegacySQLTypeName.FLOAT;
+    } else if (item instanceof LinkedHashMap) {
+      return LegacySQLTypeName.RECORD;
+    } else {
+      // we could try to parse out a date before defaulting to string
+      return LegacySQLTypeName.STRING;
+    }
+  }
+
   private Boolean addNewTableField(TableId tableId, TableRow row, String rowKey,
       List<Field> newFieldList, Map<String, LegacySQLTypeName> inputSchema) {
     // Call Get Schema and Extract New Field Type
     Field newField;
+    Field.Mode fieldMode = Field.Mode.NULLABLE;
+    LegacySQLTypeName sqlType = LegacySQLTypeName.STRING;
+    Object cellItem = row.get(rowKey);
 
+    // Set data type if a schema is provided
     if (inputSchema.containsKey(rowKey)) {
-      newField = Field.of(rowKey, inputSchema.get(rowKey));
+      sqlType = inputSchema.get(rowKey);
     } else {
-      newField = Field.of(rowKey, LegacySQLTypeName.STRING);
+        sqlType = getSQLType(cellItem);
+    }
+
+    // Test cell for List type and set field mode
+    if (cellItem instanceof List) {
+      LOG.debug("Setting field mode to REPEATED");
+      fieldMode = Field.Mode.REPEATED;
+      //unpack first element so we can check if it is also an object
+      List cellList = (List) cellItem;
+      if (!cellList.isEmpty()) {
+        cellItem = cellList.get(0);
+      }
+    }
+
+    // Test cell for object and construct subFieldList
+    if (sqlType.equals(LegacySQLTypeName.RECORD)) {
+      LOG.info("We have found an object!");
+      LinkedHashMap lhm = (LinkedHashMap) cellItem;
+      FieldList sfl = createNestedFields(lhm);
+      LOG.info(sfl.toString());
+      newField = Field.newBuilder(rowKey, sqlType, sfl).setMode(fieldMode).build();
+    } else {
+      newField = Field.newBuilder(rowKey, sqlType).setMode(fieldMode).build();
     }
 
     newFieldList.add(newField);
+    LOG.info("newFieldList: {}", newFieldList.toString());
 
     // Currently we always add new fields for each call
     // TODO: add an option to ignore new field and why boolean?

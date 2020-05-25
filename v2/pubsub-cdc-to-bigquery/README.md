@@ -22,6 +22,7 @@ used to launch the Dataflow pipeline.
 export PROJECT=<my-project>
 export IMAGE_NAME=pubsub-cdc-to-bigquery
 export BUCKET_NAME=gs://<bucket-name>
+export DATASET_TEMPLATE=<dataset-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
