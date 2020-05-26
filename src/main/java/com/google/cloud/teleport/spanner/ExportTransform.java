@@ -430,10 +430,10 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     @Override
     public Schema getSchema(String tableName) {
       Map<String, SerializableSchemaSupplier> si = sideInput(avroSchemas);
-      // Check if there are any schemas available.
-      if (si.isEmpty()) {
+      // Check if there are any schemas available or if the table it is EMPTY_EXPORT_FILE
+      if (si.isEmpty() || tableName.equals(EMPTY_EXPORT_FILE)) {
         // The EMPTY_EXPORT_FILE still needs to have a rudimentary schema for it to be created.
-        return SchemaBuilder.record("EmptyDB").fields().endRecord();
+        return SchemaBuilder.record("Empty").fields().endRecord();
       }
       return si.get(tableName).get();
     }
