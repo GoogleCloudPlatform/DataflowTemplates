@@ -185,7 +185,7 @@ public class WindowedFilenamePolicyTest {
     // Arrange
     //
     ResourceId outputDirectory = getBaseTempDirectory()
-        .resolve("YYYY/MM/DD/HH", StandardResolveOptions.RESOLVE_DIRECTORY);
+        .resolve("YYYY/MM/DD/HH:mm", StandardResolveOptions.RESOLVE_DIRECTORY);
     WindowedContext context = mock(WindowedContext.class);
     IntervalWindow window = mock(IntervalWindow.class);
     PaneInfo paneInfo = PaneInfo.createPane(false, true, Timing.ON_TIME, 0, 0);
@@ -211,7 +211,7 @@ public class WindowedFilenamePolicyTest {
     //
     assertThat(filename, is(notNullValue()));
     assertThat(
-        filename.getCurrentDirectory().toString().endsWith("2017/01/08/10/"), is(equalTo(true)));
+        filename.getCurrentDirectory().toString().endsWith("2017/01/08/10:56/"), is(equalTo(true)));
     assertThat(filename.getFilename(), is(equalTo("output-001-of-001")));
   }
 

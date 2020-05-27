@@ -46,6 +46,7 @@ public class WindowedFilenamePolicy extends FilenamePolicy {
   private static final DateTimeFormatter MONTH = DateTimeFormat.forPattern("MM");
   private static final DateTimeFormatter DAY = DateTimeFormat.forPattern("dd");
   private static final DateTimeFormatter HOUR = DateTimeFormat.forPattern("HH");
+  private static final DateTimeFormatter MINUTE = DateTimeFormat.forPattern("mm");
   /** The filename baseFile. */
   private final ValueProvider<String> outputDirectory;
   /** The prefix of the file to output. */
@@ -151,6 +152,7 @@ public class WindowedFilenamePolicy extends FilenamePolicy {
       outputPath = outputPath.replace("MM", MONTH.print(time));
       outputPath = outputPath.replace("DD", DAY.print(time));
       outputPath = outputPath.replace("HH", HOUR.print(time));
+      outputPath = outputPath.replace("mm", MINUTE.print(time));
       outputDirectory = FileSystems.matchNewResource(outputPath, true);
     }
     return outputDirectory;

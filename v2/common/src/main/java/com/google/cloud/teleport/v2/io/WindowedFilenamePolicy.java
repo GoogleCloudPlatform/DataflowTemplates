@@ -47,6 +47,7 @@ public class WindowedFilenamePolicy extends FilenamePolicy {
     private static final DateTimeFormatter MONTH = DateTimeFormat.forPattern("MM");
     private static final DateTimeFormatter DAY = DateTimeFormat.forPattern("dd");
     private static final DateTimeFormatter HOUR = DateTimeFormat.forPattern("HH");
+    private static final DateTimeFormatter MINUTE = DateTimeFormat.forPattern("mm");
     /**
      * The filename baseFile.
      */
@@ -151,7 +152,6 @@ public class WindowedFilenamePolicy extends FilenamePolicy {
     private ResourceId resolveWithDateTemplates(
             ValueProvider<String> outputDirectoryStr, BoundedWindow window) {
         ResourceId outputDirectory = FileSystems.matchNewResource(outputDirectoryStr.get(), true);
-
         if (window instanceof IntervalWindow) {
             IntervalWindow intervalWindow = (IntervalWindow) window;
             DateTime time = intervalWindow.end().toDateTime();
@@ -160,6 +160,7 @@ public class WindowedFilenamePolicy extends FilenamePolicy {
             outputPath = outputPath.replace("MM", MONTH.print(time));
             outputPath = outputPath.replace("DD", DAY.print(time));
             outputPath = outputPath.replace("HH", HOUR.print(time));
+            outputPath = outputPath.replace("mm", MINUTE.print(time));
             outputDirectory = FileSystems.matchNewResource(outputPath, true);
         }
         return outputDirectory;
