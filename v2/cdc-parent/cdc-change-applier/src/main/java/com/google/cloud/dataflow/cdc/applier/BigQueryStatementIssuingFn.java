@@ -60,11 +60,11 @@ public class BigQueryStatementIssuingFn extends DoFn<KV<String, BigQueryAction>,
   public void process(ProcessContext c) throws InterruptedException {
     BigQueryAction action = c.element().getValue();
 
-    if (action.action == BigQueryAction.CREATE_TABLE) {
+    if (BigQueryAction.CREATE_TABLE.equals(action.action)) {
       Table bqTable = createBigQueryTable(action);
       LOG.info("Created table: {}", bqTable);
     } else {
-      assert action.action == BigQueryAction.STATEMENT;
+      assert BigQueryAction.STATEMENT.equals(action.action);
       Job jobInfo = issueQueryToBQ(action.statement);
       LOG.info("Job Info for triggered job: {}", jobInfo);
       jobInfo = jobInfo.waitFor();
