@@ -143,8 +143,8 @@ public class MergeStatementBuildingFn
       "ON %s ",
       "WHEN MATCHED AND changelog.operation = \"DELETE\" ",
       "THEN DELETE ",
-      "WHEN MATCHED THEN %s ",
-      "WHEN NOT MATCHED BY TARGET AND changelog.operation != \"DELETE\" THEN %s");
+      "WHEN MATCHED AND changelog.operation = \"UPDATE\" THEN %s ",
+      "WHEN NOT MATCHED BY TARGET AND changelog.operation = \"INSERT\" THEN %s");
 
   public static String buildQueryMergeReplicaTableWithChangeLogTable(
       String replicaTableName, String changelogTableName,
