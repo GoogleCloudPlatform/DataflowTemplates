@@ -22,6 +22,7 @@ used to launch the Dataflow pipeline.
 export PROJECT=<my-project>
 export IMAGE_NAME=pubsub-cdc-to-bigquery
 export BUCKET_NAME=gs://<bucket-name>
+export DATASET_TEMPLATE=<dataset-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
@@ -120,6 +121,18 @@ echo '{
             "helpText":"Machine Type to Use: n1-standard-4",
             "paramType":"TEXT",
             "isOptional":true
+        },
+        {
+            "name":"javascriptTextTransformGcsPath","label":"Javascript File Path",
+            "helpText":"JS File Path",
+            "paramType":"TEXT",
+            "isOptional":true
+        },
+        {
+            "name":"javascriptTextTransformFunctionName","label":"UDF Javascript Function Name",
+            "helpText":"JS Function Name",
+            "paramType":"TEXT",
+            "isOptional":true
         }
     ]},
     "sdk_info":{"language":"JAVA"}
@@ -147,14 +160,14 @@ The template has the following optional parameters:
 * javascriptTextTransformGcsPath: Gcs path to javascript udf source. Udf will be preferred option for transformation if supplied. Default: null
 * javascriptTextTransformFunctionName: UDF Javascript Function Name. Default: null
 
-* maxRetryAttempts: Max retry attempts, must be > 0. Default: no retries
-* maxRetryDuration: Max retry duration in milliseconds, must be > 0. Default: no retries
-
 Template can be executed using the following API call:
 ```sh
 export JOB_NAME="pubsub-cdc-to-bigquery-`date +%Y%m%d-%H%M%S-%N`"
 gcloud beta dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters inputSubscription=${SUBSCRIPTION},outputDeadletterTable=${DEADLETTER_TABLE}
+        --parameters inputSubscription=${SUBSCRIPTION}, \
+                     outputDatasetTemplate=${DATASET_TEMPLATE}, \
+                     outputTableNameTemplate=${TABLE_TEMPLATE}, \
+                     outputDeadletterTable=${DEADLETTER_TABLE}
 ```
