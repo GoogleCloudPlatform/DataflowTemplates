@@ -99,8 +99,9 @@ public class BigQueryMappers {
     public KV<TableId, TableRow> getOutputObject(TableRow input) {
       TableId tableId = getTableId(input);
       TableRow tableRow = getTableRow(input);
+      TableRow cleanedTableRow = getCleanedTableRow(tableId, tableRow);
 
-      return KV.of(tableId, tableRow);
+      return KV.of(tableId, cleanedTableRow);
     }
     /* Return a HashMap with the Column->Column Type Mapping required from the source
         Implementing getSchema will allow the mapper class to support your desired format
@@ -130,7 +131,11 @@ public class BigQueryMappers {
     }
     @Override
     public KV<TableId, TableRow> getOutputObject(KV<TableId, TableRow> input) {
-      return input;
+      TableId tableId = getTableId(input);
+      TableRow tableRow = getTableRow(input);
+      TableRow cleanedTableRow = getCleanedTableRow(tableId, tableRow);
+
+      return KV.of(tableId, cleanedTableRow);
     }
     /* Return a HashMap with the Column->Column Type Mapping required from the source
         Implementing getSchema will allow the mapper class to support your desired format

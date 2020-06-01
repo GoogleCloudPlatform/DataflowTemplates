@@ -59,6 +59,7 @@ public class BigQueryMapper<InputT, OutputT>
   private Map<String, LegacySQLTypeName> defaultSchema;
   private boolean dayPartitioning = false;
   private final String projectId;
+  private BigQueryTableRowCleaner bqTableRowCleaner;
 
   public BigQueryMapper(String projectId) {
     this.projectId = projectId;
@@ -135,6 +136,48 @@ public class BigQueryMapper<InputT, OutputT>
             }));
   }
 
+  /**
+   * Sets the {@code BigQueryTableRowCleaner} used in BigQuery TableRow cleanup.
+   *
+   * @param cleaner a BigQueryTableRowCleaner object to use in cleanup.
+   */
+  public void setBigQueryTableRowCleaner(BigQueryTableRowCleaner cleaner) {
+    this.bqTableRowCleaner = cleaner;
+  }
+
+  /**
+   * Returns {@code BigQueryTableRowCleaner} to clean TableRow data after BigQuery mapping.
+   */
+  public BigQueryTableRowCleaner getBigQueryTableRowCleaner() {
+    if (this.bqTableRowCleaner == null) {
+      this.bqTableRowCleaner = BigQueryTableRowCleaner.getBigQueryTableRowCleaner();
+    }
+
+    return this.bqTableRowCleaner;
+  }
+
+  /**
+   * Returns {@code TableRow} after cleaning each field according to
+   * the data type found in BigQuery.
+   *
+   * @param tableId a TableId referencing the BigQuery table to be loaded to.
+   * @param row a TableRow with the raw data to be loaded into BigQuery.
+   */
+  public TableRow getCleanedTableRow(TableId tableId, TableRow row) {
+    BigQueryTableRowCleaner bqCleaner = getBigQueryTableRowCleaner();
+    TableRow cleanRow = row.clone();
+
+    Table table = getCachedTable(tableId);
+    FieldList tableFields = table.getDefinition().getSchema().getFields();
+
+    Set<String> rowKeys = cleanRow.keySet();
+    for (String rowKey : rowKeys) {
+      bqCleaner.cleanTableRowField(cleanRow, tableFields, rowKey);
+    }
+
+    return cleanRow;
+  }
+
   private void updateTableIfRequired(TableId tableId, TableRow row,
       Map<String, LegacySQLTypeName> inputSchema) {
     // Ensure Instance of BigQuery Exists
@@ -170,9 +213,33 @@ public class BigQueryMapper<InputT, OutputT>
     }
   }
 
-  private Table getBigQueryTable(TableId tableId) {
+  /**
+   * Returns {@code Table} from BigQuery or cache referenced by the supplied TableId
+   * the data type found in BigQuery.
+   *
+   * @param tableId a TableId referencing the BigQuery table to be loaded to.
+   */
+  private Table getCachedTable(TableId tableId) {
     String tableName = tableId.toString();
     Table table = tables.get(tableName);
+
+    return table;
+  }
+
+  /**
+   * Sets the BigQuery {@code Table} in local cache.
+   * the data type found in BigQuery.
+   *
+   * @param tableId a TableId referencing the BigQuery table to be loaded to.
+   * @param table a Table referencing the BigQuery table to be cached.
+   */
+  private void setCachedTable(TableId tableId, Table table) {
+    String tableName = tableId.toString();
+    tables.put(tableName, table);
+  }
+
+  private Table getBigQueryTable(TableId tableId) {
+    Table table = getCachedTable(tableId);
 
     // Checks that table existed in tables map
     // If not pull table from API
@@ -187,7 +254,7 @@ public class BigQueryMapper<InputT, OutputT>
       LOG.info("Creating Table: {}", tableId.toString());
       table = createBigQueryTable(tableId);
     }
-    tables.put(tableName, table);
+    setCachedTable(tableId, table);
 
     return table;
   }
