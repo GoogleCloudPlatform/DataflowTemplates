@@ -177,7 +177,8 @@ public abstract class HttpEventPublisher {
   }
 
   /** Utility method to get payload string from a list of {@link SplunkEvent}s. */
-  protected String getStringPayload(List<SplunkEvent> events) {
+  @VisibleForTesting
+  String getStringPayload(List<SplunkEvent> events) {
     StringBuilder sb = new StringBuilder();
     events.forEach(event -> sb.append(GSON.toJson(event)));
     return sb.toString();

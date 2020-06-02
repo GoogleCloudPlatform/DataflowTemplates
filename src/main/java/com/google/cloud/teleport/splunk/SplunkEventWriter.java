@@ -24,13 +24,14 @@ import com.google.api.client.http.HttpResponseException;
 import com.google.auto.value.AutoValue;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Lists;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
-import java.util.Optional;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -81,6 +82,9 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
   private Integer batchCount;
   private Boolean disableValidation;
   private HttpEventPublisher publisher;
+  
+  private static final Gson GSON =
+      new GsonBuilder().setFieldNamingStrategy(f -> f.getName().toLowerCase()).create();
 
   public static Builder newBuilder() {
     return new AutoValue_SplunkEventWriter.Builder();
@@ -207,16 +211,15 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
       try {
         // Important to close this response to avoid connection leak.
         response = publisher.execute(events);
-        Optional<SplunkWriteError> maybeError = checkResponse(response);
 
-        if (maybeError.isPresent()) {
-          receiver.output(maybeError.get());
+        if (!response.isSuccessStatusCode()) {
+          flushWriteFailures(
+              events, response.getStatusMessage(), response.getStatusCode(), receiver);
           logWriteFailures(countState);
 
         } else {
           LOG.info("Successfully wrote {} events", countState.read());
           SUCCESS_WRITES.inc(countState.read());
-
         }
 
       } catch (HttpResponseException e) {
@@ -225,24 +228,13 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
             e.getStatusCode(), e.getContent(), e.getStatusMessage());
         logWriteFailures(countState);
 
-        String payload = publisher.getStringPayload(events);
-        SplunkWriteError error = SplunkWriteError.newBuilder()
-            .withStatusCode(e.getStatusCode())
-            .withStatusMessage(e.getStatusMessage())
-            .withPayload(payload)
-            .build();
-        receiver.output(error);
+        flushWriteFailures(events, e.getStatusMessage(), e.getStatusCode(), receiver);
 
       } catch (IOException ioe) {
         LOG.error("Error writing to Splunk: {}", ioe.getMessage());
         logWriteFailures(countState);
 
-        String payload = publisher.getStringPayload(events);
-        SplunkWriteError error = SplunkWriteError.newBuilder()
-            .withStatusMessage(ioe.getMessage())
-            .withPayload(payload)
-            .build();
-        receiver.output(error);
+        flushWriteFailures(events, ioe.getMessage(), null, receiver);
 
       } finally {
         // States are cleared regardless of write success or failure since we
@@ -266,29 +258,37 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
   }
 
   /**
-   * A helper method to check the {@link HttpResponse} object and wrap the response into an {@link
-   * Optional} {@link SplunkWriteError} in case of an unsuccessful response.
+   * Utility method to un-batch and flush failed write events.
    *
-   * @param response {@link HttpResponse} object
-   * @return {@link Optional} {@link SplunkWriteError}
+   * @param events List of {@link SplunkEvent}s to un-batch
+   * @param statusMessage Status message to be added to {@link SplunkWriteError}
+   * @param statusCode Status code to be added to {@link SplunkWriteError}
+   * @param receiver Receiver to write {@link SplunkWriteError}s to
    */
-  private Optional<SplunkWriteError> checkResponse(HttpResponse response)
-      throws IOException {
-    if (!response.isSuccessStatusCode()) {
-      SplunkWriteError.Builder builder = SplunkWriteError.newBuilder();
-      builder.withStatusCode(response.getStatusCode());
+  private static void flushWriteFailures(
+      List<SplunkEvent> events,
+      String statusMessage,
+      Integer statusCode,
+      OutputReceiver<SplunkWriteError> receiver) {
+    
+    checkNotNull(events, "SplunkEvents cannot be null.");
 
-      if (response.getStatusMessage() != null) {
-        builder.withStatusMessage(response.getStatusMessage());
-      }
+    SplunkWriteError.Builder builder = SplunkWriteError.newBuilder();
 
-      if (response.parseAsString() != null) {
-        builder.withPayload(response.parseAsString());
-      }
-      SplunkWriteError error = builder.build();
-      return Optional.of(error);
+    if (statusMessage != null) {
+      builder.withStatusMessage(statusMessage);
     }
-    return Optional.empty();
+
+    if (statusCode != null) {
+      builder.withStatusCode(statusCode);
+    }
+
+    for (SplunkEvent event : events) {
+      String payload = GSON.toJson(event);
+      SplunkWriteError error = builder.withPayload(payload).build();
+
+      receiver.output(error);
+    }
   }
 
   @AutoValue.Builder
