@@ -91,7 +91,6 @@ public class DebeziumMysqlToPubSubDataSender implements Runnable {
 
     this.whitelistedTables = whitelistedTables;
 
-
     // Prepare Debezium's table.whitelist property by removing
     // instance name from each of the whitelisted tables specified.
     String dbzWhitelistedTables = whitelistedTables.stream()
@@ -109,8 +108,12 @@ public class DebeziumMysqlToPubSubDataSender implements Runnable {
         .with("database.password", this.mysqlUserPassword)
         .with("database.server.name", mysqlDatabaseInstanceName)
         .with("decimal.handling.mode", "string")
-        .with(MySqlConnectorConfig.TABLE_WHITELIST, dbzWhitelistedTables)
         .with(MySqlConnectorConfig.DATABASE_HISTORY, MemoryDatabaseHistory.class.getName());
+
+    if (!whitelistedTables.isEmpty()) {
+      LOG.info("Whitelisting tables: {}", dbzWhitelistedTables);
+      configBuilder = configBuilder.with(MySqlConnectorConfig.TABLE_WHITELIST, dbzWhitelistedTables);
+    }
 
     if (this.inMemoryOffsetStorage) {
       LOG.info("Setting up in memory offset storage.");
