@@ -109,6 +109,7 @@ public class DebeziumMysqlToPubSubDataSender implements Runnable {
         .with("database.password", this.mysqlUserPassword)
         .with("database.server.name", mysqlDatabaseInstanceName)
         .with("decimal.handling.mode", "string")
+        .with(MySqlConnectorConfig.TABLE_WHITELIST, dbzWhitelistedTables)
         .with(MySqlConnectorConfig.DATABASE_HISTORY, MemoryDatabaseHistory.class.getName());
 
     if (this.inMemoryOffsetStorage) {
