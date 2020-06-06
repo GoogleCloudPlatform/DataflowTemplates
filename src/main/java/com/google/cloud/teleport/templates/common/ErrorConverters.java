@@ -37,6 +37,7 @@ import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
+import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
@@ -188,8 +189,9 @@ public class ErrorConverters {
                   .to(getErrorRecordsTable())
                   .withJsonSchema(getErrorRecordsTableSchema())
                   .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
-                  .withWriteDisposition(WriteDisposition.WRITE_APPEND));
-    }
+                  .withWriteDisposition(WriteDisposition.WRITE_APPEND)
+                  .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
+      }
 
     /** Builder for {@link WritePubsubMessageErrors}. */
     @AutoValue.Builder
@@ -226,8 +228,9 @@ public class ErrorConverters {
                   .to(getErrorRecordsTable())
                   .withJsonSchema(getErrorRecordsTableSchema())
                   .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
-                  .withWriteDisposition(WriteDisposition.WRITE_APPEND));
-    }
+                  .withWriteDisposition(WriteDisposition.WRITE_APPEND)
+                  .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
+      }
 
     /** Builder for {@link WriteStringMessageErrors}. */
     @AutoValue.Builder
