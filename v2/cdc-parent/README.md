@@ -28,6 +28,9 @@ this solution.
 This greatly simplifies management of the solution, and it allows to publish
 all of the updates for a database instance into a single Pub/Sub topic.
 
+- [**PostgreSQL is now supported](https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/95)
+The Postgres integration is new, so please give us your feedback.
+
 **Note that it takes some time for features in the code to make it into the
 released templates in the Cloud Console UI.**
 
@@ -38,9 +41,8 @@ by filing an Issue in this repository. Also, if you are interested in any of
 the upcoming features, **please make sure to comment on their tracking issues**,
 so we can prioritize accordingly. Some planned improvements:
 
-* Support for Postgres [planned for Q2 2020](https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/95)
 * Support for SQL Server [planned for early Q3 2020](https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/105)
-* Support for Avro serialization instead of Beam Row [currently in backlog](https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/107)
+* Support for Avro and JSON serialization instead of Beam Row [currently in backlog](https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/107)
 * Improve handling of Numeric, Time and Timestamp data types [currently backlog](https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/108)
 
 ## Requirements
