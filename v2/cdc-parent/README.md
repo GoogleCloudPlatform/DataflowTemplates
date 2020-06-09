@@ -107,6 +107,8 @@ basic configuration files:
     - E.g.: `whitelistedTables=prodmysql.storedatabase.products,prodmysql.storedatabase.customers`.
   - **Optionally** a password for the database: `databasePassword=...`
   - **Optionally** whether to run in single-topic mode: `singleTopicMode=true` or `singleTopicMode=false` (default is `false`).
+  - **Optionally** choose the database management system that will be monitored: `databaseManagementSystem=...`.
+      supported values are `mysql`, and `postgres`.
   - **Optionally** an indicator for the connector to store state in memory, or in persistent disk: `inMemoryOffsetStorage=[true/false]`.
     - This parameter is used when deploying the connector for testing vs production.
     - **If you are deploying the connector in production**, you will set this parameter to false,
@@ -118,6 +120,42 @@ basic configuration files:
     the password in the main properties file.
 - A credentials file with privileges to push to Cloud Pub/Sub, and update Entries in
   Google Cloud Catalog in the `GOOGLE_DEFAULT_CREDENTIALS` environment variable.
+
+#### Selecting Database System to use
+
+The Debezium connector currently supports two different Databases: MySQL, and
+Postgres.
+
+##### Using the Debezium connector with MySQL
+
+By default, the Debezium connector works with MySQL. No special parameters are
+required to work with a MySQL database, other than the required parameters from
+[the section above](#deploying-the-connector).
+
+##### Using the Debezium connector with Postgres
+
+To use the Debezium connector with a Postgres database, you must pass the
+`-Ppostgres` flag to your Maven commands , so that the Postgres connector
+dependencies will be included with the connector.
+
+When running the connector, make sure that you specify the following parameters
+in the properties file:
+
+- The required parameters from [the section above](#deploying-the-connector).
+- `databaseManagementSystem=postgres`
+- `debezium.database.dbname=...` - To mark the database that you would like to
+    monitor with the connector.
+
+The Maven command that you can run to start the connector from code with
+Postgres dependencies included is:
+
+```
+mvn -Ppostgres exec:java -pl cdc-embedded-connector \
+    -Dexec.args="path/to/your/properties/file.properties [path/to/password/file.properties]"
+```
+
+Note that Postgres support has not been extensively tested. It is currently
+posted with experimental support.
 
 #### Passing parameters directly to Debezium
 
@@ -149,6 +187,9 @@ Deploying in this manner will rely on your machine's Google Cloud credentials.
 To deploy the connector as a docker container is a middle step from deploying
 a resilient connector on a cluster. This means that the configuration needs to
 be fully provided when starting up the container.
+
+**Note**: To include Postgres or MySQL dependencies in the container, you can
+add `-Ppostgres` or `-Pmysql` respectively.
 
 ```
 mvn compile -pl cdc-embedded-connector jib:dockerBuild
@@ -331,7 +372,10 @@ This solution does not support a few particular scenarios:
 
 The template handles the conversion from MySQL types to BigQuery types based on
 Debezium-to-Beam Row type conversions, and from there to BigQuery. A valuable
-resource for this is Debezium's [MySQL connector type documentation](https://github.com/debezium/debezium/blob/1f6d53d13dd9ec1e51bb41bc7439dbbf5661bef7/documentation/modules/ROOT/partials/modules/cdc-mysql-connector/c_how-the-mysql-connector-maps-data-types.adoc).
+resource for this is Debezium's connectors documentation:
+
+- [MySQL connector type documentation](https://github.com/debezium/debezium/blob/1f6d53d13dd9ec1e51bb41bc7439dbbf5661bef7/documentation/modules/ROOT/partials/modules/cdc-mysql-connector/c_how-the-mysql-connector-maps-data-types.adoc).
+- [PostgresSQL connector type documentation](https://debezium.io/documentation/reference/1.1/connectors/postgresql.html#postgresql-data-types)
 
 The solution ends up resolving types like this:
 

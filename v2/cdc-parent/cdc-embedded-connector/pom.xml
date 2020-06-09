@@ -69,6 +69,33 @@
       </plugin>
     </plugins>
   </build>
+  <profiles>
+    <profile>
+      <id>mysql</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <dependencies>
+        <dependency>
+          <groupId>io.debezium</groupId>
+          <artifactId>debezium-connector-mysql</artifactId>
+          <version>${debezium.version}</version>
+          <scope>compile</scope>
+        </dependency>
+      </dependencies>
+    </profile>
+    <profile>
+      <id>postgres</id>
+      <dependencies>
+        <dependency>
+          <groupId>io.debezium</groupId>
+          <artifactId>debezium-connector-postgres</artifactId>
+          <version>${debezium.version}</version>
+          <scope>compile</scope>
+        </dependency>
+      </dependencies>
+    </profile>
+  </profiles>
   <dependencies>
     <dependency>
       <groupId>com.google.guava</groupId>

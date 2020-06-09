@@ -28,49 +28,65 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.impl.StaticLoggerBinder;
 
 /**
+ *
+ *
  * <h3>Configuration</h3>
  *
  * <p>The connector expects configuration to be passed via Properties files. By default, the
  * connector will look for a properties file in {@literal /etc/dataflow_cdc.properties}, and it
- * expects the following parameters:</p>
- *
- * * {@literal databaseName} - the name of the database instance.
- * * {@literal databaseUsername} - a user with privileges to access the binary log for MySQL.
- * * {@literal databasePassword} - the password to use to log into the database. This parameter can
- *     be passed with the default properties file, or in a separate properties file
- *     (default: {@literal /etc/dataflow_cdc_password.properties}).
- * * {@literal databaseAddress} - the IP or DNS address for a MySQL database.
- * * {@literal databasePort} - the port to connect to the database. Default is 3306.
- * * {@literal gcpProject} - the GCP project where the PubSub topic with updates resides.
- * * {@literal gcpPubsubTopicPrefix} - the prefix to PubSub topics to push updates for each MySQL table.
- * * {@literal whitelistedTables} - a comma-separated list of tables to post updates. The name of
- *     the table should be fully qualified
- *     (e.g. "myinstance.mydb.mytable1,myinstance.mydb2.mytable2").
- * * {@literal inMemoryOffsetStorage} - true/false whether or not to store changelog offsets in
- *     memory. Setting this to true means that the connector is not resilient to restarts. This
- *     configuration is generally useful for ephemeral tests (default: {@literal false}).
- * * {@literal offsetStorageFile} the file to use to store changelog offsets from MySQL. This is
- *     necessary on restarts of the connector
- *     (default: {@literal /opt/dataflow-cdc/offset-tracker}).
- * * {@literal singleTopicMode} - true/false whether to publish changes from all tables into a
- *     single PubSub topic, or into a separate topic for every database table to use. If this option
- *     is set to {@literal true}, then updates will be pushed to the PubSub topic provided in
- *     {@literal gcpPubsubTopicPrefix}. (default: {@literal false}).
+ * expects the following parameters:
+ * <ul>
+ *   <li>{@literal databaseName} - the name of the database instance.</li>
+ *   <li>
+ *     {@literal databaseUsername} - a user with privileges to access the binary log for MySQL.
+ *   </li>
+ *   <li>
+ *     {@literal databasePassword} - the password to use to log into the database. This parameter
+ *     can be passed with the default properties file, or in a separate properties file
+ *     (default: {@literal /etc/dataflow_cdc_password.properties}).</li>
+ *  <li>{@literal databaseAddress} - the IP or DNS address for a MySQL database.</li>
+ *  <li>{@literal databasePort} - the port to connect to the database. Default is 3306.</li>
+ *  <li>{@literal gcpProject} - the GCP project where the PubSub topic with updates resides.</li>
+ *  <li>
+ *    {@literal gcpPubsubTopicPrefix} - the prefix to PubSub topics to push updates for each MySQL
+ *    table.
+ *  </li>
+ *  <li>
+ *    {@literal whitelistedTables} - a comma-separated list of tables to monitor. The name of the
+ *    table should be fully qualified (e.g. "myinstance.mydb.mytable1,myinstance.mydb2.mytable2").
+ *  </li>
+ *  <li>
+ *    {@literal inMemoryOffsetStorage} - true/false whether or not to store changelog offsets in
+ *    memory. Setting this to true means that the connector is not resilient to restarts.
+ *    This configuration is generally useful for ephemeral tests (default: {@literal false}).
+ *  </li>
+ *  <li>
+ *    {@literal offsetStorageFile} the file to use to store changelog offsets from MySQL. This is
+ *    necessary on restarts of the connector (default: {@literal /opt/dataflow-cdc/offset-tracker}).
+ *  </li>
+ *  <li>
+ *    {@literal databaseManagementSystem} the kind of database that the connector will connect to.
+ *    Options are: {@literal mysql}, {@literal postgres}. (default: {@literal mysql}).
+ *  </li>
+ *  <li>
+ *    {@literal singleTopicMode} - true/false whether to publish changes from all tables into a
+ *    single PubSub topic, or into a separate topic for every database table to use. If this option
+ *    is set to {@literal true}, then updates will be pushed to the PubSub topic provided in
+ *    {@literal gcpPubsubTopicPrefix}. (default: {@literal false}).
+ *  </li>
+ * </ul>
  *
  * <p>To override the default properties files, addresses can be passed to them. For example, to
- * override the default properties file: </p>
+ * override the default properties file: {@code java -jar App.jar
+ * /users/home/myuser/config/my_dataflow_cdc.properties}
  *
- * {@code java -jar App.jar /users/home/myuser/config/my_dataflow_cdc.properties}
+ * <p>To override the default properties file, as well as the default password file: {@code java
+ * -jar App.jar /users/home/myuser/config/my_dataflow_cdc.properties
+ * /users/home/myuser/config/my_password.properties}
  *
- * <p>To override the default properties file, as well as the default password file:</p>
- *
- * {@code java -jar App.jar /users/home/myuser/config/my_dataflow_cdc.properties /users/home/myuser/config/my_password.properties}
- *
- * <p>The connector also expects <b>Google Cloud credential configuration</b> to be passed via:</p>
- *
- * * The {@literal GOOGLE_APPLICATION_CREDENTIALS} environment set to point to a JSON credential
- *     with access to PubSub, and Data Catalog.
- *
+ * <p>The connector also expects <b>Google Cloud credential configuration</b> to be passed via: *
+ * The {@literal GOOGLE_APPLICATION_CREDENTIALS} environment set to point to a JSON credential with
+ * access to PubSub, and Data Catalog.
  */
 public class App {
 
@@ -86,6 +102,8 @@ public class App {
       "/opt/dataflow-cdc/offset/offset-tracker";
   public static final String DEFAULT_DATABASE_HISTORY_FILE =
       "/opt/dataflow-cdc/offset/database-history.dat";
+
+  public static final String DEFAULT_RDBMS = "mysql";
 
     public static void main(String[] args) throws Exception {
         final Logger logger = LoggerFactory.getLogger(App.class);
@@ -121,6 +139,7 @@ public class App {
         config.getBoolean("inMemoryOffsetStorage", false),
         config.getBoolean("singleTopicMode", false),
         config.getString("whitelistedTables"),
+        config.getString("databaseManagementSystem", DEFAULT_RDBMS),
         debeziumConfig);
     }
 
@@ -175,9 +194,10 @@ public class App {
       Boolean inMemoryOffsetStorage,
       Boolean singleTopicMode,
       String commaSeparatedWhiteListedTables,
+      String rdbms,
       ImmutableConfiguration debeziumConfig) {
-    DebeziumMysqlToPubSubDataSender dataSender =
-        new DebeziumMysqlToPubSubDataSender(
+    DebeziumToPubSubDataSender dataSender =
+        new DebeziumToPubSubDataSender(
             databaseName,
             databaseUserName,
             databasePassword,
@@ -190,6 +210,7 @@ public class App {
             inMemoryOffsetStorage,
             singleTopicMode,
             new HashSet<>(Arrays.asList(commaSeparatedWhiteListedTables.split(","))),
+            rdbms,
             debeziumConfig);
         dataSender.run();
     }

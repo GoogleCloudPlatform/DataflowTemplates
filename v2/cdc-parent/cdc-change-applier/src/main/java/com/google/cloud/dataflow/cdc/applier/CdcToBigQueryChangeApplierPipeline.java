@@ -22,9 +22,11 @@ import com.google.cloud.dataflow.cdc.applier.PubsubUtils.TopicSubscriptionSchema
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
@@ -161,6 +163,15 @@ public class CdcToBigQueryChangeApplierPipeline {
       PCollection<Row> singularTableChangelog = tableEntry.getValue();
       buildIngestionPipeline(branchName, options, singularTableChangelog);
     }
+
+    // Add label to track Dataflow CDC jobs launched.
+    Map<String, String> dataflowCdcLabels = new HashMap<>();
+    dataflowCdcLabels.putAll(
+        p.getOptions().as(DataflowPipelineOptions.class).getLabels());
+    dataflowCdcLabels.put("dataflow-cdc", "debezium-template");
+    dataflowCdcLabels.put("goog-dataflow-provided-template-name", "dataflow_dbz_cdc");
+    dataflowCdcLabels.put("goog-dataflow-provided-template-type", "flex");
+    p.getOptions().as(DataflowPipelineOptions.class).setLabels(dataflowCdcLabels);
 
     PipelineResult result = p.run();
     return result;
