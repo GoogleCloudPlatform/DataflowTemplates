@@ -52,6 +52,10 @@ import org.slf4j.impl.StaticLoggerBinder;
  * * {@literal offsetStorageFile} the file to use to store changelog offsets from MySQL. This is
  *     necessary on restarts of the connector
  *     (default: {@literal /opt/dataflow-cdc/offset-tracker}).
+ * * {@literal singleTopicMode} - true/false whether to publish changes from all tables into a
+ *     single PubSub topic, or into a separate topic for every database table to use. If this option
+ *     is set to {@literal true}, then updates will be pushed to the PubSub topic provided in
+ *     {@literal gcpPubsubTopicPrefix}. (default: {@literal false}).
  *
  * <p>To override the default properties files, addresses can be passed to them. For example, to
  * override the default properties file: </p>
@@ -70,7 +74,7 @@ import org.slf4j.impl.StaticLoggerBinder;
  */
 public class App {
 
-    private static final Object MISSING = new Object();
+  private static final Object MISSING = new Object();
 
   public static final String DEFAULT_PROPERTIES_FILE_LOCATION =
       "/etc/dataflow-cdc/dataflow_cdc.properties";
@@ -115,6 +119,7 @@ public class App {
         config.getString("offsetStorageFile", DEFAULT_OFFSET_STORAGE_FILE),
         config.getString("databaseHistoryFile", DEFAULT_DATABASE_HISTORY_FILE),
         config.getBoolean("inMemoryOffsetStorage", false),
+        config.getBoolean("singleTopicMode", false),
         config.getString("whitelistedTables"),
         debeziumConfig);
     }
@@ -168,6 +173,7 @@ public class App {
       String offsetStorageFile,
       String databaseHistoryFile,
       Boolean inMemoryOffsetStorage,
+      Boolean singleTopicMode,
       String commaSeparatedWhiteListedTables,
       ImmutableConfiguration debeziumConfig) {
     DebeziumMysqlToPubSubDataSender dataSender =
@@ -182,6 +188,7 @@ public class App {
             offsetStorageFile,
             databaseHistoryFile,
             inMemoryOffsetStorage,
+            singleTopicMode,
             new HashSet<>(Arrays.asList(commaSeparatedWhiteListedTables.split(","))),
             debeziumConfig);
         dataSender.run();

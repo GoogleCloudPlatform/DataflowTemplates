@@ -61,6 +61,7 @@ public class DebeziumMysqlToPubSubDataSender implements Runnable {
   private final String offsetStorageFile;
   private final String databaseHistoryFile;
   private final Boolean inMemoryOffsetStorage;
+  private final Boolean singleTopicMode;
 
   private final Set<String> whitelistedTables;
 
@@ -75,6 +76,7 @@ public class DebeziumMysqlToPubSubDataSender implements Runnable {
       String offsetStorageFile,
       String databaseHistoryFile,
       Boolean inMemoryOffsetStorage,
+      Boolean singleTopicMode,
       Set<String> whitelistedTables,
       org.apache.commons.configuration2.ImmutableConfiguration debeziumConfig) {
 
@@ -88,6 +90,8 @@ public class DebeziumMysqlToPubSubDataSender implements Runnable {
     this.offsetStorageFile = offsetStorageFile;
     this.databaseHistoryFile = databaseHistoryFile;
     this.inMemoryOffsetStorage = inMemoryOffsetStorage;
+
+    this.singleTopicMode = singleTopicMode;
 
     this.whitelistedTables = whitelistedTables;
 
@@ -145,10 +149,8 @@ public class DebeziumMysqlToPubSubDataSender implements Runnable {
   @Override
   public void run() {
     final PubSubChangeConsumer changeConsumer = new PubSubChangeConsumer(
-        gcpProject,
-        gcpPubsubTopicPrefix,
         whitelistedTables,
-        new DataCatalogSchemaUtils(),
+        DataCatalogSchemaUtils.getSchemaManager(gcpProject, gcpPubsubTopicPrefix, singleTopicMode),
         PubSubChangeConsumer.DEFAULT_PUBLISHER_FACTORY);
 
     final EmbeddedEngine engine = EmbeddedEngine.create()

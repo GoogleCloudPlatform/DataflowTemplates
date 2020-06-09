@@ -17,7 +17,7 @@ package com.google.cloud.dataflow.cdc.connector;
 
 import com.google.api.core.ApiFuture;
 import com.google.cloud.datacatalog.v1beta1.Entry;
-import com.google.cloud.dataflow.cdc.common.DataCatalogSchemaUtils;
+import com.google.cloud.dataflow.cdc.common.DataCatalogSchemaUtils.DataCatalogSchemaManager;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
@@ -33,8 +33,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.function.BiFunction;
 import org.apache.beam.sdk.coders.RowCoder;
-import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.Row;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.LoggerFactory;
@@ -44,9 +44,11 @@ public class PubSubChangeConsumer implements EmbeddedEngine.ChangeConsumer {
 
   private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(PubSubChangeConsumer.class);
 
-  public static final SerializableFunction<ProjectTopicName, Publisher>
-      DEFAULT_PUBLISHER_FACTORY = projectTopicName -> {
+  public static final BiFunction<String, DataCatalogSchemaManager, Publisher>
+      DEFAULT_PUBLISHER_FACTORY = (tableName, schemaUtils) -> {
     try {
+      ProjectTopicName projectTopicName = ProjectTopicName.of(
+          schemaUtils.getGcpProject(), schemaUtils.getPubSubTopicForTable(tableName));
       return Publisher
           .newBuilder(projectTopicName)
           .build();
@@ -59,23 +61,17 @@ public class PubSubChangeConsumer implements EmbeddedEngine.ChangeConsumer {
   private final Map<String, Publisher> pubsubPublisherMap;
   private final Map<String, RowCoder> rowCoderMap;
 
-  private final String project;
-  private final String pubsubTopicPrefix;
   private final Set<String> whitelistedTables;
   private final Set<String> observedTables;
-  private final DataCatalogSchemaUtils schemaUpdater;
-  private final SerializableFunction<ProjectTopicName, Publisher> pubSubPublisherFactory;
+  private final DataCatalogSchemaManager schemaUpdater;
+  private final BiFunction<String, DataCatalogSchemaManager, Publisher>  pubSubPublisherFactory;
   private final DebeziumSourceRecordToDataflowCdcFormatTranslator translator =
       new DebeziumSourceRecordToDataflowCdcFormatTranslator();
 
   public PubSubChangeConsumer(
-      String project,
-      String pubsubTopicPrefix,
       Set<String> whitelistedTables,
-      DataCatalogSchemaUtils schemaUpdater,
-      SerializableFunction<ProjectTopicName, Publisher> pubSubPublisherFactory) {
-    this.project = project;
-    this.pubsubTopicPrefix = pubsubTopicPrefix;
+      DataCatalogSchemaManager schemaUpdater,
+      BiFunction<String, DataCatalogSchemaManager, Publisher> pubSubPublisherFactory) {
     this.whitelistedTables = whitelistedTables;
     this.observedTables = new HashSet<>();
     this.pubsubPublisherMap = new HashMap<>();
@@ -84,15 +80,9 @@ public class PubSubChangeConsumer implements EmbeddedEngine.ChangeConsumer {
     this.pubSubPublisherFactory = pubSubPublisherFactory;
   }
 
-  public static String getPubsubTopicName(String pubsubTopicPrefix, String tableName) {
-    return String.format("%s%s", pubsubTopicPrefix, tableName);
-  }
-
   private Publisher getPubSubPublisher(String tableName) {
     if (!pubsubPublisherMap.containsKey(tableName)) {
-      String topicName = getPubsubTopicName(pubsubTopicPrefix, tableName);
-
-      Publisher result = pubSubPublisherFactory.apply(ProjectTopicName.of(this.project, topicName));
+      Publisher result = pubSubPublisherFactory.apply(tableName, schemaUpdater);
       pubsubPublisherMap.put(tableName, result);
       return result;
     }
@@ -125,19 +115,14 @@ public class PubSubChangeConsumer implements EmbeddedEngine.ChangeConsumer {
       String tableName = r.topic();
 
       if (whitelistedTables.contains(tableName)) {
-        Row updateRecord =
-            translator.translate(r);
+        Row updateRecord = translator.translate(r);
         if (updateRecord == null) {
           continue;
         }
 
         if (!observedTables.contains(tableName)) {
-          String topicName = getPubsubTopicName(pubsubTopicPrefix, tableName);
-
-          LOG.info(
-              "Publishing schema for table {} corresponding to topic {}", tableName, topicName);
-          Entry result = schemaUpdater.setSchemaForPubSubTopic(
-              topicName, project, updateRecord.getSchema());
+          Entry result = schemaUpdater.updateSchemaForTable(
+              tableName, updateRecord.getSchema());
           if (result == null) {
             throw new InterruptedException(
                 "A problem occurred when communicating with Cloud Data Catalog");
@@ -162,12 +147,15 @@ public class PubSubChangeConsumer implements EmbeddedEngine.ChangeConsumer {
           recordCoder.encode(updateRecord, outputStream);
 
           ByteString encodedUpdate = ByteString.copyFrom(outputStream.toByteArray());
-          futureListBuilder.add(
-              pubSubPublisher.publish(messageBuilder.setData(encodedUpdate).build()));
+          PubsubMessage message = messageBuilder
+              .setData(encodedUpdate)
+              .putAttributes("table", tableName)
+              .build();
+          futureListBuilder.add(pubSubPublisher.publish(message));
         } catch (IOException e) {
           LOG.error("Caught exception {} when trying to encode record {}. Stopping processing.",
               e, updateRecord);
-          return ;
+          return;
         }
       } else {
         LOG.debug("Discarding record: {}", r);
@@ -177,7 +165,7 @@ public class PubSubChangeConsumer implements EmbeddedEngine.ChangeConsumer {
 
     usedPublishers.forEach(p -> p.publishAllOutstanding());
 
-    for(ApiFuture<String> f : futureListBuilder.build()) {
+    for (ApiFuture<String> f : futureListBuilder.build()) {
       try {
         String result = f.get();
         LOG.debug("Result from PubSub Publish Future: {}", result);

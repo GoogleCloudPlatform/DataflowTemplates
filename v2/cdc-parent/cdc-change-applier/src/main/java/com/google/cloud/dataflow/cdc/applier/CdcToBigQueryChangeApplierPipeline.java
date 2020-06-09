@@ -15,16 +15,22 @@
  */
 package com.google.cloud.dataflow.cdc.applier;
 
+import static com.google.cloud.dataflow.cdc.applier.PubsubUtils.buildTopicSubscriptionSchemas;
+
+import com.google.cloud.dataflow.cdc.applier.CdcPCollectionsFetchers.CdcPCollectionFetcher;
+import com.google.cloud.dataflow.cdc.applier.PubsubUtils.TopicSubscriptionSchema;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -92,6 +98,12 @@ public class CdcToBigQueryChangeApplierPipeline {
     @Description("How often the pipeline will issue updates to the BigQuery replica table.")
     Integer getUpdateFrequencySecs();
     void setUpdateFrequencySecs(Integer frequency);
+
+    @Description("Whether change updates should come from a single PubSub topic. If this option " +
+        "is set to true, then a single input subscription or topic will be expected.")
+    @Default.Boolean(false)
+    Boolean getUseSingleTopic();
+    void setUseSingleTopic(Boolean useSingleTopic);
   }
 
   private static PDone buildIngestionPipeline(
@@ -105,67 +117,6 @@ public class CdcToBigQueryChangeApplierPipeline {
                 options.getReplicaDataset(),
                 options.getUpdateFrequencySecs(),
                 options.as(GcpOptions.class).getProject()));
-  }
-
-  static class TopicSubscriptionSchema {
-    final String topic;
-    final String subscription;
-    final Schema schema;
-
-    TopicSubscriptionSchema(String topic, String subscription, Schema schema) {
-      this.topic = topic;
-      this.subscription = subscription;
-      this.schema = schema;
-    }
-  }
-
-  static List<TopicSubscriptionSchema> buildTopicSubscriptionSchemas(
-      final String gcpProject, String topics, String subscriptions) {
-    List<String> topicList;
-    List<String> subscriptionList;
-    List<Schema> schemaList;
-    if (subscriptions != null) {
-      subscriptionList = Arrays.asList(subscriptions.split(","));
-      topicList = subscriptionList.stream()
-          .map(s -> {
-            try {
-              return PubsubUtils.getPubSubTopicFromSubscription(gcpProject, s).getTopic();
-            } catch (IOException e) {
-              throw new RuntimeException(e);
-            }
-          })
-          .collect(Collectors.toList());
-    } else {
-      topicList = Arrays.asList(topics.split(","));
-      subscriptionList = topicList.stream()
-          .map(t -> (String) null)
-          .collect(Collectors.toList());
-    }
-
-    LOG.info("Topic list is: {}", topicList);
-    LOG.info("Subscription list is: {}", subscriptionList);
-
-    schemaList = topicList.stream()
-        .map(topic -> PubsubUtils.getBeamSchemaForTopic(gcpProject, topic))
-        .map(schema -> {
-          if (schema == null || schema.getFields().size() == 0) {
-            throw new RuntimeException("Received a null or empty schema. Can not continue");
-          } else {
-            return schema;
-          }
-        })
-        .collect(Collectors.toList());
-
-    LOG.info("Schema list is: {}", schemaList);
-
-    List<TopicSubscriptionSchema> result = new ArrayList<>();
-    for (int i = 0; i < topicList.size(); i++) {
-      result.add(new TopicSubscriptionSchema(
-          topicList.get(i),
-          subscriptionList.get(i),
-          schemaList.get(i)));
-    }
-    return result;
   }
 
   /**
@@ -201,40 +152,15 @@ public class CdcToBigQueryChangeApplierPipeline {
 
     Pipeline p = Pipeline.create(options);
 
-    List<TopicSubscriptionSchema> readSourceSchemas =  buildTopicSubscriptionSchemas(
-        options.as(GcpOptions.class).getProject(),
-        options.getInputTopics(),
-        options.getInputSubscriptions());
+    CdcPCollectionFetcher pcollectionFetcher = CdcPCollectionsFetchers.create(options);
 
-    readSourceSchemas.forEach(rss -> {
-      String transformTopicPrefix = rss.topic;
+    Map<String, PCollection<Row>> pcollections = pcollectionFetcher.changelogPcollections(p);
 
-      PCollection<PubsubMessage> pubsubData;
-      if (rss.subscription == null) {
-        pubsubData = p.apply(
-            String.format("%s/Read Updates from PubSub", transformTopicPrefix),
-            PubsubIO.readMessages()
-                .fromTopic(String.format(
-                    "projects/%s/topics/%s",
-                    options.as(GcpOptions.class).getProject(), rss.topic)));
-      } else {
-        pubsubData = p.apply(
-            String.format("%s/Read Updates from PubSub", transformTopicPrefix),
-            PubsubIO.readMessages().fromSubscription(String.format(
-                "projects/%s/subscriptions/%s",
-                options.as(GcpOptions.class).getProject(), rss.subscription)));
-      }
-
-      PCollection<Row> collectionOfRows = pubsubData
-          .apply(String.format("%s/Extract payload", transformTopicPrefix),
-              MapElements.into(TypeDescriptor.of(byte[].class))
-                  .via(message -> message.getPayload()))
-          .apply(
-              String.format("%s/Decode", transformTopicPrefix),
-              DecodeRows.withSchema(rss.schema));
-
-      buildIngestionPipeline(transformTopicPrefix, options, collectionOfRows);
-    });
+    for (Map.Entry<String, PCollection<Row>> tableEntry : pcollections.entrySet()) {
+      String branchName = tableEntry.getKey();
+      PCollection<Row> singularTableChangelog = tableEntry.getValue();
+      buildIngestionPipeline(branchName, options, singularTableChangelog);
+    }
 
     PipelineResult result = p.run();
     return result;

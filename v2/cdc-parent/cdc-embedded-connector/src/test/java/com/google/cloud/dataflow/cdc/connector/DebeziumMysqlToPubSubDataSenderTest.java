@@ -16,6 +16,7 @@
 package com.google.cloud.dataflow.cdc.connector;
 
 import com.google.cloud.dataflow.cdc.common.DataCatalogSchemaUtils;
+import com.google.cloud.dataflow.cdc.common.DataCatalogSchemaUtils.DataCatalogSchemaManager;
 import com.google.common.collect.Sets;
 import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.util.Clock;
@@ -46,10 +47,8 @@ public class DebeziumMysqlToPubSubDataSenderTest {
 
   private void runEmbeddedEngine() {
       final PubSubChangeConsumer changeConsumer = new PubSubChangeConsumer(
-          GCP_PROJECT,
-          PUBSUB_PREFIX,
           Sets.newHashSet(TABLES),
-          new DataCatalogSchemaUtils(),
+          DataCatalogSchemaUtils.getSchemaManager(GCP_PROJECT, PUBSUB_PREFIX, false),
           PubSubChangeConsumer.DEFAULT_PUBLISHER_FACTORY);
 
       final EmbeddedEngine engine = EmbeddedEngine.create()

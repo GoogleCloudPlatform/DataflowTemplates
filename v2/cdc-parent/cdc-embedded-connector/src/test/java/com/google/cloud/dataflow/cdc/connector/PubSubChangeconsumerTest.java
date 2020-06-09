@@ -18,6 +18,7 @@ package com.google.cloud.dataflow.cdc.connector;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.datacatalog.v1beta1.Entry;
 import com.google.cloud.dataflow.cdc.common.DataCatalogSchemaUtils;
+import com.google.cloud.dataflow.cdc.common.DataCatalogSchemaUtils.DataCatalogSchemaManager;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -37,18 +38,17 @@ public class PubSubChangeconsumerTest {
 
   @Test
   public void testBasicRecordAndFilteredRecordInput() throws InterruptedException {
-    DataCatalogSchemaUtils dataCatalogMock = Mockito.mock(DataCatalogSchemaUtils.class);
+    DataCatalogSchemaManager dataCatalogMock = Mockito.mock(DataCatalogSchemaManager.class);
     Publisher pubsubMock = Mockito.mock(Publisher.class);
-    Mockito.when(dataCatalogMock.setSchemaForPubSubTopic(
-        Mockito.any(), Mockito.any(), Mockito.any())).thenReturn(Entry.newBuilder().build());
+    Mockito.when(dataCatalogMock.updateSchemaForTable(
+        Mockito.anyString(), Mockito.any(org.apache.beam.sdk.schemas.Schema.class)))
+        .thenReturn(Entry.newBuilder().build());
     Mockito.when(pubsubMock.publish(Mockito.any())).thenReturn(Mockito.mock(ApiFuture.class));
 
     PubSubChangeConsumer changeConsumer = new PubSubChangeConsumer(
-        "project",
-        "preix_",
-        Sets.newHashSet("mainstance.cdcForDataflow.team_metadata", "table2"),
+       Sets.newHashSet("mainstance.cdcForDataflow.team_metadata", "table2"),
         dataCatalogMock,
-        input -> pubsubMock);
+        (input1, input2) -> pubsubMock);
 
     Schema keySchema = SchemaBuilder.struct()
         .field("team", Schema.STRING_SCHEMA).build();

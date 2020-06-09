@@ -30,6 +30,7 @@
     <guava.version>25.1-jre</guava.version>
     <slf4j.version>1.7.25</slf4j.version>
     <gcp.version>1.82.0</gcp.version>
+    <data-catalog.version>0.35.0</data-catalog.version>
   </properties>
   <licenses>
     <license>

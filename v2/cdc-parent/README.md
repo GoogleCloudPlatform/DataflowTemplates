@@ -12,15 +12,24 @@ To implement the CDC solution in this repository:
 
 The embedded connector connects to MySQL, and tracks the binary change
 log. Whenever a new change occurs, it formats it into a Beam `Row` and
-pushes it into a PubSub topic.
+pushes it into a Pub/Sub topic.
 
-The Dataflow pipeline watches on a PubSub topic for each table that
+The Dataflow pipeline watches on a Pub/Sub topic for each table that
 you would want to sync from MySQL to BigQuery. It then it pushes those
 updates to BigQuery tables which are periodically synchronized, thus
 having a replica table in BigQuery from your MySQL database.
 
 Note the [currently unsupported scenarios](#unsupported-scenarios) for
 this solution.
+
+## Important Notes
+
+- [**Single-topic mode** is now supported](https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/106).
+This greatly simplifies management of the solution, and it allows to publish
+all of the updates for a database instance into a single Pub/Sub topic.
+
+**Note that it takes some time for features in the code to make it into the
+released templates in the Cloud Console UI.**
 
 ### Upcoming Features
 
@@ -29,7 +38,6 @@ by filing an Issue in this repository. Also, if you are interested in any of
 the upcoming features, **please make sure to comment on their tracking issues**,
 so we can prioritize accordingly. Some planned improvements:
 
-* Multiplex out of a single PubSub topic [planned for Q2 2020](https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/106)
 * Support for Postgres [planned for Q2 2020](https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/95)
 * Support for SQL Server [planned for early Q3 2020](https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/105)
 * Support for Avro serialization instead of Beam Row [currently in backlog](https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/107)
@@ -40,7 +48,7 @@ so we can prioritize accordingly. Some planned improvements:
 - Java 8
 - Maven
 - A MySQL instance
-- A PubSub topic for each MySQL table that you would like to synchronize with BigQuery.
+- A set of Pub/Sub topics
 
 ## Getting Started
 
@@ -60,7 +68,7 @@ installed:
 mvn install
 ```
 
-Once the connector is deployed, and publishing data to PubSub, you can start the
+Once the connector is deployed, and publishing data to Pub/Sub, you can start the
 Dataflow pipeline.
 
 ### Deploying the Connector
@@ -68,16 +76,19 @@ Dataflow pipeline.
 The deployment of this solution involves deploying the two main components:
 
  (1) The Dataflow pipeline just needs to be run on a GCP project, with access to the
-appropriate PubSub topic, and BigQuery datasets.
+appropriate Pub/Sub topic, and BigQuery datasets.
 
 (2) The Debezium embedded connector can be deployed in a few different ways: On
 a VM by executing the JAR, or as a Docker container; or on your Kubernetes cluster,
 be it on GKE, or on-premise.
 
 The connector can be deployed locally from source, via a docker container,
-or with high-reliability on Kubernetes. Before deploying the connector, make
-sure to have set up the PubSub topics and subscriptions for it.
-See [Setting up PubSub topics](#setting-up-pubsub-topics).
+or with high-reliability on Kubernetes.
+
+Before deploying the connector, make sure to have set up the Pub/Sub topics and
+subscriptions for it. Consider that the connector can run in
+**single-topic mode**, or in **multi-topic mode**(default).
+See [Setting up Pub/Sub topics](#setting-up-pubsub-topics) for more information.
 
 It will need to be supplied of two/three
 basic configuration files:
@@ -87,14 +98,15 @@ basic configuration files:
   - A username to access the database changelog: `databaseUsername=...`
   - An IP address or DNS to connect to the database: `databaseAddress=...`
   - **Optionally** a port to connect to the database: `databasePort=...` (default: 3306)
-  - A project in Google Cloud Platform where the PubSub topic lives: `gcpProject=...`
-  - A prefix for PubSub topics corresponding to each MySQL table.
+  - A project in Google Cloud Platform where the Pub/Sub topic lives: `gcpProject=...`
+  - A prefix for Pub/Sub topics corresponding to each MySQL table.
      The connector will push table updates
      to `${PREFIX}${DB_INSTANCE}.${DATABASE}.${TABLE}`: `gcpPubsubTopicPrefix=...`.
   - A comma-separated list of whitelisted tables: `whitelistedTables=...`
     - These tables should have their names fully qualified `${instance}.${database}.${table}`.
     - E.g.: `whitelistedTables=prodmysql.storedatabase.products,prodmysql.storedatabase.customers`.
   - **Optionally** a password for the database: `databasePassword=...`
+  - **Optionally** whether to run in single-topic mode: `singleTopicMode=true` or `singleTopicMode=false` (default is `false`).
   - **Optionally** an indicator for the connector to store state in memory, or in persistent disk: `inMemoryOffsetStorage=[true/false]`.
     - This parameter is used when deploying the connector for testing vs production.
     - **If you are deploying the connector in production**, you will set this parameter to false,
@@ -104,7 +116,7 @@ basic configuration files:
 - An **optional properties file** containing the database password: `databasePassword=...`
   - This extra file can be passed as a secret for Kubernetes deployment, without revealing
     the password in the main properties file.
-- A credentials file with privileges to push to Cloud PubSub, and update Entries in
+- A credentials file with privileges to push to Cloud Pub/Sub, and update Entries in
   Google Cloud Catalog in the `GOOGLE_DEFAULT_CREDENTIALS` environment variable.
 
 #### Passing parameters directly to Debezium
@@ -170,7 +182,7 @@ you will need to do it via a Private IP address, or with a Cloud SQL proxy
 container.
 [Check out GCP documentation on how to set this up](https://cloud.google.com/sql/docs/mysql/connect-kubernetes-engine).
 First you can create a basic cluster on GKE, which will run our connector pushing
-updates from MySQL to PubSub.
+updates from MySQL to Pub/Sub.
 
 We assume that:
 
@@ -227,7 +239,23 @@ Kubernetes:
 kubectl apply -f app.yml
 ```
 
-### Setting up PubSub topics
+### Setting up Pub/Sub topics
+
+The Debezium-based connector can run in two different modes: Single-topic mode,
+and multi-topic mode.
+
+**In single-topic mode**, the connector will publish all of the change updates
+for the database to a single Pub/Sub topic. To activate the single-topic mode,
+you will need to provide `singleTopicMode=true` in the properties file that you
+use, along with the full name of the Pub/Sub topic in the
+`gcpPubsubTopicPrefix` property.
+
+Make sure to create a subscription for your Pub/Sub topic, so that the Dataflow
+pipeline will consume messages from that subscription.
+
+**In multi-topic mode**, the connector will publish changes about each database
+table to a separate Pub/Sub topic. You must set up separate Pub/Sub topics for
+each table, like so:
 
 Let's suppose you have a MySQL database running in any environment.
 In this case, we’ll consider a database running on Cloud SQL, with two tables:
@@ -242,7 +270,7 @@ In this case, we’ll consider a database running on Cloud SQL, with two tables:
 The Debezium connector exports data for each table into a separate Pub/Sub topic
 with a prefix. We’ll choose this prefix for our Pub/Sub topics: `export_demo_`.
 This prefix will be passed as an argument to the Debezium connector, along with
-a Google Cloud project. The PubSub topics that we'll create are:
+a Google Cloud project. The Pub/Sub topics that we'll create are:
 
 - Table: `my-mysql.cdc_demo.people`
   - Topic: `export_demo_my-mysql.cdc_demo.people`
@@ -264,9 +292,13 @@ the Debezium connector has started**. This will allow the connector to
 append schemas to Cloud Data Catalog, and these schemas to be used for the
 pipeline.
 
+**NOTE:** If you are running the Debezium connector on **single-topic mode**,
+you should pass the `useSingleTopic=true` flag to the Dataflow pipeline.
+
 ### Running the Pipeline
 
-To deploy the pipeline from source, you can run the following command:
+To deploy the pipeline from source **using single-topic mode**, you can run the
+following command:
 
 ```
 mvn exec:java -pl cdc-change-applier -Dexec.args="--runner=DataflowRunner \
@@ -274,8 +306,15 @@ mvn exec:java -pl cdc-change-applier -Dexec.args="--runner=DataflowRunner \
               --updateFrequencySecs=300 \
               --changeLogDataset=${CHANGELOG_BQ_DATASET} \
               --replicaDataset=${REPLICA_BQ_DATASET} \
-              --project=${GCP_PROJECT}"
+              --project=${GCP_PROJECT} \
+              --useSingleTopic=true"
 ```
+
+To run in **multi-topic mode**, you should pass `false` for the `useSingleTopic`
+flag (or not pass it at all, as `false` is its default value).
+
+In this command, `inputSubscriptions` is a comma-separated list of subscriptions
+in `${GCP_PROJECT}` to read from. (e.g. `subscription1,subscription2,sub3`).
 
 ## Unsupported scenarios
 
@@ -283,10 +322,10 @@ This solution does not support a few particular scenarios:
 
 - **Updates to Primary Keys**: In its first version, this solution does not
   support changes to the Primary Key of any of the rows.
-- **Schema changes**: The Dataflow pipeline that streams changes from PubSub and
-  into BigQuery does **not** handle changes of schema. If you want to update the
-  schema of one of your MySQL tables, it is a good idea to redeploy the Debezium
-  connector, and the Dataflow pipeline.
+- **Schema changes**: The Dataflow pipeline that streams changes from Pub/Sub
+  and into BigQuery does **not** handle changes of schema. If you want to update
+  the schema of one of your MySQL tables, it is a good idea to redeploy the
+  Debezium connector, and the Dataflow pipeline.
 
 ## Type Handling
 
