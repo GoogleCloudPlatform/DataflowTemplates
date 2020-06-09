@@ -118,6 +118,7 @@ public class BigQueryChangeApplier extends PTransform<PCollection<Row>, PDone> {
   @Override
   public PDone expand(PCollection<Row> input) {
     Pipeline p = input.getPipeline();
+    Schema inputCollectionSchema = input.getSchema();
 
     PCollection<KV<String, KV<Schema, Schema>>> tableSchemaCollection =
         buildTableSchemaCollection(input);
@@ -137,21 +138,25 @@ public class BigQueryChangeApplier extends PTransform<PCollection<Row>, PDone> {
         String.format(
             "beam_cdc_%s_%s_", gcpProjectId.replace(':', '_').replace('.', '_'), replicaDataset);
 
-    p.apply("MergeHeartbeat",
-        GenerateSequence
-            .from(0)
-            .withRate(1, Duration.standardSeconds(updateFrequencySeconds)))
-        .apply("KeyByTable", ParDo.of(new KeySchemasByTableFn(schemaMapView))
-            .withSideInputs(schemaMapView))
-        .apply("BuildMergeStatements",
-            ParDo.of(
-                new MergeStatementBuildingFn(changeLogDataset, replicaDataset, gcpProjectId)))
-        .setCoder(SerializableCoder.of(
-            TypeDescriptors.kvs(
-                TypeDescriptors.strings(),
-                TypeDescriptor.of(BigQueryAction.class))))
-        .apply("IssueMergeStatements",
-            ParDo.of(new BigQueryStatementIssuingFn(jobPrefix)));
+    // If the input collection does not have a primary key field, then we do not need to issue
+    // periodic merge requests.
+    if (inputCollectionSchema.hasField(DataflowCdcRowFormat.PRIMARY_KEY)) {
+      p.apply("MergeHeartbeat",
+          GenerateSequence
+              .from(0)
+              .withRate(1, Duration.standardSeconds(updateFrequencySeconds)))
+          .apply("KeyByTable", ParDo.of(new KeySchemasByTableFn(schemaMapView))
+              .withSideInputs(schemaMapView))
+          .apply("BuildMergeStatements",
+              ParDo.of(
+                  new MergeStatementBuildingFn(changeLogDataset, replicaDataset, gcpProjectId)))
+          .setCoder(SerializableCoder.of(
+              TypeDescriptors.kvs(
+                  TypeDescriptors.strings(),
+                  TypeDescriptor.of(BigQueryAction.class))))
+          .apply("IssueMergeStatements",
+              ParDo.of(new BigQueryStatementIssuingFn(jobPrefix)));
+    }
     return PDone.in(p);
   }
 

@@ -66,12 +66,13 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslator {
     LOG.debug("Beam Row is {}", afterValueRow);
 
     Row primaryKey = null;
+    boolean hasPK = true;
     if (record.key() == null) {
-      return null;
+      hasPK = false;
+    } else {
+      primaryKey = handleValue(record.keySchema(), record.key());
+      LOG.debug("Key Schema: {} | Key Value: {}", primaryKey.getSchema(), primaryKey);
     }
-
-    primaryKey = handleValue(record.keySchema(), record.key());
-    LOG.debug("Key Schema: {} | Key Value: {}", primaryKey.getSchema(), primaryKey);
 
     String sourceRecordOp = recordValue.getString("op");
     String operation = translateOperation(sourceRecordOp);
@@ -82,27 +83,32 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslator {
     Long timestampMs = recordValue.getInt64("ts_ms");
 
     if (!knownSchemas.containsKey(qualifiedTableName)) {
-      knownSchemas.put(
-          qualifiedTableName,
-          org.apache.beam.sdk.schemas.Schema
-              .builder()
-              .addStringField(DataflowCdcRowFormat.OPERATION)
-              .addStringField(DataflowCdcRowFormat.TABLE_NAME)
-              .addRowField(DataflowCdcRowFormat.PRIMARY_KEY, primaryKey.getSchema())
-              .addField(org.apache.beam.sdk.schemas.Schema.Field.nullable(
-                  DataflowCdcRowFormat.FULL_RECORD, FieldType.row(afterValueRow.getSchema())))
-              .addInt64Field(DataflowCdcRowFormat.TIMESTAMP_MS)
-              .build());
+      org.apache.beam.sdk.schemas.Schema.Builder schemaBuilder = org.apache.beam.sdk.schemas.Schema
+          .builder()
+          .addStringField(DataflowCdcRowFormat.OPERATION)
+          .addStringField(DataflowCdcRowFormat.TABLE_NAME)
+          .addField(org.apache.beam.sdk.schemas.Schema.Field.nullable(
+              DataflowCdcRowFormat.FULL_RECORD, FieldType.row(afterValueRow.getSchema())))
+          .addInt64Field(DataflowCdcRowFormat.TIMESTAMP_MS);
+
+      if (hasPK) {
+        schemaBuilder.addRowField(DataflowCdcRowFormat.PRIMARY_KEY, primaryKey.getSchema());
+      }
+      knownSchemas.put(qualifiedTableName, schemaBuilder.build());
     }
     org.apache.beam.sdk.schemas.Schema finalBeamSchema = knownSchemas.get(qualifiedTableName);
 
-    return Row.withSchema(finalBeamSchema)
+    Row.Builder beamRowBuilder = Row.withSchema(finalBeamSchema)
         .addValue(operation)
         .addValue(qualifiedTableName)
-        .addValue(primaryKey)
         .addValue(afterValueRow)
-        .addValue(timestampMs)
-        .build();
+        .addValue(timestampMs);
+
+    if (hasPK) {
+      beamRowBuilder.addValue(primaryKey);
+    }
+
+    return beamRowBuilder.build();
   }
 
   private static String translateOperation(String op) {
