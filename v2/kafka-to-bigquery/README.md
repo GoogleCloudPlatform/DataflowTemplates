@@ -84,6 +84,6 @@ export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud beta dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters outputTableSpec=${OUTPUT_TABLE},inputTopics=${TOPICS},javascriptTextTransformGcsPath=${JS_PATH},javascriptTextTransformFunctionName=${JS_FUNC_NAME},bootstrapServers=${BOOTSTRAP}
+        --parameters ^~^outputTableSpec=${OUTPUT_TABLE}~inputTopics=${TOPICS}~javascriptTextTransformGcsPath=${JS_PATH}~javascriptTextTransformFunctionName=${JS_FUNC_NAME}~bootstrapServers=${BOOTSTRAP}
 
 ```
