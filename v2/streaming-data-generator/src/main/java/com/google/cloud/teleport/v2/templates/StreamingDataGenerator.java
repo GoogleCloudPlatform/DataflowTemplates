@@ -46,7 +46,7 @@ import org.joda.time.Instant;
 
 
 /**
- * The {@link StreamingBenchmark} is a streaming pipeline which generates messages at a specified
+ * The {@link StreamingDataGenerator} is a streaming pipeline which generates messages at a specified
  * rate to a Pub/Sub topic. The messages are generated according to a schema template which
  * instructs the pipeline how to populate the messages with fake data compliant to constraints.
  *
@@ -108,14 +108,14 @@ import org.joda.time.Instant;
 
 
  */
-public class StreamingBenchmark {
+public class StreamingDataGenerator {
 
   /**
-   * The {@link StreamingBenchmarkOptions} class provides the custom execution options passed by the executor at the
+   * The {@link StreamingDataGeneratorOptions} class provides the custom execution options passed by the executor at the
    * command-line.
    */
-  public interface StreamingBenchmarkOptions extends PipelineOptions {
-    @Description("The QPS which the benchmark should output to Pub/Sub.")
+  public interface StreamingDataGeneratorOptions extends PipelineOptions {
+    @Description("Indicates rate of messages per second to be published to Pub/Sub.")
     @Required
     Long getQps();
 
@@ -137,16 +137,16 @@ public class StreamingBenchmark {
   /**
    * The main entry-point for pipeline execution. This method will start the pipeline but will not
    * wait for it's execution to finish. If blocking execution is required, use the {@link
-   * StreamingBenchmark#run(Options)} method to start the pipeline and invoke {@code
+   * StreamingDataGenerator#run(Options)} method to start the pipeline and invoke {@code
    * result.waitUntilFinish()} on the {@link PipelineResult}.
    *
    * @param args The command-line args passed by the executor.
    */
   public static void main(String[] args) {
-    StreamingBenchmarkOptions options = PipelineOptionsFactory
+    StreamingDataGeneratorOptions options = PipelineOptionsFactory
         .fromArgs(args)
         .withValidation()
-        .as(StreamingBenchmarkOptions.class);
+        .as(StreamingDataGeneratorOptions.class);
 
     run(options);
   }
@@ -160,7 +160,7 @@ public class StreamingBenchmark {
    * @param options The execution options.
    * @return The pipeline result.
    */
-  public static PipelineResult run(StreamingBenchmarkOptions options) {
+  public static PipelineResult run(StreamingDataGeneratorOptions options) {
 
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);

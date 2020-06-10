@@ -1,7 +1,0 @@
-{
-  "mainClass": "com.google.cloud.teleport.v2.templates.StreamingBenchmark",
-  "classPath": "/template/streaming-benchmark/*:/template/streaming-benchmark/libs/*:/template/streaming-benchmark/classes",
-  "defaultParameterValues": {
-    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"streaming_benchmark\"}"
-  }
-}

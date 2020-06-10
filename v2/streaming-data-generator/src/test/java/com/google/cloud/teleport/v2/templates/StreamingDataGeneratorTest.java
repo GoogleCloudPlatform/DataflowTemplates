@@ -21,7 +21,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-import com.google.cloud.teleport.v2.templates.StreamingBenchmark.MessageGeneratorFn;
+import com.google.cloud.teleport.v2.templates.StreamingDataGenerator.MessageGeneratorFn;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -45,9 +45,9 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Test cases for the {@link StreamingBenchmark} class. */
+/** Test cases for the {@link StreamingDataGenerator} class. */
 @RunWith(JUnit4.class)
-public class StreamingBenchmarkTest {
+public class StreamingDataGeneratorTest {
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 

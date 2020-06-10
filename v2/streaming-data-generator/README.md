@@ -1,4 +1,4 @@
-# Dataflow Streaming Benchmark
+# Dataflow Streaming Data Generator
 
 During Dataflow pipelines development, common requirement is to run a benchmark at a specific QPS using
 fake or generated data. This pipeline takes in a QPS parameter, a path to a schema file, and 
@@ -6,7 +6,7 @@ generates fake JSON messages matching the schema to a Pub/Sub topic at the QPS r
 
 ## Pipeline
 
-[StreamingBenchmark](src/main/java/com/google/cloud/teleport/v2/templates/StreamingBenchmark.java) -
+[StreamingDataGenerator](src/main/java/com/google/cloud/teleport/v2/templates/StreamingDataGenerator.java) -
 A streaming pipeline which generates messages at a specified rate to a Pub/Sub topic. The messages 
 are generated according to a schema template and instructs the pipeline to populate the 
 messages with fake data compliant to constraints.
@@ -80,7 +80,7 @@ export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
-export TEMPLATE_MODULE=streaming-benchmark
+export TEMPLATE_MODULE=streaming-data-generator
 export APP_ROOT=/template/${TEMPLATE_MODULE}
 export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_MODULE}-command-spec.json
 export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
@@ -104,18 +104,14 @@ Create template spec in Cloud Storage with path to container image in Google Con
 {
 	"image": "gcr.io/project-id/image-name",
 	"metadata": {
-		"name": "Streaming pipelines Benchmarking",
+		"name": "Streaming data generator",
 		"description": "Publishes the messages at specified qps to benchmark performance of streaming pipelines",
-		"parameters": [{
-				"name": "autoscalingAlgorithm",
-				"label": "autoscaling Algorithm",
-				"helpText": "autoscalingAlgorithm",
-				"paramType": "TEXT"
-			},
+		"parameters": [
 			{
 				"name": "schemaLocation",
 				"label": "Location of Schema file in json format",
 				"helpText": "GCS path of schema location. ex: gs://MyBucket/file.json",
+                "is_optional": false,
 				"regexes": [
 					"^gs:\\/\\/[^\\n\\r]+$"
 				],
@@ -124,21 +120,31 @@ Create template spec in Cloud Storage with path to container image in Google Con
 			{
 				"name": "topic",
 				"label": "PubSub Topic name",
-				"helpText": "Name of pubsub topic. ex: projects/<project-id>/topics/<topic-id>",
+				"helpText": "The name of the topic to which the pipeline should publish data. For example, projects/<project-id>/topics/<topic-name>",
+                "is_optional": false,
 				"regexes": [
-					"^projects/.+/topics/.+"
+					"^projects\\/[^\\n\\r\\/]+\\/topics\\/[^\\n\\r\\/]+$"
 				],
 				"paramType": "PUBSUB_TOPIC"
 			},
 			{
 				"name": "qps",
-				"label": "Messages per second",
-				"helpText": "Messages per second",
+				"label": "Required output qps",
+				"helpText": "Messages to be published per second",
+                "is_optional": false,
 				"regexes": [
 					"^[1-9]+$"
 				],
 				"paramType": "TEXT"
-			}
+			},
+            {
+              
+               "name": "autoscalingAlgorithm",
+                "label": "autoscaling Algorithm",
+                "helpText": "autoscalingAlgorithm",
+                "isOptional": true,
+                "paramType": "TEXT"
+            }         			
 		]
 	   },
 	"sdk_info": {

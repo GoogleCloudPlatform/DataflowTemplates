@@ -582,7 +582,7 @@
         <module>pubsub-cdc-to-bigquery</module>
         <module>pubsub-to-elasticsearch</module>
         <module>pubsub-to-mongodb</module>
-        <module>streaming-benchmark</module>
+        <module>streaming-data-generator</module>
     </modules>
 
 </project>
