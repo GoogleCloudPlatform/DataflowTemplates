@@ -166,8 +166,10 @@ public class CdcToBigQueryChangeApplierPipeline {
 
     // Add label to track Dataflow CDC jobs launched.
     Map<String, String> dataflowCdcLabels = new HashMap<>();
-    dataflowCdcLabels.putAll(
-        p.getOptions().as(DataflowPipelineOptions.class).getLabels());
+    if (p.getOptions().as(DataflowPipelineOptions.class).getLabels() != null) {
+      dataflowCdcLabels.putAll(
+          p.getOptions().as(DataflowPipelineOptions.class).getLabels());
+    }
     dataflowCdcLabels.put("dataflow-cdc", "debezium-template");
     dataflowCdcLabels.put("goog-dataflow-provided-template-name", "dataflow_dbz_cdc");
     dataflowCdcLabels.put("goog-dataflow-provided-template-type", "flex");
