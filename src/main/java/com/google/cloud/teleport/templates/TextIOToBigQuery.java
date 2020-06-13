@@ -30,6 +30,7 @@ import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
@@ -80,6 +81,12 @@ public class TextIOToBigQuery {
     ValueProvider<String> getBigQueryLoadingTemporaryDirectory();
 
     void setBigQueryLoadingTemporaryDirectory(ValueProvider<String> directory);
+
+    @Description("Specifies what to do with existing data in the table, in case the table already exists")
+    @Default.Enum("WRITE_APPEND")
+    WriteDisposition getWriteDisposition();
+
+    void setWriteDisposition(WriteDisposition writeDisposition);
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(TextIOToBigQuery.class);
@@ -147,7 +154,7 @@ public class TextIOToBigQuery {
                         }))
                 .to(options.getOutputTable())
                 .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
-                .withWriteDisposition(WriteDisposition.WRITE_APPEND)
+                .withWriteDisposition(options.getWriteDisposition())
                 .withCustomGcsTempLocation(options.getBigQueryLoadingTemporaryDirectory()));
 
     pipeline.run();
