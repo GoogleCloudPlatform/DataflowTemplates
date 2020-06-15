@@ -43,7 +43,7 @@ public class BigQueryDeadLetterQueueSanitizer
   @Override
   public String getJsonMessage(BigQueryInsertError input) {
     TableRow row = input.getRow();
-    String message = "";
+    String message;
     try {
       row.setFactory(JSON_FACTORY);
       message = row.toPrettyString();
