@@ -57,8 +57,8 @@ import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;
 import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerAccessor;
+import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerWriteResult;
 import org.apache.beam.sdk.io.gcp.spanner.Transaction;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -147,7 +147,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
         schemas.apply("Build avro DDL", Combine.globally(AsList.fn()));
 
     PCollectionView<Transaction> tx =
-        begin.apply(SpannerIO.createTransaction().withSpannerConfig(spannerConfig));
+        begin.apply(LocalSpannerIO.createTransaction().withSpannerConfig(spannerConfig));
 
     PCollection<Ddl> informationSchemaDdl =
         begin.apply("Read Information Schema", new ReadInformationSchema(spannerConfig, tx));
@@ -236,7 +236,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
       SpannerWriteResult result =
           mutations.apply(
               "Write mutations " + depth,
-              SpannerIO.write()
+              LocalSpannerIO.write()
                   .withSchemaReadySignal(ddl)
                   .withSpannerConfig(spannerConfig)
                   .withCommitDeadline(Duration.standardMinutes(1))

@@ -24,9 +24,9 @@ import com.google.cloud.teleport.templates.common.TextConverters.FilesystemWrite
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.MapElements;
@@ -106,7 +106,7 @@ public class SpannerToText {
             // can be read only inside DoFn but SpannerIO.read() is of type
             // PTransform<PBegin, Struct>, which prevents prepending it with DoFn that reads these
             // parameters at the pipeline execution time.
-            .apply("Read all records", SpannerIO.readAll().withSpannerConfig(spannerConfig))
+            .apply("Read all records", LocalSpannerIO.readAll().withSpannerConfig(spannerConfig))
             .apply(
                 "Struct To Csv",
                 MapElements.into(TypeDescriptors.strings())
