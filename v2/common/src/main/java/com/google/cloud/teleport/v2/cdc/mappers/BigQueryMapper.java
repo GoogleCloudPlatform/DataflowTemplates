@@ -28,18 +28,19 @@ import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableInfo;
 import com.google.cloud.bigquery.TimePartitioning;
+import com.google.common.base.Supplier;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.PCollection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 /**
  * BigQueryMapper is intended to be easily extensible to enable BigQuery schema management during
@@ -55,11 +56,12 @@ public class BigQueryMapper<InputT, OutputT>
 
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryMapper.class);
   private BigQuery bigquery;
-  private Map<String, Table> tables = new HashMap<String, Table>();
   private Map<String, LegacySQLTypeName> defaultSchema;
   private boolean dayPartitioning = false;
   private final String projectId;
   private BigQueryTableRowCleaner bqTableRowCleaner;
+  private BigQueryTableCache tableCache;
+  private int mapperRetries = 5;
 
   public BigQueryMapper(String projectId) {
     this.projectId = projectId;
@@ -82,6 +84,14 @@ public class BigQueryMapper<InputT, OutputT>
   */
   public Map<String, LegacySQLTypeName> getInputSchema(InputT input) {
     return new HashMap<String, LegacySQLTypeName>();
+  }
+
+  public void setMapperRetries(int retries) {
+    this.mapperRetries = retries;
+  }
+
+  public int getMapperRetries() {
+    return this.mapperRetries;
   }
 
   public String getProjectId() {
@@ -112,6 +122,20 @@ public class BigQueryMapper<InputT, OutputT>
     return inputSchema;
   }
 
+  /** Sets all objects needed during mapper execution. */
+  public void setUp() {
+    if (this.bqTableRowCleaner == null) {
+      this.bqTableRowCleaner = BigQueryTableRowCleaner.getBigQueryTableRowCleaner();
+    }
+    if (this.bigquery == null) {
+      this.bigquery =
+          BigQueryOptions.newBuilder().setProjectId(getProjectId()).build().getService();
+    }
+    if (this.tableCache == null) {
+      this.tableCache = new BigQueryTableCache(this.bigquery);
+    }
+  }
+
   @Override
   public PCollection<OutputT> expand(PCollection<InputT> tableKVPCollection) {
     return tableKVPCollection.apply(
@@ -126,11 +150,13 @@ public class BigQueryMapper<InputT, OutputT>
                     If a column is in the event and not in BigQuery,
                     the column is added to the table before the event can continue.
                 */
+                setUp();
                 TableId tableId = getTableId(input);
                 TableRow row = getTableRow(input);
                 Map<String, LegacySQLTypeName> inputSchema = getObjectSchema(input);
+                int retries = getMapperRetries();
 
-                updateTableIfRequired(tableId, row, inputSchema);
+                applyMapperToTableRow(tableId, row, inputSchema, retries);
                 return getOutputObject(input);
               }
             }));
@@ -146,17 +172,6 @@ public class BigQueryMapper<InputT, OutputT>
   }
 
   /**
-   * Returns {@code BigQueryTableRowCleaner} to clean TableRow data after BigQuery mapping.
-   */
-  public BigQueryTableRowCleaner getBigQueryTableRowCleaner() {
-    if (this.bqTableRowCleaner == null) {
-      this.bqTableRowCleaner = BigQueryTableRowCleaner.getBigQueryTableRowCleaner();
-    }
-
-    return this.bqTableRowCleaner;
-  }
-
-  /**
    * Returns {@code TableRow} after cleaning each field according to
    * the data type found in BigQuery.
    *
@@ -164,35 +179,60 @@ public class BigQueryMapper<InputT, OutputT>
    * @param row a TableRow with the raw data to be loaded into BigQuery.
    */
   public TableRow getCleanedTableRow(TableId tableId, TableRow row) {
-    BigQueryTableRowCleaner bqCleaner = getBigQueryTableRowCleaner();
     TableRow cleanRow = row.clone();
 
-    Table table = getCachedTable(tableId);
+    Table table = this.tableCache.get(tableId);
     FieldList tableFields = table.getDefinition().getSchema().getFields();
 
     Set<String> rowKeys = cleanRow.keySet();
     for (String rowKey : rowKeys) {
-      bqCleaner.cleanTableRowField(cleanRow, tableFields, rowKey);
+      this.bqTableRowCleaner.cleanTableRowField(cleanRow, tableFields, rowKey);
     }
 
     return cleanRow;
   }
 
-  private void updateTableIfRequired(TableId tableId, TableRow row,
-      Map<String, LegacySQLTypeName> inputSchema) {
-    // Ensure Instance of BigQuery Exists
-    if (this.bigquery == null) {
-      this.bigquery =
-          BigQueryOptions.newBuilder()
-              .setProjectId(getProjectId())
-              .build()
-              .getService();
+  /**
+   * Extracts and applies new column information to BigQuery by comparing the TableRow against the
+   * BigQuery Table. Retries the supplied number of times before failing.
+   *
+   * @param tableId a TableId referencing the BigQuery table to be loaded to.
+   * @param row a TableRow with the raw data to be loaded into BigQuery.
+   * @param inputSchema The source schema lookup to be used in mapping.
+   * @param retries Number of remaining retries before error is raised.
+   */
+  private void applyMapperToTableRow(
+      TableId tableId, TableRow row, Map<String, LegacySQLTypeName> inputSchema, int retries) {
+    try {
+      updateTableIfRequired(tableId, row, inputSchema);
+    } catch (Exception e) {
+      if (retries > 0) {
+        LOG.info("RETRY TABLE UPDATE - enter: {}", String.valueOf(retries));
+        try {
+          Thread.sleep(2000);
+        } catch (InterruptedException i) {
+          throw e;
+        }
+        LOG.info("RETRY TABLE UPDATE - apply: {}", String.valueOf(retries));
+        applyMapperToTableRow(tableId, row, inputSchema, retries - 1);
+      } else {
+        LOG.info("RETRY TABLE UPDATE - throw: {}", String.valueOf(retries));
+        throw e;
+      }
     }
+  }
 
-    // Get BigQuery Table for Given Row
-    Table table = getBigQueryTable(tableId);
-
-    // Validate Table Schema
+  /**
+   * Extracts and applies new column information to BigQuery by comparing the TableRow against the
+   * BigQuery Table.
+   *
+   * @param tableId a TableId referencing the BigQuery table to be loaded to.
+   * @param row a TableRow with the raw data to be loaded into BigQuery.
+   * @param inputSchema The source schema lookup to be used in mapping.
+   */
+  private void updateTableIfRequired(
+      TableId tableId, TableRow row, Map<String, LegacySQLTypeName> inputSchema) {
+    Table table = getOrCreateBigQueryTable(tableId);
     FieldList tableFields = table.getDefinition().getSchema().getFields();
 
     Set<String> rowKeys = row.keySet();
@@ -214,51 +254,29 @@ public class BigQueryMapper<InputT, OutputT>
   }
 
   /**
-   * Returns {@code Table} from BigQuery or cache referenced by the supplied TableId
-   * the data type found in BigQuery.
+   * Returns {@code Table} which was either extracted from the cache or created.
    *
-   * @param tableId a TableId referencing the BigQuery table to be loaded to.
+   * @param tableId a TableId referencing the BigQuery table being requested.
    */
-  private Table getCachedTable(TableId tableId) {
-    String tableName = tableId.toString();
-    Table table = tables.get(tableName);
+  private Table getOrCreateBigQueryTable(TableId tableId) {
+    Table table = this.tableCache.get(tableId);
 
-    return table;
-  }
-
-  /**
-   * Sets the BigQuery {@code Table} in local cache.
-   * the data type found in BigQuery.
-   *
-   * @param tableId a TableId referencing the BigQuery table to be loaded to.
-   * @param table a Table referencing the BigQuery table to be cached.
-   */
-  private void setCachedTable(TableId tableId, Table table) {
-    String tableName = tableId.toString();
-    tables.put(tableName, table);
-  }
-
-  private Table getBigQueryTable(TableId tableId) {
-    Table table = getCachedTable(tableId);
-
-    // Checks that table existed in tables map
-    // If not pull table from API
-    // TODO: we need logic to invalidate table caches?
-    if (table == null) {
-      LOG.info("Pulling Table from API: {}", tableId.toString());
-      table = bigquery.getTable(tableId);
-    }
     // Check that table exists, if not create empty table
     // the empty table will have columns automapped during updateBigQueryTable()
     if (table == null) {
       LOG.info("Creating Table: {}", tableId.toString());
       table = createBigQueryTable(tableId);
+      table = this.tableCache.reset(tableId);
     }
-    setCachedTable(tableId, table);
 
     return table;
   }
 
+  /**
+   * Returns {@code Table} after creating the table with no columns in BigQuery.
+   *
+   * @param tableId a TableId referencing the BigQuery table being requested.
+   */
   private Table createBigQueryTable(TableId tableId) {
     // Create Blank BigQuery Table
     List<Field> fieldList = new ArrayList<Field>();
@@ -299,8 +317,9 @@ public class BigQueryMapper<InputT, OutputT>
     Schema newSchema = Schema.of(fieldList);
     Table updatedTable =
         table.toBuilder().setDefinition(StandardTableDefinition.of(newSchema)).build().update();
+    LOG.info("Updated Table");
 
-    tables.put(tableName, updatedTable);
+    this.tableCache.reset(tableId);
   }
 
   private Boolean addNewTableField(TableId tableId, TableRow row, String rowKey,
@@ -319,5 +338,86 @@ public class BigQueryMapper<InputT, OutputT>
     // Currently we always add new fields for each call
     // TODO: add an option to ignore new field and why boolean?
     return true;
+  }
+
+  /**
+   * The {@link BigQueryTableCache} manages safely getting and setting BigQuery Table objects from a
+   * local cache for each worker thread.
+   *
+   * <p>The key factors addressed are ensuring expiration of cached tables, consistent update
+   * behavior to ensure reliabillity, and easy cache reloads. Open Question: Does the class require
+   * thread-safe behaviors? Currently it does not since there is no iteration and get/set are not
+   * continuous.
+   */
+  public static class BigQueryTableCache {
+
+    private Map<String, TableSupplier> tables = new HashMap<String, TableSupplier>();
+    private BigQuery bigquery;
+
+    /**
+     * Create an instance of a {@link BigQueryTableCache} to track table schemas.
+     *
+     * @param bigquery A BigQuery instance used to extract Table objects.
+     */
+    public BigQueryTableCache(BigQuery bigquery) {
+      this.bigquery = bigquery;
+    }
+
+    /**
+     * Return a {@code Table} representing the schema of a BigQuery table.
+     *
+     * @param tableId A BigQuuery table reference used as the key to lookup.
+     */
+    public Table get(TableId tableId) {
+      String tableName = tableId.toString();
+      TableSupplier tableSupplier = tables.get(tableName);
+
+      // Reset cache if the table DNE in the map
+      // or if ther cache has expired.
+      if (tableSupplier == null) {
+        return this.reset(tableId);
+      } else if (tableSupplier.get() == null) {
+        return this.reset(tableId);
+      } else {
+        return tableSupplier.get();
+      }
+    }
+
+    /**
+     * Returns a {@code Table} pulled from BigQuery and sets the table in the local cache.
+     *
+     * @param tableId a TableId referencing the BigQuery table to be reset.
+     */
+    public Table reset(TableId tableId) {
+      String tableName = tableId.toString();
+      Table table = this.bigquery.getTable(tableId);
+      LOG.info("Reset Table from API: {}", tableName);
+
+      TableSupplier tableSupplier = new TableSupplier(table, 5, TimeUnit.MINUTES);
+      tables.put(tableName, tableSupplier);
+      return table;
+    }
+
+    /**
+     * The {@link TableSupplier} is a Supplier to help manage BQ Tables. The Table is stored as well
+     * as expiry time to enable cache expiry after a given amount of time.
+     */
+    public static class TableSupplier implements Supplier<Table> {
+      Table table;
+      long expiryTimeNano;
+
+      public TableSupplier(Table table, long duration, TimeUnit unit) {
+        this.table = table;
+        this.expiryTimeNano = System.nanoTime() + unit.toNanos(duration);
+      }
+
+      @Override
+      public Table get() {
+        if (this.expiryTimeNano < System.nanoTime()) {
+          return null;
+        }
+        return this.table;
+      }
+    }
   }
 }

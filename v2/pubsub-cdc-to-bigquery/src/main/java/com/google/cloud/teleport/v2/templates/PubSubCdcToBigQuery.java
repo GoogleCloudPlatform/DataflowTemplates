@@ -291,8 +291,9 @@ public class PubSubCdcToBigQuery {
      * Step #3: Cont.
      *    - Write rows out to BigQuery
      */
-    WriteResult writeResult = tableEvents
-        .apply(
+    // TODO(https://github.com/apache/beam/pull/12004): Switch out alwaysRetry
+    WriteResult writeResult =
+        tableEvents.apply(
             "WriteSuccessfulRecords",
             BigQueryIO.<KV<TableId, TableRow>>write()
                 .to(new BigQueryDynamicConverters().bigQueryDynamicDestination())
@@ -302,7 +303,7 @@ public class PubSubCdcToBigQuery {
                 .withWriteDisposition(WriteDisposition.WRITE_APPEND)
                 .withExtendedErrorInfo()
                 .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
-                .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
+                .withFailedInsertRetryPolicy(InsertRetryPolicy.alwaysRetry()));
 
     /*
      * Step 3 Contd.
