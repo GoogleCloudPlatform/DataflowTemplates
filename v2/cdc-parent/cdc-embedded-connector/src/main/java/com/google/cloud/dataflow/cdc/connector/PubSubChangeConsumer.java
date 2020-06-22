@@ -34,6 +34,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.function.BiFunction;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.beam.sdk.coders.RowCoder;
 import org.apache.beam.sdk.values.Row;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -99,6 +101,17 @@ public class PubSubChangeConsumer implements EmbeddedEngine.ChangeConsumer {
     return rowCoderMap.get(tableName);
   }
 
+  private boolean isTableWhitelisted(String tableName, Set<String> whitelistedTables) {
+    for (String whitelistedTable: whitelistedTables) {
+      Pattern pattern = Pattern.compile(whitelistedTable);
+      Matcher m = pattern.matcher(tableName);
+      if (m.matches()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   @Override
   public void handleBatch(
       List<SourceRecord> records, RecordCommitter committer) throws InterruptedException {
@@ -114,7 +127,7 @@ public class PubSubChangeConsumer implements EmbeddedEngine.ChangeConsumer {
       // qualified name of the MySQL table (e.g. dbInstanceName.databaseName.table_name).
       String tableName = r.topic();
 
-      if (whitelistedTables.contains(tableName)) {
+      if (isTableWhitelisted(tableName, whitelistedTables)) {
         Row updateRecord = translator.translate(r);
         if (updateRecord == null) {
           continue;
