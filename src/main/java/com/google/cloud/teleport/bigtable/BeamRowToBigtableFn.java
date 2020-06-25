@@ -19,12 +19,11 @@ package com.google.cloud.teleport.bigtable;
 
 import com.google.bigtable.v2.Mutation;
 import com.google.bigtable.v2.Mutation.SetCell;
-import com.google.common.collect.ImmutableList;
-import com.google.common.io.BaseEncoding;
 import com.google.protobuf.ByteString;
 import java.math.BigDecimal;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -32,13 +31,19 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.schemas.Schema.Field;
 import org.apache.beam.sdk.schemas.Schema.TypeName;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.Row;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.MoreObjects;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.io.BaseEncoding;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.joda.time.ReadableInstant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This DoFn takes a Beam {@link Row} as input and converts to Bigtable {@link Mutation}s. Primitive
@@ -65,19 +70,58 @@ import org.joda.time.ReadableInstant;
  *     The Cassandra Row Key </a>
  */
 public class BeamRowToBigtableFn extends DoFn<Row, KV<ByteString, Iterable<Mutation>>> {
+  private static final Logger LOG = LoggerFactory.getLogger(AvroToBigtable.class);
+
+  public static final int MAX_MUTATION_PER_REQUEST = 100000;
+  private static final boolean DEFAULT_SPLIT_LARGE_ROWS = false;
 
   private static final String ROW_KEY_DESCRIPTION_PREFIX = "rowkeyorder";
   private final ValueProvider<String> defaultColumnFamily;
   private final ValueProvider<String> defaultRowKeySeparator;
+  private final ValueProvider<Boolean> splitLargeRowsFlag;
+  private Boolean splitLargeRows;
+  private final int maxMutationsPerRequest;
+
+  public static BeamRowToBigtableFn create(
+      ValueProvider<String> defaultRowKeySeparator, ValueProvider<String> defaultColumnFamily) {
+    return new BeamRowToBigtableFn(
+        defaultRowKeySeparator,
+        defaultColumnFamily,
+        StaticValueProvider.of(DEFAULT_SPLIT_LARGE_ROWS),
+        MAX_MUTATION_PER_REQUEST);
+  }
+
+  public static BeamRowToBigtableFn createWithSplitLargeRows(
+      ValueProvider<String> defaultRowKeySeparator,
+      ValueProvider<String> defaultColumnFamily,
+      ValueProvider<Boolean> splitLargeRowsFlag,
+      int maxMutationsPerRow) {
+    return new BeamRowToBigtableFn(
+        defaultRowKeySeparator, defaultColumnFamily, splitLargeRowsFlag, maxMutationsPerRow);
+  }
 
   /**
    * @param defaultRowKeySeparator the row key field separator. See above for details.
    * @param defaultColumnFamily the default column family to write cell values & column qualifiers.
    */
-  BeamRowToBigtableFn(
-      ValueProvider<String> defaultRowKeySeparator, ValueProvider<String> defaultColumnFamily) {
+  private BeamRowToBigtableFn(
+      ValueProvider<String> defaultRowKeySeparator,
+      ValueProvider<String> defaultColumnFamily,
+      ValueProvider<Boolean> splitLargeRowsFlag,
+      int maxMutationsPerRequest) {
     this.defaultColumnFamily = defaultColumnFamily;
     this.defaultRowKeySeparator = defaultRowKeySeparator;
+    this.splitLargeRowsFlag = splitLargeRowsFlag;
+    this.maxMutationsPerRequest = maxMutationsPerRequest;
+  }
+
+  @Setup
+  public void setup() {
+    if (splitLargeRowsFlag != null) {
+      splitLargeRows = splitLargeRowsFlag.get();
+    }
+    splitLargeRows = MoreObjects.firstNonNull(splitLargeRows, DEFAULT_SPLIT_LARGE_ROWS);
+    LOG.info("splitLargeRows set to: " + splitLargeRows);
   }
 
   @ProcessElement
@@ -87,6 +131,9 @@ public class BeamRowToBigtableFn extends DoFn<Row, KV<ByteString, Iterable<Mutat
 
     // Generate the Bigtable Rowkey. This key will be used for all Cells for this row.
     ByteString rowkey = generateRowKey(row);
+
+    // Number of mutations accumulated to be outputted.
+    int cellsProcessed = 0;
 
     // DoFn return value.
     ImmutableList.Builder<Mutation> mutations = ImmutableList.builder();
@@ -105,23 +152,37 @@ public class BeamRowToBigtableFn extends DoFn<Row, KV<ByteString, Iterable<Mutat
 
     // Iterate over all the fields with three cases. Primitives, collections and maps.
     for (Field field : nonKeyColumns) {
+      List<Mutation> mutationsToAdd;
       TypeName type = field.getType().getTypeName();
       if (type.isPrimitiveType()) {
         ByteString value = primitiveFieldToBytes(type, row.getValue(field.getName()));
         SetCell cell = createCell(defaultColumnFamily.get(), field.getName(), value);
-        mutations.add(Mutation.newBuilder().setSetCell(cell).build());
+        mutationsToAdd = Arrays.asList(Mutation.newBuilder().setSetCell(cell).build());
       } else if (type.isCollectionType()) {
-        List<Mutation> collectionMutations = createCollectionMutations(row, field);
-        mutations.addAll(collectionMutations);
+        mutationsToAdd = createCollectionMutations(row, field);
       } else if (type.isMapType()) {
-        List<Mutation> mapMutations = createMapMutations(row, field);
-        mutations.addAll(mapMutations);
+        mutationsToAdd = createMapMutations(row, field);
       } else {
         throw new UnsupportedOperationException(
             "Mapper does not support type:" + field.getType().getTypeName().toString());
       }
+
+      for (Mutation mutationToAdd : mutationsToAdd) {
+        mutations.add(mutationToAdd);
+        cellsProcessed++;
+        if (this.splitLargeRows && cellsProcessed % maxMutationsPerRequest == 0) {
+          // Send a MutateRow request when we have accumulated max mutations per request.
+          out.output(KV.of(rowkey, mutations.build()));
+          mutations = ImmutableList.builder();
+        }
+      }
     }
-    out.output(KV.of(rowkey, mutations.build()));
+
+    // Flush any remaining mutations.
+    ImmutableList remainingMutations = mutations.build();
+    if (!remainingMutations.isEmpty()) {
+      out.output(KV.of(rowkey, remainingMutations));
+    }
   }
 
   /**

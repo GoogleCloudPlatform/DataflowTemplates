@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.schemas.Schema.TypeName;
@@ -90,7 +91,7 @@ public class BeamRowToBigtableFnTest {
             .apply(
                 "Transform to Bigtable",
                 ParDo.of(
-                    new BeamRowToBigtableFn(
+                    BeamRowToBigtableFn.create(
                         ValueProvider.StaticValueProvider.of("#"),
                         ValueProvider.StaticValueProvider.of("default"))));
 
@@ -224,7 +225,7 @@ public class BeamRowToBigtableFnTest {
             .apply(
                 "Transform to Bigtable",
                 ParDo.of(
-                    new BeamRowToBigtableFn(
+                    BeamRowToBigtableFn.create(
                         ValueProvider.StaticValueProvider.of("#"),
                         ValueProvider.StaticValueProvider.of("default"))));
 
@@ -292,7 +293,7 @@ public class BeamRowToBigtableFnTest {
             .apply(
                 "Transform to Bigtable",
                 ParDo.of(
-                    new BeamRowToBigtableFn(
+                    BeamRowToBigtableFn.create(
                         ValueProvider.StaticValueProvider.of("#"),
                         ValueProvider.StaticValueProvider.of("default"))));
 
@@ -351,7 +352,7 @@ public class BeamRowToBigtableFnTest {
             .apply(
                 "Transform to Bigtable",
                 ParDo.of(
-                    new BeamRowToBigtableFn(
+                    BeamRowToBigtableFn.create(
                         ValueProvider.StaticValueProvider.of("#"),
                         ValueProvider.StaticValueProvider.of("default"))));
 
@@ -420,11 +421,128 @@ public class BeamRowToBigtableFnTest {
             .apply(
                 "Transform to Bigtable",
                 ParDo.of(
-                    new BeamRowToBigtableFn(
+                    BeamRowToBigtableFn.create(
                         ValueProvider.StaticValueProvider.of("#"),
                         ValueProvider.StaticValueProvider.of("default"))));
 
     PAssert.that(bigtableRows).containsInAnyOrder(expectedBigtableRows);
+    pipeline.run();
+  }
+
+  @Test
+  public void processElementWithSplitLargeRows() {
+    String columnFamily = "default";
+    String rowKeyValue = "rowkeyvalue";
+    String rowKeyColumnName = "rowkey";
+
+    // Int32
+    int int32Value = Integer.MAX_VALUE;
+    String int32ColumnName = "int32Column";
+
+    String listColumnName = "listColumnName";
+    List<String> listValue = new ArrayList<>();
+    listValue.add("first");
+    listValue.add("second");
+    listValue.add("third");
+
+    String mapColumnName = "mapColumnName";
+    Map<Integer, String> mapValue = new HashMap<>();
+    mapValue.put(0, "first");
+    mapValue.put(1, "second");
+    mapValue.put(2, "third");
+
+    Schema schema =
+        Schema.builder()
+            .addField(
+                Schema.Field.of(
+                    rowKeyColumnName,
+                    FieldType.STRING.withMetadata(
+                        CassandraRowMapperFn.KEY_ORDER_METADATA_KEY, "0")))
+            .addInt32Field(int32ColumnName)
+            .addField(
+                Schema.Field.of(mapColumnName, FieldType.map(FieldType.INT32, FieldType.STRING)))
+            .addField(Schema.Field.of(listColumnName, FieldType.array(FieldType.STRING)))
+            .build();
+    Row input =
+        Row.withSchema(schema)
+            .addValue(rowKeyValue)
+            .addValue(int32Value)
+            .addValue(mapValue)
+            .addValues(listValue)
+            .build();
+
+    final List<Row> rows = Collections.singletonList(input);
+
+    // Setup the pipeline
+    PCollection<KV<ByteString, Iterable<Mutation>>> bigtableRows =
+        pipeline
+            .apply("Create", Create.of(rows))
+            .apply(
+                "Transform to Bigtable",
+                ParDo.of(
+                    BeamRowToBigtableFn.createWithSplitLargeRows(
+                        ValueProvider.StaticValueProvider.of("#"),
+                        ValueProvider.StaticValueProvider.of("default"),
+                        StaticValueProvider.of(true),
+                        4)));
+
+    // Setup the expected values and match with returned values.
+    List<Mutation> mutations1 = new ArrayList<>();
+
+    mutations1.add(
+        createMutation(
+            columnFamily, int32ColumnName, ByteString.copyFrom(Bytes.toBytes(int32Value))));
+    mutations1.add(
+        createMutation(
+            columnFamily, "mapColumnName[0].key", ByteString.copyFrom(Bytes.toBytes(0))));
+    mutations1.add(
+        createMutation(
+            columnFamily,
+            "mapColumnName[0].value",
+            ByteString.copyFrom(Bytes.toBytes(mapValue.get(0)))));
+    mutations1.add(
+        createMutation(
+            columnFamily, "mapColumnName[1].key", ByteString.copyFrom(Bytes.toBytes(1))));
+    List<Mutation> mutations2 = new ArrayList<>();
+    mutations2.add(
+        createMutation(
+            columnFamily,
+            "mapColumnName[1].value",
+            ByteString.copyFrom(Bytes.toBytes(mapValue.get(1)))));
+    mutations2.add(
+        createMutation(
+            columnFamily, "mapColumnName[2].key", ByteString.copyFrom(Bytes.toBytes(2))));
+    mutations2.add(
+        createMutation(
+            columnFamily,
+            "mapColumnName[2].value",
+            ByteString.copyFrom(Bytes.toBytes(mapValue.get(2)))));
+    mutations2.add(
+        createMutation(
+            columnFamily,
+            "listColumnName[0]",
+            ByteString.copyFrom(Bytes.toBytes(listValue.get(0)))));
+    List<Mutation> mutations3 = new ArrayList<>();
+    mutations3.add(
+        createMutation(
+            columnFamily,
+            "listColumnName[1]",
+            ByteString.copyFrom(Bytes.toBytes(listValue.get(1)))));
+    mutations3.add(
+        createMutation(
+            columnFamily,
+            "listColumnName[2]",
+            ByteString.copyFrom(Bytes.toBytes(listValue.get(2)))));
+
+    final List<KV<ByteString, Iterable<Mutation>>> expectedBigtableRows =
+        ImmutableList.of(
+            KV.of(ByteString.copyFrom(Bytes.toBytes("rowkeyvalue")), mutations1),
+            KV.of(ByteString.copyFrom(Bytes.toBytes("rowkeyvalue")), mutations2),
+            KV.of(ByteString.copyFrom(Bytes.toBytes("rowkeyvalue")), mutations3));
+
+    PAssert.that(bigtableRows).containsInAnyOrder(expectedBigtableRows);
+
+    // Run the pipeline
     pipeline.run();
   }
 
@@ -462,7 +580,7 @@ public class BeamRowToBigtableFnTest {
             .apply(
                 "Transform to Bigtable",
                 ParDo.of(
-                    new BeamRowToBigtableFn(
+                    BeamRowToBigtableFn.create(
                         ValueProvider.StaticValueProvider.of("#"),
                         ValueProvider.StaticValueProvider.of("default"))));
 

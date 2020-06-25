@@ -115,6 +115,13 @@ final class CassandraToBigtable {
 
     @SuppressWarnings("unused")
     void setRowKeySeparator(ValueProvider<String> rowKeySeparator);
+
+    @Description(
+        "If true, a large row is split into multiple MutateRows requests. When a row is"
+            + " split across requests, updates are not atomic. ")
+    ValueProvider<Boolean> getSplitLargeRows();
+
+    void setSplitLargeRows(ValueProvider<Boolean> splitLargeRows);
   }
 
   /**
@@ -158,8 +165,11 @@ final class CassandraToBigtable {
         .apply(
             "Convert Row",
             ParDo.of(
-                new BeamRowToBigtableFn(
-                    options.getRowKeySeparator(), options.getDefaultColumnFamily())))
+                BeamRowToBigtableFn.createWithSplitLargeRows(
+                    options.getRowKeySeparator(),
+                    options.getDefaultColumnFamily(),
+                    options.getSplitLargeRows(),
+                    BeamRowToBigtableFn.MAX_MUTATION_PER_REQUEST)))
         .apply("Write to Bigtable", sink);
     p.run();
   }

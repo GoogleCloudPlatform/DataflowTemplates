@@ -21,7 +21,6 @@ import static com.google.cloud.teleport.bigtable.TestUtils.addParquetCell;
 import static com.google.cloud.teleport.bigtable.TestUtils.createBigtableRowMutations;
 
 import com.google.bigtable.v2.Mutation;
-import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -29,12 +28,14 @@ import java.util.List;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.beam.sdk.coders.AvroCoder;
+import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -93,12 +94,69 @@ public class ParquetToBigtableTest {
             ImmutableList.of(rowMutations1, rowMutations2);
 
     PCollection<KV<ByteString, Iterable<Mutation>>> bigtableRows =
-            pipeline
-                    .apply(
-                            "Create",
-                            Create.of(parquetRows)
-                                    .withCoder(AvroCoder.of(GenericRecord.class, BigtableRow.getClassSchema())))
-                    .apply("TransformToBigtable", ParDo.of(new ParquetToBigtableFn()));
+        pipeline
+            .apply(
+                "Create",
+                Create.of(parquetRows)
+                    .withCoder(AvroCoder.of(GenericRecord.class, BigtableRow.getClassSchema())))
+            .apply("TransformToBigtable", ParDo.of(ParquetToBigtableFn.create()));
+
+    PAssert.that(bigtableRows).containsInAnyOrder(expectedBigtableRows);
+    pipeline.run().waitUntilFinish();
+  }
+
+  /**
+   * Test whether {@link ParquetToBigtable} correctly maps a GenericRecord to a KV with
+   * SplitLargeRows enabled..
+   */
+  @Test
+  public void applyParquettoBigtableFnWithSplitLargeRows() throws Exception {
+
+    byte[] rowKey1 = "row1".getBytes();
+    ByteBuffer key1 = ByteBuffer.wrap(rowKey1);
+    List<BigtableCell> cells1 = new ArrayList<>();
+    addParquetCell(cells1, "family1", "column1", 1, "10");
+    addParquetCell(cells1, "family1", "column1", 2, "20");
+    addParquetCell(cells1, "family1", "column2", 1, "30");
+    addParquetCell(cells1, "family2", "column1", 1, "40");
+    GenericRecord parquetRow1 =
+        new GenericRecordBuilder(BigtableRow.getClassSchema())
+            .set("key", key1)
+            .set("cells", cells1)
+            .build();
+
+    byte[] rowKey2 = "row2".getBytes();
+    ByteBuffer key2 = ByteBuffer.wrap(rowKey2);
+    List<BigtableCell> cells2 = new ArrayList<>();
+    addParquetCell(cells2, "family2", "column2", 2, "40");
+    GenericRecord parquetRow2 =
+        new GenericRecordBuilder(BigtableRow.getClassSchema())
+            .set("key", key2)
+            .set("cells", cells2)
+            .build();
+    final List<GenericRecord> parquetRows = ImmutableList.of(parquetRow1, parquetRow2);
+
+    KV<ByteString, Iterable<Mutation>> rowMutations1 = createBigtableRowMutations("row1");
+    addBigtableMutation(rowMutations1, "family1", "column1", 1, "10");
+    addBigtableMutation(rowMutations1, "family1", "column1", 2, "20");
+    KV<ByteString, Iterable<Mutation>> rowMutations2 = createBigtableRowMutations("row1");
+    addBigtableMutation(rowMutations2, "family1", "column2", 1, "30");
+    addBigtableMutation(rowMutations2, "family2", "column1", 1, "40");
+    KV<ByteString, Iterable<Mutation>> rowMutations3 = createBigtableRowMutations("row2");
+    addBigtableMutation(rowMutations3, "family2", "column2", 2, "40");
+    final List<KV<ByteString, Iterable<Mutation>>> expectedBigtableRows =
+        ImmutableList.of(rowMutations1, rowMutations2, rowMutations3);
+
+    PCollection<KV<ByteString, Iterable<Mutation>>> bigtableRows =
+        pipeline
+            .apply(
+                "Create",
+                Create.of(parquetRows)
+                    .withCoder(AvroCoder.of(GenericRecord.class, BigtableRow.getClassSchema())))
+            .apply(
+                "TransformToBigtable",
+                ParDo.of(
+                    ParquetToBigtableFn.createWithSplitLargeRows(StaticValueProvider.of(true), 2)));
 
     PAssert.that(bigtableRows).containsInAnyOrder(expectedBigtableRows);
     pipeline.run().waitUntilFinish();

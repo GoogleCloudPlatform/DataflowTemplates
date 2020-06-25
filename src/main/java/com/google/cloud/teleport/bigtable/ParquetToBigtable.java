@@ -18,7 +18,6 @@ package com.google.cloud.teleport.bigtable;
 import static com.google.cloud.teleport.bigtable.AvroToBigtable.toByteString;
 
 import com.google.bigtable.v2.Mutation;
-import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -33,9 +32,14 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.MoreObjects;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The {@link ParquetToBigtable} pipeline imports data from Parquet files in GCS to a Cloud Bigtable table. The
@@ -89,6 +93,12 @@ import org.apache.beam.sdk.values.KV;
  * </pre>
  */
 public class ParquetToBigtable {
+  private static final Logger LOG = LoggerFactory.getLogger(AvroToBigtable.class);
+
+  /** Maximum number of mutations allowed per row by Cloud bigtable. */
+  private static final int MAX_MUTATIONS_PER_ROW = 100000;
+
+  private static final Boolean DEFAULT_SPLIT_LARGE_ROWS = false;
 
   /**
    * Options for the import pipeline.
@@ -118,6 +128,13 @@ public class ParquetToBigtable {
 
     @SuppressWarnings("unused")
     void setInputFilePattern(ValueProvider<String> inputFilePattern);
+
+    @Description(
+        "If true, a large row is split into multiple MutateRows requests. When a row is"
+            + " split across requests, updates are not atomic. ")
+    ValueProvider<Boolean> getSplitLargeRows();
+
+    void setSplitLargeRows(ValueProvider<Boolean> splitLargeRows);
   }
 
   /**
@@ -142,23 +159,53 @@ public class ParquetToBigtable {
                     .withTableId(options.getBigtableTableId());
 
     /**
-     * Steps:
-     * 1) Read records from Parquet File.
-     * 2) Convert a GenericRecord to a KV<ByteString, Iterable<Mutation>>.
-     * 3) Write KV to Bigtable's table.
+     * Steps: 1) Read records from Parquet File. 2) Convert a GenericRecord to a
+     * KV<ByteString,Iterable<Mutation>>. 3) Write KV to Bigtable's table.
      */
     pipeline
-            .apply(
-                    "Read from Parquet",
-                    ParquetIO.read(BigtableRow.getClassSchema()).from(options.getInputFilePattern()))
-            .apply("Transform to Bigtable", ParDo.of(new ParquetToBigtableFn()))
-            .apply("Write to Bigtable", write);
+        .apply(
+            "Read from Parquet",
+            ParquetIO.read(BigtableRow.getClassSchema()).from(options.getInputFilePattern()))
+        .apply(
+            "Transform to Bigtable",
+            ParDo.of(
+                ParquetToBigtableFn.createWithSplitLargeRows(
+                    options.getSplitLargeRows(), MAX_MUTATIONS_PER_ROW)))
+        .apply("Write to Bigtable", write);
 
     return pipeline.run();
   }
 
   static class ParquetToBigtableFn
           extends DoFn<GenericRecord, KV<ByteString, Iterable<Mutation>>> {
+
+    private final ValueProvider<Boolean> splitLargeRowsFlag;
+    private Boolean splitLargeRows;
+    private final int maxMutationsPerRow;
+
+    public static ParquetToBigtableFn create() {
+      return new ParquetToBigtableFn(StaticValueProvider.of(false), MAX_MUTATIONS_PER_ROW);
+    }
+
+    public static ParquetToBigtableFn createWithSplitLargeRows(
+        ValueProvider<Boolean> splitLargeRowsFlag, int maxMutationsPerRequest) {
+      return new ParquetToBigtableFn(splitLargeRowsFlag, maxMutationsPerRequest);
+    }
+
+    @Setup
+    public void setup() {
+      if (splitLargeRowsFlag != null) {
+        splitLargeRows = splitLargeRowsFlag.get();
+      }
+      splitLargeRows = MoreObjects.firstNonNull(splitLargeRows, DEFAULT_SPLIT_LARGE_ROWS);
+      LOG.info("splitLargeRows set to: " + splitLargeRows);
+    }
+
+    private ParquetToBigtableFn(
+        ValueProvider<Boolean> splitLargeRowsFlag, int maxMutationsPerRequest) {
+      this.splitLargeRowsFlag = splitLargeRowsFlag;
+      this.maxMutationsPerRow = maxMutationsPerRequest;
+    }
 
     @ProcessElement
     public void processElement(ProcessContext ctx) {
@@ -169,7 +216,7 @@ public class ParquetToBigtable {
       // mutations, the service will fail the request.
       ImmutableList.Builder<Mutation> mutations = ImmutableList.builder();
       List<Object> cells = (List) ctx.element().get(1);
-
+      int cellsProcessed = 0;
       for (Object element : cells) {
         Mutation.SetCell setCell = null;
         if (runner.isAssignableFrom(DirectRunner.class)) {
@@ -191,8 +238,20 @@ public class ParquetToBigtable {
                           .build();
         }
         mutations.add(Mutation.newBuilder().setSetCell(setCell).build());
+        cellsProcessed++;
+
+        if (this.splitLargeRows && cellsProcessed % maxMutationsPerRow == 0) {
+          // Send a MutateRow request when we have accumulated max mutations per row.
+          ctx.output(KV.of(key, mutations.build()));
+          mutations = ImmutableList.builder();
+        }
       }
-      ctx.output(KV.of(key, mutations.build()));
+
+      // Flush any remaining mutations.
+      ImmutableList remainingMutations = mutations.build();
+      if (!remainingMutations.isEmpty()) {
+        ctx.output(KV.of(key, remainingMutations));
+      }
     }
   }
 }
