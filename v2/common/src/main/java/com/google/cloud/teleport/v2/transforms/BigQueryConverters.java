@@ -21,14 +21,19 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 import com.google.api.client.json.JsonFactory;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.value.AutoValue;
+import com.google.cloud.bigquery.Field;
+import com.google.cloud.bigquery.LegacySQLTypeName;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.v2.utils.SerializableSchemaSupplier;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -597,6 +602,65 @@ public class BigQueryConverters {
       return outputTableSpec + defaultDeadLetterTableSuffix;
     } else {
       return deadletterTable;
+    }
+  }
+
+  public static final Map<String, LegacySQLTypeName> BQ_TYPE_STRINGS = new HashMap<String, LegacySQLTypeName>() {{
+    put("BOOLEAN", LegacySQLTypeName.BOOLEAN);
+    put("BYTES", LegacySQLTypeName.BYTES);
+    put("DATE", LegacySQLTypeName.DATE);
+    put("DATETIME", LegacySQLTypeName.DATETIME);
+    put("FLOAT", LegacySQLTypeName.FLOAT);
+    put("INTEGER", LegacySQLTypeName.INTEGER);
+    put("NUMERIC", LegacySQLTypeName.NUMERIC);
+    put("RECORD", LegacySQLTypeName.RECORD);
+    put("STRING", LegacySQLTypeName.STRING);
+    put("TIME", LegacySQLTypeName.TIME);
+    put("TIMESTAMP", LegacySQLTypeName.TIMESTAMP);
+  }};
+
+  /**
+   * The {@link SchemaUtils} Class to easily convert from
+   * a json string to a BigQuery List<Field>.
+   */
+  public static class SchemaUtils {
+
+    private static final Type gsonSchemaType = new TypeToken<List<Map>>() { }.getType();
+
+    private static Field mapToField(Map fMap) {
+      String typeStr = fMap.get("type").toString();
+      String nameStr = fMap.get("name").toString();
+      String modeStr = fMap.get("mode").toString();
+      LegacySQLTypeName type = BQ_TYPE_STRINGS.get(typeStr);
+      if (type == null) {
+        type = LegacySQLTypeName.STRING;
+      }
+
+      return Field.newBuilder(nameStr, type).setMode(Field.Mode.valueOf(modeStr)).build();
+    }
+
+    private static List<Field> listToFields(List<Map> jsonFields) {
+      List<Field> fields = new ArrayList(jsonFields.size());
+      for (Map m : jsonFields) {
+        fields.add(mapToField(m));
+      }
+
+      return fields;
+    }
+
+    /**
+     * Return a {@code List<Field>} extracted from a json string.
+     *
+     * @param schemaStr JSON String with BigQuery schema fields.
+     */
+    public static List<Field> schemaFromString(String schemaStr) {
+      if (schemaStr == null) {
+        return null;
+      } else {
+        Gson gson = new Gson();
+        List<Map> jsonFields = gson.fromJson(schemaStr, gsonSchemaType);
+        return listToFields(jsonFields);
+      }
     }
   }
 }

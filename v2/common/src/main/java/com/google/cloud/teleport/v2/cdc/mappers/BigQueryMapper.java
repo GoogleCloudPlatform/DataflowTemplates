@@ -28,6 +28,8 @@ import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableInfo;
 import com.google.cloud.bigquery.TimePartitioning;
+import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
+import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.common.base.Supplier;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -101,6 +103,32 @@ public class BigQueryMapper<InputT, OutputT>
   public BigQueryMapper<InputT, OutputT> withDefaultSchema(
       Map<String, LegacySQLTypeName> defaultSchema) {
     this.defaultSchema = defaultSchema;
+    return this;
+  }
+
+  /**
+   * The function {@link withDefaultSchemaFromGCS} reads a BigQuery Schema file
+   * from GCS and stores it to be used in the Mapper schema logic.
+   *
+   * @param filePath path to file in GCS
+   * @throws IOException thrown if not able to read file
+   */
+  public BigQueryMapper<InputT, OutputT> withDefaultSchemaFromGCS(
+      String filePath) {
+    if (filePath == null) {
+      return this;
+    }
+    // TODO: A supplier that reloads the GCS file regularly would allow
+    // a user to change the file w/o tearing down the pipeline.
+    String schemaStr = SchemaUtils.getGcsFileAsString(filePath);
+    List<Field> schemaFields = BigQueryConverters.SchemaUtils.schemaFromString(schemaStr);
+    
+    Map<String, LegacySQLTypeName> schema = new HashMap<String, LegacySQLTypeName>();
+    for (Field field: schemaFields) {
+      schema.put(field.getName(), field.getType());
+    }
+
+    this.defaultSchema = schema;
     return this;
   }
 

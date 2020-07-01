@@ -20,12 +20,17 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.cloud.bigquery.Field;
+import com.google.cloud.bigquery.Field.Mode;
+import com.google.cloud.bigquery.LegacySQLTypeName;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.BigQueryTableConfigManager;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
+import com.google.cloud.teleport.v2.transforms.BigQueryConverters.SchemaUtils;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.TableRowToGenericRecordFn;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData.Record;
@@ -438,5 +443,18 @@ public class BigQueryConvertersTest {
 
     assertThat(mgr.getDatasetTemplate()).isEqualTo("my_dataset");
     assertThat(mgr.getTableTemplate()).isEqualTo("my_table");
+  }
+
+  /** Tests that {@link BigQueryConverters.SchemaUtils} properly
+   * cleans and returns a BigQuery Schema from a JSON string.
+   */
+  @Test
+  public void testSchemaUtils() {
+    String jsonSchemaStr = "[{\"type\":\"STRING\",\"name\":\"column\",\"mode\":\"NULLABLE\"}]";
+    List<Field> fields = SchemaUtils.schemaFromString(jsonSchemaStr);
+
+    assertThat(fields.get(0).getName()).isEqualTo("column");
+    assertThat(fields.get(0).getMode()).isEqualTo(Mode.NULLABLE);
+    assertThat(fields.get(0).getType()).isEqualTo(LegacySQLTypeName.STRING);
   }
 }

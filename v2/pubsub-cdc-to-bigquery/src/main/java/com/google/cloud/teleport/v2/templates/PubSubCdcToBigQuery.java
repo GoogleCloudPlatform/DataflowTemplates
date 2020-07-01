@@ -169,6 +169,11 @@ public class PubSubCdcToBigQuery {
 
     void setAutoMapTables(Boolean value);
 
+    @Description("GCS BigQuery schema fields file to be used in DDL")
+    String getSchemaFilePath();
+
+    void setSchemaFilePath(String value);
+
 
     @Description("The BigQuery Dataset Template")
     @Default.String("{_metadata_dataset}")
@@ -275,7 +280,9 @@ public class PubSubCdcToBigQuery {
                     new BigQueryMappers(bqConfigManager.getProjectId())
                         .buildBigQueryTableMapper(
                             bqConfigManager.getDatasetTemplate(),
-                            bqConfigManager.getTableTemplate()));
+                            bqConfigManager.getTableTemplate())
+                        .withDefaultSchemaFromGCS(options.getSchemaFilePath())
+                        );
     } else {
         tableEvents =
             convertedTableRows.get(TRANSFORM_OUT)
