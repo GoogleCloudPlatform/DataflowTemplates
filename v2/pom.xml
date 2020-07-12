@@ -572,7 +572,6 @@
     <modules>
         <module>bigquery-to-elasticsearch</module>
         <module>bigquery-to-parquet</module>
-        <module>datastream-to-bigquery</module>
         <module>common</module>
         <module>cdc-parent</module>
         <module>csv-to-elasticsearch</module>
