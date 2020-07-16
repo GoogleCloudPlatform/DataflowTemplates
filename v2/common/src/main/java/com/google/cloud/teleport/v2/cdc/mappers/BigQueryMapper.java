@@ -111,7 +111,6 @@ public class BigQueryMapper<InputT, OutputT>
    * from GCS and stores it to be used in the Mapper schema logic.
    *
    * @param filePath path to file in GCS
-   * @throws IOException thrown if not able to read file
    */
   public BigQueryMapper<InputT, OutputT> withDefaultSchemaFromGCS(
       String filePath) {
@@ -187,7 +186,8 @@ public class BigQueryMapper<InputT, OutputT>
                 applyMapperToTableRow(tableId, row, inputSchema, retries);
                 return getOutputObject(input);
               }
-            }));
+            })
+        );
   }
 
   /**
