@@ -33,6 +33,7 @@ import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.common.base.Supplier;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -58,12 +59,13 @@ public class BigQueryMapper<InputT, OutputT>
 
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryMapper.class);
   private BigQuery bigquery;
-  private Map<String, LegacySQLTypeName> defaultSchema;
-  private boolean dayPartitioning = false;
-  private final String projectId;
   private BigQueryTableRowCleaner bqTableRowCleaner;
-  private BigQueryTableCache tableCache;
+  private boolean dayPartitioning = false;
+  private Map<String, LegacySQLTypeName> defaultSchema;
+  private Set<String> ignoreFields = new HashSet<String>();
   private int mapperRetries = 5;
+  private final String projectId;
+  private BigQueryTableCache tableCache;
 
   public BigQueryMapper(String projectId) {
     this.projectId = projectId;
@@ -131,8 +133,26 @@ public class BigQueryMapper<InputT, OutputT>
     return this;
   }
 
+  /**
+   * The function {@link withDayPartitioning} sets a boolean value dictating if
+   * day partitioning shoud be applied to new tables created in BigQuery.
+   *
+   * @param dayPartitioning A boolean value if day partitioning should be applied.
+   */
   public BigQueryMapper<InputT, OutputT> withDayPartitioning(boolean dayPartitioning) {
     this.dayPartitioning = dayPartitioning;
+    return this;
+  }
+
+  /**
+   * The function {@link withIgnoreFields} sets a list of fields to be ignored
+   * when mapping new columns to a BigQuery Table.
+   *
+   * @param fields A Set of fields to ignore.
+   */
+  public BigQueryMapper<InputT, OutputT> withIgnoreFields(Set fields) {
+    this.ignoreFields = fields;
+
     return this;
   }
 
@@ -267,6 +287,9 @@ public class BigQueryMapper<InputT, OutputT>
     Boolean tableWasUpdated = false;
     List<Field> newFieldList = new ArrayList<Field>();
     for (String rowKey : rowKeys) {
+      if (this.ignoreFields.contains(rowKey)) {
+        continue;
+      }
       // Check if rowKey (column from data) is in the BQ Table
       try {
         Field tableField = tableFields.get(rowKey);
