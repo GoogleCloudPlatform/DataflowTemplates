@@ -18,18 +18,18 @@ package com.google.cloud.teleport.v2.cdc.sources;
 
 import com.google.api.services.storage.model.Objects;
 import com.google.api.services.storage.model.StorageObject;
+import com.google.common.collect.Sets;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Set;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.extensions.gcp.util.GcsUtil;
 import org.apache.beam.sdk.extensions.gcp.util.GcsUtil.GcsUtilFactory;
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.state.ReadableState;
-import org.apache.beam.sdk.state.SetState;
+import org.apache.beam.sdk.state.BagState;
 import org.apache.beam.sdk.state.StateSpec;
 import org.apache.beam.sdk.state.StateSpecs;
 import org.apache.beam.sdk.state.TimeDomain;
@@ -83,7 +83,7 @@ public class DataStreamFileIO extends PTransform<PCollection<String>, PCollectio
 
   private final String rootPath;
   private final Boolean continuousMatch;
-  private final Duration objectLookupPeriod;
+  private final Duration matchPeriod;
 
   public static DataStreamFileIO matchRootPath(String rootPath) {
     return new DataStreamFileIO(rootPath, false, null);
@@ -93,22 +93,23 @@ public class DataStreamFileIO extends PTransform<PCollection<String>, PCollectio
     return new DataStreamFileIO(rootPath, true, matchPeriod);
   }
 
-  DataStreamFileIO(String rootPath, Boolean continuousMatch, Duration continuousMatchPeriod) {
+  DataStreamFileIO(String rootPath, Boolean continuousMatch, Duration matchPeriod) {
     this.rootPath = rootPath;
     this.continuousMatch = continuousMatch;
-    this.objectLookupPeriod = continuousMatchPeriod;
+    this.matchPeriod = matchPeriod;
   }
 
   @Override
   public PCollection<String> expand(PCollection<String> start) {
     PCollection<KV<String, String>> impulse;
     if (continuousMatch) {
-      impulse = start
-          .apply(WithKeys.of(any -> rootPath))
-          .setCoder(KvCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
-          .apply(ParDo.of(new PerKeyHeartBeat(Duration.standardSeconds(100))))
-          .apply(WithKeys.of(elm -> elm))
-          .setCoder(KvCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+      impulse =
+          start
+              .apply(WithKeys.of(any -> rootPath))
+              .setCoder(KvCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
+              .apply(ParDo.of(new PerKeyHeartBeat(Duration.standardSeconds(180))))
+              .apply(WithKeys.of(elm -> elm))
+              .setCoder(KvCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
     } else {
       impulse = start
           .apply(WithKeys.of(any -> rootPath))
@@ -120,14 +121,14 @@ public class DataStreamFileIO extends PTransform<PCollection<String>, PCollectio
 
     PCollection<String> hourlyDirectories;
     if (continuousMatch) {
-        hourlyDirectories = objectDirectories
-            .apply(WithKeys.of(elm -> elm))
-            .setCoder(KvCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
-            .apply(ParDo.of(new PerKeyHeartBeat(objectLookupPeriod)))
-            .apply(WithKeys.of(elm -> elm))
-            .setCoder(KvCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
-            .apply("MatchDateDirectories",
-                ParDo.of(new FindChildrenDirectories(5, 5)));
+      hourlyDirectories =
+          objectDirectories
+              .apply(WithKeys.of(elm -> elm))
+              .setCoder(KvCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
+              .apply(ParDo.of(new PerKeyHeartBeat(matchPeriod)))
+              .apply(WithKeys.of(elm -> elm))
+              .setCoder(KvCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
+              .apply("MatchDateDirectories", ParDo.of(new FindChildrenDirectories(5, 5)));
     } else {
       hourlyDirectories = objectDirectories
           .apply(WithKeys.of(elm -> elm))
@@ -223,31 +224,32 @@ public class DataStreamFileIO extends PTransform<PCollection<String>, PCollectio
       return result;
     }
 
+    // Using BagState as Dataflow does not support SetState
+    // TODO(pabloem): Switch to SetState.
     @StateId("knownPaths")
-    private final StateSpec<SetState<String>> knownPathsSpec = StateSpecs.set(StringUtf8Coder.of());
+    private final StateSpec<BagState<String>> knownPathsSpec = StateSpecs.bag(StringUtf8Coder.of());
 
     @ProcessElement
     public void process(
         @Element KV<String, String> baseUriKv,
         OutputReceiver<String> outputReceiver,
-        @StateId("knownPaths") SetState<String> knownPaths) throws IOException {
+        @StateId("knownPaths") BagState<String> knownPathsState)
+        throws IOException {
       GcsPath path = GcsPath.fromUri(baseUriKv.getKey());
       List<String> objects = getMatchingObjects(path);
-      List<KV<String, ReadableState<Boolean>>> containsList = objects.stream()
-          .map(objName -> KV.of(objName, knownPaths.contains(objName)))
-          .collect(Collectors.toList());
 
-      containsList.forEach(
-          pair -> {
-            Boolean alreadyKnown = pair.getValue().read();
+      Set<String> knownPathsRead = Sets.newHashSet(knownPathsState.read());
+
+      objects.forEach(
+          gcsObject -> {
+            boolean alreadyKnown = knownPathsRead.contains(gcsObject);
             // If the directory is new, we output it.
-            if (alreadyKnown == null || !alreadyKnown) {
+            if (!alreadyKnown) {
               // We also add it to the known paths.
-              knownPaths.add(pair.getKey());
-              outputReceiver.output(pair.getKey());
+              knownPathsState.add(gcsObject);
+              outputReceiver.output(gcsObject);
             }
-          }
-      );
+          });
     }
   }
 }

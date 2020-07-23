@@ -123,9 +123,9 @@ public class BigQueryMapper<InputT, OutputT>
     // a user to change the file w/o tearing down the pipeline.
     String schemaStr = SchemaUtils.getGcsFileAsString(filePath);
     List<Field> schemaFields = BigQueryConverters.SchemaUtils.schemaFromString(schemaStr);
-    
+
     Map<String, LegacySQLTypeName> schema = new HashMap<String, LegacySQLTypeName>();
-    for (Field field: schemaFields) {
+    for (Field field : schemaFields) {
       schema.put(field.getName(), field.getType());
     }
 
@@ -339,6 +339,7 @@ public class BigQueryMapper<InputT, OutputT>
       tableDefinitionBuilder.setTimePartitioning(
           TimePartitioning.newBuilder(TimePartitioning.Type.DAY).build());
     }
+    LOG.info("Creating BQ Table {} with  schema {}", tableId, schema);
     TableInfo tableInfo = TableInfo.newBuilder(tableId, tableDefinitionBuilder.build()).build();
     Table table = bigquery.create(tableInfo);
 
