@@ -234,6 +234,9 @@ public class BigQueryMapper<InputT, OutputT>
 
     Set<String> rowKeys = cleanRow.keySet();
     for (String rowKey : rowKeys) {
+      if (this.ignoreFields.contains(rowKey)) {
+        continue;
+      }
       this.bqTableRowCleaner.cleanTableRowField(cleanRow, tableFields, rowKey);
     }
 
@@ -428,10 +431,13 @@ public class BigQueryMapper<InputT, OutputT>
       // or if ther cache has expired.
       if (tableSupplier == null) {
         return this.reset(tableId);
-      } else if (tableSupplier.get() == null) {
+      }
+
+      Table table = tableSupplier.get();
+      if (table == null) {
         return this.reset(tableId);
       } else {
-        return tableSupplier.get();
+        return table;
       }
     }
 

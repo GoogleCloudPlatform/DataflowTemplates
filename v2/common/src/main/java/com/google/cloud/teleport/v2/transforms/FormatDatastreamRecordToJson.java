@@ -38,6 +38,7 @@ public class FormatDatastreamRecordToJson
     extends PTransform<PCollection<String>, PCollection<FailsafeElement<String, String>>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(FormatDatastreamRecordToJson.class);
+  private String streamName;
 
   private FormatDatastreamRecordToJson() {}
 
@@ -45,15 +46,31 @@ public class FormatDatastreamRecordToJson
     return new FormatDatastreamRecordToJson();
   }
 
+  public FormatDatastreamRecordToJson withStreamName(String streamName) {
+    this.streamName = streamName;
+
+    return this;
+  }
+
   @Override
   public PCollection<FailsafeElement<String, String>> expand(PCollection<String> input) {
     return input
-        .apply(ParDo.of(new FormatDatastreamRecordFn()))
+        .apply(ParDo.of(
+            new FormatDatastreamRecordFn()
+                .withStreamName(this.streamName)))
         .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
   }
 
   private static class FormatDatastreamRecordFn
       extends DoFn<String, FailsafeElement<String, String>> {
+
+    private String streamName;
+
+    public FormatDatastreamRecordFn withStreamName(String streamName) {
+      this.streamName = streamName;
+
+      return this;
+    }
 
     @ProcessElement
     public void format(
@@ -76,20 +93,48 @@ public class FormatDatastreamRecordToJson
         //       .put(fieldName, dataInput.get("payload").get(fieldName).getTextValue());
         // }
       }
-      ((ObjectNode) outputObject).put("_metadata_timestamp", dataInput.get("read_timestamp"));
-      ((ObjectNode) outputObject).put("_metadata_stream", dataInput.get("stream_name"));
-      ((ObjectNode) outputObject).put("_metadata_source", dataInput.get("source_metadata"));
-      ((ObjectNode) outputObject).put("_metadata_table", dataInput.get("object"));
 
+      ((ObjectNode) outputObject).put("_metadata_timestamp", getMetadataTimestamp(dataInput));
+      ((ObjectNode) outputObject).put("_metadata_deleted", getMetadataIsDeleted(dataInput));
+      
+      ((ObjectNode) outputObject).put("_metadata_stream", getStreamName(dataInput));
+      ((ObjectNode) outputObject).put("_metadata_schema", getMetadataSchema(dataInput));
+      ((ObjectNode) outputObject).put("_metadata_table", getMetadataTable(dataInput));
+
+      ((ObjectNode) outputObject).put("_metadata_source", dataInput.get("source_metadata"));
+
+      LOG.info("Formatted element is {}", outputObject.toString());
+      receiver.output(FailsafeElement.of(outputObject.toString(), outputObject.toString()));
+    }
+
+    private String getStreamName(JsonNode dataInput) {
+      if (this.streamName == null) {
+        return dataInput.get("source_metadata").get("stream_name").getTextValue(); 
+      }
+      return this.streamName;
+    }
+    private String getMetadataSchema(JsonNode dataInput) {
+      return dataInput.get("source_metadata").get("schema").getTextValue();
+    }
+
+    private String getMetadataTable(JsonNode dataInput) {
+      return dataInput.get("source_metadata").get("table").getTextValue();
+    }
+
+    private double getMetadataTimestamp(JsonNode dataInput) {
+      double unixTimestampMilli = (double) dataInput.get("read_timestamp").getLongValue();
+      return unixTimestampMilli / 1000;
+    }
+
+    private Boolean getMetadataIsDeleted(JsonNode dataInput) {
       // TODO(pabloem): Implement complete calculation for isDeleted.
       Boolean isDeleted = true;
       if (dataInput.has("read_method")
           && dataInput.get("read_method").getTextValue().equals("oracle_dump")) {
         isDeleted = false;
       }
-      ((ObjectNode) outputObject).put("_metadata_deleted", isDeleted);
-      LOG.info("Formatted element is {}", outputObject.toString());
-      receiver.output(FailsafeElement.of(outputObject.toString(), outputObject.toString()));
+
+      return isDeleted;
     }
   }
 }
