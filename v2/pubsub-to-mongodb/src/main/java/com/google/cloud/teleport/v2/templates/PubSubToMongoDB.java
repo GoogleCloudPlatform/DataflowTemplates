@@ -76,60 +76,27 @@ import org.slf4j.LoggerFactory;
  * PROJECT_NAME=my-project
  * BUCKET_NAME=my-bucket
  * INPUT_SUBSCRIPTION=my-subscription
- * TEMPLATES_LAUNCH_API="${API_ROOT_URL}/v1b3/projects/${PROJECT_NAME}/templates:launch"
  * MONGODB_DATABASE_NAME=testdb
  * MONGODB_HOSTNAME=my-host:port
  * MONGODB_COLLECTION_NAME=testCollection
- * DEADLETTERTABLE=project:deadletter_table_name
+ * DEADLETTERTABLE=project:dataset.deadletter_table_name
  *
- * # Set containerization vars
- * IMAGE_NAME=my-image-name
- * TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
- * BASE_CONTAINER_IMAGE=my-base-container-image
- * BASE_CONTAINER_IMAGE_VERSION=my-base-container-image-version
- * APP_ROOT=/path/to/app-root
- * COMMAND_SPEC=/path/to/command-spec
- *
- * # Build and upload image
- * mvn clean package \
- * -Dimage=${TARGET_GCR_IMAGE} \
- * -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
- * -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
- * -Dapp-root=${APP_ROOT} \
- * -Dcommand-spec=${COMMAND_SPEC}
- *
- * # Create an image spec in GCS that contains the path to the image
- * {
- *   "docker_template_spec": {
- *      "docker_image": $TARGET_GCR_IMAGE
- *    }
- * }
- *
- * # Execute template:
- * API_ROOT_URL="https://dataflow.googleapis.com"
- * TEMPLATES_LAUNCH_API="${API_ROOT_URL}/v1b3/projects/${PROJECT_NAME}/templates:launch"
- * JOB_NAME="pubsub-to-mongodb-`date +%Y%m%d-%H%M%S-%N`"
- *
- * time curl -X POST \
- *     -H "Content-Type: application/json" \
- *     -H "Authorization: Bearer $(gcloud auth print-access-token)" \
- *     "${TEMPLATES_LAUNCH_API}"`\
- *     `"?validateOnly=false"` \
- *     `"&dynamicTemplate.gcsPath=gs://${BUCKET_NAME}/pubsub-to-mongodb-image-spec.json"` \
- *     `"&dynamicTemplate.stagingLocation=gs://${BUCKET_NAME}/staging" \
- *     -d
- *     '{
- *         "jobName":"$JOB_NAME",
- *         "parameters": {
- *             "inputSubscription":"'$INPUT_SUBSCRIPTION'",
- *             "database":"'$MONGODB_DATABASE_NAME'",
- *             "collection":"'$MONGODB_COLLECTION_NAME'",
- *             "mongoDBUri":"'$MONGODB_HOSTNAME'",
- *             "deadletterTable":"'$DEADLETTERTABLE'"
- *         }
- *     }'
+ * mvn compile exec:java \
+ *  -Dexec.mainClass=com.google.cloud.teleport.v2.templates.PubSubToMongoDB \
+ *  -Dexec.cleanupDaemonThreads=false \
+ *  -Dexec.args=" \
+ *  --project=${PROJECT_NAME} \
+ *  --stagingLocation=gs://${BUCKET_NAME}/staging \
+ *  --tempLocation=gs://${BUCKET_NAME}/temp \
+ *  --runner=DataflowRunner \
+ *  --inputSubscription=${INPUT_SUBSCRIPTION} \
+ *  --mongoDBUri=${MONGODB_HOSTNAME} \
+ *  --database=${MONGODB_DATABASE_NAME} \
+ *  --collection=${MONGODB_COLLECTION_NAME} \
+ *  --deadletterTable=${DEADLETTERTABLE}"
  * </pre>
  */
+
 public class PubSubToMongoDB {
   /**
    * Options supported by {@link PubSubToMongoDB}
@@ -203,7 +170,7 @@ public class PubSubToMongoDB {
     void setDeadletterTable(String deadletterTable);
 
     @Description("Batch size in number of documents. Default: 1000")
-    @Default.Long(1024)
+    @Default.Long(1000)
     Long getBatchSize();
 
     void setBatchSize(Long batchSize);
