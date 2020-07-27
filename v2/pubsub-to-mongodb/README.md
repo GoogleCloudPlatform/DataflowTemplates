@@ -24,7 +24,7 @@ export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
-export TEMPLATE_MODULE=pubsub-to-mongodb
+export TEMPLATE_MODULE=csv-to-elasticsearch
 export APP_ROOT=/template/${TEMPLATE_MODULE}
 export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_MODULE}-command-spec.json
 export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
@@ -48,129 +48,12 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
 
 #### Creating Image Spec
 
-* Create spec file in Cloud Storage under the path ${TEMPLATE_IMAGE_SPEC} describing container image location and metadata.
+* Create file in Cloud Storage with path to container image in Google Container Repository.
 ```json
 {
-	"image": "gcr.io/project-id/image-name",
-	"metadata": {
-		"name": "PubSub To MongoDB",
-		"description": "A pipeline reads from pubsub and writes to mongodb.",
-		"parameters": [
-				{
-		        "name": "inputSubscription",
-		        "label": "PubSub Subscription name",
-		        "helpText": "Name of pubsub Subscription. ex: projects/<project-id>/subscriptions/<subscription-name>",
-		        "is_optional": false,
-		        "regexes": ["^projects\\/[^\\n\\r\\/]+\\/subscriptions\\/[^\\n\\r\\/]+$"],
-		        "paramType": "PUBSUB_SUBSCRIPTION"
-		        },
-		       {
-		        "name": "mongoDBUri",
-		        "label": "MongoDB Connection URI",
-		        "helpText": "List of Mongo DB nodes separated by comma. ex: 192.285.234.12:27017,192.287.123.11:27017",
-		        "is_optional": false,
-		        "regexes": ["[a-zA-Z0-9._\\-:]+"],
-		        "paramType": "TEXT"
-		      },
-		       {
-		        "name": "database",
-		        "label": "mongo database",
-		        "helpText": "Database in MongoDB to store the collection. ex: my-db.",
-		        "is_optional": false,
-		        "paramType": "TEXT"
-		      },
-		       {
-		        "name": "collection",
-		        "label": "mongo collection",
-		        "helpText": "Name of the collection inside MongoDB database. ex: my-collection.",
-		        "is_optional": false,
-		        "paramType": "TEXT"
-		      },
-		       {
-		        "label": "BigQuery DeadLetter Table",
-		        "name": "deadletterTable",
-		        "helpText": "Messages failed to reach the output table for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. It should be in the format of \"your-project:your-dataset.your-table-name\". If it doesn't exist, it will be created during pipeline execution. If not specified, \"outputTableSpec_error_records\" is used instead.",
-		        "is_optional": false,
-		        "regexes": [".+:.+\\..+"],
-		        "paramType": "TEXT"
-		      },
-		      {
-		        "name": "batchSize",
-		        "label": "Batch Size",
-		        "helpText": "Batch Size used for batch insertion of documents into mongodb.",
-		        "is_optional": true,
-		        "regexes": ["^[0-9]+$"],
-		        "paramType": "TEXT"
-		      },
-		       {
-		        "name": "batchSizeBytes",
-		        "label": "Batch Size in Bytes",
-		        "helpText": "Batch Size in bytes used for batch insertion of documents into mongodb.",
-		        "is_optional": true,
-		        "regexes": ["^[0-9]+$"],
-		        "paramType": "TEXT"
-		      },
-		       {
-		        "name": "maxConnectionIdleTime",
-		        "label": "Max Connection idle time",
-		        "helpText": "Maximum idle time allowed in seconds before connection time out occurs.",
-		        "is_optional": true,
-		        "regexes": ["^[0-9]+$"],
-		        "paramType": "TEXT"
-		      },
-		       {
-		        "name": "sslEnabled",
-		        "label": "SSL Enabled",
-		        "helpText": "Indicates whether connection to mongodb is ssl enabled or not.",
-		        "is_optional": true,
-		        "regexes": ["^(true|false)$"],
-		        "paramType": "TEXT"
-		      },
-		       {
-		        "name": "ignoreSSLCertificate",
-		        "label": "Ignore SSL Certificate",
-		        "helpText": "Indicates whether ssl certifcate should be ignored or not.",
-		        "is_optional": true,
-		        "regexes": ["^(true|false)$"],
-		        "paramType": "TEXT"
-		      },
-		       {
-		        "name": "withOrdered",
-		        "label": "withOrdered",
-		        "helpText": "Enables ordered bulk insertions into mongodb.",
-		        "is_optional": true,
-		        "regexes": ["^(true|false)$"],
-		        "paramType": "TEXT"
-		      },
-		       {
-		        "name": "withSSLInvalidHostNameAllowed",
-		        "label": "withSSLInvalidHostNameAllowed",
-		        "helpText": "Indicates whether invalid host name is allowed for ssl connection.",
-		        "is_optional": true,
-		        "regexes": ["^(true|false)$"],
-		        "paramType": "TEXT"
-		      },
-		       {
-		        "name": "javascriptTextTransformGcsPath",
-		        "label": "GCS location of your JavaScript UDF",
-		        "helpText": "The full URL of your .js file. Example: gs://your-bucket/your-function.js",
-		        "is_optional": true,
-		        "regexes": ["^gs:\\/\\/[^\\n\\r]+$"],
-		        "paramType": "GCS_READ_FILE"
-		      },
-		       {
-		        "name": "javascriptTextTransformFunctionName",
-		        "label": "The name of the JavaScript function you wish to call as your UDF",
-		        "helpText": "The function name should only contain letters, digits and underscores. Example: 'transform' or 'transform_udf1'.",
-		        "is_optional": true,
-		        "regexes": ["[a-zA-Z0-9_]+"],
-		        "paramType": "TEXT"
-		      }
-		]
-	   },
-	"sdk_info": {
-			"language": "JAVA"
-		}
+  "docker_template_spec": {
+    "docker_image": "gcr.io/project/my-image-name"
+  }
 }
 ```
 
@@ -200,6 +83,7 @@ The template has the following optional parameters:
 * ignoreSSLCertificate: Specify whether to ignore SSL certificate. Default: false
 * withOrdered: Enable ordered nulk insertions. Default: true
 * withSSLInvalidHostnameAllowed: Enable InvalidHostnameAllowed for SSL Connection. Default:false
+* Will override type provided.
 
 Template can be executed using the following gcloud command.
 ```sh

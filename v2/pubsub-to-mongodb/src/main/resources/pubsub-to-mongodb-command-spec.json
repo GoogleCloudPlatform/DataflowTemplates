@@ -1,7 +1,4 @@
 {
   "mainClass": "com.google.cloud.teleport.v2.templates.PubSubToMongoDB",
-  "classPath": "/template/pubsub-to-mongodb/*:/template/pubsub-to-mongodb/libs/*:/template/pubsub-to-mongodb/classes",
-  "defaultParameterValues": {
-    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"pubsub_to_mongodb\"}"
-  }
+  "classPath": "/template/PubSubToMongoDB/libs/*:/template/PubSubToMongoDB/classes"
 }
