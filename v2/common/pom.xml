@@ -28,7 +28,7 @@
 
     <properties>
         <avro.version>1.8.2</avro.version>
-        <bigquery.version>v2-rev438-1.25.0</bigquery.version>
+        <bigquery.version>v2-rev459-1.25.0</bigquery.version>
         <commons.version>1.7</commons.version>
         <commons-text.version>1.6</commons-text.version>
         <gax.version>1.52.0</gax.version>
