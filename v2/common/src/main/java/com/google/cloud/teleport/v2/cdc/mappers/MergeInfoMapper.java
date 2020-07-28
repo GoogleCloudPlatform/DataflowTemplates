@@ -24,7 +24,10 @@ import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.v2.cdc.merge.MergeInfo;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
+import com.google.cloud.teleport.v2.utils.CacheUtils.BigQueryTableCache;
+import com.google.cloud.teleport.v2.utils.CacheUtils.DataStreamPkCache;
 import com.google.cloud.teleport.v2.utils.DataStreamClient;
+import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,12 +52,12 @@ public class MergeInfoMapper
 
   private static final Logger LOG = LoggerFactory.getLogger(MergeInfoMapper.class);
   private DataStreamClient dataStreamClient;
-
   private String stagingDataset;
   private String stagingTable;
   private String replicaDataset;
   private String replicaTable;
-  private BigQueryMapper.BigQueryTableCache tableCache;
+  private BigQueryTableCache tableCache;
+  private DataStreamPkCache pkCache;
 
   public MergeInfoMapper(
       GcpOptions options,
@@ -74,13 +77,21 @@ public class MergeInfoMapper
       }
   }
 
-  public BigQueryMapper.BigQueryTableCache getTableCache() {
+  public BigQueryTableCache getTableCache() {
     if (this.tableCache == null) {
       BigQuery bigquery = BigQueryOptions.getDefaultInstance().getService();
-      this.tableCache = new BigQueryMapper.BigQueryTableCache(bigquery);
+      this.tableCache = new BigQueryTableCache(bigquery);
     }
 
     return this.tableCache;
+  }
+
+  public DataStreamPkCache getPkCache() {
+    if (this.pkCache == null) {
+      this.pkCache = new DataStreamPkCache(this.dataStreamClient);
+    }
+
+    return this.pkCache;
   }
 
   @Override
@@ -116,7 +127,8 @@ public class MergeInfoMapper
   }
 
   public List getPrimaryKeys(String streamName, String schemaName, String tableName) {
-    List<String> primaryKeys = new ArrayList<String>();
+    List<String> searchKey = ImmutableList.of(streamName, schemaName, tableName);
+    List<String> primaryKeys = getPkCache().get(searchKey);
     try {
       primaryKeys = this.dataStreamClient.getPrimaryKeys(streamName, schemaName, tableName);
     } catch (IOException e) {

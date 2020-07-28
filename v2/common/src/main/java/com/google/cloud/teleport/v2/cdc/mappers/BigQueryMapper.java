@@ -29,15 +29,14 @@ import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableInfo;
 import com.google.cloud.bigquery.TimePartitioning;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
+import com.google.cloud.teleport.v2.utils.CacheUtils.BigQueryTableCache;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
-import com.google.common.base.Supplier;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.SimpleFunction;
@@ -393,89 +392,5 @@ public class BigQueryMapper<InputT, OutputT>
     // Currently we always add new fields for each call
     // TODO: add an option to ignore new field and why boolean?
     return true;
-  }
-
-  /**
-   * The {@link BigQueryTableCache} manages safely getting and setting BigQuery Table objects from a
-   * local cache for each worker thread.
-   *
-   * <p>The key factors addressed are ensuring expiration of cached tables, consistent update
-   * behavior to ensure reliabillity, and easy cache reloads. Open Question: Does the class require
-   * thread-safe behaviors? Currently it does not since there is no iteration and get/set are not
-   * continuous.
-   */
-  public static class BigQueryTableCache {
-
-    private Map<String, TableSupplier> tables = new HashMap<String, TableSupplier>();
-    private BigQuery bigquery;
-
-    /**
-     * Create an instance of a {@link BigQueryTableCache} to track table schemas.
-     *
-     * @param bigquery A BigQuery instance used to extract Table objects.
-     */
-    public BigQueryTableCache(BigQuery bigquery) {
-      this.bigquery = bigquery;
-    }
-
-    /**
-     * Return a {@code Table} representing the schema of a BigQuery table.
-     *
-     * @param tableId A BigQuuery table reference used as the key to lookup.
-     */
-    public Table get(TableId tableId) {
-      String tableName = tableId.toString();
-      TableSupplier tableSupplier = tables.get(tableName);
-
-      // Reset cache if the table DNE in the map
-      // or if ther cache has expired.
-      if (tableSupplier == null) {
-        return this.reset(tableId);
-      }
-
-      Table table = tableSupplier.get();
-      if (table == null) {
-        return this.reset(tableId);
-      } else {
-        return table;
-      }
-    }
-
-    /**
-     * Returns a {@code Table} pulled from BigQuery and sets the table in the local cache.
-     *
-     * @param tableId a TableId referencing the BigQuery table to be reset.
-     */
-    public Table reset(TableId tableId) {
-      String tableName = tableId.toString();
-      Table table = this.bigquery.getTable(tableId);
-      LOG.info("Reset Table from API: {}", tableName);
-
-      TableSupplier tableSupplier = new TableSupplier(table, 5, TimeUnit.MINUTES);
-      tables.put(tableName, tableSupplier);
-      return table;
-    }
-
-    /**
-     * The {@link TableSupplier} is a Supplier to help manage BQ Tables. The Table is stored as well
-     * as expiry time to enable cache expiry after a given amount of time.
-     */
-    public static class TableSupplier implements Supplier<Table> {
-      Table table;
-      long expiryTimeNano;
-
-      public TableSupplier(Table table, long duration, TimeUnit unit) {
-        this.table = table;
-        this.expiryTimeNano = System.nanoTime() + unit.toNanos(duration);
-      }
-
-      @Override
-      public Table get() {
-        if (this.expiryTimeNano < System.nanoTime()) {
-          return null;
-        }
-        return this.table;
-      }
-    }
   }
 }

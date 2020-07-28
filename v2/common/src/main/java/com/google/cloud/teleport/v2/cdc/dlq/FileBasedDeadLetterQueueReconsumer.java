@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.channels.Channels;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -70,7 +69,9 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
 
   public PCollection<String> expand(PBegin in) {
     // We want to match all the files in this directory (but not the directories).
-    String filePattern = Paths.get(dlqDirectory).resolve("*").toString();
+    // TODO: Paths resolve converts "gs://bucket/.." to "gs:/bucket/.."
+    // String filePattern = Paths.get(dlqDirectory).resolve("*").toString();
+    String filePattern = dlqDirectory + "*";
     return in.getPipeline()
         .apply(FileIO.match()
             .filepattern(filePattern)
@@ -103,7 +104,6 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
     public void process(
         @Element Metadata dlqFile,
         OutputReceiver<String> outputs) throws IOException {
-
       // First we move the file to a temporary location so it will not be picked up
       // by the DLQ picker again.
       ResourceId newFileLocation = dlqFile.resourceId()

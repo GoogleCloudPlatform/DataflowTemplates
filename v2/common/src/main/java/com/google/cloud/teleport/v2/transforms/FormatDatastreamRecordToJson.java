@@ -109,7 +109,7 @@ public class FormatDatastreamRecordToJson
 
     private String getStreamName(JsonNode dataInput) {
       if (this.streamName == null) {
-        return dataInput.get("source_metadata").get("stream_name").getTextValue(); 
+        return dataInput.get("stream_name").getTextValue();
       }
       return this.streamName;
     }
