@@ -32,11 +32,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
-import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.FlatMapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.TypeDescriptor;
+import org.apache.beam.vendor.guava.v20_0.com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,7 +98,7 @@ public class MergeInfoMapper
   @Override
   public PCollection<MergeInfo> expand(PCollection<KV<TableId, TableRow>> input) {
     return input.apply(
-        MapElements.into(TypeDescriptor.of(MergeInfo.class))
+        FlatMapElements.into(TypeDescriptor.of(MergeInfo.class))
             .via(
                 element -> {
                   TableId tableId = element.getKey();
@@ -105,9 +106,18 @@ public class MergeInfoMapper
                   String streamName = (String) row.get("_metadata_stream");
                   String schemaName = (String) row.get("_metadata_schema");
                   String tableName = (String) row.get("_metadata_table");
-                  List allPkFields = getPrimaryKeys(streamName, schemaName, tableName);
+                  List<String> mergeFields = getMergeFields(tableId, row);
+                  List<String> allPkFields = getPrimaryKeys(
+                      streamName, schemaName, tableName, mergeFields);
 
-                  return MergeInfo.create(
+                  if (allPkFields.size() == 0) {
+                    LOG.warn("Unable to retrieve primary keys for table {}.{} in stream {}. "
+                            + "Not performing merge-based consolidation.",
+                        schemaName, tableName, streamName);
+                    return Lists.newArrayList();
+                  }
+
+                  return Lists.newArrayList(MergeInfo.create(
                       METADATA_TIMESTAMP, // TODO should be list pulled from Datastream API
                       METADATA_DELETED,
                       String.format("%s.%s",
@@ -121,20 +131,21 @@ public class MergeInfoMapper
                               .formatStringTemplate(replicaDataset, row),
                           BigQueryConverters
                               .formatStringTemplate(replicaTable, row)),
-                      getMergeFields(tableId, row),
-                      allPkFields);
+                      mergeFields,
+                      allPkFields));
                 }));
   }
 
-  public List getPrimaryKeys(String streamName, String schemaName, String tableName) {
+  public List<String> getPrimaryKeys(String streamName, String schemaName, String tableName,
+      List<String> mergeFields) {
     List<String> searchKey = ImmutableList.of(streamName, schemaName, tableName);
     List<String> primaryKeys = getPkCache().get(searchKey);
     try {
       primaryKeys = this.dataStreamClient.getPrimaryKeys(streamName, schemaName, tableName);
     } catch (IOException e) {
-      LOG.error("IOException: DataStream Discovery on Primary Keys Failed.");
+      LOG.error("IOException: DataStream Discovery on Primary Keys Failed.", e);
     }
-    if (primaryKeys.size() == 0) {
+    if (primaryKeys.size() == 0 && mergeFields.contains("_metadata_row_id")) {
       // TODO when DataStream releases new outputs, change logic here.
       // Possibly move upstream to DataStream Client
       primaryKeys.add("_metadata_row_id");

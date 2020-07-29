@@ -26,6 +26,8 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Iterator;
 import java.util.UUID;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.GroupByKey;
 import org.apache.beam.sdk.transforms.MapElements;
@@ -136,6 +138,7 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
   public class BigQueryStatementIssuingFn extends DoFn<String, Void> {
 
     public static final String JOB_ID_PREFIX = "bigstream_to_bq";
+    private final Counter mergesIssued = Metrics.counter(BigQueryMerger.class, "mergesIssued");
 
     private BigQuery bigQueryClient;
 
@@ -161,6 +164,7 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
       Job jobInfo = issueQueryToBQ(statement);
       LOG.info("Job Info for triggered job: {}", jobInfo);
       jobInfo = jobInfo.waitFor();
+      mergesIssued.inc();
       LOG.info("Job Info for finalized job: {}", jobInfo);
     }
 
