@@ -18,8 +18,12 @@ package com.google.cloud.teleport.spanner;
 
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.startsWith;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.spanner.ExportProtos.Export;
 import com.google.cloud.teleport.spanner.ExportProtos.Export.Builder;
 import com.google.cloud.teleport.spanner.ExportProtos.TableManifest;
@@ -128,5 +132,38 @@ public class ExportTransformTest {
                 });
 
     pipeline.run();
+  }
+
+  @Test
+  public void createTimestampBound_noTimestamp() {
+    assertEquals(TimestampBound.strong(), ExportTransform.createTimestampBound(""));
+  }
+
+  @Test
+  public void createTimestampBound_zeroTimeZoneOffset() {
+    assertEquals(
+        TimestampBound.ofReadTimestamp(Timestamp.ofTimeSecondsAndNanos(946782245, 0)),
+        ExportTransform.createTimestampBound("2000-01-02T03:04:05Z"));
+  }
+
+  @Test
+  public void createTimestampBound_nonZeroTimeZoneOffset() {
+    assertEquals(
+        TimestampBound.ofReadTimestamp(Timestamp.ofTimeSecondsAndNanos(946803845, 0)),
+        ExportTransform.createTimestampBound("2000-01-02T03:04:05-06:00"));
+  }
+
+  @Test
+  public void createTimestampBound_noTimeZoneOffset() {
+    assertEquals(
+        TimestampBound.ofReadTimestamp(Timestamp.ofTimeSecondsAndNanos(946782245, 0)),
+        ExportTransform.createTimestampBound("2000-01-02T03:04:05"));
+  }
+
+  @Test
+  public void createTimestampBound_invalidTimestamp() {
+    assertThrows(
+        IllegalStateException.class,
+        () -> ExportTransform.createTimestampBound("2000-01-02TT03:04:05"));
   }
 }

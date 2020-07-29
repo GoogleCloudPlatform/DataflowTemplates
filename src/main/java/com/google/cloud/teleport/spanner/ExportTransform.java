@@ -22,6 +22,7 @@ import com.google.cloud.teleport.spanner.ExportProtos.Export;
 import com.google.cloud.teleport.spanner.ExportProtos.TableManifest;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.common.base.Supplier;
 import com.google.common.collect.Iterables;
@@ -605,39 +606,43 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     public void processElement(ProcessContext c) throws Exception {
       String timestamp = ExportTransform.this.snapshotTime.get();
 
-      TimestampBound tsb;
-      if ("".equals(timestamp)) {
-        /* If no timestamp is specified, read latest data */
-        tsb = TimestampBound.strong();
-      } else {
-        /* Else try to read data in the timestamp specified. */
-        com.google.cloud.Timestamp tsVal;
-        try {
-          tsVal = com.google.cloud.Timestamp.parseTimestamp(timestamp);
-        } catch (Exception e) {
-          throw new IllegalStateException("Invalid timestamp specified " + timestamp);
-        }
-
-        /*
-         * If timestamp specified is in the future, spanner read will wait
-         * till the time has passed. Abort the job and complain early.
-         */
-        if (tsVal.compareTo(com.google.cloud.Timestamp.now()) > 0) {
-          throw new IllegalStateException("Timestamp specified is in future " + timestamp);
-        }
-
-        /*
-         * Export jobs with Timestamps which are older than 
-         * maximum staleness time (one hour) fail with the FAILED_PRECONDITION
-         * error - https://cloud.google.com/spanner/docs/timestamp-bounds
-         * Hence we do not handle the case.
-         */
-
-        tsb = TimestampBound.ofReadTimestamp(tsVal);
-      }
+      TimestampBound tsb = createTimestampBound(timestamp);
       BatchReadOnlyTransaction tx =
         spannerAccessor.getBatchClient().batchReadOnlyTransaction(tsb);
       c.output(Transaction.create(tx.getBatchTransactionId()));
+    }
+  }
+
+  @VisibleForTesting
+  static TimestampBound createTimestampBound(String timestamp) {
+    if ("".equals(timestamp)) {
+      /* If no timestamp is specified, read latest data */
+      return TimestampBound.strong();
+    } else {
+      /* Else try to read data in the timestamp specified. */
+      com.google.cloud.Timestamp tsVal;
+      try {
+        tsVal = com.google.cloud.Timestamp.parseTimestamp(timestamp);
+      } catch (Exception e) {
+        throw new IllegalStateException("Invalid timestamp specified " + timestamp);
+      }
+
+      /*
+       * If timestamp specified is in the future, spanner read will wait
+       * till the time has passed. Abort the job and complain early.
+       */
+      if (tsVal.compareTo(com.google.cloud.Timestamp.now()) > 0) {
+        throw new IllegalStateException("Timestamp specified is in future " + timestamp);
+      }
+
+      /*
+       * Export jobs with Timestamps which are older than
+       * maximum staleness time (one hour) fail with the FAILED_PRECONDITION
+       * error - https://cloud.google.com/spanner/docs/timestamp-bounds
+       * Hence we do not handle the case.
+       */
+
+      return TimestampBound.ofReadTimestamp(tsVal);
     }
   }
 

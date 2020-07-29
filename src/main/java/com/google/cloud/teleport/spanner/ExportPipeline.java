@@ -65,7 +65,7 @@ public class ExportPipeline {
     void setWaitUntilFinish(boolean value);
 
     @Description("If set, specifies the time when the snapshot must be taken."
-      + " String is in the RFC 3339 format in UTC time. "
+      + " String is in the RFC 3339 format. "
       + " Example - 1990-12-31T23:59:60Z"
       + " Timestamp must be in the past and Maximum timestamp staleness applies."
       + " https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness")
