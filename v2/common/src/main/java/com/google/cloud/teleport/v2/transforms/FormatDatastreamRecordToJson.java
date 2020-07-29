@@ -94,12 +94,19 @@ public class FormatDatastreamRecordToJson
         // }
       }
 
-      ((ObjectNode) outputObject).put("_metadata_timestamp", getMetadataTimestamp(dataInput));
-      ((ObjectNode) outputObject).put("_metadata_deleted", getMetadataIsDeleted(dataInput));
-      
+      // General DataStream Metadata
       ((ObjectNode) outputObject).put("_metadata_stream", getStreamName(dataInput));
+      ((ObjectNode) outputObject).put("_metadata_timestamp", getSourceTimestamp(dataInput));
+      ((ObjectNode) outputObject).put("_metadata_read_timestamp", getMetadataTimestamp(dataInput));
+      
+      // Source Specific Metadata
+      ((ObjectNode) outputObject).put("_metadata_deleted", getMetadataIsDeleted(dataInput));
       ((ObjectNode) outputObject).put("_metadata_schema", getMetadataSchema(dataInput));
       ((ObjectNode) outputObject).put("_metadata_table", getMetadataTable(dataInput));
+      ((ObjectNode) outputObject).put("_metadata_change_type", getMetadataChangeType(dataInput));
+
+      // Oracle Specific Metadata
+      ((ObjectNode) outputObject).put("_metadata_row_id", getOracleRowId(dataInput));
 
       ((ObjectNode) outputObject).put("_metadata_source", dataInput.get("source_metadata"));
 
@@ -113,6 +120,24 @@ public class FormatDatastreamRecordToJson
       }
       return this.streamName;
     }
+
+    private double getMetadataTimestamp(JsonNode dataInput) {
+      double unixTimestampMilli = (double) dataInput.get("read_timestamp").getLongValue();
+      return unixTimestampMilli / 1000;
+    }
+
+    private double getSourceTimestamp(JsonNode dataInput) {
+      double unixTimestampSec;
+      if (dataInput.has("source_timestamp")) {
+        double unixTimestampMilli = (double) dataInput.get("source_timestamp").getLongValue();
+        unixTimestampSec = unixTimestampMilli / 1000;
+      } else {
+        double unixTimestampMilli = (double) dataInput.get("read_timestamp").getLongValue();
+        unixTimestampSec = unixTimestampMilli / 1000;
+      }
+      return unixTimestampSec;
+    }
+
     private String getMetadataSchema(JsonNode dataInput) {
       return dataInput.get("source_metadata").get("schema").getTextValue();
     }
@@ -121,9 +146,13 @@ public class FormatDatastreamRecordToJson
       return dataInput.get("source_metadata").get("table").getTextValue();
     }
 
-    private double getMetadataTimestamp(JsonNode dataInput) {
-      double unixTimestampMilli = (double) dataInput.get("read_timestamp").getLongValue();
-      return unixTimestampMilli / 1000;
+    private String getMetadataChangeType(JsonNode dataInput) {
+      if (dataInput.get("source_metadata").has("change_type")) {
+        return dataInput.get("source_metadata").get("change_type").getTextValue();
+      }
+
+      // TODO(dhercher): This should be a backfill insert
+      return null;
     }
 
     private Boolean getMetadataIsDeleted(JsonNode dataInput) {
@@ -135,6 +164,14 @@ public class FormatDatastreamRecordToJson
       }
 
       return isDeleted;
+    }
+
+    private String getOracleRowId(JsonNode dataInput) {
+      if (dataInput.get("source_metadata").has("row_id")) {
+        return dataInput.get("source_metadata").get("row_id").getTextValue();
+      }
+
+      return null;
     }
   }
 }
