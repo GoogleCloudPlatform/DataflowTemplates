@@ -51,7 +51,7 @@ import org.slf4j.LoggerFactory;
  *
  * The BigQueryMapper can be easily extended by overriding: - public TableId getTableId(InputT
  * input) - public TableRow getTableRow(InputT input) - public OutputT getOutputObject(InputT input)
- * - public Map<String, LegacySQLTypeName> getInputSchema(InputT input)
+ * - public Map<String, LegacySQLTypeName> getInputSchema(TableId tableId, TableRow row)
  */
 public class BigQueryMapper<InputT, OutputT>
     extends PTransform<PCollection<InputT>, PCollection<OutputT>> {
@@ -85,7 +85,7 @@ public class BigQueryMapper<InputT, OutputT>
   /* Return a HashMap with the Column->Column Type Mapping required from the source
       Implementing getInputSchema will allow the mapper class to support your desired format
   */
-  public Map<String, LegacySQLTypeName> getInputSchema(InputT input) {
+  public Map<String, LegacySQLTypeName> getInputSchema(TableId tableId, TableRow row) {
     return new HashMap<String, LegacySQLTypeName>();
   }
 
@@ -159,8 +159,8 @@ public class BigQueryMapper<InputT, OutputT>
       implementing getInputSchema (for complex and dynamic cases)
       and submitting a static default schema.
   */
-  private Map<String, LegacySQLTypeName> getObjectSchema(InputT input) {
-    Map<String, LegacySQLTypeName> inputSchema = getInputSchema(input);
+  private Map<String, LegacySQLTypeName> getObjectSchema(TableId tableId, TableRow row) {
+    Map<String, LegacySQLTypeName> inputSchema = getInputSchema(tableId, row);
     if (this.defaultSchema != null) {
       inputSchema.putAll(this.defaultSchema);
     }
@@ -199,10 +199,9 @@ public class BigQueryMapper<InputT, OutputT>
                 setUp();
                 TableId tableId = getTableId(input);
                 TableRow row = getTableRow(input);
-                Map<String, LegacySQLTypeName> inputSchema = getObjectSchema(input);
                 int retries = getMapperRetries();
 
-                applyMapperToTableRow(tableId, row, inputSchema, retries);
+                applyMapperToTableRow(tableId, row, retries);
                 return getOutputObject(input);
               }
             })
@@ -252,9 +251,9 @@ public class BigQueryMapper<InputT, OutputT>
    * @param retries Number of remaining retries before error is raised.
    */
   private void applyMapperToTableRow(
-      TableId tableId, TableRow row, Map<String, LegacySQLTypeName> inputSchema, int retries) {
+      TableId tableId, TableRow row, int retries) {
     try {
-      updateTableIfRequired(tableId, row, inputSchema);
+      updateTableIfRequired(tableId, row);
     } catch (Exception e) {
       if (retries > 0) {
         LOG.info("RETRY TABLE UPDATE - enter: {}", String.valueOf(retries));
@@ -264,7 +263,7 @@ public class BigQueryMapper<InputT, OutputT>
           throw e;
         }
         LOG.info("RETRY TABLE UPDATE - apply: {}", String.valueOf(retries));
-        applyMapperToTableRow(tableId, row, inputSchema, retries - 1);
+        applyMapperToTableRow(tableId, row, retries - 1);
       } else {
         LOG.info("RETRY TABLE UPDATE - throw: {}", String.valueOf(retries));
         throw e;
@@ -281,9 +280,11 @@ public class BigQueryMapper<InputT, OutputT>
    * @param inputSchema The source schema lookup to be used in mapping.
    */
   private void updateTableIfRequired(
-      TableId tableId, TableRow row, Map<String, LegacySQLTypeName> inputSchema) {
+      TableId tableId, TableRow row) {
     Table table = getOrCreateBigQueryTable(tableId);
     FieldList tableFields = table.getDefinition().getSchema().getFields();
+    Map<String, LegacySQLTypeName> inputSchema = new HashMap<String, LegacySQLTypeName>();
+
 
     Set<String> rowKeys = row.keySet();
     Boolean tableWasUpdated = false;
@@ -296,6 +297,9 @@ public class BigQueryMapper<InputT, OutputT>
       try {
         Field tableField = tableFields.get(rowKey);
       } catch (IllegalArgumentException e) {
+        if (inputSchema.isEmpty()) {
+          inputSchema = getObjectSchema(tableId, row);
+        }
         tableWasUpdated = addNewTableField(tableId, row, rowKey, newFieldList, inputSchema);
       }
     }
