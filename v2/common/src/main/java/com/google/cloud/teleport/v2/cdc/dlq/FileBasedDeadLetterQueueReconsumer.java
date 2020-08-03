@@ -38,6 +38,9 @@ import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.Watch.Growth;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
+import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.node.ObjectNode;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -125,9 +128,23 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
       BufferedReader jsonReader = new BufferedReader(new InputStreamReader(jsonStream));
 
       // Assuming that files are JSONLines formatted.
+      ObjectMapper mapper = new ObjectMapper();
       jsonReader.lines().forEach(line -> {
-        outputs.output(line);
-        reconsumedElements.inc();
+        ObjectNode resultNode;
+        // Each line is expecting this format: {"message": ROW, "error_message": ERROR}
+        try {
+          JsonNode jsonDLQElement = mapper.readTree(line);
+          if (!jsonDLQElement.get("message").isObject()) {
+            throw new IOException("Unable to parse JSON record " + line);
+          }
+          resultNode = (ObjectNode) jsonDLQElement.get("message");
+          resultNode.put("_metadata_error", jsonDLQElement.get("error_message"));
+          outputs.output(resultNode.toString());
+          reconsumedElements.inc();
+        } catch (IOException e) {
+          LOG.error("Issue parsing JSON record {}. Unable to continue.", line, e);
+          throw new RuntimeException(e);
+        }
       });
       this.filesToRemove.add(dlqFile.resourceId());
       this.filesToRemove.add(newFileLocation);

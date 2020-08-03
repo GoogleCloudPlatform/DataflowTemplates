@@ -42,9 +42,14 @@ import org.slf4j.LoggerFactory;
 public class FileBasedDeadLetterQueueReconsumerTest {
 
   private static final String[] JSON_FILE_CONTENTS_1 =
-      {"{\"data\":\"datasample1\"}",
-      "{\"data\":\"datasample2\"}",
-      "{\"data\":\"datasample3\"}"};
+      {"{\"message\":{\"datasample1\":\"datasample1\"}, \"error_message\":\"errorsample3\"}",
+      "{\"message\":{\"datasample2\":\"datasample2\"}, \"error_message\":\"errorsample3\"}",
+      "{\"message\":{\"datasample3\":\"datasample3\"}, \"error_message\":\"errorsample3\"}"};
+
+  private static final String[] JSON_RESULTS_1 =
+      {"{\"datasample1\":\"datasample1\",\"_metadata_error\":\"errorsample3\"}",
+      "{\"datasample2\":\"datasample2\",\"_metadata_error\":\"errorsample3\"}",
+      "{\"datasample3\":\"datasample3\",\"_metadata_error\":\"errorsample3\"}"};
 
   static final Logger LOG = LoggerFactory.getLogger(FileBasedDeadLetterQueueReconsumerTest.class);
 
@@ -75,7 +80,7 @@ public class FileBasedDeadLetterQueueReconsumerTest {
         .apply(FileIO.match()
             .filepattern(folderPath))
         .apply(FileBasedDeadLetterQueueReconsumer.moveAndConsumeMatches());
-    PAssert.that(jsonData).containsInAnyOrder(JSON_FILE_CONTENTS_1);
+    PAssert.that(jsonData).containsInAnyOrder(JSON_RESULTS_1);
     p.run().waitUntilFinish();
 
     assertFalse(new File(fileName).exists());
@@ -96,7 +101,7 @@ public class FileBasedDeadLetterQueueReconsumerTest {
 
     PAssert.that(jsonData)
         .containsInAnyOrder(
-            Stream.of(JSON_FILE_CONTENTS_1)
+            Stream.of(JSON_RESULTS_1)
                 .flatMap(line -> Stream.of(line, line, line))
                 .collect(Collectors.toList()));
 

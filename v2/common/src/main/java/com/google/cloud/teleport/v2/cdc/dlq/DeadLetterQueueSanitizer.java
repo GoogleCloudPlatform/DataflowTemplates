@@ -15,7 +15,11 @@
  */
 package com.google.cloud.teleport.v2.cdc.dlq;
 
+import java.io.IOException;
 import org.apache.beam.sdk.transforms.SimpleFunction;
+import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,11 +61,20 @@ public class DeadLetterQueueSanitizer<InputT, OutputT> extends SimpleFunction<In
 
   // NOTE: Only override formatMessage if required or you desire a non-String output
   public OutputT formatMessage(String rawJson, String errorMessageJson) {
-    String dlqRow = String.format(
-        "{\"error_message\":%s,\"message\":%s}",
-        rawJson, errorMessageJson);
-
-    return (OutputT) dlqRow;
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode resultNode = mapper.createObjectNode();
+    try {
+      JsonNode node = mapper.readTree(rawJson);
+      resultNode.put("message", node);
+    } catch (IOException e ) {
+      resultNode.put("message", rawJson);
+    }
+    try {
+      JsonNode node = mapper.readTree(errorMessageJson);
+      resultNode.put("error_message", node);
+    } catch (IOException e ) {
+      resultNode.put("error_message", errorMessageJson);
+    }
+    return (OutputT) resultNode.toString();
   }
-
 }
