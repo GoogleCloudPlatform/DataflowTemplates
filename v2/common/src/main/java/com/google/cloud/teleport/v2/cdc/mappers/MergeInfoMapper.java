@@ -32,6 +32,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.FlatMapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.KV;
@@ -59,6 +61,8 @@ public class MergeInfoMapper
   private String replicaTable;
   private BigQueryTableCache tableCache;
   private DataStreamPkCache pkCache;
+
+  private final Counter foregoneMerges = Metrics.counter(MergeInfoMapper.class, "mergesForegone");
 
   public MergeInfoMapper(
       GcpOptions options,
@@ -114,6 +118,7 @@ public class MergeInfoMapper
                     LOG.warn("Unable to retrieve primary keys for table {}.{} in stream {}. "
                             + "Not performing merge-based consolidation.",
                         schemaName, tableName, streamName);
+                    foregoneMerges.inc();
                     return Lists.newArrayList();
                   }
 

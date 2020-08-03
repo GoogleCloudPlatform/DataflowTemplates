@@ -99,6 +99,8 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
 
     private final Counter failedDeletions =
         Metrics.counter(MoveAndConsumeFn.class, "failedDeletions");
+    private final Counter reconsumedElements =
+        Metrics.counter(MoveAndConsumeFn.class, "elementsReconsumedFromDeadLetterQueue");
 
     @ProcessElement
     public void process(
@@ -123,7 +125,10 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
       BufferedReader jsonReader = new BufferedReader(new InputStreamReader(jsonStream));
 
       // Assuming that files are JSONLines formatted.
-      jsonReader.lines().forEach(outputs::output);
+      jsonReader.lines().forEach(line -> {
+        outputs.output(line);
+        reconsumedElements.inc();
+      });
       this.filesToRemove.add(dlqFile.resourceId());
       this.filesToRemove.add(newFileLocation);
     }
