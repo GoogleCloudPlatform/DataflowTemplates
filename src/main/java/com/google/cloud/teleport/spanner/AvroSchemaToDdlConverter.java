@@ -52,21 +52,45 @@ public class AvroSchemaToDdlConverter {
     Table.Builder table = Table.builder();
     table.name(tableName);
     for (Schema.Field f : schema.getFields()) {
+      Column.Builder column = table.column(f.name());
       String sqlType = f.getProp("sqlType");
-      boolean nullable = false;
-      Schema avroType = f.schema();
-      if (avroType.getType() == Schema.Type.UNION) {
-        Schema unpacked = unpackNullable(avroType);
-        nullable = unpacked != null;
-        if (nullable) {
-          avroType = unpacked;
+      String expression = f.getProp("generationExpression");
+      if (expression != null) {
+        // This is a generated column.
+        if (Strings.isNullOrEmpty(sqlType)) {
+          throw new IllegalArgumentException(
+              "Property sqlType is missing for generated column " + f.name());
         }
+        String notNull = f.getProp("notNull");
+        if (notNull == null) {
+          throw new IllegalArgumentException(
+              "Property notNull is missing for generated column " + f.name());
+        }
+        column.parseType(sqlType).notNull(Boolean.parseBoolean(notNull)).generatedAs(expression);
+        String stored = f.getProp("stored");
+        if (stored == null) {
+          throw new IllegalArgumentException(
+              "Property stored is missing for generated column " + f.name());
+        }
+        if (Boolean.parseBoolean(stored)) {
+          column.stored();
+        }
+      } else {
+        boolean nullable = false;
+        Schema avroType = f.schema();
+        if (avroType.getType() == Schema.Type.UNION) {
+          Schema unpacked = unpackNullable(avroType);
+          nullable = unpacked != null;
+          if (nullable) {
+            avroType = unpacked;
+          }
+        }
+        if (Strings.isNullOrEmpty(sqlType)) {
+          Type spannerType = inferType(avroType, true);
+          sqlType = toString(spannerType, true);
+        }
+        column.parseType(sqlType).notNull(!nullable);
       }
-      if (Strings.isNullOrEmpty(sqlType)) {
-        Type spannerType = inferType(avroType, true);
-        sqlType = toString(spannerType, true);
-      }
-      Column.Builder column = table.column(f.name()).parseType(sqlType).notNull(!nullable);
       ImmutableList.Builder<String> columnOptions = ImmutableList.builder();
       for (int i = 0; ; i++) {
         String spannerOption = f.getProp("spannerOption_" + i);

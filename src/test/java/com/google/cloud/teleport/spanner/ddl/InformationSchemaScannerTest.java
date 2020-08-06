@@ -283,4 +283,18 @@ public class InformationSchemaScannerTest {
     Ddl ddl = getDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToIgnoringWhiteSpace(statement));
   }
+
+  // TODO: enable this test once generated columns are supported.
+  // @Test
+  public void generatedColumns() throws Exception {
+        String statement =
+        "CREATE TABLE `T` ("
+            + " `id`                                     INT64 NOT NULL,"
+            + " `generated`                              INT64 NOT NULL AS (`id`) STORED, "
+            + " ) PRIMARY KEY (`id` ASC)";
+
+    spannerServer.createDatabase(dbId, Collections.singleton(statement));
+    Ddl ddl = getDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToIgnoringWhiteSpace(statement));
+  }
 }

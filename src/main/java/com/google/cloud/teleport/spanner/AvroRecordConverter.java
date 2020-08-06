@@ -59,6 +59,11 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
                 fieldName, table.prettyPrint(), schema.toString(true)));
       }
 
+      if (column.isGenerated()) {
+        // Spanner will compute generated column values automatically.
+        continue;
+      }
+
       Schema avroFieldSchema = field.schema();
       if (avroFieldSchema.getType() == Schema.Type.UNION) {
         Schema unpacked = AvroUtil.unpackNullable(avroFieldSchema);

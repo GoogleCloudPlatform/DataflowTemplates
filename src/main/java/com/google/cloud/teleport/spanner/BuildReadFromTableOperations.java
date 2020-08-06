@@ -47,6 +47,7 @@ class BuildReadFromTableOperations
                 for (Table table : ddl.allTables()) {
                   String columnsListAsString =
                       table.columns().stream()
+                          .filter(x -> !x.isGenerated())
                           .map(x -> "t.`" + x.name() + "`")
                           .collect(Collectors.joining(","));
 

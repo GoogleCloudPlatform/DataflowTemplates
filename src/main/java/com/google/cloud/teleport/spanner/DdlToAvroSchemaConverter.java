@@ -73,11 +73,20 @@ public class DdlToAvroSchemaConverter {
         for (int i = 0; i < cm.columnOptions().size(); i++) {
           fieldBuilder.prop("spannerOption_" + i, cm.columnOptions().get(i));
         }
-        Schema avroType = avroType(cm.type());
-        if (!cm.notNull()) {
-          avroType = wrapAsNullable(avroType);
+        if (cm.isGenerated()) {
+          fieldBuilder.prop("notNull", Boolean.toString(cm.notNull()));
+          fieldBuilder.prop("generationExpression", cm.generationExpression());
+          fieldBuilder.prop("stored", Boolean.toString(cm.isStored()));
+          // Make the type null to allow us not export the generated column values,
+          // which are semantically logical entities.
+          fieldBuilder.type(SchemaBuilder.builder().nullType()).withDefault(null);
+        } else {
+          Schema avroType = avroType(cm.type());
+          if (!cm.notNull()) {
+            avroType = wrapAsNullable(avroType);
+          }
+          fieldBuilder.type(avroType).noDefault();
         }
-        fieldBuilder.type(avroType).noDefault();
       }
       Schema schema = fieldsAssembler.endRecord();
       schemas.add(schema);

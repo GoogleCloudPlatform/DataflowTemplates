@@ -60,6 +60,8 @@ public abstract class RandomDdlGenerator {
 
   public abstract int getMaxForeignKeys();
 
+  public abstract boolean getEnableGeneratedColumns();
+
   public static Builder builder() {
 
     return new AutoValue_RandomDdlGenerator.Builder()
@@ -70,7 +72,9 @@ public abstract class RandomDdlGenerator {
         .setMaxIndex(2)
         .setMaxForeignKeys(2)
         .setMaxColumns(8)
-        .setMaxIdLength(11);
+        .setMaxIdLength(11)
+        // TODO: enable generated columns once they are supported.
+        .setEnableGeneratedColumns(false);
   }
 
   /** A builder for {@link RandomDdlGenerator}. */
@@ -94,6 +98,8 @@ public abstract class RandomDdlGenerator {
     public abstract Builder setMaxIndex(int indexes);
 
     public abstract Builder setMaxForeignKeys(int foreignKeys);
+
+    public abstract Builder setEnableGeneratedColumns(boolean enable);
   }
 
   public abstract Builder toBuilder();
@@ -144,6 +150,15 @@ public abstract class RandomDdlGenerator {
     }
 
     Table table = tableBuilder.build();
+
+    if (getEnableGeneratedColumns()) {
+      // Add a generated column
+      Column depColumn = table.columns().get(rnd.nextInt(table.columns().size()));
+      Column generatedColumn = Column.builder().name("generated").type(depColumn.type()).max()
+          .notNull(depColumn.notNull()).generatedAs(depColumn.name()).stored().autoBuild();
+      tableBuilder.addColumn(generatedColumn);
+      table = tableBuilder.build();
+    }
 
     int numIndexes = rnd.nextInt(getMaxIndex());
     ImmutableList.Builder<String> indexes = ImmutableList.builder();

@@ -146,7 +146,9 @@ public class RandomInsertMutationGenerator {
       RandomValueGenerator randomValueGenerator = RandomValueGenerator.defaultInstance();
 
       for (Column column : table.columns()) {
-        valueGenerators.put(column.name(), randomValueGenerator.valueStream(column).iterator());
+        if (!column.isGenerated()) {
+          valueGenerators.put(column.name(), randomValueGenerator.valueStream(column).iterator());
+        }
       }
     }
 

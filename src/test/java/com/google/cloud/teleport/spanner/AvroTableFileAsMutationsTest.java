@@ -184,6 +184,12 @@ public class AvroTableFileAsMutationsTest {
             .type(Type.string())
             .max()
             .endColumn()
+            .column("full_name")
+            .type(Type.string())
+            .max()
+            .generatedAs("CONCAT(first_name, ' ', last_name)")
+            .stored()
+            .endColumn()
             .primaryKey()
             .asc("id")
             .desc("last_name")
@@ -199,10 +205,12 @@ public class AvroTableFileAsMutationsTest {
     user1.put("id", 123L);
     user1.put("first_name", "John");
     user1.put("last_name", "Smith");
+    user1.put("full_name", "John Smith");
     GenericRecord user2 = new GenericData.Record(usersSchema);
     user2.put("id", 456L);
     user2.put("first_name", "Jane");
     user2.put("last_name", "Doe");
+    user2.put("full_name", "Jane Doe");
 
     File file = tmpFolder.newFile("users.avro");
     DatumWriter<GenericRecord> datumWriter = new GenericDatumWriter<>(usersSchema);

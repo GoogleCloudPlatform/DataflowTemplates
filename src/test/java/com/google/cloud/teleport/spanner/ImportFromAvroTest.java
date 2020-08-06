@@ -336,7 +336,8 @@ public class ImportFromAvroTest {
             .name("required_int").type(dateType).noDefault()
             .endRecord();
     String spannerSchema =
-        "CREATE TABLE `AvroTable` (" + "`id`                                    INT64 NOT NULL,"
+        "CREATE TABLE `AvroTable` ("
+            + "`id`                                    INT64 NOT NULL,"
             + "`optional_string`                       DATE,"
             + "`required_string`                       DATE NOT NULL,"
             + "`required_int`                          DATE NOT NULL,"
@@ -358,6 +359,33 @@ public class ImportFromAvroTest {
                 .set("required_string", "2018-01-02")
                 .set("required_int", 3)
                 .build()));
+  }
+
+  // TODO: enable this test once generated columns are supported.
+  // @Test
+  public void generatedColumns() throws Exception {
+    SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("generatedColumns");
+    SchemaBuilder.FieldAssembler<Schema> fieldAssembler = record.fields();
+
+    fieldAssembler
+        // Primary key.
+        .requiredLong("id")
+        // Integer columns.
+        .optionalLong("optional_generated")
+        .requiredLong("required_generated");
+    Schema schema = fieldAssembler.endRecord();
+    String spannerSchema =
+        "CREATE TABLE `AvroTable` ("
+            + "`id`                                    INT64 NOT NULL,"
+            + "`optional_generated`                    INT64 AS (`id`) STORED,"
+            + "`required_generated`                    INT64 NOT NULL AS (`id`) STORED,"
+            + ") PRIMARY KEY (`id`)";
+
+    runTest(schema, spannerSchema, Arrays.asList(new GenericRecordBuilder(schema)
+        .set("id", 1L)
+        .set("optional_generated", 1L)
+        .set("required_generated", 1L)
+        .build()));
   }
 
   private void runTest(Schema avroSchema, String spannerSchema, Iterable<GenericRecord> records)

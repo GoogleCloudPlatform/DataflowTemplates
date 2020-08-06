@@ -38,6 +38,10 @@ public class SpannerRecordConverter {
     GenericRecordBuilder builder = new GenericRecordBuilder(schema);
     List<Schema.Field> fields = schema.getFields();
     for (Schema.Field field : fields) {
+      if (field.getProp("generationExpression") != null) {
+        // Generated column values are not exported.
+        continue;
+      }
       String fieldName = field.name();
       Schema type = field.schema();
       // Empty string to avoid null checks.

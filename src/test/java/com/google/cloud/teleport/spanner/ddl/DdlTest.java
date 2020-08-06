@@ -44,6 +44,8 @@ public class DdlTest {
         .column("id").int64().notNull().endColumn()
         .column("first_name").string().size(10).endColumn()
         .column("last_name").type(Type.string()).max().endColumn()
+        .column("full_name").type(Type.string()).max()
+        .generatedAs("CONCAT(first_name, ' ', last_name)").stored().endColumn()
         .primaryKey().asc("id").end()
         .indexes(ImmutableList.of("CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"))
         .foreignKeys(
@@ -59,6 +61,7 @@ public class DdlTest {
                 + " `id` INT64 NOT NULL,"
                 + " `first_name` STRING(10),"
                 + " `last_name` STRING(MAX),"
+                + " `full_name` STRING(MAX) AS (CONCAT(first_name, ' ', last_name)) STORED,"
                 + " ) PRIMARY KEY (`id` ASC)"
                 + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"
                 + " ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"

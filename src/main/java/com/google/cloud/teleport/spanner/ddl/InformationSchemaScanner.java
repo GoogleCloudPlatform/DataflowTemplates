@@ -128,9 +128,11 @@ public class InformationSchemaScanner {
         context.executeQuery(
             Statement.newBuilder(
                     "SELECT c.table_name, c.column_name,"
-                        + " c.ordinal_position, c.spanner_type, c.is_nullable"
+                        + " c.ordinal_position, c.spanner_type, c.is_nullable,"
+                        + " c.is_generated, c.generation_expression, c.is_stored"
                         + " FROM information_schema.columns as c"
                         + " WHERE c.table_catalog = '' AND c.table_schema = '' "
+                        + " AND c.spanner_state = 'COMMITTED' "
                         + " ORDER BY c.table_name, c.ordinal_position")
                 .build());
     while (resultSet.next()) {
@@ -138,11 +140,19 @@ public class InformationSchemaScanner {
       String columnName = resultSet.getString(1);
       String spannerType = resultSet.getString(3);
       boolean nullable = resultSet.getString(4).equalsIgnoreCase("YES");
+      boolean isGenerated = resultSet.getString(5).equalsIgnoreCase("ALWAYS");
+      String generationExpression = resultSet.getString(6);
+      boolean isStored = resultSet.isNull(7)
+          ?
+          false : resultSet.getString(7).equalsIgnoreCase("YES");
       builder
           .createTable(tableName)
           .column(columnName)
           .parseType(spannerType)
           .notNull(!nullable)
+          .isGenerated(isGenerated)
+          .generationExpression(generationExpression)
+          .isStored(isStored)
           .endColumn()
           .endTable();
     }

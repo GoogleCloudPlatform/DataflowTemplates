@@ -40,14 +40,27 @@ public abstract class Column implements Serializable {
 
   public abstract boolean notNull();
 
+  public abstract boolean isGenerated();
+
+  public abstract String generationExpression();
+
+  public abstract boolean isStored();
+
   public static Builder builder() {
-    return new AutoValue_Column.Builder().columnOptions(ImmutableList.of()).notNull(false);
+    return new AutoValue_Column.Builder().columnOptions(ImmutableList.of()).notNull(false)
+        .isGenerated(false).generationExpression("").isStored(false);
   }
 
   public void prettyPrint(Appendable appendable) throws IOException {
     appendable.append(String.format("%1$-40s", "`" + name() + "`")).append(typeString());
     if (notNull()) {
       appendable.append(" NOT NULL");
+    }
+    if (isGenerated()) {
+      appendable.append(" AS (").append(generationExpression()).append(")");
+      if (isStored()) {
+        appendable.append(" STORED");
+      }
     }
     if (columnOptions() == null) {
       return;
@@ -124,6 +137,20 @@ public abstract class Column implements Serializable {
 
     public Builder notNull() {
       return notNull(true);
+    }
+
+    public abstract Builder isGenerated(boolean generated);
+
+    public abstract Builder generationExpression(String expression);
+
+    public Builder generatedAs(String expression) {
+      return isGenerated(true).generationExpression(expression);
+    }
+
+    public abstract Builder isStored(boolean generated);
+
+    public Builder stored() {
+      return isStored(true);
     }
 
     public abstract Column autoBuild();

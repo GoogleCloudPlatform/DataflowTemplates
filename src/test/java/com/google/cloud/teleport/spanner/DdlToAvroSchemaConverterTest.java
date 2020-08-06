@@ -50,6 +50,8 @@ public class DdlToAvroSchemaConverterTest {
         .column("id").int64().notNull().endColumn()
         .column("first_name").string().size(10).endColumn()
         .column("last_name").type(Type.string()).max().endColumn()
+        .column("full_name").type(Type.string()).max()
+        .generatedAs("CONCAT(first_name, ' ', last_name)").stored().endColumn()
         .primaryKey().asc("id").desc("last_name").end()
         .indexes(ImmutableList.of("CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"))
         .foreignKeys(
@@ -71,20 +73,37 @@ public class DdlToAvroSchemaConverterTest {
 
     List<Schema.Field> fields = avroSchema.getFields();
 
-    assertThat(fields, hasSize(3));
+    assertThat(fields, hasSize(4));
 
     assertThat(fields.get(0).name(), equalTo("id"));
     // Not null
     assertThat(fields.get(0).schema().getType(), equalTo(Schema.Type.LONG));
     assertThat(fields.get(0).getProp("sqlType"), equalTo("INT64"));
+    assertThat(fields.get(0).getProp("notNull"), equalTo(null));
+    assertThat(fields.get(0).getProp("generationExpression"), equalTo(null));
+    assertThat(fields.get(0).getProp("stored"), equalTo(null));
 
     assertThat(fields.get(1).name(), equalTo("first_name"));
     assertThat(fields.get(1).schema(), equalTo(nullableUnion(Schema.Type.STRING)));
     assertThat(fields.get(1).getProp("sqlType"), equalTo("STRING(10)"));
+    assertThat(fields.get(1).getProp("notNull"), equalTo(null));
+    assertThat(fields.get(1).getProp("generationExpression"), equalTo(null));
+    assertThat(fields.get(1).getProp("stored"), equalTo(null));
 
     assertThat(fields.get(2).name(), equalTo("last_name"));
     assertThat(fields.get(2).schema(), equalTo(nullableUnion(Schema.Type.STRING)));
     assertThat(fields.get(2).getProp("sqlType"), equalTo("STRING(MAX)"));
+    assertThat(fields.get(2).getProp("notNull"), equalTo(null));
+    assertThat(fields.get(2).getProp("generationExpression"), equalTo(null));
+    assertThat(fields.get(2).getProp("stored"), equalTo(null));
+
+    assertThat(fields.get(3).name(), equalTo("full_name"));
+    assertThat(fields.get(3).schema(), equalTo(Schema.create(Schema.Type.NULL)));
+    assertThat(fields.get(3).getProp("sqlType"), equalTo("STRING(MAX)"));
+    assertThat(fields.get(3).getProp("notNull"), equalTo("false"));
+    assertThat(fields.get(3).getProp("generationExpression"),
+        equalTo("CONCAT(first_name, ' ', last_name)"));
+    assertThat(fields.get(3).getProp("stored"), equalTo("true"));
 
     // spanner pk
     assertThat(avroSchema.getProp("spannerPrimaryKey_0"), equalTo("`id` ASC"));
