@@ -227,7 +227,9 @@ public class SpannerConverters {
           context.executeQuery(
               Statement.newBuilder(
                       "SELECT COLUMN_NAME, SPANNER_TYPE FROM INFORMATION_SCHEMA.COLUMNS "
-                          + "WHERE TABLE_NAME=@table_name ORDER BY ORDINAL_POSITION")
+                          + "WHERE TABLE_NAME=@table_name AND TABLE_CATALOG='' AND TABLE_SCHEMA='' "
+                          + "AND IS_GENERATED = 'NEVER' "
+                          + "ORDER BY ORDINAL_POSITION")
                   .bind("table_name")
                   .to(tableName)
                   .build());

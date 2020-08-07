@@ -431,12 +431,30 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
                 tableManifest.getTableName()));
       }
 
+      List<TableManifest.Column> manifestColumns = tableManifest.getColumnsList();
+      if (manifestColumns == null || manifestColumns.size() == 0) {
+        if (table.columns().stream().anyMatch(x -> x.isGenerated())) {
+          throw new RuntimeException(
+              String.format(
+                  "DB table %s has one or more generated columns. An explict column list that "
+                  + "excludes the generated columns must be provided in the manifest.",
+                  table.name()));
+        }
+      }
+
       for (TableManifest.Column manifiestColumn : tableManifest.getColumnsList()) {
         Column dbColumn = table.column(manifiestColumn.getColumnName());
         if (dbColumn == null) {
           throw new RuntimeException(
               String.format(
                   "Column %s in manifest does not exist in DB table %s.",
+                  manifiestColumn.getColumnName(), table.name()));
+        }
+        if (dbColumn.isGenerated()) {
+          throw new RuntimeException(
+              String.format(
+                  "Column %s in manifest is a generated column in DB table %s. "
+                  + "Generated columns cannot be imported.",
                   manifiestColumn.getColumnName(), table.name()));
         }
         if (parseSpannerDataType(manifiestColumn.getTypeName()) != dbColumn.type().getCode()) {
