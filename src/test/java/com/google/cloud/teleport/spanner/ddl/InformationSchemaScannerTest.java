@@ -270,6 +270,22 @@ public class InformationSchemaScannerTest {
     assertThat(ddl.prettyPrint(), equalToIgnoringWhiteSpace(String.join("", statements)));
   }
 
+  // TODO: enable this test once CHECK constraints are enabled
+  // @Test
+  public void checkConstraints() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "CREATE TABLE `T` ("
+                + " `id`     INT64 NOT NULL,"
+                + " `A`      INT64 NOT NULL,"
+                + " CONSTRAINT `ck` CHECK(A>0),"
+                + " ) PRIMARY KEY (`id` ASC)");
+
+    spannerServer.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToIgnoringWhiteSpace(String.join("", statements)));
+  }
+
   @Test
   public void commitTimestamp() throws Exception {
     String statement =

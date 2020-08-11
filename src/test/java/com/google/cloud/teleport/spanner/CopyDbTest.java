@@ -243,7 +243,22 @@ public class CopyDbTest {
     runTest();
   }
 
-  @Test
+  // TODO: enable this test once CHECK constraints are enabled
+  // @Test
+  public void checkConstraints() throws Exception {
+    Ddl ddl = Ddl.builder()
+        .createTable("T")
+        .column("id").int64().endColumn()
+        .column("A").int64().endColumn()
+        .primaryKey().asc("id").end()
+        .checkConstraints(ImmutableList.of(
+           "CONSTRAINT `ck` CHECK(TO_HEX(SHA1(CAST(A AS STRING))) <= '~')"))
+        .endTable().build();
+
+    createAndPopulate(ddl, 100);
+    runTest();
+  }
+
   public void randomSchema() throws Exception {
     Ddl ddl = RandomDdlGenerator.builder().build().generate();
     createAndPopulate(ddl, 100);

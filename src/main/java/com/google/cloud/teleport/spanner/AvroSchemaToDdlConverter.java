@@ -119,25 +119,11 @@ public class AvroSchemaToDdlConverter {
       }
     }
 
-    ImmutableList.Builder<String> indexes = ImmutableList.builder();
-    for (int i = 0; ; i++) {
-      String spannerIndex = schema.getProp("spannerIndex_" + i);
-      if (spannerIndex == null) {
-        break;
-      }
-      indexes.add(spannerIndex);
-    }
-    table.indexes(indexes.build());
+    table.indexes(getNumberedPropsWithPrefix(schema, "spannerIndex_"));
 
-    ImmutableList.Builder<String> foreignKeys = ImmutableList.builder();
-    for (int i = 0; ; i++) {
-      String spannerForeignKey = schema.getProp("spannerForeignKey_" + i);
-      if (spannerForeignKey == null) {
-        break;
-      }
-      foreignKeys.add(spannerForeignKey);
-    }
-    table.foreignKeys(foreignKeys.build());
+    table.foreignKeys(getNumberedPropsWithPrefix(schema, "spannerForeignKey_"));
+
+    table.checkConstraints(getNumberedPropsWithPrefix(schema, "spannerCheckConstraint_"));
 
     // Table parent options.
     String spannerParent = schema.getProp("spannerParent");
@@ -168,6 +154,18 @@ public class AvroSchemaToDdlConverter {
       return name.substring(1, name.length() - 1);
     }
     return name;
+  }
+
+  private static ImmutableList<String> getNumberedPropsWithPrefix(Schema schema, String prefix) {
+    ImmutableList.Builder<String> props = ImmutableList.builder();
+    for (int i = 0; ; i++) {
+      String prop = schema.getProp(prefix + i);
+      if (prop == null) {
+        break;
+      }
+      props.add(prop);
+    }
+    return props.build();
   }
 
   private com.google.cloud.spanner.Type inferType(Schema f, boolean supportArrays) {

@@ -58,6 +58,7 @@ public class DdlToAvroSchemaConverterTest {
             ImmutableList.of(
                 "ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
                     + " REFERENCES `AllowedNames` (`first_name`)"))
+        .checkConstraints(ImmutableList.of("CONSTRAINT ck CHECK (`first_name` != `last_name`)"))
         .endTable()
         .build();
 
@@ -119,6 +120,9 @@ public class DdlToAvroSchemaConverterTest {
         equalTo(
             "ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
                 + " REFERENCES `AllowedNames` (`first_name`)"));
+    assertThat(
+        avroSchema.getProp("spannerCheckConstraint_0"),
+        equalTo("CONSTRAINT ck CHECK (`first_name` != `last_name`)"));
 
     System.out.println(avroSchema.toString(true));
   }

@@ -81,6 +81,17 @@ public class InformationSchemaScanner {
       builder.createTable(tableName).foreignKeys(tableForeignKeys.build()).endTable();
     }
 
+    Map<String, NavigableMap<String, CheckConstraint>> checkConstraints = listCheckConstraints();
+    for (Map.Entry<String, NavigableMap<String, CheckConstraint>> tableEntry :
+        checkConstraints.entrySet()) {
+      String tableName = tableEntry.getKey();
+      ImmutableList.Builder<String> constraints = ImmutableList.builder();
+      for (Map.Entry<String, CheckConstraint> entry : tableEntry.getValue().entrySet()) {
+        constraints.add(entry.getValue().prettyPrint());
+      }
+      builder.createTable(tableName).checkConstraints(constraints.build()).endTable();
+    }
+
     return builder.build();
   }
 
@@ -320,5 +331,37 @@ public class InformationSchemaScanner {
       foreignKey.columnsBuilder().add(column);
       foreignKey.referencedColumnsBuilder().add(referencedColumn);
     }
+  }
+
+  private Map<String, NavigableMap<String, CheckConstraint>> listCheckConstraints() {
+    Map<String, NavigableMap<String, CheckConstraint>> checkConstraints = Maps.newHashMap();
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT ctu.TABLE_NAME,"
+                    + " cc.CONSTRAINT_NAME,"
+                    + " cc.CHECK_CLAUSE"
+                    + " FROM INFORMATION_SCHEMA.CONSTRAINT_TABLE_USAGE as ctu"
+                    + " INNER JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS as cc"
+                    + " ON ctu.constraint_catalog = cc.constraint_catalog"
+                    + " AND ctu.constraint_schema = cc.constraint_schema"
+                    + " AND ctu.CONSTRAINT_NAME = cc.CONSTRAINT_NAME"
+                    + " WHERE NOT STARTS_WITH(cc.CONSTRAINT_NAME, 'CK_IS_NOT_NULL_')"
+                    + " AND ctu.table_catalog = ''"
+                    + " AND ctu.table_schema = ''"
+                    + " AND ctu.constraint_catalog = ''"
+                    + " AND ctu.constraint_schema = ''"
+                    + " AND cc.SPANNER_STATE = 'COMMITTED'"
+                    + ";"));
+    while (resultSet.next()) {
+      String table = resultSet.getString(0);
+      String name = resultSet.getString(1);
+      String expression = resultSet.getString(2);
+      Map<String, CheckConstraint> tableCheckConstraints =
+          checkConstraints.computeIfAbsent(table, k -> Maps.newTreeMap());
+      tableCheckConstraints.computeIfAbsent(
+          name, k -> CheckConstraint.builder().name(name).expression(expression).build());
+    }
+    return checkConstraints;
   }
 }

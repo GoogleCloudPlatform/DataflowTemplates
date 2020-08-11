@@ -47,6 +47,8 @@ public abstract class Table implements Serializable {
 
   public abstract ImmutableList<String> foreignKeys();
 
+  public abstract ImmutableList<String> checkConstraints();
+
   public abstract Builder autoToBuilder();
 
   public Builder toBuilder() {
@@ -64,6 +66,7 @@ public abstract class Table implements Serializable {
     return new AutoValue_Table.Builder()
         .indexes(ImmutableList.of())
         .foreignKeys(ImmutableList.of())
+        .checkConstraints(ImmutableList.of())
         .onDeleteCascade(false);
   }
 
@@ -75,6 +78,12 @@ public abstract class Table implements Serializable {
       column.prettyPrint(appendable);
       appendable.append(",");
     }
+    for (String checkConstraint : checkConstraints()) {
+      appendable.append("\n\t");
+      appendable.append(checkConstraint);
+      appendable.append(",");
+    }
+
     if (primaryKeys() != null) {
       appendable.append(
           primaryKeys().stream()
@@ -142,6 +151,8 @@ public abstract class Table implements Serializable {
     public abstract Builder indexes(ImmutableList<String> indexes);
 
     public abstract Builder foreignKeys(ImmutableList<String> foreignKeys);
+
+    public abstract Builder checkConstraints(ImmutableList<String> checkConstraints);
 
     abstract ImmutableList<Column> columns();
 

@@ -20,6 +20,8 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Type;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 
@@ -42,6 +44,17 @@ public abstract class RandomDdlGenerator {
         Type.Code.TIMESTAMP,
         Type.Code.DATE
       };
+  // Types that could be used by check constraint
+  private static final Set<Type.Code> CHECK_CONSTRAINT_TYPES =
+      new HashSet<>(
+          Arrays.asList(
+              Type.Code.BOOL,
+              Type.Code.INT64,
+              Type.Code.FLOAT64,
+              Type.Code.STRING,
+              Type.Code.TIMESTAMP,
+              Type.Code.DATE));
+
   private static final int MAX_PKS = 16;
 
   public abstract Random getRandom();
@@ -62,6 +75,8 @@ public abstract class RandomDdlGenerator {
 
   public abstract boolean getEnableGeneratedColumns();
 
+  public abstract boolean getEnableCheckConstraints();
+
   public static Builder builder() {
 
     return new AutoValue_RandomDdlGenerator.Builder()
@@ -71,6 +86,8 @@ public abstract class RandomDdlGenerator {
         .setMaxBranchPerLevel(new int[] {3, 2, 1, 1, 1, 1, 1})
         .setMaxIndex(2)
         .setMaxForeignKeys(2)
+        // TODO: enable once CHECK constraints are enabled
+        .setEnableCheckConstraints(false)
         .setMaxColumns(8)
         .setMaxIdLength(11)
         // TODO: enable generated columns once they are supported.
@@ -100,6 +117,8 @@ public abstract class RandomDdlGenerator {
     public abstract Builder setMaxForeignKeys(int foreignKeys);
 
     public abstract Builder setEnableGeneratedColumns(boolean enable);
+
+    public abstract Builder setEnableCheckConstraints(boolean checkConstraints);
   }
 
   public abstract Builder toBuilder();
@@ -244,6 +263,23 @@ public abstract class RandomDdlGenerator {
         }
       }
       tableBuilder.foreignKeys(foreignKeys.build());
+    }
+
+    while (getEnableCheckConstraints()) {
+      ImmutableList.Builder<String> checkConstraints = ImmutableList.builder();
+      // Pick a random column to add check constraint on.
+      ImmutableList<Column> columns = table.columns();
+      int colIndex = rnd.nextInt(columns.size());
+      Column column = columns.get(colIndex);
+      if (!CHECK_CONSTRAINT_TYPES.contains(column.type())) {
+        continue;
+      }
+      // An expression that won't be trivially optimized away by query optimizer.
+      String expr = "TO_HEX(SHA1(CAST(" + column.name() + " AS STRING))) <= '~'";
+      String checkName = generateIdentifier(getMaxIdLength());
+      checkConstraints.add("CONSTRAINT " + checkName + " CHECK(" + expr + ")");
+      tableBuilder.checkConstraints(checkConstraints.build());
+      break;
     }
 
     tableBuilder.endTable();

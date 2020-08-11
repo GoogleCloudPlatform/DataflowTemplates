@@ -74,7 +74,9 @@ public class AvroSchemaToDdlConverterTest {
             + "  \"CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)\","
             + "  \"spannerForeignKey_0\" : "
             + "  \"ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`) "
-            + "  REFERENCES `AllowedNames` (`first_name`)\""
+            + "  REFERENCES `AllowedNames` (`first_name`)\","
+            + "  \"spannerCheckConstraint_0\" : "
+            + "  \"CONSTRAINT `ck` CHECK(`first_name` != 'last_name')\""
             + "}";
 
     Schema schema = new Schema.Parser().parse(avroString);
@@ -90,6 +92,7 @@ public class AvroSchemaToDdlConverterTest {
                 + " `first_name`  STRING(10),"
                 + " `last_name`   STRING(MAX),"
                 + " `full_name`   STRING(MAX) AS (CONCAT(first_name, ' ', last_name)) STORED,"
+                + " CONSTRAINT `ck` CHECK(`first_name` != 'last_name'),"
                 + " ) PRIMARY KEY (`id` ASC, `last_name` DESC)"
                 + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"
                 + " ALTER TABLE `Users` ADD CONSTRAINT `fk`"
