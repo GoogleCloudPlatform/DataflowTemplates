@@ -152,7 +152,7 @@ public class InformationSchemaScanner {
       String spannerType = resultSet.getString(3);
       boolean nullable = resultSet.getString(4).equalsIgnoreCase("YES");
       boolean isGenerated = resultSet.getString(5).equalsIgnoreCase("ALWAYS");
-      String generationExpression = resultSet.getString(6);
+      String generationExpression = resultSet.isNull(6) ? "" : resultSet.getString(6);
       boolean isStored = resultSet.isNull(7)
           ?
           false : resultSet.getString(7).equalsIgnoreCase("YES");
