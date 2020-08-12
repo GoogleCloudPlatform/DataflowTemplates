@@ -19,8 +19,16 @@ import com.google.api.client.util.Strings;
 import com.google.api.gax.rpc.AlreadyExistsException;
 import com.google.api.gax.rpc.ApiException;
 import com.google.cloud.datacatalog.v1.EntryGroupName;
-import com.google.cloud.datacatalog.v1beta1.*;
-
+import com.google.cloud.datacatalog.v1beta1.CreateEntryGroupRequest;
+import com.google.cloud.datacatalog.v1beta1.CreateEntryRequest;
+import com.google.cloud.datacatalog.v1beta1.DataCatalogClient;
+import com.google.cloud.datacatalog.v1beta1.Entry;
+import com.google.cloud.datacatalog.v1beta1.EntryGroup;
+import com.google.cloud.datacatalog.v1beta1.ListEntriesResponse;
+import com.google.cloud.datacatalog.v1beta1.ListEntriesRequest;
+import com.google.cloud.datacatalog.v1beta1.LocationName;
+import com.google.cloud.datacatalog.v1beta1.LookupEntryRequest;
+import com.google.cloud.datacatalog.v1beta1.UpdateEntryRequest;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
