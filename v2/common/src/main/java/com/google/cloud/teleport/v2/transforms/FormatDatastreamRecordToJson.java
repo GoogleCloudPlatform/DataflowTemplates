@@ -114,15 +114,9 @@ public class FormatDatastreamRecordToJson
   }
 
   private long getSourceTimestamp(GenericRecord record) {
-    long unixTimestampSec;
+    long unixTimestampMilli = (long) record.get("source_timestamp");
+    long unixTimestampSec = unixTimestampMilli / 1000;
 
-    if (record.get("source_timestamp") != null) {
-      long unixTimestampMilli = (long) record.get("source_timestamp");
-      unixTimestampSec = unixTimestampMilli / 1000;
-    } else {
-      long unixTimestampMilli = (long) record.get("read_timestamp");
-      unixTimestampSec = unixTimestampMilli / 1000;
-    }
     return unixTimestampSec;
   }
 

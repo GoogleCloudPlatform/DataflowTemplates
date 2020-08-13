@@ -256,16 +256,15 @@ public class BigQueryMapper<InputT, OutputT>
       updateTableIfRequired(tableId, row);
     } catch (Exception e) {
       if (retries > 0) {
-        LOG.info("RETRY TABLE UPDATE - enter: {}", String.valueOf(retries));
+        LOG.info("Mapper Retry {} Remaining: {}", String.valueOf(retries), e.toString());
         try {
           Thread.sleep(2000);
         } catch (InterruptedException i) {
           throw e;
         }
-        LOG.info("RETRY TABLE UPDATE - apply: {}", String.valueOf(retries));
         applyMapperToTableRow(tableId, row, retries - 1);
       } else {
-        LOG.info("RETRY TABLE UPDATE - throw: {}", String.valueOf(retries));
+        LOG.info("Mapper Retries Exceeded: {}", e.toString());
         throw e;
       }
     }

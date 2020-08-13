@@ -35,25 +35,23 @@ import org.junit.runners.JUnit4;
 public class FormatDatastreamRecordToJsonTest {
 
   private static final String EXPECTED_FIRST_RECORD =
-      "{\"ID\":100906.0,"
-          + "\"UPDATES_NUM\":1.0,"
-          + "\"NUMBER_COL\":51954.09,"
-          + "\"FLOAT_COL\":0.07961314689343668,"
-          + "\"CHAR_COL\":\"E\","
-          + "\"VARCHAR2_COL\":\"course\","
-          + "\"DATE_COL\":\"1992-06-16T11:55:20Z\","
-          + "\"TIMESTAMP_WITH_TIME_ZONE_COL\":\"1982-05-05T00:44:06+08:38\","
-          + "\"_metadata_stream\":\"9decd8d4-0bf2-37bf-8fac-7e895d97d41b\","
-          + "\"_metadata_timestamp\":1595301737,"
-          + "\"_metadata_read_timestamp\":1595301737,"
+      "{\"LOCATION_ID\":1000.0,"
+          + "\"STREET_ADDRESS\":\"1297 Via Cola di Rie\","
+          + "\"POSTAL_CODE\":\"00989\","
+          + "\"CITY\":\"Roma\","
+          + "\"COUNTRY_ID\":\"IT\","
+          + "\"_metadata_stream\":\"projects/596161805475/locations/us-central1/streams/dylan-stream-20200810test2\","
+          + "\"_metadata_timestamp\":1597101230,"
+          + "\"_metadata_read_timestamp\":1597101230,"
           + "\"_metadata_deleted\":false,"
-          + "\"_metadata_schema\":\"ROOT\","
-          + "\"_metadata_table\":\"E2E_XTTR3XLR1ILAR5QI\","
+          + "\"_metadata_schema\":\"HR\","
+          + "\"_metadata_table\":\"LOCATIONS\","
           + "\"_metadata_change_type\":null,"
-          + "\"_metadata_row_id\":null,"
-          + "\"_metadata_source\":"
-          + "{\"schema\":\"ROOT\","
-          + "\"table\":\"E2E_XTTR3XLR1ILAR5QI\",\"database\":\"ORCL\"}}";
+          + "\"_metadata_row_id\":\"AAAEALAAEAAAACdAAB\","
+          + "\"_metadata_source\":{\"schema\":\"HR\","
+          + "\"table\":\"LOCATIONS\","
+          + "\"database\":\"XE\","
+          + "\"row_id\":\"AAAEALAAEAAAACdAAB\"}}";
 
   @Test
   public void testParseAvroGenRecord() throws IOException, URISyntaxException {
