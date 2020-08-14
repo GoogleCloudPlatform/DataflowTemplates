@@ -15,6 +15,7 @@
  */
 package com.google.cloud.dataflow.cdc.common;
 
+import com.google.api.client.util.Strings;
 import com.google.api.gax.rpc.AlreadyExistsException;
 import com.google.api.gax.rpc.ApiException;
 import com.google.cloud.datacatalog.v1.EntryGroupName;
@@ -24,10 +25,12 @@ import com.google.cloud.datacatalog.v1beta1.DataCatalogClient;
 import com.google.cloud.datacatalog.v1beta1.Entry;
 import com.google.cloud.datacatalog.v1beta1.EntryGroup;
 import com.google.cloud.datacatalog.v1beta1.ListEntriesResponse;
+import com.google.cloud.datacatalog.v1beta1.ListEntriesRequest;
 import com.google.cloud.datacatalog.v1beta1.LocationName;
 import com.google.cloud.datacatalog.v1beta1.LookupEntryRequest;
 import com.google.cloud.datacatalog.v1beta1.UpdateEntryRequest;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -90,9 +93,22 @@ public class DataCatalogSchemaUtils {
 
     String formattedParent = DataCatalogClient.formatEntryGroupName(
         gcpProject, DEFAULT_LOCATION, entryGroupId);
-    ListEntriesResponse response = client.listEntries(formattedParent);
 
-    List<Entry> entries = response.getEntriesList();
+    List<Entry> entries = new ArrayList<>();
+    ListEntriesRequest request = ListEntriesRequest.newBuilder()
+            .setParent(formattedParent)
+            .build();
+    while (true) {
+      ListEntriesResponse response = client.listEntriesCallable().call(request);
+      entries.addAll(response.getEntriesList());
+      String nextPageToken = response.getNextPageToken();
+      if (!Strings.isNullOrEmpty(nextPageToken)) {
+        request = request.toBuilder().setPageToken(nextPageToken).build();
+      } else {
+        break;
+      }
+    }
+
     LOG.debug("Fetched entries: {}", entries);
 
     return entries.stream()
