@@ -63,7 +63,7 @@
     <spanner.version>1.49.1</spanner.version>
     <gax.version>1.52.0</gax.version>
     <open-census.version>0.24.0</open-census.version>
-    <bigtable.version>1.5.0</bigtable.version>
+    <bigtable.version>1.15.0</bigtable.version>
     <bigtable-beam-import.version>1.5.0</bigtable-beam-import.version>
     <bigquery.version>v2-rev20190917-1.30.3</bigquery.version>
     <jackson2.version>1.34.1</jackson2.version>
