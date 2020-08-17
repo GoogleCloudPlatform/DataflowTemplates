@@ -18,6 +18,7 @@ package com.google.cloud.teleport.bigtable;
 
 import com.google.bigtable.v2.Mutation;
 import com.google.bigtable.v2.Mutation.SetCell;
+import com.google.cloud.bigtable.config.{BigtableOptions, BulkOptions};
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
@@ -34,6 +35,7 @@ import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,6 +88,12 @@ final class AvroToBigtable {
 
     @SuppressWarnings("unused")
     void setInputFilePattern(ValueProvider<String> inputFilePattern);
+
+    @Description("If true, enable a mechanism that reduces the likelihood that a BulkMutation overloads a cluster")
+    ValueProvider<Boolean> getEnableBulkMutationThrottling();
+
+    @Description("Set the option to throttle bulk mutations")
+    void setEnableBulkMutationThrottling(ValueProvider<Boolean> enableBulkMutationThrottling);
   }
 
   /**
@@ -107,10 +115,24 @@ final class AvroToBigtable {
   public static PipelineResult run(Options options) {
     Pipeline pipeline = Pipeline.create(options);
 
+    BulkOptions.Builder bulkOptionsBuilder = BulkOptions.newBuilder();
+    if (options.getEnableBulkMutationThrottling() != null && options.getEnableBulkMutationThrottling().get()) {
+        bulkOptionsBuilder.enableBulkMutationThrottling();
+    }
+
     BigtableIO.Write write =
         BigtableIO.write()
-            .withProjectId(options.getBigtableProjectId())
-            .withInstanceId(options.getBigtableInstanceId())
+                .withBigtableOptionsConfigurator(
+                        new SerializableFunction<com.google.cloud.bigtable.config.BigtableOptions.Builder, com.google.cloud.bigtable.config.BigtableOptions.Builder>() {
+                          @Override
+                          public com.google.cloud.bigtable.config.BigtableOptions.Builder apply(com.google.cloud.bigtable.config.BigtableOptions.Builder input) {
+                            input
+                                    .setProjectId(options.getBigtableProjectId())
+                                    .setInstanceId(options.getBigtableInstanceId())
+                                    .setBulkOptions(bulkOptionsBuilder.build())
+                          }
+                        }
+                )
             .withTableId(options.getBigtableTableId());
 
     pipeline
