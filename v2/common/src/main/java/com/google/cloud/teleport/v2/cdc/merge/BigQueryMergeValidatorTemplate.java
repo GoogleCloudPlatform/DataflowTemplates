@@ -110,12 +110,12 @@ public class BigQueryMergeValidatorTemplate {
                   public void process(ProcessContext c) {
                     MergeInfo mergeInfo =
                         MergeInfo.create(
-                            "_metadata_timestamp",
+                            ALL_PK_FIELDS,
+                            Arrays.asList("_metadata_timestamp"),
                             "_metadata_deleted",
                             replicaTable,
                             stagingTable,
-                            ALL_FIELDS,
-                            ALL_PK_FIELDS);
+                            ALL_FIELDS);
                     c.output(mergeInfo);
                   }
                 }))

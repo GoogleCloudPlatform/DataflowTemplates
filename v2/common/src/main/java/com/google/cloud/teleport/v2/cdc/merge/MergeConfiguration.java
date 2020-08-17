@@ -50,8 +50,6 @@ public abstract class MergeConfiguration implements Serializable {
       "WHEN MATCHED AND {timestampCompareSql} THEN {mergeUpdateSql} ",
       "WHEN NOT MATCHED BY TARGET AND {stagingAlias}.{deleteColumn}!=True ",
       "THEN {mergeInsertSql}");
-  public static final String DEFAULT_TIMESTAMP_FIELD = "_metadata_timestamp";
-  public static final String DEFAULT_DELETED_FIELD = "_metadata_deleted";
   public static final Boolean DEFAULT_SUPPORT_PARTITIONED_TABLES = true;
   public static final Integer DEFAULT_PARTITION_RETENTION = 3;
 
@@ -61,8 +59,6 @@ public abstract class MergeConfiguration implements Serializable {
   public abstract String quoteCharacter();
   public abstract Boolean supportPartitionedTables();
   public abstract String mergeQueryTemplate();
-  public abstract String timestampFieldName();
-  public abstract String deletedFieldName();
   public abstract Integer partitionRetention();
 
   public static MergeConfiguration bigQueryConfiguration() {
@@ -78,8 +74,6 @@ public abstract class MergeConfiguration implements Serializable {
         .setMergeQueryTemplate(DEFAULT_MERGE_QUERY_TEMPLATE)
         .setSupportPartitionedTables(DEFAULT_SUPPORT_PARTITIONED_TABLES)
         .setPartitionRetention(DEFAULT_PARTITION_RETENTION)
-        .setTimestampFieldName(DEFAULT_TIMESTAMP_FIELD)
-        .setDeletedFieldName(DEFAULT_DELETED_FIELD)
         .setSupportPartitionedTables(true);
   }
 
@@ -88,8 +82,6 @@ public abstract class MergeConfiguration implements Serializable {
     abstract Builder setQuoteCharacter(String quote);
     abstract Builder setSupportPartitionedTables(Boolean supportPartitionedTables);
     abstract Builder setMergeQueryTemplate(String mergeQueryTemplate);
-    abstract Builder setTimestampFieldName(String timestampFieldName);
-    abstract Builder setDeletedFieldName(String deletedFieldName);
     abstract Builder setPartitionRetention(Integer partitionRetention);
 
     abstract MergeConfiguration build();

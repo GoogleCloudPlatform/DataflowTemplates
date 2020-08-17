@@ -30,6 +30,7 @@ import com.google.cloud.teleport.v2.utils.DataStreamClient;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.metrics.Counter;
@@ -49,7 +50,8 @@ import org.slf4j.LoggerFactory;
 public class MergeInfoMapper
     extends PTransform<PCollection<KV<TableId, TableRow>>, PCollection<MergeInfo>> {
 
-  public static final String METADATA_TIMESTAMP = "_metadata_timestamp";
+  public static final List<String> ORDER_BY_FIELDS =
+      Arrays.asList("_metadata_timestamp", "_metadata_scn");
   public static final String METADATA_DELETED = "_metadata_deleted";
   public static final String METADATA_REPLICA_TABLE = "_metadata_table";
 
@@ -80,6 +82,14 @@ public class MergeInfoMapper
         LOG.error("IOException Occurred: DataStreamClient failed initialization.");
         this.dataStreamClient = null;
       }
+  }
+
+  public MergeInfoMapper withDataStreamRootUrl(String url) {
+    if (this.dataStreamClient != null) {
+      this.dataStreamClient.setRootUrl(url);
+    }
+
+    return this;
   }
 
   public BigQueryTableCache getTableCache() {
@@ -123,10 +133,10 @@ public class MergeInfoMapper
                   }
 
                   return Lists.newArrayList(MergeInfo.create(
-                      METADATA_TIMESTAMP, // TODO should be list pulled from Datastream API
+                      allPkFields,
+                      ORDER_BY_FIELDS,
                       METADATA_DELETED,
-                      String.format("%s.%s",
-                          // Staging Table // TODO these should possibly be passed separately
+                      String.format("%s.%s", // Staging Table
                           BigQueryConverters
                               .formatStringTemplate(stagingDataset, row),
                           BigQueryConverters
@@ -136,8 +146,7 @@ public class MergeInfoMapper
                               .formatStringTemplate(replicaDataset, row),
                           BigQueryConverters
                               .formatStringTemplate(replicaTable, row)),
-                      mergeFields,
-                      allPkFields));
+                      mergeFields));
                 }));
   }
 

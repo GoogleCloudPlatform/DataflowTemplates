@@ -84,6 +84,11 @@ public class FormatDatastreamRecordToJson
 
     // Oracle Specific Metadata
     outputObject.put("_metadata_row_id", getOracleRowId(record));
+    outputObject.put("_metadata_scn", getOracleScn(record));
+    outputObject.put("_metadata_ssn", getOracleSsn(record));
+    outputObject.put("_metadata_rs_id", getOracleRsId(record));
+    outputObject.put("_metadata_tx_id", getOracleTxId(record));
+
     outputObject.put("_metadata_source", getSourceMetadata(record));
 
     return FailsafeElement.of(outputObject.toString(), outputObject.toString());
@@ -152,6 +157,38 @@ public class FormatDatastreamRecordToJson
     }
 
     return null;
+  }
+
+  private Long getOracleScn(GenericRecord record) {
+    if (((GenericRecord) record.get("source_metadata")).get("scn") != null) {
+      return (Long) ((GenericRecord) record.get("source_metadata")).get("scn");
+    }
+
+    return (Long) null;
+  }
+
+  private Long getOracleSsn(GenericRecord record) {
+    if (((GenericRecord) record.get("source_metadata")).get("ssn") != null) {
+      return (Long) ((GenericRecord) record.get("source_metadata")).get("ssn");
+    }
+
+    return (Long) null;
+  }
+
+  private String getOracleRsId(GenericRecord record) {
+    if (((GenericRecord) record.get("source_metadata")).get("rs_id") != null) {
+      return ((GenericRecord) record.get("source_metadata")).get("rs_id").toString();
+    }
+
+    return (String) null;
+  }
+
+  private String getOracleTxId(GenericRecord record) {
+    if (((GenericRecord) record.get("source_metadata")).get("tx_id") != null) {
+      return ((GenericRecord) record.get("source_metadata")).get("tx_id").toString();
+    }
+
+    return (String) null;
   }
 
   static class UnifiedTypesFormatter {

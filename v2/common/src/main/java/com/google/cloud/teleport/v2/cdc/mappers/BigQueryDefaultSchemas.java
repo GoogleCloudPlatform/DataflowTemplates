@@ -43,11 +43,14 @@ public final class BigQueryDefaultSchemas {
     put("branch", LegacySQLTypeName.STRING);
   }};
 
-  public static final Map<String, LegacySQLTypeName> DEMO_SCHEMA =
+  public static final Map<String, LegacySQLTypeName> DATASTREAM_METADATA_SCHEMA =
       new HashMap<String, LegacySQLTypeName>() {
         {
+          put("_metadata_row_id", LegacySQLTypeName.STRING);
+          put("_metadata_change_type", LegacySQLTypeName.STRING);
           put("_metadata_deleted", LegacySQLTypeName.BOOLEAN);
           put("_metadata_timestamp", LegacySQLTypeName.TIMESTAMP);
+          put("_metadata_read_timestamp", LegacySQLTypeName.TIMESTAMP);
         }
       };
 }

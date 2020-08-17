@@ -80,6 +80,8 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
               mergeInfo.getReplicaTable(),
               mergeInfo.getStagingTable(),
               mergeInfo.getAllPkFields(),
+              mergeInfo.getOrderByFields(),
+              mergeInfo.getDeleteField(),
               mergeInfo.getAllFields());
         }))
         .apply(ParDo.of(new BigQueryStatementIssuingFn(this.testBigQueryClient)))

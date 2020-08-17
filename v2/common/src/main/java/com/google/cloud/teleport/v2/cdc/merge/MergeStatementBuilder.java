@@ -41,6 +41,8 @@ public class MergeStatementBuilder implements Serializable {
       String replicaTable,
       String stagingTable,
       List<String> primaryKeyFields,
+      List<String> orderByFields,
+      String deletedFieldName,
       List<String> allFields) {
     // Key/Value Map used to replace values in template
     Map<String, String> mergeQueryValues = new HashMap<>();
@@ -48,22 +50,26 @@ public class MergeStatementBuilder implements Serializable {
     mergeQueryValues.put("replicaTable", replicaTable);
     mergeQueryValues.put("replicaAlias", REPLICA_TABLE_NAME);
     mergeQueryValues.put("stagingAlias", STAGING_TABLE_NAME);
-    mergeQueryValues.put("deleteColumn", configuration.deletedFieldName()); // TODO require config options
+    mergeQueryValues.put("deleteColumn", deletedFieldName);
 
     mergeQueryValues.put(
       "stagingViewSql",
       buildLatestViewOfStagingTable(
           stagingTable, allFields, primaryKeyFields,
-          configuration.timestampFieldName(), configuration.deletedFieldName(),
+          orderByFields, deletedFieldName,
           configuration.partitionRetention()));
 
     mergeQueryValues.put("joinCondition", buildJoinConditions(primaryKeyFields, REPLICA_TABLE_NAME, STAGING_TABLE_NAME));
-    mergeQueryValues.put("timestampCompareSql", buildTimestampCheck(configuration.timestampFieldName()));
+    mergeQueryValues.put("timestampCompareSql", buildTimestampCheck(getPrimarySortField(orderByFields)));
     mergeQueryValues.put("mergeUpdateSql", buildUpdateStatement(allFields));
     mergeQueryValues.put("mergeInsertSql", buildInsertStatement(allFields));
 
     String mergeStatement = StringSubstitutor.replace(configuration.mergeQueryTemplate(), mergeQueryValues, "{", "}");
     return mergeStatement;
+  }
+
+  public static String getPrimarySortField(List<String> orderByFields) {
+    return orderByFields.get(0);
   }
 
   static String buildTimestampCheck(String timestampField) {
@@ -75,29 +81,51 @@ public class MergeStatementBuilder implements Serializable {
 
   private String buildLatestViewOfStagingTable(
       String stagingTable, List<String> allFields, List<String> primaryKeyFields,
-      String timestampField, String deletedField, Integer daysOfRetention) {
+      List<String> orderByFields, String deletedFieldName, Integer daysOfRetention) {
     String commaSeparatedFields = String.join(", ", allFields);
 
     return String.format(LATEST_FROM_STAGING_TEMPLATE,
-        commaSeparatedFields, buildPartitionedByPKAndSorted(stagingTable, allFields,
-            primaryKeyFields));
+        commaSeparatedFields,
+        buildPartitionedByPKAndSorted(
+            stagingTable, allFields, primaryKeyFields, orderByFields, deletedFieldName));
   }
 
   public static final String PARTITION_BY_PK_AND_SORT_TEMPLATE = String.join("",
       "SELECT %s, ROW_NUMBER() OVER (",
       "PARTITION BY %s ",
-      "ORDER BY %s DESC, %s ASC) as row_num ",
+      "ORDER BY %s%s) as row_num ",
       "FROM `%s` %s");
 
   private String buildPartitionedByPKAndSorted(
-      String stagingTable, List<String> allFields, List<String> primaryKeyFields) {
+      String stagingTable, List<String> allFields,
+      List<String> primaryKeyFields, List<String> orderByFields,
+      String deletedFieldName) {
     String commaSeparatedFields = String.join(", ", allFields);
     String commaSeparatedPKFields = String.join(", ", primaryKeyFields);
     return String.format(PARTITION_BY_PK_AND_SORT_TEMPLATE,
         commaSeparatedFields,
         commaSeparatedPKFields,
-        configuration.timestampFieldName(), configuration.deletedFieldName(),
+        buildOrderByFieldsSql(orderByFields),
+        buildDeletedFieldSql(deletedFieldName),
         stagingTable, buildRetentionWhereClause());
+  }
+
+  private String buildOrderByFieldsSql(List<String> orderByFields) {
+    String orderByFieldSql = "";
+
+    for (String field: orderByFields) {
+      if (orderByFieldSql == "") {
+        orderByFieldSql = String.format("%s DESC", field);
+      } else {
+        orderByFieldSql = orderByFieldSql + String.format(", %s DESC", field);
+      }
+    }
+
+    return orderByFieldSql;
+  }
+
+  private String buildDeletedFieldSql(String deletedFieldName) {
+    return String.format(", %s ASC", deletedFieldName);
   }
 
   public static final String RETENTION_WHERE_TEMPLATE =

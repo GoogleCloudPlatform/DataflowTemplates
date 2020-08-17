@@ -28,7 +28,9 @@ import org.apache.beam.sdk.schemas.annotations.SchemaCreate;
 @DefaultSchema(AutoValueSchema.class)
 @AutoValue
 public abstract class MergeInfo implements Serializable {
-  public abstract String getTimestampField();
+  public abstract List<String> getAllPkFields();
+
+  public abstract List<String> getOrderByFields();
 
   public abstract String getDeleteField();
 
@@ -38,17 +40,15 @@ public abstract class MergeInfo implements Serializable {
 
   public abstract List<String> getAllFields();
 
-  public abstract List<String> getAllPkFields();
-
   @SchemaCreate
   public static MergeInfo create(
-      String timestampField,
+      List<String> allPkFields,
+      List<String> orderByFields,
       String deleteField,
       String stagingTable,
       String replicaTable,
-      List<String> allFields,
-      List<String> allPkFields) {
+      List<String> allFields) {
     return new AutoValue_MergeInfo(
-        timestampField, deleteField, stagingTable, replicaTable, allFields, allPkFields);
+        allPkFields, orderByFields, deleteField, stagingTable, replicaTable, allFields);
   }
 }
