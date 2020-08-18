@@ -117,9 +117,11 @@ public class MergeInfoMapper
                 element -> {
                   TableId tableId = element.getKey();
                   TableRow row = element.getValue();
+
                   String streamName = (String) row.get("_metadata_stream");
                   String schemaName = (String) row.get("_metadata_schema");
                   String tableName = (String) row.get("_metadata_table");
+
                   List<String> mergeFields = getMergeFields(tableId, row);
                   List<String> allPkFields = getPrimaryKeys(
                       streamName, schemaName, tableName, mergeFields);
@@ -132,7 +134,7 @@ public class MergeInfoMapper
                     return Lists.newArrayList();
                   }
 
-                  return Lists.newArrayList(MergeInfo.create(
+                  MergeInfo mergeInfo = MergeInfo.create(
                       allPkFields,
                       ORDER_BY_FIELDS,
                       METADATA_DELETED,
@@ -146,7 +148,9 @@ public class MergeInfoMapper
                               .formatStringTemplate(replicaDataset, row),
                           BigQueryConverters
                               .formatStringTemplate(replicaTable, row)),
-                      mergeFields));
+                      mergeFields);
+
+                  return Lists.newArrayList(mergeInfo);
                 }));
   }
 
@@ -154,18 +158,13 @@ public class MergeInfoMapper
       List<String> mergeFields) {
     List<String> searchKey = ImmutableList.of(streamName, schemaName, tableName);
     List<String> primaryKeys = getPkCache().get(searchKey);
-    try {
-      primaryKeys = this.dataStreamClient.getPrimaryKeys(streamName, schemaName, tableName);
-    } catch (IOException e) {
-      LOG.error("IOException: DataStream Discovery on Primary Keys Failed.", e);
-    }
+
     if (primaryKeys.size() == 0 && mergeFields.contains("_metadata_row_id")) {
       // TODO when DataStream releases new outputs, change logic here.
       // Possibly move upstream to DataStream Client
       primaryKeys.add("_metadata_row_id");
     }
 
-    // TODO logic should be added to allow primary key append and override.
     return primaryKeys;
   }
 
