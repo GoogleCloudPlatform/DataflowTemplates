@@ -22,14 +22,13 @@ import com.google.cloud.teleport.v2.cdc.mappers.BigQueryMappers;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.BigQueryTableConfigManager;
-import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.v2.transforms.BigQueryDynamicConverters;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
-import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
-import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
+import com.google.cloud.teleport.v2.transforms.PubSubToFailSafeElement;
+import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFOptions;
+import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFToTableRow;
 import com.google.cloud.teleport.v2.utils.ResourceUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
-import java.nio.charset.StandardCharsets;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -48,16 +47,13 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
-import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -123,21 +119,6 @@ public class PubSubCdcToBigQuery {
   /** The log to output status messages to. */
   private static final Logger LOG = LoggerFactory.getLogger(PubSubCdcToBigQuery.class);
 
-  /** The tag for the main output for the UDF. */
-  public static final TupleTag<FailsafeElement<PubsubMessage, String>> UDF_OUT =
-      new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
-
-  /** The tag for the main output of the json transformation. */
-  public static final TupleTag<TableRow> TRANSFORM_OUT = new TupleTag<TableRow>() {};
-
-  /** The tag for the dead-letter output of the udf. */
-  public static final TupleTag<FailsafeElement<PubsubMessage, String>> UDF_DEADLETTER_OUT =
-      new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
-
-  /** The tag for the dead-letter output of the json to table row transform. */
-  public static final TupleTag<FailsafeElement<PubsubMessage, String>> TRANSFORM_DEADLETTER_OUT =
-      new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
-
   /** The default suffix for error tables if dead letter table is not specified. */
   public static final String DEFAULT_DEADLETTER_TABLE_SUFFIX = "_error_records";
 
@@ -153,7 +134,7 @@ public class PubSubCdcToBigQuery {
    * The {@link Options} class provides the custom execution options passed by the executor at the
    * command-line.
    */
-  public interface Options extends PipelineOptions, JavascriptTextTransformerOptions {
+  public interface Options extends PipelineOptions, InputUDFOptions {
     @Description(
         "The Cloud Pub/Sub subscription to consume from. "
             + "The name should be in the format of "
@@ -229,8 +210,18 @@ public class PubSubCdcToBigQuery {
 
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(CODER.getEncodedTypeDescriptor(), CODER);
+    coderRegistry.registerCoderForType(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
 
-    BigQueryTableConfigManager bqConfigManager = 
+    InputUDFToTableRow<PubsubMessage> failsafeTableRowTransformer =
+        new InputUDFToTableRow<PubsubMessage>(options.getJavascriptTextTransformGcsPath(),
+                                              options.getJavascriptTextTransformFunctionName(),
+                                              options.getPythonTextTransformGcsPath(),
+                                              options.getPythonTextTransformFunctionName(),
+                                              options.getRuntimeRetries(),
+                                              CODER);
+
+
+    BigQueryTableConfigManager bqConfigManager =
         new BigQueryTableConfigManager(
             (String) options.as(GcpOptions.class).getProject(),
             (String) options.getOutputDatasetTemplate(),
@@ -259,12 +250,14 @@ public class PubSubCdcToBigQuery {
             PubsubIO.readMessagesWithAttributes()
                 .fromSubscription(options.getInputSubscription()));
 
+
     PCollectionTuple convertedTableRows =
         messages
             /*
              * Step #2: Transform the PubsubMessages into TableRows
              */
-            .apply("ConvertMessageToTableRow", new PubsubMessageToTableRow(options));
+            .apply("ConvertPubSubToFailsafe", ParDo.of(new PubSubToFailSafeElement()))
+            .apply("ApplyUdfAndConvertToTableRow", failsafeTableRowTransformer);
 
     /*
      * Step #3: Write the successful records out to BigQuery
@@ -274,7 +267,7 @@ public class PubSubCdcToBigQuery {
     PCollection<KV<TableId, TableRow>> tableEvents;
     if (options.getAutoMapTables()) {
         tableEvents =
-            convertedTableRows.get(TRANSFORM_OUT)
+            convertedTableRows.get(failsafeTableRowTransformer.transformOut)
                 .apply(
                     "Map Data to BigQuery Tables",
                     new BigQueryMappers(bqConfigManager.getProjectId())
@@ -283,15 +276,17 @@ public class PubSubCdcToBigQuery {
                             bqConfigManager.getTableTemplate())
                         .withDefaultSchemaFromGCS(options.getSchemaFilePath())
                         );
+
     } else {
-        tableEvents =
-            convertedTableRows.get(TRANSFORM_OUT)
-                .apply(
-                    "ExtractBigQueryTableDestination",
-                    BigQueryDynamicConverters.extractTableRowDestination(
-                        bqConfigManager.getProjectId(),
-                        bqConfigManager.getDatasetTemplate(),
-                        bqConfigManager.getTableTemplate()));
+      tableEvents =
+          convertedTableRows
+              .get(failsafeTableRowTransformer.transformOut)
+              .apply(
+                  "ExtractBigQueryTableDestination",
+                  BigQueryDynamicConverters.extractTableRowDestination(
+                      bqConfigManager.getProjectId(),
+                      bqConfigManager.getDatasetTemplate(),
+                      bqConfigManager.getTableTemplate()));
     }
 
     /*
@@ -331,11 +326,11 @@ public class PubSubCdcToBigQuery {
      */
     PCollectionList.of(
             ImmutableList.of(
-                convertedTableRows.get(UDF_DEADLETTER_OUT),
-                convertedTableRows.get(TRANSFORM_DEADLETTER_OUT)))
-        .apply("Flatten", Flatten.pCollections())
-        .apply(
-            "WriteFailedRecords",
+                convertedTableRows.get(failsafeTableRowTransformer.udfDeadletterOut),
+                convertedTableRows.get(failsafeTableRowTransformer.transformDeadletterOut)))
+                .apply("Flatten", Flatten.pCollections())
+                .apply(
+        "WriteFailedRecords",
             ErrorConverters.WritePubsubMessageErrors.newBuilder()
                 .setErrorRecordsTable(
                     BigQueryConverters.maybeUseDefaultDeadletterTable(
@@ -360,85 +355,4 @@ public class PubSubCdcToBigQuery {
     return pipeline.run();
   }
 
-  /**
-   * The {@link PubsubMessageToTableRow} class is a {@link PTransform} which transforms incoming
-   * {@link PubsubMessage} objects into {@link TableRow} objects for insertion into BigQuery while
-   * applying an optional UDF to the input. The executions of the UDF and transformation to {@link
-   * TableRow} objects is done in a fail-safe way by wrapping the element with it's original payload
-   * inside the {@link FailsafeElement} class. The {@link PubsubMessageToTableRow} transform will
-   * output a {@link PCollectionTuple} which contains all output and dead-letter {@link
-   * PCollection}.
-   *
-   * <p>The {@link PCollectionTuple} output will contain the following {@link PCollection}:
-   *
-   * <ul>
-   *   <li>{@link PubSubCdcToBigQuery#UDF_OUT} - Contains all {@link FailsafeElement} records
-   *       successfully processed by the optional UDF.
-   *   <li>{@link PubSubCdcToBigQuery#UDF_DEADLETTER_OUT} - Contains all {@link FailsafeElement}
-   *       records which failed processing during the UDF execution.
-   *   <li>{@link PubSubCdcToBigQuery#TRANSFORM_OUT} - Contains all records successfully converted from
-   *       JSON to {@link TableRow} objects.
-   *   <li>{@link PubSubCdcToBigQuery#TRANSFORM_DEADLETTER_OUT} - Contains all {@link FailsafeElement}
-   *       records which couldn't be converted to table rows.
-   * </ul>
-   */
-  static class PubsubMessageToTableRow
-      extends PTransform<PCollection<PubsubMessage>, PCollectionTuple> {
-
-    private final Options options;
-
-    PubsubMessageToTableRow(Options options) {
-      this.options = options;
-    }
-
-    @Override
-    public PCollectionTuple expand(PCollection<PubsubMessage> input) {
-
-      PCollectionTuple udfOut =
-          input
-              // Map the incoming messages into FailsafeElements so we can recover from failures
-              // across multiple transforms.
-              .apply("MapToRecord", ParDo.of(new PubsubMessageToFailsafeElementFn()))
-              .apply(
-                  "InvokeUDF",
-                  FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
-                      .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
-                      .setFunctionName(options.getJavascriptTextTransformFunctionName())
-                      .setSuccessTag(UDF_OUT)
-                      .setFailureTag(UDF_DEADLETTER_OUT)
-                      .build());
-
-      // Convert the records which were successfully processed by the UDF into TableRow objects.
-      PCollectionTuple jsonToTableRowOut =
-          udfOut
-              .get(UDF_OUT)
-              .apply(
-                  "JsonToTableRow",
-                  FailsafeJsonToTableRow.<PubsubMessage>newBuilder()
-                      .setSuccessTag(TRANSFORM_OUT)
-                      .setFailureTag(TRANSFORM_DEADLETTER_OUT)
-                      .build());
-
-      // Re-wrap the PCollections so we can return a single PCollectionTuple
-      return PCollectionTuple.of(UDF_OUT, udfOut.get(UDF_OUT))
-          .and(UDF_DEADLETTER_OUT, udfOut.get(UDF_DEADLETTER_OUT))
-          .and(TRANSFORM_OUT, jsonToTableRowOut.get(TRANSFORM_OUT))
-          .and(TRANSFORM_DEADLETTER_OUT, jsonToTableRowOut.get(TRANSFORM_DEADLETTER_OUT));
-    }
-  }
-
-  /**
-   * The {@link PubsubMessageToFailsafeElementFn} wraps an incoming {@link PubsubMessage} with the
-   * {@link FailsafeElement} class so errors can be recovered from and the original message can be
-   * output to a error records table.
-   */
-  static class PubsubMessageToFailsafeElementFn
-      extends DoFn<PubsubMessage, FailsafeElement<PubsubMessage, String>> {
-    @ProcessElement
-    public void processElement(ProcessContext context) {
-      PubsubMessage message = context.element();
-      context.output(
-          FailsafeElement.of(message, new String(message.getPayload(), StandardCharsets.UTF_8)));
-    }
-  }
 }

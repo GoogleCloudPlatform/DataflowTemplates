@@ -104,7 +104,8 @@ public class BigQueryConverters {
   }
 
   /**
-   * The {@link TableRowToJsonFn} class converts a tableRow to Json using {@link #tableRowToJson(TableRow)}.
+   * The {@link TableRowToJsonFn} class converts a tableRow to Json using {@link
+   * #tableRowToJson(TableRow)}.
    */
   public static class TableRowToJsonFn extends DoFn<TableRow, String> {
 
@@ -116,7 +117,9 @@ public class BigQueryConverters {
   }
 
   /** Converts a {@link TableRow} into a Json string using {@link Gson}. */
-  private static String tableRowToJson(TableRow row) { return new Gson().toJson(row, TableRow.class); }
+  private static String tableRowToJson(TableRow row) {
+    return new Gson().toJson(row, TableRow.class);
+  }
 
   /**
    * The {@link BigQueryReadOptions} interface contains option necessary to interface with BigQuery.
@@ -282,19 +285,19 @@ public class BigQueryConverters {
   }
 
   /**
-   * The {@link TableRowToFailsafeJsonDocument} class is a {@link PTransform} which transforms {@link
-   * TableRow} objects into Json documents for insertion into Elasticsearch. Optionally a javascript
-   * UDF can be supplied to parse the {@link TableRow} object. The executions of the UDF and
-   * transformation to {@link TableRow} objects is done in a fail-safe way by wrapping the element
-   * with it's original payload inside the {@link FailsafeElement} class. The {@link
-   * TableRowToFailsafeJsonDocument} transform will output a {@link PCollectionTuple} which contains all
-   * output and dead-letter {@link PCollection}.
+   * The {@link TableRowToFailsafeJsonDocument} class is a {@link PTransform} which transforms
+   * {@link TableRow} objects into Json documents for insertion into Elasticsearch. Optionally a
+   * javascript UDF can be supplied to parse the {@link TableRow} object. The executions of the UDF
+   * and transformation to {@link TableRow} objects is done in a fail-safe way by wrapping the
+   * element with it's original payload inside the {@link FailsafeElement} class. The {@link
+   * TableRowToFailsafeJsonDocument} transform will output a {@link PCollectionTuple} which contains
+   * all output and dead-letter {@link PCollection}.
    *
    * <p>The {@link PCollectionTuple} output will contain the following {@link PCollection}:
    *
    * <ul>
-   *   <li>{@link TableRowToFailsafeJsonDocument#transformOutTag()} - Contains all records successfully
-   *       converted from JSON to {@link TableRow} objects.
+   *   <li>{@link TableRowToFailsafeJsonDocument#transformOutTag()} - Contains all records
+   *       successfully converted from JSON to {@link TableRow} objects.
    *   <li>{@link TableRowToFailsafeJsonDocument#transformDeadletterOutTag()} - Contains all {@link
    *       FailsafeElement} records which couldn't be converted to table rows.
    * </ul>
@@ -473,8 +476,8 @@ public class BigQueryConverters {
       // Put all column/value pairs into key/value map
       Set<String> rowKeys = row.keySet();
       for (String rowKey : rowKeys) {
-        // Only String types can be used in comparison
-        if(row.get(rowKey) instanceof String) {
+      // Only String types can be used in comparison
+      if (row.get(rowKey) instanceof String) {
           values.put(rowKey, (String) row.get(rowKey));
         }
       }
