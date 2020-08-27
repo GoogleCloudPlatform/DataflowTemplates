@@ -188,12 +188,13 @@ public class MergeStatementBuildingFn
   static final String LATEST_CHANGE_PER_PK = String.join("",
       "SELECT * ",
       "FROM (%s) AS ts_table ",
-      "INNER JOIN `%s.%s.%s` AS source_table ",
+      "INNER JOIN (select c.*, row_number()over(partition by %s order by c.timestampMs desc) r\n" +
+              "from `%s.%s.%s` c) AS source_table ",
       "ON %s"
   );
 
   static final String MAXIMUM_TIMESTAMP_PER_PK =
-      "SELECT %s, MAX(%s) as max_ts_ms FROM `%s.%s.%s` GROUP BY %s";
+      "SELECT %s, MAX(%s) as max_ts_ms, MAX(operation) as min_op FROM `%s.%s.%s` GROUP BY %s";
 
   public static String buildQueryGetLatestChangePerPrimaryKey(
       String tableName, List<String>pkColumns, String projectId, String datasetId) {
@@ -207,11 +208,12 @@ public class MergeStatementBuildingFn
 
     String joinStatement = buildJoinConditions(
         pkColumns, "source_table.primaryKey", "ts_table")
-        + " AND source_table.timestampMs = ts_table.max_ts_ms";
+        + " AND source_table.timestampMs = ts_table.max_ts_ms AND source_table.operation = ts_table.min_op AND source_table.r = 1";
 
     String fullStatement = String.format(
         LATEST_CHANGE_PER_PK,
         maxTimestampPerPkStatement,       // FROM PARAMETERS
+        String.join(", ", qualifiedPkColumns.stream().map(column -> "c." + column).collect(Collectors.toList())), // primary key column name
         projectId, datasetId, tableName,  // INNER JOIN PARAMETERS
         joinStatement);                   // JOIN STATEMENT (e.g. ON A.a = B.a AND A.c = B.c ....)
 
