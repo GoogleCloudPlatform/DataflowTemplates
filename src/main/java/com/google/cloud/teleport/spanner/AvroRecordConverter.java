@@ -20,6 +20,7 @@ import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.teleport.spanner.common.NumericUtils;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.common.annotations.VisibleForTesting;
@@ -100,6 +101,9 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
               .set(column.name())
               .to(readDate(record, avroType, logicalType, fieldName).orElse(null));
           break;
+        case NUMERIC:
+          builder.set(column.name()).to(readNumeric(record, avroType, fieldName).orElse(null));
+          break;
         case ARRAY:
           {
             Schema arraySchema = avroFieldSchema.getElementType();
@@ -148,6 +152,11 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
                 builder
                     .set(column.name())
                     .toDateArray(readDateArray(record, arrayType, fieldName).orElse(null));
+                break;
+              case NUMERIC:
+                builder
+                    .set(column.name())
+                    .toStringArray(readNumericArray(record, arrayType, fieldName).orElse(null));
                 break;
               default:
                 throw new IllegalArgumentException(
@@ -219,6 +228,29 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
         }
       default:
         throw new IllegalArgumentException("Cannot interpret " + avroType + " as DATE");
+    }
+  }
+
+  @VisibleForTesting
+  @SuppressWarnings("unchecked")
+  static Optional<List<String>> readNumericArray(
+      GenericRecord record, Schema.Type avroType, String fieldName) {
+    Object fieldValue = record.get(fieldName);
+    if (fieldValue == null) {
+      return Optional.empty();
+    }
+    switch (avroType) {
+      case BYTES:
+        List<ByteBuffer> values = (List<ByteBuffer>) record.get(fieldName);
+        if (values == null) {
+          return Optional.empty();
+        }
+        return Optional.of(
+            values.stream()
+                .map(x -> x == null ? null : NumericUtils.bytesToString(x.array()))
+                .collect(Collectors.toList()));
+      default:
+        throw new IllegalArgumentException("Cannot interpret " + avroType + " as BYTES");
     }
   }
 
@@ -418,6 +450,18 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
             .map(Date::parseDate);
       default:
         throw new IllegalArgumentException("Cannot interpret " + avroType + " as DATE");
+    }
+  }
+
+  private Optional<String> readNumeric(
+      GenericRecord record, Schema.Type avroType, String fieldName) {
+    switch (avroType) {
+      case BYTES:
+        return Optional.ofNullable((ByteBuffer) record.get(fieldName))
+            .map(ByteBuffer::array)
+            .map(NumericUtils::bytesToString);
+      default:
+        throw new IllegalArgumentException("Cannot interpret " + avroType + " as BYTES");
     }
   }
 

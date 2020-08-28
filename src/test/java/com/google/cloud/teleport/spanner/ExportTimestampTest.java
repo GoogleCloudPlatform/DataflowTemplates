@@ -23,7 +23,7 @@ import static org.junit.Assert.assertThat;
 import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerOptions;
-import com.google.cloud.spanner.Type;
+import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.InformationSchemaScanner;
 import com.google.common.collect.Lists;

@@ -20,6 +20,7 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.DatabaseClient;
+import com.google.cloud.spanner.PartitionOptions;
 import com.google.cloud.spanner.ReadContext;
 import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.spanner.ResultSet;
@@ -38,7 +39,6 @@ import java.io.OutputStream;
 import java.io.StringWriter;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -177,6 +177,11 @@ public class SpannerConverters {
     public class ExportFn extends DoFn<String, ReadOperation> {
 
       static final String SCHEMA_SUFFIX = "schema";
+      // The number of read partitions have to be capped so that in case the Partition token is
+      // large
+      // (which can happen with a table with a lot of columns), the PartitionResponse size is
+      // bounded.
+      private final int maxPartitions = 1000;
 
       @ProcessElement
       @SuppressWarnings("unused")
@@ -199,10 +204,31 @@ public class SpannerConverters {
           closeSpannerAccessor();
         }
 
-        processContext.output(
+        PartitionOptions partitionOptions =
+            PartitionOptions.newBuilder().setMaxPartitions(maxPartitions).build();
+
+        String columnsListAsString =
+            columns.entrySet().stream()
+                .map(x -> createColumnExpression(x.getKey(), x.getValue()))
+                .collect(Collectors.joining(","));
+        ReadOperation read =
             ReadOperation.create()
-                .withColumns(new ArrayList<>(columns.keySet()))
-                .withTable(table().get()));
+                .withQuery(String.format("SELECT %s FROM `%s`", columnsListAsString, table().get()))
+                .withPartitionOptions(partitionOptions);
+        processContext.output(read);
+      }
+
+      private String createColumnExpression(String columnName, String columnType) {
+        if (columnType.equals("NUMERIC")) {
+          return "CAST(" + columnName + " AS STRING) AS " + columnName;
+        }
+        if (columnType.equals("ARRAY<NUMERIC>")) {
+          return "(SELECT ARRAY_AGG(CAST(num AS STRING)) FROM UNNEST("
+              + columnName
+              + ") AS num) AS "
+              + columnName;
+        }
+        return columnName;
       }
 
       private void saveSchema(String content, String schemaPath) {

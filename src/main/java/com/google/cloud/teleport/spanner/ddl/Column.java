@@ -17,7 +17,7 @@
 package com.google.cloud.teleport.spanner.ddl;
 
 import com.google.auto.value.AutoValue;
-import com.google.cloud.spanner.Type;
+import com.google.cloud.teleport.spanner.common.Type;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.io.Serializable;
@@ -108,6 +108,8 @@ public abstract class Column implements Serializable {
         return "DATE";
       case TIMESTAMP:
         return "TIMESTAMP";
+      case NUMERIC:
+        return "NUMERIC";
       case ARRAY:
         Type arrayType = type.getArrayElementType();
         return "ARRAY<" + typeString(arrayType, size) + ">";
@@ -184,6 +186,10 @@ public abstract class Column implements Serializable {
       return type(Type.date());
     }
 
+    public Builder numeric() {
+      return type(Type.numeric());
+    }
+
     public Builder max() {
       return size(-1);
     }
@@ -242,7 +248,9 @@ public abstract class Column implements Serializable {
     if (spannerType.equals("DATE")) {
       return t(Type.date(), null);
     }
-
+    if (spannerType.equals("NUMERIC")) {
+      return t(Type.numeric(), null);
+    }
     if (spannerType.startsWith("ARRAY")) {
       // Substring "ARRAY<"xxx">"
       String spannerArrayType = spannerType.substring(6, spannerType.length() - 1);

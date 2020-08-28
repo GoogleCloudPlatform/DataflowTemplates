@@ -26,12 +26,12 @@ import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.DatabaseClient;
+import com.google.cloud.spanner.PartitionOptions;
 import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.Value;
-import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.channels.ReadableByteChannel;
@@ -90,7 +90,9 @@ public class SpannerConverterTest implements Serializable {
 
     PCollection<ReadOperation> results = pipeline.apply("Create", exportTransform);
     ReadOperation readOperation =
-        ReadOperation.create().withColumns(ImmutableList.of(COLUMN_NAME)).withTable(TABLE);
+        ReadOperation.create()
+            .withQuery("SELECT id FROM `table`")
+            .withPartitionOptions(PartitionOptions.newBuilder().setMaxPartitions(1000).build());
     PAssert.that(results).containsInAnyOrder(readOperation);
     pipeline.run();
     ReadableByteChannel channel =

@@ -58,6 +58,17 @@ class LocalReadSpannerSchema extends DoFn<Void, SpannerSchema> {
         String tableName = resultSet.getString(0);
         String columnName = resultSet.getString(1);
         String type = resultSet.getString(2);
+
+        // TODO: This is a work-around to successfully build an SpannerSchema when type is NUMERIC.
+        // org.apache.beam.sdk.io.gcp.spanner.SpannerSchema$Column.parseSpannerType() does not
+        // support NUMERIC.
+        if (type.startsWith("NUMERIC")) {
+          type = "STRING(MAX)";
+        }
+        if (type.startsWith("ARRAY<NUMERIC>")) {
+          type = "ARRAY<STRING(MAX)>";
+        }
+
         long cellsMutated = resultSet.getLong(3);
 
         builder.addColumn(tableName, columnName, type, cellsMutated);

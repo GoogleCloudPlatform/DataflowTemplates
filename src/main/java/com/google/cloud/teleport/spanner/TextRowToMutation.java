@@ -18,7 +18,6 @@ package com.google.cloud.teleport.spanner;
 
 import com.google.cloud.ByteArray;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.Type;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.spanner.TextImportProtos.ImportManifest.TableManifest;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
@@ -164,7 +163,7 @@ class TextRowToMutation extends DoFn<KV<String, String>, Mutation> {
           manifestColumns != null && manifestColumns.size() > 0
               ? manifestColumns.get(i).getColumnName()
               : table.columns().get(i).name();
-      Type columnType = table.column(columnName).type();
+      com.google.cloud.teleport.spanner.common.Type columnType = table.column(columnName).type();
       String cellValue = row.get(i);
       boolean isNullValue = Strings.isNullOrEmpty(cellValue);
       Value columnValue = null;
@@ -237,6 +236,9 @@ class TextRowToMutation extends DoFn<KV<String, String>, Mutation> {
                           ts.getEpochSecond(), ts.getNano()));
             }
           }
+          break;
+        case NUMERIC:
+          columnValue = isNullValue ? Value.string(null) : Value.string(cellValue.trim());
           break;
         case BYTES:
           columnValue = isNullValue ? Value.bytes(null) : Value.bytes(ByteArray.fromBase64(cellValue.trim()));

@@ -18,7 +18,8 @@ package com.google.cloud.teleport.spanner;
 
 import static com.google.cloud.teleport.spanner.AvroUtil.unpackNullable;
 
-import com.google.cloud.spanner.Type;
+import com.google.cloud.teleport.spanner.common.NumericUtils;
+import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
@@ -168,30 +169,33 @@ public class AvroSchemaToDdlConverter {
     return props.build();
   }
 
-  private com.google.cloud.spanner.Type inferType(Schema f, boolean supportArrays) {
+  private com.google.cloud.teleport.spanner.common.Type inferType(Schema f, boolean supportArrays) {
     Schema.Type type = f.getType();
     LogicalType logicalType = LogicalTypes.fromSchema(f);
 
     switch (type) {
       case BOOLEAN:
-        return Type.bool();
+        return com.google.cloud.teleport.spanner.common.Type.bool();
       case INT:
-        return com.google.cloud.spanner.Type.int64();
+        return com.google.cloud.teleport.spanner.common.Type.int64();
       case LONG:
         if (LogicalTypes.timestampMillis().equals(logicalType)) {
-          return com.google.cloud.spanner.Type.timestamp();
+          return com.google.cloud.teleport.spanner.common.Type.timestamp();
         }
         if (LogicalTypes.timestampMicros().equals(logicalType)) {
-          return com.google.cloud.spanner.Type.timestamp();
+          return com.google.cloud.teleport.spanner.common.Type.timestamp();
         }
-        return com.google.cloud.spanner.Type.int64();
+        return com.google.cloud.teleport.spanner.common.Type.int64();
       case FLOAT:
       case DOUBLE:
-        return com.google.cloud.spanner.Type.float64();
+        return com.google.cloud.teleport.spanner.common.Type.float64();
       case STRING:
-        return com.google.cloud.spanner.Type.string();
+        return com.google.cloud.teleport.spanner.common.Type.string();
       case BYTES:
-        return com.google.cloud.spanner.Type.bytes();
+        if (LogicalTypes.decimal(NumericUtils.PRECISION, NumericUtils.SCALE).equals(logicalType)) {
+          return com.google.cloud.teleport.spanner.common.Type.numeric();
+        }
+        return com.google.cloud.teleport.spanner.common.Type.bytes();
       case ARRAY:
         {
           if (supportArrays) {
@@ -204,7 +208,7 @@ public class AvroSchemaToDdlConverter {
               element = unpacked;
             }
             try {
-              return com.google.cloud.spanner.Type.array(inferType(element, false));
+              return com.google.cloud.teleport.spanner.common.Type.array(inferType(element, false));
             } catch (IllegalArgumentException e) {
               throw new IllegalArgumentException("Cannot infer array type for field " + f);
             }
@@ -216,7 +220,8 @@ public class AvroSchemaToDdlConverter {
     throw new IllegalArgumentException("Cannot infer a type " + f);
   }
 
-  private String toString(com.google.cloud.spanner.Type spannerType, boolean supportArray) {
+  private String toString(
+      com.google.cloud.teleport.spanner.common.Type spannerType, boolean supportArray) {
     switch (spannerType.getCode()) {
       case BOOL:
         return "BOOL";
@@ -232,10 +237,13 @@ public class AvroSchemaToDdlConverter {
         return "TIMESTAMP";
       case DATE:
         return "DATE";
+      case NUMERIC:
+        return "NUMERIC";
       case ARRAY:
         {
           if (supportArray) {
-            Type element = spannerType.getArrayElementType();
+            com.google.cloud.teleport.spanner.common.Type element =
+                spannerType.getArrayElementType();
             String elementStr = toString(element, false);
             return "ARRAY<" + elementStr + ">";
           }

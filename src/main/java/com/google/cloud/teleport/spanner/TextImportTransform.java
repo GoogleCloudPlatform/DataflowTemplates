@@ -17,9 +17,9 @@
 package com.google.cloud.teleport.spanner;
 
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.Type.Code;
 import com.google.cloud.teleport.spanner.TextImportProtos.ImportManifest;
 import com.google.cloud.teleport.spanner.TextImportProtos.ImportManifest.TableManifest;
+import com.google.cloud.teleport.spanner.common.Type.Code;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
@@ -183,7 +183,9 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
           mutations
               .apply("Wait for previous depth " + depth, Wait.on(previousComputation))
               .apply(
-                  "Write mutations " + depth, LocalSpannerIO.write().withSpannerConfig(spannerConfig)
+                  "Write mutations " + depth,
+                  LocalSpannerIO.write()
+                      .withSpannerConfig(spannerConfig)
                       .withCommitDeadline(Duration.standardMinutes(1))
                       .withMaxCumulativeBackoff(Duration.standardHours(2))
                       .withMaxNumMutations(10000)
@@ -416,6 +418,8 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
         return Code.TIMESTAMP;
       } else if (columnType.equalsIgnoreCase("BYTES")) {
         return Code.BYTES;
+      } else if (columnType.equalsIgnoreCase("NUMERIC")) {
+        return Code.NUMERIC;
       } else {
         throw new IllegalArgumentException(
             "Unrecognized or unsupported column data type: " + columnType);

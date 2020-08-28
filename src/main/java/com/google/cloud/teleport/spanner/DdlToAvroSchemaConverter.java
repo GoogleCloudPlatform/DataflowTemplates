@@ -16,7 +16,7 @@
 
 package com.google.cloud.teleport.spanner;
 
-import com.google.cloud.spanner.Type;
+import com.google.cloud.teleport.spanner.common.NumericUtils;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.IndexColumn;
@@ -24,6 +24,7 @@ import com.google.cloud.teleport.spanner.ddl.Table;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.stream.Collectors;
+import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 
@@ -98,7 +99,7 @@ public class DdlToAvroSchemaConverter {
     return schemas;
   }
 
-  private Schema avroType(Type spannerType) {
+  private Schema avroType(com.google.cloud.teleport.spanner.common.Type spannerType) {
     switch (spannerType.getCode()) {
       case BOOL:
         return SchemaBuilder.builder().booleanType();
@@ -114,6 +115,9 @@ public class DdlToAvroSchemaConverter {
         return SchemaBuilder.builder().stringType();
       case DATE:
         return SchemaBuilder.builder().stringType();
+      case NUMERIC:
+        return LogicalTypes.decimal(NumericUtils.PRECISION, NumericUtils.SCALE)
+            .addToSchema(SchemaBuilder.builder().bytesType());
       case ARRAY:
         Schema avroItemsType = avroType(spannerType.getArrayElementType());
         return SchemaBuilder.builder().array().items().type(wrapAsNullable(avroItemsType));

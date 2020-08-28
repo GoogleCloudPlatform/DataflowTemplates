@@ -20,9 +20,9 @@ import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.Type;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.spanner.TextImportProtos.ImportManifest.TableManifest;
+import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -82,7 +82,7 @@ public final class TextRowToMutationTest {
                 KV.of(
                     testTableName,
                     "123,a string,`another"
-                        + " string`,1.23,True,2019-01-01,2018-12-31T23:59:59Z,1567637083,aGk=,")));
+                        + " string`,1.23,True,2019-01-01,2018-12-31T23:59:59Z,1567637083,aGk=,-439.25335679")));
     PCollection<Mutation> mutations =
         input.apply(
             ParDo.of(
@@ -119,6 +119,8 @@ public final class TextRowToMutationTest {
                 .to(Value.timestamp(Timestamp.ofTimeMicroseconds(1567637083)))
                 .set("byte_col")
                 .to(Value.bytes(ByteArray.fromBase64("aGk=")))
+                .set("numeric_col")
+                .to("-439.25335679")
                 .build());
 
     pipeline.run();
@@ -488,6 +490,9 @@ public final class TextRowToMutationTest {
             .endColumn()
             .column("byte_col")
             .bytes()
+            .endColumn()
+            .column("numeric_col")
+            .numeric()
             .endColumn()
             .primaryKey()
             .asc("int_col")

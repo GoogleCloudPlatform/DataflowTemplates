@@ -24,10 +24,15 @@ import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Struct;
-import com.google.cloud.spanner.Type;
+import com.google.cloud.teleport.spanner.common.NumericUtils;
+import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.common.collect.Lists;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.junit.Test;
@@ -158,4 +163,50 @@ public class SpannerRecordConverterTest {
         equalTo(Arrays.asList(null, null, "1970-01-01T00:00:00.000010000Z")));
   }
 
+  @Test
+  public void numerics() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("numerictable")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("numeric")
+            .type(Type.numeric())
+            .endColumn()
+            .column("numeric_arr")
+            .type(Type.array(Type.numeric()))
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+    Schema schema = converter.convert(ddl).iterator().next();
+    SpannerRecordConverter recordConverter = new SpannerRecordConverter(schema);
+
+    String[] numericArrValues = {null, "-25398514232141142.012479", null, "1999999999.1246"};
+    Struct struct =
+        Struct.newBuilder()
+            .set("id")
+            .to(1L)
+            .set("numeric")
+            .to("-9305028.140032")
+            .set("numeric_arr")
+            .toStringArray(Lists.newArrayList(numericArrValues))
+            .build();
+
+    GenericRecord avroRecord = recordConverter.convert(struct);
+    List<ByteBuffer> expectedNumericArr =
+        Stream.of(numericArrValues)
+            .map(x -> x == null ? null : ByteBuffer.wrap(NumericUtils.stringToBytes(x)))
+            .collect(Collectors.toList());
+
+    assertThat(avroRecord.get("id"), equalTo(1L));
+    assertThat(
+        avroRecord.get("numeric"),
+        equalTo(ByteBuffer.wrap(NumericUtils.stringToBytes("-9305028.140032"))));
+    assertThat(avroRecord.get("numeric_arr"), equalTo(expectedNumericArr));
+  }
 }

@@ -17,6 +17,7 @@
 package com.google.cloud.teleport.spanner;
 
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.teleport.spanner.common.NumericUtils;
 import com.google.common.base.Strings;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -71,6 +72,15 @@ public class SpannerRecordConverter {
           builder.set(field, nullValue ? null : row.getDouble(fieldName));
           break;
         case BYTES:
+          if (spannerType.equals("NUMERIC")) {
+            // TODO: uses row.getNumeric() once teleport uses new spanner library.
+            builder.set(
+                field,
+                nullValue
+                    ? null
+                    : ByteBuffer.wrap(NumericUtils.stringToBytes(row.getString(fieldName))));
+            break;
+          }
           builder.set(
               field, nullValue ? null : ByteBuffer.wrap(row.getBytes(fieldName).toByteArray()));
           break;
@@ -111,6 +121,23 @@ public class SpannerRecordConverter {
                 }
               case BYTES:
                 {
+                  if (spannerType.equals("ARRAY<NUMERIC>")) {
+                    if (nullValue) {
+                      builder.set(field, null);
+                      break;
+                    }
+                    List<ByteBuffer> numericValues = null;
+                    numericValues =
+                        row.getStringList(fieldName).stream()
+                            .map(
+                                numeric ->
+                                    numeric == null
+                                        ? null
+                                        : ByteBuffer.wrap(NumericUtils.stringToBytes(numeric)))
+                            .collect(Collectors.toList());
+                    builder.set(field, numericValues);
+                    break;
+                  }
                   List<ByteBuffer> value = null;
                   if (!nullValue) {
                     value =

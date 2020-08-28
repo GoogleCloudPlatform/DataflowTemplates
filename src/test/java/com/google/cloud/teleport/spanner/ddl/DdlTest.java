@@ -21,7 +21,7 @@ import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.text.IsEqualIgnoringWhiteSpace.equalToIgnoringWhiteSpace;
 import static org.junit.Assert.assertThat;
 
-import com.google.cloud.spanner.Type;
+import com.google.cloud.teleport.spanner.common.Type;
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 
