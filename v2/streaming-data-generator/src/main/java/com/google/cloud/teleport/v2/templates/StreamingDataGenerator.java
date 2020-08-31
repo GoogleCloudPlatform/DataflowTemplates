@@ -19,13 +19,6 @@ package com.google.cloud.teleport.v2.templates;
 import com.github.vincentrussell.json.datagenerator.JsonDataGenerator;
 import com.github.vincentrussell.json.datagenerator.JsonDataGeneratorException;
 import com.github.vincentrussell.json.datagenerator.impl.JsonDataGeneratorImpl;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.FileSystems;
@@ -40,9 +33,20 @@ import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.vendor.guava.v20_0.com.google.common.io.ByteStreams;
+import org.codehaus.jackson.map.ObjectMapper;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TimeZone;
 
 
 /**
@@ -69,8 +73,9 @@ import org.joda.time.Instant;
  * # Set the pipeline vars
  * PROJECT=my-project
  * BUCKET_NAME=my-bucket
- * SCHEMA_LOCATION=gs://<bucket>/<path>/<to>/game-event-schema.json
- * PUBSUB_TOPIC=projects/<project-id>/topics/<topic-id>
+ * SCHEMA_LOCATION=gs://bucket/path/to/game-event-schema.json
+ * ATTRIBUTE_SCHEMA_LOCATION=gs://bucket/path/to/attribute-game-event-schema.json
+ * PUBSUB_TOPIC=projects/project-id/topics/topic-id
  * QPS=2500
  *
  * # Set containerization vars
@@ -93,148 +98,191 @@ import org.joda.time.Instant;
  *   as specified in README.md file
  *
  * # Execute template:
- * JOB_NAME=<job-name>
- * PROJECT=<project-id>
+ * JOB_NAME=job-name
+ * PROJECT=project-id
  * TEMPLATE_SPEC_GCSPATH=gs://path/to/template-spec
  * SCHEMA_LOCATION=gs://path/to/schema.json
- * PUBSUB_TOPIC=projects/$PROJECT/topics/<topic-name>
+ * ATTRIBUTE_SCHEMA_LOCATION=gs://path/to/attribute-schema.json
+ * PUBSUB_TOPIC=projects/$PROJECT/topics/topic-name
  * QPS=1
  *
  * gcloud beta dataflow jobs run $JOB_NAME \
  *         --project=$PROJECT --region=us-central1 --flex-template  \
  *         --gcs-location=$TEMPLATE_SPEC_GCSPATH \
- *         --parameters autoscalingAlgorithm="THROUGHPUT_BASED",schemaLocation=$SCHEMA_LOCATION,topic=$PUBSUB_TOPIC,qps=$QPS,maxNumWorkers=3
+ *         --parameters autoscalingAlgorithm="THROUGHPUT_BASED",schemaLocation=$SCHEMA_LOCATION,attributeSchemaLocation=$ATTRIBUTE_SCHEMA_LOCATION,topic=$PUBSUB_TOPIC,qps=$QPS,maxNumWorkers=3
  * </pre>
-
-
  */
 public class StreamingDataGenerator {
 
-  /**
-   * The {@link StreamingDataGeneratorOptions} class provides the custom execution options passed by the executor at the
-   * command-line.
-   */
-  public interface StreamingDataGeneratorOptions extends PipelineOptions {
-    @Description("Indicates rate of messages per second to be published to Pub/Sub.")
-    @Required
-    Long getQps();
 
-    void setQps(Long value);
-
-    @Description("The path to the schema to generate.")
-    @Required
-    String getSchemaLocation();
-
-    void setSchemaLocation(String value);
-
-    @Description("The Pub/Sub topic to write to.")
-    @Required
-    String getTopic();
-
-    void setTopic(String value);
-  }
-
-  /**
-   * The main entry-point for pipeline execution. This method will start the pipeline but will not
-   * wait for it's execution to finish. If blocking execution is required, use the {@link
-   * StreamingDataGenerator#run(Options)} method to start the pipeline and invoke {@code
-   * result.waitUntilFinish()} on the {@link PipelineResult}.
-   *
-   * @param args The command-line args passed by the executor.
-   */
-  public static void main(String[] args) {
-    StreamingDataGeneratorOptions options = PipelineOptionsFactory
-        .fromArgs(args)
-        .withValidation()
-        .as(StreamingDataGeneratorOptions.class);
-
-    run(options);
-  }
-
-  /**
-   * Runs the pipeline to completion with the specified options. This method does not wait until the
-   * pipeline is finished before returning. Invoke {@code result.waitUntilFinish()} on the result
-   * object to block until the pipeline is finished running if blocking programmatic execution is
-   * required.
-   *
-   * @param options The execution options.
-   * @return The pipeline result.
-   */
-  public static PipelineResult run(StreamingDataGeneratorOptions options) {
-
-    // Create the pipeline
-    Pipeline pipeline = Pipeline.create(options);
-
-    /*
-     * Steps:
-     *  1) Trigger at the supplied QPS
-     *  2) Generate messages containing fake data
-     *  3) Write messages to Pub/Sub
+    /**
+     * The {@link StreamingDataGeneratorOptions} class provides the custom execution options passed by the executor at the
+     * command-line.
      */
-    pipeline
-        .apply(
-            "Trigger",
-            GenerateSequence.from(0L).withRate(options.getQps(), Duration.standardSeconds(1L)))
-        .apply("GenerateMessages", ParDo.of(new MessageGeneratorFn(options.getSchemaLocation())))
-        .apply("WriteToPubsub", PubsubIO.writeMessages().to(options.getTopic()));
+    public interface StreamingDataGeneratorOptions extends PipelineOptions {
+        @Description("Indicates rate of messages per second to be published to Pub/Sub.")
+        @Required
+        Long getQps();
 
-    return pipeline.run();
-  }
+        void setQps(Long value);
 
-  /**
-   * The {@link MessageGeneratorFn} class generates {@link PubsubMessage} objects from a supplied
-   * schema and populating the message with fake data.
-   *
-   * <p>See <a href="https://github.com/vincentrussell/json-data-generator">json-data-generator</a>
-   * for instructions on how to construct the schema file.
-   */
-  static class MessageGeneratorFn extends DoFn<Long, PubsubMessage> {
+        @Description("The path to the schema to generate.")
+        @Required
+        String getSchemaLocation();
 
-    private final String schemaLocation;
-    private String schema;
+        void setSchemaLocation(String value);
 
-    // Not initialized inline or constructor because {@link JsonDataGenerator} is not serializable.
-    private transient JsonDataGenerator dataGenerator;
 
-    MessageGeneratorFn(String schemaLocation) {
-      this.schemaLocation = schemaLocation;
+        @Description("The path to the attribute schema to generate.")
+        String getAttributeSchemaLocation();
+
+        void setAttributeSchemaLocation(String value);
+
+
+        @Description("The Pub/Sub topic to write to.")
+        @Required
+        String getTopic();
+
+        void setTopic(String value);
     }
 
-    @Setup
-    public void setup() throws IOException {
-      dataGenerator = new JsonDataGeneratorImpl();
+    /**
+     * The {@link MessageGeneratorFn} class generates {@link PubsubMessage} objects from a supplied
+     * schema and populating the message with fake data.
+     *
+     * <p>See <a href="https://github.com/vincentrussell/json-data-generator">json-data-generator</a>
+     * for instructions on how to construct the schema file.
+     */
+    static class MessageGeneratorFn extends DoFn<Long, PubsubMessage> {
 
-      Metadata metadata = FileSystems.matchSingleFileSpec(schemaLocation);
 
-      // Copy the schema file into a string which can be used for generation.
-      try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
-        try (ReadableByteChannel readerChannel = FileSystems.open(metadata.resourceId())) {
-          try (WritableByteChannel writerChannel = Channels.newChannel(byteArrayOutputStream)) {
-            ByteStreams.copy(readerChannel, writerChannel);
-          }
+        private static final Logger LOG = LoggerFactory.getLogger(MessageGeneratorFn.class);
+        private final String schemaLocation;
+        private String attributesSchemaLocation = null;
+        private String schema;
+        private String attributeSchema;
+
+        // Not initialized inline or constructor because {@link JsonDataGenerator} is not serializable.
+        private transient JsonDataGenerator dataGenerator;
+
+        MessageGeneratorFn(String schemaLocation) {
+            this.schemaLocation = schemaLocation;
         }
 
-        schema = byteArrayOutputStream.toString();
-      }
+        MessageGeneratorFn(String schemaLocation, String attributesSchemaLocation) {
+            this.schemaLocation = schemaLocation;
+            this.attributesSchemaLocation = attributesSchemaLocation;
+        }
+
+        @Setup
+        public void setup() throws IOException {
+            dataGenerator = new JsonDataGeneratorImpl();
+
+            Metadata metadata = FileSystems.matchSingleFileSpec(schemaLocation);
+
+            // Copy the schema file into a string which can be used for generation.
+            try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
+                try (ReadableByteChannel readerChannel = FileSystems.open(metadata.resourceId())) {
+                    try (WritableByteChannel writerChannel = Channels.newChannel(byteArrayOutputStream)) {
+                        ByteStreams.copy(readerChannel, writerChannel);
+                    }
+                }
+
+                schema = byteArrayOutputStream.toString();
+            }
+
+            if (attributesSchemaLocation != null) {
+                Metadata metadataAttr = FileSystems.matchSingleFileSpec(attributesSchemaLocation);
+                // Copy the schema file into a string which can be used for generation.
+                try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
+                    try (ReadableByteChannel readerChannel = FileSystems.open(metadataAttr.resourceId())) {
+                        try (WritableByteChannel writerChannel = Channels.newChannel(byteArrayOutputStream)) {
+                            ByteStreams.copy(readerChannel, writerChannel);
+                        }
+                    }
+                    attributeSchema = byteArrayOutputStream.toString();
+                }
+            }
+            //Set Timezone to UTC to generate datetime with UTC
+            TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+        }
+
+        @ProcessElement
+        public void processElement(@Element Long element, @Timestamp Instant timestamp,
+                                   OutputReceiver<PubsubMessage> receiver, ProcessContext context)
+                throws IOException, JsonDataGeneratorException {
+
+            byte[] payload;
+            byte[] attributesBytes;
+            Map<String, String> attributes = new HashMap<>();
+
+            // Generate the fake JSON according to the schema.
+            try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
+                dataGenerator.generateTestDataJson(schema, byteArrayOutputStream);
+                payload = byteArrayOutputStream.toByteArray();
+            }
+
+            // Ability to place eventId and eventTimestamp in the attributes
+            if (attributesSchemaLocation != null) {
+                // Generate the fake JSON Attributes according to schema_attributes
+                try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
+                    dataGenerator.generateTestDataJson(attributeSchema, byteArrayOutputStream);
+                    attributesBytes = byteArrayOutputStream.toByteArray();
+                    String attr = new String(attributesBytes);
+                    attributes = new ObjectMapper().readValue(attr, HashMap.class);
+                }
+            }
+            receiver.output(new PubsubMessage(payload, attributes));
+        }
     }
 
-    @ProcessElement
-    public void processElement(@Element Long element, @Timestamp Instant timestamp,
-        OutputReceiver<PubsubMessage> receiver, ProcessContext context)
-        throws IOException, JsonDataGeneratorException {
+    /**
+     * The main entry-point for pipeline execution. This method will start the pipeline but will not
+     * wait for it's execution to finish. If blocking execution is required, use the {@link
+     * StreamingDataGenerator#run(StreamingDataGeneratorOptions)} method to start the pipeline and invoke {@code
+     * result.waitUntilFinish()} on the {@link PipelineResult}.
+     *
+     * @param args The command-line args passed by the executor.
+     */
+    public static void main(String[] args) {
 
-      // TODO: Add the ability to place eventId and eventTimestamp in the attributes.
-      byte[] payload;
-      Map<String, String> attributes = new HashMap<>();
+        StreamingDataGeneratorOptions options = PipelineOptionsFactory
+                .fromArgs(args)
+                .withValidation()
+                .as(StreamingDataGeneratorOptions.class);
 
-      // Generate the fake JSON according to the schema.
-      try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
-        dataGenerator.generateTestDataJson(schema, byteArrayOutputStream);
-
-        payload = byteArrayOutputStream.toByteArray();
-      }
-
-      receiver.output(new PubsubMessage(payload, attributes));
+        run(options);
     }
-  }
+
+    /**
+     * Runs the pipeline to completion with the specified options. This method does not wait until the
+     * pipeline is finished before returning. Invoke {@code result.waitUntilFinish()} on the result
+     * object to block until the pipeline is finished running if blocking programmatic execution is
+     * required.
+     *
+     * @param options The execution options.
+     * @return The pipeline result.
+     */
+    public static PipelineResult run(StreamingDataGeneratorOptions options) {
+
+        // Create the pipeline
+        Pipeline pipeline = Pipeline.create(options);
+
+        /*
+         * Steps:
+         *  1) Trigger at the supplied QPS
+         *  2) Generate messages containing fake data
+         *  3) Write messages to Pub/Sub
+         */
+        pipeline
+                .apply(
+                        "Trigger",
+                        GenerateSequence.from(0L).withRate(options.getQps(), Duration.standardSeconds(1L)))
+                .apply("GenerateMessages", ParDo.of(new MessageGeneratorFn(options.getSchemaLocation(), options.getAttributeSchemaLocation())))
+                .apply("WriteToPubsub", PubsubIO.writeMessages().to(options.getTopic()));
+
+        return pipeline.run();
+    }
+
+
 }
