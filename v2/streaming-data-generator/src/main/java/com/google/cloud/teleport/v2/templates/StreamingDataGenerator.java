@@ -44,8 +44,7 @@ import org.apache.beam.vendor.guava.v20_0.com.google.common.io.ByteStreams;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 
 
 /**
@@ -72,9 +71,9 @@ import org.slf4j.LoggerFactory;
  * # Set the pipeline vars
  * PROJECT=my-project
  * BUCKET_NAME=my-bucket
- * SCHEMA_LOCATION=gs://bucket/path/to/game-event-schema.json
- * ATTRIBUTE_SCHEMA_LOCATION=gs://bucket/path/to/attribute-game-event-schema.json
- * PUBSUB_TOPIC=projects/project-id/topics/topic-id
+ * SCHEMA_LOCATION=gs://<bucket>/<path>/<to>/game-event-schema.json
+ * ATTRIBUTE_SCHEMA_LOCATION=gs://<bucket>/<path>/<to>/attribute-game-event-schema.json
+ * PUBSUB_TOPIC=projects/<project-id>/topics/<topic-id>
  * QPS=2500
  *
  * # Set containerization vars
@@ -97,12 +96,12 @@ import org.slf4j.LoggerFactory;
  *   as specified in README.md file
  *
  * # Execute template:
- * JOB_NAME=job-name
- * PROJECT=project-id
+ * JOB_NAME=<job-name>
+ * PROJECT=<project-id>
  * TEMPLATE_SPEC_GCSPATH=gs://path/to/template-spec
  * SCHEMA_LOCATION=gs://path/to/schema.json
  * ATTRIBUTE_SCHEMA_LOCATION=gs://path/to/attribute-schema.json
- * PUBSUB_TOPIC=projects/$PROJECT/topics/topic-name
+ * PUBSUB_TOPIC=projects/$PROJECT/topics/<topic-name>
  * QPS=1
  *
  * gcloud beta dataflow jobs run $JOB_NAME \
@@ -112,7 +111,6 @@ import org.slf4j.LoggerFactory;
  * </pre>
  */
 public class StreamingDataGenerator {
-
 
     /**
      * The {@link StreamingDataGeneratorOptions} class provides the custom execution options passed by the executor at the
@@ -131,12 +129,10 @@ public class StreamingDataGenerator {
 
         void setSchemaLocation(String value);
 
-
         @Description("The path to the attribute schema to generate.")
         String getAttributeSchemaLocation();
 
         void setAttributeSchemaLocation(String value);
-
 
         @Description("The Pub/Sub topic to write to.")
         @Required
@@ -154,7 +150,6 @@ public class StreamingDataGenerator {
      * @param args The command-line args passed by the executor.
      */
     public static void main(String[] args) {
-
         StreamingDataGeneratorOptions options = PipelineOptionsFactory
                 .fromArgs(args)
                 .withValidation()
@@ -202,8 +197,6 @@ public class StreamingDataGenerator {
      */
     static class MessageGeneratorFn extends DoFn<Long, PubsubMessage> {
 
-
-        private static final Logger LOG = LoggerFactory.getLogger(MessageGeneratorFn.class);
         private final String schemaLocation;
         private String attributesSchemaLocation = null;
         private String schema;
@@ -266,9 +259,9 @@ public class StreamingDataGenerator {
             // Generate the fake JSON according to the schema.
             try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
                 dataGenerator.generateTestDataJson(schema, byteArrayOutputStream);
+
                 payload = byteArrayOutputStream.toByteArray();
             }
-
             // Ability to place eventId and eventTimestamp in the attributes
             if (attributesSchemaLocation != null) {
                 // Generate the fake JSON Attributes according to schema_attributes
@@ -282,6 +275,4 @@ public class StreamingDataGenerator {
             receiver.output(new PubsubMessage(payload, attributes));
         }
     }
-
-
 }
