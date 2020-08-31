@@ -190,7 +190,8 @@ public class StreamingDataGenerator {
 
     /**
      * The {@link MessageGeneratorFn} class generates {@link PubsubMessage} objects from a supplied
-     * schema and populating the message with fake data.
+     * schema and populating the message with fake data. Also supports supplying schema for PubSub
+     * message attributes.
      *
      * <p>See <a href="https://github.com/vincentrussell/json-data-generator">json-data-generator</a>
      * for instructions on how to construct the schema file.
