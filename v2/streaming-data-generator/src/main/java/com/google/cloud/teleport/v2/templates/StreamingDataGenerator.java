@@ -19,6 +19,14 @@ package com.google.cloud.teleport.v2.templates;
 import com.github.vincentrussell.json.datagenerator.JsonDataGenerator;
 import com.github.vincentrussell.json.datagenerator.JsonDataGeneratorException;
 import com.github.vincentrussell.json.datagenerator.impl.JsonDataGeneratorImpl;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TimeZone;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.FileSystems;
@@ -38,15 +46,6 @@ import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.TimeZone;
 
 
 /**
@@ -147,6 +146,54 @@ public class StreamingDataGenerator {
     }
 
     /**
+     * The main entry-point for pipeline execution. This method will start the pipeline but will not
+     * wait for it's execution to finish. If blocking execution is required, use the {@link
+     * StreamingDataGenerator#run(StreamingDataGeneratorOptions)} method to start the pipeline and invoke {@code
+     * result.waitUntilFinish()} on the {@link PipelineResult}.
+     *
+     * @param args The command-line args passed by the executor.
+     */
+    public static void main(String[] args) {
+
+        StreamingDataGeneratorOptions options = PipelineOptionsFactory
+                .fromArgs(args)
+                .withValidation()
+                .as(StreamingDataGeneratorOptions.class);
+
+        run(options);
+    }
+
+    /**
+     * Runs the pipeline to completion with the specified options. This method does not wait until the
+     * pipeline is finished before returning. Invoke {@code result.waitUntilFinish()} on the result
+     * object to block until the pipeline is finished running if blocking programmatic execution is
+     * required.
+     *
+     * @param options The execution options.
+     * @return The pipeline result.
+     */
+    public static PipelineResult run(StreamingDataGeneratorOptions options) {
+
+        // Create the pipeline
+        Pipeline pipeline = Pipeline.create(options);
+
+        /*
+         * Steps:
+         *  1) Trigger at the supplied QPS
+         *  2) Generate messages containing fake data
+         *  3) Write messages to Pub/Sub
+         */
+        pipeline
+                .apply(
+                        "Trigger",
+                        GenerateSequence.from(0L).withRate(options.getQps(), Duration.standardSeconds(1L)))
+                .apply("GenerateMessages", ParDo.of(new MessageGeneratorFn(options.getSchemaLocation(), options.getAttributeSchemaLocation())))
+                .apply("WriteToPubsub", PubsubIO.writeMessages().to(options.getTopic()));
+
+        return pipeline.run();
+    }
+
+    /**
      * The {@link MessageGeneratorFn} class generates {@link PubsubMessage} objects from a supplied
      * schema and populating the message with fake data.
      *
@@ -234,54 +281,6 @@ public class StreamingDataGenerator {
             }
             receiver.output(new PubsubMessage(payload, attributes));
         }
-    }
-
-    /**
-     * The main entry-point for pipeline execution. This method will start the pipeline but will not
-     * wait for it's execution to finish. If blocking execution is required, use the {@link
-     * StreamingDataGenerator#run(StreamingDataGeneratorOptions)} method to start the pipeline and invoke {@code
-     * result.waitUntilFinish()} on the {@link PipelineResult}.
-     *
-     * @param args The command-line args passed by the executor.
-     */
-    public static void main(String[] args) {
-
-        StreamingDataGeneratorOptions options = PipelineOptionsFactory
-                .fromArgs(args)
-                .withValidation()
-                .as(StreamingDataGeneratorOptions.class);
-
-        run(options);
-    }
-
-    /**
-     * Runs the pipeline to completion with the specified options. This method does not wait until the
-     * pipeline is finished before returning. Invoke {@code result.waitUntilFinish()} on the result
-     * object to block until the pipeline is finished running if blocking programmatic execution is
-     * required.
-     *
-     * @param options The execution options.
-     * @return The pipeline result.
-     */
-    public static PipelineResult run(StreamingDataGeneratorOptions options) {
-
-        // Create the pipeline
-        Pipeline pipeline = Pipeline.create(options);
-
-        /*
-         * Steps:
-         *  1) Trigger at the supplied QPS
-         *  2) Generate messages containing fake data
-         *  3) Write messages to Pub/Sub
-         */
-        pipeline
-                .apply(
-                        "Trigger",
-                        GenerateSequence.from(0L).withRate(options.getQps(), Duration.standardSeconds(1L)))
-                .apply("GenerateMessages", ParDo.of(new MessageGeneratorFn(options.getSchemaLocation(), options.getAttributeSchemaLocation())))
-                .apply("WriteToPubsub", PubsubIO.writeMessages().to(options.getTopic()));
-
-        return pipeline.run();
     }
 
 
