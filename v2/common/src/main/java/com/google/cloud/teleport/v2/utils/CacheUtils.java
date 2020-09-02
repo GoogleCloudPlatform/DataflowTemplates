@@ -20,9 +20,7 @@ import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableId;
 import com.google.common.base.Supplier;
-import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
@@ -69,30 +67,6 @@ public class CacheUtils {
   }
 
   /**
-   * The {@link DataStreamPkCache} stores an expiring cached list of PKs for each
-   * stream, schema, and table combination.
-   */
-  public static class DataStreamPkCache
-      extends MappedObjectCache<List<String>, List<String>> {
-
-    public DataStreamClient client;
-
-    public DataStreamPkCache(DataStreamClient client) {
-      this.client = client;
-    }
-
-    @Override
-    public List<String> getObjectValue(List<String> key) {
-      try {
-        return this.client.getPrimaryKeys(key.get(0), key.get(1), key.get(2));
-      } catch (IOException e) {
-        LOG.error("IOException: DataStream Discovery on Primary Keys Failed.");
-        return null;
-      }
-    }
-  }
-
-  /**
    * The {@link MappedObjectCache} allows you to easily create a Map<Key,Value> cache
    * where each element expires and is re-acquied on a configurable basis.
    *
@@ -104,6 +78,8 @@ public class CacheUtils {
   public abstract static class MappedObjectCache<KeyT, ValueT> {
 
     private Map<KeyT, ExpiringSupplier<ValueT>> cachedObjects = new HashMap<KeyT, ExpiringSupplier<ValueT>>();
+    private Integer cacheResetTimeUnitValue = 5;
+    private TimeUnit cacheResetTimeUnit = TimeUnit.MINUTES;
 
     /**
      * Create an instance of a {@link MappedObjectCache} to track table schemas.
@@ -111,6 +87,17 @@ public class CacheUtils {
      * @param client A Client which is required to pull the ValueT.
      */
     public MappedObjectCache() {}
+
+    /**
+     * Set the cache life for the {@code MappedObjectCache} instance.
+     *
+     * @param value The number of minutes before reseting a cached value.
+     */
+    public MappedObjectCache withCacheResetTimeUnitValue(Integer value) {
+      this.cacheResetTimeUnitValue = value;
+
+      return this;
+    }
 
     /**
      * Return a {@code ValueT} representing the value requested to be stored.
@@ -145,7 +132,8 @@ public class CacheUtils {
     public ValueT reset(KeyT key) {
       ValueT value = getObjectValue(key);
 
-      ExpiringSupplier<ValueT> valueSupplier = new ExpiringSupplier<ValueT>(value, 5, TimeUnit.MINUTES);
+      ExpiringSupplier<ValueT> valueSupplier =
+        new ExpiringSupplier<ValueT>(value, this.cacheResetTimeUnitValue, this.cacheResetTimeUnit);
       cachedObjects.put(key, valueSupplier);
       return value;
     }
