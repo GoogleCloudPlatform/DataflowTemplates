@@ -19,6 +19,9 @@ package com.google.cloud.teleport.v2.templates;
 import com.github.vincentrussell.json.datagenerator.JsonDataGenerator;
 import com.github.vincentrussell.json.datagenerator.JsonDataGeneratorException;
 import com.github.vincentrussell.json.datagenerator.impl.JsonDataGeneratorImpl;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonSyntaxException;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.channels.Channels;
@@ -26,7 +29,6 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.TimeZone;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.FileSystems;
@@ -52,6 +54,10 @@ import org.joda.time.Instant;
  * rate to a Pub/Sub topic. The messages are generated according to a schema template which
  * instructs the pipeline how to populate the messages with fake data compliant to constraints.
  *
+ * The JSON Schema can also generate PubSub attributes, in this case, users should have to put
+ * PAYLOAD_PROPERTY ("payload") and the ATTRIBUTES_PROPERTY ("attributes"). An example template is
+ * supplied on StreamingDataGeneratorTest.
+ *
  * <p>The number of workers executing the pipeline must be large enough to support the supplied QPS.
  * Use a general rule of 2,500 QPS per core in the worker pool.
  *
@@ -72,7 +78,6 @@ import org.joda.time.Instant;
  * PROJECT=my-project
  * BUCKET_NAME=my-bucket
  * SCHEMA_LOCATION=gs://<bucket>/<path>/<to>/game-event-schema.json
- * ATTRIBUTE_SCHEMA_LOCATION=gs://<bucket>/<path>/<to>/attribute-game-event-schema.json
  * PUBSUB_TOPIC=projects/<project-id>/topics/<topic-id>
  * QPS=2500
  *
@@ -100,17 +105,21 @@ import org.joda.time.Instant;
  * PROJECT=<project-id>
  * TEMPLATE_SPEC_GCSPATH=gs://path/to/template-spec
  * SCHEMA_LOCATION=gs://path/to/schema.json
- * ATTRIBUTE_SCHEMA_LOCATION=gs://path/to/attribute-schema.json
  * PUBSUB_TOPIC=projects/$PROJECT/topics/<topic-name>
  * QPS=1
  *
  * gcloud beta dataflow jobs run $JOB_NAME \
  *         --project=$PROJECT --region=us-central1 --flex-template  \
  *         --gcs-location=$TEMPLATE_SPEC_GCSPATH \
- *         --parameters autoscalingAlgorithm="THROUGHPUT_BASED",schemaLocation=$SCHEMA_LOCATION,attributeSchemaLocation=$ATTRIBUTE_SCHEMA_LOCATION,topic=$PUBSUB_TOPIC,qps=$QPS,maxNumWorkers=3
+ *         --parameters autoscalingAlgorithm="THROUGHPUT_BASED",schemaLocation=$SCHEMA_LOCATION,topic=$PUBSUB_TOPIC,qps=$QPS,maxNumWorkers=3
  * </pre>
  */
 public class StreamingDataGenerator {
+
+
+    public static final String PAYLOAD_PROPERTY = "payload";
+    public static final String ATTRIBUTES_PROPERTY = "attributes";
+
 
     /**
      * The {@link StreamingDataGeneratorOptions} class provides the custom execution options passed by the executor at the
@@ -182,7 +191,7 @@ public class StreamingDataGenerator {
                 .apply(
                         "Trigger",
                         GenerateSequence.from(0L).withRate(options.getQps(), Duration.standardSeconds(1L)))
-                .apply("GenerateMessages", ParDo.of(new MessageGeneratorFn(options.getSchemaLocation(), options.getAttributeSchemaLocation())))
+                .apply("GenerateMessages", ParDo.of(new MessageGeneratorFn(options.getSchemaLocation())))
                 .apply("WriteToPubsub", PubsubIO.writeMessages().to(options.getTopic()));
 
         return pipeline.run();
@@ -199,20 +208,13 @@ public class StreamingDataGenerator {
     static class MessageGeneratorFn extends DoFn<Long, PubsubMessage> {
 
         private final String schemaLocation;
-        private String attributesSchemaLocation = null;
         private String schema;
-        private String attributeSchema;
 
         // Not initialized inline or constructor because {@link JsonDataGenerator} is not serializable.
         private transient JsonDataGenerator dataGenerator;
 
         MessageGeneratorFn(String schemaLocation) {
             this.schemaLocation = schemaLocation;
-        }
-
-        MessageGeneratorFn(String schemaLocation, String attributesSchemaLocation) {
-            this.schemaLocation = schemaLocation;
-            this.attributesSchemaLocation = attributesSchemaLocation;
         }
 
         @Setup
@@ -231,21 +233,6 @@ public class StreamingDataGenerator {
 
                 schema = byteArrayOutputStream.toString();
             }
-
-            if (attributesSchemaLocation != null) {
-                Metadata metadataAttr = FileSystems.matchSingleFileSpec(attributesSchemaLocation);
-                // Copy the schema file into a string which can be used for generation.
-                try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
-                    try (ReadableByteChannel readerChannel = FileSystems.open(metadataAttr.resourceId())) {
-                        try (WritableByteChannel writerChannel = Channels.newChannel(byteArrayOutputStream)) {
-                            ByteStreams.copy(readerChannel, writerChannel);
-                        }
-                    }
-                    attributeSchema = byteArrayOutputStream.toString();
-                }
-            }
-            //Set Timezone to UTC to generate datetime with UTC
-            TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
         }
 
         @ProcessElement
@@ -253,26 +240,50 @@ public class StreamingDataGenerator {
                                    OutputReceiver<PubsubMessage> receiver, ProcessContext context)
                 throws IOException, JsonDataGeneratorException {
 
+            byte[] generatedJson;
             byte[] payload;
-            byte[] attributesBytes;
             Map<String, String> attributes = new HashMap<>();
 
             // Generate the fake JSON according to the schema.
             try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
                 dataGenerator.generateTestDataJson(schema, byteArrayOutputStream);
+                generatedJson = byteArrayOutputStream.toByteArray();
+                try
+                {
+                    JsonObject jsonObject = new JsonParser().parse(new String(generatedJson)).getAsJsonObject();
+                    if(jsonObject.get(PAYLOAD_PROPERTY)!=null)
+                    {
+                        String payloadString = jsonObject.get(PAYLOAD_PROPERTY).toString();
+                        payload = payloadString.getBytes();
 
-                payload = byteArrayOutputStream.toByteArray();
-            }
-            // Ability to place eventId and eventTimestamp in the attributes
-            if (attributesSchemaLocation != null) {
-                // Generate the fake JSON Attributes according to schema_attributes
-                try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
-                    dataGenerator.generateTestDataJson(attributeSchema, byteArrayOutputStream);
-                    attributesBytes = byteArrayOutputStream.toByteArray();
-                    String attr = new String(attributesBytes);
-                    attributes = new ObjectMapper().readValue(attr, HashMap.class);
+                        if(jsonObject.get(ATTRIBUTES_PROPERTY) != null)
+                        {
+                            String attributesString = jsonObject.get(ATTRIBUTES_PROPERTY).toString();
+                            attributes = new ObjectMapper().readValue(attributesString, HashMap.class);
+
+                            // This is done if the user sends other objects such as Integer/Long on attributes
+                            // Force to be string and avoid errors
+                            HashMap<String, String> attributesNew = new HashMap<>();
+                            for(String key: attributes.keySet())
+                            {
+                                Object objAttribute = attributes.get(key);
+                                attributesNew.put(key, objAttribute.toString());
+                            }
+                            attributes = attributesNew;
+                        }
+                    }// Default case, only generating payload
+                    else {
+                        payload = generatedJson;
+                    }
+                }
+                catch(JsonSyntaxException jsonSyntaxException)
+                {
+                    //User send an invalid JSON, but Streaming generator will continue working generating a string payload
+                    //Note that without a valid JSON schema, the generator won't be able to generate payload and attributes
+                    payload = generatedJson;
                 }
             }
+
             receiver.output(new PubsubMessage(payload, attributes));
         }
     }

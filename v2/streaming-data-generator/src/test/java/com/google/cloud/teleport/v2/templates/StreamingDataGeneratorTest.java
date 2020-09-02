@@ -43,8 +43,7 @@ import java.nio.channels.WritableByteChannel;
 
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.number.OrderingComparison.greaterThan;
-import static org.hamcrest.number.OrderingComparison.lessThan;
+import static org.hamcrest.number.OrderingComparison.*;
 
 /**
  * Test cases for the {@link StreamingDataGenerator} class.
@@ -133,28 +132,37 @@ public class StreamingDataGeneratorTest {
     @Test
     public void testGenerateAttributes() throws IOException {
 
-        String schema =
-                "{"
-                        + "\"id\": \"{{uuid()}}\", "
-                        + "\"eventTime\": \"{{timestamp()}}\", "
-                        + "\"username\": \"{{username()}}\", "
-                        + "\"score\": {{integer(0,100)}}"
-                        + "}";
-        String attributeSchema = "{ \"attribute_test\": \"{{integer(5,100)}}\"}";
+        // Covering Mix Scenario
+        // Attributes with same generated values from payload and
+        String schema = "{"
+                + "payload: "
+                + "{"
+                + "\"id\": \"{{uuid()}}\", "
+                + "\"eventTime\": \"{{put(\"eventTime\", timestamp())}}\", "
+                + "\"username\": \"{{put(\"username\", username())}}\", "
+                + "\"score\": {{integer(0,100)}}"
+                + "}"
+                +","
+                + "attributes: "
+                + "{"
+                + "\"eventTime\": \"{{get(\"eventTime\")}}\", "
+                + "\"username\": \"{{get(\"username\")}}\", "
+                + "\"attribute_different\": {{integer(5,100)}},"
+                + "\"scheduled_time\": \"{{dateFormat(addMinutes(date(\"dd-MM-yyyy HH:mm:ss\"), integer(5,100)), \"dd-MM-yyyy HH:mm:ss\", \"yyyy-MM-dd'T'HH:mm:ss\") }}\""
+                + "}"
+                +"}"
+                ;
 
 
         File file = tempFolder.newFile();
         writeToFile(file.getAbsolutePath(), schema);
-
-        File attributeFile = tempFolder.newFile();
-        writeToFile(attributeFile.getAbsolutePath(), attributeSchema);
 
         // Act
         //
         PCollection<PubsubMessage> results =
                 pipeline
                         .apply("CreateInput", Create.of(0L))
-                        .apply("GenerateMessage", ParDo.of(new MessageGeneratorFn(file.getAbsolutePath(), attributeFile.getAbsolutePath())));
+                        .apply("GenerateMessage", ParDo.of(new MessageGeneratorFn(file.getAbsolutePath())));
 
         // Assert
         //
@@ -165,9 +173,9 @@ public class StreamingDataGeneratorTest {
                             assertThat(message, is(notNullValue()));
                             assertThat(message.getPayload(), is(notNullValue()));
                             assertThat(message.getAttributeMap(), is(notNullValue()));
-                            assertThat(message.getAttribute("attribute_test"), is(notNullValue()));
-                            assertThat(Integer.parseInt(message.getAttribute("attribute_test")), is(greaterThan(5)));
-                            assertThat(Integer.parseInt(message.getAttribute("attribute_test")), is(lessThan(100)));
+                            assertThat(message.getAttribute("attribute_different"), is(notNullValue()));
+                            assertThat(Integer.parseInt(message.getAttribute("attribute_different")), is(greaterThanOrEqualTo(5)));
+                            assertThat(Integer.parseInt(message.getAttribute("attribute_different")), is(lessThan(100)));
                             return null;
                         });
 
