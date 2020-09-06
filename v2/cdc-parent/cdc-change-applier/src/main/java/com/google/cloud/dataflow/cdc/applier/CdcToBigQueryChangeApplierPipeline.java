@@ -93,11 +93,12 @@ public class CdcToBigQueryChangeApplierPipeline {
     String getChangeLogDataset();
     void setChangeLogDataset(String dataset);
 
-    @Description("The BigQuery dataset where the Replica tables are to be kept.")
+    @Description("The BigQuery dataset where the Replica tables are to be kept. If empty replica operation is skipped.")
     String getReplicaDataset();
     void setReplicaDataset(String dataset);
 
-    @Description("How often the pipeline will issue updates to the BigQuery replica table.")
+    @Description("How often the pipeline will issue updates to the BigQuery replica table. Default Hourly")
+    @Default.Integer(1440)
     Integer getUpdateFrequencySecs();
     void setUpdateFrequencySecs(Integer frequency);
 
@@ -146,10 +147,15 @@ public class CdcToBigQueryChangeApplierPipeline {
           "Either an input topic or a subscription must be provided");
     }
 
-    if (options.getUpdateFrequencySecs() < MINIMUM_UPDATE_FREQUENCY_SECONDS) {
+    if (options.getUpdateFrequencySecs() < MINIMUM_UPDATE_FREQUENCY_SECONDS && options.getReplicaDataset() != null) {
       throw new IllegalArgumentException(
           "BigQuery supports at most 1,000 MERGE statements per table per day. "
           + "Please select updateFrequencySecs of 100 or more to fit this limit");
+    }
+
+    if (options.getChangeLogDataset() == null) {
+      throw new IllegalArgumentException(
+              "A BigQuery ChangeLog Dataset is required!");
     }
 
     Pipeline p = Pipeline.create(options);

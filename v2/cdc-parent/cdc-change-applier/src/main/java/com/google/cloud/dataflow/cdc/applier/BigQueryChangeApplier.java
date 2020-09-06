@@ -140,7 +140,7 @@ public class BigQueryChangeApplier extends PTransform<PCollection<Row>, PDone> {
 
     // If the input collection does not have a primary key field, then we do not need to issue
     // periodic merge requests.
-    if (inputCollectionSchema.hasField(DataflowCdcRowFormat.PRIMARY_KEY)) {
+    if (inputCollectionSchema.hasField(DataflowCdcRowFormat.PRIMARY_KEY) && replicaDataset != null) {
       p.apply("MergeHeartbeat",
           GenerateSequence
               .from(0)
