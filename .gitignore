@@ -3,3 +3,4 @@ bin/
 dependency-reduced-pom.xml
 
 .idea
+v2/cdc-parent/cdc-embedded-connector/src/main/resources/dataflow_cdc_password.properties
