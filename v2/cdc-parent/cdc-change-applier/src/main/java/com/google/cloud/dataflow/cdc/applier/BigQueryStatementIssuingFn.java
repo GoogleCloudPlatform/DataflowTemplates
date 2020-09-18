@@ -67,7 +67,9 @@ public class BigQueryStatementIssuingFn extends DoFn<KV<String, BigQueryAction>,
       assert BigQueryAction.STATEMENT.equals(action.action);
       Job jobInfo = issueQueryToBQ(action.statement);
       LOG.info("Job Info for triggered job: {}", jobInfo);
-      jobInfo = jobInfo.waitFor();
+      if (jobInfo != null){
+        jobInfo = jobInfo.waitFor();
+      }
     }
   }
 
