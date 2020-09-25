@@ -17,6 +17,7 @@ package com.google.cloud.dataflow.cdc.applier;
 
 import static com.google.common.base.MoreObjects.firstNonNull;
 
+import com.google.cloud.dataflow.cdc.common.DataflowCdcRowFormat;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.metrics.Counter;
@@ -186,10 +187,10 @@ public class MergeStatementBuildingFn
   }
 
   static final String LATEST_CHANGE_PER_PK = String.join("",
-      "SELECT * ",
+      "SELECT * FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY %s ORDER BY %s DESC) as row_num ",
       "FROM (%s) AS ts_table ",
       "INNER JOIN `%s.%s.%s` AS source_table ",
-      "ON %s"
+      "ON %s) WHERE row_num = 1 "
   );
 
   static final String MAXIMUM_TIMESTAMP_PER_PK =
@@ -211,6 +212,7 @@ public class MergeStatementBuildingFn
 
     String fullStatement = String.format(
         LATEST_CHANGE_PER_PK,
+        String.join(", ", pkColumns), DataflowCdcRowFormat.TIMESTAMP_MS,
         maxTimestampPerPkStatement,       // FROM PARAMETERS
         projectId, datasetId, tableName,  // INNER JOIN PARAMETERS
         joinStatement);                   // JOIN STATEMENT (e.g. ON A.a = B.a AND A.c = B.c ....)
@@ -232,7 +234,7 @@ public class MergeStatementBuildingFn
 
     String maxTimestampPerPkStatement = String.format(
         MAXIMUM_TIMESTAMP_PER_PK,
-        pkCommaJoinedString, "timestampMs",  // SELECT SECTION PARAMETERS
+        pkCommaJoinedString, DataflowCdcRowFormat.TIMESTAMP_MS,  // SELECT SECTION PARAMETERS
         projectId, datasetId, tableName,                // FROM SECTION PARAMETERS
         pkCommaJoinedString);                           // GROUP BY SECTION PARAMETERS
     return maxTimestampPerPkStatement;

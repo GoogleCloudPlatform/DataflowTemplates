@@ -246,7 +246,7 @@ public class DataCatalogSchemaUtils {
     private static String sanitizeEntryName(String tableName) {
       // Remove the instance name
       String unsanitizedEntry = tableName.split("\\.", 2)[1];
-      return unsanitizedEntry.replace('-','_').replace('.', '_');
+      return unsanitizedEntry.replace('-', '_').replace('.', '_');
     }
 
     @Override
