@@ -577,6 +577,7 @@
         <module>csv-to-elasticsearch</module>
         <module>datastream-to-bigquery</module>
         <module>file-format-conversion</module>
+        <module>hive-to-bigquery</module>
         <module>kafka-to-bigquery</module>
         <module>kafka-to-gcs</module>
         <module>kudu-to-bigquery</module>

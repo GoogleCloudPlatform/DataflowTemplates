@@ -57,5 +57,22 @@ public final class BigQueryCommonOptions {
     String getCreateDisposition();
 
     void setCreateDisposition(String createDisposition);
+
+    @Description(
+        "Set partition type to use for BigQuery.  "
+            + "Currently 'None' or 'Time' can be available"
+            + "Default: None")
+    @Default.String("None")
+    String getPartitionType();
+
+    void setPartitionType(String partitionType);
+
+    @Description(
+        "Set partition column name.  "
+            + "Default: _PARTITIONTIME")
+    @Default.String("_PARTITIONTIME")
+    String getPartitionCol();
+
+    void setPartitionCol(String partitionCol);
   }
 }
