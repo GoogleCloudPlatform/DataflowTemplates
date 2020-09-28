@@ -114,19 +114,16 @@ public class RealtimeTransactionsETL {
     private static final Logger LOG = LoggerFactory.getLogger(de.tillhub.templates.RealtimeTransactionsETL.class);
 
     /** The tag for the main output for the UDF. */
-    public static final TupleTag<FailsafeElement<PubsubMessage, String>> UDF_OUT =
-            new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
+    public static  TupleTag<FailsafeElement<PubsubMessage, String>> UDF_OUT;
 
     /** The tag for the main output of the json transformation. */
-    public static final TupleTag<TableRow> TRANSFORM_OUT = new TupleTag<TableRow>() {};
+    public static  TupleTag<TableRow> TRANSFORM_OUT;
 
     /** The tag for the dead-letter output of the udf. */
-    public static final TupleTag<FailsafeElement<PubsubMessage, String>> UDF_DEADLETTER_OUT =
-            new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
+    public static  TupleTag<FailsafeElement<PubsubMessage, String>> UDF_DEADLETTER_OUT;
 
     /** The tag for the dead-letter output of the json to table row transform. */
-    public static final TupleTag<FailsafeElement<PubsubMessage, String>> TRANSFORM_DEADLETTER_OUT =
-            new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
+    public static  TupleTag<FailsafeElement<PubsubMessage, String>> TRANSFORM_DEADLETTER_OUT;
 
     /** The default suffix for error tables if dead letter table is not specified. */
     public static final String DEFAULT_DEADLETTER_TABLE_SUFFIX = "_error_records";
@@ -139,6 +136,13 @@ public class RealtimeTransactionsETL {
     public static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
             FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
 
+    public static void initResultHolders() {
+        UDF_OUT = new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
+        TRANSFORM_OUT = new TupleTag<TableRow>() {};
+        UDF_DEADLETTER_OUT = new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
+        TRANSFORM_DEADLETTER_OUT = new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
+    }
+
     /**
      * The {@link de.tillhub.templates.RealtimeTransactionsETL.Options} class provides the custom execution options passed by the executor at the
      * command-line.
@@ -148,6 +152,11 @@ public class RealtimeTransactionsETL {
         ValueProvider<String> getOutputTableSpec();
 
         void setOutputTableSpec(ValueProvider<String> value);
+
+        @Description("Table spec to write the carts output to")
+        ValueProvider<String> getCartsOutputTableSpec();
+
+        void setCartsOutputTableSpec(ValueProvider<String> value);
 
         @Description("Pub/Sub topic to read the input from")
         ValueProvider<String> getInputTopic();
@@ -236,6 +245,21 @@ public class RealtimeTransactionsETL {
                             PubsubIO.readMessagesWithAttributes().fromTopic(options.getInputTopic()));
         }
 
+
+        etlTopLevelObject(messages, options);
+        etlChildElements(messages, options, "Carts", "transformCartsArray");
+        //TODO: add all child elements
+
+        return pipeline.run();
+    }
+
+    /**
+     * Write to BigQuery a top level transaction (transformed from an object)
+     * @param messages
+     * @param options
+     */
+    private static void etlTopLevelObject(PCollection<PubsubMessage> messages, de.tillhub.templates.RealtimeTransactionsETL.Options options) {
+        initResultHolders();
         PCollectionTuple convertedTableRows =
                 messages
                         /*
@@ -305,7 +329,91 @@ public class RealtimeTransactionsETL {
                         .setErrorRecordsTableSchema(ResourceUtils.getDeadletterTableSchemaJson())
                         .build());
 
-        return pipeline.run();
+    }
+
+    /**
+     * Write to BigQuery the child elements of a transaction (transformed as an array of objects)
+     * @param messages
+     * @param options
+     */
+    private static void etlChildElements(PCollection<PubsubMessage> messages, de.tillhub.templates.RealtimeTransactionsETL.Options options, String stage, String udfFunc) {
+        initResultHolders();
+        ValueProvider<String> destTable;
+        switch(stage) {
+            case "Carts":
+                destTable =  options.getCartsOutputTableSpec();
+            default:
+                destTable = options.getOutputTableSpec();
+        }
+        PCollectionTuple convertedTableRows =
+                messages
+                        /*
+                         * Step #2: Transform the PubsubMessages into TableRows
+                         */
+                        .apply("ConvertMessageToTableRow" + stage, new de.tillhub.templates.RealtimeTransactionsETL.PubsubMessageArrayToTableRow(options, udfFunc));
+
+        /*
+         * Step #3: Write the successful records out to BigQuery
+         */
+        WriteResult writeResult =
+                convertedTableRows
+                        .get(TRANSFORM_OUT)
+                        .apply(
+                                "WriteSuccessfulRecords" + stage,
+                                BigQueryIO.writeTableRows()
+                                        .withoutValidation()
+                                        .withCreateDisposition(CreateDisposition.CREATE_NEVER)
+                                        .withWriteDisposition(WriteDisposition.WRITE_APPEND)
+                                        .withExtendedErrorInfo()
+                                        .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
+                                        .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
+                                        .to(destTable));
+
+        /*
+         * Step 3 Contd.
+         * Elements that failed inserts into BigQuery are extracted and converted to FailsafeElement
+         */
+        PCollection<FailsafeElement<String, String>> failedInserts =
+                writeResult
+                        .getFailedInsertsWithErr()
+                        .apply(
+                                "WrapInsertionErrors" + stage,
+                                MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
+                                        .via((BigQueryInsertError e) -> wrapBigQueryInsertError(e)))
+                        .setCoder(FAILSAFE_ELEMENT_CODER);
+
+        /*
+         * Step #4: Write records that failed table row transformation
+         * or conversion out to BigQuery deadletter table.
+         */
+        PCollectionList.of(
+                ImmutableList.of(
+                        convertedTableRows.get(UDF_DEADLETTER_OUT),
+                        convertedTableRows.get(TRANSFORM_DEADLETTER_OUT)))
+                .apply("Flatten", Flatten.pCollections())
+                .apply(
+                        "WriteFailedRecords",
+                        ErrorConverters.WritePubsubMessageErrors.newBuilder()
+                                .setErrorRecordsTable(
+                                        ValueProviderUtils.maybeUseDefaultDeadletterTable(
+                                                options.getOutputDeadletterTable(),
+                                                options.getOutputTableSpec(),
+                                                DEFAULT_DEADLETTER_TABLE_SUFFIX))
+                                .setErrorRecordsTableSchema(ResourceUtils.getDeadletterTableSchemaJson())
+                                .build());
+
+        // 5) Insert records that failed insert into deadletter table
+        failedInserts.apply(
+                "WriteFailedRecords",
+                ErrorConverters.WriteStringMessageErrors.newBuilder()
+                        .setErrorRecordsTable(
+                                ValueProviderUtils.maybeUseDefaultDeadletterTable(
+                                        options.getOutputDeadletterTable(),
+                                        options.getOutputTableSpec(),
+                                        DEFAULT_DEADLETTER_TABLE_SUFFIX))
+                        .setErrorRecordsTableSchema(ResourceUtils.getDeadletterTableSchemaJson())
+                        .build());
+
     }
 
     /**
@@ -375,7 +483,7 @@ public class RealtimeTransactionsETL {
                                     "InvokeUDF",
                                     FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
                                             .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
-                                            .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                                            .setFunctionName(ValueProvider.StaticValueProvider.of("transformTransactionTopLevel"))
                                             .setSuccessTag(UDF_OUT)
                                             .setFailureTag(UDF_DEADLETTER_OUT)
                                             .build());
@@ -398,6 +506,76 @@ public class RealtimeTransactionsETL {
                     .and(TRANSFORM_DEADLETTER_OUT, jsonToTableRowOut.get(TRANSFORM_DEADLETTER_OUT));
         }
     }
+
+    /**
+     * The {@link de.tillhub.templates.RealtimeTransactionsETL.PubsubMessageArrayToTableRow} class is a {@link PTransform} which transforms incoming
+     * {@link PubsubMessage} objects into {@link TableRow} objects for insertion into BigQuery while
+     * applying an optional UDF to the input. The executions of the UDF and transformation to {@link
+     * TableRow} objects is done in a fail-safe way by wrapping the element with it's original payload
+     * inside the {@link FailsafeElement} class. The {@link de.tillhub.templates.RealtimeTransactionsETL.PubsubMessageArrayToTableRow} transform will
+     * output a {@link PCollectionTuple} which contains all output and dead-letter {@link
+     * PCollection}.
+     *
+     * <p>The {@link PCollectionTuple} output will contain the following {@link PCollection}:
+     *
+     * <ul>
+     *   <li>{@link de.tillhub.templates.RealtimeTransactionsETL#UDF_OUT} - Contains all {@link FailsafeElement} records
+     *       successfully processed by the optional UDF.
+     *   <li>{@link de.tillhub.templates.RealtimeTransactionsETL#UDF_DEADLETTER_OUT} - Contains all {@link FailsafeElement}
+     *       records which failed processing during the UDF execution.
+     *   <li>{@link de.tillhub.templates.RealtimeTransactionsETL#TRANSFORM_OUT} - Contains all records successfully converted from
+     *       JSON to {@link TableRow} objects.
+     *   <li>{@link de.tillhub.templates.RealtimeTransactionsETL#TRANSFORM_DEADLETTER_OUT} - Contains all {@link FailsafeElement}
+     *       records which couldn't be converted to table rows.
+     * </ul>
+     */
+    static class PubsubMessageArrayToTableRow
+            extends PTransform<PCollection<PubsubMessage>, PCollectionTuple> {
+
+        private final de.tillhub.templates.RealtimeTransactionsETL.Options options;
+        private final String udfFunc;
+
+        PubsubMessageArrayToTableRow(de.tillhub.templates.RealtimeTransactionsETL.Options options, String udfFunc) {
+            this.options = options;
+            this.udfFunc = udfFunc;
+        }
+
+        @Override
+        public PCollectionTuple expand(PCollection<PubsubMessage> input) {
+
+            PCollectionTuple udfOut =
+                    input
+                            // Map the incoming messages into FailsafeElements so we can recover from failures
+                            // across multiple transforms.
+                            .apply("MapToRecord", ParDo.of(new de.tillhub.templates.RealtimeTransactionsETL.PubsubMessageToFailsafeElementFn()))
+                            .apply(
+                                    "InvokeUDF",
+                                    FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
+                                            .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                                            .setFunctionName(ValueProvider.StaticValueProvider.of(this.udfFunc))
+                                            .setSuccessTag(UDF_OUT)
+                                            .setFailureTag(UDF_DEADLETTER_OUT)
+                                            .build());
+
+            // Convert the records which were successfully processed by the UDF into TableRow objects.
+            PCollectionTuple jsonToTableRowOut =
+                    udfOut
+                            .get(UDF_OUT)
+                            .apply(
+                                    "JsonToTableRow",
+                                    de.tillhub.converters.TillhubConverters.FailsafeJsonToTableRow.<PubsubMessage>newBuilder()
+                                            .setSuccessTag(TRANSFORM_OUT)
+                                            .setFailureTag(TRANSFORM_DEADLETTER_OUT)
+                                            .build());
+
+            // Re-wrap the PCollections so we can return a single PCollectionTuple
+            return PCollectionTuple.of(UDF_OUT, udfOut.get(UDF_OUT))
+                    .and(UDF_DEADLETTER_OUT, udfOut.get(UDF_DEADLETTER_OUT))
+                    .and(TRANSFORM_OUT, jsonToTableRowOut.get(TRANSFORM_OUT))
+                    .and(TRANSFORM_DEADLETTER_OUT, jsonToTableRowOut.get(TRANSFORM_DEADLETTER_OUT));
+        }
+    }
+
 
     /**
      * The {@link de.tillhub.templates.RealtimeTransactionsETL.PubsubMessageToFailsafeElementFn} wraps an incoming {@link PubsubMessage} with the
