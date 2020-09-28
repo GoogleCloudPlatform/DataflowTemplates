@@ -23,7 +23,7 @@
 <configuration>
   <property>
      <name>fs.defaultFS</name>
-     <value>file:///</value>
+     <value>hdfs:///</value>
   </property>
   <property>
      <name>fs.hdfs.impl</name>

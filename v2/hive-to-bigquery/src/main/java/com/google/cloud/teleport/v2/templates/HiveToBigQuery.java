@@ -91,7 +91,7 @@ public final class HiveToBigQuery {
    * @param args The command-line args passed by the executor.
    */
   public static void main(String[] args) {
-    Options options =  
+    Options options =
             PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
     run(options);
