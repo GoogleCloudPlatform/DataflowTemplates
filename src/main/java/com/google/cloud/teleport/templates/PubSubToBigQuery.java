@@ -370,12 +370,12 @@ public class PubSubToBigQuery {
    *       records which couldn't be converted to table rows.
    * </ul>
    */
-  static class PubsubMessageToTableRow
+  public static class PubsubMessageToTableRow
       extends PTransform<PCollection<PubsubMessage>, PCollectionTuple> {
 
     private final Options options;
 
-    PubsubMessageToTableRow(Options options) {
+    public PubsubMessageToTableRow(Options options) {
       this.options = options;
     }
 
@@ -420,7 +420,7 @@ public class PubSubToBigQuery {
    * {@link FailsafeElement} class so errors can be recovered from and the original message can be
    * output to a error records table.
    */
-  static class PubsubMessageToFailsafeElementFn
+  public static class PubsubMessageToFailsafeElementFn
       extends DoFn<PubsubMessage, FailsafeElement<PubsubMessage, String>> {
     @ProcessElement
     public void processElement(ProcessContext context) {
