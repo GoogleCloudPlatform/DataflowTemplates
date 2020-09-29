@@ -66,7 +66,6 @@ function transformTransactionTopLevel(inJson) {
  * @param {*} inJson
  */
 function transformCartsArray(inJson) {
-    var result = {}
     var itemsArr = []
     var parsed = JSON.parse(inJson)
     var cartItems = parsed.cartitems
@@ -157,7 +156,10 @@ function transformCartsArray(inJson) {
         currItem.discounts = cartItem.discounts //string?
         currItem.context = cartItem.context //string
 
+        itemsArr.push(currItem)
     })
+    return JSON.stringify({results: itemsArr});
+
 }
 
 function isoDateToBQDate(dateStr) {
