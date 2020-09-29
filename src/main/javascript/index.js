@@ -163,6 +163,7 @@ function transformCartsArray(inJson) {
 }
 
 function isoDateToBQDate(dateStr) {
+    if (!dateStr) return null
     var dateObj = new Date(dateStr)
     return dateObj.toISOString().split('.')[0]
 }
