@@ -137,17 +137,17 @@ public class FormatDatastreamRecordToJson
     if (((GenericRecord) record.get("source_metadata")).get("change_type") != null) {
       return ((GenericRecord) record.get("source_metadata")).get("change_type").toString();
     }
-    // TODO(dhercher): This should be a backfill insert
+
     return null;
   }
 
   private Boolean getMetadataIsDeleted(GenericRecord record) {
-    // TODO(pabloem): Implement complete calculation for isDeleted.
-    boolean isDeleted = true;
-    if (record.get("read_method") != null
-        && record.get("read_method").toString().equals("oracle_dump")) {
-      isDeleted = false;
+    boolean isDeleted = false;
+    GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
+    if (sourceMetadata.get("is_deleted") != null) {
+      isDeleted = (boolean) sourceMetadata.get("is_deleted");
     }
+
     return isDeleted;
   }
 
