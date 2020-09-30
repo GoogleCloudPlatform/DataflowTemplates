@@ -69,6 +69,9 @@ function transformCartsArray(inJson) {
     var itemsArr = []
     var parsed = JSON.parse(inJson)
     var cartItems = parsed.cartitems
+    if (cartItems === null) {
+        return {results: []}
+    }
     cartItems.forEach(function (cartItem) {
         var currItem = {}
         currItem.id = cartItem.id //number

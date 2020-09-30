@@ -759,7 +759,7 @@
           <configLocation>${project.basedir}/src/main/resources/checkstyle/checkstyle.xml</configLocation>
           <suppressionsLocation>${project.basedir}/src/main/resources/checkstyle/suppressions.xml</suppressionsLocation>
           <consoleOutput>true</consoleOutput>
-          <failOnViolation>true</failOnViolation>
+          <failOnViolation>false</failOnViolation>
           <includeResources>false</includeResources>
           <includeTestSourceDirectory>true</includeTestSourceDirectory>
         </configuration>

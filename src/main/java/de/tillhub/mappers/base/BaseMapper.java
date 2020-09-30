@@ -25,11 +25,6 @@ public abstract class BaseMapper {
             JSONObject obj = (JSONObject) this.jsonArray.get(i);
             TableRow currTR = this.mapJsonToTableRow(obj);
             tableRowList[i] = currTR;
-//            String videoId=obj.get("videoId");
-//            String videoUrl=obj.get("VideoUrl");
-//            String title=obj.get("title");
-//            String description=obj.get("description");
-//            System.out.println("videoId="+videoId   +"videoUrl="+videoUrl+"title=title"+"description="+description);
         }
         return tableRowList;
     }
