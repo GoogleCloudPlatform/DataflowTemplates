@@ -342,6 +342,7 @@ public class RealtimeTransactionsETL {
         switch(stage) {
             case "Carts":
                 destTable =  options.getCartsOutputTableSpec();
+                break;
             default:
                 destTable = options.getOutputTableSpec();
         }

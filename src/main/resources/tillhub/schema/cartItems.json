@@ -1,0 +1,667 @@
+[
+  {
+    "name": "id",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "updated_at",
+    "type": "DATETIME",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "update_id",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "fr_transaction_id",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "position",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "quantity",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "article_number",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "article_attr_desc",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "article_price",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "selling_price",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "selling_price_total",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "article_fa_account_number",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "vat_percentage",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "vat_fa_account_number",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "vat_amount",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "salesman_staff_number",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "product_number",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "article_id",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "created_at",
+    "type": "DATETIME",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "vat_amount_euro",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "discount_amount",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "product_name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "guid",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "product_group_number",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "product_group_id",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "is_refund",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "temporary_id",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_id",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "related_transaction_number",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "related_transaction_date",
+    "type": "DATETIME",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "related_transaction_type",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "client_id",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "article",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "attributes_description",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "salesman_staff",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "is_tip",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "is_owner",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "reference_cartitem_client_id",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "configuration",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+      {
+        "name": "action",
+        "type": "RECORD",
+        "fields": [
+          {
+            "name": "tax",
+            "type": "STRING"
+          },
+          {
+            "name": "name",
+            "type": "STRING"
+          },
+          {
+            "name": "default",
+            "type": "BOOLEAN"
+          }
+        ]
+      },
+      {
+        "name": "tax_switched",
+        "type": "BOOLEAN"
+      }
+    ]
+  },
+  {
+    "name": "is_service",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "used_barcode",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "is_voucher",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "type",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "branch",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "register",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_qty",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_unit",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_currency",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_product",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_custom_id",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_tax",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_vat_rate",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_taxes",
+    "type": "RECORD",
+    "mode": "REPEATED",
+    "fields": [
+      {
+        "name": "tax",
+        "type": "STRING"
+      },
+      {
+        "name": "rate",
+        "type": "FLOAT"
+      },
+      {
+        "name": "display",
+        "type": "STRING"
+      },
+      {
+        "name": "position",
+        "type": "INTEGER"
+      },
+      {
+        "name": "custom_id",
+        "type": "STRING"
+      }
+    ]
+  },
+  {
+    "name": "_account",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_product_group",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_tax_amount",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_tax_amount_total",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_discount_amount",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_discount_amount_total",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_promotion_amount",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_promotion_amount_total",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_discounts",
+    "type": "RECORD",
+    "mode": "REPEATED",
+    "fields": [
+      {
+        "name": "rate",
+        "type": "FLOAT"
+      },
+      {
+        "name": "name",
+        "type": "STRING"
+      },
+      {
+        "name": "group",
+        "type": "STRING"
+      },
+      {
+        "name": "value",
+        "type": "FLOAT"
+      },
+      {
+        "name": "amount",
+        "type": "FLOAT"
+      },
+      {
+        "name": "currency",
+        "type": "STRING"
+      },
+      {
+        "name": "client_id",
+        "type": "STRING"
+      },
+      {
+        "name": "source_id",
+        "type": "STRING"
+      },
+      {
+        "name": "order_index",
+        "type": "INTEGER"
+      },
+      {
+        "name": "amount_total",
+        "type": "FLOAT"
+      },
+      {
+        "name": "assignment_id",
+        "type": "STRING"
+      },
+      {
+        "name": "assignment_source",
+        "type": "STRING"
+      }
+    ]
+  },
+  {
+    "name": "_origins",
+    "type": "RECORD",
+    "mode": "REPEATED",
+    "fields": [
+      {
+        "name": "id",
+        "type": "STRING"
+      },
+      {
+        "name": "date",
+        "type": "FLOAT"
+      },
+      {
+        "name": "type",
+        "type": "STRING"
+      },
+      {
+        "name": "custom_id",
+        "type": "STRING"
+      }
+    ]
+  },
+  {
+    "name": "_depends_on",
+    "type": "RECORD",
+    "mode": "REPEATED",
+    "fields": [
+      {
+        "name": "id",
+        "type": "STRING"
+      },
+      {
+        "name": "date",
+        "type": "STRING"
+      },
+      {
+        "name": "type",
+        "type": "STRING"
+      },
+      {
+        "name": "custom_id",
+        "type": "STRING"
+      }
+    ]
+  },
+  {
+    "name": "_related_to",
+    "type": "RECORD",
+    "mode": "REPEATED",
+    "fields": [
+      {
+        "name": "place_holder",
+        "type": "STRING"
+      }
+    ]
+  },
+  {
+    "name": "_product_service_answers",
+    "type": "RECORD",
+    "mode": "REPEATED",
+    "fields": [
+      {
+        "name": "id",
+        "type": "STRING"
+      },
+      {
+        "name": "type",
+        "type": "STRING"
+      },
+      {
+        "name": "answer",
+        "type": "RECORD",
+        "fields": [
+          {
+            "name": "unit",
+            "type": "STRING"
+          },
+          {
+            "name": "content",
+            "type": "STRING"
+          },
+          {
+            "name": "content_type",
+            "type": "STRING"
+          }
+        ]
+      },
+      {
+        "name": "question",
+        "type": "STRING"
+      },
+      {
+        "name": "required",
+        "type": "BOOLEAN"
+      }
+    ]
+  },
+  {
+    "name": "_comments",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_external_reference_id",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_amount_net",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_amount_gross",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_amount_total_net",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_amount_total_gross",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_amount_unit_net",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_amount_unit_gross",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "product_supplier_name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "custom_properties",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "product",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "account",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "tax",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "product_group",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "discounts",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "context",
+    "type": "RECORD",
+    "mode": "REPEATED",
+    "fields": [
+      {
+        "name": "fr_transaction_id",
+        "type": "INTEGER"
+      },
+      {
+        "name": "name",
+        "type": "STRING"
+      },
+      {
+        "name": "value",
+        "type": "STRING"
+      },
+      {
+        "name": "updated_at",
+        "type": "STRING"
+      },
+      {
+        "name": "update_id",
+        "type": "INTEGER"
+      },
+      {
+        "name": "created_at",
+        "type": "STRING"
+      },
+      {
+        "name": "_id",
+        "type": "STRING"
+      }
+    ]
+  },
+  {
+    "name": "expense",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+      {
+        "name": "id",
+        "type": "INTEGER"
+      },
+      {
+        "name": "fr_transaction_id",
+        "type": "INTEGER"
+      },
+      {
+        "name": "expense_account_name",
+        "type": "STRING"
+      },
+      {
+        "name": "expense_account_type",
+        "type": "STRING"
+      },
+      {
+        "name": "expense_fa_account",
+        "type": "STRING"
+      },
+      {
+        "name": "created_at",
+        "type": "STRING"
+      },
+      {
+        "name": "updated_at",
+        "type": "STRING"
+      },
+      {
+        "name": "update_id",
+        "type": "INTEGER"
+      },
+      {
+        "name": "guid",
+        "type": "STRING"
+      },
+      {
+        "name": "_id",
+        "type": "STRING"
+      },
+      {
+        "name": "safe_id",
+        "type": "STRING"
+      }
+    ]
+  }
+]

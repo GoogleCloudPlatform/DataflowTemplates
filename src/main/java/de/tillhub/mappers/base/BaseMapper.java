@@ -4,6 +4,7 @@ import com.google.api.services.bigquery.model.TableRow;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,11 +24,16 @@ public abstract class BaseMapper {
         TableRow[] tableRowList = new TableRow[this.jsonArray.length()];
         for (int i = 0 ; i < this.jsonArray.length() ; i++) {
             JSONObject obj = (JSONObject) this.jsonArray.get(i);
-            TableRow currTR = this.mapJsonToTableRow(obj);
+            TableRow currTR = null;
+            try {
+                currTR = this.mapJsonToTableRow(obj);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
             tableRowList[i] = currTR;
         }
         return tableRowList;
     }
 
-    protected abstract TableRow mapJsonToTableRow(JSONObject obj);
+    protected abstract TableRow mapJsonToTableRow(JSONObject obj) throws IOException;
 }
