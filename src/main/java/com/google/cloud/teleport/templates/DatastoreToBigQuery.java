@@ -35,7 +35,7 @@ import org.apache.beam.sdk.options.ValueProvider;
  * Dataflow template which copies Datastore Entities to a BigQuery table.
  */
 public class DatastoreToBigQuery {
-  interface DatastoreToBigQueryOptions
+  public interface DatastoreToBigQueryOptions
       extends PipelineOptions, DatastoreReadOptions, JavascriptTextTransformerOptions {
     @Description("The BigQuery table spec to write the output to")
     ValueProvider<String> getOutputTableSpec();

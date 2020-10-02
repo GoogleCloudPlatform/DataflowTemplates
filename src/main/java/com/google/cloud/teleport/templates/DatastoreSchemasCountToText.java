@@ -31,7 +31,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
  */
 public class DatastoreSchemasCountToText {
 
-  interface DatastoreSchemaCountToTextOptions extends
+  public interface DatastoreSchemaCountToTextOptions extends
       PipelineOptions,
       DatastoreReadSchemaCountOptions,
       FilesystemWriteOptions {}
