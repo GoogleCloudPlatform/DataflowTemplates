@@ -402,6 +402,10 @@
       {
         "name": "assignment_source",
         "type": "STRING"
+      },
+      {
+        "name": "external_reference_id",
+        "type": "STRING"
       }
     ]
   },
@@ -575,8 +579,62 @@
   },
   {
     "name": "discounts",
-    "type": "STRING",
-    "mode": "NULLABLE"
+    "type": "RECORD",
+    "mode": "REPEATED",
+    "fields": [
+      {
+        "name": "rate",
+        "type": "FLOAT"
+      },
+      {
+        "name": "name",
+        "type": "STRING"
+      },
+      {
+        "name": "group",
+        "type": "STRING"
+      },
+      {
+        "name": "value",
+        "type": "FLOAT"
+      },
+      {
+        "name": "amount",
+        "type": "FLOAT"
+      },
+      {
+        "name": "currency",
+        "type": "STRING"
+      },
+      {
+        "name": "client_id",
+        "type": "STRING"
+      },
+      {
+        "name": "source_id",
+        "type": "STRING"
+      },
+      {
+        "name": "order_index",
+        "type": "INTEGER"
+      },
+      {
+        "name": "amount_total",
+        "type": "FLOAT"
+      },
+      {
+        "name": "assignment_id",
+        "type": "STRING"
+      },
+      {
+        "name": "assignment_source",
+        "type": "STRING"
+      },
+      {
+        "name": "external_reference_id",
+        "type": "STRING"
+      }
+    ]
   },
   {
     "name": "context",

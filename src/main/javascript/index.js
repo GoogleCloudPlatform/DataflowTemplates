@@ -54,8 +54,8 @@ function transformTransactionTopLevel(inJson) {
     result._external_reference_id = obj._external_reference_id //string
     result._customer_external_reference_id = obj._customer_external_reference_id //string
     result.branch = obj._branch //string
-    result.context = obj.context //string
-    result.expense = obj.expense //string
+    // result.context = obj.context //string //will be mapped as a child element
+    // result.expense = obj.expense //string //will be mapped as a child element
 
     return JSON.stringify(result);
 }
@@ -155,7 +155,7 @@ function transformCartsArray(inJson) {
         currItem.account = cartItem.account //STRING
         currItem.tax = cartItem.tax //STRING
         currItem.product_group = cartItem.product_group //STRING
-        currItem.discounts = cartItem.discounts //STRING
+        currItem.discounts = cartItem.discounts //RECORD/REPEATED
         currItem.context = cartItem.context //RECORD/NULLABLE
         currItem.expense = cartItem.expense //RECORD/NULLABLE
 
