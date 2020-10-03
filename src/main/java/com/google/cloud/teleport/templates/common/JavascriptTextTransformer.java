@@ -312,7 +312,12 @@ public abstract class JavascriptTextTransformer {
                     @ProcessElement
                     public void processElement(ProcessContext context) {
                       FailsafeElement<T, String> element = context.element();
-                      String payloadStr = element.getPayload();
+                      String payload = element.getPayload();
+                      String[] split = payload.split("~#~#~");
+                      String payloadStr = split[0];
+                      String clientAccount = split[1];
+                      String transaction = split[2];
+
 
                       try {
                         if (javascriptRuntime != null) {
@@ -321,7 +326,8 @@ public abstract class JavascriptTextTransformer {
 
                         if (!Strings.isNullOrEmpty(payloadStr)) {
                           context.output(
-                              FailsafeElement.of(element.getOriginalPayload(), payloadStr));
+                              FailsafeElement.of(element.getOriginalPayload(), payloadStr + "~#~#~"
+                                      + clientAccount + "~#~#~" + transaction));
                         }
                       } catch (Exception e) {
                         context.output(

@@ -16,6 +16,8 @@ import org.apache.beam.sdk.values.TupleTagList;
 
 import de.tillhub.coders.TableRowsArrayJsonCoder;
 import de.tillhub.converters.AutoValue_TillhubConverters_FailsafeJsonToTableRow;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -23,6 +25,9 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
 public class TillhubConverters {
+
+    /** The log to output status messages to. */
+    private static final Logger LOG = LoggerFactory.getLogger(TillhubConverters.class);
 
     /**
      * The {@link TillhubConverters.FailsafeJsonToTableRow} transform converts JSON strings to {@link TableRow} objects.
@@ -60,12 +65,21 @@ public class TillhubConverters {
                                 @ProcessElement
                                 public void processElement(ProcessContext context) {
                                     FailsafeElement<T, String> element = context.element();
-                                    String json = element.getPayload();
+                                    String payload = element.getPayload();
+                                    LOG.info("Before splitting child elements " + payload);
+                                    String[] split = payload.split("~#~#~");
+                                    String json = split[0];
+                                    String clientAccount = split[1];
+                                    String transaction = split[2];
 
                                     try {
+                                        LOG.info("About to convert to Rows json " + json);
                                         TableRow[] rows = convertJsonToTableRow(json);
-                                        for (int i = 0 ; i < rows.length ; i++)
-                                        context.output(rows[i]);
+                                        for (int i = 0 ; i < rows.length ; i++) {
+                                            rows[i].set("client_account", clientAccount);
+                                            rows[i].set("oltp_transaction", transaction);
+                                            context.output(rows[i]);
+                                        }
                                     } catch (Exception e) {
                                         context.output(
                                                 failureTag(),

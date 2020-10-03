@@ -1,0 +1,227 @@
+[
+  {
+    "mode": "REQUIRED",
+    "name": "updated_at",
+    "type": "DATETIME"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "update_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "dev_uuid",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "transaction_number",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "balance_number",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "register_number",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "guid",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "date",
+    "type": "DATETIME"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "cashier_staff_number",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "branch_fa_ident",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "geo_data",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "currency_iso_code",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "total",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "change",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "fr_receipt_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "customer_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "id",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "type_name",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "receipt_text",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "created_at",
+    "type": "DATETIME"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "customer_number",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "refunded_at",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "temporary_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "customer_receipt",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "merchant_receipt",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "barcode",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "customer_description",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "signed_transactions",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "client_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "cashier_staff",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "client",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "customer",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "timezone",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "has_promotion",
+    "type": "BOOLEAN"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "register",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "_type",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "_custom_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "_staff",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "_external_reference_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "_customer_external_reference_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "_location",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "_branch",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "client_account",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "oltp_transaction",
+    "type": "STRING"
+  }
+]

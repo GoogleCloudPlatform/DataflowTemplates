@@ -158,10 +158,16 @@ public class BigQueryConverters {
                     @ProcessElement
                     public void processElement(ProcessContext context) {
                       FailsafeElement<T, String> element = context.element();
-                      String json = element.getPayload();
+                      String payload = element.getPayload();
+                      String[] split = payload.split("~#~#~");
+                      String json = split[0];
+                      String clientAccount = split[1];
+                      String transaction = split[2];
 
                       try {
                         TableRow row = convertJsonToTableRow(json);
+                        row.set("client_account", clientAccount);
+                        row.set("oltp_transaction", transaction);
                         context.output(row);
                       } catch (Exception e) {
                         context.output(

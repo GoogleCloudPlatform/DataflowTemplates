@@ -589,7 +589,8 @@ public class RealtimeTransactionsETL {
         public void processElement(ProcessContext context) {
             PubsubMessage message = context.element();
             context.output(
-                    FailsafeElement.of(message, new String(message.getPayload(), StandardCharsets.UTF_8)));
+                    FailsafeElement.of(message, new String(message.getPayload(), StandardCharsets.UTF_8) + "~#~#~"
+                            + message.getAttribute("client_account") + "~#~#~" + message.getAttribute("transaction")));
         }
     }
 }

@@ -5,6 +5,16 @@
     "mode": "NULLABLE"
   },
   {
+    "mode": "REQUIRED",
+    "name": "client_account",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "oltp_transaction",
+    "type": "STRING"
+  },
+  {
     "name": "updated_at",
     "type": "DATETIME",
     "mode": "REQUIRED"
