@@ -198,16 +198,26 @@ public class AggregatePubsub {
   public static PipelineResult run(Options options) {
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
-
-    pipeline
-        .apply("Read Events", PubsubIO.readStrings()
-            .fromTopic(options.getPubsubReadTopic()))
-        .apply(options.getWindowDuration() + " Window",
-            Window.into(FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))
-        .apply("Group By Account", new GroupByAccountId())
-        .apply("Write Events", PubsubIO.writeStrings()
-            .to(options.getPubsubWriteTopic()));
-
+    if (options.getInputSubscription() != null) {
+      pipeline
+              .apply("Read Events", PubsubIO.readStrings()
+                      .fromSubscription(options.getInputSubscription()))
+              .apply(options.getWindowDuration() + " Window",
+                      Window.into(FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))
+              .apply("Group By Account", new GroupByAccountId())
+              .apply("Write Events", PubsubIO.writeStrings()
+                      .to(options.getPubsubWriteTopic()));
+    }
+     else {
+      pipeline
+              .apply("Read Events", PubsubIO.readStrings()
+                      .fromTopic(options.getPubsubReadTopic()))
+              .apply(options.getWindowDuration() + " Window",
+                      Window.into(FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))
+              .apply("Group By Account", new GroupByAccountId())
+              .apply("Write Events", PubsubIO.writeStrings()
+                      .to(options.getPubsubWriteTopic()));
+    }
     // Execute the pipeline and return the result.
     return pipeline.run();
   }
