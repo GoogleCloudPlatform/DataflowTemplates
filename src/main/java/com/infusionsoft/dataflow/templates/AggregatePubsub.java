@@ -1,7 +1,5 @@
 package com.infusionsoft.dataflow.templates;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,6 +13,7 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.GroupByKey;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -37,6 +36,8 @@ import java.util.Spliterators;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * A template that groups pubsub messages by accountId and then re-emits an aggregate message after
@@ -79,6 +80,13 @@ public class AggregatePubsub {
         + "Nh (for hours, example: 2h).")
     String getWindowDuration();
     void setWindowDuration(String value);
+
+    @Description(
+            "The Cloud Pub/Sub subscription to consume from. "
+                    + "The name should be in the format of "
+                    + "projects/<project-id>/subscriptions/<subscription-name>.")
+    ValueProvider<String> getInputSubscription();
+    void setInputSubscription(ValueProvider<String> value);
   }
 
   public static class GroupByAccountId extends PTransform<PCollection<String>, PCollection<String>> {
