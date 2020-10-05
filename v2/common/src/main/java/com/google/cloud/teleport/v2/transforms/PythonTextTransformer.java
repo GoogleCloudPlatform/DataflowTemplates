@@ -57,6 +57,7 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.vendor.guava.v20_0.com.google.common.base.Throwables;
+import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -269,6 +270,7 @@ public abstract class PythonTextTransformer implements Serializable {
       Process runtime;
       String pythonVersion = runtimeVersion();
       Integer retriesRemaining = retries - 1;
+      String stderr;
 
       // Apply Python
       try {
@@ -276,8 +278,14 @@ public abstract class PythonTextTransformer implements Serializable {
         runtime = getProcessBuilder()
                       .command(pythonVersion, functionName(), dataFile.getAbsolutePath())
                       .start();
+        stderr = IOUtils.toString(new BufferedReader(new InputStreamReader(runtime.getErrorStream())));
         LOG.info("Waiting For Results: " + dataFile.getAbsolutePath());
-        // runtime.waitFor(2L, TimeUnit.SECONDS); // TODO need to discover if I need this, I think I do not
+        if (!stderr.isEmpty() && retriesRemaining > 0) {
+          return applyRuntimeToFile(dataFile, retriesRemaining);
+        } else if (!stderr.isEmpty() && retriesRemaining == 0) {
+            LOG.info("retrying did not help. Throwing stderr from subprocess");
+            throw new RuntimeException(stderr);
+        }
       }
       catch (IOException e) {
         LOG.info("IO Exception Seen");
@@ -291,8 +299,8 @@ public abstract class PythonTextTransformer implements Serializable {
           }
         } else {
           throw e;
-        }
-      } catch (Exception e) {
+          }
+        } catch (Exception e) {
           LOG.info("Non IO Exception Seen");
           throw e;
       }
