@@ -177,3 +177,5 @@ function intToFloat(num, decPlaces) {
     return floatAsStr + '@@@FLOAT'
 }
 
+module.exports.transformCartsArray = transformCartsArray
+module.exports.transformTransactionTopLevel = transformTransactionTopLevel
