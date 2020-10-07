@@ -14,11 +14,18 @@ import com.google.cloud.teleport.util.ResourceUtils;
 import com.google.cloud.teleport.util.ValueProviderUtils;
 import com.google.cloud.teleport.values.FailsafeElement;
 import com.google.common.collect.ImmutableList;
+
+import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
+import java.util.TimeZone;
+
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.io.Compression;
+import org.apache.beam.sdk.io.FileIO;
+import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
@@ -33,16 +40,17 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
-import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.Flatten;
-import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.transforms.PTransform;
-import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.*;
+import org.apache.beam.sdk.transforms.windowing.*;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
+import org.joda.time.DateTimeZone;
+import org.joda.time.Duration;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -153,6 +161,11 @@ public class RealtimeTransactionsETL {
 
         void setOutputTableSpec(ValueProvider<String> value);
 
+        @Description("The root location in GCS to write messages to. Should include data and temp subfolders")
+        ValueProvider<String> getOutputGCSSpec();
+
+        void setOutputGCSSpec(ValueProvider<String> value);
+
         @Description("Table spec to write the carts output to")
         ValueProvider<String> getCartsOutputTableSpec();
 
@@ -245,12 +258,42 @@ public class RealtimeTransactionsETL {
                             PubsubIO.readMessagesWithAttributes().fromTopic(options.getInputTopic()));
         }
 
-
+        etlToGcs(messages, options);
         etlTopLevelObject(messages, options);
         etlChildElements(messages, options, "Carts", "transformCartsArray");
         //TODO: add all child elements
 
         return pipeline.run();
+    }
+
+    /***
+     * This function writes the messages to GCS (adding the client_account and transaction to the message body
+     * The folders structure is maintained using the {@link FileNaming} class
+     * @param messages
+     * @param options
+     */
+    private static void etlToGcs(PCollection<PubsubMessage> messages, Options options) {
+        String basGcsLocation = options.getOutputGCSSpec().get();
+        messages
+                .apply("MapToEvent", ParDo.of(new PubsubMessageToTransactionEvent()))
+                .apply(Window.<TransactionEvent>into(FixedWindows.of(Duration.standardSeconds(30L))))
+                .apply("writeToGCS",
+                        FileIO.<String, TransactionEvent>writeDynamic()
+                                .by((SerializableFunction<TransactionEvent, String>) input -> input.getClientAccount() + "###" + input.getCreatedAt())
+                                .via(
+                                        Contextful.fn(
+                                                (SerializableFunction<TransactionEvent, String>) input -> input.getPayload()),
+                                        TextIO.sink())
+                                .to(basGcsLocation + "/data")
+                                        .withNaming(type -> FileNaming.getNaming(type, ""))
+                                        .withDestinationCoder(StringUtf8Coder.of())
+                                        .withTempDirectory(
+                                                String.format(basGcsLocation + "/temp"))
+                                        .withNumShards(1));
+
+
+
+
     }
 
     /**
@@ -591,6 +634,113 @@ public class RealtimeTransactionsETL {
             context.output(
                     FailsafeElement.of(message, new String(message.getPayload(), StandardCharsets.UTF_8) + "~#~#~"
                             + message.getAttribute("client_account") + "~#~#~" + message.getAttribute("transaction")));
+        }
+    }
+
+    /***
+     * class {@link FileNaming} implements a dynamic destinations strategy for the GCS files, based on the client account
+     */
+    static class FileNaming implements FileIO.Write.FileNaming {
+        static FileNaming getNaming(String clientAccountAndCreationDate, String suffix) {
+            return new FileNaming(clientAccountAndCreationDate, suffix);
+        }
+
+        private static final DateTimeFormatter FORMATTER = DateTimeFormat
+                .forPattern("yyyy-MM-dd").withZone(DateTimeZone.forTimeZone(TimeZone.getTimeZone("Europe/Berlin")));
+
+        private final String clientAccountAndCreationDate;
+        private final String suffix;
+
+        private String filenamePrefixForWindow(IntervalWindow window) {
+            String[] split = clientAccountAndCreationDate.split("###");
+            return String.format(
+                    "%s/%s/%s_", split[0], split[1],  FORMATTER.print(window.start()));
+        }
+
+        private FileNaming(String clientAccountAndCreationDate, String suffix) {
+            this.clientAccountAndCreationDate = clientAccountAndCreationDate;
+            this.suffix = suffix;
+        }
+
+        @Override
+        public String getFilename(
+                BoundedWindow window,
+                PaneInfo pane,
+                int numShards,
+                int shardIndex,
+                Compression compression) {
+
+            IntervalWindow intervalWindow = (IntervalWindow) window;
+            String filenamePrefix = filenamePrefixForWindow(intervalWindow);
+            String filename =
+                    String.format(
+                            "pane-%d-%s-%05d-of-%05d%s",
+                            pane.getIndex(),
+                            pane.getTiming().toString().toLowerCase(),
+                            shardIndex,
+                            numShards,
+                            suffix);
+            String fullName = filenamePrefix + filename;
+            return fullName;
+        }
+    }
+
+    /**
+     * The {@link de.tillhub.templates.RealtimeTransactionsETL.PubsubMessageToTransactionEvent} transforms an incoming {@link PubsubMessage} to a
+     * {@link TransactionEvent} class not before enriching it with the client_account and transaction ID
+     */
+    static class PubsubMessageToTransactionEvent
+            extends DoFn<PubsubMessage, TransactionEvent> {
+        @ProcessElement
+        public void processElement(ProcessContext context) {
+            PubsubMessage message = context.element();
+            String jsonAsStr = new String(message.getPayload(), StandardCharsets.UTF_8);
+            JSONObject obj = new JSONObject(jsonAsStr);
+            String clientAccount = message.getAttribute("client_account");
+            String transaction = message.getAttribute("transaction");
+            String createdAt = ((JSONObject)obj.get("created_at")).getString("iso").split("T")[0];
+            obj.put("client_account", clientAccount);
+            obj.put("oltp_transaction", transaction);
+
+            TransactionEvent te = new TransactionEvent(obj.toString(), clientAccount, createdAt);
+            context.output(te);
+        }
+    }
+
+    /**
+     * The {@link TransactionEvent} is a pojo holding the tx event
+     */
+    static class TransactionEvent implements Serializable {
+        private String payload;
+        private String clientAccount;
+        private String createdAt;
+        public TransactionEvent(String payload, String clientAccount, String createdAt) {
+            this.payload = payload;
+            this.clientAccount = clientAccount;
+            this.createdAt = createdAt;
+        }
+        public String getPayload() {
+            return payload;
+        }
+
+        public String getClientAccount() {
+            return clientAccount;
+        }
+
+        public String getCreatedAt() {
+            return createdAt;
+        }
+
+        public void setClientAccount(String clientAccount) {
+            this.clientAccount = clientAccount;
+        }
+
+        public void setPayload(String payload) {
+            this.payload = payload;
+        }
+
+        public void setCreatedAt(String createdAt) {
+            this.createdAt = createdAt;
         }
     }
 }
