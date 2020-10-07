@@ -79,7 +79,7 @@ function transformCartsArray(inJson) {
         currItem.update_id = cartItem.update_id //INTEGER
         currItem.fr_transaction_id = cartItem.fr_transaction_id //INTEGER
         currItem.position = cartItem.position //INTEGER
-        currItem.quantity = cartItem.quantity //INTEGER
+        currItem.quantity = intToFloat(cartItem.quantity, 2) //FLOAT
         currItem.article_number = cartItem.article_number //INTEGER
         currItem.article_attr_desc = cartItem.article_attr_desc //STRING
         currItem.article_price = intToFloat(cartItem.article_price, 2) //FLOAT
@@ -177,5 +177,5 @@ function intToFloat(num, decPlaces) {
     return floatAsStr + '@@@FLOAT'
 }
 
-module.exports.transformCartsArray = transformCartsArray
-module.exports.transformTransactionTopLevel = transformTransactionTopLevel
+//module.exports.transformCartsArray = transformCartsArray
+//module.exports.transformTransactionTopLevel = transformTransactionTopLevel

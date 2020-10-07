@@ -36,7 +36,7 @@
   },
   {
     "name": "quantity",
-    "type": "INTEGER",
+    "type": "FLOAT",
     "mode": "NULLABLE"
   },
   {
@@ -416,6 +416,10 @@
       {
         "name": "external_reference_id",
         "type": "STRING"
+      },
+      {
+        "name": "is_automatic",
+        "type": "BOOLEAN"
       }
     ]
   },
@@ -483,6 +487,10 @@
     "fields": [
       {
         "name": "id",
+        "type": "STRING"
+      },
+      {
+        "name": "content_type",
         "type": "STRING"
       },
       {
@@ -595,6 +603,34 @@
       {
         "name": "rate",
         "type": "FLOAT"
+      },
+      {
+        "name": "id",
+        "type": "INTEGER"
+      },
+      {
+        "name": "fr_transaction_cartitem_id",
+        "type": "INTEGER"
+      },
+      {
+        "name": "update_id",
+        "type": "INTEGER"
+      },
+      {
+        "name": "_id",
+        "type": "STRING"
+      },
+      {
+        "name": "created_at",
+        "type": "STRING"
+      },
+      {
+        "name": "updated_at",
+        "type": "STRING"
+      },
+      {
+        "name": "type_name",
+        "type": "STRING"
       },
       {
         "name": "name",
