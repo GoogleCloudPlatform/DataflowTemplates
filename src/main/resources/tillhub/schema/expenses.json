@@ -1,0 +1,72 @@
+[
+  {
+    "name": "id",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "fr_transaction_id",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "expense_account_name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "expense_account_type",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "expense_fa_account",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "created_at",
+    "type": "DATETIME",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "updated_at",
+    "type": "DATETIME",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "update_id",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "guid",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "safe_id",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "temporary_id",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_id",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "client_account",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "oltp_transaction",
+    "type": "STRING"
+  }
+]

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "updated_at",
+    "type": "DATETIME",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "update_id",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "fr_transaction_id",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "reference_fr_transaction_id",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "created_at",
+    "type": "DATETIME",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "fr_transaction_guid",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_id",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "client_account",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "oltp_transaction",
+    "type": "STRING"
+  }
+]

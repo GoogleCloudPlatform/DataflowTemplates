@@ -1,0 +1,40 @@
+[
+  {
+    "name": "name",
+    "type": "STRING"
+  },
+  {
+    "name": "value",
+    "type": "STRING"
+  },
+  {
+    "name": "fr_transaction_id",
+    "type": "INTEGER"
+  },
+  {
+    "name": "updated_at",
+    "type": "DATETIME"
+  },
+  {
+    "name": "created_at",
+    "type": "DATETIME"
+  },
+  {
+    "name": "update_id",
+    "type": "INTEGER"
+  },
+  {
+    "name": "_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "client_account",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "oltp_transaction",
+    "type": "STRING"
+  }
+]

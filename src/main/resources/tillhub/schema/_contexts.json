@@ -1,0 +1,85 @@
+[
+  {
+    "name": "guid",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "title",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "counters",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+      {
+        "name": "signing_error",
+        "type": "INTEGER"
+      }
+    ]
+  },
+  {
+    "name": "register",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+      {
+        "name": "display",
+        "type": "STRING"
+      }
+    ]
+  },
+  {
+    "name": "branch",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+      {
+        "name": "display",
+        "type": "STRING"
+      }
+    ]
+  },
+  {
+    "name": "cashier_staff",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+      {
+        "name": "display",
+        "type": "STRING"
+      },
+      {
+        "name": "custom_id",
+        "type": "STRING"
+      }
+    ]
+  },
+  {
+    "name": "customer",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+      {
+        "name": "display",
+        "type": "STRING"
+      },
+      {
+        "name": "custom_id",
+        "type": "STRING"
+      }
+    ]
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "client_account",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "oltp_transaction",
+    "type": "STRING"
+  }
+]

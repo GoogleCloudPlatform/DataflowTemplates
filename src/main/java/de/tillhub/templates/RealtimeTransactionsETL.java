@@ -171,6 +171,31 @@ public class RealtimeTransactionsETL {
 
         void setCartsOutputTableSpec(ValueProvider<String> value);
 
+        @Description("Table spec to write the _contexts output to")
+        ValueProvider<String> getUnderscoreContextsOutputTableSpec();
+
+        void setUnderscoreContextsOutputTableSpec(ValueProvider<String> value);
+
+        @Description("Table spec to write the contexts output to")
+        ValueProvider<String> getContextsOutputTableSpec();
+
+        void setContextsOutputTableSpec(ValueProvider<String> value);
+
+        @Description("Table spec to write the expenses output to")
+        ValueProvider<String> getExpensesOutputTableSpec();
+
+        void setExpensesOutputTableSpec(ValueProvider<String> value);
+
+        @Description("Table spec to write the payments output to")
+        ValueProvider<String> getPaymentsOutputTableSpec();
+
+        void setPaymentsOutputTableSpec(ValueProvider<String> value);
+
+        @Description("Table spec to write the relations output to")
+        ValueProvider<String> getRelationsOutputTableSpec();
+
+        void setRelationsOutputTableSpec(ValueProvider<String> value);
+
         @Description("Pub/Sub topic to read the input from")
         ValueProvider<String> getInputTopic();
 
@@ -261,7 +286,11 @@ public class RealtimeTransactionsETL {
         etlToGcs(messages, options);
         etlTopLevelObject(messages, options);
         etlChildElements(messages, options, "Carts", "transformCartsArray");
-        //TODO: add all child elements
+        etlChildElements(messages, options, "_Contexts", "transform_ContextsArray");
+        etlChildElements(messages, options, "Contexts", "transformContextsArray");
+        etlChildElements(messages, options, "Expenses", "transformExpensesArray");
+        etlChildElements(messages, options, "Payments", "transformPaymentsArray");
+        etlChildElements(messages, options, "Relations", "transformRelationsArray");
 
         return pipeline.run();
     }
@@ -386,6 +415,22 @@ public class RealtimeTransactionsETL {
             case "Carts":
                 destTable =  options.getCartsOutputTableSpec();
                 break;
+            case "Contexts":
+                destTable = options.getContextsOutputTableSpec();
+                break;
+            case "_Contexts":
+                destTable = options.getUnderscoreContextsOutputTableSpec();
+                break;
+            case "Expenses":
+                destTable = options.getExpensesOutputTableSpec();
+                break;
+            case "Relations":
+                destTable = options.getRelationsOutputTableSpec();
+                break;
+            case "Payments":
+                destTable = options.getPaymentsOutputTableSpec();
+                break;
+
             default:
                 destTable = options.getOutputTableSpec();
         }

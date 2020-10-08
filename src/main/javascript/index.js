@@ -165,8 +165,194 @@ function transformCartsArray(inJson) {
 
 }
 
+/**
+ * transforms the _contexts items. As with any child array/object, the results
+ * should be organized as an output object in the form of {results: [...]}
+ * @param {*} inJson
+ */
+function transform_ContextsArray(inJson) {
+    var itemsArr = []
+    var parsed = JSON.parse(inJson)
+    var context = parsed._context
+    if (context === null) {
+        return {results: []}
+    }
+
+    itemsArr.push(context)
+    return JSON.stringify({results: itemsArr});
+
+}
+
+/**
+ * transforms the _contexts items. As with any child array/object, the results
+ * should be organized as an output object in the form of {results: [...]}
+ * @param {*} inJson
+ */
+function transformContextsArray(inJson) {
+    var itemsArr = []
+    var parsed = JSON.parse(inJson)
+    var con = parsed.context
+    if (con === null) {
+        return {results: []}
+    }
+    var item = {}
+    item.name = con.name
+    item.value = con.value
+    item.fr_transaction_id = con.fr_transaction_id
+    item.updated_at = isoDateToBQDate(con.updated_at)
+    item.created_at = isoDateToBQDate(con.created_at)
+    item.update_id = con.update_id
+    item._id = con._id
+
+    itemsArr.push(item)
+    return JSON.stringify({results: itemsArr});
+}
+
+/**
+ * transforms the expenses items. As with any child array, the results
+ * should be organized as an output object in the form of {results: [...]}
+ * @param {*} inJson
+ */
+function transformExpensesArray(inJson) {
+    var itemsArr = []
+    var parsed = JSON.parse(inJson)
+    var ex = parsed.expense
+    if (ex === null) {
+        return {results: []}
+    }
+    var item = {}
+    item.id = ex.id
+    item.fr_transaction_id = ex.fr_transaction_id
+    item.expense_account_name = ex.expense_account_name
+    item.expense_account_type = ex.expense_account_type
+    item.expense_fa_account = ex.expense_fa_account
+    item.updated_at = isoDateToBQDate(ex.updated_at.iso)
+    item.created_at = isoDateToBQDate(ex.created_at.iso)
+    item.update_id = ex.update_id
+    item.guid = ex.guid
+    item.safe_id = ex.safe_id
+    item.temporary_id = ex.temporary_id
+    item._id = ex._id
+
+    itemsArr.push(item)
+    return JSON.stringify({results: itemsArr});
+}
+
+/**
+ * transforms the payments items. As with any child array, the results
+ * should be organized as an output object in the form of {results: [...]}
+ * @param {*} inJson
+ */
+function transformPaymentsArray(inJson) {
+    var itemsArr = []
+    var parsed = JSON.parse(inJson)
+    var payments = parsed.payments
+    if (payments === null) {
+        return {results: []}
+    }
+    payments.forEach(function (py) {
+        var item = {}
+        item.id = py.id
+        item.updated_at = isoDateToBQDate(py.updated_at.iso)
+        item.created_at = isoDateToBQDate(py.created_at.iso)
+        item.update_id = py.update_id
+        item.fr_transaction_id = py.fr_transaction_id
+        item.fa_account_number = py.fa_account_number
+        item.cost_center = py.cost_center
+        item._note = py._note
+        item.amount = intToFloat(py.amount, 2)
+        item.currency_iso_code = py.currency_iso_code
+        item.exchange_rate = intToFloat(py.exchange_rate, 2)
+        item.payment_option_name = py.payment_option_name
+        item.payment_option_id = py.payment_option_id
+        item.guid = py.guid
+        item.temporary_id = py.temporary_id
+        item._id = py._id
+        item.client_id = py.client_id
+        item.payment_option = py.payment_option
+        item.date = isoDateToBQDate(py.date)
+        item.tip = intToFloat(py.tip, 2)
+        item.branch = py.branch
+        item.register = py.register
+        item._type = py._type
+        item._position = py._position
+        item._currency = py._currency
+        item._amount_total = intToFloat(py._amount_total, 2)
+        item._tip_total = intToFloat(py._tip_total, 2)
+        item._amount_given = intToFloat(py._amount_given, 2)
+        item._amount_requested = intToFloat(py._amount_requested, 2)
+        item._amount_change = intToFloat(py._amount_change, 2)
+        item._account = py._account
+        item._account_change = intToFloat(py._account_change, 2)
+        item._comments = py._comments
+        item.terminal_response = py.terminal_response
+        if (item.context) {
+            item.context = py.context
+            item.context.updated_at = isoDateToBQDate(item.context.updated_at)
+            item.context.created_at = isoDateToBQDate(item.context.created_at)
+        }
+
+        if(item._context) {
+            item._context = py._context
+            item._context.updated_at = isoDateToBQDate(item._context.updated_at)
+            item._context.created_at = isoDateToBQDate(item._context.created_at)
+            if (item._context.voucher) {
+                item._context.voucher.delta_amount = intToFloat(item._context.voucher.delta_amount, 2)
+            }
+        }
+        if (item._origins) {
+            item._origins = py._origins
+            if (item._origins.date) {
+              item._origins.date = isoDateToBQDate(item._origins.date)
+            }
+        }
+
+        if (item._depends_on) {
+            item._depends_on = py._depends_on
+            if (item._depends_on.date) {
+              item._depends_on.date = isoDateToBQDate(item._depends_on.date)
+            }
+        }
+        item._related_to = py._related_to
+        item._external_reference_id = py._external_reference_id
+
+        itemsArr.push(item)
+    })
+    return JSON.stringify({results: itemsArr});
+}
+
+/**
+ * transforms the relations items. As with any child array, the results
+ * should be organized as an output object in the form of {results: [...]}
+ * @param {*} inJson
+ */
+function transformRelationsArray(inJson) {
+    var itemsArr = []
+    var parsed = JSON.parse(inJson)
+    var related = parsed.related_transactions
+    if (related === null) {
+        return {results: []}
+    }
+    related.forEach(function (rel) {
+        var item = {}
+        item.fr_transaction_id = rel.fr_transaction_id
+        item.reference_fr_transaction_id = rel.reference_fr_transaction_id
+        item.fr_transaction_guid = rel.fr_transaction_guid
+        item.updated_at = isoDateToBQDate(rel.updated_at.iso)
+        item.created_at = isoDateToBQDate(rel.created_at.iso)
+        item.update_id = rel.update_id
+        item._id = rel._id
+
+        itemsArr.push(item)
+    })
+    return JSON.stringify({results: itemsArr});
+}
+
 function isoDateToBQDate(dateStr) {
     if (!dateStr) return null
+    if (typeof dateStr === 'object') {
+        dateStr = dateStr.iso
+    }
     var dateObj = new Date(dateStr)
     return dateObj.toISOString().split('.')[0]
 }
