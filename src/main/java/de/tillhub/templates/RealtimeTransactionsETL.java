@@ -308,13 +308,13 @@ public class RealtimeTransactionsETL {
                 .apply(Window.<TransactionEvent>into(FixedWindows.of(Duration.standardSeconds(30L))))
                 .apply("writeToGCS",
                         FileIO.<String, TransactionEvent>writeDynamic()
-                                .by((SerializableFunction<TransactionEvent, String>) input -> input.getClientAccount() + "###" + input.getCreatedAt())
+                                .by((SerializableFunction<TransactionEvent, String>) input -> input.getClientAccount() + "###" + input.getCreatedAt() + "###" + input.getTransaction())
                                 .via(
                                         Contextful.fn(
                                                 (SerializableFunction<TransactionEvent, String>) input -> input.getPayload()),
                                         TextIO.sink())
-                                .to(basGcsLocation + "/data")
-                                        .withNaming(type -> FileNaming.getNaming(type, ""))
+                                        .to(basGcsLocation + "/data")
+                                        .withNaming(type -> FileNaming.getNaming(type, ".json"))
                                         .withDestinationCoder(StringUtf8Coder.of())
                                         .withTempDirectory(
                                                 String.format(basGcsLocation + "/temp"))
@@ -699,7 +699,7 @@ public class RealtimeTransactionsETL {
         private String filenamePrefixForWindow(IntervalWindow window) {
             String[] split = clientAccountAndCreationDate.split("###");
             return String.format(
-                    "%s/%s/%s_", split[0], split[1],  FORMATTER.print(window.start()));
+                    "%s/%s/%s", split[0], split[1], split[2]);
         }
 
         private FileNaming(String clientAccountAndCreationDate, String suffix) {
@@ -717,16 +717,16 @@ public class RealtimeTransactionsETL {
 
             IntervalWindow intervalWindow = (IntervalWindow) window;
             String filenamePrefix = filenamePrefixForWindow(intervalWindow);
-            String filename =
-                    String.format(
-                            "pane-%d-%s-%05d-of-%05d%s",
-                            pane.getIndex(),
-                            pane.getTiming().toString().toLowerCase(),
-                            shardIndex,
-                            numShards,
-                            suffix);
-            String fullName = filenamePrefix + filename;
-            return fullName;
+//            String filename =
+//                    String.format(
+//                            "pane-%d-%s-%05d-of-%05d%s",
+//                            pane.getIndex(),
+//                            pane.getTiming().toString().toLowerCase(),
+//                            shardIndex,
+//                            numShards,
+//                            suffix);
+            String fullName = filenamePrefix; //+ filename;
+            return fullName + suffix;
         }
     }
 
@@ -747,7 +747,7 @@ public class RealtimeTransactionsETL {
             obj.put("client_account", clientAccount);
             obj.put("oltp_transaction", transaction);
 
-            TransactionEvent te = new TransactionEvent(obj.toString(), clientAccount, createdAt);
+            TransactionEvent te = new TransactionEvent(obj.toString(), clientAccount, createdAt, transaction);
             context.output(te);
         }
     }
@@ -759,10 +759,13 @@ public class RealtimeTransactionsETL {
         private String payload;
         private String clientAccount;
         private String createdAt;
-        public TransactionEvent(String payload, String clientAccount, String createdAt) {
+        private String transaction;
+
+        public TransactionEvent(String payload, String clientAccount, String createdAt, String transaction) {
             this.payload = payload;
             this.clientAccount = clientAccount;
             this.createdAt = createdAt;
+            this.transaction = transaction;
         }
         public String getPayload() {
             return payload;
@@ -786,6 +789,14 @@ public class RealtimeTransactionsETL {
 
         public void setCreatedAt(String createdAt) {
             this.createdAt = createdAt;
+        }
+
+        public void setTransaction(String transaction) {
+            this.transaction = transaction;
+        }
+
+        public String getTransaction() {
+            return transaction;
         }
     }
 }
