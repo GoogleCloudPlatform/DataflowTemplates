@@ -39,11 +39,12 @@
     <apache-http-client-v2>1.31.0</apache-http-client-v2>
     <avro.version>1.8.2</avro.version>
     <checkstyle.version>8.7</checkstyle.version>
-    <beam.version>2.20.0</beam.version>
+    <beam.version>2.23.0</beam.version>
     <beam-vendor-guava.version>0.1</beam-vendor-guava.version>
-    <hamcrest.version>1.3</hamcrest.version>
+    <extra.enforcer.rules.version>1.3</extra.enforcer.rules.version>
+    <hamcrest.version>2.1</hamcrest.version>
     <java.version>1.8</java.version>
-    <junit.version>4.12</junit.version>
+    <junit.version>4.13</junit.version>
     <junit-dep.version>4.10</junit-dep.version>
     <surefire.version>2.21.0</surefire.version>
     <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
@@ -54,53 +55,55 @@
     <maven-jar-plugin.version>3.0.2</maven-jar-plugin.version>
     <maven-shade-plugin.version>3.0.0</maven-shade-plugin.version>
     <maven-source-plugin.version>3.0.1</maven-source-plugin.version>
-    <mockito-core.version>2.25.0</mockito-core.version>
-    <mock-server-netty.version>5.6.1</mock-server-netty.version>
+    <mockito-core.version>3.0.0</mockito-core.version>
+    <mock-server-netty.version>5.11.1</mock-server-netty.version>
     <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
     <slf4j.version>1.7.25</slf4j.version>
-    <joda.version>2.9.7</joda.version>
-    <generated-grpc-beta.version>0.19.0</generated-grpc-beta.version>
+    <joda.version>2.10.5</joda.version>
+    <google-cloud-bigtable-v2.version>1.9.1</google-cloud-bigtable-v2.version>
     <spanner.version>1.49.1</spanner.version>
-    <gax.version>1.52.0</gax.version>
+    <gax.version>1.54.0</gax.version>
     <open-census.version>0.24.0</open-census.version>
-    <bigtable.version>1.5.0</bigtable.version>
-    <bigtable-beam-import.version>1.5.0</bigtable-beam-import.version>
-    <bigquery.version>v2-rev20190917-1.30.3</bigquery.version>
+    <bigtable.version>1.15.0</bigtable.version>
+    <bigtable-beam-import.version>1.15.0</bigtable-beam-import.version>
+    <bigquery.version>v2-rev20200719-1.30.10</bigquery.version>
     <jackson2.version>1.34.1</jackson2.version>
     <protobuf-util.version>3.11.1</protobuf-util.version>
+    <proto-google-cloud-datastore-v1.version>0.85.0</proto-google-cloud-datastore-v1.version>
     <protobuf.version>3.11.1</protobuf.version>
     <findbugs.version>3.0.1</findbugs.version>
     <guava.version>26.0-jre</guava.version>
-    <json.version>20160810</json.version>
+    <json.version>20200518</json.version>
     <junit.jupiter.version>5.5.2</junit.jupiter.version>
-    <gson.version>2.7</gson.version>
-    <jackson.version>2.8.8</jackson.version>
+    <gson.version>2.8.6</gson.version>
+    <jackson.version>2.11.2</jackson.version>
     <codehaus-jackson.version>1.9.13</codehaus-jackson.version>
-    <commons-csv.version>1.5</commons-csv.version>
-    <commons-text.version>1.6</commons-text.version>
+    <commons-csv.version>1.8</commons-csv.version>
+    <commons-text.version>1.9</commons-text.version>
     <google.cloud.core>1.92.2</google.cloud.core>
+    <google-cloud-bigquery.version>1.108.0</google-cloud-bigquery.version>
     <grpc.version>1.13.1</grpc.version>
-    <google-storage-api.version>v1-rev20181013-1.27.0</google-storage-api.version>
+    <google-storage-api.version>v1-rev20200611-1.30.10</google-storage-api.version>
     <mvn-target-dir>${basedir}/target</mvn-target-dir>
-    <derby.version>10.12.1.1</derby.version>
-    <commons-pool2.version>2.4.2</commons-pool2.version>
-    <commons-dbcp2.version>2.1.1</commons-dbcp2.version>
-    <commons-codec.version>1.9</commons-codec.version>
+    <derby.version>10.15.2.0</derby.version>
+    <commons-pool2.version>2.8.1</commons-pool2.version>
+    <commons-dbcp2.version>2.7.0</commons-dbcp2.version>
+    <commons-codec.version>1.14</commons-codec.version>
     <kafka.clients.version>1.0.0</kafka.clients.version>
     <threetenbp.version>1.4.4</threetenbp.version>
-    <spring.version>4.3.18.RELEASE</spring.version>
-    <autovalue.annotations.version>1.6</autovalue.annotations.version>
-    <autovalue.version>1.6.2</autovalue.version>
+    <spring.version>5.2.8.RELEASE</spring.version>
+    <autovalue.annotations.version>1.7.4</autovalue.annotations.version>
+    <autovalue.version>1.7.4</autovalue.version>
     <excluded.spanner.tests>com.google.cloud.teleport.spanner.IntegrationTest</excluded.spanner.tests>
-    <tensorflow.version>1.14.0</tensorflow.version>
-    <truth.version>1.0</truth.version>
-    <dlp.version>0.79.0-beta</dlp.version>
+    <tensorflow.version>1.15.0</tensorflow.version>
+    <truth.version>1.0.1</truth.version>
+    <dlp.version>2.1.0</dlp.version>
     <hadoop.version>2.8.5</hadoop.version>
     <hbase.version>1.4.5</hbase.version>
     <scassandra.version>1.1.2</scassandra.version>
     <cassandra.driver.version>3.6.0</cassandra.driver.version>
-    <kms.version>1.20.0</kms.version>
-    <proto-kms.version>0.67.0</proto-kms.version>
+    <kms.version>1.40.0</kms.version>
+    <proto-kms.version>0.87.0</proto-kms.version>
   </properties>
 
   <dependencies>
@@ -282,6 +285,32 @@
       <artifactId>mockserver-netty</artifactId>
       <version>${mock-server-netty.version}</version>
       <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-ext</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.mock-server</groupId>
+      <artifactId>mockserver-junit-rule</artifactId>
+      <version>${mock-server-netty.version}</version>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-ext</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
@@ -318,7 +347,7 @@
     <dependency>
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-bigquery</artifactId>
-      <version>1.102.0</version>
+      <version>${google-cloud-bigquery.version}</version>
     </dependency>
     <dependency>
       <groupId>joda-time</groupId>
@@ -333,7 +362,7 @@
     <dependency>
       <groupId>com.google.api.grpc</groupId>
       <artifactId>proto-google-cloud-datastore-v1</artifactId>
-      <version>${generated-grpc-beta.version}</version>
+      <version>${proto-google-cloud-datastore-v1.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.cloud</groupId>
@@ -343,7 +372,7 @@
     <dependency>
       <groupId>com.google.api.grpc</groupId>
       <artifactId>proto-google-cloud-spanner-admin-database-v1</artifactId>
-      <version>${generated-grpc-beta.version}</version>
+      <version>${spanner.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.cloud.bigtable</groupId>
@@ -369,7 +398,7 @@
     <dependency>
       <groupId>com.google.api.grpc</groupId>
       <artifactId>proto-google-cloud-bigtable-v2</artifactId>
-      <version>${generated-grpc-beta.version}</version>
+      <version>${google-cloud-bigtable-v2.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.cloud.bigtable</groupId>
@@ -673,6 +702,12 @@
                 </ignoredUsedUndeclaredDependency>
                 <ignoredUsedUndeclaredDependency>org.apache.beam:beam-vendor-grpc-1_26_0</ignoredUsedUndeclaredDependency>
                 <ignoredUsedUndeclaredDependency>io.grpc:grpc-api</ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  org.apache.derby:derbytools
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  org.hamcrest:hamcrest
+                </ignoredUsedUndeclaredDependency>
              </ignoredUsedUndeclaredDependencies>
              <ignoredUnusedDeclaredDependencies>
                 <ignoredUnusedDeclaredDependency>org.threeten:threetenbp</ignoredUnusedDeclaredDependency>
@@ -834,7 +869,7 @@
           <dependency>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>extra-enforcer-rules</artifactId>
-            <version>1.0-beta-6</version>
+            <version>${extra.enforcer.rules.version}</version>
           </dependency>
         </dependencies>
       </plugin>

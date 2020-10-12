@@ -18,7 +18,7 @@ package com.google.cloud.teleport.spanner.ddl;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.empty;
-import static org.hamcrest.text.IsEqualIgnoringWhiteSpace.equalToIgnoringWhiteSpace;
+import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingWhiteSpace;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.teleport.spanner.common.Type;
@@ -57,7 +57,7 @@ public class DdlTest {
         .build();
     assertThat(
         ddl.prettyPrint(),
-        equalToIgnoringWhiteSpace(
+        equalToCompressingWhiteSpace(
             "CREATE TABLE `Users` ("
                 + " `id` INT64 NOT NULL,"
                 + " `first_name` STRING(10),"
@@ -90,7 +90,7 @@ public class DdlTest {
         .build();
     assertThat(
         ddl.prettyPrint(),
-        equalToIgnoringWhiteSpace(
+        equalToCompressingWhiteSpace(
             "CREATE TABLE `Users` ("
                 + " `id`                                    INT64 NOT NULL,"
                 + " `first_name`                            STRING(10),"

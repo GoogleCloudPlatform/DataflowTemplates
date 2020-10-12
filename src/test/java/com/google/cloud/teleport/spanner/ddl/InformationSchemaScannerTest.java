@@ -21,7 +21,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
-import static org.hamcrest.text.IsEqualIgnoringWhiteSpace.equalToIgnoringWhiteSpace;
+import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingWhiteSpace;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.spanner.BatchClient;
@@ -153,7 +153,7 @@ public class InformationSchemaScannerTest {
     assertThat(pk.get(2).order(), equalTo(IndexColumn.Order.ASC));
 
     // Verify pretty print.
-    assertThat(ddl.prettyPrint(), equalToIgnoringWhiteSpace(allTypes));
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(allTypes));
   }
 
   @Test
@@ -225,7 +225,7 @@ public class InformationSchemaScannerTest {
     assertThat(table.column("table"), notNullValue());
     assertThat(table.column("null"), notNullValue());
 
-    assertThat(ddl.prettyPrint(), equalToIgnoringWhiteSpace(statement));
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
   }
 
   @Test
@@ -246,7 +246,7 @@ public class InformationSchemaScannerTest {
 
     spannerServer.createDatabase(dbId, statements);
     Ddl ddl = getDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToIgnoringWhiteSpace(String.join("", statements)));
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
   }
 
   @Test
@@ -267,7 +267,7 @@ public class InformationSchemaScannerTest {
 
     spannerServer.createDatabase(dbId, statements);
     Ddl ddl = getDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToIgnoringWhiteSpace(String.join("", statements)));
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
   }
 
   // TODO: enable this test once CHECK constraints are enabled
@@ -283,7 +283,7 @@ public class InformationSchemaScannerTest {
 
     spannerServer.createDatabase(dbId, statements);
     Ddl ddl = getDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToIgnoringWhiteSpace(String.join("", statements)));
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
   }
 
   @Test
@@ -297,7 +297,7 @@ public class InformationSchemaScannerTest {
 
     spannerServer.createDatabase(dbId, Collections.singleton(statement));
     Ddl ddl = getDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToIgnoringWhiteSpace(statement));
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
   }
 
   // TODO: enable this test once generated columns are supported.
@@ -311,6 +311,6 @@ public class InformationSchemaScannerTest {
 
     spannerServer.createDatabase(dbId, Collections.singleton(statement));
     Ddl ddl = getDatabaseDdl();
-    assertThat(ddl.prettyPrint(), equalToIgnoringWhiteSpace(statement));
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
   }
 }

@@ -16,7 +16,7 @@
 
 package com.google.cloud.teleport.spanner;
 
-import static org.hamcrest.text.IsEqualIgnoringWhiteSpace.equalToIgnoringWhiteSpace;
+import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingWhiteSpace;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
@@ -242,7 +242,7 @@ public class ExportTimestampTest {
     Ddl sourceDdl = readDdl(sourceDb);
     Ddl destinationDdl = readDdl(destDb);
 
-    assertThat(sourceDdl.prettyPrint(), equalToIgnoringWhiteSpace(destinationDdl.prettyPrint()));
+    assertThat(sourceDdl.prettyPrint(), equalToCompressingWhiteSpace(destinationDdl.prettyPrint()));
   }
 
   private Ddl readDdl(String db) {
