@@ -48,8 +48,9 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
 Create file in Cloud Storage with path to container image in Google Container Repository.
 ```json
 {
-  "docker_template_spec": {
-    "docker_image": "gcr.io/project/my-image-name"
+  "image": "gcr.io/project/my-image-name:latest",
+  "sdk_info": {
+    "language": "JAVA"
   }
 }
 ```
