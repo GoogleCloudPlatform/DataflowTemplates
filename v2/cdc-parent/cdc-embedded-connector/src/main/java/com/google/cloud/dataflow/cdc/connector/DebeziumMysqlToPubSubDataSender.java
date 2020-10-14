@@ -116,7 +116,8 @@ public class DebeziumMysqlToPubSubDataSender implements Runnable {
 
     if (!whitelistedTables.isEmpty()) {
       LOG.info("Whitelisting tables: {}", dbzWhitelistedTables);
-      configBuilder = configBuilder.with(MySqlConnectorConfig.TABLE_WHITELIST, dbzWhitelistedTables);
+      configBuilder = configBuilder.with(
+          MySqlConnectorConfig.TABLE_WHITELIST, dbzWhitelistedTables);
     }
 
     if (this.inMemoryOffsetStorage) {

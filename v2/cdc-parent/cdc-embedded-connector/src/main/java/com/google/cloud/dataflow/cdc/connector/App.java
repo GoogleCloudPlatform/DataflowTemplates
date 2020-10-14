@@ -15,6 +15,8 @@
  */
 package com.google.cloud.dataflow.cdc.connector;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 import java.io.File;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -196,6 +198,17 @@ public class App {
       String commaSeparatedWhiteListedTables,
       String rdbms,
       ImmutableConfiguration debeziumConfig) {
+    checkNotNull(databaseName, "Please provide a databaseName parameter. Got %s", databaseName);
+    checkNotNull(databaseUserName, "Please provide a databaseUserName parameter. Got %s",
+        databaseUserName);
+    checkNotNull(databasePassword, "Please provide a databasePassword parameter. Got %s",
+        databasePassword);
+    checkNotNull(databasePort, "Please provide a databasePort parameter. Got %s", databasePort);
+    checkNotNull(gcpProject, "Please provide a gcpProject parameter. Got %s", gcpProject);
+    checkNotNull(gcpPubsubTopic, "Please provide a gcpPubsubTopicPrefix parameter. Got %s",
+        gcpPubsubTopic);
+    checkNotNull(rdbms, "Please provide a databaseManagementSystem parameter."
+        + " This can be either mysql or postgres. Got %s", rdbms);
     DebeziumToPubSubDataSender dataSender =
         new DebeziumToPubSubDataSender(
             databaseName,
