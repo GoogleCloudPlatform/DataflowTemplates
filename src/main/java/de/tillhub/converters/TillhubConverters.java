@@ -77,7 +77,7 @@ public class TillhubConverters {
                                         TableRow[] rows = convertJsonToTableRow(json);
                                         for (int i = 0 ; i < rows.length ; i++) {
                                             rows[i].set("client_account", clientAccount);
-                                            rows[i].set("oltp_transaction", transaction);
+                                            rows[i].set("oltp_entity_id", transaction);
                                             context.output(rows[i]);
                                         }
                                     } catch (Exception e) {

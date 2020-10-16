@@ -1,0 +1,1666 @@
+[
+  {
+    "mode": "REQUIRED",
+    "name": "updated_at",
+    "type": "DATETIME"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "update_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "dev_uuid",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "transaction_number",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "balance_number",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "register_number",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "guid",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "date",
+    "type": "DATETIME"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "cashier_staff_number",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "branch_fa_ident",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "geo_data",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "currency_iso_code",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "total",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "change",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "fr_receipt_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "customer_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "id",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "type_name",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "receipt_text",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "created_at",
+    "type": "DATETIME"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "customer_number",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "refunded_at",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "temporary_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "customer_receipt",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "merchant_receipt",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "barcode",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "customer_description",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "signed_transactions",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "client_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "cashier_staff",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "client",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "customer",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "timezone",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "has_promotion",
+    "type": "BOOLEAN"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "register",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "_type",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "_custom_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "_staff",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "_external_reference_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "_customer_external_reference_id",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "_location",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "_branch",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "client_account",
+    "type": "STRING"
+  },
+  {
+    "mode": "REQUIRED",
+    "name": "oltp_entity_id",
+    "type": "STRING"
+  },
+  {
+    "name": "cartitems",
+    "type": "RECORD",
+    "mode": "REPEATED",
+    "fields": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "updated_at",
+        "type": "DATETIME",
+        "mode": "REQUIRED"
+      },
+      {
+        "name": "update_id",
+        "type": "INTEGER",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "fr_transaction_id",
+        "type": "INTEGER",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "position",
+        "type": "INTEGER",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "quantity",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "article_number",
+        "type": "INTEGER",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "article_attr_desc",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "article_price",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "selling_price",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "selling_price_total",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "article_fa_account_number",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "vat_percentage",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "vat_fa_account_number",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "vat_amount",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "salesman_staff_number",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "product_number",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "article_id",
+        "type": "INTEGER",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "created_at",
+        "type": "DATETIME",
+        "mode": "REQUIRED"
+      },
+      {
+        "name": "vat_amount_euro",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "discount_amount",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "product_name",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "guid",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "product_group_number",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "product_group_id",
+        "type": "INTEGER",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "is_refund",
+        "type": "INTEGER",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "temporary_id",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_id",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "related_transaction_number",
+        "type": "INTEGER",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "related_transaction_date",
+        "type": "DATETIME",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "related_transaction_type",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "client_id",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "article",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "attributes_description",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "salesman_staff",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "is_tip",
+        "type": "BOOLEAN",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "is_owner",
+        "type": "BOOLEAN",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "reference_cartitem_client_id",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "configuration",
+        "type": "RECORD",
+        "mode": "NULLABLE",
+        "fields": [
+          {
+            "name": "action",
+            "type": "RECORD",
+            "fields": [
+              {
+                "name": "tax",
+                "type": "STRING"
+              },
+              {
+                "name": "name",
+                "type": "STRING"
+              },
+              {
+                "name": "default",
+                "type": "BOOLEAN"
+              }
+            ]
+          },
+          {
+            "name": "tax_switched",
+            "type": "BOOLEAN"
+          }
+        ]
+      },
+      {
+        "name": "is_service",
+        "type": "BOOLEAN",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "used_barcode",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "is_voucher",
+        "type": "BOOLEAN",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "type",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "branch",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "register",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_qty",
+        "type": "INTEGER",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_unit",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_currency",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_product",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_custom_id",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_tax",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_vat_rate",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_taxes",
+        "type": "RECORD",
+        "mode": "REPEATED",
+        "fields": [
+          {
+            "name": "tax",
+            "type": "STRING"
+          },
+          {
+            "name": "rate",
+            "type": "FLOAT"
+          },
+          {
+            "name": "display",
+            "type": "STRING"
+          },
+          {
+            "name": "position",
+            "type": "INTEGER"
+          },
+          {
+            "name": "custom_id",
+            "type": "STRING"
+          }
+        ]
+      },
+      {
+        "name": "_account",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_product_group",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_tax_amount",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_tax_amount_total",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_discount_amount",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_discount_amount_total",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_promotion_amount",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_promotion_amount_total",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_discounts",
+        "type": "RECORD",
+        "mode": "REPEATED",
+        "fields": [
+          {
+            "name": "rate",
+            "type": "FLOAT"
+          },
+          {
+            "name": "name",
+            "type": "STRING"
+          },
+          {
+            "name": "group",
+            "type": "STRING"
+          },
+          {
+            "name": "value",
+            "type": "FLOAT"
+          },
+          {
+            "name": "amount",
+            "type": "FLOAT"
+          },
+          {
+            "name": "currency",
+            "type": "STRING"
+          },
+          {
+            "name": "client_id",
+            "type": "STRING"
+          },
+          {
+            "name": "source_id",
+            "type": "STRING"
+          },
+          {
+            "name": "order_index",
+            "type": "INTEGER"
+          },
+          {
+            "name": "amount_total",
+            "type": "FLOAT"
+          },
+          {
+            "name": "assignment_id",
+            "type": "STRING"
+          },
+          {
+            "name": "assignment_source",
+            "type": "STRING"
+          },
+          {
+            "name": "external_reference_id",
+            "type": "STRING"
+          },
+          {
+            "name": "is_automatic",
+            "type": "BOOLEAN"
+          }
+        ]
+      },
+      {
+        "name": "_origins",
+        "type": "RECORD",
+        "mode": "REPEATED",
+        "fields": [
+          {
+            "name": "id",
+            "type": "STRING"
+          },
+          {
+            "name": "date",
+            "type": "FLOAT"
+          },
+          {
+            "name": "type",
+            "type": "STRING"
+          },
+          {
+            "name": "custom_id",
+            "type": "STRING"
+          }
+        ]
+      },
+      {
+        "name": "_depends_on",
+        "type": "RECORD",
+        "mode": "REPEATED",
+        "fields": [
+          {
+            "name": "id",
+            "type": "STRING"
+          },
+          {
+            "name": "date",
+            "type": "STRING"
+          },
+          {
+            "name": "type",
+            "type": "STRING"
+          },
+          {
+            "name": "custom_id",
+            "type": "STRING"
+          }
+        ]
+      },
+      {
+        "name": "_related_to",
+        "type": "RECORD",
+        "mode": "REPEATED",
+        "fields": [
+          {
+            "name": "place_holder",
+            "type": "STRING"
+          }
+        ]
+      },
+      {
+        "name": "_product_service_answers",
+        "type": "RECORD",
+        "mode": "REPEATED",
+        "fields": [
+          {
+            "name": "id",
+            "type": "STRING"
+          },
+          {
+            "name": "content_type",
+            "type": "STRING"
+          },
+          {
+            "name": "type",
+            "type": "STRING"
+          },
+          {
+            "name": "answer",
+            "type": "RECORD",
+            "fields": [
+              {
+                "name": "unit",
+                "type": "STRING"
+              },
+              {
+                "name": "content",
+                "type": "STRING"
+              },
+              {
+                "name": "content_type",
+                "type": "STRING"
+              }
+            ]
+          },
+          {
+            "name": "question",
+            "type": "STRING"
+          },
+          {
+            "name": "required",
+            "type": "BOOLEAN"
+          }
+        ]
+      },
+      {
+        "name": "_comments",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_external_reference_id",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_amount_net",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_amount_gross",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_amount_total_net",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_amount_total_gross",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_amount_unit_net",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_amount_unit_gross",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "product_supplier_name",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "custom_properties",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "product",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "account",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "tax",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "product_group",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "discounts",
+        "type": "RECORD",
+        "mode": "REPEATED",
+        "fields": [
+          {
+            "name": "rate",
+            "type": "FLOAT"
+          },
+          {
+            "name": "id",
+            "type": "INTEGER"
+          },
+          {
+            "name": "fr_transaction_cartitem_id",
+            "type": "INTEGER"
+          },
+          {
+            "name": "update_id",
+            "type": "INTEGER"
+          },
+          {
+            "name": "_id",
+            "type": "STRING"
+          },
+          {
+            "name": "created_at",
+            "type": "STRING"
+          },
+          {
+            "name": "updated_at",
+            "type": "STRING"
+          },
+          {
+            "name": "type_name",
+            "type": "STRING"
+          },
+          {
+            "name": "name",
+            "type": "STRING"
+          },
+          {
+            "name": "group",
+            "type": "STRING"
+          },
+          {
+            "name": "value",
+            "type": "FLOAT"
+          },
+          {
+            "name": "amount",
+            "type": "FLOAT"
+          },
+          {
+            "name": "currency",
+            "type": "STRING"
+          },
+          {
+            "name": "client_id",
+            "type": "STRING"
+          },
+          {
+            "name": "source_id",
+            "type": "STRING"
+          },
+          {
+            "name": "order_index",
+            "type": "INTEGER"
+          },
+          {
+            "name": "amount_total",
+            "type": "FLOAT"
+          },
+          {
+            "name": "assignment_id",
+            "type": "STRING"
+          },
+          {
+            "name": "assignment_source",
+            "type": "STRING"
+          },
+          {
+            "name": "external_reference_id",
+            "type": "STRING"
+          }
+        ]
+      },
+      {
+        "name": "context",
+        "type": "RECORD",
+        "mode": "REPEATED",
+        "fields": [
+          {
+            "name": "fr_transaction_id",
+            "type": "INTEGER"
+          },
+          {
+            "name": "name",
+            "type": "STRING"
+          },
+          {
+            "name": "value",
+            "type": "STRING"
+          },
+          {
+            "name": "updated_at",
+            "type": "STRING"
+          },
+          {
+            "name": "update_id",
+            "type": "INTEGER"
+          },
+          {
+            "name": "created_at",
+            "type": "STRING"
+          },
+          {
+            "name": "_id",
+            "type": "STRING"
+          }
+        ]
+      },
+      {
+        "name": "expense",
+        "type": "RECORD",
+        "mode": "NULLABLE",
+        "fields": [
+          {
+            "name": "id",
+            "type": "INTEGER"
+          },
+          {
+            "name": "fr_transaction_id",
+            "type": "INTEGER"
+          },
+          {
+            "name": "expense_account_name",
+            "type": "STRING"
+          },
+          {
+            "name": "expense_account_type",
+            "type": "STRING"
+          },
+          {
+            "name": "expense_fa_account",
+            "type": "STRING"
+          },
+          {
+            "name": "created_at",
+            "type": "STRING"
+          },
+          {
+            "name": "updated_at",
+            "type": "STRING"
+          },
+          {
+            "name": "update_id",
+            "type": "INTEGER"
+          },
+          {
+            "name": "guid",
+            "type": "STRING"
+          },
+          {
+            "name": "_id",
+            "type": "STRING"
+          },
+          {
+            "name": "safe_id",
+            "type": "STRING"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "_context",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+      {
+        "name": "guid",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "title",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "counters",
+        "type": "RECORD",
+        "mode": "NULLABLE",
+        "fields": [
+          {
+            "name": "signing_error",
+            "type": "INTEGER"
+          }
+        ]
+      },
+      {
+        "name": "register",
+        "type": "RECORD",
+        "mode": "NULLABLE",
+        "fields": [
+          {
+            "name": "display",
+            "type": "STRING"
+          }
+        ]
+      },
+      {
+        "name": "branch",
+        "type": "RECORD",
+        "mode": "NULLABLE",
+        "fields": [
+          {
+            "name": "display",
+            "type": "STRING"
+          }
+        ]
+      },
+      {
+        "name": "cashier_staff",
+        "type": "RECORD",
+        "mode": "NULLABLE",
+        "fields": [
+          {
+            "name": "display",
+            "type": "STRING"
+          },
+          {
+            "name": "custom_id",
+            "type": "STRING"
+          }
+        ]
+      },
+      {
+        "name": "customer",
+        "type": "RECORD",
+        "mode": "NULLABLE",
+        "fields": [
+          {
+            "name": "display",
+            "type": "STRING"
+          },
+          {
+            "name": "custom_id",
+            "type": "STRING"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "context",
+    "type": "RECORD",
+    "mode": "REPEATED",
+    "fields": [
+      {
+        "name": "name",
+        "type": "STRING"
+      },
+      {
+        "name": "value",
+        "type": "STRING"
+      },
+      {
+        "name": "fr_transaction_id",
+        "type": "INTEGER"
+      },
+      {
+        "name": "updated_at",
+        "type": "DATETIME"
+      },
+      {
+        "name": "created_at",
+        "type": "DATETIME"
+      },
+      {
+        "name": "update_id",
+        "type": "INTEGER"
+      },
+      {
+        "name": "_id",
+        "type": "STRING"
+      }
+    ]
+  },
+  {
+    "name": "expense",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "fr_transaction_id",
+        "type": "INTEGER",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "expense_account_name",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "expense_account_type",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "expense_fa_account",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "created_at",
+        "type": "DATETIME",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "updated_at",
+        "type": "DATETIME",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "update_id",
+        "type": "INTEGER",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "guid",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "safe_id",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "temporary_id",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_id",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      }
+    ]
+  },
+  {
+    "name": "payments",
+    "type": "RECORD",
+    "mode": "REPEATED",
+    "fields": [
+      {
+        "name": "id",
+        "type": "INTEGER",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "updated_at",
+        "type": "DATETIME",
+        "mode": "REQUIRED"
+      },
+      {
+        "name": "update_id",
+        "type": "INTEGER",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "fr_transaction_id",
+        "type": "INTEGER",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "fa_account_number",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "cost_center",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_note",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "amount",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "currency_iso_code",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "exchange_rate",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "payment_option_name",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "payment_option_type_name",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "created_at",
+        "type": "DATETIME",
+        "mode": "REQUIRED"
+      },
+      {
+        "name": "payment_option_id",
+        "type": "INTEGER",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "guid",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "temporary_id",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_id",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "client_id",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "payment_option",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "date",
+        "type": "DATETIME",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "tip",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "branch",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "register",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_type",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_position",
+        "type": "INTEGER",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_currency",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_amount_total",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_tip_total",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_amount_given",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_amount_requested",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_amount_change",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_account",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_account_change",
+        "type": "FLOAT",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_comments",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "terminal_response",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "context",
+        "type": "RECORD",
+        "mode": "REPEATED",
+        "fields": [
+          {
+            "name": "name",
+            "type": "STRING"
+          },
+          {
+            "name": "value",
+            "type": "STRING"
+          },
+          {
+            "name": "fr_transaction_payment_id",
+            "type": "INTEGER"
+          },
+          {
+            "name": "updated_at",
+            "type": "DATETIME"
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME"
+          },
+          {
+            "name": "update_id",
+            "type": "INTEGER"
+          },
+          {
+            "name": "_id",
+            "type": "STRING"
+          }
+        ]
+      },
+      {
+        "name": "_context",
+        "type": "RECORD",
+        "mode": "NULLABLE",
+        "fields": [
+          {
+            "name": "title",
+            "type": "STRING"
+          },
+          {
+            "name": "account",
+            "type": "STRING"
+          },
+          {
+            "name": "terminal",
+            "type": "RECORD",
+            "fields": [
+              {
+                "name": "device_id",
+                "type": "STRING"
+              },
+              {
+                "name": "transaction_id",
+                "type": "STRING"
+              },
+              {
+                "name": "api",
+                "type": "STRING"
+              },
+              {
+                "name": "payment_provider",
+                "type": "STRING"
+              },
+              {
+                "name": "card_circuit",
+                "type": "STRING"
+              },
+              {
+                "name": "card_pan",
+                "type": "STRING"
+              },
+              {
+                "name": "receipts",
+                "type": "RECORD",
+                "mode": "REPEATED",
+                "fields": [
+                  {
+                    "name": "type",
+                    "type": "STRING"
+                  },
+                  {
+                    "name": "text",
+                    "type": "STRING"
+                  }
+                ]
+              },
+              {
+                "name": "raw_response",
+                "type": "STRING"
+              },
+              {
+                "name": "is_connected",
+                "type": "BOOLEAN"
+              }
+            ]
+          },
+          {
+            "name": "updated_at",
+            "type": "DATETIME"
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME"
+          },
+          {
+            "name": "update_id",
+            "type": "INTEGER"
+          },
+          {
+            "name": "_id",
+            "type": "STRING"
+          },
+          {
+            "name": "voucher",
+            "type": "RECORD",
+            "fields": [
+              {
+                "name": "client_id",
+                "type": "STRING"
+              },
+              {
+                "name": "source_id",
+                "type": "STRING"
+              },
+              {
+                "name": "delta_amount",
+                "type": "FLOAT"
+              },
+              {
+                "name": "delta_currency",
+                "type": "STRING"
+              },
+              {
+                "name": "barcode",
+                "type": "STRING"
+              },
+              {
+                "name": "code",
+                "type": "STRING"
+              },
+              {
+                "name": "system",
+                "type": "STRING"
+              },
+              {
+                "name": "external",
+                "type": "BOOLEAN"
+              },
+              {
+                "name": "external_system_type",
+                "type": "STRING"
+              },
+              {
+                "name": "external_system_id",
+                "type": "STRING"
+              },
+              {
+                "name": "external_voucher_system_id",
+                "type": "STRING"
+              },
+              {
+                "name": "action",
+                "type": "STRING"
+              },
+              {
+                "name": "action_type",
+                "type": "STRING"
+              },
+              {
+                "name": "template",
+                "type": "STRING"
+              },
+              {
+                "name": "title",
+                "type": "STRING"
+              },
+              {
+                "name": "message",
+                "type": "STRING"
+              },
+              {
+                "name": "type",
+                "type": "STRING"
+              },
+              {
+                "name": "status",
+                "type": "STRING"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "_origins",
+        "type": "RECORD",
+        "mode": "REPEATED",
+        "fields": [
+          {
+            "name": "type",
+            "type": "STRING"
+          },
+          {
+            "name": "id",
+            "type": "STRING"
+          },
+          {
+            "name": "custom_id",
+            "type": "STRING"
+          },
+          {
+            "name": "date",
+            "type": "DATETIME"
+          }
+        ]
+      },
+      {
+        "name": "_depends_on",
+        "type": "RECORD",
+        "mode": "REPEATED",
+        "fields": [
+          {
+            "name": "type",
+            "type": "STRING"
+          },
+          {
+            "name": "id",
+            "type": "STRING"
+          },
+          {
+            "name": "custom_id",
+            "type": "STRING"
+          },
+          {
+            "name": "date",
+            "type": "DATETIME"
+          },
+          {
+            "name": "client_id",
+            "type": "STRING"
+          }
+        ]
+      },
+      {
+        "name": "_related_to",
+        "type": "RECORD",
+        "mode": "REPEATED",
+        "fields": [
+          {
+            "name": "type",
+            "type": "STRING"
+          },
+          {
+            "name": "id",
+            "type": "STRING"
+          }
+        ]
+      },
+      {
+        "name": "_external_reference_id",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      }
+    ]
+  },
+  {
+    "name": "related_transactions",
+    "type": "RECORD",
+    "mode": "REPEATED",
+    "fields": [
+      {
+        "name": "updated_at",
+        "type": "DATETIME",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "update_id",
+        "type": "INTEGER",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "fr_transaction_id",
+        "type": "INTEGER",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "reference_fr_transaction_id",
+        "type": "INTEGER",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "created_at",
+        "type": "DATETIME",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "fr_transaction_guid",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_id",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      }
+    ]
+  }
+]

@@ -55,7 +55,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link de.tillhub.templates.RealtimeTransactionsETL} pipeline is a streaming pipeline which ingests data in JSON format
+ * The {@link de.tillhub.templates.RealtimeTransactionsETLFlatTable} pipeline is a streaming pipeline which ingests data in JSON format
  * from Cloud Pub/Sub, executes a UDF, and outputs the resulting records to BigQuery. Any errors
  * which occur in the transformation of the data or execution of the UDF will be output to a
  * separate errors table in BigQuery. The errors table will be created if it does not exist prior to
@@ -83,7 +83,7 @@ import org.slf4j.LoggerFactory;
  *
  * # Build the template
  * mvn compile exec:java \
- * -Dexec.mainClass=de.tillhub.templates.RealtimeTransactionsETL \
+ * -Dexec.mainClass=de.tillhub.templates.RealtimeTransactionsETLFlatTable \
  * -Dexec.cleanupDaemonThreads=false \
  * -Dexec.args=" \
  * --project=${PROJECT_ID} \
@@ -116,10 +116,10 @@ import org.slf4j.LoggerFactory;
  * outputDeadletterTable=${PROJECT_ID}:dataset-id.deadletter-table"
  * </pre>
  */
-public class RealtimeTransactionsETL {
+public class RealtimeTransactionsETLFlatTable {
 
     /** The log to output status messages to. */
-    private static final Logger LOG = LoggerFactory.getLogger(de.tillhub.templates.RealtimeTransactionsETL.class);
+    private static final Logger LOG = LoggerFactory.getLogger(de.tillhub.templates.RealtimeTransactionsETLFlatTable.class);
 
     /** The tag for the main output for the UDF. */
     public static  TupleTag<FailsafeElement<PubsubMessage, String>> UDF_OUT;
@@ -152,7 +152,7 @@ public class RealtimeTransactionsETL {
     }
 
     /**
-     * The {@link de.tillhub.templates.RealtimeTransactionsETL.Options} class provides the custom execution options passed by the executor at the
+     * The {@link de.tillhub.templates.RealtimeTransactionsETLFlatTable.Options} class provides the custom execution options passed by the executor at the
      * command-line.
      */
     public interface Options extends PipelineOptions, JavascriptTextTransformerOptions {
@@ -165,36 +165,6 @@ public class RealtimeTransactionsETL {
         ValueProvider<String> getOutputGCSSpec();
 
         void setOutputGCSSpec(ValueProvider<String> value);
-
-        @Description("Table spec to write the carts output to")
-        ValueProvider<String> getCartsOutputTableSpec();
-
-        void setCartsOutputTableSpec(ValueProvider<String> value);
-
-        @Description("Table spec to write the _contexts output to")
-        ValueProvider<String> getUnderscoreContextsOutputTableSpec();
-
-        void setUnderscoreContextsOutputTableSpec(ValueProvider<String> value);
-
-        @Description("Table spec to write the contexts output to")
-        ValueProvider<String> getContextsOutputTableSpec();
-
-        void setContextsOutputTableSpec(ValueProvider<String> value);
-
-        @Description("Table spec to write the expenses output to")
-        ValueProvider<String> getExpensesOutputTableSpec();
-
-        void setExpensesOutputTableSpec(ValueProvider<String> value);
-
-        @Description("Table spec to write the payments output to")
-        ValueProvider<String> getPaymentsOutputTableSpec();
-
-        void setPaymentsOutputTableSpec(ValueProvider<String> value);
-
-        @Description("Table spec to write the relations output to")
-        ValueProvider<String> getRelationsOutputTableSpec();
-
-        void setRelationsOutputTableSpec(ValueProvider<String> value);
 
         @Description("Pub/Sub topic to read the input from")
         ValueProvider<String> getInputTopic();
@@ -227,13 +197,13 @@ public class RealtimeTransactionsETL {
     /**
      * The main entry-point for pipeline execution. This method will start the pipeline but will not
      * wait for it's execution to finish. If blocking execution is required, use the {@link
-     * de.tillhub.templates.RealtimeTransactionsETL#run(de.tillhub.templates.RealtimeTransactionsETL.Options)} method to start the pipeline and invoke {@code
+     * de.tillhub.templates.RealtimeTransactionsETLFlatTable#run(de.tillhub.templates.RealtimeTransactionsETLFlatTable.Options)} method to start the pipeline and invoke {@code
      * result.waitUntilFinish()} on the {@link PipelineResult}.
      *
      * @param args The command-line args passed by the executor.
      */
     public static void main(String[] args) {
-        de.tillhub.templates.RealtimeTransactionsETL.Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(de.tillhub.templates.RealtimeTransactionsETL.Options.class);
+        de.tillhub.templates.RealtimeTransactionsETLFlatTable.Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(de.tillhub.templates.RealtimeTransactionsETLFlatTable.Options.class);
 
         run(options);
     }
@@ -247,7 +217,7 @@ public class RealtimeTransactionsETL {
      * @param options The execution options.
      * @return The pipeline result.
      */
-    public static PipelineResult run(de.tillhub.templates.RealtimeTransactionsETL.Options options) {
+    public static PipelineResult run(de.tillhub.templates.RealtimeTransactionsETLFlatTable.Options options) {
 
         Pipeline pipeline = Pipeline.create(options);
 
@@ -284,13 +254,7 @@ public class RealtimeTransactionsETL {
         }
 
         etlToGcs(messages, options);
-        etlTopLevelObject(messages, options);
-        etlChildElements(messages, options, "Carts", "transformCartsArray");
-        etlChildElements(messages, options, "_Contexts", "transform_ContextsArray");
-        etlChildElements(messages, options, "Contexts", "transformContextsArray");
-        etlChildElements(messages, options, "Expenses", "transformExpensesArray");
-        etlChildElements(messages, options, "Payments", "transformPaymentsArray");
-        etlChildElements(messages, options, "Relations", "transformRelationsArray");
+        etlWithChildElements(messages, options, "transformFlatTableTransaction");
 
         return pipeline.run();
     }
@@ -313,12 +277,12 @@ public class RealtimeTransactionsETL {
                                         Contextful.fn(
                                                 (SerializableFunction<TransactionEvent, String>) input -> input.getPayload()),
                                         TextIO.sink())
-                                        .to(basGcsLocation + "/data")
-                                        .withNaming(type -> FileNaming.getNaming(type, ".json"))
-                                        .withDestinationCoder(StringUtf8Coder.of())
-                                        .withTempDirectory(
-                                                String.format(basGcsLocation + "/temp"))
-                                        .withNumShards(1));
+                                .to(basGcsLocation + "/data")
+                                .withNaming(type -> FileNaming.getNaming(type, ".json"))
+                                .withDestinationCoder(StringUtf8Coder.of())
+                                .withTempDirectory(
+                                        String.format(basGcsLocation + "/temp"))
+                                .withNumShards(1));
 
 
 
@@ -330,14 +294,14 @@ public class RealtimeTransactionsETL {
      * @param messages
      * @param options
      */
-    private static void etlTopLevelObject(PCollection<PubsubMessage> messages, de.tillhub.templates.RealtimeTransactionsETL.Options options) {
+    private static void etlTopLevelObject(PCollection<PubsubMessage> messages, de.tillhub.templates.RealtimeTransactionsETLFlatTable.Options options) {
         initResultHolders();
         PCollectionTuple convertedTableRows =
                 messages
                         /*
                          * Step #2: Transform the PubsubMessages into TableRows
                          */
-                        .apply("ConvertMessageToTableRow", new de.tillhub.templates.RealtimeTransactionsETL.PubsubMessageToTableRow(options));
+                        .apply("ConvertMessageToTableRow", new de.tillhub.templates.RealtimeTransactionsETLFlatTable.PubsubMessageToTableRow(options));
 
         /*
          * Step #3: Write the successful records out to BigQuery
@@ -408,38 +372,15 @@ public class RealtimeTransactionsETL {
      * @param messages
      * @param options
      */
-    private static void etlChildElements(PCollection<PubsubMessage> messages, de.tillhub.templates.RealtimeTransactionsETL.Options options, String stage, String udfFunc) {
+    private static void etlWithChildElements(PCollection<PubsubMessage> messages, de.tillhub.templates.RealtimeTransactionsETLFlatTable.Options options, String udfFunc) {
         initResultHolders();
-        ValueProvider<String> destTable;
-        switch(stage) {
-            case "Carts":
-                destTable =  options.getCartsOutputTableSpec();
-                break;
-            case "Contexts":
-                destTable = options.getContextsOutputTableSpec();
-                break;
-            case "_Contexts":
-                destTable = options.getUnderscoreContextsOutputTableSpec();
-                break;
-            case "Expenses":
-                destTable = options.getExpensesOutputTableSpec();
-                break;
-            case "Relations":
-                destTable = options.getRelationsOutputTableSpec();
-                break;
-            case "Payments":
-                destTable = options.getPaymentsOutputTableSpec();
-                break;
 
-            default:
-                destTable = options.getOutputTableSpec();
-        }
         PCollectionTuple convertedTableRows =
                 messages
                         /*
                          * Step #2: Transform the PubsubMessages into TableRows
                          */
-                        .apply("ConvertMessageToTableRow" + stage, new de.tillhub.templates.RealtimeTransactionsETL.PubsubMessageArrayToTableRow(options, udfFunc));
+                        .apply("ConvertMessageToTableRow", new de.tillhub.templates.RealtimeTransactionsETLFlatTable.PubsubMessageArrayToTableRow(options, udfFunc));
 
         /*
          * Step #3: Write the successful records out to BigQuery
@@ -448,7 +389,7 @@ public class RealtimeTransactionsETL {
                 convertedTableRows
                         .get(TRANSFORM_OUT)
                         .apply(
-                                "WriteSuccessfulRecords" + stage,
+                                "WriteSuccessfulRecords",
                                 BigQueryIO.writeTableRows()
                                         .withoutValidation()
                                         .withCreateDisposition(CreateDisposition.CREATE_NEVER)
@@ -456,7 +397,7 @@ public class RealtimeTransactionsETL {
                                         .withExtendedErrorInfo()
                                         .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
                                         .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
-                                        .to(destTable));
+                                        .to(options.getOutputTableSpec()));
 
         /*
          * Step 3 Contd.
@@ -466,7 +407,7 @@ public class RealtimeTransactionsETL {
                 writeResult
                         .getFailedInsertsWithErr()
                         .apply(
-                                "WrapInsertionErrors" + stage,
+                                "WrapInsertionErrors",
                                 MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
                                         .via((BigQueryInsertError e) -> wrapBigQueryInsertError(e)))
                         .setCoder(FAILSAFE_ELEMENT_CODER);
@@ -530,33 +471,33 @@ public class RealtimeTransactionsETL {
     }
 
     /**
-     * The {@link de.tillhub.templates.RealtimeTransactionsETL.PubsubMessageToTableRow} class is a {@link PTransform} which transforms incoming
+     * The {@link de.tillhub.templates.RealtimeTransactionsETLFlatTable.PubsubMessageToTableRow} class is a {@link PTransform} which transforms incoming
      * {@link PubsubMessage} objects into {@link TableRow} objects for insertion into BigQuery while
      * applying an optional UDF to the input. The executions of the UDF and transformation to {@link
      * TableRow} objects is done in a fail-safe way by wrapping the element with it's original payload
-     * inside the {@link FailsafeElement} class. The {@link de.tillhub.templates.RealtimeTransactionsETL.PubsubMessageToTableRow} transform will
+     * inside the {@link FailsafeElement} class. The {@link de.tillhub.templates.RealtimeTransactionsETLFlatTable.PubsubMessageToTableRow} transform will
      * output a {@link PCollectionTuple} which contains all output and dead-letter {@link
      * PCollection}.
      *
      * <p>The {@link PCollectionTuple} output will contain the following {@link PCollection}:
      *
      * <ul>
-     *   <li>{@link de.tillhub.templates.RealtimeTransactionsETL#UDF_OUT} - Contains all {@link FailsafeElement} records
+     *   <li>{@link de.tillhub.templates.RealtimeTransactionsETLFlatTable#UDF_OUT} - Contains all {@link FailsafeElement} records
      *       successfully processed by the optional UDF.
-     *   <li>{@link de.tillhub.templates.RealtimeTransactionsETL#UDF_DEADLETTER_OUT} - Contains all {@link FailsafeElement}
+     *   <li>{@link de.tillhub.templates.RealtimeTransactionsETLFlatTable#UDF_DEADLETTER_OUT} - Contains all {@link FailsafeElement}
      *       records which failed processing during the UDF execution.
-     *   <li>{@link de.tillhub.templates.RealtimeTransactionsETL#TRANSFORM_OUT} - Contains all records successfully converted from
+     *   <li>{@link de.tillhub.templates.RealtimeTransactionsETLFlatTable#TRANSFORM_OUT} - Contains all records successfully converted from
      *       JSON to {@link TableRow} objects.
-     *   <li>{@link de.tillhub.templates.RealtimeTransactionsETL#TRANSFORM_DEADLETTER_OUT} - Contains all {@link FailsafeElement}
+     *   <li>{@link de.tillhub.templates.RealtimeTransactionsETLFlatTable#TRANSFORM_DEADLETTER_OUT} - Contains all {@link FailsafeElement}
      *       records which couldn't be converted to table rows.
      * </ul>
      */
     static class PubsubMessageToTableRow
             extends PTransform<PCollection<PubsubMessage>, PCollectionTuple> {
 
-        private final de.tillhub.templates.RealtimeTransactionsETL.Options options;
+        private final de.tillhub.templates.RealtimeTransactionsETLFlatTable.Options options;
 
-        PubsubMessageToTableRow(de.tillhub.templates.RealtimeTransactionsETL.Options options) {
+        PubsubMessageToTableRow(de.tillhub.templates.RealtimeTransactionsETLFlatTable.Options options) {
             this.options = options;
         }
 
@@ -567,7 +508,7 @@ public class RealtimeTransactionsETL {
                     input
                             // Map the incoming messages into FailsafeElements so we can recover from failures
                             // across multiple transforms.
-                            .apply("MapToRecord", ParDo.of(new de.tillhub.templates.RealtimeTransactionsETL.PubsubMessageToFailsafeElementFn()))
+                            .apply("MapToRecord", ParDo.of(new de.tillhub.templates.RealtimeTransactionsETLFlatTable.PubsubMessageToFailsafeElementFn()))
                             .apply(
                                     "InvokeUDF",
                                     FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
@@ -597,34 +538,34 @@ public class RealtimeTransactionsETL {
     }
 
     /**
-     * The {@link de.tillhub.templates.RealtimeTransactionsETL.PubsubMessageArrayToTableRow} class is a {@link PTransform} which transforms incoming
+     * The {@link de.tillhub.templates.RealtimeTransactionsETLFlatTable.PubsubMessageArrayToTableRow} class is a {@link PTransform} which transforms incoming
      * {@link PubsubMessage} objects into {@link TableRow} objects for insertion into BigQuery while
      * applying an optional UDF to the input. The executions of the UDF and transformation to {@link
      * TableRow} objects is done in a fail-safe way by wrapping the element with it's original payload
-     * inside the {@link FailsafeElement} class. The {@link de.tillhub.templates.RealtimeTransactionsETL.PubsubMessageArrayToTableRow} transform will
+     * inside the {@link FailsafeElement} class. The {@link de.tillhub.templates.RealtimeTransactionsETLFlatTable.PubsubMessageArrayToTableRow} transform will
      * output a {@link PCollectionTuple} which contains all output and dead-letter {@link
      * PCollection}.
      *
      * <p>The {@link PCollectionTuple} output will contain the following {@link PCollection}:
      *
      * <ul>
-     *   <li>{@link de.tillhub.templates.RealtimeTransactionsETL#UDF_OUT} - Contains all {@link FailsafeElement} records
+     *   <li>{@link de.tillhub.templates.RealtimeTransactionsETLFlatTable#UDF_OUT} - Contains all {@link FailsafeElement} records
      *       successfully processed by the optional UDF.
-     *   <li>{@link de.tillhub.templates.RealtimeTransactionsETL#UDF_DEADLETTER_OUT} - Contains all {@link FailsafeElement}
+     *   <li>{@link de.tillhub.templates.RealtimeTransactionsETLFlatTable#UDF_DEADLETTER_OUT} - Contains all {@link FailsafeElement}
      *       records which failed processing during the UDF execution.
-     *   <li>{@link de.tillhub.templates.RealtimeTransactionsETL#TRANSFORM_OUT} - Contains all records successfully converted from
+     *   <li>{@link de.tillhub.templates.RealtimeTransactionsETLFlatTable#TRANSFORM_OUT} - Contains all records successfully converted from
      *       JSON to {@link TableRow} objects.
-     *   <li>{@link de.tillhub.templates.RealtimeTransactionsETL#TRANSFORM_DEADLETTER_OUT} - Contains all {@link FailsafeElement}
+     *   <li>{@link de.tillhub.templates.RealtimeTransactionsETLFlatTable#TRANSFORM_DEADLETTER_OUT} - Contains all {@link FailsafeElement}
      *       records which couldn't be converted to table rows.
      * </ul>
      */
     static class PubsubMessageArrayToTableRow
             extends PTransform<PCollection<PubsubMessage>, PCollectionTuple> {
 
-        private final de.tillhub.templates.RealtimeTransactionsETL.Options options;
+        private final de.tillhub.templates.RealtimeTransactionsETLFlatTable.Options options;
         private final String udfFunc;
 
-        PubsubMessageArrayToTableRow(de.tillhub.templates.RealtimeTransactionsETL.Options options, String udfFunc) {
+        PubsubMessageArrayToTableRow(de.tillhub.templates.RealtimeTransactionsETLFlatTable.Options options, String udfFunc) {
             this.options = options;
             this.udfFunc = udfFunc;
         }
@@ -636,7 +577,7 @@ public class RealtimeTransactionsETL {
                     input
                             // Map the incoming messages into FailsafeElements so we can recover from failures
                             // across multiple transforms.
-                            .apply("MapToRecord", ParDo.of(new de.tillhub.templates.RealtimeTransactionsETL.PubsubMessageToFailsafeElementFn()))
+                            .apply("MapToRecord", ParDo.of(new de.tillhub.templates.RealtimeTransactionsETLFlatTable.PubsubMessageToFailsafeElementFn()))
                             .apply(
                                     "InvokeUDF",
                                     FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
@@ -667,7 +608,7 @@ public class RealtimeTransactionsETL {
 
 
     /**
-     * The {@link de.tillhub.templates.RealtimeTransactionsETL.PubsubMessageToFailsafeElementFn} wraps an incoming {@link PubsubMessage} with the
+     * The {@link de.tillhub.templates.RealtimeTransactionsETLFlatTable.PubsubMessageToFailsafeElementFn} wraps an incoming {@link PubsubMessage} with the
      * {@link FailsafeElement} class so errors can be recovered from and the original message can be
      * output to a error records table.
      */
@@ -731,7 +672,7 @@ public class RealtimeTransactionsETL {
     }
 
     /**
-     * The {@link de.tillhub.templates.RealtimeTransactionsETL.PubsubMessageToTransactionEvent} transforms an incoming {@link PubsubMessage} to a
+     * The {@link de.tillhub.templates.RealtimeTransactionsETLFlatTable.PubsubMessageToTransactionEvent} transforms an incoming {@link PubsubMessage} to a
      * {@link TransactionEvent} class not before enriching it with the client_account and transaction ID
      */
     static class PubsubMessageToTransactionEvent

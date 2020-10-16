@@ -167,7 +167,7 @@ public class BigQueryConverters {
                       try {
                         TableRow row = convertJsonToTableRow(json);
                         row.set("client_account", clientAccount);
-                        row.set("oltp_transaction", transaction);
+                        row.set("oltp_entity_id", transaction);
                         context.output(row);
                       } catch (Exception e) {
                         context.output(

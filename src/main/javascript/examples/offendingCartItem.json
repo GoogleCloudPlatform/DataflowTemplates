@@ -109,7 +109,7 @@
             "_amount_unit_gross":130.0,
             "account":"b2c4449d-b572-4ecb-a054-fa066b914cae",
             "client_account":"69c75e0e-c813-4ad1-a055-bcd628081621",
-            "oltp_transaction":"bc57d05d-54ea-428f-812d-7af5276e86e0"
+            "oltp_entity_id":"bc57d05d-54ea-428f-812d-7af5276e86e0"
         }
     ]
 }

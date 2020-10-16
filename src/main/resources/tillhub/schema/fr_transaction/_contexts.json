@@ -79,7 +79,7 @@
   },
   {
     "mode": "REQUIRED",
-    "name": "oltp_transaction",
+    "name": "oltp_entity_id",
     "type": "STRING"
   }
 ]
