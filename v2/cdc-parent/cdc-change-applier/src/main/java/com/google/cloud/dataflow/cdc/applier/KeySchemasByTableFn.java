@@ -15,16 +15,18 @@
  */
 package com.google.cloud.dataflow.cdc.applier;
 
+import com.google.cloud.dataflow.cdc.common.DataflowCdcRowFormat;
 import java.util.Map;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.apache.beam.sdk.values.Row;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Outputs table+schema KV-pairs from Map side input. */
-public class KeySchemasByTableFn extends DoFn<Long, KV<String, KV<Schema, Schema>>> {
+public class KeySchemasByTableFn extends DoFn<Row, KV<String, KV<Schema, Schema>>> {
   private static final Logger LOG = LoggerFactory.getLogger(KeySchemasByTableFn.class);
 
   final PCollectionView<Map<String, KV<Schema, Schema>>> tablesInput;
@@ -38,9 +40,8 @@ public class KeySchemasByTableFn extends DoFn<Long, KV<String, KV<Schema, Schema
   public void processElement(ProcessContext c) {
     Map<String, KV<Schema, Schema>> tablesMap = c.sideInput(tablesInput);
 
-    for(Map.Entry<String, KV<Schema, Schema>> tableAndSchemas : tablesMap.entrySet()) {
-      c.output(KV.of(tableAndSchemas.getKey(), tableAndSchemas.getValue()));
-
-    }
+    c.output(KV.of(
+                 c.element().getString(DataflowCdcRowFormat.TABLE_NAME),
+                 tablesMap.get(c.element().getString(DataflowCdcRowFormat.TABLE_NAME))));
   }
 }
