@@ -54,6 +54,7 @@ function transformFlatTableTransaction(inJson) {
     result._external_reference_id = obj._external_reference_id
     result._customer_external_reference_id = obj._customer_external_reference_id
     result.branch = obj._branch
+    result.branch_number = obj.branch_number
 
     // Map complex child elements:
     result.cartitems = transformCartsArray(obj.cartitems).results //RECORD/REPEATED

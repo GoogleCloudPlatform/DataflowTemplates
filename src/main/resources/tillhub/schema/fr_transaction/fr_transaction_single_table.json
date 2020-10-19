@@ -16,6 +16,11 @@
   },
   {
     "mode": "NULLABLE",
+    "name": "branch_number",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
     "name": "transaction_number",
     "type": "INTEGER"
   },
