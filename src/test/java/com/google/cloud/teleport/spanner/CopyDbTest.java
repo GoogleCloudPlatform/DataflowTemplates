@@ -259,6 +259,7 @@ public class CopyDbTest {
     runTest();
   }
 
+  @Test
   public void randomSchema() throws Exception {
     Ddl ddl = RandomDdlGenerator.builder().build().generate();
     createAndPopulate(ddl, 100);
