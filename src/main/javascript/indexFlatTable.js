@@ -22,6 +22,8 @@ function transformFlatTableTransaction(inJson) {
     result.date = isoDateToBQDate(obj.date)
     result.cashier_staff_number = obj.cashier_staff_number
     result.branch_fa_ident = obj.branch_fa_ident
+    result.metadata = obj.metadata
+    result.payback_number = obj.payback_number
     result.geo_data = obj.geo_data
     result.currency_iso_code = obj.currency_iso_code
     result.total = obj.total
@@ -55,6 +57,20 @@ function transformFlatTableTransaction(inJson) {
     result._customer_external_reference_id = obj._customer_external_reference_id
     result.branch = obj._branch
     result.branch_number = obj.branch_number
+    result._origins = obj._origins
+    if (result._origins && result._origins.length > 0) {
+        result._origins.forEach(function (orig) {
+            orig.date = isoDateToBQDate(orig.date)
+        })
+    }
+    result._depends_on = obj._depends_on
+    if (result._depends_on && result._depends_on.length > 0) {
+        result._depends_on.forEach(function (dep) {
+            dep.date = isoDateToBQDate(dep.date)
+        })
+    }
+    result._related_to = obj._related_to
+    result._location = obj._location
 
     // Map complex child elements:
     result.cartitems = transformCartsArray(obj.cartitems).results //RECORD/REPEATED
@@ -84,22 +100,22 @@ function transformCartsArray(cartItems) {
         currItem.update_id = cartItem.update_id //INTEGER
         currItem.fr_transaction_id = cartItem.fr_transaction_id //INTEGER
         currItem.position = cartItem.position //INTEGER
-        currItem.quantity = intToFloat(cartItem.quantity, 2) //FLOAT
+        currItem.quantity = numberToFloat(cartItem.quantity, 2) //FLOAT
         currItem.article_number = cartItem.article_number //INTEGER
         currItem.article_attr_desc = cartItem.article_attr_desc //STRING
-        currItem.article_price = intToFloat(cartItem.article_price, 2) //FLOAT
-        currItem.selling_price = intToFloat(cartItem.selling_price, 2) //FLOAT
-        currItem.selling_price_total = intToFloat(cartItem.selling_price_total, 2) //FLOAT
+        currItem.article_price = numberToFloat(cartItem.article_price, 2) //FLOAT
+        currItem.selling_price = numberToFloat(cartItem.selling_price, 2) //FLOAT
+        currItem.selling_price_total = numberToFloat(cartItem.selling_price_total, 2) //FLOAT
         currItem.article_fa_account_number = cartItem.article_fa_account_number //STRING
-        currItem.vat_percentage = intToFloat(cartItem.vat_percentage, 2) //FLOAT
+        currItem.vat_percentage = numberToFloat(cartItem.vat_percentage, 2) //FLOAT
         currItem.vat_fa_account_number = cartItem.vat_fa_account_number //STRING
-        currItem.vat_amount = intToFloat(cartItem.vat_amount, 2) //FLOAT
+        currItem.vat_amount = numberToFloat(cartItem.vat_amount, 2) //FLOAT
         currItem.salesman_staff_number = cartItem.salesman_staff_number //STRING
         currItem.product_number = cartItem.product_number //STRING
         currItem.article_id = cartItem.article_id //INTEGER
         currItem.created_at = isoDateToBQDate(cartItem.created_at.iso) //DATETIME
-        currItem.vat_amount_euro = intToFloat(cartItem.vat_amount_euro, 2) //FLOAT
-        currItem.discount_amount = intToFloat(cartItem.discount_amount, 2) //FLOAT
+        currItem.vat_amount_euro = numberToFloat(cartItem.vat_amount_euro, 2) //FLOAT
+        currItem.discount_amount = numberToFloat(cartItem.discount_amount, 2) //FLOAT
         currItem.product_name = cartItem.product_name //STRING
         currItem.guid = cartItem.guid //STRING
         currItem.product_group_number = cartItem.product_group_number //STRING
@@ -124,36 +140,57 @@ function transformCartsArray(cartItems) {
         currItem.type = cartItem.type //STRING
         currItem.branch = cartItem.branch //STRING
         currItem.register = cartItem.register //STRING
-        currItem._qty = cartItem._qty //INTEGER
+        currItem._qty = numberToFloat(cartItem._qty, 2) //FLOAT
         currItem._unit = cartItem._unit //STRING
         currItem._currency = cartItem._currency //STRING
         currItem._product = cartItem._product //STRING
         currItem._custom_id = cartItem._custom_id //STRING
         currItem._tax = cartItem._tax //STRING
-        currItem._vat_rate = intToFloat(cartItem._vat_rate, 2) //FLOAT
+        currItem._vat_rate = numberToFloat(cartItem._vat_rate, 2) //FLOAT
         currItem._taxes = cartItem._taxes //RECORD/REPEATED
         currItem._account = cartItem._account //STRING
         currItem._product_group = cartItem._product_group //STRING
-        currItem._tax_amount = intToFloat(cartItem._tax_amount, 2) //FLOAT
-        currItem._tax_amount_total = intToFloat(cartItem._tax_amount_total, 2) //FLOAT
-        currItem._discount_amount = intToFloat(cartItem._discount_amount, 2) //FLOAT
-        currItem._discount_amount_total = intToFloat(cartItem._discount_amount_total, 2) //FLOAT
-        currItem._promotion_amount = intToFloat(cartItem._promotion_amount, 2) //FLOAT
-        currItem._promotion_amount_total = intToFloat(cartItem._promotion_amount_total, 2) //FLOAT
+        currItem._tax_amount = numberToFloat(cartItem._tax_amount, 2) //FLOAT
+        currItem._tax_amount_total = numberToFloat(cartItem._tax_amount_total, 2) //FLOAT
+        currItem._discount_amount = numberToFloat(cartItem._discount_amount, 2) //FLOAT
+        currItem._discount_amount_total = numberToFloat(cartItem._discount_amount_total, 2) //FLOAT
+        currItem._promotion_amount = numberToFloat(cartItem._promotion_amount, 2) //FLOAT
+        currItem._promotion_amount_total = numberToFloat(cartItem._promotion_amount_total, 2) //FLOAT
         currItem._discounts = cartItem._discounts //RECORD/REPEATED
         currItem._origins = cartItem._origins //RECORD/REPEATED
         currItem._depends_on = cartItem._depends_on //RECORD/REPEATED
+        if (currItem._origins && currItem._origins.length > 0) {
+           currItem._origins.forEach(function (orig) {
+               orig.date = isoDateToBQDate(orig.date)
+           })
+       }
+       if (currItem._depends_on && currItem._depends_on.length > 0) {
+           currItem._depends_on.forEach(function (dep) {
+               dep.date = isoDateToBQDate(dep.date)
+           })
+        }
         currItem._related_to = cartItem._related_to //RECORD/REPEATED
         currItem._product_service_answers = cartItem._product_service_answers //RECORD/REPEATED
+        if (currItem._product_service_answers && currItem._product_service_answers) {
+            currItem._product_service_answers.forEach(function (psa) {
+                if (psa.answer && psa.answer.content) {
+                    psa.answer.content = psa.answer.content.toString()
+                }
+            })
+        }
+
         currItem._comments = cartItem._comments //STRING
         currItem._external_reference_id = cartItem._external_reference_id //STRING
-        currItem._amount_net = intToFloat(cartItem._amount_net, 2) //FLOAT
-        currItem._amount_gross = intToFloat(cartItem._amount_gross, 2) //FLOAT
-        currItem._amount_total_net = intToFloat(cartItem._amount_total_net, 2) //FLOAT
-        currItem._amount_total_gross = intToFloat(cartItem._amount_total_gross, 2) //FLOAT
-        currItem._amount_unit_net = intToFloat(cartItem._amount_unit_net, 2) //FLOAT
-        currItem._amount_unit_gross = intToFloat(cartItem._amount_unit_gross, 2) //FLOAT
-        // currItem._context = cartItem._context //MAP SEPARATELY!
+        currItem._amount_net = numberToFloat(cartItem._amount_net, 2) //FLOAT
+        currItem._amount_gross = numberToFloat(cartItem._amount_gross, 2) //FLOAT
+        currItem._amount_total_net = numberToFloat(cartItem._amount_total_net, 2) //FLOAT
+        currItem._amount_total_gross = numberToFloat(cartItem._amount_total_gross, 2) //FLOAT
+        currItem._amount_unit_net = numberToFloat(cartItem._amount_unit_net, 2) //FLOAT
+        currItem._amount_unit_gross = numberToFloat(cartItem._amount_unit_gross, 2) //FLOAT
+        currItem._context = cartItem._context //RECORD/NULLABLE
+        if (currItem._context && currItem._context.voucher) {
+            currItem._context.voucher.delta_amount = numberToFloat(currItem._context.voucher.delta_amount, 2)
+        }
         currItem.product_supplier_name = cartItem.product_supplier_name //STRING
         currItem.custom_properties = JSON.stringify(cartItem.custom_properties) //STRING - SCHEMALESS!
         currItem.product = cartItem.product //STRING
@@ -251,9 +288,9 @@ function transformPaymentsArray(payments) {
         item.fa_account_number = py.fa_account_number
         item.cost_center = py.cost_center
         item._note = py._note
-        item.amount = intToFloat(py.amount, 2)
+        item.amount = numberToFloat(py.amount, 2)
         item.currency_iso_code = py.currency_iso_code
-        item.exchange_rate = intToFloat(py.exchange_rate, 2)
+        item.exchange_rate = numberToFloat(py.exchange_rate, 2)
         item.payment_option_name = py.payment_option_name
         item.payment_option_id = py.payment_option_id
         item.guid = py.guid
@@ -262,25 +299,31 @@ function transformPaymentsArray(payments) {
         item.client_id = py.client_id
         item.payment_option = py.payment_option
         item.date = isoDateToBQDate(py.date)
-        item.tip = intToFloat(py.tip, 2)
+        item.tip = numberToFloat(py.tip, 2)
         item.branch = py.branch
         item.register = py.register
         item._type = py._type
         item._position = py._position
         item._currency = py._currency
-        item._amount_total = intToFloat(py._amount_total, 2)
-        item._tip_total = intToFloat(py._tip_total, 2)
-        item._amount_given = intToFloat(py._amount_given, 2)
-        item._amount_requested = intToFloat(py._amount_requested, 2)
-        item._amount_change = intToFloat(py._amount_change, 2)
+        item._amount_total = numberToFloat(py._amount_total, 2)
+        item._tip_total = numberToFloat(py._tip_total, 2)
+        item._amount_given = numberToFloat(py._amount_given, 2)
+        item._amount_requested = numberToFloat(py._amount_requested, 2)
+        item._amount_change = numberToFloat(py._amount_change, 2)
         item._account = py._account
-        item._account_change = intToFloat(py._account_change, 2)
+        item._account_change = numberToFloat(py._account_change, 2)
         item._comments = py._comments
         item.terminal_response = py.terminal_response
+        item.account = py.account
         if (item.context) {
             item.context = py.context
-            item.context.updated_at = isoDateToBQDate(item.context.updated_at)
-            item.context.created_at = isoDateToBQDate(item.context.created_at)
+            if(item.context && item.context.length > 0) {
+                item.context.forEach(function (ctx) {
+                    ctx.updated_at = isoDateToBQDate(ctx.updated_at)
+                    ctx.created_at = isoDateToBQDate(ctx.created_at)
+                })
+            }
+
         }
 
         if(item._context) {
@@ -288,20 +331,24 @@ function transformPaymentsArray(payments) {
             item._context.updated_at = isoDateToBQDate(item._context.updated_at)
             item._context.created_at = isoDateToBQDate(item._context.created_at)
             if (item._context.voucher) {
-                item._context.voucher.delta_amount = intToFloat(item._context.voucher.delta_amount, 2)
+                item._context.voucher.delta_amount = numberToFloat(item._context.voucher.delta_amount, 2)
             }
         }
         if (item._origins) {
             item._origins = py._origins
-            if (item._origins.date) {
-              item._origins.date = isoDateToBQDate(item._origins.date)
+            if(item._origins && item._origins.length > 0) {
+                item._origins.forEach(function (orig) {
+                    orig.date = isoDateToBQDate(orig.date)
+                })
             }
         }
 
         if (item._depends_on) {
             item._depends_on = py._depends_on
-            if (item._depends_on.date) {
-              item._depends_on.date = isoDateToBQDate(item._depends_on.date)
+             if(item._depends_on && item._depends_on.length > 0) {
+                item._depends_on.forEach(function (dep) {
+                    dep.date = isoDateToBQDate(dep.date)
+                })
             }
         }
         item._related_to = py._related_to
@@ -346,7 +393,7 @@ function isoDateToBQDate(dateStr) {
     return dateObj.toISOString().split('.')[0]
 }
 
-function intToFloat(num, decPlaces) {
+function numberToFloat(num, decPlaces) {
     if (!num) return null
     var floatAsStr = num.toFixed(decPlaces)
     return floatAsStr + '@@@FLOAT'

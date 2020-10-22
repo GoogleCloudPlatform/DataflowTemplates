@@ -260,7 +260,7 @@
   },
   {
     "name": "_qty",
-    "type": "INTEGER",
+    "type": "FLOAT",
     "mode": "NULLABLE"
   },
   {

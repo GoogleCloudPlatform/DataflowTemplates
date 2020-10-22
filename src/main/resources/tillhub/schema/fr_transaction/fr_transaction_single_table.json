@@ -76,13 +76,8 @@
   },
   {
     "mode": "NULLABLE",
-    "name": "fr_receipt_id",
-    "type": "STRING"
-  },
-  {
-    "mode": "NULLABLE",
     "name": "customer_id",
-    "type": "STRING"
+    "type": "INTEGER"
   },
   {
     "mode": "NULLABLE",
@@ -143,6 +138,45 @@
     "mode": "NULLABLE",
     "name": "customer_description",
     "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "payback_number",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "metadata",
+    "type": "RECORD",
+    "fields": [
+      {
+        "mode": "NULLABLE",
+        "name": "signing_error_counter",
+        "type": "INTEGER"
+      },
+      {
+        "mode": "NULLABLE",
+        "name": "previous_tx_client_id",
+        "type": "STRING"
+      },
+      {
+        "mode": "NULLABLE",
+        "name": "origin",
+        "type": "RECORD",
+        "fields": [
+          {
+            "mode": "NULLABLE",
+            "name": "cart",
+            "type": "STRING"
+          },
+          {
+            "mode": "NULLABLE",
+            "name": "external_reference_id",
+            "type": "STRING"
+          }
+        ]
+      }
+    ]
   },
   {
     "mode": "NULLABLE",
@@ -212,7 +246,19 @@
   {
     "mode": "NULLABLE",
     "name": "_location",
-    "type": "STRING"
+    "type": "RECORD",
+    "fields": [
+      {
+        "mode": "NULLABLE",
+        "name": "lat",
+        "type": "FLOAT"
+      },
+      {
+        "mode": "NULLABLE",
+        "name": "lng",
+        "type": "FLOAT"
+      }
+    ]
   },
   {
     "mode": "NULLABLE",
@@ -247,6 +293,11 @@
       {
         "name": "update_id",
         "type": "INTEGER",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_is_refund",
+        "type": "BOOLEAN",
         "mode": "NULLABLE"
       },
       {
@@ -296,7 +347,7 @@
       },
       {
         "name": "vat_percentage",
-        "type": "FLOAT",
+        "type": "INTEGER",
         "mode": "NULLABLE"
       },
       {
@@ -331,7 +382,7 @@
       },
       {
         "name": "vat_amount_euro",
-        "type": "FLOAT",
+        "type": "STRING",
         "mode": "NULLABLE"
       },
       {
@@ -425,6 +476,254 @@
         "mode": "NULLABLE"
       },
       {
+        "name": "_context",
+        "type": "RECORD",
+        "mode": "NULLABLE",
+        "fields": [
+          {
+            "name": "title",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "account",
+            "type": "RECORD",
+            "mode": "NULLABLE",
+            "fields": [
+              {
+                "name": "custom_id",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "display",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              }
+            ]
+          },
+          {
+            "name": "tax",
+            "type": "RECORD",
+            "mode": "NULLABLE",
+            "fields": [
+              {
+                "name": "custom_id",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "display",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              }
+            ]
+          },
+          {
+            "name": "product",
+            "type": "RECORD",
+            "mode": "NULLABLE",
+            "fields": [
+              {
+                "name": "custom_id",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "display",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              }
+            ]
+          },
+          {
+            "name": "product_group",
+            "type": "RECORD",
+            "mode": "NULLABLE",
+            "fields": [
+              {
+                "name": "custom_id",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "display",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              }
+            ]
+          },
+          {
+            "name": "salesman_staff",
+            "type": "RECORD",
+            "mode": "NULLABLE",
+            "fields": [
+              {
+                "name": "owner",
+                "type": "BOOLEAN",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "custom_id",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "display",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              }
+            ]
+          },
+          {
+            "name": "voucher",
+            "type": "RECORD",
+            "mode": "NULLABLE",
+            "fields": [
+              {
+                "name": "client_id",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "source_id",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "delta_amount",
+                "type": "FLOAT",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "delta_currency",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "barcode",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "code",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "system",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "external",
+                "type": "BOOLEAN",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "external_system_type",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "external_system_id",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "external_voucher_system_id",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "action",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "action_type",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "template",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "title",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "message",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "type",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "status",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              }
+            ]
+          },
+          {
+            "name": "return_reason",
+            "type": "RECORD",
+            "mode": "NULLABLE",
+            "fields": [
+              {
+                "name": "id",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "reason",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "description",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "custom_reason",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              },
+              {
+                "name": "behavior",
+                "type": "RECORD",
+                "mode": "NULLABLE",
+                "fields": [
+                  {
+                    "name": "stock",
+                    "type": "STRING",
+                    "mode": "NULLABLE"
+                  },
+                  {
+                    "name": "stock_location",
+                    "type": "STRING",
+                    "mode": "NULLABLE"
+                  },
+                  {
+                    "name": "navigation",
+                    "type": "STRING",
+                    "mode": "NULLABLE"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
         "name": "configuration",
         "type": "RECORD",
         "mode": "NULLABLE",
@@ -485,7 +784,7 @@
       },
       {
         "name": "_qty",
-        "type": "INTEGER",
+        "type": "FLOAT",
         "mode": "NULLABLE"
       },
       {
@@ -645,6 +944,10 @@
           {
             "name": "is_automatic",
             "type": "BOOLEAN"
+          },
+          {
+            "name": "order",
+            "type": "STRING"
           }
         ]
       },
@@ -659,7 +962,7 @@
           },
           {
             "name": "date",
-            "type": "FLOAT"
+            "type": "DATETIME"
           },
           {
             "name": "type",
@@ -681,16 +984,20 @@
             "type": "STRING"
           },
           {
-            "name": "date",
-            "type": "STRING"
-          },
-          {
             "name": "type",
             "type": "STRING"
           },
           {
             "name": "custom_id",
             "type": "STRING"
+          },
+          {
+            "name": "client_id",
+            "type": "STRING"
+          },
+          {
+            "name": "date",
+            "type": "DATETIME"
           }
         ]
       },
@@ -700,7 +1007,11 @@
         "mode": "REPEATED",
         "fields": [
           {
-            "name": "place_holder",
+            "name": "type",
+            "type": "STRING"
+          },
+          {
+            "name": "id",
             "type": "STRING"
           }
         ]
@@ -752,6 +1063,11 @@
       },
       {
         "name": "_comments",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "_note",
         "type": "STRING",
         "mode": "NULLABLE"
       },
@@ -904,6 +1220,10 @@
           {
             "name": "external_reference_id",
             "type": "STRING"
+          },
+          {
+            "name": "is_automatic",
+            "type": "BOOLEAN"
           }
         ]
       },
@@ -913,7 +1233,7 @@
         "mode": "REPEATED",
         "fields": [
           {
-            "name": "fr_transaction_id",
+            "name": "fr_transaction_cartitem_id",
             "type": "INTEGER"
           },
           {
@@ -1208,6 +1528,11 @@
         "mode": "NULLABLE"
       },
       {
+        "name": "account",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
         "name": "cost_center",
         "type": "STRING",
         "mode": "NULLABLE"
@@ -1250,11 +1575,6 @@
       {
         "name": "payment_option_id",
         "type": "INTEGER",
-        "mode": "NULLABLE"
-      },
-      {
-        "name": "guid",
-        "type": "STRING",
         "mode": "NULLABLE"
       },
       {
@@ -1403,7 +1723,13 @@
           },
           {
             "name": "account",
-            "type": "STRING"
+            "type": "RECORD",
+            "fields": [
+              {
+                "name": "custom_id",
+                "type": "STRING"
+              }
+            ]
           },
           {
             "name": "terminal",
@@ -1665,6 +1991,71 @@
         "name": "_id",
         "type": "STRING",
         "mode": "NULLABLE"
+      }
+    ]
+  },
+  {
+    "name": "_origins",
+    "type": "RECORD",
+    "mode": "REPEATED",
+    "fields": [
+      {
+        "name": "id",
+        "type": "STRING"
+      },
+      {
+        "name": "date",
+        "type": "DATETIME"
+      },
+      {
+        "name": "type",
+        "type": "STRING"
+      },
+      {
+        "name": "custom_id",
+        "type": "STRING"
+      }
+    ]
+  },
+  {
+    "name": "_depends_on",
+    "type": "RECORD",
+    "mode": "REPEATED",
+    "fields": [
+      {
+        "name": "id",
+        "type": "STRING"
+      },
+      {
+        "name": "date",
+        "type": "DATETIME"
+      },
+      {
+        "name": "type",
+        "type": "STRING"
+      },
+      {
+        "name": "custom_id",
+        "type": "STRING"
+      },
+      {
+        "name": "client_id",
+        "type": "STRING"
+      }
+    ]
+  },
+  {
+    "name": "_related_to",
+    "type": "RECORD",
+    "mode": "REPEATED",
+    "fields": [
+      {
+        "name": "type",
+        "type": "STRING"
+      },
+      {
+        "name": "id",
+        "type": "STRING"
       }
     ]
   }
