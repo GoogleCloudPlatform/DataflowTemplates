@@ -27,6 +27,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <autovalue.version>1.7.4</autovalue.version>
         <autovalue.annotations.version>1.7.4</autovalue.annotations.version>
+        <autovalue.service.version>1.0-rc6</autovalue.service.version>
         <checkstyle.version>8.7</checkstyle.version>
         <beam.version>2.23.0</beam.version>
         <beam-vendor-guava.version>0.1</beam-vendor-guava.version>
@@ -143,6 +144,11 @@
             <groupId>io.opencensus</groupId>
             <artifactId>opencensus-api</artifactId>
             <version>${opensensus.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.auto.service</groupId>
+            <artifactId>auto-service</artifactId>
+            <version>${autovalue.service.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.auto.value</groupId>
