@@ -239,6 +239,7 @@ public class BigQueryToTFRecord {
                 BigQueryIO.read(BigQueryToTFRecord::record2Example)
                     .fromQuery(options.getReadQuery())
                     .withCoder(ByteArrayCoder.of())
+                    .withTemplateCompatibility()
                     .withoutValidation()
                     .usingStandardSql()
                     .withMethod(BigQueryIO.TypedRead.Method.DIRECT_READ)
