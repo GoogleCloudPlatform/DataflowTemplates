@@ -137,22 +137,13 @@ public abstract class JavascriptTextTransformer {
     }
 
     /**
-     * Returns the instance of a script engine.
-     *
-     * @return an instance of an invocable script engine.
-     */
-    protected static ScriptEngine scriptEngineInstance() {
-      return new ScriptEngineManager().getEngineByName("JavaScript");
-    }
-
-    /**
      * Factory method for making a new Invocable.
      *
      * @param scripts a collection of javascript scripts encoded with UTF8 to load in
      */
     @Nullable
     private static Invocable newInvocable(Collection<String> scripts) throws ScriptException {
-      ScriptEngine engine = scriptEngineInstance();
+      ScriptEngine engine = new ScriptEngineManager().getEngineByName("JavaScript");
 
       for (String script : scripts) {
         engine.eval(script);
@@ -219,21 +210,6 @@ public abstract class JavascriptTextTransformer {
                       .collect(Collectors.toList());
 
       return scripts;
-    }
-  }
-
-  /**
-   * Delivers a Javascript runtime based on the GraalVM implementation of the script engine APIs.
-   */
-  public abstract static class GraalVMJavascriptRuntime extends JavascriptTextTransformer.JavascriptRuntime {
-
-    /**
-     * Returns a GraalVM instance of a script engine.
-     *
-     * @return an instance of an invocable script engine.
-     */
-    protected static ScriptEngine scriptEngineInstance() {
-      return new ScriptEngineManager().getEngineByName("graal.js");
     }
   }
 

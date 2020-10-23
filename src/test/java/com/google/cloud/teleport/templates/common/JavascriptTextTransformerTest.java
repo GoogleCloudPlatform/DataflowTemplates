@@ -25,7 +25,6 @@ import static org.junit.Assert.assertThat;
 
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.FailsafeJavascriptUdf;
-import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.GraalVMJavascriptRuntime;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.JavascriptRuntime;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.TransformTextViaJavascript;
 import com.google.cloud.teleport.values.FailsafeElement;
@@ -93,8 +92,8 @@ public class JavascriptTextTransformerTest {
    */
   @Test
   public void testInvokeThrowsException() throws Exception {
-    JavascriptTextTransformer.JavascriptRuntime javascriptRuntime
-            = JavascriptTextTransformer.JavascriptRuntime.newBuilder()
+    JavascriptRuntime javascriptRuntime
+            = JavascriptRuntime.newBuilder()
                     .setFunctionName("transform")
                     .setFileSystemPath("gs://some/bad/random/path")
                     .build();
@@ -124,21 +123,6 @@ public class JavascriptTextTransformerTest {
   public void testInvokeGood() throws Exception {
     JavascriptRuntime javascriptRuntime
             = JavascriptRuntime.newBuilder()
-                    .setFileSystemPath(TRANSFORM_FILE_PATH)
-                    .setFunctionName("transform")
-                    .build();
-    String data = javascriptRuntime.invoke("{\"answerToLife\": 42}");
-    Assert.assertEquals("{\"answerToLife\":42,\"someProp\":\"someValue\"}", data);
-  }
-
-  /**
-   * Test {@link JavascriptRuntime#invoke(String)} returns transformed data when a good javascript transform function given, in this case
-   * utilizing GraalVM as the runtime for the scripts.
-   */
-  @Test
-  public void testInvokeGoodGraalVM() throws Exception {
-    JavascriptRuntime javascriptRuntime
-            = GraalVMJavascriptRuntime.newBuilder()
                     .setFileSystemPath(TRANSFORM_FILE_PATH)
                     .setFunctionName("transform")
                     .build();

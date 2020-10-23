@@ -104,7 +104,7 @@
     <cassandra.driver.version>3.6.0</cassandra.driver.version>
     <kms.version>1.40.0</kms.version>
     <proto-kms.version>0.87.0</proto-kms.version>
-     <graalvm.version>20.2.0</graalvm.version>
+    <graalvm.version>20.2.0</graalvm.version>
   </properties>
 
   <dependencies>
@@ -604,7 +604,6 @@
       <groupId>org.graalvm.sdk</groupId>
       <artifactId>graal-sdk</artifactId>
       <version>${graalvm.version}</version>
-      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>org.graalvm.js</groupId>
@@ -613,6 +612,10 @@
       <scope>runtime</scope>
     </dependency>
     <dependency>
+      <!-- 
+        When migrating to jdk11 this will be necessary in order to maintain compatibility with the ScriptEngine API, in JDK8 is included. 
+        Another alternative is to use GraalVM Context API to launch the js scripts.  
+      -->
       <groupId>org.graalvm.js</groupId>
       <artifactId>js-scriptengine</artifactId>
       <version>${graalvm.version}</version>
