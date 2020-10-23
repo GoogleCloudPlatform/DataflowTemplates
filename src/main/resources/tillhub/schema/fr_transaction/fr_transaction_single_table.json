@@ -530,6 +530,11 @@
                 "mode": "NULLABLE"
               },
               {
+                "name": "supplier_name",
+                "type": "STRING",
+                "mode": "NULLABLE"
+              },
+              {
                 "name": "display",
                 "type": "STRING",
                 "mode": "NULLABLE"
@@ -1322,6 +1327,11 @@
     "fields": [
       {
         "name": "guid",
+        "type": "STRING",
+        "mode": "NULLABLE"
+      },
+      {
+        "name": "previous_tx_client_id",
         "type": "STRING",
         "mode": "NULLABLE"
       },
