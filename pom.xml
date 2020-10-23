@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  ~ Copyright (C) 2017 Google Inc.
-  ~
-  ~ Licensed under the Apache License, Version 2.0 (the "License"); you may not
-  ~ use this file except in compliance with the License. You may obtain a copy of
-  ~ the License at
-  ~
-  ~ http://www.apache.org/licenses/LICENSE-2.0
-  ~
-  ~ Unless required by applicable law or agreed to in writing, software
-  ~ distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-  ~ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-  ~ License for the specific language governing permissions and limitations under
-  ~ the License.
-  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+~ Copyright (C) 2017 Google Inc.
+~
+~ Licensed under the Apache License, Version 2.0 (the "License"); you may not
+~ use this file except in compliance with the License. You may obtain a copy of
+~ the License at
+~
+~ http://www.apache.org/licenses/LICENSE-2.0
+~
+~ Unless required by applicable law or agreed to in writing, software
+~ distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+~ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+~ License for the specific language governing permissions and limitations under
+~ the License.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
@@ -104,6 +104,7 @@
     <cassandra.driver.version>3.6.0</cassandra.driver.version>
     <kms.version>1.40.0</kms.version>
     <proto-kms.version>0.87.0</proto-kms.version>
+     <graalvm.version>20.2.0</graalvm.version>
   </properties>
 
   <dependencies>
@@ -190,7 +191,10 @@
       <artifactId>hadoop-mapreduce-client-core</artifactId>
       <version>${hadoop.version}</version>
       <exclusions>
-        <exclusion><groupId>org.codehaus.jackson</groupId><artifactId>*</artifactId></exclusion>
+        <exclusion>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
@@ -198,8 +202,11 @@
       <artifactId>hadoop-common</artifactId>
       <version>${hadoop.version}</version>
       <exclusions>
-      <exclusion><groupId>org.codehaus.jackson</groupId><artifactId>*</artifactId></exclusion>
-    </exclusions>
+        <exclusion>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.hbase</groupId>
@@ -387,8 +394,8 @@
       <scope>runtime</scope>
       <exclusions>
         <!-- slf4j-log4j12 and log4j-over-slf4j cannot coexist
-             https://www.slf4j.org/codes.html
-             -->
+        https://www.slf4j.org/codes.html
+        -->
         <exclusion>
           <groupId>org.slf4j</groupId>
           <artifactId>slf4j-log4j12</artifactId>
@@ -593,6 +600,36 @@
       <artifactId>proto</artifactId>
       <version>${tensorflow.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.graalvm.sdk</groupId>
+      <artifactId>graal-sdk</artifactId>
+      <version>${graalvm.version}</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.graalvm.js</groupId>
+      <artifactId>js</artifactId>
+      <version>${graalvm.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.graalvm.js</groupId>
+      <artifactId>js-scriptengine</artifactId>
+      <version>${graalvm.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.graalvm.tools</groupId>
+      <artifactId>profiler</artifactId>
+      <version>${graalvm.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.graalvm.tools</groupId>
+      <artifactId>chromeinspector</artifactId>
+      <version>${graalvm.version}</version>
+      <scope>runtime</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -640,7 +677,7 @@
                 </filters>
                 <transformers>
                   <transformer
-                      implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                    implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                 </transformers>
               </configuration>
             </execution>
@@ -708,17 +745,17 @@
                 <ignoredUsedUndeclaredDependency>
                   org.hamcrest:hamcrest
                 </ignoredUsedUndeclaredDependency>
-             </ignoredUsedUndeclaredDependencies>
-             <ignoredUnusedDeclaredDependencies>
+              </ignoredUsedUndeclaredDependencies>
+              <ignoredUnusedDeclaredDependencies>
                 <ignoredUnusedDeclaredDependency>org.threeten:threetenbp</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>org.json:json</ignoredUnusedDeclaredDependency>
-               <ignoredUnusedDeclaredDependency>org.apache.hadoop:hadoop-mapreduce-client-core</ignoredUnusedDeclaredDependency>
+                <ignoredUnusedDeclaredDependency>org.apache.hadoop:hadoop-mapreduce-client-core</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>org.apache.hadoop:hadoop-common</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>org.codehaus.jackson:jackson-core-asl</ignoredUnusedDeclaredDependency>
-               <ignoredUnusedDeclaredDependency>org.codehaus.jackson:jackson-mapper-asl</ignoredUnusedDeclaredDependency>
-               <ignoredUnusedDeclaredDependency>io.opencensus:opencensus-api</ignoredUnusedDeclaredDependency>
-             </ignoredUnusedDeclaredDependencies>
-           </configuration>
+                <ignoredUnusedDeclaredDependency>org.codehaus.jackson:jackson-mapper-asl</ignoredUnusedDeclaredDependency>
+                <ignoredUnusedDeclaredDependency>io.opencensus:opencensus-api</ignoredUnusedDeclaredDependency>
+              </ignoredUnusedDeclaredDependencies>
+            </configuration>
           </execution>
         </executions>
       </plugin>
@@ -750,11 +787,11 @@
 
       <plugin>
         <!-- Set up Javadoc configuration for javadoc run via in the Maven
-             build. Teleport only uses the plugin to create the individual javadoc
-             attached artifacts used for IDEs. The combined javadoc for the
-             website is built in the sdks/java/javadoc directory. Rather than
-             duplicate a raft of configuration between the ant.xml there and
-             here, we leave things simple here. -->
+        build. Teleport only uses the plugin to create the individual javadoc
+        attached artifacts used for IDEs. The combined javadoc for the
+        website is built in the sdks/java/javadoc directory. Rather than
+        duplicate a raft of configuration between the ant.xml there and
+        here, we leave things simple here. -->
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
         <version>${maven-javadoc-plugin.version}</version>
@@ -924,10 +961,10 @@
 
   <profiles>
     <!-- The following snapshot profile allows us to test teleport with
-         unreleased apache sw. E.g. to test with a snapshot version of beam we
-         could do
-              mvn test -Psnapshot -Dbeam.version=A.B.C-SNAPSHOT
-      -->
+       unreleased apache sw. E.g. to test with a snapshot version of beam we
+       could do
+            mvn test -Psnapshot -Dbeam.version=A.B.C-SNAPSHOT
+    -->
     <profile>
       <id>snapshot</id>
       <repositories>
