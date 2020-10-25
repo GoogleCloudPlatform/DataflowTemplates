@@ -18,8 +18,9 @@
 package com.google.cloud.teleport.templates;
 
 import com.google.cloud.teleport.avro.AvroPubsubMessageRecord;
-import com.google.cloud.teleport.templates.PubsubToAvro.PubsubMessageToArchiveDoFn;
+import com.google.cloud.teleport.templates.PubsubToGenericAvro.PubsubMessageToArchiveDoFn;
 import com.google.common.collect.ImmutableMap;
+import java.util.Map;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.testing.NeedsRunner;
 import org.apache.beam.sdk.testing.PAssert;
@@ -33,9 +34,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-import java.util.Map;
-
-/** Test class for {@link PubsubToAvro}. */
+/** Test class for {@link PubsubToGenericAvro}. */
 public class PubsubToGenericAvroTest {
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();

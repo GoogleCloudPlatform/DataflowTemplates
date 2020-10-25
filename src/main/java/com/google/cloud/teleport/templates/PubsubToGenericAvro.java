@@ -18,22 +18,36 @@
 package com.google.cloud.teleport.templates;
 
 import com.google.cloud.teleport.avro.AvroPubsubMessageRecord;
-import com.google.cloud.teleport.io.WindowedFilenamePolicy;
+import com.google.cloud.teleport.avro.GenericAvroTransform;
 import com.google.cloud.teleport.util.DurationUtils;
+import java.text.DecimalFormat;
+import java.util.Arrays;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.coders.VarIntCoder;
 import org.apache.beam.sdk.io.AvroIO;
-import org.apache.beam.sdk.io.FileBasedSink;
+import org.apache.beam.sdk.io.Compression;
+import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
-import org.apache.beam.sdk.options.*;
+import org.apache.beam.sdk.options.Default;
+import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.options.Validation.Required;
-import org.apache.beam.sdk.options.ValueProvider.NestedValueProvider;
+import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.transforms.Contextful;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.IntervalWindow;
+import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.transforms.windowing.Window;
 
 /**
@@ -44,14 +58,14 @@ import org.apache.beam.sdk.transforms.windowing.Window;
  *
  * <pre>
  *   {
- *      "type": "record",
- *      "name": "AvroPubsubMessageRecord",
- *      "namespace": "com.google.cloud.teleport.avro",
- *      "fields": [
- *        {"name": "message", "type": {"type": "array", "items": "bytes"}},
- *        {"name": "attributes", "type": {"type": "map", "values": "string"}},
- *        {"name": "timestamp", "type": "long"}
- *      ]
+ *    "type": "record",
+ *    "name": "AvroPubsubMessageRecord",
+ *    "namespace": "com.google.cloud.teleport.avro",
+ *    "fields": [
+ *    {"name": "message", "type": {"type": "array", "items": "bytes"}},
+ *    {"name": "attributes", "type": {"type": "map", "values": "string"}},
+ *    {"name": "timestamp", "type": "long"}
+ *    ]
  *   }
  * </pre>
  *
@@ -139,6 +153,12 @@ public class PubsubToGenericAvro {
 
     void setAvroTempDirectory(ValueProvider<String> value);
 
+    @Description("The bucket directory, or REST endpoint, from gets AVRO schemas. " +
+        "Internal operation concat the global-id at the end")
+    @Required
+    ValueProvider<String> getSchemaResgitryUri();
+
+    void setSchemaResgitryUri(ValueProvider<String> value);
   }
 
   /**
@@ -164,6 +184,11 @@ public class PubsubToGenericAvro {
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
 
+    // Create PubSub to Avro schema manipulator
+    GenericAvroTransform genericAvroTransform = new GenericAvroTransform(options.getSchemaResgitryUri());
+    ValueProvider<String> outputFilenamePrefix = options.getOutputFilenamePrefix();
+    ValueProvider<String> outputFilenameSuffix = options.getOutputFilenamePrefix();
+    ValueProvider<String> outputShardTemplate = options.getOutputShardTemplate();
     /*
      * Steps:
      *   1) Read messages from PubSub
@@ -183,23 +208,18 @@ public class PubsubToGenericAvro {
         // policy requires a resourceId generated from the input value at runtime.
         .apply(
             "Write File(s)",
-            AvroIO.write(AvroPubsubMessageRecord.class)
-                .to(
-                    new WindowedFilenamePolicy(
-                        options.getOutputDirectory(),
-                        options.getOutputFilenamePrefix(),
-                        options.getOutputShardTemplate(),
-                        options.getOutputFilenameSuffix()))
-                .withTempDirectory(NestedValueProvider.of(
-                    options.getAvroTempDirectory(),
-                    (SerializableFunction<String, ResourceId>) input ->
-                        FileBasedSink.convertToFileResourceIfPossible(input)))
-                /*.withTempDirectory(FileSystems.matchNewResource(
-                    options.getAvroTempDirectory(),
-                    Boolean.TRUE))
-                    */
-                .withWindowedWrites()
-                .withNumShards(options.getNumShards()));
+            FileIO.<Integer, AvroPubsubMessageRecord>writeDynamic()
+                .by(genericAvroTransform::schemaRegistryId)
+                .withDestinationCoder(VarIntCoder.of())
+                .via(
+                    Contextful.<AvroPubsubMessageRecord, GenericRecord>fn(genericAvroTransform::convert),
+                    Contextful.<Integer, FileIO.Sink<GenericRecord>>fn(globalId ->
+                        AvroIO.sink(genericAvroTransform.schemaFrom(globalId))))
+                .withTempDirectory(options.getAvroTempDirectory())
+                .withNumShards(options.getNumShards())
+                .withNaming(globalId ->
+                        new CustomAvroFileNaming(globalId, outputFilenamePrefix, outputFilenameSuffix, outputShardTemplate))
+                .to(options.getOutputDirectory()));
 
     // Execute the pipeline and return the result.
     return pipeline.run();
@@ -216,6 +236,124 @@ public class PubsubToGenericAvro {
       context.output(
           new AvroPubsubMessageRecord(
               message.getPayload(), message.getAttributeMap(), context.timestamp().getMillis()));
+    }
+  }
+
+  /**
+   * Based on {@link org.apache.beam.sdk.io.DefaultFilenamePolicy}, but adapted to this case.
+   */
+  static class CustomAvroFileNaming implements FileIO.Write.FileNaming {
+
+    /*
+     * pattern for both windowed and non-windowed file names.
+     * Copy from {@link org.apache.beam.sdk.io.DefaultFilenamePolicy}
+     */
+    private static final Pattern SHARD_FORMAT_RE = Pattern.compile("(S+|N+|W|P)");
+
+    private final Integer globalId;
+    private final ValueProvider<String> filePrefix;
+    private final ValueProvider<String> fileSuffix;
+    private final ValueProvider<String> shardTemplate;
+
+    public CustomAvroFileNaming(Integer globalId, ValueProvider<String> filePrefix, ValueProvider<String> fileSuffix, ValueProvider<String> shardTemplate) {
+
+      this.globalId = globalId;
+      this.filePrefix = filePrefix;
+      this.fileSuffix = fileSuffix;
+      this.shardTemplate = shardTemplate;
+    }
+
+
+    /**
+     * Generates the filename. MUST use each argument and return different values for each
+     * combination of the arguments.
+     *
+     * @param window
+     * @param pane
+     * @param numShards
+     * @param shardIndex
+     * @param compression
+     */
+    @Override
+    public String getFilename(BoundedWindow window, PaneInfo pane, int numShards, int shardIndex, Compression compression) {
+      return constructName(window, pane, numShards, shardIndex);
+    }
+
+    /**
+     * Based on
+     * {@link org.apache.beam.sdk.io.DefaultFilenamePolicy#constructName(ResourceId, String, String, int, int, String, String)}
+     * method.
+     *
+     * @param window
+     * @param pane
+     * @param numShards
+     * @param shardIndex
+     * @return
+     */
+    private String constructName(BoundedWindow window, PaneInfo pane, int numShards, int shardIndex) {
+      String paneStr = paneInfoToString(pane);
+      String windowStr = windowToString(window);
+
+      StringBuffer sb = new StringBuffer();
+      sb.append(filePrefix.get());
+
+      Matcher m = SHARD_FORMAT_RE.matcher(shardTemplate.get());
+
+      while (m.find()) {
+        boolean isCurrentShardNum = (m.group(1).charAt(0) == 'S');
+        boolean isNumberOfShards = (m.group(1).charAt(0) == 'N');
+        boolean isPane = (m.group(1).charAt(0) == 'P') && paneStr != null;
+        boolean isWindow = (m.group(1).charAt(0) == 'W') && windowStr != null;
+
+        char[] zeros = new char[m.end() - m.start()];
+        Arrays.fill(zeros, '0');
+        DecimalFormat df = new DecimalFormat(String.valueOf(zeros));
+        if (isCurrentShardNum) {
+          String formatted = df.format(shardIndex);
+          m.appendReplacement(sb, formatted);
+        } else if (isNumberOfShards) {
+          String formatted = df.format(numShards);
+          m.appendReplacement(sb, formatted);
+        } else if (isPane) {
+          m.appendReplacement(sb, paneStr);
+        } else if (isWindow) {
+          m.appendReplacement(sb, windowStr);
+        }
+      }
+      m.appendTail(sb);
+      sb.append("-").append(globalId);
+      sb.append(fileSuffix.get());
+      return sb.toString();
+    }
+
+    /**
+     * Copy from private method in {@link org.apache.beam.sdk.io.DefaultFileNamePolicy}.
+     *
+     * @return
+     */
+    private String paneInfoToString(PaneInfo paneInfo) {
+      String paneString = String.format("pane-%d", paneInfo.getIndex());
+      if (paneInfo.getTiming() == PaneInfo.Timing.LATE) {
+        paneString = String.format("%s-late", paneString);
+      }
+      if (paneInfo.isLast()) {
+        paneString = String.format("%s-last", paneString);
+      }
+      return paneString;
+    }
+
+    /**
+     * Copy from private method in {@link org.apache.beam.sdk.io.DefaultFileNamePolicy}.
+     *
+     * @return
+     */
+    private String windowToString(BoundedWindow window) {
+      if (window instanceof IntervalWindow) {
+        IntervalWindow iw = (IntervalWindow) window;
+        return String.format("%s-%s", iw.start().toString(), iw.end().toString());
+      } else {
+        return window.maxTimestamp().toString();
+      }
     }
   }
 }
