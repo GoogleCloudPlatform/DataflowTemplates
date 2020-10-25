@@ -68,7 +68,7 @@ public class BigQueryTableRowCleaner {
    * @param tableFields a FieldList of Bigquery columns.
    * @param rowKey a String with the name of the field to clean.
    */
-  private static void cleanTableRowFieldStrings(TableRow row, FieldList tableFields, String rowKey) {
+  public static void cleanTableRowFieldStrings(TableRow row, FieldList tableFields, String rowKey) {
     Object rowObject = row.get(rowKey);
     Gson gson = new Gson();
     if (rowObject instanceof Boolean) {
@@ -84,5 +84,4 @@ public class BigQueryTableRowCleaner {
       row.put(rowKey, jsonString);
     }
   }
-
 }

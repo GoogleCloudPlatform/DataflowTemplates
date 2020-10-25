@@ -51,7 +51,7 @@ import org.slf4j.LoggerFactory;
  */
 public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollection<Void>> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(BigQueryStatementIssuingFn.class);
+  private static final Logger LOG = LoggerFactory.getLogger(BigQueryMerger.class);
 
   private Duration windowDuration;
   private BigQuery testBigQueryClient;
@@ -102,7 +102,7 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
 
     private Duration intervalDuration;
 
-    TriggerPerKeyOnFixedIntervals(Duration intervalDuration) {
+    public TriggerPerKeyOnFixedIntervals(Duration intervalDuration) {
       this.intervalDuration = intervalDuration;
     }
 
@@ -163,11 +163,16 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
     @ProcessElement
     public void process(ProcessContext c) throws InterruptedException {
       String statement = c.element();
-      Job jobInfo = issueQueryToBQ(statement);
-      LOG.info("Job Info for triggered job: {}", jobInfo);
-      jobInfo = jobInfo.waitFor();
-      mergesIssued.inc();
-      LOG.info("Job Info for finalized job: {}", jobInfo);
+      try { 
+        Job jobInfo = issueQueryToBQ(statement);
+        LOG.info("Job Info for triggered job: {}", jobInfo);
+        jobInfo = jobInfo.waitFor();
+        mergesIssued.inc();
+        LOG.info("Job Info for finalized job: {}", jobInfo);
+      } catch (Exception e) {
+        LOG.error("Merge Job Failed: Exception: {} Statement: {}",
+          e.toString(), statement);
+      }
     }
 
     private Job issueQueryToBQ(String statement) throws InterruptedException {
