@@ -46,6 +46,14 @@ import org.slf4j.LoggerFactory;
 public class FormatDatastreamRecordToJson
     implements SerializableFunction<GenericRecord, FailsafeElement<String, String>> {
 
+  /**
+   * Names of the custom avro types that we'll be using.
+   */
+  public static class CustomAvroTypes {
+    public static final String VARCHAR = "varchar";
+    public static final String NUMBER = "number";
+  }
+
   static final Logger LOG = LoggerFactory.getLogger(FormatDatastreamRecordToJson.class);
   static final DateTimeFormatter DEFAULT_DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
   static final DateTimeFormatter DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER =
@@ -299,6 +307,12 @@ public class FormatDatastreamRecordToJson
         jsonObject.put(
             fieldName,
             timestamp.atOffset(ZoneOffset.UTC).format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
+      } else if (fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.NUMBER)) {
+        String number = (String) element.get(fieldName);
+        jsonObject.put(fieldName, number);
+      } else if (fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.VARCHAR)){
+        String varcharValue = (String) element.get(fieldName);
+        jsonObject.put(fieldName, varcharValue);
       } else {
         LOG.error("Unknown field type {} for field {} in {}. Ignoring it.",
             fieldSchema, fieldName, element.get(fieldName));
@@ -312,6 +326,7 @@ public class FormatDatastreamRecordToJson
           jsonObject.put(fieldName, element.toString());
           break;
         case "varchar":
+          // TODO(pabloem): Remove this after Datastream rollout N+1 after 2020-10-26
           // Datastream Varchars are represented with their value and length.
           // For us, we only care about values.
           element.get("value");
