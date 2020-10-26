@@ -67,14 +67,27 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
   @Override
   public PCollection<Void> expand(PCollection<MergeInfo> input) {
     final MergeStatementBuilder mergeBuilder = new MergeStatementBuilder(mergeConfiguration);
-    return input
+    PCollection<MergeInfo> mergeInfoRecords = input
         .apply(
             MapElements.into(
                 TypeDescriptors.kvs(
                     TypeDescriptors.strings(), TypeDescriptor.of(MergeInfo.class)))
                 .via(mergeInfo -> KV.of(mergeInfo.getReplicaTable(), mergeInfo)))
         .apply(new TriggerPerKeyOnFixedIntervals<String, MergeInfo>(windowDuration))
-        .apply(Values.create())
+        .apply(Values.create());
+
+    return expandExecuteMerge(mergeInfoRecords, mergeConfiguration, testBigQueryClient);
+  }
+
+  /**
+   * The extended expand function which builds and executes Merge queries.
+   */
+  public static PCollection<Void> expandExecuteMerge(
+        PCollection<MergeInfo> input,
+        MergeConfiguration mergeConfiguration,
+        BigQuery bigQueryClient) {
+    final MergeStatementBuilder mergeBuilder = new MergeStatementBuilder(mergeConfiguration);
+    return input
         .apply(MapElements.into(TypeDescriptors.strings()).via(mergeInfo -> {
           return mergeBuilder.buildMergeStatement(
               mergeInfo.getReplicaTable(),
@@ -84,7 +97,7 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
               mergeInfo.getDeleteField(),
               mergeInfo.getAllFields());
         }))
-        .apply(ParDo.of(new BigQueryStatementIssuingFn(this.testBigQueryClient)))
+        .apply(ParDo.of(new BigQueryStatementIssuingFn(bigQueryClient)))
         .apply(
             MapElements.into(TypeDescriptors.voids())
                 .via(
@@ -137,14 +150,14 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
   /**
    * Class {@link BigQueryStatementIssuingFn}.
    */
-  public class BigQueryStatementIssuingFn extends DoFn<String, Void> {
+  public static class BigQueryStatementIssuingFn extends DoFn<String, Void> {
 
     public static final String JOB_ID_PREFIX = "bigstream_to_bq";
     private final Counter mergesIssued = Metrics.counter(BigQueryMerger.class, "mergesIssued");
 
     private BigQuery bigQueryClient;
 
-    BigQueryStatementIssuingFn(BigQuery bigQueryClient) {
+    public BigQueryStatementIssuingFn(BigQuery bigQueryClient) {
       this.bigQueryClient = bigQueryClient;
     }
 
