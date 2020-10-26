@@ -156,6 +156,11 @@
       },
       {
         "mode": "NULLABLE",
+        "name": "payback_number",
+        "type": "STRING"
+      },
+      {
+        "mode": "NULLABLE",
         "name": "previous_tx_client_id",
         "type": "STRING"
       },
