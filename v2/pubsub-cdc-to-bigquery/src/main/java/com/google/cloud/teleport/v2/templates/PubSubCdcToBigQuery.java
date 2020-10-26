@@ -19,7 +19,7 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.v2.cdc.dlq.BigQueryDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
-import com.google.cloud.teleport.v2.cdc.dlq.PubSubDeadLetterQueueSanitizer;
+import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.cdc.mappers.BigQueryMappers;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.io.WindowedFilenamePolicy;
@@ -55,6 +55,7 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -192,6 +193,7 @@ public class PubSubCdcToBigQuery {
 
     // Dead Letter Queue GCS Directory
     @Description("The Dead Letter Queue GCS Prefix to use for errored data")
+    @Default.String("")
     String getDeadLetterQueueDirectory();
 
     void setDeadLetterQueueDirectory(String value);
@@ -231,18 +233,24 @@ public class PubSubCdcToBigQuery {
 
     Pipeline pipeline = Pipeline.create(options);
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
+    String gcsOutputDateTimeDirectory = null;
+
+    if (options.getDeadLetterQueueDirectory() != null) {
+      gcsOutputDateTimeDirectory = dlqManager.getDlqDirectory() + "YYYY/MM/DD/HH/mm/";
+    }
+
 
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(CODER.getEncodedTypeDescriptor(), CODER);
     coderRegistry.registerCoderForType(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
 
-    InputUDFToTableRow<PubsubMessage> failsafeTableRowTransformer =
-        new InputUDFToTableRow<PubsubMessage>(options.getJavascriptTextTransformGcsPath(),
+    InputUDFToTableRow<String> failsafeTableRowTransformer =
+        new InputUDFToTableRow<String>(options.getJavascriptTextTransformGcsPath(),
                                               options.getJavascriptTextTransformFunctionName(),
                                               options.getPythonTextTransformGcsPath(),
                                               options.getPythonTextTransformFunctionName(),
                                               options.getRuntimeRetries(),
-                                              CODER);
+                                              FAILSAFE_ELEMENT_CODER);
 
 
     BigQueryTableConfigManager bqConfigManager =
@@ -251,6 +259,7 @@ public class PubSubCdcToBigQuery {
             (String) options.getOutputDatasetTemplate(),
             (String) options.getOutputTableNameTemplate(),
             (String) options.getOutputTableSpec());
+
 
     /*
      * Steps:
@@ -274,13 +283,41 @@ public class PubSubCdcToBigQuery {
             PubsubIO.readMessagesWithAttributes()
                 .fromSubscription(options.getInputSubscription()));
 
+    PCollection<FailsafeElement<String, String>> jsonRecords;
+
+    if (options.getDeadLetterQueueDirectory() != null) {
+
+      PCollection<FailsafeElement<String, String>> failsafeMessages =
+          messages.apply("ConvertPubSubToFailsafe", ParDo.of(new PubSubToFailSafeElement()));
+
+      PCollection<FailsafeElement<String, String>> dlqJsonRecords =
+          pipeline
+              .apply(dlqManager.dlqReconsumer())
+              .apply(
+                  ParDo.of(
+                      new DoFn<String, FailsafeElement<String, String>>() {
+                        @ProcessElement
+                        public void process(
+                            @Element String input,
+                            OutputReceiver<FailsafeElement<String, String>> receiver) {
+                          receiver.output(FailsafeElement.of(input, input));
+                        }
+                      }))
+              .setCoder(FAILSAFE_ELEMENT_CODER);
+
+        jsonRecords =
+          PCollectionList.of(failsafeMessages).and(dlqJsonRecords)
+              .apply(Flatten.pCollections());
+      } else {
+        jsonRecords =
+          messages.apply("ConvertPubSubToFailsafe", ParDo.of(new PubSubToFailSafeElement()));
+    }
 
     PCollectionTuple convertedTableRows =
-        messages
+        jsonRecords
             /*
              * Step #2: Transform the PubsubMessages into TableRows
              */
-            .apply("ConvertPubSubToFailsafe", ParDo.of(new PubSubToFailSafeElement()))
             .apply("ApplyUdfAndConvertToTableRow", failsafeTableRowTransformer);
 
     /*
@@ -357,12 +394,12 @@ public class PubSubCdcToBigQuery {
                 .withNumShards(20)
                 .to(
                     new WindowedFilenamePolicy(
-                        dlqManager.getDlqDirectory(), "error", "-SSSSS-of-NNNNN", ".json"))
+                        gcsOutputDateTimeDirectory, "error", "-SSSSS-of-NNNNN", ".json"))
                 .withTempDirectory(
                     FileBasedSink.convertToFileResourceIfPossible(
                         options.getDeadLetterQueueDirectory())));
 
-      PCollection<FailsafeElement<PubsubMessage, String>> transformDeadletter = PCollectionList.of(
+      PCollection<FailsafeElement<String, String>> transformDeadletter = PCollectionList.of(
         ImmutableList.of(
             convertedTableRows.get(failsafeTableRowTransformer.udfDeadletterOut),
             convertedTableRows.get(failsafeTableRowTransformer.transformDeadletterOut)))
@@ -373,7 +410,8 @@ public class PubSubCdcToBigQuery {
                   FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))));
 
       PCollection<String> dlqWindowing = transformDeadletter.apply("Sanitize records",
-          MapElements.via(new PubSubDeadLetterQueueSanitizer()));
+          MapElements.via(new StringDeadLetterQueueSanitizer()))
+          .setCoder(StringUtf8Coder.of());
 
       dlqWindowing.apply(
             "DLQ: Write File(s)",
@@ -382,10 +420,10 @@ public class PubSubCdcToBigQuery {
             .withNumShards(20)
             .to(
                     new WindowedFilenamePolicy(
-                        dlqManager.getDlqDirectory(), "error", "-SSSSS-of-NNNNN", ".json"))
+                        gcsOutputDateTimeDirectory, "error", "-SSSSS-of-NNNNN", ".json"))
                 .withTempDirectory(
                     FileBasedSink.convertToFileResourceIfPossible(
-                        dlqManager.getDlqDirectory() + "tmp/")));
+                        gcsOutputDateTimeDirectory + "tmp/")));
 
     } else {
     PCollection<FailsafeElement<String, String>> failedInserts =
@@ -408,7 +446,7 @@ public class PubSubCdcToBigQuery {
                 .apply("Flatten", Flatten.pCollections())
                 .apply(
         "WriteFailedRecords",
-            ErrorConverters.WritePubsubMessageErrors.newBuilder()
+            ErrorConverters.WriteStringMessageErrors.newBuilder()
                 .setErrorRecordsTable(
                     BigQueryConverters.maybeUseDefaultDeadletterTable(
                         options.getOutputDeadletterTable(),

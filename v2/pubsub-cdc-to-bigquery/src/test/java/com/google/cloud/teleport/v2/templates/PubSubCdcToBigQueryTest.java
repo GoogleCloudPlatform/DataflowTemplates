@@ -64,8 +64,8 @@ public class PubSubCdcToBigQueryTest {
     final Instant timestamp =
         new DateTime(2022, 2, 22, 22, 22, 22, 222, DateTimeZone.UTC).toInstant();
 
-    final FailsafeElementCoder<PubsubMessage, String> coder =
-        FailsafeElementCoder.of(PubsubMessageWithAttributesCoder.of(), StringUtf8Coder.of());
+    final FailsafeElementCoder<String, String> coder =
+        FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
 
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
@@ -80,8 +80,8 @@ public class PubSubCdcToBigQueryTest {
     options.setJavascriptTextTransformGcsPath(transformPath);
     options.setJavascriptTextTransformFunctionName(transformFunction);
 
-    InputUDFToTableRow<PubsubMessage> deadletterHandler =
-        new InputUDFToTableRow<PubsubMessage>(options.getJavascriptTextTransformGcsPath(),
+    InputUDFToTableRow<String> deadletterHandler =
+        new InputUDFToTableRow<String>(options.getJavascriptTextTransformGcsPath(),
                                               options.getJavascriptTextTransformFunctionName(),
                                               options.getPythonTextTransformGcsPath(),
                                               options.getPythonTextTransformFunctionName(),

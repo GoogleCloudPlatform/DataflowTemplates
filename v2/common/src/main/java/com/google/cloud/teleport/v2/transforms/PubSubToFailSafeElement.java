@@ -27,12 +27,13 @@ import org.apache.beam.sdk.transforms.DoFn;
  * a error records table.
  */
 public class PubSubToFailSafeElement
-    extends DoFn<PubsubMessage, FailsafeElement<PubsubMessage, String>> {
+    extends DoFn<PubsubMessage, FailsafeElement<String, String>> {
   @ProcessElement
   public void processElement(ProcessContext context) {
     PubsubMessage message = context.element();
     context.output(
-        FailsafeElement.of(message, new String(message.getPayload(), StandardCharsets.UTF_8)));
+        FailsafeElement.of(new String(message.getPayload(), StandardCharsets.UTF_8),
+                               new String(message.getPayload(), StandardCharsets.UTF_8)));
   }
 
   public static PubSubToFailSafeElement create() {
