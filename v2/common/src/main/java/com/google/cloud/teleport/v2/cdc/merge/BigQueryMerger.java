@@ -24,7 +24,9 @@ import com.google.cloud.bigquery.TableResult;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.UUID;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -130,6 +132,7 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
                           AfterProcessingTime.pastFirstElementInPane()
                               .plusDelayOf(Duration.ZERO)
                               .alignedTo(intervalDuration, org.joda.time.Instant.now()))))
+          .apply(ParDo.of(new FilterPerGroupValues<K, V>()))
           .apply(GroupByKey.create())
           .apply(
               ParDo.of(
@@ -144,6 +147,32 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
                       }
                     }
                   }));
+    }
+
+    private static class FilterPerGroupValues<K, V> extends DoFn<KV<K, V>, KV<K, V>> {
+      private Set<K> keysProcessed;
+
+      @Setup
+      public void setUp() {
+        if (keysProcessed == null) {
+          keysProcessed = new HashSet<K>();
+        }
+      }
+
+      @ProcessElement
+      public void process(ProcessContext c) {
+        K key = c.element().getKey();
+        if (!keysProcessed.contains(key)) {
+          c.output(c.element());
+          keysProcessed.add(key);
+        }
+      }
+
+      @FinishBundle
+      public void cleanKeysProcessed(FinishBundleContext c) {
+        keysProcessed.clear();
+      }
+
     }
   }
 
