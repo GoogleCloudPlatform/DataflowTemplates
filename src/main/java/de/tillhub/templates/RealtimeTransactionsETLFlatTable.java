@@ -684,7 +684,7 @@ public class RealtimeTransactionsETLFlatTable {
             JSONObject obj = new JSONObject(jsonAsStr);
             String clientAccount = message.getAttribute("client_account");
             String transaction = message.getAttribute("transaction");
-            String createdAt = ((JSONObject)obj.get("created_at")).getString("iso").split("T")[0];
+            String createdAt = obj.getString("date").split("T")[0];
             obj.put("client_account", clientAccount);
             obj.put("oltp_entity_id", transaction);
 
