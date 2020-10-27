@@ -20,6 +20,7 @@ function transformFlatTableTransaction(inJson) {
     result.register_number = obj.register_number
     result.guid = obj.guid
     result.date = isoDateToBQDate(obj.date)
+    result.dateAsDay = result.date.split('T')[0] //keep only a day's resolution
     result.cashier_staff_number = obj.cashier_staff_number
     result.branch_fa_ident = obj.branch_fa_ident
     result.metadata = obj.metadata

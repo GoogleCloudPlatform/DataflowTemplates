@@ -46,6 +46,11 @@
   },
   {
     "mode": "NULLABLE",
+    "name": "dateAsDay",
+    "type": "DATE"
+  },
+  {
+    "mode": "NULLABLE",
     "name": "cashier_staff_number",
     "type": "STRING"
   },
