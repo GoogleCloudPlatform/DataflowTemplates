@@ -42,7 +42,13 @@ public class FlatMapper extends BaseMapper {
             String key = (String)keys.next();
             if(currObject.get(key) instanceof JSONObject){
                 LOG.info(FlatMapper.class.getCanonicalName() + ":: " + key + " is Object");
-                elemMap.put(key, mapElementsRecursive((JSONObject)currObject.get(key)));
+                // API-224: should handle also empty objects ( "{}" }
+                if(((JSONObject) currObject.get(key)).length() == 0) {
+                    LOG.warn("Key " + key + " is an empty object. Resolving to null");
+                    elemMap.put(key, null);
+                } else {
+                    elemMap.put(key, mapElementsRecursive((JSONObject)currObject.get(key)));
+                }
             } else if(currObject.get(key) instanceof JSONArray) {
                 LOG.info(FlatMapper.class.getCanonicalName() + ":: " + key + " is Array");
                 elemMapArr = new ArrayList<Object>();
