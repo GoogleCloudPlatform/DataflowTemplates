@@ -26,12 +26,17 @@ import java.util.List;
 import org.apache.beam.sdk.extensions.gcp.util.GcsUtil;
 import org.apache.beam.sdk.extensions.gcp.util.GcsUtil.GcsUtilFactory;
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
+import org.apache.beam.sdk.io.FileIO;
+import org.apache.beam.sdk.io.FileIO.ReadableFile;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.Values;
 import org.apache.beam.sdk.transforms.Watch;
+import org.apache.beam.sdk.transforms.Watch.Growth;
 import org.apache.beam.sdk.transforms.Watch.Growth.PollFn;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.TypeDescriptors;
 import org.apache.beam.vendor.guava.v20_0.com.google.common.collect.Lists;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
@@ -68,13 +73,15 @@ import org.slf4j.LoggerFactory;
  *    <li>`gs://BUCKET/root/prefix/HR_SALARIES/` - This directory represents an "object"</li>
  *  </ul>
  */
-public class DataStreamIO extends PTransform<PCollection<String>, PCollection<String>> {
+public class DataStreamIO extends PTransform<PCollection<String>, PCollection<ReadableFile>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamIO.class);
 
+  PCollection<String> directories = null;
+
   @Override
-  public PCollection<String> expand(PCollection<String> input) {
-    return input
+  public PCollection<ReadableFile> expand(PCollection<String> input) {
+    directories = input
         .apply(Watch
             .growthOf(new DirectoryMatchPollFn(1, 1))
             .withPollInterval(Duration.standardSeconds(120)))
@@ -83,6 +90,17 @@ public class DataStreamIO extends PTransform<PCollection<String>, PCollection<St
             .growthOf(new DirectoryMatchPollFn(5, 5))
             .withPollInterval(Duration.standardSeconds(5)))
         .apply(Values.create());
+
+    return directories
+        .apply("GetDirectoryGlobs",
+                MapElements.into(TypeDescriptors.strings()).via(path -> path + "*"))
+            .apply(
+                "MatchDatastreamAvroFiles",
+                FileIO.matchAll()
+                    .continuously(
+                        Duration.standardSeconds(5),
+                        Growth.afterTimeSinceNewOutput(Duration.standardMinutes(10))))
+            .apply("ReadFiles", FileIO.readMatches());
   }
 
   static class DirectoryMatchPollFn extends PollFn<String, String> {

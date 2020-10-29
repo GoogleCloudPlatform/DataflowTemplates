@@ -20,7 +20,6 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestStream;
-import org.apache.beam.sdk.values.PCollection;
 import org.joda.time.Duration;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -54,11 +53,13 @@ public class DataStreamIOTest {
 
     Pipeline pipeline = Pipeline.create();
 
-    PCollection<String> directories = pipeline
-        .apply(mainStream)
-        .apply(new DataStreamIO());
+    DataStreamIO dsIo = new DataStreamIO();
 
-    PAssert.that(directories).containsInAnyOrder(
+    pipeline
+        .apply(mainStream)
+        .apply(dsIo);
+
+    PAssert.that(dsIo.directories).containsInAnyOrder(
         "gs://ds-fileio-tests/path-with-files/HR_JOBS/2020/07/14/11/03/",
         "gs://ds-fileio-tests/path-with-files/HR_JOBS/2020/07/14/12/16/");
     pipeline.run().waitUntilFinish();
