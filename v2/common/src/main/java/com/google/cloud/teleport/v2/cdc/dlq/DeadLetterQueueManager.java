@@ -24,6 +24,7 @@ import org.apache.beam.sdk.values.PCollection;
  */
 public class DeadLetterQueueManager {
 
+  private static final String DATETIME_FILEPATH_SUFFIX = "YYYY/MM/DD/HH/mm/";
   private final String dlqDirectory;
 
   private DeadLetterQueueManager(String dlqDirectory) {
@@ -36,6 +37,10 @@ public class DeadLetterQueueManager {
 
   public String getDlqDirectory() {
     return dlqDirectory;
+  }
+
+  public String getDlqDirectoryWithDateTime() {
+    return dlqDirectory + DATETIME_FILEPATH_SUFFIX;
   }
 
   public PTransform<PBegin, PCollection<String>> dlqReconsumer() {

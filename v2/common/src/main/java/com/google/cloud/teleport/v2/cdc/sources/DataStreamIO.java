@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.cdc.sources;
 
 import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.MoreObjects.firstNonNull;
 
+import com.google.api.client.util.DateTime;
 import com.google.api.services.storage.model.Objects;
 import com.google.api.services.storage.model.StorageObject;
 import java.io.IOException;
@@ -77,23 +78,32 @@ public class DataStreamIO extends PTransform<PCollection<String>, PCollection<Re
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamIO.class);
 
+  private String rfcStartDateTime;
   PCollection<String> directories = null;
+
+  public DataStreamIO() {}
+
+  public DataStreamIO(String rfcStartDateTime) {
+    this.rfcStartDateTime = rfcStartDateTime;
+  }
 
   @Override
   public PCollection<ReadableFile> expand(PCollection<String> input) {
     directories = input
-        .apply(Watch
+        .apply("FindTableDirectory",
+          Watch
             .growthOf(new DirectoryMatchPollFn(1, 1))
             .withPollInterval(Duration.standardSeconds(120)))
         .apply(Values.create())
-        .apply(Watch
-            .growthOf(new DirectoryMatchPollFn(5, 5))
+        .apply("FindTablePerMinuteDirectory",
+          Watch
+            .growthOf(new DirectoryMatchPollFn(5, 5, this.rfcStartDateTime))
             .withPollInterval(Duration.standardSeconds(5)))
         .apply(Values.create());
 
     return directories
         .apply("GetDirectoryGlobs",
-                MapElements.into(TypeDescriptors.strings()).via(path -> path + "*"))
+                MapElements.into(TypeDescriptors.strings()).via(path -> path + "**"))
             .apply(
                 "MatchDatastreamAvroFiles",
                 FileIO.matchAll()
@@ -107,10 +117,20 @@ public class DataStreamIO extends PTransform<PCollection<String>, PCollection<Re
     private transient GcsUtil util;
     private final Integer minDepth;
     private final Integer maxDepth;
+    private DateTime startDateTime = DateTime.parseRfc3339("1970-01-01T00:00:00.00Z");
 
     DirectoryMatchPollFn(Integer minDepth, Integer maxDepth) {
       this.maxDepth = maxDepth;
       this.minDepth = minDepth;
+    }
+
+    DirectoryMatchPollFn(Integer minDepth, Integer maxDepth, String rfcStartDateTime) {
+      this.maxDepth = maxDepth;
+      this.minDepth = minDepth;
+
+      if (rfcStartDateTime != null) {
+        this.startDateTime = DateTime.parseRfc3339(rfcStartDateTime);
+      }
     }
 
     private Integer getObjectDepth(String objectName) {
@@ -128,6 +148,14 @@ public class DataStreamIO extends PTransform<PCollection<String>, PCollection<Re
         util = new GcsUtilFactory().create(PipelineOptionsFactory.create());
       }
       return util;
+    }
+
+    private boolean shouldFilterObject(StorageObject object) {
+      DateTime updatedDateTime = object.getUpdated();
+      if (updatedDateTime.getValue() < this.startDateTime.getValue()) {
+        return true;
+      }
+      return false;
     }
 
     private List<String> getMatchingObjects(GcsPath path) throws IOException {
@@ -148,6 +176,10 @@ public class DataStreamIO extends PTransform<PCollection<String>, PCollection<Re
           }
           if (object.getName().equals(path.getObject())) {
             // Output only direct children and not the directory itself.
+            continue;
+          }
+          if (shouldFilterObject(object)) {
+            // Skip file due to iinitial timestamp
             continue;
           }
           Integer newDepth = getObjectDepth(object.getName());

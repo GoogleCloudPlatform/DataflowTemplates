@@ -74,7 +74,7 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
     // We want to match all the files in this directory (but not the directories).
     // TODO: Paths resolve converts "gs://bucket/.." to "gs:/bucket/.."
     // String filePattern = Paths.get(dlqDirectory).resolve("*").toString();
-    String filePattern = dlqDirectory + "*";
+    String filePattern = dlqDirectory + "**";
     return in.getPipeline()
         .apply(FileIO.match()
             .filepattern(filePattern)
