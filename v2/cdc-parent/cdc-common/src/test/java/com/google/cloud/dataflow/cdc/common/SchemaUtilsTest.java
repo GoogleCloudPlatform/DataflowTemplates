@@ -40,6 +40,7 @@ public class SchemaUtilsTest {
             .addStringField("country")
             .addInt32Field("year_founded")
             .addInt16Field("tiny_int")
+            .addDecimalField("decimal")
             .build())
         .addInt64Field("timestampMs")
         .build();
