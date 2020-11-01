@@ -22,8 +22,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import com.google.cloud.dataflow.cdc.common.DataflowCdcRowFormat;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+
+import java.math.BigDecimal;
 import java.util.List;
 import org.apache.beam.sdk.values.Row;
+import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -52,6 +55,7 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslatorTest {
         .field("some_timestamp", Schema.INT64_SCHEMA)
         .field("float_field", Schema.FLOAT32_SCHEMA)
         .field("double_field", Schema.FLOAT64_SCHEMA)
+        .field("decimal_field", Decimal.schema(8))
         .field("struct_field", internalStructSchema)
         .build();
 
@@ -70,6 +74,7 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslatorTest {
             .put("some_timestamp", 123456579L)
             .put("float_field", new Float(123.456))
             .put("double_field", 123456579.98654321)
+            .put("decimal_field", new BigDecimal("123456579.98654321"))
             .put("struct_field",
                 new Struct(internalStructSchema).put("astring", "mastring")));
 
@@ -105,6 +110,8 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslatorTest {
         is(value.getStruct("after").getFloat32("float_field")));
     assertThat(fullRecord.getDouble("double_field"),
         is(value.getStruct("after").getFloat64("double_field")));
+    assertThat(fullRecord.getValue("decimal_field"),
+        is(value.getStruct("after").get("decimal_field")));
     assertThat(fullRecord.getRow("struct_field").getString("astring"),
         is(value.getStruct("after").getStruct("struct_field").getString("astring")));
   }
@@ -125,6 +132,7 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslatorTest {
         .field("some_timestamp", Schema.INT64_SCHEMA)
         .field("float_field", Schema.FLOAT32_SCHEMA)
         .field("double_field", Schema.FLOAT64_SCHEMA)
+        .field("decimal_field", Decimal.schema(8))
         .field("struct_field", internalStructSchema)
         .build();
 
@@ -143,6 +151,7 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslatorTest {
             .put("some_timestamp", 123456579L)
             .put("float_field", new Float(123.456))
             .put("double_field", 123456579.98654321)
+            .put("decimal_field", new BigDecimal("123456579.98654321"))
             .put("struct_field",
                 new Struct(internalStructSchema).put("astring", "mastring")));
 
@@ -177,6 +186,8 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslatorTest {
         is(value.getStruct("after").getFloat32("float_field")));
     assertThat(fullRecord.getDouble("double_field"),
         is(value.getStruct("after").getFloat64("double_field")));
+    assertThat(fullRecord.getValue("decimal_field"),
+        is(value.getStruct("after").get("decimal_field")));
     assertThat(fullRecord.getRow("struct_field").getString("astring"),
         is(value.getStruct("after").getStruct("struct_field").getString("astring")));
   }
