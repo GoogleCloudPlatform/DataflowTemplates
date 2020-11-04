@@ -25,6 +25,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Iterator;
 import java.util.List;
 import org.apache.avro.Conversions.DecimalConversion;
 import org.apache.avro.LogicalTypes;
@@ -61,6 +62,7 @@ public class FormatDatastreamRecordToJson
   static final DecimalConversion DECIMAL_CONVERSION = new DecimalConversion();
   static final DateConversion DATE_CONVERSION = new DateConversion();
   private String streamName;
+  private boolean lowercaseSourceColumns = false;
 
   private FormatDatastreamRecordToJson() {}
 
@@ -73,11 +75,19 @@ public class FormatDatastreamRecordToJson
     return this;
   }
 
+  public FormatDatastreamRecordToJson withLowercaseSourceColumns() {
+    this.lowercaseSourceColumns = true;
+    return this;
+  }
+
   @Override
   public FailsafeElement<String, String> apply(GenericRecord record) {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode outputObject = mapper.createObjectNode();
-    UnifiedTypesFormatter.payloadToJson((GenericRecord) record.get("payload"), outputObject);
+    UnifiedTypesFormatter.payloadToJson(getPayload(record), outputObject);
+    if (this.lowercaseSourceColumns) {
+      outputObject = getLowerCaseObject(outputObject);
+    }
 
     // General DataStream Metadata
     outputObject.put("_metadata_stream", getStreamName(record));
@@ -100,6 +110,22 @@ public class FormatDatastreamRecordToJson
     outputObject.put("_metadata_source", getSourceMetadata(record));
 
     return FailsafeElement.of(outputObject.toString(), outputObject.toString());
+  }
+
+  private GenericRecord getPayload(GenericRecord record) {
+    return (GenericRecord) record.get("payload");
+  }
+
+  private ObjectNode getLowerCaseObject(ObjectNode outputObject) {
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode loweredOutputObject = mapper.createObjectNode();
+
+    for (Iterator<String> fieldNames=outputObject.getFieldNames(); fieldNames.hasNext(); ) {
+      String fieldName = fieldNames.next();
+      loweredOutputObject.put(fieldName.toLowerCase(), outputObject.get(fieldName));
+    }
+
+    return loweredOutputObject;
   }
 
   private JsonNode getSourceMetadata(GenericRecord record) {

@@ -74,6 +74,11 @@
             </exclusions>
         </dependency>
         <dependency>
+          <groupId>org.apache.beam</groupId>
+          <artifactId>beam-sdks-java-io-jdbc</artifactId>
+          <version>${beam.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-sdks-java-extensions-google-cloud-platform-core</artifactId>
             <version>${beam.version}</version>
@@ -379,6 +384,9 @@
                 <configuration>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
+                    <!-- <compilerArgument>-parameters</compilerArgument> -->
+                    <parameters>true</parameters>
+                    <testCompilerArgument>-parameters</testCompilerArgument>  
                 </configuration>
             </plugin>
             <plugin>
@@ -582,6 +590,7 @@
         <module>cdc-parent</module>
         <module>csv-to-elasticsearch</module>
         <module>datastream-to-bigquery</module>
+        <module>datastream-to-postgres</module>
         <module>file-format-conversion</module>
         <module>hive-to-bigquery</module>
         <module>kafka-to-bigquery</module>
