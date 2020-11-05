@@ -109,6 +109,9 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
     public void process(
         @Element Metadata dlqFile,
         OutputReceiver<String> outputs) throws IOException {
+      if (dlqFile.resourceId().getFilename().contains("/tmp/")) {
+        return;
+      }
       // First we move the file to a temporary location so it will not be picked up
       // by the DLQ picker again.
       ResourceId newFileLocation = dlqFile.resourceId()
