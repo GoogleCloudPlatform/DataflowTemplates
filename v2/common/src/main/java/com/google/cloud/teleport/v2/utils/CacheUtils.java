@@ -78,6 +78,7 @@ public class CacheUtils {
   public abstract static class MappedObjectCache<KeyT, ValueT> {
 
     private Map<KeyT, ExpiringSupplier<ValueT>> cachedObjects = new HashMap<KeyT, ExpiringSupplier<ValueT>>();
+    private int maxNumRetries = 0;
     private Integer cacheResetTimeUnitValue = 5;
     private TimeUnit cacheResetTimeUnit = TimeUnit.MINUTES;
 
@@ -95,6 +96,18 @@ public class CacheUtils {
      */
     public MappedObjectCache withCacheResetTimeUnitValue(Integer value) {
       this.cacheResetTimeUnitValue = value;
+
+      return this;
+    }
+
+    /**
+     * Set the number of retries {@code MappedObjectCache} will use
+     * each time it attempt to reset the cache.
+     *
+     * @param value The number of minutes before reseting a cached value.
+     */
+    public MappedObjectCache withCacheNumRetries(int numRetries) {
+      this.maxNumRetries = numRetries;
 
       return this;
     }
@@ -123,6 +136,24 @@ public class CacheUtils {
 
     public abstract ValueT getObjectValue(KeyT key);
 
+    private ValueT getObjectValueWithRetries(KeyT key, int retriesRemaining) {
+      try {
+        return getObjectValue(key);
+      } catch (Exception e) {
+        if (retriesRemaining > 0) {
+          int sleepSecs = (this.maxNumRetries - retriesRemaining + 1) * 10;
+          LOG.info(
+            "Cache Exception, will retry after {} seconds: {}",
+            sleepSecs, e.toString());
+          try {
+            Thread.sleep(sleepSecs * 1000);
+            return getObjectValueWithRetries(key, retriesRemaining-1);
+          } catch (InterruptedException i) {}
+        }
+        throw e;
+      }
+    }
+
     /**
      * Returns a {@code ValueT} extracted from abstract getObjectValue(key)
      * and sets the value in the local cache.
@@ -130,7 +161,7 @@ public class CacheUtils {
      * @param key a key used to lookup the value in the set.
      */
     public ValueT reset(KeyT key) {
-      ValueT value = getObjectValue(key);
+      ValueT value = getObjectValueWithRetries(key, this.maxNumRetries);
 
       ExpiringSupplier<ValueT> valueSupplier =
         new ExpiringSupplier<ValueT>(value, this.cacheResetTimeUnitValue, this.cacheResetTimeUnit);

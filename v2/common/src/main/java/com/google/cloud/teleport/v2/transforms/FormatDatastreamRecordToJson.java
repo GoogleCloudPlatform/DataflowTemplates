@@ -380,7 +380,7 @@ public class FormatDatastreamRecordToJson
               ((Long) element.get("timestamp")) / 1000);
           // Offset comes in milliseconds
           ZoneOffset offset = ZoneOffset.ofTotalSeconds(
-              ((Long) element.get("offset")).intValue() / 1000);
+              ((Number) element.get("offset")).intValue() / 1000);
           ZonedDateTime fullDate = timestamp.atOffset(offset).toZonedDateTime();
           jsonObject.put(
               fieldName,
