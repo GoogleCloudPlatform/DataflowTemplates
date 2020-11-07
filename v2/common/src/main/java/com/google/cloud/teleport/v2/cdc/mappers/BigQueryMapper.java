@@ -178,7 +178,9 @@ public class BigQueryMapper<InputT, OutputT>
           BigQueryOptions.newBuilder().setProjectId(getProjectId()).build().getService();
     }
     if (this.tableCache == null) {
-      this.tableCache = new BigQueryTableCache(this.bigquery);
+      this.tableCache =
+        (BigQueryTableCache) new BigQueryTableCache(this.bigquery)
+          .withCacheNumRetries(3);
     }
   }
 
@@ -256,13 +258,15 @@ public class BigQueryMapper<InputT, OutputT>
       updateTableIfRequired(tableId, row);
     } catch (Exception e) {
       if (retries > 0) {
-        LOG.info("Mapper Retry {} Remaining: {}", String.valueOf(retries), e.toString());
         try {
-          Thread.sleep(2000);
+          int sleepSecs = (getMapperRetries() - retries + 1) * 5;
+          LOG.info("Mapper Retry {} Remaining: {}", String.valueOf(retries), e.toString());
+          Thread.sleep(sleepSecs);
+          applyMapperToTableRow(tableId, row, retries - 1);
         } catch (InterruptedException i) {
+          LOG.info("Mapper Retries Interrupted: {}", e.toString());
           throw e;
         }
-        applyMapperToTableRow(tableId, row, retries - 1);
       } else {
         LOG.info("Mapper Retries Exceeded: {}", e.toString());
         throw e;
