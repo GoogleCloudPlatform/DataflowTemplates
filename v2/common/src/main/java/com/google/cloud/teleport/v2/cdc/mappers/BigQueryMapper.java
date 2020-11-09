@@ -23,6 +23,7 @@ import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.FieldList;
 import com.google.cloud.bigquery.LegacySQLTypeName;
 import com.google.cloud.bigquery.Schema;
+import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.StandardTableDefinition;
 import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableId;
@@ -389,9 +390,9 @@ public class BigQueryMapper<InputT, OutputT>
     Field newField;
 
     if (inputSchema.containsKey(rowKey)) {
-      newField = Field.of(rowKey, inputSchema.get(rowKey));
+      newField = Field.of(rowKey, inputSchema.get(rowKey).getStandardType());
     } else {
-      newField = Field.of(rowKey, LegacySQLTypeName.STRING);
+      newField = Field.of(rowKey, StandardSQLTypeName.STRING);
     }
 
     newFieldList.add(newField);
