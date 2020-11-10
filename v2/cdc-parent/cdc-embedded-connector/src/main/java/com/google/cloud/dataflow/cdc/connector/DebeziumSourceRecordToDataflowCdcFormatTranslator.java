@@ -16,16 +16,19 @@
 package com.google.cloud.dataflow.cdc.connector;
 
 import com.google.cloud.dataflow.cdc.common.DataflowCdcRowFormat;
+
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+
+import io.debezium.time.MicroTimestamp;
+import io.debezium.time.NanoTimestamp;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.values.Row;
-import org.apache.kafka.connect.data.Decimal;
-import org.apache.kafka.connect.data.Field;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.data.*;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.joda.time.Instant;
 import org.slf4j.LoggerFactory;
 
 /**
@@ -144,6 +147,7 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslator {
     for (Field f : schema.fields()) {
       Schema.Type t = f.schema().type();
       org.apache.beam.sdk.schemas.Schema.Field beamField;
+      final String fieldSchemaName = f.schema().name();
       switch (t) {
         case INT8:
         case INT16:
@@ -163,11 +167,23 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslator {
           }
           break;
         case INT64:
-          if (f.schema().isOptional()) {
-            beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
-                f.name(), FieldType.INT64);
+          if (MicroTimestamp.SCHEMA_NAME.equals(fieldSchemaName) || NanoTimestamp.SCHEMA_NAME.equals(fieldSchemaName)) {
+            throw new DataException("Timestamps encoded using " + fieldSchemaName + " are not supported.");
+          }
+          if (io.debezium.time.Timestamp.SCHEMA_NAME.equals(fieldSchemaName) || Timestamp.LOGICAL_NAME.equals(fieldSchemaName)) {
+            if (f.schema().isOptional()) {
+              beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
+                      f.name(), FieldType.DATETIME);
+            } else {
+              beamField = org.apache.beam.sdk.schemas.Schema.Field.of(f.name(), FieldType.DATETIME);
+            }
           } else {
-            beamField = org.apache.beam.sdk.schemas.Schema.Field.of(f.name(), FieldType.INT64);
+            if (f.schema().isOptional()) {
+              beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
+                      f.name(), FieldType.INT64);
+            } else {
+              beamField = org.apache.beam.sdk.schemas.Schema.Field.of(f.name(), FieldType.INT64);
+            }
           }
           break;
         case FLOAT32:
@@ -203,7 +219,7 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslator {
           }
           break;
         case BYTES:
-          if (Decimal.LOGICAL_NAME.equals(f.schema().name())) {
+          if (Decimal.LOGICAL_NAME.equals(fieldSchemaName)) {
             if (f.schema().isOptional()) {
               beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
                       f.name(), FieldType.DECIMAL);
@@ -235,11 +251,11 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslator {
         default:
           throw new DataException(String.format("Unsupported data type: {}", t));
       }
-      if (f.schema().name() != null && !f.schema().name().isEmpty()) {
+      if (fieldSchemaName != null && !fieldSchemaName.isEmpty()) {
         FieldType fieldType = beamField.getType();
-        fieldType = fieldType.withMetadata("logicalType", f.schema().name());
+        fieldType = fieldType.withMetadata("logicalType", fieldSchemaName);
         beamField = beamField.withType(fieldType)
-            .withDescription(f.schema().name());
+            .withDescription(fieldSchemaName);
       }
       beamSchemaBuilder.addField(beamField);
     }
@@ -273,6 +289,10 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslator {
           break;
         case DECIMAL:
           rowBuilder.addValue(value.get(f.getName()));
+          break;
+        case DATETIME:
+          final Object instant = value.get(f.getName());
+          rowBuilder.addValue(instant == null ? null : new Instant(instant));
           break;
         case BYTES:
           rowBuilder.addValue(value.getBytes(f.getName()));
