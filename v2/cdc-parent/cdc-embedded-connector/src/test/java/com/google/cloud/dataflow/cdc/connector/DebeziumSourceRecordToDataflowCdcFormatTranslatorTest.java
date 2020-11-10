@@ -15,16 +15,12 @@
  */
 package com.google.cloud.dataflow.cdc.connector;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
 import com.google.cloud.dataflow.cdc.common.DataflowCdcRowFormat;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-
-import java.math.BigDecimal;
-import java.util.List;
+import io.debezium.time.MicroTimestamp;
+import io.debezium.time.NanoTimestamp;
+import io.debezium.time.Timestamp;
 import org.apache.beam.sdk.values.Row;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
@@ -33,6 +29,14 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
+import java.util.Date;
+import java.util.List;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /** Tests for message translations. */
 public class DebeziumSourceRecordToDataflowCdcFormatTranslatorTest {
@@ -53,6 +57,8 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslatorTest {
         .field("team", Schema.STRING_SCHEMA)
         .field("year_founded", Schema.INT32_SCHEMA)
         .field("some_timestamp", Schema.INT64_SCHEMA)
+        .field("some_milli_timestamp", Timestamp.schema())
+        .field("some_kafka_timestamp", org.apache.kafka.connect.data.Timestamp.SCHEMA)
         .field("float_field", Schema.FLOAT32_SCHEMA)
         .field("double_field", Schema.FLOAT64_SCHEMA)
         .field("decimal_field", Decimal.schema(8))
@@ -72,6 +78,8 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslatorTest {
             .put("team", "team_PXHU")
             .put("year_founded", 1916)
             .put("some_timestamp", 123456579L)
+            .put("some_milli_timestamp", 123456579L)
+            .put("some_kafka_timestamp", new Date(123456579L))
             .put("float_field", new Float(123.456))
             .put("double_field", 123456579.98654321)
             .put("decimal_field", new BigDecimal("123456579.98654321"))
@@ -106,6 +114,10 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslatorTest {
         is(value.getStruct("after").getInt32("year_founded")));
     assertThat(fullRecord.getInt64("some_timestamp"),
         is(value.getStruct("after").getInt64("some_timestamp")));
+    assertThat(fullRecord.getDateTime("some_milli_timestamp").getMillis(),
+            is(value.getStruct("after").getInt64("some_milli_timestamp")));
+    assertThat(fullRecord.getDateTime("some_kafka_timestamp").getMillis(),
+            is(((Date) value.getStruct("after").get("some_kafka_timestamp")).getTime()));
     assertThat(fullRecord.getFloat("float_field"),
         is(value.getStruct("after").getFloat32("float_field")));
     assertThat(fullRecord.getDouble("double_field"),
@@ -130,6 +142,8 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslatorTest {
         .field("team", Schema.STRING_SCHEMA)
         .field("year_founded", Schema.INT32_SCHEMA)
         .field("some_timestamp", Schema.INT64_SCHEMA)
+        .field("some_milli_timestamp", Timestamp.schema())
+        .field("some_kafka_timestamp", org.apache.kafka.connect.data.Timestamp.SCHEMA)
         .field("float_field", Schema.FLOAT32_SCHEMA)
         .field("double_field", Schema.FLOAT64_SCHEMA)
         .field("decimal_field", Decimal.schema(8))
@@ -149,6 +163,8 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslatorTest {
             .put("team", "team_PXHU")
             .put("year_founded", 1916)
             .put("some_timestamp", 123456579L)
+            .put("some_milli_timestamp", 123456579L)
+            .put("some_kafka_timestamp", new Date(123456579L))
             .put("float_field", new Float(123.456))
             .put("double_field", 123456579.98654321)
             .put("decimal_field", new BigDecimal("123456579.98654321"))
@@ -182,6 +198,10 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslatorTest {
         is(value.getStruct("after").getInt32("year_founded")));
     assertThat(fullRecord.getInt64("some_timestamp"),
         is(value.getStruct("after").getInt64("some_timestamp")));
+    assertThat(fullRecord.getDateTime("some_milli_timestamp").getMillis(),
+        is(value.getStruct("after").getInt64("some_milli_timestamp")));
+    assertThat(fullRecord.getDateTime("some_kafka_timestamp").getMillis(),
+        is(((Date) value.getStruct("after").get("some_kafka_timestamp")).getTime()));
     assertThat(fullRecord.getFloat("float_field"),
         is(value.getStruct("after").getFloat32("float_field")));
     assertThat(fullRecord.getDouble("double_field"),
