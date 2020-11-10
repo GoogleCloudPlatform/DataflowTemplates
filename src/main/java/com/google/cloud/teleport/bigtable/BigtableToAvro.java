@@ -20,6 +20,7 @@ import com.google.bigtable.v2.Cell;
 import com.google.bigtable.v2.Column;
 import com.google.bigtable.v2.Family;
 import com.google.bigtable.v2.Row;
+import com.google.bigtable.v2.RowFilter;
 import com.google.cloud.teleport.util.DualInputNestedValueProvider;
 import com.google.cloud.teleport.util.DualInputNestedValueProvider.TranslatorInput;
 import com.google.protobuf.ByteOutput;
@@ -79,6 +80,12 @@ public class BigtableToAvro {
 
     @SuppressWarnings("unused")
     void setFilenamePrefix(ValueProvider<String> filenamePrefix);
+
+    @Description("Limit the cells fetched to the N most recent per column")
+    ValueProvider<Integer> getCellsPerColumn();
+
+    @SuppressWarnings("unused")
+    void setCellsPerColumn(ValueProvider<Integer> cellsPerColumn);
   }
 
   /**
@@ -105,6 +112,11 @@ public class BigtableToAvro {
             .withProjectId(options.getBigtableProjectId())
             .withInstanceId(options.getBigtableInstanceId())
             .withTableId(options.getBigtableTableId());
+
+    if (options.getCellsPerColumn().isAccessible()) {
+      read = read.withRowFilter(RowFilter.newBuilder()
+          .setCellsPerColumnLimitFilter(options.getCellsPerColumn().get()).build());
+    }
 
     // Do not validate input fields if it is running as a template.
     if (options.as(DataflowPipelineOptions.class).getTemplateLocation() != null) {
