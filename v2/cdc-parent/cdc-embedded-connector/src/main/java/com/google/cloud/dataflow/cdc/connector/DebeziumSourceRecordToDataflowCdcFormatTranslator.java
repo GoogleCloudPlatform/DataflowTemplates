@@ -167,10 +167,11 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslator {
           }
           break;
         case INT64:
-          if (MicroTimestamp.SCHEMA_NAME.equals(fieldSchemaName) || NanoTimestamp.SCHEMA_NAME.equals(fieldSchemaName)) {
-            throw new DataException("Timestamps encoded using " + fieldSchemaName + " are not supported.");
-          }
-          if (io.debezium.time.Timestamp.SCHEMA_NAME.equals(fieldSchemaName) || Timestamp.LOGICAL_NAME.equals(fieldSchemaName)) {
+          if (io.debezium.time.Timestamp.SCHEMA_NAME.equals(fieldSchemaName)
+                  || Timestamp.LOGICAL_NAME.equals(fieldSchemaName)
+                  || MicroTimestamp.SCHEMA_NAME.equals(fieldSchemaName)
+                  || NanoTimestamp.SCHEMA_NAME.equals(fieldSchemaName)
+          ) {
             if (f.schema().isOptional()) {
               beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
                       f.name(), FieldType.DATETIME);
@@ -291,8 +292,24 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslator {
           rowBuilder.addValue(value.get(f.getName()));
           break;
         case DATETIME:
-          final Object instant = value.get(f.getName());
-          rowBuilder.addValue(instant == null ? null : new Instant(instant));
+            final String logicalType = f.getType().getMetadataString("logicalType");
+            Instant instant;
+            if (io.debezium.time.Timestamp.SCHEMA_NAME.equals(logicalType)) {
+                final Long millis = (Long) value.get(f.getName());
+                instant = millis == null ? null : new Instant(millis);
+            } else if (Timestamp.LOGICAL_NAME.equals(logicalType)) {
+                final Date date = (Date) value.get(f.getName());
+                instant = date == null ? null : new Instant(date);
+            } else if (MicroTimestamp.SCHEMA_NAME.equals(logicalType)) {
+                final Long micros = (Long) value.get(f.getName());
+                instant = micros == null ? null : new Instant(micros / 1_000);
+            } else if (NanoTimestamp.SCHEMA_NAME.equals(logicalType)) {
+                final Long nanos = (Long) value.get(f.getName());
+                instant = nanos == null ? null : new Instant(nanos / 1_000_000);
+            } else {
+                throw new DataException("DATETIME: Unexpected logicalType " + logicalType);
+            }
+          rowBuilder.addValue(instant);
           break;
         case BYTES:
           rowBuilder.addValue(value.getBytes(f.getName()));
