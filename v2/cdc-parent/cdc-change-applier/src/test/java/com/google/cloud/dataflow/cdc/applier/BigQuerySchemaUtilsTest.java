@@ -47,7 +47,7 @@ public class BigQuerySchemaUtilsTest {
       com.google.cloud.bigquery.Schema.of(
           Field.newBuilder("booleanField", StandardSQLTypeName.BOOL).build(),
           Field.newBuilder("byteField", StandardSQLTypeName.BYTES).build(),
-          Field.newBuilder("dateField", StandardSQLTypeName.DATETIME).build(),
+          Field.newBuilder("dateField", StandardSQLTypeName.TIMESTAMP).build(),
           Field.newBuilder("decimalField", StandardSQLTypeName.NUMERIC).build(),
           Field.newBuilder("doubleField", StandardSQLTypeName.FLOAT64).build(),
           Field.newBuilder("floatField", StandardSQLTypeName.FLOAT64).build(),

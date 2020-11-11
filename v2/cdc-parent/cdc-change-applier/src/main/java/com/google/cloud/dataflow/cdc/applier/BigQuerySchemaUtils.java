@@ -58,7 +58,7 @@ public class BigQuerySchemaUtils {
         bigQueryTypeName = StandardSQLTypeName.STRING;
         break;
       case DATETIME:
-        bigQueryTypeName = StandardSQLTypeName.DATETIME;
+        bigQueryTypeName = StandardSQLTypeName.TIMESTAMP;
         break;
       case BOOLEAN:
         bigQueryTypeName = StandardSQLTypeName.BOOL;
