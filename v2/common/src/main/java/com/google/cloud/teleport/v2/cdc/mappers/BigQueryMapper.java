@@ -27,10 +27,8 @@ import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.StandardTableDefinition;
 import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableId;
-import com.google.cloud.bigquery.TableInfo;
-import com.google.cloud.bigquery.TimePartitioning;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
-import com.google.cloud.teleport.v2.utils.CacheUtils.BigQueryTableCache;
+import com.google.cloud.teleport.v2.utils.BigQueryTableCache;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -65,7 +63,8 @@ public class BigQueryMapper<InputT, OutputT>
   private Set<String> ignoreFields = new HashSet<String>();
   private int mapperRetries = 5;
   private final String projectId;
-  private BigQueryTableCache tableCache;
+  private static BigQueryTableCache tableCache;
+
 
   public BigQueryMapper(String projectId) {
     this.projectId = projectId;
@@ -169,6 +168,14 @@ public class BigQueryMapper<InputT, OutputT>
     return inputSchema;
   }
 
+  private synchronized void setUpTableCache() {
+    if (this.tableCache == null) {
+      this.tableCache = (BigQueryTableCache) new BigQueryTableCache(bigquery)
+        .withCreateTableIfDne(this.dayPartitioning)
+        .withCacheNumRetries(3);
+    }
+  }
+
   /** Sets all objects needed during mapper execution. */
   public void setUp() {
     if (this.bqTableRowCleaner == null) {
@@ -179,9 +186,7 @@ public class BigQueryMapper<InputT, OutputT>
           BigQueryOptions.newBuilder().setProjectId(getProjectId()).build().getService();
     }
     if (this.tableCache == null) {
-      this.tableCache =
-        (BigQueryTableCache) new BigQueryTableCache(this.bigquery)
-          .withCacheNumRetries(3);
+      setUpTableCache();
     }
   }
 
@@ -261,15 +266,16 @@ public class BigQueryMapper<InputT, OutputT>
       if (retries > 0) {
         try {
           int sleepSecs = (getMapperRetries() - retries + 1) * 5;
-          LOG.info("Mapper Retry {} Remaining: {}", String.valueOf(retries), e.toString());
+          LOG.info("Mapper Retry {} Remaining: {}: {}",
+              String.valueOf(retries), tableId.toString(), e.toString());
           Thread.sleep(sleepSecs);
           applyMapperToTableRow(tableId, row, retries - 1);
         } catch (InterruptedException i) {
-          LOG.info("Mapper Retries Interrupted: {}", e.toString());
+          LOG.info("Mapper Retries Interrupted: {}: {}", tableId.toString(), e.toString());
           throw e;
         }
       } else {
-        LOG.info("Mapper Retries Exceeded: {}", e.toString());
+        LOG.info("Mapper Retries Exceeded: {}: {}", tableId.toString(), e.toString());
         throw e;
       }
     }
@@ -285,7 +291,7 @@ public class BigQueryMapper<InputT, OutputT>
    */
   private void updateTableIfRequired(
       TableId tableId, TableRow row) {
-    Table table = getOrCreateBigQueryTable(tableId);
+    Table table = this.tableCache.get(tableId);
     FieldList tableFields = table.getDefinition().getSchema().getFields();
     Map<String, LegacySQLTypeName> inputSchema = new HashMap<String, LegacySQLTypeName>();
 
@@ -302,6 +308,7 @@ public class BigQueryMapper<InputT, OutputT>
         Field tableField = tableFields.get(rowKey);
       } catch (IllegalArgumentException e) {
         if (inputSchema.isEmpty()) {
+          LOG.info("Get Source Object Schema: {}", tableId.toString());
           inputSchema = getObjectSchema(tableId, row);
         }
         tableWasUpdated = addNewTableField(tableId, row, rowKey, newFieldList, inputSchema);
@@ -309,59 +316,14 @@ public class BigQueryMapper<InputT, OutputT>
     }
 
     if (tableWasUpdated) {
-      LOG.info("Updating Table");
+      LOG.info("Updating Table: {}", tableId.toString());
       updateBigQueryTable(tableId, table, tableFields, newFieldList);
     }
-  }
-
-  /**
-   * Returns {@code Table} which was either extracted from the cache or created.
-   *
-   * @param tableId a TableId referencing the BigQuery table being requested.
-   */
-  private Table getOrCreateBigQueryTable(TableId tableId) {
-    Table table = this.tableCache.get(tableId);
-
-    // Check that table exists, if not create empty table
-    // the empty table will have columns automapped during updateBigQueryTable()
-    if (table == null) {
-      LOG.info("Creating Table: {}", tableId.toString());
-      table = createBigQueryTable(tableId);
-      table = this.tableCache.reset(tableId);
-    }
-
-    return table;
-  }
-
-  /**
-   * Returns {@code Table} after creating the table with no columns in BigQuery.
-   *
-   * @param tableId a TableId referencing the BigQuery table being requested.
-   */
-  private Table createBigQueryTable(TableId tableId) {
-    // Create Blank BigQuery Table
-    List<Field> fieldList = new ArrayList<Field>();
-    Schema schema = Schema.of(fieldList);
-
-    StandardTableDefinition.Builder tableDefinitionBuilder =
-        StandardTableDefinition.newBuilder().setSchema(schema);
-    if (dayPartitioning) {
-      tableDefinitionBuilder.setTimePartitioning(
-          TimePartitioning.newBuilder(TimePartitioning.Type.DAY).build());
-    }
-    LOG.info("Creating BQ Table {} with  schema {}", tableId, schema);
-    TableInfo tableInfo = TableInfo.newBuilder(tableId, tableDefinitionBuilder.build()).build();
-    Table table = bigquery.create(tableInfo);
-
-    return table;
   }
 
   /* Update BigQuery Table Object Supplied */
   private void updateBigQueryTable(
       TableId tableId, Table table, FieldList tableFields, List<Field> newFieldList) {
-    // Table Name to Use for Cache
-    String tableName = tableId.toString();
-
     // Add all current columns to the list
     List<Field> fieldList = new ArrayList<Field>();
     for (Field field : tableFields) {
@@ -369,8 +331,7 @@ public class BigQueryMapper<InputT, OutputT>
     }
     // Add all new columns to the list
     // TODO use guava to use joiner on multi-thread multi line logging
-    LOG.info(tableName);
-    LOG.info("Mapping New Columns:");
+    LOG.info("Mapping New Columns for: {}", tableId.toString());
     for (Field field : newFieldList) {
       fieldList.add(field);
       LOG.info(field.toString());
@@ -379,9 +340,9 @@ public class BigQueryMapper<InputT, OutputT>
     Schema newSchema = Schema.of(fieldList);
     Table updatedTable =
         table.toBuilder().setDefinition(StandardTableDefinition.of(newSchema)).build().update();
-    LOG.info("Updated Table");
+    LOG.info("Updated Table: {}", tableId.toString());
 
-    this.tableCache.reset(tableId);
+    this.tableCache.reset(tableId, table);
   }
 
   private Boolean addNewTableField(TableId tableId, TableRow row, String rowKey,
