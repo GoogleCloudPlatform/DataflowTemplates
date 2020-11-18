@@ -559,13 +559,13 @@ public class RealtimeTransactionsETLFlatTable {
      *       records which couldn't be converted to table rows.
      * </ul>
      */
-    static class PubsubMessageArrayToTableRow
+    static public class PubsubMessageArrayToTableRow
             extends PTransform<PCollection<PubsubMessage>, PCollectionTuple> {
 
         private final de.tillhub.templates.RealtimeTransactionsETLFlatTable.Options options;
         private final String udfFunc;
 
-        PubsubMessageArrayToTableRow(de.tillhub.templates.RealtimeTransactionsETLFlatTable.Options options, String udfFunc) {
+        public PubsubMessageArrayToTableRow(de.tillhub.templates.RealtimeTransactionsETLFlatTable.Options options, String udfFunc) {
             this.options = options;
             this.udfFunc = udfFunc;
         }

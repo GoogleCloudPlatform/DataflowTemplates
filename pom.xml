@@ -899,7 +899,7 @@
               <goal>copy-resources</goal>
             </goals>
             <configuration>
-              <outputDirectory>${basedir}/target/udf-resources</outputDirectory>
+              <outputDirectory>${basedir}/target/test-classes/udf</outputDirectory>
               <resources>
                 <resource>
                   <directory>src/main/javascript</directory>
