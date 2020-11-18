@@ -101,6 +101,8 @@
     <cassandra.driver.version>3.6.0</cassandra.driver.version>
     <kms.version>1.20.0</kms.version>
     <proto-kms.version>0.67.0</proto-kms.version>
+    <resource.plugin.ver>3.2.0</resource.plugin.ver>
+
   </properties>
 
   <dependencies>
@@ -884,6 +886,31 @@
           </execution>
         </executions>
       </plugin>
+      <!-- copy the js UDF for testing purposes -->
+      <plugin>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>${resource.plugin.ver}</version>
+        <executions>
+          <execution>
+            <id>copy-resources</id>
+            <!-- here the phase you need -->
+            <phase>validate</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${basedir}/target/udf-resources</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>src/main/javascript</directory>
+                  <filtering>true</filtering>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- -->
     </plugins>
   </build>
 
