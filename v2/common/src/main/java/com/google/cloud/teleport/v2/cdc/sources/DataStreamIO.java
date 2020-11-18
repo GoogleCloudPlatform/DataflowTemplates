@@ -37,6 +37,7 @@ import org.apache.beam.sdk.transforms.Watch;
 import org.apache.beam.sdk.transforms.Watch.Growth;
 import org.apache.beam.sdk.transforms.Watch.Growth.PollFn;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.TimestampedValue;
 import org.apache.beam.sdk.values.TypeDescriptors;
 import org.apache.beam.vendor.guava.v20_0.com.google.common.collect.Lists;
 import org.joda.time.Duration;
@@ -158,8 +159,8 @@ public class DataStreamIO extends PTransform<PCollection<String>, PCollection<Re
       return false;
     }
 
-    private List<String> getMatchingObjects(GcsPath path) throws IOException {
-      List<String> result = new ArrayList<>();
+    private List<TimestampedValue<String>> getMatchingObjects(GcsPath path) throws IOException {
+      List<TimestampedValue<String>> result = new ArrayList<>();
       Integer baseDepth = getObjectDepth(path.getObject());
       GcsUtil util = getUtil();
       String pageToken = null;
@@ -184,7 +185,8 @@ public class DataStreamIO extends PTransform<PCollection<String>, PCollection<Re
           }
           Integer newDepth = getObjectDepth(object.getName());
           if (baseDepth + minDepth <= newDepth && newDepth <= baseDepth + maxDepth) {
-            result.add(fullName);
+            Instant fileUpdatedInstant = Instant.ofEpochMilli(object.getUpdated().getValue());
+            result.add(TimestampedValue.of(fullName, fileUpdatedInstant));
           }
         }
       } while (pageToken != null);
@@ -196,8 +198,7 @@ public class DataStreamIO extends PTransform<PCollection<String>, PCollection<Re
         throws Exception {
       Instant now = Instant.now();
       GcsPath path = GcsPath.fromUri(element);
-      return Watch.Growth.PollResult.incomplete(now, getMatchingObjects(path))
-          .withWatermark(now);
+      return Watch.Growth.PollResult.incomplete(getMatchingObjects(path));
     }
   }
 }

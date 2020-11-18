@@ -37,7 +37,7 @@ public abstract class MappedObjectCache<KeyT, ValueT> implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(MappedObjectCache.class);
 
-  private Cache<KeyT, ValueT> cachedObjects = CacheBuilder.newBuilder()
+  public Cache<KeyT, ValueT> cachedObjects = CacheBuilder.newBuilder()
       .expireAfterWrite(5, TimeUnit.MINUTES)
       .<KeyT, ValueT>build();
   private int maxNumRetries = 0;

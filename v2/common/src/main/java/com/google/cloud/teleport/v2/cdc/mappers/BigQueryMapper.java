@@ -30,6 +30,8 @@ import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.utils.BigQueryTableCache;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -64,6 +66,8 @@ public class BigQueryMapper<InputT, OutputT>
   private int mapperRetries = 5;
   private final String projectId;
   private static BigQueryTableCache tableCache;
+  private static final Cache<String, TableId> tableLockMap =
+      CacheBuilder.newBuilder().<String, TableId>build();
 
 
   public BigQueryMapper(String projectId) {
@@ -171,7 +175,6 @@ public class BigQueryMapper<InputT, OutputT>
   private synchronized void setUpTableCache() {
     if (this.tableCache == null) {
       this.tableCache = (BigQueryTableCache) new BigQueryTableCache(bigquery)
-        .withCreateTableIfDne(this.dayPartitioning)
         .withCacheNumRetries(3);
     }
   }
@@ -291,65 +294,89 @@ public class BigQueryMapper<InputT, OutputT>
    */
   private void updateTableIfRequired(
       TableId tableId, TableRow row) {
-    Table table = this.tableCache.get(tableId);
-    FieldList tableFields = table.getDefinition().getSchema().getFields();
+    Table table = this.tableCache.getOrCreateBigQueryTable(tableId, this.dayPartitioning);
+
     Map<String, LegacySQLTypeName> inputSchema = new HashMap<String, LegacySQLTypeName>();
+    List<Field> newFieldList = getNewTableFields(row, table, inputSchema, this.ignoreFields);
 
+    if (newFieldList.size() > 0) {
+      LOG.info("Updating Table: {}", tableId.toString());
+      updateBigQueryTable(tableId, row, this.ignoreFields);
+    }
+  }
 
-    Set<String> rowKeys = row.keySet();
-    Boolean tableWasUpdated = false;
-    List<Field> newFieldList = new ArrayList<Field>();
-    for (String rowKey : rowKeys) {
-      if (this.ignoreFields.contains(rowKey)) {
-        continue;
-      }
-      // Check if rowKey (column from data) is in the BQ Table
-      try {
-        Field tableField = tableFields.get(rowKey);
-      } catch (IllegalArgumentException e) {
-        if (inputSchema.isEmpty()) {
-          LOG.info("Get Source Object Schema: {}", tableId.toString());
-          inputSchema = getObjectSchema(tableId, row);
-        }
-        tableWasUpdated = addNewTableField(tableId, row, rowKey, newFieldList, inputSchema);
-      }
+  private static TableId getTableLock(TableId tableId) {
+    TableId tableLock = tableLockMap.getIfPresent(tableId.toString());
+    if (tableLock != null) {
+      return tableLock;
     }
 
-    if (tableWasUpdated) {
-      LOG.info("Updating Table: {}", tableId.toString());
-      updateBigQueryTable(tableId, table, tableFields, newFieldList);
+    synchronized (tableLockMap) {
+      tableLock = tableLockMap.getIfPresent(tableId.toString());
+      if (tableLock != null) {
+        return tableLock;
+      }
+
+      tableLockMap.put(tableId.toString(), tableId);
+      return tableId;
     }
   }
 
   /* Update BigQuery Table Object Supplied */
-  private void updateBigQueryTable(
-      TableId tableId, Table table, FieldList tableFields, List<Field> newFieldList) {
-    // Add all current columns to the list
-    List<Field> fieldList = new ArrayList<Field>();
-    for (Field field : tableFields) {
-      fieldList.add(field);
-    }
-    // Add all new columns to the list
-    // TODO use guava to use joiner on multi-thread multi line logging
-    LOG.info("Mapping New Columns for: {}", tableId.toString());
-    for (Field field : newFieldList) {
-      fieldList.add(field);
-      LOG.info(field.toString());
-    }
+  private void updateBigQueryTable(TableId tableId, TableRow row, Set<String> ignoreFields) {
+    TableId tableLock = getTableLock(tableId);
+    synchronized (tableLock) {
+      Table table = this.tableCache.get(tableId);
+      Map<String, LegacySQLTypeName> inputSchema = getObjectSchema(tableId, row);
 
-    Schema newSchema = Schema.of(fieldList);
-    Table updatedTable =
-        table.toBuilder().setDefinition(StandardTableDefinition.of(newSchema)).build().update();
-    LOG.info("Updated Table: {}", tableId.toString());
+      List<Field> newFieldList = getNewTableFields(row, table, inputSchema, ignoreFields);
+      if (newFieldList.size() > 0) {
+        // Add all current columns to the list
+        List<Field> fieldList = new ArrayList<Field>();
+        for (Field field : table.getDefinition().getSchema().getFields()) {
+          fieldList.add(field);
+        }
 
-    this.tableCache.reset(tableId, table);
+        // Add all new columns to the list
+        LOG.info("Mapping New Columns for: {} -> {}",
+          tableId.toString(), newFieldList.toString());
+        for (Field field : newFieldList) {
+          fieldList.add(field);
+        }
+
+        Schema newSchema = Schema.of(fieldList);
+        Table updatedTable =
+            table.toBuilder().setDefinition(StandardTableDefinition.of(newSchema)).build().update();
+        LOG.info("Updated Table: {}", tableId.toString());
+
+        this.tableCache.reset(tableId, table);
+      }
+    }
   }
 
-  private Boolean addNewTableField(TableId tableId, TableRow row, String rowKey,
-      List<Field> newFieldList, Map<String, LegacySQLTypeName> inputSchema) {
-    // Call Get Schema and Extract New Field Type
-    Field newField;
+  public static List<Field> getNewTableFields(
+      TableRow row, Table table, Map<String, LegacySQLTypeName> inputSchema, Set<String> ignoreFields) {
+    List<Field> newFieldList = new ArrayList<Field>();
+    FieldList tableFields = table.getDefinition().getSchema().getFields();
+    Set<String> rowKeys = row.keySet();
 
+    for (String rowKey : rowKeys) {
+      if (ignoreFields.contains(rowKey)) {
+        continue;
+      }
+      try {
+        Field tableField = tableFields.get(rowKey);
+      } catch (IllegalArgumentException e) {
+        addNewTableField(rowKey, newFieldList, inputSchema);
+      }
+    }
+
+    return newFieldList;
+  }
+
+  public static void addNewTableField(String rowKey, List<Field> newFieldList, 
+      Map<String, LegacySQLTypeName> inputSchema) {
+    Field newField;
     if (inputSchema.containsKey(rowKey)) {
       newField = Field.of(rowKey, inputSchema.get(rowKey).getStandardType());
     } else {
@@ -357,9 +384,5 @@ public class BigQueryMapper<InputT, OutputT>
     }
 
     newFieldList.add(newField);
-
-    // Currently we always add new fields for each call
-    // TODO: add an option to ignore new field and why boolean?
-    return true;
   }
 }

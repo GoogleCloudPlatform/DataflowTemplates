@@ -43,8 +43,6 @@ public class BigQueryTableCache
 
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryTableCache.class);
   private BigQuery bigquery;
-  private boolean createTableIfDne = false;
-  private boolean dayPartitioning = false;
 
   /**
    * Create an instance of a {@link BigQueryTableCache} to track table schemas.
@@ -55,42 +53,46 @@ public class BigQueryTableCache
     this.bigquery = bigquery;
   }
 
-  public BigQueryTableCache withCreateTableIfDne(boolean dayPartitioning) {
-    this.createTableIfDne = true;
-    this.dayPartitioning = dayPartitioning;
-    return this;
-  }
-
   @Override
   public Table getObjectValue(TableId key) {
     LOG.info("BigQueryTableCache: Get mapped object cache {}", key.toString());
     Table table = this.bigquery.getTable(key);
-    if (table == null && this.createTableIfDne) {
-      table = createBigQueryTable(key);
-    }
+
     return table;
   }
 
   /**
-   * Returns {@code Table} after creating the table with no columns in BigQuery.
+   * Returns {@code Table} after creating the table with no columns in BigQuery if required.
    *
    * @param tableId a TableId referencing the BigQuery table being requested.
+   * @param dayPartitioning is a Boolean which informs if day time partitioning should be enabled.
    */
-  private Table createBigQueryTable(TableId tableId) {
-    // Create Blank BigQuery Table
-    List<Field> fieldList = new ArrayList<Field>();
-    Schema schema = Schema.of(fieldList);
-
-    StandardTableDefinition.Builder tableDefinitionBuilder =
-        StandardTableDefinition.newBuilder().setSchema(schema);
-    if (this.dayPartitioning) {
-      LOG.info("Creating BQ Table {} using time partitioning", tableId);
-      tableDefinitionBuilder.setTimePartitioning(
-          TimePartitioning.newBuilder(TimePartitioning.Type.DAY).build());
+  public Table getOrCreateBigQueryTable(TableId tableId, Boolean dayPartitioning) {
+    Table table = this.cachedObjects.getIfPresent(tableId);
+    if (table != null) {
+      return table;
     }
-    LOG.info("Creating BQ Table {} with  schema {}", tableId, schema);
-    TableInfo tableInfo = TableInfo.newBuilder(tableId, tableDefinitionBuilder.build()).build();
-    Table table = bigquery.create(tableInfo);
+
+    synchronized (this) {
+      table = this.reset(tableId, table);
+      if (table != null) {
+        return table;
+      }
+      // Create Blank BigQuery Table
+      List<Field> fieldList = new ArrayList<Field>();
+      Schema schema = Schema.of(fieldList);
+
+      StandardTableDefinition.Builder tableDefinitionBuilder =
+          StandardTableDefinition.newBuilder().setSchema(schema);
+      if (dayPartitioning) {
+        LOG.info("Creating BQ Table {} using time partitioning", tableId);
+        tableDefinitionBuilder.setTimePartitioning(
+            TimePartitioning.newBuilder(TimePartitioning.Type.DAY).build());
+      }
+      LOG.info("Creating BQ Table {} with  schema {}", tableId, schema);
+      TableInfo tableInfo = TableInfo.newBuilder(tableId, tableDefinitionBuilder.build()).build();
+      table = bigquery.create(tableInfo);
+    }
 
     return table;
   }
