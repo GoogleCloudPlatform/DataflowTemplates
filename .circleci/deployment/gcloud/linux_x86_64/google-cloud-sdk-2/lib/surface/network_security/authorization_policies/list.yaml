@@ -1,0 +1,26 @@
+release_tracks: [ALPHA]
+
+help_text:
+  brief: |
+    List authorization policies.
+  description: |
+    List all authorization policies in the specified location of the current project.
+
+request: &request
+  api_version: v1alpha1
+  collection: networksecurity.projects.locations.authorizationPolicies
+
+arguments:
+  resource:
+    spec: !REF googlecloudsdk.command_lib.network_security.resources:location
+    help_text: |
+      The project of the authorization policies to display.
+
+response:
+  id_field: name
+
+output:
+  format: |
+     table(
+        name.basename():label=NAME
+      )

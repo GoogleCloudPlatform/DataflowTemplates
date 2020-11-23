@@ -1,0 +1,259 @@
+$schema: "http://json-schema.org/draft-06/schema#"
+
+title: compute v1 ForwardingRule export schema
+description: A gcloud export/import command YAML validation schema.
+type: object
+additionalProperties: false
+properties:
+  COMMENT:
+    type: object
+    description: User specified info ignored by gcloud import.
+    additionalProperties: false
+    properties:
+      template-id:
+        type: string
+      region:
+        type: string
+      description:
+        type: string
+      date:
+        type: string
+      version:
+        type: string
+  UNKNOWN:
+    type: array
+    description: Unknown API fields that cannot be imported.
+    items:
+      type: string
+  IPAddress:
+    description: |-
+      IP address that this forwarding rule serves. When a client sends traffic
+      to this IP address, the forwarding rule directs the traffic to the target
+      that you specify in the forwarding rule.  If you don't specify a reserved
+      IP address, an ephemeral IP address is assigned. Methods for specifying an
+      IP address:  * IPv4 dotted decimal, as in `100.1.2.3` * Full URL, as in
+      https://www.googleapis.com/compute/v
+      1/projects/project_id/regions/region/addresses/address-name * Partial URL
+      or by name, as in: * projects/project_id/regions/region/addresses
+      /address-name * regions/region/addresses/address-name * global/addresses
+      /address-name * address-name   The loadBalancingScheme and the forwarding
+      rule's target determine the type of IP address that you can use. For
+      detailed information, refer to [IP address specifications ](/load-
+      balancing/docs/forwarding-rule- concepts#ip_address_specifications).
+    type: string
+  IPProtocol:
+    description: |-
+      The IP protocol to which this rule applies. For protocol forwarding, valid
+      options are TCP, UDP, ESP, AH, SCTP or ICMP.  For Internal TCP/UDP Load
+      Balancing, the load balancing scheme is INTERNAL, and one of TCP or UDP
+      are valid. For Traffic Director, the load balancing scheme is
+      INTERNAL_SELF_MANAGED, and only TCPis valid. For Internal HTTP(S) Load
+      Balancing, the load balancing scheme is INTERNAL_MANAGED, and only TCP is
+      valid. For HTTP(S), SSL Proxy, and TCP Proxy Load Balancing, the load
+      balancing scheme is EXTERNAL and only TCP is valid. For Network TCP/UDP
+      Load Balancing, the load balancing scheme is EXTERNAL, and one of TCP or
+      UDP is valid.
+    type: string
+    enum:
+    - AH
+    - ESP
+    - ICMP
+    - SCTP
+    - TCP
+    - UDP
+  allPorts:
+    description: |-
+      This field is used along with the backend_service field for internal load
+      balancing or with the target field for internal TargetInstance. This field
+      cannot be used with port or portRange fields. When the load balancing
+      scheme is INTERNAL and protocol is TCP/UDP, specify this field to allow
+      packets addressed to any ports will be forwarded to the backends
+      configured with this forwarding rule.
+    type: boolean
+  allowGlobalAccess:
+    description: |-
+      This field is used along with the backend_service field for internal load
+      balancing or with the target field for internal TargetInstance. If the
+      field is set to TRUE, clients can access ILB from all regions. Otherwise
+      only allows access from clients in the same region as the internal load
+      balancer.
+    type: boolean
+  backendService:
+    description: |-
+      This field is only used for INTERNAL load balancing.  For internal load
+      balancing, this field identifies the BackendService resource to receive
+      the matched traffic.
+    type: string
+  creationTimestamp:
+    description: '[Output Only] Creation timestamp in RFC3339 text format.'
+    type: string
+  description:
+    description: |-
+      An optional description of this resource. Provide this property when you
+      create the resource.
+    type: string
+  ipVersion:
+    description: |-
+      The IP Version that will be used by this forwarding rule. Valid options
+      are IPV4 or IPV6. This can only be specified for an external global
+      forwarding rule.
+    type: string
+    enum:
+    - IPV4
+    - IPV6
+    - UNSPECIFIED_VERSION
+  isMirroringCollector:
+    description: |-
+      Indicates whether or not this load balancer can be used as a collector for
+      packet mirroring. To prevent mirroring loops, instances behind this load
+      balancer will not have their traffic mirrored even if a PacketMirroring
+      rule applies to them. This can only be set to true for load balancers that
+      have their loadBalancingScheme set to INTERNAL.
+    type: boolean
+  kind:
+    description: |-
+      [Output Only] Type of the resource. Always compute#forwardingRule for
+      Forwarding Rule resources.
+    type: string
+  loadBalancingScheme:
+    description: |-
+      Specifies the forwarding rule type.    - EXTERNAL is used for:   - Classic
+      Cloud VPN gateways  - Protocol forwarding to VMs from an external IP
+      address  - The following load balancers: HTTP(S), SSL Proxy, TCP Proxy,
+      and Network TCP/UDP     - INTERNAL is used for: - Protocol forwarding to
+      VMs from an internal IP address  - Internal TCP/UDP load balancers    -
+      INTERNAL_MANAGED is used for:   - Internal HTTP(S) load balancers    -
+      INTERNAL_SELF_MANAGED is used for:   - Traffic Director      For more
+      information about forwarding rules, refer to Forwarding rule concepts.
+    type: string
+    enum:
+    - EXTERNAL
+    - INTERNAL
+    - INTERNAL_MANAGED
+    - INTERNAL_SELF_MANAGED
+    - INVALID
+  metadataFilters:
+    description: |-
+      Opaque filter criteria used by Loadbalancer to restrict routing
+      configuration to a limited set of xDS compliant clients. In their xDS
+      requests to Loadbalancer, xDS clients present node metadata. If a match
+      takes place, the relevant configuration is made available to those
+      proxies. Otherwise, all the resources (e.g. TargetHttpProxy, UrlMap)
+      referenced by the ForwardingRule will not be visible to those proxies. For
+      each metadataFilter in this list, if its filterMatchCriteria is set to
+      MATCH_ANY, at least one of the filterLabels must match the corresponding
+      label provided in the metadata. If its filterMatchCriteria is set to
+      MATCH_ALL, then all of its filterLabels must match with corresponding
+      labels provided in the metadata. metadataFilters specified here will be
+      applifed before those specified in the UrlMap that this ForwardingRule
+      references. metadataFilters only applies to Loadbalancers that have their
+      loadBalancingScheme set to INTERNAL_SELF_MANAGED.
+    type: array
+    items:
+      $ref: MetadataFilter.yaml
+  name:
+    description: |-
+      Name of the resource; provided by the client when the resource is
+      created. The name must be 1-63 characters long, and comply with
+      RFC1035. Specifically, the name must be 1-63 characters long and match
+      the regular expression `[a-z]([-a-z0-9]*[a-z0-9])?` which means the
+      first character must be a lowercase letter, and all following
+      characters must be a dash, lowercase letter, or digit, except the last
+      character, which cannot be a dash.
+    type: string
+  network:
+    description: |-
+      This field is not used for external load balancing.  For INTERNAL and
+      INTERNAL_SELF_MANAGED load balancing, this field identifies the
+      network that the load balanced IP should belong to for this Forwarding
+      Rule. If this field is not specified, the default network will be
+      used.
+    type: string
+  networkTier:
+    description: |-
+      This signifies the networking tier used for configuring this load
+      balancer and can only take the following values: PREMIUM, STANDARD.
+      For regional ForwardingRule, the valid values are PREMIUM and
+      STANDARD. For GlobalForwardingRule, the valid value is PREMIUM.  If
+      this field is not specified, it is assumed to be PREMIUM. If IPAddress
+      is specified, this value must be equal to the networkTier of the
+      Address.
+    type: string
+    enum:
+    - PREMIUM
+    - STANDARD
+  portRange:
+    description: |-
+      When the load balancing scheme is EXTERNAL, INTERNAL_SELF_MANAGED and
+      INTERNAL_MANAGED, you can specify a port_range. Use with a forwarding
+      rule that points to a target proxy or a target pool. Do not use with a
+      forwarding rule that points to a backend service. This field is used
+      along with the target field for TargetHttpProxy, TargetHttpsProxy,
+      TargetSslProxy, TargetTcpProxy, TargetVpnGateway, TargetPool,
+      TargetInstance.  Applicable only when IPProtocol is TCP, UDP, or SCTP,
+      only packets addressed to ports in the specified range will be
+      forwarded to target. Forwarding rules with the same [IPAddress,
+      IPProtocol] pair must have disjoint port ranges.  Some types of
+      forwarding target have constraints on the acceptable ports:   -
+    type: string
+  ports:
+    description: |-
+      This field is used along with the backend_service field for internal
+      load balancing.  When the load balancing scheme is INTERNAL, a list of
+      ports can be configured, for example, ['80'], ['8000','9000']. Only
+      packets addressed to these ports are forwarded to the backends
+      configured with the forwarding rule.  If the forwarding rule's
+      loadBalancingScheme is INTERNAL, you can specify ports in one of the
+      following ways:  * A list of up to five ports, which can be non-
+      contiguous * Keyword ALL, which causes the forwarding rule to forward
+      traffic on any port of the forwarding rule's protocol.
+    type: array
+    items:
+      type: string
+  region:
+    description: |-
+      [Output Only] URL of the region where the regional forwarding rule
+      resides. This field is not applicable to global forwarding rules.
+      You must specify this field as part of the HTTP request URL. It is
+      not settable as a field in the request body.
+    type: string
+  selfLink:
+    description: '[Output Only] Server-defined URL for the resource.'
+    type: string
+  serviceLabel:
+    description: |-
+      An optional prefix to the service name for this Forwarding Rule.
+      If specified, the prefix is the first label of the fully qualified
+      service name.  The label must be 1-63 characters long, and comply
+      with RFC1035. Specifically, the label must be 1-63 characters long
+      and match the regular expression `[a-z]([-a-z0-9]*[a-z0-9])?`
+      which means the first character must be a lowercase letter, and
+      all following characters must be a dash, lowercase letter, or
+      digit, except the last character, which cannot be a dash.  This
+      field is only used for internal load balancing.
+    type: string
+  serviceName:
+    description: |-
+      [Output Only] The internal fully qualified service name for this
+      Forwarding Rule.  This field is only used for internal load
+      balancing.
+    type: string
+  subnetwork:
+    description: |-
+      This field is only used for INTERNAL load balancing.  For internal
+      load balancing, this field identifies the subnetwork that the load
+      balanced IP should belong to for this Forwarding Rule.  If the
+      network specified is in auto subnet mode, this field is optional.
+      However, if the network is in custom subnet mode, a subnetwork
+      must be specified.
+    type: string
+  target:
+    description: |-
+      The URL of the target resource to receive the matched traffic. For
+      regional forwarding rules, this target must live in the same
+      region as the forwarding rule. For global forwarding rules, this
+      target must be a global load balancing resource. The forwarded
+      traffic must be of a type appropriate to the target object. For
+      INTERNAL_SELF_MANAGED load balancing, only targetHttpProxy is
+      valid, not targetHttpsProxy.
+    type: string

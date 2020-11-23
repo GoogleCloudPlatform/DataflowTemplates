@@ -1,0 +1,38 @@
+- release_tracks: [ALPHA]
+
+  help_text:
+    brief: Update a spoke by the label.
+    description: Update the detail of a spoke.
+
+    examples: |
+      Update description of the spoke named ``my-spoke'' with description 'new spoke description' in us-central1.
+
+        $ {command} my-spoke --region=us-central1 --description="new spoke description".
+
+  arguments:
+    resource:
+      spec: !REF googlecloudsdk.command_lib.network_connectivity.resources:spoke
+      help_text: Name of the spoke to be updated.
+    params:
+    - arg_name: description
+      api_field: spoke.description
+      help_text: New description of the spoke.
+    - arg_name: labels
+      api_field: spoke.labels.additionalProperties
+      metavar: KEY=VALUE
+      help_text: |
+        List of label KEY=VALUE pairs to add.
+      type:
+        arg_dict:
+          flatten: true
+          spec:
+          - api_field: key
+          - api_field: value
+
+  async:
+    collection: networkconnectivity.projects.locations.operations
+
+  request:
+    api_version: v1alpha1
+    collection: networkconnectivity.projects.locations.spokes
+    method: patch

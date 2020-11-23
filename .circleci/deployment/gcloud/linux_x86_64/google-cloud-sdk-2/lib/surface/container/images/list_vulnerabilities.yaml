@@ -1,0 +1,30 @@
+- release_tracks: [BETA]
+  hidden: true
+  help_text:
+    brief: List On-Demand Scanning vulnerabilities.
+    description: |
+      List On-Demand Scanning vulnerabilities from a completed scan.
+    examples: |
+      The following command lists vulnerabilities from a completed On-Demand
+      Scanning scan.
+
+        $ {command} projects/my-project/locations/europe/scans/fff66882-0z55-4333-l619-z1z00df6040c
+
+  command_type: LIST
+  request:
+    collection: ondemandscanning.projects.locations.scans.vulnerabilities
+    api_version: v1beta1
+
+  arguments:
+    resource:
+      help_text: The scan resource to list vulnerabilites for.
+      spec: !REF googlecloudsdk.command_lib.container.images.resources:scan
+      is_positional: true
+
+      # This is needed because the request path ends with "/vulnerabilities" and
+      # doesn't match the Scan resource name, but they both refer to the same
+      # actual resource object (vulnerability occurrences).
+      override_resource_collection: true
+
+    # These aren't supported at this time.
+    exclude: ['filter', 'sort-by']

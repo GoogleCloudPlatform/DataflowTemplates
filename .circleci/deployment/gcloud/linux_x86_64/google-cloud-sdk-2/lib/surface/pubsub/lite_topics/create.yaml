@@ -1,0 +1,37 @@
+release_tracks: [ALPHA, BETA, GA]
+help_text:
+  brief: Create a Pub/Sub Lite topic.
+  description: Create a Pub/Sub Lite topic.
+  examples: |
+    To create a Pub/Sub lite-topic, run:
+
+        $ {command} mytopic \
+            --zone=us-central1-a \
+            --partitions=1 \
+            --per-partition-bytes=30GiB \
+            --message-retention-period=2w
+
+request:
+  collection: pubsublite.admin.projects.locations.topics
+  method: create
+  modify_request_hooks:
+  - googlecloudsdk.command_lib.pubsub.lite_util:UpdateAdminRequest
+
+arguments:
+  resource:
+    help_text: Identifies the Cloud zone this command will be executed on.
+    spec: !REF googlecloudsdk.command_lib.pubsub.resources:location
+    is_parent_resource: true
+    is_positional: false
+
+  params:
+  - _REF_: googlecloudsdk.command_lib.pubsub.flags:topic-name
+  - _REF_: googlecloudsdk.command_lib.pubsub.flags:partitions
+    required: true
+  - _REF_: googlecloudsdk.command_lib.pubsub.flags:per-partition-publish-mib
+    default: 4
+  - _REF_: googlecloudsdk.command_lib.pubsub.flags:per-partition-subscribe-mib
+    default: 8
+  - _REF_: googlecloudsdk.command_lib.pubsub.flags:per-partition-bytes
+    required: true
+  - _REF_: googlecloudsdk.command_lib.pubsub.flags:message-retention-period

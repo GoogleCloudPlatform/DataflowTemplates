@@ -1,0 +1,215 @@
+version: 2.0
+
+jobs:
+  build_feature_branch:
+    docker:
+      - image: circleci/openjdk:8-stretch
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "pom.xml" }}
+            - v1-dependencies-
+      - run:
+          name: "Build project"
+          command: |
+            mvn compile exec:java -Dexec.mainClass=de.tillhub.templates.RealtimeTransactionsETLFlatTable -Dexec.cleanupDaemonThreads=false -Dexec.args=" --project=$PROJECT_ID --stagingLocation=$PIPELINE_FOLDER/staging --tempLocation=$PIPELINE_FOLDER/temp --templateLocation=$PIPELINE_FOLDER/template --runner=$RUNNER --useSubscription=$USE_SUBSCRIPTION --outputGCSSpec=gs://data-retention-transactions-staging --autoscalingAlgorithm=THROUGHPUT_BASED --enableStreamingEngine=true --maxNumWorkers=6 --workerMachineType=n2-highmem-4"
+      - run:
+          name: "E2E Tests"
+          command:
+            mvn test -Dtest="de.tillhub.**" -Dcheckstyle.skip
+
+  build_staging:
+    docker:
+      - image: circleci/openjdk:8-stretch
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "pom.xml" }}
+            - v1-dependencies-
+      - run:
+          name: "Build project"
+          command: |
+            mvn compile exec:java -Dexec.mainClass=de.tillhub.templates.RealtimeTransactionsETLFlatTable -Dexec.cleanupDaemonThreads=false -Dexec.args=" --project=$PROJECT_ID --stagingLocation=$PIPELINE_FOLDER/staging --tempLocation=$PIPELINE_FOLDER/temp --templateLocation=$PIPELINE_FOLDER/template --runner=$RUNNER --useSubscription=$USE_SUBSCRIPTION --outputGCSSpec=gs://data-retention-transactions-staging --autoscalingAlgorithm=THROUGHPUT_BASED --enableStreamingEngine=true --maxNumWorkers=6 --workerMachineType=n2-highmem-4"
+      - run:
+          name: "E2E Tests"
+          command: |
+            mvn test -Dtest="de.tillhub.**" -Dcheckstyle.skip
+      - run:
+          name: "Install gcloud"
+          command: |
+            ./.circleci/deployment/gcloud/linux_x86_64/google-cloud-sdk-2/install.sh
+            sudo gcloud --quiet components update
+      - run:
+          name: "Inject service account"
+          command: |
+            echo "$SERVICE_ACCOUNT" > serviceaccount.json
+      - run:
+          name: "Authenticate gcloud - key"
+          command: |
+            gcloud auth activate-service-account --key-file=serviceaccount.json
+            gcloud --quiet config set project $PROJECT_ID
+            gcloud --quiet config set compute/region europe-west3
+
+      - run:
+          name: "Fetch running realtime transactions pipeline"
+          command: |
+            echo 'export RT_TX_V0_STAGING=$(gcloud dataflow jobs list --status=active --filter="name:realtime-transactions-v0-staging" --region=europe-west3 | awk '{print $1}' | tail -n 1)' >> $BASH_ENV
+
+
+      - run:
+          name: "Terminate existing realtime transaction pipeline"
+          command: |
+            if [ -z "$RT_TX_V0_STAGING" ]
+            then
+                  echo "\No pipeline to cancel"
+            else
+                  gcloud dataflow jobs cancel $RT_TX_V0_STAGING --region  europe-west3
+                  sleep 120
+            fi
+
+
+      - run:
+          name: "Bootstrap a new realtime transaction pipeline"
+          command: |
+            gcloud dataflow jobs run realtime-transactions-v0-staging --gcs-location=${PIPELINE_FOLDER}/template --worker-region=europe-west3 --region=europe-west3 --parameters "inputSubscription=projects/$PROJECT_ID/subscriptions/api.v0.transactions.sink.staging.dataflow,outputTableSpec=$PROJECT_ID:staging.fr_transaction_v0,javascriptTextTransformGcsPath=${UDF_PATH}"
+
+      - run:
+          name: "Fetch running sync transactions pipeline"
+          command: |
+            echo 'export SYNC_TX_V0_STAGING=$(gcloud dataflow jobs list --status=active --filter="name: sync-transactions-v0-staging" --region=europe-west3 | awk '{print $1}' | tail -n 1)' >> $BASH_ENV
+
+
+      - run:
+          name: "Terminate existing sync transaction pipeline"
+          command: |
+            if [ -z "$SYNC_TX_V0_STAGING" ]
+            then
+                  echo "\No pipeline to cancel"
+            else
+                  gcloud dataflow jobs cancel $SYNC_TX_V0_STAGING --region  europe-west3
+            fi
+
+      - run:
+          name: "Bootstrap a new sync transaction pipeline"
+          command: |
+            gcloud dataflow jobs run sync-transactions-v0-staging --gcs-location=${PIPELINE_FOLDER}/template --worker-region=europe-west3 --region=europe-west3 --parameters "inputSubscription=projects/$PROJECT_ID/subscriptions/api.v0.transactions.sink.bigquery.staging.dataflow,outputTableSpec=$PROJECT_ID:staging.fr_transaction_v0,javascriptTextTransformGcsPath=${UDF_PATH}"
+
+
+      - save_cache:
+          paths:
+            - ~/.m2
+          key: v1-dependencies-{{ checksum "pom.xml" }}
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - target/
+
+  build_production:
+    docker:
+      - image: circleci/openjdk:8-stretch
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "pom.xml" }}
+            - v1-dependencies-
+      - run:
+          name: "Build project"
+          command: |
+            mvn compile exec:java -Dexec.mainClass=de.tillhub.templates.RealtimeTransactionsETLFlatTable -Dexec.cleanupDaemonThreads=false -Dexec.args=" --project=$PROJECT_ID --stagingLocation=$PIPELINE_FOLDER/staging --tempLocation=$PIPELINE_FOLDER/temp --templateLocation=$PIPELINE_FOLDER/template --runner=$RUNNER --useSubscription=$USE_SUBSCRIPTION --outputGCSSpec=gs://data-retention-transactions-production --autoscalingAlgorithm=THROUGHPUT_BASED --enableStreamingEngine=true --maxNumWorkers=6 --workerMachineType=n2-highmem-4"
+      - run:
+          name: "E2E Tests"
+          command: |
+            mvn test -Dtest="de.tillhub.**" -Dcheckstyle.skip
+      - run:
+          name: "Install gcloud"
+          command: |
+            ./.circleci/deployment/gcloud/linux_x86_64/google-cloud-sdk-2/install.sh
+            sudo gcloud --quiet components update
+      - run:
+          name: "Inject service account"
+          command: |
+            echo "$SERVICE_ACCOUNT" > serviceaccount.json
+      - run:
+          name: "Authenticate gcloud - key"
+          command: |
+            gcloud auth activate-service-account --key-file=serviceaccount.json
+            gcloud --quiet config set project $PROJECT_ID
+            gcloud --quiet config set compute/region europe-west3
+
+      - run:
+          name: "Fetch running realtime transactions pipeline"
+          command: |
+            echo 'export RT_TX_V0_PROD=$(gcloud dataflow jobs list --status=active --filter="name:realtime-transactions-v0-production" --region=europe-west3 | awk '{print $1}' | tail -n 1)' >> $BASH_ENV
+
+
+      - run:
+          name: "Terminate existing realtime transaction pipeline"
+          command: |
+            if [ -z "$RT_TX_V0_PROD" ]
+            then
+                  echo "\No pipeline to cancel"
+            else
+                  gcloud dataflow jobs cancel $RT_TX_V0_PROD --region  $REGION
+                  sleep 120
+            fi
+
+
+      - run:
+          name: "Bootstrap a new realtime transaction pipeline"
+          command: |
+            gcloud dataflow jobs run realtime-transactions-v0-production --gcs-location=${PIPELINE_FOLDER}/template --worker-region=$REGION --region=$REGION --parameters "inputSubscription=projects/$PROJECT_ID/subscriptions/api.v0.transactions.sink.production.dataflow,outputTableSpec=$PROJECT_ID:production.fr_transaction_v0,javascriptTextTransformGcsPath=${UDF_PATH}"
+
+      - run:
+          name: "Fetch running sync transactions pipeline"
+          command: |
+            echo 'export SYNC_TX_V0_PROD=$(gcloud dataflow jobs list --status=active --filter="name: sync-transactions-v0-production" --region=$REGION | awk '{print $1}' | tail -n 1)' >> $BASH_ENV
+
+
+      - run:
+          name: "Terminate existing sync transaction pipeline"
+          command: |
+            if [ -z "$SYNC_TX_V0_PROD" ]
+            then
+                  echo "\No pipeline to cancel"
+            else
+                  gcloud dataflow jobs cancel $SYNC_TX_V0_PROD --region  $REGION
+            fi
+
+      - run:
+          name: "Bootstrap a new sync transaction pipeline"
+          command: |
+            gcloud dataflow jobs run sync-transactions-v0-production --gcs-location=${PIPELINE_FOLDER}/template --worker-region=$REGION --region=$REGION --parameters "inputSubscription=projects/$PROJECT_ID/subscriptions/api.v0.transactions.sink.bigquery.production.dataflow,outputTableSpec=$PROJECT_ID:production.fr_transaction_v0,javascriptTextTransformGcsPath=${UDF_PATH}"
+
+
+      - save_cache:
+          paths:
+            - ~/.m2
+          key: v1-dependencies-{{ checksum "pom.xml" }}
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - target/
+
+
+workflows:
+  version: 2
+
+  build_test_deploy:
+    jobs:
+      - build_feature_branch:
+          filters:
+            branches:
+              ignore:
+                - develop
+                - master
+      - build_staging:
+          filters:
+            branches:
+              only: develop
+      - build_production:
+          filters:
+            branches:
+              only: master

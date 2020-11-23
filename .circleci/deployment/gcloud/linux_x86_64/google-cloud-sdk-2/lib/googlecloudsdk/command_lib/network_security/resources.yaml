@@ -1,0 +1,57 @@
+project:
+  name: project
+  collection: networksecurity.projects
+  attributes:
+  - &project
+    parameter_name: projectsId
+    attribute_name: project
+    help: |
+      The project Id.
+    property: core/project
+
+location:
+  name: location
+  collection: networksecurity.projects.locations
+  attributes:
+  - *project
+  - &location
+    parameter_name: locationsId
+    attribute_name: location
+    help: |
+      The location Id.
+
+serverTlsPolicy:
+  name: server TLS policy
+  collection: networksecurity.projects.locations.serverTlsPolicies
+  request_id_field: serverTlsPolicyId
+  attributes:
+  - *project
+  - *location
+  - &serverTlsPolicy
+    parameter_name: serverTlsPoliciesId
+    attribute_name: server_tls_policy
+    help: Id of the server TLS policy.
+
+clientTlsPolicy:
+  name: client TLS policy
+  collection: networksecurity.projects.locations.clientTlsPolicies
+  request_id_field: clientTlsPolicyId
+  attributes:
+  - *project
+  - *location
+  - &clientTlsPolicy
+    parameter_name: clientTlsPoliciesId
+    attribute_name: client_tls_policy
+    help: Id of the client TLS policy.
+
+authorizationPolicy:
+  name: authorization policy
+  collection: networksecurity.projects.locations.authorizationPolicies
+  request_id_field: authorizationPolicyId
+  attributes:
+  - *project
+  - *location
+  - &authorizationPolicy
+    parameter_name: authorizationPoliciesId
+    attribute_name: authorization_policy
+    help: Id of the authorization policy.

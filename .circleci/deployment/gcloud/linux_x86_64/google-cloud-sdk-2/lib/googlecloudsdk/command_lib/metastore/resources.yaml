@@ -1,0 +1,60 @@
+project:
+  name: project
+  collection: metastore.projects
+  attributes:
+  - &project
+    parameter_name: projectsId
+    attribute_name: project
+    help: The project ID.
+    property: core/project
+
+location:
+  name: location
+  collection: metastore.projects.locations
+  disable_auto_completers: false
+  attributes:
+  - *project
+  - &location
+    parameter_name: locationsId
+    attribute_name: location
+    help: |
+      The location of the Dataproc Metastore service.
+
+      If not specified, will use `default` metastore/location.
+    property: metastore/location
+
+service:
+  name: service
+  collection: metastore.projects.locations.services
+  request_id_field: serviceId
+  attributes:
+  - *project
+  - *location
+  - &service
+    parameter_name: servicesId
+    attribute_name: service
+    help: The identifier of the Dataproc Metastore service
+
+import:
+  name: import
+  collection: metastore.projects.locations.services.metadataImports
+  request_id_field: metadataImportId
+  attributes:
+  - *project
+  - *location
+  - *service
+  - &import
+    parameter_name: metadataImportsId
+    attribute_name: import
+    help: The identifier of the metadata import under Dataproc Metastore services.
+
+operation:
+  name: operation
+  collection: metastore.projects.locations.operations
+  attributes:
+  - *project
+  - *location
+  - &operation
+    parameter_name: operationsId
+    attribute_name: operation
+    help: The ID of the Dataproc Metastore operation.

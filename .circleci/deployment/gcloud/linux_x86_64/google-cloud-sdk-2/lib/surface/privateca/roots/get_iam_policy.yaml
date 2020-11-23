@@ -1,0 +1,26 @@
+- release_tracks: [BETA]
+
+  help_text:
+    brief: Get the IAM policy for a root certificate authority.
+    description: |
+     Gets the IAM policy for the given root Certificate Authority.
+
+      Returns an empty policy if the resource does not have a policy
+      set.
+    examples: |
+     To get the IAM policy for the CA 'prod-root' with the location 'us-west1', run:
+
+       $ {command} prod-root --location=us-west1
+
+  request:
+    collection: privateca.projects.locations.certificateAuthorities
+    api_version: v1beta1
+
+  arguments:
+    resource:
+      help_text: The certificate authority for which to display the IAM policy.
+      spec: !REF googlecloudsdk.command_lib.privateca.resources:certificate_authority
+
+  iam:
+    # TODO(b/149315616): Enable iam conditionals
+    enable_condition: false

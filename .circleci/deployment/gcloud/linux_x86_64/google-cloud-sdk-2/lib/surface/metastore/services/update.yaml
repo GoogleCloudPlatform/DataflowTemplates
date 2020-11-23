@@ -1,0 +1,119 @@
+- release_tracks: [ALPHA]
+  help_text:
+    brief: |
+      Update a Dataproc Metastore service.
+    description: |
+      Update the metadata and/or configuration parameters of a Dataproc Metastore service.
+
+      If run asynchronously with `--async`, exits after printing
+      one operation name that can be used to poll the status of the
+      update via:
+
+        {top_command} metastore operations describe
+    examples: |
+      To update a Dataproc Metastore service with the name `my-metastore-service` to
+      have the port number 8080, and add the two labels, `env` and `foo`, run:
+
+          $ {command} my-metastore-service --port=8080 \
+              --update-labels=env=test,foo=bar
+
+  request:
+    ALPHA:
+      api_version: v1alpha
+    collection: metastore.projects.locations.services
+    modify_request_hooks:
+    - googlecloudsdk.command_lib.metastore.services.util:SetServiceRequestUpdateHiveMetastoreConfigs
+    - googlecloudsdk.command_lib.metastore.services.util:UpdateServiceMaskHook
+
+  arguments:
+    resource:
+      help_text: |
+        Arguments and flags that specify the Dataproc Metastore service
+        you want to update.
+      spec: !REF googlecloudsdk.command_lib.metastore.resources:service
+    params:
+    - arg_name: port
+      api_field: service.port
+      processor: googlecloudsdk.command_lib.metastore.validators:ValidatePort
+      help_text: |
+        The TCP port on which the Metastore service will listen.
+    - group:
+        help_text: |
+          Configuration properties specific to running Hive metastore
+          software as the metastore service.
+        mutex: true
+        params:
+        - arg_name: update-hive-metastore-configs-from-file
+          type: "googlecloudsdk.calliope.arg_parsers:FileContents:"
+          help_text: |
+            Path to a XML file containing a mapping of Hive metastore configuration key-value
+            pairs to apply to the Hive metastore.
+            Example:
+              hive-site.xml
+                  <configuration>
+                    <property>
+                      <name>hive.metastore.warehouse.dir</name>
+                      <value>${test.warehouse.dir}</value>
+                      <description></description>
+                    </property>
+                  </configuration>
+        - group:
+            help_text: |
+              Modify the Hive metastore configuration properties by passing key-value pairs
+              in through the flags.
+            params:
+            - arg_name: update-hive-metastore-configs
+              type: "googlecloudsdk.calliope.arg_parsers:ArgDict:"
+              help_text: |
+                Comma-separated list of Hive metastore configurations. Each configuration has
+                the form "NAME=VALUE".
+            - group:
+                mutex: true
+                params:
+                - arg_name: remove-hive-metastore-configs
+                  type: "googlecloudsdk.calliope.arg_parsers:ArgList:"
+                  help_text: |
+                    Comma-separated list of configuration keys to remove with the form
+                    "KEY1, KEY2". If a label does not exist it is silently ignored. If
+                    --update-hive-metastore-configs is also specified, then
+                    --remove-hive-metastore-configs is applied first.
+                - arg_name: clear-hive-metastore-configs
+                  action: store_true
+                  help_text: |
+                    clear existing Hive metastore configurations. If --update-hive-metastore-configs
+                    is also specified, then --clear-hive-metastore-configs is applied first.
+    - group:
+        help_text: |
+          Information used to configure the Hive metastore service as a service principal
+          in a Kerberos realm.
+        params:
+        - arg_name: kerberos_principal
+          api_field: service.hiveMetastoreConfig.kerberosConfig.principal
+          processor: googlecloudsdk.command_lib.metastore.validators:ValidateKerberosPrincipal
+          help_text: |
+            A Kerberos principal that exists in the KDC to authenticate as. A typical principal
+            is of the form "primary/instance@REALM", but there is no exact format.
+        - arg_name: krb5-config
+          api_field: service.hiveMetastoreConfig.kerberosConfig.krb5ConfigGcsUri
+          processor: googlecloudsdk.command_lib.metastore.validators:ValidateGcsUri:arg_name=--krb5-config
+          help_text: |
+            A Cloud Storage URI that specifies the path to a krb5.conf file. It is of the form
+            gs://{bucket_name}/path/krb5.conf, although the file does not need to be named
+            krb5.conf explicitly.
+        - arg_name: keytab
+          api_field: service.hiveMetastoreConfig.kerberosConfig.keytab.cloudSecret
+          processor: googlecloudsdk.command_lib.metastore.parsers:ParseSecretManagerSecretVersion
+          help_text: |
+            A Kerberos keytab file that can be used to authenticate a service principal
+            with a Kerberos Key Distribution Center. This is a Secret Manager secret version,
+            and can be fully-qualified URL, or relative name in the form
+            `projects/{project_id}/secrets/{secret_id}/versions/{version_id}`.
+    labels:
+      api_field: service.labels
+
+  async:
+    collection: metastore.projects.locations.operations
+  update:
+    # b/136698204
+    read_modify_update: true
+    disable_auto_field_mask: true

@@ -1,0 +1,20 @@
+- release_tracks: [ALPHA]
+
+  help_text:
+    brief: List Admin Service Cluster instances
+    description: List Admin Service Cluster instances.
+    examples: |
+      To list all Admin Service Cluster instances in the region 'us-central1', run:
+
+        $ {command} --location=us-central1
+
+  request:
+    collection: krmapihosting.projects.locations.krmApiHosts
+
+  arguments:
+    resource:
+      help_text: List of Admin Service Cluster instances for a specified region.
+      spec: !REF googlecloudsdk.command_lib.admin_service_cluster.resources:instance-list
+
+  output:
+    format: table(name,name.scope("locations").segment(0):label=LOCATION, gitEndpoint, gitBranch)

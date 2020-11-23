@@ -1,0 +1,117 @@
+- release_tracks: [GA, BETA, ALPHA]
+  help_text:
+    brief: |
+      Create a VPC Access connector.
+    description: |
+      Create a new VPC Access connector with the given name.
+
+      This command can fail for the following reasons:
+        * An instance with the same name already exists.
+        * The active account does not have permission to create instances.
+    examples: |
+      The following command creates a VPC Access connector with name 'my-vpc-connector'
+      in region 'us-central1' in network 'my-network' with IP CIDR range of '10.132.0.0/28'.
+
+        $ {command} my-vpc-connector --region=us-central1 --network=my-network
+          --range=10.132.0.0/28
+
+  async:
+    collection: vpcaccess.projects.locations.operations
+
+  request:
+    collection: vpcaccess.projects.locations.connectors
+    api_version: v1
+    BETA:
+      api_version: v1beta1
+    ALPHA:
+      api_version: v1alpha1
+
+  arguments:
+    resource:
+      spec: !REF googlecloudsdk.command_lib.compute.networks.vpc_access.resources:connector_v1
+      ALPHA:
+        spec: !REF googlecloudsdk.command_lib.compute.networks.vpc_access.resources:connector
+      help_text: |
+        Arguments and flags that specify the VPC Access connector you want to create.
+    params:
+    - group:
+        release_tracks: [ALPHA]
+        mutex: true
+        params:
+        - group:
+            help_text: |
+              The Serverless VPC Access API can internally manage the creation
+              of a subnet to house the VPC connector within.  To create this
+              subnet, the network ID (--network) and an IP CIDR range (--range)
+              for the subnetwork must be provided.
+            params:
+            - arg_name: network
+              api_field: connector.network
+              required: false
+              help_text: |
+                Name of the Compute Engine network to which the connector
+                will be connected. If left unspecified, the default network will be
+                used.
+              default: default
+            - arg_name: range
+              api_field: connector.ipCidrRange
+              required: false
+              help_text: |
+                CIDR range of internal addresses that are reserved for this
+                connector. For example, 10.132.0.0/28. Range must be unique and
+                non-overlapping with existing ranges in the network.
+        - group:
+            help_text: |
+              You can specify a subnet to place the connector within rather than
+              using an internally managed subnet.  If you wish to use this
+              connector to attach your Serverless application to a Shared VPC,
+              first share a subnet to the project you are deploying your connector.
+              Then, you may supply the name of the subnet (--subnet) and the
+              project ID (--subnet-project) the subnetwork is hosted from to connect
+              to this VPC.
+            params:
+            - arg_name: subnet
+              api_field: connector.subnet.name
+              required: false
+              help_text: |
+                User-provided subnet to house the connector. This field can be used in
+                favor of specifying the `network` and `range` fields.
+                e.g. "my-subnet"
+            - arg_name: subnet-project
+              api_field: connector.subnet.projectId
+              required: false
+              help_text: |
+                Project ID of the provided subnet. The default is the project of the connector.
+    - arg_name: network
+      release_tracks: [BETA, GA]
+      api_field: connector.network
+      required: false
+      help_text: |
+        Name of the Compute Engine network to which the connector
+        will be connected. If left unspecified, the default network will be
+        used.
+      default: default
+    - arg_name: range
+      release_tracks: [BETA, GA]
+      api_field: connector.ipCidrRange
+      required: false
+      help_text: |
+        CIDR range of internal addresses that are reserved for this
+        connector. For example, 10.132.0.0/28. Range must be unique and
+        non-overlapping with existing ranges in the network.
+    - arg_name: min-throughput
+      api_field: connector.minThroughput
+      required: false
+      help_text: |
+        Minimum throughput in Mbps. Value must be a multiple of 100 from 200 through 900.
+        Must be lower than the value specified by `--max-throughput`; the set value, if applicable,
+        or the default maximum throughput value.
+      default: 200
+    - arg_name: max-throughput
+      api_field: connector.maxThroughput
+      required: false
+      help_text: |
+        Maximum throughput in Mbps. Value must be a multiple of 100 from 300 through 1000.
+        Must be higher than the value specified by `--min-throughput`; the set value, if applicable,
+        or the default minimum throughput value.
+      default: 300
