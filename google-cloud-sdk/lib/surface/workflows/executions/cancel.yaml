@@ -1,0 +1,24 @@
+- release_tracks: [ALPHA, BETA]
+  help_text:
+    brief: |
+      Cancel a workflow execution
+    description: |
+      Cancel a workflow execution.
+
+  arguments:
+    resource:
+      spec: !REF googlecloudsdk.command_lib.workflows.resources:execution
+      help_text: |
+        The name of the workflow execution to cancel.
+
+  input:
+    confirmation_prompt: |
+      You are about to cancel execution [{__name__}] of workflow [{workflowsId}].
+
+  request:
+    ALPHA:
+      api_version: v1alpha1
+    BETA:
+      api_version: v1beta
+    method: cancel
+    collection: workflowexecutions.projects.locations.workflows.executions

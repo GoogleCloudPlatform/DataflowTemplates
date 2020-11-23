@@ -1,0 +1,57 @@
+- release_tracks: [ALPHA]
+
+  help_text:
+    brief: Generate a SSH script for a Database Migration Service migration job.
+    description: Generate a SSH script for a Database Migration Service migration job.
+    examples: |
+      To generate a SSH script for a Database Migration Service migration job with vm creation config, run:
+
+        $ {command} my-migration-job --vm=sample-vm --vm-port=1111 --vm-machine-type=n1-standard-1 --vm-zone-create=us-central1-a --vpc=sample-vpc --region=us-central1
+
+      To generate a SSH script for a Database Migration Service migration job with vm selection config, run:
+
+        $ {command} my-migration-job --vm=sample-vm --vm-port=1111 --vm-zone=us-central1-a --region=us-central1
+
+  request:
+    collection: datamigration.projects.locations.migrationJobs
+    method: generateSshScript
+
+  arguments:
+    resource:
+      help_text: The migration job you want to generate SSH script for.
+      spec: !REF googlecloudsdk.command_lib.database_migration.resources:migration_job
+
+    params:
+    - api_field: generateSshScriptRequest.vm
+      arg_name: vm
+      required: true
+      help_text: |
+        Bastion VM Instance name to use or to create (if machineType is given).
+    - api_field: generateSshScriptRequest.vmPort
+      arg_name: vm-port
+      help_text: |
+        Port that will be open on the bastion host.
+    - group:
+        required: true
+        mutex: true
+        params:
+        - group:
+            params:
+            - api_field: generateSshScriptRequest.vmCreationConfig.vmMachineType
+              arg_name: vm-machine-type
+              required: true
+              help_text: |
+                VM instance machine type to create.
+            - api_field: generateSshScriptRequest.vmCreationConfig.vmZone
+              arg_name: vm-zone-create
+              help_text: |
+                Google Cloud Platform zone to create the VM in.
+            - api_field: generateSshScriptRequest.vmCreationConfig.vpc
+              arg_name: vpc
+              required: true
+              help_text: |
+                VPC name the VM needs to be created in.
+        - api_field: generateSshScriptRequest.vmSelectionConfig.vmZone
+          arg_name: vm-zone
+          help_text: |
+            Google Cloud Platform zone the VM is located in.

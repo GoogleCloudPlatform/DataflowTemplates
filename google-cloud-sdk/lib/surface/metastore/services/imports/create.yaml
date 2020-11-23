@@ -1,0 +1,51 @@
+- release_tracks: [ALPHA]
+  help_text:
+    brief: |
+      Import metadata into a service.
+    description: |
+      Import metadata with the given name and configurations in to a service.
+
+    examples: |
+      To import metadata with the name `my-import` and description `testing description`
+      into service `my-service` from a database dump with uri `gs://database-dump` and database
+      type `mysql`, run:
+
+          $ {command} my-import --service=my-service --description='testing description' \
+              --database-type=mysql --database-dump=gs://database-dump
+
+  request:
+    ALPHA:
+      api_version: v1alpha
+    collection: metastore.projects.locations.services.metadataImports
+
+  arguments:
+    resource:
+      help_text: |
+        Arguments and flags that specify the metadata import
+        you want to create.
+      spec: !REF googlecloudsdk.command_lib.metastore.resources:import
+    params:
+    - arg_name: description
+      api_field: metadataImport.description
+      help_text: |
+        The description of this metadata import.
+    - arg_name: database-type
+      required: true
+      api_field: metadataImport.databaseDump.databaseType
+      help_text: |
+        The type of the database.
+      choices:
+      - arg_value: mysql
+        enum_value: MYSQL
+        help_text:  |
+          MySQL Database
+    - arg_name: database-dump
+      required: true
+      api_field: metadataImport.databaseDump.gcsUri
+      processor: googlecloudsdk.command_lib.metastore.validators:ValidateGcsUri:arg_name=--database-dump
+      help_text: |
+        A Cloud Storage object URI that specifies a database dump from which to import metadata.
+        It must begin with `gs://`.
+
+  async:
+    collection: metastore.projects.locations.operations

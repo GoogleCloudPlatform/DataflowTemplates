@@ -1,0 +1,38 @@
+- release_tracks: [ALPHA]
+  help_text:
+    brief: |
+      List metadata imports under a Dataproc Metastore service.
+    description: |
+      Lists all metadata imports under the specified Dataproc Metastore service.
+    examples: |
+      To list all metadata imports under service
+      `my-service`, run:
+
+        $ {command} --service=my-service
+
+      To list all metadata imports under all services and
+      all locations, run:
+
+        $ {command} --service=- --location=-
+
+  arguments:
+    resource:
+      help_text: The service to list the metadata imports for.
+      spec: !REF googlecloudsdk.command_lib.metastore.resources:service
+
+  request:
+    ALPHA:
+      api_version: v1alpha
+    collection: metastore.projects.locations.services.metadataImports
+
+  response:
+    id_field: name
+
+  output:
+    format: |
+      table(
+        name.basename():label=NAME,
+        state:label=STATE,
+        databaseDump.databaseType:label=DATABASE_TYPE,
+        createTime.date()
+      )

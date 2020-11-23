@@ -1,0 +1,42 @@
+{
+  "components": [
+    {
+      "data": {
+        "contents_checksum": "93f7496bd206a5316bc42dc59623f2e05c4b9a60fcc48593fed2e14f7d60bf65",
+        "source": "",
+        "type": "tar"
+      },
+      "dependencies": [
+        "core",
+        "gsutil"
+      ],
+      "details": {
+        "description": "Provides the gsutil tool for interacting with Google Cloud Storage.",
+        "display_name": "Cloud Storage Command Line Tool (Platform Specific)"
+      },
+      "id": "gsutil-nix",
+      "is_configuration": false,
+      "is_hidden": true,
+      "is_required": false,
+      "platform": {
+        "operating_systems": [
+          "CYGWIN",
+          "LINUX",
+          "MACOSX",
+          "MSYS"
+        ]
+      },
+      "version": {
+        "build_number": 20201113164032,
+        "version_string": "4.55"
+      }
+    }
+  ],
+  "revision": 20201113164032,
+  "schema_version": {
+    "no_update": false,
+    "url": "https://dl.google.com/dl/cloudsdk/channels/rapid/google-cloud-sdk.tar.gz",
+    "version": 3
+  },
+  "version": "319.0.0"
+}

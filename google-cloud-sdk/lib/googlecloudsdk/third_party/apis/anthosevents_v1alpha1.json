@@ -1,0 +1,601 @@
+{
+  "kind": "discovery#restDescription",
+  "discoveryVersion": "v1",
+  "id": "anthosevents:v1alpha1",
+  "name": "anthosevents",
+  "version": "v1alpha1",
+  "revision": "0",
+  "title": "Cloud Run for Anthos Events",
+  "description": "",
+  "ownerDomain": "google.com",
+  "ownerName": "Google",
+  "icons": {
+    "x16": "http://www.google.com/images/icons/product/search-16.gif",
+    "x32": "http://www.google.com/images/icons/product/search-32.gif"
+   },
+  "documentationLink": "",
+  "protocol": "rest",
+  "rootUrl": "https://anthosevents.googleapis.com/",
+  "mtlsRootUrl": "https://anthosevents.mtls.googleapis.com/",
+  "servicePath": "",
+  "baseUrl": "https://anthosevents.googleapis.com/",
+  "batchPath": "batch",
+  "version_module": true,
+  "parameters": {
+    "access_token": {
+      "type": "string",
+      "description": "OAuth access token.",
+      "location": "query"
+    },
+    "alt": {
+      "type": "string",
+      "description": "Data format for response.",
+      "default": "json",
+      "enum": [
+        "json",
+        "media",
+        "proto"
+      ],
+      "enumDescriptions": [
+        "Responses with Content-Type of application/json",
+        "Media download with context-dependent Content-Type",
+        "Responses with Content-Type of application/x-protobuf"
+      ],
+      "location": "query"
+    },
+    "callback": {
+      "type": "string",
+      "description": "JSONP",
+      "location": "query"
+    },
+    "fields": {
+      "type": "string",
+      "description": "Selector specifying which fields to include in a partial response.",
+      "location": "query"
+    },
+    "key": {
+      "type": "string",
+      "description": "API key. Your API key identifies your project and provides you with API access, quota, and reports. Required unless you provide an OAuth 2.0 token.",
+      "location": "query"
+    },
+    "oauth_token": {
+      "type": "string",
+      "description": "OAuth 2.0 token for the current user.",
+      "location": "query"
+    },
+    "prettyPrint": {
+      "type": "boolean",
+      "description": "Returns response with indentations and line breaks.",
+      "default": "true",
+      "location": "query"
+    },
+    "quotaUser": {
+      "type": "string",
+      "description": "Available to use for quota purposes for server-side applications. Can be any arbitrary string assigned to a user, but should not exceed 40 characters.",
+      "location": "query"
+    },
+    "upload_protocol": {
+      "type": "string",
+      "description": "Upload protocol for media (e.g. \"raw\", \"multipart\").",
+      "location": "query"
+    },
+    "uploadType": {
+      "type": "string",
+      "description": "Legacy upload protocol for media (e.g. \"media\", \"multipart\").",
+      "location": "query"
+    },
+    "$.xgafv": {
+      "type": "string",
+      "description": "V1 error format.",
+      "enum": [
+        "1",
+        "2"
+      ],
+      "enumDescriptions": [
+        "v1 error format",
+        "v2 error format"
+      ],
+      "location": "query"
+    }
+  },
+  "schemas": {
+    "CloudRun": {
+      "id": "CloudRun",
+      "description": "CloudRun is the Schema for the CloudRuns API",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "The API version for this call such as \"events.cloud.google.com\/v1beta1\".",
+          "type": "string"
+        },
+        "kind": {
+          "description": "The kind of resource, in this case \"CloudRun\".",
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Metadata associated with this CloudRun resource",
+          "$ref": "ObjectMeta"
+        },
+        "spec": {
+          "description": "The CloudRunSpec reflects the state of CloudRun `json:\"spec,omitempty\"`",
+          "$ref": "CloudRunSpec"
+        },
+        "status": {
+          "description": "The CloudRunStatus defines the observed status `json:\"status,omitempty\"`",
+          "$ref": "CloudRunStatus"
+        }
+      }
+    },
+    "ObjectMeta": {
+      "id": "ObjectMeta",
+      "description": "k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta is metadata that all persisted resources must have, which includes all objects users must create.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name must be unique within a namespace, within a Cloud Run region. Is required when creating resources, although some resources may allow a client to request the generation of an appropriate name automatically. Name is primarily intended for creation idempotence and configuration definition. Cannot be updated. More info: http:\/\/kubernetes.io\/docs\/user-guide\/identifiers#names +optional",
+          "type": "string"
+        },
+        "generateName": {
+          "description": "(Optional) Cloud Run fully managed: not supported Cloud Run for Anthos: supported GenerateName is an optional prefix, used by the server, to generate a unique name ONLY IF the Name field has not been provided. If this field is used, the name returned to the client will be different than the name passed. This value will also be combined with a unique suffix. The provided value has the same validation rules as the Name field, and may be truncated by the length of the suffix required to make the value unique on the server. If this field is specified and the generated name exists, the server will NOT return a 409 - instead, it will either return 201 Created or 500 with Reason ServerTimeout indicating a unique name could not be found in the time allotted, and the client should retry (optionally after the time indicated in the Retry-After header). Applied only if Name is not specified. More info: https:\/\/git.k8s.io\/community\/contributors\/devel\/api-conventions.md#idempotency string generateName = 2;",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace defines the space within each name must be unique, within a Cloud Run region. In Cloud Run the namespace must be equal to either the project ID or project number.",
+          "type": "string"
+        },
+        "selfLink": {
+          "description": "(Optional) SelfLink is a URL representing this object. Populated by the system. Read-only. string selfLink = 4;",
+          "type": "string"
+        },
+        "uid": {
+          "description": "(Optional) UID is the unique in time and space value for this object. It is typically generated by the server on successful creation of a resource and is not allowed to change on PUT operations. Populated by the system. Read-only. More info: http:\/\/kubernetes.io\/docs\/user-guide\/identifiers#uids",
+          "type": "string"
+        },
+        "resourceVersion": {
+          "description": "(Optional) An opaque value that represents the internal version of this object that can be used by clients to determine when objects have changed. May be used for optimistic concurrency, change detection, and the watch operation on a resource or set of resources. Clients must treat these values as opaque and passed unmodified back to the server. They may only be valid for a particular resource or set of resources. Populated by the system. Read-only. Value must be treated as opaque by clients and . More info: https:\/\/git.k8s.io\/community\/contributors\/devel\/api-conventions.md#concurrency-control-and-consistency",
+          "type": "string"
+        },
+        "generation": {
+          "description": "(Optional) A sequence number representing a specific generation of the desired state. Populated by the system. Read-only.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "creationTimestamp": {
+          "description": "(Optional) CreationTimestamp is a timestamp representing the server time when this object was created. It is not guaranteed to be set in happens-before order across separate operations. Clients may not set this value. It is represented in RFC3339 form and is in UTC. Populated by the system. Read-only. Null for lists. More info: https:\/\/git.k8s.io\/community\/contributors\/devel\/api-conventions.md#metadata",
+          "type": "string",
+          "format": "google-datetime"
+        },
+        "labels": {
+          "description": "(Optional) Map of string keys and values that can be used to organize and categorize (scope and select) objects. May match selectors of replication controllers and routes. More info: http:\/\/kubernetes.io\/docs\/user-guide\/labels",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "annotations": {
+          "description": "(Optional) Annotations is an unstructured key value map stored with a resource that may be set by external tools to store and retrieve arbitrary metadata. They are not queryable and should be preserved when modifying objects. More info: http:\/\/kubernetes.io\/docs\/user-guide\/annotations",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "ownerReferences": {
+          "description": "(Optional) Cloud Run fully managed: not supported Cloud Run for Anthos: supported List of objects that own this object. If ALL objects in the list have been deleted, this object will be garbage collected.",
+          "type": "array",
+          "items": {
+            "$ref": "OwnerReference"
+          }
+        },
+        "deletionTimestamp": {
+          "description": "(Optional) Cloud Run fully managed: not supported Cloud Run for Anthos: supported DeletionTimestamp is RFC 3339 date and time at which this resource will be deleted. This field is set by the server when a graceful deletion is requested by the user, and is not directly settable by a client. The resource is expected to be deleted (no longer visible from resource lists, and not reachable by name) after the time in this field, once the finalizers list is empty. As long as the finalizers list contains items, deletion is blocked. Once the deletionTimestamp is set, this value may not be unset or be set further into the future, although it may be shortened or the resource may be deleted prior to this time. For example, a user may request that a pod is deleted in 30 seconds. The Kubelet will react by sending a graceful termination signal to the containers in the pod. After that 30 seconds, the Kubelet will send a hard termination signal (SIGKILL) to the container and after cleanup, remove the pod from the API. In the presence of network partitions, this object may still exist after this timestamp, until an administrator or automated process can determine the resource is fully terminated. If not set, graceful deletion of the object has not been requested. Populated by the system when a graceful deletion is requested. Read-only. More info: https:\/\/git.k8s.io\/community\/contributors\/devel\/api-conventions.md#metadata",
+          "type": "string",
+          "format": "google-datetime"
+        },
+        "deletionGracePeriodSeconds": {
+          "description": "(Optional) Cloud Run fully managed: not supported Cloud Run for Anthos: supported Number of seconds allowed for this object to gracefully terminate before it will be removed from the system. Only set when deletionTimestamp is also set. May only be shortened. Read-only.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "finalizers": {
+          "description": "(Optional) Cloud Run fully managed: not supported Cloud Run for Anthos: supported Must be empty before the object is deleted from the registry. Each entry is an identifier for the responsible component that will remove the entry from the list. If the deletionTimestamp of the object is non-nil, entries in this list can only be removed. +patchStrategy=merge",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "clusterName": {
+          "description": "(Optional) Cloud Run fully managed: not supported Cloud Run for Anthos: supported The name of the cluster which the object belongs to. This is used to distinguish resources with same name and namespace in different clusters. This field is not set anywhere right now and apiserver is going to ignore it if set in create or update request.",
+          "type": "string"
+        }
+      }
+    },
+    "OwnerReference": {
+      "id": "OwnerReference",
+      "description": "OwnerReference contains enough information to let you identify an owning object. Currently, an owning object must be in the same namespace, so there is no namespace field.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "API version of the referent.",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind of the referent. More info: https:\/\/git.k8s.io\/community\/contributors\/devel\/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name of the referent. More info: http:\/\/kubernetes.io\/docs\/user-guide\/identifiers#names",
+          "type": "string"
+        },
+        "uid": {
+          "description": "UID of the referent. More info: http:\/\/kubernetes.io\/docs\/user-guide\/identifiers#uids",
+          "type": "string"
+        },
+        "controller": {
+          "description": "If true, this reference points to the managing controller. +optional",
+          "type": "boolean"
+        },
+        "blockOwnerDeletion": {
+          "description": "If true, AND if the owner has the \"foregroundDeletion\" finalizer, then the owner cannot be deleted from the key-value store until this reference is removed. Defaults to false. To set this field, a user needs \"delete\" permission of the owner, otherwise 422 (Unprocessable Entity) will be returned. +optional",
+          "type": "boolean"
+        }
+      }
+    },
+    "CloudRunSpec": {
+      "id": "CloudRunSpec",
+      "description": "CloudRunSpec defines the desired state of CloudRun",
+      "type": "object",
+      "properties": {
+        "eventing": {
+          "description": "`json:\"eventing,omitempty\"`",
+          "$ref": "EventingSpec"
+        },
+        "serving": {
+          "description": "`json:\"serving,omitempty\"`",
+          "$ref": "ServingSpec"
+        },
+        "networking": {
+          "description": "`json:\"networking,omitempty\"`",
+          "$ref": "NetworkingSpec"
+        }
+      }
+    },
+    "EventingSpec": {
+      "id": "EventingSpec",
+      "description": "EventingSpec defines the desired state of Eventing",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ServingSpec": {
+      "id": "ServingSpec",
+      "description": "ServingSpec defines the desired state of Serving",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "NetworkingSpec": {
+      "id": "NetworkingSpec",
+      "description": "NetworkingSpec defines the desired state of Networking",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "loadbalancertype": {
+          "description": "LoadBalancerType is whether the istio ingress is internal or external possible values are internal | external(implicit).",
+          "type": "string"
+        }
+      }
+    },
+    "CloudRunStatus": {
+      "id": "CloudRunStatus",
+      "description": "CloudRunStatus defines the observed state of CloudRun",
+      "type": "object",
+      "properties": {
+        "observedGeneration": {
+          "description": "ObservedGeneration is the 'Generation' of the Service that was last processed by the controller.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "conditions": {
+          "description": "Conditions are the latest available observations of a resource's current state.",
+          "type": "array",
+          "items": {
+            "$ref": "Condition"
+          }
+        },
+        "annotations": {
+          "description": "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "eventingversion": {
+          "description": "The version of the installed release.",
+          "type": "string"
+        },
+        "servingversion": {
+          "description": "The version of the installed release.",
+          "type": "string"
+        },
+        "istioversion": {
+          "description": "The version of the installed release.",
+          "type": "string"
+        }
+      }
+    },
+    "Condition": {
+      "id": "Condition",
+      "description": "Condition defines a generic condition for a Resource",
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "type is used to communicate the status of the reconciliation process. See also: https:\/\/github.com\/knative\/serving\/blob\/master\/docs\/spec\/errors.md#error-conditions-and-reporting Types common to all resources include: * \"Ready\": True when the Resource is ready.",
+          "type": "string"
+        },
+        "status": {
+          "description": "Status of the condition, one of True, False, Unknown.",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Optional. One-word CamelCase reason for the condition's last transition.",
+          "type": "string"
+        },
+        "message": {
+          "description": "Optional. Human readable message indicating details about the current status.",
+          "type": "string"
+        },
+        "lastTransitionTime": {
+          "description": "Optional. Last time the condition transitioned from one status to another.",
+          "type": "string",
+          "format": "google-datetime"
+        },
+        "severity": {
+          "description": "Optional. How to interpret failures of this condition, one of Error, Warning, Info",
+          "type": "string"
+        }
+      }
+    },
+    "ListCloudRunsResponse": {
+      "id": "ListCloudRunsResponse",
+      "description": "ListCloudRunsResponse is a list of CloudRun resources. The next page token is specified as the \"continue\" field in ListMeta.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "The API version for this call such as \"core\/v1\".",
+          "type": "string"
+        },
+        "kind": {
+          "description": "The kind of this resource, in this case \"CloudRunList\".",
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Metadata associated with this CloudRun list.",
+          "$ref": "ListMeta"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "CloudRun"
+          }
+        }
+      }
+    },
+    "ListMeta": {
+      "id": "ListMeta",
+      "description": "ListMeta describes metadata that synthetic resources must have, including lists and various status objects. A resource may have only one of {ObjectMeta, ListMeta}.",
+      "type": "object",
+      "properties": {
+        "selfLink": {
+          "description": "SelfLink is a URL representing this object. Populated by the system. Read-only. +optional",
+          "type": "string"
+        },
+        "resourceVersion": {
+          "description": "String that identifies the server's internal version of this object that can be used by clients to determine when objects have changed. Value must be treated as opaque by clients and passed unmodified back to the server. Populated by the system. Read-only. More info: https:\/\/git.k8s.io\/community\/contributors\/devel\/api-conventions.md#concurrency-control-and-consistency +optional",
+          "type": "string"
+        },
+        "continue": {
+          "description": "continue may be set if the user set a limit on the number of items returned, and indicates that the server has more data available. The value is opaque and may be used to issue another request to the endpoint that served this list to retrieve the next set of available objects. Continuing a list may not be possible if the server configuration has changed or more than a few minutes have passed. The resourceVersion field returned when using this continue value will be identical to the value in the first response.",
+          "type": "string"
+        }
+      }
+    },
+    "Empty": {
+      "id": "Empty",
+      "description": "A generic empty message that you can re-use to avoid defining duplicated empty messages in your APIs. A typical example is to use it as the request or the response type of an API method. For instance: service Foo { rpc Bar(google.protobuf.Empty) returns (google.protobuf.Empty); } The JSON representation for `Empty` is empty JSON object `{}`.",
+      "type": "object",
+      "properties": {
+      }
+    }
+  },
+  "resources": {
+    "namespaces": {
+      "resources": {
+        "cloudruns": {
+          "methods": {
+            "create": {
+              "id": "anthosevents.namespaces.cloudruns.create",
+              "path": "apis/operator.run.cloud.google.com/v1alpha1/{+parent}/cloudruns",
+              "flatPath": "apis/operator.run.cloud.google.com/v1alpha1/namespaces/{namespacesId}/cloudruns",
+              "httpMethod": "POST",
+              "parameters": {
+                "parent": {
+                  "description": "The namespace in which this CloudRun resource should be created.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "parent"
+              ],
+              "request": {
+                "$ref": "CloudRun"
+              },
+              "response": {
+                "$ref": "CloudRun"
+              },
+              "description": "Creates a new CloudRun resource."
+            },
+            "list": {
+              "id": "anthosevents.namespaces.cloudruns.list",
+              "path": "apis/operator.run.cloud.google.com/v1alpha1/{+parent}/cloudruns",
+              "flatPath": "apis/operator.run.cloud.google.com/v1alpha1/namespaces/{namespacesId}/cloudruns",
+              "httpMethod": "GET",
+              "parameters": {
+                "parent": {
+                  "description": "The namespace from which the CloudRun resources should be listed.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+$",
+                  "type": "string"
+                },
+                "limit": {
+                  "description": "The maximum number of records that should be returned.",
+                  "location": "query",
+                  "type": "integer",
+                  "format": "int32"
+                },
+                "fieldSelector": {
+                  "description": "Allows to filter resources based on a specific value for a field name. Send this in a query string format. i.e. 'metadata.name%3Dlorem'.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "labelSelector": {
+                  "description": "Allows to filter resources based on a label. Supported operations are =, !=, exists, in, and notIn.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "resourceVersion": {
+                  "description": "The baseline resource version from which the list or watch operation should start.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "watch": {
+                  "description": "Flag that indicates that the client expects to watch this resource as well.",
+                  "location": "query",
+                  "type": "boolean"
+                },
+                "continue": {
+                  "description": "Optional encoded string to continue paging.",
+                  "location": "query",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "parent"
+              ],
+              "response": {
+                "$ref": "ListCloudRunsResponse"
+              },
+              "description": "Rpc to list CloudRun resources."
+            },
+            "get": {
+              "id": "anthosevents.namespaces.cloudruns.get",
+              "path": "apis/operator.run.cloud.google.com/v1alpha1/{+name}",
+              "flatPath": "apis/operator.run.cloud.google.com/v1alpha1/namespaces/{namespacesId}/cloudruns/{cloudrunsId}",
+              "httpMethod": "GET",
+              "parameters": {
+                "name": {
+                  "description": "The name of the CloudRun resource being retrieved.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/cloudruns\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "response": {
+                "$ref": "CloudRun"
+              },
+              "description": "Rpc to get information about a CloudRun resource."
+            },
+            "patch": {
+              "id": "anthosevents.namespaces.cloudruns.patch",
+              "path": "apis/operator.run.cloud.google.com/v1alpha1/{+name}",
+              "flatPath": "apis/operator.run.cloud.google.com/v1alpha1/namespaces/{namespacesId}/cloudruns/{cloudrunsId}",
+              "httpMethod": "PATCH",
+              "parameters": {
+                "name": {
+                  "description": "The name of the CloudRun resource being updated.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/cloudruns\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "request": {
+                "$ref": "CloudRun"
+              },
+              "response": {
+                "$ref": "CloudRun"
+              },
+              "description": "Rpc to update a CloudRun resource."
+            },
+            "replaceCloudRun": {
+              "id": "anthosevents.namespaces.cloudruns.replaceCloudRun",
+              "path": "apis/operator.run.cloud.google.com/v1alpha1/{+name}",
+              "flatPath": "apis/operator.run.cloud.google.com/v1alpha1/namespaces/{namespacesId}/cloudruns/{cloudrunsId}",
+              "httpMethod": "PUT",
+              "parameters": {
+                "name": {
+                  "description": "The name of the CloudRun resource being replaced.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/cloudruns\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "request": {
+                "$ref": "CloudRun"
+              },
+              "response": {
+                "$ref": "CloudRun"
+              },
+              "description": "Rpc to replace a CloudRun resource. Only the spec and metadata labels and annotations are modifiable. After the Update request, Cloud Run will work to make the 'status' match the requested 'spec'. May provide metadata.resourceVersion to enforce update from last read for optimistic concurrency control."
+            },
+            "delete": {
+              "id": "anthosevents.namespaces.cloudruns.delete",
+              "path": "apis/operator.run.cloud.google.com/v1alpha1/{+name}",
+              "flatPath": "apis/operator.run.cloud.google.com/v1alpha1/namespaces/{namespacesId}/cloudruns/{cloudrunsId}",
+              "httpMethod": "DELETE",
+              "parameters": {
+                "name": {
+                  "description": "The name of the CloudRun resource being deleted.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/cloudruns\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "response": {
+                "$ref": "Empty"
+              },
+              "description": "Rpc to delete a CloudRun."
+            }
+          }
+        }
+      }
+    }
+  },
+  "basePath": ""
+}

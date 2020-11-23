@@ -1,0 +1,35 @@
+- release_tracks: [ALPHA, BETA, GA]
+
+  help_text:
+    brief: |
+      Update an Artifact Registry repository.
+    description: |
+      Update the description or labels for an Artifact Registry repository.
+
+      This command can fail for the following reasons:
+        * A repository with this name does not exist.
+        * The active account does not have permission to update repositories.
+    examples: |
+      To update a repository with the name `my-repo` under the current project, run:
+
+        $ {command} my-repo --description="New description"
+
+  arguments:
+    resource:
+      spec: !REF googlecloudsdk.command_lib.artifacts.resources:repository_without_property
+      help_text: |
+        The Artifact Registry repository to update.
+    params:
+    - arg_name: description
+      api_field: repository.description
+      help_text: |
+        Description for the repository.
+    labels:
+      api_field: repository.labels
+
+  request:
+    api_version: v1beta1
+    collection: artifactregistry.projects.locations.repositories
+
+  update:
+    read_modify_update: true

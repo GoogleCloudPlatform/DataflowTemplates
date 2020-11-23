@@ -1,0 +1,19 @@
+- release_tracks: [ALPHA]
+  help_text:
+    brief: Delete Admin Service Cluster instances
+    description: Delete an Admin Service Cluster instance.
+    examples: |
+      To delete an Admin Service Cluster instance, run:
+
+        $ {command} NAME --location=LOCATION
+  request:
+    collection: krmapihosting.projects.locations.krmApiHosts
+    method: delete
+
+  async:
+    collection: krmapihosting.projects.locations.operations
+
+  arguments:
+    resource:
+      help_text: The identifier for an Admin Service Cluster instance.
+      spec: !REF googlecloudsdk.command_lib.admin_service_cluster.resources:instance

@@ -1,0 +1,34 @@
+- release_tracks: [BETA, GA]
+  help_text:
+    brief: |
+      List insights for a Cloud project.
+    description: |
+      List insights for a Cloud project.
+    examples: |
+      To list insights:
+
+        $ {command} --project=project-name --location=global --insight-type=google.compute.firewall.Insight
+
+  request:
+    collection: recommender.projects.locations.insightTypes.insights
+    method: list
+    BETA:
+      api_version: v1beta1
+    GA:
+      api_version: v1
+
+  arguments:
+    resource:
+      help_text: The insight types to list.
+      spec: !REF googlecloudsdk.command_lib.recommender.resources:insight-type
+
+  output:
+    format: |
+      table(
+        name.basename(): label=INSIGHT_ID,
+        name.segment(3): label=LOCATION,
+        name.segment(5): label=INSIGHT_TYPE,
+        category: label=CATEGORY,
+        stateInfo.state: label=INSIGHT_STATE,
+        lastRefreshTime: label=LAST_REFRESH_TIME
+      )

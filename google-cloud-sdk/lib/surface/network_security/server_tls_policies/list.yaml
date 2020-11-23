@@ -1,0 +1,26 @@
+release_tracks: [ALPHA]
+
+help_text:
+  brief: |
+    List server TLS policies.
+  description: |
+    List all server TLS policies in the specified location of the current project.
+
+request: &request
+  api_version: v1alpha1
+  collection: networksecurity.projects.locations.serverTlsPolicies
+
+arguments:
+  resource:
+    spec: !REF googlecloudsdk.command_lib.network_security.resources:location
+    help_text: |
+      The project of the server TLS policies to display.
+
+response:
+  id_field: name
+
+output:
+  format: |
+     table(
+        name.basename():label=NAME
+      )

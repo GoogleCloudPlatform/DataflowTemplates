@@ -1,0 +1,17 @@
+- release_tracks: [ALPHA]
+
+  help_text:
+    brief: Describe Admin Service Cluster instances.
+    description: Describe an Admin Service Cluster instance.
+    examples: |
+      To describe an Admin Service Cluster instance named default in the location ``us-central1'', run:
+
+      $ {command} default --location=us-central1
+
+  request:
+    collection: krmapihosting.projects.locations.krmApiHosts
+
+  arguments:
+    resource:
+      help_text: The identifier for an Admin Service Cluster instance.
+      spec: !REF googlecloudsdk.command_lib.admin_service_cluster.resources:instance

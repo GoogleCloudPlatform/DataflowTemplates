@@ -1,0 +1,20 @@
+release_tracks: [ALPHA, BETA, GA]
+help_text:
+  brief: List Pub/Sub Lite topics.
+  description: List Pub/Sub Lite topics.
+  examples: |
+    To list Pub/Sub Lite topics, run:
+
+        $ {command} --zone=us-central1-a \
+            --limit=5
+
+request:
+  collection: pubsublite.admin.projects.locations.topics
+  method: list
+  modify_request_hooks:
+  - googlecloudsdk.command_lib.pubsub.lite_util:UpdateAdminRequest
+
+arguments:
+  resource:
+    help_text: Zone to list topics for.
+    spec: !REF googlecloudsdk.command_lib.pubsub.resources:location

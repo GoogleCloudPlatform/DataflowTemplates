@@ -1,0 +1,32 @@
+release_tracks: [ALPHA, BETA, GA]
+help_text:
+  brief: Create a Pub/Sub Lite subscription.
+  description: Create a Pub/Sub Lite subscription.
+  examples: |
+    To create a Pub/Sub Lite subscription, run:
+
+        $ {command} mysubscription \
+            --zone=us-central1-a \
+            --topic=mytopic
+
+request:
+  collection: pubsublite.admin.projects.locations.subscriptions
+  method: create
+  modify_request_hooks:
+  - googlecloudsdk.command_lib.pubsub.lite_util:UpdateAdminRequest
+  - googlecloudsdk.command_lib.pubsub.lite_util:AddSubscriptionTopicResource
+
+arguments:
+  resource:
+    help_text: Identifies the Cloud zone this command will be executed on.
+    spec: !REF googlecloudsdk.command_lib.pubsub.resources:location
+    is_parent_resource: true
+    is_positional: false
+
+  params:
+  - _REF_: googlecloudsdk.command_lib.pubsub.flags:subscription-name
+    required: true
+  - _REF_: googlecloudsdk.command_lib.pubsub.flags:subscription-topic-name
+    required: true
+  - _REF_: googlecloudsdk.command_lib.pubsub.flags:delivery-requirement
+    default: deliver-immediately

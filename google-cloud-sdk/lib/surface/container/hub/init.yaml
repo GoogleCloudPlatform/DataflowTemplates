@@ -1,0 +1,28 @@
+- release_tracks: [ALPHA]
+  # TODO(b/161926264): Unhide this after adding sufficient tests.
+  hidden: true
+  help_text:
+    brief: Initialize Hub.
+    description: |
+      Initialize Hub in this project.
+
+      This command instantiates the Hub default service account and the Hub workload identity pool.
+    examples: |
+      To initialize Hub in the current project, run:
+
+        $ {command}
+
+      This outputs the appropriate service identity and workload identity pool.
+
+  request:
+    collection: gkehub.projects.locations.global.memberships
+    method: initializeHub
+    api_version: v1alpha2
+    modify_request_hooks:
+    - googlecloudsdk.command_lib.container.hub.memberships.util:SetInitProjectPath
+
+  arguments:
+    resource:
+      help_text: Project to initialize Hub in.
+      spec: !REF googlecloudsdk.command_lib.container.hub.memberships.resources:project
+      override_resource_collection: true

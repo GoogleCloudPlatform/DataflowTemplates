@@ -1,0 +1,25 @@
+- release_tracks: [ALPHA]
+  help_text:
+    brief: Poll a long-running Dataproc Metastore operation until it completes.
+    description: |
+      Poll a long-running Dataproc Metastore operation until it completes. When
+      the operation is complete, this command will display the results of the
+      operation.
+    examples: |
+      To poll a long-running Dataproc Metastore operation named 'my-operation' until it completes, run the following:
+
+        $ {command} my-operation
+
+  request:
+    ALPHA:
+      api_version: v1alpha
+    collection: metastore.projects.locations.operations
+
+  arguments:
+    resource:
+      help_text: ID for the operation to poll until complete.
+      spec: !REF googlecloudsdk.command_lib.metastore.resources:operation
+
+  async:
+    collection: metastore.projects.locations.operations
+    result_attribute: response

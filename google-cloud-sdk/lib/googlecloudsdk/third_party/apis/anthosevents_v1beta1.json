@@ -1,0 +1,3520 @@
+{
+  "kind": "discovery#restDescription",
+  "discoveryVersion": "v1",
+  "id": "anthosevents:v1beta1",
+  "name": "anthosevents",
+  "version": "v1beta1",
+  "revision": "0",
+  "title": "Cloud Run for Anthos Events",
+  "description": "",
+  "ownerDomain": "google.com",
+  "ownerName": "Google",
+  "icons": {
+    "x16": "http://www.google.com/images/icons/product/search-16.gif",
+    "x32": "http://www.google.com/images/icons/product/search-32.gif"
+   },
+  "documentationLink": "",
+  "protocol": "rest",
+  "rootUrl": "https://anthosevents.googleapis.com/",
+  "mtlsRootUrl": "https://anthosevents.mtls.googleapis.com/",
+  "servicePath": "",
+  "baseUrl": "https://anthosevents.googleapis.com/",
+  "batchPath": "batch",
+  "version_module": true,
+  "parameters": {
+    "access_token": {
+      "type": "string",
+      "description": "OAuth access token.",
+      "location": "query"
+    },
+    "alt": {
+      "type": "string",
+      "description": "Data format for response.",
+      "default": "json",
+      "enum": [
+        "json",
+        "media",
+        "proto"
+      ],
+      "enumDescriptions": [
+        "Responses with Content-Type of application/json",
+        "Media download with context-dependent Content-Type",
+        "Responses with Content-Type of application/x-protobuf"
+      ],
+      "location": "query"
+    },
+    "callback": {
+      "type": "string",
+      "description": "JSONP",
+      "location": "query"
+    },
+    "fields": {
+      "type": "string",
+      "description": "Selector specifying which fields to include in a partial response.",
+      "location": "query"
+    },
+    "key": {
+      "type": "string",
+      "description": "API key. Your API key identifies your project and provides you with API access, quota, and reports. Required unless you provide an OAuth 2.0 token.",
+      "location": "query"
+    },
+    "oauth_token": {
+      "type": "string",
+      "description": "OAuth 2.0 token for the current user.",
+      "location": "query"
+    },
+    "prettyPrint": {
+      "type": "boolean",
+      "description": "Returns response with indentations and line breaks.",
+      "default": "true",
+      "location": "query"
+    },
+    "quotaUser": {
+      "type": "string",
+      "description": "Available to use for quota purposes for server-side applications. Can be any arbitrary string assigned to a user, but should not exceed 40 characters.",
+      "location": "query"
+    },
+    "upload_protocol": {
+      "type": "string",
+      "description": "Upload protocol for media (e.g. \"raw\", \"multipart\").",
+      "location": "query"
+    },
+    "uploadType": {
+      "type": "string",
+      "description": "Legacy upload protocol for media (e.g. \"media\", \"multipart\").",
+      "location": "query"
+    },
+    "$.xgafv": {
+      "type": "string",
+      "description": "V1 error format.",
+      "enum": [
+        "1",
+        "2"
+      ],
+      "enumDescriptions": [
+        "v1 error format",
+        "v2 error format"
+      ],
+      "location": "query"
+    }
+  },
+  "schemas": {
+    "ApiServerSource": {
+      "id": "ApiServerSource",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "The API version for this call such as \"sources.knative.dev\/v1beta1\".",
+          "type": "string"
+        },
+        "kind": {
+          "description": "The kind of resource, in this case \"ApiServerSource\".",
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Metadata associated with this ApiServerSource.",
+          "$ref": "ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec defines the desired state of the ApiServerSource.",
+          "$ref": "ApiServerSourceSpec"
+        },
+        "status": {
+          "description": "Status represents the current state of the ApiServerSource. This data may be out of date. +optional",
+          "$ref": "ApiServerSourceStatus"
+        }
+      }
+    },
+    "ObjectMeta": {
+      "id": "ObjectMeta",
+      "description": "k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta is metadata that all persisted resources must have, which includes all objects users must create.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name must be unique within a namespace, within a Cloud Run region. Is required when creating resources, although some resources may allow a client to request the generation of an appropriate name automatically. Name is primarily intended for creation idempotence and configuration definition. Cannot be updated. More info: http:\/\/kubernetes.io\/docs\/user-guide\/identifiers#names +optional",
+          "type": "string"
+        },
+        "generateName": {
+          "description": "(Optional) Cloud Run fully managed: not supported Cloud Run for Anthos: supported GenerateName is an optional prefix, used by the server, to generate a unique name ONLY IF the Name field has not been provided. If this field is used, the name returned to the client will be different than the name passed. This value will also be combined with a unique suffix. The provided value has the same validation rules as the Name field, and may be truncated by the length of the suffix required to make the value unique on the server. If this field is specified and the generated name exists, the server will NOT return a 409 - instead, it will either return 201 Created or 500 with Reason ServerTimeout indicating a unique name could not be found in the time allotted, and the client should retry (optionally after the time indicated in the Retry-After header). Applied only if Name is not specified. More info: https:\/\/git.k8s.io\/community\/contributors\/devel\/api-conventions.md#idempotency string generateName = 2;",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace defines the space within each name must be unique, within a Cloud Run region. In Cloud Run the namespace must be equal to either the project ID or project number.",
+          "type": "string"
+        },
+        "selfLink": {
+          "description": "(Optional) SelfLink is a URL representing this object. Populated by the system. Read-only. string selfLink = 4;",
+          "type": "string"
+        },
+        "uid": {
+          "description": "(Optional) UID is the unique in time and space value for this object. It is typically generated by the server on successful creation of a resource and is not allowed to change on PUT operations. Populated by the system. Read-only. More info: http:\/\/kubernetes.io\/docs\/user-guide\/identifiers#uids",
+          "type": "string"
+        },
+        "resourceVersion": {
+          "description": "(Optional) An opaque value that represents the internal version of this object that can be used by clients to determine when objects have changed. May be used for optimistic concurrency, change detection, and the watch operation on a resource or set of resources. Clients must treat these values as opaque and passed unmodified back to the server. They may only be valid for a particular resource or set of resources. Populated by the system. Read-only. Value must be treated as opaque by clients and . More info: https:\/\/git.k8s.io\/community\/contributors\/devel\/api-conventions.md#concurrency-control-and-consistency",
+          "type": "string"
+        },
+        "generation": {
+          "description": "(Optional) A sequence number representing a specific generation of the desired state. Populated by the system. Read-only.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "creationTimestamp": {
+          "description": "(Optional) CreationTimestamp is a timestamp representing the server time when this object was created. It is not guaranteed to be set in happens-before order across separate operations. Clients may not set this value. It is represented in RFC3339 form and is in UTC. Populated by the system. Read-only. Null for lists. More info: https:\/\/git.k8s.io\/community\/contributors\/devel\/api-conventions.md#metadata",
+          "type": "string",
+          "format": "google-datetime"
+        },
+        "labels": {
+          "description": "(Optional) Map of string keys and values that can be used to organize and categorize (scope and select) objects. May match selectors of replication controllers and routes. More info: http:\/\/kubernetes.io\/docs\/user-guide\/labels",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "annotations": {
+          "description": "(Optional) Annotations is an unstructured key value map stored with a resource that may be set by external tools to store and retrieve arbitrary metadata. They are not queryable and should be preserved when modifying objects. More info: http:\/\/kubernetes.io\/docs\/user-guide\/annotations",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "ownerReferences": {
+          "description": "(Optional) Cloud Run fully managed: not supported Cloud Run for Anthos: supported List of objects that own this object. If ALL objects in the list have been deleted, this object will be garbage collected.",
+          "type": "array",
+          "items": {
+            "$ref": "OwnerReference"
+          }
+        },
+        "deletionTimestamp": {
+          "description": "(Optional) Cloud Run fully managed: not supported Cloud Run for Anthos: supported DeletionTimestamp is RFC 3339 date and time at which this resource will be deleted. This field is set by the server when a graceful deletion is requested by the user, and is not directly settable by a client. The resource is expected to be deleted (no longer visible from resource lists, and not reachable by name) after the time in this field, once the finalizers list is empty. As long as the finalizers list contains items, deletion is blocked. Once the deletionTimestamp is set, this value may not be unset or be set further into the future, although it may be shortened or the resource may be deleted prior to this time. For example, a user may request that a pod is deleted in 30 seconds. The Kubelet will react by sending a graceful termination signal to the containers in the pod. After that 30 seconds, the Kubelet will send a hard termination signal (SIGKILL) to the container and after cleanup, remove the pod from the API. In the presence of network partitions, this object may still exist after this timestamp, until an administrator or automated process can determine the resource is fully terminated. If not set, graceful deletion of the object has not been requested. Populated by the system when a graceful deletion is requested. Read-only. More info: https:\/\/git.k8s.io\/community\/contributors\/devel\/api-conventions.md#metadata",
+          "type": "string",
+          "format": "google-datetime"
+        },
+        "deletionGracePeriodSeconds": {
+          "description": "(Optional) Cloud Run fully managed: not supported Cloud Run for Anthos: supported Number of seconds allowed for this object to gracefully terminate before it will be removed from the system. Only set when deletionTimestamp is also set. May only be shortened. Read-only.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "finalizers": {
+          "description": "(Optional) Cloud Run fully managed: not supported Cloud Run for Anthos: supported Must be empty before the object is deleted from the registry. Each entry is an identifier for the responsible component that will remove the entry from the list. If the deletionTimestamp of the object is non-nil, entries in this list can only be removed. +patchStrategy=merge",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "clusterName": {
+          "description": "(Optional) Cloud Run fully managed: not supported Cloud Run for Anthos: supported The name of the cluster which the object belongs to. This is used to distinguish resources with same name and namespace in different clusters. This field is not set anywhere right now and apiserver is going to ignore it if set in create or update request.",
+          "type": "string"
+        }
+      }
+    },
+    "OwnerReference": {
+      "id": "OwnerReference",
+      "description": "OwnerReference contains enough information to let you identify an owning object. Currently, an owning object must be in the same namespace, so there is no namespace field.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "API version of the referent.",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind of the referent. More info: https:\/\/git.k8s.io\/community\/contributors\/devel\/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name of the referent. More info: http:\/\/kubernetes.io\/docs\/user-guide\/identifiers#names",
+          "type": "string"
+        },
+        "uid": {
+          "description": "UID of the referent. More info: http:\/\/kubernetes.io\/docs\/user-guide\/identifiers#uids",
+          "type": "string"
+        },
+        "controller": {
+          "description": "If true, this reference points to the managing controller. +optional",
+          "type": "boolean"
+        },
+        "blockOwnerDeletion": {
+          "description": "If true, AND if the owner has the \"foregroundDeletion\" finalizer, then the owner cannot be deleted from the key-value store until this reference is removed. Defaults to false. To set this field, a user needs \"delete\" permission of the owner, otherwise 422 (Unprocessable Entity) will be returned. +optional",
+          "type": "boolean"
+        }
+      }
+    },
+    "ApiServerSourceSpec": {
+      "id": "ApiServerSourceSpec",
+      "description": "The desired state of the ApiServerSource.",
+      "type": "object",
+      "properties": {
+        "sink": {
+          "description": "Sink is a reference to an object that will resolve to a uri to use as the sink.",
+          "$ref": "Destination"
+        },
+        "ceOverrides": {
+          "description": "CloudEventOverrides defines overrides to control the output format and modifications of the event sent to the sink.",
+          "$ref": "CloudEventOverrides"
+        },
+        "resources": {
+          "description": "Resource are the resources this source will track and send related lifecycle events from the Kubernetes ApiServer, with an optional label selector to help filter.",
+          "type": "array",
+          "items": {
+            "$ref": "APIVersionKindSelector"
+          }
+        },
+        "owner": {
+          "description": "ResourceOwner is an additional filter to only track resources that are owned by a specific resource type. If ResourceOwner matches Resources[n] then Resources[n] is allowed to pass the ResourceOwner filter.",
+          "$ref": "APIVersionKind"
+        },
+        "mode": {
+          "description": "EventMode controls the format of the event. `Reference` sends a dataref event type for the resource under watch. `Resource` send the full resource lifecycle event. Defaults to `Reference`",
+          "type": "string"
+        },
+        "serviceAccountName": {
+          "description": "ServiceAccountName is the k8s service account which binds to a google service account. This google service account has required permissions to poll from a Cloud Pub\/Sub subscription. If not specified, defaults to use secret.",
+          "type": "string"
+        }
+      }
+    },
+    "Destination": {
+      "id": "Destination",
+      "type": "object",
+      "properties": {
+        "ref": {
+          "description": "ObjectReference points to an Addressable. + optional",
+          "$ref": "ObjectReference"
+        },
+        "uri": {
+          "description": "URI is for direct URI Designations or used with the resulting URL from Addressable ObjectReference. If used with an ObjectReference, will be appended to the path of the resulting URL from the Addressable. + optional",
+          "type": "string"
+        }
+      }
+    },
+    "ObjectReference": {
+      "id": "ObjectReference",
+      "description": "ObjectReference contains enough information to let you inspect or modify the referred object.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "description": "Kind of the referent. More info: https:\/\/git.k8s.io\/community\/contributors\/devel\/api-conventions.md#types-kinds +optional",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace of the referent. More info: https:\/\/kubernetes.io\/docs\/concepts\/overview\/working-with-objects\/namespaces\/ +optional",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name of the referent. More info: https:\/\/kubernetes.io\/docs\/concepts\/overview\/working-with-objects\/names\/#names +optional",
+          "type": "string"
+        },
+        "uid": {
+          "description": "UID of the referent. More info: https:\/\/kubernetes.io\/docs\/concepts\/overview\/working-with-objects\/names\/#uids +optional",
+          "type": "string"
+        },
+        "apiVersion": {
+          "description": "API version of the referent. +optional",
+          "type": "string"
+        },
+        "resourceVersion": {
+          "description": "Specific resourceVersion to which this reference is made, if any. More info: https:\/\/git.k8s.io\/community\/contributors\/devel\/api-conventions.md#concurrency-control-and-consistency +optional",
+          "type": "string"
+        },
+        "fieldPath": {
+          "description": "If referring to a piece of an object instead of an entire object, this string should contain a valid JSON\/Go field access statement, such as desiredState.manifest.containers[2]. For example, if the object reference is to a container within a pod, this would take on a value like: \"spec.containers{name}\" (where \"name\" refers to the name of the container that triggered the event) or if no container name is specified \"spec.containers[2]\" (container with index 2 in this pod). This syntax is chosen only to have some well-defined way of referencing a part of an object.",
+          "type": "string"
+        }
+      }
+    },
+    "CloudEventOverrides": {
+      "id": "CloudEventOverrides",
+      "description": "CloudEventOverrides defines arguments for a Source that control the output format of the CloudEvents produced by the Source.",
+      "type": "object",
+      "properties": {
+        "extensions": {
+          "description": "Extensions specify what attribute are added or overridden on the outbound event. Each `Extensions` key-value pair are set on the event as an attribute extension independently. +optional",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "APIVersionKindSelector": {
+      "id": "APIVersionKindSelector",
+      "description": "APIVersionKindSelector is an APIVersion Kind tuple with a LabelSelector.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion - the API version of the resource to watch.",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind of the resource to watch. More info: https:\/\/git.k8s.io\/community\/contributors\/devel\/sig-architecture\/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "selector": {
+          "description": "LabelSelector filters this source to objects to those resources pass the label selector. More info: http:\/\/kubernetes.io\/docs\/concepts\/overview\/working-with-objects\/labels\/#label-selectors",
+          "$ref": "LabelSelector"
+        }
+      }
+    },
+    "LabelSelector": {
+      "id": "LabelSelector",
+      "description": "A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.",
+      "type": "object",
+      "properties": {
+        "matchLabels": {
+          "description": "match_labels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is \"key\", the operator is \"In\", and the values array contains only \"value\". The requirements are ANDed.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "matchExpressions": {
+          "description": "match_expressions is a list of label selector requirements. The requirements are ANDed.",
+          "type": "array",
+          "items": {
+            "$ref": "LabelSelectorRequirement"
+          }
+        }
+      }
+    },
+    "LabelSelectorRequirement": {
+      "id": "LabelSelectorRequirement",
+      "description": "A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "description": "key is the label key that the selector applies to. +patchMergeKey=key +patchStrategy=merge",
+          "type": "string"
+        },
+        "operator": {
+          "description": "operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.",
+          "type": "string"
+        },
+        "values": {
+          "description": "values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch. +optional",
+          "type": "string"
+        }
+      }
+    },
+    "APIVersionKind": {
+      "id": "APIVersionKind",
+      "description": "APIVersionKind is an APIVersion and Kind tuple.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion - the API version of the resource to watch.",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind of the resource to watch. More info: https:\/\/git.k8s.io\/community\/contributors\/devel\/sig-architecture\/api-conventions.md#types-kinds",
+          "type": "string"
+        }
+      }
+    },
+    "ApiServerSourceStatus": {
+      "id": "ApiServerSourceStatus",
+      "description": "ApiServerSourceStatus represents the current state of a ApiServerSource.",
+      "type": "object",
+      "properties": {
+        "observedGeneration": {
+          "description": "ObservedGeneration is the 'Generation' of the CloudPubSubSource that was last processed by the controller.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "conditions": {
+          "description": "Conditions the latest available observations of a resource's current state.",
+          "type": "array",
+          "items": {
+            "$ref": "Condition"
+          }
+        },
+        "annotations": {
+          "description": "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Condition": {
+      "id": "Condition",
+      "description": "Condition defines a generic condition for a Resource",
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "type is used to communicate the status of the reconciliation process. See also: https:\/\/github.com\/knative\/serving\/blob\/master\/docs\/spec\/errors.md#error-conditions-and-reporting Types common to all resources include: * \"Ready\": True when the Resource is ready.",
+          "type": "string"
+        },
+        "status": {
+          "description": "Status of the condition, one of True, False, Unknown.",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Optional. One-word CamelCase reason for the condition's last transition.",
+          "type": "string"
+        },
+        "message": {
+          "description": "Optional. Human readable message indicating details about the current status.",
+          "type": "string"
+        },
+        "lastTransitionTime": {
+          "description": "Optional. Last time the condition transitioned from one status to another.",
+          "type": "string",
+          "format": "google-datetime"
+        },
+        "severity": {
+          "description": "Optional. How to interpret failures of this condition, one of Error, Warning, Info",
+          "type": "string"
+        }
+      }
+    },
+    "ListApiServerSourcesResponse": {
+      "id": "ListApiServerSourcesResponse",
+      "description": "ListApiServerSourcesResponse is a list of ApiServerSource resources.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "The API version for this call such as \"sources.knative.dev\/v1beta1\".",
+          "type": "string"
+        },
+        "kind": {
+          "description": "The kind of this resource, in this case \"ApiServerSourceList\".",
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Metadata associated with this ApiServerSource list.",
+          "$ref": "ListMeta"
+        },
+        "items": {
+          "description": "List of ApiServerSources.",
+          "type": "array",
+          "items": {
+            "$ref": "ApiServerSource"
+          }
+        },
+        "unreachable": {
+          "description": "Locations that could not be reached.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ListMeta": {
+      "id": "ListMeta",
+      "description": "ListMeta describes metadata that synthetic resources must have, including lists and various status objects. A resource may have only one of {ObjectMeta, ListMeta}.",
+      "type": "object",
+      "properties": {
+        "selfLink": {
+          "description": "SelfLink is a URL representing this object. Populated by the system. Read-only. +optional",
+          "type": "string"
+        },
+        "resourceVersion": {
+          "description": "String that identifies the server's internal version of this object that can be used by clients to determine when objects have changed. Value must be treated as opaque by clients and passed unmodified back to the server. Populated by the system. Read-only. More info: https:\/\/git.k8s.io\/community\/contributors\/devel\/api-conventions.md#concurrency-control-and-consistency +optional",
+          "type": "string"
+        },
+        "continue": {
+          "description": "continue may be set if the user set a limit on the number of items returned, and indicates that the server has more data available. The value is opaque and may be used to issue another request to the endpoint that served this list to retrieve the next set of available objects. Continuing a list may not be possible if the server configuration has changed or more than a few minutes have passed. The resourceVersion field returned when using this continue value will be identical to the value in the first response.",
+          "type": "string"
+        }
+      }
+    },
+    "Empty": {
+      "id": "Empty",
+      "description": "A generic empty message that you can re-use to avoid defining duplicated empty messages in your APIs. A typical example is to use it as the request or the response type of an API method. For instance: service Foo { rpc Bar(google.protobuf.Empty) returns (google.protobuf.Empty); } The JSON representation for `Empty` is empty JSON object `{}`.",
+      "type": "object",
+      "properties": {
+      }
+    },
+    "Broker": {
+      "id": "Broker",
+      "description": "Broker collects a pool of events that are consumable using Triggers. Brokers provide a well-known endpoint for event delivery that senders can use with minimal knowledge of the event routing strategy. Subscribers use Triggers to request delivery of events from a Broker's pool to a specific URL or Addressable endpoint.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "The API version for this call.",
+          "type": "string"
+        },
+        "kind": {
+          "description": "The kind of resource, in this case always \"Broker\".",
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Metadata associated with this Broker.",
+          "$ref": "ObjectMeta"
+        },
+        "spec": {
+          "$ref": "BrokerSpec"
+        },
+        "status": {
+          "$ref": "BrokerStatus"
+        }
+      }
+    },
+    "BrokerSpec": {
+      "id": "BrokerSpec",
+      "type": "object",
+      "properties": {
+        "config": {
+          "description": "Config is a KReference to the configuration that specifies configuration options for this Broker. For example, this could be a pointer to a ConfigMap.",
+          "$ref": "KReference"
+        },
+        "delivery": {
+          "description": "Delivery is the delivery specification for Events within the Broker mesh. This includes things like retries, DLQ, etc.",
+          "$ref": "DeliverySpec"
+        }
+      }
+    },
+    "KReference": {
+      "id": "KReference",
+      "description": "from https:\/\/github.com\/knative\/pkg\/blob\/master\/apis\/duck\/v1\/knative_reference.go KReference contains enough information to refer to another object. It's a trimmed down version of corev1.ObjectReference.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "description": "Kind of the referent. More info: https:\/\/git.k8s.io\/community\/contributors\/devel\/sig-architecture\/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace of the referent. More info: https:\/\/kubernetes.io\/docs\/concepts\/overview\/working-with-objects\/namespaces\/ This is optional field, it gets defaulted to the object holding it if left out.",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name of the referent. More info: https:\/\/kubernetes.io\/docs\/concepts\/overview\/working-with-objects\/names\/#names",
+          "type": "string"
+        },
+        "apiVersion": {
+          "description": "API version of the referent.",
+          "type": "string"
+        }
+      }
+    },
+    "DeliverySpec": {
+      "id": "DeliverySpec",
+      "description": "From https:\/\/github.com\/knative\/eventing\/blob\/master\/pkg\/apis\/duck\/v1beta1\/delivery_types.go",
+      "type": "object",
+      "properties": {
+        "deadLetterSink": {
+          "description": "DeadLetterSink is the sink receiving event that could not be sent to a destination.",
+          "$ref": "Destination"
+        },
+        "retry": {
+          "description": "Retry is the minimum number of retries the sender should attempt when sending an event before moving it to the dead letter sink.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "backoffPolicy": {
+          "description": "BackoffPolicy is the retry backoff policy (linear, exponential).",
+          "type": "string"
+        },
+        "backoffDelay": {
+          "description": "BackoffDelay is the delay before retrying. More information on Duration format: - https:\/\/www.iso.org\/iso-8601-date-and-time-format.html - https:\/\/en.wikipedia.org\/wiki\/ISO_8601 For linear policy, backoff delay is the time interval between retries. For exponential policy , backoff delay is backoffDelay*2^. +optional BackoffDelay *string `json:\"backoffDelay,omitempty\"",
+          "type": "string"
+        }
+      }
+    },
+    "BrokerStatus": {
+      "id": "BrokerStatus",
+      "type": "object",
+      "properties": {
+        "observedGeneration": {
+          "description": "ObservedGeneration is the 'Generation' of the Broker that was last processed by the controller.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "conditions": {
+          "description": "Conditions the latest available observations of a resource's current state.",
+          "type": "array",
+          "items": {
+            "$ref": "Condition"
+          }
+        },
+        "address": {
+          "description": "Broker is Addressable. It exposes the endpoint as an URI to get events delivered into the Broker mesh.",
+          "$ref": "Addressable"
+        }
+      }
+    },
+    "Addressable": {
+      "id": "Addressable",
+      "description": "From https:\/\/github.com\/knative\/pkg\/blob\/master\/apis\/duck\/v1\/addressable_types.go Addressable provides a generic mechanism for a custom resource definition to indicate a destination for message delivery. Addressable is the schema for the destination information. This is typically stored in the object's `status`, as this information may be generated by the controller.",
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string"
+        }
+      }
+    },
+    "ListBrokersResponse": {
+      "id": "ListBrokersResponse",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "The API version for this call such as \"eventing.knative.dev\/v1\".",
+          "type": "string"
+        },
+        "kind": {
+          "description": "The kind of this resource, in this case \"BrokerList\".",
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Metadata associated with this Broker list.",
+          "$ref": "ListMeta"
+        },
+        "items": {
+          "description": "List of Brokers.",
+          "type": "array",
+          "items": {
+            "$ref": "Broker"
+          }
+        },
+        "unreachable": {
+          "description": "Locations that could not be reached.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "CloudAuditLogsSource": {
+      "id": "CloudAuditLogsSource",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "The API version for this call such as \"events.cloud.google.com\/v1beta1\".",
+          "type": "string"
+        },
+        "kind": {
+          "description": "The kind of resource, in this case \"CloudAuditLogsSource\".",
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Metadata associated with this CloudAuditLogsSource.",
+          "$ref": "ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec defines the desired state of the CloudAuditLogsSource.",
+          "$ref": "CloudAuditLogsSourceSpec"
+        },
+        "status": {
+          "description": "Status represents the current state of the CloudAuditLogsSource. This data may be out of date. +optional",
+          "$ref": "CloudAuditLogsSourceStatus"
+        }
+      }
+    },
+    "CloudAuditLogsSourceSpec": {
+      "id": "CloudAuditLogsSourceSpec",
+      "description": "The desired state of the CloudAuditLogsSource.",
+      "type": "object",
+      "properties": {
+        "sink": {
+          "description": "Sink is a reference to an object that will resolve to a uri to use as the sink.",
+          "$ref": "Destination"
+        },
+        "ceOverrides": {
+          "description": "CloudEventOverrides defines overrides to control the output format and modifications of the event sent to the sink.",
+          "$ref": "CloudEventOverrides"
+        },
+        "serviceAccountName": {
+          "description": "Optional. ServiceAccountName is the k8s service account which binds to a google service account. This google service account has required permissions to poll from a Cloud Pub\/Sub subscription. If not specified, defaults to use secret.",
+          "type": "string"
+        },
+        "secret": {
+          "description": "Optional. Secret is the credential to use to create the Scheduler Job. If not specified, defaults to: Name: google-cloud-key Key: key.json",
+          "$ref": "SecretKeySelector"
+        },
+        "project": {
+          "description": "Optional. Project is the ID of the Google Cloud Project that the CloudPubSubSource Topic exists in. If omitted, defaults to same as the cluster.",
+          "type": "string"
+        },
+        "serviceName": {
+          "description": "Required. The GCP service providing audit logs. Required.",
+          "type": "string"
+        },
+        "methodName": {
+          "description": "Required. The name of the service method or operation. For API calls, this should be the name of the API method. Required.",
+          "type": "string"
+        },
+        "resourceName": {
+          "description": "Optional. The resource or collection that is the target of the operation. The name is a scheme-less URI, not including the API service name.",
+          "type": "string"
+        }
+      }
+    },
+    "SecretKeySelector": {
+      "id": "SecretKeySelector",
+      "description": "Cloud Run fully managed: not supported Cloud Run for Anthos: supported SecretKeySelector selects a key of a Secret.",
+      "type": "object",
+      "properties": {
+        "localObjectReference": {
+          "description": "This field should not be used directly as it is meant to be inlined directly into the message. Use the \"name\" field instead.",
+          "$ref": "LocalObjectReference"
+        },
+        "key": {
+          "description": "Cloud Run fully managed: not supported Cloud Run for Anthos: supported The key of the secret to select from. Must be a valid secret key.",
+          "type": "string"
+        },
+        "optional": {
+          "description": "(Optional) Cloud Run fully managed: not supported Cloud Run for Anthos: supported Specify whether the Secret or its key must be defined",
+          "type": "boolean"
+        },
+        "name": {
+          "description": "Cloud Run fully managed: not supported Cloud Run for Anthos: supported The name of the secret in the pod's namespace to select from.",
+          "type": "string"
+        }
+      }
+    },
+    "LocalObjectReference": {
+      "id": "LocalObjectReference",
+      "description": "Cloud Run fully managed: not supported Cloud Run for Anthos: supported LocalObjectReference contains enough information to let you locate the referenced object inside the same namespace.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "(Optional) Cloud Run fully managed: not supported Cloud Run for Anthos: supported Name of the referent. More info: https:\/\/kubernetes.io\/docs\/concepts\/overview\/working-with-objects\/names\/#names",
+          "type": "string"
+        }
+      }
+    },
+    "CloudAuditLogsSourceStatus": {
+      "id": "CloudAuditLogsSourceStatus",
+      "description": "CloudAuditLogsSourceStatus represents the current state of a CloudAuditLogsSource.",
+      "type": "object",
+      "properties": {
+        "observedGeneration": {
+          "description": "ObservedGeneration is the 'Generation' of the CloudPubSubSource that was last processed by the controller.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "conditions": {
+          "description": "Conditions the latest available observations of a resource's current state.",
+          "type": "array",
+          "items": {
+            "$ref": "Condition"
+          }
+        },
+        "annotations": {
+          "description": "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "serviceAccountName": {
+          "description": "ServiceAccountName is the k8s service account associated with Google service account.",
+          "type": "string"
+        },
+        "sinkUri": {
+          "description": "SinkURI is the current active sink URI that has been configured for the Source.",
+          "type": "string"
+        },
+        "ceAttributes": {
+          "description": "CloudEventAttributes are the specific attributes that the Source uses as part of its CloudEvents.",
+          "type": "array",
+          "items": {
+            "$ref": "CloudEventAttributes"
+          }
+        },
+        "projectId": {
+          "description": "ProjectID is the project ID of the Topic, might have been resolved.",
+          "type": "string"
+        },
+        "topicId": {
+          "description": "TopicID where the notifications are sent to.",
+          "type": "string"
+        },
+        "subscriptionId": {
+          "description": "SubscriptionID is the created subscription ID.",
+          "type": "string"
+        },
+        "stackDriverSink": {
+          "description": "ID of the Stackdriver sink used to publish audit log messages.",
+          "type": "string"
+        }
+      }
+    },
+    "CloudEventAttributes": {
+      "id": "CloudEventAttributes",
+      "description": "CloudEventAttributes are the specific attributes that the Source uses as part of its CloudEvents.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "Type refers to the CloudEvent type attribute.",
+          "type": "string"
+        },
+        "source": {
+          "description": "Source is the CloudEvents source attribute.",
+          "type": "string"
+        }
+      }
+    },
+    "ListCloudAuditLogsSourcesResponse": {
+      "id": "ListCloudAuditLogsSourcesResponse",
+      "description": "ListCloudAuditLogsSourcesResponse is a list of CloudAuditLogsSource resources.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "The API version for this call such as \"events.cloud.google.com\/v1beta1\".",
+          "type": "string"
+        },
+        "kind": {
+          "description": "The kind of this resource, in this case \"CloudAuditLogsSourceList\".",
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Metadata associated with this CloudAuditLogsSource list.",
+          "$ref": "ListMeta"
+        },
+        "items": {
+          "description": "List of CloudAuditLogsSources.",
+          "type": "array",
+          "items": {
+            "$ref": "CloudAuditLogsSource"
+          }
+        },
+        "unreachable": {
+          "description": "Locations that could not be reached.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "CloudPubSubSource": {
+      "id": "CloudPubSubSource",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "The API version for this call such as \"events.cloud.google.com\/v1beta1\".",
+          "type": "string"
+        },
+        "kind": {
+          "description": "The kind of resource, in this case \"CloudPubSubSource\".",
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Metadata associated with this CloudPubSubSource.",
+          "$ref": "ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec defines the desired state of the CloudPubSubSource.",
+          "$ref": "CloudPubSubSourceSpec"
+        },
+        "status": {
+          "description": "Status represents the current state of the CloudPubSubSource. This data may be out of date. +optional",
+          "$ref": "CloudPubSubSourceStatus"
+        }
+      }
+    },
+    "CloudPubSubSourceSpec": {
+      "id": "CloudPubSubSourceSpec",
+      "description": "The desired state of the CloudPubSubSource.",
+      "type": "object",
+      "properties": {
+        "sink": {
+          "description": "Sink is a reference to an object that will resolve to a domain name or a URI directly to use as the sink.",
+          "$ref": "Destination"
+        },
+        "ceOverrides": {
+          "description": "CloudEventOverrides defines overrides to control the output format and modifications of the event sent to the sink. +optional",
+          "$ref": "CloudEventOverrides"
+        },
+        "serviceAccountName": {
+          "description": "ServiceAccountName is the k8s service account which binds to a google service account. This google service account has required permissions to poll from a Cloud Pub\/Sub subscription. If not specified, defaults to use secret.",
+          "type": "string"
+        },
+        "secret": {
+          "description": "Secret is the credential to use to create the Scheduler Job. If not specified, defaults to: Name: google-cloud-key Key: key.json",
+          "$ref": "SecretKeySelector"
+        },
+        "project": {
+          "description": "Project is the ID of the Google Cloud Project that the CloudPubSubSource Topic exists in. If omitted, defaults to same as the cluster.",
+          "type": "string"
+        },
+        "topic": {
+          "description": "Topic is the ID of the CloudPubSubSource Topic to Subscribe to. It must be in the form of the unique identifier within the project, not the entire name. E.g. it must be 'laconia', not 'projects\/my-proj\/topics\/laconia'.",
+          "type": "string"
+        },
+        "ackDeadline": {
+          "description": "AckDeadline is the default maximum time after a subscriber receives a message before the subscriber should acknowledge the message. Defaults to 30 seconds ('30s'). +optional",
+          "type": "string"
+        },
+        "retainAckedMessages": {
+          "description": "RetainAckedMessages defines whether to retain acknowledged messages. If true, acknowledged messages will not be expunged until they fall out of the RetentionDuration window.",
+          "type": "boolean"
+        },
+        "retentionDuration": {
+          "description": "RetentionDuration defines how long to retain messages in backlog, from the time of publish. If RetainAckedMessages is true, this duration affects the retention of acknowledged messages, otherwise only unacknowledged messages are retained. Cannot be longer than 7 days or shorter than 10 minutes. Defaults to 7 days ('7d'). +optional",
+          "type": "string"
+        }
+      }
+    },
+    "CloudPubSubSourceStatus": {
+      "id": "CloudPubSubSourceStatus",
+      "description": "CloudPubSubSourceStatus represents the current state of a CloudPubSubSource.",
+      "type": "object",
+      "properties": {
+        "observedGeneration": {
+          "description": "ObservedGeneration is the 'Generation' of the CloudPubSubSource that was last processed by the controller.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "conditions": {
+          "description": "Conditions the latest available observations of a resource's current state.",
+          "type": "array",
+          "items": {
+            "$ref": "Condition"
+          }
+        },
+        "annotations": {
+          "description": "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "serviceAccountName": {
+          "description": "ServiceAccountName is the k8s service account associated with Google service account.",
+          "type": "string"
+        },
+        "sinkUri": {
+          "description": "SinkURI is the current active sink URI that has been configured for the Source. +optional",
+          "type": "string"
+        },
+        "ceAttributes": {
+          "description": "CloudEventAttributes are the specific attributes that the Source uses as part of its CloudEvents.",
+          "type": "array",
+          "items": {
+            "$ref": "CloudEventAttributes"
+          }
+        },
+        "projectId": {
+          "description": "ProjectID is the project ID of the Topic, might have been resolved.",
+          "type": "string"
+        },
+        "topicId": {
+          "description": "TopicID where the notifications are sent to.",
+          "type": "string"
+        },
+        "subscriptionId": {
+          "description": "SubscriptionID is the created subscription ID.",
+          "type": "string"
+        }
+      }
+    },
+    "ListCloudPubSubSourcesResponse": {
+      "id": "ListCloudPubSubSourcesResponse",
+      "description": "ListCloudPubSubSourcesResponse is a list of CloudPubSubSource resources.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "The API version for this call such as \"events.cloud.google.com\/v1beta1\".",
+          "type": "string"
+        },
+        "kind": {
+          "description": "The kind of this resource, in this case \"CloudPubSubSourceList\".",
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Metadata associated with this CloudPubSubSource list.",
+          "$ref": "ListMeta"
+        },
+        "items": {
+          "description": "List of CloudPubSubSources.",
+          "type": "array",
+          "items": {
+            "$ref": "CloudPubSubSource"
+          }
+        },
+        "unreachable": {
+          "description": "Locations that could not be reached.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "CloudSchedulerSource": {
+      "id": "CloudSchedulerSource",
+      "description": "The CloudSchedulerSource resource.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "The API version for this call such as \"events.cloud.google.com\/v1beta1\".",
+          "type": "string"
+        },
+        "kind": {
+          "description": "The kind of resource, in this case \"CloudSchedulerSource\".",
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Metadata associated with this CloudSchedulerSource.",
+          "$ref": "ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec defines the desired state of the CloudSchedulerSource.",
+          "$ref": "CloudSchedulerSourceSpec"
+        },
+        "status": {
+          "description": "Status represents the current state of the CloudSchedulerSource. This data may be out of date.",
+          "$ref": "CloudSchedulerSourceStatus"
+        }
+      }
+    },
+    "CloudSchedulerSourceSpec": {
+      "id": "CloudSchedulerSourceSpec",
+      "description": "The desired state of the CloudSchedulerSource.",
+      "type": "object",
+      "properties": {
+        "sink": {
+          "description": "Sink is a reference to an object that will resolve to a domain name or a URI directly to use as the sink.",
+          "$ref": "Destination"
+        },
+        "ceOverrides": {
+          "description": "CloudEventOverrides defines overrides to control the output format and modifications of the event sent to the sink.",
+          "$ref": "CloudEventOverrides"
+        },
+        "serviceAccountName": {
+          "description": "Optional. ServiceAccountName is the k8s service account which binds to a google service account. This google service account has required permissions to poll from a Cloud Pub\/Sub subscription. If not specified, defaults to use secret.",
+          "type": "string"
+        },
+        "secret": {
+          "description": "Secret is the credential to use to create the Scheduler Job. If not specified, defaults to: Name: google-cloud-key Key: key.json",
+          "$ref": "SecretKeySelector"
+        },
+        "project": {
+          "description": "Project is the ID of the Google Cloud Project that the CloudPubSubSource Topic exists in. If omitted, defaults to same as the cluster.",
+          "type": "string"
+        },
+        "location": {
+          "description": "Location to create the Scheduler job in.",
+          "type": "string"
+        },
+        "schedule": {
+          "description": "Schedule in cron format, for example: \"* * * * *\" would be run every minute.",
+          "type": "string"
+        },
+        "data": {
+          "description": "Data to send in the payload of the Event.",
+          "type": "string"
+        }
+      }
+    },
+    "CloudSchedulerSourceStatus": {
+      "id": "CloudSchedulerSourceStatus",
+      "description": "CloudSchedulerSourceStatus represents the current state of a CloudSchedulerSource.",
+      "type": "object",
+      "properties": {
+        "conditions": {
+          "description": "Array of observed CloudSchedulerSourceConditions, indicating the current state of the CloudSchedulerSource.",
+          "type": "array",
+          "items": {
+            "$ref": "Condition"
+          }
+        },
+        "observedGeneration": {
+          "description": "ObservedGeneration is the 'Generation' of the CloudSchedulerSource that was last processed by the controller.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "annotations": {
+          "description": "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "serviceAccountName": {
+          "description": "ServiceAccountName is the k8s service account associated with Google service account.",
+          "type": "string"
+        },
+        "sinkUri": {
+          "description": "SinkURI is the current active sink URI that has been configured for the Source.",
+          "type": "string"
+        },
+        "ceAttributes": {
+          "description": "CloudEventAttributes are the specific attributes that the Source uses as part of its CloudEvents.",
+          "type": "array",
+          "items": {
+            "$ref": "CloudEventAttributes"
+          }
+        },
+        "projectId": {
+          "description": "ProjectID is the project ID of the Topic, might have been resolved.",
+          "type": "string"
+        },
+        "topicId": {
+          "description": "TopicID where the notifications are sent to.",
+          "type": "string"
+        },
+        "subscriptionId": {
+          "description": "SubscriptionID is the created subscription ID.",
+          "type": "string"
+        },
+        "jobName": {
+          "description": "JobName is the name of the created scheduler Job on success.",
+          "type": "string"
+        }
+      }
+    },
+    "ListCloudSchedulerSourcesResponse": {
+      "id": "ListCloudSchedulerSourcesResponse",
+      "description": "ListCloudSchedulerSourcesResponse is a list of CloudSchedulerSource resources.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "The API version for this call such as \"events.cloud.google.com\/v1beta1\".",
+          "type": "string"
+        },
+        "kind": {
+          "description": "The kind of this resource, in this case \"CloudSchedulerSourceList\".",
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Metadata associated with this CloudSchedulerSource list.",
+          "$ref": "ListMeta"
+        },
+        "items": {
+          "description": "List of CloudSchedulerSources.",
+          "type": "array",
+          "items": {
+            "$ref": "CloudSchedulerSource"
+          }
+        },
+        "unreachable": {
+          "description": "Locations that could not be reached.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "CloudStorageSource": {
+      "id": "CloudStorageSource",
+      "description": "The CloudStorageSource resource.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "The API version for this call such as \"events.cloud.google.com\/v1beta1\".",
+          "type": "string"
+        },
+        "kind": {
+          "description": "The kind of resource, in this case \"CloudStorageSource\".",
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Metadata associated with this CloudStorageSource.",
+          "$ref": "ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec defines the desired state of the CloudStorageSource.",
+          "$ref": "CloudStorageSourceSpec"
+        },
+        "status": {
+          "description": "Status represents the current state of the CloudStorageSource. This data may be out of date.",
+          "$ref": "CloudStorageSourceStatus"
+        }
+      }
+    },
+    "CloudStorageSourceSpec": {
+      "id": "CloudStorageSourceSpec",
+      "description": "The desired state of the CloudStorageSource.",
+      "type": "object",
+      "properties": {
+        "sink": {
+          "description": "Sink is a reference to an object that will resolve to a domain name or a URI directly to use as the sink.",
+          "$ref": "Destination"
+        },
+        "ceOverrides": {
+          "description": "CloudEventOverrides defines overrides to control the output format and modifications of the event sent to the sink.",
+          "$ref": "CloudEventOverrides"
+        },
+        "serviceAccountName": {
+          "description": "ServiceAccountName is the k8s service account which binds to a google service account. This google service account has required permissions to poll from a Cloud Pub\/Sub subscription. If not specified, defaults to use secret.",
+          "type": "string"
+        },
+        "secret": {
+          "description": "Secret is the credential to use to create the Scheduler Job. If not specified, defaults to: Name: google-cloud-key Key: key.json",
+          "$ref": "SecretKeySelector"
+        },
+        "project": {
+          "description": "Project is the ID of the Google Cloud Project that the PubSub Topic exists in. If omitted, defaults to same as the cluster.",
+          "type": "string"
+        },
+        "bucket": {
+          "description": "Bucket to subscribe to.",
+          "type": "string"
+        },
+        "eventTypes": {
+          "description": "EventTypes to subscribe to. If unspecified, then subscribe to all events.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "objectNamePrefix": {
+          "description": "ObjectNamePrefix limits the notifications to objects with this prefix.",
+          "type": "string"
+        },
+        "payloadFormat": {
+          "description": "PayloadFormat specifies the contents of the message payload. See https:\/\/cloud.google.com\/storage\/docs\/pubsub-notifications#payload.",
+          "type": "string"
+        }
+      }
+    },
+    "CloudStorageSourceStatus": {
+      "id": "CloudStorageSourceStatus",
+      "description": "CloudStorageSourceStatus represents the current state of a CloudStorageSource.",
+      "type": "object",
+      "properties": {
+        "observedGeneration": {
+          "description": "ObservedGeneration is the 'Generation' of the CloudPubSubSource that was last processed by the controller.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "conditions": {
+          "description": "Conditions the latest available observations of a resource's current state.",
+          "type": "array",
+          "items": {
+            "$ref": "Condition"
+          }
+        },
+        "annotations": {
+          "description": "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "serviceAccountName": {
+          "description": "ServiceAccountName is the k8s service account associated with Google service account.",
+          "type": "string"
+        },
+        "sinkUri": {
+          "description": "SinkURI is the current active sink URI that has been configured for the Source.",
+          "type": "string"
+        },
+        "ceAttributes": {
+          "description": "CloudEventAttributes are the specific attributes that the Source uses as part of its CloudEvents.",
+          "type": "array",
+          "items": {
+            "$ref": "CloudEventAttributes"
+          }
+        },
+        "projectId": {
+          "description": "Project is the ID of the Google Cloud Project that the PubSub Topic exists in. If omitted, defaults to same as the cluster.",
+          "type": "string"
+        },
+        "topicId": {
+          "description": "TopicID where the notifications are sent to.",
+          "type": "string"
+        },
+        "subscriptionId": {
+          "description": "SubscriptionID is the created subscription ID.",
+          "type": "string"
+        },
+        "notificationId": {
+          "description": "NotificationID is the ID that GCS identifies this notification as.",
+          "type": "string"
+        }
+      }
+    },
+    "ListCloudStorageSourcesResponse": {
+      "id": "ListCloudStorageSourcesResponse",
+      "description": "ListCloudStorageSourcesResponse is a list of CloudStorageSource resources.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "The API version for this call such as \"events.cloud.google.com\/v1beta1\".",
+          "type": "string"
+        },
+        "kind": {
+          "description": "The kind of this resource, in this case \"CloudStorageSourceList\".",
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Metadata associated with this CloudStorageSource list.",
+          "$ref": "ListMeta"
+        },
+        "items": {
+          "description": "List of CloudStorageSources.",
+          "type": "array",
+          "items": {
+            "$ref": "CloudStorageSource"
+          }
+        },
+        "unreachable": {
+          "description": "Locations that could not be reached.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "CustomResourceDefinition": {
+      "id": "CustomResourceDefinition",
+      "description": "CustomResourceDefinition represents a resource that should be exposed on the API server. Its name MUST be in the format <.spec.name>.<.spec.group>.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "The API version for this call such as \"k8s.apiextensions.io\/v1beta1\".",
+          "type": "string"
+        },
+        "kind": {
+          "description": "The kind of resource, in this case always \"CustomResourceDefinition\".",
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Metadata associated with this CustomResourceDefinition.",
+          "$ref": "ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec describes how the user wants the resources to appear",
+          "$ref": "CustomResourceDefinitionSpec"
+        }
+      }
+    },
+    "CustomResourceDefinitionSpec": {
+      "id": "CustomResourceDefinitionSpec",
+      "description": "CustomResourceDefinitionSpec describes how a user wants their resource to appear",
+      "type": "object",
+      "properties": {
+        "group": {
+          "description": "Group is the group this resource belongs in",
+          "type": "string"
+        },
+        "version": {
+          "description": "Version is the version this resource belongs in Should be always first item in Versions field if provided. Optional, but at least one of Version or Versions must be set. Deprecated: Please use `Versions`. +optional",
+          "type": "string"
+        },
+        "names": {
+          "description": "Names are the names used to describe this custom resource",
+          "$ref": "CustomResourceDefinitionNames"
+        },
+        "scope": {
+          "description": "Scope indicates whether this resource is cluster or namespace scoped. Default is namespaced",
+          "type": "string"
+        },
+        "validation": {
+          "description": "Validation describes the validation methods for CustomResources +optional",
+          "$ref": "CustomResourceValidation"
+        },
+        "subresources": {
+          "description": "Subresources describes the subresources for CustomResources +optional",
+          "$ref": "CustomResourceSubresources"
+        },
+        "versions": {
+          "description": "Versions is the list of all supported versions for this resource. If Version field is provided, this field is optional. Validation: All versions must use the same validation schema for now. i.e., top level Validation field is applied to all of these versions. Order: The version name will be used to compute the order. If the version string is \"kube-like\", it will sort above non \"kube-like\" version strings, which are ordered lexicographically. \"Kube-like\" versions start with a \"v\", then are followed by a number (the major version), then optionally the string \"alpha\" or \"beta\" and another number (the minor version). These are sorted first by GA > beta > alpha (where GA is a version with no suffix such as beta or alpha), and then by comparing major version, then minor version. An example sorted list of versions: v10, v2, v1, v11beta2, v10beta3, v3beta1, v12alpha1, v11alpha2, foo1, foo10. +optional",
+          "type": "array",
+          "items": {
+            "$ref": "CustomResourceDefinitionVersion"
+          }
+        },
+        "additionalPrinterColumns": {
+          "description": "AdditionalPrinterColumns are additional columns shown e.g. in kubectl next to the name. Defaults to a created-at column. +optional",
+          "type": "array",
+          "items": {
+            "$ref": "CustomResourceColumnDefinition"
+          }
+        }
+      }
+    },
+    "CustomResourceDefinitionNames": {
+      "id": "CustomResourceDefinitionNames",
+      "description": "CustomResourceDefinitionNames indicates the names to serve this CustomResourceDefinition",
+      "type": "object",
+      "properties": {
+        "plural": {
+          "description": "Plural is the plural name of the resource to serve. It must match the name of the CustomResourceDefinition-registration too: plural.group and it must be all lowercase.",
+          "type": "string"
+        },
+        "singular": {
+          "description": "Singular is the singular name of the resource. It must be all lowercase Defaults to lowercased +optional",
+          "type": "string"
+        },
+        "shortNames": {
+          "description": "ShortNames are short names for the resource. It must be all lowercase. +optional",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "kind": {
+          "description": "Kind is the serialized kind of the resource. It is normally CamelCase and singular.",
+          "type": "string"
+        },
+        "listKind": {
+          "description": "ListKind is the serialized kind of the list for this resource. Defaults to List. +optional",
+          "type": "string"
+        },
+        "categories": {
+          "description": "Categories is a list of grouped resources custom resources belong to (e.g. 'all') +optional",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "CustomResourceValidation": {
+      "id": "CustomResourceValidation",
+      "description": "CustomResourceValidation is a list of validation methods for CustomResources.",
+      "type": "object",
+      "properties": {
+        "openAPIV3Schema": {
+          "description": "OpenAPIV3Schema is the OpenAPI v3 schema to be validated against. +optional",
+          "$ref": "JSONSchemaProps"
+        }
+      }
+    },
+    "JSONSchemaProps": {
+      "id": "JSONSchemaProps",
+      "description": "JSONSchemaProps is a JSON-Schema following Specification Draft 4 (http:\/\/json-schema.org\/).",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "schema": {
+          "type": "string"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "default": {
+          "$ref": "JSON"
+        },
+        "maximum": {
+          "type": "number",
+          "format": "double"
+        },
+        "exclusiveMaximum": {
+          "type": "boolean"
+        },
+        "minimum": {
+          "type": "number",
+          "format": "double"
+        },
+        "exclusiveMinimum": {
+          "type": "boolean"
+        },
+        "maxLength": {
+          "type": "string",
+          "format": "int64"
+        },
+        "minLength": {
+          "type": "string",
+          "format": "int64"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "maxItems": {
+          "type": "string",
+          "format": "int64"
+        },
+        "minItems": {
+          "type": "string",
+          "format": "int64"
+        },
+        "uniqueItems": {
+          "type": "boolean"
+        },
+        "multipleOf": {
+          "type": "number",
+          "format": "double"
+        },
+        "enum": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "maxProperties": {
+          "type": "string",
+          "format": "int64"
+        },
+        "minProperties": {
+          "type": "string",
+          "format": "int64"
+        },
+        "required": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "items": {
+          "$ref": "JSONSchemaPropsOrArray"
+        },
+        "allOf": {
+          "type": "array",
+          "items": {
+            "$ref": "JSONSchemaProps"
+          }
+        },
+        "oneOf": {
+          "type": "array",
+          "items": {
+            "$ref": "JSONSchemaProps"
+          }
+        },
+        "anyOf": {
+          "type": "array",
+          "items": {
+            "$ref": "JSONSchemaProps"
+          }
+        },
+        "not": {
+          "$ref": "JSONSchemaProps"
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "JSONSchemaProps"
+          }
+        },
+        "additionalProperties": {
+          "$ref": "JSONSchemaPropsOrBool"
+        },
+        "patternProperties": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "JSONSchemaProps"
+          }
+        },
+        "dependencies": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "JSONSchemaPropsOrStringArray"
+          }
+        },
+        "additionalItems": {
+          "$ref": "JSONSchemaPropsOrBool"
+        },
+        "definitions": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "JSONSchemaProps"
+          }
+        },
+        "externalDocs": {
+          "$ref": "ExternalDocumentation"
+        },
+        "example": {
+          "$ref": "JSON"
+        }
+      }
+    },
+    "JSON": {
+      "id": "JSON",
+      "description": "JSON represents any valid JSON value. These types are supported: bool, int64, float64, string, []interface{}, map[string]interface{} and nil.",
+      "type": "object",
+      "properties": {
+        "raw": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "JSONSchemaPropsOrArray": {
+      "id": "JSONSchemaPropsOrArray",
+      "description": "JSONSchemaPropsOrArray represents a value that can either be a JSONSchemaProps or an array of JSONSchemaProps. Mainly here for serialization purposes.",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "$ref": "JSONSchemaProps"
+        },
+        "jsonSchemas": {
+          "type": "array",
+          "items": {
+            "$ref": "JSONSchemaProps"
+          }
+        }
+      }
+    },
+    "JSONSchemaPropsOrBool": {
+      "id": "JSONSchemaPropsOrBool",
+      "description": "JSONSchemaPropsOrBool represents JSONSchemaProps or a boolean value. Defaults to true for the boolean property.",
+      "type": "object",
+      "properties": {
+        "allows": {
+          "type": "boolean"
+        },
+        "schema": {
+          "$ref": "JSONSchemaProps"
+        }
+      }
+    },
+    "JSONSchemaPropsOrStringArray": {
+      "id": "JSONSchemaPropsOrStringArray",
+      "description": "JSONSchemaPropsOrStringArray represents a JSONSchemaProps or a string array.",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "$ref": "JSONSchemaProps"
+        },
+        "property": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ExternalDocumentation": {
+      "id": "ExternalDocumentation",
+      "description": "ExternalDocumentation allows referencing an external resource for extended documentation.",
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      }
+    },
+    "CustomResourceSubresources": {
+      "id": "CustomResourceSubresources",
+      "description": "CustomResourceSubresources defines the status and scale subresources for CustomResources.",
+      "type": "object",
+      "properties": {
+        "status": {
+          "description": "Status denotes the status subresource for CustomResources +optional",
+          "$ref": "CustomResourceSubresourceStatus"
+        },
+        "scale": {
+          "description": "Scale denotes the scale subresource for CustomResources +optional",
+          "$ref": "CustomResourceSubresourceScale"
+        }
+      }
+    },
+    "CustomResourceSubresourceStatus": {
+      "id": "CustomResourceSubresourceStatus",
+      "description": "CustomResourceSubresourceStatus defines how to serve the status subresource for CustomResources. Status is represented by the `.status` JSON path inside of a CustomResource. When set, * exposes a \/status subresource for the custom resource * PUT requests to the \/status subresource take a custom resource object, and ignore changes to anything except the status stanza * PUT\/POST\/PATCH requests to the custom resource ignore changes to the status stanza",
+      "type": "object",
+      "properties": {
+      }
+    },
+    "CustomResourceSubresourceScale": {
+      "id": "CustomResourceSubresourceScale",
+      "description": "CustomResourceSubresourceScale defines how to serve the scale subresource for CustomResources.",
+      "type": "object",
+      "properties": {
+        "specReplicasPath": {
+          "description": "SpecReplicasPath defines the JSON path inside of a CustomResource that corresponds to Scale.Spec.Replicas. Only JSON paths without the array notation are allowed. Must be a JSON Path under .spec. If there is no value under the given path in the CustomResource, the \/scale subresource will return an error on GET.",
+          "type": "string"
+        },
+        "statusReplicasPath": {
+          "description": "StatusReplicasPath defines the JSON path inside of a CustomResource that corresponds to Scale.Status.Replicas. Only JSON paths without the array notation are allowed. Must be a JSON Path under .status. If there is no value under the given path in the CustomResource, the status replica value in the \/scale subresource will default to 0.",
+          "type": "string"
+        },
+        "labelSelectorPath": {
+          "description": "LabelSelectorPath defines the JSON path inside of a CustomResource that corresponds to Scale.Status.Selector. Only JSON paths without the array notation are allowed. Must be a JSON Path under .status. Must be set to work with HPA. If there is no value under the given path in the CustomResource, the status label selector value in the \/scale subresource will default to the empty string. +optional",
+          "type": "string"
+        }
+      }
+    },
+    "CustomResourceDefinitionVersion": {
+      "id": "CustomResourceDefinitionVersion",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name is the version name, e.g. \u201Cv1\u201D, \u201Cv2beta1\u201D, etc.",
+          "type": "string"
+        },
+        "served": {
+          "description": "Served is a flag enabling\/disabling this version from being served via REST APIs",
+          "type": "boolean"
+        },
+        "storage": {
+          "description": "Storage flags the version as storage version. There must be exactly one flagged as storage version.",
+          "type": "boolean"
+        }
+      }
+    },
+    "CustomResourceColumnDefinition": {
+      "id": "CustomResourceColumnDefinition",
+      "description": "CustomResourceColumnDefinition specifies a column for server side printing.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "name is a human readable name for the column.",
+          "type": "string"
+        },
+        "type": {
+          "description": "type is an OpenAPI type definition for this column. See https:\/\/github.com\/OAI\/OpenAPI-Specification\/blob\/master\/versions\/2.0.md#data-types for more.",
+          "type": "string"
+        },
+        "format": {
+          "description": "format is an optional OpenAPI type definition for this column. The 'name' format is applied to the primary identifier column to assist in clients identifying column is the resource name. See https:\/\/github.com\/OAI\/OpenAPI-Specification\/blob\/master\/versions\/2.0.md#data-types for more. +optional",
+          "type": "string"
+        },
+        "description": {
+          "description": "description is a human readable description of this column. +optional",
+          "type": "string"
+        },
+        "priority": {
+          "description": "priority is an integer defining the relative importance of this column compared to others. Lower numbers are considered higher priority. Columns that may be omitted in limited space scenarios should be given a higher priority. +optional",
+          "type": "integer",
+          "format": "int32"
+        },
+        "jsonPath": {
+          "description": "JSONPath is a simple JSON path, i.e. with array notation.",
+          "type": "string"
+        }
+      }
+    },
+    "ListCustomResourceDefinitionsResponse": {
+      "id": "ListCustomResourceDefinitionsResponse",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "The API version for this call such as \"k8s.apiextensions.io\/v1beta1\".",
+          "type": "string"
+        },
+        "kind": {
+          "description": "The kind of this resource, in this case \"CustomResourceDefinitionList\".",
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Metadata associated with this CustomResourceDefinition list.",
+          "$ref": "ListMeta"
+        },
+        "items": {
+          "description": "List of CustomResourceDefinitions.",
+          "type": "array",
+          "items": {
+            "$ref": "CustomResourceDefinition"
+          }
+        },
+        "unreachable": {
+          "description": "Locations that could not be reached.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "PingSource": {
+      "id": "PingSource",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "The API version for this call such as \"sources.knative.dev\/v1beta1\".",
+          "type": "string"
+        },
+        "kind": {
+          "description": "The kind of resource, in this case \"PingSource\".",
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Metadata associated with this PingSource.",
+          "$ref": "ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec defines the desired state of the PingSource.",
+          "$ref": "PingSourceSpec"
+        },
+        "status": {
+          "description": "Status represents the current state of the PingSource. This data may be out of date.",
+          "$ref": "PingSourceStatus"
+        }
+      }
+    },
+    "PingSourceSpec": {
+      "id": "PingSourceSpec",
+      "description": "The desired state of the PingSource.",
+      "type": "object",
+      "properties": {
+        "sink": {
+          "description": "Sink is a reference to an object that will resolve to a uri to use as the sink.",
+          "$ref": "Destination"
+        },
+        "ceOverrides": {
+          "description": "CloudEventOverrides defines overrides to control the output format and modifications of the event sent to the sink.",
+          "$ref": "CloudEventOverrides"
+        },
+        "schedule": {
+          "description": "Schedule is the cronjob schedule. Defaults to `* * * * *`.",
+          "type": "string"
+        },
+        "timezone": {
+          "description": "Timezone modifies the actual time relative to the specified timezone. Defaults to the system time zone. More general information about time zones: https:\/\/www.iana.org\/time-zones List of valid timezone values: https:\/\/en.wikipedia.org\/wiki\/List_of_tz_database_time_zones",
+          "type": "string"
+        },
+        "jsonData": {
+          "description": "JsonData is json encoded data used as the body of the event posted to the sink. Default is empty. If set, datacontenttype will also be set to \"application\/json\".",
+          "type": "string"
+        }
+      }
+    },
+    "PingSourceStatus": {
+      "id": "PingSourceStatus",
+      "description": "PingSourceStatus represents the current state of a PingSource.",
+      "type": "object",
+      "properties": {
+        "observedGeneration": {
+          "description": "ObservedGeneration is the 'Generation' of the CloudPubSubSource that was last processed by the controller.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "conditions": {
+          "description": "Conditions the latest available observations of a resource's current state.",
+          "type": "array",
+          "items": {
+            "$ref": "Condition"
+          }
+        },
+        "annotations": {
+          "description": "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "serviceAccountName": {
+          "description": "ServiceAccountName is the k8s service account associated with Google service account.",
+          "type": "string"
+        },
+        "sinkUri": {
+          "description": "SinkURI is the current active sink URI that has been configured for the Source.",
+          "type": "string"
+        },
+        "ceAttributes": {
+          "description": "CloudEventAttributes are the specific attributes that the Source uses as part of its CloudEvents.",
+          "type": "array",
+          "items": {
+            "$ref": "CloudEventAttributes"
+          }
+        },
+        "projectId": {
+          "description": "ProjectID is the project ID of the Topic, might have been resolved.",
+          "type": "string"
+        },
+        "topicId": {
+          "description": "TopicID where the notifications are sent to.",
+          "type": "string"
+        },
+        "subscriptionId": {
+          "description": "SubscriptionID is the created subscription ID.",
+          "type": "string"
+        },
+        "stackDriverSink": {
+          "description": "ID of the Stackdriver sink used to publish audit log messages.",
+          "type": "string"
+        }
+      }
+    },
+    "ListPingSourcesResponse": {
+      "id": "ListPingSourcesResponse",
+      "description": "ListPingSourcesResponse is a list of PingSource resources.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "The API version for this call such as \"sources.knative.dev\/v1beta1\".",
+          "type": "string"
+        },
+        "kind": {
+          "description": "The kind of this resource, in this case \"PingSourceList\".",
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Metadata associated with this PingSource list.",
+          "$ref": "ListMeta"
+        },
+        "items": {
+          "description": "List of PingSources.",
+          "type": "array",
+          "items": {
+            "$ref": "PingSource"
+          }
+        },
+        "unreachable": {
+          "description": "Locations that could not be reached.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Trigger": {
+      "id": "Trigger",
+      "description": "Represents a request to have events delivered to a consumer from a Broker's event pool.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "The API version for this call such as \"eventing.knative.dev\/v1beta1\".",
+          "type": "string"
+        },
+        "kind": {
+          "description": "The kind of resource, in this case \"Trigger\".",
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Optional. Metadata associated with this Trigger, including name, namespace, and annotations. .",
+          "$ref": "ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec defines the desired state of the Trigger.",
+          "$ref": "TriggerSpec"
+        },
+        "status": {
+          "description": "Optional. Status represents the current state of the Trigger. This data may be out of date.",
+          "$ref": "TriggerStatus"
+        }
+      }
+    },
+    "TriggerSpec": {
+      "id": "TriggerSpec",
+      "description": "The desired state of the Trigger.",
+      "type": "object",
+      "properties": {
+        "broker": {
+          "description": "Optional. Broker is the broker that this trigger receives events from. If not provided, fully-managed Events for Cloud Run uses the `google` broker by default",
+          "type": "string"
+        },
+        "filter": {
+          "description": "Optional. Filter is the filter to apply against all events from the Broker. Only events that pass this filter will be sent to the Subscriber.",
+          "$ref": "TriggerFilter"
+        },
+        "subscriber": {
+          "$ref": "Destination"
+        },
+        "serviceAccountEmail": {
+          "description": "Optional. Email address of the IAM service account associated with the trigger. The service account represents the identity of the trigger and used to generate identity tokens when invoking Cloud Run service specified in the \"subscriber\" field. See also https:\/\/cloud.google.com\/run\/docs\/triggering\/pubsub-push#create-service-account for information on how to invoke authenticated Cloud Run services.",
+          "type": "string"
+        }
+      }
+    },
+    "TriggerFilter": {
+      "id": "TriggerFilter",
+      "description": "Filters events based on exact matches on the attributes.",
+      "type": "object",
+      "properties": {
+        "attributes": {
+          "description": "Optional. Attributes filters events by exact match on event context attributes. Each key in the map is compared with the equivalent key in the event context. An event passes the filter if all values are equal to the specified values. Nested context attributes are not supported as keys. Only string values are supported.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "TriggerStatus": {
+      "id": "TriggerStatus",
+      "description": "The current state of a Trigger.",
+      "type": "object",
+      "properties": {
+        "observedGeneration": {
+          "description": "ObservedGeneration is the 'Generation' of the Trigger that was last processed by the controller.",
+          "type": "integer",
+          "format": "int32"
+        },
+        "conditions": {
+          "description": "As a Trigger is being prepared, it will incrementally update conditions. Trigger-specific conditions include: * \"Subscriber\": True when the target Cloud Run service is resolved. * \"Subscribed\": True when the Pub\/Sub topic and subscription associated with the trigger is successfully set up.",
+          "type": "array",
+          "items": {
+            "$ref": "Condition"
+          }
+        },
+        "annotations": {
+          "description": "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "subscriberUri": {
+          "description": "SubscriberURI is the resolved URI of the receiver for this Trigger.",
+          "type": "string"
+        }
+      }
+    },
+    "ListTriggersResponse": {
+      "id": "ListTriggersResponse",
+      "description": "ListTriggersResponse is a list of Trigger resources.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "The API version for this call such as \"eventing.knative.dev\/v1beta1\".",
+          "type": "string"
+        },
+        "kind": {
+          "description": "The kind of this resource, in this case \"TriggerList\".",
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Optional. Metadata associated with this Trigger list.",
+          "$ref": "ListMeta"
+        },
+        "items": {
+          "description": "List of Triggers.",
+          "type": "array",
+          "items": {
+            "$ref": "Trigger"
+          }
+        },
+        "unreachable": {
+          "description": "Locations that could not be reached.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "resources": {
+    "namespaces": {
+      "resources": {
+        "apiserversources": {
+          "methods": {
+            "create": {
+              "id": "anthosevents.namespaces.apiserversources.create",
+              "path": "apis/sources.knative.dev/v1beta1/{+parent}/apiserversources",
+              "flatPath": "apis/sources.knative.dev/v1beta1/namespaces/{namespacesId}/apiserversources",
+              "httpMethod": "POST",
+              "parameters": {
+                "parent": {
+                  "description": "The project ID or project number in which this apiserversource should be created.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "parent"
+              ],
+              "request": {
+                "$ref": "ApiServerSource"
+              },
+              "response": {
+                "$ref": "ApiServerSource"
+              },
+              "description": "Creates a new apiserversource."
+            },
+            "list": {
+              "id": "anthosevents.namespaces.apiserversources.list",
+              "path": "apis/sources.knative.dev/v1beta1/{+parent}/apiserversources",
+              "flatPath": "apis/sources.knative.dev/v1beta1/namespaces/{namespacesId}/apiserversources",
+              "httpMethod": "GET",
+              "parameters": {
+                "parent": {
+                  "description": "The project ID or project number from which the apiserversources should be listed.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+$",
+                  "type": "string"
+                },
+                "limit": {
+                  "description": "The maximum number of records that should be returned.",
+                  "location": "query",
+                  "type": "integer",
+                  "format": "int32"
+                },
+                "includeUninitialized": {
+                  "description": "Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "boolean"
+                },
+                "fieldSelector": {
+                  "description": "Allows to filter resources based on a specific value for a field name. Send this in a query string format. i.e. 'metadata.name%3Dlorem'. Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "labelSelector": {
+                  "description": "Allows to filter resources based on a label. Supported operations are =, !=, exists, in, and notIn.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "resourceVersion": {
+                  "description": "The baseline resource version from which the list or watch operation should start. Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "watch": {
+                  "description": "Flag that indicates that the client expects to watch this resource as well. Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "boolean"
+                },
+                "continue": {
+                  "description": "Optional encoded string to continue paging.",
+                  "location": "query",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "parent"
+              ],
+              "response": {
+                "$ref": "ListApiServerSourcesResponse"
+              },
+              "description": "Rpc to list apiserversources."
+            },
+            "get": {
+              "id": "anthosevents.namespaces.apiserversources.get",
+              "path": "apis/sources.knative.dev/v1beta1/{+name}",
+              "flatPath": "apis/sources.knative.dev/v1beta1/namespaces/{namespacesId}/apiserversources/{apiserversourcesId}",
+              "httpMethod": "GET",
+              "parameters": {
+                "name": {
+                  "description": "The name of the apiserversource being retrieved. If needed, replace {namespace_id} with the project ID.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/apiserversources\/[^\/]+$",
+                  "type": "string"
+                },
+                "region": {
+                  "description": "The region in which this resource exists.",
+                  "location": "query",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "response": {
+                "$ref": "ApiServerSource"
+              },
+              "description": "Rpc to get information about a apiserversource."
+            },
+            "replaceApiServerSource": {
+              "id": "anthosevents.namespaces.apiserversources.replaceApiServerSource",
+              "path": "apis/sources.knative.dev/v1beta1/{+name}",
+              "flatPath": "apis/sources.knative.dev/v1beta1/namespaces/{namespacesId}/apiserversources/{apiserversourcesId}",
+              "httpMethod": "PUT",
+              "parameters": {
+                "name": {
+                  "description": "The name of the apiserversource being retrieved. If needed, replace {namespace_id} with the project ID.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/apiserversources\/[^\/]+$",
+                  "type": "string"
+                },
+                "region": {
+                  "description": "The region in which this resource exists.",
+                  "location": "query",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "request": {
+                "$ref": "ApiServerSource"
+              },
+              "response": {
+                "$ref": "ApiServerSource"
+              },
+              "description": "Rpc to replace a apiserversource. Only the spec and metadata labels and annotations are modifiable. After the Update request, Cloud Run will work to make the 'status' match the requested 'spec'. May provide metadata.resourceVersion to enforce update from last read for optimistic concurrency control."
+            },
+            "delete": {
+              "id": "anthosevents.namespaces.apiserversources.delete",
+              "path": "apis/sources.knative.dev/v1beta1/{+name}",
+              "flatPath": "apis/sources.knative.dev/v1beta1/namespaces/{namespacesId}/apiserversources/{apiserversourcesId}",
+              "httpMethod": "DELETE",
+              "parameters": {
+                "name": {
+                  "description": "The name of the apiserversource being deleted. If needed, replace {namespace_id} with the project ID.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/apiserversources\/[^\/]+$",
+                  "type": "string"
+                },
+                "propagationPolicy": {
+                  "description": "Specifies the propagation policy of delete. Cloud Run currently ignores this setting, and deletes in the background. Please see kubernetes.io\/docs\/concepts\/workloads\/controllers\/garbage-collection\/ for more information.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "kind": {
+                  "description": "Cloud Run currently ignores this parameter.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "apiVersion": {
+                  "description": "Cloud Run currently ignores this parameter.",
+                  "location": "query",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "response": {
+                "$ref": "Empty"
+              },
+              "description": "Rpc to delete a apiserversource."
+            }
+          }
+        },
+        "brokers": {
+          "methods": {
+            "create": {
+              "id": "anthosevents.namespaces.brokers.create",
+              "path": "apis/eventing.knative.dev/v1beta1/{+parent}/brokers",
+              "flatPath": "apis/eventing.knative.dev/v1beta1/namespaces/{namespacesId}/brokers",
+              "httpMethod": "POST",
+              "parameters": {
+                "parent": {
+                  "description": "The namespace name.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "parent"
+              ],
+              "request": {
+                "$ref": "Broker"
+              },
+              "response": {
+                "$ref": "Broker"
+              },
+              "description": "Rpc to create a new broker."
+            },
+            "get": {
+              "id": "anthosevents.namespaces.brokers.get",
+              "path": "apis/eventing.knative.dev/v1beta1/{+name}",
+              "flatPath": "apis/eventing.knative.dev/v1beta1/namespaces/{namespacesId}/brokers/{brokersId}",
+              "httpMethod": "GET",
+              "parameters": {
+                "name": {
+                  "description": "The name of the Broker being retrieved.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/brokers\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "response": {
+                "$ref": "Broker"
+              },
+              "description": "Rpc to get information about a Broker."
+            },
+            "list": {
+              "id": "anthosevents.namespaces.brokers.list",
+              "path": "apis/eventing.knative.dev/v1beta1/{+parent}/brokers",
+              "flatPath": "apis/eventing.knative.dev/v1beta1/namespaces/{namespacesId}/brokers",
+              "httpMethod": "GET",
+              "parameters": {
+                "parent": {
+                  "description": "The namespace name.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+$",
+                  "type": "string"
+                },
+                "limit": {
+                  "location": "query",
+                  "type": "integer",
+                  "format": "int32"
+                },
+                "includeUninitialized": {
+                  "description": "Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "boolean"
+                },
+                "fieldSelector": {
+                  "description": "Allows to filter resources based on a specific value for a field name. Send this in a query string format. i.e. 'metadata.name%3Dlorem'. Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "labelSelector": {
+                  "description": "Allows to filter resources based on a label. Supported operations are =, !=, exists, in, and notIn.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "resourceVersion": {
+                  "description": "The baseline resource version from which the list or watch operation should start. Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "watch": {
+                  "description": "Flag that indicates that the client expects to watch this resource as well. Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "boolean"
+                },
+                "continue": {
+                  "description": "Optional encoded string to continue paging.",
+                  "location": "query",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "parent"
+              ],
+              "response": {
+                "$ref": "ListBrokersResponse"
+              },
+              "description": "Rpc to list brokers."
+            },
+            "delete": {
+              "id": "anthosevents.namespaces.brokers.delete",
+              "path": "apis/eventing.knative.dev/v1beta1/{+name}",
+              "flatPath": "apis/eventing.knative.dev/v1beta1/namespaces/{namespacesId}/brokers/{brokersId}",
+              "httpMethod": "DELETE",
+              "parameters": {
+                "name": {
+                  "description": "The relative name of the broker being deleted, including the namespace",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/brokers\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "response": {
+                "$ref": "Empty"
+              },
+              "description": "Rpc to delete a broker."
+            }
+          }
+        },
+        "cloudauditlogssources": {
+          "methods": {
+            "create": {
+              "id": "anthosevents.namespaces.cloudauditlogssources.create",
+              "path": "apis/events.cloud.google.com/v1beta1/{+parent}/cloudauditlogssources",
+              "flatPath": "apis/events.cloud.google.com/v1beta1/namespaces/{namespacesId}/cloudauditlogssources",
+              "httpMethod": "POST",
+              "parameters": {
+                "parent": {
+                  "description": "The project ID or project number in which this cloudauditlogssource should be created.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "parent"
+              ],
+              "request": {
+                "$ref": "CloudAuditLogsSource"
+              },
+              "response": {
+                "$ref": "CloudAuditLogsSource"
+              },
+              "description": "Creates a new cloudauditlogssource."
+            },
+            "list": {
+              "id": "anthosevents.namespaces.cloudauditlogssources.list",
+              "path": "apis/events.cloud.google.com/v1beta1/{+parent}/cloudauditlogssources",
+              "flatPath": "apis/events.cloud.google.com/v1beta1/namespaces/{namespacesId}/cloudauditlogssources",
+              "httpMethod": "GET",
+              "parameters": {
+                "parent": {
+                  "description": "The project ID or project number from which the cloudauditlogssources should be listed.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+$",
+                  "type": "string"
+                },
+                "limit": {
+                  "description": "The maximum number of records that should be returned.",
+                  "location": "query",
+                  "type": "integer",
+                  "format": "int32"
+                },
+                "includeUninitialized": {
+                  "description": "Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "boolean"
+                },
+                "fieldSelector": {
+                  "description": "Allows to filter resources based on a specific value for a field name. Send this in a query string format. i.e. 'metadata.name%3Dlorem'. Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "labelSelector": {
+                  "description": "Allows to filter resources based on a label. Supported operations are =, !=, exists, in, and notIn.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "resourceVersion": {
+                  "description": "The baseline resource version from which the list or watch operation should start. Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "watch": {
+                  "description": "Flag that indicates that the client expects to watch this resource as well. Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "boolean"
+                },
+                "continue": {
+                  "description": "Optional encoded string to continue paging.",
+                  "location": "query",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "parent"
+              ],
+              "response": {
+                "$ref": "ListCloudAuditLogsSourcesResponse"
+              },
+              "description": "Rpc to list cloudauditlogssources."
+            },
+            "get": {
+              "id": "anthosevents.namespaces.cloudauditlogssources.get",
+              "path": "apis/events.cloud.google.com/v1beta1/{+name}",
+              "flatPath": "apis/events.cloud.google.com/v1beta1/namespaces/{namespacesId}/cloudauditlogssources/{cloudauditlogssourcesId}",
+              "httpMethod": "GET",
+              "parameters": {
+                "name": {
+                  "description": "The name of the cloudauditlogssource being retrieved. If needed, replace {namespace_id} with the project ID.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/cloudauditlogssources\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "response": {
+                "$ref": "CloudAuditLogsSource"
+              },
+              "description": "Rpc to get information about a cloudauditlogssource."
+            },
+            "replaceCloudAuditLogsSource": {
+              "id": "anthosevents.namespaces.cloudauditlogssources.replaceCloudAuditLogsSource",
+              "path": "apis/events.cloud.google.com/v1beta1/{+name}",
+              "flatPath": "apis/events.cloud.google.com/v1beta1/namespaces/{namespacesId}/cloudauditlogssources/{cloudauditlogssourcesId}",
+              "httpMethod": "PUT",
+              "parameters": {
+                "name": {
+                  "description": "The name of the cloudauditlogssource being retrieved. If needed, replace {namespace_id} with the project ID.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/cloudauditlogssources\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "request": {
+                "$ref": "CloudAuditLogsSource"
+              },
+              "response": {
+                "$ref": "CloudAuditLogsSource"
+              },
+              "description": "Rpc to replace a cloudauditlogssource. Only the spec and metadata labels and annotations are modifiable. After the Update request, Cloud Run will work to make the 'status' match the requested 'spec'. May provide metadata.resourceVersion to enforce update from last read for optimistic concurrency control."
+            },
+            "delete": {
+              "id": "anthosevents.namespaces.cloudauditlogssources.delete",
+              "path": "apis/events.cloud.google.com/v1beta1/{+name}",
+              "flatPath": "apis/events.cloud.google.com/v1beta1/namespaces/{namespacesId}/cloudauditlogssources/{cloudauditlogssourcesId}",
+              "httpMethod": "DELETE",
+              "parameters": {
+                "name": {
+                  "description": "The name of the cloudauditlogssource being deleted. If needed, replace {namespace_id} with the project ID.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/cloudauditlogssources\/[^\/]+$",
+                  "type": "string"
+                },
+                "propagationPolicy": {
+                  "description": "Specifies the propagation policy of delete. Cloud Run currently ignores this setting, and deletes in the background. Please see kubernetes.io\/docs\/concepts\/workloads\/controllers\/garbage-collection\/ for more information.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "kind": {
+                  "description": "Cloud Run currently ignores this parameter.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "apiVersion": {
+                  "description": "Cloud Run currently ignores this parameter.",
+                  "location": "query",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "response": {
+                "$ref": "Empty"
+              },
+              "description": "Rpc to delete a cloudauditlogssource."
+            }
+          }
+        },
+        "cloudpubsubsources": {
+          "methods": {
+            "create": {
+              "id": "anthosevents.namespaces.cloudpubsubsources.create",
+              "path": "apis/events.cloud.google.com/v1beta1/{+parent}/cloudpubsubsources",
+              "flatPath": "apis/events.cloud.google.com/v1beta1/namespaces/{namespacesId}/cloudpubsubsources",
+              "httpMethod": "POST",
+              "parameters": {
+                "parent": {
+                  "description": "The project ID or project number in which this cloudpubsubsource should be created.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "parent"
+              ],
+              "request": {
+                "$ref": "CloudPubSubSource"
+              },
+              "response": {
+                "$ref": "CloudPubSubSource"
+              },
+              "description": "Creates a new cloudpubsubsource."
+            },
+            "list": {
+              "id": "anthosevents.namespaces.cloudpubsubsources.list",
+              "path": "apis/events.cloud.google.com/v1beta1/{+parent}/cloudpubsubsources",
+              "flatPath": "apis/events.cloud.google.com/v1beta1/namespaces/{namespacesId}/cloudpubsubsources",
+              "httpMethod": "GET",
+              "parameters": {
+                "parent": {
+                  "description": "The project ID or project number from which the cloudpubsubsources should be listed.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+$",
+                  "type": "string"
+                },
+                "limit": {
+                  "description": "The maximum number of records that should be returned.",
+                  "location": "query",
+                  "type": "integer",
+                  "format": "int32"
+                },
+                "includeUninitialized": {
+                  "description": "Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "boolean"
+                },
+                "fieldSelector": {
+                  "description": "Allows to filter resources based on a specific value for a field name. Send this in a query string format. i.e. 'metadata.name%3Dlorem'. Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "labelSelector": {
+                  "description": "Allows to filter resources based on a label. Supported operations are =, !=, exists, in, and notIn.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "resourceVersion": {
+                  "description": "The baseline resource version from which the list or watch operation should start. Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "watch": {
+                  "description": "Flag that indicates that the client expects to watch this resource as well. Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "boolean"
+                },
+                "continue": {
+                  "description": "Optional encoded string to continue paging.",
+                  "location": "query",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "parent"
+              ],
+              "response": {
+                "$ref": "ListCloudPubSubSourcesResponse"
+              },
+              "description": "Rpc to list cloudpubsubsources."
+            },
+            "get": {
+              "id": "anthosevents.namespaces.cloudpubsubsources.get",
+              "path": "apis/events.cloud.google.com/v1beta1/{+name}",
+              "flatPath": "apis/events.cloud.google.com/v1beta1/namespaces/{namespacesId}/cloudpubsubsources/{cloudpubsubsourcesId}",
+              "httpMethod": "GET",
+              "parameters": {
+                "name": {
+                  "description": "The name of the cloudpubsubsource being retrieved. If needed, replace {namespace_id} with the project ID.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/cloudpubsubsources\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "response": {
+                "$ref": "CloudPubSubSource"
+              },
+              "description": "Rpc to get information about a cloudpubsubsource."
+            },
+            "replaceCloudPubSubSource": {
+              "id": "anthosevents.namespaces.cloudpubsubsources.replaceCloudPubSubSource",
+              "path": "apis/events.cloud.google.com/v1beta1/{+name}",
+              "flatPath": "apis/events.cloud.google.com/v1beta1/namespaces/{namespacesId}/cloudpubsubsources/{cloudpubsubsourcesId}",
+              "httpMethod": "PUT",
+              "parameters": {
+                "name": {
+                  "description": "The name of the cloudpubsubsource being retrieved. If needed, replace {namespace_id} with the project ID.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/cloudpubsubsources\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "request": {
+                "$ref": "CloudPubSubSource"
+              },
+              "response": {
+                "$ref": "CloudPubSubSource"
+              },
+              "description": "Rpc to replace a cloudpubsubsource. Only the spec and metadata labels and annotations are modifiable. After the Update request, Cloud Run will work to make the 'status' match the requested 'spec'. May provide metadata.resourceVersion to enforce update from last read for optimistic concurrency control."
+            },
+            "delete": {
+              "id": "anthosevents.namespaces.cloudpubsubsources.delete",
+              "path": "apis/events.cloud.google.com/v1beta1/{+name}",
+              "flatPath": "apis/events.cloud.google.com/v1beta1/namespaces/{namespacesId}/cloudpubsubsources/{cloudpubsubsourcesId}",
+              "httpMethod": "DELETE",
+              "parameters": {
+                "name": {
+                  "description": "The name of the cloudpubsubsource being deleted. If needed, replace {namespace_id} with the project ID.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/cloudpubsubsources\/[^\/]+$",
+                  "type": "string"
+                },
+                "propagationPolicy": {
+                  "description": "Specifies the propagation policy of delete. Cloud Run currently ignores this setting, and deletes in the background. Please see kubernetes.io\/docs\/concepts\/workloads\/controllers\/garbage-collection\/ for more information.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "kind": {
+                  "description": "Cloud Run currently ignores this parameter.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "apiVersion": {
+                  "description": "Cloud Run currently ignores this parameter.",
+                  "location": "query",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "response": {
+                "$ref": "Empty"
+              },
+              "description": "Rpc to delete a cloudpubsubsource."
+            }
+          }
+        },
+        "cloudschedulersources": {
+          "methods": {
+            "create": {
+              "id": "anthosevents.namespaces.cloudschedulersources.create",
+              "path": "apis/events.cloud.google.com/v1beta1/{+parent}/cloudschedulersources",
+              "flatPath": "apis/events.cloud.google.com/v1beta1/namespaces/{namespacesId}/cloudschedulersources",
+              "httpMethod": "POST",
+              "parameters": {
+                "parent": {
+                  "description": "Required. The project ID or project number in which this cloudschedulersource should be created.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "parent"
+              ],
+              "request": {
+                "$ref": "CloudSchedulerSource"
+              },
+              "response": {
+                "$ref": "CloudSchedulerSource"
+              },
+              "description": "Creates a new cloudschedulersource."
+            },
+            "list": {
+              "id": "anthosevents.namespaces.cloudschedulersources.list",
+              "path": "apis/events.cloud.google.com/v1beta1/{+parent}/cloudschedulersources",
+              "flatPath": "apis/events.cloud.google.com/v1beta1/namespaces/{namespacesId}/cloudschedulersources",
+              "httpMethod": "GET",
+              "parameters": {
+                "parent": {
+                  "description": "Required. The project ID or project number from which the cloudschedulersources should be listed.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+$",
+                  "type": "string"
+                },
+                "limit": {
+                  "description": "The maximum number of records that should be returned.",
+                  "location": "query",
+                  "type": "integer",
+                  "format": "int32"
+                },
+                "includeUninitialized": {
+                  "description": "Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "boolean"
+                },
+                "fieldSelector": {
+                  "description": "Allows to filter resources based on a specific value for a field name. Send this in a query string format. i.e. 'metadata.name%3Dlorem'. Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "labelSelector": {
+                  "description": "Allows to filter resources based on a label. Supported operations are =, !=, exists, in, and notIn.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "resourceVersion": {
+                  "description": "The baseline resource version from which the list or watch operation should start. Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "watch": {
+                  "description": "Flag that indicates that the client expects to watch this resource as well. Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "boolean"
+                },
+                "continue": {
+                  "description": "Optional encoded string to continue paging.",
+                  "location": "query",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "parent"
+              ],
+              "response": {
+                "$ref": "ListCloudSchedulerSourcesResponse"
+              },
+              "description": "Rpc to list cloudschedulersources."
+            },
+            "get": {
+              "id": "anthosevents.namespaces.cloudschedulersources.get",
+              "path": "apis/events.cloud.google.com/v1beta1/{+name}",
+              "flatPath": "apis/events.cloud.google.com/v1beta1/namespaces/{namespacesId}/cloudschedulersources/{cloudschedulersourcesId}",
+              "httpMethod": "GET",
+              "parameters": {
+                "name": {
+                  "description": "Required. The name of the cloudschedulersource being retrieved. If needed, replace {namespace_id} with the project ID.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/cloudschedulersources\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "response": {
+                "$ref": "CloudSchedulerSource"
+              },
+              "description": "Rpc to get information about a cloudschedulersource."
+            },
+            "replaceCloudSchedulerSource": {
+              "id": "anthosevents.namespaces.cloudschedulersources.replaceCloudSchedulerSource",
+              "path": "apis/events.cloud.google.com/v1beta1/{+name}",
+              "flatPath": "apis/events.cloud.google.com/v1beta1/namespaces/{namespacesId}/cloudschedulersources/{cloudschedulersourcesId}",
+              "httpMethod": "PUT",
+              "parameters": {
+                "name": {
+                  "description": "Required. The name of the cloudschedulersource being retrieved. If needed, replace {namespace_id} with the project ID.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/cloudschedulersources\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "request": {
+                "$ref": "CloudSchedulerSource"
+              },
+              "response": {
+                "$ref": "CloudSchedulerSource"
+              },
+              "description": "Rpc to replace a cloudschedulersource. Only the spec and metadata labels and annotations are modifiable. After the Update request, Cloud Run will work to make the 'status' match the requested 'spec'. May provide metadata.resourceVersion to enforce update from last read for optimistic concurrency control."
+            },
+            "delete": {
+              "id": "anthosevents.namespaces.cloudschedulersources.delete",
+              "path": "apis/events.cloud.google.com/v1beta1/{+name}",
+              "flatPath": "apis/events.cloud.google.com/v1beta1/namespaces/{namespacesId}/cloudschedulersources/{cloudschedulersourcesId}",
+              "httpMethod": "DELETE",
+              "parameters": {
+                "name": {
+                  "description": "Required. The name of the cloudschedulersource being deleted. If needed, replace {namespace_id} with the project ID.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/cloudschedulersources\/[^\/]+$",
+                  "type": "string"
+                },
+                "propagationPolicy": {
+                  "description": "Specifies the propagation policy of delete. Cloud Run currently ignores this setting, and deletes in the background. Please see kubernetes.io\/docs\/concepts\/workloads\/controllers\/garbage-collection\/ for more information.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "kind": {
+                  "description": "Cloud Run currently ignores this parameter.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "apiVersion": {
+                  "description": "Cloud Run currently ignores this parameter.",
+                  "location": "query",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "response": {
+                "$ref": "Empty"
+              },
+              "description": "Rpc to delete a cloudschedulersource."
+            }
+          }
+        },
+        "cloudstoragesources": {
+          "methods": {
+            "create": {
+              "id": "anthosevents.namespaces.cloudstoragesources.create",
+              "path": "apis/events.cloud.google.com/v1beta1/{+parent}/cloudstoragesources",
+              "flatPath": "apis/events.cloud.google.com/v1beta1/namespaces/{namespacesId}/cloudstoragesources",
+              "httpMethod": "POST",
+              "parameters": {
+                "parent": {
+                  "description": "Required. The project ID or project number in which this cloudstoragesource should be created.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "parent"
+              ],
+              "request": {
+                "$ref": "CloudStorageSource"
+              },
+              "response": {
+                "$ref": "CloudStorageSource"
+              },
+              "description": "Creates a new cloudstoragesource."
+            },
+            "list": {
+              "id": "anthosevents.namespaces.cloudstoragesources.list",
+              "path": "apis/events.cloud.google.com/v1beta1/{+parent}/cloudstoragesources",
+              "flatPath": "apis/events.cloud.google.com/v1beta1/namespaces/{namespacesId}/cloudstoragesources",
+              "httpMethod": "GET",
+              "parameters": {
+                "parent": {
+                  "description": "Required. The project ID or project number from which the cloudstoragesources should be listed.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+$",
+                  "type": "string"
+                },
+                "limit": {
+                  "description": "The maximum number of records that should be returned.",
+                  "location": "query",
+                  "type": "integer",
+                  "format": "int32"
+                },
+                "includeUninitialized": {
+                  "description": "Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "boolean"
+                },
+                "fieldSelector": {
+                  "description": "Allows to filter resources based on a specific value for a field name. Send this in a query string format. i.e. 'metadata.name%3Dlorem'. Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "labelSelector": {
+                  "description": "Allows to filter resources based on a label. Supported operations are =, !=, exists, in, and notIn.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "resourceVersion": {
+                  "description": "The baseline resource version from which the list or watch operation should start. Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "watch": {
+                  "description": "Flag that indicates that the client expects to watch this resource as well. Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "boolean"
+                },
+                "continue": {
+                  "description": "Optional encoded string to continue paging.",
+                  "location": "query",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "parent"
+              ],
+              "response": {
+                "$ref": "ListCloudStorageSourcesResponse"
+              },
+              "description": "Rpc to list cloudstoragesources."
+            },
+            "get": {
+              "id": "anthosevents.namespaces.cloudstoragesources.get",
+              "path": "apis/events.cloud.google.com/v1beta1/{+name}",
+              "flatPath": "apis/events.cloud.google.com/v1beta1/namespaces/{namespacesId}/cloudstoragesources/{cloudstoragesourcesId}",
+              "httpMethod": "GET",
+              "parameters": {
+                "name": {
+                  "description": "Required. The name of the cloudstoragesource being retrieved. If needed, replace {namespace_id} with the project ID.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/cloudstoragesources\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "response": {
+                "$ref": "CloudStorageSource"
+              },
+              "description": "Rpc to get information about a cloudstoragesource."
+            },
+            "replaceCloudStorageSource": {
+              "id": "anthosevents.namespaces.cloudstoragesources.replaceCloudStorageSource",
+              "path": "apis/events.cloud.google.com/v1beta1/{+name}",
+              "flatPath": "apis/events.cloud.google.com/v1beta1/namespaces/{namespacesId}/cloudstoragesources/{cloudstoragesourcesId}",
+              "httpMethod": "PUT",
+              "parameters": {
+                "name": {
+                  "description": "Required. The name of the cloudstoragesource being retrieved. If needed, replace {namespace_id} with the project ID.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/cloudstoragesources\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "request": {
+                "$ref": "CloudStorageSource"
+              },
+              "response": {
+                "$ref": "CloudStorageSource"
+              },
+              "description": "Rpc to replace a cloudstoragesource. Only the spec and metadata labels and annotations are modifiable. After the Update request, Cloud Run will work to make the 'status' match the requested 'spec'. May provide metadata.resourceVersion to enforce update from last read for optimistic concurrency control."
+            },
+            "delete": {
+              "id": "anthosevents.namespaces.cloudstoragesources.delete",
+              "path": "apis/events.cloud.google.com/v1beta1/{+name}",
+              "flatPath": "apis/events.cloud.google.com/v1beta1/namespaces/{namespacesId}/cloudstoragesources/{cloudstoragesourcesId}",
+              "httpMethod": "DELETE",
+              "parameters": {
+                "name": {
+                  "description": "Required. The name of the cloudstoragesource being deleted. If needed, replace {namespace_id} with the project ID.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/cloudstoragesources\/[^\/]+$",
+                  "type": "string"
+                },
+                "propagationPolicy": {
+                  "description": "Specifies the propagation policy of delete. Cloud Run currently ignores this setting, and deletes in the background. Please see kubernetes.io\/docs\/concepts\/workloads\/controllers\/garbage-collection\/ for more information.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "kind": {
+                  "description": "Cloud Run currently ignores this parameter.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "apiVersion": {
+                  "description": "Cloud Run currently ignores this parameter.",
+                  "location": "query",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "response": {
+                "$ref": "Empty"
+              },
+              "description": "Rpc to delete a cloudstoragesource."
+            }
+          }
+        },
+        "customresourcedefinitions": {
+          "methods": {
+            "get": {
+              "id": "anthosevents.namespaces.customresourcedefinitions.get",
+              "path": "apis/apiextensions.k8s.io/v1beta1/{+name}",
+              "flatPath": "apis/apiextensions.k8s.io/v1beta1/namespaces/{namespacesId}/customresourcedefinitions/{customresourcedefinitionsId}",
+              "httpMethod": "GET",
+              "parameters": {
+                "name": {
+                  "description": "The name of the CustomResourceDefinition being retrieved. If needed, replace {namespace_id} with the project ID.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/customresourcedefinitions\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "response": {
+                "$ref": "CustomResourceDefinition"
+              },
+              "description": "Rpc to get information about a CustomResourceDefinition."
+            }
+          }
+        },
+        "pingsources": {
+          "methods": {
+            "create": {
+              "id": "anthosevents.namespaces.pingsources.create",
+              "path": "apis/sources.knative.dev/v1beta1/{+parent}/pingsources",
+              "flatPath": "apis/sources.knative.dev/v1beta1/namespaces/{namespacesId}/pingsources",
+              "httpMethod": "POST",
+              "parameters": {
+                "parent": {
+                  "description": "The namespace name.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "parent"
+              ],
+              "request": {
+                "$ref": "PingSource"
+              },
+              "response": {
+                "$ref": "PingSource"
+              },
+              "description": "Creates a new pingsource."
+            },
+            "list": {
+              "id": "anthosevents.namespaces.pingsources.list",
+              "path": "apis/sources.knative.dev/v1beta1/{+parent}/pingsources",
+              "flatPath": "apis/sources.knative.dev/v1beta1/namespaces/{namespacesId}/pingsources",
+              "httpMethod": "GET",
+              "parameters": {
+                "parent": {
+                  "description": "The project ID or project number from which the pingsources should be listed.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+$",
+                  "type": "string"
+                },
+                "limit": {
+                  "description": "The maximum number of records that should be returned.",
+                  "location": "query",
+                  "type": "integer",
+                  "format": "int32"
+                },
+                "includeUninitialized": {
+                  "description": "Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "boolean"
+                },
+                "fieldSelector": {
+                  "description": "Allows to filter resources based on a specific value for a field name. Send this in a query string format. i.e. 'metadata.name%3Dlorem'. Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "labelSelector": {
+                  "description": "Allows to filter resources based on a label. Supported operations are =, !=, exists, in, and notIn.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "resourceVersion": {
+                  "description": "The baseline resource version from which the list or watch operation should start. Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "watch": {
+                  "description": "Flag that indicates that the client expects to watch this resource as well. Not currently used by Cloud Run.",
+                  "location": "query",
+                  "type": "boolean"
+                },
+                "continue": {
+                  "description": "Optional encoded string to continue paging.",
+                  "location": "query",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "parent"
+              ],
+              "response": {
+                "$ref": "ListPingSourcesResponse"
+              },
+              "description": "Rpc to list pingsources."
+            },
+            "get": {
+              "id": "anthosevents.namespaces.pingsources.get",
+              "path": "apis/sources.knative.dev/v1beta1/{+name}",
+              "flatPath": "apis/sources.knative.dev/v1beta1/namespaces/{namespacesId}/pingsources/{pingsourcesId}",
+              "httpMethod": "GET",
+              "parameters": {
+                "name": {
+                  "description": "The name of the pingsource being retrieved. If needed, replace {namespace_id} with the project ID.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/pingsources\/[^\/]+$",
+                  "type": "string"
+                },
+                "region": {
+                  "description": "The region in which this resource exists.",
+                  "location": "query",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "response": {
+                "$ref": "PingSource"
+              },
+              "description": "Rpc to get information about a pingsource."
+            },
+            "replacePingSource": {
+              "id": "anthosevents.namespaces.pingsources.replacePingSource",
+              "path": "apis/sources.knative.dev/v1beta1/{+name}",
+              "flatPath": "apis/sources.knative.dev/v1beta1/namespaces/{namespacesId}/pingsources/{pingsourcesId}",
+              "httpMethod": "PUT",
+              "parameters": {
+                "name": {
+                  "description": "The name of the pingsource being retrieved. If needed, replace {namespace_id} with the project ID.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/pingsources\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "request": {
+                "$ref": "PingSource"
+              },
+              "response": {
+                "$ref": "PingSource"
+              },
+              "description": "Rpc to replace a pingsource. Only the spec and metadata labels and annotations are modifiable. After the Update request, Cloud Run will work to make the 'status' match the requested 'spec'. May provide metadata.resourceVersion to enforce update from last read for optimistic concurrency control."
+            },
+            "delete": {
+              "id": "anthosevents.namespaces.pingsources.delete",
+              "path": "apis/sources.knative.dev/v1beta1/{+name}",
+              "flatPath": "apis/sources.knative.dev/v1beta1/namespaces/{namespacesId}/pingsources/{pingsourcesId}",
+              "httpMethod": "DELETE",
+              "parameters": {
+                "name": {
+                  "description": "The name of the pingsource being deleted. If needed, replace {namespace_id} with the project ID.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/pingsources\/[^\/]+$",
+                  "type": "string"
+                },
+                "propagationPolicy": {
+                  "description": "Specifies the propagation policy of delete. Cloud Run currently ignores this setting, and deletes in the background. Please see kubernetes.io\/docs\/concepts\/workloads\/controllers\/garbage-collection\/ for more information.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "kind": {
+                  "description": "Cloud Run currently ignores this parameter.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "apiVersion": {
+                  "description": "Cloud Run currently ignores this parameter.",
+                  "location": "query",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "response": {
+                "$ref": "Empty"
+              },
+              "description": "Rpc to delete a pingsource."
+            }
+          }
+        },
+        "triggers": {
+          "methods": {
+            "create": {
+              "id": "anthosevents.namespaces.triggers.create",
+              "path": "apis/eventing.knative.dev/v1beta1/{+parent}/triggers",
+              "flatPath": "apis/eventing.knative.dev/v1beta1/namespaces/{namespacesId}/triggers",
+              "httpMethod": "POST",
+              "parameters": {
+                "parent": {
+                  "description": "The project ID or project number in which this trigger should be created.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "parent"
+              ],
+              "request": {
+                "$ref": "Trigger"
+              },
+              "response": {
+                "$ref": "Trigger"
+              },
+              "description": "Creates a new trigger."
+            },
+            "list": {
+              "id": "anthosevents.namespaces.triggers.list",
+              "path": "apis/eventing.knative.dev/v1beta1/{+parent}/triggers",
+              "flatPath": "apis/eventing.knative.dev/v1beta1/namespaces/{namespacesId}/triggers",
+              "httpMethod": "GET",
+              "parameters": {
+                "parent": {
+                  "description": "The project ID or project number from which the triggers should be listed.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+$",
+                  "type": "string"
+                },
+                "limit": {
+                  "description": "The maximum number of records that should be returned.",
+                  "location": "query",
+                  "type": "integer",
+                  "format": "int32"
+                },
+                "includeUninitialized": {
+                  "description": "If true, partially initialized resources are included in the response. Not currently used by Events for Cloud Run.",
+                  "location": "query",
+                  "type": "boolean"
+                },
+                "fieldSelector": {
+                  "description": "Allows to filter resources based on a specific value for a field name. Send this in a query string format. i.e. 'metadata.name%3Dlorem'. Not currently used by Events for Cloud Run.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "labelSelector": {
+                  "description": "Allows to filter resources based on a label. Supported operations are =, !=, exists, in, and notIn.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "resourceVersion": {
+                  "description": "The baseline resource version from which the list or watch operation should start. Not currently used by Events for Cloud Run.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "watch": {
+                  "description": "Flag that indicates that the client expects to watch this resource as well. Not currently used by Events for Cloud Run.",
+                  "location": "query",
+                  "type": "boolean"
+                },
+                "continue": {
+                  "description": "Optional. Encoded string to continue paging.",
+                  "location": "query",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "parent"
+              ],
+              "response": {
+                "$ref": "ListTriggersResponse"
+              },
+              "description": "Rpc to list triggers."
+            },
+            "get": {
+              "id": "anthosevents.namespaces.triggers.get",
+              "path": "apis/eventing.knative.dev/v1beta1/{+name}",
+              "flatPath": "apis/eventing.knative.dev/v1beta1/namespaces/{namespacesId}/triggers/{triggersId}",
+              "httpMethod": "GET",
+              "parameters": {
+                "name": {
+                  "description": "The name of the trigger being retrieved. If needed, replace {namespace_id} with the project ID.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/triggers\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "response": {
+                "$ref": "Trigger"
+              },
+              "description": "Rpc to get information about a trigger."
+            },
+            "replaceTrigger": {
+              "id": "anthosevents.namespaces.triggers.replaceTrigger",
+              "path": "apis/eventing.knative.dev/v1beta1/{+name}",
+              "flatPath": "apis/eventing.knative.dev/v1beta1/namespaces/{namespacesId}/triggers/{triggersId}",
+              "httpMethod": "PUT",
+              "parameters": {
+                "name": {
+                  "description": "The name of the trigger being retrieved. If needed, replace {namespace_id} with the project ID.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/triggers\/[^\/]+$",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "request": {
+                "$ref": "Trigger"
+              },
+              "response": {
+                "$ref": "Trigger"
+              },
+              "description": "Rpc to replace a trigger. Only the spec and metadata labels and annotations are modifiable. After the Update request, Events for Cloud Run will work to make the 'status' match the requested 'spec'. May provide metadata.resourceVersion to enforce update from last read for optimistic concurrency control."
+            },
+            "delete": {
+              "id": "anthosevents.namespaces.triggers.delete",
+              "path": "apis/eventing.knative.dev/v1beta1/{+name}",
+              "flatPath": "apis/eventing.knative.dev/v1beta1/namespaces/{namespacesId}/triggers/{triggersId}",
+              "httpMethod": "DELETE",
+              "parameters": {
+                "name": {
+                  "description": "The name of the trigger being deleted. If needed, replace {namespace_id} with the project ID.",
+                  "location": "path",
+                  "required": true,
+                  "pattern": "^namespaces\/[^\/]+\/triggers\/[^\/]+$",
+                  "type": "string"
+                },
+                "propagationPolicy": {
+                  "description": "Specifies the propagation policy of delete. Events for Cloud Run currently ignores this setting, and deletes in the background. Please see kubernetes.io\/docs\/concepts\/workloads\/controllers\/garbage-collection\/ for more information.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "kind": {
+                  "description": "Specifies the cascading deletion policy, in conjunction of `progation_policy` field. Events for Cloud Run currently ignores this parameter.",
+                  "location": "query",
+                  "type": "string"
+                },
+                "apiVersion": {
+                  "description": "Specifies the target version for the cascading deletion policy. Events for Cloud Run currently ignores this parameter.",
+                  "location": "query",
+                  "type": "string"
+                }
+              },
+              "parameterOrder": [
+                "name"
+              ],
+              "response": {
+                "$ref": "Empty"
+              },
+              "description": "Rpc to delete a trigger."
+            }
+          }
+        }
+      }
+    },
+    "customresourcedefinitions": {
+      "methods": {
+        "list": {
+          "id": "anthosevents.customresourcedefinitions.list",
+          "path": "apis/apiextensions.k8s.io/v1beta1/customresourcedefinitions",
+          "flatPath": "apis/apiextensions.k8s.io/v1beta1/customresourcedefinitions",
+          "httpMethod": "GET",
+          "parameters": {
+            "parent": {
+              "description": "The project ID or project number from which the storages should be listed.",
+              "location": "query",
+              "type": "string"
+            },
+            "limit": {
+              "location": "query",
+              "type": "integer",
+              "format": "int32"
+            },
+            "includeUninitialized": {
+              "description": "Not currently used by Cloud Run.",
+              "location": "query",
+              "type": "boolean"
+            },
+            "fieldSelector": {
+              "description": "Allows to filter resources based on a specific value for a field name. Send this in a query string format. i.e. 'metadata.name%3Dlorem'. Not currently used by Cloud Run.",
+              "location": "query",
+              "type": "string"
+            },
+            "labelSelector": {
+              "description": "Allows to filter resources based on a label. Supported operations are =, !=, exists, in, and notIn.",
+              "location": "query",
+              "type": "string"
+            },
+            "resourceVersion": {
+              "description": "The baseline resource version from which the list or watch operation should start. Not currently used by Cloud Run.",
+              "location": "query",
+              "type": "string"
+            },
+            "watch": {
+              "description": "Flag that indicates that the client expects to watch this resource as well. Not currently used by Cloud Run.",
+              "location": "query",
+              "type": "boolean"
+            },
+            "continue": {
+              "description": "Optional encoded string to continue paging.",
+              "location": "query",
+              "type": "string"
+            }
+          },
+          "parameterOrder": [
+          ],
+          "response": {
+            "$ref": "ListCustomResourceDefinitionsResponse"
+          },
+          "description": "Rpc to list custom resource definitions."
+        }
+      }
+    }
+  },
+  "basePath": ""
+}

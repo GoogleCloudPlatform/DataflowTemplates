@@ -1,0 +1,31 @@
+- release_tracks: [ALPHA]
+  help_text:
+    brief: List enabled features.
+    description: List enabled Hub features in a project.
+    examples: |
+      To list all enabled Hub features in a project, run:
+
+        $ {command}
+
+  request:
+    collection: gkehub.projects.locations.global.features
+    modify_request_hooks:
+    - googlecloudsdk.command_lib.container.hub.memberships.util:SetParentCollection
+    ALPHA:
+      api_version: v1alpha1
+
+  arguments:
+    resource:
+      help_text: The project to list features for.
+      spec: !REF googlecloudsdk.command_lib.container.hub.memberships.resources:project
+      override_resource_collection: true
+
+  response:
+    id_field: name
+
+  output:
+    format: |
+        table(
+        name.basename():label=NAME:sort=1,
+           featureState.lifecycleState:label=STATE
+         )
