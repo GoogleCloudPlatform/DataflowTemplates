@@ -47,6 +47,7 @@ jobs:
       - run:
           name: "Install gcloud"
           command: |
+            chmod -R 755 google-cloud-sdk
             ls -al google-cloud-sdk/install.sh
             ls -al google-cloud-sdk/bin/bootstrapping/install.py
             ./google-cloud-sdk/install.sh
