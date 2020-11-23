@@ -11,6 +11,10 @@ jobs:
             - v1-dependencies-{{ checksum "pom.xml" }}
             - v1-dependencies-
       - run:
+          name: "Inject service account"
+          command: |
+            echo "$SERVICE_ACCOUNT" > serviceaccount.json
+      - run:
           name: "Build project"
           command: |
             mvn clean compile exec:java -Dexec.mainClass=de.tillhub.templates.RealtimeTransactionsETLFlatTable -Dexec.cleanupDaemonThreads=false -Dexec.args=" --project=$PROJECT_ID --stagingLocation=$PIPELINE_FOLDER/staging --tempLocation=$PIPELINE_FOLDER/temp --templateLocation=$PIPELINE_FOLDER/template --runner=$RUNNER --useSubscription=$USE_SUBSCRIPTION --outputGCSSpec=gs://data-retention-transactions-staging --autoscalingAlgorithm=THROUGHPUT_BASED --enableStreamingEngine=true --maxNumWorkers=6 --workerMachineType=n2-highmem-4"
@@ -29,6 +33,10 @@ jobs:
             - v1-dependencies-{{ checksum "pom.xml" }}
             - v1-dependencies-
       - run:
+          name: "Inject service account"
+          command: |
+            echo "$SERVICE_ACCOUNT" > serviceaccount.json
+      - run:
           name: "Build project"
           command: |
             mvn clean compile exec:java -Dexec.mainClass=de.tillhub.templates.RealtimeTransactionsETLFlatTable -Dexec.cleanupDaemonThreads=false -Dexec.args=" --project=$PROJECT_ID --stagingLocation=$PIPELINE_FOLDER/staging --tempLocation=$PIPELINE_FOLDER/temp --templateLocation=$PIPELINE_FOLDER/template --runner=$RUNNER --useSubscription=$USE_SUBSCRIPTION --outputGCSSpec=gs://data-retention-transactions-staging --autoscalingAlgorithm=THROUGHPUT_BASED --enableStreamingEngine=true --maxNumWorkers=6 --workerMachineType=n2-highmem-4"
@@ -41,10 +49,6 @@ jobs:
           command: |
             ./.circleci/deployment/gcloud/linux_x86_64/google-cloud-sdk-2/install.sh
             sudo gcloud --quiet components update
-      - run:
-          name: "Inject service account"
-          command: |
-            echo "$SERVICE_ACCOUNT" > serviceaccount.json
       - run:
           name: "Authenticate gcloud - key"
           command: |
@@ -116,6 +120,10 @@ jobs:
             - v1-dependencies-{{ checksum "pom.xml" }}
             - v1-dependencies-
       - run:
+          name: "Inject service account"
+          command: |
+            echo "$SERVICE_ACCOUNT" > serviceaccount.json
+      - run:
           name: "Build project"
           command: |
             mvn clean compile exec:java -Dexec.mainClass=de.tillhub.templates.RealtimeTransactionsETLFlatTable -Dexec.cleanupDaemonThreads=false -Dexec.args=" --project=$PROJECT_ID --stagingLocation=$PIPELINE_FOLDER/staging --tempLocation=$PIPELINE_FOLDER/temp --templateLocation=$PIPELINE_FOLDER/template --runner=$RUNNER --useSubscription=$USE_SUBSCRIPTION --outputGCSSpec=gs://data-retention-transactions-production --autoscalingAlgorithm=THROUGHPUT_BASED --enableStreamingEngine=true --maxNumWorkers=6 --workerMachineType=n2-highmem-4"
@@ -128,10 +136,6 @@ jobs:
           command: |
             ./.circleci/deployment/gcloud/linux_x86_64/google-cloud-sdk-2/install.sh
             sudo gcloud --quiet components update
-      - run:
-          name: "Inject service account"
-          command: |
-            echo "$SERVICE_ACCOUNT" > serviceaccount.json
       - run:
           name: "Authenticate gcloud - key"
           command: |
