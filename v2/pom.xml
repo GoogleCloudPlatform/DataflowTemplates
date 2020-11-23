@@ -601,6 +601,7 @@
         <module>pubsub-to-elasticsearch</module>
         <module>pubsub-to-mongodb</module>
         <module>streaming-data-generator</module>
+        <module>protegrity-data-tokenization</module>
     </modules>
 
 </project>
