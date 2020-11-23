@@ -50,12 +50,12 @@ jobs:
           command: |
             gcloud auth activate-service-account --key-file=serviceaccount.json
             gcloud --quiet config set project $PROJECT_ID
-            gcloud --quiet config set compute/region europe-west3
+            gcloud --quiet config set compute/region $REGION
 
       - run:
           name: "Fetch running realtime transactions pipeline"
           command: |
-            echo 'export RT_TX_V0_STAGING=$(gcloud dataflow jobs list --status=active --filter="name:realtime-transactions-v0-staging" --region=europe-west3 | awk '{print $1}' | tail -n 1)' >> $BASH_ENV
+            echo 'export RT_TX_V0_STAGING=$(gcloud dataflow jobs list --status=active --filter="name:realtime-transactions-v0-staging" --region=$REGION | awk '{print $1}' | tail -n 1)' >> $BASH_ENV
 
 
       - run:
@@ -65,7 +65,7 @@ jobs:
             then
                   echo "\No pipeline to cancel"
             else
-                  gcloud dataflow jobs cancel $RT_TX_V0_STAGING --region  europe-west3
+                  gcloud dataflow jobs cancel $RT_TX_V0_STAGING --region  $REGION
                   sleep 120
             fi
 
@@ -73,12 +73,12 @@ jobs:
       - run:
           name: "Bootstrap a new realtime transaction pipeline"
           command: |
-            gcloud dataflow jobs run realtime-transactions-v0-staging --gcs-location=${PIPELINE_FOLDER}/template --worker-region=europe-west3 --region=europe-west3 --parameters "inputSubscription=projects/$PROJECT_ID/subscriptions/api.v0.transactions.sink.staging.dataflow,outputTableSpec=$PROJECT_ID:staging.fr_transaction_v0,javascriptTextTransformGcsPath=${UDF_PATH}"
+            gcloud dataflow jobs run realtime-transactions-v0-staging --gcs-location=${PIPELINE_FOLDER}/template --worker-region=$REGION --region=$REGION --parameters "inputSubscription=projects/$PROJECT_ID/subscriptions/api.v0.transactions.sink.staging.dataflow,outputTableSpec=$PROJECT_ID:staging.fr_transaction_v0,javascriptTextTransformGcsPath=${UDF_PATH}"
 
       - run:
           name: "Fetch running sync transactions pipeline"
           command: |
-            echo 'export SYNC_TX_V0_STAGING=$(gcloud dataflow jobs list --status=active --filter="name: sync-transactions-v0-staging" --region=europe-west3 | awk '{print $1}' | tail -n 1)' >> $BASH_ENV
+            echo 'export SYNC_TX_V0_STAGING=$(gcloud dataflow jobs list --status=active --filter="name: sync-transactions-v0-staging" --region=$REGION | awk '{print $1}' | tail -n 1)' >> $BASH_ENV
 
 
       - run:
@@ -88,13 +88,13 @@ jobs:
             then
                   echo "\No pipeline to cancel"
             else
-                  gcloud dataflow jobs cancel $SYNC_TX_V0_STAGING --region  europe-west3
+                  gcloud dataflow jobs cancel $SYNC_TX_V0_STAGING --region  $REGION
             fi
 
       - run:
           name: "Bootstrap a new sync transaction pipeline"
           command: |
-            gcloud dataflow jobs run sync-transactions-v0-staging --gcs-location=${PIPELINE_FOLDER}/template --worker-region=europe-west3 --region=europe-west3 --parameters "inputSubscription=projects/$PROJECT_ID/subscriptions/api.v0.transactions.sink.bigquery.staging.dataflow,outputTableSpec=$PROJECT_ID:staging.fr_transaction_v0,javascriptTextTransformGcsPath=${UDF_PATH}"
+            gcloud dataflow jobs run sync-transactions-v0-staging --gcs-location=${PIPELINE_FOLDER}/template --worker-region=$REGION --region=$REGION --parameters "inputSubscription=projects/$PROJECT_ID/subscriptions/api.v0.transactions.sink.bigquery.staging.dataflow,outputTableSpec=$PROJECT_ID:staging.fr_transaction_v0,javascriptTextTransformGcsPath=${UDF_PATH}"
 
 
       - save_cache:
@@ -137,12 +137,12 @@ jobs:
           command: |
             gcloud auth activate-service-account --key-file=serviceaccount.json
             gcloud --quiet config set project $PROJECT_ID
-            gcloud --quiet config set compute/region europe-west3
+            gcloud --quiet config set compute/region $REGION
 
       - run:
           name: "Fetch running realtime transactions pipeline"
           command: |
-            echo 'export RT_TX_V0_PROD=$(gcloud dataflow jobs list --status=active --filter="name:realtime-transactions-v0-production" --region=europe-west3 | awk '{print $1}' | tail -n 1)' >> $BASH_ENV
+            echo 'export RT_TX_V0_PROD=$(gcloud dataflow jobs list --status=active --filter="name:realtime-transactions-v0-production" --region=$REGION | awk '{print $1}' | tail -n 1)' >> $BASH_ENV
 
 
       - run:
