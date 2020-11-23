@@ -7,7 +7,7 @@ import org.apache.beam.sdk.values.TupleTag;
 
 import javax.annotation.Generated;
 
-@Generated("com.google.auto.value.processor.AutoValueProcessor")
+// @Generated("com.google.auto.value.processor.AutoValueProcessor")
 final class AutoValue_TillhubConverters_FailsafeJsonToTableRow<T> extends TillhubConverters.FailsafeJsonToTableRow<T> {
 
     private final TupleTag<TableRow> successTag;
