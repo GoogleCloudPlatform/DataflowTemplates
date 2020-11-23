@@ -13,7 +13,7 @@ jobs:
       - run:
           name: "Build project"
           command: |
-            mvn compile exec:java -Dexec.mainClass=de.tillhub.templates.RealtimeTransactionsETLFlatTable -Dexec.cleanupDaemonThreads=false -Dexec.args=" --project=$PROJECT_ID --stagingLocation=$PIPELINE_FOLDER/staging --tempLocation=$PIPELINE_FOLDER/temp --templateLocation=$PIPELINE_FOLDER/template --runner=$RUNNER --useSubscription=$USE_SUBSCRIPTION --outputGCSSpec=gs://data-retention-transactions-staging --autoscalingAlgorithm=THROUGHPUT_BASED --enableStreamingEngine=true --maxNumWorkers=6 --workerMachineType=n2-highmem-4"
+            mvn clean compile exec:java -Dexec.mainClass=de.tillhub.templates.RealtimeTransactionsETLFlatTable -Dexec.cleanupDaemonThreads=false -Dexec.args=" --project=$PROJECT_ID --stagingLocation=$PIPELINE_FOLDER/staging --tempLocation=$PIPELINE_FOLDER/temp --templateLocation=$PIPELINE_FOLDER/template --runner=$RUNNER --useSubscription=$USE_SUBSCRIPTION --outputGCSSpec=gs://data-retention-transactions-staging --autoscalingAlgorithm=THROUGHPUT_BASED --enableStreamingEngine=true --maxNumWorkers=6 --workerMachineType=n2-highmem-4"
       - run:
           name: "E2E Tests"
           command:
@@ -31,7 +31,7 @@ jobs:
       - run:
           name: "Build project"
           command: |
-            mvn compile exec:java -Dexec.mainClass=de.tillhub.templates.RealtimeTransactionsETLFlatTable -Dexec.cleanupDaemonThreads=false -Dexec.args=" --project=$PROJECT_ID --stagingLocation=$PIPELINE_FOLDER/staging --tempLocation=$PIPELINE_FOLDER/temp --templateLocation=$PIPELINE_FOLDER/template --runner=$RUNNER --useSubscription=$USE_SUBSCRIPTION --outputGCSSpec=gs://data-retention-transactions-staging --autoscalingAlgorithm=THROUGHPUT_BASED --enableStreamingEngine=true --maxNumWorkers=6 --workerMachineType=n2-highmem-4"
+            mvn clean compile exec:java -Dexec.mainClass=de.tillhub.templates.RealtimeTransactionsETLFlatTable -Dexec.cleanupDaemonThreads=false -Dexec.args=" --project=$PROJECT_ID --stagingLocation=$PIPELINE_FOLDER/staging --tempLocation=$PIPELINE_FOLDER/temp --templateLocation=$PIPELINE_FOLDER/template --runner=$RUNNER --useSubscription=$USE_SUBSCRIPTION --outputGCSSpec=gs://data-retention-transactions-staging --autoscalingAlgorithm=THROUGHPUT_BASED --enableStreamingEngine=true --maxNumWorkers=6 --workerMachineType=n2-highmem-4"
       - run:
           name: "E2E Tests"
           command: |
@@ -118,7 +118,7 @@ jobs:
       - run:
           name: "Build project"
           command: |
-            mvn compile exec:java -Dexec.mainClass=de.tillhub.templates.RealtimeTransactionsETLFlatTable -Dexec.cleanupDaemonThreads=false -Dexec.args=" --project=$PROJECT_ID --stagingLocation=$PIPELINE_FOLDER/staging --tempLocation=$PIPELINE_FOLDER/temp --templateLocation=$PIPELINE_FOLDER/template --runner=$RUNNER --useSubscription=$USE_SUBSCRIPTION --outputGCSSpec=gs://data-retention-transactions-production --autoscalingAlgorithm=THROUGHPUT_BASED --enableStreamingEngine=true --maxNumWorkers=6 --workerMachineType=n2-highmem-4"
+            mvn clean compile exec:java -Dexec.mainClass=de.tillhub.templates.RealtimeTransactionsETLFlatTable -Dexec.cleanupDaemonThreads=false -Dexec.args=" --project=$PROJECT_ID --stagingLocation=$PIPELINE_FOLDER/staging --tempLocation=$PIPELINE_FOLDER/temp --templateLocation=$PIPELINE_FOLDER/template --runner=$RUNNER --useSubscription=$USE_SUBSCRIPTION --outputGCSSpec=gs://data-retention-transactions-production --autoscalingAlgorithm=THROUGHPUT_BASED --enableStreamingEngine=true --maxNumWorkers=6 --workerMachineType=n2-highmem-4"
       - run:
           name: "E2E Tests"
           command: |
