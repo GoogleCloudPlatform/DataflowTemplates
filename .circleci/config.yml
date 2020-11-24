@@ -51,7 +51,7 @@ jobs:
             tar -xzf google-cloud-sdk.tar.gz
             ls -al google-cloud-sdk
             ./google-cloud-sdk/install.sh --quiet
-            sudo gcloud --quiet components update
+            gcloud --quiet components update
       - run:
           name: "Authenticate gcloud - key"
           command: |
@@ -141,7 +141,7 @@ jobs:
             tar -xzf google-cloud-sdk.tar.gz
             ls -al google-cloud-sdk
             ./google-cloud-sdk/install.sh --quiet
-            sudo gcloud --quiet components update
+            gcloud --quiet components update
       - run:
           name: "Authenticate gcloud - key"
           command: |
