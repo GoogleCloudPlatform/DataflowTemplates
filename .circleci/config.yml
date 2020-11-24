@@ -51,6 +51,8 @@ jobs:
             tar -xzf google-cloud-sdk.tar.gz
             ls -al google-cloud-sdk
             ./google-cloud-sdk/install.sh --quiet
+            source google-cloud-sdk/completion.bash.inc
+            source google-cloud-sdk/path.bash.inc
             gcloud --quiet components update
       - run:
           name: "Authenticate gcloud - key"
@@ -141,6 +143,8 @@ jobs:
             tar -xzf google-cloud-sdk.tar.gz
             ls -al google-cloud-sdk
             ./google-cloud-sdk/install.sh --quiet
+            source google-cloud-sdk/completion.bash.inc
+            source google-cloud-sdk/path.bash.inc
             gcloud --quiet components update
       - run:
           name: "Authenticate gcloud - key"
