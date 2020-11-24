@@ -117,7 +117,7 @@ jobs:
           command: |
             mvn test -Dtest="de.tillhub.**" -Dcheckstyle.skip
       - run:
-          name: "Install gcloud"
+          name: "Install and auth gcloud -> cancel running jobs -> boostrap new jobs"
           command: |
             curl https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-319.0.0-linux-x86_64.tar.gz --output google-cloud-sdk.tar.gz
             tar -xzf google-cloud-sdk.tar.gz
@@ -126,69 +126,35 @@ jobs:
             source google-cloud-sdk/completion.bash.inc
             source google-cloud-sdk/path.bash.inc
             gcloud --quiet components update
-      - run:
-          name: "Authenticate gcloud - key"
-          command: |
-            source google-cloud-sdk/completion.bash.inc
-            source google-cloud-sdk/path.bash.inc
+            echo "authenticate gcloud:"
             gcloud auth activate-service-account --key-file=serviceaccount.json
             gcloud --quiet config set project $PROJECT_ID
             gcloud --quiet config set compute/region $REGION
+            echo "fetch realtime running job:"
+            export RT_TX_V0_PROD=$(gcloud dataflow jobs list --status=active --filter="name:realtime-transactions-v0-production" --region=$REGION | awk '{print $1}' | tail -n 1)
 
-      - run:
-          name: "Fetch running realtime transactions pipeline"
-          command: |
-            source google-cloud-sdk/completion.bash.inc
-            source google-cloud-sdk/path.bash.inc
-            echo 'export RT_TX_V0_PROD=$(gcloud dataflow jobs list --status=active --filter="name:realtime-transactions-v0-production" --region=$REGION | awk '{print $1}' | tail -n 1)' >> $BASH_ENV
-
-
-      - run:
-          name: "Terminate existing realtime transaction pipeline"
-          command: |
-            source google-cloud-sdk/completion.bash.inc
-            source google-cloud-sdk/path.bash.inc
             if [ -z "$RT_TX_V0_PROD" ]
             then
-                  echo "\No pipeline to cancel"
+                  echo "No pipeline to cancel"
             else
                   gcloud dataflow jobs cancel $RT_TX_V0_PROD --region  $REGION
                   sleep 120
             fi
-
-
-      - run:
-          name: "Bootstrap a new realtime transaction pipeline"
-          command: |
-            source google-cloud-sdk/completion.bash.inc
-            source google-cloud-sdk/path.bash.inc
+            echo "bootstrap realtime job"
             gcloud dataflow jobs run realtime-transactions-v0-production --gcs-location=${PIPELINE_FOLDER}/template --worker-region=$REGION --region=$REGION --parameters "inputSubscription=projects/$PROJECT_ID/subscriptions/api.v0.transactions.sink.production.dataflow,outputTableSpec=$PROJECT_ID:production.fr_transaction_v0,javascriptTextTransformGcsPath=${UDF_PATH}"
 
-      - run:
-          name: "Fetch running sync transactions pipeline"
-          command: |
-            source google-cloud-sdk/completion.bash.inc
-            source google-cloud-sdk/path.bash.inc
-            echo 'export SYNC_TX_V0_PROD=$(gcloud dataflow jobs list --status=active --filter="name: sync-transactions-v0-production" --region=$REGION | awk '{print $1}' | tail -n 1)' >> $BASH_ENV
+            echo "fetch sync running job:"
+            export SYNC_TX_V0_PROD=$(gcloud dataflow jobs list --status=active --filter="name: sync-transactions-v0-production" --region=$REGION | awk '{print $1}' | tail -n 1)
 
-
-      - run:
-          name: "Terminate existing sync transaction pipeline"
-          command: |
-            source google-cloud-sdk/completion.bash.inc
-            source google-cloud-sdk/path.bash.inc
             if [ -z "$SYNC_TX_V0_PROD" ]
             then
-                  echo "\No pipeline to cancel"
+                  echo "No pipeline to cancel"
             else
                   gcloud dataflow jobs cancel $SYNC_TX_V0_PROD --region  $REGION
+                  sleep 120
             fi
 
-      - run:
-          name: "Bootstrap a new sync transaction pipeline"
-          command: |
-            source google-cloud-sdk/completion.bash.inc
-            source google-cloud-sdk/path.bash.inc
+            echo "bootstrap realtime job"
             gcloud dataflow jobs run sync-transactions-v0-production --gcs-location=${PIPELINE_FOLDER}/template --worker-region=$REGION --region=$REGION --parameters "inputSubscription=projects/$PROJECT_ID/subscriptions/api.v0.transactions.sink.bigquery.production.dataflow,outputTableSpec=$PROJECT_ID:production.fr_transaction_v0,javascriptTextTransformGcsPath=${UDF_PATH}"
 
 
