@@ -50,7 +50,7 @@ jobs:
             curl https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-319.0.0-linux-x86_64.tar.gz --output google-cloud-sdk.tar.gz
             tar -xzf google-cloud-sdk.tar.gz
             ls -al google-cloud-sdk
-            ./google-cloud-sdk/install.sh --disable-prompts
+            ./google-cloud-sdk/install.sh --quiet
             sudo gcloud --quiet components update
       - run:
           name: "Authenticate gcloud - key"
@@ -140,7 +140,7 @@ jobs:
             curl https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-319.0.0-linux-x86_64.tar.gz --output google-cloud-sdk.tar.gz
             tar -xzf google-cloud-sdk.tar.gz
             ls -al google-cloud-sdk
-            ./google-cloud-sdk/install.sh --disable-prompts
+            ./google-cloud-sdk/install.sh --quiet
             sudo gcloud --quiet components update
       - run:
           name: "Authenticate gcloud - key"
