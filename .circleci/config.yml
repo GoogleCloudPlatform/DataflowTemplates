@@ -47,9 +47,9 @@ jobs:
       - run:
           name: "Install gcloud"
           command: |
-            chmod -R 755 google-cloud-sdk/bin/bootstrapping/install.py
-            ls -al google-cloud-sdk/install.sh
-            ls -al google-cloud-sdk/bin/bootstrapping/install.py
+            curl https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-319.0.0-linux-x86_64.tar.gz --output google-cloud-sdk.tar.gz
+            tar -xzf google-cloud-sdk.tar.gz
+            ls -al google-cloud-sdk
             ./google-cloud-sdk/install.sh
             sudo gcloud --quiet components update
       - run:
@@ -137,6 +137,9 @@ jobs:
       - run:
           name: "Install gcloud"
           command: |
+            curl https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-319.0.0-linux-x86_64.tar.gz --output google-cloud-sdk.tar.gz
+            tar -xzf google-cloud-sdk.tar.gz
+            ls -al google-cloud-sdk
             ./google-cloud-sdk/install.sh
             sudo gcloud --quiet components update
       - run:
