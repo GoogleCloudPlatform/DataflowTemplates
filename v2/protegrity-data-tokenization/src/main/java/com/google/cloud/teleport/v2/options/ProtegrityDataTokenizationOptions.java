@@ -68,19 +68,19 @@ public interface ProtegrityDataTokenizationOptions extends PipelineOptions {
 
     void setBigTableTableId(String bigTableTableId);
 
-    @Description("Column name to use as a key.")
+    @Description("Column name to use as a key in Cloud BigTable.")
     String getBigTableKeyColumnName();
 
     void setBigTableKeyColumnName(String bigTableKeyColumnName);
 
     //Group 2.2 - BigQuery
-    @Description("BigQuery table name to write into.")
+    @Description("Cloud BigQuery table name to write into.")
     String getBigQueryTableName();
 
     void setBigQueryTableName(String bigQueryTableName);
 
     //Group 3 - Protegrity specific parameters
-    @Description("URI for the API call to DSG.")
+    @Description("URI for the API calls to DSG.")
     String getDsgUri();
 
     void setDsgUri(String dsgUri);
