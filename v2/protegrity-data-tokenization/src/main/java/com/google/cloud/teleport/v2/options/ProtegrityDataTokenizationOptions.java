@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.options;
 
-import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 
@@ -31,16 +30,10 @@ public interface ProtegrityDataTokenizationOptions extends PipelineOptions {
     void setBigQueryDataSchemaGcsPath(String bigQueryDataSchemaGcsPath);
 
     // Group 1.1 - GCS
-    @Description("GCS bucket to read data from.")
-    String getGcsBucket();
+    @Description("GCS filepattern for files in bucket to read data from")
+    String getInputGcsFilePattern();
 
-    void setGcsBucket(String gcsBucket);
-
-    @Description("GCS path in bucket to read data from")
-    @Default.String("")
-    String getGcsPath();
-
-    void setGcsPath(String gcsPath);
+    void setInputGcsFilePattern(String inputGcsFilePattern);
 
     // Group 1.2 - Pub/Sub
     @Description(
