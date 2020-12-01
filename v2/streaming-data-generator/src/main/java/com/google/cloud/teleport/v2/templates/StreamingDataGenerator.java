@@ -1,67 +1,67 @@
 /*
  * Copyright (C) 2020 Google Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 
 package com.google.cloud.teleport.v2.templates;
 
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
+
 import com.github.vincentrussell.json.datagenerator.JsonDataGenerator;
 import com.github.vincentrussell.json.datagenerator.JsonDataGeneratorException;
 import com.github.vincentrussell.json.datagenerator.impl.JsonDataGeneratorImpl;
+import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToBigQuery;
+import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToGcs;
+import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToPubSub;
+import com.google.cloud.teleport.v2.utils.DurationUtils;
+import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
-import java.util.HashMap;
-import java.util.Map;
+import javax.annotation.Nonnull;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.GenerateSequence;
-import org.apache.beam.sdk.io.fs.MatchResult.Metadata;
-import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
-import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.vendor.guava.v20_0.com.google.common.io.ByteStreams;
+import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.Window;
+import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PDone;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
-
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * The {@link StreamingDataGenerator} is a streaming pipeline which generates messages at a specified
- * rate to a Pub/Sub topic. The messages are generated according to a schema template which
- * instructs the pipeline how to populate the messages with fake data compliant to constraints.
+ * The {@link StreamingDataGenerator} is a streaming pipeline which generates messages at a
+ * specified rate to a Pub/Sub topic. The messages are generated according to a schema template
+ * which instructs the pipeline how to populate the messages with fake data compliant to
+ * constraints.
  *
  * <p>The number of workers executing the pipeline must be large enough to support the supplied QPS.
  * Use a general rule of 2,500 QPS per core in the worker pool.
  *
  * <p>See <a href="https://github.com/vincentrussell/json-data-generator">json-data-generator</a>
  * for instructions on how to construct the schema file.
- *
- * <p><b>Pipeline Requirements</b>
- *
- * <ul>
- *   <li>The schema file exists.
- *   <li>The Pub/Sub topic exists.
- * </ul>
  *
  * <p><b>Example Usage</b>
  *
@@ -100,19 +100,20 @@ import org.joda.time.Instant;
  * PUBSUB_TOPIC=projects/$PROJECT/topics/<topic-name>
  * QPS=1
  *
- * gcloud beta dataflow jobs run $JOB_NAME \
+ * gcloud beta dataflow flex-template run $JOB_NAME \
  *         --project=$PROJECT --region=us-central1 --flex-template  \
- *         --gcs-location=$TEMPLATE_SPEC_GCSPATH \
+ *         --template-file-gcs-location=$TEMPLATE_SPEC_GCSPATH \
  *         --parameters autoscalingAlgorithm="THROUGHPUT_BASED",schemaLocation=$SCHEMA_LOCATION,topic=$PUBSUB_TOPIC,qps=$QPS,maxNumWorkers=3
+ *
  * </pre>
-
-
  */
 public class StreamingDataGenerator {
 
+  private static final Logger logger = LoggerFactory.getLogger(StreamingDataGenerator.class);
+
   /**
-   * The {@link StreamingDataGeneratorOptions} class provides the custom execution options passed by the executor at the
-   * command-line.
+   * The {@link StreamingDataGeneratorOptions} class provides the custom execution options passed by
+   * the executor at the command-line.
    */
   public interface StreamingDataGeneratorOptions extends PipelineOptions {
     @Description("Indicates rate of messages per second to be published to Pub/Sub.")
@@ -128,25 +129,126 @@ public class StreamingDataGenerator {
     void setSchemaLocation(String value);
 
     @Description("The Pub/Sub topic to write to.")
-    @Required
     String getTopic();
 
     void setTopic(String value);
+
+    @Description(
+        "Indicates maximum number of messages to be generated. Default is 0 indicating unlimited.")
+    @Default.Long(0L)
+    Long getMessagesLimit();
+
+    void setMessagesLimit(Long value);
+
+    @Description("The message Output type. --outputType must be one of:[JSON,AVRO,PARQUET]")
+    @Default.Enum("JSON")
+    OutputType getOutputType();
+
+    void setOutputType(OutputType value);
+
+    @Description("The path to Avro schema for encoding message into AVRO output type.")
+    String getAvroSchemaLocation();
+
+    void setAvroSchemaLocation(String value);
+
+    @Description("The message sink type. Must be one of:[PUBSUB,BIGQUERY]")
+    @Default.Enum("PUBSUB")
+    SinkType getSinkType();
+
+    void setSinkType(SinkType value);
+
+    @Description(
+        "Output BigQuery table spec. "
+            + "The name should be in the format: "
+            + "<project>:<dataset>.<table_name>.")
+    String getOutputTableSpec();
+
+    void setOutputTableSpec(String value);
+
+    @Description("Write disposition to use for BigQuery. Default: WRITE_APPEND")
+    @Default.String("WRITE_APPEND")
+    String getWriteDisposition();
+
+    void setWriteDisposition(String writeDisposition);
+
+    @Description(
+        "The dead-letter table to output to within BigQuery in <project-id>:<dataset>.<table> "
+            + "format. If it doesn't exist, it will be created during pipeline execution.")
+    String getOutputDeadletterTable();
+
+    void setOutputDeadletterTable(String outputDeadletterTable);
+
+    @Description(
+        "The window duration in which data will be written. Defaults to 5m."
+            + "Allowed formats are: "
+            + "Ns (for seconds, example: 5s), "
+            + "Nm (for minutes, example: 12m), "
+            + "Nh (for hours, example: 2h).")
+    @Default.String("1m")
+    String getWindowDuration();
+
+    void setWindowDuration(String windowDuration);
+
+    @Description("The directory to write output files. Must end with a slash. ")
+    String getOutputDirectory();
+
+    void setOutputDirectory(String outputDirectory);
+
+    @Description(
+        "The filename prefix of the files to write to. Default file prefix is set to \"output-\". ")
+    @Default.String("output-")
+    String getOutputFilenamePrefix();
+
+    void setOutputFilenamePrefix(String outputFilenamePrefix);
+
+    @Description(
+        "The maximum number of output shards produced while writing to FileSystem. Default number"
+            + " is runner defined.")
+    @Default.Integer(0)
+    Integer getNumShards();
+
+    void setNumShards(Integer numShards);
+  }
+
+  /** Allowed list of message encoding types. */
+  public enum OutputType {
+    JSON(".json"),
+    AVRO(".avro"),
+    PARQUET(".parquet");
+
+    private final String fileExtension;
+
+    /** Sets file extension associated with output type. */
+    OutputType(String fileExtension) {
+      this.fileExtension = fileExtension;
+    }
+
+    /** Returns file extension associated with output type. */
+    public String getFileExtension() {
+      return fileExtension;
+    }
+  }
+
+  /** Allowed list of sink types. */
+  public enum SinkType {
+    PUBSUB,
+    BIGQUERY,
+    GCS
   }
 
   /**
    * The main entry-point for pipeline execution. This method will start the pipeline but will not
    * wait for it's execution to finish. If blocking execution is required, use the {@link
-   * StreamingDataGenerator#run(Options)} method to start the pipeline and invoke {@code
-   * result.waitUntilFinish()} on the {@link PipelineResult}.
+   * StreamingDataGenerator#run(StreamingDataGeneratorOptions)} method to start the pipeline and
+   * invoke {@code result.waitUntilFinish()} on the {@link PipelineResult}.
    *
-   * @param args The command-line args passed by the executor.
+   * @param args command-line args passed by the executor.
    */
   public static void main(String[] args) {
-    StreamingDataGeneratorOptions options = PipelineOptionsFactory
-        .fromArgs(args)
-        .withValidation()
-        .as(StreamingDataGeneratorOptions.class);
+    StreamingDataGeneratorOptions options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(StreamingDataGeneratorOptions.class);
 
     run(options);
   }
@@ -157,10 +259,11 @@ public class StreamingDataGenerator {
    * object to block until the pipeline is finished running if blocking programmatic execution is
    * required.
    *
-   * @param options The execution options.
-   * @return The pipeline result.
+   * @param options the execution options.
+   * @return the pipeline result.
    */
-  public static PipelineResult run(StreamingDataGeneratorOptions options) {
+  public static PipelineResult run(@Nonnull StreamingDataGeneratorOptions options) {
+    checkNotNull(options, "options argument to run method cannot be null.");
 
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
@@ -169,72 +272,124 @@ public class StreamingDataGenerator {
      * Steps:
      *  1) Trigger at the supplied QPS
      *  2) Generate messages containing fake data
-     *  3) Write messages to Pub/Sub
+     *  3) Write messages to appropriate Sink
      */
-    pipeline
-        .apply(
-            "Trigger",
-            GenerateSequence.from(0L).withRate(options.getQps(), Duration.standardSeconds(1L)))
-        .apply("GenerateMessages", ParDo.of(new MessageGeneratorFn(options.getSchemaLocation())))
-        .apply("WriteToPubsub", PubsubIO.writeMessages().to(options.getTopic()));
+    PCollection<byte[]> fakeMessages =
+        pipeline
+            .apply("Trigger", createTrigger(options))
+            .apply(
+                "Generate Fake Messages",
+                ParDo.of(new MessageGeneratorFn(options.getSchemaLocation())));
+
+    if (options.getSinkType().equals(SinkType.GCS)) {
+      fakeMessages =
+          fakeMessages.apply(
+              options.getWindowDuration() + " Window",
+              Window.into(
+                  FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))));
+    }
+
+    fakeMessages.apply("Write To " + options.getSinkType().name(), createSink(options));
 
     return pipeline.run();
   }
 
   /**
-   * The {@link MessageGeneratorFn} class generates {@link PubsubMessage} objects from a supplied
-   * schema and populating the message with fake data.
+   * Creates either Bounded or UnBounded Source based on messageLimit pipeline option.
+   *
+   * @param options the pipeline options.
+   */
+  private static GenerateSequence createTrigger(@Nonnull StreamingDataGeneratorOptions options) {
+    checkNotNull(options, "options argument to createTrigger method cannot be null.");
+    GenerateSequence generateSequence =
+        GenerateSequence.from(0L)
+            .withRate(options.getQps(), /* periodLength = */ Duration.standardSeconds(1L));
+
+    return options.getMessagesLimit() > 0
+        ? generateSequence.to(options.getMessagesLimit())
+        : generateSequence;
+  }
+
+  /**
+   * The {@link MessageGeneratorFn} class generates fake messages based on supplied schema
    *
    * <p>See <a href="https://github.com/vincentrussell/json-data-generator">json-data-generator</a>
    * for instructions on how to construct the schema file.
    */
-  static class MessageGeneratorFn extends DoFn<Long, PubsubMessage> {
-
-    private final String schemaLocation;
-    private String schema;
+  @VisibleForTesting
+  static class MessageGeneratorFn extends DoFn<Long, byte[]> {
 
     // Not initialized inline or constructor because {@link JsonDataGenerator} is not serializable.
     private transient JsonDataGenerator dataGenerator;
+    private final String schemaLocation;
+    private String schema;
 
-    MessageGeneratorFn(String schemaLocation) {
+    MessageGeneratorFn(@Nonnull String schemaLocation) {
+      checkNotNull(schemaLocation,
+          "schemaLocation argument of MessageGeneratorFn class cannot be null.");
       this.schemaLocation = schemaLocation;
     }
 
     @Setup
     public void setup() throws IOException {
       dataGenerator = new JsonDataGeneratorImpl();
-
-      Metadata metadata = FileSystems.matchSingleFileSpec(schemaLocation);
-
-      // Copy the schema file into a string which can be used for generation.
-      try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
-        try (ReadableByteChannel readerChannel = FileSystems.open(metadata.resourceId())) {
-          try (WritableByteChannel writerChannel = Channels.newChannel(byteArrayOutputStream)) {
-            ByteStreams.copy(readerChannel, writerChannel);
-          }
-        }
-
-        schema = byteArrayOutputStream.toString();
-      }
+      schema = SchemaUtils.getGcsFileAsString(schemaLocation);
     }
 
     @ProcessElement
-    public void processElement(@Element Long element, @Timestamp Instant timestamp,
-        OutputReceiver<PubsubMessage> receiver, ProcessContext context)
+    public void processElement(
+        @Element Long element,
+        @Timestamp Instant timestamp,
+        OutputReceiver<byte[]> receiver,
+        ProcessContext context)
         throws IOException, JsonDataGeneratorException {
 
-      // TODO: Add the ability to place eventId and eventTimestamp in the attributes.
       byte[] payload;
-      Map<String, String> attributes = new HashMap<>();
 
       // Generate the fake JSON according to the schema.
       try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
         dataGenerator.generateTestDataJson(schema, byteArrayOutputStream);
-
         payload = byteArrayOutputStream.toByteArray();
       }
 
-      receiver.output(new PubsubMessage(payload, attributes));
+      receiver.output(payload);
+    }
+  }
+
+  /**
+   * Creates appropriate sink based on sinkType pipeline option.
+   *
+   * @param options the pipeline options.
+   */
+  @VisibleForTesting
+  static PTransform<PCollection<byte[]>, PDone> createSink(
+      @Nonnull StreamingDataGeneratorOptions options) {
+    checkNotNull(options, "options argument to createSink method cannot be null.");
+
+    switch (options.getSinkType()) {
+      case PUBSUB:
+        checkArgument(
+            options.getTopic() != null,
+            String.format(
+                "Missing required value --topic for %s sink type", options.getSinkType().name()));
+        return StreamingDataGeneratorWriteToPubSub.Writer.builder(options).build();
+      case BIGQUERY:
+        checkArgument(
+            options.getOutputTableSpec() != null,
+            String.format(
+                "Missing required value --outputTableSpec in format"
+                    + " <project>:<dataset>.<table_name> for %s sink type",
+                options.getSinkType().name()));
+        return StreamingDataGeneratorWriteToBigQuery.builder(options).build();
+      case GCS:
+        checkArgument(
+            options.getOutputDirectory() != null,
+            String.format(
+                "Missing required value --outputDirectory in format gs:// for %s sink type",
+                options.getSinkType().name()));
+        return StreamingDataGeneratorWriteToGcs.builder(options).build();
+      default:
+        throw new IllegalArgumentException("Unsupported Sink.");
     }
   }
 }
