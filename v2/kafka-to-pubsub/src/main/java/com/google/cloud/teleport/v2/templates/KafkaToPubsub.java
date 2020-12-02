@@ -1,17 +1,17 @@
 /*
  * Copyright (C) 2020 Google Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.templates;
 
@@ -46,12 +46,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link KafkaToPubsub} streaming pipeline reading json encoded data from Kafka and publishes
- * to Google Cloud PubSub. Input topics, output topic, Bootstrap servers are specified by the user
- * as template parameters. <br>
- * Kafka may be configured with SASL/SCRAM security mechanism over plain text or SSL encrypted
- * connection, in this case a Vault secret storage with credentials should be provided. URL to
- * credentials and Vault token are specified by the user as template parameters.
+ * The {@link KafkaToPubsub} streaming pipeline reading json encoded data
+ * from Kafka and publishes to Google Cloud PubSub. Input topics, output topic, Bootstrap
+ * servers are specified by the user as template parameters. <br>
+ * Kafka may be configured with SASL/SCRAM security mechanism over plain text or SSL encrypted connection,
+ * in this case a Vault secret storage with credentials should be provided.
+ * URL to credentials and Vault token are specified by the user as template parameters.
  *
  * <p><b>Pipeline Requirements</b>
  *
@@ -117,7 +117,7 @@ import org.slf4j.LoggerFactory;
  *                      "bootstrapServers": "broker_1:9091, broker_2:9092",
  *                      "inputTopics": "topic1, topic2",
  *                      "outputTopic": "projects/'$PROJECT'/topics/your-topic-name",
- *                      "outputDeadLetterTopic": "projects/'$PROJECT'/topics/dead-letter-topic",
+ *                      "outputDeadLetterTopic": "projects/'$PROJECT'/topics/your-dead-letter-topic-name",
  *                      "javascriptTextTransformGcsPath": "gs://path/to/udf",
  *                      "javascriptTextTransformFunctionName": "your-js-function",
  *                      "secretStoreUrl": "http(s)://host:port/path/to/credentials",
@@ -131,117 +131,110 @@ import org.slf4j.LoggerFactory;
  */
 public class KafkaToPubsub {
 
-  /* Logger for class.*/
-  private static final Logger LOG = LoggerFactory.getLogger(KafkaToPubsub.class);
+    /* Logger for class.*/
+    private static final Logger LOG = LoggerFactory.getLogger(KafkaToPubsub.class);
 
-  /**
-   * Main entry point for pipeline execution.
-   *
-   * @param args Command line arguments to the pipeline.
-   */
-  public static void main(String[] args) {
-    KafkaToPubsubOptions options =
-        PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToPubsubOptions.class);
-
-    run(options);
-  }
-
-  /**
-   * Runs a pipeline which reads message from Kafka and writes to Pub/Sub.
-   *
-   * @param options arguments to the pipeline
-   */
-  public static PipelineResult run(KafkaToPubsubOptions options) {
-    List<String> topicsList = new ArrayList<>(Arrays.asList(options.getInputTopics().split(",")));
-
-    checkArgument(
-        topicsList.size() > 0 && topicsList.stream().allMatch((s) -> s.trim().length() > 0),
-        "inputTopics cannot be an empty string.");
-
-    List<String> bootstrapServersList =
-        new ArrayList<>(Arrays.asList(options.getBootstrapServers().split(",")));
-
-    checkArgument(
-        bootstrapServersList.size() > 0
-            && bootstrapServersList.stream().allMatch((s) -> s.trim().length() > 0),
-        "bootstrapServers cannot be an empty string.");
-
-    // Configure Kafka consumer properties
-    Map<String, Object> kafkaConfig = new HashMap<>();
-    Map<String, String> sslConfig = null;
-    if (options.getSecretStoreUrl() != null && options.getVaultToken() != null) {
-      Map<String, Map<String, String>> credentials =
-          getKafkaCredentialsFromVault(options.getSecretStoreUrl(), options.getVaultToken());
-      kafkaConfig = configureKafka(credentials.get(KafkaPubsubConstants.KAFKA_CREDENTIALS));
-      sslConfig = credentials.get(KafkaPubsubConstants.SSL_CREDENTIALS);
-    } else {
-      LOG.warn(
-          "No information to retrieve Kafka credentials was provided. "
-              + "Trying to initiate an unauthorized connection.");
-    }
-
-    // Create the pipeline
-    Pipeline pipeline = Pipeline.create(options);
-    // Register the coder for pipeline
-    FailsafeElementCoder<KV<String, String>, String> coder =
-        FailsafeElementCoder.of(
-            KvCoder.of(
-                NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of())),
-            NullableCoder.of(StringUtf8Coder.of()));
-
-    CoderRegistry coderRegistry = pipeline.getCoderRegistry();
-    coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
-
-    TypeDescriptor<String> stringTypeDescriptor = TypeDescriptors.strings();
-
-    LOG.info(
-        "Starting Kafka-To-PubSub Pipeline with parameters bootstrap servers:{} input topics:{}"
-            + " output pubsub topic:{} ",
-        options.getBootstrapServers(),
-        options.getInputTopics(),
-        options.getOutputTopic());
-
-    /*
-     * Steps:
-     *  1) Read messages in from Kafka
-     *  2) Transform message payload via UDF
-     *  3) Write successful records out to Pub/Sub
-     *  4) Write failed records out to Pub/Sub dead-letter topic
+    /**
+     * Main entry point for pipeline execution.
+     *
+     * @param args Command line arguments to the pipeline.
      */
-    PCollectionTuple appliedUdf =
-        pipeline
-            /* Step #1: Read messages in from Kafka */
-            .apply(
-                "readFromKafka",
-                readFromKafka(options.getBootstrapServers(), topicsList, kafkaConfig, sslConfig))
-            /* Step #2: Transform the Kafka Messages via UDF */
-            .apply("applyUDF", new FormatTransform.UdfProcess(options));
-    /* Step #3: Write the successful records out to Pub/Sub */
-    appliedUdf
-        .get(KafkaPubsubConstants.UDF_OUT)
-        .apply(
-            "getSuccessUDFOutElements",
-            MapElements.into(stringTypeDescriptor).via(FailsafeElement::getPayload))
-        .setCoder(NullableCoder.of(StringUtf8Coder.of()))
-        .apply("writeSuccessMessages", PubsubIO.writeStrings().to(options.getOutputTopic()));
+    public static void main(String[] args) {
+        KafkaToPubsubOptions options =
+                PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToPubsubOptions.class);
 
-    /* Step #4: Write failed messages out to Pub/Sub */
-    if (options.getOutputDeadLetterTopic() != null) {
-      appliedUdf
-          .get(KafkaPubsubConstants.UDF_DEADLETTER_OUT)
-          .apply(
-              "getFailedMessages",
-              MapElements.into(TypeDescriptors.kvs(stringTypeDescriptor, stringTypeDescriptor))
-                  .via(FailsafeElement::getOriginalPayload))
-          .apply(
-              "extractMessageValues",
-              MapElements.into(stringTypeDescriptor).via(KV<String, String>::getValue))
-          .setCoder(NullableCoder.of(StringUtf8Coder.of()))
-          .apply(
-              "writeFailureMessages",
-              PubsubIO.writeStrings().to(options.getOutputDeadLetterTopic()));
+        run(options);
     }
 
-    return pipeline.run();
-  }
+    /**
+     * Runs a pipeline which reads message from Kafka and writes to Pub/Sub.
+     *
+     * @param options arguments to the pipeline
+     */
+    public static PipelineResult run(KafkaToPubsubOptions options) {
+        List<String> topicsList = new ArrayList<>(Arrays.asList(options.getInputTopics().split(",")));
+
+        checkArgument(
+                topicsList.size() > 0 && topicsList.stream().allMatch((s) -> s.trim().length() > 0),
+                "inputTopics cannot be an empty string.");
+
+        List<String> bootstrapServersList =
+                new ArrayList<>(Arrays.asList(options.getBootstrapServers().split(",")));
+
+        checkArgument(
+                bootstrapServersList.size() > 0 && bootstrapServersList.stream().allMatch((s) -> s.trim().length() > 0),
+                "bootstrapServers cannot be an empty string.");
+
+
+        // Configure Kafka consumer properties
+        Map<String, Object> kafkaConfig = new HashMap<>();
+        Map<String, String> sslConfig = null;
+        if (options.getSecretStoreUrl() != null && options.getVaultToken() != null) {
+            Map<String, Map<String, String>> credentials = getKafkaCredentialsFromVault(
+                    options.getSecretStoreUrl(), options.getVaultToken()
+            );
+            kafkaConfig = configureKafka(credentials.get(KafkaPubsubConstants.KAFKA_CREDENTIALS));
+            sslConfig = credentials.get(KafkaPubsubConstants.SSL_CREDENTIALS);
+        } else {
+            LOG.warn(
+                    "No information to retrieve Kafka credentials was provided. " +
+                            "Trying to initiate an unauthorized connection.");
+        }
+
+
+        // Create the pipeline
+        Pipeline pipeline = Pipeline.create(options);
+        // Register the coder for pipeline
+        FailsafeElementCoder<KV<String, String>, String> coder =
+                FailsafeElementCoder.of(
+                        KvCoder.of(
+                                NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of())),
+                        NullableCoder.of(StringUtf8Coder.of()));
+
+        CoderRegistry coderRegistry = pipeline.getCoderRegistry();
+        coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
+
+        TypeDescriptor<String> stringTypeDescriptor = TypeDescriptors.strings();
+
+        LOG.info("Starting Kafka-To-PubSub Pipeline with parameters bootstrap servers:{} input topics:{} output pubsub topic:{} ", options.getBootstrapServers(), options.getInputTopics(), options.getOutputTopic());
+
+        /*
+         * Steps:
+         *  1) Read messages in from Kafka
+         *  2) Transform message payload via UDF
+         *  3) Write successful records out to Pub/Sub
+         *  4) Write failed records out to Pub/Sub dead-letter topic
+         */
+        PCollectionTuple appliedUdf = pipeline
+                /* Step #1: Read messages in from Kafka */
+                .apply(
+                        "readFromKafka", readFromKafka(options.getBootstrapServers(), topicsList, kafkaConfig, sslConfig))
+                /* Step #2: Transform the Kafka Messages via UDF */
+                .apply("applyUDF", new FormatTransform.UdfProcess(options));
+        /* Step #3: Write the successful records out to Pub/Sub */
+        appliedUdf.get(KafkaPubsubConstants.UDF_OUT)
+                .apply("getSuccessUDFOutElements",MapElements.into(stringTypeDescriptor)
+                        .via(FailsafeElement::getPayload))
+                .setCoder(NullableCoder.of(StringUtf8Coder.of()))
+                .apply("writeSuccessMessages", PubsubIO.writeStrings().to(options.getOutputTopic()));
+
+
+        /* Step #4: Write failed messages out to Pub/Sub */
+        if (options.getOutputDeadLetterTopic() != null) {
+            appliedUdf.get(KafkaPubsubConstants.UDF_DEADLETTER_OUT)
+                    .apply("getFailedMessages", MapElements
+                            .into(TypeDescriptors.kvs(stringTypeDescriptor, stringTypeDescriptor))
+                            .via(FailsafeElement::getOriginalPayload))
+                    .apply(
+                            "extractMessageValues",
+                            MapElements
+                                    .into(stringTypeDescriptor)
+                                    .via(KV<String, String>::getValue))
+                    .setCoder(NullableCoder.of(StringUtf8Coder.of()))
+                    .apply("writeFailureMessages",
+                            PubsubIO.writeStrings().to(options.getOutputDeadLetterTopic()));
+        }
+
+        return pipeline.run();
+    }
 }
