@@ -25,8 +25,10 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import org.apache.avro.Conversions.DecimalConversion;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
@@ -63,6 +65,8 @@ public class FormatDatastreamRecordToJson
   static final DateConversion DATE_CONVERSION = new DateConversion();
   private String streamName;
   private boolean lowercaseSourceColumns = false;
+  private String rowIdColumnName;
+  private static Map<String, String> hashedColumns = new HashMap<String, String>();
 
   private FormatDatastreamRecordToJson() {}
 
@@ -77,6 +81,29 @@ public class FormatDatastreamRecordToJson
 
   public FormatDatastreamRecordToJson withLowercaseSourceColumns() {
     this.lowercaseSourceColumns = true;
+    return this;
+  }
+
+  /**
+   * Add the supplied columnName to the list of column values to be hashed.
+   *
+   * @param columnName The column name to look for in the data to hash.
+   */
+  public FormatDatastreamRecordToJson withHashColumnValue(String columnName) {
+    this.hashedColumns.put(columnName, columnName);
+    return this;
+  }
+
+  /**
+   * Add the supplied columnName to the map of column values to be hashed.
+   * A new column with a hashed value of the first will be created.
+   *
+   * @param columnName The column name to look for in the data.
+   * @param newColumnName The name of the new column created with hashed data.
+   */
+  public FormatDatastreamRecordToJson withHashColumnValue(
+      String columnName, String newColumnName) {
+    this.hashedColumns.put(columnName, newColumnName);
     return this;
   }
 
@@ -107,6 +134,10 @@ public class FormatDatastreamRecordToJson
     outputObject.put("_metadata_rs_id", getOracleRsId(record));
     outputObject.put("_metadata_tx_id", getOracleTxId(record));
 
+    // Hash columns supplied to be hashed
+    applyHashToColumns(record, outputObject);
+
+    // All Raw Metadata
     outputObject.put("_metadata_source", getSourceMetadata(record));
 
     return FailsafeElement.of(outputObject.toString(), outputObject.toString());
@@ -191,6 +222,17 @@ public class FormatDatastreamRecordToJson
     }
 
     return null;
+  }
+
+  private void applyHashToColumns(GenericRecord record, ObjectNode outputObject) {
+    for (String columnName: this.hashedColumns.keySet()) {
+      if (record.get(columnName) != null) {
+        // TODO: discuss hash algorithm to use
+        String newColumnName = this.hashedColumns.get(columnName);
+        int hashedValue = record.get(columnName).toString().hashCode();
+        outputObject.put(newColumnName, hashedValue);
+      }
+    }
   }
 
   private Long getOracleScn(GenericRecord record) {

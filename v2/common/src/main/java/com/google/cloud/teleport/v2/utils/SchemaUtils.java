@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.utils;
 
-import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -23,6 +23,7 @@ import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Collectors;
+import javax.annotation.Nonnull;
 import org.apache.avro.Schema;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.MatchResult;
@@ -129,5 +130,24 @@ public class SchemaUtils {
   public static Schema getAvroSchema(String schemaLocation) {
     String schemaFile = getGcsFileAsString(schemaLocation);
     return new Schema.Parser().parse(schemaFile);
+  }
+
+  /**
+   * The {@link SchemaUtils#parseAvroSchema(String)} parses schema text and returns a new {@link
+   * Schema} object.
+   *
+   * <p>e.g. avro schema text { "namespace": "com.google.cloud.teleport.v2.packagename", "type":
+   * "record", "name": "typeName", "fields": [ {"name": "field1","type": "string"}, {"name":
+   * "field2", "type": "long"}, {"name": "nestedfield", "type": {"type": "map", "values":
+   * "string"}}, ] }
+   *
+   * @param avroschema avroschema in text format
+   * @return {@link Schema}
+   */
+  public static Schema parseAvroSchema(@Nonnull String avroschema) {
+    checkArgument(
+        avroschema != null,
+        "avroschema argument to SchemaUtils.parseAvroSchema method cannot be null.");
+    return new Schema.Parser().parse(avroschema);
   }
 }
