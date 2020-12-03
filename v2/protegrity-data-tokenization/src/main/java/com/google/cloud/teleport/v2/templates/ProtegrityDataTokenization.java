@@ -15,6 +15,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.vendor.grpc.v1p26p0.com.google.gson.Gson;
+import org.apache.beam.vendor.grpc.v1p26p0.com.google.gson.reflect.TypeToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,7 +86,8 @@ public class ProtegrityDataTokenization {
         @ProcessElement
         public void processElement(ProcessContext c) {
             String json = c.element();
-            Map<String, String> map = GSON.fromJson(json, Map.class);
+            TypeToken<Map<String, String>> type = new TypeToken<Map<String, String>>() {};
+            Map<String, String> map = GSON.fromJson(json, type.getType());
             c.output(map);
         }
     }
