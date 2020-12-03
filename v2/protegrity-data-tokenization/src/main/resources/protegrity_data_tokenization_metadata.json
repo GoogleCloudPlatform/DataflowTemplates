@@ -3,7 +3,7 @@
   "description": "Tokenizes structured plain text data from GCS or Pub/Sub and ingests it to BigTable or BigQuery",
   "parameters": [
     {
-      "name": "bigQueryDataSchemaGCSPath",
+      "name": "bigQueryDataSchemaGcsPath",
       "label": "GCS location of your BigQuery data schema",
       "helpText": "(Optional) Path to data schema (JSON format) in GCS compatible with BigQuery",
       "paramType": "GCS_READ_FILE",

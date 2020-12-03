@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.utils;
 
+import static org.apache.beam.sdk.io.gcp.bigquery.BigQueryUtils.fromTableSchema;
+
 import com.google.api.services.bigquery.model.TableSchema;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -27,8 +29,6 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryHelpers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
-import static org.apache.beam.sdk.io.gcp.bigquery.BigQueryUtils.fromTableSchema;
 
 /**
  * The {@link BigQuerySchema} Class to read JSON based schema. Is there available to read from file or from string.
