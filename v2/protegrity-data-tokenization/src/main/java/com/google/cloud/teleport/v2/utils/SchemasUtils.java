@@ -27,45 +27,45 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryHelpers;
-import org.apache.beam.vendor.grpc.v1p26p0.com.google.common.io.ByteStreams;
 import org.apache.beam.sdk.schemas.Schema;
+import org.apache.beam.vendor.grpc.v1p26p0.com.google.common.io.ByteStreams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
 /**
- * The {@link BigQuerySchema} Class to read JSON based schema. Is there available to read from file or from string.
+ * The {@link SchemasUtils} Class to read JSON based schema. Is there available to read from file or from string.
  * Currently supported local File System and GCS.
  */
-public class BigQuerySchema {
+public class SchemasUtils {
     /* Logger for class.*/
-    private static final Logger LOG = LoggerFactory.getLogger(BigQuerySchema.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SchemasUtils.class);
 
-    private TableSchema tableSchema;
+    private TableSchema bigQuerySchema;
     private Schema beamSchema;
 
-    public BigQuerySchema(String schema) {
+    public SchemasUtils(String schema) {
         parseJson(schema);
     }
 
-    public BigQuerySchema(String path, Charset encoding) throws IOException {
+    public SchemasUtils(String path, Charset encoding) throws IOException {
         if (path.startsWith("gs://")) {
             parseJson(new String(readGcsFile(path), encoding));
         } else {
             byte[] encoded = Files.readAllBytes(Paths.get(path));
             parseJson(new String(encoded, encoding));
         }
-        LOG.info("Extracted schema: " + tableSchema.toPrettyString());
+        LOG.info("Extracted schema: " + bigQuerySchema.toPrettyString());
     }
 
-    public TableSchema getTableSchema() {
-        return tableSchema;
+    public TableSchema getBigQuerySchema() {
+        return bigQuerySchema;
     }
 
     private void parseJson(String jsonSchema) throws UnsupportedOperationException {
         TableSchema schema = BigQueryHelpers.fromJsonString(jsonSchema, TableSchema.class);
         validateSchemaTypes(schema);
-        tableSchema = schema;
+        bigQuerySchema = schema;
 
     }
 
@@ -80,11 +80,11 @@ public class BigQuerySchema {
     }
 
     /**
-     * Method to read a BigQuery schema file from GCS and return the file contents as a string.
+     * Method to read a schema file from GCS and return the file contents as a string.
      *
      * @param gcsFilePath path to file in GCS in format "gs://your-bucket/path/to/file"
      * @return byte array with file contents
-     * @throws IOException thrown if not able to read or write file
+     * @throws IOException thrown if not able to read file
      */
     public static byte[] readGcsFile(String gcsFilePath)
             throws IOException {

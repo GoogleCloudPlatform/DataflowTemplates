@@ -1,32 +1,48 @@
+/*
+ * Copyright (C) 2020 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.api.services.bigquery.model.TableRow;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.options.ProtegrityDataTokenizationOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
-import com.google.cloud.teleport.v2.utils.BigQuerySchema;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
+import com.google.cloud.teleport.v2.utils.SchemasUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.TextIO;
-import org.apache.beam.sdk.io.gcp.bigquery.*;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
+import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
+import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.JsonToRow;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PCollectionTuple;
-import org.apache.beam.sdk.values.TupleTag;
-import org.apache.beam.vendor.grpc.v1p26p0.com.google.gson.Gson;
-import org.apache.beam.vendor.grpc.v1p26p0.com.google.gson.reflect.TypeToken;
+import org.apache.beam.sdk.values.Row;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,29 +58,11 @@ public class ProtegrityDataTokenization {
     private static final Logger LOG = LoggerFactory.getLogger(ProtegrityDataTokenization.class);
 
     /**
-     * Gson object for JSON parsing.
-     */
-    private static final Gson GSON = new Gson();
-
-    /**
      * String/String Coder for FailsafeElement.
      */
     private static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
             FailsafeElementCoder.of(
                     NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of()));
-
-    /**
-     * The tag for the main output of the json transformation.
-     */
-    static final TupleTag<TableRow> TRANSFORM_OUT = new TupleTag<TableRow>() {
-    };
-
-    /**
-     * The tag for the dead-letter output of the json to table row transform.
-     */
-    static final TupleTag<FailsafeElement<Map<String, String>, String>>
-            TRANSFORM_DEADLETTER_OUT = new TupleTag<FailsafeElement<Map<String, String>, String>>() {
-    };
 
     /**
      * The default suffix for error tables if dead letter table is not specified.
@@ -81,6 +79,7 @@ public class ProtegrityDataTokenization {
                 PipelineOptionsFactory.fromArgs(args)
                         .withValidation()
                         .as(ProtegrityDataTokenizationOptions.class);
+        FileSystems.setDefaultPipelineOptions(options);
 
         run(options);
     }
@@ -92,22 +91,23 @@ public class ProtegrityDataTokenization {
      * @return The pipeline result.
      */
     public static PipelineResult run(ProtegrityDataTokenizationOptions options) {
-        TableSchema schema = new TableSchema();
+        SchemasUtils schema = null;
         try {
-            schema = new BigQuerySchema(options.getBigQueryDataSchemaGcsPath(), StandardCharsets.UTF_8).getTableSchema();
+            schema = new SchemasUtils(options.getDataSchemaGcsPath(), StandardCharsets.UTF_8);
         } catch (IOException e) {
-            LOG.warn("Failed to retrieve schema for BigQuery.", e);
+            LOG.error("Failed to retrieve schema for data.", e);
         }
+        checkArgument(schema != null, "Data schema is mandatory.");
+
         // Create the pipeline
         Pipeline pipeline = Pipeline.create(options);
 
-        PCollection<FailsafeElement<Map<String, String>, String>> failsafeJsonPCollection = pipeline
+        JsonToRow.ParseResult rows = pipeline
                 .apply("readTextFromGCSFiles", TextIO.read().from(options.getInputGcsFilePattern()))
-                //TODO think about ROW .apply("Parse JSON to Beam Rows", JsonToRow.withSchema(fromTableSchema(schema)))
-                .apply("beamRowToFailsafeRow", ParDo.of(new ParseJsonToMap()));
+                .apply("jsonToRow", JsonToRow.withExceptionReporting(schema.getBeamSchema()).withExtendedErrorInfo());
 
         if (options.getBigQueryTableName() != null) {
-            WriteResult writeResult = writeToBigQuery(failsafeJsonPCollection, options.getBigQueryTableName(), schema);
+            WriteResult writeResult = writeToBigQuery(rows.getResults(), options.getBigQueryTableName(), schema.getBigQuerySchema());
             writeResult
                     .getFailedInsertsWithErr()
                     .apply(
@@ -126,15 +126,9 @@ public class ProtegrityDataTokenization {
         return pipeline.run();
     }
 
-    private static WriteResult writeToBigQuery(PCollection<FailsafeElement<Map<String, String>, String>> input, String bigQueryTableName, TableSchema schema) {
-        PCollectionTuple convertedTableRows = input.apply(
-                "JsonToTableRow",
-                BigQueryConverters.FailsafeJsonToTableRow.<Map<String, String>>newBuilder()
-                        .setSuccessTag(TRANSFORM_OUT)
-                        .setFailureTag(TRANSFORM_DEADLETTER_OUT)
-                        .build());
-
-        return convertedTableRows.get(TRANSFORM_OUT)
+    private static WriteResult writeToBigQuery(PCollection<Row> input, String bigQueryTableName, TableSchema schema) {
+        return input
+                .apply("RowToTableRow", ParDo.of(new BigQueryConverters.RowToTableRowFn()))
                 .apply(
                         "WriteSuccessfulRecords",
                         BigQueryIO.writeTableRows()
@@ -145,18 +139,6 @@ public class ProtegrityDataTokenization {
                                 .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
                                 .withSchema(schema)
                                 .to(bigQueryTableName));
-
-    }
-
-    static class ParseJsonToMap extends DoFn<String, FailsafeElement<Map<String, String>, String>> {
-        @ProcessElement
-        public void processElement(ProcessContext c) {
-            String json = c.element();
-            TypeToken<Map<String, String>> type = new TypeToken<Map<String, String>>() {
-            };
-            Map<String, String> map = GSON.fromJson(json, type.getType());
-            c.output(FailsafeElement.of(map, json));
-        }
     }
 
     /**

@@ -24,10 +24,10 @@ import org.apache.beam.sdk.options.PipelineOptions;
  */
 public interface ProtegrityDataTokenizationOptions extends PipelineOptions {
     // Group 1 - Input source
-    @Description("(Optional) Path to data schema (JSON format) in GCS compatible with BigQuery.")
-    String getBigQueryDataSchemaGcsPath();
+    @Description("Path to data schema (JSON format) in GCS compatible with BigQuery.")
+    String getDataSchemaGcsPath();
 
-    void setBigQueryDataSchemaGcsPath(String bigQueryDataSchemaGcsPath);
+    void setDataSchemaGcsPath(String dataSchemaGcsPath);
 
     // Group 1.1 - GCS
     @Description("GCS filepattern for files in bucket to read data from")
