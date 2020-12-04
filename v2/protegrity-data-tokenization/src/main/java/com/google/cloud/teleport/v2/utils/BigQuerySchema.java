@@ -18,20 +18,16 @@ package com.google.cloud.teleport.v2.utils;
 import static org.apache.beam.sdk.io.gcp.bigquery.BigQueryUtils.fromTableSchema;
 
 import com.google.api.services.bigquery.model.TableSchema;
-
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-
-import com.google.common.io.ByteStreams;
 import org.apache.beam.sdk.io.FileSystems;
-import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryHelpers;
+import org.apache.beam.vendor.grpc.v1p26p0.com.google.common.io.ByteStreams;
 import org.apache.beam.sdk.schemas.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,33 +82,23 @@ public class BigQuerySchema {
     /**
      * Method to read a BigQuery schema file from GCS and return the file contents as a string.
      *
-     * @param gcsFilePath Path string for the schema file in GCS.
-     * @return File contents as a string.
+     * @param gcsFilePath path to file in GCS in format "gs://your-bucket/path/to/file"
+     * @return byte array with file contents
+     * @throws IOException thrown if not able to read or write file
      */
-    public static byte[] readGcsFile(String gcsFilePath) {
-
-        ResourceId sourceResourceId = FileSystems.matchNewResource(gcsFilePath, false);
-
-        byte[] schema;
-        try (ReadableByteChannel rbc = FileSystems.open(sourceResourceId)) {
-            try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-                try (WritableByteChannel wbc = Channels.newChannel(baos)) {
-                    ByteStreams.copy(rbc, wbc);
-                    schema = baos.toByteArray();
-                }
+    public static byte[] readGcsFile(String gcsFilePath)
+            throws IOException {
+        LOG.info("Reading contents from GCS file: {}", gcsFilePath);
+        // Read the GCS file into byte array and will throw an I/O exception in case file not found.
+        try (ReadableByteChannel readerChannel =
+                     FileSystems.open(FileSystems.matchSingleFileSpec(gcsFilePath).resourceId())) {
+            try (InputStream stream = Channels.newInputStream(readerChannel)) {
+                return ByteStreams.toByteArray(stream);
             }
-        } catch (IOException e) {
-            LOG.error("Error extracting schema: " + e.getMessage());
-            throw new RuntimeException(e);
         }
-        return schema;
-
-
     }
 
     public Schema getBeamSchema() {
         return beamSchema;
     }
 }
-
-
