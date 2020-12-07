@@ -22,6 +22,7 @@ import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.options.ProtegrityDataTokenizationOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
+import com.google.cloud.teleport.v2.transforms.io.BigTableIO;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.utils.SchemasUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -121,6 +122,13 @@ public class ProtegrityDataTokenization {
                                     .setErrorRecordsTable(options.getBigQueryTableName() + DEFAULT_DEADLETTER_TABLE_SUFFIX)
                                     .setErrorRecordsTableSchema(SchemaUtils.DEADLETTER_SCHEMA)
                                     .build());
+        } else if (options.getBigTableInstanceId() != null) {
+            new BigTableIO(options).write(
+                    rows.getResults(),
+                    schema.getBeamSchema()
+            );
+        } else {
+            throw new IllegalStateException("No sink is provided, please configure BigQuery or BigTable.");
         }
 
         return pipeline.run();
@@ -164,5 +172,4 @@ public class ProtegrityDataTokenization {
         }
         return failsafeElement;
     }
-
 }

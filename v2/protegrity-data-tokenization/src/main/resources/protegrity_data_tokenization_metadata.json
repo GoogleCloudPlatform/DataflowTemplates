@@ -52,6 +52,13 @@
       "isOptional": true
     },
     {
+      "name": "bigTableColumnFamilyName",
+      "label": "Column family name for the output BigTable table",
+      "helpText": "Column family name to use in Cloud BigTable",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
       "name": "bigQueryTableName",
       "label": "Name of the output BigQuery table",
       "helpText": "Cloud BigQuery table name to write into",

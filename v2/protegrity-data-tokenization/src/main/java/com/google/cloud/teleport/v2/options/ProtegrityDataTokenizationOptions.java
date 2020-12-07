@@ -66,6 +66,11 @@ public interface ProtegrityDataTokenizationOptions extends PipelineOptions {
 
     void setBigTableKeyColumnName(String bigTableKeyColumnName);
 
+    @Description("Column family name to use in Cloud BigTable.")
+    String getBigTableColumnFamilyName();
+
+    void setBigTableColumnFamilyName(String bigTableColumnFamilyName);
+
     //Group 2.2 - BigQuery
     @Description("Cloud BigQuery table name to write into.")
     String getBigQueryTableName();
