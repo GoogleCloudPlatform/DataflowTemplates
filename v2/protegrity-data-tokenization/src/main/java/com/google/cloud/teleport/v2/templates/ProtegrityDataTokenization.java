@@ -38,6 +38,7 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.JsonToRow;
 import org.apache.beam.sdk.transforms.MapElements;
@@ -103,8 +104,19 @@ public class ProtegrityDataTokenization {
         // Create the pipeline
         Pipeline pipeline = Pipeline.create(options);
 
-        JsonToRow.ParseResult rows = pipeline
-                .apply("readTextFromGCSFiles", TextIO.read().from(options.getInputGcsFilePattern()))
+        PCollection<String> jsons;
+        if (options.getInputGcsFilePattern() != null) {
+            jsons = pipeline
+                    .apply("readTextFromGCSFiles", TextIO.read().from(options.getInputGcsFilePattern()));
+                    //TODO: Add converter for CSV case. Think about distinguishing between JSONs and CSVs.
+        } else if (options.getPubsubTopic() != null) {
+            jsons = pipeline
+                    .apply("readMessagesFromPubsub", PubsubIO.readStrings().fromTopic(options.getPubsubTopic()));
+        } else {
+            throw new IllegalStateException("No source is provided, please configure GCS or Pub/Sub");
+        }
+
+        JsonToRow.ParseResult rows = jsons
                 .apply("jsonToRow", JsonToRow.withExceptionReporting(schema.getBeamSchema()).withExtendedErrorInfo());
 
         if (options.getBigQueryTableName() != null) {
