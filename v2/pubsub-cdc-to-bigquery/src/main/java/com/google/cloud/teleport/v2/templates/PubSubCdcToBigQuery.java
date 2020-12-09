@@ -59,6 +59,7 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
@@ -204,6 +205,13 @@ public class PubSubCdcToBigQuery {
     String getWindowDuration();
 
     void setWindowDuration(String value);
+
+    // Thread Count
+    @Description("The number of threads to spawn")
+    @Default.Integer(100)
+    Integer getThreadCount();
+
+    void setThreadCount(Integer value);
   }
 
   /**
@@ -285,6 +293,7 @@ public class PubSubCdcToBigQuery {
 
     PCollection<FailsafeElement<String, String>> jsonRecords;
 
+
     if (options.getDeadLetterQueueDirectory() != null) {
 
       PCollection<FailsafeElement<String, String>> failsafeMessages =
@@ -318,6 +327,12 @@ public class PubSubCdcToBigQuery {
             /*
              * Step #2: Transform the PubsubMessages into TableRows
              */
+             // .apply( // Window incoming events into batches
+             //    options.getWindowDuration() + " Window",
+             //    Window.<FailsafeElement<String, String>>into(
+             //        FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))
+            .apply(Reshuffle.<FailsafeElement<String, String>>viaRandomKey()
+                    .withNumBuckets(options.getThreadCount()))
             .apply("ApplyUdfAndConvertToTableRow", failsafeTableRowTransformer);
 
     /*
@@ -493,6 +508,7 @@ public class PubSubCdcToBigQuery {
    *       records which couldn't be converted to table rows.
    * </ul>
    */
+
   private static DeadLetterQueueManager buildDlqManager(Options options) {
     if (options.getDeadLetterQueueDirectory() != null) {
       String tempLocation =

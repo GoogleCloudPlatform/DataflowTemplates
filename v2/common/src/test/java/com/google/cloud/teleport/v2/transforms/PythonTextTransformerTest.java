@@ -24,10 +24,12 @@ import static org.junit.Assert.assertThat;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.transforms.PythonTextTransformer.FailsafePythonUdf;
 import com.google.cloud.teleport.v2.transforms.PythonTextTransformer.PythonRuntime;
-import com.google.cloud.teleport.v2.transforms.PythonTextTransformer.TransformTextViaPython;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +41,6 @@ import org.apache.beam.sdk.testing.NeedsRunner;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
-import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.junit.Assert;
@@ -48,13 +49,11 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.ExpectedException;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Unit tests for {@link PythonTextTransformer}. */
-@RunWith(JUnit4.class)
+// @RunWith(JUnit4.class)
 public class PythonTextTransformerTest {
 
   @Rule public ExpectedException thrown = ExpectedException.none();
@@ -91,32 +90,18 @@ public class PythonTextTransformerTest {
             .setFunctionName("transform")
             .setRuntimeVersion(PYTHON_VERSION)
             .build();
+
+    File tempFile = File.createTempFile("temp_file.json", null);
+    BufferedWriter dataWriter = new BufferedWriter(new FileWriter(tempFile.getAbsolutePath()));
+    String sendData = "{\"answerToLife\": 42}";
+    dataWriter.write(sendData);
+    dataWriter.flush();
+    dataWriter.close();
     List<String> expectedJson = Arrays.asList("{\"answerToLife\": 42, \"someProp\": \"someValue\"}");
-    List<String> data = pythonRuntime.invoke(Arrays.asList("{\"answerToLife\": 42}"), 5);
+    List<String> data = pythonRuntime.invoke(tempFile, 5);
     Assert.assertEquals(expectedJson, data);
   }
 
-  @Ignore
-  @Test
-  @Category(NeedsRunner.class)
-  public void testDoFnGood() {
-    List<String> inJson = Arrays.asList("{\"answerToLife\": 42}");
-    List<String> expectedJson = Arrays.asList("{\"answerToLife\": 42, \"someProp\": \"someValue\"}");
-
-    PCollection<String> transformedJson =
-        pipeline
-            .apply("Create", Create.of(inJson))
-            .apply(
-                TransformTextViaPython.newBuilder()
-                    .setFileSystemPath(TRANSFORM_FILE_PATH)
-                    .setFunctionName("transform")
-                    .setRuntimeVersion(PYTHON_VERSION)
-                    .build());
-
-    PAssert.that(transformedJson).containsInAnyOrder(expectedJson);
-
-    pipeline.run();
-  }
 
   /** Tests the {@link FailsafePythonUdf} when the input is valid. */
   @Ignore
