@@ -15,17 +15,17 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.transforms.io.BigQueryIO.write;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
-import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.options.ProtegrityDataTokenizationOptions;
-import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
+import com.google.cloud.teleport.v2.transforms.io.BigQueryIO;
 import com.google.cloud.teleport.v2.transforms.io.BigTableIO;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.utils.SchemasUtils;
-import com.google.cloud.teleport.v2.values.FailsafeElement;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import org.apache.beam.sdk.Pipeline;
@@ -34,17 +34,12 @@ import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.TextIO;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
-import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.JsonToRow;
 import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.Row;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -120,13 +115,13 @@ public class ProtegrityDataTokenization {
                 .apply("jsonToRow", JsonToRow.withExceptionReporting(schema.getBeamSchema()).withExtendedErrorInfo());
 
         if (options.getBigQueryTableName() != null) {
-            WriteResult writeResult = writeToBigQuery(rows.getResults(), options.getBigQueryTableName(), schema.getBigQuerySchema());
+            WriteResult writeResult = write(rows.getResults(), options.getBigQueryTableName(), schema.getBigQuerySchema());
             writeResult
                     .getFailedInsertsWithErr()
                     .apply(
                             "WrapInsertionErrors",
                             MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
-                                    .via(ProtegrityDataTokenization::wrapBigQueryInsertError))
+                                    .via(BigQueryIO::wrapBigQueryInsertError))
                     .setCoder(FAILSAFE_ELEMENT_CODER)
                     .apply(
                             "WriteInsertionFailedRecords",
@@ -146,42 +141,4 @@ public class ProtegrityDataTokenization {
         return pipeline.run();
     }
 
-    private static WriteResult writeToBigQuery(PCollection<Row> input, String bigQueryTableName, TableSchema schema) {
-        return input
-                .apply("RowToTableRow", ParDo.of(new BigQueryConverters.RowToTableRowFn()))
-                .apply(
-                        "WriteSuccessfulRecords",
-                        BigQueryIO.writeTableRows()
-                                .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_IF_NEEDED)
-                                .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
-                                .withExtendedErrorInfo()
-                                .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
-                                .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
-                                .withSchema(schema)
-                                .to(bigQueryTableName));
-    }
-
-    /**
-     * Method to wrap a {@link BigQueryInsertError} into a {@link FailsafeElement}.
-     *
-     * @param insertError BigQueryInsert error.
-     * @return FailsafeElement object.
-     */
-    protected static FailsafeElement<String, String> wrapBigQueryInsertError(
-            BigQueryInsertError insertError) {
-
-        FailsafeElement<String, String> failsafeElement;
-        try {
-
-            failsafeElement =
-                    FailsafeElement.of(
-                            insertError.getRow().toPrettyString(), insertError.getRow().toPrettyString());
-            failsafeElement.setErrorMessage(insertError.getError().toPrettyString());
-
-        } catch (IOException e) {
-            LOG.error("Failed to wrap BigQuery insert error.");
-            throw new RuntimeException(e);
-        }
-        return failsafeElement;
-    }
 }
