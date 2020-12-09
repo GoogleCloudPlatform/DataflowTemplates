@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.options;
 
+import com.google.cloud.teleport.v2.transforms.io.GcsIO;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 
@@ -22,18 +23,12 @@ import org.apache.beam.sdk.options.PipelineOptions;
  * The {@link ProtegrityDataTokenizationOptions} interface provides the custom execution options passed by the
  * executor at the command-line.
  */
-public interface ProtegrityDataTokenizationOptions extends PipelineOptions {
+public interface ProtegrityDataTokenizationOptions extends PipelineOptions, GcsIO.GcsPipelineOptions {
     // Group 1 - Input source
     @Description("Path to data schema (JSON format) in GCS compatible with BigQuery.")
     String getDataSchemaGcsPath();
 
     void setDataSchemaGcsPath(String dataSchemaGcsPath);
-
-    // Group 1.1 - GCS
-    @Description("GCS filepattern for files in bucket to read data from")
-    String getInputGcsFilePattern();
-
-    void setInputGcsFilePattern(String inputGcsFilePattern);
 
     // Group 1.2 - Pub/Sub
     @Description(

@@ -17,9 +17,9 @@ package com.google.cloud.teleport.v2.transforms.io;
 
 
 import com.google.api.services.bigquery.model.TableSchema;
-import com.google.cloud.teleport.v2.templates.ProtegrityDataTokenization;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import java.io.IOException;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
@@ -28,8 +28,6 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
 
 /**
  * The {@link BigQueryIO} class for writing data from template to BigTable.

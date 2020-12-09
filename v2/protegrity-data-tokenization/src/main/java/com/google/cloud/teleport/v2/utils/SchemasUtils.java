@@ -43,6 +43,7 @@ public class SchemasUtils {
 
     private TableSchema bigQuerySchema;
     private Schema beamSchema;
+    private String jsonBeamSchema;
 
     public SchemasUtils(String schema) {
         parseJson(schema);
@@ -66,7 +67,7 @@ public class SchemasUtils {
         TableSchema schema = BigQueryHelpers.fromJsonString(jsonSchema, TableSchema.class);
         validateSchemaTypes(schema);
         bigQuerySchema = schema;
-
+        jsonBeamSchema = BigQueryHelpers.toJsonString(schema.getFields());
     }
 
     private void validateSchemaTypes(TableSchema bigQuerySchema) {
@@ -100,5 +101,9 @@ public class SchemasUtils {
 
     public Schema getBeamSchema() {
         return beamSchema;
+    }
+
+    public String getJsonBeamSchema() {
+        return jsonBeamSchema;
     }
 }

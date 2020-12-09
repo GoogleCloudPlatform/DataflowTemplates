@@ -23,17 +23,17 @@ import com.google.cloud.teleport.v2.options.ProtegrityDataTokenizationOptions;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.transforms.io.BigQueryIO;
 import com.google.cloud.teleport.v2.transforms.io.BigTableIO;
+import com.google.cloud.teleport.v2.transforms.io.GcsIO;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.utils.SchemasUtils;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.FileSystems;
-import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -98,21 +98,23 @@ public class ProtegrityDataTokenization {
 
         // Create the pipeline
         Pipeline pipeline = Pipeline.create(options);
+        // Register the coder for pipeline
+        CoderRegistry coderRegistry = pipeline.getCoderRegistry();
+        coderRegistry.registerCoderForType(
+                FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
 
         PCollection<String> jsons;
         if (options.getInputGcsFilePattern() != null) {
-            jsons = pipeline
-                    .apply("readTextFromGCSFiles", TextIO.read().from(options.getInputGcsFilePattern()));
-                    //TODO: Add converter for CSV case. Think about distinguishing between JSONs and CSVs.
+            jsons = new GcsIO(options).read(pipeline, schema.getJsonBeamSchema());
         } else if (options.getPubsubTopic() != null) {
             jsons = pipeline
-                    .apply("readMessagesFromPubsub", PubsubIO.readStrings().fromTopic(options.getPubsubTopic()));
+                    .apply("ReadMessagesFromPubsub", PubsubIO.readStrings().fromTopic(options.getPubsubTopic()));
         } else {
             throw new IllegalStateException("No source is provided, please configure GCS or Pub/Sub");
         }
 
         JsonToRow.ParseResult rows = jsons
-                .apply("jsonToRow", JsonToRow.withExceptionReporting(schema.getBeamSchema()).withExtendedErrorInfo());
+                .apply("JsonToRow", JsonToRow.withExceptionReporting(schema.getBeamSchema()).withExtendedErrorInfo());
 
         if (options.getBigQueryTableName() != null) {
             WriteResult writeResult = write(rows.getResults(), options.getBigQueryTableName(), schema.getBigQuerySchema());

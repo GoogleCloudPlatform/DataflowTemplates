@@ -17,6 +17,34 @@
       "isOptional": true
     },
     {
+      "name": "inputGcsFileFormat",
+      "label": "File format of input files",
+      "helpText": "File format of input files. Supported formats: JSON, CSV",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "csvContainsHeaders",
+      "label": "If file(s) contain headers",
+      "helpText": "`true` if file(s) in bucket to read data from contain headers, and `false` otherwise",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "csvDelimiter",
+      "label": "Delimiting character in CSV",
+      "helpText": "Delimiting character in CSV. Default: use delimiter provided in csvFormat",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "csvFormat",
+      "label": "Csv format according to Apache Commons CSV format",
+      "helpText": "Csv format according to Apache Commons CSV format. Default is: Apache Commons CSV default\nhttps://static.javadoc.io/org.apache.commons/commons-csv/1.7/org/apache/commons/csv/CSVFormat.html#DEFAULT\nMust match format names exactly found at: https://static.javadoc.io/org.apache.commons/commons-csv/1.7/org/apache/commons/csv/CSVFormat.Predefined.html",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
       "name": "pubsubTopic",
       "label": "Pub/Sub input topic",
       "helpText": "The Cloud Pub/Sub topic to read from",

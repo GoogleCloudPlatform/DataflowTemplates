@@ -15,8 +15,14 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import static org.apache.beam.sdk.util.RowJsonUtils.rowToJson;
+import static org.apache.beam.vendor.grpc.v1p26p0.com.google.common.base.MoreObjects.firstNonNull;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.v2.transforms.io.BigQueryIO;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.state.BagState;
 import org.apache.beam.sdk.state.StateSpec;
@@ -37,16 +43,11 @@ import org.apache.http.impl.client.HttpClients;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 
-import static org.apache.beam.sdk.util.RowJsonUtils.rowToJson;
-import static org.apache.beam.vendor.grpc.v1p26p0.com.google.common.base.MoreObjects.firstNonNull;
-
-
+/**
+ * Class for data tokenization using DSG.
+ */
 public class DSGTokenization extends DoFn<Row, Row> {
-
 
     /**
      * Logger for class.
