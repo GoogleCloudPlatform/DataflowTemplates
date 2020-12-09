@@ -88,7 +88,8 @@ public class BigTableIO {
                     )
                     .collect(Collectors.toSet());
             // Converting key value to BigTable format
-            ByteString key = ByteString.copyFrom(in.getString(options.getBigTableKeyColumnName()).getBytes());
+            //TODO ramazan@akvelon.com check that please (NPE)
+            ByteString key = ByteString.copyFrom(Objects.requireNonNull(in.getString(options.getBigTableKeyColumnName())).getBytes());
             out.output(KV.of(key, mutations));
         }
     }
