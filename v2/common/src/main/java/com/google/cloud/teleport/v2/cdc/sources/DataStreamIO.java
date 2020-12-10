@@ -93,7 +93,7 @@ public class DataStreamIO extends PTransform<PCollection<String>, PCollection<Re
     directories = input
         .apply("FindTableDirectory",
           Watch
-            .growthOf(new DirectoryMatchPollFn(1, 1, null, null))
+            .growthOf(new DirectoryMatchPollFn(1, 1, null, "/"))
             .withPollInterval(Duration.standardSeconds(120)))
         .apply(Values.create())
         .apply("FindTablePerMinuteDirectory",
@@ -165,12 +165,18 @@ public class DataStreamIO extends PTransform<PCollection<String>, PCollection<Re
       GcsUtil util = getUtil();
       String pageToken = null;
       do {
-        String prefix = path.getObject();
         Objects objects = util.listObjects(
-            path.getBucket(), prefix, pageToken, delimiter);
+            path.getBucket(), path.getObject(), pageToken, delimiter);
         pageToken = objects.getNextPageToken();
         List<StorageObject> items = firstNonNull(
             objects.getItems(), Lists.newArrayList());
+        if (objects.getPrefixes() != null) {
+          for (String prefix : objects.getPrefixes()) {
+            result.add(TimestampedValue.of(
+                "gs://" + path.getBucket() + "/" + prefix,
+                Instant.EPOCH));
+          }
+        }
         for (StorageObject object : items) {
           String fullName = "gs://" + object.getBucket() + "/" + object.getName();
           if (!object.getName().endsWith("/")) {
