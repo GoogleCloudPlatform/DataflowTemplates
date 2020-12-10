@@ -93,12 +93,12 @@ public class DataStreamIO extends PTransform<PCollection<String>, PCollection<Re
     directories = input
         .apply("FindTableDirectory",
           Watch
-            .growthOf(new DirectoryMatchPollFn(1, 1, null))
+            .growthOf(new DirectoryMatchPollFn(1, 1, null, null))
             .withPollInterval(Duration.standardSeconds(120)))
         .apply(Values.create())
         .apply("FindTablePerMinuteDirectory",
           Watch
-            .growthOf(new DirectoryMatchPollFn(5, 5, this.rfcStartDateTime))
+            .growthOf(new DirectoryMatchPollFn(5, 5, this.rfcStartDateTime, null))
             .withPollInterval(Duration.standardSeconds(5)))
         .apply(Values.create());
 
@@ -121,16 +121,12 @@ public class DataStreamIO extends PTransform<PCollection<String>, PCollection<Re
     private final DateTime startDateTime;
     private final String delimiter;
 
-    DirectoryMatchPollFn(Integer minDepth, Integer maxDepth, String rfcStartDateTime) {
+    DirectoryMatchPollFn(Integer minDepth, Integer maxDepth, String rfcStartDateTime, String delimiter) {
       this.maxDepth = maxDepth;
       this.minDepth = minDepth;
       // The delimiter parameter works for 1-depth elements.
       // See https://cloud.google.com/storage/docs/json_api/v1/objects/list for details.
-      if (maxDepth == 1 && minDepth == 1) {
-        this.delimiter = "/";
-      } else {
-        this.delimiter = null;
-      }
+      this.delimiter = delimiter;
       if (rfcStartDateTime != null) {
         this.startDateTime = DateTime.parseRfc3339(rfcStartDateTime);
       } else {
@@ -169,8 +165,9 @@ public class DataStreamIO extends PTransform<PCollection<String>, PCollection<Re
       GcsUtil util = getUtil();
       String pageToken = null;
       do {
+        String prefix = path.getObject();
         Objects objects = util.listObjects(
-            path.getBucket(), path.getObject(), pageToken, delimiter);
+            path.getBucket(), prefix, pageToken, delimiter);
         pageToken = objects.getNextPageToken();
         List<StorageObject> items = firstNonNull(
             objects.getItems(), Lists.newArrayList());
