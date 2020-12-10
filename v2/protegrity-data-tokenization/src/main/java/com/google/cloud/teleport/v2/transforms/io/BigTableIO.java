@@ -23,6 +23,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableWriteResult;
+import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -115,4 +117,33 @@ public class BigTableIO {
             return PDone.in(input.getPipeline());
         }
     }
+
+    /** Necessary {@link PipelineOptions} options for Pipelines that perform write operations to BigTable. */
+    public interface BigTableOptions extends PipelineOptions {
+        @Description("Id of the project where the Cloud BigTable instance to write into is located.")
+        String getBigTableProjectId();
+
+        void setBigTableProjectId(String bigTableProjectId);
+
+        @Description("Id of the Cloud BigTable instance to write into.")
+        String getBigTableInstanceId();
+
+        void setBigTableInstanceId(String bigTableInstanceId);
+
+        @Description("Id of the Cloud BigTable table to write into.")
+        String getBigTableTableId();
+
+        void setBigTableTableId(String bigTableTableId);
+
+        @Description("Column name to use as a key in Cloud BigTable.")
+        String getBigTableKeyColumnName();
+
+        void setBigTableKeyColumnName(String bigTableKeyColumnName);
+
+        @Description("Column family name to use in Cloud BigTable.")
+        String getBigTableColumnFamilyName();
+
+        void setBigTableColumnFamilyName(String bigTableColumnFamilyName);
+    }
+
 }

@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.options;
 
+import com.google.cloud.teleport.v2.transforms.io.BigTableIO;
 import com.google.cloud.teleport.v2.transforms.io.GcsIO;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -23,7 +24,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
  * The {@link ProtegrityDataTokenizationOptions} interface provides the custom execution options passed by the
  * executor at the command-line.
  */
-public interface ProtegrityDataTokenizationOptions extends PipelineOptions, GcsIO.GcsPipelineOptions {
+public interface ProtegrityDataTokenizationOptions extends PipelineOptions, GcsIO.GcsPipelineOptions, BigTableIO.BigTableOptions {
     // Group 1 - Input source
     @Description("Path to data schema (JSON format) in GCS compatible with BigQuery.")
     String getDataSchemaGcsPath();
@@ -40,33 +41,7 @@ public interface ProtegrityDataTokenizationOptions extends PipelineOptions, GcsI
     void setPubsubTopic(String pubsubTopic);
 
     // Group 2 - Output sink
-    // Group 2.1 - BigTable
-    @Description("Id of the project where the Cloud BigTable instance to write into is located.")
-    String getBigTableProjectId();
-
-    void setBigTableProjectId(String bigTableProjectId);
-
-    @Description("Id of the Cloud BigTable instance to write into.")
-    String getBigTableInstanceId();
-
-    void setBigTableInstanceId(String bigTableInstanceId);
-
-    @Description("Id of the Cloud BigTable table to write into.")
-    String getBigTableTableId();
-
-    void setBigTableTableId(String bigTableTableId);
-
-    @Description("Column name to use as a key in Cloud BigTable.")
-    String getBigTableKeyColumnName();
-
-    void setBigTableKeyColumnName(String bigTableKeyColumnName);
-
-    @Description("Column family name to use in Cloud BigTable.")
-    String getBigTableColumnFamilyName();
-
-    void setBigTableColumnFamilyName(String bigTableColumnFamilyName);
-
-    //Group 2.2 - BigQuery
+    //Group 2.1 - BigQuery
     @Description("Cloud BigQuery table name to write into.")
     String getBigQueryTableName();
 
