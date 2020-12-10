@@ -22,8 +22,10 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
+import org.apache.beam.sdk.io.gcp.bigtable.BigtableWriteResult;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
@@ -37,6 +39,9 @@ import org.slf4j.LoggerFactory;
  * The {@link BigTableIO} class for writing data from template to BigTable.
  */
 public class BigTableIO {
+    /**
+     * Logger for class.
+     */
     private static final Logger LOG = LoggerFactory.getLogger(BigTableIO.class);
 
     private final ProtegrityDataTokenizationOptions options;
@@ -46,14 +51,18 @@ public class BigTableIO {
     }
 
     public PDone write(
-                PCollection<Row> input,
+            PCollection<Row> input,
             Schema schema
     ) {
-        return input.apply("convertToBigTableFormat", ParDo.of(new TransformToBigTableFormat(schema)))
-                .apply("writeToBigTable", BigtableIO.write()
+        return input
+                .apply("ConvertToBigTableFormat", ParDo.of(new TransformToBigTableFormat(schema)))
+                .apply("WriteToBigTable", BigtableIO.write()
                         .withProjectId(options.getBigTableProjectId())
                         .withInstanceId(options.getBigTableInstanceId())
-                        .withTableId(options.getBigTableTableId())) ;
+                        .withTableId(options.getBigTableTableId())
+                        .withWriteResults()
+                )
+                .apply("LogRowCount", new LogSuccessfulRows());
     }
 
     static class TransformToBigTableFormat extends DoFn<Row, KV<ByteString, Iterable<Mutation>>> {
@@ -91,6 +100,19 @@ public class BigTableIO {
             //TODO ramazan@akvelon.com check that please (NPE)
             ByteString key = ByteString.copyFrom(Objects.requireNonNull(in.getString(options.getBigTableKeyColumnName())).getBytes());
             out.output(KV.of(key, mutations));
+        }
+    }
+
+    static class LogSuccessfulRows extends PTransform<PCollection<BigtableWriteResult>, PDone> {
+        @Override
+        public PDone expand(PCollection<BigtableWriteResult> input) {
+            input.apply(ParDo.of(new DoFn<BigtableWriteResult, Void>() {
+                @ProcessElement
+                public void processElement(@Element BigtableWriteResult in) {
+                    LOG.info("Successfully wrote {} rows.", in.getRowsWritten());
+                }
+            }));
+            return PDone.in(input.getPipeline());
         }
     }
 }
