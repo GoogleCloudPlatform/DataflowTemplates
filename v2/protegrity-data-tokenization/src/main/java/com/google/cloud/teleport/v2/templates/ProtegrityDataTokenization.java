@@ -26,6 +26,7 @@ import com.google.cloud.teleport.v2.transforms.io.BigTableIO;
 import com.google.cloud.teleport.v2.transforms.io.GcsIO;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.utils.SchemasUtils;
+import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import org.apache.beam.sdk.Pipeline;
@@ -40,6 +41,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.JsonToRow;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.Row;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -115,6 +117,23 @@ public class ProtegrityDataTokenization {
 
         JsonToRow.ParseResult rows = jsons
                 .apply("JsonToRow", JsonToRow.withExceptionReporting(schema.getBeamSchema()).withExtendedErrorInfo());
+
+        /*
+         * Write Row conversion errors to filesystem specified path
+         */
+        rows.getFailedToParseLines()
+                .apply("ToFailsafeElement", MapElements
+                        .into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
+                        .via((Row errRow) -> FailsafeElement
+                                .of(errRow.getString("line"), errRow.getString("line"))
+                                .setErrorMessage(errRow.getString("err"))
+                        ))
+                .apply("WriteCsvConversionErrorsToGcs",
+                        ErrorConverters.WriteStringMessageErrorsAsCsv.newBuilder()
+                                .setCsvDelimiter(options.getCsvDelimiter())
+                                .setErrorWritePath(options.getNonTokenizedDeadLetterGcsPath())
+                                .build());
+
 
         if (options.getBigQueryTableName() != null) {
             WriteResult writeResult = write(rows.getResults(), options.getBigQueryTableName(), schema.getBigQuerySchema());

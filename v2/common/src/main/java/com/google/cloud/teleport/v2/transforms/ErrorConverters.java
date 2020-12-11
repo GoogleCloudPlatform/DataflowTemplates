@@ -22,6 +22,7 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableMap;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Map;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
@@ -166,6 +167,82 @@ public class ErrorConverters {
       public abstract Builder setErrorTag(TupleTag<String> errorTag);
 
       public abstract LogErrors build();
+    }
+  }
+
+  /** Writes all Errors to GCS, place at the end of your pipeline. */
+  @AutoValue
+  public abstract static class WriteStringMessageErrorsAsCsv extends PTransform<PCollection<FailsafeElement<String, String>>, PDone> {
+    public static Builder newBuilder() {
+      return new AutoValue_ErrorConverters_WriteStringMessageErrorsAsCsv.Builder();
+    }
+
+    public abstract String errorWritePath();
+    public abstract String csvDelimiter();
+
+    @Override
+    public PDone expand(PCollection<FailsafeElement<String, String>> pCollection) {
+
+      return pCollection
+              .apply("GetFormattedErrorRow",
+                      ParDo.of(new FailedStringToCsvRowFn(csvDelimiter())))
+              .apply(TextIO.write().to(errorWritePath()).withNumShards(1));
+    }
+
+    /** Builder for {@link WriteStringMessageErrorsAsCsv}. */
+    @AutoValue.Builder
+    public abstract static class Builder {
+      public abstract Builder setErrorWritePath(String errorWritePath);
+
+      public abstract Builder setCsvDelimiter(String csvDelimiter);
+
+      public abstract WriteStringMessageErrorsAsCsv build();
+    }
+  }
+
+  /**
+   * The {@link FailedStringToCsvRowFn} converts string objects which have failed processing into
+   * {@link String} objects contained CSV which can be output to a filesystem.
+   */
+  public static class FailedStringToCsvRowFn
+          extends DoFn<FailsafeElement<String, String>, String> {
+
+    /**
+     * The formatter used to convert timestamps into a BigQuery compatible <a
+     * href="https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#timestamp-type">format</a>.
+     */
+    private static final DateTimeFormatter TIMESTAMP_FORMATTER =
+            DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
+
+    private final String csvDelimiter;
+
+    public FailedStringToCsvRowFn(String csvDelimiter) {
+      this.csvDelimiter = csvDelimiter;
+    }
+    public FailedStringToCsvRowFn() {
+      this.csvDelimiter = ",";
+    }
+
+    @ProcessElement
+    public void processElement(ProcessContext context) {
+      FailsafeElement<String, String> failsafeElement = context.element();
+      ArrayList<String> outputRow  = new ArrayList<>();
+      final String message = failsafeElement.getOriginalPayload();
+
+      // Format the timestamp for insertion
+      String timestamp =
+              TIMESTAMP_FORMATTER.print(context.timestamp().toDateTime(DateTimeZone.UTC));
+
+      outputRow.add(timestamp);
+      outputRow.add(failsafeElement.getErrorMessage());
+      outputRow.add(failsafeElement.getStacktrace());
+
+      // Only set the payload if it's populated on the message.
+      if (message != null) {
+        outputRow.add(message);
+      }
+
+      context.output(String.join(csvDelimiter,outputRow));
     }
   }
 
