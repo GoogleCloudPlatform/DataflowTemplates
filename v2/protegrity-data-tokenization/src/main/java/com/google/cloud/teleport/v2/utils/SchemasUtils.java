@@ -34,76 +34,77 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * The {@link SchemasUtils} Class to read JSON based schema. Is there available to read from file or from string.
- * Currently supported local File System and GCS.
+ * The {@link SchemasUtils} Class to read JSON based schema. Is there available to read from file or
+ * from string. Currently supported local File System and GCS.
  */
 public class SchemasUtils {
-    /* Logger for class.*/
-    private static final Logger LOG = LoggerFactory.getLogger(SchemasUtils.class);
 
-    private TableSchema bigQuerySchema;
-    private Schema beamSchema;
-    private String jsonBeamSchema;
+  /* Logger for class.*/
+  private static final Logger LOG = LoggerFactory.getLogger(SchemasUtils.class);
 
-    public SchemasUtils(String schema) {
-        parseJson(schema);
+  private TableSchema bigQuerySchema;
+  private Schema beamSchema;
+  private String jsonBeamSchema;
+
+  public SchemasUtils(String schema) {
+    parseJson(schema);
+  }
+
+  public SchemasUtils(String path, Charset encoding) throws IOException {
+    if (path.startsWith("gs://")) {
+      parseJson(new String(readGcsFile(path), encoding));
+    } else {
+      byte[] encoded = Files.readAllBytes(Paths.get(path));
+      parseJson(new String(encoded, encoding));
     }
+    LOG.info("Extracted schema: " + bigQuerySchema.toPrettyString());
+  }
 
-    public SchemasUtils(String path, Charset encoding) throws IOException {
-        if (path.startsWith("gs://")) {
-            parseJson(new String(readGcsFile(path), encoding));
-        } else {
-            byte[] encoded = Files.readAllBytes(Paths.get(path));
-            parseJson(new String(encoded, encoding));
-        }
-        LOG.info("Extracted schema: " + bigQuerySchema.toPrettyString());
-    }
+  public TableSchema getBigQuerySchema() {
+    return bigQuerySchema;
+  }
 
-    public TableSchema getBigQuerySchema() {
-        return bigQuerySchema;
-    }
+  private void parseJson(String jsonSchema) throws UnsupportedOperationException {
+    TableSchema schema = BigQueryHelpers.fromJsonString(jsonSchema, TableSchema.class);
+    validateSchemaTypes(schema);
+    bigQuerySchema = schema;
+    jsonBeamSchema = BigQueryHelpers.toJsonString(schema.getFields());
+  }
 
-    private void parseJson(String jsonSchema) throws UnsupportedOperationException {
-        TableSchema schema = BigQueryHelpers.fromJsonString(jsonSchema, TableSchema.class);
-        validateSchemaTypes(schema);
-        bigQuerySchema = schema;
-        jsonBeamSchema = BigQueryHelpers.toJsonString(schema.getFields());
+  private void validateSchemaTypes(TableSchema bigQuerySchema) {
+    try {
+      beamSchema = fromTableSchema(bigQuerySchema);
+    } catch (UnsupportedOperationException exception) {
+      LOG.error("Check json schema, {}", exception.getMessage());
+    } catch (NullPointerException npe) {
+      LOG.error("Missing schema keywords, please check what all required fields presented");
     }
+  }
 
-    private void validateSchemaTypes(TableSchema bigQuerySchema) {
-        try {
-            beamSchema = fromTableSchema(bigQuerySchema);
-        } catch (UnsupportedOperationException exception) {
-            LOG.error("Check json schema, {}", exception.getMessage());
-        } catch (NullPointerException npe){
-            LOG.error("Missing schema keywords, please check what all required fields presented");
-        }
+  /**
+   * Method to read a schema file from GCS and return the file contents as a string.
+   *
+   * @param gcsFilePath path to file in GCS in format "gs://your-bucket/path/to/file"
+   * @return byte array with file contents
+   * @throws IOException thrown if not able to read file
+   */
+  public static byte[] readGcsFile(String gcsFilePath)
+      throws IOException {
+    LOG.info("Reading contents from GCS file: {}", gcsFilePath);
+    // Read the GCS file into byte array and will throw an I/O exception in case file not found.
+    try (ReadableByteChannel readerChannel =
+        FileSystems.open(FileSystems.matchSingleFileSpec(gcsFilePath).resourceId())) {
+      try (InputStream stream = Channels.newInputStream(readerChannel)) {
+        return ByteStreams.toByteArray(stream);
+      }
     }
+  }
 
-    /**
-     * Method to read a schema file from GCS and return the file contents as a string.
-     *
-     * @param gcsFilePath path to file in GCS in format "gs://your-bucket/path/to/file"
-     * @return byte array with file contents
-     * @throws IOException thrown if not able to read file
-     */
-    public static byte[] readGcsFile(String gcsFilePath)
-            throws IOException {
-        LOG.info("Reading contents from GCS file: {}", gcsFilePath);
-        // Read the GCS file into byte array and will throw an I/O exception in case file not found.
-        try (ReadableByteChannel readerChannel =
-                     FileSystems.open(FileSystems.matchSingleFileSpec(gcsFilePath).resourceId())) {
-            try (InputStream stream = Channels.newInputStream(readerChannel)) {
-                return ByteStreams.toByteArray(stream);
-            }
-        }
-    }
+  public Schema getBeamSchema() {
+    return beamSchema;
+  }
 
-    public Schema getBeamSchema() {
-        return beamSchema;
-    }
-
-    public String getJsonBeamSchema() {
-        return jsonBeamSchema;
-    }
+  public String getJsonBeamSchema() {
+    return jsonBeamSchema;
+  }
 }

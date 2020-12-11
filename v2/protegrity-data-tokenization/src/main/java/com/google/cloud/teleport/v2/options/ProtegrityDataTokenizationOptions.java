@@ -21,55 +21,57 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 
 /**
- * The {@link ProtegrityDataTokenizationOptions} interface provides the custom execution options passed by the
- * executor at the command-line.
+ * The {@link ProtegrityDataTokenizationOptions} interface provides the custom execution options
+ * passed by the executor at the command-line.
  */
-public interface ProtegrityDataTokenizationOptions extends PipelineOptions, GcsIO.GcsPipelineOptions, BigTableIO.BigTableOptions {
-    // Group 1 - Input source
-    @Description("Path to data schema (JSON format) in GCS compatible with BigQuery.")
-    String getDataSchemaGcsPath();
+public interface ProtegrityDataTokenizationOptions extends PipelineOptions,
+    GcsIO.GcsPipelineOptions, BigTableIO.BigTableOptions {
 
-    void setDataSchemaGcsPath(String dataSchemaGcsPath);
+  // Group 1 - Input source
+  @Description("Path to data schema (JSON format) in GCS compatible with BigQuery.")
+  String getDataSchemaGcsPath();
 
-    // Group 1.2 - Pub/Sub
-    @Description(
-            "The Cloud Pub/Sub topic to read from."
-                    + "The name should be in the format of "
-                    + "projects/<project-id>/topics/<topic-name>.")
-    String getPubsubTopic();
+  void setDataSchemaGcsPath(String dataSchemaGcsPath);
 
-    void setPubsubTopic(String pubsubTopic);
+  // Group 1.2 - Pub/Sub
+  @Description(
+      "The Cloud Pub/Sub topic to read from."
+          + "The name should be in the format of "
+          + "projects/<project-id>/topics/<topic-name>.")
+  String getPubsubTopic();
 
-    // Group 2 - Output sink
-    //Group 2.1 - BigQuery
-    @Description("Cloud BigQuery table name to write into.")
-    String getBigQueryTableName();
+  void setPubsubTopic(String pubsubTopic);
 
-    void setBigQueryTableName(String bigQueryTableName);
+  // Group 2 - Output sink
+  //Group 2.1 - BigQuery
+  @Description("Cloud BigQuery table name to write into.")
+  String getBigQueryTableName();
 
-    //Group 3 - Protegrity specific parameters
-    @Description("URI for the API calls to DSG.")
-    String getDsgUri();
+  void setBigQueryTableName(String bigQueryTableName);
 
-    void setDsgUri(String dsgUri);
+  //Group 3 - Protegrity specific parameters
+  @Description("URI for the API calls to DSG.")
+  String getDsgUri();
 
-    @Description("Size of the batch to send to DSG per request.")
-    Integer getBatchSize();
+  void setDsgUri(String dsgUri);
 
-    void setBatchSize(Integer batchSize);
+  @Description("Size of the batch to send to DSG per request.")
+  Integer getBatchSize();
 
-    @Description("GCS path to the payload configuration file.")
-    String getPayloadConfigGcsPath();
+  void setBatchSize(Integer batchSize);
 
-    void setPayloadConfigGcsPath(String payloadConfigGcsPath);
+  @Description("GCS path to the payload configuration file.")
+  String getPayloadConfigGcsPath();
 
-    @Description("Dead-Letter GCS path to store not-tokenized data")
-    String getNonTokenizedDeadLetterGcsPath();
+  void setPayloadConfigGcsPath(String payloadConfigGcsPath);
 
-    void setNonTokenizedDeadLetterGcsPath(String payloadConfigGcsPath);
+  @Description("Dead-Letter GCS path to store not-tokenized data")
+  String getNonTokenizedDeadLetterGcsPath();
 
-    @Description("Dead-Letter GCS path to store tokenized data")
-    String getTokenizedDeadLetterGcsPath();
+  void setNonTokenizedDeadLetterGcsPath(String payloadConfigGcsPath);
 
-    void setTokenizedDeadLetterGcsPath(String payloadConfigGcsPath);
+  @Description("Dead-Letter GCS path to store tokenized data")
+  String getTokenizedDeadLetterGcsPath();
+
+  void setTokenizedDeadLetterGcsPath(String payloadConfigGcsPath);
 }

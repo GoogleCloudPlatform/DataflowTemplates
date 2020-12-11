@@ -41,109 +41,118 @@ import org.slf4j.LoggerFactory;
  * The {@link BigTableIO} class for writing data from template to BigTable.
  */
 public class BigTableIO {
-    /**
-     * Logger for class.
-     */
-    private static final Logger LOG = LoggerFactory.getLogger(BigTableIO.class);
 
-    private final ProtegrityDataTokenizationOptions options;
+  /**
+   * Logger for class.
+   */
+  private static final Logger LOG = LoggerFactory.getLogger(BigTableIO.class);
 
-    public BigTableIO(ProtegrityDataTokenizationOptions options) {
-        this.options = options;
+  private final ProtegrityDataTokenizationOptions options;
+
+  public BigTableIO(ProtegrityDataTokenizationOptions options) {
+    this.options = options;
+  }
+
+  public PDone write(
+      PCollection<Row> input,
+      Schema schema
+  ) {
+    return input
+        .apply("ConvertToBigTableFormat", ParDo.of(new TransformToBigTableFormat(schema)))
+        .apply("WriteToBigTable", BigtableIO.write()
+            .withProjectId(options.getBigTableProjectId())
+            .withInstanceId(options.getBigTableInstanceId())
+            .withTableId(options.getBigTableTableId())
+            .withWriteResults()
+        )
+        .apply("LogRowCount", new LogSuccessfulRows());
+  }
+
+  static class TransformToBigTableFormat extends DoFn<Row, KV<ByteString, Iterable<Mutation>>> {
+
+    private final Schema schema;
+
+    TransformToBigTableFormat(Schema schema) {
+      this.schema = schema;
     }
 
-    public PDone write(
-            PCollection<Row> input,
-            Schema schema
-    ) {
-        return input
-                .apply("ConvertToBigTableFormat", ParDo.of(new TransformToBigTableFormat(schema)))
-                .apply("WriteToBigTable", BigtableIO.write()
-                        .withProjectId(options.getBigTableProjectId())
-                        .withInstanceId(options.getBigTableInstanceId())
-                        .withTableId(options.getBigTableTableId())
-                        .withWriteResults()
-                )
-                .apply("LogRowCount", new LogSuccessfulRows());
+    @ProcessElement
+    public void processElement(@Element Row in,
+        OutputReceiver<KV<ByteString, Iterable<Mutation>>> out, ProcessContext c) {
+      ProtegrityDataTokenizationOptions options = c.getPipelineOptions()
+          .as(ProtegrityDataTokenizationOptions.class);
+      // Mapping every field in provided Row to Mutation.SetCell, which will create/update
+      // cell content with provided data
+      Set<Mutation> mutations = schema.getFields().stream()
+          .map(Schema.Field::getName)
+          // Ignoring key field, otherwise it will be added as regular column
+          .filter(fieldName -> !Objects.equals(fieldName, options.getBigTableKeyColumnName()))
+          .map(fieldName -> Pair.of(fieldName, in.getString(fieldName)))
+          .map(pair ->
+              Mutation.newBuilder()
+                  .setSetCell(
+                      Mutation.SetCell.newBuilder()
+                          .setFamilyName(options.getBigTableColumnFamilyName())
+                          .setColumnQualifier(ByteString.copyFrom(pair.getKey().getBytes()))
+                          .setValue(ByteString.copyFrom(pair.getValue().getBytes()))
+                          .setTimestampMicros(System.currentTimeMillis() * 1000)
+                          .build()
+                  )
+                  .build()
+          )
+          .collect(Collectors.toSet());
+      // Converting key value to BigTable format
+      //TODO ramazan@akvelon.com check that please (NPE)
+      ByteString key = ByteString.copyFrom(
+          Objects.requireNonNull(in.getString(options.getBigTableKeyColumnName())).getBytes());
+      out.output(KV.of(key, mutations));
     }
+  }
 
-    static class TransformToBigTableFormat extends DoFn<Row, KV<ByteString, Iterable<Mutation>>> {
+  static class LogSuccessfulRows extends PTransform<PCollection<BigtableWriteResult>, PDone> {
 
-        private final Schema schema;
-
-        TransformToBigTableFormat(Schema schema) {
-            this.schema = schema;
-        }
-
+    @Override
+    public PDone expand(PCollection<BigtableWriteResult> input) {
+      input.apply(ParDo.of(new DoFn<BigtableWriteResult, Void>() {
         @ProcessElement
-        public void processElement(@Element Row in, OutputReceiver<KV<ByteString, Iterable<Mutation>>> out, ProcessContext c) {
-            ProtegrityDataTokenizationOptions options = c.getPipelineOptions().as(ProtegrityDataTokenizationOptions.class);
-            // Mapping every field in provided Row to Mutation.SetCell, which will create/update
-            // cell content with provided data
-            Set<Mutation> mutations = schema.getFields().stream()
-                    .map(Schema.Field::getName)
-                    // Ignoring key field, otherwise it will be added as regular column
-                    .filter(fieldName -> !Objects.equals(fieldName, options.getBigTableKeyColumnName()))
-                    .map(fieldName -> Pair.of(fieldName, in.getString(fieldName)))
-                    .map(pair ->
-                            Mutation.newBuilder()
-                                    .setSetCell(
-                                            Mutation.SetCell.newBuilder()
-                                                    .setFamilyName(options.getBigTableColumnFamilyName())
-                                                    .setColumnQualifier(ByteString.copyFrom(pair.getKey().getBytes()))
-                                                    .setValue(ByteString.copyFrom(pair.getValue().getBytes()))
-                                                    .setTimestampMicros(System.currentTimeMillis() * 1000)
-                                                    .build()
-                                    )
-                                    .build()
-                    )
-                    .collect(Collectors.toSet());
-            // Converting key value to BigTable format
-            //TODO ramazan@akvelon.com check that please (NPE)
-            ByteString key = ByteString.copyFrom(Objects.requireNonNull(in.getString(options.getBigTableKeyColumnName())).getBytes());
-            out.output(KV.of(key, mutations));
+        public void processElement(@Element BigtableWriteResult in) {
+          LOG.info("Successfully wrote {} rows.", in.getRowsWritten());
         }
+      }));
+      return PDone.in(input.getPipeline());
     }
+  }
 
-    static class LogSuccessfulRows extends PTransform<PCollection<BigtableWriteResult>, PDone> {
-        @Override
-        public PDone expand(PCollection<BigtableWriteResult> input) {
-            input.apply(ParDo.of(new DoFn<BigtableWriteResult, Void>() {
-                @ProcessElement
-                public void processElement(@Element BigtableWriteResult in) {
-                    LOG.info("Successfully wrote {} rows.", in.getRowsWritten());
-                }
-            }));
-            return PDone.in(input.getPipeline());
-        }
-    }
+  /**
+   * Necessary {@link PipelineOptions} options for Pipelines that perform write operations to
+   * BigTable.
+   */
+  public interface BigTableOptions extends PipelineOptions {
 
-    /** Necessary {@link PipelineOptions} options for Pipelines that perform write operations to BigTable. */
-    public interface BigTableOptions extends PipelineOptions {
-        @Description("Id of the project where the Cloud BigTable instance to write into is located.")
-        String getBigTableProjectId();
+    @Description("Id of the project where the Cloud BigTable instance to write into is located.")
+    String getBigTableProjectId();
 
-        void setBigTableProjectId(String bigTableProjectId);
+    void setBigTableProjectId(String bigTableProjectId);
 
-        @Description("Id of the Cloud BigTable instance to write into.")
-        String getBigTableInstanceId();
+    @Description("Id of the Cloud BigTable instance to write into.")
+    String getBigTableInstanceId();
 
-        void setBigTableInstanceId(String bigTableInstanceId);
+    void setBigTableInstanceId(String bigTableInstanceId);
 
-        @Description("Id of the Cloud BigTable table to write into.")
-        String getBigTableTableId();
+    @Description("Id of the Cloud BigTable table to write into.")
+    String getBigTableTableId();
 
-        void setBigTableTableId(String bigTableTableId);
+    void setBigTableTableId(String bigTableTableId);
 
-        @Description("Column name to use as a key in Cloud BigTable.")
-        String getBigTableKeyColumnName();
+    @Description("Column name to use as a key in Cloud BigTable.")
+    String getBigTableKeyColumnName();
 
-        void setBigTableKeyColumnName(String bigTableKeyColumnName);
+    void setBigTableKeyColumnName(String bigTableKeyColumnName);
 
-        @Description("Column family name to use in Cloud BigTable.")
-        String getBigTableColumnFamilyName();
+    @Description("Column family name to use in Cloud BigTable.")
+    String getBigTableColumnFamilyName();
 
-        void setBigTableColumnFamilyName(String bigTableColumnFamilyName);
-    }
+    void setBigTableColumnFamilyName(String bigTableColumnFamilyName);
+  }
 
 }

@@ -33,47 +33,52 @@ import org.slf4j.LoggerFactory;
  * The {@link BigQueryIO} class for writing data from template to BigTable.
  */
 public class BigQueryIO {
-    /**
-     * Logger for class.
-     */
-    private static final Logger LOG = LoggerFactory.getLogger(BigQueryIO.class);
 
-    public static WriteResult write(PCollection<Row> input, String bigQueryTableName, TableSchema schema) {
-        return input
-                .apply("RowToTableRow", ParDo.of(new BigQueryConverters.RowToTableRowFn()))
-                .apply(
-                        "WriteSuccessfulRecords",
-                        org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.writeTableRows()
-                                .withCreateDisposition(org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition.CREATE_IF_NEEDED)
-                                .withWriteDisposition(org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
-                                .withExtendedErrorInfo()
-                                .withMethod(org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.Method.STREAMING_INSERTS)
-                                .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
-                                .withSchema(schema)
-                                .to(bigQueryTableName));
+  /**
+   * Logger for class.
+   */
+  private static final Logger LOG = LoggerFactory.getLogger(BigQueryIO.class);
+
+  public static WriteResult write(PCollection<Row> input, String bigQueryTableName,
+      TableSchema schema) {
+    return input
+        .apply("RowToTableRow", ParDo.of(new BigQueryConverters.RowToTableRowFn()))
+        .apply(
+            "WriteSuccessfulRecords",
+            org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.writeTableRows()
+                .withCreateDisposition(
+                    org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition.CREATE_IF_NEEDED)
+                .withWriteDisposition(
+                    org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
+                .withExtendedErrorInfo()
+                .withMethod(
+                    org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.Method.STREAMING_INSERTS)
+                .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
+                .withSchema(schema)
+                .to(bigQueryTableName));
+  }
+
+  /**
+   * Method to wrap a {@link BigQueryInsertError} into a {@link FailsafeElement}.
+   *
+   * @param insertError BigQueryInsert error.
+   * @return FailsafeElement object.
+   */
+  public static FailsafeElement<String, String> wrapBigQueryInsertError(
+      BigQueryInsertError insertError) {
+
+    FailsafeElement<String, String> failsafeElement;
+    try {
+
+      failsafeElement =
+          FailsafeElement.of(
+              insertError.getRow().toPrettyString(), insertError.getRow().toPrettyString());
+      failsafeElement.setErrorMessage(insertError.getError().toPrettyString());
+
+    } catch (IOException e) {
+      BigQueryIO.LOG.error("Failed to wrap BigQuery insert error.");
+      throw new RuntimeException(e);
     }
-
-    /**
-     * Method to wrap a {@link BigQueryInsertError} into a {@link FailsafeElement}.
-     *
-     * @param insertError BigQueryInsert error.
-     * @return FailsafeElement object.
-     */
-    public static FailsafeElement<String, String> wrapBigQueryInsertError(
-            BigQueryInsertError insertError) {
-
-        FailsafeElement<String, String> failsafeElement;
-        try {
-
-            failsafeElement =
-                    FailsafeElement.of(
-                            insertError.getRow().toPrettyString(), insertError.getRow().toPrettyString());
-            failsafeElement.setErrorMessage(insertError.getError().toPrettyString());
-
-        } catch (IOException e) {
-            BigQueryIO.LOG.error("Failed to wrap BigQuery insert error.");
-            throw new RuntimeException(e);
-        }
-        return failsafeElement;
-    }
+    return failsafeElement;
+  }
 }

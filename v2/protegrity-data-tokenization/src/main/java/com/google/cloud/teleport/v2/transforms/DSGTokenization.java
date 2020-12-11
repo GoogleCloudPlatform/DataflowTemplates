@@ -49,106 +49,110 @@ import org.slf4j.LoggerFactory;
  */
 public class DSGTokenization extends DoFn<Row, Row> {
 
-    /**
-     * Logger for class.
-     */
-    private static final Logger LOG = LoggerFactory.getLogger(BigQueryIO.class);
+  /**
+   * Logger for class.
+   */
+  private static final Logger LOG = LoggerFactory.getLogger(BigQueryIO.class);
 
-    private static Schema schemaToDsg;
-    private static CloseableHttpClient httpclient;
-    private static ObjectMapper objectMapperForDSG;
+  private static Schema schemaToDsg;
+  private static CloseableHttpClient httpclient;
+  private static ObjectMapper objectMapperForDSG;
 
-    private final Schema schema;
-    private final int batchSize;
-    private final Iterable<String> fieldsToTokenize;
-    private final String dsgURI;
+  private final Schema schema;
+  private final int batchSize;
+  private final Iterable<String> fieldsToTokenize;
+  private final String dsgURI;
 
-    @StateId("buffer")
-    private final StateSpec<BagState<Row>> bufferedEvents = StateSpecs.bag();
+  @StateId("buffer")
+  private final StateSpec<BagState<Row>> bufferedEvents = StateSpecs.bag();
 
-    @StateId("count")
-    private final StateSpec<ValueState<Integer>> countState = StateSpecs.value();
+  @StateId("count")
+  private final StateSpec<ValueState<Integer>> countState = StateSpecs.value();
 
-    private DSGTokenization(Schema schema, int batchSize, Iterable<String> fieldsToTokenize, String dsgURI) {
-        this.schema = schema;
-        this.batchSize = batchSize;
-        this.fieldsToTokenize = fieldsToTokenize;
-        this.dsgURI = dsgURI;
+  private DSGTokenization(Schema schema, int batchSize, Iterable<String> fieldsToTokenize,
+      String dsgURI) {
+    this.schema = schema;
+    this.batchSize = batchSize;
+    this.fieldsToTokenize = fieldsToTokenize;
+    this.dsgURI = dsgURI;
+  }
+
+  @Setup
+  public void setup() {
+
+    ArrayList<Schema.Field> fields = new ArrayList<>();
+    for (String field : fieldsToTokenize) {
+      fields.add(schema.getField(field));
+    }
+    schemaToDsg = new Schema(fields);
+    objectMapperForDSG = RowJsonUtils
+        .newObjectMapperWith(RowJson.RowJsonSerializer.forSchema(schemaToDsg));
+
+    httpclient = HttpClients.createDefault();
+  }
+
+  @Teardown
+  public void close() {
+    try {
+      httpclient.close();
+    } catch (IOException exception) {
+      LOG.warn("Can't close connection: {}", exception.getMessage());
     }
 
-    @Setup
-    public void setup() {
+  }
 
-        ArrayList<Schema.Field> fields = new ArrayList<>();
-        for (String field : fieldsToTokenize) {
-            fields.add(schema.getField(field));
-        }
-        schemaToDsg = new Schema(fields);
-        objectMapperForDSG = RowJsonUtils.newObjectMapperWith(RowJson.RowJsonSerializer.forSchema(schemaToDsg));
+  @ProcessElement
+  public void process(
+      ProcessContext context,
+      @StateId("buffer") BagState<Row> bufferState,
+      @StateId("count") ValueState<Integer> countState) throws IOException {
 
-        httpclient = HttpClients.createDefault();
+    int count = firstNonNull(countState.read(), 0);
+    count = count + 1;
+    countState.write(count);
+    bufferState.add(context.element());
+
+    if (count >= batchSize) {
+      for (Row outputRow : getTokenizedRow(bufferState.read())) {
+        context.output(outputRow);
+      }
+      bufferState.clear();
+      countState.clear();
+    }
+  }
+
+  private ArrayList<Row> getTokenizedRow(Iterable<Row> inputRows)
+      throws IOException { //TODO catch that
+    ArrayList<Row> outputRows = new ArrayList<>();
+
+    for (Row inputRow : inputRows) {
+
+      Row.Builder builder = Row.withSchema(schemaToDsg);
+      for (Schema.Field field : schemaToDsg.getFields()) {
+        builder.withFieldValue(field.getName(), inputRow.getValue(field.getName()));
+      }
+      CloseableHttpResponse response = sendToDsg(
+          rowToJson(objectMapperForDSG, builder.build()).getBytes());
+
+      String tokenizedData = IOUtils
+          .toString(response.getEntity().getContent(), StandardCharsets.UTF_8);
+      Row tokenizedRow = RowJsonUtils.jsonToRow(objectMapperForDSG, tokenizedData);
+      Row.FieldValueBuilder rowBuilder = Row.fromRow(inputRow);
+      for (Schema.Field field : schemaToDsg.getFields()) {
+        rowBuilder.withFieldValue(field.getName(), tokenizedRow.getValue(field.getName()));
+      }
+      outputRows.add(rowBuilder.build());
     }
 
-    @Teardown
-    public void close() {
-        try {
-            httpclient.close();
-        } catch (IOException exception) {
-            LOG.warn("Can't close connection: {}", exception.getMessage());
-        }
+    return outputRows;
 
-    }
+  }
 
-    @ProcessElement
-    public void process(
-            ProcessContext context,
-            @StateId("buffer") BagState<Row> bufferState,
-            @StateId("count") ValueState<Integer> countState) throws IOException {
-
-        int count = firstNonNull(countState.read(), 0);
-        count = count + 1;
-        countState.write(count);
-        bufferState.add(context.element());
-
-        if (count >= batchSize) {
-            for (Row outputRow : getTokenizedRow(bufferState.read())) {
-                context.output(outputRow);
-            }
-            bufferState.clear();
-            countState.clear();
-        }
-    }
-
-    private ArrayList<Row> getTokenizedRow(Iterable<Row> inputRows) throws IOException { //TODO catch that
-        ArrayList<Row> outputRows = new ArrayList<>();
-
-        for (Row inputRow : inputRows) {
-
-            Row.Builder builder = Row.withSchema(schemaToDsg);
-            for (Schema.Field field : schemaToDsg.getFields()) {
-                builder.withFieldValue(field.getName(), inputRow.getValue(field.getName()));
-            }
-            CloseableHttpResponse response = sendToDsg(rowToJson(objectMapperForDSG, builder.build()).getBytes());
-
-
-            String tokenizedData = IOUtils.toString(response.getEntity().getContent(), StandardCharsets.UTF_8);
-            Row tokenizedRow = RowJsonUtils.jsonToRow(objectMapperForDSG, tokenizedData);
-            Row.FieldValueBuilder rowBuilder = Row.fromRow(inputRow);
-            for (Schema.Field field : schemaToDsg.getFields()) {
-                rowBuilder.withFieldValue(field.getName(), tokenizedRow.getValue(field.getName()));
-            }
-            outputRows.add(rowBuilder.build());
-        }
-
-        return outputRows;
-
-    }
-
-    private CloseableHttpResponse sendToDsg(byte[] data) throws IOException {
-        HttpPost httpPost = new HttpPost(dsgURI);
-        HttpEntity stringEntity = new ByteArrayEntity(data, ContentType.APPLICATION_JSON);
-        httpPost.setEntity(stringEntity);
-        return httpclient.execute(httpPost);
-    }
+  private CloseableHttpResponse sendToDsg(byte[] data) throws IOException {
+    HttpPost httpPost = new HttpPost(dsgURI);
+    HttpEntity stringEntity = new ByteArrayEntity(data, ContentType.APPLICATION_JSON);
+    httpPost.setEntity(stringEntity);
+    return httpclient.execute(httpPost);
+  }
 }
 

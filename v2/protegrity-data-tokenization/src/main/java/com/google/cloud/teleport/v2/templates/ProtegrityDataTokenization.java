@@ -51,115 +51,118 @@ import org.slf4j.LoggerFactory;
  */
 public class ProtegrityDataTokenization {
 
-    /**
-     * Logger for class.
-     */
-    private static final Logger LOG = LoggerFactory.getLogger(ProtegrityDataTokenization.class);
+  /**
+   * Logger for class.
+   */
+  private static final Logger LOG = LoggerFactory.getLogger(ProtegrityDataTokenization.class);
 
-    /**
-     * String/String Coder for FailsafeElement.
-     */
-    private static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
-            FailsafeElementCoder.of(
-                    NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of()));
+  /**
+   * String/String Coder for FailsafeElement.
+   */
+  private static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
+      FailsafeElementCoder.of(
+          NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of()));
 
-    /**
-     * The default suffix for error tables if dead letter table is not specified.
-     */
-    private static final String DEFAULT_DEADLETTER_TABLE_SUFFIX = "_error_records";
+  /**
+   * The default suffix for error tables if dead letter table is not specified.
+   */
+  private static final String DEFAULT_DEADLETTER_TABLE_SUFFIX = "_error_records";
 
-    /**
-     * Main entry point for pipeline execution.
-     *
-     * @param args Command line arguments to the pipeline.
-     */
-    public static void main(String[] args) {
-        ProtegrityDataTokenizationOptions options =
-                PipelineOptionsFactory.fromArgs(args)
-                        .withValidation()
-                        .as(ProtegrityDataTokenizationOptions.class);
-        FileSystems.setDefaultPipelineOptions(options);
+  /**
+   * Main entry point for pipeline execution.
+   *
+   * @param args Command line arguments to the pipeline.
+   */
+  public static void main(String[] args) {
+    ProtegrityDataTokenizationOptions options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(ProtegrityDataTokenizationOptions.class);
+    FileSystems.setDefaultPipelineOptions(options);
 
-        run(options);
+    run(options);
+  }
+
+  /**
+   * Runs the pipeline to completion with the specified options.
+   *
+   * @param options The execution options.
+   * @return The pipeline result.
+   */
+  public static PipelineResult run(ProtegrityDataTokenizationOptions options) {
+    SchemasUtils schema = null;
+    try {
+      schema = new SchemasUtils(options.getDataSchemaGcsPath(), StandardCharsets.UTF_8);
+    } catch (IOException e) {
+      LOG.error("Failed to retrieve schema for data.", e);
+    }
+    checkArgument(schema != null, "Data schema is mandatory.");
+
+    // Create the pipeline
+    Pipeline pipeline = Pipeline.create(options);
+    // Register the coder for pipeline
+    CoderRegistry coderRegistry = pipeline.getCoderRegistry();
+    coderRegistry.registerCoderForType(
+        FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
+
+    PCollection<String> jsons;
+    if (options.getInputGcsFilePattern() != null) {
+      jsons = new GcsIO(options).read(pipeline, schema.getJsonBeamSchema());
+    } else if (options.getPubsubTopic() != null) {
+      jsons = pipeline
+          .apply("ReadMessagesFromPubsub",
+              PubsubIO.readStrings().fromTopic(options.getPubsubTopic()));
+    } else {
+      throw new IllegalStateException("No source is provided, please configure GCS or Pub/Sub");
     }
 
-    /**
-     * Runs the pipeline to completion with the specified options.
-     *
-     * @param options The execution options.
-     * @return The pipeline result.
+    JsonToRow.ParseResult rows = jsons
+        .apply("JsonToRow",
+            JsonToRow.withExceptionReporting(schema.getBeamSchema()).withExtendedErrorInfo());
+
+    /*
+     * Write Row conversion errors to filesystem specified path
      */
-    public static PipelineResult run(ProtegrityDataTokenizationOptions options) {
-        SchemasUtils schema = null;
-        try {
-            schema = new SchemasUtils(options.getDataSchemaGcsPath(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            LOG.error("Failed to retrieve schema for data.", e);
-        }
-        checkArgument(schema != null, "Data schema is mandatory.");
+    rows.getFailedToParseLines()
+        .apply("ToFailsafeElement", MapElements
+            .into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
+            .via((Row errRow) -> FailsafeElement
+                .of(errRow.getString("line"), errRow.getString("line"))
+                .setErrorMessage(errRow.getString("err"))
+            ))
+        .apply("WriteCsvConversionErrorsToGcs",
+            ErrorConverters.WriteStringMessageErrorsAsCsv.newBuilder()
+                .setCsvDelimiter(options.getCsvDelimiter())
+                .setErrorWritePath(options.getNonTokenizedDeadLetterGcsPath())
+                .build());
 
-        // Create the pipeline
-        Pipeline pipeline = Pipeline.create(options);
-        // Register the coder for pipeline
-        CoderRegistry coderRegistry = pipeline.getCoderRegistry();
-        coderRegistry.registerCoderForType(
-                FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
-
-        PCollection<String> jsons;
-        if (options.getInputGcsFilePattern() != null) {
-            jsons = new GcsIO(options).read(pipeline, schema.getJsonBeamSchema());
-        } else if (options.getPubsubTopic() != null) {
-            jsons = pipeline
-                    .apply("ReadMessagesFromPubsub", PubsubIO.readStrings().fromTopic(options.getPubsubTopic()));
-        } else {
-            throw new IllegalStateException("No source is provided, please configure GCS or Pub/Sub");
-        }
-
-        JsonToRow.ParseResult rows = jsons
-                .apply("JsonToRow", JsonToRow.withExceptionReporting(schema.getBeamSchema()).withExtendedErrorInfo());
-
-        /*
-         * Write Row conversion errors to filesystem specified path
-         */
-        rows.getFailedToParseLines()
-                .apply("ToFailsafeElement", MapElements
-                        .into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
-                        .via((Row errRow) -> FailsafeElement
-                                .of(errRow.getString("line"), errRow.getString("line"))
-                                .setErrorMessage(errRow.getString("err"))
-                        ))
-                .apply("WriteCsvConversionErrorsToGcs",
-                        ErrorConverters.WriteStringMessageErrorsAsCsv.newBuilder()
-                                .setCsvDelimiter(options.getCsvDelimiter())
-                                .setErrorWritePath(options.getNonTokenizedDeadLetterGcsPath())
-                                .build());
-
-
-        if (options.getBigQueryTableName() != null) {
-            WriteResult writeResult = write(rows.getResults(), options.getBigQueryTableName(), schema.getBigQuerySchema());
-            writeResult
-                    .getFailedInsertsWithErr()
-                    .apply(
-                            "WrapInsertionErrors",
-                            MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
-                                    .via(BigQueryIO::wrapBigQueryInsertError))
-                    .setCoder(FAILSAFE_ELEMENT_CODER)
-                    .apply(
-                            "WriteInsertionFailedRecords",
-                            ErrorConverters.WriteStringMessageErrors.newBuilder()
-                                    .setErrorRecordsTable(options.getBigQueryTableName() + DEFAULT_DEADLETTER_TABLE_SUFFIX)
-                                    .setErrorRecordsTableSchema(SchemaUtils.DEADLETTER_SCHEMA)
-                                    .build());
-        } else if (options.getBigTableInstanceId() != null) {
-            new BigTableIO(options).write(
-                    rows.getResults(),
-                    schema.getBeamSchema()
-            );
-        } else {
-            throw new IllegalStateException("No sink is provided, please configure BigQuery or BigTable.");
-        }
-
-        return pipeline.run();
+    if (options.getBigQueryTableName() != null) {
+      WriteResult writeResult = write(rows.getResults(), options.getBigQueryTableName(),
+          schema.getBigQuerySchema());
+      writeResult
+          .getFailedInsertsWithErr()
+          .apply(
+              "WrapInsertionErrors",
+              MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
+                  .via(BigQueryIO::wrapBigQueryInsertError))
+          .setCoder(FAILSAFE_ELEMENT_CODER)
+          .apply(
+              "WriteInsertionFailedRecords",
+              ErrorConverters.WriteStringMessageErrors.newBuilder()
+                  .setErrorRecordsTable(
+                      options.getBigQueryTableName() + DEFAULT_DEADLETTER_TABLE_SUFFIX)
+                  .setErrorRecordsTableSchema(SchemaUtils.DEADLETTER_SCHEMA)
+                  .build());
+    } else if (options.getBigTableInstanceId() != null) {
+      new BigTableIO(options).write(
+          rows.getResults(),
+          schema.getBeamSchema()
+      );
+    } else {
+      throw new IllegalStateException(
+          "No sink is provided, please configure BigQuery or BigTable.");
     }
 
+    return pipeline.run();
+  }
 }

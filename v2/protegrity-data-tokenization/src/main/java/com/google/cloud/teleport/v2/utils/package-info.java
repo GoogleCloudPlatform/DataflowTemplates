@@ -14,5 +14,7 @@
  * the License.
  */
 
-/** Protegrity Data Tokenization template for Google Cloud Teleport. */
+/**
+ * Protegrity Data Tokenization template for Google Cloud Teleport.
+ */
 package com.google.cloud.teleport.v2.utils;
