@@ -93,12 +93,12 @@ public class DataStreamIO extends PTransform<PCollection<String>, PCollection<Re
     directories = input
         .apply("FindTableDirectory",
           Watch
-            .growthOf(new DirectoryMatchPollFn(1, 1))
+            .growthOf(new DirectoryMatchPollFn(1, 1, null, "/"))
             .withPollInterval(Duration.standardSeconds(120)))
         .apply(Values.create())
         .apply("FindTablePerMinuteDirectory",
           Watch
-            .growthOf(new DirectoryMatchPollFn(5, 5, this.rfcStartDateTime))
+            .growthOf(new DirectoryMatchPollFn(5, 5, this.rfcStartDateTime, null))
             .withPollInterval(Duration.standardSeconds(5)))
         .apply(Values.create());
 
@@ -118,19 +118,19 @@ public class DataStreamIO extends PTransform<PCollection<String>, PCollection<Re
     private transient GcsUtil util;
     private final Integer minDepth;
     private final Integer maxDepth;
-    private DateTime startDateTime = DateTime.parseRfc3339("1970-01-01T00:00:00.00Z");
+    private final DateTime startDateTime;
+    private final String delimiter;
 
-    DirectoryMatchPollFn(Integer minDepth, Integer maxDepth) {
+    DirectoryMatchPollFn(Integer minDepth, Integer maxDepth, String rfcStartDateTime, String delimiter) {
       this.maxDepth = maxDepth;
       this.minDepth = minDepth;
-    }
-
-    DirectoryMatchPollFn(Integer minDepth, Integer maxDepth, String rfcStartDateTime) {
-      this.maxDepth = maxDepth;
-      this.minDepth = minDepth;
-
+      // The delimiter parameter works for 1-depth elements.
+      // See https://cloud.google.com/storage/docs/json_api/v1/objects/list for details.
+      this.delimiter = delimiter;
       if (rfcStartDateTime != null) {
         this.startDateTime = DateTime.parseRfc3339(rfcStartDateTime);
+      } else {
+        this.startDateTime = DateTime.parseRfc3339("1970-01-01T00:00:00.00Z");
       }
     }
 
@@ -165,10 +165,18 @@ public class DataStreamIO extends PTransform<PCollection<String>, PCollection<Re
       GcsUtil util = getUtil();
       String pageToken = null;
       do {
-        Objects objects = util.listObjects(path.getBucket(), path.getObject(), pageToken);
+        Objects objects = util.listObjects(
+            path.getBucket(), path.getObject(), pageToken, delimiter);
         pageToken = objects.getNextPageToken();
         List<StorageObject> items = firstNonNull(
             objects.getItems(), Lists.newArrayList());
+        if (objects.getPrefixes() != null) {
+          for (String prefix : objects.getPrefixes()) {
+            result.add(TimestampedValue.of(
+                "gs://" + path.getBucket() + "/" + prefix,
+                Instant.EPOCH));
+          }
+        }
         for (StorageObject object : items) {
           String fullName = "gs://" + object.getBucket() + "/" + object.getName();
           if (!object.getName().endsWith("/")) {

@@ -19,43 +19,55 @@ A good transform function.
 @param {string} inJson
 @return {string} outJson
 """
+import copy
 import json
 import sys
+import traceback
 
 def transform(event):
-  """ Return a Dict or List of Dict Objects.  Return None to discard
-      Input: JSON string
-      Output: Python Dictionary
-  """
-  event['someProp'] = 'someValue'
-  event = json.dumps(event)
+  """ Return a Dict or List of Dict Objects.  Return None to discard """
+  event['new_key'] = 'new_value'
+  # event = event
   return event
 
-# DO NOT EDIT BELOW THIS LINE
-# The remaining code is boilerplate required for
-# dynamic handling of event batches from the main
-# dataflow pipeline. the transform() function should
-# be the initial entrypoint for your custom logic.
-def _handle_result(result):
-  if isinstance(result, list):
-    for event in result:
-      if event:
-        print(json.dumps(event))
-  elif result:
-    print(json.dumps(result))
+def _handle_result(input_data):
+  event_id = copy.deepcopy(input_data['id'])
+  event = copy.deepcopy(input_data['event'])
+  try:
+    transformed_event = transform(event)
+    if isinstance(transformed_event, list):
+      for row in transformed_event:
+        payload = json.dumps({'status': 'SUCCESS',
+                              'id': event_id,
+                              'event': row,
+                              'error_message': None})
+        print(payload)
+    else:
+      payload = json.dumps({'status': 'SUCCESS',
+                            'id': event_id,
+                            'event': transformed_event,
+                            'error_message': None})
+      print(payload)
+  except Exception as e:
+    stack_trace = traceback.format_exc()
+    payload = json.dumps({'status': 'FAILED',
+                          'id': event_id,
+                          'event': event,
+                          'error_message': stack_trace})
+    print(payload)
 
 if __name__ == '__main__':
   # TODO: How do we handle the case where there are no messages
   file_name = sys.argv[1]
+  data = []
   with open(file_name, "r") as data_file:
-    for cnt, raw_data in enumerate(data_file):
-      raw_events = "[%s]" % raw_data
+    for line in data_file:
+      data.append(json.loads(line))
 
-      data = json.loads(raw_events)
-
-      if isinstance(data, list):
-        for event in data:
-          _handle_result(transform(event))
-      else:
-        event = data
-        _handle_result(transform(event))
+  if isinstance(data, list):
+    for event in data:
+      _handle_result(event)
+  else:
+    event = data
+    _handle_result(event)
+  exit()

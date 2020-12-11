@@ -53,6 +53,7 @@
         <findbugs.version>3.0.1</findbugs.version>
         <mvn-target-dir>${basedir}/target</mvn-target-dir>
         <derby.version>10.15.2.0</derby.version>
+        <json.version>20200518</json.version>
     </properties>
 
     <dependencies>
@@ -185,6 +186,11 @@
             <groupId>com.google.code.findbugs</groupId>
             <artifactId>jsr305</artifactId>
             <version>${findbugs.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>${json.version}</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
