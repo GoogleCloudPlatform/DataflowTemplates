@@ -97,7 +97,6 @@ public class ProtegrityDataTokenization {
       LOG.error("Failed to retrieve schema for data.", e);
     }
     checkArgument(schema != null, "Data schema is mandatory.");
-
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
     // Register the coder for pipeline
@@ -136,7 +135,12 @@ public class ProtegrityDataTokenization {
                 .setErrorWritePath(options.getNonTokenizedDeadLetterGcsPath())
                 .build());
 
-    if (options.getBigQueryTableName() != null) {
+    if (options.getOutputGcsDirectory() != null) {
+      new GcsIO(options).write(
+          rows.getResults(),
+          schema.getBeamSchema()
+      );
+    } else if (options.getBigQueryTableName() != null) {
       WriteResult writeResult = write(rows.getResults(), options.getBigQueryTableName(),
           schema.getBigQuerySchema());
       writeResult

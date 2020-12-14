@@ -20,6 +20,7 @@ import com.google.cloud.teleport.v2.options.ProtegrityDataTokenizationOptions;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import java.util.stream.Collectors;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
@@ -27,13 +28,18 @@ import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.ToJson;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.PDone;
+import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TypeDescriptors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 
 /**
  * The {@link GcsIO} class to read/write data from/into Google Cloud Storage.
@@ -97,11 +103,22 @@ public class GcsIO {
 
     void setInputGcsFilePattern(String inputGcsFilePattern);
 
+    @Description("GCS directory in bucket to write data to")
+    String getOutputGcsDirectory();
+
+    void setOutputGcsDirectory(String outputGcsDirectory);
+
     @Description("File format of input files. Supported formats: JSON, CSV")
     @Default.Enum("JSON")
     GcsIO.FORMAT getInputGcsFileFormat();
 
     void setInputGcsFileFormat(GcsIO.FORMAT inputGcsFileFormat);
+
+    @Description("File format of output files. Supported formats: JSON, CSV")
+    @Default.Enum("JSON")
+    GcsIO.FORMAT getOutputGcsFileFormat();
+
+    void setOutputGcsFileFormat(GcsIO.FORMAT outputGcsFileFormat);
 
     // CSV parameters
     @Description("If file(s) contain headers")
@@ -190,4 +207,26 @@ public class GcsIO {
           "No valid format for input data is provided. Please, choose JSON or CSV.");
     }
   }
+
+    public PDone write(PCollection<Row> input, Schema schema) {
+        if (options.getOutputGcsFileFormat() == FORMAT.JSON) {
+            return input.apply("RowsToJSON", ToJson.of())
+                    .apply("WriteToGCS", TextIO.write().to(options.getOutputGcsDirectory()));
+        } else if (options.getOutputGcsFileFormat() == FORMAT.CSV) {
+            String header = String.join(options.getCsvDelimiter(), schema.getFieldNames());
+            return input
+                    .apply("ConvertToCSV", MapElements.into(TypeDescriptors.strings())
+                            .via((Row inputRow) ->
+                                    inputRow.getValues()
+                                            .stream()
+                                            .map(Object::toString)
+                                            .collect(Collectors.joining(","))
+                            )
+                    )
+                    .apply("WriteToGCS", TextIO.write().to(options.getOutputGcsDirectory()).withHeader(header));
+
+        } else {
+            throw new IllegalStateException("No valid format for output data is provided. Please, choose JSON or CSV.");
+        }
+    }
 }
