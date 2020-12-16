@@ -19,8 +19,8 @@ import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.options.ProtegrityDataTokenizationOptions;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
+import com.google.cloud.teleport.v2.utils.RowToCsv;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
-import java.util.stream.Collectors;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
@@ -208,25 +208,24 @@ public class GcsIO {
     }
   }
 
-    public PDone write(PCollection<Row> input, Schema schema) {
-        if (options.getOutputGcsFileFormat() == FORMAT.JSON) {
-            return input.apply("RowsToJSON", ToJson.of())
-                    .apply("WriteToGCS", TextIO.write().to(options.getOutputGcsDirectory()));
-        } else if (options.getOutputGcsFileFormat() == FORMAT.CSV) {
-            String header = String.join(options.getCsvDelimiter(), schema.getFieldNames());
-            return input
-                    .apply("ConvertToCSV", MapElements.into(TypeDescriptors.strings())
-                            .via((Row inputRow) ->
-                                    inputRow.getValues()
-                                            .stream()
-                                            .map(Object::toString)
-                                            .collect(Collectors.joining(","))
-                            )
-                    )
-                    .apply("WriteToGCS", TextIO.write().to(options.getOutputGcsDirectory()).withHeader(header));
+  public PDone write(PCollection<Row> input, Schema schema) {
+    if (options.getOutputGcsFileFormat() == FORMAT.JSON) {
+      return input.apply("RowsToJSON", ToJson.of())
+          .apply("WriteToGCS", TextIO.write().to(options.getOutputGcsDirectory()));
+    } else if (options.getOutputGcsFileFormat() == FORMAT.CSV) {
+      String header = String.join(options.getCsvDelimiter(), schema.getFieldNames());
+      String csvDelimiter = options.getCsvDelimiter();
+      return input
+          .apply("ConvertToCSV", MapElements.into(TypeDescriptors.strings())
+              .via((Row inputRow) ->
+                  new RowToCsv(csvDelimiter).getCsvFromRow(inputRow))
+          )
+          .apply("WriteToGCS",
+              TextIO.write().to(options.getOutputGcsDirectory()).withHeader(header));
 
-        } else {
-            throw new IllegalStateException("No valid format for output data is provided. Please, choose JSON or CSV.");
-        }
+    } else {
+      throw new IllegalStateException(
+          "No valid format for output data is provided. Please, choose JSON or CSV.");
     }
+  }
 }
