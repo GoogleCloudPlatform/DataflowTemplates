@@ -53,23 +53,24 @@ public class MergeStatementBuildingFnTest {
   void testGetMaximumTimestampPerPrimaryKey() {
     String getMaximumTsPkQuery =
         MergeStatementBuildingFn.buildQueryGetMaximumTimestampPerPrimaryKey(
-            TABLE_ID, PRIMARY_KEY_COLUMNS, PROJECT_ID, CHANGELOG_DATASET_ID);
+            TABLE_ID, PRIMARY_KEY_COLUMNS, PROJECT_ID, CHANGELOG_DATASET_ID, 123L);
 
     assertThat(getMaximumTsPkQuery,
         equalTo(String.join("",
             "SELECT pk1, pk2, MAX(timestampMs) as max_ts_ms FROM ",
-            "`myProject.myChangelogDataset.myTable` GROUP BY pk1, pk2")));
+            "`myProject.myChangelogDataset.myTable` WHERE timestampMs >= 123 GROUP BY pk1, pk2")));
   }
 
   @Test
   void testGetNewestElementPerPrimaryKey() {
     String getLatestElementPkQuery =
         MergeStatementBuildingFn.buildQueryGetLatestChangePerPrimaryKey(
-            TABLE_ID, PRIMARY_KEY_COLUMNS, PROJECT_ID, CHANGELOG_DATASET_ID);
+            TABLE_ID, PRIMARY_KEY_COLUMNS, PROJECT_ID, CHANGELOG_DATASET_ID, 123L);
 
     assertThat(getLatestElementPkQuery, containsString(
             "(SELECT primaryKey.pk1, primaryKey.pk2, MAX(timestampMs) as max_ts_ms "
             + "FROM `myProject.myChangelogDataset.myTable` "
+            + "WHERE timestampMs >= 123 "
             + "GROUP BY primaryKey.pk1, primaryKey.pk2) AS ts_table"));
 
     assertThat(getLatestElementPkQuery, containsString(
@@ -88,7 +89,7 @@ public class MergeStatementBuildingFnTest {
                 TABLE_ID, CHANGELOG_TABLE_ID,
                 PRIMARY_KEY_COLUMNS, FULL_COLUMN_LIST,
                 PROJECT_ID,
-                CHANGELOG_DATASET_ID, REPLICA_DATASET_ID);
+                CHANGELOG_DATASET_ID, REPLICA_DATASET_ID, 123L);
 
     assertThat(fullMergeStatement,
         containsString("ON "
@@ -141,11 +142,11 @@ public class MergeStatementBuildingFnTest {
   public void testTablesBuiltInPipeline() {
     Pipeline p = Pipeline.create();
 
-    PCollection<KV<String, KV<Schema, Schema>>> tableSchemaS =
+    PCollection<KV<String, KV<KV<Schema, Schema>, Long>>> tableSchemaS =
         p.apply(Create.of(
-            KV.of(TABLE_1_NAME, KV.of(TABLE_1_PK_SCHEMA, TABLE_1_SCHEMA)),
-            KV.of(TABLE_2_NAME, KV.of(TABLE_2_PK_SCHEMA, TABLE_2_SCHEMA)),
-            KV.of(TABLE_1_NAME, KV.of(TABLE_1_PK_SCHEMA, TABLE_1_SCHEMA))));
+            KV.of(TABLE_1_NAME, KV.of(KV.of(TABLE_1_PK_SCHEMA, TABLE_1_SCHEMA), 123L)),
+            KV.of(TABLE_2_NAME, KV.of(KV.of(TABLE_2_PK_SCHEMA, TABLE_2_SCHEMA), 123L)),
+            KV.of(TABLE_1_NAME, KV.of(KV.of(TABLE_1_PK_SCHEMA, TABLE_1_SCHEMA), 123L))));
 
     PCollection<KV<String, BigQueryAction>> statementsIssued =
     tableSchemaS

@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
  * perform updates in the replica table.
  */
 public class MergeStatementBuildingFn
-    extends DoFn<KV<String, KV<Schema, Schema>>, KV<String, BigQueryAction>> {
+    extends DoFn<KV<String, KV<KV<Schema, Schema>, Long>>, KV<String, BigQueryAction>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(MergeStatementBuildingFn.class);
 
@@ -75,7 +75,8 @@ public class MergeStatementBuildingFn
   public void processElement(
       ProcessContext c,
       @StateId("table_created") ValueState<Boolean> tableCreated) {
-    KV<String, KV<Schema, Schema>> tableAndSchemas = c.element();
+    KV<String, KV<KV<Schema, Schema>, Long>> tableAndSchemasAndOldestTimestamp = c.element();
+    KV<String, KV<Schema, Schema>> tableAndSchemas = KV.of(tableAndSchemasAndOldestTimestamp.getKey(), tableAndSchemasAndOldestTimestamp.getValue().getKey());
 
     // Start by actually fetching whether we created the table or not.
     if (!createdCache) {
@@ -93,7 +94,7 @@ public class MergeStatementBuildingFn
 
     c.output(KV.of(tableAndSchemas.getKey(),
         buildMergeStatementAction(
-            tableAndSchemas, projectId, changelogDatasetId, replicaDatasetId)));
+            tableAndSchemas, projectId, changelogDatasetId, replicaDatasetId, tableAndSchemasAndOldestTimestamp.getValue().getValue())));
     this.mergeStatementsIssued.inc();
   }
 
@@ -109,10 +110,11 @@ public class MergeStatementBuildingFn
   }
 
   static final BigQueryAction buildMergeStatementAction(
-      KV<String, KV<Schema, Schema>> tableAndSchemas,
-      String projectId,
-      String changelogDatasetId,
-      String replicaDatasetId) {
+          KV<String, KV<Schema, Schema>> tableAndSchemas,
+          String projectId,
+          String changelogDatasetId,
+          String replicaDatasetId,
+          Long oldestTimestamp) {
     String tableName = ChangelogTableDynamicDestinations.getBigQueryTableName(
         tableAndSchemas.getKey(), false);
 
@@ -130,7 +132,7 @@ public class MergeStatementBuildingFn
     String mergeStatement = buildQueryMergeReplicaTableWithChangeLogTable(
         tableName, changeLogTableName,
         pkColumnNames, allColumnNames,
-        projectId, changelogDatasetId, replicaDatasetId);
+        projectId, changelogDatasetId, replicaDatasetId, oldestTimestamp);
     LOG.debug("Merge statement for table {} is: {}", tableName, mergeStatement);
     return BigQueryAction.query(mergeStatement);
   }
@@ -148,12 +150,12 @@ public class MergeStatementBuildingFn
       "WHEN NOT MATCHED BY TARGET AND changelog.operation != \"DELETE\" THEN %s");
 
   public static String buildQueryMergeReplicaTableWithChangeLogTable(
-      String replicaTableName, String changelogTableName,
-      List<String>pkColumns, List<String> rowColumns,
-      String projectId, String changelogDatasetId, String replicaDatasetId) {
+          String replicaTableName, String changelogTableName,
+          List<String> pkColumns, List<String> rowColumns,
+          String projectId, String changelogDatasetId, String replicaDatasetId, Long oldestTimestamp) {
 
     String changeLogLatestChangePerKey = buildQueryGetLatestChangePerPrimaryKey(
-        changelogTableName, pkColumns, projectId, changelogDatasetId);
+        changelogTableName, pkColumns, projectId, changelogDatasetId, oldestTimestamp);
 
     String finalMergeQuery = String.format(MERGE_REPLICA_WITH_CHANGELOG_TABLES,
         projectId, replicaDatasetId, replicaTableName,   // Target table for merge
@@ -194,17 +196,17 @@ public class MergeStatementBuildingFn
   );
 
   static final String MAXIMUM_TIMESTAMP_PER_PK =
-      "SELECT %s, MAX(%s) as max_ts_ms FROM `%s.%s.%s` GROUP BY %s";
+      "SELECT %s, MAX(%s) as max_ts_ms FROM `%s.%s.%s` WHERE %s >= %s GROUP BY %s";
 
   public static String buildQueryGetLatestChangePerPrimaryKey(
-      String tableName, List<String>pkColumns, String projectId, String datasetId) {
+          String tableName, List<String> pkColumns, String projectId, String datasetId, Long oldestTimestamp) {
     List<String> qualifiedPkColumns = pkColumns.
         stream()
         .map(s -> String.format("primaryKey.%s", s))
         .collect(Collectors.toList());
 
     String maxTimestampPerPkStatement = buildQueryGetMaximumTimestampPerPrimaryKey(
-        tableName, qualifiedPkColumns, projectId, datasetId);
+        tableName, qualifiedPkColumns, projectId, datasetId, oldestTimestamp);
 
     String joinStatement = buildJoinConditions(
         pkColumns, "source_table.primaryKey", "ts_table")
@@ -229,13 +231,14 @@ public class MergeStatementBuildingFn
   }
 
   public static String buildQueryGetMaximumTimestampPerPrimaryKey(
-      String tableName, List<String>pkColumns, String projectId, String datasetId) {
+          String tableName, List<String> pkColumns, String projectId, String datasetId, Long oldestTimestamp) {
     String pkCommaJoinedString = String.join(", ", pkColumns);
 
     String maxTimestampPerPkStatement = String.format(
         MAXIMUM_TIMESTAMP_PER_PK,
         pkCommaJoinedString, DataflowCdcRowFormat.TIMESTAMP_MS,  // SELECT SECTION PARAMETERS
         projectId, datasetId, tableName,                // FROM SECTION PARAMETERS
+        DataflowCdcRowFormat.TIMESTAMP_MS, oldestTimestamp, // WHERE SECTION PARAMETERS
         pkCommaJoinedString);                           // GROUP BY SECTION PARAMETERS
     return maxTimestampPerPkStatement;
   }
