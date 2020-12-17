@@ -31,25 +31,16 @@ import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.state.StateSpec;
 import org.apache.beam.sdk.state.StateSpecs;
 import org.apache.beam.sdk.state.ValueState;
-import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.Filter;
-import org.apache.beam.sdk.transforms.GroupByKey;
-import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.transforms.PTransform;
-import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.View;
+import org.apache.beam.sdk.transforms.*;
+import org.apache.beam.sdk.transforms.join.CoGbkResult;
+import org.apache.beam.sdk.transforms.join.CoGroupByKey;
+import org.apache.beam.sdk.transforms.join.KeyedPCollectionTuple;
 import org.apache.beam.sdk.transforms.windowing.AfterPane;
 import org.apache.beam.sdk.transforms.windowing.AfterProcessingTime;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
 import org.apache.beam.sdk.transforms.windowing.Repeatedly;
 import org.apache.beam.sdk.transforms.windowing.Window;
-import org.apache.beam.sdk.values.KV;
-import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PCollectionView;
-import org.apache.beam.sdk.values.PDone;
-import org.apache.beam.sdk.values.Row;
-import org.apache.beam.sdk.values.TypeDescriptor;
-import org.apache.beam.sdk.values.TypeDescriptors;
+import org.apache.beam.sdk.values.*;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -144,7 +135,29 @@ public class BigQueryChangeApplier extends PTransform<PCollection<Row>, PDone> {
     // If the input collection does not have a primary key field, then we do not need to issue
     // periodic merge requests.
     if (inputCollectionSchema.hasField(DataflowCdcRowFormat.PRIMARY_KEY)) {
-      PCollection<KV<String, KV<Schema, Schema>>> heartBeatInput = input
+      final Instant now = Instant.now();
+      PCollection<KV<String, Long>> oldestTimestampInput = input
+          .apply("KeyByTable", ParDo.of(new DoFn<Row, KV<String, Long>>() {
+            @ProcessElement
+            public void processElement(ProcessContext c) {
+              c.output(KV.of(
+                      c.element().getString(DataflowCdcRowFormat.TABLE_NAME),
+                      c.element().getInt64(DataflowCdcRowFormat.TIMESTAMP_MS)));
+            }
+          }))
+          .apply(
+              Window.<KV<String, Long>>into(new GlobalWindows())
+                  .discardingFiredPanes()
+                  .triggering(
+                      Repeatedly.forever(
+                          AfterProcessingTime.pastFirstElementInPane()
+                              .plusDelayOf(Duration.ZERO)
+                              .alignedTo(
+                                  Duration.standardSeconds(updateFrequencySeconds),
+                                      now))))
+          .apply(Min.longsPerKey());
+
+      PCollection<KV<String, KV<Schema, Schema>>> schemasInput = input
           .apply("KeyByTable", ParDo.of(new KeySchemasByTableFn(schemaMapView))
               .withSideInputs(schemaMapView))
           .apply(
@@ -156,7 +169,7 @@ public class BigQueryChangeApplier extends PTransform<PCollection<Row>, PDone> {
                               .plusDelayOf(Duration.ZERO)
                               .alignedTo(
                                   Duration.standardSeconds(updateFrequencySeconds),
-                                  Instant.now()))))
+                                      now))))
           .apply(GroupByKey.create())
           .apply(
               ParDo.of(
@@ -174,7 +187,24 @@ public class BigQueryChangeApplier extends PTransform<PCollection<Row>, PDone> {
                     }
                   }));
 
-      heartBeatInput
+        final TupleTag<KV<Schema, Schema>> schemasTag = new TupleTag<>();
+        final TupleTag<Long> oldestTimestampTag = new TupleTag<>();
+        PCollection<KV<String, KV<KV<Schema, Schema>, Long>>> heartBeatInput =
+              KeyedPCollectionTuple.of(schemasTag, schemasInput)
+                      .and(oldestTimestampTag, oldestTimestampInput)
+                      .apply(CoGroupByKey.create()).apply(ParDo.of(
+                      new DoFn<KV<String, CoGbkResult>, KV<String, KV<KV<Schema, Schema>, Long>>>() {
+                        @ProcessElement
+                        public void processElement(ProcessContext c) {
+                          KV<String, CoGbkResult> e = c.element();
+                          KV<Schema, Schema> pt1Vals = e.getValue().getOnly(schemasTag);
+                          Long pt2Val = e.getValue().getOnly(oldestTimestampTag);
+
+                          c.output(KV.of(e.getKey(), KV.of(pt1Vals, pt2Val)));
+                        }
+                      }));
+
+        heartBeatInput
           .apply("BuildMergeStatements",
               ParDo.of(
                   new MergeStatementBuildingFn(changeLogDataset, replicaDataset, gcpProjectId)))
