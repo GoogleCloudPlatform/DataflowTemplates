@@ -184,16 +184,17 @@ public class GcsIO {
                   .setUdfDeadletterTag(PROCESSING_DEADLETTER_OUT)
                   .build());
 
-
-      /*
-       * Step 3: Write jsons to dead-letter gcs that were successfully processed.
-       */
-      jsons.get(PROCESSING_DEADLETTER_OUT)
-          .apply("WriteCsvConversionErrorsToGcs",
-              ErrorConverters.WriteStringMessageErrorsAsCsv.newBuilder()
-                  .setCsvDelimiter(options.getCsvDelimiter())
-                  .setErrorWritePath(options.getNonTokenizedDeadLetterGcsPath())
-                  .build());
+      if (options.getNonTokenizedDeadLetterGcsPath() != null) {
+        /*
+         * Step 3: Write jsons to dead-letter gcs that were successfully processed.
+         */
+        jsons.get(PROCESSING_DEADLETTER_OUT)
+            .apply("WriteCsvConversionErrorsToGcs",
+                ErrorConverters.WriteStringMessageErrorsAsCsv.newBuilder()
+                    .setCsvDelimiter(options.getCsvDelimiter())
+                    .setErrorWritePath(options.getNonTokenizedDeadLetterGcsPath())
+                    .build());
+      }
 
       /*
        * Step 4: Get jsons that were successfully processed.

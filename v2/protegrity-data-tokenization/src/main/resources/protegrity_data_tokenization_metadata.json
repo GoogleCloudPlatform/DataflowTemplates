@@ -175,7 +175,7 @@
       "label": "dead letter path",
       "helpText": "GCS path to the payload configuration file",
       "paramType": "GCS_READ_FILE",
-      "isOptional": false,
+      "isOptional": true,
       "regexes": [
         "^gs:\\/\\/[^\\n\\r\\s]+$"
       ]

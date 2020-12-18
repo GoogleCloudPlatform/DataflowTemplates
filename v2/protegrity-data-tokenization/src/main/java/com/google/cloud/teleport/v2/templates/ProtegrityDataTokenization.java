@@ -157,22 +157,23 @@ public class ProtegrityDataTokenization {
         .apply("JsonToRow",
             JsonToRow.withExceptionReporting(schema.getBeamSchema()).withExtendedErrorInfo());
 
-    /*
-     * Write Row conversion errors to filesystem specified path
-     */
-    rows.getFailedToParseLines()
-        .apply("ToFailsafeElement",
-            MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
-                .via((Row errRow) -> FailsafeElement
-                    .of(errRow.getString("line"), errRow.getString("line"))
-                    .setErrorMessage(errRow.getString("err"))
-                ))
-        .apply("WriteCsvConversionErrorsToGcs",
-            ErrorConverters.WriteStringMessageErrorsAsCsv.newBuilder()
-                .setCsvDelimiter(options.getCsvDelimiter())
-                .setErrorWritePath(options.getNonTokenizedDeadLetterGcsPath())
-                .build());
-
+    if (options.getNonTokenizedDeadLetterGcsPath() != null) {
+      /*
+       * Write Row conversion errors to filesystem specified path
+       */
+      rows.getFailedToParseLines()
+          .apply("ToFailsafeElement",
+              MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
+                  .via((Row errRow) -> FailsafeElement
+                      .of(errRow.getString("line"), errRow.getString("line"))
+                      .setErrorMessage(errRow.getString("err"))
+                  ))
+          .apply("WriteCsvConversionErrorsToGcs",
+              ErrorConverters.WriteStringMessageErrorsAsCsv.newBuilder()
+                  .setCsvDelimiter(options.getCsvDelimiter())
+                  .setErrorWritePath(options.getNonTokenizedDeadLetterGcsPath())
+                  .build());
+    }
     /*
     Tokenize data using remote API call
      */
@@ -191,22 +192,24 @@ public class ProtegrityDataTokenization {
                 .setSuccessTag(TOKENIZATION_OUT)
                 .setFailureTag(TOKENIZATION_DEADLETTER_OUT).build());
 
-    String csvDelimiter= options.getCsvDelimiter();
+    String csvDelimiter = options.getCsvDelimiter();
+    if (options.getNonTokenizedDeadLetterGcsPath() != null) {
     /*
     Write tokenization errors to dead-letter sink
      */
-    tokenizedRows.get(TOKENIZATION_DEADLETTER_OUT)
-        .apply("ConvertToCSV", MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
-            .via((FailsafeElement<Row, Row> fse) ->
-                FailsafeElement.of(
-                    new RowToCsv(csvDelimiter).getCsvFromRow(fse.getOriginalPayload()),
-                    new RowToCsv(csvDelimiter).getCsvFromRow(fse.getPayload())))
-        )
-        .apply("WriteTokenizationErrorsToGcs",
-            ErrorConverters.WriteStringMessageErrorsAsCsv.newBuilder()
-                .setCsvDelimiter(options.getCsvDelimiter())
-                .setErrorWritePath(options.getNonTokenizedDeadLetterGcsPath())
-                .build());
+      tokenizedRows.get(TOKENIZATION_DEADLETTER_OUT)
+          .apply("ConvertToCSV", MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
+              .via((FailsafeElement<Row, Row> fse) ->
+                  FailsafeElement.of(
+                      new RowToCsv(csvDelimiter).getCsvFromRow(fse.getOriginalPayload()),
+                      new RowToCsv(csvDelimiter).getCsvFromRow(fse.getPayload())))
+          )
+          .apply("WriteTokenizationErrorsToGcs",
+              ErrorConverters.WriteStringMessageErrorsAsCsv.newBuilder()
+                  .setCsvDelimiter(options.getCsvDelimiter())
+                  .setErrorWritePath(options.getNonTokenizedDeadLetterGcsPath())
+                  .build());
+    }
 
     if (options.getOutputGcsDirectory() != null) {
       new GcsIO(options).write(
