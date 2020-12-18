@@ -31,7 +31,7 @@ import com.google.cloud.teleport.v2.utils.SchemasUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
+import java.util.Set;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -123,6 +123,9 @@ public class ProtegrityDataTokenization {
       LOG.error("Failed to retrieve schema for data.", e);
     }
     checkArgument(schema != null, "Data schema is mandatory.");
+
+    Set<String> fieldsToTokenize = schema.getFieldsToTokenize(options.getPayloadConfigGcsPath());
+
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
     // Register the coder for pipeline
@@ -177,7 +180,6 @@ public class ProtegrityDataTokenization {
     /*
     Tokenize data using remote API call
      */
-    String[] fieldsToTokenize = new String[]{"string1"};
     PCollectionTuple tokenizedRows = rows.getResults().setRowSchema(schema.getBeamSchema())
         .apply(MapElements
             .into(TypeDescriptors.kvs(TypeDescriptors.integers(), TypeDescriptors.rows()))
@@ -188,7 +190,7 @@ public class ProtegrityDataTokenization {
                 .setBatchSize(10)
                 .setDsgURI(options.getDsgUri())
                 .setSchema(schema.getBeamSchema())
-                .setFieldsToTokenize(Arrays.asList(fieldsToTokenize))
+                .setFieldsToTokenize(fieldsToTokenize)
                 .setSuccessTag(TOKENIZATION_OUT)
                 .setFailureTag(TOKENIZATION_DEADLETTER_OUT).build());
 
