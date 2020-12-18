@@ -9,7 +9,7 @@
       "paramType": "GCS_READ_FILE",
       "isOptional": false,
       "regexes": [
-        "^gs:\\/\\/[^\\n\\r\\s]+$"
+        "^gs:\\/\\/[^\\n\\r]+$"
       ]
     },
     {
@@ -19,7 +19,7 @@
       "paramType": "GCS_READ_FILE",
       "isOptional": true,
       "regexes": [
-        "^gs:\\/\\/[^\\n\\r\\s]+$"
+        "^gs:\\/\\/[^\\n\\r]+$"
       ]
     },
     {
@@ -29,7 +29,7 @@
       "paramType": "GCS_WRITE_FILE",
       "isOptional": true,
       "regexes": [
-        "^gs:\\/\\/[^\\n\\r\\s]+$"
+        "^gs:\\/\\/[^\\n\\r]+$"
       ]
     },
     {
@@ -139,9 +139,7 @@
       "helpText": "Cloud BigQuery table name to write into",
       "paramType": "TEXT",
       "isOptional": true,
-      "regexes": [
-        "^(([a-z][-a-z0-9:.]{4,61}[a-z0-9]):)?([-\\w.]{1,1024})\\.([-\\w$@]{1,1024})$"
-      ]
+      "regexes": []
     },
     {
       "name": "dsgUri",
@@ -167,7 +165,7 @@
       "paramType": "GCS_READ_FILE",
       "isOptional": true,
       "regexes": [
-        "^gs:\\/\\/[^\\n\\r\\s]+$"
+        "^gs:\\/\\/[^\\n\\r]+$"
       ]
     },
     {
@@ -177,7 +175,7 @@
       "paramType": "GCS_READ_FILE",
       "isOptional": true,
       "regexes": [
-        "^gs:\\/\\/[^\\n\\r\\s]+$"
+        "^gs:\\/\\/[^\\n\\r]+$"
       ]
     }
   ]

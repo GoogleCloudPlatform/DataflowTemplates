@@ -101,16 +101,16 @@ public class GcsIO {
     @Description("GCS filepattern for files in bucket to read data from")
     String getInputGcsFilePattern();
 
-    void setInputGcsFilePattern(String inputGcsFilePattern);
-
-    @Description("GCS directory in bucket to write data to")
-    String getOutputGcsDirectory();
-
     void setOutputGcsDirectory(String outputGcsDirectory);
 
     @Description("File format of input files. Supported formats: JSON, CSV")
     @Default.Enum("JSON")
     GcsIO.FORMAT getInputGcsFileFormat();
+
+    void setInputGcsFilePattern(String inputGcsFilePattern);
+
+    @Description("GCS directory in bucket to write data to")
+    String getOutputGcsDirectory();
 
     void setInputGcsFileFormat(GcsIO.FORMAT inputGcsFileFormat);
 

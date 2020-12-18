@@ -45,11 +45,13 @@ import org.apache.http.impl.client.HttpClients;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
+/**
+ * TODO: Add javadoc.
+ */
 public class ProtegrityDataProtectors {
 
   /**
-   * The {@link BigQueryConverters.FailsafeRowToTableRow} transform converts {@link Row} to {@link
+   * The {@link ProtegrityDataProtectors.RowToTokenizedRow} transform converts {@link Row} to {@link
    * TableRow} objects. The transform accepts a {@link FailsafeElement} object so the original
    * payload of the incoming record can be maintained across multiple series of transforms.
    */
@@ -90,7 +92,7 @@ public class ProtegrityDataProtectors {
     }
 
     /**
-     * Builder for {@link BigQueryConverters.FailsafeRowToTableRow}.
+     * Builder for {@link ProtegrityDataProtectors.RowToTokenizedRow}.
      */
     @AutoValue.Builder
     public abstract static class Builder<T> {

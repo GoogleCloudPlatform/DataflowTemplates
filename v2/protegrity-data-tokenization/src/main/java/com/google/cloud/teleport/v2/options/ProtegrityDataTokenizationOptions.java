@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.options;
 
 import com.google.cloud.teleport.v2.transforms.io.BigTableIO;
 import com.google.cloud.teleport.v2.transforms.io.GcsIO;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 
@@ -56,6 +57,7 @@ public interface ProtegrityDataTokenizationOptions extends PipelineOptions,
   void setDsgUri(String dsgUri);
 
   @Description("Size of the batch to send to DSG per request.")
+  @Default.Integer(10)
   Integer getBatchSize();
 
   void setBatchSize(Integer batchSize);

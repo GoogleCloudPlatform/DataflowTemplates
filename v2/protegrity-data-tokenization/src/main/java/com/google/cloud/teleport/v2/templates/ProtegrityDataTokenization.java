@@ -187,7 +187,7 @@ public class ProtegrityDataTokenization {
         .setCoder(KvCoder.of(VarIntCoder.of(), RowCoder.of(schema.getBeamSchema())))
         .apply("DsgTokenization",
             RowToTokenizedRow.newBuilder()
-                .setBatchSize(10)
+                .setBatchSize(options.getBatchSize())
                 .setDsgURI(options.getDsgUri())
                 .setSchema(schema.getBeamSchema())
                 .setFieldsToTokenize(fieldsToTokenize)
