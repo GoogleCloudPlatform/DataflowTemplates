@@ -235,7 +235,6 @@ public class ErrorConverters {
 
       outputRow.add(timestamp);
       outputRow.add(failsafeElement.getErrorMessage());
-      outputRow.add(failsafeElement.getStacktrace());
 
       // Only set the payload if it's populated on the message.
       if (message != null) {
