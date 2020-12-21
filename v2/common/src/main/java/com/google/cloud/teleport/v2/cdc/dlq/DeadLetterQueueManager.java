@@ -47,4 +47,8 @@ public class DeadLetterQueueManager {
     return FileBasedDeadLetterQueueReconsumer.create(dlqDirectory);
   }
 
+  public PTransform<PBegin, PCollection<String>> dlqReconsumer(Integer recheckPeriodMinutes) {
+    return FileBasedDeadLetterQueueReconsumer.create(dlqDirectory, recheckPeriodMinutes);
+  }
+
 }

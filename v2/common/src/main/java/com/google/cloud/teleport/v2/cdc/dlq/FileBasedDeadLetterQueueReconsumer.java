@@ -55,11 +55,16 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
   private static final Logger LOG = LoggerFactory.getLogger(
       FileBasedDeadLetterQueueReconsumer.class);
 
-  public static final Duration DEFAULT_RECHECK_PERIOD = Duration.standardMinutes(2);
+  public static final Duration DEFAULT_RECHECK_PERIOD = Duration.standardMinutes(5);
   public static final String TEMPORARY_HOLD_SUBDIRECTORY = "tmp";
 
   private final String dlqDirectory;
   private final Duration recheckPeriod;
+
+  public static FileBasedDeadLetterQueueReconsumer create(String dlqDirectory, Integer recheckPeriodMinutes) {
+    return new FileBasedDeadLetterQueueReconsumer(
+        dlqDirectory, Duration.standardMinutes(recheckPeriodMinutes));
+  }
 
   public static FileBasedDeadLetterQueueReconsumer create(String dlqDirectory) {
     return new FileBasedDeadLetterQueueReconsumer(dlqDirectory, DEFAULT_RECHECK_PERIOD);
