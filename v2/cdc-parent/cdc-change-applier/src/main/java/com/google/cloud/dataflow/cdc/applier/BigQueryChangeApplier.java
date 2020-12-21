@@ -136,7 +136,7 @@ public class BigQueryChangeApplier extends PTransform<PCollection<Row>, PDone> {
     // periodic merge requests.
     if (inputCollectionSchema.hasField(DataflowCdcRowFormat.PRIMARY_KEY)) {
       final Instant now = Instant.now();
-      PCollection<KV<String, Long>> minTimestampInput = input
+      PCollection<KV<String, Long>> oldestTimestampInput = input
           .apply("KeyByTable", ParDo.of(new DoFn<Row, KV<String, Long>>() {
             @ProcessElement
             public void processElement(ProcessContext c) {
@@ -157,7 +157,7 @@ public class BigQueryChangeApplier extends PTransform<PCollection<Row>, PDone> {
                                       now))))
           .apply(Min.longsPerKey());
 
-      PCollection<KV<String, KV<Schema, Schema>>> heartBeatInput = input
+      PCollection<KV<String, KV<Schema, Schema>>> schemasInput = input
           .apply("KeyByTable", ParDo.of(new KeySchemasByTableFn(schemaMapView))
               .withSideInputs(schemaMapView))
           .apply(
@@ -187,26 +187,24 @@ public class BigQueryChangeApplier extends PTransform<PCollection<Row>, PDone> {
                     }
                   }));
 
-      final TupleTag<KV<Schema, Schema>> t1 = new TupleTag<>();
-      final TupleTag<Long> t2 = new TupleTag<>();
-      PCollection<KV<String, CoGbkResult>> coGbkResultCollection =
-              KeyedPCollectionTuple.of(t1, heartBeatInput)
-                      .and(t2, minTimestampInput)
-                      .apply(CoGroupByKey.<String>create());
-      PCollection<KV<String, KV<KV<Schema, Schema>, Long>>> finalResultCollection =
-              coGbkResultCollection.apply(ParDo.of(
+        final TupleTag<KV<Schema, Schema>> schemasTag = new TupleTag<>();
+        final TupleTag<Long> oldestTimestampTag = new TupleTag<>();
+        PCollection<KV<String, KV<KV<Schema, Schema>, Long>>> heartBeatInput =
+              KeyedPCollectionTuple.of(schemasTag, schemasInput)
+                      .and(oldestTimestampTag, oldestTimestampInput)
+                      .apply(CoGroupByKey.create()).apply(ParDo.of(
                       new DoFn<KV<String, CoGbkResult>, KV<String, KV<KV<Schema, Schema>, Long>>>() {
                         @ProcessElement
                         public void processElement(ProcessContext c) {
                           KV<String, CoGbkResult> e = c.element();
-                          KV<Schema, Schema> pt1Vals = e.getValue().getOnly(t1);
-                          Long pt2Val = e.getValue().getOnly(t2);
+                          KV<Schema, Schema> pt1Vals = e.getValue().getOnly(schemasTag);
+                          Long pt2Val = e.getValue().getOnly(oldestTimestampTag);
 
                           c.output(KV.of(e.getKey(), KV.of(pt1Vals, pt2Val)));
                         }
                       }));
 
-        finalResultCollection
+        heartBeatInput
           .apply("BuildMergeStatements",
               ParDo.of(
                   new MergeStatementBuildingFn(changeLogDataset, replicaDataset, gcpProjectId)))
