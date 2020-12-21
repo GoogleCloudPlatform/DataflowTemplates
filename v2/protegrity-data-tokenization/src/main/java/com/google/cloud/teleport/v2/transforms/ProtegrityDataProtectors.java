@@ -18,10 +18,15 @@ import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.state.BagState;
 import org.apache.beam.sdk.state.StateSpec;
 import org.apache.beam.sdk.state.StateSpecs;
+import org.apache.beam.sdk.state.TimeDomain;
+import org.apache.beam.sdk.state.Timer;
+import org.apache.beam.sdk.state.TimerSpec;
+import org.apache.beam.sdk.state.TimerSpecs;
 import org.apache.beam.sdk.state.ValueState;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.RowJson;
 import org.apache.beam.sdk.util.RowJsonUtils;
 import org.apache.beam.sdk.values.KV;
@@ -144,6 +149,10 @@ public class ProtegrityDataProtectors {
     @StateId("count")
     private final StateSpec<ValueState<Integer>> countState = StateSpecs.value();
 
+    @TimerId("expiry")
+    private final TimerSpec expirySpec = TimerSpecs.timer(TimeDomain.EVENT_TIME);
+
+
     public DSGTokenizationFn(Schema schema, int batchSize, Iterable<String> fieldsToTokenize,
         String dsgURI,
         TupleTag<FailsafeElement<Row, Row>> failureTag) {
@@ -182,31 +191,54 @@ public class ProtegrityDataProtectors {
 
     }
 
+    @OnTimer("expiry")
+    public void onExpiry(
+        OnTimerContext context,
+        @StateId("buffer") BagState<Row> bufferState) {
+      boolean isEmpty = firstNonNull(bufferState.isEmpty().read(), true);
+      if (!isEmpty) {
+        processBufferedRows(bufferState.read(), context);
+        bufferState.clear();
+      }
+    }
+
     @ProcessElement
     public void process(
         ProcessContext context,
+        BoundedWindow window,
         @StateId("buffer") BagState<Row> bufferState,
-        @StateId("count") ValueState<Integer> countState) throws IOException {
+        @StateId("count") ValueState<Integer> countState,
+        @TimerId("expiry") Timer expiryTimer) {
+
+      expiryTimer.set(window.maxTimestamp());
 
       int count = firstNonNull(countState.read(), 0);
-      count = count + 1;
+      count++;
       countState.write(count);
       bufferState.add(context.element().getValue());
 
       if (count >= batchSize) {
-        for (Row outputRow : getTokenizedRow(bufferState.read())) {
-          try {
-            context.output(outputRow);
-          } catch (Exception e) {
-            context.output(
-                failureTag,
-                FailsafeElement.of(outputRow, outputRow)
-                    .setErrorMessage(e.getMessage())
-                    .setStacktrace(Throwables.getStackTraceAsString(e)));
-          }
-        }
+        processBufferedRows(bufferState.read(), context);
         bufferState.clear();
         countState.clear();
+      }
+    }
+
+    private void processBufferedRows(Iterable<Row> rows, WindowedContext context) {
+
+      try {
+        for (Row outputRow : getTokenizedRow(rows)) {
+          context.output(outputRow);
+        }
+      } catch (Exception e) {
+        for (Row outputRow : rows) {
+          context.output(
+              failureTag,
+              FailsafeElement.of(outputRow, outputRow)
+                  .setErrorMessage(e.getMessage())
+                  .setStacktrace(Throwables.getStackTraceAsString(e)));
+        }
+
       }
     }
 
