@@ -28,13 +28,11 @@ import org.apache.beam.sdk.options.PipelineOptions;
 public interface ProtegrityDataTokenizationOptions extends PipelineOptions,
     GcsIO.GcsPipelineOptions, BigTableIO.BigTableOptions {
 
-  // Group 1 - Input source
   @Description("Path to data schema (JSON format) in GCS compatible with BigQuery.")
   String getDataSchemaGcsPath();
 
   void setDataSchemaGcsPath(String dataSchemaGcsPath);
 
-  // Group 1.2 - Pub/Sub
   @Description(
       "The Cloud Pub/Sub topic to read from."
           + "The name should be in the format of "
@@ -43,14 +41,12 @@ public interface ProtegrityDataTokenizationOptions extends PipelineOptions,
 
   void setPubsubTopic(String pubsubTopic);
 
-  // Group 2 - Output sink
-  //Group 2.1 - BigQuery
   @Description("Cloud BigQuery table name to write into.")
   String getBigQueryTableName();
 
   void setBigQueryTableName(String bigQueryTableName);
 
-  //Group 3 - Protegrity specific parameters
+  //Protegrity specific parameters
   @Description("URI for the API calls to DSG.")
   String getDsgUri();
 
@@ -62,7 +58,10 @@ public interface ProtegrityDataTokenizationOptions extends PipelineOptions,
 
   void setBatchSize(Integer batchSize);
 
-  @Description("GCS path to the payload configuration file.")
+  @Description(
+      "GCS path to the payload configuration file with an array of fields "
+          + "to extract for tokenization."
+  )
   String getPayloadConfigGcsPath();
 
   void setPayloadConfigGcsPath(String payloadConfigGcsPath);

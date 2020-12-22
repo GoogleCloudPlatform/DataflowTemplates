@@ -1,6 +1,6 @@
 {
   "name": "Protegrity Data Tokenization",
-  "description": "Tokenizes structured plain text data from GCS or Pub/Sub and ingests it to BigTable or BigQuery",
+  "description": "Tokenizes structured plain text data from GCS or Pub/Sub and ingests it to GCS, BigTable or BigQuery using an external API calls to Protegrity DSG",
   "parameters": [
     {
       "name": "dataSchemaGcsPath",
@@ -23,29 +23,9 @@
       ]
     },
     {
-      "name": "outputGcsDirectory",
-      "label": "GCS directory for output files",
-      "helpText": "GCS directory in bucket to write data to",
-      "paramType": "GCS_WRITE_FILE",
-      "isOptional": true,
-      "regexes": [
-        "^gs:\\/\\/[^\\n\\r]+$"
-      ]
-    },
-    {
       "name": "inputGcsFileFormat",
       "label": "File format of input files",
       "helpText": "File format of input files. Supported formats: JSON, CSV",
-      "paramType": "TEXT",
-      "isOptional": true,
-      "regexes": [
-        "^(JSON|CSV)$"
-      ]
-    },
-    {
-      "name": "outputGcsFileFormat",
-      "label": "File format of output files",
-      "helpText": "File format of output files. Supported formats: JSON, CSV",
       "paramType": "TEXT",
       "isOptional": true,
       "regexes": [
@@ -85,6 +65,71 @@
       "regexes": [
         "^projects\\/[a-z][-a-z0-9:.]{4,61}[a-z0-9]\\/topics\\/[^\\n\\r\\/]+$"
       ]
+    },
+    {
+      "name": "dsgUri",
+      "label": "URI of the DSG",
+      "helpText": "URI for the API calls to DSG",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "batchSize",
+      "label": "Size of the batch",
+      "helpText": "Size of the batch to send to DSG per request",
+      "regexes": [
+        "^[0-9]*$"
+      ],
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "payloadConfigGcsPath",
+      "label": "GCS path to the payload config",
+      "helpText": "GCS path to the payload configuration file with an array of fields to extract for tokenization",
+      "paramType": "GCS_READ_FILE",
+      "isOptional": true,
+      "regexes": [
+        "^gs:\\/\\/[^\\n\\r]+$"
+      ]
+    },
+    {
+      "name": "nonTokenizedDeadLetterGcsPath",
+      "label": "GCS path for Dead letter elements",
+      "helpText": "GCS folder where failed to tokenize data will be stored",
+      "paramType": "GCS_WRITE_FOLDER",
+      "isOptional": true,
+      "regexes": [
+        "^gs:\\/\\/[^\\n\\r]+$"
+      ]
+    },
+    {
+      "name": "outputGcsDirectory",
+      "label": "GCS directory for output files",
+      "helpText": "GCS directory in bucket to write data to",
+      "paramType": "GCS_WRITE_FILE",
+      "isOptional": true,
+      "regexes": [
+        "^gs:\\/\\/[^\\n\\r]+$"
+      ]
+    },
+    {
+      "name": "outputGcsFileFormat",
+      "label": "File format of output files",
+      "helpText": "File format of output files. Supported formats: JSON, CSV",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": [
+        "^(JSON|CSV)$"
+      ]
+    },
+    {
+      "name": "bigQueryTableName",
+      "label": "Name of the output BigQuery table",
+      "helpText": "Cloud BigQuery table name to write into",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": []
     },
     {
       "name": "bigTableProjectId",
@@ -131,51 +176,6 @@
       "isOptional": true,
       "regexes": [
         "^[_a-zA-Z0-9][-_.a-zA-Z0-9]*$"
-      ]
-    },
-    {
-      "name": "bigQueryTableName",
-      "label": "Name of the output BigQuery table",
-      "helpText": "Cloud BigQuery table name to write into",
-      "paramType": "TEXT",
-      "isOptional": true,
-      "regexes": []
-    },
-    {
-      "name": "dsgUri",
-      "label": "URI of the DSG",
-      "helpText": "URI for the API calls to DSG",
-      "paramType": "TEXT",
-      "isOptional": true
-    },
-    {
-      "name": "batchSize",
-      "label": "Size of the batch",
-      "helpText": "Size of the batch to send to DSG per request",
-      "regexes": [
-        "^[0-9]*$"
-      ],
-      "paramType": "TEXT",
-      "isOptional": true
-    },
-    {
-      "name": "payloadConfigGcsPath",
-      "label": "GCS path to the payload config",
-      "helpText": "GCS path to the payload configuration file",
-      "paramType": "GCS_READ_FILE",
-      "isOptional": true,
-      "regexes": [
-        "^gs:\\/\\/[^\\n\\r]+$"
-      ]
-    },
-    {
-      "name": "nonTokenizedDeadLetterGcsPath",
-      "label": "dead letter path",
-      "helpText": "GCS path to the payload configuration file",
-      "paramType": "GCS_READ_FILE",
-      "isOptional": true,
-      "regexes": [
-        "^gs:\\/\\/[^\\n\\r]+$"
       ]
     }
   ]
