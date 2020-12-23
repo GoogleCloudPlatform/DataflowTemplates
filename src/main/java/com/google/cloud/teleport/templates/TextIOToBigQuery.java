@@ -84,11 +84,6 @@ public class TextIOToBigQuery {
 
   private static final Logger LOG = LoggerFactory.getLogger(TextIOToBigQuery.class);
 
-  private static final String BIGQUERY_SCHEMA = "BigQuery Schema";
-  private static final String NAME = "name";
-  private static final String TYPE = "type";
-  private static final String MODE = "mode";
-
   public static void main(String[] args) {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     Pipeline pipeline = Pipeline.create(options);
@@ -107,44 +102,8 @@ public class TextIOToBigQuery {
                 .withSchema(
                     NestedValueProvider.of(
                         options.getJSONPath(),
-                        new SerializableFunction<String, TableSchema>() {
-
-                          @Override
-                          public TableSchema apply(String jsonPath) {
-
-                            TableSchema tableSchema = new TableSchema();
-                            List<TableFieldSchema> fields = new ArrayList<>();
-                            SchemaParser schemaParser = new SchemaParser();
-                            JSONObject jsonSchema;
-
-                            try {
-
-                              jsonSchema = schemaParser.parseSchema(jsonPath);
-
-                              JSONArray bqSchemaJsonArray =
-                                  jsonSchema.getJSONArray(BIGQUERY_SCHEMA);
-
-                              for (int i = 0; i < bqSchemaJsonArray.length(); i++) {
-                                JSONObject inputField = bqSchemaJsonArray.getJSONObject(i);
-                                TableFieldSchema field =
-                                    new TableFieldSchema()
-                                        .setName(inputField.getString(NAME))
-                                        .setType(inputField.getString(TYPE));
-
-                                if (inputField.has(MODE)) {
-                                  field.setMode(inputField.getString(MODE));
-                                }
-
-                                fields.add(field);
-                              }
-                              tableSchema.setFields(fields);
-
-                            } catch (Exception e) {
-                              throw new RuntimeException(e);
-                            }
-                            return tableSchema;
-                          }
-                        }))
+                        new SchemaMapper()
+                        ))
                 .to(options.getOutputTable())
                 .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
                 .withWriteDisposition(WriteDisposition.WRITE_APPEND)
@@ -152,4 +111,69 @@ public class TextIOToBigQuery {
 
     pipeline.run();
   }
+
+  private static class SchemaMapper implements SerializableFunction<String, TableSchema> {	 
+    private static final long serialVersionUID = 7389953698875401789L;
+    private static final String BIGQUERY_SCHEMA = "BigQuery Schema";
+      private static final String NAME = "name";
+      private static final String TYPE = "type";
+      private static final String MODE = "mode";
+      private static final String RECORD = "RECORD";
+  
+  
+      @Override
+        public TableSchema apply(String jsonPath) {
+  
+          TableSchema tableSchema = new TableSchema();
+          List<TableFieldSchema> fields = new ArrayList<>();
+          SchemaParser schemaParser = new SchemaParser();
+          JSONObject jsonSchema;
+  
+          try {
+  
+            jsonSchema = schemaParser.parseSchema(jsonPath);
+  
+            JSONArray bqSchemaJsonArray =
+                jsonSchema.getJSONArray(BIGQUERY_SCHEMA);
+  
+            for (int i = 0; i < bqSchemaJsonArray.length(); i++) {        	
+              JSONObject inputField = bqSchemaJsonArray.getJSONObject(i);            
+              fields.add(mapJSONObjectToField(fields, inputField));            
+            }
+  
+            tableSchema.setFields(fields);
+  
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+          return tableSchema;
+        }
+      /**
+       * Method to process and map JSON bqSchema JSON objects
+       * into TableFieldSchema Objects. 
+       * Recursive function to deal with nested RECORD type
+       * @param fields
+       * @param inputField
+       * @return
+       */
+      private static TableFieldSchema mapJSONObjectToField(List<TableFieldSchema> fields, JSONObject inputField) {
+        TableFieldSchema field = new TableFieldSchema()
+                        .setName(inputField.getString(NAME))
+                        .setType(inputField.getString(TYPE));
+  
+        if (inputField.has(MODE)) {
+          field.setMode(inputField.getString(MODE));
+        }
+        if (RECORD.equals(inputField.getString(TYPE))) {
+          List<TableFieldSchema> nestedFields = new ArrayList<>();
+          field.setFields(nestedFields);
+          JSONArray fieldsArr = inputField.getJSONArray("fields");
+          for (int i=0;i<fieldsArr.length();i++) {
+            JSONObject nestedJSON = fieldsArr.getJSONObject(i);				  
+            nestedFields.add(mapJSONObjectToField(nestedFields, nestedJSON));
+          }
+        }
+        return field;
+      }
+    }
 }
