@@ -392,7 +392,7 @@ export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud beta dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters schemaLocation=$SCHEMA_LOCATION,qps=$QPS,topic=$PUBSUB_TOPIC,outputType=$PUBSUB_TOPIC,--avroSchemaLocation=$AVRO_SCHEMA_LOCATION
+        --parameters schemaLocation=$SCHEMA_LOCATION,qps=$QPS,topic=$PUBSUB_TOPIC,outputType=$OUTPUTTYPE,avroSchemaLocation=$AVRO_SCHEMA_LOCATION
 ```
  *Note*: Additional options such as autoscaling Algorithm,  max workers, service account can be specified in the parameters section as shown below:
 
