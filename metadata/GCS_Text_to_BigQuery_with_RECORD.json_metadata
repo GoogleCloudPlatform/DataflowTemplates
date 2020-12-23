@@ -1,0 +1,60 @@
+{
+  "name": "GCS Text to BigQuery (Support RECORD)",
+  "description": "Batch pipeline. Reads text files stored in Cloud Storage, transforms them using a JavaScript user-defined function (UDF), and outputs the result to BigQuery.",
+  "parameters": [
+    {
+      "name": "javascriptTextTransformGcsPath",
+      "label": "JavaScript UDF path in Cloud Storage",
+      "helpText": "The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. Ex: gs://your-bucket/your-transforms/*.js",
+      "regexes": [
+        "^gs:\\/\\/[^\\n\\r]+$"
+      ],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "JSONPath",
+      "label": "JSON path",
+      "helpText": "The Cloud Storage path to the JSON file that defines your BigQuery schema.  Ex: gs://your-bucket/your-schema.json",
+      "regexes": [
+        "^gs:\\/\\/[^\\n\\r]+$"
+      ],
+      "paramType": "GCS_READ_FILE"
+    },
+    {
+      "name": "javascriptTextTransformFunctionName",
+      "label": "JavaScript UDF name",
+      "helpText": "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. Ex: transform_udf1",
+      "regexes": [
+        "[a-zA-Z0-9_]+"
+      ],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "outputTable",
+      "label": "BigQuery output table",
+      "helpText": "The location of the BigQuery table in which to store your processed data. If you reuse an existing table, it will be overwritten. Ex: your-project:your-dataset.your-table",
+      "regexes": [
+        ".+:.+\\..+"
+      ],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "inputFilePattern",
+      "label": "Cloud Storage input path",
+      "helpText": "The path to the Cloud Storage text to read. Ex: gs://your-bucket/your-file.txt",
+      "regexes": [
+        "^gs:\\/\\/[^\\n\\r]+$"
+      ],
+      "paramType": "GCS_READ_FILE"
+    },
+    {
+      "name": "bigQueryLoadingTemporaryDirectory",
+      "label": "Temporary BigQuery directory",
+      "helpText": "Temporary directory for the BigQuery loading process. Ex: gs://your-bucket/your-files/temp-dir",
+      "regexes": [
+        "^gs:\\/\\/[^\\n\\r]+$"
+      ],
+      "paramType": "GCS_WRITE_FOLDER"
+    }
+  ]
+}
