@@ -20,13 +20,14 @@ import static org.apache.beam.sdk.io.gcp.bigquery.BigQueryUtils.fromTableSchema;
 import com.google.api.services.bigquery.model.TableSchema;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Type;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryHelpers;
@@ -34,9 +35,7 @@ import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.Field;
 import org.apache.beam.vendor.grpc.v1p26p0.com.google.common.io.ByteStreams;
 import org.apache.beam.vendor.grpc.v1p26p0.com.google.gson.Gson;
-import org.apache.beam.vendor.grpc.v1p26p0.com.google.gson.JsonArray;
-import org.apache.beam.vendor.grpc.v1p26p0.com.google.gson.JsonElement;
-import org.apache.beam.vendor.grpc.v1p26p0.com.google.gson.JsonObject;
+import org.apache.beam.vendor.grpc.v1p26p0.com.google.gson.reflect.TypeToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -108,26 +107,24 @@ public class SchemasUtils {
     }
   }
 
-  public Set<String> getFieldsToTokenize(String payloadConfigGcsPath) {
-    Set<String> fieldsToTokenize = new HashSet<>();
+  public Map<String, String> getDataElementsToTokenize(String payloadConfigGcsPath) {
+    Map<String, String> dataElements;
     try {
-      String rawJsonWithFieldsToTokenize = new String(
+      String rawJsonWithDataElements = new String(
           readGcsFile(payloadConfigGcsPath), Charset.defaultCharset());
       Gson gson = new Gson();
-      JsonArray jsonTokenizedRows = gson
-          .fromJson(rawJsonWithFieldsToTokenize, JsonObject.class)
-          .getAsJsonArray("fields");
-      for (JsonElement element : jsonTokenizedRows) {
-        fieldsToTokenize.add(element.getAsString());
-      }
+      Type type = new TypeToken<HashMap<String, String>>() {
+      }.getType();
+      dataElements = gson
+          .fromJson(rawJsonWithDataElements, type);
     } catch (IOException | NullPointerException exception) {
       LOG.error(
           "Cant parse fields to tokenize, or input parameter payloadConfigGcsPath was not specified."
               + " All fields will be sent to the protectors");
-      fieldsToTokenize = this.getBeamSchema().getFields().stream().map(Field::getName).collect(
-          Collectors.toSet());
+      dataElements = this.getBeamSchema().getFields().stream().collect(
+          Collectors.toMap(Field::getName, e -> ""));
     }
-    return fieldsToTokenize;
+    return dataElements;
   }
 
   public Schema getBeamSchema() {

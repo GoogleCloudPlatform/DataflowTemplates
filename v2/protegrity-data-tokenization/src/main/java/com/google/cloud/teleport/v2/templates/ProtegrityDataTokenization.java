@@ -31,7 +31,7 @@ import com.google.cloud.teleport.v2.utils.SchemasUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Set;
+import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -124,7 +124,8 @@ public class ProtegrityDataTokenization {
     }
     checkArgument(schema != null, "Data schema is mandatory.");
 
-    Set<String> fieldsToTokenize = schema.getFieldsToTokenize(options.getPayloadConfigGcsPath());
+    Map<String, String> dataElements = schema
+        .getDataElementsToTokenize(options.getPayloadConfigGcsPath());
 
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
@@ -190,7 +191,7 @@ public class ProtegrityDataTokenization {
                 .setBatchSize(options.getBatchSize())
                 .setDsgURI(options.getDsgUri())
                 .setSchema(schema.getBeamSchema())
-                .setFieldsToTokenize(fieldsToTokenize)
+                .setFieldsToTokenize(dataElements)
                 .setSuccessTag(TOKENIZATION_OUT)
                 .setFailureTag(TOKENIZATION_DEADLETTER_OUT).build());
 
