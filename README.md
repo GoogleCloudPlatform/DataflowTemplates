@@ -159,3 +159,24 @@ function transform(inJson) {
   }
 }
 ```
+
+# ClimaCell addition
+This repository is based on the original [fork of silver-labs](https://github.com/silver-labs/DataflowTemplates) to add the capability of writing RECORDs to BigQuery.
+Additions \ Changes:
+1. Changing the source code to support RECORD
+1. Adding metadata folder to include the templates metadata
+
+After running the command to build the template:
+```sh
+mvn compile exec:java \
+-Dexec.mainClass=com.google.cloud.teleport.templates.TextIOToBigQuery \
+-Dexec.cleanupDaemonThreads=false \
+-Dexec.args=" \
+--project=climacell-production-datalake \
+--stagingLocation=gs://climacell-production-dataflow-templates/staging \
+--tempLocation=gs://climacell-production-dataflow-templates/temp \
+--templateLocation=gs://climacell-production-dataflow-templates/templates/GCS_Text_to_BigQuery_with_RECORD.json \
+--runner=DataflowRunner"
+```
+
+Also copied the metadata file into the same bucket and folder - ```gs://climacell-production-dataflow-templates/templates/```
