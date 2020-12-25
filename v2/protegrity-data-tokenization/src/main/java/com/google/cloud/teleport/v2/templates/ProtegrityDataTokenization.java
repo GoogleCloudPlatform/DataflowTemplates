@@ -191,7 +191,7 @@ public class ProtegrityDataTokenization {
                 .setBatchSize(options.getBatchSize())
                 .setDsgURI(options.getDsgUri())
                 .setSchema(schema.getBeamSchema())
-                .setFieldsToTokenize(dataElements)
+                .setDataElements(dataElements)
                 .setSuccessTag(TOKENIZATION_OUT)
                 .setFailureTag(TOKENIZATION_DEADLETTER_OUT).build());
 
