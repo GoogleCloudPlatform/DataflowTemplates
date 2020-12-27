@@ -41,6 +41,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.apache.beam.sdk.extensions.gcp.options.GcsOptions;
 import org.apache.beam.sdk.extensions.gcp.util.GcsUtil;
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
@@ -79,6 +80,7 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ImportTransform.class);
   private static final int MAX_DEPTH = 8;
+  private static final Pattern SPANNER_STRING_PATTERN = Pattern.compile("STRING(?:\\((?:MAX|[0-9]+)\\))?");
 
   private final SpannerConfig spannerConfig;
 
@@ -404,7 +406,7 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
     }
 
     public static Code parseSpannerDataType(String columnType) {
-      if (columnType.matches("STRING(?:\\((?:MAX|[0-9]+)\\))?")) {
+      if (SPANNER_STRING_PATTERN.matcher(columnType).matches()) {
         return Code.STRING;
       } else if (columnType.equalsIgnoreCase("INT64")) {
         return Code.INT64;
