@@ -182,7 +182,7 @@ public class ProtegrityDataProtectors {
       }
 
       ArrayList<Schema.Field> fields = new ArrayList<>();
-      for (String field : dataElements.values()) {
+      for (String field : dataElements.keySet()) {
         if (schema.hasField(field)) {
           fields.add(schema.getField(field));
         }
@@ -264,34 +264,37 @@ public class ProtegrityDataProtectors {
 
     private ArrayList<String> rowsToJsons(Iterable<Row> inputRows) {
       ArrayList<String> jsons = new ArrayList<>();
-      Map<String,Row> inputRowsWithIds = new HashMap<>();
+      Map<String, Row> inputRowsWithIds = new HashMap<>();
       for (Row inputRow : inputRows) {
 
         Row.Builder builder = Row.withSchema(schemaToDsg);
         FieldValueBuilder fieldValueBuilder = null;
         for (Schema.Field field : schemaToDsg.getFields()) {
           if (inputRow.getSchema().hasField(field.getName())) {
-            fieldValueBuilder = builder
-                .withFieldValue(field.getName(), inputRow.getValue(field.getName()));
+            builder = builder.addValue(inputRow.getValue(field.getName()));
+//            System.out.println(field.getName());
+//            System.out.println((String) inputRow.getValue(field.getName()));
+//            fieldValueBuilder = builder
+//                .withFieldValue(field.getName(), inputRow.getValue(field.getName()));
           }
         }
+        String id;
         if (!hasIdInInputs) {
-          String id = UUID.randomUUID().toString();
-          if (fieldValueBuilder != null) {
-            fieldValueBuilder = fieldValueBuilder
-                .withFieldValue(ID_FIELD_NAME, id);
-          } else {
-            fieldValueBuilder = builder.withFieldValue(ID_FIELD_NAME, id);
-          }
-          inputRowsWithIds.put(id, inputRow);
+          id = UUID.randomUUID().toString();
+//          if (fieldValueBuilder != null) {
+//            fieldValueBuilder = fieldValueBuilder
+//                .withFieldValue(ID_FIELD_NAME, id);
+//          } else {
+          builder = builder.addValue(id);//.withFieldValue(ID_FIELD_NAME, id);
+          //}
 
+        } else {
+          id = inputRow.getValue(dataElements.get(ID_FIELD_NAME));
         }
-        else {
-          String id = inputRow.getValue(dataElements.get(ID_FIELD_NAME));
-          inputRowsWithIds.put(id, inputRow);
-        }
+        inputRowsWithIds.put(id, inputRow);
 
-        Row row = fieldValueBuilder != null ? fieldValueBuilder.build() : builder.build();
+        Row row = builder
+            .build();//fieldValueBuilder != null ? fieldValueBuilder.build() : builder.build();
 
         jsons.add(rowToJson(objectMapperSerializerForDSG, row));
       }
@@ -327,20 +330,24 @@ public class ProtegrityDataProtectors {
           .getAsJsonArray("data");
 
       String idFieldName;
-      if(hasIdInInputs){
+      if (hasIdInInputs) {
         idFieldName = schema.getField(dataElements.get(ID_FIELD_NAME)).getName();
-      }
-      else {
+      } else {
         idFieldName = ID_FIELD_NAME;
       }
 
       for (int i = 0; i < jsonTokenizedRows.size(); i++) {
         Row tokenizedRow = RowJsonUtils
             .jsonToRow(objectMapperDeserializerForDSG, jsonTokenizedRows.get(i).toString());
-        Row.FieldValueBuilder rowBuilder = Row.fromRow(this.inputRowsWithIds.get(tokenizedRow.getString(idFieldName)));
+        Row.FieldValueBuilder rowBuilder = Row
+            .fromRow(this.inputRowsWithIds.get(tokenizedRow.getString(idFieldName)));
         for (Schema.Field field : schemaToDsg.getFields()) {
+          if (!hasIdInInputs && field.getName().equals(idFieldName)) {
+            continue;
+          }
           rowBuilder = rowBuilder
               .withFieldValue(field.getName(), tokenizedRow.getValue(field.getName()));
+
         }
         outputRows.add(rowBuilder.build());
       }
