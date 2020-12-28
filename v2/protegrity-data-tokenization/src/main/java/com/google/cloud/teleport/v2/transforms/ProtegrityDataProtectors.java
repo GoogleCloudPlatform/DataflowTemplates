@@ -39,7 +39,6 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.Row;
-import org.apache.beam.sdk.values.Row.FieldValueBuilder;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.vendor.grpc.v1p26p0.com.google.gson.Gson;
@@ -268,7 +267,6 @@ public class ProtegrityDataProtectors {
       for (Row inputRow : inputRows) {
 
         Row.Builder builder = Row.withSchema(schemaToDsg);
-        FieldValueBuilder fieldValueBuilder = null;
         for (Schema.Field field : schemaToDsg.getFields()) {
           if (inputRow.getSchema().hasField(field.getName())) {
             builder = builder.addValue(inputRow.getValue(field.getName()));
@@ -284,7 +282,7 @@ public class ProtegrityDataProtectors {
         inputRowsWithIds.put(id, inputRow);
 
         Row row = builder
-            .build();//fieldValueBuilder != null ? fieldValueBuilder.build() : builder.build();
+            .build();
 
         jsons.add(rowToJson(objectMapperSerializerForDSG, row));
       }
