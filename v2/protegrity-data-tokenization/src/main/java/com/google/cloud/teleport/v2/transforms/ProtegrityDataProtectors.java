@@ -272,22 +272,12 @@ public class ProtegrityDataProtectors {
         for (Schema.Field field : schemaToDsg.getFields()) {
           if (inputRow.getSchema().hasField(field.getName())) {
             builder = builder.addValue(inputRow.getValue(field.getName()));
-//            System.out.println(field.getName());
-//            System.out.println((String) inputRow.getValue(field.getName()));
-//            fieldValueBuilder = builder
-//                .withFieldValue(field.getName(), inputRow.getValue(field.getName()));
           }
         }
         String id;
         if (!hasIdInInputs) {
           id = UUID.randomUUID().toString();
-//          if (fieldValueBuilder != null) {
-//            fieldValueBuilder = fieldValueBuilder
-//                .withFieldValue(ID_FIELD_NAME, id);
-//          } else {
-          builder = builder.addValue(id);//.withFieldValue(ID_FIELD_NAME, id);
-          //}
-
+          builder = builder.addValue(id);
         } else {
           id = inputRow.getValue(dataElements.get(ID_FIELD_NAME));
         }
