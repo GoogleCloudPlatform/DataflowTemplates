@@ -32,6 +32,7 @@ import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -106,7 +107,12 @@ public class ProtegrityDataTokenization {
             .as(ProtegrityDataTokenizationOptions.class);
     FileSystems.setDefaultPipelineOptions(options);
 
-    run(options);
+    DataflowPipelineOptions dataflowOptions = PipelineOptionsFactory.fromArgs(args)
+        .withoutStrictParsing()
+        .withValidation()
+        .as(DataflowPipelineOptions.class);
+
+    run(options, dataflowOptions);
   }
 
   /**
@@ -115,7 +121,8 @@ public class ProtegrityDataTokenization {
    * @param options The execution options.
    * @return The pipeline result.
    */
-  public static PipelineResult run(ProtegrityDataTokenizationOptions options) {
+  public static PipelineResult run(ProtegrityDataTokenizationOptions options,
+      DataflowPipelineOptions dataflowOptions) {
     SchemasUtils schema = null;
     try {
       schema = new SchemasUtils(options.getDataSchemaGcsPath(), StandardCharsets.UTF_8);
@@ -192,6 +199,7 @@ public class ProtegrityDataTokenization {
                 .setDsgURI(options.getDsgUri())
                 .setSchema(schema.getBeamSchema())
                 .setDataElements(dataElements)
+                .setServiceAccount(dataflowOptions.getServiceAccount())
                 .setSuccessTag(TOKENIZATION_OUT)
                 .setFailureTag(TOKENIZATION_DEADLETTER_OUT).build());
 
