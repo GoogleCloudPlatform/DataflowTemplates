@@ -393,6 +393,11 @@
                     <!-- <compilerArgument>-parameters</compilerArgument> -->
                     <parameters>true</parameters>
                     <testCompilerArgument>-parameters</testCompilerArgument>
+                    <excludes>
+                        <exclude>
+                            com/google/cloud/teleport/v2/cdc/merge/DataStreamBigQueryMerger.java
+                        </exclude>
+                    </excludes>
                 </configuration>
             </plugin>
             <plugin>
