@@ -41,9 +41,12 @@ import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.util.CoderUtils;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollection.IsBounded;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.TupleTag;
@@ -51,6 +54,7 @@ import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.beam.sdk.values.TypeDescriptors;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Ascii;
 import org.joda.time.DateTimeZone;
+import org.joda.time.Duration;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
@@ -579,6 +583,106 @@ public class ErrorConverters {
       public PubsubMessage apply(KV<T, Map<String, String>> kv) {
         return new PubsubMessage(encode(payloadCoder(), kv.getKey()), kv.getValue());
       }
+    }
+  }
+
+  /**
+   * Writes strings error messages to file system using CSV format.
+   */
+  @AutoValue
+  public abstract static class WriteStringMessageErrorsAsCsv extends
+      PTransform<PCollection<FailsafeElement<String, String>>, PDone> {
+
+    public static Builder newBuilder() {
+      return new AutoValue_ErrorConverters_WriteStringMessageErrorsAsCsv.Builder();
+    }
+
+    public abstract String errorWritePath();
+
+    public abstract String csvDelimiter();
+
+    public abstract Duration windowDuration();
+
+    @Override
+    public PDone expand(PCollection<FailsafeElement<String, String>> pCollection) {
+
+      PCollection<String> formattedErrorRows = pCollection
+          .apply("GetFormattedErrorRow",
+              ParDo.of(new FailedStringToCsvRowFn(csvDelimiter())));
+
+      if (pCollection.isBounded() == IsBounded.UNBOUNDED) {
+        if (windowDuration() != null) {
+          formattedErrorRows = formattedErrorRows
+              .apply(Window.into(FixedWindows.of(windowDuration())));
+        }
+        return formattedErrorRows
+            .apply(TextIO.write().to(errorWritePath()).withNumShards(1).withWindowedWrites());
+
+      } else {
+
+        return formattedErrorRows.apply(TextIO.write().to(errorWritePath()).withNumShards(1));
+      }
+    }
+
+    /**
+     * Builder for {@link WriteStringMessageErrorsAsCsv}.
+     */
+    @AutoValue.Builder
+    public abstract static class Builder {
+
+      public abstract Builder setErrorWritePath(String errorWritePath);
+
+      public abstract Builder setCsvDelimiter(String csvDelimiter);
+
+      public abstract Builder setWindowDuration(Duration duration);
+
+      public abstract WriteStringMessageErrorsAsCsv build();
+    }
+  }
+
+  /**
+   * The {@link FailedStringToCsvRowFn} converts string objects which have failed processing into
+   * {@link String} objects contained CSV which can be output to a filesystem.
+   */
+  public static class FailedStringToCsvRowFn
+          extends DoFn<FailsafeElement<String, String>, String> {
+
+    /**
+     * The formatter used to convert timestamps into a BigQuery compatible <a
+     * href="https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#timestamp-type">format</a>.
+     */
+    private static final DateTimeFormatter TIMESTAMP_FORMATTER =
+            DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
+
+    private final String csvDelimiter;
+
+    public FailedStringToCsvRowFn(String csvDelimiter) {
+      this.csvDelimiter = csvDelimiter;
+    }
+    public FailedStringToCsvRowFn() {
+      this.csvDelimiter = ",";
+    }
+
+    @ProcessElement
+    public void processElement(ProcessContext context) {
+      FailsafeElement<String, String> failsafeElement = context.element();
+      ArrayList<String> outputRow  = new ArrayList<>();
+      final String message = failsafeElement.getOriginalPayload();
+
+      // Format the timestamp for insertion
+      String timestamp =
+              TIMESTAMP_FORMATTER.print(context.timestamp().toDateTime(DateTimeZone.UTC));
+
+      outputRow.add(timestamp);
+      outputRow.add(failsafeElement.getErrorMessage());
+      outputRow.add(failsafeElement.getStacktrace());
+
+      // Only set the payload if it's populated on the message.
+      if (message != null) {
+        outputRow.add(message);
+      }
+
+      context.output(String.join(csvDelimiter,outputRow));
     }
   }
 }
