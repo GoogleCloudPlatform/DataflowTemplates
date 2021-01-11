@@ -53,9 +53,9 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The {@link StreamingDataGenerator} is a streaming pipeline which generates messages at a
- * specified rate to a Pub/Sub topic. The messages are generated according to a schema template
- * which instructs the pipeline how to populate the messages with fake data compliant to
- * constraints.
+ * specified rate to either Pub/Sub topic or BigQuery/GCS. The messages are generated according to a
+ * schema template which instructs the pipeline how to populate the messages with fake data
+ * compliant to constraints.
  *
  * <p>The number of workers executing the pipeline must be large enough to support the supplied QPS.
  * Use a general rule of 2,500 QPS per core in the worker pool.
@@ -151,7 +151,7 @@ public class StreamingDataGenerator {
 
     void setAvroSchemaLocation(String value);
 
-    @Description("The message sink type. Must be one of:[PUBSUB,BIGQUERY]")
+    @Description("The message sink type. Must be one of:[PUBSUB,BIGQUERY,GCS]")
     @Default.Enum("PUBSUB")
     SinkType getSinkType();
 

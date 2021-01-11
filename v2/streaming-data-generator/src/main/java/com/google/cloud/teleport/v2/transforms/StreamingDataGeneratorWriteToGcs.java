@@ -16,6 +16,7 @@
 
 package com.google.cloud.teleport.v2.transforms;
 
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.auto.value.AutoValue;
@@ -171,6 +172,12 @@ public abstract class StreamingDataGeneratorWriteToGcs
 
   @Override
   public PDone expand(PCollection<byte[]> fakeMessages) {
+    // Refer
+    // https://github.com/apache/beam/blob/master/sdks/java/core/src/main/java/org/apache/beam/sdk/io/WriteFiles.java#L316
+    checkArgument(
+        getPipelineOptions().getNumShards() > 0,
+        "--numShards parameter should be set to 1 or higher number while writing unbounded"
+            + " PCollection to GCS");
     switch (getPipelineOptions().getOutputType()) {
       case JSON:
         writeAsJson(fakeMessages);

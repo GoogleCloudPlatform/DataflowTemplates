@@ -29,13 +29,21 @@ import org.apache.beam.sdk.extensions.gcp.util.GcsUtil.GcsUtilFactory;
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileIO.ReadableFile;
+import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.fs.MatchResult.Metadata;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Values;
 import org.apache.beam.sdk.transforms.Watch;
 import org.apache.beam.sdk.transforms.Watch.Growth;
 import org.apache.beam.sdk.transforms.Watch.Growth.PollFn;
+import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.TimestampedValue;
 import org.apache.beam.sdk.values.TypeDescriptors;
@@ -75,22 +83,47 @@ import org.slf4j.LoggerFactory;
  *    <li>`gs://BUCKET/root/prefix/HR_SALARIES/` - This directory represents an "object"</li>
  *  </ul>
  */
-public class DataStreamIO extends PTransform<PCollection<String>, PCollection<ReadableFile>> {
+public class DataStreamIO extends PTransform<PBegin, PCollection<ReadableFile>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamIO.class);
 
   private String rfcStartDateTime;
+  private String inputFilePattern;
+  private String gcsNotificationSubscription;
   PCollection<String> directories = null;
 
   public DataStreamIO() {}
 
-  public DataStreamIO(String rfcStartDateTime) {
+  public DataStreamIO(String inputFilePattern, String gcsNotificationSubscription, String rfcStartDateTime) {
+    this.inputFilePattern = inputFilePattern;
+    this.gcsNotificationSubscription = gcsNotificationSubscription;
     this.rfcStartDateTime = rfcStartDateTime;
   }
 
   @Override
-  public PCollection<ReadableFile> expand(PCollection<String> input) {
+  public PCollection<ReadableFile> expand(PBegin input) {
+    if (this.gcsNotificationSubscription != null) {
+      return expandGcsPubSubPipeline(input);
+    } else if (this.inputFilePattern != null) {
+      return expandPollingPipeline(input);
+    } else {
+      throw new IllegalArgumentException("DataStreamIO requires either a GCS stream  directory or Pub/Sub Subscription");
+    }
+  }
+
+  public PCollection<ReadableFile> expandGcsPubSubPipeline(PBegin input) {
+      return input
+        .apply(
+          "ReadGcsPubSubSubscription",
+          PubsubIO.readMessagesWithAttributes()
+            .fromSubscription(this.gcsNotificationSubscription))
+        .apply("ExtractGcsFilePath", ParDo.of(new ExtractGcsFile()))
+        .apply("ReadFiles", FileIO.readMatches());
+  }
+
+  public PCollection<ReadableFile> expandPollingPipeline(PBegin input) {
     directories = input
+        .apply("StartPipeline", Create.of(this.inputFilePattern))
         .apply("FindTableDirectory",
           Watch
             .growthOf(new DirectoryMatchPollFn(1, 1, null, "/"))
@@ -112,6 +145,27 @@ public class DataStreamIO extends PTransform<PCollection<String>, PCollection<Re
                         Duration.standardSeconds(5),
                         Growth.afterTimeSinceNewOutput(Duration.standardMinutes(10))))
             .apply("ReadFiles", FileIO.readMatches());
+  }
+
+  static class ExtractGcsFile extends DoFn<PubsubMessage, Metadata> {
+    @ProcessElement
+    public void process(ProcessContext context) {
+      PubsubMessage message = context.element();
+
+      String eventType = message.getAttribute("eventType");
+      String bucketId = message.getAttribute("bucketId");
+      String objectId = message.getAttribute("objectId");
+
+      if (eventType.equals("OBJECT_FINALIZE") && !objectId.endsWith("/")) {
+        String fileName = "gs://" + bucketId + "/" + objectId;
+        try {
+          Metadata fileMetadata = FileSystems.matchSingleFileSpec(fileName);
+          context.output(fileMetadata);
+        } catch (IOException e) {
+          LOG.error("GCS Failure retrieving {}: {}", fileName, e);
+        }
+      }
+    }
   }
 
   static class DirectoryMatchPollFn extends PollFn<String, String> {

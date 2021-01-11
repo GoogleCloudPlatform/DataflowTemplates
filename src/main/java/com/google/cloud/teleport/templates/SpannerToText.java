@@ -90,6 +90,7 @@ public class SpannerToText {
 
     SpannerConfig spannerConfig =
         SpannerConfig.create()
+            .withHost(options.getSpannerHost())
             .withProjectId(options.getSpannerProjectId())
             .withInstanceId(options.getSpannerInstanceId())
             .withDatabaseId(options.getSpannerDatabaseId());

@@ -24,7 +24,7 @@
   <packaging>pom</packaging>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <beam.version>2.20.0</beam.version>
+    <beam.version>2.25.0</beam.version>
     <debezium.version>0.9.5.Final</debezium.version>
     <grpc.version>1.25.0</grpc.version>
     <guava.version>25.1-jre</guava.version>
