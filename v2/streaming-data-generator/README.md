@@ -162,7 +162,7 @@ For more latest informatioon check [BigQuery docs](https://cloud.google.com/bigq
   * Optional parameters include:
     &nbsp;&nbsp;--windowDuration=< Duration of fixed window >. Default is 1m (i.e 1 minute)  
     &nbsp;&nbsp;--outputFilenamePrefix=< Prefix for each file >. Default is output-   
-    &nbsp;&nbsp;--numShards=< Number of output files per window >. Default is runner dependent.
+    &nbsp;&nbsp;--numShards=< Number of output files per window >. Must be specified as 1 or higher number
 
 #### Writing fixed number of records
 By default templates generates unlimited number of messages but however if you need fixed number of messages include
@@ -231,7 +231,7 @@ Create template spec in Google Cloud Storage with path to container image in Goo
                         "helpText": "Messages to be published per second",
                         "is_optional": false,
                         "regexes": [
-                            "^[1-9]\\d*$"
+                            "^[1-9][0-9]*$"
                         ],
                         "paramType": "TEXT"
                     },
@@ -310,7 +310,7 @@ Create template spec in Google Cloud Storage with path to container image in Goo
                         "label": "Fixed window Duration",
                         "helpText": "Window interval at which output is written to GCS. Default:1m (i.e 1 minute).",
                         "isOptional": true,
-                        "regexes": ["^[1-9]\\d*[s|m|h]$"],
+                        "regexes": ["^[1-9][0-9]*[s|m|h]$"],
                         "paramType": "TEXT"
                    },
                    {
@@ -319,7 +319,7 @@ Create template spec in Google Cloud Storage with path to container image in Goo
                         "helpText": "The directory to write output files. Mandatory when sink is GCS and must end with a slash. For example, gs://MyBucket/",
                         "isOptional": true,
                         "regexes": [
-                          ".+:.+\\..+"
+                          "^gs:\\/\\/[^\\n\\r]+$"
                         ],
                         "paramType": "GCS_WRITE_FOLDER"
                    },
@@ -334,10 +334,10 @@ Create template spec in Google Cloud Storage with path to container image in Goo
                    {
                         "name": "numShards",
                         "label": "Number of Shards.",
-                        "helpText": "Maximum number of output shards. Default:0 indicating runner dependent.",
+                        "helpText": "Maximum number of output shards. Default:0 and should be set to 1 or higher number.",
                         "isOptional": true,
                         "regexes": [
-                          "^[1-9]\\d*$"
+                          "^[1-9][0-9]*$"
                         ],
                         "paramType": "TEXT"
                    },

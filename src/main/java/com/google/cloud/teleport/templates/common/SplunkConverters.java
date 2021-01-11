@@ -52,6 +52,7 @@ public class SplunkConverters {
   // that can be used for routing messages to different indexes in HEC.
   // These metadata fields should be added in a nested JsonObject corresponding
   // to key _metadata.
+  private static final String HEC_EVENT_KEY = "event";
   private static final String HEC_HOST_KEY = "host";
   private static final String HEC_INDEX_KEY = "index";
   private static final String HEC_TIME_KEY = "time";
@@ -220,11 +221,19 @@ public class SplunkConverters {
                               builder.withIndex(index);
                             }
 
+                            String event = metadata.optString(HEC_EVENT_KEY);
+                            if (!event.isEmpty()) {
+                              builder.withEvent(event);
+                            }
                             // We remove the _metadata entry from the payload
                             // to avoid duplicates in Splunk. The relevant entries
                             // have been parsed and populated in the SplunkEvent metadata.
                             json.remove(METADATA_KEY);
-                            builder.withEvent(json.toString());
+                            // If the event was not overridden in metadata above, use
+                            // the received JSON as event.
+                            if (event.isEmpty()) {
+                              builder.withEvent(json.toString());
+                            }
                           }
 
                         } catch (JSONException je) {

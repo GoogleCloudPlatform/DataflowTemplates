@@ -17,10 +17,7 @@
 package com.google.cloud.teleport.v2.cdc.sources;
 
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.testing.PAssert;
-import org.apache.beam.sdk.testing.TestStream;
-import org.joda.time.Duration;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -46,17 +43,10 @@ public class DataStreamIOTest {
   @Ignore
   @Test
   public void testFullContinuous() {
-    TestStream<String> mainStream = TestStream.create(StringUtf8Coder.of())
-        .addElements(BUCKET)
-        .advanceProcessingTime(Duration.standardSeconds(10))
-        .advanceWatermarkToInfinity();
-
     Pipeline pipeline = Pipeline.create();
-
-    DataStreamIO dsIo = new DataStreamIO();
+    DataStreamIO dsIo = new DataStreamIO(BUCKET, null, null);
 
     pipeline
-        .apply(mainStream)
         .apply(dsIo);
 
     PAssert.that(dsIo.directories).containsInAnyOrder(
