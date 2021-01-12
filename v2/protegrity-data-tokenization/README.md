@@ -153,8 +153,15 @@ The template requires the following parameters:
     - Google Cloud Storage
         - **outputGcsDirectory**: GCS directory in bucket to write data to
         - **outputGcsFileFormat**: File format of output files. Supported formats: JSON, CSV
-    - Google Cloud BigQuery
-        - **bigQueryTableName**: Cloud BigQuery table name to write into
+        - **windowDuration**: The window duration in which data will be written. Should be specified
+          only for 'Pub/Sub -> GCS' case. Defaults to 30s.
+
+          Allowed formats are:
+            - Ns (for seconds, example: 5s),
+            - Nm (for minutes, example: 12m),
+            - Nh (for hours, example: 2h).
+        - Google Cloud BigQuery
+            - **bigQueryTableName**: Cloud BigQuery table name to write into
     - Cloud BigTable
         - **bigTableProjectId**: Id of the project where the Cloud BigTable instance to write into
           is located

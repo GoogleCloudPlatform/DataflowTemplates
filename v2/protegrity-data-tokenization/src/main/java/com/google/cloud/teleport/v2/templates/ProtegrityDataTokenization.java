@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.transforms.io.BigQueryIO.write;
+import static com.google.cloud.teleport.v2.utils.DurationUtils.parseDuration;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
@@ -47,6 +48,8 @@ import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.JsonToRow;
 import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
@@ -160,6 +163,10 @@ public class ProtegrityDataTokenization {
       jsons = pipeline
           .apply("ReadMessagesFromPubsub",
               PubsubIO.readStrings().fromTopic(options.getPubsubTopic()));
+      if (options.getOutputGcsDirectory() != null) {
+        jsons = jsons
+            .apply(Window.into(FixedWindows.of(parseDuration(options.getWindowDuration()))));
+      }
     } else {
       throw new IllegalStateException("No source is provided, please configure GCS or Pub/Sub");
     }

@@ -24,6 +24,7 @@ import com.google.common.collect.ImmutableMap;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Map;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.coders.KvCoder;
@@ -526,6 +527,7 @@ public class ErrorConverters {
 
     public abstract String csvDelimiter();
 
+    @Nullable
     public abstract Duration windowDuration();
 
     @Override
@@ -559,7 +561,7 @@ public class ErrorConverters {
 
       public abstract Builder setCsvDelimiter(String csvDelimiter);
 
-      public abstract Builder setWindowDuration(Duration duration);
+      public abstract Builder setWindowDuration(@Nullable Duration duration);
 
       public abstract WriteStringMessageErrorsAsCsv build();
     }
