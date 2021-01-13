@@ -16,7 +16,7 @@ Supported input sources:
 
 Supported destination sinks:
 
-- Google Cloud Storage
+- [Google Cloud Storage](https://cloud.google.com/storage)
 - [Google Cloud BigQuery](https://cloud.google.com/bigquery)
 - [Cloud BigTable](https://cloud.google.com/bigtable)
 
@@ -217,3 +217,39 @@ You can do this in 3 different ways:
         '
         "${TEMPLATES_LAUNCH_API}"
     ```
+
+## Extend the Template
+
+The architecture of the pipeline is built
+using [Beam `Row` abstraction](https://beam.apache.org/releases/javadoc/2.25.0/org/apache/beam/sdk/values/Row.html)
+to ease compatibility between input sources and output sinks:
+
+**Input Source Format -> Beam Row Format -> Output Sink Format**
+
+It is done and may be extended
+in [IO classes](src/main/java/com/google/cloud/teleport/v2/transforms/io). Such architecture allows
+adding support for:
+
+- Input formats
+- Input sources
+- Output formats
+- Output sources
+
+The only thing that needs to be followed is that inputs should be transformed into Beam Row and
+outputs should be transformed from Beam Row.
+
+### Ideas for Extensions
+
+Here is the list of ideas for possible enhancements of this template:
+
+- Support reading/writing AVRO format
+- Support reading data from BigQuery
+- Support writing data to Pub/Sub
+- Add transformations or protectors for data
+
+## Support
+
+This template is created and contributed with love by **[Akvelon](https://akvelon.com/)** team.
+
+If you would like to see new features, or you found some critical bugs, feel free to
+[contact with us](https://akvelon.com/feedback/).
