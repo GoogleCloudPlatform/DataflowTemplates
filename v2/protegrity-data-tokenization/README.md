@@ -249,7 +249,7 @@ Here is the list of ideas for possible enhancements of this template:
 
 ## Support
 
-This template is created and contributed with love by **[Akvelon](https://akvelon.com/)** team.
+This template is created and contributed by **[Akvelon](https://akvelon.com/)** team.
 
-If you would like to see new features, or you found some critical bugs, feel free to
-[contact with us](https://akvelon.com/feedback/).
+If you would like to see new features, or you found some critical bugs, please
+[contact with us](mailto:info@akvelon.com) or [share your feedback](https://akvelon.com/feedback/).
