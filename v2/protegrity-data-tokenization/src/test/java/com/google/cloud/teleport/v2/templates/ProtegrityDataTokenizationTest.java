@@ -64,6 +64,9 @@ public class ProtegrityDataTokenizationTest {
   private static final String SCV_FILE_PATH =
       Resources.getResource(RESOURCES_DIR + "testInput.csv").getPath();
 
+  private static final String JSON_FILE_PATH =
+      Resources.getResource(RESOURCES_DIR + "testInput").getPath();
+
   private static final String SCHEMA_FILE_PATH =
       Resources.getResource(RESOURCES_DIR + "schema").getPath();
 
@@ -127,6 +130,54 @@ public class ProtegrityDataTokenizationTest {
     options.setInputGcsFileFormat(FORMAT.CSV);
     options.setCsvContainsHeaders(Boolean.FALSE);
 
+    SchemasUtils testSchema = setSchemaAndCoder(options);
+
+    PCollection<String> jsons = new GcsIO(options)
+        .read(testPipeline, testSchema.getJsonBeamSchema());
+
+    PAssert.that(jsons).satisfies(x -> {
+      LinkedList<String> rows = Lists.newLinkedList(x);
+      assertThat(rows, hasSize(3));
+      rows.forEach(
+          row -> {
+            assertThat(
+                row,
+                startsWith("{\"Field1\":"));
+          });
+      return null;
+    });
+    testPipeline.run();
+  }
+
+  @Test
+  public void testGcsIOReadJSON() {
+    ProtegrityDataTokenizationOptions options =
+        PipelineOptionsFactory.create().as(ProtegrityDataTokenizationOptions.class);
+    options.setDataSchemaGcsPath(SCHEMA_FILE_PATH);
+    options.setInputGcsFilePattern(JSON_FILE_PATH);
+    options.setInputGcsFileFormat(FORMAT.JSON);
+
+    SchemasUtils testSchema = setSchemaAndCoder(options);
+
+    PCollection<String> jsons = new GcsIO(options)
+        .read(testPipeline, testSchema.getJsonBeamSchema());
+
+    PAssert.that(jsons).satisfies(x -> {
+      LinkedList<String> rows = Lists.newLinkedList(x);
+      assertThat(rows, hasSize(3));
+      rows.forEach(
+          row -> {
+            assertThat(
+                row,
+                startsWith("{\"Field1\":"));
+          });
+      return null;
+    });
+
+    testPipeline.run();
+  }
+
+  private SchemasUtils setSchemaAndCoder(ProtegrityDataTokenizationOptions options) {
     SchemasUtils testSchema = null;
     try {
       testSchema = new SchemasUtils(options.getDataSchemaGcsPath(), StandardCharsets.UTF_8);
@@ -150,22 +201,6 @@ public class ProtegrityDataTokenizationTest {
     );
     coderRegistry
         .registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
-
-    PCollection<String> jsons = new GcsIO(options)
-        .read(testPipeline, testSchema.getJsonBeamSchema());
-
-    PAssert.that(jsons).satisfies(x -> {
-      LinkedList<String> rows = Lists.newLinkedList(x);
-      assertThat(rows, hasSize(3));
-      rows.forEach(
-          row -> {
-            assertThat(
-                row,
-                startsWith("{\"Field1\":"));
-          });
-      return null;
-    });
-    
-    testPipeline.run();
+    return testSchema;
   }
 }
