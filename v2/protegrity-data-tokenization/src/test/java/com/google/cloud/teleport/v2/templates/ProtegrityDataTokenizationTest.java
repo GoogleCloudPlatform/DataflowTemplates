@@ -32,6 +32,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
+import java.util.List;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.RowCoder;
@@ -42,6 +43,7 @@ import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.JsonToRow;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
 import org.junit.Assert;
@@ -61,7 +63,7 @@ public class ProtegrityDataTokenizationTest {
 
   private static final String RESOURCES_DIR = "./";
 
-  private static final String SCV_FILE_PATH =
+  private static final String CSV_FILE_PATH =
       Resources.getResource(RESOURCES_DIR + "testInput.csv").getPath();
 
   private static final String JSON_FILE_PATH =
@@ -74,12 +76,22 @@ public class ProtegrityDataTokenizationTest {
       FailsafeElementCoder.of(
           NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of()));
 
-  private static class LogIt extends DoFn<String, String> {
+  private SchemasUtils testSchemaUtils = null;
+
+//  private static class LogIt extends DoFn<String, String> {
+//
+//    @ProcessElement
+//    public void process(ProcessContext context) {
+//      System.out.println(context.element());
+//      context.output(context.element());
+//    }
+
+  private static class LogIt extends DoFn<Row, String> {
 
     @ProcessElement
-    public void process(ProcessContext context) {
-      System.out.println(context.element());
-      context.output(context.element());
+    public void processElement(@Element Row row, OutputReceiver<String> out) {
+      System.out.println(row.getValues());
+      out.output("row");
     }
   }
 
@@ -123,45 +135,84 @@ public class ProtegrityDataTokenizationTest {
 
   @Test
   public void testGcsIOReadCSV() {
-    ProtegrityDataTokenizationOptions options =
-        PipelineOptionsFactory.create().as(ProtegrityDataTokenizationOptions.class);
-    options.setDataSchemaGcsPath(SCHEMA_FILE_PATH);
-    options.setInputGcsFilePattern(SCV_FILE_PATH);
-    options.setInputGcsFileFormat(FORMAT.CSV);
-    options.setCsvContainsHeaders(Boolean.FALSE);
-
-    SchemasUtils testSchema = setSchemaAndCoder(options);
-
-    PCollection<String> jsons = new GcsIO(options)
-        .read(testPipeline, testSchema.getJsonBeamSchema());
-
-    PAssert.that(jsons).satisfies(x -> {
-      LinkedList<String> rows = Lists.newLinkedList(x);
-      assertThat(rows, hasSize(3));
-      rows.forEach(
-          row -> {
-            assertThat(
-                row,
-                startsWith("{\"Field1\":"));
-          });
-      return null;
-    });
+    PCollection<String> jsons = testGcsIORead(CSV_FILE_PATH, FORMAT.CSV);
+    assertField(jsons);
     testPipeline.run();
   }
 
   @Test
   public void testGcsIOReadJSON() {
+    PCollection<String> jsons = testGcsIORead(JSON_FILE_PATH, FORMAT.JSON);
+    assertField(jsons);
+    testPipeline.run();
+  }
+
+  @Test
+  public void testJsonToRow() {
+    PCollection<String> jsons = testGcsIORead(JSON_FILE_PATH, FORMAT.JSON);
+    JsonToRow.ParseResult rows = jsons
+        .apply("JsonToRow",
+            JsonToRow.withExceptionReporting(testSchemaUtils.getBeamSchema())
+                .withExtendedErrorInfo());
+    PAssert.that(rows.getResults()).satisfies(x -> {
+      LinkedList<Row> beamRows = Lists.newLinkedList(x);
+      assertThat(beamRows, hasSize(3));
+      beamRows.forEach(
+          row -> {
+            List<Object> fieldValues = row.getValues();
+            for (Object element : fieldValues) {
+              assertThat(
+                  (String) element,
+                  startsWith("FieldValue"));
+            }
+          });
+      return null;
+    });
+    testPipeline.run();
+  }
+
+
+  private PCollection<String> testGcsIORead(String inputGcsFilePattern,
+      FORMAT inputGcsFileFormat) {
     ProtegrityDataTokenizationOptions options =
         PipelineOptionsFactory.create().as(ProtegrityDataTokenizationOptions.class);
     options.setDataSchemaGcsPath(SCHEMA_FILE_PATH);
-    options.setInputGcsFilePattern(JSON_FILE_PATH);
-    options.setInputGcsFileFormat(FORMAT.JSON);
+    options.setInputGcsFilePattern(inputGcsFilePattern);
+    options.setInputGcsFileFormat(inputGcsFileFormat);
+    if (inputGcsFileFormat == FORMAT.CSV) {
+      options.setCsvContainsHeaders(Boolean.FALSE);
+    }
 
-    SchemasUtils testSchema = setSchemaAndCoder(options);
+    try {
+      testSchemaUtils = new SchemasUtils(options.getDataSchemaGcsPath(), StandardCharsets.UTF_8);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    assert testSchemaUtils != null;
+
+    CoderRegistry coderRegistry = testPipeline.getCoderRegistry();
+    coderRegistry.registerCoderForType(
+        FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
+    coderRegistry
+        .registerCoderForType(
+            RowCoder.of(testSchemaUtils.getBeamSchema()).getEncodedTypeDescriptor(),
+            RowCoder.of(testSchemaUtils.getBeamSchema()));
+    /*
+     * Row/Row Coder for FailsafeElement.
+     */
+    FailsafeElementCoder<Row, Row> coder = FailsafeElementCoder.of(
+        RowCoder.of(testSchemaUtils.getBeamSchema()),
+        RowCoder.of(testSchemaUtils.getBeamSchema())
+    );
+    coderRegistry
+        .registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
     PCollection<String> jsons = new GcsIO(options)
-        .read(testPipeline, testSchema.getJsonBeamSchema());
+        .read(testPipeline, testSchemaUtils.getJsonBeamSchema());
+    return jsons;
+  }
 
+  private void assertField(PCollection<String> jsons) {
     PAssert.that(jsons).satisfies(x -> {
       LinkedList<String> rows = Lists.newLinkedList(x);
       assertThat(rows, hasSize(3));
@@ -173,34 +224,5 @@ public class ProtegrityDataTokenizationTest {
           });
       return null;
     });
-
-    testPipeline.run();
-  }
-
-  private SchemasUtils setSchemaAndCoder(ProtegrityDataTokenizationOptions options) {
-    SchemasUtils testSchema = null;
-    try {
-      testSchema = new SchemasUtils(options.getDataSchemaGcsPath(), StandardCharsets.UTF_8);
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-    assert testSchema != null;
-
-    CoderRegistry coderRegistry = testPipeline.getCoderRegistry();
-    coderRegistry.registerCoderForType(
-        FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
-    coderRegistry
-        .registerCoderForType(RowCoder.of(testSchema.getBeamSchema()).getEncodedTypeDescriptor(),
-            RowCoder.of(testSchema.getBeamSchema()));
-    /*
-     * Row/Row Coder for FailsafeElement.
-     */
-    FailsafeElementCoder<Row, Row> coder = FailsafeElementCoder.of(
-        RowCoder.of(testSchema.getBeamSchema()),
-        RowCoder.of(testSchema.getBeamSchema())
-    );
-    coderRegistry
-        .registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
-    return testSchema;
   }
 }
