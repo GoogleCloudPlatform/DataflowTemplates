@@ -350,6 +350,7 @@ mvn exec:java -pl cdc-change-applier -Dexec.args="--runner=DataflowRunner \
               --changeLogDataset=${CHANGELOG_BQ_DATASET} \
               --replicaDataset=${REPLICA_BQ_DATASET} \
               --project=${GCP_PROJECT} \
+              --region=${DEPLOY_REGION} \
               --useSingleTopic=true"
 ```
 
