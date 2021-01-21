@@ -60,7 +60,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * TODO: Add javadoc.
+ * The {@link ProtegrityDataProtectors} Using passing parameters transform will buffer input rows in
+ * batch and will send it when the count of buffered rows will equal specified batch size. When it
+ * takes the last one batch, it will send it when the last row will come to doFn even count of
+ * buffered rows will less than the batch size.
  */
 public class ProtegrityDataProtectors {
 
@@ -136,7 +139,7 @@ public class ProtegrityDataProtectors {
   }
 
   /**
-   * Class for data tokenization using DSG.
+   * Class implements stateful doFn for data tokenization using remote DSG.
    */
   public static class DSGTokenizationFn extends DoFn<KV<Integer, Row>, Row> {
 
