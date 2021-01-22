@@ -387,7 +387,7 @@ The solution ends up resolving types like this:
 | Float types  | `FLOAT`, `DOUBLE`  | `DOUBLE`  |   |
 | Byte types  |  `BINARY`, `VARBINARY`, `BLOB` | `BYTES` |  |
 | String types  |  `CHAR`, `VARCHAR`, `TEXT`, `ENUM` | `STRING` |  |
-| NUMERIC types  | `NUMERIC`, `DECIMAL`  | `STRING`  | Support for better conversion TBD. |
+| NUMERIC types  | `NUMERIC`, `DECIMAL`  | `STRING`, `DECIMAL` (if the property `debezium.decimal.handling.mode=precise` is set)  |  |
 | Time-related times  |  |  | Time-related types have specific type conversions. See detailed table below. |
 
 ### Type handling for time-related types

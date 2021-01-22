@@ -147,20 +147,28 @@ public class MergeStatementBuildingFnTest {
             KV.of(TABLE_2_NAME, KV.of(TABLE_2_PK_SCHEMA, TABLE_2_SCHEMA)),
             KV.of(TABLE_1_NAME, KV.of(TABLE_1_PK_SCHEMA, TABLE_1_SCHEMA))));
 
-    PCollection<KV<String, BigQueryAction>> statementsIssued =
+    PCollection<KV<String, BigQueryAction>> issuedStatements =
     tableSchemaS
         .apply(ParDo.of(
             new MergeStatementBuildingFn(CHANGELOG_DATASET_ID, REPLICA_DATASET_ID, PROJECT_ID)));
 
-    PCollection<KV<String, Long>>  tablesCreatedCount = statementsIssued
+    PCollection<KV<String, Long>> statementsIssued = issuedStatements
+        .apply("CountCreateActions", Count.perKey());
+
+    PCollection<KV<String, Long>>  tablesCreatedCount = issuedStatements
         .apply("GetCreateActions",
             Filter.by(input -> input.getValue().action.equals(BigQueryAction.CREATE_TABLE)))
         .apply("CountCreateActions", Count.perKey());
 
-    PCollection<KV<String, Long>>  tablesMerged = statementsIssued
+    PCollection<KV<String, Long>>  tablesMerged = issuedStatements
         .apply("GetMergeActions",
             Filter.by(input -> input.getValue().action.equals(BigQueryAction.STATEMENT)))
         .apply("CountMergeActions", Count.perKey());
+
+    PAssert.that(statementsIssued)
+        .containsInAnyOrder(
+            KV.of(TABLE_1_NAME, 3L),
+            KV.of(TABLE_2_NAME, 2L));
 
     PAssert.that(tablesCreatedCount)
         .containsInAnyOrder(

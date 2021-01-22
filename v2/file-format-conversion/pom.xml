@@ -28,9 +28,8 @@
 
     <properties>
         <avro.version>1.8.2</avro.version>
-        <google-storage-api.version>v1-rev20181013-1.27.0</google-storage-api.version>
-        <powermock.version>2.0.2</powermock.version>
-        <commons-csv.version>1.7</commons-csv.version>
+        <google-storage-api.version>v1-rev20200611-1.30.10</google-storage-api.version>
+        <commons-csv.version>1.8</commons-csv.version>
     </properties>
 
     <dependencies>

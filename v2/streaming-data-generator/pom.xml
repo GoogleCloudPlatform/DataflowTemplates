@@ -30,22 +30,37 @@
   </parent>
 
   <properties>
-    <json-data-generator.version>1.5</json-data-generator.version>
-    <guava.version>26.0-jre</guava.version>
+    <json-data-generator.version>1.10</json-data-generator.version>
+    <snakeyaml.version>1.23</snakeyaml.version>
    </properties>
 
   <dependencies>
+
+    <dependency>
+      <groupId>com.google.cloud.teleport.v2</groupId>
+      <artifactId>common</artifactId>
+      <version>1.0-SNAPSHOT</version>
+    </dependency>
+
     <!-- Json -->
     <dependency>
       <groupId>com.github.vincentrussell</groupId>
       <artifactId>json-data-generator</artifactId>
       <version>${json-data-generator.version}</version>
+      <!-- Excluding  snakeyaml since it is using android version -->
+      <exclusions>
+       <exclusion>
+         <groupId>org.yaml</groupId>
+         <artifactId>snakeyaml</artifactId>
+       </exclusion>
+      </exclusions>
     </dependency>
 
+    <!-- json-data-generator dependency javafaker depends on snakeyaml  -->
     <dependency>
-      <groupId>com.google.guava</groupId>
-      <artifactId>guava</artifactId>
-      <version>${guava.version}</version>
+      <groupId>org.yaml</groupId>
+      <artifactId>snakeyaml</artifactId>
+      <version>${snakeyaml.version}</version>
     </dependency>
 
   </dependencies>

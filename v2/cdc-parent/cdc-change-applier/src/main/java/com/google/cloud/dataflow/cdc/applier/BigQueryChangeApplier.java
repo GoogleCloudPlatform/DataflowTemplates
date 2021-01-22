@@ -18,10 +18,10 @@ package com.google.cloud.dataflow.cdc.applier;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.dataflow.cdc.common.DataflowCdcRowFormat;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.SerializableCoder;
-import org.apache.beam.sdk.io.GenerateSequence;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.Method;
@@ -33,11 +33,13 @@ import org.apache.beam.sdk.state.StateSpecs;
 import org.apache.beam.sdk.state.ValueState;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Filter;
+import org.apache.beam.sdk.transforms.GroupByKey;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.transforms.windowing.AfterPane;
+import org.apache.beam.sdk.transforms.windowing.AfterProcessingTime;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
 import org.apache.beam.sdk.transforms.windowing.Repeatedly;
 import org.apache.beam.sdk.transforms.windowing.Window;
@@ -49,6 +51,7 @@ import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.beam.sdk.values.TypeDescriptors;
 import org.joda.time.Duration;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -141,12 +144,37 @@ public class BigQueryChangeApplier extends PTransform<PCollection<Row>, PDone> {
     // If the input collection does not have a primary key field, then we do not need to issue
     // periodic merge requests.
     if (inputCollectionSchema.hasField(DataflowCdcRowFormat.PRIMARY_KEY)) {
-      p.apply("MergeHeartbeat",
-          GenerateSequence
-              .from(0)
-              .withRate(1, Duration.standardSeconds(updateFrequencySeconds)))
+      PCollection<KV<String, KV<Schema, Schema>>> heartBeatInput = input
           .apply("KeyByTable", ParDo.of(new KeySchemasByTableFn(schemaMapView))
               .withSideInputs(schemaMapView))
+          .apply(
+              Window.<KV<String, KV<Schema, Schema>>>into(new GlobalWindows())
+                  .discardingFiredPanes()
+                  .triggering(
+                      Repeatedly.forever(
+                          AfterProcessingTime.pastFirstElementInPane()
+                              .plusDelayOf(Duration.ZERO)
+                              .alignedTo(
+                                  Duration.standardSeconds(updateFrequencySeconds),
+                                  Instant.now()))))
+          .apply(GroupByKey.create())
+          .apply(
+              ParDo.of(
+                  new DoFn<
+                      KV<String, Iterable<KV<Schema, Schema>>>,
+                      KV<String, KV<Schema, Schema>>>() {
+                    @ProcessElement
+                    public void process(ProcessContext c) {
+                      LOG.debug(
+                          "TS: {} | Element: {} | Pane: {}", c.timestamp(), c.element(), c.pane());
+                      Iterator<KV<Schema, Schema>> it = c.element().getValue().iterator();
+                      if (it.hasNext()) {
+                        c.output(KV.of(c.element().getKey(), it.next()));
+                      }
+                    }
+                  }));
+
+      heartBeatInput
           .apply("BuildMergeStatements",
               ParDo.of(
                   new MergeStatementBuildingFn(changeLogDataset, replicaDataset, gcpProjectId)))

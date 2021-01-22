@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.values.Row;
+import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -202,11 +203,20 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslator {
           }
           break;
         case BYTES:
-          if (f.schema().isOptional()) {
-            beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
-                f.name(), FieldType.BYTES);
+          if (Decimal.LOGICAL_NAME.equals(f.schema().name())) {
+            if (f.schema().isOptional()) {
+              beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
+                      f.name(), FieldType.DECIMAL);
+            } else {
+              beamField = org.apache.beam.sdk.schemas.Schema.Field.of(f.name(), FieldType.DECIMAL);
+            }
           } else {
-            beamField = org.apache.beam.sdk.schemas.Schema.Field.of(f.name(), FieldType.BYTES);
+            if (f.schema().isOptional()) {
+              beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
+                      f.name(), FieldType.BYTES);
+            } else {
+              beamField = org.apache.beam.sdk.schemas.Schema.Field.of(f.name(), FieldType.BYTES);
+            }
           }
           break;
         case STRUCT:
@@ -260,6 +270,9 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslator {
           break;
         case STRING:
           rowBuilder.addValue(value.getString(f.getName()));
+          break;
+        case DECIMAL:
+          rowBuilder.addValue(value.get(f.getName()));
           break;
         case BYTES:
           rowBuilder.addValue(value.getBytes(f.getName()));

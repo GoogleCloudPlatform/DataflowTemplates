@@ -21,10 +21,10 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableBiMap;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.apache.beam.sdk.extensions.sql.impl.utils.CalciteUtils;
 import org.apache.beam.sdk.schemas.Schema.Field;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.schemas.Schema.TypeName;
+import org.apache.beam.sdk.schemas.logicaltypes.SqlTypes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +39,7 @@ public class SchemaUtils {
           .put("BOOL", org.apache.beam.sdk.schemas.Schema.TypeName.BOOLEAN)
           .put("BYTES", org.apache.beam.sdk.schemas.Schema.TypeName.BYTES)
           .put("DOUBLE", org.apache.beam.sdk.schemas.Schema.TypeName.DOUBLE)
+          .put("NUMERIC", org.apache.beam.sdk.schemas.Schema.TypeName.DECIMAL)
           .put("INT16", org.apache.beam.sdk.schemas.Schema.TypeName.INT16)
           .put("INT32", org.apache.beam.sdk.schemas.Schema.TypeName.INT32)
           .put("INT64", org.apache.beam.sdk.schemas.Schema.TypeName.INT64)
@@ -50,9 +51,9 @@ public class SchemaUtils {
       LOGICAL_FIELD_TYPES =
       ImmutableBiMap.<String, org.apache.beam.sdk.schemas.Schema.FieldType>builder()
           .put("DATE", org.apache.beam.sdk.schemas.Schema.FieldType.logicalType(
-              new CalciteUtils.DateType()))
+              SqlTypes.DATE))
           .put("TIME", org.apache.beam.sdk.schemas.Schema.FieldType.logicalType(
-              new CalciteUtils.TimeType()))
+              SqlTypes.TIME))
           .put("MAP<STRING,STRING>", FieldType.map(FieldType.STRING, FieldType.STRING))
           .build();
 

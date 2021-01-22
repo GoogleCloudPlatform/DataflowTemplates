@@ -104,8 +104,8 @@ import org.slf4j.LoggerFactory;
  * <p>For example, for a database with two tables Users and Singers, the pipeline will export the
  * following file set. <code>
  *  Singers-manifest.json
- *  Users.avro-00000-of-00002
- *  Users.avro-00001-of-00002
+ *  Singers.avro-00000-of-00002
+ *  Singers.avro-00001-of-00002
  *  Users-manifest.json
  *  Users.avro-00000-of-00003
  *  Users.avro-00001-of-00003

@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.cdc.sources;
 
 import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.MoreObjects.firstNonNull;
 
+import com.google.api.client.util.DateTime;
 import com.google.api.services.storage.model.Objects;
 import com.google.api.services.storage.model.StorageObject;
 import java.io.IOException;
@@ -26,12 +27,26 @@ import java.util.List;
 import org.apache.beam.sdk.extensions.gcp.util.GcsUtil;
 import org.apache.beam.sdk.extensions.gcp.util.GcsUtil.GcsUtilFactory;
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
+import org.apache.beam.sdk.io.FileIO;
+import org.apache.beam.sdk.io.FileIO.ReadableFile;
+import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.fs.MatchResult.Metadata;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Values;
 import org.apache.beam.sdk.transforms.Watch;
+import org.apache.beam.sdk.transforms.Watch.Growth;
 import org.apache.beam.sdk.transforms.Watch.Growth.PollFn;
+import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.TimestampedValue;
+import org.apache.beam.sdk.values.TypeDescriptors;
 import org.apache.beam.vendor.guava.v20_0.com.google.common.collect.Lists;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
@@ -68,31 +83,109 @@ import org.slf4j.LoggerFactory;
  *    <li>`gs://BUCKET/root/prefix/HR_SALARIES/` - This directory represents an "object"</li>
  *  </ul>
  */
-public class DataStreamIO extends PTransform<PCollection<String>, PCollection<String>> {
+public class DataStreamIO extends PTransform<PBegin, PCollection<ReadableFile>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamIO.class);
 
+  private String rfcStartDateTime;
+  private String inputFilePattern;
+  private String gcsNotificationSubscription;
+  PCollection<String> directories = null;
+
+  public DataStreamIO() {}
+
+  public DataStreamIO(String inputFilePattern, String gcsNotificationSubscription, String rfcStartDateTime) {
+    this.inputFilePattern = inputFilePattern;
+    this.gcsNotificationSubscription = gcsNotificationSubscription;
+    this.rfcStartDateTime = rfcStartDateTime;
+  }
+
   @Override
-  public PCollection<String> expand(PCollection<String> input) {
-    return input
-        .apply(Watch
-            .growthOf(new DirectoryMatchPollFn(1, 1))
+  public PCollection<ReadableFile> expand(PBegin input) {
+    if (this.gcsNotificationSubscription != null) {
+      return expandGcsPubSubPipeline(input);
+    } else if (this.inputFilePattern != null) {
+      return expandPollingPipeline(input);
+    } else {
+      throw new IllegalArgumentException("DataStreamIO requires either a GCS stream  directory or Pub/Sub Subscription");
+    }
+  }
+
+  public PCollection<ReadableFile> expandGcsPubSubPipeline(PBegin input) {
+      return input
+        .apply(
+          "ReadGcsPubSubSubscription",
+          PubsubIO.readMessagesWithAttributes()
+            .fromSubscription(this.gcsNotificationSubscription))
+        .apply("ExtractGcsFilePath", ParDo.of(new ExtractGcsFile()))
+        .apply("ReadFiles", FileIO.readMatches());
+  }
+
+  public PCollection<ReadableFile> expandPollingPipeline(PBegin input) {
+    directories = input
+        .apply("StartPipeline", Create.of(this.inputFilePattern))
+        .apply("FindTableDirectory",
+          Watch
+            .growthOf(new DirectoryMatchPollFn(1, 1, null, "/"))
             .withPollInterval(Duration.standardSeconds(120)))
         .apply(Values.create())
-        .apply(Watch
-            .growthOf(new DirectoryMatchPollFn(5, 5))
+        .apply("FindTablePerMinuteDirectory",
+          Watch
+            .growthOf(new DirectoryMatchPollFn(5, 5, this.rfcStartDateTime, null))
             .withPollInterval(Duration.standardSeconds(5)))
         .apply(Values.create());
+
+    return directories
+        .apply("GetDirectoryGlobs",
+                MapElements.into(TypeDescriptors.strings()).via(path -> path + "**"))
+            .apply(
+                "MatchDatastreamAvroFiles",
+                FileIO.matchAll()
+                    .continuously(
+                        Duration.standardSeconds(5),
+                        Growth.afterTimeSinceNewOutput(Duration.standardMinutes(10))))
+            .apply("ReadFiles", FileIO.readMatches());
+  }
+
+  static class ExtractGcsFile extends DoFn<PubsubMessage, Metadata> {
+    @ProcessElement
+    public void process(ProcessContext context) {
+      PubsubMessage message = context.element();
+
+      String eventType = message.getAttribute("eventType");
+      String bucketId = message.getAttribute("bucketId");
+      String objectId = message.getAttribute("objectId");
+
+      if (eventType.equals("OBJECT_FINALIZE") && !objectId.endsWith("/")) {
+        String fileName = "gs://" + bucketId + "/" + objectId;
+        try {
+          Metadata fileMetadata = FileSystems.matchSingleFileSpec(fileName);
+          context.output(fileMetadata);
+        } catch (IOException e) {
+          LOG.error("GCS Failure retrieving {}: {}", fileName, e);
+        }
+      }
+    }
   }
 
   static class DirectoryMatchPollFn extends PollFn<String, String> {
     private transient GcsUtil util;
     private final Integer minDepth;
     private final Integer maxDepth;
+    private final DateTime startDateTime;
+    private final String delimiter;
 
-    DirectoryMatchPollFn(Integer minDepth, Integer maxDepth) {
+    DirectoryMatchPollFn(Integer minDepth, Integer maxDepth, String rfcStartDateTime, String delimiter) {
       this.maxDepth = maxDepth;
       this.minDepth = minDepth;
+      // The delimiter parameter works for 1-depth elements.
+      // See https://cloud.google.com/storage/docs/json_api/v1/objects/list for details.
+      this.delimiter = delimiter;
+      if (rfcStartDateTime != null) {
+        this.startDateTime = DateTime.parseRfc3339(rfcStartDateTime);
+      } else {
+        this.startDateTime = DateTime.parseRfc3339("1970-01-01T00:00:00.00Z");
+      }
     }
 
     private Integer getObjectDepth(String objectName) {
@@ -112,16 +205,32 @@ public class DataStreamIO extends PTransform<PCollection<String>, PCollection<St
       return util;
     }
 
-    private List<String> getMatchingObjects(GcsPath path) throws IOException {
-      List<String> result = new ArrayList<>();
+    private boolean shouldFilterObject(StorageObject object) {
+      DateTime updatedDateTime = object.getUpdated();
+      if (updatedDateTime.getValue() < this.startDateTime.getValue()) {
+        return true;
+      }
+      return false;
+    }
+
+    private List<TimestampedValue<String>> getMatchingObjects(GcsPath path) throws IOException {
+      List<TimestampedValue<String>> result = new ArrayList<>();
       Integer baseDepth = getObjectDepth(path.getObject());
       GcsUtil util = getUtil();
       String pageToken = null;
       do {
-        Objects objects = util.listObjects(path.getBucket(), path.getObject(), pageToken);
+        Objects objects = util.listObjects(
+            path.getBucket(), path.getObject(), pageToken, delimiter);
         pageToken = objects.getNextPageToken();
         List<StorageObject> items = firstNonNull(
             objects.getItems(), Lists.newArrayList());
+        if (objects.getPrefixes() != null) {
+          for (String prefix : objects.getPrefixes()) {
+            result.add(TimestampedValue.of(
+                "gs://" + path.getBucket() + "/" + prefix,
+                Instant.EPOCH));
+          }
+        }
         for (StorageObject object : items) {
           String fullName = "gs://" + object.getBucket() + "/" + object.getName();
           if (!object.getName().endsWith("/")) {
@@ -132,9 +241,14 @@ public class DataStreamIO extends PTransform<PCollection<String>, PCollection<St
             // Output only direct children and not the directory itself.
             continue;
           }
+          if (shouldFilterObject(object)) {
+            // Skip file due to iinitial timestamp
+            continue;
+          }
           Integer newDepth = getObjectDepth(object.getName());
           if (baseDepth + minDepth <= newDepth && newDepth <= baseDepth + maxDepth) {
-            result.add(fullName);
+            Instant fileUpdatedInstant = Instant.ofEpochMilli(object.getUpdated().getValue());
+            result.add(TimestampedValue.of(fullName, fileUpdatedInstant));
           }
         }
       } while (pageToken != null);
@@ -146,8 +260,7 @@ public class DataStreamIO extends PTransform<PCollection<String>, PCollection<St
         throws Exception {
       Instant now = Instant.now();
       GcsPath path = GcsPath.fromUri(element);
-      return Watch.Growth.PollResult.incomplete(now, getMatchingObjects(path))
-          .withWatermark(now);
+      return Watch.Growth.PollResult.incomplete(getMatchingObjects(path));
     }
   }
 }

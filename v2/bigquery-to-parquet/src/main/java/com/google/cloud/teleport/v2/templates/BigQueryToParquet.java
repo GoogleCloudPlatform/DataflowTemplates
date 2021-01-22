@@ -24,6 +24,7 @@ import com.google.cloud.bigquery.storage.v1beta1.Storage.ReadSession;
 import com.google.cloud.bigquery.storage.v1beta1.TableReferenceProto;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.Pipeline;
@@ -32,6 +33,7 @@ import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryHelpers;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.TypedRead;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.TypedRead.Method;
 import org.apache.beam.sdk.io.gcp.bigquery.SchemaAndRecord;
 import org.apache.beam.sdk.io.parquet.ParquetIO;
@@ -40,6 +42,7 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Splitter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -256,6 +259,19 @@ public class BigQueryToParquet {
     Schema schema = getTableSchema(session);
     client.close();
 
+    TypedRead<GenericRecord> readFromBQ =
+        BigQueryIO.read(SchemaAndRecord::getRecord)
+            .from(options.getTableRef())
+            .withTemplateCompatibility()
+            .withMethod(Method.DIRECT_READ)
+            .withCoder(AvroCoder.of(schema));
+
+    if (options.getFields() != null) {
+      List<String> selectedFields = Splitter.on(",").splitToList(options.getFields());
+      readFromBQ =
+          selectedFields.isEmpty() ? readFromBQ : readFromBQ.withSelectedFields(selectedFields);
+    }
+
     /*
      * Steps: 1) Read records from BigQuery via BigQueryIO.
      *        2) Write records to Google Cloud Storage in Parquet format.
@@ -266,13 +282,7 @@ public class BigQueryToParquet {
          *         {@link GenericRecord}.
          */
         .apply(
-            "ReadFromBigQuery",
-            BigQueryIO.read(SchemaAndRecord::getRecord)
-                .from(options.getTableRef())
-                .withTemplateCompatibility()
-                .withMethod(Method.DIRECT_READ)
-                .withCoder(AvroCoder.of(schema))
-                .withReadOptions(tableReadOptions))
+            "ReadFromBigQuery", readFromBQ)
         /*
          * Step 2: Write records to Google Cloud Storage as one or more Parquet files
          *         via {@link ParquetIO}.

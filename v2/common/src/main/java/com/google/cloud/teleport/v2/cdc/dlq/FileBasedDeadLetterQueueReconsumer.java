@@ -23,11 +23,11 @@ import java.nio.channels.Channels;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.MatchResult.Metadata;
-import org.apache.beam.sdk.io.fs.MoveOptions.StandardMoveOptions;
-import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
+import org.apache.beam.sdk.io.fs.MetadataCoder;
 import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -38,6 +38,9 @@ import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.Watch.Growth;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.node.ObjectNode;
@@ -55,11 +58,16 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
   private static final Logger LOG = LoggerFactory.getLogger(
       FileBasedDeadLetterQueueReconsumer.class);
 
-  public static final Duration DEFAULT_RECHECK_PERIOD = Duration.standardMinutes(2);
-  public static final String TEMPORARY_HOLD_SUBDIRECTORY = "tmp";
+  public static final Duration DEFAULT_RECHECK_PERIOD = Duration.standardMinutes(5);
 
   private final String dlqDirectory;
   private final Duration recheckPeriod;
+
+  public static FileBasedDeadLetterQueueReconsumer create(
+      String dlqDirectory, Integer recheckPeriodMinutes) {
+    return new FileBasedDeadLetterQueueReconsumer(
+        dlqDirectory, Duration.standardMinutes(recheckPeriodMinutes));
+  }
 
   public static FileBasedDeadLetterQueueReconsumer create(String dlqDirectory) {
     return new FileBasedDeadLetterQueueReconsumer(dlqDirectory, DEFAULT_RECHECK_PERIOD);
@@ -74,12 +82,12 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
     // We want to match all the files in this directory (but not the directories).
     // TODO: Paths resolve converts "gs://bucket/.." to "gs:/bucket/.."
     // String filePattern = Paths.get(dlqDirectory).resolve("*").toString();
-    String filePattern = dlqDirectory + "*";
+    String filePattern = dlqDirectory + "**";
     return in.getPipeline()
         .apply(FileIO.match()
             .filepattern(filePattern)
             .continuously(recheckPeriod, Growth.never()))
-        .apply(moveAndConsumeMatches());
+        .apply("ConsumeMatches", moveAndConsumeMatches());
 
   }
 
@@ -90,41 +98,73 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
       public PCollection<String> expand(PCollection<Metadata> input) {
         // TODO(pabloem, dhercher): Use a Beam standard transform once possible
         // TODO(pabloem, dhercher): Add a _metadata attribute to track whether a row comes from DLQ.
-        return input.apply(Reshuffle.viaRandomKey())
-            .apply(ParDo.of(new MoveAndConsumeFn()));
+        TupleTag<String> fileContents = new TupleTag<String>();
+        TupleTag<Metadata> fileMetadatas = new TupleTag<Metadata>();
+        PCollectionTuple results = input
+            .apply(ParDo.of(new MoveAndConsumeFn(fileContents, fileMetadatas))
+                       .withOutputTags(fileContents, TupleTagList.of(fileMetadatas)));
+
+        results.get(fileMetadatas)
+            .setCoder(MetadataCoder.of())
+            .apply("ReshuffleFiles", Reshuffle.viaRandomKey())
+            .apply(ParDo.of(new RemoveFiles()));
+
+        return results.get(fileContents)
+            .setCoder(StringUtf8Coder.of())
+            .apply("ReshuffleContents", Reshuffle.viaRandomKey());
       }
     };
   }
 
-  // TODO(pabloen): Switch over to use FileIO after BEAM-10246
-  private static class MoveAndConsumeFn extends DoFn<Metadata, String> {
+  private static class RemoveFiles extends DoFn<Metadata, Void> {
     private final List<ResourceId> filesToRemove = new ArrayList<>();
-
     private final Counter failedDeletions =
         Metrics.counter(MoveAndConsumeFn.class, "failedDeletions");
-    private final Counter reconsumedElements =
-        Metrics.counter(MoveAndConsumeFn.class, "elementsReconsumedFromDeadLetterQueue");
 
     @ProcessElement
     public void process(
         @Element Metadata dlqFile,
-        OutputReceiver<String> outputs) throws IOException {
-      // First we move the file to a temporary location so it will not be picked up
-      // by the DLQ picker again.
-      ResourceId newFileLocation = dlqFile.resourceId()
-          .getCurrentDirectory()
-          .resolve(TEMPORARY_HOLD_SUBDIRECTORY, StandardResolveOptions.RESOLVE_DIRECTORY)
-          .resolve(dlqFile.resourceId().getFilename(), StandardResolveOptions.RESOLVE_FILE);
+        MultiOutputReceiver outputs) throws IOException {
+       this.filesToRemove.add(dlqFile.resourceId());
+    }
 
-      LOG.info("Moving DLQ file {} to {}", dlqFile.resourceId().getFilename(), newFileLocation);
-      // If this move has a failure, this means that the file has already been moved, thus we
-      // ignore it.
-      FileSystems.copy(
-          Collections.singletonList(dlqFile.resourceId()),
-          Collections.singletonList(newFileLocation),
-          StandardMoveOptions.IGNORE_MISSING_FILES);
+    @FinishBundle
+    public void cleanupFiles() {
+      for (ResourceId file : filesToRemove) {
+        try {
+          FileSystems.delete(Collections.singleton(file));
+        } catch (IOException e) {
+          LOG.error("Unable to delete file {}. Exception: {}", file, e);
+          failedDeletions.inc();
+        }
+      }
+      filesToRemove.clear();
+    }
+  }
 
-      InputStream jsonStream = Channels.newInputStream(FileSystems.open(newFileLocation));
+  // TODO(pabloen): Switch over to use FileIO after BEAM-10246
+  private static class MoveAndConsumeFn extends DoFn<Metadata, String> {
+
+    private final Counter reconsumedElements =
+        Metrics.counter(MoveAndConsumeFn.class, "elementsReconsumedFromDeadLetterQueue");
+
+    private final TupleTag<Metadata> filesTag;
+    private final TupleTag<String> contentTag;
+
+    MoveAndConsumeFn(TupleTag<String> contentTag, TupleTag<Metadata> filesTag) {
+      this.filesTag = filesTag;
+      this.contentTag = contentTag;
+    }
+
+    @ProcessElement
+    public void process(
+        @Element Metadata dlqFile,
+        MultiOutputReceiver outputs) throws IOException {
+      if (dlqFile.resourceId().toString().contains("/tmp/.temp")) {
+        return;
+      }
+
+      InputStream jsonStream = Channels.newInputStream(FileSystems.open(dlqFile.resourceId()));
       BufferedReader jsonReader = new BufferedReader(new InputStreamReader(jsonStream));
 
       // Assuming that files are JSONLines formatted.
@@ -139,28 +179,14 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
           }
           resultNode = (ObjectNode) jsonDLQElement.get("message");
           resultNode.put("_metadata_error", jsonDLQElement.get("error_message"));
-          outputs.output(resultNode.toString());
+          outputs.get(contentTag).output(resultNode.toString());
           reconsumedElements.inc();
         } catch (IOException e) {
           LOG.error("Issue parsing JSON record {}. Unable to continue.", line, e);
           throw new RuntimeException(e);
         }
       });
-      this.filesToRemove.add(dlqFile.resourceId());
-      this.filesToRemove.add(newFileLocation);
-    }
-
-    @FinishBundle
-    public void cleanupFiles() {
-      for (ResourceId file : filesToRemove) {
-        try {
-          FileSystems.delete(Collections.singleton(file));
-        } catch (IOException e) {
-          LOG.error("Unable to delete file {}. Exception: {}", file, e);
-          failedDeletions.inc();
-        }
-      }
-      filesToRemove.clear();
+      outputs.get(filesTag).output(dlqFile);
     }
   }
 }

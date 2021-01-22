@@ -35,7 +35,9 @@ import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -50,13 +52,15 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.DoFn.StartBundle;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
-import org.apache.beam.vendor.guava.v20_0.com.google.common.base.Throwables;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,6 +94,7 @@ public abstract class PythonTextTransformer implements Serializable {
     Integer getRuntimeRetries();
 
     void setRuntimeRetries(Integer runtimeRetries);
+
   }
 
   /** Grabs code from a FileSystem, loads into ProcessBuilder. */
@@ -215,49 +220,20 @@ public abstract class PythonTextTransformer implements Serializable {
     }
 
     /**
-     * Invokes the UDF with specified data.
-     *
-     * @param data data to pass to the invocable function
-     * @return The data transformed by the UDF in String format
-     */
-    @Nullable
-    public List<String> invoke(String data, Integer retries)
-            throws IOException, NoSuchMethodException, InterruptedException {
-      // Save Data in Temporary File
-      LOG.info("Writing to File");
-      File file = File.createTempFile("temp", null);
-      BufferedWriter writer = new BufferedWriter(new FileWriter(file.getAbsolutePath()));
-      writer.write(data);
-      writer.close();
-
-      // Apply Python
-      List<String> results = applyRuntimeToFile(file, retries);
-      file.delete();
-
-      return results;
-    }
-
-    /**
      * Invokes the UDF with specified list of data.
      *
      * @param data data to pass to the invocable function
      * @return The data transformed by the UDF in String format
      */
     @Nullable
-    public List<String> invoke(List<String> data, Integer retries)
+    public List<String> invoke(File file, Integer retries)
             throws IOException, NoSuchMethodException, InterruptedException {
       // Save Data in Temporary File
-      LOG.info("Writing to File");
-      File file = File.createTempFile("temp", null);
-      BufferedWriter writer = new BufferedWriter(new FileWriter(file.getAbsolutePath()));
-      for (String event: data) {
-        writer.write(event);
-      }
-      writer.close();
+      LOG.info("Applying runtime");
+
 
       // Apply Python
       List<String> results = applyRuntimeToFile(file, retries);
-      file.delete();
 
       return results;
     }
@@ -269,6 +245,7 @@ public abstract class PythonTextTransformer implements Serializable {
       Process runtime;
       String pythonVersion = runtimeVersion();
       Integer retriesRemaining = retries - 1;
+      String stderr;
 
       // Apply Python
       try {
@@ -277,9 +254,13 @@ public abstract class PythonTextTransformer implements Serializable {
                       .command(pythonVersion, functionName(), dataFile.getAbsolutePath())
                       .start();
         LOG.info("Waiting For Results: " + dataFile.getAbsolutePath());
-        // runtime.waitFor(2L, TimeUnit.SECONDS); // TODO need to discover if I need this, I think I do not
-      }
-      catch (IOException e) {
+        if (retriesRemaining > 0) {
+          if (runtime != null) {
+            runtime.destroyForcibly();
+          }
+          return applyRuntimeToFile(dataFile, retriesRemaining);
+        }
+      } catch (IOException e) {
         LOG.info("IO Exception Seen");
         if (e.getMessage().startsWith(missingPythonErrorMessage)) {
           // Build Python and Retry
@@ -291,8 +272,8 @@ public abstract class PythonTextTransformer implements Serializable {
           }
         } else {
           throw e;
-        }
-      } catch (Exception e) {
+          }
+        } catch (Exception e) {
           LOG.info("Non IO Exception Seen");
           throw e;
       }
@@ -308,10 +289,10 @@ public abstract class PythonTextTransformer implements Serializable {
       try {
         final BufferedReader reader = new BufferedReader(new InputStreamReader(runtime.getInputStream()));
         reader.lines().iterator().forEachRemaining(results::add);
-
-        runtime.destroy();
       } catch (Exception e) {
         e.printStackTrace();
+      } finally {
+        runtime.destroy();
       }
 
       return results;
@@ -352,100 +333,6 @@ public abstract class PythonTextTransformer implements Serializable {
     }
   }
 
-  /** Transforms Text Strings via a Python UDF. */
-  @AutoValue
-  public abstract static class TransformTextViaPython
-      extends PTransform<PCollection<String>, PCollection<String>> {
-    public abstract @Nullable String fileSystemPath();
-
-    public abstract @Nullable String runtimeVersion();
-
-    public abstract @Nullable String functionName();
-
-    public abstract @Nullable Integer runtimeRetries();
-
-    /** Builder for {@link TransformTextViaPython}. */
-    @AutoValue.Builder
-    public abstract static class Builder {
-      public abstract Builder setFileSystemPath(@Nullable String fileSystemPath);
-
-      public abstract Builder setRuntimeVersion(@Nullable String runtimeVersion);
-
-      public abstract Builder setFunctionName(@Nullable String functionName);
-
-      public abstract Builder setRuntimeRetries(@Nullable Integer runtimeRetries);
-
-      public abstract TransformTextViaPython build();
-    }
-
-    public static Builder newBuilder() {
-      return new AutoValue_PythonTextTransformer_TransformTextViaPython.Builder();
-    }
-
-    private String getPythonVersion() {
-      if (runtimeVersion() != null) {
-        return runtimeVersion();
-      } else {
-        return DEFAULT_PYTHON_VERSION;
-      }
-    }
-
-    @Override
-    public PCollection<String> expand(PCollection<String> strings) {
-      return strings.apply(
-          ParDo.of(
-              new DoFn<String, String>() {
-                private PythonRuntime pythonRuntime;
-
-                @Setup
-                public void setup()
-                    throws IOException, NoSuchMethodException, InterruptedException {
-                  String runtimeVersion = getPythonVersion();
-
-                  if (fileSystemPath() != null && functionName() != null) {
-                    LOG.info("getting runtime!");
-                    pythonRuntime =
-                        getPythonRuntime(fileSystemPath(), functionName(), runtimeVersion);
-                    LOG.info("Build Python Env for version {}", runtimeVersion);
-
-                    pythonRuntime.buildPythonExecutable(runtimeVersion);
-                  } else {
-                    LOG.warn(
-                        "Not setting up a Python Mapper runtime, because "
-                            + "fileSystemPath={} and functionName={}",
-                        fileSystemPath(),
-                        functionName());
-                    return;
-                  }
-                }
-
-                @ProcessElement
-                public void processElement(ProcessContext c)
-                    throws IOException, NoSuchMethodException, InterruptedException {
-                  // Python Will likely Return Multiple Events
-                  List<String> results = new ArrayList<>();
-                  String jsonString = c.element();
-
-                  // LOG.info("Logging JSON String");
-                  // LOG.info(jsonString);
-
-                  if (pythonRuntime != null) {
-                    Integer retries = runtimeRetries();
-                    results = pythonRuntime.invoke(jsonString, retries);
-                  }
-                  // TODO: Handle the lack of Python Mapper runtime
-
-                  LOG.info(String.format("Python Load: %d in Batch", results.size()));
-                  for (String event : results) {
-                    // LOG.info("Logging Python Results");
-                    // LOG.info(event);
-                    c.output(event);
-                  }
-                }
-              }));
-    }
-  }
-
   /**
    * The {@link FailsafePythonUdf} class processes user-defined functions is a fail-safe manner by
    * maintaining the original payload post-transformation and outputting to a dead-letter on
@@ -475,6 +362,9 @@ public abstract class PythonTextTransformer implements Serializable {
 
     private Counter failedCounter =
         Metrics.counter(FailsafePythonUdf.class, "udf-transform-failed-count");
+
+    private Counter thresholdCounter =
+        Metrics.counter(FailsafePythonUdf.class, "udf-threshold-trigger");
 
     /** Builder for {@link FailsafePythonUdf}. */
     @AutoValue.Builder
@@ -509,6 +399,13 @@ public abstract class PythonTextTransformer implements Serializable {
           ParDo.of(
                   new DoFn<FailsafeElement<T, String>, FailsafeElement<T, String>>() {
                     private PythonRuntime pythonRuntime;
+                    private Integer batchLimit;
+                    private Integer batchCounter;
+                    private HashMap<String, FailsafeElement<T, String>> futures;
+                    private String processUUID;
+                    private File manifestFile;
+                    private BufferedWriter dataWriter;
+                    private BoundedWindow window;
 
                     @Setup
                     public void setup()
@@ -532,37 +429,92 @@ public abstract class PythonTextTransformer implements Serializable {
                       }
                     }
 
-                    @ProcessElement
-                    public void processElement(ProcessContext context) {
-                      FailsafeElement<T, String> element = context.element();
-                      List<String> results = new ArrayList<>();
-                      String payloadStr = element.getPayload();
+                    @StartBundle
+                    public void startBundle(StartBundleContext context) throws IOException {
+                      batchCounter = 0;
+                      batchLimit = 1000;
+                      processUUID = UUID.randomUUID().toString();
+                      manifestFile = File.createTempFile(String.format("manifest_%s", processUUID), null);
+                      futures = new HashMap<String, FailsafeElement<T, String>>();
+                      dataWriter = new BufferedWriter(new FileWriter(manifestFile.getAbsolutePath()));
+                      LOG.info("file is at {}", manifestFile.getAbsolutePath());
 
-                      try {
-                        if (pythonRuntime != null) {
-                          Integer retries = runtimeRetries();
-                          results = pythonRuntime.invoke(payloadStr, retries);
-                        }
+                      // initialize a temp file (non local) and a counter
+                      // TODO: createFile function
 
-                        if (!Strings.isNullOrEmpty(payloadStr)) {
-                          for (int event = 0; event < results.size(); event++){
-                          context.output(
-                              FailsafeElement.of(element.getOriginalPayload(), results.get(event)));
-                          successCounter.inc();
-                          }
-                        }
-                      } catch (Exception e) {
-                        context.output(
-                            failureTag(),
-                            FailsafeElement.of(element)
-                                .setErrorMessage(e.getMessage())
-                                .setStacktrace(Throwables.getStackTraceAsString(e)));
-                      }
                     }
-                  })
-              .withOutputTags(successTag(), TupleTagList.of(failureTag())));
+
+
+                    @ProcessElement
+                    public void processElement(ProcessContext context, BoundedWindow window) throws IOException {
+                      this.window = window;
+                      FailsafeElement<T, String> element = context.element();
+                      String payloadStr = element.getPayload();
+                      String eventId = UUID.randomUUID().toString();
+                      JSONObject originalPayload = new JSONObject(payloadStr);
+                      JSONObject json = new JSONObject();
+                      json.put("id", eventId);
+                      json.put("event", originalPayload);
+                      String wrappedPayload = json.toString();
+                      futures.put(eventId, element);
+                      // TODO: add a counter of sum of total bytes
+                      // 1) add event and increase counter
+                      // 2) if counter > X process all of the rows
+
+                      dataWriter.write(wrappedPayload);
+                      dataWriter.newLine();
+                      dataWriter.flush();
+                      batchCounter++;
+                    }
+
+                    // TODO: create an execute batch fn
+
+                    @FinishBundle
+                    public void finishBundle(FinishBundleContext context) throws IOException,
+                        NoSuchMethodException,
+                        InterruptedException {
+                      LOG.info("closing batch at {} events", batchCounter);
+                      Integer retries = runtimeRetries();
+                      List<String> results = new ArrayList<>();
+                      LOG.info("executing the batch!!!");
+                      results = pythonRuntime.invoke(manifestFile, retries);
+                      LOG.info("processed {} number of records", results.size());
+                      for (int iter = 0; iter < results.size(); iter++){
+                        String event = results.get(iter);
+                        JSONObject json = new JSONObject(event);
+                        String eventId = json.getString("id");
+                        FailsafeElement<T, String> originalEvent = futures.get(eventId);
+
+                        // FIX THIS
+                        if (json.getString("status").equals("SUCCESS")) {
+                          String transformedEvent = json.getJSONObject("event").toString();
+                          context.output(
+                            FailsafeElement.of(originalEvent.getOriginalPayload(),
+                                               json.getJSONObject("event").toString()),
+                              window.maxTimestamp(),
+                              window);
+                          successCounter.inc();
+                        } else if (json.getString("status").equals("FAILED")) {
+                          context.output(
+                                  originalEvent
+                                  .setErrorMessage(json.getString("error_message"))
+                                  .setStacktrace(json.getString("error_message")),
+                              window.maxTimestamp(),
+                              window);
+                        } else {
+                          LOG.info("Failed to emit an event");
+                          LOG.info("event status was {}", json.getString("status"));
+                        }
+                      }
+                      futures.clear();
+                      dataWriter.close();
+                      manifestFile.delete();
+                    }
+                  }
+                ).withOutputTags(successTag(), TupleTagList.of(failureTag()))
+          );
+      }
     }
-  }
 
   /**
    * Retrieves a {@link PythonRuntime} configured to invoke the specified function within the
@@ -590,3 +542,21 @@ public abstract class PythonTextTransformer implements Serializable {
   }
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

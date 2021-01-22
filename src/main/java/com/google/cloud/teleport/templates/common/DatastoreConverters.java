@@ -352,8 +352,8 @@ public class DatastoreConverters {
 
       // Build entity who's key has an empty project Id.
       // This allows DatastoreIO to handle what project Entities are loaded into
-      Key k = entityBuilder.build().getKey();
-      entityBuilder.setKey(Key.newBuilder()
+      com.google.datastore.v1.Key k = entityBuilder.build().getKey();
+      entityBuilder.setKey(com.google.datastore.v1.Key.newBuilder()
           .addAllPath(k.getPathList())
           .setPartitionId(PartitionId.newBuilder()
               .setProjectId("")

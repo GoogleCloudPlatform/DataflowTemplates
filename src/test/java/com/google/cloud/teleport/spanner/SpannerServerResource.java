@@ -37,7 +37,7 @@ import org.junit.rules.ExternalResource;
 /** Facilitates setup and deletion of a Spanner database for integration tests. */
 public class SpannerServerResource extends ExternalResource {
   // Modify the following parameters to match your Cloud Spanner instance.
-  private final String projectId = "test-project";
+  private final String projectId = "span-cloud-testing";
   private final String instanceId = "test-instance";
   private final String host = "https://spanner.googleapis.com";
 

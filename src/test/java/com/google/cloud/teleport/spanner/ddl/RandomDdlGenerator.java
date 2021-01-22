@@ -83,7 +83,7 @@ public abstract class RandomDdlGenerator {
         .setRandom(new Random())
         .setArrayChance(20)
         .setMaxPkComponents(3)
-        .setMaxBranchPerLevel(new int[] {3, 2, 1, 1, 1, 1, 1})
+        .setMaxBranchPerLevel(new int[] {2, 2, 1, 1, 1, 1, 1})
         .setMaxIndex(2)
         .setMaxForeignKeys(2)
         // TODO: enable once CHECK constraints are enabled
@@ -186,7 +186,10 @@ public abstract class RandomDdlGenerator {
       IndexColumn.IndexColumnsBuilder<Index.Builder> columns = index.columns();
       boolean interleaved = rnd.nextBoolean();
       Set<String> pks = Sets.newHashSet();
-      if (interleaved) {
+      // Do not interleave indexes at the last table level.
+      // This causes tests to fail as generated schema exceeds interleaving limit.
+      int finalLevel = getMaxBranchPerLevel().length - 1;
+      if (interleaved && level < finalLevel) {
         index.interleaveIn(table.name());
       }
       for (IndexColumn pk : table.primaryKeys()) {

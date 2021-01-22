@@ -25,7 +25,10 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import org.apache.avro.Conversions.DecimalConversion;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
@@ -46,6 +49,14 @@ import org.slf4j.LoggerFactory;
 public class FormatDatastreamRecordToJson
     implements SerializableFunction<GenericRecord, FailsafeElement<String, String>> {
 
+  /**
+   * Names of the custom avro types that we'll be using.
+   */
+  public static class CustomAvroTypes {
+    public static final String VARCHAR = "varchar";
+    public static final String NUMBER = "number";
+  }
+
   static final Logger LOG = LoggerFactory.getLogger(FormatDatastreamRecordToJson.class);
   static final DateTimeFormatter DEFAULT_DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
   static final DateTimeFormatter DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER =
@@ -53,6 +64,9 @@ public class FormatDatastreamRecordToJson
   static final DecimalConversion DECIMAL_CONVERSION = new DecimalConversion();
   static final DateConversion DATE_CONVERSION = new DateConversion();
   private String streamName;
+  private boolean lowercaseSourceColumns = false;
+  private String rowIdColumnName;
+  private static Map<String, String> hashedColumns = new HashMap<String, String>();
 
   private FormatDatastreamRecordToJson() {}
 
@@ -65,11 +79,42 @@ public class FormatDatastreamRecordToJson
     return this;
   }
 
+  public FormatDatastreamRecordToJson withLowercaseSourceColumns() {
+    this.lowercaseSourceColumns = true;
+    return this;
+  }
+
+  /**
+   * Add the supplied columnName to the list of column values to be hashed.
+   *
+   * @param columnName The column name to look for in the data to hash.
+   */
+  public FormatDatastreamRecordToJson withHashColumnValue(String columnName) {
+    this.hashedColumns.put(columnName, columnName);
+    return this;
+  }
+
+  /**
+   * Add the supplied columnName to the map of column values to be hashed.
+   * A new column with a hashed value of the first will be created.
+   *
+   * @param columnName The column name to look for in the data.
+   * @param newColumnName The name of the new column created with hashed data.
+   */
+  public FormatDatastreamRecordToJson withHashColumnValue(
+      String columnName, String newColumnName) {
+    this.hashedColumns.put(columnName, newColumnName);
+    return this;
+  }
+
   @Override
   public FailsafeElement<String, String> apply(GenericRecord record) {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode outputObject = mapper.createObjectNode();
-    UnifiedTypesFormatter.payloadToJson((GenericRecord) record.get("payload"), outputObject);
+    UnifiedTypesFormatter.payloadToJson(getPayload(record), outputObject);
+    if (this.lowercaseSourceColumns) {
+      outputObject = getLowerCaseObject(outputObject);
+    }
 
     // General DataStream Metadata
     outputObject.put("_metadata_stream", getStreamName(record));
@@ -89,9 +134,29 @@ public class FormatDatastreamRecordToJson
     outputObject.put("_metadata_rs_id", getOracleRsId(record));
     outputObject.put("_metadata_tx_id", getOracleTxId(record));
 
+    // Hash columns supplied to be hashed
+    applyHashToColumns(record, outputObject);
+
+    // All Raw Metadata
     outputObject.put("_metadata_source", getSourceMetadata(record));
 
     return FailsafeElement.of(outputObject.toString(), outputObject.toString());
+  }
+
+  private GenericRecord getPayload(GenericRecord record) {
+    return (GenericRecord) record.get("payload");
+  }
+
+  private ObjectNode getLowerCaseObject(ObjectNode outputObject) {
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode loweredOutputObject = mapper.createObjectNode();
+
+    for (Iterator<String> fieldNames=outputObject.getFieldNames(); fieldNames.hasNext(); ) {
+      String fieldName = fieldNames.next();
+      loweredOutputObject.put(fieldName.toLowerCase(), outputObject.get(fieldName));
+    }
+
+    return loweredOutputObject;
   }
 
   private JsonNode getSourceMetadata(GenericRecord record) {
@@ -137,17 +202,17 @@ public class FormatDatastreamRecordToJson
     if (((GenericRecord) record.get("source_metadata")).get("change_type") != null) {
       return ((GenericRecord) record.get("source_metadata")).get("change_type").toString();
     }
-    // TODO(dhercher): This should be a backfill insert
+
     return null;
   }
 
   private Boolean getMetadataIsDeleted(GenericRecord record) {
-    // TODO(pabloem): Implement complete calculation for isDeleted.
-    boolean isDeleted = true;
-    if (record.get("read_method") != null
-        && record.get("read_method").toString().equals("oracle_dump")) {
-      isDeleted = false;
+    boolean isDeleted = false;
+    GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
+    if (sourceMetadata.get("is_deleted") != null) {
+      isDeleted = (boolean) sourceMetadata.get("is_deleted");
     }
+
     return isDeleted;
   }
 
@@ -157,6 +222,17 @@ public class FormatDatastreamRecordToJson
     }
 
     return null;
+  }
+
+  private void applyHashToColumns(GenericRecord record, ObjectNode outputObject) {
+    for (String columnName: this.hashedColumns.keySet()) {
+      if (record.get(columnName) != null) {
+        // TODO: discuss hash algorithm to use
+        String newColumnName = this.hashedColumns.get(columnName);
+        int hashedValue = record.get(columnName).toString().hashCode();
+        outputObject.put(newColumnName, hashedValue);
+      }
+    }
   }
 
   private Long getOracleScn(GenericRecord record) {
@@ -299,6 +375,12 @@ public class FormatDatastreamRecordToJson
         jsonObject.put(
             fieldName,
             timestamp.atOffset(ZoneOffset.UTC).format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
+      } else if (fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.NUMBER)) {
+        String number = (String) element.get(fieldName);
+        jsonObject.put(fieldName, number);
+      } else if (fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.VARCHAR)){
+        String varcharValue = (String) element.get(fieldName);
+        jsonObject.put(fieldName, varcharValue);
       } else {
         LOG.error("Unknown field type {} for field {} in {}. Ignoring it.",
             fieldSchema, fieldName, element.get(fieldName));
@@ -312,6 +394,7 @@ public class FormatDatastreamRecordToJson
           jsonObject.put(fieldName, element.toString());
           break;
         case "varchar":
+          // TODO(pabloem): Remove this after Datastream rollout N+1 after 2020-10-26
           // Datastream Varchars are represented with their value and length.
           // For us, we only care about values.
           element.get("value");
@@ -339,7 +422,7 @@ public class FormatDatastreamRecordToJson
               ((Long) element.get("timestamp")) / 1000);
           // Offset comes in milliseconds
           ZoneOffset offset = ZoneOffset.ofTotalSeconds(
-              ((Long) element.get("offset")).intValue() / 1000);
+              ((Number) element.get("offset")).intValue() / 1000);
           ZonedDateTime fullDate = timestamp.atOffset(offset).toZonedDateTime();
           jsonObject.put(
               fieldName,

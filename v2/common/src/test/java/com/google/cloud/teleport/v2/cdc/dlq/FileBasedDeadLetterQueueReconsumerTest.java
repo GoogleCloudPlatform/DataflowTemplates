@@ -73,7 +73,9 @@ public class FileBasedDeadLetterQueueReconsumerTest {
   @Test
   public void testFilesAreConsumed() throws IOException {
     String fileName = createJsonFile("dlqFile1.json", JSON_FILE_CONTENTS_1);
-    folder.newFolder("tmp");
+    // Adding in a file that should not be consumed.
+    folder.newFolder("data");
+    createJsonFile("data/donotReadMe.json", JSON_FILE_CONTENTS_1);
 
     String folderPath = Paths.get(folder.getRoot().getAbsolutePath()).resolve("*").toString();
     PCollection<String> jsonData = p
