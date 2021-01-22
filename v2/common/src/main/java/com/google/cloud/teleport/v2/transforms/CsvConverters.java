@@ -260,6 +260,9 @@ public class CsvConverters {
     @Nullable
     public abstract String jsonSchemaPath();
 
+    @Nullable
+    public abstract String jsonSchema();
+
     public abstract TupleTag<String> headerTag();
 
     public abstract TupleTag<String> lineTag();
@@ -293,9 +296,10 @@ public class CsvConverters {
       }
 
       // If no udf then use json schema
-      if (jsonSchemaPath() != null) {
-
-        String schema = SchemaUtils.getGcsFileAsString(jsonSchemaPath());
+      if (jsonSchemaPath() != null || jsonSchema() != null) {
+        String schema =
+            jsonSchemaPath() != null ? SchemaUtils.getGcsFileAsString(jsonSchemaPath()) :
+                jsonSchema();
 
         return lineFailsafeElements.apply(
             "LineToDocumentUsingSchema",
@@ -346,6 +350,8 @@ public class CsvConverters {
       public abstract Builder setUdfFunctionName(String udfFunctionName);
 
       public abstract Builder setJsonSchemaPath(String jsonSchemaPath);
+
+      public abstract Builder setJsonSchema(String jsonSchema);
 
       public abstract Builder setHeaderTag(TupleTag<String> headerTag);
 
