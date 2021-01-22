@@ -45,7 +45,7 @@ This section describes what is needed to get the template up and running.
 
 ### Setting Up Project Environment
 
-#### Pipeline variables:
+#### Pipeline Variables:
 
 ```
 PROJECT=<my-project>
@@ -63,7 +63,7 @@ Cloud Platform. Create the bucket in Google Cloud Storage if it doesn't exist ye
 gsutil mb gs://${BUCKET_NAME}
 ```
 
-#### Containerization variables:
+#### Containerization Variables:
 
 ```
 IMAGE_NAME=<my-image-name>
