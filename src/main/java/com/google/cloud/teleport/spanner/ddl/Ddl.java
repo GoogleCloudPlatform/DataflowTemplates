@@ -16,6 +16,7 @@
 
 package com.google.cloud.teleport.spanner.ddl;
 
+import com.google.cloud.teleport.spanner.ExportProtos.Export;
 import com.google.common.base.Function;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.HashMultimap;
@@ -40,14 +41,20 @@ import javax.annotation.Nullable;
 public class Ddl implements Serializable {
 
   private static final String ROOT = "#";
+
   private static final long serialVersionUID = -4153759448351855360L;
 
   private ImmutableSortedMap<String, Table> tables;
   private TreeMultimap<String, String> parents;
+  private final ImmutableList<Export.DatabaseOption> databaseOptions;
 
-  private Ddl(ImmutableSortedMap<String, Table> tables, TreeMultimap<String, String> parents) {
+  private Ddl(
+      ImmutableSortedMap<String, Table> tables,
+      TreeMultimap<String, String> parents,
+      ImmutableList<Export.DatabaseOption> databaseOptions) {
     this.tables = tables;
     this.parents = parents;
+    this.databaseOptions = databaseOptions;
   }
 
   public Collection<Table> allTables() {
@@ -79,7 +86,15 @@ public class Ddl implements Serializable {
     return tables.get(tableName.toLowerCase());
   }
 
+  public ImmutableList<Export.DatabaseOption> databaseOptions() {
+    return databaseOptions;
+  }
+
   public void prettyPrint(Appendable appendable) throws IOException {
+    for (Export.DatabaseOption databaseOption : databaseOptions()) {
+      appendable.append(getDatabaseOptionsStatements(databaseOption, "%db_name%"));
+      appendable.append("\n");
+    }
     LinkedList<String> stack = Lists.newLinkedList();
     stack.addAll(childTableNames(ROOT));
     boolean first = true;
@@ -112,6 +127,7 @@ public class Ddl implements Serializable {
         .addAll(createTableStatements())
         .addAll(createIndexStatements())
         .addAll(addForeignKeyStatements())
+        .addAll(setOptionsStatements("%db_name%"))
         .build();
   }
 
@@ -161,6 +177,28 @@ public class Ddl implements Serializable {
     return result;
   }
 
+  public List<String> setOptionsStatements(String databaseId) {
+    List<String> result = new ArrayList<>();
+    for (Export.DatabaseOption databaseOption : databaseOptions()) {
+      result.add(getDatabaseOptionsStatements(databaseOption, databaseId));
+    }
+    return result;
+  }
+
+  private static String getDatabaseOptionsStatements(
+      Export.DatabaseOption databaseOption, String databaseId) {
+    String formattedValue =
+        databaseOption.getOptionType().equalsIgnoreCase("STRING")
+            ? "\"" + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(databaseOption.getOptionValue()) + "\""
+            : databaseOption.getOptionValue();
+
+    String statement =
+        String.format(
+            "ALTER DATABASE `%s` SET OPTIONS ( %s = %s )",
+            databaseId, databaseOption.getOptionName(), formattedValue);
+    return statement;
+  }
+
   public HashMultimap<Integer, String> perLevelView() {
     HashMultimap<Integer, String> result = HashMultimap.create();
     LinkedList<String> currentLevel = Lists.newLinkedList();
@@ -199,6 +237,7 @@ public class Ddl implements Serializable {
 
     private Map<String, Table> tables = Maps.newLinkedHashMap();
     private TreeMultimap<String, String> parents = TreeMultimap.create();
+    private ImmutableList<Export.DatabaseOption> databaseOptions = ImmutableList.of();
 
     public Table.Builder createTable(String name) {
       Table table = tables.get(name.toLowerCase());
@@ -216,8 +255,27 @@ public class Ddl implements Serializable {
       parents.put(parent, name);
     }
 
+    public void mergeDatabaseOptions(List<Export.DatabaseOption> databaseOptions) {
+      List<Export.DatabaseOption> allowedDatabaseOptions = new ArrayList<>();
+      List<String> existingOptionNames = new ArrayList<>();
+      for (Export.DatabaseOption databaseOption : databaseOptions) {
+        if (!DatabaseOptionAllowlist.DATABASE_OPTION_ALLOWLIST.contains(
+            databaseOption.getOptionName())) {
+          continue;
+        }
+        allowedDatabaseOptions.add(databaseOption);
+        existingOptionNames.add(databaseOption.getOptionName());
+      }
+      for (Export.DatabaseOption databaseOption : this.databaseOptions) {
+        if (!existingOptionNames.contains(databaseOption.getOptionName())) {
+          allowedDatabaseOptions.add(databaseOption);
+        }
+      }
+      this.databaseOptions = ImmutableList.copyOf(allowedDatabaseOptions);
+    }
+
     public Ddl build() {
-      return new Ddl(ImmutableSortedMap.copyOf(tables), parents);
+      return new Ddl(ImmutableSortedMap.copyOf(tables), parents, databaseOptions);
     }
   }
 
@@ -225,6 +283,7 @@ public class Ddl implements Serializable {
     Builder builder = new Builder();
     builder.tables.putAll(tables);
     builder.parents.putAll(parents);
+    builder.databaseOptions = databaseOptions;
     return builder;
   }
 
@@ -242,13 +301,17 @@ public class Ddl implements Serializable {
     if (tables != null ? !tables.equals(ddl.tables) : ddl.tables != null) {
       return false;
     }
-    return parents != null ? parents.equals(ddl.parents) : ddl.parents == null;
+    if (parents != null ? !parents.equals(ddl.parents) : ddl.parents != null) {
+      return false;
+    }
+    return databaseOptions.equals(ddl.databaseOptions);
   }
 
   @Override
   public int hashCode() {
     int result = tables != null ? tables.hashCode() : 0;
     result = 31 * result + (parents != null ? parents.hashCode() : 0);
+    result = 31 * result + (databaseOptions != null ? databaseOptions.hashCode() : 0);
     return result;
   }
 }

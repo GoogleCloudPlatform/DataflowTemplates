@@ -120,6 +120,8 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
   public PDone expand(PBegin begin) {
     PCollection<Export> manifest =
         begin.apply("Read manifest", new ReadExportManifestFile(importDirectory));
+    PCollectionView<Export> manifestView =
+        manifest.apply("Manifest as view", View.asSingleton());
 
     PCollection<KV<String, String>> allFiles =
         manifest.apply("Read all manifest files", new ReadManifestFiles(importDirectory));
@@ -156,11 +158,10 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
         avroSchemas.apply("Avro ddl view", View.asSingleton());
     final PCollectionView<Ddl> informationSchemaView =
         informationSchemaDdl.apply("Information schema view", View.asSingleton());
-
     final PCollectionTuple createTableOutput =
         begin.apply(
             "Create Cloud Spanner Tables and indexes",
-            new CreateTables(spannerConfig, avroDdlView, informationSchemaView,
+            new CreateTables(spannerConfig, avroDdlView, informationSchemaView, manifestView,
                              earlyIndexCreateFlag));
 
     final PCollection<Ddl> ddl = createTableOutput.get(CreateTables.getDdlObjectTag());
@@ -334,6 +335,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
 
     private final PCollectionView<List<KV<String, String>>> avroSchemasView;
     private final PCollectionView<Ddl> informationSchemaView;
+    private final PCollectionView<Export> manifestView;
     private final ValueProvider<Boolean> earlyIndexCreateFlag;
 
     private transient ExposedSpannerAccessor spannerAccessor;
@@ -364,10 +366,12 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
         SpannerConfig spannerConfig,
         PCollectionView<List<KV<String, String>>> avroSchemasView,
         PCollectionView<Ddl> informationSchemaView,
+        PCollectionView<Export> manifestView,
         ValueProvider<Boolean> earlyIndexCreateFlag) {
       this.spannerConfig = spannerConfig;
       this.avroSchemasView = avroSchemasView;
       this.informationSchemaView = informationSchemaView;
+      this.manifestView = manifestView;
       this.earlyIndexCreateFlag = earlyIndexCreateFlag;
     }
 
@@ -393,6 +397,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                         public void processElement(ProcessContext c) {
                           List<KV<String, String>> avroSchemas = c.sideInput(avroSchemasView);
                           Ddl informationSchemaDdl = c.sideInput(informationSchemaView);
+                          Export manifest = c.sideInput(manifestView);
 
                           if (LOG.isDebugEnabled()) {
                             LOG.debug(informationSchemaDdl.prettyPrint());
@@ -408,8 +413,20 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
                           List<String> createIndexStatements = new ArrayList<>();
                           List<String> createForeignKeyStatements = new ArrayList<>();
+
+                          Ddl.Builder mergedDdl = informationSchemaDdl.toBuilder();
+                          List<String> ddlStatements = new ArrayList<>();
+
+                          if (!manifest.getDatabaseOptionsList().isEmpty()) {
+                            Ddl.Builder builder = Ddl.builder();
+                            builder.mergeDatabaseOptions(manifest.getDatabaseOptionsList());
+                            mergedDdl.mergeDatabaseOptions(manifest.getDatabaseOptionsList());
+                            Ddl newDdl = builder.build();
+                            ddlStatements.addAll(
+                                newDdl.setOptionsStatements(spannerConfig.getDatabaseId().get()));
+                          }
+
                           if (!missingTables.isEmpty()) {
-                            Ddl.Builder mergedDdl = informationSchemaDdl.toBuilder();
                             Ddl.Builder builder = Ddl.builder();
                             for (KV<String, Schema> kv : missingTables) {
                               Table table = converter.toTable(kv.getKey(), kv.getValue());
@@ -419,13 +436,8 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                               createIndexStatements.addAll(table.indexes());
                               createForeignKeyStatements.addAll(table.foreignKeys());
                             }
-                            DatabaseAdminClient databaseAdminClient =
-                                spannerAccessor.getDatabaseAdminClient();
-
                             Ddl newDdl = builder.build();
-                            List<String> ddlStatements = new ArrayList<>();
                             ddlStatements.addAll(newDdl.createTableStatements());
-
                             // If the total DDL statements exceed the threshold, execute the create
                             // index statements when tables are created.
                             // Note that foreign keys can only be created after data load
@@ -434,23 +446,26 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                             // row first before the referencing row). This is not always
                             // possible since foreign keys may introduce circular relationships.
                             if (earlyIndexCreateFlag.get()
-                                    && ((createForeignKeyStatements.size()
+                                && ((createForeignKeyStatements.size()
                                         + createIndexStatements.size())
-                                        >= EARLY_INDEX_CREATE_THRESHOLD)) {
+                                    >= EARLY_INDEX_CREATE_THRESHOLD)) {
                               ddlStatements.addAll(createIndexStatements);
                               c.output(pendingIndexesTag, new ArrayList<String>());
                             } else {
                               c.output(pendingIndexesTag, createIndexStatements);
                             }
                             c.output(pendingForeignKeysTag, createForeignKeyStatements);
+                          }
 
+                          if (!ddlStatements.isEmpty()) {
+                            DatabaseAdminClient databaseAdminClient =
+                                spannerAccessor.getDatabaseAdminClient();
                             OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
                                 databaseAdminClient.updateDatabaseDdl(
                                     spannerConfig.getInstanceId().get(),
                                     spannerConfig.getDatabaseId().get(),
                                     ddlStatements,
                                     null);
-
                             try {
                               op.get(5, TimeUnit.MINUTES);
                             } catch (InterruptedException
@@ -458,19 +473,20 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                                 | TimeoutException e) {
                               throw new RuntimeException(e);
                             }
-
                             c.output(mergedDdl.build());
-                            return;
+                          } else {
+                            c.output(informationSchemaDdl);
                           }
-                          c.output(informationSchemaDdl);
                           // In case of no tables, add empty list
-                          c.output(pendingIndexesTag, createIndexStatements);
-                          c.output(pendingForeignKeysTag, createForeignKeyStatements);
-                      }
+                          if (missingTables.isEmpty()) {
+                            c.output(pendingIndexesTag, createIndexStatements);
+                            c.output(pendingForeignKeysTag, createForeignKeyStatements);
+                          }
+                        }
                       })
-                  .withSideInputs(avroSchemasView, informationSchemaView)
-                  .withOutputTags(ddlObjectTag,
-                      TupleTagList.of(pendingIndexesTag).and(pendingForeignKeysTag)));
+                  .withSideInputs(avroSchemasView, informationSchemaView, manifestView)
+                  .withOutputTags(
+                      ddlObjectTag, TupleTagList.of(pendingIndexesTag).and(pendingForeignKeysTag)));
     }
   }
 

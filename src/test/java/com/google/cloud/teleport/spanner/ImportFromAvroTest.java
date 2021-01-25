@@ -16,6 +16,12 @@
 
 package com.google.cloud.teleport.spanner;
 
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertThat;
+
+import com.google.cloud.spanner.ReadOnlyTransaction;
+import com.google.cloud.teleport.spanner.ddl.Ddl;
+import com.google.cloud.teleport.spanner.ddl.InformationSchemaScanner;
 import com.google.protobuf.util.JsonFormat;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -398,6 +404,11 @@ public class ImportFromAvroTest {
             .setName("AvroTable")
             .addDataFiles(fileName)
             .build())
+        .addDatabaseOptions(
+            ExportProtos.Export.DatabaseOption.newBuilder()
+            .setOptionName("version_retention_period")
+            .setOptionValue("\"4d\"")
+            .build())
         .build();
     JsonFormat.printer().print(exportProto);
 
@@ -430,5 +441,14 @@ public class ImportFromAvroTest {
             ValueProvider.StaticValueProvider.of(true)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();
+
+    Ddl ddl;
+    try (ReadOnlyTransaction ctx = spannerServer.getDbClient(dbName).readOnlyTransaction()) {
+      ddl = new InformationSchemaScanner(ctx).scan();
+    }
+    assertThat(ddl.databaseOptions().size(), is(1));
+    ExportProtos.Export.DatabaseOption dbOption = ddl.databaseOptions().get(0);
+    assertThat(dbOption.getOptionName(), is("version_retention_period"));
+    assertThat(dbOption.getOptionValue(), is("4d"));
   }
 }

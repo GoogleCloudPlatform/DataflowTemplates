@@ -19,11 +19,10 @@ package com.google.cloud.teleport.spanner.ddl;
 import com.google.cloud.spanner.ReadContext;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
+import com.google.cloud.teleport.spanner.ExportProtos.Export;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
-import com.google.common.escape.Escaper;
-import com.google.common.escape.Escapers;
 import java.util.Map;
 import java.util.NavigableMap;
 import org.apache.beam.sdk.values.KV;
@@ -34,13 +33,6 @@ import org.slf4j.LoggerFactory;
 public class InformationSchemaScanner {
 
   private static final Logger LOG = LoggerFactory.getLogger(InformationSchemaScanner.class);
-  private static final Escaper ESCAPER =
-      Escapers.builder()
-          .addEscape('"', "\\\"")
-          .addEscape('\\', "\\\\")
-          .addEscape('\r', "\\r")
-          .addEscape('\n', "\\n")
-          .build();
 
   private final ReadContext context;
 
@@ -50,6 +42,7 @@ public class InformationSchemaScanner {
 
   public Ddl scan() {
     Ddl.Builder builder = Ddl.builder();
+    listDatabaseOptions(builder);
     listTables(builder);
     listColumns(builder);
     listColumnOptions(builder);
@@ -93,6 +86,32 @@ public class InformationSchemaScanner {
     }
 
     return builder.build();
+  }
+
+  private void listDatabaseOptions(Ddl.Builder builder) {
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.newBuilder(
+                "SELECT t.option_name, t.option_type, t.option_value "
+                + " FROM information_schema.database_options AS t "
+                + " WHERE t.catalog_name = '' AND t.schema_name = ''")
+                .build());
+
+    ImmutableList.Builder<Export.DatabaseOption> options = ImmutableList.builder();
+    while (resultSet.next()) {
+      String optionName = resultSet.getString(0);
+      String optionType = resultSet.getString(1);
+      String optionValue = resultSet.getString(2);
+      if (!DatabaseOptionAllowlist.DATABASE_OPTION_ALLOWLIST.contains(optionName)) {
+        continue;
+      }
+      options.add(
+          Export.DatabaseOption.newBuilder()
+              .setOptionName(optionName)
+              .setOptionType(optionType)
+              .setOptionValue(optionValue).build());
+    }
+    builder.mergeDatabaseOptions(options.build());
   }
 
   private void listTables(Ddl.Builder builder) {
@@ -270,7 +289,7 @@ public class InformationSchemaScanner {
       ImmutableList.Builder<String> options =
           allOptions.computeIfAbsent(kv, k -> ImmutableList.builder());
       if (optionType.equalsIgnoreCase("STRING")) {
-        options.add(optionName + "=\"" + ESCAPER.escape(optionValue) + "\"");
+        options.add(optionName + "=\"" + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue) + "\"");
       } else {
         options.add(optionName + "=" + optionValue);
       }
