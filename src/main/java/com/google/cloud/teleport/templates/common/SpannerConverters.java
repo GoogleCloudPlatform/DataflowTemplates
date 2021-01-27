@@ -48,6 +48,7 @@ import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -93,6 +94,13 @@ public class SpannerConverters {
 
     @SuppressWarnings("unused")
     void setSpannerDatabaseId(ValueProvider<String> spannerDatabaseId);
+
+    @Description("Spanner host")
+    @Default.String("https://batch-spanner.googleapis.com")
+    ValueProvider<String> getSpannerHost();
+
+    @SuppressWarnings("unused")
+    void setSpannerHost(ValueProvider<String> value);
   }
 
   /** Factory for Export transform class. */

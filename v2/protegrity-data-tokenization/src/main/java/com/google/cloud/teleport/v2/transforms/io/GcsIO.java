@@ -32,6 +32,7 @@ import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ToJson;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollection.IsBounded;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.Row;
@@ -119,6 +120,18 @@ public class GcsIO {
     GcsIO.FORMAT getOutputGcsFileFormat();
 
     void setOutputGcsFileFormat(GcsIO.FORMAT outputGcsFileFormat);
+
+    @Description(
+        "The window duration in which data will be written. "
+            + "Should be specified only for 'Pub/Sub -> GCS' case. Defaults to 30s. "
+            + "Allowed formats are: "
+            + "Ns (for seconds, example: 5s), "
+            + "Nm (for minutes, example: 12m), "
+            + "Nh (for hours, example: 2h).")
+    @Default.String("30s")
+    String getWindowDuration();
+
+    void setWindowDuration(String windowDuration);
 
     // CSV parameters
     @Description("If file(s) contain headers")
@@ -211,18 +224,35 @@ public class GcsIO {
 
   public PDone write(PCollection<Row> input, Schema schema) {
     if (options.getOutputGcsFileFormat() == FORMAT.JSON) {
-      return input.apply("RowsToJSON", ToJson.of())
-          .apply("WriteToGCS", TextIO.write().to(options.getOutputGcsDirectory()));
+      PCollection<String> jsons = input.apply("RowsToJSON", ToJson.of());
+
+      if (jsons.isBounded() == IsBounded.BOUNDED) {
+        return jsons
+            .apply("WriteToGCS", TextIO.write().to(options.getOutputGcsDirectory()));
+      } else {
+        return jsons
+            .apply("WriteToGCS", TextIO.write().withWindowedWrites().withNumShards(1)
+                .to(options.getOutputGcsDirectory()));
+      }
     } else if (options.getOutputGcsFileFormat() == FORMAT.CSV) {
       String header = String.join(options.getCsvDelimiter(), schema.getFieldNames());
       String csvDelimiter = options.getCsvDelimiter();
-      return input
+      PCollection<String> csvs = input
           .apply("ConvertToCSV", MapElements.into(TypeDescriptors.strings())
               .via((Row inputRow) ->
                   new RowToCsv(csvDelimiter).getCsvFromRow(inputRow))
-          )
-          .apply("WriteToGCS",
-              TextIO.write().to(options.getOutputGcsDirectory()).withHeader(header));
+          );
+
+      if (csvs.isBounded() == IsBounded.BOUNDED) {
+        return csvs
+            .apply("WriteToGCS",
+                TextIO.write().to(options.getOutputGcsDirectory()).withHeader(header));
+      } else {
+        return csvs
+            .apply("WriteToGCS",
+                TextIO.write().withWindowedWrites().withNumShards(1)
+                    .to(options.getOutputGcsDirectory()).withHeader(header));
+      }
 
     } else {
       throw new IllegalStateException(

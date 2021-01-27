@@ -392,7 +392,7 @@
                     <target>${java.version}</target>
                     <!-- <compilerArgument>-parameters</compilerArgument> -->
                     <parameters>true</parameters>
-                    <testCompilerArgument>-parameters</testCompilerArgument>  
+                    <testCompilerArgument>-parameters</testCompilerArgument>
                 </configuration>
             </plugin>
             <plugin>
@@ -597,6 +597,7 @@
         <module>csv-to-elasticsearch</module>
         <module>datastream-to-bigquery</module>
         <module>datastream-to-postgres</module>
+        <module>datastream-to-spanner</module>
         <module>file-format-conversion</module>
         <module>hive-to-bigquery</module>
         <module>kafka-to-bigquery</module>

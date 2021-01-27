@@ -16,7 +16,7 @@ Supported input sources:
 
 Supported destination sinks:
 
-- Google Cloud Storage
+- [Google Cloud Storage](https://cloud.google.com/storage)
 - [Google Cloud BigQuery](https://cloud.google.com/bigquery)
 - [Cloud BigTable](https://cloud.google.com/bigtable)
 
@@ -45,7 +45,7 @@ This section describes what is needed to get the template up and running.
 
 ### Setting Up Project Environment
 
-#### Pipeline variables:
+#### Pipeline Variables:
 
 ```
 PROJECT=<my-project>
@@ -63,7 +63,7 @@ Cloud Platform. Create the bucket in Google Cloud Storage if it doesn't exist ye
 gsutil mb gs://${BUCKET_NAME}
 ```
 
-#### Containerization variables:
+#### Containerization Variables:
 
 ```
 IMAGE_NAME=<my-image-name>
@@ -153,8 +153,15 @@ The template requires the following parameters:
     - Google Cloud Storage
         - **outputGcsDirectory**: GCS directory in bucket to write data to
         - **outputGcsFileFormat**: File format of output files. Supported formats: JSON, CSV
-    - Google Cloud BigQuery
-        - **bigQueryTableName**: Cloud BigQuery table name to write into
+        - **windowDuration**: The window duration in which data will be written. Should be specified
+          only for 'Pub/Sub -> GCS' case. Defaults to 30s.
+
+          Allowed formats are:
+            - Ns (for seconds, example: 5s),
+            - Nm (for minutes, example: 12m),
+            - Nh (for hours, example: 2h).
+        - Google Cloud BigQuery
+            - **bigQueryTableName**: Cloud BigQuery table name to write into
     - Cloud BigTable
         - **bigTableProjectId**: Id of the project where the Cloud BigTable instance to write into
           is located
@@ -210,3 +217,39 @@ You can do this in 3 different ways:
         '
         "${TEMPLATES_LAUNCH_API}"
     ```
+
+## Extend the Template
+
+The architecture of the pipeline is built
+using [Beam `Row` abstraction](https://beam.apache.org/releases/javadoc/2.25.0/org/apache/beam/sdk/values/Row.html)
+to ease compatibility between input sources and output sinks:
+
+**Input Source Format -> Beam Row Format -> Output Sink Format**
+
+It is done and may be extended
+in [IO classes](src/main/java/com/google/cloud/teleport/v2/transforms/io). Such architecture allows
+adding support for:
+
+- Input formats
+- Input sources
+- Output formats
+- Output sources
+
+The only thing that needs to be followed is that inputs should be transformed into Beam Row and
+outputs should be transformed from Beam Row.
+
+### Ideas for Extensions
+
+Here is the list of ideas for possible enhancements of this template:
+
+- Support reading/writing AVRO format
+- Support reading data from BigQuery
+- Support writing data to Pub/Sub
+- Add transformations or protectors for data
+
+## Support
+
+This template is created and contributed by **[Akvelon](https://akvelon.com/)** team.
+
+If you would like to see new features, or you found some critical bugs, please
+[contact with us](mailto:info@akvelon.com) or [share your feedback](https://akvelon.com/feedback/).

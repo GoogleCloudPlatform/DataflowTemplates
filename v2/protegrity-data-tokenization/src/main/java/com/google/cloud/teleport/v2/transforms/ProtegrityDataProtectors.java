@@ -15,8 +15,11 @@ import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.apache.beam.sdk.coders.RowCoder;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.Field;
@@ -39,7 +42,6 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.Row;
-import org.apache.beam.sdk.values.Row.FieldValueBuilder;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.vendor.grpc.v1p26p0.com.google.gson.Gson;
@@ -58,7 +60,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * TODO: Add javadoc.
+ * The {@link ProtegrityDataProtectors} Using passing parameters transform will buffer input rows in
+ * batch and will send it when the count of buffered rows will equal specified batch size. When it
+ * takes the last one batch, it will send it when the last row will come to doFn even count of
+ * buffered rows will less than the batch size.
  */
 public class ProtegrityDataProtectors {
 
@@ -85,6 +90,8 @@ public class ProtegrityDataProtectors {
 
     public abstract Map<String, String> dataElements();
 
+    public abstract String serviceAccount();
+
     public abstract String dsgURI();
 
     @Override
@@ -95,8 +102,8 @@ public class ProtegrityDataProtectors {
       );
       PCollectionTuple pCollectionTuple = inputRows.apply(
           "TokenizeUsingDsg",
-          ParDo.of(new DSGTokenizationFn(schema(), batchSize(), dataElements(), dsgURI(),
-              failureTag()))
+          ParDo.of(new DSGTokenizationFn(schema(), batchSize(), dataElements(), serviceAccount(),
+              dsgURI(), failureTag()))
               .withOutputTags(successTag(), TupleTagList.of(failureTag())));
       return PCollectionTuple
           .of(successTag(), pCollectionTuple.get(successTag()).setRowSchema(schema()))
@@ -121,6 +128,8 @@ public class ProtegrityDataProtectors {
       public abstract RowToTokenizedRow.Builder<T> setDataElements(
           Map<String, String> fieldsDataElements);
 
+      public abstract RowToTokenizedRow.Builder<T> setServiceAccount(String serviceAccount);
+
       public abstract RowToTokenizedRow.Builder<T> setDsgURI(String dsgURI);
 
       public abstract RowToTokenizedRow<T> build();
@@ -130,7 +139,7 @@ public class ProtegrityDataProtectors {
   }
 
   /**
-   * Class for data tokenization using DSG.
+   * Class implements stateful doFn for data tokenization using remote DSG.
    */
   public static class DSGTokenizationFn extends DoFn<KV<Integer, Row>, Row> {
 
@@ -138,7 +147,7 @@ public class ProtegrityDataProtectors {
      * Logger for class.
      */
     private static final Logger LOG = LoggerFactory.getLogger(BigQueryIO.class);
-    public static final String ID_FIELD_NAME = "ID";
+    public static final String ID_TOKEN_NAME = "ID";
 
     private static Schema schemaToDsg;
     private static CloseableHttpClient httpclient;
@@ -148,6 +157,7 @@ public class ProtegrityDataProtectors {
     private final Schema schema;
     private final int batchSize;
     private final Map<String, String> dataElements;
+    private final String serviceAccount;
     private final String dsgURI;
     private final TupleTag<FailsafeElement<Row, Row>> failureTag;
 
@@ -159,16 +169,19 @@ public class ProtegrityDataProtectors {
 
     @TimerId("expiry")
     private final TimerSpec expirySpec = TimerSpecs.timer(TimeDomain.EVENT_TIME);
-    private boolean hasIdInInputs;
+    private boolean hasIdInInputs = true;
+    private String idFieldName;
     private Map<String, Row> inputRowsWithIds;
 
 
     public DSGTokenizationFn(Schema schema, int batchSize, Map<String, String> dataElements,
+        String serviceAccount,
         String dsgURI,
         TupleTag<FailsafeElement<Row, Row>> failureTag) {
       this.schema = schema;
       this.batchSize = batchSize;
       this.dataElements = dataElements;
+      this.serviceAccount = serviceAccount;
       this.dsgURI = dsgURI;
       bufferedEvents = StateSpecs.bag(RowCoder.of(schema));
       this.failureTag = failureTag;
@@ -177,19 +190,30 @@ public class ProtegrityDataProtectors {
     @Setup
     public void setup() {
 
-      if (!schema.hasField(dataElements.get(ID_FIELD_NAME))) {
+      List<String> idFieldList = dataElements.entrySet().stream()
+          .filter(map -> ID_TOKEN_NAME.equals(map.getValue()))
+          .map(Entry::getKey)
+          .collect(Collectors.toList());
+
+      // If we have more than 1 ID fields, we will choose the first.
+      if (idFieldList.size() > 0) {
+        idFieldName = idFieldList.get(0);
+      }
+
+      if (idFieldName == null || !schema.hasField(idFieldName)) {
         this.hasIdInInputs = false;
       }
 
       ArrayList<Schema.Field> fields = new ArrayList<>();
-      for (String field : dataElements.values()) {
+      for (String field : dataElements.keySet()) {
         if (schema.hasField(field)) {
           fields.add(schema.getField(field));
         }
       }
-      if (!dataElements.containsKey(ID_FIELD_NAME) || !hasIdInInputs) {
-        fields.add(Field.of(ID_FIELD_NAME, FieldType.STRING));
-
+      if (!hasIdInInputs) {
+        idFieldName = ID_TOKEN_NAME;
+        fields.add(Field.of(ID_TOKEN_NAME, FieldType.STRING));
+        dataElements.put(ID_TOKEN_NAME, ID_TOKEN_NAME);
       }
       schemaToDsg = new Schema(fields);
       objectMapperSerializerForDSG = RowJsonUtils
@@ -264,34 +288,26 @@ public class ProtegrityDataProtectors {
 
     private ArrayList<String> rowsToJsons(Iterable<Row> inputRows) {
       ArrayList<String> jsons = new ArrayList<>();
-      Map<String,Row> inputRowsWithIds = new HashMap<>();
+      Map<String, Row> inputRowsWithIds = new HashMap<>();
       for (Row inputRow : inputRows) {
 
         Row.Builder builder = Row.withSchema(schemaToDsg);
-        FieldValueBuilder fieldValueBuilder = null;
         for (Schema.Field field : schemaToDsg.getFields()) {
           if (inputRow.getSchema().hasField(field.getName())) {
-            fieldValueBuilder = builder
-                .withFieldValue(field.getName(), inputRow.getValue(field.getName()));
+            builder = builder.addValue(inputRow.getValue(field.getName()));
           }
         }
+        String id;
         if (!hasIdInInputs) {
-          String id = UUID.randomUUID().toString();
-          if (fieldValueBuilder != null) {
-            fieldValueBuilder = fieldValueBuilder
-                .withFieldValue(ID_FIELD_NAME, id);
-          } else {
-            fieldValueBuilder = builder.withFieldValue(ID_FIELD_NAME, id);
-          }
-          inputRowsWithIds.put(id, inputRow);
-
+          id = UUID.randomUUID().toString();
+          builder = builder.addValue(id);
+        } else {
+          id = inputRow.getValue(idFieldName);
         }
-        else {
-          String id = inputRow.getValue(dataElements.get(ID_FIELD_NAME));
-          inputRowsWithIds.put(id, inputRow);
-        }
+        inputRowsWithIds.put(id, inputRow);
 
-        Row row = fieldValueBuilder != null ? fieldValueBuilder.build() : builder.build();
+        Row row = builder
+            .build();
 
         jsons.add(rowToJson(objectMapperSerializerForDSG, row));
       }
@@ -305,10 +321,12 @@ public class ProtegrityDataProtectors {
       Type gsonType = new TypeToken<HashMap<String, String>>() {
       }.getType();
       String dataElementsJson = gson.toJson(dataElements, gsonType);
-      stringBuilder.append("]").insert(0, "{\"data\": [").append(",\"data_elements\":")
-          .append(dataElementsJson).append("}");
+      String serviceAccountJson = gson.toJson(serviceAccount);
+      stringBuilder.append("]").insert(0, "{\"data\": [")
+          .append(",\"data_elements\":").append(dataElementsJson)
+          .append(",\"service_account\":").append(serviceAccountJson)
+          .append("}");
       return stringBuilder.toString();
-
     }
 
     private ArrayList<Row> getTokenizedRow(Iterable<Row> inputRows)
@@ -326,21 +344,18 @@ public class ProtegrityDataProtectors {
           .fromJson(tokenizedData, JsonObject.class)
           .getAsJsonArray("data");
 
-      String idFieldName;
-      if(hasIdInInputs){
-        idFieldName = schema.getField(dataElements.get(ID_FIELD_NAME)).getName();
-      }
-      else {
-        idFieldName = ID_FIELD_NAME;
-      }
-
       for (int i = 0; i < jsonTokenizedRows.size(); i++) {
         Row tokenizedRow = RowJsonUtils
             .jsonToRow(objectMapperDeserializerForDSG, jsonTokenizedRows.get(i).toString());
-        Row.FieldValueBuilder rowBuilder = Row.fromRow(this.inputRowsWithIds.get(tokenizedRow.getString(idFieldName)));
+        Row.FieldValueBuilder rowBuilder = Row
+            .fromRow(this.inputRowsWithIds.get(tokenizedRow.getString(idFieldName)));
         for (Schema.Field field : schemaToDsg.getFields()) {
+          if (!hasIdInInputs && field.getName().equals(idFieldName)) {
+            continue;
+          }
           rowBuilder = rowBuilder
               .withFieldValue(field.getName(), tokenizedRow.getValue(field.getName()));
+
         }
         outputRows.add(rowBuilder.build());
       }

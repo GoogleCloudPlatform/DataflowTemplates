@@ -124,6 +124,16 @@
       ]
     },
     {
+      "name": "windowDuration",
+      "label": "The window duration in which data will be written.",
+      "helpText": "The window duration in which data will be written. Should be specified only for 'Pub/Sub -> GCS' case.\nDefaults to 30s.\nAllowed formats are:\n Ns (for seconds, example: 5s),\n Nm (for minutes, example: 12m),\n Nh (for hours, example: 2h).",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": [
+        "^([0-9]+[smh])$"
+      ]
+    },
+    {
       "name": "bigQueryTableName",
       "label": "Name of the output BigQuery table",
       "helpText": "Cloud BigQuery table name to write into",
