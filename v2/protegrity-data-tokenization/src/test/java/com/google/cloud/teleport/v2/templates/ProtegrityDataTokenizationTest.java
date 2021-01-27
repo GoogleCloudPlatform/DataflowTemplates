@@ -15,17 +15,17 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.startsWith;
-import static org.junit.Assert.assertThat;
 
+import avro.shaded.com.google.common.collect.Lists;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.options.ProtegrityDataTokenizationOptions;
 import com.google.cloud.teleport.v2.transforms.io.GcsIO;
 import com.google.cloud.teleport.v2.transforms.io.GcsIO.FORMAT;
 import com.google.cloud.teleport.v2.utils.RowToCsv;
 import com.google.cloud.teleport.v2.utils.SchemasUtils;
-import com.google.common.collect.Lists;
 import com.google.common.io.Resources;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -42,7 +42,6 @@ import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
-import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.JsonToRow;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
@@ -67,40 +66,23 @@ public class ProtegrityDataTokenizationTest {
       Resources.getResource(RESOURCES_DIR + "testInput.csv").getPath();
 
   private static final String JSON_FILE_PATH =
-      Resources.getResource(RESOURCES_DIR + "testInput").getPath();
+      Resources.getResource(RESOURCES_DIR + "testInput.txt").getPath();
 
   private static final String SCHEMA_FILE_PATH =
-      Resources.getResource(RESOURCES_DIR + "schema").getPath();
+      Resources.getResource(RESOURCES_DIR + "schema.txt").getPath();
 
   private static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
       FailsafeElementCoder.of(
           NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of()));
 
-  private SchemasUtils testSchemaUtils = null;
-
-//  private static class LogIt extends DoFn<String, String> {
-//
-//    @ProcessElement
-//    public void process(ProcessContext context) {
-//      System.out.println(context.element());
-//      context.output(context.element());
-//    }
-
-  private static class LogIt extends DoFn<Row, String> {
-
-    @ProcessElement
-    public void processElement(@Element Row row, OutputReceiver<String> out) {
-      System.out.println(row.getValues());
-      out.output("row");
-    }
-  }
-
   @Test
   public void testGetBeamSchema() {
-    Schema expectedSchema = Schema.builder()
-        .addField("FieldName1", FieldType.STRING)
-        .addField("FieldName2", FieldType.STRING)
-        .build();
+    System.out.println(CSV_FILE_PATH);
+    Schema expectedSchema =
+        Schema.builder()
+            .addField("FieldName1", FieldType.STRING)
+            .addField("FieldName2", FieldType.STRING)
+            .build();
     SchemasUtils schemasUtils = new SchemasUtils(testSchema);
     Assert.assertEquals(expectedSchema, schemasUtils.getBeamSchema());
   }
@@ -112,68 +94,56 @@ public class ProtegrityDataTokenizationTest {
   }
 
   @Test
-  public void testNullRowToCSV() {
-    Schema beamSchema = Schema.builder()
-        .addNullableField("FieldString", Schema.FieldType.STRING).build();
-    Row.Builder rowBuilder = Row.withSchema(beamSchema);
-    Row row = rowBuilder.addValue(null).build();
-    System.out.println(row);
-    String csv = new RowToCsv(",").getCsvFromRow(row);
-    Assert.assertEquals("null", csv);
-  }
-
-  @Test
   public void testRowToCSV() {
     Schema beamSchema = new SchemasUtils(testSchema).getBeamSchema();
     Row.Builder rowBuilder = Row.withSchema(beamSchema);
-    Row row = rowBuilder
-        .addValues(new ArrayList<>(Arrays.asList(fields)))
-        .build();
+    Row row = rowBuilder.addValues(new ArrayList<>(Arrays.asList(fields))).build();
     String csvResult = new RowToCsv(";").getCsvFromRow(row);
     Assert.assertEquals(String.join(";", fields), csvResult);
   }
 
   @Test
-  public void testGcsIOReadCSV() {
-    PCollection<String> jsons = testGcsIORead(CSV_FILE_PATH, FORMAT.CSV);
+  public void testFileSystemIOReadCSV() throws IOException {
+    PCollection<String> jsons = fileSystemIORead(CSV_FILE_PATH, FORMAT.CSV);
     assertField(jsons);
     testPipeline.run();
   }
 
   @Test
-  public void testGcsIOReadJSON() {
-    PCollection<String> jsons = testGcsIORead(JSON_FILE_PATH, FORMAT.JSON);
+  public void testFileSystemIOReadJSON() throws IOException {
+    PCollection<String> jsons = fileSystemIORead(JSON_FILE_PATH, FORMAT.JSON);
     assertField(jsons);
     testPipeline.run();
   }
 
   @Test
-  public void testJsonToRow() {
-    PCollection<String> jsons = testGcsIORead(JSON_FILE_PATH, FORMAT.JSON);
-    JsonToRow.ParseResult rows = jsons
-        .apply("JsonToRow",
+  public void testJsonToRow() throws IOException {
+    PCollection<String> jsons = fileSystemIORead(JSON_FILE_PATH, FORMAT.JSON);
+    SchemasUtils testSchemaUtils = new SchemasUtils(SCHEMA_FILE_PATH, StandardCharsets.UTF_8);
+    JsonToRow.ParseResult rows =
+        jsons.apply(
+            "JsonToRow",
             JsonToRow.withExceptionReporting(testSchemaUtils.getBeamSchema())
                 .withExtendedErrorInfo());
-    PAssert.that(rows.getResults()).satisfies(x -> {
-      LinkedList<Row> beamRows = Lists.newLinkedList(x);
-      assertThat(beamRows, hasSize(3));
-      beamRows.forEach(
-          row -> {
-            List<Object> fieldValues = row.getValues();
-            for (Object element : fieldValues) {
-              assertThat(
-                  (String) element,
-                  startsWith("FieldValue"));
-            }
-          });
-      return null;
-    });
+    PAssert.that(rows.getResults())
+        .satisfies(
+            x -> {
+              LinkedList<Row> beamRows = Lists.newLinkedList(x);
+              assertThat(beamRows, hasSize(3));
+              beamRows.forEach(
+                  row -> {
+                    List<Object> fieldValues = row.getValues();
+                    for (Object element : fieldValues) {
+                      assertThat((String) element, startsWith("FieldValue"));
+                    }
+                  });
+              return null;
+            });
     testPipeline.run();
   }
 
-
-  private PCollection<String> testGcsIORead(String inputGcsFilePattern,
-      FORMAT inputGcsFileFormat) {
+  private PCollection<String> fileSystemIORead(
+      String inputGcsFilePattern, FORMAT inputGcsFileFormat) throws IOException {
     ProtegrityDataTokenizationOptions options =
         PipelineOptionsFactory.create().as(ProtegrityDataTokenizationOptions.class);
     options.setDataSchemaGcsPath(SCHEMA_FILE_PATH);
@@ -183,46 +153,38 @@ public class ProtegrityDataTokenizationTest {
       options.setCsvContainsHeaders(Boolean.FALSE);
     }
 
-    try {
-      testSchemaUtils = new SchemasUtils(options.getDataSchemaGcsPath(), StandardCharsets.UTF_8);
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-    assert testSchemaUtils != null;
+    SchemasUtils testSchemaUtils =
+        new SchemasUtils(options.getDataSchemaGcsPath(), StandardCharsets.UTF_8);
 
     CoderRegistry coderRegistry = testPipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(
         FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
-    coderRegistry
-        .registerCoderForType(
-            RowCoder.of(testSchemaUtils.getBeamSchema()).getEncodedTypeDescriptor(),
-            RowCoder.of(testSchemaUtils.getBeamSchema()));
+    coderRegistry.registerCoderForType(
+        RowCoder.of(testSchemaUtils.getBeamSchema()).getEncodedTypeDescriptor(),
+        RowCoder.of(testSchemaUtils.getBeamSchema()));
     /*
      * Row/Row Coder for FailsafeElement.
      */
-    FailsafeElementCoder<Row, Row> coder = FailsafeElementCoder.of(
-        RowCoder.of(testSchemaUtils.getBeamSchema()),
-        RowCoder.of(testSchemaUtils.getBeamSchema())
-    );
-    coderRegistry
-        .registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
+    FailsafeElementCoder<Row, Row> coder =
+        FailsafeElementCoder.of(
+            RowCoder.of(testSchemaUtils.getBeamSchema()),
+            RowCoder.of(testSchemaUtils.getBeamSchema()));
+    coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
-    PCollection<String> jsons = new GcsIO(options)
-        .read(testPipeline, testSchemaUtils.getJsonBeamSchema());
-    return jsons;
+    return new GcsIO(options).read(testPipeline, testSchemaUtils.getJsonBeamSchema());
   }
 
   private void assertField(PCollection<String> jsons) {
-    PAssert.that(jsons).satisfies(x -> {
-      LinkedList<String> rows = Lists.newLinkedList(x);
-      assertThat(rows, hasSize(3));
-      rows.forEach(
-          row -> {
-            assertThat(
-                row,
-                startsWith("{\"Field1\":"));
-          });
-      return null;
-    });
+    PAssert.that(jsons)
+        .satisfies(
+            x -> {
+              LinkedList<String> rows = Lists.newLinkedList(x);
+              assertThat(rows, hasSize(3));
+              rows.forEach(
+                  row -> {
+                    assertThat(row, startsWith("{\"Field1\":"));
+                  });
+              return null;
+            });
   }
 }
