@@ -200,8 +200,13 @@ You can do this in 3 different ways:
         "${TEMPLATES_LAUNCH_API}"
     ```
 
-_Note_: Credentials inside GCS or secret storage should have appropriate SSL configuration with
-following parameters:
+## Providing Kafka Credentials for SSL SCRAM
+
+Credentials for Kafka can be provided either via JSON in GCS or via key/value pairs in HashiCorp
+Vault secret storage. These credentials should have appropriate configuration with following
+parameters:
+
+For SSL configuration
 
 - `bucket` - the bucket in Google Cloud Storage with SSL certificate
 - `ssl.truststore.location` - the location of the trust store file
@@ -209,6 +214,29 @@ following parameters:
 - `ssl.keystore.location` - the location of the key store file
 - `ssl.keystore.password` - the store password for the key store file
 - `ssl.key.password` - the password of the private key in the key store file
+
+For SCRAM configuration
+
+- `username` - username for Kafka SCRAM authentication
+- `password` - password for Kafka SCRAM authentication
+
+The sample JSON with SSL SCRAM parameters:
+
+```json
+{
+  "bucket": "kafka_to_pubsub",
+  "key_password": "secret",
+  "keystore_password": "secret",
+  "keystore_path": "ssl_cert/kafka.keystore.jks",
+  "truststore_password": "secret",
+  "truststore_path": "ssl_cert/kafka.truststore.jks",
+  "username": "admin",
+  "password": "admin-secret"
+}
+```
+
+You can copy [this example JSON file](src/main/resources/example_kafka_credentials.json), update it
+per your settings, and then upload to GCS.
 
 ## Support
 
