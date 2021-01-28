@@ -209,3 +209,10 @@ following parameters:
 - `ssl.keystore.location` - the location of the key store file
 - `ssl.keystore.password` - the store password for the key store file
 - `ssl.key.password` - the password of the private key in the key store file
+
+## Support
+
+This template is created and contributed by **[Akvelon](https://akvelon.com/)** team.
+
+If you would like to see new features, or you found some critical bugs, please
+[contact with us](mailto:info@akvelon.com) or [share your feedback](https://akvelon.com/feedback/).
