@@ -70,6 +70,16 @@
       "regexes": [],
       "paramType": "TEXT",
       "isOptional": true
+    },
+    {
+      "name": "kafkaOptionsGcsPath",
+      "label": "GCS location of your JSON file with Kafka options",
+      "helpText": "The full URL of your JSON file. Example: gs://your-bucket/your-file.json",
+      "isOptional": true,
+      "regexes": [
+        "^gs:\\/\\/[^\\n\\r]+$"
+      ],
+      "paramType": "GCS_READ_FILE"
     }
   ]
 }

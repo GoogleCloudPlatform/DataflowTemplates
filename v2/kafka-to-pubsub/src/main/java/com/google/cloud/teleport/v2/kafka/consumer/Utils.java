@@ -22,8 +22,17 @@ import static com.google.cloud.teleport.v2.templates.KafkaPubsubConstants.SSL_CR
 import static com.google.cloud.teleport.v2.templates.KafkaPubsubConstants.USERNAME;
 
 import java.io.IOException;
+import java.io.Reader;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
+import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.vendor.grpc.v1p26p0.com.google.common.io.CharStreams;
 import org.apache.beam.vendor.grpc.v1p26p0.com.google.gson.JsonObject;
 import org.apache.beam.vendor.grpc.v1p26p0.com.google.gson.JsonParser;
 import org.apache.http.HttpResponse;
@@ -52,7 +61,6 @@ public class Utils {
    */
   public static Map<String, Map<String, String>> getKafkaCredentialsFromVault(
       String secretStoreUrl, String token) {
-    Map<String, Map<String, String>> credentialMap = new HashMap<>();
 
     JsonObject credentials = null;
     try {
@@ -105,43 +113,7 @@ public class Utils {
       LOG.error("Failed to retrieve credentials from Vault.", e);
     }
 
-    if (credentials != null) {
-      // Username and password for Kafka authorization
-      credentialMap.put(KAFKA_CREDENTIALS, new HashMap<>());
-
-      if (credentials.has(USERNAME) && credentials.has(PASSWORD)) {
-        credentialMap.get(KAFKA_CREDENTIALS).put(USERNAME, credentials.get(USERNAME).getAsString());
-        credentialMap.get(KAFKA_CREDENTIALS).put(PASSWORD, credentials.get(PASSWORD).getAsString());
-      } else {
-        LOG.warn(
-            "There are no username and/or password for Kafka in Vault."
-                + "Trying to initiate an unauthorized connection.");
-      }
-
-      // SSL truststore, keystore, and password
-      try {
-        Map<String, String> sslCredentials = new HashMap<>();
-        String[] configNames = {
-          BUCKET,
-          SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG,
-          SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG,
-          SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG,
-          SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG,
-          SslConfigs.SSL_KEY_PASSWORD_CONFIG
-        };
-        for (String configName : configNames) {
-          sslCredentials.put(configName, credentials.get(configName).getAsString());
-        }
-        credentialMap.put(SSL_CREDENTIALS, sslCredentials);
-      } catch (NullPointerException e) {
-        LOG.warn(
-            "There is no enough information to configure SSL."
-                + "Trying to initiate an unsecure connection.",
-            e);
-      }
-    }
-
-    return credentialMap;
+    return parseCredentialsJson(credentials);
   }
 
   /**
@@ -163,5 +135,106 @@ public class Utils {
               props.get(USERNAME), props.get(PASSWORD)));
     }
     return config;
+  }
+
+  /**
+   * Retrieves all credentials from Google Cloud Storage.
+   *
+   * @param kafkaOptionsGcsPath GCS path that contains a credentials for Kafka in JSON format.
+   *                            Should be in the following format: `gs://bucket-name/path/to/file`
+   * @return credentials for Kafka consumer config
+   */
+  public static Map<String, Map<String, String>> getKafkaCredentialsFromGCS(
+      String kafkaOptionsGcsPath) {
+    JsonObject credentials = null;
+    try {
+      String json = getGcsFileAsString(kafkaOptionsGcsPath);
+      /*
+       Parse security properties from the JSON that may have the following keys:
+       {
+         "bucket": "kafka_to_pubsub_test",
+         "key_password": "secret",
+         "keystore_password": "secret",
+         "keystore_path": "ssl_cert/kafka.keystore.jks",
+         "password": "admin-secret",
+         "truststore_password": "secret",
+         "truststore_path": "ssl_cert/kafka.truststore.jks",
+         "username": "admin"
+       }
+      */
+      credentials =
+          JsonParser.parseString(json)
+              .getAsJsonObject();
+    } catch (IOException e) {
+      LOG.error("Failed to retrieve credentials from GCS.", e);
+    }
+
+    return parseCredentialsJson(credentials);
+  }
+
+  /**
+   * Reads a file from GCS and returns it as a string.
+   *
+   * @param filePath path to file in GCS
+   * @return contents of the file as a string
+   * @throws IOException thrown if not able to read file
+   */
+  public static String getGcsFileAsString(String filePath) throws IOException {
+    LOG.info("Reading contents from GCS file: {}", filePath);
+    Set<StandardOpenOption> options = new HashSet<>(2);
+    options.add(StandardOpenOption.CREATE);
+    options.add(StandardOpenOption.APPEND);
+    // Read the GCS file into a string and will throw an I/O exception in case file not found.
+    try (ReadableByteChannel readerChannel =
+        FileSystems.open(FileSystems.matchSingleFileSpec(filePath).resourceId())) {
+      Reader reader = Channels.newReader(readerChannel, StandardCharsets.UTF_8.name());
+      return CharStreams.toString(reader);
+    }
+  }
+
+  /**
+   * Parses credentials for Kafka from JSON.
+   *
+   * @param credentials JSON with credentials for Kafka
+   * @return Map with both authorization and ssl options if applicable
+   */
+  private static Map<String, Map<String, String>> parseCredentialsJson(JsonObject credentials) {
+    Map<String, Map<String, String>> credentialMap = new HashMap<>();
+    if (credentials != null) {
+      // Username and password for Kafka authorization
+      credentialMap.put(KAFKA_CREDENTIALS, new HashMap<>());
+
+      if (credentials.has(USERNAME) && credentials.has(PASSWORD)) {
+        credentialMap.get(KAFKA_CREDENTIALS).put(USERNAME, credentials.get(USERNAME).getAsString());
+        credentialMap.get(KAFKA_CREDENTIALS).put(PASSWORD, credentials.get(PASSWORD).getAsString());
+      } else {
+        LOG.warn(
+            "There are no username and/or password for Kafka."
+                + "Trying to initiate an unauthorized connection.");
+      }
+
+      // SSL truststore, keystore, and password
+      try {
+        Map<String, String> sslCredentials = new HashMap<>();
+        String[] configNames = {
+            BUCKET,
+            SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG,
+            SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG,
+            SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG,
+            SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG,
+            SslConfigs.SSL_KEY_PASSWORD_CONFIG
+        };
+        for (String configName : configNames) {
+          sslCredentials.put(configName, credentials.get(configName).getAsString());
+        }
+        credentialMap.put(SSL_CREDENTIALS, sslCredentials);
+      } catch (NullPointerException e) {
+        LOG.warn(
+            "There is no enough information to configure SSL."
+                + "Trying to initiate an unsecure connection.",
+            e);
+      }
+    }
+    return credentialMap;
   }
 }

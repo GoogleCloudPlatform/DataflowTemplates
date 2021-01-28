@@ -146,9 +146,13 @@ The template allows for the user to supply the following optional parameters:
 - javascriptTextTransformGcsPath: Path to javascript function in GCS
 - javascriptTextTransformFunctionName: Name of javascript function
 - outputDeadLetterTopic: Topic for messages failed to reach the output topic(aka. DeadLetter topic)
-- secretStoreUrl: URL to Kafka credentials in HashiCorp Vault secret storage in the format 
-'http(s)://vaultip:vaultport/path/to/credentials'
+- secretStoreUrl: URL to Kafka credentials in HashiCorp Vault secret storage in the format 'http(s)://vaultip:vaultport/path/to/credentials'
 - vaultToken: Token to access HashiCorp Vault secret storage
+- kafkaOptionsGcsPath: Path to Kafka credentials in GCS. This parameter can be used instead of
+  secretStoreUrl and vaultToken
+
+_Note_: If you want to provide Kafka credentials you should specify **either** secretStoreUrl and
+vaultToken or kafkaOptionsGcsPath.
 
 You can do this in 3 different ways:
 1. Using [Dataflow Google Cloud Console](https://console.cloud.google.com/dataflow/jobs)
@@ -195,8 +199,10 @@ You can do this in 3 different ways:
         '
         "${TEMPLATES_LAUNCH_API}"
     ```
-   
-_Note_: Credentials inside secret storage should have appropriate SSL configuration with following parameters:
+
+_Note_: Credentials inside GCS or secret storage should have appropriate SSL configuration with
+following parameters:
+
 - `bucket` - the bucket in Google Cloud Storage with SSL certificate
 - `ssl.truststore.location` - the location of the trust store file
 - `ssl.truststore.password` - the password for the trust store file

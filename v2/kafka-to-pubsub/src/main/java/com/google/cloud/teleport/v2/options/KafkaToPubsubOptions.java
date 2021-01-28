@@ -73,4 +73,9 @@ public interface KafkaToPubsubOptions extends PipelineOptions {
   String getVaultToken();
 
   void setVaultToken(String vaultToken);
+
+  @Description("Gcs path to JSON file with Kafka options")
+  String getKafkaOptionsGcsPath();
+
+  void setKafkaOptionsGcsPath(String kafkaOptionsGcsPath);
 }
