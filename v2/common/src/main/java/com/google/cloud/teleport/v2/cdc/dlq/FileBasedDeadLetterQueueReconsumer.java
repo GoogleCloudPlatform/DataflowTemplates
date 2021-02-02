@@ -59,7 +59,6 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
       FileBasedDeadLetterQueueReconsumer.class);
 
   public static final Duration DEFAULT_RECHECK_PERIOD = Duration.standardMinutes(5);
-  public static final String TEMPORARY_HOLD_SUBDIRECTORY = "tmp";
 
   private final String dlqDirectory;
   private final Duration recheckPeriod;
@@ -88,7 +87,7 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
         .apply(FileIO.match()
             .filepattern(filePattern)
             .continuously(recheckPeriod, Growth.never()))
-        .apply(moveAndConsumeMatches());
+        .apply("ConsumeMatches", moveAndConsumeMatches());
 
   }
 
@@ -161,7 +160,7 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
     public void process(
         @Element Metadata dlqFile,
         MultiOutputReceiver outputs) throws IOException {
-      if (dlqFile.resourceId().getFilename().contains("/tmp/")) {
+      if (dlqFile.resourceId().toString().contains("/tmp/.temp")) {
         return;
       }
 

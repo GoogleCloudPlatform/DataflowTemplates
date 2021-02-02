@@ -297,13 +297,9 @@ public class CsvConverters {
 
       // If no udf then use json schema
       if (jsonSchemaPath() != null || jsonSchema() != null) {
-
-        String schema;
-        if (jsonSchemaPath() != null) {
-          schema = SchemaUtils.getGcsFileAsString(jsonSchemaPath());
-        } else {
-          schema = jsonSchema();
-        }
+        String schema =
+            jsonSchemaPath() != null ? SchemaUtils.getGcsFileAsString(jsonSchemaPath()) :
+                jsonSchema();
 
         return lineFailsafeElements.apply(
             "LineToDocumentUsingSchema",

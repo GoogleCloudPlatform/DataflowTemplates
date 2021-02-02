@@ -387,9 +387,16 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
             .via(Contextful.fn(KV::getValue), TextIO.sink())
             .withTempDirectory(outputDir));
 
+    PCollection<List<Export.Table>> metadataTables =
+        tableManifests
+            .apply("Combine table metadata", Combine.globally(new CombineTableMetadata()));
+
+    PCollectionView<Ddl> ddlView = ddl.apply("Cloud Spanner DDL as view", View.asSingleton());
+
     PCollection<String> metadataContent =
-        tableManifests.apply(
-            "Create database manifest", Combine.globally(new CreateDatabaseManifest()));
+        metadataTables.apply(
+            "Create database manifest",
+            ParDo.of(new CreateDatabaseManifest(ddlView)).withSideInputs(ddlView));
 
     Contextful.Fn<String, FileIO.Write.FileNaming> manifestNaming =
         (element, c) ->
@@ -533,8 +540,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
   }
 
   /** Given map of table names, create the database manifest contents. */
-  static class CreateDatabaseManifest
-      extends CombineFn<KV<String, String>, List<Export.Table>, String> {
+  static class CombineTableMetadata
+      extends CombineFn<KV<String, String>, List<Export.Table>, List<Export.Table>> {
 
     @Override
     public List<Export.Table> createAccumulator() {
@@ -563,11 +570,29 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     }
 
     @Override
-    public String extractOutput(List<Export.Table> accumulator) {
+    public List<Export.Table> extractOutput(List<Export.Table> accumulator) {
+      return accumulator;
+    }
+  }
+
+  @VisibleForTesting
+  static class CreateDatabaseManifest extends DoFn<List<Export.Table>, String> {
+
+    private final PCollectionView<Ddl> ddlView;
+
+    public CreateDatabaseManifest(PCollectionView<Ddl> ddlView){
+      this.ddlView = ddlView;
+    }
+
+    @ProcessElement
+    public void processElement(
+        @Element List<Export.Table> metadataTables, OutputReceiver<String> out, ProcessContext c) {
+      Ddl ddl = c.sideInput(ddlView);
       ExportProtos.Export.Builder exportManifest = ExportProtos.Export.newBuilder();
-      exportManifest.addAllTables(accumulator);
+      exportManifest.addAllTables(metadataTables);
+      exportManifest.addAllDatabaseOptions(ddl.databaseOptions());
       try {
-        return JsonFormat.printer().print(exportManifest.build());
+        out.output(JsonFormat.printer().print(exportManifest.build()));
       } catch (InvalidProtocolBufferException e) {
         throw new RuntimeException(e);
       }

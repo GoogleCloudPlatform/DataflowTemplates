@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.cdc.dlq;
 
+import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
@@ -25,30 +27,47 @@ import org.apache.beam.sdk.values.PCollection;
 public class DeadLetterQueueManager {
 
   private static final String DATETIME_FILEPATH_SUFFIX = "YYYY/MM/DD/HH/mm/";
-  private final String dlqDirectory;
+  private final String retryDlqDirectory;
+  private final String severeDlqDirectory;
 
-  private DeadLetterQueueManager(String dlqDirectory) {
-    this.dlqDirectory = dlqDirectory;
+  private DeadLetterQueueManager(String retryDlqDirectory,
+      String severeDlqDirectory) {
+    this.retryDlqDirectory = retryDlqDirectory;
+    this.severeDlqDirectory = severeDlqDirectory;
   }
 
   public static DeadLetterQueueManager create(String dlqDirectory) {
-    return new DeadLetterQueueManager(dlqDirectory);
+    String retryDlqUri = FileSystems.matchNewResource(dlqDirectory, true)
+        .resolve("retry", StandardResolveOptions.RESOLVE_DIRECTORY)
+        .toString();
+    String severeDlqUri = FileSystems.matchNewResource(dlqDirectory, true)
+        .resolve("severe", StandardResolveOptions.RESOLVE_DIRECTORY)
+        .toString();
+    return new DeadLetterQueueManager(retryDlqUri, severeDlqUri);
   }
 
-  public String getDlqDirectory() {
-    return dlqDirectory;
+  public String getRetryDlqDirectory() {
+    return retryDlqDirectory;
   }
 
-  public String getDlqDirectoryWithDateTime() {
-    return dlqDirectory + DATETIME_FILEPATH_SUFFIX;
+  public String getSevereDlqDirectory() {
+    return retryDlqDirectory;
+  }
+
+  public String getRetryDlqDirectoryWithDateTime() {
+    return retryDlqDirectory + DATETIME_FILEPATH_SUFFIX;
+  }
+
+  public String getSevereDlqDirectoryWithDateTime() {
+    return severeDlqDirectory + DATETIME_FILEPATH_SUFFIX;
   }
 
   public PTransform<PBegin, PCollection<String>> dlqReconsumer() {
-    return FileBasedDeadLetterQueueReconsumer.create(dlqDirectory);
+    return FileBasedDeadLetterQueueReconsumer.create(retryDlqDirectory);
   }
 
   public PTransform<PBegin, PCollection<String>> dlqReconsumer(Integer recheckPeriodMinutes) {
-    return FileBasedDeadLetterQueueReconsumer.create(dlqDirectory, recheckPeriodMinutes);
+    return FileBasedDeadLetterQueueReconsumer.create(retryDlqDirectory, recheckPeriodMinutes);
   }
 
 }

@@ -39,9 +39,7 @@ import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.io.FileBasedSink;
-import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.TextIO;
-import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
@@ -244,7 +242,7 @@ public class PubSubCdcToBigQuery {
     String gcsOutputDateTimeDirectory = null;
 
     if (options.getDeadLetterQueueDirectory() != null) {
-      gcsOutputDateTimeDirectory = dlqManager.getDlqDirectory() + "YYYY/MM/DD/HH/mm/";
+      gcsOutputDateTimeDirectory = dlqManager.getRetryDlqDirectory() + "YYYY/MM/DD/HH/mm/";
     }
 
 
@@ -521,10 +519,7 @@ public class PubSubCdcToBigQuery {
               ? tempLocation + "dlq/"
               : options.getDeadLetterQueueDirectory();
 
-      String resolvedDlqUri = FileSystems.matchNewResource(dlqDirectory, true)
-          .resolve("insert", StandardResolveOptions.RESOLVE_DIRECTORY)
-          .toString();
-      return DeadLetterQueueManager.create(resolvedDlqUri);
+      return DeadLetterQueueManager.create(dlqDirectory);
     } else {
       return null;
     }

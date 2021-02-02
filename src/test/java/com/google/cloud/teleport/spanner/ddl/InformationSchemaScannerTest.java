@@ -313,4 +313,27 @@ public class InformationSchemaScannerTest {
     Ddl ddl = getDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
   }
+
+  @Test
+  public void databaseOptions() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "ALTER DATABASE `" + dbId + "` SET OPTIONS ( version_retention_period = \"5d\" )\n",
+            "CREATE TABLE `Users` ("
+                + " `id`                                    INT64 NOT NULL,"
+                + " `first_name`                            STRING(10),"
+                + " `last_name`                             STRING(MAX),"
+                + " `age`                                   INT64,"
+                + " ) PRIMARY KEY (`id` ASC)",
+            " CREATE UNIQUE NULL_FILTERED INDEX `a_last_name_idx` ON "
+                + " `Users`(`last_name` ASC) STORING (`first_name`)",
+            " CREATE INDEX `b_age_idx` ON `Users`(`age` DESC)",
+            " CREATE UNIQUE INDEX `c_first_name_idx` ON `Users`(`first_name` ASC)");
+
+    spannerServer.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    String alterStatement = statements.get(0);
+    statements.set(0, alterStatement.replace(dbId, "%db_name%"));
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
 }

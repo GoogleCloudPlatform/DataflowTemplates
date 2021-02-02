@@ -36,6 +36,13 @@ message Export {
     string manifest_file = 3;
   }
 
+  message DatabaseOption {
+    string option_name = 1;
+    string option_type = 2;
+    string option_value = 3;
+  }
+
   // The set of tables that were exported.
   repeated Table tables = 1;
+  repeated DatabaseOption database_options = 2;
 }
