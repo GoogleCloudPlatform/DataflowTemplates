@@ -57,15 +57,6 @@ import org.junit.Test;
 public class ProtegrityDataTokenizationTest {
 
   final static String testSchema = "{\"fields\":[{\"mode\":\"REQUIRED\",\"name\":\"FieldName1\",\"type\":\"STRING\"},{\"mode\":\"REQUIRED\",\"name\":\"FieldName2\",\"type\":\"STRING\"}]}";
-  final static String avroTestSchema =
-      "{ \"namespace\": \"com.google.cloud.teleport.v2.templates\", \n"
-          + "\t\"type\": \"record\", \n"
-          + "\t\"name\": \"typeName\", \n"
-          + "\t\"fields\": [ \n"
-          + "\t  {\"name\": \"FieldName1\",\"type\": \"string\"}, \n"
-          + "\t  {\"name\": \"FieldName2\", \"type\": \"string\"}\n"
-          + "\t] \n"
-          + "}";
   String[] testFields = {"TestValue1", "TestValue2"};
 
   @Rule
