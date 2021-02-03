@@ -670,7 +670,7 @@ public class BigQueryConverters {
   /**
    * Converts a row to tableRow via {@link BigQueryUtils#toTableRow()}.
    */
-  public static SerializableFunction<Row, TableRow> RowToTableRowFn = BigQueryUtils::toTableRow;
+  public static SerializableFunction<Row, TableRow> rowToTableRowFn = BigQueryUtils::toTableRow;
 
   /**
    * The {@link FailsafeRowToTableRow} transform converts {@link Row} to {@link TableRow} objects.
