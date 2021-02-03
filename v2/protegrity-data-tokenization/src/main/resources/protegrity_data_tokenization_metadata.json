@@ -120,7 +120,7 @@
       "paramType": "TEXT",
       "isOptional": true,
       "regexes": [
-        "^(JSON|CSV)$"
+        "^(JSON|CSV|AVRO)$"
       ]
     },
     {

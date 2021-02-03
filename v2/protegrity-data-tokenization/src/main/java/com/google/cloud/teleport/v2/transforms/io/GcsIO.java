@@ -90,7 +90,8 @@ public class GcsIO {
    */
   public enum FORMAT {
     JSON,
-    CSV
+    CSV,
+    AVRO
   }
 
   /**
@@ -254,6 +255,18 @@ public class GcsIO {
                     .to(options.getOutputGcsDirectory()).withHeader(header));
       }
 
+//    } else if (options.getOutputGcsFileFormat() == FORMAT.AVRO) {
+//      org.apache.avro.Schema avroSchema = AvroUtils.toAvroSchema(schema);
+//      return input
+//          .apply(
+//              "MapToAvro", MapElements.into(TypeDescriptor.of(GenericRecord.class))
+//                  .via((Row inputRow) -> {
+//                    GenericRecord genericRecord = AvroUtils.toGenericRecord(inputRow, avroSchema);
+//                    return Create.of(genericRecord).withCoder(AvroCoder.of(avroSchema));
+//                  }))
+//          .apply("WriteToAvro", AvroIO.writeGenericRecords(avroSchema)
+//              .to(options.getOutputGcsDirectory())
+//              .withSuffix(".avro"));
     } else {
       throw new IllegalStateException(
           "No valid format for output data is provided. Please, choose JSON or CSV.");

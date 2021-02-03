@@ -19,7 +19,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.startsWith;
 
-import avro.shaded.com.google.common.collect.Lists;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.options.ProtegrityDataTokenizationOptions;
 import com.google.cloud.teleport.v2.transforms.io.GcsIO;
@@ -33,18 +32,26 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.RowCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.io.AvroIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
+import org.apache.beam.sdk.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.JsonToRow;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Lists;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -55,7 +62,16 @@ import org.junit.Test;
 public class ProtegrityDataTokenizationTest {
 
   final static String testSchema = "{\"fields\":[{\"mode\":\"REQUIRED\",\"name\":\"FieldName1\",\"type\":\"STRING\"},{\"mode\":\"REQUIRED\",\"name\":\"FieldName2\",\"type\":\"STRING\"}]}";
-  String[] fields = {"TestValue1", "TestValue2"};
+  final static String avroTestSchema =
+      "{ \"namespace\": \"com.google.cloud.teleport.v2.templates\", \n"
+          + "\t\"type\": \"record\", \n"
+          + "\t\"name\": \"typeName\", \n"
+          + "\t\"fields\": [ \n"
+          + "\t  {\"name\": \"FieldName1\",\"type\": \"string\"}, \n"
+          + "\t  {\"name\": \"FieldName2\", \"type\": \"string\"}\n"
+          + "\t] \n"
+          + "}";
+  String[] testFields = {"TestValue1", "TestValue2"};
 
   @Rule
   public final transient TestPipeline testPipeline = TestPipeline.create();
@@ -71,9 +87,21 @@ public class ProtegrityDataTokenizationTest {
   private static final String SCHEMA_FILE_PATH =
       Resources.getResource(RESOURCES_DIR + "schema.txt").getPath();
 
+  private static final String AVRO_OUTPUT_FILE_PATH =
+      Resources.getResource(RESOURCES_DIR + "testOutputAvro.avro").getPath();
+
   private static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
       FailsafeElementCoder.of(
           NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of()));
+
+  private static class LogIt extends DoFn<GenericRecord, GenericRecord> {
+
+    @ProcessElement
+    public void processElement(@Element GenericRecord in, OutputReceiver<GenericRecord> out) {
+      System.out.println(in.toString());
+      out.output(in);
+    }
+  }
 
   @Test
   public void testGetBeamSchema() {
@@ -97,9 +125,9 @@ public class ProtegrityDataTokenizationTest {
   public void testRowToCSV() {
     Schema beamSchema = new SchemasUtils(testSchema).getBeamSchema();
     Row.Builder rowBuilder = Row.withSchema(beamSchema);
-    Row row = rowBuilder.addValues(new ArrayList<>(Arrays.asList(fields))).build();
+    Row row = rowBuilder.addValues(new ArrayList<>(Arrays.asList(testFields))).build();
     String csvResult = new RowToCsv(";").getCsvFromRow(row);
-    Assert.assertEquals(String.join(";", fields), csvResult);
+    Assert.assertEquals(String.join(";", testFields), csvResult);
   }
 
   @Test
@@ -139,6 +167,24 @@ public class ProtegrityDataTokenizationTest {
                   });
               return null;
             });
+    testPipeline.run();
+  }
+
+  @Test
+  public void testRowToAvro() {
+    Schema beamSchema = new SchemasUtils(testSchema).getBeamSchema();
+    Row.Builder rowBuilder = Row.withSchema(beamSchema);
+    Row row = rowBuilder.addValues(new ArrayList<>(Arrays.asList(testFields))).build();
+    org.apache.avro.Schema avroSchema = AvroUtils.toAvroSchema(beamSchema);
+    GenericRecord genericRecord = AvroUtils.toGenericRecord(row, avroSchema);
+
+    testPipeline
+        .apply("Create",
+            Create.of(genericRecord).withCoder(AvroCoder.of(GenericRecord.class, avroSchema)))
+        .apply("printIt", ParDo.of(new LogIt()))
+        .apply(AvroIO.writeGenericRecords(avroSchema)
+            .to("/home/daria/out.avro"));
+
     testPipeline.run();
   }
 
