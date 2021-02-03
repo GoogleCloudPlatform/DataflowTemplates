@@ -21,14 +21,18 @@ import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.utils.RowToCsv;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.io.AvroIO;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.schemas.Schema;
+import org.apache.beam.sdk.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ToJson;
 import org.apache.beam.sdk.values.PCollection;
@@ -37,6 +41,7 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.beam.sdk.values.TypeDescriptors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -255,18 +260,16 @@ public class GcsIO {
                     .to(options.getOutputGcsDirectory()).withHeader(header));
       }
 
-//    } else if (options.getOutputGcsFileFormat() == FORMAT.AVRO) {
-//      org.apache.avro.Schema avroSchema = AvroUtils.toAvroSchema(schema);
-//      return input
-//          .apply(
-//              "MapToAvro", MapElements.into(TypeDescriptor.of(GenericRecord.class))
-//                  .via((Row inputRow) -> {
-//                    GenericRecord genericRecord = AvroUtils.toGenericRecord(inputRow, avroSchema);
-//                    return Create.of(genericRecord).withCoder(AvroCoder.of(avroSchema));
-//                  }))
-//          .apply("WriteToAvro", AvroIO.writeGenericRecords(avroSchema)
-//              .to(options.getOutputGcsDirectory())
-//              .withSuffix(".avro"));
+    } else if (options.getOutputGcsFileFormat() == FORMAT.AVRO) {
+      org.apache.avro.Schema avroSchema = AvroUtils.toAvroSchema(schema);
+      return input
+          .apply(
+              "MapToAvro", MapElements.into(TypeDescriptor.of(GenericRecord.class))
+                  .via(AvroUtils.getRowToGenericRecordFunction(avroSchema)))
+          .setCoder(AvroCoder.of(GenericRecord.class, avroSchema))
+          .apply("WriteToAvro", AvroIO.writeGenericRecords(avroSchema)
+              .to(options.getOutputGcsDirectory())
+              .withSuffix(".avro"));
     } else {
       throw new IllegalStateException(
           "No valid format for output data is provided. Please, choose JSON or CSV.");

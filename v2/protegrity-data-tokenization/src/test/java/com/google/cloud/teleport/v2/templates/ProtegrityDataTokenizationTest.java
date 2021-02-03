@@ -33,22 +33,17 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.RowCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
-import org.apache.beam.sdk.io.AvroIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
-import org.apache.beam.sdk.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
-import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.JsonToRow;
-import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Lists;
@@ -86,9 +81,6 @@ public class ProtegrityDataTokenizationTest {
 
   private static final String SCHEMA_FILE_PATH =
       Resources.getResource(RESOURCES_DIR + "schema.txt").getPath();
-
-  private static final String AVRO_OUTPUT_FILE_PATH =
-      Resources.getResource(RESOURCES_DIR + "testOutputAvro.avro").getPath();
 
   private static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
       FailsafeElementCoder.of(
@@ -171,19 +163,25 @@ public class ProtegrityDataTokenizationTest {
   }
 
   @Test
-  public void testRowToAvro() {
-    Schema beamSchema = new SchemasUtils(testSchema).getBeamSchema();
-    Row.Builder rowBuilder = Row.withSchema(beamSchema);
-    Row row = rowBuilder.addValues(new ArrayList<>(Arrays.asList(testFields))).build();
-    org.apache.avro.Schema avroSchema = AvroUtils.toAvroSchema(beamSchema);
-    GenericRecord genericRecord = AvroUtils.toGenericRecord(row, avroSchema);
+  public void testAvro() throws IOException {
+    PCollection<String> jsons = fileSystemIORead(JSON_FILE_PATH, FORMAT.JSON);
+    SchemasUtils testSchemaUtils = new SchemasUtils(SCHEMA_FILE_PATH, StandardCharsets.UTF_8);
+    JsonToRow.ParseResult rows =
+        jsons.apply(
+            "JsonToRow",
+            JsonToRow.withExceptionReporting(testSchemaUtils.getBeamSchema())
+                .withExtendedErrorInfo());
 
-    testPipeline
-        .apply("Create",
-            Create.of(genericRecord).withCoder(AvroCoder.of(GenericRecord.class, avroSchema)))
-        .apply("printIt", ParDo.of(new LogIt()))
-        .apply(AvroIO.writeGenericRecords(avroSchema)
-            .to("/home/daria/out.avro"));
+    SchemasUtils testSchema =
+        new SchemasUtils(SCHEMA_FILE_PATH, StandardCharsets.UTF_8);
+    ProtegrityDataTokenizationOptions options =
+        PipelineOptionsFactory.create().as(ProtegrityDataTokenizationOptions.class);
+    options.setDataSchemaGcsPath(SCHEMA_FILE_PATH);
+    options.setOutputGcsDirectory("/home/daria/testout");
+    options.setOutputGcsFileFormat(FORMAT.AVRO);
+
+    PCollection<Row> rows2 = rows.getResults().setRowSchema(testSchema.getBeamSchema());
+    new GcsIO(options).write(rows2, testSchema.getBeamSchema());
 
     testPipeline.run();
   }
