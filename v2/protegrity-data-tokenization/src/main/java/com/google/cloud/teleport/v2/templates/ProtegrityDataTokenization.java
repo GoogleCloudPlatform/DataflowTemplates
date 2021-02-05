@@ -263,12 +263,15 @@ public class ProtegrityDataTokenization {
       throw new IllegalStateException("No source is provided, please configure GCS or Pub/Sub");
     }
 
+    /*
+    Get collection of Rows
+    */
     PCollection<Row> rows;
     if (options.getInputGcsFilePattern() != null
-        && options.getInputGcsFileFormat() != FORMAT.AVRO) {
-      rows = getRowPCollection(options, schema, (PCollection<String>) records);
-    } else {
+        && options.getInputGcsFileFormat() == FORMAT.AVRO) {
       rows = (PCollection<Row>) records;
+    } else {
+      rows = getRowPCollection(options, schema, (PCollection<String>) records);
     }
     /*
     Tokenize data using remote API call
