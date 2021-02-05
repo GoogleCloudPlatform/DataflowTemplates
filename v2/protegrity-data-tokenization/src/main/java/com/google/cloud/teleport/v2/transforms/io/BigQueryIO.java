@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.transforms.io;
 
 
+import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -23,9 +24,10 @@ import java.io.IOException;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
-import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
+import org.apache.beam.sdk.values.TypeDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,7 +44,8 @@ public class BigQueryIO {
   public static WriteResult write(PCollection<Row> input, String bigQueryTableName,
       TableSchema schema) {
     return input
-        .apply("RowToTableRow", ParDo.of(new BigQueryConverters.RowToTableRowFn()))
+        .apply("RowToTableRow", MapElements.into(TypeDescriptor.of(TableRow.class))
+            .via(BigQueryConverters.rowToTableRowFn))
         .apply(
             "WriteSuccessfulRecords",
             org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.writeTableRows()

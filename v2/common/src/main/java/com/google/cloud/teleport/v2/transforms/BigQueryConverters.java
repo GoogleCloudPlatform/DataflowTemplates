@@ -668,17 +668,9 @@ public class BigQueryConverters {
   }
 
   /**
-   * The {@link RowToTableRowFn} class converts a row to tableRow using {@link
-   * BigQueryUtils#toTableRow()}.
+   * Converts a row to tableRow via {@link BigQueryUtils#toTableRow()}.
    */
-  public static class RowToTableRowFn extends DoFn<Row, TableRow> {
-
-    @ProcessElement
-    public void processElement(ProcessContext context) {
-      Row row = context.element();
-      context.output(BigQueryUtils.toTableRow(row));
-    }
-  }
+  public static SerializableFunction<Row, TableRow> rowToTableRowFn = BigQueryUtils::toTableRow;
 
   /**
    * The {@link FailsafeRowToTableRow} transform converts {@link Row} to {@link TableRow} objects.
