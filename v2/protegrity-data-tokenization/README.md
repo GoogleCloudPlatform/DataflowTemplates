@@ -8,6 +8,7 @@ Supported data formats:
 
 - JSON
 - CSV
+- AVRO
 
 Supported input sources:
 
@@ -24,9 +25,9 @@ Supported data schema format:
 
 - JSON with an array of fields described in BigQuery format
 
-In the main scenario, the template will create an Apache Beam pipeline that will read data in CSV or
-JSON format from a specified input source, send the data to an external processing server, receive
-processed data, and write it into a specified output sink.
+In the main scenario, the template will create an Apache Beam pipeline that will read data in CSV,
+JSON or AVRO (Only for filesystem inputs) format from a specified input source, send the data to an
+external processing server, receive processed data, and write it into a specified output sink.
 
 ## Requirements
 
@@ -136,7 +137,7 @@ The template requires the following parameters:
 - 1 specified input source out of these:
     - Google Cloud Storage
         - **inputGcsFilePattern**: GCS filepattern for files in bucket to read data from
-        - **inputGcsFileFormat**: File format of input files. Supported formats: JSON, CSV
+        - **inputGcsFileFormat**: File format of input files. Supported formats: JSON, CSV, AVRO
         - In case if input data is in CSV format:
             - **csvContainsHeaders**: `true` if file(s) in bucket to read data from contain headers,
               and `false` otherwise
@@ -146,13 +147,13 @@ The template requires the following parameters:
               [Apache Commons CSV default](https://static.javadoc.io/org.apache.commons/commons-csv/1.7/org/apache/commons/csv/CSVFormat.html#DEFAULT)
               . Must match format names exactly found
               at: https://static.javadoc.io/org.apache.commons/commons-csv/1.7/org/apache/commons/csv/CSVFormat.Predefined.html
-    - Google Pub/Sub
+    - Google Pub/Sub (AVRO not supported)
         - **pubsubTopic**: The Cloud Pub/Sub topic to read from, in the format of '
           projects/yourproject/topics/yourtopic'
 - 1 specified output sink out of these:
     - Google Cloud Storage
         - **outputGcsDirectory**: GCS directory in bucket to write data to
-        - **outputGcsFileFormat**: File format of output files. Supported formats: JSON, CSV
+        - **outputGcsFileFormat**: File format of output files. Supported formats: JSON, CSV, AVRO
         - **windowDuration**: The window duration in which data will be written. Should be specified
           only for 'Pub/Sub -> GCS' case. Defaults to 30s.
 
