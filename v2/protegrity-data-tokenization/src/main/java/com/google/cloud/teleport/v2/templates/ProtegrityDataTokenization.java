@@ -22,6 +22,7 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.options.ProtegrityDataTokenizationOptions;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
+import com.google.cloud.teleport.v2.transforms.JsonToBeamRow;
 import com.google.cloud.teleport.v2.transforms.ProtegrityDataProtectors.RowToTokenizedRow;
 import com.google.cloud.teleport.v2.transforms.io.BigQueryIO;
 import com.google.cloud.teleport.v2.transforms.io.BigTableIO;
@@ -48,7 +49,6 @@ import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.transforms.JsonToRow;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
@@ -165,7 +165,7 @@ public class ProtegrityDataTokenization {
   /**
    * String/String Coder for FailsafeElement.
    */
-  private static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
+  public static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
       FailsafeElementCoder.of(
           NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of()));
 
@@ -271,7 +271,7 @@ public class ProtegrityDataTokenization {
         && options.getInputGcsFileFormat() == FORMAT.AVRO) {
       rows = (PCollection<Row>) records;
     } else {
-      rows = convertJsonToRow(options, schema, (PCollection<String>) records);
+      rows = ((PCollection<String>) records).apply(new JsonToBeamRow(options, schema));
     }
     /*
     Tokenize data using remote API call
@@ -344,31 +344,5 @@ public class ProtegrityDataTokenization {
     }
 
     return pipeline.run();
-  }
-
-  private static PCollection<Row> convertJsonToRow(ProtegrityDataTokenizationOptions options,
-      SchemasUtils schema, PCollection<String> jsons) {
-    JsonToRow.ParseResult rows = jsons
-        .apply("JsonToRow",
-            JsonToRow.withExceptionReporting(schema.getBeamSchema()).withExtendedErrorInfo());
-
-    if (options.getNonTokenizedDeadLetterGcsPath() != null) {
-      /*
-       * Write Row conversion errors to filesystem specified path
-       */
-      rows.getFailedToParseLines()
-          .apply("ToFailsafeElement",
-              MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
-                  .via((Row errRow) -> FailsafeElement
-                      .of(errRow.getString("line"), errRow.getString("line"))
-                      .setErrorMessage(errRow.getString("err"))
-                  ))
-          .apply("WriteCsvConversionErrorsToGcs",
-              ErrorConverters.WriteStringMessageErrorsAsCsv.newBuilder()
-                  .setCsvDelimiter(options.getCsvDelimiter())
-                  .setErrorWritePath(options.getNonTokenizedDeadLetterGcsPath())
-                  .build());
-    }
-    return rows.getResults().setRowSchema(schema.getBeamSchema());
   }
 }
