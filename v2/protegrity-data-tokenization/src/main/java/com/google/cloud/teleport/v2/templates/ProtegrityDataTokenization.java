@@ -271,7 +271,7 @@ public class ProtegrityDataTokenization {
         && options.getInputGcsFileFormat() == FORMAT.AVRO) {
       rows = (PCollection<Row>) records;
     } else {
-      rows = getRowPCollection(options, schema, (PCollection<String>) records);
+      rows = convertJsonToRow(options, schema, (PCollection<String>) records);
     }
     /*
     Tokenize data using remote API call
@@ -346,7 +346,7 @@ public class ProtegrityDataTokenization {
     return pipeline.run();
   }
 
-  private static PCollection<Row> getRowPCollection(ProtegrityDataTokenizationOptions options,
+  private static PCollection<Row> convertJsonToRow(ProtegrityDataTokenizationOptions options,
       SchemasUtils schema, PCollection<String> jsons) {
     PCollection<Row> prows;
     JsonToRow.ParseResult rows = jsons

@@ -55,7 +55,7 @@ import org.junit.Test;
 public class ProtegrityDataTokenizationTest {
 
   final String testSchema = "{\"fields\":[{\"mode\":\"REQUIRED\",\"name\":\"FieldName1\",\"type\":\"STRING\"},{\"mode\":\"REQUIRED\",\"name\":\"FieldName2\",\"type\":\"STRING\"}]}";
-  final String[] testfields = {"TestValue1", "TestValue2"};
+  final String[] fields = {"TestValue1", "TestValue2"};
 
   @Rule
   public final transient TestPipeline testPipeline = TestPipeline.create();
@@ -97,9 +97,9 @@ public class ProtegrityDataTokenizationTest {
   public void testRowToCSV() {
     Schema beamSchema = new SchemasUtils(testSchema).getBeamSchema();
     Row.Builder rowBuilder = Row.withSchema(beamSchema);
-    Row row = rowBuilder.addValues(new ArrayList<>(Arrays.asList(testfields))).build();
+    Row row = rowBuilder.addValues(new ArrayList<>(Arrays.asList(fields))).build();
     String csvResult = new RowToCsv(";").getCsvFromRow(row);
-    Assert.assertEquals(String.join(";", testfields), csvResult);
+    Assert.assertEquals(String.join(";", fields), csvResult);
   }
 
   @Test
