@@ -171,7 +171,7 @@ public class ProtegrityDataTokenizationTest {
             RowCoder.of(testSchemaUtils.getBeamSchema()));
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
-    return new GcsIO(options).read(testPipeline, testSchemaUtils.getJsonBeamSchema());
+    return (PCollection<String>) new GcsIO(options).read(testPipeline, testSchemaUtils);
   }
 
   private void assertField(PCollection<String> jsons) {

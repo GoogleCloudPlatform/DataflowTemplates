@@ -20,15 +20,22 @@ import com.google.cloud.teleport.v2.options.ProtegrityDataTokenizationOptions;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.utils.RowToCsv;
+import com.google.cloud.teleport.v2.utils.SchemasUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import java.io.Serializable;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.coders.NullableCoder;
+import org.apache.beam.sdk.coders.RowCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.io.AvroIO;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.schemas.Schema;
+import org.apache.beam.sdk.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ToJson;
 import org.apache.beam.sdk.values.PCollection;
@@ -37,6 +44,7 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.beam.sdk.values.TypeDescriptors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,7 +98,8 @@ public class GcsIO {
    */
   public enum FORMAT {
     JSON,
-    CSV
+    CSV,
+    AVRO
   }
 
   /**
@@ -163,7 +172,7 @@ public class GcsIO {
     this.options = options;
   }
 
-  public PCollection<String> read(Pipeline pipeline, String schema) {
+  public PCollection<? extends Serializable> read(Pipeline pipeline, SchemasUtils schema) {
     if (options.getInputGcsFileFormat() == FORMAT.JSON) {
       return pipeline
           .apply("ReadJsonFromGCSFiles",
@@ -190,7 +199,7 @@ public class GcsIO {
               "LineToJson",
               CsvConverters.LineToFailsafeJson.newBuilder()
                   .setDelimiter(options.getCsvDelimiter())
-                  .setJsonSchema(schema)
+                  .setJsonSchema(schema.getJsonBeamSchema())
                   .setHeaderTag(CSV_HEADERS)
                   .setLineTag(CSV_LINES)
                   .setUdfOutputTag(PROCESSING_OUT)
@@ -216,6 +225,16 @@ public class GcsIO {
           .apply(
               "GetJson",
               MapElements.into(TypeDescriptors.strings()).via(FailsafeElement::getPayload));
+    } else if (options.getInputGcsFileFormat() == FORMAT.AVRO) {
+      org.apache.avro.Schema avroSchema = AvroUtils.toAvroSchema(schema.getBeamSchema());
+      PCollection<GenericRecord> genericRecords = pipeline.apply(
+          "ReadAvroFiles",
+          AvroIO.readGenericRecords(avroSchema).from(options.getInputGcsFilePattern()));
+      return genericRecords
+          .apply(
+              "GenericRecordToRow", MapElements.into(TypeDescriptor.of(Row.class))
+                  .via(AvroUtils.getGenericRecordToRowFunction(schema.getBeamSchema())))
+          .setCoder(RowCoder.of(schema.getBeamSchema()));
     } else {
       throw new IllegalStateException(
           "No valid format for input data is provided. Please, choose JSON or CSV.");
@@ -254,6 +273,16 @@ public class GcsIO {
                     .to(options.getOutputGcsDirectory()).withHeader(header));
       }
 
+    } else if (options.getOutputGcsFileFormat() == FORMAT.AVRO) {
+      org.apache.avro.Schema avroSchema = AvroUtils.toAvroSchema(schema);
+      return input
+          .apply(
+              "RowToGenericRecord", MapElements.into(TypeDescriptor.of(GenericRecord.class))
+                  .via(AvroUtils.getRowToGenericRecordFunction(avroSchema)))
+          .setCoder(AvroCoder.of(GenericRecord.class, avroSchema))
+          .apply("WriteToAvro", AvroIO.writeGenericRecords(avroSchema)
+              .to(options.getOutputGcsDirectory())
+              .withSuffix(".avro"));
     } else {
       throw new IllegalStateException(
           "No valid format for output data is provided. Please, choose JSON or CSV.");

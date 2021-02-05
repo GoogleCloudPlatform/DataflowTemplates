@@ -22,15 +22,18 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.options.ProtegrityDataTokenizationOptions;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
+import com.google.cloud.teleport.v2.transforms.JsonToBeamRow;
 import com.google.cloud.teleport.v2.transforms.ProtegrityDataProtectors.RowToTokenizedRow;
 import com.google.cloud.teleport.v2.transforms.io.BigQueryIO;
 import com.google.cloud.teleport.v2.transforms.io.BigTableIO;
 import com.google.cloud.teleport.v2.transforms.io.GcsIO;
+import com.google.cloud.teleport.v2.transforms.io.GcsIO.FORMAT;
 import com.google.cloud.teleport.v2.utils.RowToCsv;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.utils.SchemasUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
@@ -46,7 +49,6 @@ import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.transforms.JsonToRow;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
@@ -163,7 +165,7 @@ public class ProtegrityDataTokenization {
   /**
    * String/String Coder for FailsafeElement.
    */
-  private static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
+  public static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
       FailsafeElementCoder.of(
           NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of()));
 
@@ -246,46 +248,35 @@ public class ProtegrityDataTokenization {
     coderRegistry
         .registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
-    PCollection<String> jsons;
+    PCollection<? extends Serializable> records;
     if (options.getInputGcsFilePattern() != null) {
-      jsons = new GcsIO(options).read(pipeline, schema.getJsonBeamSchema());
+      records = new GcsIO(options).read(pipeline, schema);
     } else if (options.getPubsubTopic() != null) {
-      jsons = pipeline
+      records = pipeline
           .apply("ReadMessagesFromPubsub",
               PubsubIO.readStrings().fromTopic(options.getPubsubTopic()));
       if (options.getOutputGcsDirectory() != null) {
-        jsons = jsons
+        records = records
             .apply(Window.into(FixedWindows.of(parseDuration(options.getWindowDuration()))));
       }
     } else {
       throw new IllegalStateException("No source is provided, please configure GCS or Pub/Sub");
     }
 
-    JsonToRow.ParseResult rows = jsons
-        .apply("JsonToRow",
-            JsonToRow.withExceptionReporting(schema.getBeamSchema()).withExtendedErrorInfo());
-
-    if (options.getNonTokenizedDeadLetterGcsPath() != null) {
-      /*
-       * Write Row conversion errors to filesystem specified path
-       */
-      rows.getFailedToParseLines()
-          .apply("ToFailsafeElement",
-              MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
-                  .via((Row errRow) -> FailsafeElement
-                      .of(errRow.getString("line"), errRow.getString("line"))
-                      .setErrorMessage(errRow.getString("err"))
-                  ))
-          .apply("WriteCsvConversionErrorsToGcs",
-              ErrorConverters.WriteStringMessageErrorsAsCsv.newBuilder()
-                  .setCsvDelimiter(options.getCsvDelimiter())
-                  .setErrorWritePath(options.getNonTokenizedDeadLetterGcsPath())
-                  .build());
+    /*
+    Get collection of Rows
+    */
+    PCollection<Row> rows;
+    if (options.getInputGcsFilePattern() != null
+        && options.getInputGcsFileFormat() == FORMAT.AVRO) {
+      rows = (PCollection<Row>) records;
+    } else {
+      rows = ((PCollection<String>) records).apply(new JsonToBeamRow(options, schema));
     }
     /*
     Tokenize data using remote API call
      */
-    PCollectionTuple tokenizedRows = rows.getResults().setRowSchema(schema.getBeamSchema())
+    PCollectionTuple tokenizedRows = rows
         .apply(MapElements
             .into(TypeDescriptors.kvs(TypeDescriptors.integers(), TypeDescriptors.rows()))
             .via((Row row) -> KV.of(0, row)))
