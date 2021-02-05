@@ -277,7 +277,7 @@ public class GcsIO {
       org.apache.avro.Schema avroSchema = AvroUtils.toAvroSchema(schema);
       return input
           .apply(
-              "MapToAvro", MapElements.into(TypeDescriptor.of(GenericRecord.class))
+              "RowToGenericRecord", MapElements.into(TypeDescriptor.of(GenericRecord.class))
                   .via(AvroUtils.getRowToGenericRecordFunction(avroSchema)))
           .setCoder(AvroCoder.of(GenericRecord.class, avroSchema))
           .apply("WriteToAvro", AvroIO.writeGenericRecords(avroSchema)
