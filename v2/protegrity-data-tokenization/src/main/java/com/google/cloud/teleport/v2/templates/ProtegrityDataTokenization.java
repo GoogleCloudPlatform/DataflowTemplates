@@ -348,7 +348,6 @@ public class ProtegrityDataTokenization {
 
   private static PCollection<Row> convertJsonToRow(ProtegrityDataTokenizationOptions options,
       SchemasUtils schema, PCollection<String> jsons) {
-    PCollection<Row> prows;
     JsonToRow.ParseResult rows = jsons
         .apply("JsonToRow",
             JsonToRow.withExceptionReporting(schema.getBeamSchema()).withExtendedErrorInfo());
