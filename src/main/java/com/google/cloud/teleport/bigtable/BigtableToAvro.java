@@ -122,7 +122,7 @@ public class BigtableToAvro {
         });
 
     pipeline
-        .apply("Read from Bigtable", read) ~
+        .apply("Read from Bigtable", read)
         .apply("Transform to Avro", MapElements.via(new BigtableToAvroFn()))
         .apply(
             "Write to Avro in GCS",
