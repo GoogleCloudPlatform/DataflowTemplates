@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
-import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.RowCoder;
@@ -42,7 +41,6 @@ import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
-import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.JsonToRow;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
@@ -56,8 +54,8 @@ import org.junit.Test;
  */
 public class ProtegrityDataTokenizationTest {
 
-  final static String testSchema = "{\"fields\":[{\"mode\":\"REQUIRED\",\"name\":\"FieldName1\",\"type\":\"STRING\"},{\"mode\":\"REQUIRED\",\"name\":\"FieldName2\",\"type\":\"STRING\"}]}";
-  String[] testFields = {"TestValue1", "TestValue2"};
+  final String testSchema = "{\"fields\":[{\"mode\":\"REQUIRED\",\"name\":\"FieldName1\",\"type\":\"STRING\"},{\"mode\":\"REQUIRED\",\"name\":\"FieldName2\",\"type\":\"STRING\"}]}";
+  final String[] testfields = {"TestValue1", "TestValue2"};
 
   @Rule
   public final transient TestPipeline testPipeline = TestPipeline.create();
@@ -76,15 +74,6 @@ public class ProtegrityDataTokenizationTest {
   private static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
       FailsafeElementCoder.of(
           NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of()));
-
-  private static class LogIt extends DoFn<GenericRecord, GenericRecord> {
-
-    @ProcessElement
-    public void processElement(@Element GenericRecord in, OutputReceiver<GenericRecord> out) {
-      System.out.println(in.toString());
-      out.output(in);
-    }
-  }
 
   @Test
   public void testGetBeamSchema() {
@@ -108,9 +97,9 @@ public class ProtegrityDataTokenizationTest {
   public void testRowToCSV() {
     Schema beamSchema = new SchemasUtils(testSchema).getBeamSchema();
     Row.Builder rowBuilder = Row.withSchema(beamSchema);
-    Row row = rowBuilder.addValues(new ArrayList<>(Arrays.asList(testFields))).build();
+    Row row = rowBuilder.addValues(new ArrayList<>(Arrays.asList(testfields))).build();
     String csvResult = new RowToCsv(";").getCsvFromRow(row);
-    Assert.assertEquals(String.join(";", testFields), csvResult);
+    Assert.assertEquals(String.join(";", testfields), csvResult);
   }
 
   @Test
@@ -153,30 +142,6 @@ public class ProtegrityDataTokenizationTest {
     testPipeline.run();
   }
 
-  @Test
-  public void testAvro() throws IOException {
-    PCollection<String> jsons = fileSystemIORead(JSON_FILE_PATH, FORMAT.JSON);
-    SchemasUtils testSchemaUtils = new SchemasUtils(SCHEMA_FILE_PATH, StandardCharsets.UTF_8);
-    JsonToRow.ParseResult rows =
-        jsons.apply(
-            "JsonToRow",
-            JsonToRow.withExceptionReporting(testSchemaUtils.getBeamSchema())
-                .withExtendedErrorInfo());
-
-    SchemasUtils testSchema =
-        new SchemasUtils(SCHEMA_FILE_PATH, StandardCharsets.UTF_8);
-    ProtegrityDataTokenizationOptions options =
-        PipelineOptionsFactory.create().as(ProtegrityDataTokenizationOptions.class);
-    options.setDataSchemaGcsPath(SCHEMA_FILE_PATH);
-    options.setOutputGcsDirectory("/home/daria/testout");
-    options.setOutputGcsFileFormat(FORMAT.AVRO);
-
-    PCollection<Row> rows2 = rows.getResults().setRowSchema(testSchema.getBeamSchema());
-    new GcsIO(options).write(rows2, testSchema.getBeamSchema());
-
-    testPipeline.run();
-  }
-
   private PCollection<String> fileSystemIORead(
       String inputGcsFilePattern, FORMAT inputGcsFileFormat) throws IOException {
     ProtegrityDataTokenizationOptions options =
@@ -206,7 +171,7 @@ public class ProtegrityDataTokenizationTest {
             RowCoder.of(testSchemaUtils.getBeamSchema()));
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
-    return new GcsIO(options).read(testPipeline, testSchemaUtils.getJsonBeamSchema());
+    return (PCollection<String>) new GcsIO(options).read(testPipeline, testSchemaUtils);
   }
 
   private void assertField(PCollection<String> jsons) {

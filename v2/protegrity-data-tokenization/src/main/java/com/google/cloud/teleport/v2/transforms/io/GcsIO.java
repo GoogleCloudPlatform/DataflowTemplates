@@ -20,11 +20,14 @@ import com.google.cloud.teleport.v2.options.ProtegrityDataTokenizationOptions;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.utils.RowToCsv;
+import com.google.cloud.teleport.v2.utils.SchemasUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import java.io.Serializable;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.coders.NullableCoder;
+import org.apache.beam.sdk.coders.RowCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.AvroIO;
 import org.apache.beam.sdk.io.TextIO;
@@ -169,7 +172,7 @@ public class GcsIO {
     this.options = options;
   }
 
-  public PCollection<String> read(Pipeline pipeline, String schema) {
+  public PCollection<? extends Serializable> read(Pipeline pipeline, SchemasUtils schema) {
     if (options.getInputGcsFileFormat() == FORMAT.JSON) {
       return pipeline
           .apply("ReadJsonFromGCSFiles",
@@ -196,7 +199,7 @@ public class GcsIO {
               "LineToJson",
               CsvConverters.LineToFailsafeJson.newBuilder()
                   .setDelimiter(options.getCsvDelimiter())
-                  .setJsonSchema(schema)
+                  .setJsonSchema(schema.getJsonBeamSchema())
                   .setHeaderTag(CSV_HEADERS)
                   .setLineTag(CSV_LINES)
                   .setUdfOutputTag(PROCESSING_OUT)
@@ -222,6 +225,16 @@ public class GcsIO {
           .apply(
               "GetJson",
               MapElements.into(TypeDescriptors.strings()).via(FailsafeElement::getPayload));
+    } else if (options.getInputGcsFileFormat() == FORMAT.AVRO) {
+      org.apache.avro.Schema avroSchema = AvroUtils.toAvroSchema(schema.getBeamSchema());
+      PCollection<GenericRecord> genericRecords = pipeline.apply(
+          "ReadAvroFiles",
+          AvroIO.readGenericRecords(avroSchema).from(options.getInputGcsFilePattern()));
+      return genericRecords
+          .apply(
+              "GenericRecordToRow", MapElements.into(TypeDescriptor.of(Row.class))
+                  .via(AvroUtils.getGenericRecordToRowFunction(schema.getBeamSchema())))
+          .setCoder(RowCoder.of(schema.getBeamSchema()));
     } else {
       throw new IllegalStateException(
           "No valid format for input data is provided. Please, choose JSON or CSV.");
