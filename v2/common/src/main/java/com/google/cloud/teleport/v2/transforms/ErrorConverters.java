@@ -23,6 +23,7 @@ import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableMap;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.coders.KvCoder;
@@ -40,6 +41,8 @@ import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.util.CoderUtils;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
@@ -50,6 +53,7 @@ import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.beam.sdk.values.TypeDescriptors;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Ascii;
 import org.joda.time.DateTimeZone;
+import org.joda.time.Duration;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
@@ -502,6 +506,95 @@ public class ErrorConverters {
       @Override
       public PubsubMessage apply(KV<T, Map<String, String>> kv) {
         return new PubsubMessage(encode(payloadCoder(), kv.getKey()), kv.getValue());
+      }
+    }
+  }
+
+  /**
+   * {@link WriteErrorsToTextIO} is a {@link PTransform} that writes strings error messages to file
+   * system using TextIO and custom line format {@link SerializableFunction} to convert errors in
+   * necessary format.
+   * <br>
+   * Example of usage in pipeline:
+   * <pre>{@code
+   * pCollection.apply("Write to TextIO",
+   *   WriteErrorsToTextIO.<String,String>newBuilder()
+   *     .setErrorWritePath("errors.txt")
+   *     .setTranslateFunction((FailsafeElement<String,String> failsafeElement) -> {
+   *       ArrayList<String> outputRow  = new ArrayList<>();
+   *       final String message = failsafeElement.getOriginalPayload();
+   *       String timestamp = Instant.now().toString();
+   *       outputRow.add(timestamp);
+   *       outputRow.add(failsafeElement.getErrorMessage());
+   *       outputRow.add(failsafeElement.getStacktrace());
+   *       // Only set the payload if it's populated on the message.
+   *       if (failsafeElement.getOriginalPayload() != null) {
+   *         outputRow.add(message);
+   *       }
+   *
+   *       return String.join(",",outputRow);
+   *     })
+   * }
+   * </pre>
+   */
+  @AutoValue
+  public abstract static class WriteErrorsToTextIO<T, V> extends
+      PTransform<PCollection<FailsafeElement<T, V>>, PDone> {
+
+    public static <T, V> WriteErrorsToTextIO.Builder<T, V> newBuilder() {
+      return new AutoValue_ErrorConverters_WriteErrorsToTextIO.Builder<>();
+    }
+
+    public abstract String errorWritePath();
+
+    public abstract SerializableFunction<FailsafeElement<T, V>, String> translateFunction();
+
+    @Nullable
+    public abstract Duration windowDuration();
+
+    @Override
+    public PDone expand(PCollection<FailsafeElement<T, V>> pCollection) {
+
+      PCollection<String> formattedErrorRows = pCollection
+          .apply("GetFormattedErrorRow",
+              MapElements.into(TypeDescriptors.strings())
+                  .via(translateFunction()));
+
+      if (pCollection.isBounded() == PCollection.IsBounded.UNBOUNDED) {
+        if (windowDuration() == null) {
+          throw new RuntimeException("Unbounded input requires window interval to be set");
+        }
+        return formattedErrorRows
+            .apply(Window.into(FixedWindows.of(windowDuration())))
+            .apply(TextIO.write().to(errorWritePath()).withNumShards(1).withWindowedWrites());
+
+      }
+
+      return formattedErrorRows.apply(TextIO.write().to(errorWritePath()).withNumShards(1));
+
+    }
+
+    /**
+     * Builder for {@link WriteErrorsToTextIO}.
+     */
+    @AutoValue.Builder
+    public abstract static class Builder<T, V> {
+
+      public abstract WriteErrorsToTextIO.Builder<T, V> setErrorWritePath(String errorWritePath);
+
+      public abstract WriteErrorsToTextIO.Builder<T, V> setTranslateFunction(
+          SerializableFunction<FailsafeElement<T, V>, String> translateFunction);
+
+      public abstract WriteErrorsToTextIO.Builder<T, V> setWindowDuration(
+          @Nullable Duration duration);
+
+      abstract SerializableFunction<FailsafeElement<T, V>, String> translateFunction();
+
+      abstract WriteErrorsToTextIO<T, V> autoBuild();
+
+      public WriteErrorsToTextIO<T, V> build() {
+        checkNotNull(translateFunction(), "translateFunction is required.");
+        return autoBuild();
       }
     }
   }
