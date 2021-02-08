@@ -4,11 +4,11 @@ This directory contains a Dataflow Flex Template that creates a pipeline to read
 the supported sources, tokenize data with external API calls to Protegrity Data Security Gateway
 (DSG), and write data into one of the supported sinks.
 
-Supported data formats:
+Supported data formats:beamtemplate_cloudbuild
 
 - JSON
 - CSV
-- AVRO
+- Avro
 
 Supported input sources:
 
@@ -19,22 +19,22 @@ Supported destination sinks:
 
 - [Google Cloud Storage](https://cloud.google.com/storage)
 - [Google Cloud BigQuery](https://cloud.google.com/bigquery)
-- [Cloud BigTable](https://cloud.google.com/bigtable)
+- [Cloud Bigtable](https://cloud.google.com/bigtable)
 
 Supported data schema format:
 
 - JSON with an array of fields described in BigQuery format
 
 In the main scenario, the template will create an Apache Beam pipeline that will read data in CSV,
-JSON or AVRO (Only for filesystem inputs) format from a specified input source, send the data to an
+JSON or Avro (only for filesystem inputs) format from a specified input source, send the data to an
 external processing server, receive processed data, and write it into a specified output sink.
 
 ## Requirements
 
 - Java 8
-- 1 of supported sources to read data from
-- 1 of supported destination sinks to write data into
-- A configured Protegrity DSG
+- a supported source to read data from
+- a supported destination sink to write data into
+- a configured Protegrity DSG
 
 ## Getting Started
 
@@ -126,61 +126,58 @@ gcloud dataflow flex-template build ${TEMPLATE_PATH} \
 
 ### Executing Template
 
-To deploy the pipeline, you should refer to the template file and pass the
+To deploy the pipeline, refer to the template file and pass the
 [parameters](https://cloud.google.com/dataflow/docs/guides/specifying-exec-params#setting-other-cloud-dataflow-pipeline-options)
 required by the pipeline.
 
 The template requires the following parameters:
 
 - Data schema
-    - **dataSchemaGcsPath**: Path to data schema (JSON format) in GCS compatible with BigQuery
-- 1 specified input source out of these:
+    - **dataSchemaGcsPath**: Path to data schema file located on GCS. BigQuery compatible JSON format data schema required
+- An input source from the supported options:
     - Google Cloud Storage
-        - **inputGcsFilePattern**: GCS filepattern for files in bucket to read data from
-        - **inputGcsFileFormat**: File format of input files. Supported formats: JSON, CSV, AVRO
-        - In case if input data is in CSV format:
-            - **csvContainsHeaders**: `true` if file(s) in bucket to read data from contain headers,
-              and `false` otherwise
-            - **csvDelimiter**: Delimiting character in CSV. Default: use delimiter provided in
-              csvFormat
-            - **csvFormat**: Csv format according to Apache Commons CSV format. Default is:
+        - **inputGcsFilePattern**: GCS file pattern for files in the source bucket
+        - **inputGcsFileFormat**: File format of the input files. Supported formats: JSON, CSV, Avro
+        - CSV format parameters:
+            - **csvContainsHeaders**: `true` if CSV file(s) in the input bucket contain headers, and `false` otherwise
+            - **csvDelimiter**: Delimiting character in CSV. Default: delimiter provided in csvFormat
+            - **csvFormat**: CSV format according to Apache Commons CSV format. Default is:
               [Apache Commons CSV default](https://static.javadoc.io/org.apache.commons/commons-csv/1.7/org/apache/commons/csv/CSVFormat.html#DEFAULT)
               . Must match format names exactly found
               at: https://static.javadoc.io/org.apache.commons/commons-csv/1.7/org/apache/commons/csv/CSVFormat.Predefined.html
-    - Google Pub/Sub (AVRO not supported)
-        - **pubsubTopic**: The Cloud Pub/Sub topic to read from, in the format of '
+    - Google Pub/Sub (Avro not supported)
+        - **pubsubTopic**: Cloud Pub/Sub input topic to read data from, in the format of '
           projects/yourproject/topics/yourtopic'
-- 1 specified output sink out of these:
+- An output sink from the supported options:
     - Google Cloud Storage
-        - **outputGcsDirectory**: GCS directory in bucket to write data to
-        - **outputGcsFileFormat**: File format of output files. Supported formats: JSON, CSV, AVRO
+        - **outputGcsDirectory**: GCS bucket folder to write data to
+        - **outputGcsFileFormat**: File format of output files. Supported formats: JSON, CSV, Avro
         - **windowDuration**: The window duration in which data will be written. Should be specified
           only for 'Pub/Sub -> GCS' case. Defaults to 30s.
 
-          Allowed formats are:
+          Supported format:
             - Ns (for seconds, example: 5s),
             - Nm (for minutes, example: 12m),
             - Nh (for hours, example: 2h).
         - Google Cloud BigQuery
             - **bigQueryTableName**: Cloud BigQuery table name to write into
-    - Cloud BigTable
-        - **bigTableProjectId**: Id of the project where the Cloud BigTable instance to write into
-          is located
-        - **bigTableInstanceId**: Id of the Cloud BigTable instance to write into
-        - **bigTableTableId**: Id of the Cloud BigTable table to write into
-        - **bigTableKeyColumnName**: Column name to use as a key in Cloud BigTable
-        - **bigTableColumnFamilyName**: Column family name to use in Cloud BigTable
+    - Cloud Bigtable
+        - **bigTableProjectId**: Project ID containing Cloud Bigtable instance to write into
+        - **bigTableInstanceId**: Cloud BigTable Instance ID of the Bigtable instance to write into
+        - **bigTableTableId**: ID of the Cloud Bigtable table to write into
+        - **bigTableKeyColumnName**: Column name to use as a key in Cloud Bigtable
+        - **bigTableColumnFamilyName**: Column family name to use in Cloud Bigtable
 - DSG parameters
-    - **dsgUri**: URI for the API calls to DSG
-    - **batchSize**: Size of the batch to send to DSG per request
+    - **dsgUri**: URI for the DSG API calls
+    - **batchSize**: Size of the data batch to send to DSG per request
     - **payloadConfigGcsPath**: GCS path to the payload configuration file with an array of fields
       to extract for tokenization
 
-The template allows for the user to supply the following optional parameter:
+The template allows user to supply the following optional parameter:
 
 - **nonTokenizedDeadLetterGcsPath**: GCS folder where failed to tokenize data will be stored
 
-You can do this in 3 different ways:
+A Dataflow job can be created and executed from this template in 3 ways:
 
 1. Using [Dataflow Google Cloud Console](https://console.cloud.google.com/dataflow/jobs)
 
@@ -227,8 +224,8 @@ to ease compatibility between input sources and output sinks:
 
 **Input Source Format -> Beam Row Format -> Output Sink Format**
 
-It is done and may be extended
-in [IO classes](src/main/java/com/google/cloud/teleport/v2/transforms/io). Such architecture allows
+It is achieved and may be extended
+using [IO classes](src/main/java/com/google/cloud/teleport/v2/transforms/io). Such architecture allows
 adding support for:
 
 - Input formats
@@ -236,14 +233,13 @@ adding support for:
 - Output formats
 - Output sources
 
-The only thing that needs to be followed is that inputs should be transformed into Beam Row and
-outputs should be transformed from Beam Row.
+Following the template design, it is recommended that inputs are transformed into Beam Row and
+outputs are transformed from Beam Row.
 
 ### Ideas for Extensions
 
-Here is the list of ideas for possible enhancements of this template:
+Ideas for possible enhancements of this template:
 
-- Support reading/writing AVRO format
 - Support reading data from BigQuery
 - Support writing data to Pub/Sub
 - Add transformations or protectors for data

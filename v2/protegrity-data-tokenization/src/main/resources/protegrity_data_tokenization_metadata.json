@@ -1,11 +1,11 @@
 {
   "name": "Protegrity Data Tokenization",
-  "description": "Tokenizes structured plain text data from GCS or Pub/Sub and ingests it to GCS, BigTable or BigQuery using an external API calls to Protegrity DSG",
+  "description": "Tokenizes structured plain text data from GCS or Pub/Sub input source using an external API calls to Protegrity DSG and ingests date to GCS, Bigtable or BigQuery sink",
   "parameters": [
     {
       "name": "dataSchemaGcsPath",
-      "label": "GCS location of your data schema",
-      "helpText": "Path to data schema (JSON format) in GCS compatible with BigQuery",
+      "label": "GCS location of data schema",
+      "helpText": "Path to data schema file located on GCS. BigQuery compatible JSON format data schema required",
       "paramType": "GCS_READ_FILE",
       "isOptional": false,
       "regexes": [
@@ -14,8 +14,8 @@
     },
     {
       "name": "inputGcsFilePattern",
-      "label": "GCS filepattern for input files",
-      "helpText": "GCS filepattern for files in bucket to read data from",
+      "label": "GCS file pattern for input files",
+      "helpText": "GCS file pattern for files in the source bucket",
       "paramType": "GCS_READ_FILE",
       "isOptional": true,
       "regexes": [
@@ -25,7 +25,7 @@
     {
       "name": "inputGcsFileFormat",
       "label": "File format of input files",
-      "helpText": "File format of input files. Supported formats: JSON, CSV",
+      "helpText": "JSON, CSV or Avro input file format",
       "paramType": "TEXT",
       "isOptional": true,
       "regexes": [
@@ -34,8 +34,8 @@
     },
     {
       "name": "csvContainsHeaders",
-      "label": "If file(s) contain headers",
-      "helpText": "`true` if file(s) in bucket to read data from contain headers, and `false` otherwise",
+      "label": "CSV file(s) contain headers: true or false",
+      "helpText": "`true` if CSV file(s) in the input bucket contain headers, and `false` otherwise",
       "paramType": "TEXT",
       "isOptional": true,
       "regexes": [
@@ -45,21 +45,21 @@
     {
       "name": "csvDelimiter",
       "label": "Delimiting character in CSV",
-      "helpText": "Delimiting character in CSV. Default: use delimiter provided in csvFormat",
+      "helpText": "Delimiting character in CSV. Default: delimiter provided in csvFormat",
       "paramType": "TEXT",
       "isOptional": true
     },
     {
       "name": "csvFormat",
-      "label": "Csv format according to Apache Commons CSV format",
-      "helpText": "Csv format according to Apache Commons CSV format. Default is: Apache Commons CSV default\nhttps://static.javadoc.io/org.apache.commons/commons-csv/1.7/org/apache/commons/csv/CSVFormat.html#DEFAULT\nMust match format names exactly found at: https://static.javadoc.io/org.apache.commons/commons-csv/1.7/org/apache/commons/csv/CSVFormat.Predefined.html",
+      "label": "CSV format according to Apache Commons CSV format",
+      "helpText": "CSV format according to Apache Commons CSV format. Default is: Apache Commons CSV default\nhttps://static.javadoc.io/org.apache.commons/commons-csv/1.7/org/apache/commons/csv/CSVFormat.html#DEFAULT\nMust match format names exactly found at: https://static.javadoc.io/org.apache.commons/commons-csv/1.7/org/apache/commons/csv/CSVFormat.Predefined.html",
       "paramType": "TEXT",
       "isOptional": true
     },
     {
       "name": "pubsubTopic",
       "label": "Pub/Sub input topic",
-      "helpText": "The Cloud Pub/Sub topic to read from",
+      "helpText": "Cloud Pub/Sub input topic to read data from",
       "paramType": "PUBSUB_TOPIC",
       "isOptional": true,
       "regexes": [
@@ -68,15 +68,15 @@
     },
     {
       "name": "dsgUri",
-      "label": "URI of the DSG",
-      "helpText": "URI for the API calls to DSG",
+      "label": "URI for DSG API",
+      "helpText": "URI for the DSG API calls",
       "paramType": "TEXT",
       "isOptional": true
     },
     {
       "name": "batchSize",
-      "label": "Size of the batch",
-      "helpText": "Size of the batch to send to DSG per request",
+      "label": "Batch size",
+      "helpText": "Size of the data batch to send to DSG per request",
       "regexes": [
         "^[0-9]*$"
       ],
@@ -105,8 +105,8 @@
     },
     {
       "name": "outputGcsDirectory",
-      "label": "GCS directory for output files",
-      "helpText": "GCS directory in bucket to write data to",
+      "label": "GCS folder for output files",
+      "helpText": "GCS bucket folder to write data to",
       "paramType": "GCS_WRITE_FILE",
       "isOptional": true,
       "regexes": [
@@ -116,7 +116,7 @@
     {
       "name": "outputGcsFileFormat",
       "label": "File format of output files",
-      "helpText": "File format of output files. Supported formats: JSON, CSV",
+      "helpText": "File format of output files. Supported formats: JSON, CSV, Avro",
       "paramType": "TEXT",
       "isOptional": true,
       "regexes": [
@@ -143,8 +143,8 @@
     },
     {
       "name": "bigTableProjectId",
-      "label": "Id of the project with output BigTable instance",
-      "helpText": "Id of the project where the Cloud BigTable instance to write into is located",
+      "label": "Project ID for the output Bigtable instance",
+      "helpText": "Project ID containing Cloud Bigtable instance to write into",
       "paramType": "TEXT",
       "isOptional": true,
       "regexes": [
@@ -153,8 +153,8 @@
     },
     {
       "name": "bigTableInstanceId",
-      "label": "Id of the output BigTable instance",
-      "helpText": "Id of the Cloud BigTable instance to write into",
+      "label": "Bigtable Instance ID of the Bigtable output instance",
+      "helpText": "Cloud BigTable Instance ID of the Bigtable instance to write into",
       "paramType": "TEXT",
       "isOptional": true,
       "regexes": [
@@ -163,8 +163,8 @@
     },
     {
       "name": "bigTableTableId",
-      "label": "Id of the output BigTable table",
-      "helpText": "Id of the Cloud BigTable table to write into",
+      "label": "ID of the output Bigtable table",
+      "helpText": "ID of the Cloud Bigtable table to write into",
       "paramType": "TEXT",
       "isOptional": true,
       "regexes": [
@@ -173,15 +173,15 @@
     },
     {
       "name": "bigTableKeyColumnName",
-      "label": "Key column name for the output BigTable table",
-      "helpText": "Column name to use as a key in Cloud BigTable",
+      "label": "Key column name for the output Bigtable table",
+      "helpText": "Column name to use as a key in Cloud Bigtable",
       "paramType": "TEXT",
       "isOptional": true
     },
     {
       "name": "bigTableColumnFamilyName",
-      "label": "Column family name for the output BigTable table",
-      "helpText": "Column family name to use in Cloud BigTable",
+      "label": "Column family name for the output Bigtable table",
+      "helpText": "Column family name to use in Cloud Bigtable",
       "paramType": "TEXT",
       "isOptional": true,
       "regexes": [
