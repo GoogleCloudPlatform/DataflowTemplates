@@ -22,7 +22,6 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableMap;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Map;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.coders.Coder;
@@ -47,7 +46,6 @@ import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.util.CoderUtils;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PCollection.IsBounded;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.TupleTag;
@@ -513,103 +511,91 @@ public class ErrorConverters {
   }
 
   /**
-   * Writes strings error messages to file system using CSV format.
+   * {@link WriteErrorsToTextIO} is a {@link PTransform} that writes strings error messages to file
+   * system using TextIO and custom line format {@link SerializableFunction} to convert errors in
+   * necessary format.
+   * <br>
+   * Example of usage in pipeline:
+   * <pre>{@code
+   * pCollection.apply("Write to TextIO",
+   *   WriteErrorsToTextIO.<String,String>newBuilder()
+   *     .setErrorWritePath("errors.txt")
+   *     .setTranslateFunction((FailsafeElement<String,String> failsafeElement) -> {
+   *       ArrayList<String> outputRow  = new ArrayList<>();
+   *       final String message = failsafeElement.getOriginalPayload();
+   *       String timestamp = Instant.now().toString();
+   *       outputRow.add(timestamp);
+   *       outputRow.add(failsafeElement.getErrorMessage());
+   *       outputRow.add(failsafeElement.getStacktrace());
+   *       // Only set the payload if it's populated on the message.
+   *       if (failsafeElement.getOriginalPayload() != null) {
+   *         outputRow.add(message);
+   *       }
+   *
+   *       return String.join(",",outputRow);
+   *     })
+   * }
+   * </pre>
    */
   @AutoValue
-  public abstract static class WriteStringMessageErrorsAsCsv extends
-      PTransform<PCollection<FailsafeElement<String, String>>, PDone> {
+  public abstract static class WriteErrorsToTextIO<T, V> extends
+      PTransform<PCollection<FailsafeElement<T, V>>, PDone> {
 
-    public static Builder newBuilder() {
-      return new AutoValue_ErrorConverters_WriteStringMessageErrorsAsCsv.Builder();
+    public static <T, V> WriteErrorsToTextIO.Builder<T, V> newBuilder() {
+      return new AutoValue_ErrorConverters_WriteErrorsToTextIO.Builder<>();
     }
 
     public abstract String errorWritePath();
 
-    public abstract String csvDelimiter();
+    public abstract SerializableFunction<FailsafeElement<T, V>, String> translateFunction();
 
     @Nullable
     public abstract Duration windowDuration();
 
     @Override
-    public PDone expand(PCollection<FailsafeElement<String, String>> pCollection) {
+    public PDone expand(PCollection<FailsafeElement<T, V>> pCollection) {
 
       PCollection<String> formattedErrorRows = pCollection
           .apply("GetFormattedErrorRow",
-              ParDo.of(new FailedStringToCsvRowFn(csvDelimiter())));
+              MapElements.into(TypeDescriptors.strings())
+                  .via(translateFunction()));
 
-      if (pCollection.isBounded() == IsBounded.UNBOUNDED) {
-        if (windowDuration() != null) {
-          formattedErrorRows = formattedErrorRows
-              .apply(Window.into(FixedWindows.of(windowDuration())));
+      if (pCollection.isBounded() == PCollection.IsBounded.UNBOUNDED) {
+        if (windowDuration() == null) {
+          throw new RuntimeException("Unbounded input requires window interval to be set");
         }
         return formattedErrorRows
+            .apply(Window.into(FixedWindows.of(windowDuration())))
             .apply(TextIO.write().to(errorWritePath()).withNumShards(1).withWindowedWrites());
 
-      } else {
-
-        return formattedErrorRows.apply(TextIO.write().to(errorWritePath()).withNumShards(1));
       }
+
+      return formattedErrorRows.apply(TextIO.write().to(errorWritePath()).withNumShards(1));
+
     }
 
     /**
-     * Builder for {@link WriteStringMessageErrorsAsCsv}.
+     * Builder for {@link WriteErrorsToTextIO}.
      */
     @AutoValue.Builder
-    public abstract static class Builder {
+    public abstract static class Builder<T, V> {
 
-      public abstract Builder setErrorWritePath(String errorWritePath);
+      public abstract WriteErrorsToTextIO.Builder<T, V> setErrorWritePath(String errorWritePath);
 
-      public abstract Builder setCsvDelimiter(String csvDelimiter);
+      public abstract WriteErrorsToTextIO.Builder<T, V> setTranslateFunction(
+          SerializableFunction<FailsafeElement<T, V>, String> translateFunction);
 
-      public abstract Builder setWindowDuration(@Nullable Duration duration);
+      public abstract WriteErrorsToTextIO.Builder<T, V> setWindowDuration(
+          @Nullable Duration duration);
 
-      public abstract WriteStringMessageErrorsAsCsv build();
-    }
-  }
+      abstract SerializableFunction<FailsafeElement<T, V>, String> translateFunction();
 
-  /**
-   * The {@link FailedStringToCsvRowFn} converts string objects which have failed processing into
-   * {@link String} objects contained CSV which can be output to a filesystem.
-   */
-  public static class FailedStringToCsvRowFn
-          extends DoFn<FailsafeElement<String, String>, String> {
+      abstract WriteErrorsToTextIO<T, V> autoBuild();
 
-    /**
-     * The formatter used to convert timestamps into a BigQuery compatible <a
-     * href="https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#timestamp-type">format</a>.
-     */
-    private static final DateTimeFormatter TIMESTAMP_FORMATTER =
-            DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
-
-    private final String csvDelimiter;
-
-    public FailedStringToCsvRowFn(String csvDelimiter) {
-      this.csvDelimiter = csvDelimiter;
-    }
-    public FailedStringToCsvRowFn() {
-      this.csvDelimiter = ",";
-    }
-
-    @ProcessElement
-    public void processElement(ProcessContext context) {
-      FailsafeElement<String, String> failsafeElement = context.element();
-      ArrayList<String> outputRow  = new ArrayList<>();
-      final String message = failsafeElement.getOriginalPayload();
-
-      // Format the timestamp for insertion
-      String timestamp =
-              TIMESTAMP_FORMATTER.print(context.timestamp().toDateTime(DateTimeZone.UTC));
-
-      outputRow.add(timestamp);
-      outputRow.add(failsafeElement.getErrorMessage());
-      outputRow.add(failsafeElement.getStacktrace());
-
-      // Only set the payload if it's populated on the message.
-      if (message != null) {
-        outputRow.add(message);
+      public WriteErrorsToTextIO<T, V> build() {
+        checkNotNull(translateFunction(), "translateFunction is required.");
+        return autoBuild();
       }
-
-      context.output(String.join(csvDelimiter,outputRow));
     }
   }
 }
