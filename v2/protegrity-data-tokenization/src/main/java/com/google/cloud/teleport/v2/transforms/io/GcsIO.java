@@ -19,6 +19,7 @@ import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.options.ProtegrityDataTokenizationOptions;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
+import com.google.cloud.teleport.v2.transforms.SerializableFunctions;
 import com.google.cloud.teleport.v2.utils.RowToCsv;
 import com.google.cloud.teleport.v2.utils.SchemasUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -210,11 +211,14 @@ public class GcsIO {
         /*
          * Step 3: Write jsons to dead-letter gcs that were successfully processed.
          */
+
+
+
         jsons.get(PROCESSING_DEADLETTER_OUT)
             .apply("WriteCsvConversionErrorsToGcs",
-                ErrorConverters.WriteStringMessageErrorsAsCsv.newBuilder()
-                    .setCsvDelimiter(options.getCsvDelimiter())
+                ErrorConverters.WriteErrorsToTextIO.<String,String>newBuilder()
                     .setErrorWritePath(options.getNonTokenizedDeadLetterGcsPath())
+                    .setTranslateFunction(SerializableFunctions.getCsvErrorConverter())
                     .build());
       }
 

@@ -42,9 +42,9 @@ public class JsonToBeamRow extends PTransform<PCollection<String>, PCollection<R
                       .setErrorMessage(errRow.getString("err"))
                   ))
           .apply("WriteCsvConversionErrorsToGcs",
-              ErrorConverters.WriteStringMessageErrorsAsCsv.newBuilder()
-                  .setCsvDelimiter(options.getCsvDelimiter())
+              ErrorConverters.WriteErrorsToTextIO.<String, String>newBuilder()
                   .setErrorWritePath(options.getNonTokenizedDeadLetterGcsPath())
+                  .setTranslateFunction(SerializableFunctions.getCsvErrorConverter())
                   .build());
     }
     return rows.getResults().setRowSchema(schema.getBeamSchema());
