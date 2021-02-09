@@ -4,7 +4,7 @@ This directory contains a Dataflow Flex Template that creates a pipeline to read
 the supported sources, tokenize data with external API calls to Protegrity Data Security Gateway
 (DSG), and write data into one of the supported sinks.
 
-Supported data formats:beamtemplate_cloudbuild
+Supported data formats:
 
 - JSON
 - CSV
