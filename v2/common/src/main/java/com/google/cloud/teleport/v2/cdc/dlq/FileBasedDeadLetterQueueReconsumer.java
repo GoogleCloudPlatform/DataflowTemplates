@@ -160,6 +160,7 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
     public void process(
         @Element Metadata dlqFile,
         MultiOutputReceiver outputs) throws IOException {
+      LOG.info("Found DLQ File: {}", dlqFile.resourceId().toString());
       if (dlqFile.resourceId().toString().contains("/tmp/.temp")) {
         return;
       }
