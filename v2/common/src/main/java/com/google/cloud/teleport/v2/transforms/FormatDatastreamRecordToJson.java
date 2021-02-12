@@ -117,28 +117,38 @@ public class FormatDatastreamRecordToJson
     }
 
     // General DataStream Metadata
+    String sourceType = getSourceType(record);
+
     outputObject.put("_metadata_stream", getStreamName(record));
     outputObject.put("_metadata_timestamp", getSourceTimestamp(record));
     outputObject.put("_metadata_read_timestamp", getMetadataTimestamp(record));
+    outputObject.put("_metadata_read_method", record.get("read_method").toString());
+    outputObject.put("_metadata_source_type", sourceType);
 
     // Source Specific Metadata
     outputObject.put("_metadata_deleted", getMetadataIsDeleted(record));
-    outputObject.put("_metadata_schema", getMetadataSchema(record));
     outputObject.put("_metadata_table", getMetadataTable(record));
     outputObject.put("_metadata_change_type", getMetadataChangeType(record));
 
-    // Oracle Specific Metadata
-    outputObject.put("_metadata_row_id", getOracleRowId(record));
-    outputObject.put("_metadata_scn", getOracleScn(record));
-    outputObject.put("_metadata_ssn", getOracleSsn(record));
-    outputObject.put("_metadata_rs_id", getOracleRsId(record));
-    outputObject.put("_metadata_tx_id", getOracleTxId(record));
-
+    if (sourceType.equals("mysql")) {
+      // MySQL Specific Metadata
+      outputObject.put("_metadata_schema", getMetadataDatabase(record));
+      outputObject.put("_metadata_log_file", getSourceMetadata(record, "log_file"));
+      outputObject.put("_metadata_log_position", getSourceMetadata(record, "log_position"));
+    } else {
+      // Oracle Specific Metadata
+      outputObject.put("_metadata_schema", getMetadataSchema(record));
+      outputObject.put("_metadata_row_id", getOracleRowId(record));
+      outputObject.put("_metadata_scn", getOracleScn(record));
+      outputObject.put("_metadata_ssn", getOracleSsn(record));
+      outputObject.put("_metadata_rs_id", getOracleRsId(record));
+      outputObject.put("_metadata_tx_id", getOracleTxId(record));
+    }
     // Hash columns supplied to be hashed
     applyHashToColumns(record, outputObject);
 
     // All Raw Metadata
-    outputObject.put("_metadata_source", getSourceMetadata(record));
+    outputObject.put("_metadata_source", getSourceMetadataJson(record));
 
     return FailsafeElement.of(outputObject.toString(), outputObject.toString());
   }
@@ -159,7 +169,7 @@ public class FormatDatastreamRecordToJson
     return loweredOutputObject;
   }
 
-  private JsonNode getSourceMetadata(GenericRecord record) {
+  private JsonNode getSourceMetadataJson(GenericRecord record) {
     ObjectMapper mapper = new ObjectMapper();
     JsonNode dataInput;
     try {
@@ -178,6 +188,12 @@ public class FormatDatastreamRecordToJson
     return this.streamName;
   }
 
+  private String getSourceType(GenericRecord record) {
+    String sourceType = record.get("read_method").toString().split("-")[0];
+    // TODO: consider validating the value is mysql or oracle
+    return sourceType;
+  }
+
   private long getMetadataTimestamp(GenericRecord record) {
     long unixTimestampMilli = (long) record.get("read_timestamp");
     return unixTimestampMilli / 1000;
@@ -190,8 +206,20 @@ public class FormatDatastreamRecordToJson
     return unixTimestampSec;
   }
 
+  private String getSourceMetadata(GenericRecord record, String fieldName) {
+    if (((GenericRecord) record.get("source_metadata")).get(fieldName) != null) {
+      return ((GenericRecord) record.get("source_metadata")).get(fieldName).toString();
+    }
+
+    return null;
+  }
+
   private String getMetadataSchema(GenericRecord record) {
     return ((GenericRecord) record.get("source_metadata")).get("schema").toString();
+  }
+
+  private String getMetadataDatabase(GenericRecord record) {
+    return ((GenericRecord) record.get("source_metadata")).get("database").toString();
   }
 
   private String getMetadataTable(GenericRecord record) {
