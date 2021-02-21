@@ -92,7 +92,7 @@ mvn compile exec:java \
 --runner=DataflowRunner"
 ```
 
-and using Gradle:
+or using Gradle:
 
 ```sh
 ./gradlew clean execute \
