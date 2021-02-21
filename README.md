@@ -54,22 +54,30 @@ the official [docs](https://cloud.google.com/dataflow/docs/templates/provided-te
 ### Requirements
 
 * Java 8
-* Maven 3
+* Maven 3 or Gradle 
 
 ### Building the Project
 
-Build the entire project using the maven compile command.
+Build the entire project using the Maven compile command.
 
 ```sh
 mvn clean compile
 ```
 
+or using Gradle.
+
+```sh
+./gradlew clean compileJava compileTestJava
+```
+
 ### Creating a Template File
 
 Dataflow templates can be [created](https://cloud.google.com/dataflow/docs/templates/creating-templates#creating-and-staging-templates)
-using a maven command which builds the project and stages the template
+using a Maven or Gradle command which builds the project and stages the template
 file on Google Cloud Storage. Any parameters passed at template build
 time will not be able to be overwritten at execution time.
+
+Using Maven:
 
 ```sh
 mvn compile exec:java \
@@ -77,12 +85,26 @@ mvn compile exec:java \
 -Dexec.cleanupDaemonThreads=false \
 -Dexec.args=" \
 --project=<project-id> \
+--region=<region> \
 --stagingLocation=gs://<bucket-name>/staging \
 --tempLocation=gs://<bucket-name>/temp \
 --templateLocation=gs://<bucket-name>/templates/<template-name>.json \
 --runner=DataflowRunner"
 ```
 
+and using Gradle:
+
+```sh
+./gradlew clean execute \
+-Dexec.mainClass=com.google.cloud.teleport.templates.<template-class> \
+-Dexec.args=" \
+--project=<project-id> \
+--region=<region> \
+--stagingLocation=gs://<bucket-name>/staging \
+--tempLocation=gs://<bucket-name>/temp \
+--templateLocation=gs://<bucket-name>/templates/<template-name>.json \
+--runner=DataflowRunner"
+```
 
 ### Executing a Template File
 
