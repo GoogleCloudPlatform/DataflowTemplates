@@ -32,10 +32,13 @@ import org.apache.avro.SchemaBuilder;
 public class DdlToAvroSchemaConverter {
   private final String namespace;
   private final String version;
+  private final Boolean shouldExportTimestampAsLogicalType;
 
-  public DdlToAvroSchemaConverter(String namespace, String version) {
+  public DdlToAvroSchemaConverter(String namespace, String version,
+      Boolean shouldExportTimestampAsLogicalType) {
     this.namespace = namespace;
     this.version = version;
+    this.shouldExportTimestampAsLogicalType = shouldExportTimestampAsLogicalType;
   }
 
   public Collection<Schema> convert(Ddl ddl) {
@@ -112,7 +115,9 @@ public class DdlToAvroSchemaConverter {
       case BYTES:
         return SchemaBuilder.builder().bytesType();
       case TIMESTAMP:
-        return SchemaBuilder.builder().stringType();
+        return shouldExportTimestampAsLogicalType
+            ? LogicalTypes.timestampMicros().addToSchema(SchemaBuilder.builder().longType())
+            : SchemaBuilder.builder().stringType();
       case DATE:
         return SchemaBuilder.builder().stringType();
       case NUMERIC:

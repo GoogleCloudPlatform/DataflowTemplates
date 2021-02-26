@@ -16,11 +16,13 @@
 
 package com.google.cloud.teleport.spanner;
 
+import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.spanner.common.NumericUtils;
 import com.google.common.base.Strings;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.avro.Schema;
@@ -66,7 +68,14 @@ public class SpannerRecordConverter {
           builder.set(field, nullValue ? null : row.getBoolean(fieldName));
           break;
         case LONG:
-          builder.set(field, nullValue ? null : row.getLong(fieldName));
+          if (spannerType.equals("TIMESTAMP")) {
+            Timestamp ts = row.getTimestamp(fieldName);
+            long microSeconds = TimeUnit.SECONDS.toMicros(ts.getSeconds())
+                + TimeUnit.NANOSECONDS.toMicros(ts.getNanos());
+            builder.set(field, nullValue ? null : microSeconds);
+          } else {
+            builder.set(field, nullValue ? null : row.getLong(fieldName));
+          }
           break;
         case DOUBLE:
           builder.set(field, nullValue ? null : row.getDouble(fieldName));
@@ -112,7 +121,21 @@ public class SpannerRecordConverter {
                 builder.set(field, nullValue ? null : row.getBooleanList(fieldName));
                 break;
               case LONG:
-                builder.set(field, nullValue ? null : row.getLongList(fieldName));
+                if (spannerType.equals("ARRAY<TIMESTAMP>")) {
+                  List<Long> values =
+                      row.getTimestampList(fieldName)
+                          .stream()
+                          .map(timestamp -> timestamp == null
+                                   ? null
+                                   : (TimeUnit.SECONDS.toMicros(timestamp.getSeconds())
+                                       + TimeUnit.NANOSECONDS
+                                       .toMicros(timestamp.getNanos()))
+                              )
+                          .collect(Collectors.toList());
+                  builder.set(field, nullValue ? null : values);
+                } else {
+                  builder.set(field, nullValue ? null : row.getLongList(fieldName));
+                }
                 break;
               case DOUBLE:
                 {

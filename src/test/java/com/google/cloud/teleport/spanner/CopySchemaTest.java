@@ -47,7 +47,7 @@ public class CopySchemaTest {
       e.printStackTrace();
     }
 
-    DdlToAvroSchemaConverter ddlToAvro = new DdlToAvroSchemaConverter("spanner", "test");
+    DdlToAvroSchemaConverter ddlToAvro = new DdlToAvroSchemaConverter("spanner", "test", false);
     AvroSchemaToDdlConverter avroToDdl = new AvroSchemaToDdlConverter();
 
     Collection<Schema> schemas = ddlToAvro.convert(ddl);

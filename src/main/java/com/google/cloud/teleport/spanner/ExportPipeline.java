@@ -71,14 +71,17 @@ public class ExportPipeline {
       + " https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness")
     @Default.String(value = "")
     ValueProvider<String> getSnapshotTime();
+    void setSnapshotTime(ValueProvider<String> value);
 
     @Description("GCP Project Id of where the Spanner table lives.")
     ValueProvider<String> getSpannerProjectId();
-
     void setSpannerProjectId(ValueProvider<String> value);
 
-
-    void setSnapshotTime(ValueProvider<String> value);
+    @Description("If true, Timestamps are exported with timestamp-micros logical type."
+      + "By default,Timestamps are exported as ISO8601 strings at nanosecond precision.")
+    @Default.Boolean(false)
+    ValueProvider<Boolean> getShouldExportTimestampAsLogicalType();
+    void setShouldExportTimestampAsLogicalType(ValueProvider<Boolean> value);
   }
 
   /**
@@ -102,8 +105,9 @@ public class ExportPipeline {
     p.begin()
         .apply(
             "Run Export",
-            new ExportTransform(spannerConfig, options.getOutputDir(), options.getTestJobId(),
-                                options.getSnapshotTime()));
+            new ExportTransform(spannerConfig, options.getOutputDir(),
+                options.getTestJobId(), options.getSnapshotTime(),
+                options.getShouldExportTimestampAsLogicalType()));
     PipelineResult result = p.run();
     if (options.getWaitUntilFinish() &&
         /* Only if template location is null, there is a dataflow job to wait for. Else it's
