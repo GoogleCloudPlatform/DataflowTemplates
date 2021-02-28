@@ -19,7 +19,10 @@ This is a classic template which uses encrypted values for authentication parame
 
 The required setup is below:
 
-### Building Template - Compiling the pipeline
+### Building Template 
+
+
+### Compiling the pipeline
 
 Execute the following command from the directory containing the parent pom.xml (v2/pubsub-to-snowflake):
 
