@@ -1,4 +1,3 @@
-README.md
 The [PubSubToSnowflake](src/main/java/com/mw/pipeline/stream/DataflowToSnowflakePipeline.java) pipeline is a Stream pipeline which ingests CSV format messages from Pub/Sub subscription and outputs them into a Snowflake table.
 
 ### Requirements
