@@ -80,7 +80,53 @@ public class SplunkEventWriterTest {
   }
 
   /**
-   * /** Test building {@link SplunkEventWriter} with missing token.
+   * Test building {@link SplunkEventWriter} with missing URL protocol.
+   */
+  @Test
+  public void eventWriterMissingURLProtocol() {
+
+    Exception thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> SplunkEventWriter.newBuilder().withUrl("test-url").build());
+
+    assertThat(thrown).hasMessageThat().contains(SplunkEventWriter.INVALID_URL_FORMAT_MESSAGE);
+  }
+
+  /**
+   * Test building {@link SplunkEventWriter} with an invalid URL.
+   */
+  @Test
+  public void eventWriterInvalidURL() {
+
+    Exception thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> SplunkEventWriter.newBuilder().withUrl("http://1.2.3").build());
+
+    assertThat(thrown).hasMessageThat().contains(SplunkEventWriter.INVALID_URL_FORMAT_MESSAGE);
+  }
+
+  /**
+   * Test building {@link SplunkEventWriter} with the 'services/collector/event' path appended to
+   * the URL.
+   */
+  @Test
+  public void eventWriterFullEndpoint() {
+
+    Exception thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                SplunkEventWriter.newBuilder()
+                    .withUrl("http://test-url:8088/services/collector/event")
+                    .build());
+
+    assertThat(thrown).hasMessageThat().contains(SplunkEventWriter.INVALID_URL_FORMAT_MESSAGE);
+  }
+
+  /**
+   * Test building {@link SplunkEventWriter} with missing token.
    */
   @Test
   public void eventWriterMissingToken() {
@@ -88,7 +134,7 @@ public class SplunkEventWriterTest {
     Exception thrown =
         assertThrows(
             NullPointerException.class,
-            () -> SplunkEventWriter.newBuilder().withUrl("test-url").build());
+            () -> SplunkEventWriter.newBuilder().withUrl("http://test-url").build());
 
     assertThat(thrown).hasMessageThat().contains("token needs to be provided");
   }
@@ -100,7 +146,7 @@ public class SplunkEventWriterTest {
   public void eventWriterDefaultBatchCountAndValidation() {
 
     SplunkEventWriter writer =
-        SplunkEventWriter.newBuilder().withUrl("test-url").withToken("test-token").build();
+        SplunkEventWriter.newBuilder().withUrl("http://test-url").withToken("test-token").build();
 
     assertThat(writer.inputBatchCount()).isNull();
     assertThat(writer.disableCertificateValidation()).isNull();
@@ -116,7 +162,7 @@ public class SplunkEventWriterTest {
     Boolean certificateValidation = false;
     SplunkEventWriter writer =
         SplunkEventWriter.newBuilder()
-            .withUrl("test-url")
+            .withUrl("http://test-url")
             .withToken("test-token")
             .withInputBatchCount(StaticValueProvider.of(batchCount))
             .withDisableCertificateValidation(StaticValueProvider.of(certificateValidation))
