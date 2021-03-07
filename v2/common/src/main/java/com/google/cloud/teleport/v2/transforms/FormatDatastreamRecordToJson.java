@@ -161,7 +161,7 @@ public class FormatDatastreamRecordToJson
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode loweredOutputObject = mapper.createObjectNode();
 
-    for (Iterator<String> fieldNames=outputObject.getFieldNames(); fieldNames.hasNext(); ) {
+    for (Iterator<String> fieldNames = outputObject.getFieldNames(); fieldNames.hasNext(); ) {
       String fieldName = fieldNames.next();
       loweredOutputObject.put(fieldName.toLowerCase(), outputObject.get(fieldName));
     }
@@ -253,7 +253,7 @@ public class FormatDatastreamRecordToJson
   }
 
   private void applyHashToColumns(GenericRecord record, ObjectNode outputObject) {
-    for (String columnName: this.hashedColumns.keySet()) {
+    for (String columnName : this.hashedColumns.keySet()) {
       if (record.get(columnName) != null) {
         // TODO: discuss hash algorithm to use
         String newColumnName = this.hashedColumns.get(columnName);

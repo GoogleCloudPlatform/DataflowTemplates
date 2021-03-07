@@ -107,8 +107,7 @@ public class BigQueryDynamicConverters {
 
             if (projectId == null) {
                 return TableId.of(datasetName, tableName);
-            }
-            else {
+            } else {
                 return TableId.of(projectId, datasetName, tableName);
             }
         }
