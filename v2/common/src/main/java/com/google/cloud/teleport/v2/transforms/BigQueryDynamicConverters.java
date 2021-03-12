@@ -86,7 +86,8 @@ public class BigQueryDynamicConverters {
         }
 
         @Override
-        public PCollection<KV<TableId, TableRow>> expand(PCollection<TableRow> tableRowPCollection) {
+        public PCollection<KV<TableId, TableRow>>
+                expand(PCollection<TableRow> tableRowPCollection) {
             return tableRowPCollection.apply(
                 "TableRowExtractDestination",
                 MapElements.via(
@@ -103,7 +104,9 @@ public class BigQueryDynamicConverters {
 
         public TableId getTableId(TableRow input) {
             String datasetName = BigQueryConverters.formatStringTemplate(datasetTemplate, input);
-            String tableName = BigQueryConverters.formatStringTemplate(tableTemplate, input);
+            String tableName =
+                BigQueryConverters.formatStringTemplate(tableTemplate, input)
+                .replaceAll("\\$", "_");
 
             if (projectId == null) {
                 return TableId.of(datasetName, tableName);
@@ -118,7 +121,8 @@ public class BigQueryDynamicConverters {
     }
 
     /* Section 2: Dynamic Destination Logic to be used in BigQueryIO. */
-    public static DynamicDestinations<KV<TableId, TableRow>, KV<TableId, TableRow>> bigQueryDynamicDestination() {
+    public static DynamicDestinations<KV<TableId, TableRow>, KV<TableId, TableRow>>
+            bigQueryDynamicDestination() {
         return new BigQueryDynamicDestination();
     }
 
