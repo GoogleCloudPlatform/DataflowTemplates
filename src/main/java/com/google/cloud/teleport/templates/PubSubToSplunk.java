@@ -31,10 +31,10 @@ import com.google.cloud.teleport.templates.common.SplunkConverters.SplunkOptions
 import com.google.cloud.teleport.util.KMSEncryptedNestedValueProvider;
 import com.google.cloud.teleport.values.FailsafeElement;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.JsonSerializer;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonSyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -146,19 +146,16 @@ public class PubSubToSplunk {
       new TupleTag<FailsafeElement<String, String>>() {};
 
   /** GSON to process a {@link PubsubMessage}. */
-  private static final Gson GSON =
-      new GsonBuilder()
-          .registerTypeAdapter(
-              byte[].class,
-              (JsonSerializer<byte[]>)
-                  (bytes, type, jsonSerializationContext) ->
-                      new JsonPrimitive(new String(bytes, StandardCharsets.UTF_8)))
-          .create();
+  private static final Gson GSON = new Gson();
 
   /** Logger for class. */
   private static final Logger LOG = LoggerFactory.getLogger(PubSubToSplunk.class);
   
   private static final Boolean DEFAULT_INCLUDE_PUBSUBMESSAGE = false;
+  
+  private static final String ATTRIBUTES = "attributes";
+  private static final String MESSAGE_ID = "messageId";
+  private static final String DATA = "data";
   
   /**
    * The main entry-point for pipeline execution. This method will start the pipeline but will not
@@ -345,7 +342,7 @@ public class PubSubToSplunk {
                     @ProcessElement
                     public void processElement(ProcessContext context) {
                       if (includePubsubMessage) {
-                        context.output(GSON.toJson(context.element()));
+                        context.output(formatPubsubMessage(context.element()));
                       } else {
                         context.output(
                             new String(context.element().getPayload(), StandardCharsets.UTF_8));
@@ -375,5 +372,49 @@ public class PubSubToSplunk {
   private static ValueProvider<String> maybeDecrypt(
       ValueProvider<String> unencryptedToken, ValueProvider<String> kmsKey) {
     return new KMSEncryptedNestedValueProvider(unencryptedToken, kmsKey);
+  }
+
+  /**
+   * Utility method that formats {@link org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage} according
+   * to the model defined in {@link com.google.pubsub.v1.PubsubMessage}.
+   *
+   * @param pubsubMessage {@link org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage}
+   * @return JSON String that adheres to the model defined in {@link
+   *     com.google.pubsub.v1.PubsubMessage}
+   */
+  private static String formatPubsubMessage(PubsubMessage pubsubMessage) {
+    JsonObject messageJson = new JsonObject();
+    
+    String payload = new String(pubsubMessage.getPayload(), StandardCharsets.UTF_8);
+    try {
+      JsonObject data = GSON.fromJson(payload, JsonObject.class);
+      messageJson.add(DATA, data);
+    } catch (JsonSyntaxException e) {
+      messageJson.addProperty(DATA, payload);
+    }
+    
+    JsonObject attributes = getAttributesJson(pubsubMessage.getAttributeMap());
+    messageJson.add(ATTRIBUTES, attributes);
+
+    if (pubsubMessage.getMessageId() != null) {
+      messageJson.addProperty(MESSAGE_ID, pubsubMessage.getMessageId());
+    }
+    
+    return messageJson.toString();
+  }
+
+  /**
+   * Constructs a {@link JsonObject} from a {@link Map} of Pub/Sub attributes.
+   *
+   * @param attributesMap {@link Map} of Pub/Sub attributes
+   * @return {@link JsonObject} of Pub/Sub attributes
+   */
+  private static JsonObject getAttributesJson(Map<String, String> attributesMap) {
+    JsonObject attributesJson = new JsonObject();
+    for (String key : attributesMap.keySet()) {
+      attributesJson.addProperty(key, attributesMap.get(key));
+    }
+
+    return attributesJson;
   }
 }
