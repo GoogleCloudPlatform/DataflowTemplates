@@ -336,10 +336,10 @@ public class ProtegrityDataProtectors {
       CloseableHttpResponse response = sendToDsg(
           formatJsonsToDsgBatch(rowsToJsons(inputRows)).getBytes());
 
-      if(response.getStatusLine().getStatusCode() != HttpStatus.SC_OK) {
+      if (response.getStatusLine().getStatusCode() != HttpStatus.SC_OK) {
         LOG.error("Send to DSG '{}' failed with '{}'",
-                this.dsgURI,
-                response.getStatusLine());
+            this.dsgURI,
+            response.getStatusLine());
       }
 
       String tokenizedData = IOUtils
