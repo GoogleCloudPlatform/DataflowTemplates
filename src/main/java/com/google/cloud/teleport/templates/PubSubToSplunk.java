@@ -30,6 +30,7 @@ import com.google.cloud.teleport.templates.common.SplunkConverters;
 import com.google.cloud.teleport.templates.common.SplunkConverters.SplunkOptions;
 import com.google.cloud.teleport.util.KMSEncryptedNestedValueProvider;
 import com.google.cloud.teleport.values.FailsafeElement;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
@@ -153,9 +154,11 @@ public class PubSubToSplunk {
   
   private static final Boolean DEFAULT_INCLUDE_PUBSUBMESSAGE = false;
   
-  private static final String ATTRIBUTES = "attributes";
+  @VisibleForTesting
+  protected static final String ATTRIBUTES = "attributes";
+  @VisibleForTesting
+  protected static final String DATA = "data";
   private static final String MESSAGE_ID = "messageId";
-  private static final String DATA = "data";
   
   /**
    * The main entry-point for pipeline execution. This method will start the pipeline but will not
@@ -382,7 +385,8 @@ public class PubSubToSplunk {
    * @return JSON String that adheres to the model defined in {@link
    *     com.google.pubsub.v1.PubsubMessage}
    */
-  private static String formatPubsubMessage(PubsubMessage pubsubMessage) {
+  @VisibleForTesting
+  protected static String formatPubsubMessage(PubsubMessage pubsubMessage) {
     JsonObject messageJson = new JsonObject();
     
     String payload = new String(pubsubMessage.getPayload(), StandardCharsets.UTF_8);
