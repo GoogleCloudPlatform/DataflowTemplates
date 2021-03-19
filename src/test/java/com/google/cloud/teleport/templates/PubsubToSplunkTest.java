@@ -40,29 +40,31 @@ public class PubsubToSplunkTest {
 
     String formattedPubsubMessage = PubSubToSplunk.formatPubsubMessage(pubsubMessage);
 
-    assertThat(formattedPubsubMessage).contains(PubSubToSplunk.DATA);
-    assertThat(formattedPubsubMessage).contains(PubSubToSplunk.ATTRIBUTES);
+    assertThat(formattedPubsubMessage).contains(PubSubToSplunk.PUBSUB_MESSAGE_DATA_FIELD);
+    assertThat(formattedPubsubMessage).contains(PubSubToSplunk.PUBSUB_MESSAGE_ATTRIBUTE_FIELD);
 
     JsonObject messageJson = GSON.fromJson(formattedPubsubMessage, JsonObject.class);
-    assertThat(messageJson.get(PubSubToSplunk.DATA).getAsString()).isEqualTo(payload);
+    assertThat(messageJson.get(PubSubToSplunk.PUBSUB_MESSAGE_DATA_FIELD).getAsString())
+        .isEqualTo(payload);
   }
 
   /** Tests whether a Pub/Sub message with JSON payload is parsed correctly. */
   @Test
   public void testJsonPubsubMessage() {
     String payload =
-        "{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"ipsum\":\"id\"}}}";
+        "{\"type\":\"object\",\"properties\":{\"id\":{\"@type\":\"string\",\"ipsum\":\"id\"}}}";
     Map<String, String> attributes = ImmutableMap.of("key", "value");
 
     PubsubMessage pubsubMessage = new PubsubMessage(payload.getBytes(), attributes);
 
     String formattedPubsubMessage = PubSubToSplunk.formatPubsubMessage(pubsubMessage);
 
-    assertThat(formattedPubsubMessage).contains(PubSubToSplunk.DATA);
-    assertThat(formattedPubsubMessage).contains(PubSubToSplunk.ATTRIBUTES);
+    assertThat(formattedPubsubMessage).contains(PubSubToSplunk.PUBSUB_MESSAGE_DATA_FIELD);
+    assertThat(formattedPubsubMessage).contains(PubSubToSplunk.PUBSUB_MESSAGE_ATTRIBUTE_FIELD);
 
     JsonObject messageJson = GSON.fromJson(formattedPubsubMessage, JsonObject.class);
-    assertThat(messageJson.getAsJsonObject(PubSubToSplunk.DATA).toString()).isEqualTo(payload);
+    assertThat(messageJson.getAsJsonObject(PubSubToSplunk.PUBSUB_MESSAGE_DATA_FIELD).toString())
+        .isEqualTo(payload);
   }
 
   /** Tests whether a Pub/Sub message with complex attributes is parsed correctly. */
@@ -76,11 +78,12 @@ public class PubsubToSplunkTest {
 
     String formattedPubsubMessage = PubSubToSplunk.formatPubsubMessage(pubsubMessage);
 
-    assertThat(formattedPubsubMessage).contains(PubSubToSplunk.DATA);
-    assertThat(formattedPubsubMessage).contains(PubSubToSplunk.ATTRIBUTES);
+    assertThat(formattedPubsubMessage).contains(PubSubToSplunk.PUBSUB_MESSAGE_DATA_FIELD);
+    assertThat(formattedPubsubMessage).contains(PubSubToSplunk.PUBSUB_MESSAGE_ATTRIBUTE_FIELD);
 
     JsonObject messageJson = GSON.fromJson(formattedPubsubMessage, JsonObject.class);
-    JsonObject attributesJson = messageJson.getAsJsonObject(PubSubToSplunk.ATTRIBUTES);
+    JsonObject attributesJson =
+        messageJson.getAsJsonObject(PubSubToSplunk.PUBSUB_MESSAGE_ATTRIBUTE_FIELD);
 
     for (String key : attributes.keySet()) {
       assertThat(attributesJson.get(key).getAsString()).isEqualTo(attributes.get(key));

@@ -152,13 +152,13 @@ public class PubSubToSplunk {
   /** Logger for class. */
   private static final Logger LOG = LoggerFactory.getLogger(PubSubToSplunk.class);
   
-  private static final Boolean DEFAULT_INCLUDE_PUBSUBMESSAGE = false;
+  private static final Boolean DEFAULT_INCLUDE_PUBSUB_MESSAGE = false;
   
   @VisibleForTesting
-  protected static final String ATTRIBUTES = "attributes";
+  protected static final String PUBSUB_MESSAGE_ATTRIBUTE_FIELD = "attributes";
   @VisibleForTesting
-  protected static final String DATA = "data";
-  private static final String MESSAGE_ID = "messageId";
+  protected static final String PUBSUB_MESSAGE_DATA_FIELD = "data";
+  private static final String PUBSUB_MESSAGE_ID_FIELD = "messageId";
   
   /**
    * The main entry-point for pipeline execution. This method will start the pipeline but will not
@@ -338,7 +338,7 @@ public class PubSubToSplunk {
                       }
                       includePubsubMessage =
                           MoreObjects.firstNonNull(
-                              includePubsubMessage, DEFAULT_INCLUDE_PUBSUBMESSAGE);
+                              includePubsubMessage, DEFAULT_INCLUDE_PUBSUB_MESSAGE);
                       LOG.info("includePubsubMessage set to: {}", includePubsubMessage);
                     }
 
@@ -388,22 +388,22 @@ public class PubSubToSplunk {
   @VisibleForTesting
   protected static String formatPubsubMessage(PubsubMessage pubsubMessage) {
     JsonObject messageJson = new JsonObject();
-    
+
     String payload = new String(pubsubMessage.getPayload(), StandardCharsets.UTF_8);
     try {
       JsonObject data = GSON.fromJson(payload, JsonObject.class);
-      messageJson.add(DATA, data);
+      messageJson.add(PUBSUB_MESSAGE_DATA_FIELD, data);
     } catch (JsonSyntaxException e) {
-      messageJson.addProperty(DATA, payload);
+      messageJson.addProperty(PUBSUB_MESSAGE_DATA_FIELD, payload);
     }
-    
+
     JsonObject attributes = getAttributesJson(pubsubMessage.getAttributeMap());
-    messageJson.add(ATTRIBUTES, attributes);
+    messageJson.add(PUBSUB_MESSAGE_ATTRIBUTE_FIELD, attributes);
 
     if (pubsubMessage.getMessageId() != null) {
-      messageJson.addProperty(MESSAGE_ID, pubsubMessage.getMessageId());
+      messageJson.addProperty(PUBSUB_MESSAGE_ID_FIELD, pubsubMessage.getMessageId());
     }
-    
+
     return messageJson.toString();
   }
 
