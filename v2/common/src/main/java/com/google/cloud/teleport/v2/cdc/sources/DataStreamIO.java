@@ -103,6 +103,7 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
   private String gcsNotificationSubscription;
   private String rfcStartDateTime;
   private Integer fileReadConcurrency = 30;
+  private Boolean lowercaseSourceColumns = false;
   PCollection<String> directories = null;
 
   public DataStreamIO() {}
@@ -127,6 +128,11 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
     return this;
   }
 
+  public DataStreamIO withLowercaseSourceColumns() {
+    this.lowercaseSourceColumns = true;
+    return this;
+  }
+
   @Override
   public PCollection<FailsafeElement<String, String>> expand(PBegin input) {
     PCollection<ReadableFile> datastreamFiles =
@@ -144,13 +150,17 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
         datastreamJsonRecords = datastreamFiles
           .apply("ReadFiles", TextIO.readFiles())
           .apply("ParseJsonRecords", ParDo.of(
-              FormatDatastreamJsonToJson.create().withStreamName(this.streamName)))
+              FormatDatastreamJsonToJson.create()
+                  .withStreamName(this.streamName)
+                  .withLowercaseSourceColumns(this.lowercaseSourceColumns)))
           .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
       } else {
         datastreamJsonRecords = datastreamFiles
           .apply("ParseAvroRecords",
               AvroIO.parseFilesGenericRecords(
-                FormatDatastreamRecordToJson.create().withStreamName(this.streamName))
+                FormatDatastreamRecordToJson.create()
+                    .withStreamName(this.streamName)
+                    .withLowercaseSourceColumns(this.lowercaseSourceColumns))
                 .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())));
       }
     return datastreamJsonRecords.apply("Reshuffle", Reshuffle.viaRandomKey());

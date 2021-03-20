@@ -52,8 +52,8 @@ public final class FormatDatastreamJsonToJson
     return this;
   }
 
-  public FormatDatastreamJsonToJson withLowercaseSourceColumns() {
-    this.lowercaseSourceColumns = true;
+  public FormatDatastreamJsonToJson withLowercaseSourceColumns(Boolean lowercaseSourceColumns) {
+    this.lowercaseSourceColumns = lowercaseSourceColumns;
     return this;
   }
 

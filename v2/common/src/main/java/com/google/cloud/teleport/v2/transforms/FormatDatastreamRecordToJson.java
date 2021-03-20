@@ -79,8 +79,8 @@ public class FormatDatastreamRecordToJson
     return this;
   }
 
-  public FormatDatastreamRecordToJson withLowercaseSourceColumns() {
-    this.lowercaseSourceColumns = true;
+  public FormatDatastreamRecordToJson withLowercaseSourceColumns(Boolean lowercaseSourceColumns) {
+    this.lowercaseSourceColumns = lowercaseSourceColumns;
     return this;
   }
 
