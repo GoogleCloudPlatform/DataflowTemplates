@@ -27,6 +27,7 @@ import com.google.cloud.teleport.v2.utils.RowToCsv;
 import com.google.cloud.teleport.v2.utils.SchemasUtils;
 import com.google.common.io.Resources;
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -42,6 +43,7 @@ import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.JsonToRow;
+import org.apache.beam.sdk.transforms.ToJson;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Lists;
@@ -67,6 +69,9 @@ public class ProtegrityDataTokenizationTest {
 
   private static final String JSON_FILE_PATH =
       Resources.getResource(RESOURCES_DIR + "testInput.txt").getPath();
+
+  private static final String AVRO_FILE_PATH =
+      Resources.getResource(RESOURCES_DIR + "testInput.avro").getPath();
 
   private static final String SCHEMA_FILE_PATH =
       Resources.getResource(RESOURCES_DIR + "schema.txt").getPath();
@@ -104,21 +109,30 @@ public class ProtegrityDataTokenizationTest {
 
   @Test
   public void testFileSystemIOReadCSV() throws IOException {
-    PCollection<String> jsons = fileSystemIORead(CSV_FILE_PATH, FORMAT.CSV);
+    PCollection<String> jsons = (PCollection<String>) fileSystemIORead(CSV_FILE_PATH, FORMAT.CSV);
     assertField(jsons);
     testPipeline.run();
   }
 
   @Test
   public void testFileSystemIOReadJSON() throws IOException {
-    PCollection<String> jsons = fileSystemIORead(JSON_FILE_PATH, FORMAT.JSON);
+    PCollection<String> jsons = (PCollection<String>) fileSystemIORead(JSON_FILE_PATH, FORMAT.JSON);
+    assertField(jsons);
+    testPipeline.run();
+  }
+
+
+  @Test
+  public void testFileSystemIOReadAVRO() throws IOException {
+    PCollection<Row> rows = (PCollection<Row>) fileSystemIORead(AVRO_FILE_PATH, FORMAT.AVRO);
+    PCollection<String> jsons = rows.apply("RowsToJSON", ToJson.of());
     assertField(jsons);
     testPipeline.run();
   }
 
   @Test
   public void testJsonToRow() throws IOException {
-    PCollection<String> jsons = fileSystemIORead(JSON_FILE_PATH, FORMAT.JSON);
+    PCollection<String> jsons = (PCollection<String>) fileSystemIORead(JSON_FILE_PATH, FORMAT.JSON);
     SchemasUtils testSchemaUtils = new SchemasUtils(SCHEMA_FILE_PATH, StandardCharsets.UTF_8);
     JsonToRow.ParseResult rows =
         jsons.apply(
@@ -142,7 +156,7 @@ public class ProtegrityDataTokenizationTest {
     testPipeline.run();
   }
 
-  private PCollection<String> fileSystemIORead(
+  private PCollection<? extends Serializable> fileSystemIORead(
       String inputGcsFilePattern, FORMAT inputGcsFileFormat) throws IOException {
     ProtegrityDataTokenizationOptions options =
         PipelineOptionsFactory.create().as(ProtegrityDataTokenizationOptions.class);
@@ -171,7 +185,7 @@ public class ProtegrityDataTokenizationTest {
             RowCoder.of(testSchemaUtils.getBeamSchema()));
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
-    return (PCollection<String>) new GcsIO(options).read(testPipeline, testSchemaUtils);
+    return new GcsIO(options).read(testPipeline, testSchemaUtils);
   }
 
   private void assertField(PCollection<String> jsons) {
