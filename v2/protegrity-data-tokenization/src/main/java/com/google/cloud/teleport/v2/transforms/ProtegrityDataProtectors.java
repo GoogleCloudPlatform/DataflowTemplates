@@ -1,7 +1,6 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import static org.apache.beam.sdk.util.RowJsonUtils.rowToJson;
-import static org.apache.beam.vendor.grpc.v1p26p0.com.google.common.base.MoreObjects.firstNonNull;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.services.bigquery.model.TableRow;
@@ -23,18 +22,10 @@ import org.apache.beam.sdk.coders.RowCoder;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.Field;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
-import org.apache.beam.sdk.state.BagState;
-import org.apache.beam.sdk.state.StateSpec;
-import org.apache.beam.sdk.state.StateSpecs;
-import org.apache.beam.sdk.state.TimeDomain;
-import org.apache.beam.sdk.state.Timer;
-import org.apache.beam.sdk.state.TimerSpec;
-import org.apache.beam.sdk.state.TimerSpecs;
-import org.apache.beam.sdk.state.ValueState;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.GroupIntoBatches;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.RowJson;
 import org.apache.beam.sdk.util.RowJsonUtils;
 import org.apache.beam.sdk.values.KV;
@@ -56,6 +47,7 @@ import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.entity.ContentType;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,10 +63,16 @@ public class ProtegrityDataProtectors {
    * The {@link ProtegrityDataProtectors.RowToTokenizedRow} transform converts {@link Row} to {@link
    * TableRow} objects. The transform accepts a {@link FailsafeElement} object so the original
    * payload of the incoming record can be maintained across multiple series of transforms.
+   *
+   * Environment variables:
+   * MAX_BUFFERING_DURATION_MS - Max duration (in milliseconds) of buffering rows in {@link GroupIntoBatches}
    */
   @AutoValue
   public abstract static class RowToTokenizedRow<T>
       extends PTransform<PCollection<KV<Integer, Row>>, PCollectionTuple> {
+
+    private static final Long MAX_BUFFERING_DURATION_MS =
+        Long.valueOf(System.getenv().getOrDefault("MAX_BUFFERING_DURATION_MS", "100"));
 
     public static <T> RowToTokenizedRow.Builder<T> newBuilder() {
       return new AutoValue_ProtegrityDataProtectors_RowToTokenizedRow.Builder<>();
@@ -100,11 +98,17 @@ public class ProtegrityDataProtectors {
           RowCoder.of(schema()),
           RowCoder.of(schema())
       );
-      PCollectionTuple pCollectionTuple = inputRows.apply(
-          "TokenizeUsingDsg",
-          ParDo.of(new DSGTokenizationFn(schema(), batchSize(), dataElements(), serviceAccount(),
-              dsgURI(), failureTag()))
-              .withOutputTags(successTag(), TupleTagList.of(failureTag())));
+
+      Duration maxBuffering = Duration.millis(MAX_BUFFERING_DURATION_MS);
+      PCollectionTuple pCollectionTuple = inputRows
+          .apply("GroupRowsIntoBatches",
+              GroupIntoBatches.<Integer, Row>ofSize(batchSize())
+                  .withMaxBufferingDuration(maxBuffering))
+          .apply("TokenizeUsingDsg",
+              ParDo.of(new DSGTokenizationFn(schema(), dataElements(), serviceAccount(),
+                  dsgURI(), failureTag()))
+                  .withOutputTags(successTag(), TupleTagList.of(failureTag())));
+
       return PCollectionTuple
           .of(successTag(), pCollectionTuple.get(successTag()).setRowSchema(schema()))
           .and(failureTag(), pCollectionTuple.get(failureTag()).setCoder(coder));
@@ -141,7 +145,7 @@ public class ProtegrityDataProtectors {
   /**
    * Class implements stateful doFn for data tokenization using remote DSG.
    */
-  public static class DSGTokenizationFn extends DoFn<KV<Integer, Row>, Row> {
+  public static class DSGTokenizationFn extends DoFn<KV<Integer, Iterable<Row>>, Row> {
 
     /**
      * Logger for class.
@@ -155,35 +159,24 @@ public class ProtegrityDataProtectors {
     private static ObjectMapper objectMapperDeserializerForDSG;
 
     private final Schema schema;
-    private final int batchSize;
     private final Map<String, String> dataElements;
     private final String serviceAccount;
     private final String dsgURI;
     private final TupleTag<FailsafeElement<Row, Row>> failureTag;
 
-    @StateId("buffer")
-    private final StateSpec<BagState<Row>> bufferedEvents;
-
-    @StateId("count")
-    private final StateSpec<ValueState<Integer>> countState = StateSpecs.value();
-
-    @TimerId("expiry")
-    private final TimerSpec expirySpec = TimerSpecs.timer(TimeDomain.EVENT_TIME);
     private boolean hasIdInInputs = true;
     private String idFieldName;
     private Map<String, Row> inputRowsWithIds;
 
 
-    public DSGTokenizationFn(Schema schema, int batchSize, Map<String, String> dataElements,
+    public DSGTokenizationFn(Schema schema, Map<String, String> dataElements,
         String serviceAccount,
         String dsgURI,
         TupleTag<FailsafeElement<Row, Row>> failureTag) {
       this.schema = schema;
-      this.batchSize = batchSize;
       this.dataElements = dataElements;
       this.serviceAccount = serviceAccount;
       this.dsgURI = dsgURI;
-      bufferedEvents = StateSpecs.bag(RowCoder.of(schema));
       this.failureTag = failureTag;
     }
 
@@ -235,40 +228,10 @@ public class ProtegrityDataProtectors {
 
     }
 
-    @OnTimer("expiry")
-    public void onExpiry(
-        OnTimerContext context,
-        @StateId("buffer") BagState<Row> bufferState) {
-      boolean isEmpty = firstNonNull(bufferState.isEmpty().read(), true);
-      if (!isEmpty) {
-        processBufferedRows(bufferState.read(), context);
-        bufferState.clear();
-      }
-    }
-
     @ProcessElement
-    public void process(
-        ProcessContext context,
-        BoundedWindow window,
-        @StateId("buffer") BagState<Row> bufferState,
-        @StateId("count") ValueState<Integer> countState,
-        @TimerId("expiry") Timer expiryTimer) {
-
-      expiryTimer.set(window.maxTimestamp());
-
-      int count = firstNonNull(countState.read(), 0);
-      count++;
-      countState.write(count);
-      bufferState.add(context.element().getValue());
-
-      if (count >= batchSize) {
-        processBufferedRows(bufferState.read(), context);
-        bufferState.clear();
-        countState.clear();
-      }
-    }
-
-    private void processBufferedRows(Iterable<Row> rows, WindowedContext context) {
+    public void process(@Element KV<Integer, Iterable<Row>> element,
+        ProcessContext context) {
+      Iterable<Row> rows = element.getValue();
 
       try {
         for (Row outputRow : getTokenizedRow(rows)) {
@@ -282,7 +245,6 @@ public class ProtegrityDataProtectors {
                   .setErrorMessage(e.getMessage())
                   .setStacktrace(Throwables.getStackTraceAsString(e)));
         }
-
       }
     }
 

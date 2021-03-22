@@ -177,6 +177,10 @@ The template allows user to supply the following optional parameter:
 
 - **nonTokenizedDeadLetterGcsPath**: GCS folder where failed to tokenize data will be stored
 
+The template also allows user to override the environment variable:
+    
+- **MAX_BUFFERING_DURATION_MS**: Max duration of buffering rows in milliseconds. Default value: 100ms.
+
 A Dataflow job can be created and executed from this template in 3 ways:
 
 1. Using [Dataflow Google Cloud Console](https://console.cloud.google.com/dataflow/jobs)
