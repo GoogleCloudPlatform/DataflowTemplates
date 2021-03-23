@@ -2,7 +2,6 @@ package com.google.cloud.teleport.v2.transforms;
 
 import static com.google.cloud.teleport.v2.templates.ProtegrityDataTokenization.FAILSAFE_ELEMENT_CODER;
 
-import com.google.cloud.teleport.v2.options.ProtegrityDataTokenizationOptions;
 import com.google.cloud.teleport.v2.utils.SchemasUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import org.apache.beam.sdk.transforms.JsonToRow;
@@ -16,11 +15,11 @@ import org.apache.beam.sdk.values.Row;
  */
 public class JsonToBeamRow extends PTransform<PCollection<String>, PCollection<Row>> {
 
-  final ProtegrityDataTokenizationOptions options;
+  final String failedToParseDeadLetterPath;
   final SchemasUtils schema;
 
-  public JsonToBeamRow(ProtegrityDataTokenizationOptions options, SchemasUtils schema) {
-    this.options = options;
+  public JsonToBeamRow(String failedToParseDeadLetterPath, SchemasUtils schema) {
+    this.failedToParseDeadLetterPath = failedToParseDeadLetterPath;
     this.schema = schema;
   }
 
@@ -30,7 +29,7 @@ public class JsonToBeamRow extends PTransform<PCollection<String>, PCollection<R
         .apply("JsonToRow",
             JsonToRow.withExceptionReporting(schema.getBeamSchema()).withExtendedErrorInfo());
 
-    if (options.getNonTokenizedDeadLetterGcsPath() != null) {
+    if (failedToParseDeadLetterPath != null) {
       /*
        * Write Row conversion errors to filesystem specified path
        */
@@ -43,7 +42,7 @@ public class JsonToBeamRow extends PTransform<PCollection<String>, PCollection<R
                   ))
           .apply("WriteCsvConversionErrorsToGcs",
               ErrorConverters.WriteErrorsToTextIO.<String, String>newBuilder()
-                  .setErrorWritePath(options.getNonTokenizedDeadLetterGcsPath())
+                  .setErrorWritePath(failedToParseDeadLetterPath)
                   .setTranslateFunction(SerializableFunctions.getCsvErrorConverter())
                   .build());
     }
