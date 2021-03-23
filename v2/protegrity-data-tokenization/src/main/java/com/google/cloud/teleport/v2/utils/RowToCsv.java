@@ -8,7 +8,7 @@ import org.apache.beam.sdk.values.Row;
  */
 public class RowToCsv {
 
-  private  final String csvDelimiter;
+  private final String csvDelimiter;
 
   public RowToCsv(String csvDelimiter) {
     this.csvDelimiter = csvDelimiter;
@@ -17,6 +17,7 @@ public class RowToCsv {
   public String getCsvFromRow(Row row) {
     return row.getValues()
         .stream()
+        .map(item -> item == null ? "null" : item)
         .map(Object::toString)
         .collect(Collectors.joining(csvDelimiter));
   }
