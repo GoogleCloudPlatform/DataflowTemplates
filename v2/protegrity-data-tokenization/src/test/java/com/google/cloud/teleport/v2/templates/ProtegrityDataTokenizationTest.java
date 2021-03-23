@@ -29,7 +29,6 @@ import com.google.cloud.teleport.v2.utils.RowToCsv;
 import com.google.cloud.teleport.v2.utils.SchemasUtils;
 import com.google.common.io.Resources;
 import java.io.IOException;
-import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,7 +43,6 @@ import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
-import org.apache.beam.sdk.transforms.JsonToRow;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Lists;
@@ -124,31 +122,29 @@ public class ProtegrityDataTokenizationTest {
 
   @Test
   public void testFileSystemIOReadCSV() throws IOException {
-    PCollection<Row> jsons = (PCollection<String>) fileSystemIORead(CSV_FILE_PATH, FORMAT.CSV);
-    assertField(jsons);
+    PCollection<Row> rows = fileSystemIORead(CSV_FILE_PATH, FORMAT.CSV);
+    assertField(rows);
     testPipeline.run();
   }
 
   @Test
   public void testFileSystemIOReadJSON() throws IOException {
-    PCollection<Row> jsons = (PCollection<String>) fileSystemIORead(JSON_FILE_PATH, FORMAT.JSON);
-    assertField(jsons);
+    PCollection<Row> rows = fileSystemIORead(JSON_FILE_PATH, FORMAT.JSON);
+    assertField(rows);
     testPipeline.run();
   }
 
 
   @Test
   public void testFileSystemIOReadAVRO() throws IOException {
-    PCollection<Row> rows = (PCollection<Row>) fileSystemIORead(AVRO_FILE_PATH, FORMAT.AVRO);
-    PCollection<String> jsons = rows.apply("RowsToJSON", ToJson.of());
-    assertField(jsons);
+    PCollection<Row> rows = fileSystemIORead(AVRO_FILE_PATH, FORMAT.AVRO);
+    assertField(rows);
     testPipeline.run();
   }
 
   @Test
   public void testJsonToRow() throws IOException {
-    PCollection<Row> rows = (PCollection<String>) fileSystemIORead(JSON_FILE_PATH, FORMAT.JSON);
-
+    PCollection<Row> rows = fileSystemIORead(JSON_FILE_PATH, FORMAT.JSON);
     PAssert.that(rows)
         .satisfies(
             x -> {
@@ -195,22 +191,22 @@ public class ProtegrityDataTokenizationTest {
             RowCoder.of(testSchemaUtils.getBeamSchema()));
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
-    return (PCollection<Row>) new GcsIO(options).read(testPipeline, testSchemaUtils);
+    return new GcsIO(options).read(testPipeline, testSchemaUtils);
   }
 
-  private void assertField(PCollection<Row> jsons) {
-    PAssert.that(jsons)
+  private void assertField(PCollection<Row> rows) {
+    PAssert.that(rows)
         .satisfies(
             x -> {
-              LinkedList<Row> rows = Lists.newLinkedList(x);
-              assertThat(rows, hasSize(3));
-              rows.forEach(
-                  row -> {
-                    assertNotNull(row.getSchema());
-                    assertThat(row.getSchema().getFields(), hasSize(3));
-                    assertThat(row.getSchema().getField(0).getName(), equalTo("Field1"));
+              LinkedList<Row> items = Lists.newLinkedList(x);
+              assertThat(items, hasSize(3));
+              items.forEach(
+                  item -> {
+                    assertNotNull(item.getSchema());
+                    assertThat(item.getSchema().getFields(), hasSize(3));
+                    assertThat(item.getSchema().getField(0).getName(), equalTo("Field1"));
 
-                    assertThat(row.getValues(), hasSize(3));
+                    assertThat(item.getValues(), hasSize(3));
                   });
               return null;
             });
