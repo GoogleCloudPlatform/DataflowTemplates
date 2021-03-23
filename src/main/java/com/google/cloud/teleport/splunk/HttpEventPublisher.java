@@ -86,8 +86,6 @@ public abstract class HttpEventPublisher {
 
   private static final String HTTPS_PROTOCOL_PREFIX = "https";
   
-  private static final int READ_TIMEOUT = 60000;
-  
   public static Builder newBuilder() {
     return new AutoValue_HttpEventPublisher.Builder();
   }
@@ -125,9 +123,7 @@ public abstract class HttpEventPublisher {
     HttpIOExceptionHandler ioExceptionHandler =
         new HttpBackOffIOExceptionHandler(getConfiguredBackOff());
     request.setIOExceptionHandler(ioExceptionHandler);
-
-    request.setReadTimeout(READ_TIMEOUT);
-
+    
     setHeaders(request, token());
 
     return request.execute();
