@@ -19,11 +19,11 @@ import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.options.ProtegrityDataTokenizationOptions;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
+import com.google.cloud.teleport.v2.transforms.JsonToBeamRow;
 import com.google.cloud.teleport.v2.transforms.SerializableFunctions;
 import com.google.cloud.teleport.v2.utils.RowToCsv;
 import com.google.cloud.teleport.v2.utils.SchemasUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
-import java.io.Serializable;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.AvroCoder;
@@ -42,7 +42,7 @@ import org.apache.beam.sdk.transforms.ToJson;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollection.IsBounded;
 import org.apache.beam.sdk.values.PCollectionTuple;
-import org.apache.beam.sdk.values.PDone;
+import org.apache.beam.sdk.values.POutput;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TypeDescriptor;
@@ -173,123 +173,156 @@ public class GcsIO {
     this.options = options;
   }
 
-  public PCollection<? extends Serializable> read(Pipeline pipeline, SchemasUtils schema) {
-    if (options.getInputGcsFileFormat() == FORMAT.JSON) {
-      return pipeline
-          .apply("ReadJsonFromGCSFiles",
-              TextIO.read().from(options.getInputGcsFilePattern()));
-    } else if (options.getInputGcsFileFormat() == FORMAT.CSV) {
-      PCollectionTuple jsons = pipeline
-          /*
-           * Step 1: Read CSV file(s) from Cloud Storage using {@link CsvConverters.ReadCsv}.
-           */
-          .apply(
-              "ReadCsvFromGcsFiles",
-              CsvConverters.ReadCsv.newBuilder()
-                  .setCsvFormat(options.getCsvFormat())
-                  .setDelimiter(options.getCsvDelimiter())
-                  .setHasHeaders(options.getCsvContainsHeaders())
-                  .setInputFileSpec(options.getInputGcsFilePattern())
-                  .setHeaderTag(CSV_HEADERS)
-                  .setLineTag(CSV_LINES)
-                  .build())
-          /*
-           * Step 2: Convert lines to Json.
-           */
-          .apply(
-              "LineToJson",
-              CsvConverters.LineToFailsafeJson.newBuilder()
-                  .setDelimiter(options.getCsvDelimiter())
-                  .setJsonSchema(schema.getJsonBeamSchema())
-                  .setHeaderTag(CSV_HEADERS)
-                  .setLineTag(CSV_LINES)
-                  .setUdfOutputTag(PROCESSING_OUT)
-                  .setUdfDeadletterTag(PROCESSING_DEADLETTER_OUT)
-                  .build());
+  private PCollection<String> readJson(Pipeline pipeline) {
+    return pipeline
+        .apply("ReadJsonFromGCSFiles",
+            TextIO.read().from(options.getInputGcsFilePattern()));
+  }
 
-      if (options.getNonTokenizedDeadLetterGcsPath() != null) {
+  private PCollection<Row> readAvro(Pipeline pipeline, Schema beamSchema) {
+    org.apache.avro.Schema avroSchema = AvroUtils.toAvroSchema(beamSchema);
+    PCollection<GenericRecord> genericRecords = pipeline.apply(
+        "ReadAvroFiles",
+        AvroIO.readGenericRecords(avroSchema).from(options.getInputGcsFilePattern()));
+    return genericRecords
+        .apply(
+            "GenericRecordToRow", MapElements.into(TypeDescriptor.of(Row.class))
+                .via(AvroUtils.getGenericRecordToRowFunction(beamSchema)))
+        .setCoder(RowCoder.of(beamSchema));
+
+  }
+
+  private PCollectionTuple readCsv(Pipeline pipeline) {
+    return pipeline
         /*
-         * Step 3: Write jsons to dead-letter gcs that were successfully processed.
+         * Step 1: Read CSV file(s) from Cloud Storage using {@link CsvConverters.ReadCsv}.
          */
+        .apply(
+            "ReadCsvFromGcsFiles",
+            CsvConverters.ReadCsv.newBuilder()
+                .setCsvFormat(options.getCsvFormat())
+                .setDelimiter(options.getCsvDelimiter())
+                .setHasHeaders(options.getCsvContainsHeaders())
+                .setInputFileSpec(options.getInputGcsFilePattern())
+                .setHeaderTag(CSV_HEADERS)
+                .setLineTag(CSV_LINES)
+                .build());
+  }
 
+  private PCollectionTuple csvLineToJson(PCollectionTuple csvLines, String jsonBeamSchema) {
+    return csvLines.apply(
+        "LineToJson",
+        CsvConverters.LineToFailsafeJson.newBuilder()
+            .setDelimiter(options.getCsvDelimiter())
+            .setJsonSchema(jsonBeamSchema)
+            .setHeaderTag(CSV_HEADERS)
+            .setLineTag(CSV_LINES)
+            .setUdfOutputTag(PROCESSING_OUT)
+            .setUdfDeadletterTag(PROCESSING_DEADLETTER_OUT)
+            .build());
+  }
 
+  private POutput writeJson(PCollection<Row> outputCollection) {
+    PCollection<String> jsons = outputCollection.apply("RowsToJSON", ToJson.of());
 
-        jsons.get(PROCESSING_DEADLETTER_OUT)
-            .apply("WriteCsvConversionErrorsToGcs",
-                ErrorConverters.WriteErrorsToTextIO.<String,String>newBuilder()
-                    .setErrorWritePath(options.getNonTokenizedDeadLetterGcsPath())
-                    .setTranslateFunction(SerializableFunctions.getCsvErrorConverter())
-                    .build());
-      }
-
-      /*
-       * Step 4: Get jsons that were successfully processed.
-       */
-      return jsons.get(PROCESSING_OUT)
-          .apply(
-              "GetJson",
-              MapElements.into(TypeDescriptors.strings()).via(FailsafeElement::getPayload));
-    } else if (options.getInputGcsFileFormat() == FORMAT.AVRO) {
-      org.apache.avro.Schema avroSchema = AvroUtils.toAvroSchema(schema.getBeamSchema());
-      PCollection<GenericRecord> genericRecords = pipeline.apply(
-          "ReadAvroFiles",
-          AvroIO.readGenericRecords(avroSchema).from(options.getInputGcsFilePattern()));
-      return genericRecords
-          .apply(
-              "GenericRecordToRow", MapElements.into(TypeDescriptor.of(Row.class))
-                  .via(AvroUtils.getGenericRecordToRowFunction(schema.getBeamSchema())))
-          .setCoder(RowCoder.of(schema.getBeamSchema()));
+    if (jsons.isBounded() == IsBounded.BOUNDED) {
+      return jsons
+          .apply("WriteToGCS", TextIO.write().to(options.getOutputGcsDirectory()));
     } else {
-      throw new IllegalStateException(
-          "No valid format for input data is provided. Please, choose JSON or CSV.");
+      return jsons
+          .apply("WriteToGCS", TextIO.write().withWindowedWrites().withNumShards(1)
+              .to(options.getOutputGcsDirectory()));
     }
   }
 
-  public PDone write(PCollection<Row> input, Schema schema) {
-    if (options.getOutputGcsFileFormat() == FORMAT.JSON) {
-      PCollection<String> jsons = input.apply("RowsToJSON", ToJson.of());
+  private POutput writeCsv(PCollection<Row> outputCollection, Iterable<String> fieldNames) {
+    String header = String.join(options.getCsvDelimiter(), fieldNames);
+    String csvDelimiter = options.getCsvDelimiter();
+    PCollection<String> csvs = outputCollection
+        .apply("ConvertToCSV", MapElements.into(TypeDescriptors.strings())
+            .via((Row inputRow) ->
+                new RowToCsv(csvDelimiter).getCsvFromRow(inputRow))
+        );
 
-      if (jsons.isBounded() == IsBounded.BOUNDED) {
-        return jsons
-            .apply("WriteToGCS", TextIO.write().to(options.getOutputGcsDirectory()));
-      } else {
-        return jsons
-            .apply("WriteToGCS", TextIO.write().withWindowedWrites().withNumShards(1)
-                .to(options.getOutputGcsDirectory()));
-      }
-    } else if (options.getOutputGcsFileFormat() == FORMAT.CSV) {
-      String header = String.join(options.getCsvDelimiter(), schema.getFieldNames());
-      String csvDelimiter = options.getCsvDelimiter();
-      PCollection<String> csvs = input
-          .apply("ConvertToCSV", MapElements.into(TypeDescriptors.strings())
-              .via((Row inputRow) ->
-                  new RowToCsv(csvDelimiter).getCsvFromRow(inputRow))
-          );
-
-      if (csvs.isBounded() == IsBounded.BOUNDED) {
-        return csvs
-            .apply("WriteToGCS",
-                TextIO.write().to(options.getOutputGcsDirectory()).withHeader(header));
-      } else {
-        return csvs
-            .apply("WriteToGCS",
-                TextIO.write().withWindowedWrites().withNumShards(1)
-                    .to(options.getOutputGcsDirectory()).withHeader(header));
-      }
-
-    } else if (options.getOutputGcsFileFormat() == FORMAT.AVRO) {
-      org.apache.avro.Schema avroSchema = AvroUtils.toAvroSchema(schema);
-      return input
-          .apply(
-              "RowToGenericRecord", MapElements.into(TypeDescriptor.of(GenericRecord.class))
-                  .via(AvroUtils.getRowToGenericRecordFunction(avroSchema)))
-          .setCoder(AvroCoder.of(GenericRecord.class, avroSchema))
-          .apply("WriteToAvro", AvroIO.writeGenericRecords(avroSchema)
-              .to(options.getOutputGcsDirectory())
-              .withSuffix(".avro"));
+    if (csvs.isBounded() == IsBounded.BOUNDED) {
+      return csvs
+          .apply("WriteToGCS",
+              TextIO.write().to(options.getOutputGcsDirectory()).withHeader(header));
     } else {
-      throw new IllegalStateException(
-          "No valid format for output data is provided. Please, choose JSON or CSV.");
+      return csvs
+          .apply("WriteToGCS",
+              TextIO.write().withWindowedWrites().withNumShards(1)
+                  .to(options.getOutputGcsDirectory()).withHeader(header));
+    }
+  }
+
+  private POutput writeAvro(PCollection<Row> outputCollection, Schema schema) {
+    org.apache.avro.Schema avroSchema = AvroUtils.toAvroSchema(schema);
+    return outputCollection
+        .apply(
+            "RowToGenericRecord", MapElements.into(TypeDescriptor.of(GenericRecord.class))
+                .via(AvroUtils.getRowToGenericRecordFunction(avroSchema)))
+        .setCoder(AvroCoder.of(GenericRecord.class, avroSchema))
+        .apply("WriteToAvro", AvroIO.writeGenericRecords(avroSchema)
+            .to(options.getOutputGcsDirectory())
+            .withSuffix(".avro"));
+  }
+
+  public PCollection<Row> read(Pipeline pipeline, SchemasUtils schema) {
+    switch (options.getInputGcsFileFormat()) {
+      case CSV:
+        /*
+         * Step 1: Read CSV file(s) from Cloud Storage using {@link CsvConverters.ReadCsv}.
+         */
+        PCollectionTuple csvLines = readCsv(pipeline);
+        /*
+         * Step 2: Convert lines to Json.
+         */
+        PCollectionTuple jsons = csvLineToJson(csvLines, schema.getJsonBeamSchema());
+
+        if (options.getNonTokenizedDeadLetterGcsPath() != null) {
+          /*
+           * Step 3: Write jsons to dead-letter gcs that were successfully processed.
+           */
+          jsons.get(PROCESSING_DEADLETTER_OUT)
+              .apply("WriteCsvConversionErrorsToGcs",
+                  ErrorConverters.WriteErrorsToTextIO.<String, String>newBuilder()
+                      .setErrorWritePath(options.getNonTokenizedDeadLetterGcsPath())
+                      .setTranslateFunction(SerializableFunctions.getCsvErrorConverter())
+                      .build());
+        }
+        /*
+         * Step 4: Get jsons that were successfully processed.
+         */
+        return jsons.get(PROCESSING_OUT)
+            .apply(
+                "GetJson",
+                MapElements.into(TypeDescriptors.strings()).via(FailsafeElement::getPayload))
+            .apply(new JsonToBeamRow(options.getNonTokenizedDeadLetterGcsPath(), schema));
+      case JSON:
+        return readJson(pipeline)
+            .apply(new JsonToBeamRow(options.getNonTokenizedDeadLetterGcsPath(), schema));
+      case AVRO:
+        return readAvro(pipeline, schema.getBeamSchema());
+      default:
+        throw new IllegalStateException(
+            "No valid format for input data is provided. Please, choose JSON or CSV or AVRO.");
+
+    }
+  }
+
+  public POutput write(PCollection<Row> input, Schema schema) {
+    switch (options.getOutputGcsFileFormat()) {
+      case JSON:
+        return writeJson(input);
+      case AVRO:
+        return writeAvro(input, schema);
+      case CSV:
+        return writeCsv(input, schema.getFieldNames());
+      default:
+        throw new IllegalStateException(
+            "No valid format for output data is provided. Please, choose JSON or CSV or AVRO.");
+
     }
   }
 }

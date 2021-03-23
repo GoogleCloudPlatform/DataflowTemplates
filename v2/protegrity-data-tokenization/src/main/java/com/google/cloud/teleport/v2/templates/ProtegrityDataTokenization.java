@@ -28,13 +28,11 @@ import com.google.cloud.teleport.v2.transforms.SerializableFunctions;
 import com.google.cloud.teleport.v2.transforms.io.BigQueryIO;
 import com.google.cloud.teleport.v2.transforms.io.BigTableIO;
 import com.google.cloud.teleport.v2.transforms.io.GcsIO;
-import com.google.cloud.teleport.v2.transforms.io.GcsIO.FORMAT;
 import com.google.cloud.teleport.v2.utils.RowToCsv;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.utils.SchemasUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.IOException;
-import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
@@ -249,13 +247,15 @@ public class ProtegrityDataTokenization {
     coderRegistry
         .registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
-    PCollection<? extends Serializable> records;
+    PCollection<Row> records;
     if (options.getInputGcsFilePattern() != null) {
       records = new GcsIO(options).read(pipeline, schema);
     } else if (options.getPubsubTopic() != null) {
       records = pipeline
           .apply("ReadMessagesFromPubsub",
-              PubsubIO.readStrings().fromTopic(options.getPubsubTopic()));
+              PubsubIO.readStrings().fromTopic(options.getPubsubTopic()))
+          .apply("TransformToBeamRow",
+              new JsonToBeamRow(options.getNonTokenizedDeadLetterGcsPath(), schema));
       if (options.getOutputGcsDirectory() != null) {
         records = records
             .apply(Window.into(FixedWindows.of(parseDuration(options.getWindowDuration()))));
@@ -265,19 +265,9 @@ public class ProtegrityDataTokenization {
     }
 
     /*
-    Get collection of Rows
-    */
-    PCollection<Row> rows;
-    if (options.getInputGcsFilePattern() != null
-        && options.getInputGcsFileFormat() == FORMAT.AVRO) {
-      rows = (PCollection<Row>) records;
-    } else {
-      rows = ((PCollection<String>) records).apply(new JsonToBeamRow(options, schema));
-    }
-    /*
     Tokenize data using remote API call
      */
-    PCollectionTuple tokenizedRows = rows
+    PCollectionTuple tokenizedRows = records
         .apply(MapElements
             .into(TypeDescriptors.kvs(TypeDescriptors.integers(), TypeDescriptors.rows()))
             .via((Row row) -> KV.of(0, row)))

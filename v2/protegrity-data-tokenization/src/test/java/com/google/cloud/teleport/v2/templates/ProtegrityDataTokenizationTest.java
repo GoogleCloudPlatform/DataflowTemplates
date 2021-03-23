@@ -16,8 +16,10 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.startsWith;
+import static org.junit.Assert.assertNotNull;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.options.ProtegrityDataTokenizationOptions;
@@ -41,7 +43,6 @@ import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
-import org.apache.beam.sdk.transforms.JsonToRow;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Lists;
@@ -104,28 +105,23 @@ public class ProtegrityDataTokenizationTest {
 
   @Test
   public void testFileSystemIOReadCSV() throws IOException {
-    PCollection<String> jsons = fileSystemIORead(CSV_FILE_PATH, FORMAT.CSV);
+    PCollection<Row> jsons = fileSystemIORead(CSV_FILE_PATH, FORMAT.CSV);
     assertField(jsons);
     testPipeline.run();
   }
 
   @Test
   public void testFileSystemIOReadJSON() throws IOException {
-    PCollection<String> jsons = fileSystemIORead(JSON_FILE_PATH, FORMAT.JSON);
+    PCollection<Row> jsons = fileSystemIORead(JSON_FILE_PATH, FORMAT.JSON);
     assertField(jsons);
     testPipeline.run();
   }
 
   @Test
   public void testJsonToRow() throws IOException {
-    PCollection<String> jsons = fileSystemIORead(JSON_FILE_PATH, FORMAT.JSON);
-    SchemasUtils testSchemaUtils = new SchemasUtils(SCHEMA_FILE_PATH, StandardCharsets.UTF_8);
-    JsonToRow.ParseResult rows =
-        jsons.apply(
-            "JsonToRow",
-            JsonToRow.withExceptionReporting(testSchemaUtils.getBeamSchema())
-                .withExtendedErrorInfo());
-    PAssert.that(rows.getResults())
+    PCollection<Row> rows = fileSystemIORead(JSON_FILE_PATH, FORMAT.JSON);
+
+    PAssert.that(rows)
         .satisfies(
             x -> {
               LinkedList<Row> beamRows = Lists.newLinkedList(x);
@@ -142,7 +138,7 @@ public class ProtegrityDataTokenizationTest {
     testPipeline.run();
   }
 
-  private PCollection<String> fileSystemIORead(
+  private PCollection<Row> fileSystemIORead(
       String inputGcsFilePattern, FORMAT inputGcsFileFormat) throws IOException {
     ProtegrityDataTokenizationOptions options =
         PipelineOptionsFactory.create().as(ProtegrityDataTokenizationOptions.class);
@@ -171,18 +167,22 @@ public class ProtegrityDataTokenizationTest {
             RowCoder.of(testSchemaUtils.getBeamSchema()));
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
-    return (PCollection<String>) new GcsIO(options).read(testPipeline, testSchemaUtils);
+    return (PCollection<Row>) new GcsIO(options).read(testPipeline, testSchemaUtils);
   }
 
-  private void assertField(PCollection<String> jsons) {
+  private void assertField(PCollection<Row> jsons) {
     PAssert.that(jsons)
         .satisfies(
             x -> {
-              LinkedList<String> rows = Lists.newLinkedList(x);
+              LinkedList<Row> rows = Lists.newLinkedList(x);
               assertThat(rows, hasSize(3));
               rows.forEach(
                   row -> {
-                    assertThat(row, startsWith("{\"Field1\":"));
+                    assertNotNull(row.getSchema());
+                    assertThat(row.getSchema().getFields(), hasSize(3));
+                    assertThat(row.getSchema().getField(0).getName(), equalTo("Field1"));
+
+                    assertThat(row.getValues(), hasSize(3));
                   });
               return null;
             });
