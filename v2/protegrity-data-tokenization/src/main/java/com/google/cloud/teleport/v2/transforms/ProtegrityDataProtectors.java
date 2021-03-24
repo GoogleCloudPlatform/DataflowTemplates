@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
-import com.google.cloud.teleport.v2.transforms.io.BigQueryIO;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.gson.reflect.TypeToken;
 import java.io.IOException;
@@ -41,6 +40,7 @@ import org.apache.beam.vendor.grpc.v1p26p0.com.google.gson.JsonObject;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Throwables;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.ByteArrayEntity;
@@ -150,7 +150,7 @@ public class ProtegrityDataProtectors {
     /**
      * Logger for class.
      */
-    private static final Logger LOG = LoggerFactory.getLogger(BigQueryIO.class);
+    private static final Logger LOG = LoggerFactory.getLogger(DSGTokenizationFn.class);
     public static final String ID_TOKEN_NAME = "ID";
 
     private static Schema schemaToDsg;
@@ -297,6 +297,12 @@ public class ProtegrityDataProtectors {
 
       CloseableHttpResponse response = sendToDsg(
           formatJsonsToDsgBatch(rowsToJsons(inputRows)).getBytes());
+
+      if (response.getStatusLine().getStatusCode() != HttpStatus.SC_OK) {
+        LOG.error("Send to DSG '{}' failed with '{}'",
+            this.dsgURI,
+            response.getStatusLine());
+      }
 
       String tokenizedData = IOUtils
           .toString(response.getEntity().getContent(), StandardCharsets.UTF_8);

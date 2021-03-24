@@ -181,22 +181,20 @@ public class GcsIO {
 
   private PCollection<Row> readAvro(Pipeline pipeline, Schema beamSchema) {
     org.apache.avro.Schema avroSchema = AvroUtils.toAvroSchema(beamSchema);
-    PCollection<GenericRecord> genericRecords = pipeline.apply(
-        "ReadAvroFiles",
-        AvroIO.readGenericRecords(avroSchema).from(options.getInputGcsFilePattern()));
-    return genericRecords
+
+    return pipeline
         .apply(
-            "GenericRecordToRow", MapElements.into(TypeDescriptor.of(Row.class))
+        "ReadAvroFiles",
+            AvroIO.readGenericRecords(avroSchema).from(options.getInputGcsFilePattern()))
+        .apply(
+            "GenericRecordToRow",
+            MapElements.into(TypeDescriptor.of(Row.class))
                 .via(AvroUtils.getGenericRecordToRowFunction(beamSchema)))
         .setCoder(RowCoder.of(beamSchema));
-
   }
 
   private PCollectionTuple readCsv(Pipeline pipeline) {
     return pipeline
-        /*
-         * Step 1: Read CSV file(s) from Cloud Storage using {@link CsvConverters.ReadCsv}.
-         */
         .apply(
             "ReadCsvFromGcsFiles",
             CsvConverters.ReadCsv.newBuilder()
@@ -227,10 +225,14 @@ public class GcsIO {
 
     if (jsons.isBounded() == IsBounded.BOUNDED) {
       return jsons
-          .apply("WriteToGCS", TextIO.write().to(options.getOutputGcsDirectory()));
+          .apply(
+              "WriteToGCS",
+              TextIO.write().to(options.getOutputGcsDirectory()));
     } else {
       return jsons
-          .apply("WriteToGCS", TextIO.write().withWindowedWrites().withNumShards(1)
+          .apply(
+              "WriteToGCS",
+              TextIO.write().withWindowedWrites().withNumShards(1)
               .to(options.getOutputGcsDirectory()));
     }
   }
@@ -239,18 +241,22 @@ public class GcsIO {
     String header = String.join(options.getCsvDelimiter(), fieldNames);
     String csvDelimiter = options.getCsvDelimiter();
     PCollection<String> csvs = outputCollection
-        .apply("ConvertToCSV", MapElements.into(TypeDescriptors.strings())
+        .apply(
+            "ConvertToCSV",
+            MapElements.into(TypeDescriptors.strings())
             .via((Row inputRow) ->
                 new RowToCsv(csvDelimiter).getCsvFromRow(inputRow))
         );
 
     if (csvs.isBounded() == IsBounded.BOUNDED) {
       return csvs
-          .apply("WriteToGCS",
+          .apply(
+              "WriteToGCS",
               TextIO.write().to(options.getOutputGcsDirectory()).withHeader(header));
     } else {
       return csvs
-          .apply("WriteToGCS",
+          .apply(
+              "WriteToGCS",
               TextIO.write().withWindowedWrites().withNumShards(1)
                   .to(options.getOutputGcsDirectory()).withHeader(header));
     }
@@ -260,12 +266,15 @@ public class GcsIO {
     org.apache.avro.Schema avroSchema = AvroUtils.toAvroSchema(schema);
     return outputCollection
         .apply(
-            "RowToGenericRecord", MapElements.into(TypeDescriptor.of(GenericRecord.class))
+            "RowToGenericRecord",
+            MapElements.into(TypeDescriptor.of(GenericRecord.class))
                 .via(AvroUtils.getRowToGenericRecordFunction(avroSchema)))
         .setCoder(AvroCoder.of(GenericRecord.class, avroSchema))
-        .apply("WriteToAvro", AvroIO.writeGenericRecords(avroSchema)
-            .to(options.getOutputGcsDirectory())
-            .withSuffix(".avro"));
+        .apply(
+            "WriteToAvro",
+            AvroIO.writeGenericRecords(avroSchema)
+                .to(options.getOutputGcsDirectory())
+                .withSuffix(".avro"));
   }
 
   public PCollection<Row> read(Pipeline pipeline, SchemasUtils schema) {
@@ -282,10 +291,11 @@ public class GcsIO {
 
         if (options.getNonTokenizedDeadLetterGcsPath() != null) {
           /*
-           * Step 3: Write jsons to dead-letter gcs that were successfully processed.
+           * Step 3: Write jsons to dead-letter gcs that were not successfully processed.
            */
           jsons.get(PROCESSING_DEADLETTER_OUT)
-              .apply("WriteCsvConversionErrorsToGcs",
+              .apply(
+                  "WriteCsvConversionErrorsToGcs",
                   ErrorConverters.WriteErrorsToTextIO.<String, String>newBuilder()
                       .setErrorWritePath(options.getNonTokenizedDeadLetterGcsPath())
                       .setTranslateFunction(SerializableFunctions.getCsvErrorConverter())
@@ -298,16 +308,19 @@ public class GcsIO {
             .apply(
                 "GetJson",
                 MapElements.into(TypeDescriptors.strings()).via(FailsafeElement::getPayload))
-            .apply(new JsonToBeamRow(options.getNonTokenizedDeadLetterGcsPath(), schema));
+            .apply(
+                "TransformToBeamRow",
+                new JsonToBeamRow(options.getNonTokenizedDeadLetterGcsPath(), schema));
       case JSON:
         return readJson(pipeline)
-            .apply(new JsonToBeamRow(options.getNonTokenizedDeadLetterGcsPath(), schema));
+            .apply(
+                "TransformToBeamRow",
+                new JsonToBeamRow(options.getNonTokenizedDeadLetterGcsPath(), schema));
       case AVRO:
         return readAvro(pipeline, schema.getBeamSchema());
       default:
         throw new IllegalStateException(
-            "No valid format for input data is provided. Please, choose JSON or CSV or AVRO.");
-
+            "No valid format for input data is provided. Please, choose JSON, CSV or AVRO.");
     }
   }
 
@@ -321,8 +334,7 @@ public class GcsIO {
         return writeCsv(input, schema.getFieldNames());
       default:
         throw new IllegalStateException(
-            "No valid format for output data is provided. Please, choose JSON or CSV or AVRO.");
-
+            "No valid format for output data is provided. Please, choose JSON, CSV or AVRO.");
     }
   }
 }
