@@ -107,6 +107,17 @@ public class FormatDatastreamRecordToJson
     return this;
   }
 
+  /**
+   * Set the map of columns values to hash.
+   *
+   * @param hashedColumns The map of columns to new columns to hash.
+   */
+  public FormatDatastreamRecordToJson withHashColumnValues(
+      Map<String, String> hashedColumns) {
+    this.hashedColumns = hashedColumns;
+    return this;
+  }
+
   @Override
   public FailsafeElement<String, String> apply(GenericRecord record) {
     ObjectMapper mapper = new ObjectMapper();
