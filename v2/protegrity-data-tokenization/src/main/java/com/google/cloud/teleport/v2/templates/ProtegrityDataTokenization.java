@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import static com.google.cloud.teleport.v2.transforms.io.BigQueryIO.write;
 import static com.google.cloud.teleport.v2.utils.DurationUtils.parseDuration;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings.nullToEmpty;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.options.ProtegrityDataTokenizationOptions;
@@ -36,6 +37,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
+import org.apache.beam.runners.direct.DirectRunner;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -206,6 +208,11 @@ public class ProtegrityDataTokenization {
         .withValidation()
         .as(DataflowPipelineOptions.class);
 
+    if (DirectRunner.class.isAssignableFrom(options.getRunner())) {
+      String serviceAccount = nullToEmpty(dataflowOptions.getServiceAccount());
+      dataflowOptions.setServiceAccount(serviceAccount);
+    }
+
     run(options, dataflowOptions);
   }
 
@@ -219,7 +226,9 @@ public class ProtegrityDataTokenization {
       DataflowPipelineOptions dataflowOptions) {
     SchemasUtils schema = null;
     try {
-      schema = new SchemasUtils(options.getDataSchemaGcsPath(), StandardCharsets.UTF_8);
+      if (options.getDataSchemaGcsPath() != null) {
+        schema = new SchemasUtils(options.getDataSchemaGcsPath(), StandardCharsets.UTF_8);
+      }
     } catch (IOException e) {
       LOG.error("Failed to retrieve schema for data.", e);
     }
