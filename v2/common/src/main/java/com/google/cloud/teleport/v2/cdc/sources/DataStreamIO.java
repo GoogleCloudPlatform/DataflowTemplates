@@ -27,7 +27,9 @@ import com.google.cloud.teleport.v2.transforms.FormatDatastreamRecordToJson;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.extensions.gcp.util.GcsUtil;
 import org.apache.beam.sdk.extensions.gcp.util.GcsUtil.GcsUtilFactory;
@@ -104,6 +106,7 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
   private String rfcStartDateTime;
   private Integer fileReadConcurrency = 30;
   private Boolean lowercaseSourceColumns = false;
+  private Map<String, String> hashedColumns = new HashMap<String, String>();
   PCollection<String> directories = null;
 
   public DataStreamIO() {}
@@ -133,6 +136,19 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
     return this;
   }
 
+  /**
+   * Add the supplied columnName to the map of column values to be hashed.
+   * A new column with a hashed value of the first will be created.
+   *
+   * @param columnName The column name to look for in the data.
+   * @param newColumnName The name of the new column created with hashed data.
+   */
+  public DataStreamIO withHashColumnValue(
+      String columnName, String newColumnName) {
+    this.hashedColumns.put(columnName, newColumnName);
+    return this;
+  }
+
   @Override
   public PCollection<FailsafeElement<String, String>> expand(PBegin input) {
     PCollection<ReadableFile> datastreamFiles =
@@ -152,6 +168,7 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
           .apply("ParseJsonRecords", ParDo.of(
               FormatDatastreamJsonToJson.create()
                   .withStreamName(this.streamName)
+                  .withHashColumnValues(this.hashedColumns)
                   .withLowercaseSourceColumns(this.lowercaseSourceColumns)))
           .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
       } else {
@@ -160,6 +177,7 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
               AvroIO.parseFilesGenericRecords(
                 FormatDatastreamRecordToJson.create()
                     .withStreamName(this.streamName)
+                    .withHashColumnValues(this.hashedColumns)
                     .withLowercaseSourceColumns(this.lowercaseSourceColumns))
                 .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())));
       }

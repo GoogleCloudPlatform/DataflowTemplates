@@ -72,7 +72,8 @@ public class SpannerRecordConverter {
             long microSeconds=0L;
             if (!nullValue) {
               Timestamp ts = row.getTimestamp(fieldName);
-              microSeconds = TimeUnit.SECONDS.toMicros(ts.getSeconds()) + TimeUnit.NANOSECONDS.toMicros(ts.getNanos());
+              microSeconds = TimeUnit.SECONDS.toMicros(ts.getSeconds()) 
+                  + TimeUnit.NANOSECONDS.toMicros(ts.getNanos());
             }
             builder.set(field, nullValue ? null : microSeconds);
           } else {

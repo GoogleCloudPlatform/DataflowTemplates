@@ -20,9 +20,11 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.api.client.http.ByteArrayContent;
 import com.google.api.client.http.GenericUrl;
+import com.google.api.client.http.HttpBackOffIOExceptionHandler;
 import com.google.api.client.http.HttpBackOffUnsuccessfulResponseHandler;
 import com.google.api.client.http.HttpBackOffUnsuccessfulResponseHandler.BackOffRequired;
 import com.google.api.client.http.HttpContent;
+import com.google.api.client.http.HttpIOExceptionHandler;
 import com.google.api.client.http.HttpMediaType;
 import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpRequestFactory;
@@ -83,7 +85,7 @@ public abstract class HttpEventPublisher {
   private static final String AUTHORIZATION_SCHEME = "Splunk %s";
 
   private static final String HTTPS_PROTOCOL_PREFIX = "https";
-
+  
   public static Builder newBuilder() {
     return new AutoValue_HttpEventPublisher.Builder();
   }
@@ -115,10 +117,13 @@ public abstract class HttpEventPublisher {
 
     HttpBackOffUnsuccessfulResponseHandler responseHandler =
         new HttpBackOffUnsuccessfulResponseHandler(getConfiguredBackOff());
-
     responseHandler.setBackOffRequired(BackOffRequired.ON_SERVER_ERROR);
-
     request.setUnsuccessfulResponseHandler(responseHandler);
+
+    HttpIOExceptionHandler ioExceptionHandler =
+        new HttpBackOffIOExceptionHandler(getConfiguredBackOff());
+    request.setIOExceptionHandler(ioExceptionHandler);
+    
     setHeaders(request, token());
 
     return request.execute();

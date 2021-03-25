@@ -37,7 +37,7 @@ public final class FormatDatastreamJsonToJson
 
   static final Logger LOG = LoggerFactory.getLogger(FormatDatastreamJsonToJson.class);
   private String rowIdColumnName;
-  private static Map<String, String> hashedColumns = new HashMap<String, String>();
+  private Map<String, String> hashedColumns = new HashMap<String, String>();
   private boolean lowercaseSourceColumns = false;
   private String streamName;
 
@@ -77,6 +77,17 @@ public final class FormatDatastreamJsonToJson
   public FormatDatastreamJsonToJson withHashColumnValue(
       String columnName, String newColumnName) {
     this.hashedColumns.put(columnName, newColumnName);
+    return this;
+  }
+
+  /**
+   * Set the map of columns values to hash.
+   *
+   * @param hashedColumns The map of columns to new columns to hash.
+   */
+  public FormatDatastreamJsonToJson withHashColumnValues(
+      Map<String, String> hashedColumns) {
+    this.hashedColumns = hashedColumns;
     return this;
   }
 
