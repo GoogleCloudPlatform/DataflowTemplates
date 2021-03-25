@@ -221,6 +221,7 @@ public class ProtegrityDataTokenization {
    * Runs the pipeline to completion with the specified options.
    *
    * @param options The execution options.
+   * @param serviceAccount The email address representing Google account.
    * @return The pipeline result.
    */
   public static PipelineResult run(ProtegrityDataTokenizationOptions options,
