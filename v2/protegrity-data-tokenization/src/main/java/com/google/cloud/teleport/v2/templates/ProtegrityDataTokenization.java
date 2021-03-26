@@ -35,6 +35,7 @@ import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import org.apache.beam.runners.dataflow.DataflowRunner;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -57,6 +58,7 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TypeDescriptors;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -201,22 +203,31 @@ public class ProtegrityDataTokenization {
             .as(ProtegrityDataTokenizationOptions.class);
     FileSystems.setDefaultPipelineOptions(options);
 
-    DataflowPipelineOptions dataflowOptions = PipelineOptionsFactory.fromArgs(args)
-        .withoutStrictParsing()
-        .withValidation()
-        .as(DataflowPipelineOptions.class);
+    String serviceAccount;
+    if (DataflowRunner.class.isAssignableFrom(options.getRunner())) {
+      DataflowPipelineOptions dataflowOptions = PipelineOptionsFactory.fromArgs(args)
+          .withoutStrictParsing()
+          .withValidation()
+          .as(DataflowPipelineOptions.class);
+      serviceAccount = dataflowOptions.getServiceAccount();
+    } else {
+      serviceAccount = StringUtils.EMPTY;
+    }
 
-    run(options, dataflowOptions);
+    run(options, serviceAccount);
   }
 
   /**
    * Runs the pipeline to completion with the specified options.
    *
    * @param options The execution options.
+   * @param serviceAccount The email address representing Google account.
    * @return The pipeline result.
    */
   public static PipelineResult run(ProtegrityDataTokenizationOptions options,
-      DataflowPipelineOptions dataflowOptions) {
+      String serviceAccount) {
+    checkArgument(StringUtils.isNoneBlank(options.getDataSchemaGcsPath()), "Missing required value for --dataSchemaGcsPath.");
+
     SchemasUtils schema = null;
     try {
       schema = new SchemasUtils(options.getDataSchemaGcsPath(), StandardCharsets.UTF_8);
@@ -278,7 +289,7 @@ public class ProtegrityDataTokenization {
                 .setDsgURI(options.getDsgUri())
                 .setSchema(schema.getBeamSchema())
                 .setDataElements(dataElements)
-                .setServiceAccount(dataflowOptions.getServiceAccount())
+                .setServiceAccount(serviceAccount)
                 .setSuccessTag(TOKENIZATION_OUT)
                 .setFailureTag(TOKENIZATION_DEADLETTER_OUT).build());
 
