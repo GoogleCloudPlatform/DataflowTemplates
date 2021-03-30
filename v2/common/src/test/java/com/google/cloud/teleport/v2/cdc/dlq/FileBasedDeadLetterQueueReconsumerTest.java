@@ -47,9 +47,12 @@ public class FileBasedDeadLetterQueueReconsumerTest {
       "{\"message\":{\"datasample3\":\"datasample3\"}, \"error_message\":\"errorsample3\"}"};
 
   private static final String[] JSON_RESULTS_1 =
-      {"{\"datasample1\":\"datasample1\",\"_metadata_error\":\"errorsample3\"}",
-      "{\"datasample2\":\"datasample2\",\"_metadata_error\":\"errorsample3\"}",
-      "{\"datasample3\":\"datasample3\",\"_metadata_error\":\"errorsample3\"}"};
+      {"{\"datasample1\":\"datasample1\",\"_metadata_error\":\"errorsample3\","
+          + "\"_metadata_retry_count\":1}",
+      "{\"datasample2\":\"datasample2\",\"_metadata_error\":\"errorsample3\","
+          + "\"_metadata_retry_count\":1}",
+      "{\"datasample3\":\"datasample3\",\"_metadata_error\":\"errorsample3\","
+          + "\"_metadata_retry_count\":1}"};
 
   static final Logger LOG = LoggerFactory.getLogger(FileBasedDeadLetterQueueReconsumerTest.class);
 
@@ -62,7 +65,7 @@ public class FileBasedDeadLetterQueueReconsumerTest {
   private String createJsonFile(String filename, String[] fileLines) throws IOException {
     File f = folder.newFile(filename);
     FileWriter w = new FileWriter(f);
-    for (String line: fileLines) {
+    for (String line : fileLines) {
       w.write(line);
       w.write('\n');
     }
