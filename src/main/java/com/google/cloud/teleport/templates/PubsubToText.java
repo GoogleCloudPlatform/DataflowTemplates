@@ -39,6 +39,7 @@ import org.apache.beam.sdk.options.ValueProvider.NestedValueProvider;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
+import org.apache.beam.sdk.values.PCollection;
 
 /**
  * This pipeline ingests incoming data from a Cloud Pub/Sub topic and
@@ -64,6 +65,8 @@ import org.apache.beam.sdk.transforms.windowing.Window;
  --outputFilenamePrefix=windowed-file \
  --outputFilenameSuffix=.txt"
  * </pre>
+ *
+ * To use a pre-existing pubsub subscription, use <tt>--inputSubscription=projects/${PROJECT_ID}/subscriptions/subscription-name</tt> instead of <tt>--inputTopic</tt>
  * </p>
  */
 public class PubsubToText {
@@ -74,8 +77,12 @@ public class PubsubToText {
    * <p>Inherits standard configuration options.</p>
    */
   public interface Options extends PipelineOptions, StreamingOptions {
+    @Description("The Cloud Pub/Sub subscription to read from (overrides inputTopic).")
+    ValueProvider<String> getInputSubscription();
+
+    void setInputSubscription(ValueProvider<String> value);
+
     @Description("The Cloud Pub/Sub topic to read from.")
-    @Required
     ValueProvider<String> getInputTopic();
     void setInputTopic(ValueProvider<String> value);
 
@@ -147,14 +154,22 @@ public class PubsubToText {
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
 
+    ValueProvider<String> inputSubscription = options.getInputSubscription();
+    ValueProvider<String> inputTopic = options.getInputTopic();
+    PCollection<String> pubsubData;
+
     /*
      * Steps:
      *   1) Read string messages from PubSub
      *   2) Window the messages into minute intervals specified by the executor.
      *   3) Output the windowed files to GCS
      */
-    pipeline
-        .apply("Read PubSub Events", PubsubIO.readStrings().fromTopic(options.getInputTopic()))
+    if (inputSubscription != null) {
+        pubsubData = pipeline.apply("Read PubSub Events", PubsubIO.readStrings().fromSubscription(inputSubscription));
+    } else {
+        pubsubData = pipeline.apply("Read PubSub Events", PubsubIO.readStrings().fromTopic(inputTopic));
+    }
+    pubsubData
         .apply(
             options.getWindowDuration() + " Window",
             Window.into(FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))

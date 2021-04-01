@@ -40,6 +40,7 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
+import org.apache.beam.sdk.values.PCollection;
 
 /**
  * This pipeline ingests incoming data from a Cloud Pub/Sub topic and outputs the raw data into
@@ -59,6 +60,7 @@ import org.apache.beam.sdk.transforms.windowing.Window;
  *      ]
  *   }
  * </pre>
+ * </p>
  *
  * <p>Example Usage:
  *
@@ -73,12 +75,16 @@ import org.apache.beam.sdk.transforms.windowing.Window;
  *   --runner=DataflowRunner \
  *   --windowDuration=2m \
  *   --numShards=1 \
- *   --topic=projects/${PROJECT_ID}/topics/windowed-files \
+ *   --inputTopic=projects/${PROJECT_ID}/topics/windowed-files \
  *   --outputDirectory=gs://${PROJECT_ID}/temp/ \
  *   --outputFilenamePrefix=windowed-file \
  *   --outputFilenameSuffix=.avro
  *   --avroTempDirectory=gs://${PROJECT_ID}/avro-temp-dir/"
  * </pre>
+ *
+ * To use a pre-existing pubsub subscription, use <tt>--inputSubscription=projects/${PROJECT_ID}/subscriptions/subscription-name</tt> instead of <tt>--inputTopic</tt>
+ *
+ * </p>
  */
 public class PubsubToAvro {
 
@@ -88,8 +94,12 @@ public class PubsubToAvro {
    * <p>Inherits standard configuration options.
    */
   public interface Options extends PipelineOptions, StreamingOptions {
+    @Description("The Cloud Pub/Sub subscription to read from (overrides inputTopic).")
+    ValueProvider<String> getInputSubscription();
+
+    void setInputSubscription(ValueProvider<String> value);
+
     @Description("The Cloud Pub/Sub topic to read from.")
-    @Required
     ValueProvider<String> getInputTopic();
 
     void setInputTopic(ValueProvider<String> value);
@@ -169,16 +179,23 @@ public class PubsubToAvro {
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
 
+    ValueProvider<String> inputSubscription = options.getInputSubscription();
+    ValueProvider<String> inputTopic = options.getInputTopic();
+    PCollection<PubsubMessage> pubsubData;
+
     /*
      * Steps:
      *   1) Read messages from PubSub
      *   2) Window the messages into minute intervals specified by the executor.
      *   3) Output the windowed data into Avro files, one per window by default.
      */
-    pipeline
-        .apply(
-            "Read PubSub Events",
-            PubsubIO.readMessagesWithAttributes().fromTopic(options.getInputTopic()))
+
+    if (inputSubscription != null) {
+        pubsubData = pipeline.apply("Read PubSub Events", PubsubIO.readMessagesWithAttributes().fromSubscription(inputSubscription));
+    } else {
+        pubsubData = pipeline.apply("Read PubSub Events", PubsubIO.readMessagesWithAttributes().fromTopic(inputTopic));
+    }
+    pubsubData
         .apply("Map to Archive", ParDo.of(new PubsubMessageToArchiveDoFn()))
         .apply(
             options.getWindowDuration() + " Window",
