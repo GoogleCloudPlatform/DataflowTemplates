@@ -8,7 +8,7 @@ Supported data formats:
 
 - JSON
 - CSV
-- Avro
+- [Avro](#Avro-notes)
 
 Supported input sources:
 
@@ -239,6 +239,11 @@ adding support for:
 
 Following the template design, it is recommended that inputs are transformed into Beam Row and
 outputs are transformed from Beam Row.
+
+## Avro notes:
+
+* Verify that provided Data Schema parameter matches your data to avoid runtime errors. 
+Elements failed to parse due to schema mismatch will not be saved into the deadletter destination.
 
 ### Ideas for Extensions
 
