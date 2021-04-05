@@ -82,12 +82,12 @@ public class Utils {
            "data": {
              "data": {
                "bucket": "kafka_to_pubsub_test",
-               "key_password": "secret",
-               "keystore_password": "secret",
-               "keystore_path": "ssl_cert/kafka.keystore.jks",
+               "ssl.key.password": "secret",
+               "ssl.keystore.password": "secret",
+               "ssl.keystore.location": "ssl_cert/kafka.keystore.jks",
                "password": "admin-secret",
-               "truststore_password": "secret",
-               "truststore_path": "ssl_cert/kafka.truststore.jks",
+               "ssl.truststore.password": "secret",
+               "ssl.truststore.location": "ssl_cert/kafka.truststore.jks",
                "username": "admin"
              },
              "metadata": {
@@ -153,12 +153,12 @@ public class Utils {
        Parse security properties from the JSON that may have the following keys:
        {
          "bucket": "kafka_to_pubsub_test",
-         "key_password": "secret",
-         "keystore_password": "secret",
-         "keystore_path": "ssl_cert/kafka.keystore.jks",
+         "ssl.key.password": "secret",
+         "ssl.keystore.password": "secret",
+         "ssl.keystore.location": "ssl_cert/kafka.keystore.jks",
          "password": "admin-secret",
-         "truststore_password": "secret",
-         "truststore_path": "ssl_cert/kafka.truststore.jks",
+         "ssl.truststore.password": "secret",
+         "ssl.truststore.location": "ssl_cert/kafka.truststore.jks",
          "username": "admin"
        }
       */

@@ -225,11 +225,11 @@ The sample JSON with SSL SCRAM parameters:
 ```json
 {
   "bucket": "kafka_to_pubsub",
-  "key_password": "secret",
-  "keystore_password": "secret",
-  "keystore_path": "ssl_cert/kafka.keystore.jks",
-  "truststore_password": "secret",
-  "truststore_path": "ssl_cert/kafka.truststore.jks",
+  "ssl.key.password": "secret",
+  "ssl.keystore.password": "secret",
+  "ssl.keystore.location": "ssl_cert/kafka.keystore.jks",
+  "ssl.truststore.password": "secret",
+  "ssl.truststore.location": "ssl_cert/kafka.truststore.jks",
   "username": "admin",
   "password": "admin-secret"
 }
