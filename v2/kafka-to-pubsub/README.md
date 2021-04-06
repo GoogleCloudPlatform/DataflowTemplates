@@ -227,6 +227,7 @@ For SCRAM configuration
 - `password` - password for Kafka SCRAM authentication
 - `sasl.mechanism` - hash mechanism for Kafka SCRAM authentication. Possible values: `SCRAM-SHA-256`
   ; `SCRAM-SHA-512`. Defaults to `SCRAM-SHA-512`
+- `group.id` - Kafka consumer group ID. Optional parameter
 
 The sample JSON with SSL SCRAM parameters:
 
@@ -240,7 +241,8 @@ The sample JSON with SSL SCRAM parameters:
   "ssl.truststore.location": "ssl_cert/kafka.truststore.jks",
   "username": "admin",
   "password": "admin-secret",
-  "sasl.mechanism": "SCRAM-SHA-256"
+  "sasl.mechanism": "SCRAM-SHA-256",
+  "group.id": "group_id"
 }
 ```
 

@@ -91,7 +91,8 @@ public class Utils {
                "ssl.truststore.password": "secret",
                "ssl.truststore.location": "ssl_cert/kafka.truststore.jks",
                "username": "admin",
-               "sasl.mechanism": "SCRAM-SHA-256"
+               "sasl.mechanism": "SCRAM-SHA-256",
+               "group.id": "group_id"
              },
              "metadata": {
                "created_time": "2020-10-20T11:43:11.109186969Z",
@@ -120,11 +121,11 @@ public class Utils {
   }
 
   /**
-   * Configures Kafka consumer for authorized connection.
+   * Configures Kafka consumer for authorized connection and group ID if provided
    * <p>
    * If no SASL mechanism is provided, defaults to SCRAM-SHA-512.
    *
-   * @param props username, password, and SASL mechanism for Kafka
+   * @param props username, password, SASL mechanism, and group ID for Kafka
    * @return configuration set of parameters for Kafka
    */
   public static Map<String, Object> configureKafka(Map<String, String> props) {
@@ -148,6 +149,11 @@ public class Utils {
                   + "username=\"%s\" password=\"%s\";",
               props.get(USERNAME), props.get(PASSWORD)));
     }
+
+    if (props != null && props.containsKey(ConsumerConfig.GROUP_ID_CONFIG)) {
+      config.put(ConsumerConfig.GROUP_ID_CONFIG, props.get(ConsumerConfig.GROUP_ID_CONFIG));
+    }
+
     return config;
   }
 
@@ -173,7 +179,9 @@ public class Utils {
          "password": "admin-secret",
          "ssl.truststore.password": "secret",
          "ssl.truststore.location": "ssl_cert/kafka.truststore.jks",
-         "username": "admin"
+         "username": "admin",
+         "sasl.mechanism": "SCRAM-SHA-256",
+         "group.id": "group_id"
        }
       */
       credentials =
@@ -229,6 +237,12 @@ public class Utils {
         LOG.warn(
             "There are no username and/or password for Kafka."
                 + "Trying to initiate an unauthorized connection.");
+      }
+
+      // Group ID for the Kafka consumer
+      if (credentials.has(ConsumerConfig.GROUP_ID_CONFIG)) {
+        credentialMap.get(KAFKA_CREDENTIALS).put(ConsumerConfig.GROUP_ID_CONFIG,
+            credentials.get(ConsumerConfig.GROUP_ID_CONFIG).getAsString());
       }
 
       // SSL truststore, keystore, and password
