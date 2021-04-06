@@ -30,6 +30,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.vendor.grpc.v1p26p0.com.google.common.io.CharStreams;
@@ -40,6 +41,7 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.security.scram.internals.ScramMechanism;
@@ -88,7 +90,8 @@ public class Utils {
                "password": "admin-secret",
                "ssl.truststore.password": "secret",
                "ssl.truststore.location": "ssl_cert/kafka.truststore.jks",
-               "username": "admin"
+               "username": "admin",
+               "sasl.mechanism": "SCRAM-SHA-256"
              },
              "metadata": {
                "created_time": "2020-10-20T11:43:11.109186969Z",
@@ -118,15 +121,26 @@ public class Utils {
 
   /**
    * Configures Kafka consumer for authorized connection.
+   * <p>
+   * If no SASL mechanism is provided, defaults to SCRAM-SHA-512.
    *
-   * @param props username and password for Kafka
+   * @param props username, password, and SASL mechanism for Kafka
    * @return configuration set of parameters for Kafka
    */
   public static Map<String, Object> configureKafka(Map<String, String> props) {
     // Create the configuration for Kafka
     Map<String, Object> config = new HashMap<>();
     if (props != null && props.containsKey(USERNAME) && props.containsKey(PASSWORD)) {
-      config.put(SaslConfigs.SASL_MECHANISM, ScramMechanism.SCRAM_SHA_512.mechanismName());
+      String saslMechanism = props.get(SaslConfigs.SASL_MECHANISM);
+      if (Objects.equals(saslMechanism, ScramMechanism.SCRAM_SHA_256.mechanismName()) ||
+          Objects.equals(saslMechanism, ScramMechanism.SCRAM_SHA_512.mechanismName())
+      ) {
+        config.put(SaslConfigs.SASL_MECHANISM, saslMechanism);
+      } else {
+        config.put(SaslConfigs.SASL_MECHANISM, ScramMechanism.SCRAM_SHA_512.mechanismName());
+        LOG.warn("No valid SASL hash mechanism was provided. SCRAM-SHA-512 was set.");
+      }
+
       config.put(
           SaslConfigs.SASL_JAAS_CONFIG,
           String.format(
@@ -201,12 +215,16 @@ public class Utils {
   private static Map<String, Map<String, String>> parseCredentialsJson(JsonObject credentials) {
     Map<String, Map<String, String>> credentialMap = new HashMap<>();
     if (credentials != null) {
-      // Username and password for Kafka authorization
+      // Username, password, and SASL mechanism for Kafka authorization
       credentialMap.put(KAFKA_CREDENTIALS, new HashMap<>());
 
       if (credentials.has(USERNAME) && credentials.has(PASSWORD)) {
         credentialMap.get(KAFKA_CREDENTIALS).put(USERNAME, credentials.get(USERNAME).getAsString());
         credentialMap.get(KAFKA_CREDENTIALS).put(PASSWORD, credentials.get(PASSWORD).getAsString());
+        if (credentials.has(SaslConfigs.SASL_MECHANISM)) {
+          credentialMap.get(KAFKA_CREDENTIALS).put(SaslConfigs.SASL_MECHANISM,
+              credentials.get(SaslConfigs.SASL_MECHANISM).getAsString());
+        }
       } else {
         LOG.warn(
             "There are no username and/or password for Kafka."

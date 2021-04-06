@@ -133,28 +133,34 @@ gcloud dataflow flex-template build ${TEMPLATE_PATH} \
 
 ### Executing Template
 
-To deploy the pipeline, you should refer to the template file and pass the 
-[parameters](https://cloud.google.com/dataflow/docs/guides/specifying-exec-params#setting-other-cloud-dataflow-pipeline-options) 
+To deploy the pipeline, you should refer to the template file and pass the
+[parameters](https://cloud.google.com/dataflow/docs/guides/specifying-exec-params#setting-other-cloud-dataflow-pipeline-options)
 required by the pipeline.
 
 The template requires the following parameters:
-- bootstrapServers: Comma separated kafka bootstrap servers in format ip:port
-- inputTopics: Comma separated list of Kafka topics to read from
-- outputTopic: Pub/Sub topic to write the output, in the format of 'projects/yourproject/topics/yourtopic'
+
+- **bootstrapServers**: Comma separated kafka bootstrap servers in format ip:port
+- **inputTopics**: Comma separated list of Kafka topics to read from
+- **outputTopic**: Pub/Sub topic to write the output, in the format of '
+  projects/yourproject/topics/yourtopic'
 
 The template allows for the user to supply the following optional parameters:
-- javascriptTextTransformGcsPath: Path to javascript function in GCS
-- javascriptTextTransformFunctionName: Name of javascript function
-- outputDeadLetterTopic: Topic for messages failed to reach the output topic(aka. DeadLetter topic)
-- secretStoreUrl: URL to Kafka credentials in HashiCorp Vault secret storage in the format 'http(s)://vaultip:vaultport/path/to/credentials'
-- vaultToken: Token to access HashiCorp Vault secret storage
-- kafkaOptionsGcsPath: Path to Kafka credentials in GCS. This parameter can be used instead of
+
+- **javascriptTextTransformGcsPath**: Path to javascript function in GCS
+- **javascriptTextTransformFunctionName**: Name of javascript function
+- **outputDeadLetterTopic**: Topic for messages failed to reach the output topic(aka. DeadLetter
+  topic)
+- **secretStoreUrl**: URL to Kafka credentials in HashiCorp Vault secret storage in the format '
+  http(s)://vaultip:vaultport/path/to/credentials'
+- **vaultToken**: Token to access HashiCorp Vault secret storage
+- **kafkaOptionsGcsPath**: Path to Kafka credentials in GCS. This parameter can be used instead of
   secretStoreUrl and vaultToken
 
 _Note_: If you want to provide Kafka credentials you should specify **either** secretStoreUrl and
 vaultToken or kafkaOptionsGcsPath.
 
 You can do this in 3 different ways:
+
 1. Using [Dataflow Google Cloud Console](https://console.cloud.google.com/dataflow/jobs)
 
 2. Using `gcloud` CLI tool
@@ -219,19 +225,22 @@ For SCRAM configuration
 
 - `username` - username for Kafka SCRAM authentication
 - `password` - password for Kafka SCRAM authentication
+- `sasl.mechanism` - hash mechanism for Kafka SCRAM authentication. Possible values: `SCRAM-SHA-256`
+  ; `SCRAM-SHA-512`. Defaults to `SCRAM-SHA-512`
 
 The sample JSON with SSL SCRAM parameters:
 
 ```json
 {
-  "bucket": "kafka_to_pubsub",
+  "bucket": "kafka_certificates_bucket",
   "ssl.key.password": "secret",
   "ssl.keystore.password": "secret",
   "ssl.keystore.location": "ssl_cert/kafka.keystore.jks",
   "ssl.truststore.password": "secret",
   "ssl.truststore.location": "ssl_cert/kafka.truststore.jks",
   "username": "admin",
-  "password": "admin-secret"
+  "password": "admin-secret",
+  "sasl.mechanism": "SCRAM-SHA-256"
 }
 ```
 
