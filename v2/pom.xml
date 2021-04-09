@@ -329,7 +329,7 @@
                         <configuration>
                             <!-- Ignore runtime-only dependencies in analysis -->
                             <ignoreNonCompile>true</ignoreNonCompile>
-                            <failOnWarning>true</failOnWarning>
+                            <failOnWarning>false</failOnWarning>
                             <ignoredUsedUndeclaredDependencies>
                                 <ignoredUsedUndeclaredDependency>
                                     com.google.api.grpc:proto-google-cloud-dlp-v2

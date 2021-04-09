@@ -213,6 +213,7 @@ public class CsvToElasticsearch {
                     .setInputFileSpec(options.getInputFileSpec())
                     .setHeaderTag(CSV_HEADERS)
                     .setLineTag(CSV_LINES)
+                    .setFileEncoding(options.getCsvFileEncoding())
                     .build())
             /*
              * Step 2: Convert lines to Elasticsearch document.

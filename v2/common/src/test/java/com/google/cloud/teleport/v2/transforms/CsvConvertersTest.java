@@ -71,7 +71,7 @@ public class CsvConvertersTest {
   private static final String HEADER_CSV_FILE_PATH =
       Resources.getResource(CSV_RESOURCES_DIR + "with_headers.csv").getPath();
 
-  private static final String TEST_JSON_SCHEMA__PATH =
+  private static final String TEST_JSON_SCHEMA_PATH =
       Resources.getResource(CSV_RESOURCES_DIR + "testSchema.json").getPath();
 
   private static final String TEST_AVRO_SCHEMA_PATH =
@@ -79,6 +79,8 @@ public class CsvConvertersTest {
 
   private static final String TEST_AVRO_SCHEMA_TWO_PATH =
       Resources.getResource(CSV_RESOURCES_DIR + "testAvroSchemaTwo.json").getPath();
+
+  private static final String CSV_FILE_ENCODING = "UTF-8";
 
   private static final String HEADER_STRING = "id,state,price";
 
@@ -123,6 +125,7 @@ public class CsvConvertersTest {
                 .setInputFileSpec(options.getInputFileSpec())
                 .setHeaderTag(CSV_HEADERS)
                 .setLineTag(CSV_LINES)
+                .setFileEncoding(options.getCsvFileEncoding())
                 .build());
 
     PAssert.that(readCsvOut.get(CSV_LINES))
@@ -160,6 +163,7 @@ public class CsvConvertersTest {
                 .setInputFileSpec(options.getInputFileSpec())
                 .setHeaderTag(CSV_HEADERS)
                 .setLineTag(CSV_LINES)
+                .setFileEncoding(options.getCsvFileEncoding())
                 .build());
 
     PAssert.that(readCsvHeadersOut.get(CSV_LINES))
@@ -197,6 +201,7 @@ public class CsvConvertersTest {
             .setLineTag(CSV_LINES)
             .setCsvFormat("Default")
             .setDelimiter(",")
+            .setFileEncoding(CSV_FILE_ENCODING)
             .build());
 
     pipeline.run();
@@ -216,6 +221,7 @@ public class CsvConvertersTest {
             .setLineTag(CSV_LINES)
             .setCsvFormat("Default")
             .setDelimiter(",")
+            .setFileEncoding(CSV_FILE_ENCODING)
             .build());
 
     pipeline.run();
@@ -245,7 +251,7 @@ public class CsvConvertersTest {
                 .setDelimiter(",")
                 .setUdfFileSystemPath(null)
                 .setUdfFunctionName(null)
-                .setJsonSchemaPath(TEST_JSON_SCHEMA__PATH)
+                .setJsonSchemaPath(TEST_JSON_SCHEMA_PATH)
                 .setHeaderTag(CSV_HEADERS)
                 .setLineTag(CSV_LINES)
                 .setUdfOutputTag(PROCESSING_OUT)
@@ -504,6 +510,7 @@ public class CsvConvertersTest {
                 .setInputFileSpec(options.getInputFileSpec())
                 .setHeaderTag(CSV_HEADERS)
                 .setLineTag(CSV_LINES)
+                .setFileEncoding(options.getCsvFileEncoding())
                 .build());
 
     PAssert.that(readCsvOut.get(CSV_LINES))
@@ -539,6 +546,7 @@ public class CsvConvertersTest {
                     .setLineTag(CSV_LINES)
                     .setCsvFormat("Default")
                     .setDelimiter(",")
+                    .setFileEncoding(CSV_FILE_ENCODING)
                     .build())
             .get(CSV_LINES)
             .apply(
@@ -570,6 +578,7 @@ public class CsvConvertersTest {
                 .setLineTag(CSV_LINES)
                 .setCsvFormat("Default")
                 .setDelimiter(",")
+                .setFileEncoding(CSV_FILE_ENCODING)
                 .build())
         .get(CSV_LINES)
         .apply(
