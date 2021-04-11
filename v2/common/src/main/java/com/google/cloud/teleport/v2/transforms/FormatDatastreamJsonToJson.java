@@ -97,7 +97,16 @@ public final class FormatDatastreamJsonToJson
     JsonNode record = null;
 
     try {
-       record = new ObjectMapper().readTree(c.element());
+      record = new ObjectMapper().readTree(c.element());
+
+      // check if payload is null/empty
+      // re: b/183584054
+      if (record.get("payload") == null && getSourceMetadata(record,
+              "change_type").toLowerCase() != "delete") {
+        LOG.warn("Empty payload in datastream record. and change type is not delete. ignoring.");
+        return;
+      }
+
     } catch (IOException e) {
       LOG.error("Issue parsing JSON record. Unable to continue.", e);
       throw new RuntimeException(e);
@@ -105,19 +114,6 @@ public final class FormatDatastreamJsonToJson
 
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode outputObject = mapper.createObjectNode();
-
-    JsonNode payload = record.get("payload");
-    Iterator<String> dataKeys = payload.getFieldNames();
-
-    while (dataKeys.hasNext()){
-      String key = dataKeys.next();
-
-      if (this.lowercaseSourceColumns) {
-        outputObject.put(key.toLowerCase(), payload.get(key));
-      } else {
-        outputObject.put(key, payload.get(key));
-      }
-    }
 
     // General DataStream Metadata
     String sourceType = getSourceType(record);
@@ -148,8 +144,22 @@ public final class FormatDatastreamJsonToJson
       outputObject.put("_metadata_tx_id", getSourceMetadata(record, "tx_id"));
     }
 
-    // Hash columns supplied to be hashed
-    applyHashToColumns(payload, outputObject);
+    JsonNode payload = record.get("payload");
+    if (payload != null) {
+      Iterator<String> dataKeys = payload.getFieldNames();
+
+      while (dataKeys.hasNext()){
+        String key = dataKeys.next();
+
+        if (this.lowercaseSourceColumns) {
+          outputObject.put(key.toLowerCase(), payload.get(key));
+        } else {
+          outputObject.put(key, payload.get(key));
+        }
+      }
+      // Hash columns supplied to be hashed
+      applyHashToColumns(payload, outputObject);
+    }
 
     // All Raw Metadata
     outputObject.put("_metadata_source", getSourceMetadata(record));
