@@ -44,7 +44,7 @@ public class DataStreamIOTest {
   @Test
   public void testFullContinuous() {
     Pipeline pipeline = Pipeline.create();
-    DataStreamIO dsIo = new DataStreamIO(BUCKET, null, null);
+    DataStreamIO dsIo = new DataStreamIO(null, BUCKET, "avro", null, null);
 
     pipeline
         .apply(dsIo);

@@ -666,4 +666,64 @@ public class BigQueryConverters {
       }
     }
   }
+
+  /**
+   * Converts a row to tableRow via {@link BigQueryUtils#toTableRow()}.
+   */
+  public static SerializableFunction<Row, TableRow> rowToTableRowFn = BigQueryUtils::toTableRow;
+
+  /**
+   * The {@link FailsafeRowToTableRow} transform converts {@link Row} to {@link TableRow} objects.
+   * The transform accepts a {@link FailsafeElement} object so the original payload of the incoming
+   * record can be maintained across multiple series of transforms.
+   */
+  @AutoValue
+  public abstract static class FailsafeRowToTableRow<T>
+          extends PTransform<PCollection<FailsafeElement<T, Row>>, PCollectionTuple> {
+
+    public static <T> Builder<T> newBuilder() {
+      return new AutoValue_BigQueryConverters_FailsafeRowToTableRow.Builder<>();
+    }
+
+    public abstract TupleTag<TableRow> successTag();
+
+    public abstract TupleTag<FailsafeElement<T, Row>> failureTag();
+
+    @Override
+    public PCollectionTuple expand(PCollection<FailsafeElement<T, Row>> failsafeElements) {
+      return failsafeElements.apply(
+              "FailsafeRowToTableRow",
+              ParDo.of(
+                      new DoFn<FailsafeElement<T, Row>, TableRow>() {
+                        @ProcessElement
+                        public void processElement(ProcessContext context) {
+                          FailsafeElement<T, Row> element = context.element();
+                          Row row = element.getPayload();
+
+                          try {
+                            TableRow tableRow = BigQueryUtils.toTableRow(row);
+                            context.output(tableRow);
+                          } catch (Exception e) {
+                            context.output(
+                                    failureTag(),
+                                    FailsafeElement.of(element)
+                                            .setErrorMessage(e.getMessage())
+                                            .setStacktrace(Throwables.getStackTraceAsString(e)));
+                          }
+                        }
+                      })
+                      .withOutputTags(successTag(), TupleTagList.of(failureTag())));
+    }
+
+    /** Builder for {@link FailsafeRowToTableRow}. */
+    @AutoValue.Builder
+    public abstract static class Builder<T> {
+
+      public abstract Builder<T> setSuccessTag(TupleTag<TableRow> successTag);
+
+      public abstract Builder<T> setFailureTag(TupleTag<FailsafeElement<T, Row>> failureTag);
+
+      public abstract FailsafeRowToTableRow<T> build();
+    }
+  }
 }

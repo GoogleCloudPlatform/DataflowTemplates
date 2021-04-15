@@ -85,6 +85,7 @@ public class CsvToElasticsearchTest {
                     .setInputFileSpec(options.getInputFileSpec())
                     .setHeaderTag(CsvToElasticsearch.CSV_HEADERS)
                     .setLineTag(CsvToElasticsearch.CSV_LINES)
+                    .setFileEncoding(options.getCsvFileEncoding())
                     .build())
             .apply(
                 "ConvertLine",
@@ -146,6 +147,7 @@ public class CsvToElasticsearchTest {
                     .setInputFileSpec(options.getInputFileSpec())
                     .setHeaderTag(CsvToElasticsearch.CSV_HEADERS)
                     .setLineTag(CsvToElasticsearch.CSV_LINES)
+                    .setFileEncoding(options.getCsvFileEncoding())
                     .build())
             .apply(
                 "ConvertLine",
@@ -207,6 +209,7 @@ public class CsvToElasticsearchTest {
                     .setInputFileSpec(options.getInputFileSpec())
                     .setHeaderTag(CsvToElasticsearch.CSV_HEADERS)
                     .setLineTag(CsvToElasticsearch.CSV_LINES)
+                    .setFileEncoding(options.getCsvFileEncoding())
                     .build())
             .apply(
                 "ConvertLine",

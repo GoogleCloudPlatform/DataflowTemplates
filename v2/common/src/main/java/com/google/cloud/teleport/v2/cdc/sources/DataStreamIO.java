@@ -21,15 +21,24 @@ import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.MoreObje
 import com.google.api.client.util.DateTime;
 import com.google.api.services.storage.model.Objects;
 import com.google.api.services.storage.model.StorageObject;
+import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.transforms.FormatDatastreamJsonToJson;
+import com.google.cloud.teleport.v2.transforms.FormatDatastreamRecordToJson;
+import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.extensions.gcp.util.GcsUtil;
 import org.apache.beam.sdk.extensions.gcp.util.GcsUtil.GcsUtilFactory;
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
+import org.apache.beam.sdk.io.AvroIO;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileIO.ReadableFile;
 import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.fs.MatchResult.Metadata;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
@@ -39,6 +48,7 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.Values;
 import org.apache.beam.sdk.transforms.Watch;
 import org.apache.beam.sdk.transforms.Watch.Growth;
@@ -83,68 +93,151 @@ import org.slf4j.LoggerFactory;
  *    <li>`gs://BUCKET/root/prefix/HR_SALARIES/` - This directory represents an "object"</li>
  *  </ul>
  */
-public class DataStreamIO extends PTransform<PBegin, PCollection<ReadableFile>> {
+public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement<String, String>>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamIO.class);
+  private static final String AVRO_SUFFIX = "avro";
+  private static final String JSON_SUFFIX = "json";
 
-  private String rfcStartDateTime;
+  private String streamName;
   private String inputFilePattern;
+  private String fileType;
   private String gcsNotificationSubscription;
+  private String rfcStartDateTime;
+  private Integer fileReadConcurrency = 30;
+  private Boolean lowercaseSourceColumns = false;
+  private Map<String, String> hashedColumns = new HashMap<String, String>();
   PCollection<String> directories = null;
 
   public DataStreamIO() {}
 
-  public DataStreamIO(String inputFilePattern, String gcsNotificationSubscription, String rfcStartDateTime) {
+  public DataStreamIO(
+      String streamName, String inputFilePattern, String fileType,
+      String gcsNotificationSubscription, String rfcStartDateTime) {
+    this.streamName = streamName;
     this.inputFilePattern = inputFilePattern;
     this.gcsNotificationSubscription = gcsNotificationSubscription;
     this.rfcStartDateTime = rfcStartDateTime;
-  }
+    this.fileType = fileType;
 
-  @Override
-  public PCollection<ReadableFile> expand(PBegin input) {
-    if (this.gcsNotificationSubscription != null) {
-      return expandGcsPubSubPipeline(input);
-    } else if (this.inputFilePattern != null) {
-      return expandPollingPipeline(input);
-    } else {
-      throw new IllegalArgumentException("DataStreamIO requires either a GCS stream  directory or Pub/Sub Subscription");
+    if (!(fileType.equals(AVRO_SUFFIX) || fileType.equals(JSON_SUFFIX))){
+      throw new IllegalArgumentException(
+          "Input file format must be one of: avro or json - found " + fileType);
     }
   }
 
-  public PCollection<ReadableFile> expandGcsPubSubPipeline(PBegin input) {
-      return input
-        .apply(
-          "ReadGcsPubSubSubscription",
-          PubsubIO.readMessagesWithAttributes()
-            .fromSubscription(this.gcsNotificationSubscription))
-        .apply("ExtractGcsFilePath", ParDo.of(new ExtractGcsFile()))
-        .apply("ReadFiles", FileIO.readMatches());
+  public DataStreamIO withFileReadConcurrency(Integer fileReadConcurrency) {
+    this.fileReadConcurrency = fileReadConcurrency;
+    return this;
   }
 
-  public PCollection<ReadableFile> expandPollingPipeline(PBegin input) {
-    directories = input
-        .apply("StartPipeline", Create.of(this.inputFilePattern))
-        .apply("FindTableDirectory",
-          Watch
-            .growthOf(new DirectoryMatchPollFn(1, 1, null, "/"))
-            .withPollInterval(Duration.standardSeconds(120)))
-        .apply(Values.create())
-        .apply("FindTablePerMinuteDirectory",
-          Watch
-            .growthOf(new DirectoryMatchPollFn(5, 5, this.rfcStartDateTime, null))
-            .withPollInterval(Duration.standardSeconds(5)))
-        .apply(Values.create());
+  public DataStreamIO withLowercaseSourceColumns() {
+    this.lowercaseSourceColumns = true;
+    return this;
+  }
 
-    return directories
-        .apply("GetDirectoryGlobs",
-                MapElements.into(TypeDescriptors.strings()).via(path -> path + "**"))
-            .apply(
-                "MatchDatastreamAvroFiles",
-                FileIO.matchAll()
-                    .continuously(
-                        Duration.standardSeconds(5),
-                        Growth.afterTimeSinceNewOutput(Duration.standardMinutes(10))))
-            .apply("ReadFiles", FileIO.readMatches());
+  /**
+   * Add the supplied columnName to the map of column values to be hashed.
+   * A new column with a hashed value of the first will be created.
+   *
+   * @param columnName The column name to look for in the data.
+   * @param newColumnName The name of the new column created with hashed data.
+   */
+  public DataStreamIO withHashColumnValue(
+      String columnName, String newColumnName) {
+    this.hashedColumns.put(columnName, newColumnName);
+    return this;
+  }
+
+  @Override
+  public PCollection<FailsafeElement<String, String>> expand(PBegin input) {
+    PCollection<ReadableFile> datastreamFiles =
+        input.apply("Read Datastream Files", new DataStreamFileIO());
+    PCollection<FailsafeElement<String, String>> datastreamJsonStrings =
+        expandDataStreamJsonStrings(datastreamFiles);
+    return datastreamJsonStrings;
+  }
+
+  public PCollection<FailsafeElement<String, String>>
+      expandDataStreamJsonStrings(PCollection<ReadableFile> datastreamFiles) {
+    PCollection<FailsafeElement<String, String>> datastreamJsonRecords;
+
+    if (this.fileType.equals(JSON_SUFFIX)) {
+        datastreamJsonRecords = datastreamFiles
+          .apply("ReadFiles", TextIO.readFiles())
+          .apply("ParseJsonRecords", ParDo.of(
+              FormatDatastreamJsonToJson.create()
+                  .withStreamName(this.streamName)
+                  .withHashColumnValues(this.hashedColumns)
+                  .withLowercaseSourceColumns(this.lowercaseSourceColumns)))
+          .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+      } else {
+        datastreamJsonRecords = datastreamFiles
+          .apply("ParseAvroRecords",
+              AvroIO.parseFilesGenericRecords(
+                FormatDatastreamRecordToJson.create()
+                    .withStreamName(this.streamName)
+                    .withHashColumnValues(this.hashedColumns)
+                    .withLowercaseSourceColumns(this.lowercaseSourceColumns))
+                .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())));
+      }
+    return datastreamJsonRecords.apply("Reshuffle", Reshuffle.viaRandomKey());
+  }
+
+  class DataStreamFileIO extends PTransform<PBegin, PCollection<ReadableFile>> {
+
+    @Override
+    public PCollection<ReadableFile> expand(PBegin input) {
+      PCollection<ReadableFile> datastreamFiles;
+      if (gcsNotificationSubscription != null) {
+        datastreamFiles = expandGcsPubSubPipeline(input);
+      } else if (inputFilePattern != null) {
+        datastreamFiles = expandPollingPipeline(input);
+      } else {
+        throw new IllegalArgumentException(
+            "DataStreamIO requires either a GCS stream  directory or Pub/Sub Subscription");
+      }
+
+      return datastreamFiles
+          .apply("FileReadConcurrency",
+              Reshuffle.<ReadableFile>viaRandomKey().withNumBuckets(fileReadConcurrency));
+    }
+
+    public PCollection<ReadableFile> expandGcsPubSubPipeline(PBegin input) {
+        return input
+          .apply(
+            "ReadGcsPubSubSubscription",
+            PubsubIO.readMessagesWithAttributes()
+              .fromSubscription(gcsNotificationSubscription))
+          .apply("ExtractGcsFilePath", ParDo.of(new ExtractGcsFile()))
+          .apply("ReadFiles", FileIO.readMatches());
+    }
+
+    public PCollection<ReadableFile> expandPollingPipeline(PBegin input) {
+      directories = input
+          .apply("StartPipeline", Create.of(inputFilePattern))
+          .apply("FindTableDirectory",
+            Watch
+              .growthOf(new DirectoryMatchPollFn(1, 1, null, "/"))
+              .withPollInterval(Duration.standardSeconds(120)))
+          .apply(Values.create())
+          .apply("FindTablePerMinuteDirectory",
+            Watch
+              .growthOf(new DirectoryMatchPollFn(5, 5, rfcStartDateTime, null))
+              .withPollInterval(Duration.standardSeconds(5)))
+          .apply(Values.create());
+
+      return directories
+          .apply("GetDirectoryGlobs",
+                  MapElements.into(TypeDescriptors.strings()).via(path -> path + "**"))
+              .apply(
+                  "MatchDatastreamAvroFiles",
+                  FileIO.matchAll()
+                      .continuously(
+                          Duration.standardSeconds(5),
+                          Growth.afterTimeSinceNewOutput(Duration.standardMinutes(10))))
+              .apply("ReadFiles", FileIO.readMatches());
+    }
   }
 
   static class ExtractGcsFile extends DoFn<PubsubMessage, Metadata> {
@@ -175,7 +268,8 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<ReadableFile>> 
     private final DateTime startDateTime;
     private final String delimiter;
 
-    DirectoryMatchPollFn(Integer minDepth, Integer maxDepth, String rfcStartDateTime, String delimiter) {
+    DirectoryMatchPollFn(Integer minDepth, Integer maxDepth,
+        String rfcStartDateTime, String delimiter) {
       this.maxDepth = maxDepth;
       this.minDepth = minDepth;
       // The delimiter parameter works for 1-depth elements.

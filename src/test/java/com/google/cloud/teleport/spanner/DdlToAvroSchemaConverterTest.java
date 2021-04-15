@@ -39,14 +39,16 @@ public class DdlToAvroSchemaConverterTest {
 
   @Test
   public void emptyDb() {
-    DdlToAvroSchemaConverter converter = new DdlToAvroSchemaConverter("spannertest", "booleans");
+    DdlToAvroSchemaConverter converter = new DdlToAvroSchemaConverter("spannertest",
+        "booleans", false);
     Ddl empty = Ddl.builder().build();
     assertThat(converter.convert(empty), empty());
   }
 
   @Test
   public void simple() {
-    DdlToAvroSchemaConverter converter = new DdlToAvroSchemaConverter("spannertest", "booleans");
+    DdlToAvroSchemaConverter converter = new DdlToAvroSchemaConverter("spannertest",
+        "booleans", false);
     Ddl ddl = Ddl.builder()
         .createTable("Users")
         .column("id").int64().notNull().endColumn()
@@ -131,7 +133,8 @@ public class DdlToAvroSchemaConverterTest {
 
   @Test
   public void allTypes() {
-    DdlToAvroSchemaConverter converter = new DdlToAvroSchemaConverter("spannertest", "booleans");
+    DdlToAvroSchemaConverter converter = new DdlToAvroSchemaConverter("spannertest",
+        "booleans", false);
     Ddl ddl =
         Ddl.builder()
             .createTable("AllTYPES")
@@ -278,6 +281,45 @@ public class DdlToAvroSchemaConverterTest {
     System.out.println(avroSchema.toString(true));
   }
 
+  @Test
+  public void timestampLogicalTypeTest() {
+    DdlToAvroSchemaConverter converter = new DdlToAvroSchemaConverter("spannertest", "booleans",
+        true);
+    Ddl ddl = Ddl.builder()
+        .createTable("Users")
+        .column("id").int64().notNull().endColumn()
+        .column("timestamp_field").timestamp().endColumn()
+        .primaryKey().asc("id").end()
+        .endTable()
+        .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(1));
+    Schema avroSchema = result.iterator().next();
+
+    assertThat(avroSchema.getNamespace(), equalTo("spannertest"));
+    assertThat(avroSchema.getProp("googleFormatVersion"), equalTo("booleans"));
+    assertThat(avroSchema.getProp("googleStorage"), equalTo("CloudSpanner"));
+
+    assertThat(avroSchema.getName(), equalTo("Users"));
+
+    List<Schema.Field> fields = avroSchema.getFields();
+
+    assertThat(fields, hasSize(2));
+
+    assertThat(fields.get(0).name(), equalTo("id"));
+    // Not null
+    assertThat(fields.get(0).schema().getType(), equalTo(Schema.Type.LONG));
+    assertThat(fields.get(0).getProp("sqlType"), equalTo("INT64"));
+    assertThat(fields.get(0).getProp("notNull"), equalTo(null));
+    assertThat(fields.get(0).getProp("generationExpression"), equalTo(null));
+    assertThat(fields.get(0).getProp("stored"), equalTo(null));
+
+    assertThat(fields.get(1).name(), equalTo("timestamp_field"));
+    assertThat(fields.get(1).schema(), equalTo(nullableTimestampUnion()));
+    assertThat(fields.get(1).getProp("sqlType"), equalTo("TIMESTAMP"));
+  }
+
   private Schema nullableUnion(Schema.Type s) {
     return Schema.createUnion(Schema.create(Schema.Type.NULL), Schema.create(s));
   }
@@ -287,6 +329,12 @@ public class DdlToAvroSchemaConverterTest {
         Schema.create(Schema.Type.NULL),
         LogicalTypes.decimal(NumericUtils.PRECISION, NumericUtils.SCALE)
             .addToSchema(Schema.create(Schema.Type.BYTES)));
+  }
+
+  private Schema nullableTimestampUnion() {
+    return Schema.createUnion(
+        Schema.create(Schema.Type.NULL),
+        LogicalTypes.timestampMicros().addToSchema(Schema.create(Schema.Type.LONG)));
   }
 
   private Schema nullableArray(Schema.Type s) {

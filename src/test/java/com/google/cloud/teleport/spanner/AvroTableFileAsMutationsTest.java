@@ -168,7 +168,8 @@ public class AvroTableFileAsMutationsTest {
 
   @Test
   public void testAvroToMutationsTransform() throws Exception {
-    DdlToAvroSchemaConverter converter = new DdlToAvroSchemaConverter("spannertest", "booleans");
+    DdlToAvroSchemaConverter converter = new DdlToAvroSchemaConverter("spannertest",
+        "booleans", false);
     Ddl ddl =
         Ddl.builder()
             .createTable("Users")

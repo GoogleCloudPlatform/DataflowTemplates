@@ -122,24 +122,28 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
   private final ValueProvider<String> outputDir;
   private final ValueProvider<String> testJobId;
   private final ValueProvider<String> snapshotTime;
+  private final ValueProvider<Boolean> shouldExportTimestampAsLogicalType;
 
   public ExportTransform(
       SpannerConfig spannerConfig,
       ValueProvider<String> outputDir,
       ValueProvider<String> testJobId) {
     this(spannerConfig, outputDir, testJobId,
-         /* snapshotTime= */ ValueProvider.StaticValueProvider.of(""));
+        /*snapshotTime=*/ ValueProvider.StaticValueProvider.of(""),
+        /*shouldExportTimestampAsLogicalType=*/ValueProvider.StaticValueProvider.of(false));
   }
 
   public ExportTransform(
       SpannerConfig spannerConfig,
       ValueProvider<String> outputDir,
       ValueProvider<String> testJobId,
-      ValueProvider<String> snapshotTime) {
+      ValueProvider<String> snapshotTime,
+      ValueProvider<Boolean> shouldExportTimestampAsLogicalType) {
     this.spannerConfig = spannerConfig;
     this.outputDir = outputDir;
     this.testJobId = testJobId;
     this.snapshotTime = snapshotTime;
+    this.shouldExportTimestampAsLogicalType = shouldExportTimestampAsLogicalType;
   }
 
   /**
@@ -223,7 +227,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                       @ProcessElement
                       public void processElement(ProcessContext c) {
                         Collection<Schema> avroSchemas =
-                            new DdlToAvroSchemaConverter("spannerexport", "1.0.0")
+                            new DdlToAvroSchemaConverter("spannerexport", "1.0.0",
+                                shouldExportTimestampAsLogicalType.get())
                                 .convert(c.element());
                         for (Schema schema : avroSchemas) {
                           c.output(KV.of(schema.getName(), new SerializableSchemaSupplier(schema)));
