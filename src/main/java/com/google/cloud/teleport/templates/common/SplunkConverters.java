@@ -60,6 +60,8 @@ public class SplunkConverters {
   private static final String HEC_SOURCE_TYPE_KEY = "sourcetype";
 
   private static final String TIMESTAMP_KEY = "timestamp";
+  
+  private static final String DATA = "data";
 
   /**
    * Returns a {@link FailsafeStringToSplunkEvent} {@link PTransform} that consumes {@link
@@ -183,6 +185,9 @@ public class SplunkConverters {
                           String parsedTimestamp;
                           if (metadataAvailable) {
                             parsedTimestamp = metadata.optString(HEC_TIME_KEY);
+                          } else if (json.optJSONObject(DATA) != null
+                              && json.getJSONObject(DATA).has(TIMESTAMP_KEY)) {
+                            parsedTimestamp = json.getJSONObject(DATA).getString(TIMESTAMP_KEY);
                           } else {
                             parsedTimestamp = json.optString(TIMESTAMP_KEY);
                           }
