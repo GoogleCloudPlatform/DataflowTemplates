@@ -227,7 +227,19 @@ For SCRAM configuration
 - `password` - password for Kafka SCRAM authentication
 - `sasl.mechanism` - hash mechanism for Kafka SCRAM authentication. Possible values: `SCRAM-SHA-256`
   ; `SCRAM-SHA-512`. Defaults to `SCRAM-SHA-512`
+  
+Kafka Consumer configuration:
+
+You may put in JSON config any [supported](https://kafka.apache.org/documentation/#consumerconfigs) configuration for Kafka Consumer 
+
+For example:
+
 - `group.id` - Kafka consumer group ID. Optional parameter
+- `auto.offset.reset` - What to do when there is no initial offset in Kafka or if the current offset does not exist any more on the server:
+    - earliest: automatically reset the offset to the earliest offset
+    - latest: automatically reset the offset to the latest offset
+    - none: throw exception to the consumer if no previous offset is found for the consumer's group
+    - anything else: throw exception to the consumer.
 
 The sample JSON with SSL SCRAM parameters:
 
@@ -242,7 +254,8 @@ The sample JSON with SSL SCRAM parameters:
   "username": "admin",
   "password": "admin-secret",
   "sasl.mechanism": "SCRAM-SHA-256",
-  "group.id": "group_id"
+  "group.id": "group_id",
+  "auto.offset.reset": "latest"
 }
 ```
 

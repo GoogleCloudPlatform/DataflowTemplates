@@ -27,6 +27,7 @@ import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.StandardOpenOption;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -42,6 +43,8 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.config.ConfigException;
+import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.security.scram.internals.ScramMechanism;
@@ -131,7 +134,11 @@ public class Utils {
   public static Map<String, Object> configureKafka(Map<String, String> props) {
     // Create the configuration for Kafka
     Map<String, Object> config = new HashMap<>();
-    if (props != null && props.containsKey(USERNAME) && props.containsKey(PASSWORD)) {
+    if (props == null) {
+      return config;
+    }
+
+    if (props.containsKey(USERNAME) && props.containsKey(PASSWORD)) {
       String saslMechanism = props.get(SaslConfigs.SASL_MECHANISM);
       if (Objects.equals(saslMechanism, ScramMechanism.SCRAM_SHA_256.mechanismName()) ||
           Objects.equals(saslMechanism, ScramMechanism.SCRAM_SHA_512.mechanismName())
@@ -149,11 +156,10 @@ public class Utils {
                   + "username=\"%s\" password=\"%s\";",
               props.get(USERNAME), props.get(PASSWORD)));
     }
-
-    if (props != null && props.containsKey(ConsumerConfig.GROUP_ID_CONFIG)) {
-      config.put(ConsumerConfig.GROUP_ID_CONFIG, props.get(ConsumerConfig.GROUP_ID_CONFIG));
-    }
-
+    ConsumerConfig.configNames().stream()
+        .filter(props::containsKey)
+        .map(configName -> validateConfigValue(configName, props.get(configName)))
+        .forEach(configName -> config.put(configName, props.get(configName)));
     return config;
   }
 
@@ -239,11 +245,12 @@ public class Utils {
                 + "Trying to initiate an unauthorized connection.");
       }
 
-      // Group ID for the Kafka consumer
-      if (credentials.has(ConsumerConfig.GROUP_ID_CONFIG)) {
-        credentialMap.get(KAFKA_CREDENTIALS).put(ConsumerConfig.GROUP_ID_CONFIG,
-            credentials.get(ConsumerConfig.GROUP_ID_CONFIG).getAsString());
-      }
+      // Kafka consumer configs
+      ConsumerConfig.configNames().stream()
+          .filter(credentials::has)
+          .forEach(configName -> credentialMap
+              .get(KAFKA_CREDENTIALS)
+              .put(configName, credentials.get(configName).getAsString()));
 
       // SSL truststore, keystore, and password
       try {
@@ -268,5 +275,14 @@ public class Utils {
       }
     }
     return credentialMap;
+  }
+
+  private static String validateConfigValue(String key, String value) {
+    Map<String, String> property = Collections.singletonMap(key, value);
+    ConfigValue configValue = ConsumerConfig.configDef().validate(property).get(0);
+    if (!configValue.errorMessages().isEmpty()) {
+      throw new ConfigException(key, configValue, configValue.errorMessages().toString());
+    }
+    return value;
   }
 }
