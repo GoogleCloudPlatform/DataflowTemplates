@@ -32,7 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link BigQueryIO} class for writing data from template to BigTable.
+ * The {@link BigQueryIO} class for writing data to BigQuery.
  */
 public class BigQueryIO {
 

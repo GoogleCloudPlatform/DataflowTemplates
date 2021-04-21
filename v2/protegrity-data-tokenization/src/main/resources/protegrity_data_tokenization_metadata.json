@@ -59,11 +59,11 @@
     {
       "name": "pubsubTopic",
       "label": "Pub/Sub input topic",
-      "helpText": "Cloud Pub/Sub input topic to read data from",
+      "helpText": "The Cloud Pub/Sub subscription to consume from. The name should be in the format of \n'projects/<project-id>/subscriptions/<subscription-name>.'",
       "paramType": "PUBSUB_TOPIC",
       "isOptional": true,
       "regexes": [
-        "^projects\\/[a-z][-a-z0-9:.]{4,61}[a-z0-9]\\/topics\\/[^\\n\\r\\/]+$"
+        "^projects\\/[a-z][-a-z0-9:.]{4,61}[a-z0-9]\\/subscriptions\\/[^\\n\\r\\/]+$"
       ]
     },
     {

@@ -261,10 +261,10 @@ public class ProtegrityDataTokenization {
     PCollection<Row> records;
     if (options.getInputGcsFilePattern() != null) {
       records = new GcsIO(options).read(pipeline, schema);
-    } else if (options.getPubsubTopic() != null) {
+    } else if (options.getInputSubscription() != null) {
       records = pipeline
           .apply("ReadMessagesFromPubsub",
-              PubsubIO.readStrings().fromTopic(options.getPubsubTopic()))
+              PubsubIO.readStrings().fromSubscription(options.getInputSubscription()))
           .apply("TransformToBeamRow",
               new JsonToBeamRow(options.getNonTokenizedDeadLetterGcsPath(), schema));
       if (options.getOutputGcsDirectory() != null) {

@@ -38,7 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link BigTableIO} class for writing data from template to BigTable.
+ * The {@link BigTableIO} class for writing data to BigTable.
  */
 public class BigTableIO {
 
@@ -102,7 +102,6 @@ public class BigTableIO {
           )
           .collect(Collectors.toSet());
       // Converting key value to BigTable format
-      //TODO ramazan@akvelon.com check that please (NPE)
       ByteString key = ByteString.copyFrom(
           Objects.requireNonNull(in.getString(options.getBigTableKeyColumnName())).getBytes());
       out.output(KV.of(key, mutations));

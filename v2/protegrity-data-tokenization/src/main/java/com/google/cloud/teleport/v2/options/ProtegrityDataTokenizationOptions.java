@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.options;
 
+import com.google.cloud.teleport.v2.options.PubsubCommonOptions.ReadSubscriptionOptions;
 import com.google.cloud.teleport.v2.transforms.io.BigTableIO;
 import com.google.cloud.teleport.v2.transforms.io.GcsIO;
 import org.apache.beam.sdk.options.Default;
@@ -26,20 +27,12 @@ import org.apache.beam.sdk.options.PipelineOptions;
  * passed by the executor at the command-line.
  */
 public interface ProtegrityDataTokenizationOptions extends PipelineOptions,
-    GcsIO.GcsPipelineOptions, BigTableIO.BigTableOptions {
+    GcsIO.GcsPipelineOptions, BigTableIO.BigTableOptions, ReadSubscriptionOptions {
 
   @Description("Path to data schema (JSON format) in GCS compatible with BigQuery.")
   String getDataSchemaGcsPath();
 
   void setDataSchemaGcsPath(String dataSchemaGcsPath);
-
-  @Description(
-      "The Cloud Pub/Sub topic to read from."
-          + "The name should be in the format of "
-          + "projects/<project-id>/topics/<topic-name>.")
-  String getPubsubTopic();
-
-  void setPubsubTopic(String pubsubTopic);
 
   @Description("Cloud BigQuery table name to write into.")
   String getBigQueryTableName();

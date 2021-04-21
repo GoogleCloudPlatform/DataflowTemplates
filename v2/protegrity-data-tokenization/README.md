@@ -12,14 +12,22 @@ Supported data formats:
 
 Supported input sources:
 
-- [Google Cloud Storage](https://cloud.google.com/storage)
-- [Google Pub/Sub](https://cloud.google.com/pubsub)
+|  | JSON | AVRO  | CSV |
+| ---|:----:| :-----:|:-----:|
+| [Google Cloud Pub/Sub](https://cloud.google.com/pubsub) | Y | | |
+| [Google Cloud Storage](https://cloud.google.com/storage) | Y | Y | Y |
+
 
 Supported destination sinks:
 
-- [Google Cloud Storage](https://cloud.google.com/storage)
-- [Google Cloud BigQuery](https://cloud.google.com/bigquery)
-- [Cloud Bigtable](https://cloud.google.com/bigtable)
+|  | JSON | AVRO  | CSV |
+| ---|:----:| :-----:|:-----:|
+| [Google Cloud BigQuery](https://cloud.google.com/bigquery) | Y | | |
+| [Google Cloud Storage](https://cloud.google.com/storage) | Y | Y | Y |
+| [Google Cloud Bigtable](https://cloud.google.com/bigtable) | | | |
+ 
+**NOTE**: In the case of Google Cloud Bigtable sink, data will be transformed into BigTable 
+key-value format
 
 Supported data schema format:
 
