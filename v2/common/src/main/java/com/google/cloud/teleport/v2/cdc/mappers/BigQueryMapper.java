@@ -21,7 +21,6 @@ import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryOptions;
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.FieldList;
-import com.google.cloud.bigquery.LegacySQLTypeName;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.StandardTableDefinition;
@@ -52,7 +51,7 @@ import org.slf4j.LoggerFactory;
  *
  * The BigQueryMapper can be easily extended by overriding: - public TableId getTableId(InputT
  * input) - public TableRow getTableRow(InputT input) - public OutputT getOutputObject(InputT input)
- * - public Map<String, LegacySQLTypeName> getInputSchema(TableId tableId, TableRow row)
+ * - public Map<String, StandardSQLTypeName> getInputSchema(TableId tableId, TableRow row)
  */
 public class BigQueryMapper<InputT, OutputT>
     extends PTransform<PCollection<InputT>, PCollection<OutputT>> {
@@ -61,7 +60,7 @@ public class BigQueryMapper<InputT, OutputT>
   private BigQuery bigquery;
   private BigQueryTableRowCleaner bqTableRowCleaner;
   private boolean dayPartitioning = false;
-  private Map<String, LegacySQLTypeName> defaultSchema;
+  private Map<String, StandardSQLTypeName> defaultSchema;
   private Set<String> ignoreFields = new HashSet<String>();
   private int mapperRetries = 5;
   private final String projectId;
@@ -89,8 +88,8 @@ public class BigQueryMapper<InputT, OutputT>
   /* Return a HashMap with the Column->Column Type Mapping required from the source
       Implementing getInputSchema will allow the mapper class to support your desired format
   */
-  public Map<String, LegacySQLTypeName> getInputSchema(TableId tableId, TableRow row) {
-    return new HashMap<String, LegacySQLTypeName>();
+  public Map<String, StandardSQLTypeName> getInputSchema(TableId tableId, TableRow row) {
+    return new HashMap<String, StandardSQLTypeName>();
   }
 
   public void setMapperRetries(int retries) {
@@ -106,7 +105,7 @@ public class BigQueryMapper<InputT, OutputT>
   }
 
   public BigQueryMapper<InputT, OutputT> withDefaultSchema(
-      Map<String, LegacySQLTypeName> defaultSchema) {
+      Map<String, StandardSQLTypeName> defaultSchema) {
     this.defaultSchema = defaultSchema;
     return this;
   }
@@ -127,9 +126,9 @@ public class BigQueryMapper<InputT, OutputT>
     String schemaStr = SchemaUtils.getGcsFileAsString(filePath);
     List<Field> schemaFields = BigQueryConverters.SchemaUtils.schemaFromString(schemaStr);
 
-    Map<String, LegacySQLTypeName> schema = new HashMap<String, LegacySQLTypeName>();
+    Map<String, StandardSQLTypeName> schema = new HashMap<String, StandardSQLTypeName>();
     for (Field field : schemaFields) {
-      schema.put(field.getName(), field.getType());
+      schema.put(field.getName(), field.getType().getStandardType());
     }
 
     this.defaultSchema = schema;
@@ -163,8 +162,8 @@ public class BigQueryMapper<InputT, OutputT>
       implementing getInputSchema (for complex and dynamic cases)
       and submitting a static default schema.
   */
-  private Map<String, LegacySQLTypeName> getObjectSchema(TableId tableId, TableRow row) {
-    Map<String, LegacySQLTypeName> inputSchema = getInputSchema(tableId, row);
+  private Map<String, StandardSQLTypeName> getObjectSchema(TableId tableId, TableRow row) {
+    Map<String, StandardSQLTypeName> inputSchema = getInputSchema(tableId, row);
     if (this.defaultSchema != null) {
       inputSchema.putAll(this.defaultSchema);
     }
@@ -296,7 +295,7 @@ public class BigQueryMapper<InputT, OutputT>
       TableId tableId, TableRow row) {
     Table table = this.tableCache.getOrCreateBigQueryTable(tableId, this.dayPartitioning);
 
-    Map<String, LegacySQLTypeName> inputSchema = new HashMap<String, LegacySQLTypeName>();
+    Map<String, StandardSQLTypeName> inputSchema = new HashMap<String, StandardSQLTypeName>();
     List<Field> newFieldList = getNewTableFields(row, table, inputSchema, this.ignoreFields);
 
     if (newFieldList.size() > 0) {
@@ -327,7 +326,7 @@ public class BigQueryMapper<InputT, OutputT>
     TableId tableLock = getTableLock(tableId);
     synchronized (tableLock) {
       Table table = this.tableCache.get(tableId);
-      Map<String, LegacySQLTypeName> inputSchema = getObjectSchema(tableId, row);
+      Map<String, StandardSQLTypeName> inputSchema = getObjectSchema(tableId, row);
 
       List<Field> newFieldList = getNewTableFields(row, table, inputSchema, ignoreFields);
       if (newFieldList.size() > 0) {
@@ -355,7 +354,9 @@ public class BigQueryMapper<InputT, OutputT>
   }
 
   public static List<Field> getNewTableFields(
-      TableRow row, Table table, Map<String, LegacySQLTypeName> inputSchema, Set<String> ignoreFields) {
+      TableRow row, Table table,
+      Map<String, StandardSQLTypeName> inputSchema,
+      Set<String> ignoreFields) {
     List<Field> newFieldList = new ArrayList<Field>();
     FieldList tableFields = table.getDefinition().getSchema().getFields();
     Set<String> rowKeys = row.keySet();
@@ -374,11 +375,11 @@ public class BigQueryMapper<InputT, OutputT>
     return newFieldList;
   }
 
-  public static void addNewTableField(String rowKey, List<Field> newFieldList, 
-      Map<String, LegacySQLTypeName> inputSchema) {
+  public static void addNewTableField(String rowKey, List<Field> newFieldList,
+      Map<String, StandardSQLTypeName> inputSchema) {
     Field newField;
     if (inputSchema.containsKey(rowKey)) {
-      newField = Field.of(rowKey, inputSchema.get(rowKey).getStandardType());
+      newField = Field.of(rowKey, inputSchema.get(rowKey));
     } else {
       newField = Field.of(rowKey, StandardSQLTypeName.STRING);
     }
