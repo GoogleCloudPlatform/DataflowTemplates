@@ -39,6 +39,7 @@ public class FormatDatastreamRecordToJsonTest {
           + "\"STREET_ADDRESS\":\"1297 Via Cola di Rie\","
           + "\"POSTAL_CODE\":\"00989\","
           + "\"CITY\":\"Roma\","
+          + "\"STATE_PROVINCE\":null,"
           + "\"COUNTRY_ID\":\"IT\","
           + "\"_metadata_stream\":\"projects/596161805475/locations/us-central1/streams/dylan-stream-20200810test2\","
           + "\"_metadata_timestamp\":1597101230,"

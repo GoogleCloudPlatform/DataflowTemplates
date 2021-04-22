@@ -353,14 +353,16 @@ public class FormatDatastreamRecordToJson
               jsonObject);
           break;
         case NULL:
-          // We represent nulls by not adding the key to the JSON object.
+          // Add key as null
+          jsonObject.putNull(fieldName);
           break;
         case UNION:
           List<Schema> types = fieldSchema.getTypes();
           if (types.size() == 2
               && types.stream().anyMatch(s -> s.getType().equals(Schema.Type.NULL))) {
-            // We represent nulls by not adding the key to the JSON object.
             if (record.get(fieldName) == null) {
+              // Add key as null
+              jsonObject.putNull(fieldName);
               break;  // This element is null.
             }
             Schema actualSchema = types.stream()
