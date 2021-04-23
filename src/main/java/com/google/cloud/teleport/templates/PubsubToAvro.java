@@ -116,7 +116,7 @@ import org.apache.beam.sdk.values.PCollection;
  * userTempLocation=gs://${OUTPUT_BUCKET}/tmp/,\
  * outputDirectory=gs://${OUTPUT_BUCKET}/output/,\
  * outputFilenamePrefix=windowed-file,\
- * outputFilenameSuffix=.txt"
+ * outputFilenameSuffix=.avro"
  * </pre>
  *
  * </p>
@@ -225,8 +225,6 @@ public class PubsubToAvro {
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
 
-    ValueProvider<String> inputSubscription = options.getInputSubscription();
-    ValueProvider<String> inputTopic = options.getInputTopic();
     PCollection<PubsubMessage> messages = null;
 
     /*

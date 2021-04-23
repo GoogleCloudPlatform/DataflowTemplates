@@ -199,8 +199,6 @@ public class PubsubToText {
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
 
-    ValueProvider<String> inputSubscription = options.getInputSubscription();
-    ValueProvider<String> inputTopic = options.getInputTopic();
     PCollection<String> messages = null;
 
     /*
