@@ -27,7 +27,8 @@ import org.apache.beam.sdk.options.PipelineOptions;
  * passed by the executor at the command-line.
  */
 public interface ProtegrityDataTokenizationOptions extends PipelineOptions,
-    GcsIO.GcsPipelineOptions, BigTableIO.BigTableOptions, ReadSubscriptionOptions {
+    GcsIO.GcsPipelineOptions, BigTableIO.BigTableOptions, ReadSubscriptionOptions,
+    GcsCommonOptions.ReadOptions, GcsCommonOptions.WriteOptions, CsvOptions {
 
   @Description("Path to data schema (JSON format) in GCS compatible with BigQuery.")
   String getDataSchemaGcsPath();

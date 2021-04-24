@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.templates.ProtegrityDataTokenizationConstants.GCS_WRITING_WINDOW_DURATION;
 import static com.google.cloud.teleport.v2.transforms.io.BigQueryIO.write;
 import static com.google.cloud.teleport.v2.utils.DurationUtils.parseDuration;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
@@ -220,13 +221,14 @@ public class ProtegrityDataTokenization {
   /**
    * Runs the pipeline to completion with the specified options.
    *
-   * @param options The execution options.
+   * @param options        The execution options.
    * @param serviceAccount The email address representing Google account.
    * @return The pipeline result.
    */
   public static PipelineResult run(ProtegrityDataTokenizationOptions options,
       String serviceAccount) {
-    checkArgument(StringUtils.isNoneBlank(options.getDataSchemaGcsPath()), "Missing required value for --dataSchemaGcsPath.");
+    checkArgument(StringUtils.isNoneBlank(options.getDataSchemaGcsPath()),
+        "Missing required value for --dataSchemaGcsPath.");
 
     SchemasUtils schema = null;
     try {
@@ -268,8 +270,13 @@ public class ProtegrityDataTokenization {
           .apply("TransformToBeamRow",
               new JsonToBeamRow(options.getNonTokenizedDeadLetterGcsPath(), schema));
       if (options.getOutputGcsDirectory() != null) {
+
         records = records
-            .apply(Window.into(FixedWindows.of(parseDuration(options.getWindowDuration()))));
+            .apply(
+                Window.into(FixedWindows.of(parseDuration(
+                    options.getInputSubscription() != null ? options.getWindowDuration()
+                        : GCS_WRITING_WINDOW_DURATION
+                ))));
       }
     } else {
       throw new IllegalStateException("No source is provided, please configure GCS or Pub/Sub");

@@ -109,19 +109,10 @@ public class GcsIO {
    */
   public interface GcsPipelineOptions extends PipelineOptions {
 
-    @Description("GCS filepattern for files in bucket to read data from")
-    String getInputGcsFilePattern();
-
-    void setOutputGcsDirectory(String outputGcsDirectory);
 
     @Description("File format of input files. Supported formats: JSON, CSV")
     @Default.Enum("JSON")
     GcsIO.FORMAT getInputGcsFileFormat();
-
-    void setInputGcsFilePattern(String inputGcsFilePattern);
-
-    @Description("GCS directory in bucket to write data to")
-    String getOutputGcsDirectory();
 
     void setInputGcsFileFormat(GcsIO.FORMAT inputGcsFileFormat);
 
@@ -131,40 +122,7 @@ public class GcsIO {
 
     void setOutputGcsFileFormat(GcsIO.FORMAT outputGcsFileFormat);
 
-    @Description(
-        "The window duration in which data will be written. "
-            + "Should be specified only for 'Pub/Sub -> GCS' case. Defaults to 30s. "
-            + "Allowed formats are: "
-            + "Ns (for seconds, example: 5s), "
-            + "Nm (for minutes, example: 12m), "
-            + "Nh (for hours, example: 2h).")
-    @Default.String("30s")
-    String getWindowDuration();
 
-    void setWindowDuration(String windowDuration);
-
-    // CSV parameters
-    @Description("If file(s) contain headers")
-    Boolean getCsvContainsHeaders();
-
-    void setCsvContainsHeaders(Boolean csvContainsHeaders);
-
-    @Description("Delimiting character in CSV. Default: use delimiter provided in csvFormat")
-    @Default.InstanceFactory(CsvConverters.DelimiterFactory.class)
-    String getCsvDelimiter();
-
-    void setCsvDelimiter(String csvDelimiter);
-
-    @Description(
-        "Csv format according to Apache Commons CSV format. Default is: Apache Commons CSV"
-            + " default\n"
-            + "https://static.javadoc.io/org.apache.commons/commons-csv/1.7/org/apache/commons/csv/CSVFormat.html#DEFAULT\n"
-            + "Must match format names exactly found at: "
-            + "https://static.javadoc.io/org.apache.commons/commons-csv/1.7/org/apache/commons/csv/CSVFormat.Predefined.html")
-    @Default.String("Default")
-    String getCsvFormat();
-
-    void setCsvFormat(String csvFormat);
   }
 
   private final ProtegrityDataTokenizationOptions options;
@@ -184,7 +142,7 @@ public class GcsIO {
 
     return pipeline
         .apply(
-        "ReadAvroFiles",
+            "ReadAvroFiles",
             AvroIO.readGenericRecords(avroSchema).from(options.getInputGcsFilePattern()))
         .apply(
             "GenericRecordToRow",
@@ -233,7 +191,7 @@ public class GcsIO {
           .apply(
               "WriteToGCS",
               TextIO.write().withWindowedWrites().withNumShards(1)
-              .to(options.getOutputGcsDirectory()));
+                  .to(options.getOutputGcsDirectory()));
     }
   }
 
@@ -244,8 +202,8 @@ public class GcsIO {
         .apply(
             "ConvertToCSV",
             MapElements.into(TypeDescriptors.strings())
-            .via((Row inputRow) ->
-                new RowToCsv(csvDelimiter).getCsvFromRow(inputRow))
+                .via((Row inputRow) ->
+                    new RowToCsv(csvDelimiter).getCsvFromRow(inputRow))
         );
 
     if (csvs.isBounded() == IsBounded.BOUNDED) {
