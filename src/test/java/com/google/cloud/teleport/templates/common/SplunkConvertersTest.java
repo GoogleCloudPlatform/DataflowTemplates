@@ -346,4 +346,50 @@ public class SplunkConvertersTest {
 
     pipeline.run();
   }
+  
+  /** Test successful conversion of Pub/Sub messages with provided override for time. */
+  @Test
+  @Category(NeedsRunner.class)
+  public void testFailsafeStringToSplunkEventPubsubMessageTimeOverride() {
+  
+    FailsafeElement<String, String> input =
+        FailsafeElement.of(
+            "",
+            "{\n"
+                + "  \"data\": {\n"
+                + "    \"timestamp\": \"2021-04-16T14:10:04.634492Z\"\n"
+                + "  },\n"
+                + "  \"attributes\": {\n"
+                + "    \"test-key\": \"test-value\"\n"
+                + "  }\n"
+                + "}");
+
+    pipeline.getCoderRegistry().registerCoderForClass(SplunkEvent.class, SplunkEventCoder.of());
+    
+    PCollectionTuple tuple =
+        pipeline
+            .apply(
+                Create.of(input)
+                    .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+            .apply(
+                SplunkConverters.failsafeStringToSplunkEvent(
+                    SPLUNK_EVENT_OUT, SPLUNK_EVENT_DEADLETTER_OUT));
+    
+    PAssert.that(tuple.get(SPLUNK_EVENT_DEADLETTER_OUT)).empty();
+    PAssert.that(tuple.get(SPLUNK_EVENT_OUT))
+        .containsInAnyOrder(
+            SplunkEvent.newBuilder()
+                .withEvent("{\n"
+                        + "  \"data\": {\n"
+                        + "    \"timestamp\": \"2021-04-16T14:10:04.634492Z\"\n"
+                        + "  },\n"
+                        + "  \"attributes\": {\n"
+                        + "    \"test-key\": \"test-value\"\n"
+                        + "  }\n"
+                        + "}")
+                .withTime(DateTime.parseRfc3339("2021-04-16T14:10:04.634492Z").getValue())
+                .build());
+
+    pipeline.run();
+  }
 }
