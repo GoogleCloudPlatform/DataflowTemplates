@@ -16,6 +16,7 @@
 
 package com.google.cloud.teleport.v2.kafka.consumer;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
@@ -94,11 +95,29 @@ public class SslConsumerFactoryFn
     options.add(StandardOpenOption.CREATE);
     options.add(StandardOpenOption.APPEND);
     // Copy the GCS file into a local file and will throw an I/O exception in case file not found.
-    try (ReadableByteChannel readerChannel =
-        FileSystems.open(FileSystems.matchSingleFileSpec(gcsFilePath).resourceId())) {
-      try (FileChannel writeChannel = FileChannel.open(Paths.get(outputFilePath), options)) {
-        writeChannel.transferFrom(readerChannel, 0, Long.MAX_VALUE);
+    copyGcsFileToLocal(gcsFilePath, outputFilePath, options);
+  }
+
+  private static void copyGcsFileToLocal(String gcsFilePath, String outputFilePath,
+      Set<StandardOpenOption> options) throws IOException {
+    for (int i = 1; i <= 5; i++) {
+      try (ReadableByteChannel readerChannel =
+          FileSystems.open(FileSystems.matchSingleFileSpec(gcsFilePath).resourceId())) {
+        try (FileChannel writeChannel = FileChannel.open(Paths.get(outputFilePath), options)) {
+          writeChannel.transferFrom(readerChannel, 0, Long.MAX_VALUE);
+        }
+      }
+      if (new File(outputFilePath).exists()) {
+        LOG.info("Contents from GCS file {} was written in {}", gcsFilePath, outputFilePath);
+        return;
+      }
+      LOG.warn("Failed to write file, {} retries remaining", 5 - i);
+      try {
+        Thread.sleep(5);
+      } catch (InterruptedException e) {
+        LOG.error(e.getMessage());
       }
     }
+    throw new IOException("Failed to write file");
   }
 }

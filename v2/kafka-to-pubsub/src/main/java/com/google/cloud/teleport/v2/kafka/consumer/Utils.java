@@ -72,6 +72,7 @@ public class Utils {
       HttpClient client = HttpClientBuilder.create().build();
       HttpGet request = new HttpGet(secretStoreUrl);
       request.addHeader("X-Vault-Token", token);
+      LOG.info("Fetching kafka credentials from vault");
       HttpResponse response = client.execute(request);
       String json = EntityUtils.toString(response.getEntity(), "UTF-8");
 
