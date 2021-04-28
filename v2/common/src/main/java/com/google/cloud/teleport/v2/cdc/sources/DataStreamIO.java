@@ -120,7 +120,7 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
     this.rfcStartDateTime = rfcStartDateTime;
     this.fileType = fileType;
 
-    if (!(fileType.equals(AVRO_SUFFIX) || fileType.equals(JSON_SUFFIX))){
+    if (!(fileType.equals(AVRO_SUFFIX) || fileType.equals(JSON_SUFFIX))) {
       throw new IllegalArgumentException(
           "Input file format must be one of: avro or json - found " + fileType);
     }
