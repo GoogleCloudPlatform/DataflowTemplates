@@ -21,13 +21,13 @@ import static com.google.cloud.teleport.v2.utils.DurationUtils.parseDuration;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.io.BigTableIO;
 import com.google.cloud.teleport.v2.options.ProtegrityDataTokenizationOptions;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.transforms.JsonToBeamRow;
 import com.google.cloud.teleport.v2.transforms.ProtegrityDataProtectors.RowToTokenizedRow;
 import com.google.cloud.teleport.v2.transforms.SerializableFunctions;
 import com.google.cloud.teleport.v2.transforms.io.BigQueryIO;
-import com.google.cloud.teleport.v2.transforms.io.BigTableIO;
 import com.google.cloud.teleport.v2.transforms.io.GcsIO;
 import com.google.cloud.teleport.v2.utils.RowToCsv;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
@@ -343,10 +343,10 @@ public class ProtegrityDataTokenization {
                   .setErrorRecordsTableSchema(SchemaUtils.DEADLETTER_SCHEMA)
                   .build());
     } else if (options.getBigTableInstanceId() != null) {
-      new BigTableIO(options).write(
-          tokenizedRows.get(TOKENIZATION_OUT),
-          schema.getBeamSchema()
-      );
+      tokenizedRows.get(TOKENIZATION_OUT)
+          .apply(
+              BigTableIO.write(options, schema.getBeamSchema())
+          );
     } else {
       throw new IllegalStateException(
           "No sink is provided, please configure BigQuery or BigTable.");

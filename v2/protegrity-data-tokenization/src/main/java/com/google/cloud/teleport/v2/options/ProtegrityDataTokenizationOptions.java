@@ -15,8 +15,6 @@
  */
 package com.google.cloud.teleport.v2.options;
 
-import com.google.cloud.teleport.v2.options.PubsubCommonOptions.ReadSubscriptionOptions;
-import com.google.cloud.teleport.v2.transforms.io.BigTableIO;
 import com.google.cloud.teleport.v2.transforms.io.GcsIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
@@ -27,7 +25,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
  * passed by the executor at the command-line.
  */
 public interface ProtegrityDataTokenizationOptions extends PipelineOptions,
-    GcsIO.GcsPipelineOptions, BigTableIO.BigTableOptions, ReadSubscriptionOptions,
+    GcsIO.GcsPipelineOptions, BigTableCommonOptions.WriteOptions,
     GcsCommonOptions.ReadOptions, GcsCommonOptions.WriteOptions, CsvOptions {
 
   @Description("Path to data schema (JSON format) in GCS compatible with BigQuery.")
@@ -64,4 +62,12 @@ public interface ProtegrityDataTokenizationOptions extends PipelineOptions,
   String getNonTokenizedDeadLetterGcsPath();
 
   void setNonTokenizedDeadLetterGcsPath(String nonTokenizedDeadLetterGcsPath);
+
+  @Description(
+      "The Cloud Pub/Sub subscription to consume from. "
+          + "The name should be in the format of "
+          + "projects/<project-id>/subscriptions/<subscription-name>.")
+  String getInputSubscription();
+
+  void setInputSubscription(String inputSubscription);
 }
