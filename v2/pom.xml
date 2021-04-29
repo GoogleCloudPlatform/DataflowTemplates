@@ -598,11 +598,12 @@
 
 
     <modules>
-        <module>bigquery-to-elasticsearch</module>
+        <module>elastic</module>
+        <!--<module>bigquery-to-elasticsearch</module>-->
         <module>bigquery-to-parquet</module>
         <module>common</module>
         <module>cdc-parent</module>
-        <module>csv-to-elasticsearch</module>
+        <!--<module>csv-to-elasticsearch</module>-->
         <module>datastream-to-bigquery</module>
         <module>datastream-to-postgres</module>
         <module>datastream-to-spanner</module>
@@ -613,7 +614,7 @@
         <module>kudu-to-bigquery</module>
         <module>pubsub-binary-to-bigquery</module>
         <module>pubsub-cdc-to-bigquery</module>
-        <module>pubsub-to-elasticsearch</module>
+        <!--<module>pubsub-to-elasticsearch</module>-->
         <module>pubsub-to-mongodb</module>
         <module>streaming-data-generator</module>
         <module>kafka-to-pubsub</module>
