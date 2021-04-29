@@ -84,7 +84,7 @@
     <grpc.version>1.13.1</grpc.version>
     <google-storage-api.version>v1-rev20200611-1.30.10</google-storage-api.version>
     <mvn-target-dir>${basedir}/target</mvn-target-dir>
-    <derby.version>10.15.2.0</derby.version>
+    <derby.version>10.14.2.0</derby.version>
     <commons-pool2.version>2.8.1</commons-pool2.version>
     <commons-dbcp2.version>2.7.0</commons-dbcp2.version>
     <commons-codec.version>1.14</commons-codec.version>
