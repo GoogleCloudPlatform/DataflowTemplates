@@ -11,6 +11,7 @@
 *   Eric Anderson
 *   Jason Kuster
 *   Kevin Si
+*   Naruhito Nakaharai
 *   Nithin Sujir
 *   Pramod Rao
 *   Roderick Yao

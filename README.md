@@ -20,6 +20,7 @@ their functionality.
 * [Bigtable to GCS Avro](src/main/java/com/google/cloud/teleport/bigtable/BigtableToAvro.java)
 * [Bulk Compressor](src/main/java/com/google/cloud/teleport/templates/BulkCompressor.java)
 * [Bulk Decompressor](src/main/java/com/google/cloud/teleport/templates/BulkDecompressor.java)
+* [DLP Text to BigQuery (Streaming)](src/main/java/com/google/cloud/teleport/templates/DLPTextToBigQueryStreaming.java)
 * [Datastore Bulk Delete](src/main/java/com/google/cloud/teleport/templates/DatastoreToDatastoreDelete.java) *
 * [Datastore to BigQuery](src/main/java/com/google/cloud/teleport/templates/DatastoreToBigQuery.java)
 * [Datastore to GCS Text](src/main/java/com/google/cloud/teleport/templates/DatastoreToText.java) *
