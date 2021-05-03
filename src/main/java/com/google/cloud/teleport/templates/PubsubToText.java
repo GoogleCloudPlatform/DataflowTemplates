@@ -130,6 +130,7 @@ public class PubsubToText {
         + "a pub/sub subscription or a topic")
     @Default.Boolean(false)
     Boolean getUseSubscription();
+    void setUseSubscription(Boolean value);
 
     @Description("The directory to output files to. Must end with a slash.")
     @Required
