@@ -40,6 +40,7 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
+import org.apache.beam.sdk.values.PCollection;
 
 /**
  * This pipeline ingests incoming data from a Cloud Pub/Sub topic and outputs the raw data into
@@ -59,26 +60,66 @@ import org.apache.beam.sdk.transforms.windowing.Window;
  *      ]
  *   }
  * </pre>
+ * </p>
  *
  * <p>Example Usage:
  *
  * <pre>
+ * # Set the pipeline vars
+ * PIPELINE_NAME=PubsubToAvro
+ * PROJECT_ID=PROJECT ID HERE
+ * PIPELINE_BUCKET=TEMPLATE STORAGE BUCKET NAME HERE
+ * OUTPUT_BUCKET=JOB OUTPUT BUCKET NAME HERE
+ * USE_SUBSCRIPTION=true or false depending on whether the pipeline should read
+ *                  from a Pub/Sub Subscription or a Pub/Sub Topic.
+ * PIPELINE_FOLDER=gs://${PIPELINE_BUCKET}/dataflow/pipelines/pubsub-to-gcs-avro
+ *
+ * # Set the runner
+ * RUNNER=DataflowRunner
+ *
+ * # Build the template
  * mvn compile exec:java \
- *   -Dexec.mainClass=com.google.cloud.teleport.templates.${PIPELINE_NAME} \
- *   -Dexec.cleanupDaemonThreads=false \
- *   -Dexec.args=" \
- *   --project=${PROJECT_ID} \
- *   --stagingLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
- *   --tempLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
- *   --runner=DataflowRunner \
- *   --windowDuration=2m \
- *   --numShards=1 \
- *   --topic=projects/${PROJECT_ID}/topics/windowed-files \
- *   --outputDirectory=gs://${PROJECT_ID}/temp/ \
- *   --outputFilenamePrefix=windowed-file \
- *   --outputFilenameSuffix=.avro
- *   --avroTempDirectory=gs://${PROJECT_ID}/avro-temp-dir/"
+ -Dexec.mainClass=com.google.cloud.teleport.templates.${PIPELINE_NAME} \
+ -Dexec.cleanupDaemonThreads=false \
+ -Dexec.args=" \
+ --project=${PROJECT_ID} \
+ --stagingLocation=${PIPELINE_FOLDER}/staging \
+ --tempLocation=${PIPELINE_FOLDER}/temp \
+ --templateLocation=${PIPELINE_FOLDER}/template \
+ --runner=${RUNNER} \
+ --useSubscription=${USE_SUBSCRIPTION}"
+ *
+ * # Execute the template
+ * JOB_NAME=pubsub-to-bigquery-$USER-`date +"%Y%m%d-%H%M%S%z"`
+ *
+ * # Execute a pipeline to read from a Topic.
+ * gcloud dataflow jobs run ${JOB_NAME} \
+ * --gcs-location=${PIPELINE_FOLDER}/template \
+ * --zone=us-east1-d \
+ * --parameters \
+ * "inputTopic=projects/${PROJECT_ID}/topics/input-topic-name,\
+ * windowDuration=5m,\
+ * numShards=1,\
+ * userTempLocation=gs://${OUTPUT_BUCKET}/tmp/,\
+ * outputDirectory=gs://${OUTPUT_BUCKET}/output/,\
+ * outputFilenamePrefix=windowed-file,\
+ * outputFilenameSuffix=.txt"
+ *
+ * # Execute a pipeline to read from a Subscription.
+ * gcloud dataflow jobs run ${JOB_NAME} \
+ * --gcs-location=${PIPELINE_FOLDER}/template \
+ * --zone=us-east1-d \
+ * --parameters \
+ * "inputSubscription=projects/${PROJECT_ID}/subscriptions/input-subscription-name,\
+ * windowDuration=5m,\
+ * numShards=1,\
+ * userTempLocation=gs://${OUTPUT_BUCKET}/tmp/,\
+ * outputDirectory=gs://${OUTPUT_BUCKET}/output/,\
+ * outputFilenamePrefix=windowed-file,\
+ * outputFilenameSuffix=.avro"
  * </pre>
+ *
+ * </p>
  */
 public class PubsubToAvro {
 
@@ -88,11 +129,26 @@ public class PubsubToAvro {
    * <p>Inherits standard configuration options.
    */
   public interface Options extends PipelineOptions, StreamingOptions {
+    @Description(
+        "The Cloud Pub/Sub subscription to consume from. "
+            + "The name should be in the format of "
+            + "projects/<project-id>/subscriptions/<subscription-name>.")
+    ValueProvider<String> getInputSubscription();
+
+    void setInputSubscription(ValueProvider<String> value);
+
     @Description("The Cloud Pub/Sub topic to read from.")
-    @Required
     ValueProvider<String> getInputTopic();
 
     void setInputTopic(ValueProvider<String> value);
+
+    @Description(
+        "This determines whether the template reads from "
+            + "a pub/sub subscription or a topic")
+    @Default.Boolean(false)
+    Boolean getUseSubscription();
+
+    void setUseSubscription(Boolean value);
 
     @Description("The directory to output files to. Must end with a slash.")
     @Required
@@ -169,16 +225,23 @@ public class PubsubToAvro {
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
 
+    PCollection<PubsubMessage> messages = null;
+
     /*
      * Steps:
      *   1) Read messages from PubSub
      *   2) Window the messages into minute intervals specified by the executor.
      *   3) Output the windowed data into Avro files, one per window by default.
      */
-    pipeline
-        .apply(
-            "Read PubSub Events",
-            PubsubIO.readMessagesWithAttributes().fromTopic(options.getInputTopic()))
+
+    if (options.getUseSubscription()) {
+        messages = pipeline.apply("Read PubSub Events", PubsubIO.readMessagesWithAttributes()
+          .fromSubscription(options.getInputSubscription()));
+    } else {
+        messages = pipeline.apply("Read PubSub Events", PubsubIO.readMessagesWithAttributes()
+          .fromTopic(options.getInputTopic()));
+    }
+    messages
         .apply("Map to Archive", ParDo.of(new PubsubMessageToArchiveDoFn()))
         .apply(
             options.getWindowDuration() + " Window",
