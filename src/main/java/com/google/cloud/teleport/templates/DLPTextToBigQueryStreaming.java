@@ -131,6 +131,7 @@ import org.slf4j.LoggerFactory;
  * --zone=us-east1-d \
  * --parameters \
  * "inputFilePattern=gs://<bucketName>/<fileName>.csv, batchSize=15,datasetName=<BQDatasetId>,
+ *  dlpProjectId=<projectId>,
  *  deidentifyTemplateName=projects/{projectId}/deidentifyTemplates/{deIdTemplateId}
  * </pre>
  */
@@ -728,7 +729,7 @@ public class DLPTextToBigQueryStreaming {
 
     if (channel != null) {
 
-      br = new BufferedReader(Channels.newReader(channel, Charsets.ISO_8859_1.name()));
+      br = new BufferedReader(Channels.newReader(channel, Charsets.UTF_8.name()));
     }
 
     return br;
