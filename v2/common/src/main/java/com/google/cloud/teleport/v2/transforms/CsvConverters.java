@@ -31,6 +31,7 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.apache.avro.Schema;
@@ -54,6 +55,7 @@ import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.vendor.guava.v20_0.com.google.common.base.Splitter;
@@ -179,6 +181,7 @@ public class CsvConverters {
 
   /** Necessary {@link PipelineOptions} options for Csv Pipelines. */
   public interface CsvPipelineOptions extends PipelineOptions, JavascriptTextTransformerOptions {
+
     @Description("Pattern to where data lives, ex: gs://mybucket/somepath/*.csv")
     String getInputFileSpec();
 
@@ -432,6 +435,32 @@ public class CsvConverters {
     public void processElement(ProcessContext context) {
       String message = context.element();
       context.output(FailsafeElement.of(message, message));
+    }
+  }
+
+  /**
+   * The {@link RowToCsv} wraps an Row element to the csv record.
+   */
+  public static class RowToCsv extends DoFn<Row, String> {
+
+    private final String csvDelimiter;
+
+    public RowToCsv(String csvDelimiter) {
+      this.csvDelimiter = csvDelimiter;
+    }
+
+    @ProcessElement
+    public void processElement(ProcessContext context) {
+
+      context.output(getCsvFromRow(Objects.requireNonNull(context.element())));
+
+    }
+    public String getCsvFromRow(Row row) {
+      return row.getValues()
+          .stream()
+          .map(item -> item == null ? "null" : item)
+          .map(Object::toString)
+          .collect(Collectors.joining(csvDelimiter));
     }
   }
 

@@ -22,10 +22,10 @@ import static org.hamcrest.Matchers.startsWith;
 import static org.junit.Assert.assertNotNull;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.io.GoogleCloudStorageIO;
 import com.google.cloud.teleport.v2.options.ProtegrityDataTokenizationOptions;
-import com.google.cloud.teleport.v2.transforms.io.GcsIO;
-import com.google.cloud.teleport.v2.transforms.io.GcsIO.FORMAT;
-import com.google.cloud.teleport.v2.utils.RowToCsv;
+import com.google.cloud.teleport.v2.transforms.CsvConverters.RowToCsv;
+import com.google.cloud.teleport.v2.utils.IoFormats;
 import com.google.cloud.teleport.v2.utils.SchemasUtils;
 import com.google.common.io.Resources;
 import java.io.IOException;
@@ -122,14 +122,15 @@ public class ProtegrityDataTokenizationTest {
 
   @Test
   public void testFileSystemIOReadCSV() throws IOException {
-    PCollection<Row> rows = fileSystemIORead(CSV_FILE_PATH, FORMAT.CSV);
+    PCollection<Row> rows = fileSystemIORead(CSV_FILE_PATH, IoFormats.CSV);
+
     assertField(rows);
     testPipeline.run();
   }
 
   @Test
   public void testFileSystemIOReadJSON() throws IOException {
-    PCollection<Row> rows = fileSystemIORead(JSON_FILE_PATH, FORMAT.JSON);
+    PCollection<Row> rows = fileSystemIORead(JSON_FILE_PATH, IoFormats.JSON);
     assertField(rows);
     testPipeline.run();
   }
@@ -137,14 +138,14 @@ public class ProtegrityDataTokenizationTest {
 
   @Test
   public void testFileSystemIOReadAVRO() throws IOException {
-    PCollection<Row> rows = fileSystemIORead(AVRO_FILE_PATH, FORMAT.AVRO);
+    PCollection<Row> rows = fileSystemIORead(AVRO_FILE_PATH, IoFormats.AVRO);
     assertField(rows);
     testPipeline.run();
   }
 
   @Test
   public void testJsonToRow() throws IOException {
-    PCollection<Row> rows = fileSystemIORead(JSON_FILE_PATH, FORMAT.JSON);
+    PCollection<Row> rows = fileSystemIORead(JSON_FILE_PATH, IoFormats.JSON);
     PAssert.that(rows)
         .satisfies(
             x -> {
@@ -163,13 +164,13 @@ public class ProtegrityDataTokenizationTest {
   }
 
   private PCollection<Row> fileSystemIORead(
-      String inputGcsFilePattern, FORMAT inputGcsFileFormat) throws IOException {
+      String inputGcsFilePattern, IoFormats inputGcsFileFormat) throws IOException {
     ProtegrityDataTokenizationOptions options =
         PipelineOptionsFactory.create().as(ProtegrityDataTokenizationOptions.class);
     options.setDataSchemaGcsPath(SCHEMA_FILE_PATH);
     options.setInputGcsFilePattern(inputGcsFilePattern);
     options.setInputGcsFileFormat(inputGcsFileFormat);
-    if (inputGcsFileFormat == FORMAT.CSV) {
+    if (inputGcsFileFormat == IoFormats.CSV) {
       options.setCsvContainsHeaders(Boolean.FALSE);
     }
 
@@ -191,10 +192,24 @@ public class ProtegrityDataTokenizationTest {
             RowCoder.of(testSchemaUtils.getBeamSchema()));
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
-    return new GcsIO(options).read(testPipeline, testSchemaUtils);
+    GoogleCloudStorageIO.Read read = GoogleCloudStorageIO
+        .read(options, testSchemaUtils.getBeamSchema());
+
+    switch (options.getInputGcsFileFormat()) {
+      case CSV:
+        return testPipeline.apply(read.csv(options));
+      case JSON:
+        return testPipeline.apply(read.json());
+      case AVRO:
+        return testPipeline.apply(read.avro());
+      default:
+        throw new IllegalStateException(
+            "No valid format for input data is provided. Please, choose JSON, CSV or AVRO.");
+    }
   }
 
   private void assertField(PCollection<Row> rows) {
+
     PAssert.that(rows)
         .satisfies(
             x -> {

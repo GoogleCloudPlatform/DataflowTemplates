@@ -21,15 +21,16 @@ import static com.google.cloud.teleport.v2.utils.DurationUtils.parseDuration;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.io.GoogleCloudStorageIO;
+import com.google.cloud.teleport.v2.io.GoogleCloudStorageIO.JsonToBeamRow;
 import com.google.cloud.teleport.v2.io.BigTableIO;
 import com.google.cloud.teleport.v2.options.ProtegrityDataTokenizationOptions;
+import com.google.cloud.teleport.v2.transforms.CsvConverters.RowToCsv;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
-import com.google.cloud.teleport.v2.transforms.JsonToBeamRow;
 import com.google.cloud.teleport.v2.transforms.ProtegrityDataProtectors.RowToTokenizedRow;
-import com.google.cloud.teleport.v2.transforms.SerializableFunctions;
 import com.google.cloud.teleport.v2.transforms.io.BigQueryIO;
-import com.google.cloud.teleport.v2.transforms.io.GcsIO;
-import com.google.cloud.teleport.v2.utils.RowToCsv;
+import com.google.cloud.teleport.v2.transforms.io.BigTableIO;
+import com.google.cloud.teleport.v2.utils.FailsafeElementToStringCsvSerializableFunction;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.utils.SchemasUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -262,15 +263,28 @@ public class ProtegrityDataTokenization {
 
     PCollection<Row> records;
     if (options.getInputGcsFilePattern() != null) {
-      records = new GcsIO(options).read(pipeline, schema);
+      GoogleCloudStorageIO.Read read = GoogleCloudStorageIO.read(options, schema.getBeamSchema());
+      switch (options.getInputGcsFileFormat()) {
+        case CSV:
+          records = pipeline.apply(read.csv(options));
+          break;
+        case JSON:
+          records = pipeline.apply(read.json());
+          break;
+        case AVRO:
+          records = pipeline.apply(read.avro());
+          break;
+        default:
+          throw new IllegalStateException(
+              "No valid format for input data is provided. Please, choose JSON, CSV or AVRO.");
+      }
     } else if (options.getInputSubscription() != null) {
       records = pipeline
           .apply("ReadMessagesFromPubsub",
               PubsubIO.readStrings().fromSubscription(options.getInputSubscription()))
           .apply("TransformToBeamRow",
-              new JsonToBeamRow(options.getNonTokenizedDeadLetterGcsPath(), schema));
+              new JsonToBeamRow(schema.getBeamSchema()));
       if (options.getOutputGcsDirectory() != null) {
-
         records = records
             .apply(
                 Window.into(FixedWindows.of(parseDuration(
@@ -315,15 +329,28 @@ public class ProtegrityDataTokenization {
           .apply("WriteTokenizationErrorsToGcs",
               ErrorConverters.WriteErrorsToTextIO.<String, String>newBuilder()
                   .setErrorWritePath(options.getNonTokenizedDeadLetterGcsPath())
-                  .setTranslateFunction(SerializableFunctions.getCsvErrorConverter())
+                  .setTranslateFunction(new FailsafeElementToStringCsvSerializableFunction<>())
                   .build());
     }
 
     if (options.getOutputGcsDirectory() != null) {
-      new GcsIO(options).write(
-          tokenizedRows.get(TOKENIZATION_OUT),
-          schema.getBeamSchema()
-      );
+      GoogleCloudStorageIO.Write write = GoogleCloudStorageIO.write(options);
+      switch (options.getOutputGcsFileFormat()) {
+        case JSON:
+          tokenizedRows.get(TOKENIZATION_OUT).apply(write.json());
+          break;
+        case AVRO:
+          tokenizedRows.get(TOKENIZATION_OUT).apply(write.avro(schema.getBeamSchema()));
+          break;
+        case CSV:
+          tokenizedRows.get(TOKENIZATION_OUT).apply(write.csv(options)
+              .withFieldNames(schema.getBeamSchema().getFieldNames())
+          );
+          break;
+        default:
+          throw new IllegalStateException(
+              "No valid format for output data is provided. Please, choose JSON, CSV or AVRO.");
+      }
     } else if (options.getBigQueryTableName() != null) {
       WriteResult writeResult = write(tokenizedRows.get(TOKENIZATION_OUT),
           options.getBigQueryTableName(),

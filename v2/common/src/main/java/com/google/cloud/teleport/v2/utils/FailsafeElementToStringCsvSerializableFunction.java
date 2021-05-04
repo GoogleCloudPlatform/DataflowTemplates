@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 Google Inc.
+ * Copyright (C) 2021 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.transforms;
+package com.google.cloud.teleport.v2.utils;
 
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.time.Instant;
@@ -21,26 +21,25 @@ import java.util.ArrayList;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 
 /**
- * The {@link SerializableFunctions} class to store static Serializable functions.
+ * The {@link FailsafeElementToStringCsvSerializableFunction} class to store static Serializable functions.
+ * Original payload will be translate to string with toString()
  */
-public class SerializableFunctions {
+public class FailsafeElementToStringCsvSerializableFunction<T,V> implements
+    SerializableFunction<FailsafeElement<T, V>, String> {
 
-  private static final SerializableFunction<FailsafeElement<String, String>, String> csvErrorConverter = (FailsafeElement<String, String> failsafeElement) -> {
+  @Override
+  public String apply(FailsafeElement<T, V> input) {
     ArrayList<String> outputRow = new ArrayList<>();
-    final String message = failsafeElement.getOriginalPayload();
+    final String message = input.getOriginalPayload().toString();
     String timestamp = Instant.now().toString();
     outputRow.add(timestamp);
-    outputRow.add(failsafeElement.getErrorMessage());
-    outputRow.add(failsafeElement.getStacktrace());
+    outputRow.add(input.getErrorMessage());
+    outputRow.add(input.getStacktrace());
     // Only set the payload if it's populated on the message.
-    if (failsafeElement.getOriginalPayload() != null) {
+    if (input.getOriginalPayload() != null) {
       outputRow.add(message);
     }
 
     return String.join(",", outputRow);
-  };
-
-  public static SerializableFunction<FailsafeElement<String, String>, String> getCsvErrorConverter() {
-    return csvErrorConverter;
   }
 }

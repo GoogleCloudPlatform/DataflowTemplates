@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.options;
 
-import com.google.cloud.teleport.v2.transforms.io.GcsIO;
+import com.google.cloud.teleport.v2.options.PubsubCommonOptions.ReadSubscriptionOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -25,7 +25,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
  * passed by the executor at the command-line.
  */
 public interface ProtegrityDataTokenizationOptions extends PipelineOptions,
-    GcsIO.GcsPipelineOptions, BigTableCommonOptions.WriteOptions,
+    BigTableCommonOptions.WriteOptions, GcsPipelineOptions, ReadSubscriptionOptions,
     GcsCommonOptions.ReadOptions, GcsCommonOptions.WriteOptions, CsvOptions {
 
   @Description("Path to data schema (JSON format) in GCS compatible with BigQuery.")
