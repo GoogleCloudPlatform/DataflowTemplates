@@ -146,11 +146,10 @@ public class ParquetToBigtable {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
     PipelineResult result = run(options);
-
   }
 
   public static PipelineResult run(Options options) {
-    Pipeline pipeline = Pipeline.create(options);
+    Pipeline pipeline = Pipeline.create(PipelineUtils.tweakPipelineOptions(options));
 
     BigtableIO.Write write =
             BigtableIO.write()

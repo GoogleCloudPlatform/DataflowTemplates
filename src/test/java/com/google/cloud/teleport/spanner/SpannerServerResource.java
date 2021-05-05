@@ -37,6 +37,7 @@ import org.junit.rules.ExternalResource;
 /** Facilitates setup and deletion of a Spanner database for integration tests. */
 public class SpannerServerResource extends ExternalResource {
   // Modify the following parameters to match your Cloud Spanner instance.
+  private static final String EMULATOR_HOST = System.getenv("SPANNER_EMULATOR_HOST");
   private final String projectId = "span-cloud-testing";
   private final String instanceId = "test-instance";
   private final String host = "https://spanner.googleapis.com";
@@ -46,8 +47,16 @@ public class SpannerServerResource extends ExternalResource {
 
   @Override
   protected void before() {
-    SpannerOptions spannerOptions =
-        SpannerOptions.newBuilder().setProjectId(projectId).setHost(host).build();
+    SpannerOptions spannerOptions;
+    if (EMULATOR_HOST == null) {
+      spannerOptions = SpannerOptions.newBuilder().setProjectId(projectId).setHost(host).build();
+    } else {
+      spannerOptions =
+          SpannerOptions.newBuilder()
+              .setProjectId(projectId)
+              .setEmulatorHost(EMULATOR_HOST)
+              .build();
+    }
     client = spannerOptions.getService();
     databaseAdminClient = client.getDatabaseAdminClient();
   }
@@ -83,11 +92,19 @@ public class SpannerServerResource extends ExternalResource {
   }
 
   public SpannerConfig getSpannerConfig(String dbName) {
-    return SpannerConfig.create()
-        .withProjectId(projectId)
-        .withInstanceId(instanceId)
-        .withDatabaseId(dbName)
-        .withHost(ValueProvider.StaticValueProvider.of(host));
+    if (EMULATOR_HOST == null) {
+      return SpannerConfig.create()
+          .withProjectId(projectId)
+          .withInstanceId(instanceId)
+          .withDatabaseId(dbName)
+          .withHost(ValueProvider.StaticValueProvider.of(host));
+    } else {
+      return SpannerConfig.create()
+          .withProjectId(projectId)
+          .withInstanceId(instanceId)
+          .withDatabaseId(dbName)
+          .withEmulatorHost(ValueProvider.StaticValueProvider.of(EMULATOR_HOST));
+    }
   }
 
   public void populateRandomData(String db, Ddl ddl, int numBatches) throws Exception {

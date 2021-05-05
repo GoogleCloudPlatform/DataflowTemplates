@@ -95,7 +95,6 @@ final class AvroToBigtable {
    */
   public static void main(String[] args) {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
-
     PipelineResult result = run(options);
 
     // Wait for pipeline to finish only if it is not constructing a template.
@@ -105,7 +104,7 @@ final class AvroToBigtable {
   }
 
   public static PipelineResult run(Options options) {
-    Pipeline pipeline = Pipeline.create(options);
+    Pipeline pipeline = Pipeline.create(PipelineUtils.tweakPipelineOptions(options));
 
     BigtableIO.Write write =
         BigtableIO.write()

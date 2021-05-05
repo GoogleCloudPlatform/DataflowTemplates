@@ -17,7 +17,7 @@
 
 package com.google.cloud.teleport.v2.cdc.mappers;
 
-import com.google.cloud.bigquery.LegacySQLTypeName;
+import com.google.cloud.bigquery.StandardSQLTypeName;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,31 +26,31 @@ import java.util.Map;
  */
 public final class BigQueryDefaultSchemas {
 
-  public static final Map<String, LegacySQLTypeName> WEB_SDK_SCHEMA = new HashMap<String, LegacySQLTypeName>() {{
-    put("$os", LegacySQLTypeName.STRING);
-    put("$browser", LegacySQLTypeName.STRING);
-    put("$referrer", LegacySQLTypeName.STRING);
-    put("$referring_domain", LegacySQLTypeName.STRING);
-    put("$current_url", LegacySQLTypeName.STRING);
-    put("$browser_version", LegacySQLTypeName.STRING);
-    put("$screen_height", LegacySQLTypeName.STRING);
-    put("$screen_width", LegacySQLTypeName.STRING);
-    put("mp_lib", LegacySQLTypeName.STRING);
-    put("$lib_version", LegacySQLTypeName.STRING);
-    put("hostname", LegacySQLTypeName.STRING);
-    put("$initial_referrer", LegacySQLTypeName.STRING);
-    put("$initial_referring_domain", LegacySQLTypeName.STRING);
-    put("branch", LegacySQLTypeName.STRING);
+  public static final Map<String, StandardSQLTypeName> WEB_SDK_SCHEMA = new HashMap<String, StandardSQLTypeName>() {{
+    put("$os", StandardSQLTypeName.STRING);
+    put("$browser", StandardSQLTypeName.STRING);
+    put("$referrer", StandardSQLTypeName.STRING);
+    put("$referring_domain", StandardSQLTypeName.STRING);
+    put("$current_url", StandardSQLTypeName.STRING);
+    put("$browser_version", StandardSQLTypeName.STRING);
+    put("$screen_height", StandardSQLTypeName.STRING);
+    put("$screen_width", StandardSQLTypeName.STRING);
+    put("mp_lib", StandardSQLTypeName.STRING);
+    put("$lib_version", StandardSQLTypeName.STRING);
+    put("hostname", StandardSQLTypeName.STRING);
+    put("$initial_referrer", StandardSQLTypeName.STRING);
+    put("$initial_referring_domain", StandardSQLTypeName.STRING);
+    put("branch", StandardSQLTypeName.STRING);
   }};
 
-  public static final Map<String, LegacySQLTypeName> DATASTREAM_METADATA_SCHEMA =
-      new HashMap<String, LegacySQLTypeName>() {
+  public static final Map<String, StandardSQLTypeName> DATASTREAM_METADATA_SCHEMA =
+      new HashMap<String, StandardSQLTypeName>() {
         {
-          put("_metadata_row_id", LegacySQLTypeName.STRING);
-          put("_metadata_change_type", LegacySQLTypeName.STRING);
-          put("_metadata_deleted", LegacySQLTypeName.BOOLEAN);
-          put("_metadata_timestamp", LegacySQLTypeName.TIMESTAMP);
-          put("_metadata_read_timestamp", LegacySQLTypeName.TIMESTAMP);
+          put("_metadata_row_id", StandardSQLTypeName.STRING);
+          put("_metadata_change_type", StandardSQLTypeName.STRING);
+          put("_metadata_deleted", StandardSQLTypeName.BOOL);
+          put("_metadata_timestamp", StandardSQLTypeName.TIMESTAMP);
+          put("_metadata_read_timestamp", StandardSQLTypeName.TIMESTAMP);
         }
       };
 }

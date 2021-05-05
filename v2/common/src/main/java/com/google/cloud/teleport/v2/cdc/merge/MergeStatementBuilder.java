@@ -17,6 +17,7 @@
 package com.google.cloud.teleport.v2.cdc.merge;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,12 +60,18 @@ public class MergeStatementBuilder implements Serializable {
           orderByFields, deletedFieldName,
           configuration.partitionRetention()));
 
-    mergeQueryValues.put("joinCondition", buildJoinConditions(primaryKeyFields, REPLICA_TABLE_NAME, STAGING_TABLE_NAME));
-    mergeQueryValues.put("timestampCompareSql", buildTimestampCheck(getPrimarySortField(orderByFields)));
-    mergeQueryValues.put("mergeUpdateSql", buildUpdateStatement(allFields));
-    mergeQueryValues.put("mergeInsertSql", buildInsertStatement(allFields));
+    mergeQueryValues.put("joinCondition",
+        buildJoinConditions(primaryKeyFields, REPLICA_TABLE_NAME, STAGING_TABLE_NAME));
+    mergeQueryValues.put("timestampCompareSql",
+        buildTimestampCheck(getPrimarySortField(orderByFields)));
+    mergeQueryValues.put("mergeUpdateSql",
+        buildUpdateStatement(allFields, configuration.quoteCharacter()));
+    mergeQueryValues.put("mergeInsertSql",
+        buildInsertStatement(allFields, configuration.quoteCharacter()));
 
-    String mergeStatement = StringSubstitutor.replace(configuration.mergeQueryTemplate(), mergeQueryValues, "{", "}");
+    String mergeStatement = StringSubstitutor.replace(
+        configuration.mergeQueryTemplate(),
+        mergeQueryValues, "{", "}");
     return mergeStatement;
   }
 
@@ -82,12 +89,21 @@ public class MergeStatementBuilder implements Serializable {
   private String buildLatestViewOfStagingTable(
       String stagingTable, List<String> allFields, List<String> primaryKeyFields,
       List<String> orderByFields, String deletedFieldName, Integer daysOfRetention) {
-    String commaSeparatedFields = String.join(", ", allFields);
+    String commaSeparatedFields = joinStringFields(",", allFields, "`");
 
     return String.format(LATEST_FROM_STAGING_TEMPLATE,
         commaSeparatedFields,
         buildPartitionedByPKAndSorted(
             stagingTable, allFields, primaryKeyFields, orderByFields, deletedFieldName));
+  }
+
+  private static String joinStringFields(String delimiter, List<String> fields, String quoteChar) {
+    List<String> quotedFields = new ArrayList<String>();
+    for (String field : fields) {
+      quotedFields.add(quoteChar + field + quoteChar);
+    }
+
+    return String.join(delimiter, quotedFields);
   }
 
   public static final String PARTITION_BY_PK_AND_SORT_TEMPLATE = String.join("",
@@ -100,7 +116,7 @@ public class MergeStatementBuilder implements Serializable {
       String stagingTable, List<String> allFields,
       List<String> primaryKeyFields, List<String> orderByFields,
       String deletedFieldName) {
-    String commaSeparatedFields = String.join(", ", allFields);
+    String commaSeparatedFields = joinStringFields(",", allFields, configuration.quoteCharacter());
     String commaSeparatedPKFields = String.join(", ", primaryKeyFields);
     return String.format(PARTITION_BY_PK_AND_SORT_TEMPLATE,
         commaSeparatedFields,
@@ -113,7 +129,7 @@ public class MergeStatementBuilder implements Serializable {
   private String buildOrderByFieldsSql(List<String> orderByFields) {
     String orderByFieldSql = "";
 
-    for (String field: orderByFields) {
+    for (String field : orderByFields) {
       if (orderByFieldSql == "") {
         orderByFieldSql = String.format("%s DESC", field);
       } else {
@@ -152,9 +168,11 @@ public class MergeStatementBuilder implements Serializable {
 
   static final String UPDATE_STATEMENT = "UPDATE SET %s";
 
-  static String buildUpdateStatement(List<String> allFields) {
+  static String buildUpdateStatement(List<String> allFields, String quoteChar) {
     List<String> assignmentStatements = allFields.stream()
-        .map(column -> String.format("%s = %s.%s", column, STAGING_TABLE_NAME, column))
+        .map(column -> String.format("%s%s%s = %s.%s",
+                 quoteChar, column, quoteChar,
+                 STAGING_TABLE_NAME, column))
         .collect(Collectors.toList());
 
     return String.format(UPDATE_STATEMENT,
@@ -163,12 +181,12 @@ public class MergeStatementBuilder implements Serializable {
 
   static final String INSERT_STATEMENT = "INSERT(%s) VALUES (%s)";
 
-  static String buildInsertStatement(List<String> allFields) {
+  static String buildInsertStatement(List<String> allFields, String quoteChar) {
     List<String> changelogPrefixedFields = allFields.stream()
         .map(f -> String.format("%s.%s", STAGING_TABLE_NAME, f))
         .collect(Collectors.toList());
     return String.format(INSERT_STATEMENT,
-        String.join(", ", allFields),
+        String.join(", ", joinStringFields(",", allFields, quoteChar)),
         String.join(", ", changelogPrefixedFields));
   }
 }

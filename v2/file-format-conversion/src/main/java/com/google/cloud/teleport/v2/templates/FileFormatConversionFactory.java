@@ -87,6 +87,7 @@ public class FileFormatConversionFactory {
                           .setLineTag(CSV_LINES)
                           .setCsvFormat(options().getCsvFormat())
                           .setDelimiter(options().getDelimiter())
+                          .setFileEncoding(options().getCsvFileEncoding())
                           .build())
                   .get(CSV_LINES)
                   .apply(

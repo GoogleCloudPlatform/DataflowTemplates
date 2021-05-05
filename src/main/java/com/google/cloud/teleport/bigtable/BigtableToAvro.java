@@ -98,7 +98,7 @@ public class BigtableToAvro {
   }
 
   public static PipelineResult run(Options options) {
-    Pipeline pipeline = Pipeline.create(options);
+    Pipeline pipeline = Pipeline.create(PipelineUtils.tweakPipelineOptions(options));
 
     BigtableIO.Read read =
         BigtableIO.read()

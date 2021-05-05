@@ -66,7 +66,7 @@ public class FormatDatastreamRecordToJson
   private String streamName;
   private boolean lowercaseSourceColumns = false;
   private String rowIdColumnName;
-  private static Map<String, String> hashedColumns = new HashMap<String, String>();
+  private Map<String, String> hashedColumns = new HashMap<String, String>();
 
   private FormatDatastreamRecordToJson() {}
 
@@ -79,8 +79,8 @@ public class FormatDatastreamRecordToJson
     return this;
   }
 
-  public FormatDatastreamRecordToJson withLowercaseSourceColumns() {
-    this.lowercaseSourceColumns = true;
+  public FormatDatastreamRecordToJson withLowercaseSourceColumns(Boolean lowercaseSourceColumns) {
+    this.lowercaseSourceColumns = lowercaseSourceColumns;
     return this;
   }
 
@@ -107,6 +107,17 @@ public class FormatDatastreamRecordToJson
     return this;
   }
 
+  /**
+   * Set the map of columns values to hash.
+   *
+   * @param hashedColumns The map of columns to new columns to hash.
+   */
+  public FormatDatastreamRecordToJson withHashColumnValues(
+      Map<String, String> hashedColumns) {
+    this.hashedColumns = hashedColumns;
+    return this;
+  }
+
   @Override
   public FailsafeElement<String, String> apply(GenericRecord record) {
     ObjectMapper mapper = new ObjectMapper();
@@ -117,28 +128,38 @@ public class FormatDatastreamRecordToJson
     }
 
     // General DataStream Metadata
+    String sourceType = getSourceType(record);
+
     outputObject.put("_metadata_stream", getStreamName(record));
     outputObject.put("_metadata_timestamp", getSourceTimestamp(record));
     outputObject.put("_metadata_read_timestamp", getMetadataTimestamp(record));
+    outputObject.put("_metadata_read_method", record.get("read_method").toString());
+    outputObject.put("_metadata_source_type", sourceType);
 
     // Source Specific Metadata
     outputObject.put("_metadata_deleted", getMetadataIsDeleted(record));
-    outputObject.put("_metadata_schema", getMetadataSchema(record));
     outputObject.put("_metadata_table", getMetadataTable(record));
     outputObject.put("_metadata_change_type", getMetadataChangeType(record));
 
-    // Oracle Specific Metadata
-    outputObject.put("_metadata_row_id", getOracleRowId(record));
-    outputObject.put("_metadata_scn", getOracleScn(record));
-    outputObject.put("_metadata_ssn", getOracleSsn(record));
-    outputObject.put("_metadata_rs_id", getOracleRsId(record));
-    outputObject.put("_metadata_tx_id", getOracleTxId(record));
-
+    if (sourceType.equals("mysql")) {
+      // MySQL Specific Metadata
+      outputObject.put("_metadata_schema", getMetadataDatabase(record));
+      outputObject.put("_metadata_log_file", getSourceMetadata(record, "log_file"));
+      outputObject.put("_metadata_log_position", getSourceMetadata(record, "log_position"));
+    } else {
+      // Oracle Specific Metadata
+      outputObject.put("_metadata_schema", getMetadataSchema(record));
+      outputObject.put("_metadata_row_id", getOracleRowId(record));
+      outputObject.put("_metadata_scn", getOracleScn(record));
+      outputObject.put("_metadata_ssn", getOracleSsn(record));
+      outputObject.put("_metadata_rs_id", getOracleRsId(record));
+      outputObject.put("_metadata_tx_id", getOracleTxId(record));
+    }
     // Hash columns supplied to be hashed
-    applyHashToColumns(record, outputObject);
+    applyHashToColumns(outputObject);
 
     // All Raw Metadata
-    outputObject.put("_metadata_source", getSourceMetadata(record));
+    outputObject.put("_metadata_source", getSourceMetadataJson(record));
 
     return FailsafeElement.of(outputObject.toString(), outputObject.toString());
   }
@@ -151,7 +172,7 @@ public class FormatDatastreamRecordToJson
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode loweredOutputObject = mapper.createObjectNode();
 
-    for (Iterator<String> fieldNames=outputObject.getFieldNames(); fieldNames.hasNext(); ) {
+    for (Iterator<String> fieldNames = outputObject.getFieldNames(); fieldNames.hasNext(); ) {
       String fieldName = fieldNames.next();
       loweredOutputObject.put(fieldName.toLowerCase(), outputObject.get(fieldName));
     }
@@ -159,7 +180,7 @@ public class FormatDatastreamRecordToJson
     return loweredOutputObject;
   }
 
-  private JsonNode getSourceMetadata(GenericRecord record) {
+  private JsonNode getSourceMetadataJson(GenericRecord record) {
     ObjectMapper mapper = new ObjectMapper();
     JsonNode dataInput;
     try {
@@ -178,6 +199,12 @@ public class FormatDatastreamRecordToJson
     return this.streamName;
   }
 
+  private String getSourceType(GenericRecord record) {
+    String sourceType = record.get("read_method").toString().split("-")[0];
+    // TODO: consider validating the value is mysql or oracle
+    return sourceType;
+  }
+
   private long getMetadataTimestamp(GenericRecord record) {
     long unixTimestampMilli = (long) record.get("read_timestamp");
     return unixTimestampMilli / 1000;
@@ -190,8 +217,20 @@ public class FormatDatastreamRecordToJson
     return unixTimestampSec;
   }
 
+  private String getSourceMetadata(GenericRecord record, String fieldName) {
+    if (((GenericRecord) record.get("source_metadata")).get(fieldName) != null) {
+      return ((GenericRecord) record.get("source_metadata")).get(fieldName).toString();
+    }
+
+    return null;
+  }
+
   private String getMetadataSchema(GenericRecord record) {
     return ((GenericRecord) record.get("source_metadata")).get("schema").toString();
+  }
+
+  private String getMetadataDatabase(GenericRecord record) {
+    return ((GenericRecord) record.get("source_metadata")).get("database").toString();
   }
 
   private String getMetadataTable(GenericRecord record) {
@@ -224,12 +263,12 @@ public class FormatDatastreamRecordToJson
     return null;
   }
 
-  private void applyHashToColumns(GenericRecord record, ObjectNode outputObject) {
-    for (String columnName: this.hashedColumns.keySet()) {
-      if (record.get(columnName) != null) {
+  private void applyHashToColumns(ObjectNode outputObject) {
+    for (String columnName : this.hashedColumns.keySet()) {
+      if (outputObject.get(columnName) != null) {
         // TODO: discuss hash algorithm to use
         String newColumnName = this.hashedColumns.get(columnName);
-        int hashedValue = record.get(columnName).toString().hashCode();
+        int hashedValue = outputObject.get(columnName).toString().hashCode();
         outputObject.put(newColumnName, hashedValue);
       }
     }
@@ -314,14 +353,16 @@ public class FormatDatastreamRecordToJson
               jsonObject);
           break;
         case NULL:
-          // We represent nulls by not adding the key to the JSON object.
+          // Add key as null
+          jsonObject.putNull(fieldName);
           break;
         case UNION:
           List<Schema> types = fieldSchema.getTypes();
           if (types.size() == 2
               && types.stream().anyMatch(s -> s.getType().equals(Schema.Type.NULL))) {
-            // We represent nulls by not adding the key to the JSON object.
             if (record.get(fieldName) == null) {
+              // Add key as null
+              jsonObject.putNull(fieldName);
               break;  // This element is null.
             }
             Schema actualSchema = types.stream()

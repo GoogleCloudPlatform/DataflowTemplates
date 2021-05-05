@@ -28,7 +28,8 @@
 
     <properties>
         <avro.version>1.8.2</avro.version>
-        <bigquery.version>v2-rev20200719-1.30.10</bigquery.version>
+        <bigquery-api.version>v2-rev20200719-1.30.10</bigquery-api.version>
+        <bigquery.version>1.128.0</bigquery.version>
         <commons.version>1.8</commons.version>
         <commons-text.version>1.9</commons-text.version>
         <gax.version>1.54.0</gax.version>
@@ -53,7 +54,7 @@
         <dependency>
             <groupId>com.google.apis</groupId>
             <artifactId>google-api-services-bigquery</artifactId>
-            <version>${bigquery.version}</version>
+            <version>${bigquery-api.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.google.guava</groupId>
@@ -115,10 +116,18 @@
             <artifactId>commons-text</artifactId>
             <version>${commons-text.version}</version>
         </dependency>
+
+        <dependency>
+            <groupId>com.google.http-client</groupId>
+            <artifactId>google-http-client-bom</artifactId>
+            <version>1.39.0</version>
+            <type>pom</type>
+        </dependency>
+
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-bigquery</artifactId>
-            <version>1.122.2</version>
+            <version>${bigquery.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>

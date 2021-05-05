@@ -139,7 +139,7 @@ final class CassandraToBigtable {
             options.getCassandraHosts(),
             (SerializableFunction<String, List<String>>) value -> Arrays.asList(value.split(",")));
 
-    Pipeline p = Pipeline.create(options);
+    Pipeline p = Pipeline.create(PipelineUtils.tweakPipelineOptions(options));
 
     // Create a factory method to inject the CassandraRowMapperFn to allow custom type mapping.
     SerializableFunction<Session, Mapper> cassandraObjectMapperFactory =

@@ -60,6 +60,9 @@ public class SplunkConverters {
   private static final String HEC_SOURCE_TYPE_KEY = "sourcetype";
 
   private static final String TIMESTAMP_KEY = "timestamp";
+  
+  protected static final String PUBSUB_MESSAGE_ATTRIBUTE_FIELD = "attributes";
+  protected static final String PUBSUB_MESSAGE_DATA_FIELD = "data";
 
   /**
    * Returns a {@link FailsafeStringToSplunkEvent} {@link PTransform} that consumes {@link
@@ -144,7 +147,7 @@ public class SplunkConverters {
       this.splunkEventOutputTag = splunkEventOutputTag;
       this.splunkDeadletterTag = splunkDeadletterTag;
     }
-
+  
     @Override
     public PCollectionTuple expand(PCollection<FailsafeElement<String, String>> input) {
 
@@ -183,6 +186,11 @@ public class SplunkConverters {
                           String parsedTimestamp;
                           if (metadataAvailable) {
                             parsedTimestamp = metadata.optString(HEC_TIME_KEY);
+                          } else if (isPubsubMessage(json)
+                              && json.getJSONObject(PUBSUB_MESSAGE_DATA_FIELD).has(TIMESTAMP_KEY)) {
+                            parsedTimestamp =
+                                json.getJSONObject(PUBSUB_MESSAGE_DATA_FIELD)
+                                    .getString(TIMESTAMP_KEY);
                           } else {
                             parsedTimestamp = json.optString(TIMESTAMP_KEY);
                           }
@@ -261,6 +269,17 @@ public class SplunkConverters {
                     }
                   })
               .withOutputTags(splunkEventOutputTag, TupleTagList.of(splunkDeadletterTag)));
+    }
+
+    /**
+     * Determines whether the JSON payload is a Pub/Sub message by checking for the 'data' and
+     * 'attributes' fields.
+     *
+     * @param json {@link JSONObject} payload
+     * @return true if the payload is a Pub/Sub message and false otherwise
+     */
+    private boolean isPubsubMessage(JSONObject json) {
+      return json.has(PUBSUB_MESSAGE_DATA_FIELD) && json.has(PUBSUB_MESSAGE_ATTRIBUTE_FIELD);
     }
   }
 }
