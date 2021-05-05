@@ -16,6 +16,9 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.templates.ProtegrityDataTokenizationConstants.GCS_WRITING_WINDOW_DURATION;
+import static com.google.cloud.teleport.v2.transforms.BeamRowConverters.FAILSAFE_ELEMENT_CODER;
+import static com.google.cloud.teleport.v2.transforms.BeamRowConverters.TRANSFORM_DEADLETTER_OUT;
+import static com.google.cloud.teleport.v2.transforms.BeamRowConverters.TRANSFORM_OUT;
 import static com.google.cloud.teleport.v2.transforms.io.BigQueryIO.write;
 import static com.google.cloud.teleport.v2.utils.DurationUtils.parseDuration;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
@@ -23,8 +26,8 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.io.BigTableIO;
 import com.google.cloud.teleport.v2.io.GoogleCloudStorageIO;
-import com.google.cloud.teleport.v2.io.GoogleCloudStorageIO.JsonToBeamRow;
 import com.google.cloud.teleport.v2.options.ProtegrityDataTokenizationOptions;
+import com.google.cloud.teleport.v2.transforms.BeamRowConverters;
 import com.google.cloud.teleport.v2.transforms.CsvConverters.RowToCsv;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.transforms.ProtegrityDataProtectors.RowToTokenizedRow;
@@ -42,9 +45,7 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.KvCoder;
-import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.RowCoder;
-import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.coders.VarIntCoder;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
@@ -164,13 +165,6 @@ public class ProtegrityDataTokenization {
    */
   private static final Logger LOG = LoggerFactory.getLogger(ProtegrityDataTokenization.class);
 
-  /**
-   * String/String Coder for FailsafeElement.
-   */
-  public static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
-      FailsafeElementCoder.of(
-          NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of()));
-
 
   /**
    * The default suffix for error tables if dead letter table is not specified.
@@ -278,11 +272,30 @@ public class ProtegrityDataTokenization {
               "No valid format for input data is provided. Please, choose JSON, CSV or AVRO.");
       }
     } else if (options.getInputSubscription() != null) {
-      records = pipeline
+      PCollectionTuple recordsTuple = pipeline
           .apply("ReadMessagesFromPubsub",
               PubsubIO.readStrings().fromSubscription(options.getInputSubscription()))
-          .apply("TransformToBeamRow",
-              new JsonToBeamRow(schema.getBeamSchema()));
+          .apply("StringToFailsafe",
+              MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
+                  .via((String element) -> FailsafeElement.of(element, element)))
+          .apply("FailsafeJsonToBeamRow",
+              BeamRowConverters.FailsafeJsonToBeamRow.<String>newBuilder()
+                  .setBeamSchema(schema.getBeamSchema())
+                  .setSuccessTag(TRANSFORM_OUT)
+                  .setFailureTag(TRANSFORM_DEADLETTER_OUT)
+                  .build()
+          );
+
+      recordsTuple
+          .get(TRANSFORM_DEADLETTER_OUT)
+          .apply("WriteCsvConversionErrorsToGcs",
+              ErrorConverters.WriteErrorsToTextIO.<String, String>newBuilder()
+                  .setErrorWritePath(options.getNonTokenizedDeadLetterGcsPath())
+                  .setTranslateFunction(new FailsafeElementToStringCsvSerializableFunction<>())
+                  .build());
+
+      records = recordsTuple.get(TRANSFORM_OUT);
+
       if (options.getOutputGcsDirectory() != null) {
         records = records
             .apply(

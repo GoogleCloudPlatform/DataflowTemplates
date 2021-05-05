@@ -1,5 +1,8 @@
 package com.google.cloud.teleport.v2.io;
 
+import static com.google.cloud.teleport.v2.transforms.BeamRowConverters.FAILSAFE_ELEMENT_CODER;
+import static com.google.cloud.teleport.v2.transforms.BeamRowConverters.TRANSFORM_DEADLETTER_OUT;
+import static com.google.cloud.teleport.v2.transforms.BeamRowConverters.TRANSFORM_OUT;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.auto.value.AutoValue;
@@ -8,6 +11,7 @@ import com.google.cloud.teleport.v2.options.CsvOptions;
 import com.google.cloud.teleport.v2.options.GcsCommonOptions;
 import com.google.cloud.teleport.v2.options.GcsCommonOptions.ReadOptions;
 import com.google.cloud.teleport.v2.options.GcsCommonOptions.WriteOptions;
+import com.google.cloud.teleport.v2.transforms.BeamRowConverters;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.transforms.CsvConverters.RowToCsv;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
@@ -427,9 +431,17 @@ public class GoogleCloudStorageIO {
           .apply(
               "GetJson",
               MapElements.into(TypeDescriptors.strings()).via(FailsafeElement::getPayload))
-          .apply(
-              "TransformToBeamRow",
-              new JsonToBeamRow(getBeamSchema()));
+
+          .apply("StringToFailsafe",
+              MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
+                  .via((String element) -> FailsafeElement.of(element, element)))
+          .apply("FailsafeJsonToBeamRow",
+              BeamRowConverters.FailsafeJsonToBeamRow.<String>newBuilder()
+                  .setBeamSchema(getBeamSchema())
+                  .setSuccessTag(TRANSFORM_OUT)
+                  .setFailureTag(TRANSFORM_DEADLETTER_OUT)
+                  .build()
+          ).get(TRANSFORM_OUT);
     }
 
     @AutoValue.Builder
@@ -482,11 +494,16 @@ public class GoogleCloudStorageIO {
 
       return input.apply("ReadJsonFromGCSFiles",
           TextIO.read().from(getInputOptions().getInputGcsFilePattern()))
-          .apply(
-              "TransformToBeamRow",
-              new JsonToBeamRow(getBeamSchema()));
-
-
+          .apply("StringToFailsafe",
+              MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
+                  .via((String element) -> FailsafeElement.of(element, element)))
+          .apply("FailsafeJsonToBeamRow",
+              BeamRowConverters.FailsafeJsonToBeamRow.<String>newBuilder()
+                  .setBeamSchema(getBeamSchema())
+                  .setSuccessTag(TRANSFORM_OUT)
+                  .setFailureTag(TRANSFORM_DEADLETTER_OUT)
+                  .build()
+          ).get(TRANSFORM_OUT);
     }
 
     @AutoValue.Builder
