@@ -134,12 +134,12 @@
       ]
     },
     {
-      "name": "bigQueryTableName",
-      "label": "Name of the output BigQuery table",
-      "helpText": "Cloud BigQuery table name to write into",
+      "name": "outputTableSpec",
+      "label": "Spec of the output BigQuery table",
+      "helpText": "Output BigQuery table spec. The name should be in the format: <project>:<dataset>.<table_name>.",
       "paramType": "TEXT",
       "isOptional": true,
-      "regexes": []
+      "regexes": [".+:.+\\..+"]
     },
     {
       "name": "bigTableProjectId",

@@ -26,17 +26,13 @@ import org.apache.beam.sdk.options.PipelineOptions;
  */
 public interface ProtegrityDataTokenizationOptions extends PipelineOptions,
     BigTableCommonOptions.WriteOptions, GcsPipelineOptions, ReadSubscriptionOptions,
-    GcsCommonOptions.ReadOptions, GcsCommonOptions.WriteOptions, CsvOptions {
+    GcsCommonOptions.ReadOptions, GcsCommonOptions.WriteOptions, CsvOptions,
+    BigQueryCommonOptions.WriteOptions {
 
   @Description("Path to data schema (JSON format) in GCS compatible with BigQuery.")
   String getDataSchemaGcsPath();
 
   void setDataSchemaGcsPath(String dataSchemaGcsPath);
-
-  @Description("Cloud BigQuery table name to write into.")
-  String getBigQueryTableName();
-
-  void setBigQueryTableName(String bigQueryTableName);
 
   //Protegrity specific parameters
   @Description("URI for the API calls to DSG.")
