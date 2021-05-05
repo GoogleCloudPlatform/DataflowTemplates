@@ -21,15 +21,14 @@ import static com.google.cloud.teleport.v2.utils.DurationUtils.parseDuration;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.io.BigTableIO;
 import com.google.cloud.teleport.v2.io.GoogleCloudStorageIO;
 import com.google.cloud.teleport.v2.io.GoogleCloudStorageIO.JsonToBeamRow;
-import com.google.cloud.teleport.v2.io.BigTableIO;
 import com.google.cloud.teleport.v2.options.ProtegrityDataTokenizationOptions;
 import com.google.cloud.teleport.v2.transforms.CsvConverters.RowToCsv;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.transforms.ProtegrityDataProtectors.RowToTokenizedRow;
 import com.google.cloud.teleport.v2.transforms.io.BigQueryIO;
-import com.google.cloud.teleport.v2.transforms.io.BigTableIO;
 import com.google.cloud.teleport.v2.utils.FailsafeElementToStringCsvSerializableFunction;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.utils.SchemasUtils;
