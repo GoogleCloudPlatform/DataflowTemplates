@@ -43,7 +43,7 @@ public final class FormatDatastreamJsonToJson
 
   private FormatDatastreamJsonToJson() {}
 
-  public static FormatDatastreamJsonToJson create(){
+  public static FormatDatastreamJsonToJson create() {
     return new FormatDatastreamJsonToJson();
   }
 
@@ -101,12 +101,13 @@ public final class FormatDatastreamJsonToJson
 
       // check if payload is null/empty
       // re: b/183584054
-      if (record.get("payload") == null && getSourceMetadata(record,
-              "change_type").toLowerCase() != "delete") {
-        LOG.warn("Empty payload in datastream record. and change type is not delete. ignoring.");
-        return;
+      if (record.get("payload") == null) {
+        String changeType = getSourceMetadata(record, "change_type");
+        if (changeType == null || changeType.toLowerCase() != "delete") {
+          LOG.warn("Empty payload in datastream record. and change type is not delete. ignoring.");
+          return;
+        }
       }
-
     } catch (IOException e) {
       LOG.error("Issue parsing JSON record. Unable to continue.", e);
       throw new RuntimeException(e);
@@ -148,7 +149,7 @@ public final class FormatDatastreamJsonToJson
     if (payload != null) {
       Iterator<String> dataKeys = payload.getFieldNames();
 
-      while (dataKeys.hasNext()){
+      while (dataKeys.hasNext()) {
         String key = dataKeys.next();
 
         if (this.lowercaseSourceColumns) {
@@ -184,16 +185,26 @@ public final class FormatDatastreamJsonToJson
     return sourceType;
   }
 
-  private long getMetadataTimestamp(JsonNode record) {
-    long unixTimestampMilli = record.get("read_timestamp").getLongValue();
-    return unixTimestampMilli / 1000;
+  private String getMetadataTimestamp(JsonNode record) {
+    if (record.get("read_timestamp").isLong()) {
+      long unixTimestampMilli = record.get("read_timestamp").getLongValue();
+      long unixTimestampSec = unixTimestampMilli / 1000;
+
+      return String.valueOf(unixTimestampSec);
+    }
+    String timestamp = record.get("read_timestamp").getTextValue();
+    return timestamp;
   }
 
-  private long getSourceTimestamp(JsonNode record) {
-    long unixTimestampMilli = record.get("source_timestamp").getLongValue();
-    long unixTimestampSec = unixTimestampMilli / 1000;
+  private String getSourceTimestamp(JsonNode record) {
+    if (record.get("source_timestamp").isLong()) {
+      long unixTimestampMilli = record.get("source_timestamp").getLongValue();
+      long unixTimestampSec = unixTimestampMilli / 1000;
 
-    return unixTimestampSec;
+      return String.valueOf(unixTimestampSec);
+    }
+    String timestamp = record.get("source_timestamp").getTextValue();
+    return timestamp;
   }
 
   private String getSourceMetadata(JsonNode record, String fieldName) {
