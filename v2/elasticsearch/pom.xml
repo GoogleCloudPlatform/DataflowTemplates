@@ -23,7 +23,7 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>elastic</artifactId>
+    <artifactId>elasticsearch</artifactId>
 
     <description>
         Stream data from Google PubSub/CSV/BigQuery to a hosted Elasticsearch Server

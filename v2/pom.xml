@@ -598,7 +598,7 @@
 
 
     <modules>
-        <module>elastic</module>
+        <module>elasticsearch</module>
         <!--<module>bigquery-to-elasticsearch</module>-->
         <module>bigquery-to-parquet</module>
         <module>common</module>
