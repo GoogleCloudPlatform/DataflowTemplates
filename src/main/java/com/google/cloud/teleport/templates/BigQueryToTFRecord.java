@@ -161,8 +161,11 @@ public class BigQueryToTFRecord {
     Features.Builder features = example.getFeaturesBuilder();
     GenericRecord record = schemaAndRecord.getRecord();
     for (TableFieldSchema field : schemaAndRecord.getTableSchema().getFields()) {
-      Feature feature = buildFeature(record.get(field.getName()), field.getType());
-      features.putFeature(field.getName(), feature);
+      Object fieldValue = record.get(field.getName());
+      if (fieldValue != null) {
+        Feature feature = buildFeature(fieldValue, field.getType());
+        features.putFeature(field.getName(), feature);
+      }
     }
     return example.build().toByteArray();
   }
