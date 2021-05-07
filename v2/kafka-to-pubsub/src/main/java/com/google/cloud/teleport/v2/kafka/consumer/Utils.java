@@ -91,9 +91,11 @@ public class Utils {
                "ssl.key.password": "secret",
                "ssl.keystore.password": "secret",
                "ssl.keystore.location": "ssl_cert/kafka.keystore.jks",
+               "ssl.keystore.type": "JKS",
                "password": "admin-secret",
                "ssl.truststore.password": "secret",
                "ssl.truststore.location": "ssl_cert/kafka.truststore.jks",
+               "ssl.truststore.type": "JKS",
                "username": "admin",
                "sasl.mechanism": "SCRAM-SHA-256",
                "group.id": "group_id"
@@ -183,9 +185,11 @@ public class Utils {
          "ssl.key.password": "secret",
          "ssl.keystore.password": "secret",
          "ssl.keystore.location": "ssl_cert/kafka.keystore.jks",
+         "ssl.keystore.type": "JKS",
          "password": "admin-secret",
          "ssl.truststore.password": "secret",
          "ssl.truststore.location": "ssl_cert/kafka.truststore.jks",
+         "ssl.truststore.type": "JKS",
          "username": "admin",
          "sasl.mechanism": "SCRAM-SHA-256",
          "group.id": "group_id"
@@ -262,7 +266,9 @@ public class Utils {
             SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG,
             SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG,
             SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG,
-            SslConfigs.SSL_KEY_PASSWORD_CONFIG
+            SslConfigs.SSL_KEY_PASSWORD_CONFIG,
+            SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG,
+            SslConfigs.SSL_KEYSTORE_TYPE_CONFIG
         };
         for (String configName : configNames) {
           sslCredentials.put(configName, credentials.get(configName).getAsString());

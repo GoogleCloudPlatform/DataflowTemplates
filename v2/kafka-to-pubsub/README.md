@@ -217,8 +217,10 @@ For SSL configuration
 - `bucket` - the bucket in Google Cloud Storage with SSL certificate
 - `ssl.truststore.location` - the location of the trust store file
 - `ssl.truststore.password` - the password for the trust store file
+- `ssl.truststore.type` - the type of truststore, might be `JKS` or `PKCS12`
 - `ssl.keystore.location` - the location of the key store file
 - `ssl.keystore.password` - the store password for the key store file
+- `ssl.keystore.type` - the type of keystore, might be `JKS` or `PKCS12`
 - `ssl.key.password` - the password of the private key in the key store file
 
 For SCRAM configuration
@@ -249,8 +251,10 @@ The sample JSON with SSL SCRAM parameters:
   "ssl.key.password": "secret",
   "ssl.keystore.password": "secret",
   "ssl.keystore.location": "ssl_cert/kafka.keystore.jks",
+  "ssl.keystore.type": "JKS",
   "ssl.truststore.password": "secret",
   "ssl.truststore.location": "ssl_cert/kafka.truststore.jks",
+  "ssl.truststore.type": "JKS",
   "username": "admin",
   "password": "admin-secret",
   "sasl.mechanism": "SCRAM-SHA-256",
