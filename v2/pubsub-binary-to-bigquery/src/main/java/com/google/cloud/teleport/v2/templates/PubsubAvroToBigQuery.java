@@ -36,6 +36,8 @@ import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
+import org.apache.beam.sdk.schemas.transforms.Convert;
+import org.apache.beam.sdk.values.Row;
 
 /**
  * A Dataflow pipeline to stream <a href="https://avro.apache.org/">Apache Avro</a> records from
@@ -53,7 +55,8 @@ public final class PubsubAvroToBigQuery {
    */
   public static void main(String[] args) {
     PubsubAvroToBigQueryOptions options =
-        PipelineOptionsFactory.fromArgs(args).withValidation()
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
             .as(PubsubAvroToBigQueryOptions.class);
 
     run(options);
@@ -63,8 +66,8 @@ public final class PubsubAvroToBigQuery {
    * Provides custom {@link org.apache.beam.sdk.options.PipelineOptions} required to execute the
    * {@link PubsubAvroToBigQuery} pipeline.
    */
-  public interface PubsubAvroToBigQueryOptions extends ReadSubscriptionOptions,
-      WriteOptions, WriteTopicOptions {
+  public interface PubsubAvroToBigQueryOptions
+      extends ReadSubscriptionOptions, WriteOptions, WriteTopicOptions {
 
     @Description("GCS path to Avro schema file.")
     @Required
@@ -90,13 +93,17 @@ public final class PubsubAvroToBigQuery {
         pipeline
             .apply(
                 "Read Avro records",
-                PubsubIO
-                    .readAvroGenericRecords(schema)
+                PubsubIO.readAvroGenericRecords(schema)
                     .fromSubscription(options.getInputSubscription()))
-
+            // Workaround for BEAM-12256. Eagerly convert to rows to avoid
+            // the RowToGenericRecord function that doesn't handle all data
+            // types.
+            // TODO: Remove this workaround when a fix for BEAM-12256 is
+            // released.
+            .apply(Convert.toRows())
             .apply(
                 "Write to BigQuery",
-                BigQueryIO.<GenericRecord>write()
+                BigQueryIO.<Row>write()
                     .to(options.getOutputTableSpec())
                     .useBeamSchema()
                     .withMethod(Method.STREAMING_INSERTS)
@@ -112,12 +119,9 @@ public final class PubsubAvroToBigQuery {
             "Create error payload",
             ErrorConverters.BigQueryInsertErrorToPubsubMessage.<GenericRecord>newBuilder()
                 .setPayloadCoder(AvroCoder.of(schema))
-                .setTranslateFunction(
-                    BigQueryConverters.TableRowToGenericRecordFn.of(schema))
+                .setTranslateFunction(BigQueryConverters.TableRowToGenericRecordFn.of(schema))
                 .build())
-        .apply(
-            "Write failed records",
-            PubsubIO.writeMessages().to(options.getOutputTopic()));
+        .apply("Write failed records", PubsubIO.writeMessages().to(options.getOutputTopic()));
 
     // Execute the pipeline and return the result.
     return pipeline.run();
