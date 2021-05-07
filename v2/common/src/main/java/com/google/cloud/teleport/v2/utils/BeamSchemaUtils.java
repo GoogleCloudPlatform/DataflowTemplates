@@ -15,9 +15,13 @@
  */
 package com.google.cloud.teleport.v2.utils;
 
+import static org.apache.beam.sdk.io.gcp.bigquery.BigQueryUtils.fromTableSchema;
+import static org.apache.beam.sdk.io.gcp.bigquery.BigQueryUtils.toTableSchema;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.api.services.bigquery.model.TableSchema;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.Field;
 
@@ -48,6 +52,20 @@ public class BeamSchemaUtils {
     }
 
     return beamSchemaJsonNode.toString();
+  }
+
+  /**
+   * Convert a BigQuery {@link TableSchema} to a Beam {@link Schema}.
+   */
+  public static Schema bigQuerySchemaToBeamSchema(TableSchema bigQuerySchema) {
+    return fromTableSchema(bigQuerySchema);
+  }
+
+  /**
+   * Convert a Beam {@link Schema} to a BigQuery {@link TableSchema}.
+   */
+  public static TableSchema beamSchemaToBigQuerySchema(Schema beamSchema) {
+    return toTableSchema(beamSchema);
   }
 
 }
