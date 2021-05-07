@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.transforms.BeamRowConverters.getCsvFromRow;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
@@ -24,7 +25,6 @@ import static org.junit.Assert.assertNotNull;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.io.GoogleCloudStorageIO;
 import com.google.cloud.teleport.v2.options.ProtegrityDataTokenizationOptions;
-import com.google.cloud.teleport.v2.transforms.CsvConverters.RowToCsv;
 import com.google.cloud.teleport.v2.utils.IoFormats;
 import com.google.cloud.teleport.v2.utils.SchemasUtils;
 import com.google.common.io.Resources;
@@ -102,7 +102,7 @@ public class ProtegrityDataTokenizationTest {
     Schema beamSchema = new SchemasUtils(testSchema).getBeamSchema();
     Row.Builder rowBuilder = Row.withSchema(beamSchema);
     Row row = rowBuilder.addValues(new ArrayList<>(Arrays.asList(fields))).build();
-    String csvResult = new RowToCsv(";").getCsvFromRow(row);
+    String csvResult = getCsvFromRow(row, ";", "null");
     Assert.assertEquals(String.join(";", fields), csvResult);
   }
 
@@ -116,7 +116,7 @@ public class ProtegrityDataTokenizationTest {
     Schema beamSchema = new SchemasUtils(nullableTestSchema).getBeamSchema();
     Row.Builder rowBuilder = Row.withSchema(beamSchema);
     Row row = rowBuilder.addValues(values).build();
-    String csvResult = new RowToCsv(";").getCsvFromRow(row);
+    String csvResult = getCsvFromRow(row, ";", "null");
     Assert.assertEquals(expectedCsv, csvResult);
   }
 

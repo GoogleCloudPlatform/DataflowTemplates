@@ -12,8 +12,8 @@ import com.google.cloud.teleport.v2.options.GcsCommonOptions;
 import com.google.cloud.teleport.v2.options.GcsCommonOptions.ReadOptions;
 import com.google.cloud.teleport.v2.options.GcsCommonOptions.WriteOptions;
 import com.google.cloud.teleport.v2.transforms.BeamRowConverters;
+import com.google.cloud.teleport.v2.transforms.BeamRowConverters.RowToCsvRecord;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
-import com.google.cloud.teleport.v2.transforms.CsvConverters.RowToCsv;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.utils.FailsafeElementToStringCsvSerializableFunction;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -31,7 +31,6 @@ import org.apache.beam.sdk.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.transforms.JsonToRow;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
-import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.ToJson;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
@@ -188,7 +187,7 @@ public class GoogleCloudStorageIO {
       PCollection<String> csvs = input
           .apply(
               "ConvertToCSV",
-              ParDo.of(new RowToCsv(csvDelimiter))
+              RowToCsvRecord.newBuilder().build()
           );
 
       if (csvs.isBounded() == IsBounded.BOUNDED) {
@@ -392,6 +391,7 @@ public class GoogleCloudStorageIO {
                   .setInputFileSpec(getInputOptions().getInputGcsFilePattern())
                   .setHeaderTag(CSV_HEADERS)
                   .setLineTag(CSV_LINES)
+                  .setFileEncoding(getCsvOptions().getCsvFileEncoding())
                   .build());
 
 

@@ -18,12 +18,15 @@ package com.google.cloud.teleport.v2.transforms;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.JsonToRow;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.Row;
@@ -117,5 +120,143 @@ public class BeamRowConverters {
 
       public abstract FailsafeJsonToBeamRow<T> build();
     }
+  }
+
+  /**
+   * {@link RowToCsvRecord} is a {@link PTransform} that converts {@link Row} to {@link String} in
+   * csv format. By default This transform uses default translation function {@link
+   * RowToCsvRecord.RowToCsvDefaultSerializableFunction} with ";" as delimiter for csv records and
+   * "null" as nullSubstitutor. To specify custom translation function, need to call
+   * setTranslationFunction
+   */
+  @AutoValue
+  public abstract static class RowToCsvRecord extends
+      PTransform<PCollection<Row>, PCollection<String>> {
+
+    public static BeamRowConverters.RowToCsvRecord.Builder newBuilder() {
+      return new AutoValue_BeamRowConverters_RowToCsvRecord.Builder()
+          .setTranslateFunction(new RowToCsvDefaultSerializableFunction());
+    }
+
+    abstract RowToCsvRecord.Builder toBuilder();
+
+
+    public abstract @Nullable
+    SerializableFunction<Row, String> getTranslateFunction();
+
+
+    @Override
+    public PCollection<String> expand(PCollection<Row> pCollection) {
+
+      return pCollection
+          .apply("RowToCsv",
+              MapElements.into(TypeDescriptors.strings())
+                  .via(getTranslateFunction()));
+
+    }
+
+    /**
+     * Builder for {@link BeamRowConverters.RowToCsvRecord}.
+     */
+    @AutoValue.Builder
+    public abstract static class Builder {
+
+      public abstract BeamRowConverters.RowToCsvRecord.Builder setTranslateFunction(
+          @Nullable SerializableFunction<Row, String> translateFunction);
+
+      public abstract BeamRowConverters.RowToCsvRecord build();
+    }
+
+    private static class RowToCsvDefaultSerializableFunction implements
+        SerializableFunction<Row, String> {
+
+      public RowToCsvDefaultSerializableFunction() {
+      }
+
+      @Override
+      public String apply(Row input) {
+        String nullSubstitutor = "null";
+        String delimmiter = ";";
+        return getCsvFromRow(input, delimmiter, nullSubstitutor);
+      }
+    }
+  }
+
+  /**
+   * {@link FailsafeRowToFailsafeCsv} is a {@link PTransform} that converts {@link
+   * FailsafeElement<Row>} to {@link FailsafeElement<String>} in csv format. By default This
+   * transform uses default translation function {@link FailsafeRowToFailsafeCsv.FailsafeRowToFailsafeCsvDefaultSerializableFunction}
+   * with ";" as delimiter for csv records and "null" as nullSubstitutor. To specify custom
+   * translation function, need to call setTranslationFunction
+   */
+  @AutoValue
+  public abstract static class FailsafeRowToFailsafeCsv extends
+      PTransform<PCollection<FailsafeElement<Row, Row>>, PCollection<FailsafeElement<String, String>>> {
+
+    public static BeamRowConverters.FailsafeRowToFailsafeCsv.Builder newBuilder() {
+      return new AutoValue_BeamRowConverters_FailsafeRowToFailsafeCsv.Builder()
+          .setTranslateFunction(new FailsafeRowToFailsafeCsvDefaultSerializableFunction());
+    }
+
+    abstract BeamRowConverters.FailsafeRowToFailsafeCsv.Builder toBuilder();
+
+
+    public abstract @Nullable
+    SerializableFunction<FailsafeElement<Row, Row>, FailsafeElement<String, String>> getTranslateFunction();
+
+
+    @Override
+    public PCollection<FailsafeElement<String, String>> expand(
+        PCollection<FailsafeElement<Row, Row>> pCollection) {
+
+      return pCollection
+          .apply("FailsafeRowToFailsafeCsv",
+              MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
+                  .via(getTranslateFunction()));
+
+    }
+
+    /**
+     * Builder for {@link BeamRowConverters.FailsafeRowToFailsafeCsv}.
+     */
+    @AutoValue.Builder
+    public abstract static class Builder {
+
+      public abstract BeamRowConverters.FailsafeRowToFailsafeCsv.Builder setTranslateFunction(
+          @Nullable SerializableFunction<FailsafeElement<Row, Row>, FailsafeElement<String, String>> translateFunction);
+
+      public abstract BeamRowConverters.FailsafeRowToFailsafeCsv build();
+    }
+
+    private static class FailsafeRowToFailsafeCsvDefaultSerializableFunction implements
+        SerializableFunction<FailsafeElement<Row, Row>, FailsafeElement<String, String>> {
+
+      public FailsafeRowToFailsafeCsvDefaultSerializableFunction() {
+      }
+
+      @Override
+      public FailsafeElement<String, String> apply(FailsafeElement<Row, Row> input) {
+        String nullSubstitutor = "null";
+        String delimmiter = ";";
+
+        return FailsafeElement
+            .of(getCsvFromRow(input.getOriginalPayload(), delimmiter, nullSubstitutor),
+                getCsvFromRow(input.getPayload(), delimmiter, nullSubstitutor));
+      }
+    }
+
+  }
+
+
+  /**
+   * Simple method to convert row to the CSV record using specific delimiter and nullSubstitutor
+   * from parameters.
+   */
+  public static String getCsvFromRow(Row row, String delimiter, String nullSubstitutor) {
+    return row.getValues()
+        .stream()
+        .map(item -> item == null ? nullSubstitutor : item)
+        .map(Object::toString)
+        .collect(Collectors.joining(delimiter));
   }
 }

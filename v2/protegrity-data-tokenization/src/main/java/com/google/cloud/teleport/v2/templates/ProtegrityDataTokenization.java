@@ -28,7 +28,7 @@ import com.google.cloud.teleport.v2.io.BigTableIO;
 import com.google.cloud.teleport.v2.io.GoogleCloudStorageIO;
 import com.google.cloud.teleport.v2.options.ProtegrityDataTokenizationOptions;
 import com.google.cloud.teleport.v2.transforms.BeamRowConverters;
-import com.google.cloud.teleport.v2.transforms.CsvConverters.RowToCsv;
+import com.google.cloud.teleport.v2.transforms.BeamRowConverters.FailsafeRowToFailsafeCsv;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.transforms.ProtegrityDataProtectors.RowToTokenizedRow;
 import com.google.cloud.teleport.v2.transforms.io.BigQueryIO;
@@ -244,12 +244,7 @@ public class ProtegrityDataTokenization {
     Write tokenization errors to dead-letter sink
      */
       tokenizedRows.get(TOKENIZATION_DEADLETTER_OUT)
-          .apply("ConvertToCSV", MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
-              .via((FailsafeElement<Row, Row> fse) ->
-                  FailsafeElement.of(
-                      new RowToCsv(csvDelimiter).getCsvFromRow(fse.getOriginalPayload()),
-                      new RowToCsv(csvDelimiter).getCsvFromRow(fse.getPayload())))
-          )
+          .apply("ConvertToCSV", FailsafeRowToFailsafeCsv.newBuilder().build())
           .apply("WriteTokenizationErrorsToGcs",
               ErrorConverters.WriteErrorsToTextIO.<String, String>newBuilder()
                   .setErrorWritePath(options.getNonTokenizedDeadLetterGcsPath())
