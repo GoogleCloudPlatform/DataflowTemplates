@@ -33,4 +33,12 @@ public interface CsvOptions extends PipelineOptions{
 
   void setCsvFormat(String csvFormat);
 
+  @Description(
+      "CSV File encoding format. Default: UTF-8. Allowed Values are US-ASCII"
+          + ",ISO-8859-1,UTF-8,UTF-16")
+  @Default.String("UTF-8")
+  String getCsvFileEncoding();
+
+  void setCsvFileEncoding(String csvFileEncoding);
+
 }
