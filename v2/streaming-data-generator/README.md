@@ -239,7 +239,7 @@ Create template spec in Google Cloud Storage with path to container image in Goo
                         "name": "topic",
                         "label": "PubSub Topic name",
                         "helpText": "The name of the topic to which the pipeline should publish data. For example, projects/<project-id>/topics/<topic-name>",
-                        "is_optional": true,
+                        "is_optional": false,
                         "regexes": [
                             "^projects\\/[^\\n\\r\\/]+\\/topics\\/[^\\n\\r\\/]+$"
                         ],
