@@ -78,7 +78,7 @@ public class ExportPipeline {
     void setSpannerProjectId(ValueProvider<String> value);
 
     @Description("If true, Timestamps are exported with timestamp-micros logical type."
-      + "By default,Timestamps are exported as ISO8601 strings at nanosecond precision.")
+      + "By default, Timestamps are exported as ISO8601 strings at nanosecond precision.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getShouldExportTimestampAsLogicalType();
     void setShouldExportTimestampAsLogicalType(ValueProvider<Boolean> value);
