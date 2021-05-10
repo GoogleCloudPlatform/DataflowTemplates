@@ -16,6 +16,8 @@
 
 package com.google.cloud.teleport.splunk;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -42,6 +44,8 @@ public class SplunkEventCoder extends AtomicCoder<SplunkEvent> {
       NullableCoder.of(STRING_UTF_8_CODER);
   private static final NullableCoder<Long> LONG_NULLABLE_CODER =
       NullableCoder.of(BigEndianLongCoder.of());
+  
+  private static final Gson GSON = new Gson();
 
   public static SplunkEventCoder of() {
     return SPLUNK_EVENT_CODER;
@@ -54,6 +58,9 @@ public class SplunkEventCoder extends AtomicCoder<SplunkEvent> {
     STRING_NULLABLE_CODER.encode(value.source(), out);
     STRING_NULLABLE_CODER.encode(value.sourceType(), out);
     STRING_NULLABLE_CODER.encode(value.index(), out);
+    String fields = value.fields() == null ? null : value.fields().toString();
+    STRING_NULLABLE_CODER.encode(fields, out);
+    
     STRING_UTF_8_CODER.encode(value.event(), out);
   }
 
@@ -86,7 +93,12 @@ public class SplunkEventCoder extends AtomicCoder<SplunkEvent> {
     if (index != null) {
       builder.withIndex(index);
     }
-
+  
+    String fields = STRING_NULLABLE_CODER.decode(in);
+    if (fields != null) {
+      builder.withFields(GSON.fromJson(fields, JsonObject.class));
+    }
+    
     String event = STRING_UTF_8_CODER.decode(in);
     builder.withEvent(event);
 

@@ -21,6 +21,8 @@ import com.google.cloud.teleport.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.splunk.SplunkEvent;
 import com.google.cloud.teleport.splunk.SplunkEventCoder;
 import com.google.cloud.teleport.values.FailsafeElement;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.testing.NeedsRunner;
 import org.apache.beam.sdk.testing.PAssert;
@@ -39,6 +41,8 @@ public class SplunkConvertersTest {
   private static final TupleTag<FailsafeElement<String, String>> SPLUNK_EVENT_DEADLETTER_OUT =
       new TupleTag<FailsafeElement<String, String>>() {};
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
+  
+  private static final Gson GSON = new Gson();
 
   /** Test successful conversion of simple String payloads. */
   @Test
@@ -304,6 +308,41 @@ public class SplunkConvertersTest {
                 .withEvent("{\"name\":\"Jim\"}")
                 .withHost("test-host")
                 .withIndex("test-index")
+                .build());
+
+    pipeline.run();
+  }
+
+  /** Test successful conversion of JSON messages with user provided index fields. */
+  @Test
+  @Category(NeedsRunner.class)
+  public void testFailsafeStringToSplunkEventValidFields() {
+
+    FailsafeElement<String, String> input =
+        FailsafeElement.of(
+            "",
+            "{\n"
+                + "\t\"name\": \"Jim\",\n"
+                + "\t\"_metadata\": {\"fields\":{\"test-key\":\"test-value\"}}\n"
+                + "}");
+
+    pipeline.getCoderRegistry().registerCoderForClass(SplunkEvent.class, SplunkEventCoder.of());
+
+    PCollectionTuple tuple =
+        pipeline
+            .apply(
+                Create.of(input)
+                    .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+            .apply(
+                SplunkConverters.failsafeStringToSplunkEvent(
+                    SPLUNK_EVENT_OUT, SPLUNK_EVENT_DEADLETTER_OUT));
+
+    PAssert.that(tuple.get(SPLUNK_EVENT_DEADLETTER_OUT)).empty();
+    PAssert.that(tuple.get(SPLUNK_EVENT_OUT))
+        .containsInAnyOrder(
+            SplunkEvent.newBuilder()
+                .withEvent("{\"name\":\"Jim\"}")
+                .withFields(GSON.fromJson("{\"test-key\":\"test-value\"}", JsonObject.class))
                 .build());
 
     pipeline.run();

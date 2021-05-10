@@ -20,6 +20,9 @@ import com.google.api.client.util.DateTime;
 import com.google.cloud.teleport.splunk.SplunkEvent;
 import com.google.cloud.teleport.values.FailsafeElement;
 import com.google.common.base.Throwables;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.Description;
@@ -58,8 +61,10 @@ public class SplunkConverters {
   private static final String HEC_TIME_KEY = "time";
   private static final String HEC_SOURCE_KEY = "source";
   private static final String HEC_SOURCE_TYPE_KEY = "sourcetype";
-
+  private static final String HEC_FIELDS_KEY = "fields";
   private static final String TIMESTAMP_KEY = "timestamp";
+  
+  private static final Gson GSON = new Gson();
   
   protected static final String PUBSUB_MESSAGE_ATTRIBUTE_FIELD = "attributes";
   protected static final String PUBSUB_MESSAGE_DATA_FIELD = "data";
@@ -233,6 +238,11 @@ public class SplunkConverters {
                             if (!event.isEmpty()) {
                               builder.withEvent(event);
                             }
+                            
+                            String fields = metadata.optString(HEC_FIELDS_KEY);
+                            if (!fields.isEmpty()) {
+                              builder.withFields(GSON.fromJson(fields, JsonObject.class));
+                            }
                             // We remove the _metadata entry from the payload
                             // to avoid duplicates in Splunk. The relevant entries
                             // have been parsed and populated in the SplunkEvent metadata.
@@ -244,7 +254,7 @@ public class SplunkConverters {
                             }
                           }
 
-                        } catch (JSONException je) {
+                        } catch (JSONException | JsonParseException je) {
                           // input is either not a properly formatted JSONObject
                           // or has other exceptions. In this case, we will
                           // simply capture the entire input as an 'event' and
