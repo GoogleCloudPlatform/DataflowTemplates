@@ -35,7 +35,7 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 /**
- * Tests for {@link BeamSchemaUtils}
+ * Tests for {@link BeamSchemaUtils}.
  */
 public class BeamSchemaUtilsTest {
 
@@ -361,14 +361,14 @@ public class BeamSchemaUtilsTest {
     List<Map<String, String>> expectedValue = new ArrayList<>();
     Schema.Builder beamSchemaBuilder = Schema.builder();
     for (FieldType fieldType : fieldTypes) {
-      String field_name = EXPECTED_FIELD_NAME + "_" + fieldType.getTypeName().toString();
+      String fieldName = EXPECTED_FIELD_NAME + "_" + fieldType.getTypeName().toString();
 
       Map<String, String> payload = new HashMap<>();
-      payload.put(BeamSchemaUtils.FIELD_NAME, field_name);
+      payload.put(BeamSchemaUtils.FIELD_NAME, fieldName);
       payload.put(BeamSchemaUtils.FIELD_TYPE, fieldType.getTypeName().toString());
       expectedValue.add(payload);
 
-      beamSchemaBuilder.addField(field_name, fieldType);
+      beamSchemaBuilder.addField(fieldName, fieldType);
     }
 
     String expectedJson = mapper.writeValueAsString(expectedValue);

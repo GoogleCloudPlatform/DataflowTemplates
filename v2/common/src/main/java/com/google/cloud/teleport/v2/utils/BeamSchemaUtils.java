@@ -17,30 +17,29 @@ package com.google.cloud.teleport.v2.utils;
 
 import static org.apache.beam.sdk.io.gcp.bigquery.BigQueryUtils.fromTableSchema;
 import static org.apache.beam.sdk.io.gcp.bigquery.BigQueryUtils.toTableSchema;
-
 import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkNotNull;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.api.services.bigquery.model.TableSchema;
 import com.google.common.base.Enums;
 import com.google.common.base.Optional;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.LinkedList;
 import java.util.List;
-import com.google.api.services.bigquery.model.TableSchema;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.Field;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.schemas.Schema.TypeName;
 
 
-
 /**
- * BeamSchemaUtils has utilities scope for convert {@link Schema} into/from various formats
+ * BeamSchemaUtils has utilities scope for convert {@link Schema} into/from various formats.
  */
 public class BeamSchemaUtils {
 
@@ -50,7 +49,7 @@ public class BeamSchemaUtils {
   static final ObjectMapper MAPPER = new ObjectMapper(FACTORY);
 
   /**
-   * Convert {@link Schema} into json string
+   * Convert {@link Schema} into json string.
    *
    * @param beamSchema {@link Schema}
    * @return json string as {@link String}
@@ -128,6 +127,9 @@ public class BeamSchemaUtils {
     return text;
   }
 
+  /**
+   * {@link SchemaParseException} is exception that could rise during the parsing of beam schema.
+   */
   public static class SchemaParseException extends Exception {
 
     public SchemaParseException(Throwable cause) {
