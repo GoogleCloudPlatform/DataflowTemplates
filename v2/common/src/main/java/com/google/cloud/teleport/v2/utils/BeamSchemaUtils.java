@@ -45,6 +45,8 @@ public class BeamSchemaUtils {
 
   public static final String FIELD_NAME = "name";
   public static final String FIELD_TYPE = "type";
+  public static final String FIELD_NULLABLE = "nullable";
+
   static final JsonFactory FACTORY = new JsonFactory();
   static final ObjectMapper MAPPER = new ObjectMapper(FACTORY);
 
@@ -61,6 +63,7 @@ public class BeamSchemaUtils {
       ObjectNode fieldJsonNode = MAPPER.createObjectNode();
       fieldJsonNode.put(FIELD_NAME, field.getName());
       fieldJsonNode.put(FIELD_TYPE, field.getType().getTypeName().toString());
+      fieldJsonNode.put(FIELD_NULLABLE, field.getType().getNullable());
 
       beamSchemaJsonNode.add(fieldJsonNode);
     }

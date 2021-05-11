@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.schemas.Schema;
+import org.apache.beam.sdk.schemas.Schema.Field;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -179,168 +180,171 @@ public class BeamSchemaUtilsTest {
     BeamSchemaUtils.fromJson("[[{\"name\": \"bytes\",\"type\": \"BYTES\"}]]");
   }
 
+
   @Test
-  public void givenBeamSchema_whenBYTEField_thenCorrectJsonString() throws JsonProcessingException {
-    Map<String, String> payload = new HashMap<>();
+  public void givenBeamSchema_whenBYTEField_thenJsonString() throws JsonProcessingException {
+    Map<String, Object> payload = new HashMap<>();
     payload.put(BeamSchemaUtils.FIELD_NAME, EXPECTED_FIELD_NAME);
     payload.put(BeamSchemaUtils.FIELD_TYPE, FieldType.BYTE.getTypeName().toString());
+    payload.put(BeamSchemaUtils.FIELD_NULLABLE, Boolean.FALSE);
     String expectedJson = mapper.writeValueAsString(Collections.singletonList(payload));
 
     Schema beamSchema = Schema.builder().addField(EXPECTED_FIELD_NAME, FieldType.BYTE).build();
     String beamSchemaJson = BeamSchemaUtils.beamSchemaToJson(beamSchema);
 
-    Assert.assertEquals(expectedJson, beamSchemaJson);
+    Assert.assertEquals(mapper.readTree(expectedJson), mapper.readTree(beamSchemaJson));
   }
 
 
   @Test
-  public void givenBeamSchema_whenINT16Field_thenCorrectJsonString()
-      throws JsonProcessingException {
-    Map<String, String> payload = new HashMap<>();
+  public void givenBeamSchema_whenINT16Field_thenJsonString() throws JsonProcessingException {
+    Map<String, Object> payload = new HashMap<>();
     payload.put(BeamSchemaUtils.FIELD_NAME, EXPECTED_FIELD_NAME);
     payload.put(BeamSchemaUtils.FIELD_TYPE, FieldType.INT16.getTypeName().toString());
+    payload.put(BeamSchemaUtils.FIELD_NULLABLE, Boolean.FALSE);
     String expectedJson = mapper.writeValueAsString(Collections.singletonList(payload));
 
     Schema beamSchema = Schema.builder().addField(EXPECTED_FIELD_NAME, FieldType.INT16).build();
     String beamSchemaJson = BeamSchemaUtils.beamSchemaToJson(beamSchema);
 
-    Assert.assertEquals(expectedJson, beamSchemaJson);
+    Assert.assertEquals(mapper.readTree(expectedJson), mapper.readTree(beamSchemaJson));
   }
 
 
   @Test
-  public void givenBeamSchema_whenINT32Field_thenCorrectJsonString()
-      throws JsonProcessingException {
-    Map<String, String> payload = new HashMap<>();
+  public void givenBeamSchema_whenINT32Field_thenJsonString() throws JsonProcessingException {
+    Map<String, Object> payload = new HashMap<>();
     payload.put(BeamSchemaUtils.FIELD_NAME, EXPECTED_FIELD_NAME);
     payload.put(BeamSchemaUtils.FIELD_TYPE, FieldType.INT32.getTypeName().toString());
+    payload.put(BeamSchemaUtils.FIELD_NULLABLE, Boolean.FALSE);
     String expectedJson = mapper.writeValueAsString(Collections.singletonList(payload));
 
     Schema beamSchema = Schema.builder().addField(EXPECTED_FIELD_NAME, FieldType.INT32).build();
     String beamSchemaJson = BeamSchemaUtils.beamSchemaToJson(beamSchema);
 
-    Assert.assertEquals(expectedJson, beamSchemaJson);
+    Assert.assertEquals(mapper.readTree(expectedJson), mapper.readTree(beamSchemaJson));
   }
 
 
   @Test
-  public void givenBeamSchema_whenINT64Field_thenCorrectJsonString()
-      throws JsonProcessingException {
-    Map<String, String> payload = new HashMap<>();
+  public void givenBeamSchema_whenINT64Field_thenJsonString() throws JsonProcessingException {
+    Map<String, Object> payload = new HashMap<>();
     payload.put(BeamSchemaUtils.FIELD_NAME, EXPECTED_FIELD_NAME);
     payload.put(BeamSchemaUtils.FIELD_TYPE, FieldType.INT64.getTypeName().toString());
+    payload.put(BeamSchemaUtils.FIELD_NULLABLE, Boolean.FALSE);
     String expectedJson = mapper.writeValueAsString(Collections.singletonList(payload));
 
     Schema beamSchema = Schema.builder().addField(EXPECTED_FIELD_NAME, FieldType.INT64).build();
     String beamSchemaJson = BeamSchemaUtils.beamSchemaToJson(beamSchema);
 
-    Assert.assertEquals(expectedJson, beamSchemaJson);
+    Assert.assertEquals(mapper.readTree(expectedJson), mapper.readTree(beamSchemaJson));
   }
 
 
   @Test
-  public void givenBeamSchema_whenDECIMALField_thenCorrectJsonString()
-      throws JsonProcessingException {
-    Map<String, String> payload = new HashMap<>();
+  public void givenBeamSchema_whenDECIMALField_thenJsonString() throws JsonProcessingException {
+    Map<String, Object> payload = new HashMap<>();
     payload.put(BeamSchemaUtils.FIELD_NAME, EXPECTED_FIELD_NAME);
     payload.put(BeamSchemaUtils.FIELD_TYPE, FieldType.DECIMAL.getTypeName().toString());
+    payload.put(BeamSchemaUtils.FIELD_NULLABLE, Boolean.FALSE);
     String expectedJson = mapper.writeValueAsString(Collections.singletonList(payload));
 
     Schema beamSchema = Schema.builder().addField(EXPECTED_FIELD_NAME, FieldType.DECIMAL).build();
     String beamSchemaJson = BeamSchemaUtils.beamSchemaToJson(beamSchema);
 
-    Assert.assertEquals(expectedJson, beamSchemaJson);
+    Assert.assertEquals(mapper.readTree(expectedJson), mapper.readTree(beamSchemaJson));
   }
 
 
   @Test
-  public void givenBeamSchema_whenFLOATField_thenCorrectJsonString()
-      throws JsonProcessingException {
-    Map<String, String> payload = new HashMap<>();
+  public void givenBeamSchema_whenFLOATField_thenJsonString() throws JsonProcessingException {
+    Map<String, Object> payload = new HashMap<>();
     payload.put(BeamSchemaUtils.FIELD_NAME, EXPECTED_FIELD_NAME);
     payload.put(BeamSchemaUtils.FIELD_TYPE, FieldType.FLOAT.getTypeName().toString());
+    payload.put(BeamSchemaUtils.FIELD_NULLABLE, Boolean.FALSE);
     String expectedJson = mapper.writeValueAsString(Collections.singletonList(payload));
 
     Schema beamSchema = Schema.builder().addField(EXPECTED_FIELD_NAME, FieldType.FLOAT).build();
     String beamSchemaJson = BeamSchemaUtils.beamSchemaToJson(beamSchema);
 
-    Assert.assertEquals(expectedJson, beamSchemaJson);
+    Assert.assertEquals(mapper.readTree(expectedJson), mapper.readTree(beamSchemaJson));
   }
 
 
   @Test
-  public void givenBeamSchema_whenDOUBLEField_thenCorrectJsonString()
-      throws JsonProcessingException {
-    Map<String, String> payload = new HashMap<>();
+  public void givenBeamSchema_whenDOUBLEField_thenJsonString() throws JsonProcessingException {
+    Map<String, Object> payload = new HashMap<>();
     payload.put(BeamSchemaUtils.FIELD_NAME, EXPECTED_FIELD_NAME);
     payload.put(BeamSchemaUtils.FIELD_TYPE, FieldType.DOUBLE.getTypeName().toString());
+    payload.put(BeamSchemaUtils.FIELD_NULLABLE, Boolean.FALSE);
     String expectedJson = mapper.writeValueAsString(Collections.singletonList(payload));
 
     Schema beamSchema = Schema.builder().addField(EXPECTED_FIELD_NAME, FieldType.DOUBLE).build();
     String beamSchemaJson = BeamSchemaUtils.beamSchemaToJson(beamSchema);
 
-    Assert.assertEquals(expectedJson, beamSchemaJson);
+    Assert.assertEquals(mapper.readTree(expectedJson), mapper.readTree(beamSchemaJson));
   }
 
 
   @Test
-  public void givenBeamSchema_whenSTRINGField_thenCorrectJsonString()
-      throws JsonProcessingException {
-    Map<String, String> payload = new HashMap<>();
+  public void givenBeamSchema_whenSTRINGField_thenJsonString() throws JsonProcessingException {
+    Map<String, Object> payload = new HashMap<>();
     payload.put(BeamSchemaUtils.FIELD_NAME, EXPECTED_FIELD_NAME);
     payload.put(BeamSchemaUtils.FIELD_TYPE, FieldType.STRING.getTypeName().toString());
+    payload.put(BeamSchemaUtils.FIELD_NULLABLE, Boolean.FALSE);
     String expectedJson = mapper.writeValueAsString(Collections.singletonList(payload));
 
     Schema beamSchema = Schema.builder().addField(EXPECTED_FIELD_NAME, FieldType.STRING).build();
     String beamSchemaJson = BeamSchemaUtils.beamSchemaToJson(beamSchema);
 
-    Assert.assertEquals(expectedJson, beamSchemaJson);
+    Assert.assertEquals(mapper.readTree(expectedJson), mapper.readTree(beamSchemaJson));
   }
 
 
   @Test
-  public void givenBeamSchema_whenDATETIMEField_thenCorrectJsonString()
-      throws JsonProcessingException {
-    Map<String, String> payload = new HashMap<>();
+  public void givenBeamSchema_whenDATETIMEField_thenJsonString() throws JsonProcessingException {
+    Map<String, Object> payload = new HashMap<>();
     payload.put(BeamSchemaUtils.FIELD_NAME, EXPECTED_FIELD_NAME);
     payload.put(BeamSchemaUtils.FIELD_TYPE, FieldType.DATETIME.getTypeName().toString());
+    payload.put(BeamSchemaUtils.FIELD_NULLABLE, Boolean.FALSE);
     String expectedJson = mapper.writeValueAsString(Collections.singletonList(payload));
 
     Schema beamSchema = Schema.builder().addField(EXPECTED_FIELD_NAME, FieldType.DATETIME).build();
     String beamSchemaJson = BeamSchemaUtils.beamSchemaToJson(beamSchema);
 
-    Assert.assertEquals(expectedJson, beamSchemaJson);
+    Assert.assertEquals(mapper.readTree(expectedJson), mapper.readTree(beamSchemaJson));
   }
 
 
   @Test
-  public void givenBeamSchema_whenBOOLEANField_thenCorrectJsonString()
-      throws JsonProcessingException {
-    Map<String, String> payload = new HashMap<>();
+  public void givenBeamSchema_whenBOOLEANField_thenJsonString() throws JsonProcessingException {
+    Map<String, Object> payload = new HashMap<>();
     payload.put(BeamSchemaUtils.FIELD_NAME, EXPECTED_FIELD_NAME);
     payload.put(BeamSchemaUtils.FIELD_TYPE, FieldType.BOOLEAN.getTypeName().toString());
+    payload.put(BeamSchemaUtils.FIELD_NULLABLE, Boolean.FALSE);
     String expectedJson = mapper.writeValueAsString(Collections.singletonList(payload));
 
     Schema beamSchema = Schema.builder().addField(EXPECTED_FIELD_NAME, FieldType.BOOLEAN).build();
     String beamSchemaJson = BeamSchemaUtils.beamSchemaToJson(beamSchema);
 
-    Assert.assertEquals(expectedJson, beamSchemaJson);
+    Assert.assertEquals(mapper.readTree(expectedJson), mapper.readTree(beamSchemaJson));
   }
 
 
   @Test
-  public void givenBeamSchema_whenBYTESField_thenCorrectJsonString()
-      throws JsonProcessingException {
-    Map<String, String> payload = new HashMap<>();
+  public void givenBeamSchema_whenBYTESField_thenJsonString() throws JsonProcessingException {
+    Map<String, Object> payload = new HashMap<>();
     payload.put(BeamSchemaUtils.FIELD_NAME, EXPECTED_FIELD_NAME);
     payload.put(BeamSchemaUtils.FIELD_TYPE, FieldType.BYTES.getTypeName().toString());
+    payload.put(BeamSchemaUtils.FIELD_NULLABLE, Boolean.FALSE);
     String expectedJson = mapper.writeValueAsString(Collections.singletonList(payload));
 
     Schema beamSchema = Schema.builder().addField(EXPECTED_FIELD_NAME, FieldType.BYTES).build();
     String beamSchemaJson = BeamSchemaUtils.beamSchemaToJson(beamSchema);
 
-    Assert.assertEquals(expectedJson, beamSchemaJson);
+    Assert.assertEquals(mapper.readTree(expectedJson), mapper.readTree(beamSchemaJson));
   }
+
 
   @Test
   public void givenBeamSchema_whenAllFieldTypes_thenCorrectJsonString()
@@ -358,14 +362,15 @@ public class BeamSchemaUtilsTest {
     fieldTypes.add(FieldType.BOOLEAN);
     fieldTypes.add(FieldType.BYTES);
 
-    List<Map<String, String>> expectedValue = new ArrayList<>();
+    List<Map<String, Object>> expectedValue = new ArrayList<>();
     Schema.Builder beamSchemaBuilder = Schema.builder();
     for (FieldType fieldType : fieldTypes) {
       String fieldName = EXPECTED_FIELD_NAME + "_" + fieldType.getTypeName().toString();
 
-      Map<String, String> payload = new HashMap<>();
+      Map<String, Object> payload = new HashMap<>();
       payload.put(BeamSchemaUtils.FIELD_NAME, fieldName);
       payload.put(BeamSchemaUtils.FIELD_TYPE, fieldType.getTypeName().toString());
+      payload.put(BeamSchemaUtils.FIELD_NULLABLE, Boolean.FALSE);
       expectedValue.add(payload);
 
       beamSchemaBuilder.addField(fieldName, fieldType);
@@ -376,7 +381,22 @@ public class BeamSchemaUtilsTest {
 
     String beamSchemaJson = BeamSchemaUtils.beamSchemaToJson(beamSchema);
 
-    Assert.assertEquals(expectedJson, beamSchemaJson);
+    Assert.assertEquals(mapper.readTree(expectedJson), mapper.readTree(beamSchemaJson));
   }
 
+  @Test
+  public void givenBeamSchema_whenNullableTrue_thenCorrectJsonString()
+      throws JsonProcessingException {
+    Map<String, Object> payload = new HashMap<>();
+    payload.put(BeamSchemaUtils.FIELD_NAME, EXPECTED_FIELD_NAME);
+    payload.put(BeamSchemaUtils.FIELD_TYPE, FieldType.BYTES.getTypeName().toString());
+    payload.put(BeamSchemaUtils.FIELD_NULLABLE, Boolean.TRUE);
+    String expectedJson = mapper.writeValueAsString(Collections.singletonList(payload));
+
+    Field nullableType = Field.of(EXPECTED_FIELD_NAME, FieldType.BYTES).withNullable(true);
+    Schema beamSchema = Schema.builder().addField(nullableType).build();
+    String beamSchemaJson = BeamSchemaUtils.beamSchemaToJson(beamSchema);
+
+    Assert.assertEquals(mapper.readTree(expectedJson), mapper.readTree(beamSchemaJson));
+  }
 }
