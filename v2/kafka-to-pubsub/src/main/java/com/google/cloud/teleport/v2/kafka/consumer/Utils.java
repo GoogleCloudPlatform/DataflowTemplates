@@ -290,6 +290,6 @@ public class Utils {
     if (!configValue.errorMessages().isEmpty()) {
       throw new ConfigException(key, configValue, configValue.errorMessages().toString());
     }
-    return value;
+    return key;
   }
 }
