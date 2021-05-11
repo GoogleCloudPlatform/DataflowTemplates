@@ -1,0 +1,14 @@
+[
+  {
+    "name": "Field1",
+    "type": "STRING"
+  },
+  {
+    "name": "Field2",
+    "type": "STRING"
+  },
+  {
+    "name": "Field3",
+    "type": "STRING"
+  }
+]
