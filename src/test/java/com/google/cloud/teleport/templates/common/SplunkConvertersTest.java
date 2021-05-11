@@ -313,7 +313,7 @@ public class SplunkConvertersTest {
     pipeline.run();
   }
 
-  /** Test successful conversion of JSON messages with user provided index fields. */
+  /** Test successful conversion of JSON messages with user provided index 'fields'. */
   @Test
   @Category(NeedsRunner.class)
   public void testFailsafeStringToSplunkEventValidFields() {
@@ -345,6 +345,75 @@ public class SplunkConvertersTest {
                 .withFields(GSON.fromJson("{\"test-key\":\"test-value\"}", JsonObject.class))
                 .build());
 
+    pipeline.run();
+  }
+  
+  /** Test successful conversion of JSON messages with user provided empty index 'fields'. */
+  @Test
+  @Category(NeedsRunner.class)
+  public void testFailsafeStringToSplunkEventEmptyFields() {
+    
+    FailsafeElement<String, String> input =
+        FailsafeElement.of(
+            "",
+            "{\n"
+                + "\t\"name\": \"Jim\",\n"
+                + "\t\"_metadata\": {\"fields\":{}}\n"
+                + "}");
+    
+    pipeline.getCoderRegistry().registerCoderForClass(SplunkEvent.class, SplunkEventCoder.of());
+    
+    PCollectionTuple tuple =
+        pipeline
+            .apply(
+                Create.of(input)
+                    .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+            .apply(
+                SplunkConverters.failsafeStringToSplunkEvent(
+                    SPLUNK_EVENT_OUT, SPLUNK_EVENT_DEADLETTER_OUT));
+    
+    PAssert.that(tuple.get(SPLUNK_EVENT_DEADLETTER_OUT)).empty();
+    PAssert.that(tuple.get(SPLUNK_EVENT_OUT))
+        .containsInAnyOrder(
+            SplunkEvent.newBuilder()
+                .withEvent("{\"name\":\"Jim\"}")
+                .withFields(GSON.fromJson("{}", JsonObject.class))
+                .build());
+    
+    pipeline.run();
+  }
+  
+  /** Test successful conversion of JSON messages with user provided invalid index 'fields'. */
+  @Test
+  @Category(NeedsRunner.class)
+  public void testFailsafeStringToSplunkEventInvalidFields() {
+    
+    FailsafeElement<String, String> input =
+        FailsafeElement.of(
+            "",
+            "{\n"
+                + "\t\"name\": \"Jim\",\n"
+                + "\t\"_metadata\": {\"fields\":\"invalid-json-fields\"}\n"
+                + "}");
+    
+    pipeline.getCoderRegistry().registerCoderForClass(SplunkEvent.class, SplunkEventCoder.of());
+    
+    PCollectionTuple tuple =
+        pipeline
+            .apply(
+                Create.of(input)
+                    .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+            .apply(
+                SplunkConverters.failsafeStringToSplunkEvent(
+                    SPLUNK_EVENT_OUT, SPLUNK_EVENT_DEADLETTER_OUT));
+    
+    PAssert.that(tuple.get(SPLUNK_EVENT_DEADLETTER_OUT)).empty();
+    PAssert.that(tuple.get(SPLUNK_EVENT_OUT))
+        .containsInAnyOrder(
+            SplunkEvent.newBuilder()
+                .withEvent("{\"name\":\"Jim\"}")
+                .build());
+    
     pipeline.run();
   }
 

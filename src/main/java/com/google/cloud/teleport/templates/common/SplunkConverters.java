@@ -205,7 +205,7 @@ public class SplunkConverters {
                               builder.withTime(DateTime.parseRfc3339(parsedTimestamp).getValue());
                             } catch (NumberFormatException n) {
                               // We log this exception but don't want to fail the entire record.
-                              LOG.debug(
+                              LOG.warn(
                                   "Unable to parse non-rfc3339 formatted timestamp: {}",
                                   parsedTimestamp);
                             }
@@ -241,7 +241,11 @@ public class SplunkConverters {
                             
                             String fields = metadata.optString(HEC_FIELDS_KEY);
                             if (!fields.isEmpty()) {
-                              builder.withFields(GSON.fromJson(fields, JsonObject.class));
+                              try {
+                                builder.withFields(GSON.fromJson(fields, JsonObject.class));
+                              } catch (JsonParseException e) {
+                                LOG.warn("Unable to parse 'fields' metadata JSON");
+                              }
                             }
                             // We remove the _metadata entry from the payload
                             // to avoid duplicates in Splunk. The relevant entries
@@ -254,7 +258,7 @@ public class SplunkConverters {
                             }
                           }
 
-                        } catch (JSONException | JsonParseException je) {
+                        } catch (JSONException je) {
                           // input is either not a properly formatted JSONObject
                           // or has other exceptions. In this case, we will
                           // simply capture the entire input as an 'event' and
