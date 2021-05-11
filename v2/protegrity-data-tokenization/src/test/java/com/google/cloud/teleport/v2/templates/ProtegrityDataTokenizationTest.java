@@ -22,14 +22,18 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.startsWith;
 import static org.junit.Assert.assertNotNull;
 
+import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.io.GoogleCloudStorageIO;
 import com.google.cloud.teleport.v2.options.ProtegrityDataTokenizationOptions;
+import com.google.cloud.teleport.v2.utils.BeamSchemaUtils;
+import com.google.cloud.teleport.v2.utils.BeamSchemaUtils.SchemaParseException;
 import com.google.cloud.teleport.v2.utils.IoFormats;
-import com.google.cloud.teleport.v2.utils.SchemasUtils;
 import com.google.common.io.Resources;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -38,6 +42,7 @@ import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.RowCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryHelpers;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
@@ -55,7 +60,7 @@ import org.junit.Test;
  */
 public class ProtegrityDataTokenizationTest {
 
-  final String testSchema = "{\"fields\":[{\"mode\":\"REQUIRED\",\"name\":\"FieldName1\",\"type\":\"STRING\"},{\"mode\":\"REQUIRED\",\"name\":\"FieldName2\",\"type\":\"STRING\"}]}";
+  final String testSchema = "[{\"name\":\"FieldName1\",\"type\":\"STRING\"},{\"name\":\"FieldName2\",\"type\":\"STRING\"}]";
   final String[] fields = {"TestValue1", "TestValue2"};
 
   @Rule
@@ -73,33 +78,36 @@ public class ProtegrityDataTokenizationTest {
       Resources.getResource(RESOURCES_DIR + "testInput.avro").getPath();
 
   private static final String SCHEMA_FILE_PATH =
-      Resources.getResource(RESOURCES_DIR + "schema.txt").getPath();
+      Resources.getResource(RESOURCES_DIR + "schema.json").getPath();
 
   private static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
       FailsafeElementCoder.of(
           NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of()));
 
   @Test
-  public void testGetBeamSchema() {
+  public void testGetBeamSchema() throws SchemaParseException, IOException {
     System.out.println(CSV_FILE_PATH);
     Schema expectedSchema =
         Schema.builder()
             .addField("FieldName1", FieldType.STRING)
             .addField("FieldName2", FieldType.STRING)
             .build();
-    SchemasUtils schemasUtils = new SchemasUtils(testSchema);
-    Assert.assertEquals(expectedSchema, schemasUtils.getBeamSchema());
+    Schema beamSchema = BeamSchemaUtils.fromJson(testSchema);
+    Assert.assertEquals(expectedSchema, beamSchema);
   }
 
   @Test
-  public void testGetBigQuerySchema() {
-    SchemasUtils schemasUtils = new SchemasUtils(testSchema);
-    Assert.assertEquals(testSchema, schemasUtils.getBigQuerySchema().toString());
+  public void testGetBigQuerySchema() throws SchemaParseException, IOException {
+    final String testBigQuerySchema = "{\"fields\":[{\"mode\":\"REQUIRED\",\"name\":\"FieldName1\",\"type\":\"STRING\"},{\"mode\":\"REQUIRED\",\"name\":\"FieldName2\",\"type\":\"STRING\"}]}";
+    Schema beamSchema = BeamSchemaUtils.fromJson(testSchema);
+    TableSchema tableSchema = BigQueryHelpers.fromJsonString(testBigQuerySchema, TableSchema.class);
+    Assert.assertEquals(tableSchema,
+        BeamSchemaUtils.beamSchemaToBigQuerySchema(beamSchema));
   }
 
   @Test
-  public void testRowToCSV() {
-    Schema beamSchema = new SchemasUtils(testSchema).getBeamSchema();
+  public void testRowToCSV() throws SchemaParseException, IOException {
+    Schema beamSchema = BeamSchemaUtils.fromJson(testSchema);
     Row.Builder rowBuilder = Row.withSchema(beamSchema);
     Row row = rowBuilder.addValues(new ArrayList<>(Arrays.asList(fields))).build();
     String csvResult = getCsvFromRow(row, ";", "null");
@@ -107,13 +115,13 @@ public class ProtegrityDataTokenizationTest {
   }
 
   @Test
-  public void testRowToCSVWithNull() {
-    final String nullableTestSchema = "{\"fields\":[{\"mode\":\"REQUIRED\",\"name\":\"FieldName1\",\"type\":\"STRING\"},{\"mode\":\"NULLABLE\",\"name\":\"FieldName2\",\"type\":\"STRING\"}]}";
+  public void testRowToCSVWithNull() throws SchemaParseException, IOException {
+    final String nullableTestSchema = "[{\"nullable\":false,\"name\":\"FieldName1\",\"type\":\"STRING\"},{\"nullable\":true,\"name\":\"FieldName2\",\"type\":\"STRING\"}]}";
     final String expectedCsv = "TestValueOne;null";
 
     List<Object> values = Lists.newArrayList("TestValueOne", null);
 
-    Schema beamSchema = new SchemasUtils(nullableTestSchema).getBeamSchema();
+    Schema beamSchema = BeamSchemaUtils.fromJson(nullableTestSchema);
     Row.Builder rowBuilder = Row.withSchema(beamSchema);
     Row row = rowBuilder.addValues(values).build();
     String csvResult = getCsvFromRow(row, ";", "null");
@@ -121,7 +129,7 @@ public class ProtegrityDataTokenizationTest {
   }
 
   @Test
-  public void testFileSystemIOReadCSV() throws IOException {
+  public void testFileSystemIOReadCSV() throws IOException, SchemaParseException {
     PCollection<Row> rows = fileSystemIORead(CSV_FILE_PATH, IoFormats.CSV);
 
     assertField(rows);
@@ -129,7 +137,7 @@ public class ProtegrityDataTokenizationTest {
   }
 
   @Test
-  public void testFileSystemIOReadJSON() throws IOException {
+  public void testFileSystemIOReadJSON() throws IOException, SchemaParseException {
     PCollection<Row> rows = fileSystemIORead(JSON_FILE_PATH, IoFormats.JSON);
     assertField(rows);
     testPipeline.run();
@@ -137,14 +145,14 @@ public class ProtegrityDataTokenizationTest {
 
 
   @Test
-  public void testFileSystemIOReadAVRO() throws IOException {
+  public void testFileSystemIOReadAVRO() throws IOException, SchemaParseException {
     PCollection<Row> rows = fileSystemIORead(AVRO_FILE_PATH, IoFormats.AVRO);
     assertField(rows);
     testPipeline.run();
   }
 
   @Test
-  public void testJsonToRow() throws IOException {
+  public void testJsonToRow() throws IOException, SchemaParseException {
     PCollection<Row> rows = fileSystemIORead(JSON_FILE_PATH, IoFormats.JSON);
     PAssert.that(rows)
         .satisfies(
@@ -164,7 +172,8 @@ public class ProtegrityDataTokenizationTest {
   }
 
   private PCollection<Row> fileSystemIORead(
-      String inputGcsFilePattern, IoFormats inputGcsFileFormat) throws IOException {
+      String inputGcsFilePattern, IoFormats inputGcsFileFormat)
+      throws IOException, SchemaParseException {
     ProtegrityDataTokenizationOptions options =
         PipelineOptionsFactory.create().as(ProtegrityDataTokenizationOptions.class);
     options.setDataSchemaGcsPath(SCHEMA_FILE_PATH);
@@ -174,26 +183,27 @@ public class ProtegrityDataTokenizationTest {
       options.setCsvContainsHeaders(Boolean.FALSE);
     }
 
-    SchemasUtils testSchemaUtils =
-        new SchemasUtils(options.getDataSchemaGcsPath(), StandardCharsets.UTF_8);
+    Schema beamSchema = BeamSchemaUtils
+        .fromJson(new String(Files.readAllBytes(Paths.get(options.getDataSchemaGcsPath())),
+            StandardCharsets.UTF_8));
 
     CoderRegistry coderRegistry = testPipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(
         FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
     coderRegistry.registerCoderForType(
-        RowCoder.of(testSchemaUtils.getBeamSchema()).getEncodedTypeDescriptor(),
-        RowCoder.of(testSchemaUtils.getBeamSchema()));
+        RowCoder.of(beamSchema).getEncodedTypeDescriptor(),
+        RowCoder.of(beamSchema));
     /*
      * Row/Row Coder for FailsafeElement.
      */
     FailsafeElementCoder<Row, Row> coder =
         FailsafeElementCoder.of(
-            RowCoder.of(testSchemaUtils.getBeamSchema()),
-            RowCoder.of(testSchemaUtils.getBeamSchema()));
+            RowCoder.of(beamSchema),
+            RowCoder.of(beamSchema));
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
     GoogleCloudStorageIO.Read read = GoogleCloudStorageIO
-        .read(options, testSchemaUtils.getBeamSchema());
+        .read(options, beamSchema);
 
     switch (options.getInputGcsFileFormat()) {
       case CSV:

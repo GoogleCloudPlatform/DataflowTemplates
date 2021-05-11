@@ -32,12 +32,13 @@ import com.google.cloud.teleport.v2.transforms.BeamRowConverters.FailsafeRowToFa
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.transforms.ProtegrityDataProtectors.RowToTokenizedRow;
 import com.google.cloud.teleport.v2.transforms.io.BigQueryIO;
+import com.google.cloud.teleport.v2.utils.BeamSchemaUtils;
+import com.google.cloud.teleport.v2.utils.BeamSchemaUtils.SchemaParseException;
 import com.google.cloud.teleport.v2.utils.FailsafeElementToStringCsvSerializableFunction;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
-import com.google.cloud.teleport.v2.utils.SchemasUtils;
+import com.google.cloud.teleport.v2.utils.TokenizationSchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.apache.beam.runners.dataflow.DataflowRunner;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
@@ -51,6 +52,7 @@ import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
@@ -136,16 +138,17 @@ public class ProtegrityDataTokenization {
     checkArgument(StringUtils.isNoneBlank(options.getDataSchemaGcsPath()),
         "Missing required value for --dataSchemaGcsPath.");
 
-    SchemasUtils schema = null;
+    Schema schema = null;
     try {
-      schema = new SchemasUtils(options.getDataSchemaGcsPath(), StandardCharsets.UTF_8);
-    } catch (IOException e) {
+      schema = BeamSchemaUtils
+          .fromJson(SchemaUtils.getGcsFileAsString(options.getDataSchemaGcsPath()));
+    } catch (IOException | SchemaParseException e) {
       LOG.error("Failed to retrieve schema for data.", e);
     }
     checkArgument(schema != null, "Data schema is mandatory.");
 
-    Map<String, String> dataElements = schema
-        .getDataElementsToTokenize(options.getPayloadConfigGcsPath());
+    Map<String, String> dataElements = TokenizationSchemaUtils
+        .getDataElementsToTokenize(options.getPayloadConfigGcsPath(), schema);
 
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
@@ -154,21 +157,19 @@ public class ProtegrityDataTokenization {
     coderRegistry.registerCoderForType(
         FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
     coderRegistry
-        .registerCoderForType(RowCoder.of(schema.getBeamSchema()).getEncodedTypeDescriptor(),
-            RowCoder.of(schema.getBeamSchema()));
+        .registerCoderForType(RowCoder.of(schema).getEncodedTypeDescriptor(),
+            RowCoder.of(schema));
     /*
      * Row/Row Coder for FailsafeElement.
      */
-    FailsafeElementCoder<Row, Row> coder = FailsafeElementCoder.of(
-        RowCoder.of(schema.getBeamSchema()),
-        RowCoder.of(schema.getBeamSchema())
-    );
+    FailsafeElementCoder<Row, Row> coder = FailsafeElementCoder
+        .of(RowCoder.of(schema), RowCoder.of(schema));
     coderRegistry
         .registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
     PCollection<Row> records;
     if (options.getInputGcsFilePattern() != null) {
-      GoogleCloudStorageIO.Read read = GoogleCloudStorageIO.read(options, schema.getBeamSchema());
+      GoogleCloudStorageIO.Read read = GoogleCloudStorageIO.read(options, schema);
       switch (options.getInputGcsFileFormat()) {
         case CSV:
           records = pipeline.apply(read.csv(options));
@@ -192,7 +193,7 @@ public class ProtegrityDataTokenization {
                   .via((String element) -> FailsafeElement.of(element, element)))
           .apply("FailsafeJsonToBeamRow",
               BeamRowConverters.FailsafeJsonToBeamRow.<String>newBuilder()
-                  .setBeamSchema(schema.getBeamSchema())
+                  .setBeamSchema(schema)
                   .setSuccessTag(TRANSFORM_OUT)
                   .setFailureTag(TRANSFORM_DEADLETTER_OUT)
                   .build()
@@ -227,18 +228,17 @@ public class ProtegrityDataTokenization {
         .apply(MapElements
             .into(TypeDescriptors.kvs(TypeDescriptors.integers(), TypeDescriptors.rows()))
             .via((Row row) -> KV.of(0, row)))
-        .setCoder(KvCoder.of(VarIntCoder.of(), RowCoder.of(schema.getBeamSchema())))
+        .setCoder(KvCoder.of(VarIntCoder.of(), RowCoder.of(schema)))
         .apply("DsgTokenization",
             RowToTokenizedRow.newBuilder()
                 .setBatchSize(options.getBatchSize())
                 .setDsgURI(options.getDsgUri())
-                .setSchema(schema.getBeamSchema())
+                .setSchema(schema)
                 .setDataElements(dataElements)
                 .setServiceAccount(serviceAccount)
                 .setSuccessTag(TOKENIZATION_OUT)
                 .setFailureTag(TOKENIZATION_DEADLETTER_OUT).build());
 
-    String csvDelimiter = options.getCsvDelimiter();
     if (options.getNonTokenizedDeadLetterGcsPath() != null) {
     /*
     Write tokenization errors to dead-letter sink
@@ -259,11 +259,11 @@ public class ProtegrityDataTokenization {
           tokenizedRows.get(TOKENIZATION_OUT).apply(write.json());
           break;
         case AVRO:
-          tokenizedRows.get(TOKENIZATION_OUT).apply(write.avro(schema.getBeamSchema()));
+          tokenizedRows.get(TOKENIZATION_OUT).apply(write.avro(schema));
           break;
         case CSV:
           tokenizedRows.get(TOKENIZATION_OUT).apply(write.csv(options)
-              .withFieldNames(schema.getBeamSchema().getFieldNames())
+              .withFieldNames(schema.getFieldNames())
           );
           break;
         default:
@@ -273,7 +273,7 @@ public class ProtegrityDataTokenization {
     } else if (options.getOutputTableSpec() != null) {
       WriteResult writeResult = write(tokenizedRows.get(TOKENIZATION_OUT),
           options.getOutputTableSpec(),
-          schema.getBigQuerySchema());
+          BeamSchemaUtils.beamSchemaToBigQuerySchema(schema));
       writeResult
           .getFailedInsertsWithErr()
           .apply(
@@ -291,7 +291,7 @@ public class ProtegrityDataTokenization {
     } else if (options.getBigTableInstanceId() != null) {
       tokenizedRows.get(TOKENIZATION_OUT)
           .apply(
-              BigTableIO.write(options, schema.getBeamSchema())
+              BigTableIO.write(options, schema)
           );
     } else {
       throw new IllegalStateException(
