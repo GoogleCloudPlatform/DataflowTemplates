@@ -46,6 +46,7 @@ public class BeamSchemaUtils {
   public static final String FIELD_NAME = "name";
   public static final String FIELD_TYPE = "type";
   public static final String FIELD_NULLABLE = "nullable";
+  private static final boolean DEFAULT_NULLABLE_VALUE = false;
 
   static final JsonFactory FACTORY = new JsonFactory();
   static final ObjectMapper MAPPER = new ObjectMapper(FACTORY);
@@ -106,9 +107,18 @@ public class BeamSchemaUtils {
       }
       String type = getText(node, FIELD_TYPE, "type is missed");
       String name = getText(node, FIELD_NAME, "name is missed");
-      fields.add(Field.of(name, stringToFieldType(type)));
+      boolean nullable = getOptionalBoolean(node, FIELD_NULLABLE, DEFAULT_NULLABLE_VALUE);
+      Field field = nullable ? Field.nullable(name, stringToFieldType(type))
+          : Field.of(name, stringToFieldType(type));
+      fields.add(field);
     }
     return fields;
+  }
+
+
+  private static boolean getOptionalBoolean(JsonNode node, String key, boolean defaultValue) {
+    JsonNode jsonNode = node.get(key);
+    return jsonNode != null ? jsonNode.asBoolean() : defaultValue;
   }
 
   private static FieldType stringToFieldType(String string) throws SchemaParseException {
@@ -142,7 +152,9 @@ public class BeamSchemaUtils {
     public SchemaParseException(String message) {
       super(message);
     }
+
   }
+
   /**
    * Convert a BigQuery {@link TableSchema} to a Beam {@link Schema}.
    */
@@ -156,5 +168,4 @@ public class BeamSchemaUtils {
   public static TableSchema beamSchemaToBigQuerySchema(Schema beamSchema) {
     return toTableSchema(beamSchema);
   }
-
 }

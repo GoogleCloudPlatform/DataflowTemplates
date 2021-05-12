@@ -41,10 +41,10 @@ import org.junit.rules.ExpectedException;
 public class BeamSchemaUtilsTest {
 
   @Rule
-  public ExpectedException exceptionRule = ExpectedException.none();
+  public final ExpectedException exceptionRule = ExpectedException.none();
   static final String EXPECTED_FIELD_NAME = "expectedFieldName";
   static ObjectMapper mapper;
-  public static String jsonSchema = "[\n"
+  public static final String JSON_SCHEMA = "[\n"
       + "  {\n"
       + "    \"name\": \"byte\",\n"
       + "    \"type\": \"BYTE\"\n"
@@ -99,7 +99,7 @@ public class BeamSchemaUtilsTest {
 
   @Test
   public void testFromJson() throws SchemaParseException, IOException {
-    Schema schema = BeamSchemaUtils.fromJson(jsonSchema);
+    Schema schema = BeamSchemaUtils.fromJson(JSON_SCHEMA);
     assertEquals(11, schema.getFieldCount());
 
     assertEquals(0, schema.indexOf("byte"));
@@ -398,5 +398,18 @@ public class BeamSchemaUtilsTest {
     String beamSchemaJson = BeamSchemaUtils.beamSchemaToJson(beamSchema);
 
     Assert.assertEquals(mapper.readTree(expectedJson), mapper.readTree(beamSchemaJson));
+  }
+
+  @Test
+  public void testNullableField() throws IOException, SchemaParseException {
+    String jsonString = "[{\"name\": \"nullableField\", \"type\": \"STRING\", \"nullable\": true},{\"name\": \"nonNullableField\", \"type\": \"STRING\", \"nullable\": false},{\"name\": \"defaultNullableValueField\", \"type\": \"STRING\"}]";
+    Schema schema = BeamSchemaUtils.fromJson(jsonString);
+    assertEquals(3, schema.getFieldCount());
+    assertEquals("nullableField", schema.getField(0).getName());
+    assertEquals(FieldType.STRING.withNullable(true), schema.getField(0).getType());
+    assertEquals("nonNullableField", schema.getField(1).getName());
+    assertEquals(FieldType.STRING, schema.getField(1).getType());
+    assertEquals("defaultNullableValueField", schema.getField(2).getName());
+    assertEquals(FieldType.STRING, schema.getField(2).getType());
   }
 }
