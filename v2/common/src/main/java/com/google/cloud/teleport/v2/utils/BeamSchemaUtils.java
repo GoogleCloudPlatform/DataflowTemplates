@@ -93,12 +93,12 @@ public class BeamSchemaUtils {
       throw new SchemaParseException(
           "Provided schema must be in \"[{\"type\": \"fieldTypeName\", \"name\": \"fieldName\"}, ...]\" format");
     }
-    return new Schema(getFieldsfromJsonNode(jsonNodes));
+    return new Schema(getFieldsFromJsonNode(jsonNodes));
 
   }
 
 
-  private static List<Field> getFieldsfromJsonNode(JsonNode jsonNode)
+  private static List<Field> getFieldsFromJsonNode(JsonNode jsonNode)
       throws SchemaParseException {
     List<Field> fields = new LinkedList<>();
     for (JsonNode node : jsonNode) {
@@ -107,7 +107,7 @@ public class BeamSchemaUtils {
       }
       String type = getText(node, FIELD_TYPE, "type is missed");
       String name = getText(node, FIELD_NAME, "name is missed");
-      boolean nullable = getOptionalBoolean(node, FIELD_NULLABLE, DEFAULT_NULLABLE_VALUE);
+      boolean nullable = getBooleanValueOrDefault(node, FIELD_NULLABLE, DEFAULT_NULLABLE_VALUE);
       Field field = nullable ? Field.nullable(name, stringToFieldType(type))
           : Field.of(name, stringToFieldType(type));
       fields.add(field);
@@ -116,7 +116,7 @@ public class BeamSchemaUtils {
   }
 
 
-  private static boolean getOptionalBoolean(JsonNode node, String key, boolean defaultValue) {
+  private static boolean getBooleanValueOrDefault(JsonNode node, String key, boolean defaultValue) {
     JsonNode jsonNode = node.get(key);
     return jsonNode != null ? jsonNode.asBoolean() : defaultValue;
   }
