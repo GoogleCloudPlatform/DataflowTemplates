@@ -270,9 +270,9 @@ public class ProtegrityDataTokenization {
           throw new IllegalStateException(
               "No valid format for output data is provided. Please, choose JSON, CSV or AVRO.");
       }
-    } else if (options.getOutputTableSpec() != null) {
+    } else if (options.getBigQueryTableName() != null) {
       WriteResult writeResult = write(tokenizedRows.get(TOKENIZATION_OUT),
-          options.getOutputTableSpec(),
+          options.getBigQueryTableName(),
           BeamSchemaUtils.beamSchemaToBigQuerySchema(schema));
       writeResult
           .getFailedInsertsWithErr()
@@ -285,7 +285,7 @@ public class ProtegrityDataTokenization {
               "WriteInsertionFailedRecords",
               ErrorConverters.WriteStringMessageErrors.newBuilder()
                   .setErrorRecordsTable(
-                      options.getOutputTableSpec() + DEFAULT_DEADLETTER_TABLE_SUFFIX)
+                      options.getBigQueryTableName() + DEFAULT_DEADLETTER_TABLE_SUFFIX)
                   .setErrorRecordsTableSchema(SchemaUtils.DEADLETTER_SCHEMA)
                   .build());
     } else if (options.getBigTableInstanceId() != null) {

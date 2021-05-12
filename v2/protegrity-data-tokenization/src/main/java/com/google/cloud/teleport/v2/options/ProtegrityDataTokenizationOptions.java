@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.options;
 
-import com.google.cloud.teleport.v2.options.PubsubCommonOptions.ReadSubscriptionOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -25,14 +24,18 @@ import org.apache.beam.sdk.options.PipelineOptions;
  * passed by the executor at the command-line.
  */
 public interface ProtegrityDataTokenizationOptions extends PipelineOptions,
-    BigTableCommonOptions.WriteOptions, GcsPipelineOptions, ReadSubscriptionOptions,
-    GcsCommonOptions.ReadOptions, GcsCommonOptions.WriteOptions, CsvOptions,
-    BigQueryCommonOptions.WriteOptions {
+    BigTableCommonOptions.WriteOptions, GcsPipelineOptions,
+    GcsCommonOptions.ReadOptions, GcsCommonOptions.WriteOptions, CsvOptions {
 
   @Description("Path to data schema (JSON format) in GCS compatible with BigQuery.")
   String getDataSchemaGcsPath();
 
   void setDataSchemaGcsPath(String dataSchemaGcsPath);
+
+  @Description("Cloud BigQuery table name to write into.")
+  String getBigQueryTableName();
+
+  void setBigQueryTableName(String bigQueryTableName);
 
   //Protegrity specific parameters
   @Description("URI for the API calls to DSG.")
