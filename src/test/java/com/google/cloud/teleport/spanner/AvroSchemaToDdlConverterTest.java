@@ -84,11 +84,26 @@ public class AvroSchemaToDdlConverterTest {
             + "    \"name\":\"numericArr\","
             + "    \"type\": [\"null\",{\"type\":\"array\",\"items\":[\"null\",{\"type\":\"bytes\","
             + "              \"logicalType\":\"decimal\",\"precision\":38,\"scale\":9}]}]"
-                             // Omitting sqlType
+            // Omitting sqlType
             + "  }, {"
             + "    \"name\":\"notNumericArr\","
             + "    \"type\": [\"null\",{\"type\":\"array\",\"items\":[\"null\",{\"type\":\"bytes\","
-            +                "\"logicalType\":\"decimal\",\"precision\":35}]}]" // Omitting sqlType
+            + "              \"logicalType\":\"decimal\",\"precision\":35}]}]" // Omitting sqlType
+            + "  }, {"
+            + "    \"name\" : \"json\","
+            + "    \"type\" : [ \"null\", \"string\" ],"
+            + "    \"sqlType\" : \"JSON\""
+            + "  }, {"
+            + "    \"name\" : \"notJson\","
+            + "    \"type\" : [ \"null\", \"string\" ]" // Omitting sqlType
+            + "  }, {"
+            + "    \"name\":\"jsonArr\","
+            + "    \"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",\"string\"]}],"
+            + "    \"sqlType\":\"ARRAY<JSON>\""
+            + "  }, {"
+            + "    \"name\":\"notJsonArr\","
+            + "    \"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",\"string\"]}]"
+            // Omitting sqlType
             + "  }],"
             + "  \"googleStorage\" : \"CloudSpanner\","
             + "  \"spannerParent\" : \"\","
@@ -123,6 +138,10 @@ public class AvroSchemaToDdlConverterTest {
                 + " `notNumeric2`     BYTES(MAX),"
                 + " `numericArr`      ARRAY<NUMERIC>,"
                 + " `notNumericArr`   ARRAY<BYTES(MAX)>,"
+                + " `json`            JSON,"
+                + " `notJson`         STRING(MAX),"
+                + " `jsonArr`         ARRAY<JSON>,"
+                + " `notJsonArr`      ARRAY<STRING(MAX)>,"
                 + " CONSTRAINT `ck` CHECK(`first_name` != 'last_name'),"
                 + " ) PRIMARY KEY (`id` ASC, `last_name` DESC)"
                 + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"

@@ -111,6 +111,8 @@ public class DdlToAvroSchemaConverter {
       case FLOAT64:
         return SchemaBuilder.builder().doubleType();
       case STRING:
+      case DATE:
+      case JSON:
         return SchemaBuilder.builder().stringType();
       case BYTES:
         return SchemaBuilder.builder().bytesType();
@@ -118,8 +120,6 @@ public class DdlToAvroSchemaConverter {
         return shouldExportTimestampAsLogicalType
             ? LogicalTypes.timestampMicros().addToSchema(SchemaBuilder.builder().longType())
             : SchemaBuilder.builder().stringType();
-      case DATE:
-        return SchemaBuilder.builder().stringType();
       case NUMERIC:
         return LogicalTypes.decimal(NumericUtils.PRECISION, NumericUtils.SCALE)
             .addToSchema(SchemaBuilder.builder().bytesType());

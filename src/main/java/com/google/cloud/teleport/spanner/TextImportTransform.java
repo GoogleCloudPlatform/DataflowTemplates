@@ -420,6 +420,8 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
         return Code.BYTES;
       } else if (columnType.equalsIgnoreCase("NUMERIC")) {
         return Code.NUMERIC;
+      } else if (columnType.equalsIgnoreCase("JSON")) {
+        return Code.JSON;
       } else {
         throw new IllegalArgumentException(
             "Unrecognized or unsupported column data type: " + columnType);

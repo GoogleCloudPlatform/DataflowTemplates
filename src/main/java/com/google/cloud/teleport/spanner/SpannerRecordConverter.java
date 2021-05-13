@@ -97,7 +97,8 @@ public class SpannerRecordConverter {
               field, nullValue ? null : ByteBuffer.wrap(row.getBytes(fieldName).toByteArray()));
           break;
         case STRING:
-          if (Pattern.matches("STRING\\((?:MAX|[0-9]+)\\)", spannerType)) {
+          if (Pattern.matches("STRING\\((?:MAX|[0-9]+)\\)", spannerType)
+              || spannerType.equals("JSON")) {
             builder.set(field, nullValue ? null : row.getString(fieldName));
           } else if (spannerType.equals("TIMESTAMP")) {
             builder.set(field, nullValue ? null : row.getTimestamp(fieldName).toString());
@@ -179,7 +180,8 @@ public class SpannerRecordConverter {
                 }
               case STRING:
                 {
-                  if (Pattern.matches("ARRAY<STRING\\((?:MAX|[0-9]+)\\)>", spannerType)) {
+                  if (Pattern.matches("ARRAY<STRING\\((?:MAX|[0-9]+)\\)>", spannerType)
+                      || spannerType.equals("ARRAY<JSON>")) {
                     builder.set(field, nullValue ? null : row.getStringList(fieldName));
                   } else if (spannerType.equals("ARRAY<TIMESTAMP>")) {
                     if (nullValue) {

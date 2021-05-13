@@ -82,7 +82,8 @@ public final class TextRowToMutationTest {
                 KV.of(
                     testTableName,
                     "123,a string,`another"
-                        + " string`,1.23,True,2019-01-01,2018-12-31T23:59:59Z,1567637083,aGk=,-439.25335679")));
+                        + " string`,1.23,True,2019-01-01,2018-12-31T23:59:59Z,1567637083,aGk=,"
+                        + "-439.25335679,`{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}`")));
     PCollection<Mutation> mutations =
         input.apply(
             ParDo.of(
@@ -121,6 +122,8 @@ public final class TextRowToMutationTest {
                 .to(Value.bytes(ByteArray.fromBase64("aGk=")))
                 .set("numeric_col")
                 .to("-439.25335679")
+                .set("json_col")
+                .to("{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}")
                 .build());
 
     pipeline.run();
@@ -457,6 +460,40 @@ public final class TextRowToMutationTest {
     pipeline.run();
   }
 
+  @Test(expected = PipelineExecutionException.class)
+  public void parseRowWithArrayColumn() throws Exception {
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("ddl", Create.of(getTestDdlWithArray())).apply(View.asSingleton());
+    PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
+        pipeline
+            .apply(
+                "tableColumnsMap",
+                Create.<Map<String, List<TableManifest.Column>>>of(getEmptyTableColumnsMap())
+                    .withCoder(
+                        MapCoder.of(
+                            StringUtf8Coder.of(),
+                            ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
+            .apply("Map as view", View.asSingleton());
+
+    PCollection<KV<String, String>> input =
+        pipeline.apply("input", Create.of(KV.of(testTableName, "str, [a string in an array]")));
+    PCollection<Mutation> mutations =
+        input.apply(
+            ParDo.of(
+                    new TextRowToMutation(
+                        ddlView,
+                        tableColumnsMapView,
+                        columnDelimiter,
+                        StaticValueProvider.of('"'),
+                        trailingDelimiter,
+                        escape,
+                        nullString,
+                        dateFormat,
+                        timestampFormat))
+                .withSideInputs(ddlView, tableColumnsMapView));
+    pipeline.run();
+  }
+
   private static Ddl getTestDdl() {
     Ddl ddl =
         Ddl.builder()
@@ -494,6 +531,9 @@ public final class TextRowToMutationTest {
             .column("numeric_col")
             .numeric()
             .endColumn()
+            .column("json_col")
+            .json()
+            .endColumn()
             .primaryKey()
             .asc("int_col")
             .end()
@@ -526,6 +566,27 @@ public final class TextRowToMutationTest {
             .endColumn()
             .primaryKey()
             .asc("timestamp_col")
+            .end()
+            .endTable()
+            .build();
+    return ddl;
+  }
+
+  private static Ddl getTestDdlWithArray() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(testTableName)
+            .column("str_col")
+            .string()
+            .max()
+            .notNull()
+            .endColumn()
+            .column("arr_str_col")
+            .type(Type.array(Type.string()))
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("str_col")
             .end()
             .endTable()
             .build();

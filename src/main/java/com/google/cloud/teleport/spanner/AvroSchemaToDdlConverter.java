@@ -239,6 +239,8 @@ public class AvroSchemaToDdlConverter {
         return "DATE";
       case NUMERIC:
         return "NUMERIC";
+      case JSON:
+        return "JSON";
       case ARRAY:
         {
           if (supportArray) {

@@ -248,4 +248,51 @@ public class SpannerRecordConverterTest {
         equalTo(ByteBuffer.wrap(NumericUtils.stringToBytes("-9305028.140032"))));
     assertThat(avroRecord.get("numeric_arr"), equalTo(expectedNumericArr));
   }
+
+  @Test
+  public void json() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("jsontable")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("json")
+            .type(Type.json())
+            .endColumn()
+            .column("json_arr")
+            .type(Type.array(Type.json()))
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+    Schema schema = converter.convert(ddl).iterator().next();
+    SpannerRecordConverter recordConverter = new SpannerRecordConverter(schema);
+
+    String[] jsonArrValues = {
+      null, "[1,null,true,2.2523,\"hello\"]", null, "{\"a\":{\"a\":2.5},\"b\":null}"
+    };
+    Struct struct =
+        Struct.newBuilder()
+            .set("id")
+            .to(1L)
+            .set("json")
+            .to("\"hello my friend\"")
+            .set("json_arr")
+            .toStringArray(Lists.newArrayList(jsonArrValues))
+            .build();
+
+    GenericRecord avroRecord = recordConverter.convert(struct);
+
+    assertThat(avroRecord.get("id"), equalTo(1L));
+    assertThat(avroRecord.get("json"), equalTo("\"hello my friend\""));
+    assertThat(
+        avroRecord.get("json_arr"),
+        equalTo(
+            Arrays.asList(
+                null, "[1,null,true,2.2523,\"hello\"]", null, "{\"a\":{\"a\":2.5},\"b\":null}")));
+  }
 }
