@@ -19,6 +19,10 @@ package com.google.cloud.teleport.templates.common;
 import com.google.api.services.bigquery.model.TableRow;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
+
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -99,6 +103,11 @@ public class JdbcConverters {
    */
   private static class ResultSetToTableRow implements JdbcIO.RowMapper<TableRow> {
 
+    static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
+    static DateTimeFormatter datetimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss.SSSSSS");
+    static SimpleDateFormat timestampFormatter = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss.SSSSSSXXX");
+
+
     @Override
     public TableRow mapRow(ResultSet resultSet) throws Exception {
 
@@ -107,7 +116,31 @@ public class JdbcConverters {
       TableRow outputTableRow = new TableRow();
 
       for (int i = 1; i <= metaData.getColumnCount(); i++) {
-        outputTableRow.set(metaData.getColumnName(i), resultSet.getObject(i));
+        if (resultSet.getObject(i) == null) {
+          outputTableRow.set(metaData.getColumnName(i), resultSet.getObject(i));
+          continue;
+        }
+
+        /*
+         * DATE:      EPOCH MILLISECONDS -> yyyy-MM-dd
+         * DATETIME:  EPOCH MILLISECONDS -> yyyy-MM-dd hh:mm:ss.SSSSSS
+         * TIMESTAMP: EPOCH MILLISECONDS -> yyyy-MM-dd hh:mm:ss.SSSSSSXXX
+         *
+         * MySQL drivers have ColumnTypeName in all caps and postgres in small case
+         */
+        switch (metaData.getColumnTypeName(i).toLowerCase()) {
+          case "date":
+            outputTableRow.set(metaData.getColumnName(i), dateFormatter.format(resultSet.getObject(i)));
+            break;
+          case "datetime":
+            outputTableRow.set(metaData.getColumnName(i), datetimeFormatter.format((TemporalAccessor) resultSet.getObject(i)));
+            break;
+          case "timestamp":
+            outputTableRow.set(metaData.getColumnName(i), timestampFormatter.format(resultSet.getObject(i)));
+            break;
+          default:
+            outputTableRow.set(metaData.getColumnName(i), resultSet.getObject(i));
+        }
       }
 
       return outputTableRow;
