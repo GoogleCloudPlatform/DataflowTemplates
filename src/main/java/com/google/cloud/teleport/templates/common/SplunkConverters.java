@@ -238,13 +238,14 @@ public class SplunkConverters {
                             if (!event.isEmpty()) {
                               builder.withEvent(event);
                             }
-                            
+
                             String fields = metadata.optString(HEC_FIELDS_KEY);
                             if (!fields.isEmpty()) {
                               try {
                                 builder.withFields(GSON.fromJson(fields, JsonObject.class));
                               } catch (JsonParseException e) {
-                                LOG.warn("Unable to parse 'fields' metadata JSON");
+                                LOG.warn(
+                                    "Unable to convert 'fields' metadata value:{} into JSON object", fields);
                               }
                             }
                             // We remove the _metadata entry from the payload
