@@ -13,14 +13,13 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.v2.elasticsearch.templates;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.teleport.v2.elasticsearch.options.PubSubToElasticsearchOptions;
-import com.google.cloud.teleport.v2.elasticsearch.templates.PubSubToElasticsearch;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.PubSubMessageToJsonDocument;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableList;

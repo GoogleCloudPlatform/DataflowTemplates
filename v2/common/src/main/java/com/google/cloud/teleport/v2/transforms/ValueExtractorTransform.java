@@ -32,7 +32,7 @@ import org.apache.beam.sdk.io.elasticsearch.ElasticsearchIO.Write.FieldValueExtr
  * and the name of JS function to be applied via {@link ValueExtractorFn#functionName()}. The transform will
  * return a {@link String} that is the result of the JS function.
  */
-class ValueExtractorTransform {
+public class ValueExtractorTransform {
 
   /**
    * Class for routing functions that implements {@link FieldValueExtractFn}. {@link

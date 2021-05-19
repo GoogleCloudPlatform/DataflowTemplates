@@ -13,10 +13,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.transforms;
+package com.google.cloud.teleport.v2.elasticsearch.transforms;
 
 import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchOptions;
-import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;

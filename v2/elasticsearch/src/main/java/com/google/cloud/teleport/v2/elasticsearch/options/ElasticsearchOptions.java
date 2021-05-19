@@ -1,4 +1,4 @@
-package com.google.cloud.teleport.elasticsearch.options;
+package com.google.cloud.teleport.v2.elasticsearch.options;
 
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
@@ -6,11 +6,32 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 
 /**
- * The {@link WriteToElasticsearchOptions} class provides the custom execution options passed by
+ * The {@link ElasticsearchOptions} class provides the custom execution options passed by
  * the executor at the command-line.
  */
 
-public interface ElasticsearchOptions extends PipelineOptions {
+public interface ElasticsearchOptions extends PipelineOptions{
+
+    @Description(
+            "Specify application (BigQueryToElasticsearch, CsvToElasticsearch, PubSubToElasticsearch)")
+    @Validation.Required
+    String getApplication();
+
+    void setApplication(String application);
+
+    @Description(
+            "Username for elasticsearch nodes")
+    @Validation.Required
+    String getElasticsearchUsername();
+
+    void setElasticsearchUsername(String elasticsearchUsername);
+
+    @Description(
+            "Password for elasticsearch nodes")
+    @Validation.Required
+    String getElasticsearchPassword();
+
+    void setElasticsearchPassword(String elasticsearchPassword);
 
     @Description(
             "Comma separated list of Elasticsearch nodes to connect to, ex: http://my-node1,http://my-node2")

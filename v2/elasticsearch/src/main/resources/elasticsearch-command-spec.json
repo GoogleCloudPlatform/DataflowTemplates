@@ -1,7 +1,7 @@
 {
-  "mainClass": "com.google.cloud.teleport.v2.templates.BigQueryToElasticsearch",
-  "classPath": "/template/bigquery-to-elasticsearch/*:/template/bigquery-to-elasticsearch/libs/*:/template/bigquery-to-elasticsearch/classes",
+  "mainClass": "com.google.cloud.teleport.v2.elasticsearch.templates.ElasticsearchMain",
+  "classPath": "/template/elasticsearch/*:/template/elasticsearch/libs/*:/template/elasticsearch/classes",
   "defaultParameterValues": {
-    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"bigquery_to_elasticsearch\"}"
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"elasticsearch\"}"
   }
 }

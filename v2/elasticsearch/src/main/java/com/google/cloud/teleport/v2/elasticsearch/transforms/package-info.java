@@ -15,6 +15,6 @@
  */
 
 /**
- * Options info for elastcisearch module.
+ * Transforms info for elastcisearch module.
  */
-package com.google.cloud.teleport.v2.elasticsearch.options;
+package com.google.cloud.teleport.v2.elasticsearch.transforms;

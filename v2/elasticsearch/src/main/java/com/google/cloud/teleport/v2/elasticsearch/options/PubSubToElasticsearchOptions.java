@@ -1,8 +1,7 @@
-package com.google.cloud.teleport.elasticsearch.options;
+package com.google.cloud.teleport.v2.elasticsearch.options;
 
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
 import org.apache.beam.sdk.options.Description;
-import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 
 /**
@@ -13,7 +12,7 @@ import org.apache.beam.sdk.options.Validation;
  * JavascriptTextTransformer.JavascriptTextTransformerOptions}, and options from {@link ElasticsearchOptions}.
  */
 public interface PubSubToElasticsearchOptions
-        extends JavascriptTextTransformer.JavascriptTextTransformerOptions, PipelineOptions, ElasticsearchOptions {
+        extends JavascriptTextTransformer.JavascriptTextTransformerOptions, ElasticsearchOptions {
 
     @Description(
             "The Cloud Pub/Sub subscription to consume from. "

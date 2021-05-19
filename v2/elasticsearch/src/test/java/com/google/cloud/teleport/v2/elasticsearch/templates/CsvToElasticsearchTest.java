@@ -13,11 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.v2.elasticsearch.templates;
+
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.elasticsearch.options.CsvToElasticsearchOptions;
-import com.google.cloud.teleport.v2.elasticsearch.templates.CsvToElasticsearch;
+import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchOptions;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -33,10 +37,6 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
 
 /** Test cases for the {@link CsvToElasticsearch} class. */
 public class CsvToElasticsearchTest {
@@ -267,7 +267,7 @@ public class CsvToElasticsearchTest {
             "BuildWriteToElasticSearchObject",
            WriteToElasticsearch
                 .newBuilder()
-                .setOptions(options.as(ElasticsearchTransforms.WriteToElasticsearchOptions.class))
+                .setOptions(options.as(ElasticsearchOptions.class))
                 .build());
     pipeline.run();
   }
