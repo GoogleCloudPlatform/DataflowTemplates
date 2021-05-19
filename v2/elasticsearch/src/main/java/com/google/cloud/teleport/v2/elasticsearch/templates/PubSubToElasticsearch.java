@@ -13,22 +13,20 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.elasticsearch.templates;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.elasticsearch.options.ElasticsearchOptions;
+import com.google.cloud.teleport.elasticsearch.options.PubSubToElasticsearchOptions;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
-import com.google.cloud.teleport.v2.transforms.ElasticsearchTransforms.WriteToElasticsearch;
-import com.google.cloud.teleport.v2.transforms.ElasticsearchTransforms.WriteToElasticsearchOptions;
+import com.google.cloud.teleport.v2.elasticsearch.transforms.ElasticsearchTransforms.WriteToElasticsearch;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
-import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
-import java.nio.charset.StandardCharsets;
-import javax.annotation.Nullable;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -38,22 +36,18 @@ import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesCoder;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
-import org.apache.beam.sdk.options.Description;
-import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PCollectionTuple;
-import org.apache.beam.sdk.values.TupleTag;
-import org.apache.beam.sdk.values.TupleTagList;
-import org.apache.beam.sdk.values.TypeDescriptors;
+import org.apache.beam.sdk.values.*;
 import org.apache.beam.vendor.guava.v20_0.com.google.common.base.Throwables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
+import java.nio.charset.StandardCharsets;
 
 /**
  * The {@link PubSubToElasticsearch} pipeline is a streaming pipeline which ingests data in JSON
@@ -222,7 +216,7 @@ public class PubSubToElasticsearch {
         .apply(
             "WriteToElasticsearch",
             WriteToElasticsearch.newBuilder()
-                .setOptions(options.as(WriteToElasticsearchOptions.class))
+                .setOptions(options.as(ElasticsearchOptions.class))
                 .build());
 
     /*
@@ -239,33 +233,6 @@ public class PubSubToElasticsearch {
 
     // Execute the pipeline and return the result.
     return pipeline.run();
-  }
-
-  /**
-   * The {@link PubSubToElasticsearchOptions} class provides the custom execution options passed by
-   * the executor at the command-line.
-   *
-   * <p>Inherits standard configuration options, options from {@link
-   * JavascriptTextTransformerOptions}, and options from {@link WriteToElasticsearchOptions}.
-   */
-  public interface PubSubToElasticsearchOptions
-      extends JavascriptTextTransformerOptions, PipelineOptions, WriteToElasticsearchOptions {
-
-    @Description(
-        "The Cloud Pub/Sub subscription to consume from. "
-            + "The name should be in the format of "
-            + "projects/<project-id>/subscriptions/<subscription-name>.")
-    String getInputSubscription();
-
-    void setInputSubscription(String inputSubscription);
-
-    @Description(
-        "The dead-letter table to output to within BigQuery in <project-id>:<dataset>.<table> "
-            + "format.")
-    @Required
-    String getDeadletterTable();
-
-    void setDeadletterTable(String deadletterTable);
   }
 
   /**

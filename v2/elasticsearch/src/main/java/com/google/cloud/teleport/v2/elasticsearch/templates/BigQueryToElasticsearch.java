@@ -13,13 +13,14 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.elasticsearch.templates;
 
+import com.google.cloud.teleport.elasticsearch.options.BigQueryToElasticsearchReadOptions;
+import com.google.cloud.teleport.elasticsearch.options.ElasticsearchOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.BigQueryReadOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.ReadBigQuery;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.TableRowToJsonFn;
-import com.google.cloud.teleport.v2.transforms.ElasticsearchTransforms.WriteToElasticsearch;
-import com.google.cloud.teleport.v2.transforms.ElasticsearchTransforms.WriteToElasticsearchOptions;
+import com.google.cloud.teleport.v2.elasticsearch.transforms.ElasticsearchTransforms.WriteToElasticsearch;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -147,18 +148,10 @@ public class BigQueryToElasticsearch {
         .apply(
             "WriteToElasticsearch",
             WriteToElasticsearch.newBuilder()
-                .setOptions(options.as(WriteToElasticsearchOptions.class))
+                .setOptions(options.as(ElasticsearchOptions.class))
                 .build());
 
     return pipeline.run();
   }
 
-  /**
-   * The {@link BigQueryToElasticsearchReadOptions} class provides the custom execution options
-   * passed by the executor at the command-line.
-   */
-  public interface BigQueryToElasticsearchReadOptions
-      extends PipelineOptions,
-          BigQueryReadOptions,
-          WriteToElasticsearchOptions {}
 }

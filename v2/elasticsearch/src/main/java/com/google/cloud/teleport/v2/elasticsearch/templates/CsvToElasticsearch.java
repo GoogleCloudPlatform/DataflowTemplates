@@ -13,15 +13,16 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.elasticsearch.templates;
 
 import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkArgument;
 
+import com.google.cloud.teleport.elasticsearch.options.CsvToElasticsearchOptions;
+import com.google.cloud.teleport.elasticsearch.options.ElasticsearchOptions;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.transforms.CsvConverters.CsvPipelineOptions;
-import com.google.cloud.teleport.v2.transforms.ElasticsearchTransforms.WriteToElasticsearch;
-import com.google.cloud.teleport.v2.transforms.ElasticsearchTransforms.WriteToElasticsearchOptions;
+import com.google.cloud.teleport.v2.elasticsearch.transforms.ElasticsearchTransforms.WriteToElasticsearch;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters.WriteStringMessageErrors;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -241,7 +242,7 @@ public class CsvToElasticsearch {
         .apply(
             "WriteToElasticsearch",
             WriteToElasticsearch.newBuilder()
-                .setOptions(options.as(WriteToElasticsearchOptions.class))
+                .setOptions(options.as(ElasticsearchOptions.class))
                 .build());
 
     /*
@@ -262,17 +263,4 @@ public class CsvToElasticsearch {
     return pipeline.run();
   }
 
-  /**
-   * The {@link CsvToElasticsearchOptions} class provides the custom execution options passed by the
-   * executor at the command-line.
-   */
-  public interface CsvToElasticsearchOptions
-      extends CsvPipelineOptions, PipelineOptions, WriteToElasticsearchOptions {
-
-    @Description("Deadletter table for failed inserts in form: <project-id>:<dataset>.<table>")
-    @Required
-    String getDeadletterTable();
-
-    void setDeadletterTable(String deadletterTable);
-  }
 }

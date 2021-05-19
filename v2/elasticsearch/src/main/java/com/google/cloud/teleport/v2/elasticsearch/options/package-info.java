@@ -15,6 +15,6 @@
  */
 
 /**
- * Package info for pubsub to elastcisearch module.
+ * Package info for elastcisearch module.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.v2.elasticsearch.templates;

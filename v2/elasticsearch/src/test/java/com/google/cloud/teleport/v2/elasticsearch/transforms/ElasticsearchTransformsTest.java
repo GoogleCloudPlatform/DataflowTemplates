@@ -15,7 +15,8 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import com.google.cloud.teleport.v2.transforms.ElasticsearchTransforms.WriteToElasticsearch;
+import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchOptions;
+import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
@@ -36,9 +37,9 @@ public class ElasticsearchTransformsTest {
 
     exceptionRule.expect(IllegalArgumentException.class);
 
-    ElasticsearchTransforms.WriteToElasticsearchOptions options =
+    ElasticsearchOptions options =
         PipelineOptionsFactory.create()
-            .as(ElasticsearchTransforms.WriteToElasticsearchOptions.class);
+            .as(ElasticsearchOptions.class);
 
     options.setNodeAddresses(null);
     options.setIndex("testIndex");
@@ -57,9 +58,9 @@ public class ElasticsearchTransformsTest {
 
     exceptionRule.expect(IllegalArgumentException.class);
 
-    ElasticsearchTransforms.WriteToElasticsearchOptions options =
+    ElasticsearchOptions options =
             PipelineOptionsFactory.create()
-                    .as(ElasticsearchTransforms.WriteToElasticsearchOptions.class);
+                    .as(ElasticsearchOptions.class);
 
     options.setNodeAddresses("http://my-node1");
     options.setIndex("testIndex");
@@ -78,9 +79,9 @@ public class ElasticsearchTransformsTest {
 
     exceptionRule.expect(IllegalArgumentException.class);
 
-    ElasticsearchTransforms.WriteToElasticsearchOptions options =
+    ElasticsearchOptions options =
             PipelineOptionsFactory.create()
-                    .as(ElasticsearchTransforms.WriteToElasticsearchOptions.class);
+                    .as(ElasticsearchOptions.class);
 
     options.setNodeAddresses("http://my-node1");
     options.setIndex(null);
@@ -99,9 +100,9 @@ public class ElasticsearchTransformsTest {
 
     exceptionRule.expect(IllegalArgumentException.class);
 
-    ElasticsearchTransforms.WriteToElasticsearchOptions options =
+    ElasticsearchOptions options =
         PipelineOptionsFactory.create()
-            .as(ElasticsearchTransforms.WriteToElasticsearchOptions.class);
+            .as(ElasticsearchOptions.class);
 
     options.setNodeAddresses(",");
     options.setIndex("testIndex");
@@ -124,9 +125,9 @@ public class ElasticsearchTransformsTest {
 
     exceptionRule.expect(IllegalArgumentException.class);
 
-    ElasticsearchTransforms.WriteToElasticsearchOptions options =
+    ElasticsearchOptions options =
             PipelineOptionsFactory.create()
-                    .as(ElasticsearchTransforms.WriteToElasticsearchOptions.class);
+                    .as(ElasticsearchOptions.class);
 
     options.setNodeAddresses("http://my-node1");
     options.setIndex("testIndex");
@@ -149,9 +150,9 @@ public class ElasticsearchTransformsTest {
 
     exceptionRule.expect(IllegalArgumentException.class);
 
-    ElasticsearchTransforms.WriteToElasticsearchOptions options =
+    ElasticsearchOptions options =
             PipelineOptionsFactory.create()
-                    .as(ElasticsearchTransforms.WriteToElasticsearchOptions.class);
+                    .as(ElasticsearchOptions.class);
 
     options.setNodeAddresses("http://my-node1");
     options.setIndex("testIndex");

@@ -15,13 +15,10 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
-
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.cloud.teleport.v2.elasticsearch.options.BigQueryToElasticsearchReadOptions;
+import com.google.cloud.teleport.v2.elasticsearch.templates.BigQueryToElasticsearch;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
-import java.util.List;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
@@ -32,6 +29,12 @@ import org.apache.beam.vendor.guava.v20_0.com.google.common.collect.ImmutableLis
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+
+import java.util.List;
+
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
 
 /** Test cases for {@link BigQueryToElasticsearch}. */
 public class BigQueryToElasticsearchTest {
@@ -48,9 +51,9 @@ public class BigQueryToElasticsearchTest {
   @Test
   public void testBigQueryToElasticsearchE2E() {
 
-    BigQueryToElasticsearch.BigQueryToElasticsearchReadOptions options =
+    BigQueryToElasticsearchReadOptions options =
         PipelineOptionsFactory.create()
-            .as(BigQueryToElasticsearch.BigQueryToElasticsearchReadOptions.class);
+            .as(BigQueryToElasticsearchReadOptions.class);
 
     options.setNodeAddresses("http://my-node");
     options.setIndex("test");
@@ -84,9 +87,9 @@ public class BigQueryToElasticsearchTest {
   public void testNoQueryOrInputTableSpec() {
     exceptionRule.expect(IllegalArgumentException.class);
 
-    BigQueryToElasticsearch.BigQueryToElasticsearchReadOptions options =
+    BigQueryToElasticsearchReadOptions options =
         PipelineOptionsFactory.create()
-            .as(BigQueryToElasticsearch.BigQueryToElasticsearchReadOptions.class);
+            .as(BigQueryToElasticsearchReadOptions.class);
 
     options.setNodeAddresses("http://my-node");
     options.setIndex("test");

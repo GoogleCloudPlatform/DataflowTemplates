@@ -15,13 +15,11 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
-
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.elasticsearch.options.CsvToElasticsearchOptions;
+import com.google.cloud.teleport.v2.elasticsearch.templates.CsvToElasticsearch;
+import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
-import com.google.cloud.teleport.v2.transforms.ElasticsearchTransforms;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.io.Resources;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -35,6 +33,10 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
 
 /** Test cases for the {@link CsvToElasticsearch} class. */
 public class CsvToElasticsearchTest {
@@ -65,8 +67,8 @@ public class CsvToElasticsearchTest {
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
-    CsvToElasticsearch.CsvToElasticsearchOptions options =
-        PipelineOptionsFactory.create().as(CsvToElasticsearch.CsvToElasticsearchOptions.class);
+    CsvToElasticsearchOptions options =
+        PipelineOptionsFactory.create().as(CsvToElasticsearchOptions.class);
 
     options.setJavascriptTextTransformGcsPath(TRANSFORM_FILE_PATH);
     options.setJavascriptTextTransformFunctionName("transform");
@@ -129,8 +131,8 @@ public class CsvToElasticsearchTest {
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
-    CsvToElasticsearch.CsvToElasticsearchOptions options =
-        PipelineOptionsFactory.create().as(CsvToElasticsearch.CsvToElasticsearchOptions.class);
+    CsvToElasticsearchOptions options =
+        PipelineOptionsFactory.create().as(CsvToElasticsearchOptions.class);
 
     options.setContainsHeaders(true);
     options.setInputFileSpec(HEADER_CSV_FILE_PATH);
@@ -190,8 +192,8 @@ public class CsvToElasticsearchTest {
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
-    CsvToElasticsearch.CsvToElasticsearchOptions options =
-        PipelineOptionsFactory.create().as(CsvToElasticsearch.CsvToElasticsearchOptions.class);
+    CsvToElasticsearchOptions options =
+        PipelineOptionsFactory.create().as(CsvToElasticsearchOptions.class);
 
     options.setJsonSchemaPath(JSON_SCHEMA_FILE_PATH);
     options.setContainsHeaders(false);
@@ -239,15 +241,15 @@ public class CsvToElasticsearchTest {
   }
 
   /**
-   * Tests that the {@link ElasticsearchTransforms.WriteToElasticsearch} throws exception when only
+   * Tests that the {@link WriteToElasticsearch} throws exception when only
    * one retry configuration value is provided.
    */
   @Test
   public void testWriteToElasticsearchBuilder() {
     exceptionRule.expect(IllegalArgumentException.class);
 
-    CsvToElasticsearch.CsvToElasticsearchOptions options =
-        PipelineOptionsFactory.create().as(CsvToElasticsearch.CsvToElasticsearchOptions.class);
+    CsvToElasticsearchOptions options =
+        PipelineOptionsFactory.create().as(CsvToElasticsearchOptions.class);
 
     options.setNodeAddresses("http://my-node");
     options.setContainsHeaders(false);
@@ -263,7 +265,7 @@ public class CsvToElasticsearchTest {
         .apply(Create.of("{}").withCoder(StringUtf8Coder.of()))
         .apply(
             "BuildWriteToElasticSearchObject",
-           ElasticsearchTransforms.WriteToElasticsearch
+           WriteToElasticsearch
                 .newBuilder()
                 .setOptions(options.as(ElasticsearchTransforms.WriteToElasticsearchOptions.class))
                 .build());
