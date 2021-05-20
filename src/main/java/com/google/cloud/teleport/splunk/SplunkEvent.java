@@ -19,6 +19,7 @@ package com.google.cloud.teleport.splunk;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.auto.value.AutoValue;
+import com.google.gson.JsonObject;
 import com.google.gson.annotations.SerializedName;
 import javax.annotation.Nullable;
 
@@ -44,10 +45,13 @@ public abstract class SplunkEvent {
   @Nullable
   @SerializedName("sourcetype")
   public abstract String sourceType();
-
+  
   @Nullable
   public abstract String index();
-
+  
+  @Nullable
+  public abstract JsonObject fields();
+  
   @Nullable
   public abstract String event();
 
@@ -68,7 +72,9 @@ public abstract class SplunkEvent {
     abstract Builder setIndex(String index);
 
     abstract Builder setEvent(String event);
-
+  
+    abstract Builder setFields(JsonObject fields);
+  
     abstract String event();
 
     abstract SplunkEvent autoBuild();
@@ -101,6 +107,12 @@ public abstract class SplunkEvent {
       checkNotNull(index, "withIndex(index) called with null input.");
 
       return setIndex(index);
+    }
+  
+    public Builder withFields(JsonObject fields) {
+      checkNotNull(fields, "withFields(fields) called with null input.");
+    
+      return setFields(fields);
     }
 
     public Builder withEvent(String event) {

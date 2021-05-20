@@ -20,6 +20,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
+import com.google.gson.JsonObject;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -53,6 +54,34 @@ public class SplunkEventCoderTest {
             .withTime(time)
             .build();
 
+    SplunkEventCoder coder = SplunkEventCoder.of();
+    try (ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+      coder.encode(actualEvent, bos);
+      try (ByteArrayInputStream bin = new ByteArrayInputStream(bos.toByteArray())) {
+        SplunkEvent decodedEvent = coder.decode(bin);
+        assertThat(decodedEvent, is(equalTo(actualEvent)));
+      }
+    }
+  }
+  
+  /**
+   * Test whether {@link SplunkEventCoder} is able to encode/decode a {@link SplunkEvent}
+   * with metadata 'fields'.
+   * @throws IOException
+   */
+  @Test
+  public void testEncodeDecodeFields() throws IOException {
+    
+    String event = "test-event";
+    JsonObject fields = new JsonObject();
+    fields.addProperty("test-key", "test-value");
+    
+    SplunkEvent actualEvent =
+        SplunkEvent.newBuilder()
+            .withEvent(event)
+            .withFields(fields)
+            .build();
+    
     SplunkEventCoder coder = SplunkEventCoder.of();
     try (ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
       coder.encode(actualEvent, bos);

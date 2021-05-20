@@ -20,6 +20,9 @@ import com.google.api.client.util.DateTime;
 import com.google.cloud.teleport.splunk.SplunkEvent;
 import com.google.cloud.teleport.values.FailsafeElement;
 import com.google.common.base.Throwables;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.Description;
@@ -58,8 +61,10 @@ public class SplunkConverters {
   private static final String HEC_TIME_KEY = "time";
   private static final String HEC_SOURCE_KEY = "source";
   private static final String HEC_SOURCE_TYPE_KEY = "sourcetype";
-
+  private static final String HEC_FIELDS_KEY = "fields";
   private static final String TIMESTAMP_KEY = "timestamp";
+  
+  private static final Gson GSON = new Gson();
   
   protected static final String PUBSUB_MESSAGE_ATTRIBUTE_FIELD = "attributes";
   protected static final String PUBSUB_MESSAGE_DATA_FIELD = "data";
@@ -200,7 +205,7 @@ public class SplunkConverters {
                               builder.withTime(DateTime.parseRfc3339(parsedTimestamp).getValue());
                             } catch (NumberFormatException n) {
                               // We log this exception but don't want to fail the entire record.
-                              LOG.debug(
+                              LOG.warn(
                                   "Unable to parse non-rfc3339 formatted timestamp: {}",
                                   parsedTimestamp);
                             }
@@ -232,6 +237,16 @@ public class SplunkConverters {
                             String event = metadata.optString(HEC_EVENT_KEY);
                             if (!event.isEmpty()) {
                               builder.withEvent(event);
+                            }
+
+                            String fields = metadata.optString(HEC_FIELDS_KEY);
+                            if (!fields.isEmpty()) {
+                              try {
+                                builder.withFields(GSON.fromJson(fields, JsonObject.class));
+                              } catch (JsonParseException e) {
+                                LOG.warn(
+                                    "Unable to convert 'fields' metadata value:{} into JSON object", fields);
+                              }
                             }
                             // We remove the _metadata entry from the payload
                             // to avoid duplicates in Splunk. The relevant entries
