@@ -37,6 +37,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.SimpleFunction;
@@ -66,7 +67,9 @@ public class BigQueryMapper<InputT, OutputT>
   private final String projectId;
   private static BigQueryTableCache tableCache;
   private static final Cache<String, TableId> tableLockMap =
-      CacheBuilder.newBuilder().<String, TableId>build();
+      CacheBuilder.newBuilder()
+      .expireAfterWrite(10, TimeUnit.MINUTES)
+      .<String, TableId>build();
 
 
   public BigQueryMapper(String projectId) {
@@ -174,6 +177,7 @@ public class BigQueryMapper<InputT, OutputT>
   private synchronized void setUpTableCache() {
     if (this.tableCache == null) {
       this.tableCache = (BigQueryTableCache) new BigQueryTableCache(bigquery)
+        .withCacheResetTimeUnitValue(60)
         .withCacheNumRetries(3);
     }
   }

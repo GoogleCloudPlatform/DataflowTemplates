@@ -104,13 +104,14 @@ public final class FormatDatastreamJsonToJson
       if (record.get("payload") == null) {
         String changeType = getSourceMetadata(record, "change_type");
         if (changeType == null || changeType.toLowerCase() != "delete") {
-          LOG.warn("Empty payload in datastream record. and change type is not delete. ignoring.");
+          // Empty payloads are generally schema files or
+          // non-datastream files, they can all be ignored.
           return;
         }
       }
     } catch (IOException e) {
-      LOG.error("Issue parsing JSON record. Unable to continue.", e);
-      throw new RuntimeException(e);
+      LOG.error("Issue parsing JSON record: {}", c.element());
+      return;
     }
 
     ObjectMapper mapper = new ObjectMapper();
@@ -134,7 +135,7 @@ public final class FormatDatastreamJsonToJson
       // MySQL Specific Metadata
       outputObject.put("_metadata_schema", getSourceMetadata(record, "database"));
       outputObject.put("_metadata_log_file", getSourceMetadata(record, "log_file"));
-      outputObject.put("_metadata_log_position", getSourceMetadata(record, "log_position"));
+      outputObject.put("_metadata_log_position", getSourceMetadataAsLong(record, "log_position"));
     } else {
       // Oracle Specific Metadata
       outputObject.put("_metadata_schema", getSourceMetadata(record, "schema"));
