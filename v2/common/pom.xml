@@ -170,7 +170,7 @@
                 <includeDependenciesInDescriptorSet>true</includeDependenciesInDescriptorSet>
                 <descriptorSetFileName>schema.pb</descriptorSetFileName>
                 <!-- This path must be unique, or else it may delete existing files. -->
-                <descriptorSetOutputDirectory>${basedir}/src/test/resources/SchemaUtilsTest/generated/proto</descriptorSetOutputDirectory>
+                <descriptorSetOutputDirectory>${basedir}/target/generated-test-sources/protobuf/schema</descriptorSetOutputDirectory>
               </configuration>
               <executions>
                 <execution>

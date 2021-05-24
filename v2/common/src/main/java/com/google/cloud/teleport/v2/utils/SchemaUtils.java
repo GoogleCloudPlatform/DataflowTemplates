@@ -19,6 +19,7 @@ import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
+import com.google.auto.value.AutoValue;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
 import com.google.protobuf.DescriptorProtos.FileDescriptorSet;
@@ -195,28 +196,52 @@ public class SchemaUtils {
     return new Schema.Parser().parse(avroschema);
   }
 
+  /** Info for finding the descriptor for a proto message. */
+  @AutoValue
+  public abstract static class ProtoDescriptorLocation {
+    abstract String schemaPath();
+
+    abstract String protoFileName();
+
+    abstract String messageName();
+
+    public static Builder builder() {
+      return new AutoValue_SchemaUtils_ProtoDescriptorLocation.Builder();
+    }
+
+    /** Builder for {@link ProtoDescriptorLocation}. */
+    @AutoValue.Builder
+    public abstract static class Builder {
+      public abstract Builder setSchemaPath(String value);
+
+      public abstract Builder setProtoFileName(String value);
+
+      public abstract Builder setMessageName(String value);
+
+      public abstract ProtoDescriptorLocation build();
+    }
+  }
+
   /**
    * Gets a proto descriptor.
    *
    * <p>This is similar to {@link SchemaUtils#getAvroSchema(String)} but for protos.
    *
-   * @param schemaLocation GCS file location.
-   * @param protoFileName Name of the original .proto file that was used to help generate this
-   *     schema.
-   * @param messageName Name of the message type in the .proto file.
+   * @param descriptorLocation Info on locating the descriptor.
    */
-  public static Descriptor getProtoDescriptor(
-      String schemaLocation, String protoFileName, String messageName) {
+  public static Descriptor getProtoDescriptor(ProtoDescriptorLocation descriptorLocation) {
     try {
       FileDescriptorSet fileDescriptorSet =
-          FileDescriptorSet.parseFrom(getGcsFileAsBytes(schemaLocation));
+          FileDescriptorSet.parseFrom(getGcsFileAsBytes(descriptorLocation.schemaPath()));
 
       ImmutableMap<String, FileDescriptorProto> knownFiles =
           createNameToFileDescriptorMapping(fileDescriptorSet);
-      FileDescriptorProto protoFile = knownFiles.get(protoFileName);
+      FileDescriptorProto protoFile = knownFiles.get(descriptorLocation.protoFileName());
       if (protoFile == null) {
         String msg =
-            String.format("Could not find file '%s' in '%s'", protoFileName, schemaLocation);
+            String.format(
+                "Could not find file '%s' in '%s'",
+                descriptorLocation.protoFileName(), descriptorLocation.schemaPath());
         LOG.error(msg);
         throw new RuntimeException(msg);
       }
@@ -226,17 +251,19 @@ public class SchemaUtils {
         String msg =
             String.format(
                 "Could not resolve '%s' in '%s', possibly due to missing dependencies.",
-                protoFileName, schemaLocation);
+                descriptorLocation.protoFileName(), descriptorLocation.schemaPath());
         LOG.error(msg);
         throw new RuntimeException(msg);
       }
 
-      Descriptor descriptor = getDescriptor(fileDescriptor, messageName);
+      Descriptor descriptor = getDescriptor(fileDescriptor, descriptorLocation.messageName());
       if (descriptor == null) {
         String msg =
             String.format(
                 "Could not resolve '%s' generated from '%s' in schema path '%s'",
-                messageName, protoFileName, schemaLocation);
+                descriptorLocation.messageName(),
+                descriptorLocation.protoFileName(),
+                descriptorLocation.schemaPath());
         LOG.error(msg);
         throw new RuntimeException(msg);
       }
