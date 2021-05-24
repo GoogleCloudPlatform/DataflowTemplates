@@ -1,0 +1,52 @@
+/*
+ * Copyright (C) 2021 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto3";
+
+package com.google.cloud.teleport.v2.proto.testing;
+
+import "import_proto_definition.proto";
+
+option java_package = "com.google.cloud.teleport.v2.proto.testing";
+option java_multiple_files = true;
+
+enum MyEnumType {
+  UNKNOWN = 0;
+  KNOWN = 1;
+}
+
+message MyMessage {
+  message NestedMessage {
+    string field1 = 1;
+    int32 field2 = 2;
+  }
+
+  MyEnumType is_known = 1;
+  NestedMessage nested = 2;
+  float some_float_value = 3;
+  bool some_bool_value = 4;
+
+  oneof some_oneof_field {
+    int32 oneof_option1 = 5;
+    string oneof_option2 = 6;
+  }
+
+  repeated uint64 some_repeated_field = 7;
+
+  MyImportedProto some_imported_proto = 8;
+
+  // TODO(zhoufek): Get public imports working so that no placeholder is used.
+}
