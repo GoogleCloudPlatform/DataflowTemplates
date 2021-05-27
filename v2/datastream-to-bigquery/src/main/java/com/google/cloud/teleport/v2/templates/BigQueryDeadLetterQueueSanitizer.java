@@ -53,7 +53,6 @@ public class BigQueryDeadLetterQueueSanitizer
       message = String.format("\"%s\"", row.toString());
     }
 
-    LOG.info("DLQ-DATA: {}", message);
     return message;
   }
 
