@@ -95,7 +95,7 @@ public class DataStreamToMongoDB {
     void setRfcStartDateTime(String value);
 
     @Description("The number of concurrent DataStream files to read.")
-    @Default.Integer(30)
+    @Default.Integer(10)
     Integer getFileReadConcurrency();
     void setFileReadConcurrency(Integer value);
 
