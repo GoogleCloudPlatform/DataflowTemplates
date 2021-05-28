@@ -11,6 +11,8 @@ and writes the data to MongoDB collections.
 * Maven
 * DataStream stream is created and sending data to storage
 * PubSub Subscription exists or GCS Bucket contains data
+* MongoDB On premise or Atlas cluster is created and you should have the URI.
+
 
 ### Building Template
 This is a Flex Template meaning that the pipeline code will be containerized and the container will be
@@ -32,7 +34,6 @@ export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${IMAGE_NAME}-image-spec.json
 
 export TOPIC=projects/${PROJECT}/topics/<topic-name>
 export SUBSCRIPTION=projects/${PROJECT}/subscriptions/<subscription-name>
-export DEADLETTER_TABLE=${PROJECT}:${DATASET_TEMPLATE}.dead_letter
 
 gcloud config set project ${PROJECT}
 ```

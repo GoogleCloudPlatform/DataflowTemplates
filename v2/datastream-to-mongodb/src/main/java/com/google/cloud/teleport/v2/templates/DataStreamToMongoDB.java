@@ -101,25 +101,17 @@ public class DataStreamToMongoDB {
 
     // Destination MongoDB Connection String
     @Description("The MongoDB Atlas connection string")
-    @Default.String("{_metadata_dataset}")
     String getMongoDBUri();
     void setMongoDBUri(String value);
 
     @Description("The MongoDB Database name")
-    @Default.String("{_metadata_dataset}")
     String getDatabase();
     void setDatabase(String value);
 
     @Description("The MongoDB Collection")
-    @Default.String("{_metadata_dataset}")
     String getCollection();
     void setCollection(String value);
 
-
-    @Description("The number of minutes between merges for a given table")
-    @Default.Integer(5)
-    Integer getMergeFrequencyMinutes();
-    void setMergeFrequencyMinutes(Integer value);
 
   }
 
@@ -184,13 +176,14 @@ public class DataStreamToMongoDB {
     PCollection<FailsafeElement<String, String>> jsonRecords =
         PCollectionList.of(datastreamJsonRecords)
             .apply(Flatten.pCollections());
-
-    /*
-     * Stage 4: Write Failures to GCS Dead Letter Queue
+    /**
+     * Does below steps:
+     * 1. Converts JSON to BSON documents.
+     * 2. Removes the metadata fileds.
+     * 3. Inserts the data into MongoDB collections.
      */
-    // TODO: Cover tableRowRecords.get(TRANSFORM_DEADLETTER_OUT) error values
     jsonRecords
-            .apply("transform", MapElements.via(
+            .apply("jsonToDocuments", MapElements.via(
                     new SimpleFunction<FailsafeElement<String, String>, Document>() {
                       @Override
                       public Document apply(FailsafeElement<String, String> jsonString) {
