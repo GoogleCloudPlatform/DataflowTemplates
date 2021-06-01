@@ -29,6 +29,7 @@ import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -37,6 +38,7 @@ import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.values.PCollection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,10 +76,22 @@ public class PubsubToPubsub {
      *      2) Apply any filters if an attribute=value pair is provided.
      *      3) Write each PubSubMessage to output PubSub topic.
      */
-    pipeline
-        .apply(
+    PCollection<PubsubMessage> messages = null;
+    if (options.getUseIdattribute()) {
+      messages =
+          pipeline.apply(
+            "Read PubSub Events With IdAttributeKey To Remove Message Duplication",
+            PubsubIO.readMessagesWithAttributes()
+            .withIdAttribute(options.getMessageIdattributeKey().toString())
+            .fromSubscription(options.getInputSubscription()));
+    } else {
+      messages =
+          pipeline.apply(
             "Read PubSub Events",
-            PubsubIO.readMessagesWithAttributes().fromSubscription(options.getInputSubscription()))
+            PubsubIO.readMessagesWithAttributes()
+            .fromSubscription(options.getInputSubscription()));
+    }
+    messages
         .apply(
             "Filter Events If Enabled",
             ParDo.of(
@@ -132,6 +146,20 @@ public class PubsubToPubsub {
     ValueProvider<String> getFilterValue();
 
     void setFilterValue(ValueProvider<String> filterValue);
+
+    @Description(
+        "This determines whether the template use idattribute to remove message duplication for 10 minutes")
+    @Default.Boolean(false)
+    Boolean getUseIdattribute();
+
+    void setUseIdattribute(Boolean value);
+
+    @Description(
+        "remove message duplication based on IdattributeKey")
+    @Validation.Required
+    ValueProvider<String> getMessageIdattributeKey();
+
+    void setMessageIdattributeKey(ValueProvider<String> idattributeKey);
   }
 
   /**
