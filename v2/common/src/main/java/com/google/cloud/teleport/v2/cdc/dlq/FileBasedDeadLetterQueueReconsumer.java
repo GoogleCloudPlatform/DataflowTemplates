@@ -26,21 +26,23 @@ import java.util.List;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.GenerateSequence;
 import org.apache.beam.sdk.io.fs.MatchResult.Metadata;
 import org.apache.beam.sdk.io.fs.MetadataCoder;
 import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
-import org.apache.beam.sdk.transforms.Watch.Growth;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
+import org.apache.beam.sdk.values.TypeDescriptors;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.node.ObjectNode;
@@ -82,11 +84,12 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
     // We want to match all the files in this directory (but not the directories).
     // TODO: Paths resolve converts "gs://bucket/.." to "gs:/bucket/.."
     // String filePattern = Paths.get(dlqDirectory).resolve("*").toString();
+
     String filePattern = dlqDirectory + "**";
     return in.getPipeline()
-        .apply(FileIO.match()
-            .filepattern(filePattern)
-            .continuously(recheckPeriod, Growth.never()))
+        .apply("TriggerConsumeDLQ", GenerateSequence.from(0).withRate(1, this.recheckPeriod))
+        .apply("AsFilePattern", MapElements.into(TypeDescriptors.strings()).via(seq -> filePattern))
+        .apply("MatchFiles", FileIO.matchAll())
         .apply("ConsumeMatches", moveAndConsumeMatches());
 
   }
