@@ -19,6 +19,8 @@ package com.google.cloud.teleport.templates;
 import static com.google.cloud.teleport.templates.TextToBigQueryStreaming.wrapBigQueryInsertError;
 
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.api.services.bigquery.model.TableSchema;
+import com.google.api.services.bigquery.model.TableReference;
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.templates.common.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.templates.common.ErrorConverters;
@@ -44,6 +46,8 @@ import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesCoder;
+import org.apache.beam.sdk.io.gcp.bigquery.DynamicDestinations;
+import org.apache.beam.sdk.io.gcp.bigquery.TableDestination;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -59,6 +63,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.ValueInSingleWindow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -191,6 +196,43 @@ public class PubSubToBigQuery {
     ValueProvider<String> getOutputDeadletterTable();
 
     void setOutputDeadletterTable(ValueProvider<String> value);
+
+    @Description(
+        "This determines whether the template use dynamic destinationsto to write BigQuery table based on message value")
+    @Default.Boolean(false)
+    Boolean getDynamicDestinations();
+
+    void setDynamicDestinations(Boolean value);
+
+    @Description(
+        "decide out put BigQuery Project based on this value")
+    ValueProvider<String> getProjectId();
+
+    void setProjectId(ValueProvider<String> projectId);
+
+    @Description(
+        "decide out put BigQuery Dataset based on this Key")
+    ValueProvider<String> getDynamicDestinationsDatasetKey();
+
+    void setDynamicDestinationsDatasetKey(ValueProvider<String> dynamicDestinationsDatasetKey);
+
+    @Description(
+        "decide out put BigQuery Dataset based on this value")
+    ValueProvider<String> getDynamicDestinationsDatasetValue();
+
+    void setDynamicDestinationsDatasetValue(ValueProvider<String> dynamicDestinationsDatasetValue);
+
+    @Description(
+        "decide out put BigQuery Table based on this Key")
+    ValueProvider<String> getDynamicDestinationsTableKey();
+
+    void setDynamicDestinationsTableKey(ValueProvider<String> dynamicDestinationTablesKey);
+
+    @Description(
+        "decide out put BigQuery Table based on this value")
+    ValueProvider<String> getDynamicDestinationsTableValue();
+
+    void setDynamicDestinationsTableValue(ValueProvider<String> dynamicDestinationsTableValue);
   }
 
   /**
@@ -262,8 +304,42 @@ public class PubSubToBigQuery {
     /*
      * Step #3: Write the successful records out to BigQuery
      */
-    WriteResult writeResult =
-        convertedTableRows
+    WriteResult writeResult = null;
+    if (options.getDynamicDestinations()) {
+        writeResult = convertedTableRows
+            .get(TRANSFORM_OUT)
+            .apply(
+                BigQueryIO.<TableRow>write()
+                    .to(
+                        new DynamicDestinations<TableRow, TableRow>() {
+                        @Override
+                        public TableRow getDestination(ValueInSingleWindow<TableRow> elem) {
+                            return elem.getValue();
+                        }
+                        @Override
+                        public TableDestination getTable(TableRow destination) {
+                            // use udf if you want to change destination dataset or table based on pubsub message value
+                            return new TableDestination(
+                                new TableReference()
+                                    .setProjectId(options.getProjectId().toString())
+                                    .setDatasetId(destination.get(options.getDynamicDestinationsDatasetKey()).toString())
+                                    .setTableId(destination.get(options.getDynamicDestinationsTableKey()).toString()),
+                                "destination table" + destination.get(options.getDynamicDestinationsTableKey()).toString());
+                        }
+                        @Override
+                        public TableSchema getSchema(TableRow destination) {
+                            // table schema is apply based on existing table
+                            return new TableSchema();
+                        }
+                    })
+                    .withoutValidation()
+                    .withCreateDisposition(CreateDisposition.CREATE_NEVER)
+                    .withWriteDisposition(WriteDisposition.WRITE_APPEND)
+                    .withExtendedErrorInfo()
+                    .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
+                    .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
+    } else {
+        writeResult = convertedTableRows
             .get(TRANSFORM_OUT)
             .apply(
                 "WriteSuccessfulRecords",
@@ -275,7 +351,7 @@ public class PubSubToBigQuery {
                     .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
                     .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
                     .to(options.getOutputTableSpec()));
-
+    }
     /*
      * Step 3 Contd.
      * Elements that failed inserts into BigQuery are extracted and converted to FailsafeElement
