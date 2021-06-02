@@ -162,5 +162,6 @@ export JOB_NAME="${IMAGE_NAME}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud beta dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters inputSubscription=${SUBSCRIPTION},outputDeadletterTable=${DEADLETTER_TABLE}
+        --parameters ^~^inputSubscription=${SUBSCRIPTION}~inputFilePattern=<PATH_WITHIN_CLOUDSTORAGE_BUCKET>~inputFileFormat=<JSON_OR_CSV>~streamName=<DATA_STREAM_NAME>~mongoDBUri=<MONGODB_CONN_STRING>~database=<DEST_DATABASE>~collection=<DEST_COLLECTION>
+
 ```
