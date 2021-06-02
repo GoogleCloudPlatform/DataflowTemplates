@@ -17,6 +17,10 @@ package com.google.cloud.teleport.v2.transforms;
 
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.IOException;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -36,6 +40,8 @@ public final class FormatDatastreamJsonToJson
     extends DoFn<String, FailsafeElement<String, String>> {
 
   static final Logger LOG = LoggerFactory.getLogger(FormatDatastreamJsonToJson.class);
+  static final DateTimeFormatter DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER =
+      DateTimeFormatter.ISO_OFFSET_DATE_TIME;
   private String rowIdColumnName;
   private Map<String, String> hashedColumns = new HashMap<String, String>();
   private boolean lowercaseSourceColumns = false;
@@ -104,14 +110,13 @@ public final class FormatDatastreamJsonToJson
       if (record.get("payload") == null) {
         String changeType = getSourceMetadata(record, "change_type");
         if (changeType == null || changeType.toLowerCase() != "delete") {
-          // Empty payloads are generally schema files or
-          // non-datastream files, they can all be ignored.
+          LOG.warn("Empty payload in datastream record. and change type is not delete. ignoring.");
           return;
         }
       }
     } catch (IOException e) {
-      LOG.error("Issue parsing JSON record: {}", c.element());
-      return;
+      LOG.error("Issue parsing JSON record. Unable to continue.", e);
+      throw new RuntimeException(e);
     }
 
     ObjectMapper mapper = new ObjectMapper();
@@ -186,26 +191,44 @@ public final class FormatDatastreamJsonToJson
     return sourceType;
   }
 
-  private String getMetadataTimestamp(JsonNode record) {
+  private long convertTimestampStringToSeconds(String timestamp) {
+    ZonedDateTime zonedDateTime;
+    try {
+      if (!timestamp.endsWith("Z")) {
+        timestamp = timestamp + "Z";
+      }
+      zonedDateTime = ZonedDateTime.parse(timestamp,
+          DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER).withZoneSameInstant(ZoneId.of("UTC"));
+    } catch (Exception e) {
+      LOG.error("Issue parsing Timestamp " + timestamp + " to milliseconds. " + e);
+      return 0;
+    }
+    Instant result = Instant.from(zonedDateTime);
+    long unixTimestampMilli = java.util.Date.from(result).getTime();
+    long unixTimestampSec = unixTimestampMilli / 1000;
+    return unixTimestampSec;
+  }
+
+  private long getMetadataTimestamp(JsonNode record) {
     if (record.get("read_timestamp").isLong()) {
       long unixTimestampMilli = record.get("read_timestamp").getLongValue();
       long unixTimestampSec = unixTimestampMilli / 1000;
 
-      return String.valueOf(unixTimestampSec);
+      return unixTimestampSec;
     }
     String timestamp = record.get("read_timestamp").getTextValue();
-    return timestamp;
+    return convertTimestampStringToSeconds(timestamp);
   }
 
-  private String getSourceTimestamp(JsonNode record) {
+  private long getSourceTimestamp(JsonNode record) {
     if (record.get("source_timestamp").isLong()) {
       long unixTimestampMilli = record.get("source_timestamp").getLongValue();
       long unixTimestampSec = unixTimestampMilli / 1000;
 
-      return String.valueOf(unixTimestampSec);
+      return unixTimestampSec;
     }
     String timestamp = record.get("source_timestamp").getTextValue();
-    return timestamp;
+    return convertTimestampStringToSeconds(timestamp);
   }
 
   private String getSourceMetadata(JsonNode record, String fieldName) {
