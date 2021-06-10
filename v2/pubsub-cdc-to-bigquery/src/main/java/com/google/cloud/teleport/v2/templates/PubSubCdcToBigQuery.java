@@ -325,10 +325,6 @@ public class PubSubCdcToBigQuery {
             /*
              * Step #2: Transform the PubsubMessages into TableRows
              */
-             // .apply( // Window incoming events into batches
-             //    options.getWindowDuration() + " Window",
-             //    Window.<FailsafeElement<String, String>>into(
-             //        FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))
             .apply(Reshuffle.<FailsafeElement<String, String>>viaRandomKey()
                     .withNumBuckets(options.getThreadCount()))
             .apply("ApplyUdfAndConvertToTableRow", failsafeTableRowTransformer);

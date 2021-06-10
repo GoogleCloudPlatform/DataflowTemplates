@@ -19,14 +19,16 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
+import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.cdc.mappers.BigQueryDefaultSchemas;
 import com.google.cloud.teleport.v2.cdc.mappers.DataStreamMapper;
 import com.google.cloud.teleport.v2.cdc.merge.DataStreamBigQueryMerger;
 import com.google.cloud.teleport.v2.cdc.merge.MergeConfiguration;
 import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
-import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
+import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFOptions;
+import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFToTableRow;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -104,6 +106,10 @@ public class DataStreamToBigQuery {
   /** The tag for the main output of the json transformation. */
   public static final TupleTag<TableRow> TRANSFORM_OUT = new TupleTag<TableRow>() {};
 
+  /** String/String Coder for FailsafeElement. */
+  public static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
+      FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
+
   /** The tag for the dead-letter output of the json to table row transform. */
   public static final TupleTag<FailsafeElement<String, String>> TRANSFORM_DEADLETTER_OUT =
       new TupleTag<FailsafeElement<String, String>>() {};
@@ -120,7 +126,7 @@ public class DataStreamToBigQuery {
    *
    * <p>Inherits standard configuration options.</p>
    */
-  public interface Options extends PipelineOptions, StreamingOptions {
+  public interface Options extends PipelineOptions, StreamingOptions, InputUDFOptions {
     @Description("The GCS location of the avro files you'd like to process")
     String getInputFilePattern();
     void setInputFilePattern(String value);
@@ -141,7 +147,8 @@ public class DataStreamToBigQuery {
     String getStreamName();
     void setStreamName(String value);
 
-    @Description("The starting DateTime used to fetch from GCS (https://tools.ietf.org/html/rfc3339).")
+    @Description(
+      "The starting DateTime used to fetch from GCS (https://tools.ietf.org/html/rfc3339).")
     @Default.String("1970-01-01T00:00:00.00Z")
     String getRfcStartDateTime();
     void setRfcStartDateTime(String value);
@@ -231,7 +238,7 @@ public class DataStreamToBigQuery {
 
     String inputFileFormat = options.getInputFileFormat();
     if (!(inputFileFormat.equals(AVRO_SUFFIX)
-           || inputFileFormat.equals(JSON_SUFFIX))){
+           || inputFileFormat.equals(JSON_SUFFIX))) {
       throw new IllegalArgumentException(
           "Input file format must be one of: avro, json or left empty - found " + inputFileFormat);
     }
@@ -248,6 +255,7 @@ public class DataStreamToBigQuery {
      * Stages:
      *   1) Ingest and Normalize Data to FailsafeElement with JSON Strings
      *   2) Write JSON Strings to TableRow Collection
+     *       - Optionally apply a UDF
      *   3) BigQuery Output of TableRow Data
      *     a) Map New Columns & Write to Staging Tables
      *     b) Map New Columns & Merge Staging to Target Table
@@ -259,6 +267,14 @@ public class DataStreamToBigQuery {
 
     String dlqDirectory = dlqManager.getRetryDlqDirectoryWithDateTime();
     String tempDlqDir = dlqManager.getRetryDlqDirectory() + "tmp/";
+
+    InputUDFToTableRow<String> failsafeTableRowTransformer =
+        new InputUDFToTableRow<String>(options.getJavascriptTextTransformGcsPath(),
+                                       options.getJavascriptTextTransformFunctionName(),
+                                       options.getPythonTextTransformGcsPath(),
+                                       options.getPythonTextTransformFunctionName(),
+                                       options.getRuntimeRetries(),
+                                       FAILSAFE_ELEMENT_CODER);
 
     /*
      * Stage 1: Ingest and Normalize Data to FailsafeElement with JSON Strings
@@ -293,7 +309,7 @@ public class DataStreamToBigQuery {
                         receiver.output(FailsafeElement.of(input, input));
                       }
                     }))
-            .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+            .setCoder(FAILSAFE_ELEMENT_CODER);
 
     PCollection<FailsafeElement<String, String>> jsonRecords =
         PCollectionList.of(datastreamJsonRecords).and(dlqJsonRecords)
@@ -301,32 +317,17 @@ public class DataStreamToBigQuery {
 
     /*
      * Stage 2: Write JSON Strings to TableRow PCollectionTuple
-     *   a) Convert JSON String FailsafeElements to TableRow's (tableRowRecords)
-     *
-     *   failsafe: tableRowRecords.get(TRANSFORM_DEADLETTER_OUT)
+     *   a) Optionally apply a Javascript or Python UDF
+     *   b) Convert JSON String FailsafeElements to TableRow's (tableRowRecords)
      */
     PCollectionTuple tableRowRecords =
-        jsonRecords.apply(
-            "JsonToTableRow",
-            FailsafeJsonToTableRow.<String>newBuilder()
-                .setSuccessTag(TRANSFORM_OUT)
-                .setFailureTag(TRANSFORM_DEADLETTER_OUT)
-                .build());
-
-    tableRowRecords
-        .get(TRANSFORM_DEADLETTER_OUT)
-        .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+        jsonRecords.apply("ApplyUdfAndConvertToTableRow", failsafeTableRowTransformer);
 
     PCollection<TableRow> shuffledTableRows =
         tableRowRecords
-            .get(TRANSFORM_OUT)
+            .get(failsafeTableRowTransformer.transformOut)
             .apply("ReShuffleToLimitRequestConcurrency",
                 Reshuffle.<TableRow>viaRandomKey().withNumBuckets(100));
-
-    String bigQueryProject =
-        options.getOutputProjectId() == null || options.getOutputProjectId().isEmpty()
-            ? options.as(DataflowPipelineOptions.class).getProject()
-            : options.getOutputProjectId();
 
     /*
      * Stage 3: BigQuery Output of TableRow Data
@@ -392,12 +393,24 @@ public class DataStreamToBigQuery {
     /*
      * Stage 4: Write Failures to GCS Dead Letter Queue
      */
-    // TODO: Cover tableRowRecords.get(TRANSFORM_DEADLETTER_OUT) error values
-    writeResult
-        .getFailedInsertsWithErr()
-        .apply(
-            "DLQ: Write Insert Failures to GCS",
-            MapElements.via(new BigQueryDeadLetterQueueSanitizer()))
+    PCollection<String> udfDlqJson =
+        PCollectionList.of(tableRowRecords.get(failsafeTableRowTransformer.udfDeadletterOut))
+            .and(tableRowRecords.get(failsafeTableRowTransformer.transformDeadletterOut))
+            // ImmutableList.of(
+            //     tableRowRecords.get(failsafeTableRowTransformer.udfDeadletterOut),
+            //     tableRowRecords.get(failsafeTableRowTransformer.transformDeadletterOut))
+            // )
+            .apply("Flatten", Flatten.pCollections())
+            .apply("Sanitize records", MapElements.via(new StringDeadLetterQueueSanitizer()));
+
+    PCollection<String> bqWriteDlqJson =
+        writeResult.getFailedInsertsWithErr()
+            .apply(
+                "DLQ: Write Insert Failures to GCS",
+                MapElements.via(new BigQueryDeadLetterQueueSanitizer()));
+
+    PCollectionList.of(udfDlqJson).and(bqWriteDlqJson)
+        .apply("Flatten", Flatten.pCollections())
         .apply(
             "Write To DLQ",
             DLQWriteTransform.WriteDLQ.newBuilder()
