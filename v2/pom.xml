@@ -596,6 +596,7 @@
         <module>datastream-to-spanner</module>
         <module>elasticsearch-common</module>
         <module>file-format-conversion</module>
+        <module>googlecloud-to-elasticsearch</module>
         <module>hive-to-bigquery</module>
         <module>kafka-to-bigquery</module>
         <module>kafka-to-gcs</module>
