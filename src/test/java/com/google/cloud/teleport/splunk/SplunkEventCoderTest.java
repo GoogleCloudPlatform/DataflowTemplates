@@ -24,6 +24,10 @@ import com.google.gson.JsonObject;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import org.apache.commons.codec.DecoderException;
+import org.apache.commons.codec.binary.Hex;
 import org.junit.Test;
 
 /** Unit tests for {@link com.google.cloud.teleport.splunk.SplunkEventCoder} class. */
@@ -90,5 +94,141 @@ public class SplunkEventCoderTest {
         assertThat(decodedEvent, is(equalTo(actualEvent)));
       }
     }
+  }
+
+  /**
+   * Tests whether {@link SplunkEventCoder} is able to decode a {@link SplunkEvent} encoded using
+   * the older coder version 1 (commit f0ff6cc).
+   */
+  @Test
+  public void testBackwardsCompatibility_canDecodeVersion1()
+      throws IOException, DecoderException {
+
+    SplunkEvent expectedEvent =
+        SplunkEvent.newBuilder()
+            .withEvent("e")
+            .withHost("h")
+            .withIndex("i")
+            .withSource("s")
+            .withSourceType("st")
+            .withTime(1234L)
+            .build();
+
+    String hex = "0100000000000004d2010168010173010273740101690165";
+    SplunkEvent actualEvent = SplunkEventCoder.of().decode(fromHex(hex));
+
+    assertThat(actualEvent, is(equalTo(expectedEvent)));
+  }
+
+  /**
+   * Tests whether {@link SplunkEventCoder} is able to decode a {@link SplunkEvent} encoded using
+   * the older coder version 1 (commit f0ff6cc) and having an empty "event" field.
+   * <p>
+   * An empty field is encoded as <code>00</code>, which may look like the present/not present
+   * marker for the "fields" field in V2.
+   */
+  @Test
+  public void testBackwardsCompatibility_canDecodeVersion1withEmptyEvent()
+      throws IOException, DecoderException {
+
+    SplunkEvent expectedEvent =
+        SplunkEvent.newBuilder()
+            .withEvent("")
+            .withHost("h")
+            .withIndex("i")
+            .withSource("s")
+            .withSourceType("st")
+            .withTime(1234L)
+            .build();
+
+    String hex = "0100000000000004d20101680101730102737401016900";
+    SplunkEvent actualEvent = SplunkEventCoder.of().decode(fromHex(hex));
+
+    assertThat(actualEvent, is(equalTo(expectedEvent)));
+  }
+
+  /**
+   * Tests whether {@link SplunkEventCoder} is able to decode a {@link SplunkEvent} encoded using
+   * the older coder version 1 (commit f0ff6cc) and having the "event" field of length 1.
+   * <p>
+   * This is a special case when "event" is of length 1 and the first character code is 00.
+   * This is encoded as byte sequence 01 00 by V1 coder, which can be treated as an empty "fields"
+   * field by V2 decoder.
+   */
+  @Test
+  public void testBackwardsCompatibility_canDecodeVersion1withEventLength1()
+      throws IOException, DecoderException {
+
+    SplunkEvent expectedEvent =
+        SplunkEvent.newBuilder()
+            .withEvent(new String(new byte[]{0}, StandardCharsets.UTF_8))
+            .withHost("h")
+            .withIndex("i")
+            .withSource("s")
+            .withSourceType("st")
+            .withTime(1234L)
+            .build();
+
+    String hex = "0100000000000004d2010168010173010273740101690100";
+    SplunkEvent actualEvent = SplunkEventCoder.of().decode(fromHex(hex));
+
+    assertThat(actualEvent, is(equalTo(expectedEvent)));
+  }
+
+  /**
+   * Tests whether {@link SplunkEventCoder} is able to decode a {@link SplunkEvent} encoded using
+   * the older coder version 2 (commit 5e53040), without the newly added "fields" field.
+   */
+  @Test
+  public void testBackwardsCompatibility_canDecodeVersion2()
+      throws IOException, DecoderException {
+
+    SplunkEvent expectedEvent =
+        SplunkEvent.newBuilder()
+            .withEvent("e")
+            .withHost("h")
+            .withIndex("i")
+            .withSource("s")
+            .withSourceType("st")
+            .withTime(1234L)
+            .build();
+
+    String hex = "0100000000000004d201016801017301027374010169000165";
+    SplunkEvent actualEvent = SplunkEventCoder.of().decode(fromHex(hex));
+
+    assertThat(actualEvent, is(equalTo(expectedEvent)));
+  }
+
+  /**
+   * Tests whether {@link SplunkEventCoder} is able to decode a {@link SplunkEvent} encoded using
+   * the older coder version 2 (commit 5e53040), with the newly added "fields" field.
+   */
+  @Test
+  public void testBackwardsCompatibility_canDecodeVersion2withFields()
+      throws IOException, DecoderException {
+
+    JsonObject fields = new JsonObject();
+    fields.addProperty("k", "v");
+
+    SplunkEvent expectedEvent =
+        SplunkEvent.newBuilder()
+            .withEvent("e")
+            .withHost("h")
+            .withIndex("i")
+            .withSource("s")
+            .withSourceType("st")
+            .withTime(1234L)
+            .withFields(fields)
+            .build();
+
+    String hex = "0100000000000004d20101680101730102737401016901097b226b223a2276227d0165";
+    SplunkEvent actualEvent = SplunkEventCoder.of().decode(fromHex(hex));
+
+    assertThat(actualEvent, is(equalTo(expectedEvent)));
+  }
+
+  private static InputStream fromHex(String hex) throws DecoderException {
+    byte[] b = Hex.decodeHex(hex);
+    return new ByteArrayInputStream(b);
   }
 }
