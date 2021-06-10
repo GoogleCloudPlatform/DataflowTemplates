@@ -20,6 +20,7 @@ import com.google.cloud.teleport.v2.options.BigQueryCommonOptions.WriteOptions;
 import com.google.cloud.teleport.v2.options.PubsubCommonOptions.ReadSubscriptionOptions;
 import com.google.cloud.teleport.v2.options.PubsubCommonOptions.WriteTopicOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
+import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.utils.SchemaUtils.ProtoDescriptorLocation;
 import com.google.common.annotations.VisibleForTesting;
@@ -30,6 +31,7 @@ import com.google.protobuf.util.JsonFormat;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderException;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.extensions.protobuf.DynamicProtoCoder;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.Method;
@@ -94,8 +96,15 @@ public final class PubsubProtoToBigQuery {
     pipeline
         .apply("Read From Pubsub", readPubsubMessages(options))
         .apply("Dynamic Message to TableRow", new ConvertDynamicProtoMessageToJson())
-        .apply("Write to BigQuery", writeToBigQuery(options));
-    // TODO(zhoufek): Add writing error to Pub/Sub
+        .apply("Write to BigQuery", writeToBigQuery(options))
+        .getFailedInsertsWithErr()
+        .apply(
+            "Create Error Payload",
+            ErrorConverters.BigQueryInsertErrorToPubsubMessage.<String>newBuilder()
+                .setPayloadCoder(StringUtf8Coder.of())
+                .setTranslateFunction(BigQueryConverters::tableRowToJson)
+                .build())
+        .apply("Write Failed Records", PubsubIO.writeMessages().to(options.getOutputTopic()));
 
     return pipeline.run();
   }

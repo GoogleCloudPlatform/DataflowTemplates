@@ -150,7 +150,7 @@ public class BigQueryConverters {
   }
 
   /** Converts a {@link TableRow} into a Json string using {@link Gson}. */
-  private static String tableRowToJson(TableRow row) {
+  public static String tableRowToJson(TableRow row) {
     return new Gson().toJson(row, TableRow.class);
   }
 
