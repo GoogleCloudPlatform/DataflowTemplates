@@ -26,11 +26,7 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.AvroCoder;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.Method;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
-import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.Description;
@@ -103,15 +99,9 @@ public final class PubsubAvroToBigQuery {
             .apply(Convert.toRows())
             .apply(
                 "Write to BigQuery",
-                BigQueryIO.<Row>write()
-                    .to(options.getOutputTableSpec())
+                BigQueryConverters.<Row>createWriteTransform(options)
                     .useBeamSchema()
-                    .withMethod(Method.STREAMING_INSERTS)
-                    .withWriteDisposition(WriteDisposition.valueOf(options.getWriteDisposition()))
-                    .withCreateDisposition(
-                        CreateDisposition.valueOf(options.getCreateDisposition()))
-                    .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
-                    .withExtendedErrorInfo());
+                    .withMethod(Method.STREAMING_INSERTS));
 
     writeResults
         .getFailedInsertsWithErr()
