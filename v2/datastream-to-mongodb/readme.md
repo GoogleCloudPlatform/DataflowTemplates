@@ -145,23 +145,26 @@ mvn test
 
 The template requires the following parameters:
 * inputSubscription: PubSub subscription to read from (ie. projects/<project-id>/subscriptions/<subscription-name>)
-* outputDatasetTemplate: The name of the dataset or templated logic to extract it (ie. 'prefix_{schema_name}')
-* outputTableNameTemplate: The name of the table or templated logic to extract it (ie. 'prefix_{table_name}')
-* outputDeadletterTable: Deadletter table for failed inserts in form: project-id:dataset.table
+* inputFilePattern: The GCS location of the avro/json files you'd like to process
+* streamName: Name of datastream
+* mongoDBUri: Destination MongoDB Atlas connection string. 
+* database: Destination database.
+* collection: Destination collection
 
 The template has the following optional parameters:
-* javascriptTextTransformGcsPath: Gcs path to javascript udf source. Udf will be preferred option for transformation if supplied. Default: null
-* javascriptTextTransformFunctionName: UDF Javascript Function Name. Default: null
+* inputFileFormat:The GCS output format avro/json. json by default. 
+* rfcStartDateTime:The starting DateTime used to fetch from GCS (https://tools.ietf.org/html/rfc3339).
+* fileReadConcurrency:The number of concurrent DataStream files to read.
 
 * maxRetryAttempts: Max retry attempts, must be > 0. Default: no retries
 * maxRetryDuration: Max retry duration in milliseconds, must be > 0. Default: no retries
 
 Template can be executed using the following API call:
 ```sh
-export JOB_NAME="${IMAGE_NAME}-`date +%Y%m%d-%H%M%S-%N`"
+export JOB_NAME="${IMAGE_NAME}-`date +%Y%m%d-%H%M%S`"
 gcloud beta dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters ^~^inputSubscription=${SUBSCRIPTION}~inputFilePattern=<PATH_WITHIN_CLOUDSTORAGE_BUCKET>~inputFileFormat=<JSON_OR_CSV>~streamName=<DATA_STREAM_NAME>~mongoDBUri=<MONGODB_CONN_STRING>~database=<DEST_DATABASE>~collection=<DEST_COLLECTION>
+        --parameters ^~^inputSubscription=${SUBSCRIPTION}~inputFilePattern=<PATH_WITHIN_CLOUDSTORAGE_BUCKET>~inputFileFormat=<JSON_OR_AVRO>~streamName=<DATA_STREAM_NAME>~mongoDBUri=<MONGODB_CONN_STRING>~database=<DEST_DATABASE>~collection=<DEST_COLLECTION>
 
 ```
