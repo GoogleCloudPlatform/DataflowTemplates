@@ -583,6 +583,7 @@
         <module>bigquery-to-elasticsearch</module>
         <module>bigquery-to-parquet</module>
         <module>common</module>
+        <module>elasticsearch-common</module>
         <module>cdc-parent</module>
         <module>csv-to-elasticsearch</module>
         <module>datastream-to-bigquery</module>
@@ -599,6 +600,7 @@
         <module>pubsub-to-mongodb</module>
         <module>streaming-data-generator</module>
         <module>kafka-to-pubsub</module>
+        <module>elasticsearch-common</module>
     </modules>
 
 </project>
