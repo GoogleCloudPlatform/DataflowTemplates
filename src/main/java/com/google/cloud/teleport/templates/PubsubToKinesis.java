@@ -91,10 +91,7 @@ public class PubsubToKinesis {
             .withAWSClientsProvider(
               options.getAwsAccessKey().toString(),
               options.getAwsSecretKey().toString(),
-              Regions.fromName(
-                KinesisBuildPatchForRegionValueProvider(
-                  options.getAwsKinesisRegion().toString()
-                )
+              Regions.fromName(options.getAwsKinesisRegion().toString()
               )
             ));
     // Execute the pipeline and return the result.
@@ -109,47 +106,6 @@ public class PubsubToKinesis {
     }
   }
 
-  /**
-   * Kinesis region build patch
-   */
-  private static String KinesisBuildPatchForRegionValueProvider(String region) {
-    String regions[] = {
-      "us-gov-west-1",
-      "us-gov-east-1",
-      "us-east-1",
-      "us-east-2",
-      "us-west-1",
-      "us-west-2",
-      "eu-west-1",
-      "eu-west-2",
-      "eu-west-3",
-      "eu-central-1",
-      "eu-north-1",
-      "eu-south-1",
-      "ap-east-1",
-      "ap-south-1",
-      "ap-southeast-1",
-      "ap-southeast-2",
-      "ap-northeast-1",
-      "ap-northeast-2",
-      "ap-northeast-3",
-      "sa-east-1",
-      "cn-north-1",
-      "cn-northwest-1",
-      "ca-central-1",
-      "me-south-1",
-      "af-south-1",
-      "us-iso-east-1",
-      "us-isob-east-1",
-      "us-iso-west-1",
-    };
-    if (Arrays.asList(regions).contains(region) == false) {
-      region = "us-west-2";
-      // https://github.com/aws/aws-sdk-java/blob/master/aws-java-sdk-core/src/main/java/com/amazonaws/regions/Regions.java#L99
-      System.out.println("set default region to avoid build error `[WARNING]java.lang.IllegalArgumentException: Cannot create enum from RuntimeValueProvider{propertyName=awsKinesisRegion, default=null} value!` error ");
-    }
-    return region;
-  }
   /**
    * The {@link PubSubToSplunkOptions} class provides the custom options passed by the executor at
    * the command line.
