@@ -20,6 +20,7 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.options.Default;
 
 /** Options for Teleport PubsubIO. */
 public class PubsubConverters {
@@ -61,5 +62,22 @@ public class PubsubConverters {
     ValueProvider<String> getOutputDeadletterTopic();
 
     void setOutputDeadletterTopic(ValueProvider<String> deadletterTopic);
+  }
+
+  public interface PubsubMaskedAttributeKeyOptions extends PipelineOptions {
+    @Description(
+        "this define masked attribute key")
+    ValueProvider<String> getMaskedAttributeKey();
+
+    void setMaskedAttributeKey(ValueProvider<String> maskedAttributeKey);
+  }
+
+  public interface PubsubMaskedEventKeyValueOptions extends PipelineOptions {
+    @Description(
+        "this define masked event value")
+    @Default.String("null")
+    ValueProvider<String> getMaskedEventKeyValue();
+
+    void setMaskedEventKeyValue(ValueProvider<String> maskedEventKeyValue);
   }
 }
