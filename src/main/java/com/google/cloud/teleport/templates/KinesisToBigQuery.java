@@ -129,7 +129,7 @@ public class KinesisToBigQuery {
     Pipeline pipeline = Pipeline.create(options);
 
     pipeline.apply(
-      "ConvertMessageToTableRow",
+      "Read Kinesis Events",
       KinesisIO.read()
       .withStreamName(options.getAwsKinesisStream().toString())
       .withInitialPositionInStream(InitialPositionInStream.LATEST)
