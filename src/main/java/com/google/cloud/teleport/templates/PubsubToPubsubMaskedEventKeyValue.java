@@ -49,6 +49,7 @@ import org.slf4j.LoggerFactory;
 
 /** An template that copies messages from one Pubsub subscription to another Pubsub topic. */
 public class PubsubToPubsubMaskedEventKeyValue {
+  private static final Logger LOG = LoggerFactory.getLogger(PubsubToPubsubMaskedEventKeyValue.class);
 
   /**
    * Main entry point for executing the pipeline.
@@ -74,15 +75,13 @@ public class PubsubToPubsubMaskedEventKeyValue {
   public static PipelineResult run(Options options) {
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
-    String masked_attribute_key = options.getMaskedAttributeKey().toString();
-    String masked_event_key_value = options.getMaskedEventKeyValue().toString();
     pipeline
         .apply(
             "Read PubSub Events",
             PubsubIO.readMessagesWithAttributes().fromSubscription(options.getInputSubscription()))
         .apply(
             "Masked Event Key Value",
-            ParDo.of(new MaskedEventKeyValue(masked_attribute_key, masked_event_key_value)))
+            ParDo.of(new MaskedEventKeyValue(options.getMaskedAttributeKey(), options.getMaskedEventKeyValue())))
         .apply("Write PubSub Events", PubsubIO.writeMessages().to(options.getPubsubWriteTopic()));
     return pipeline.run();
   }
@@ -92,24 +91,27 @@ public class PubsubToPubsubMaskedEventKeyValue {
     private final String masked_attribute_key;
     private final String masked_event_key_value;
 
-    MaskedEventKeyValue(String masked_attribute_key, String masked_event_key_value) {
-      this.masked_attribute_key = masked_attribute_key;
-      this.masked_event_key_value = masked_event_key_value;
+    MaskedEventKeyValue(ValueProvider<String>  masked_attribute_key, ValueProvider<String>  masked_event_key_value) {
+      this.masked_attribute_key = masked_attribute_key.get();
+      this.masked_event_key_value = masked_event_key_value.get();
     }
 
     @ProcessElement
     public void processElement(ProcessContext context) {
       PubsubMessage message = context.element();
-      String json = new String(message.getPayload(), StandardCharsets.UTF_8);
-      JSONObject jsonObject = new JSONObject(json);
-      String [] masked_target_columns =  message.getAttribute(masked_attribute_key).split(",");
-      for(String s : masked_target_columns) {
-          jsonObject.put(s, masked_event_key_value);
+      if (message.getAttribute(masked_attribute_key)!= null) {
+        String [] masked_target_columns =  message.getAttribute(masked_attribute_key).split(",");
+        if(masked_target_columns.length != 0) {
+          JSONObject jsonObject = new JSONObject(new String(message.getPayload(), StandardCharsets.UTF_8));
+          for(String s : masked_target_columns) {
+              jsonObject.put(s, masked_event_key_value);
+          }
+          byte[] masked_message_byte = jsonObject.toString().getBytes(StandardCharsets.UTF_8);
+          Map<String, String> attribute = message.getAttributeMap();
+          message = new PubsubMessage(masked_message_byte, attribute, null);
+        }
       }
-      byte[] masked_message_byte = jsonObject.toString().getBytes(StandardCharsets.UTF_8);
-      Map<String, String> attribute = message.getAttributeMap();
-      PubsubMessage masked_message = new PubsubMessage(masked_message_byte, attribute, null);
-      context.output(masked_message);
+      context.output(message);
     }
   }
   public interface PubSubOptions extends PubsubReadSubscriptionOptions, PubsubWriteOptions, PubsubMaskedAttributeKeyOptions, PubsubMaskedEventKeyValueOptions {}
