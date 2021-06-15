@@ -16,46 +16,24 @@
 
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.templates.TextToBigQueryStreaming.wrapBigQueryInsertError;
 import com.google.api.services.bigquery.model.TableRow;
-import com.google.cloud.teleport.templates.common.BigQueryConverters.FailsafeJsonToTableRow;
-import com.google.cloud.teleport.templates.common.ErrorConverters;
-import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.FailsafeJavascriptUdf;
-import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.JavascriptTextTransformerOptions;
-import com.google.cloud.teleport.util.DualInputNestedValueProvider;
-import com.google.cloud.teleport.util.DualInputNestedValueProvider.TranslatorInput;
-import com.google.cloud.teleport.util.ResourceUtils;
-import com.google.cloud.teleport.util.ValueProviderUtils;
-import com.google.common.collect.ImmutableList;
 import java.nio.charset.StandardCharsets;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.coders.CoderRegistry;
-import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
-import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesCoder;
-import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.Flatten;
-import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PCollectionList;
-import org.apache.beam.sdk.values.PCollectionTuple;
-import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.coders.Coder.Context;
 import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import com.google.cloud.teleport.templates.common.KinesisConverters.KinesisStreamOptions;
@@ -74,12 +52,10 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
-
 public class KinesisToBigQuery {
 
   /** The log to output status messages to. */
-  private static final Logger LOG = LoggerFactory.getLogger(PubSubToBigQuery.class);
+  private static final Logger LOG = LoggerFactory.getLogger(KinesisToBigQuery.class);
 
   /**
    * The {@link Options} class provides the custom execution options passed by the executor at the
@@ -87,18 +63,11 @@ public class KinesisToBigQuery {
    */
   public interface KinesisOptions extends KinesisStreamOptions, KinesisPartitionKeyOptions, KinesisAccessKeyOptions, KinesisSecretKeyOptions, KinesisRegionOptions {}
 
-  public interface Options extends PipelineOptions, JavascriptTextTransformerOptions, KinesisOptions {
+  public interface Options extends PipelineOptions, KinesisOptions {
     @Description("Table spec to write the output to")
     ValueProvider<String> getOutputTableSpec();
 
-    void setOutputTableSpec(ValueProvider<String> value);
-
-    @Description(
-        "The dead-letter table to output to within BigQuery in <project-id>:<dataset>.<table> "
-            + "format. If it doesn't exist, it will be created during pipeline execution.")
-    ValueProvider<String> getOutputDeadletterTable();
-
-    void setOutputDeadletterTable(ValueProvider<String> value);
+    void setOutputTableSpec(ValueProvider<String> outputTableSpec);
   }
 
   /**
@@ -128,20 +97,21 @@ public class KinesisToBigQuery {
 
     Pipeline pipeline = Pipeline.create(options);
 
-    pipeline.apply(
+    PCollection<KinesisRecord> messages = pipeline.apply(
       "Read Kinesis Events",
       KinesisIO.read()
-      .withStreamName(options.getAwsKinesisStream().toString())
+      .withStreamName(options.getAwsKinesisStream().get())
       .withInitialPositionInStream(InitialPositionInStream.LATEST)
       .withAWSClientsProvider(
-      options.getAwsAccessKey().toString(),
-      options.getAwsSecretKey().toString(),
-      Regions.fromName(options.getAwsKinesisRegion().toString())
-    ))
-    .apply(
+      options.getAwsAccessKey().get(),
+      options.getAwsSecretKey().get(),
+      Regions.fromName(options.getAwsKinesisRegion().get())
+      ));
+    PCollection<TableRow> convertedTableRows = messages.apply(
       "ConvertKinesisRecordToTableRow",
-      ParDo.of(new KinesisRecordToTableRow()))
-    .apply(
+      ParDo.of(new KinesisRecordToTableRow()));
+
+    WriteResult writeResult = convertedTableRows.apply(
       "WriteSuccessfulRecords",
       BigQueryIO.writeTableRows()
       .withoutValidation()

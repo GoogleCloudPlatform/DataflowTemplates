@@ -49,8 +49,9 @@ import java.nio.charset.StandardCharsets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** An template that copies messages from one Pubsub subscription to another Pubsub topic. */
 public class PubsubToKinesis {
+
+  private static final Logger LOG = LoggerFactory.getLogger(PubsubToKinesis.class);
 
   /**
    * Main entry point for executing the pipeline.
@@ -86,12 +87,12 @@ public class PubsubToKinesis {
         .apply(
             "Write Kinesis Events",
             KinesisIO.write()
-            .withStreamName(options.getAwsKinesisStream().toString())
-            .withPartitionKey(options.getAwsKinesisPartitionKey().toString())
+            .withStreamName(options.getAwsKinesisStream().get())
+            .withPartitionKey(options.getAwsKinesisPartitionKey().get())
             .withAWSClientsProvider(
-              options.getAwsAccessKey().toString(),
-              options.getAwsSecretKey().toString(),
-              Regions.fromName(options.getAwsKinesisRegion().toString()
+              options.getAwsAccessKey().get(),
+              options.getAwsSecretKey().get(),
+              Regions.fromName(options.getAwsKinesisRegion().get()
               )
             ));
     // Execute the pipeline and return the result.
@@ -101,15 +102,13 @@ public class PubsubToKinesis {
   /** Prepare Kinesis input records */
   private static class ConvertToBytes extends DoFn<PubsubMessage, byte[]> {
     @ProcessElement
-    public void processElement(ProcessContext c) {
-      c.output(String.valueOf(c.element()).getBytes(StandardCharsets.UTF_8));
+    public void processElement(ProcessContext context) {
+      byte[] message = context.element().getPayload();
+      LOG.warn("message {}", message);
+      context.output(message);
     }
   }
 
-  /**
-   * The {@link PubSubToSplunkOptions} class provides the custom options passed by the executor at
-   * the command line.
-   */
   public interface KinesisOptions extends KinesisStreamOptions, KinesisPartitionKeyOptions, KinesisAccessKeyOptions, KinesisSecretKeyOptions, KinesisRegionOptions {}
   public interface PubSubOptions extends PubsubReadSubscriptionOptions {}
   public interface Options extends StreamingOptions, KinesisOptions, PubSubOptions {}
