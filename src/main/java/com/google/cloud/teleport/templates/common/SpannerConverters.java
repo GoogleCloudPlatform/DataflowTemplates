@@ -101,6 +101,17 @@ public class SpannerConverters {
 
     @SuppressWarnings("unused")
     void setSpannerHost(ValueProvider<String> value);
+
+    @Description(
+        "If set, specifies the time when the snapshot must be taken."
+            + " String is in the RFC 3339 format in UTC time. "
+            + " Example - 1990-12-31T23:59:60Z"
+            + " Timestamp must be in the past and Maximum timestamp staleness applies."
+            + "https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness")
+    @Default.String(value = "")
+    ValueProvider<String> getSpannerSnapshotTime();
+
+    void setSpannerSnapshotTime(ValueProvider<String> value);
   }
 
   /** Factory for Export transform class. */
@@ -303,8 +314,9 @@ public class SpannerConverters {
       StringWriter stringWriter = new StringWriter();
       try {
         CSVPrinter printer =
-            new CSVPrinter(stringWriter, CSVFormat.DEFAULT.withRecordSeparator("")
-                .withQuoteMode(QuoteMode.ALL_NON_NULL));
+            new CSVPrinter(
+                stringWriter,
+                CSVFormat.DEFAULT.withRecordSeparator("").withQuoteMode(QuoteMode.ALL_NON_NULL));
         LinkedHashMap<String, BiFunction<Struct, String, String>> parsers = Maps.newLinkedHashMap();
         parsers.putAll(mapColumnParsers(struct.getType().getStructFields()));
         List<String> values = parseResultSet(struct, parsers);
@@ -355,10 +367,10 @@ public class SpannerConverters {
    * Function with a series of switch cases to determine the parsing function for a specific column
    * type:
    *
-   * <p>- Primitive types such as Boolean, Long, Int, and String are converted using toString
-   * parser for primitive types.
-   * - Date and Timestamp use toString method, for example 2018-03-26 and 1970-01-01T00:00:00Z
-   * - Byte arrays use base64 encoding, so for example "test" transforms to "dGVzdA=="
+   * <p>- Primitive types such as Boolean, Long, Int, and String are converted using toString parser
+   * for primitive types. - Date and Timestamp use toString method, for example 2018-03-26 and
+   * 1970-01-01T00:00:00Z - Byte arrays use base64 encoding, so for example "test" transforms to
+   * "dGVzdA=="
    */
   private static BiFunction<Struct, String, String> getColumnParser(Type.Code columnType) {
     switch (columnType) {
@@ -408,23 +420,17 @@ public class SpannerConverters {
         return GSON.toJson(currentRow.getStringList(columnName));
       case BYTES:
         return GSON.toJson(
-            currentRow
-                .getBytesList(columnName)
-                .stream()
+            currentRow.getBytesList(columnName).stream()
                 .map(byteArray -> Base64.getEncoder().encodeToString(byteArray.toByteArray()))
                 .collect(Collectors.toList()));
       case DATE:
         return GSON.toJson(
-            currentRow
-                .getDateList(columnName)
-                .stream()
+            currentRow.getDateList(columnName).stream()
                 .map(Date::toString)
                 .collect(Collectors.toList()));
       case TIMESTAMP:
         return GSON.toJson(
-            currentRow
-                .getTimestampList(columnName)
-                .stream()
+            currentRow.getTimestampList(columnName).stream()
                 .map(Timestamp::toString)
                 .collect(Collectors.toList()));
       default:
