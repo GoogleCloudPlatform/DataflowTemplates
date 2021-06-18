@@ -115,6 +115,11 @@
     </dependency>
     <dependency>
       <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-io-kinesis</artifactId>
+      <version>${beam.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
       <version>${beam.version}</version>
       <exclusions>
@@ -806,7 +811,6 @@
         <executions>
           <!--
             Execute checkstyle after compilation but before tests.
-
             This ensures that any parsing or type checking errors are from
             javac, so they look as expected. Beyond that, we want to
             fail as early as possible.
@@ -945,4 +949,3 @@
   </profiles>
 
 </project>
-
