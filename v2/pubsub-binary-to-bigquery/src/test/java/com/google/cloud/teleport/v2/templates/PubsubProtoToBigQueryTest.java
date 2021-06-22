@@ -16,6 +16,7 @@
 
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.templates.PubsubProtoToBigQuery.runUdf;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
@@ -23,7 +24,12 @@ import com.google.cloud.teleport.v2.templates.PubsubProtoToBigQuery.PubSubProtoT
 import com.google.common.io.Resources;
 import com.google.protobuf.InvalidProtocolBufferException;
 import java.nio.file.Paths;
+import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -36,7 +42,7 @@ import org.junit.runners.JUnit4;
  */
 @RunWith(JUnit4.class)
 public final class PubsubProtoToBigQueryTest {
-  private TestPipeline pipeline = TestPipeline.create();
+  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
   private static final String GENERATED_PROTO_SCHEMA_PATH =
       Paths.get(
@@ -106,6 +112,29 @@ public final class PubsubProtoToBigQueryTest {
     assertThat(exception).hasMessageThat().contains(GENERATED_PROTO_SCHEMA_PATH);
     assertThat(exception).hasMessageThat().contains(protoFile);
     assertThat(exception).hasMessageThat().contains(badMessage);
+  }
+
+  @Test
+  public void testApplyUdfWithNoUdfPathSet() {
+    PubSubProtoToBigQueryOptions options = getOptions();
+    ImmutableList<String> inputs = ImmutableList.of("First", "Second", "Third");
+    PCollection<String> pInput = pipeline.apply(Create.of(inputs));
+
+    PAssert.that(runUdf(pInput, options)).containsInAnyOrder(inputs);
+    pipeline.run();
+  }
+
+  @Test
+  public void testApplyUdfWithPathButNoFunction() {
+    PubSubProtoToBigQueryOptions options = getOptions();
+    options.setJavascriptTextTransformGcsPath("/some/path.js");
+    PCollection<String> input = pipeline.apply(Create.of(""));
+
+    assertThrows(IllegalArgumentException.class, () -> runUdf(input, options));
+    options.setJavascriptTextTransformFunctionName("");
+    assertThrows(IllegalArgumentException.class, () -> runUdf(input, options));
+
+    pipeline.run();
   }
 
   @Test
