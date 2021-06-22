@@ -15,11 +15,11 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
+import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.BigQueryReadOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.ReadBigQuery;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.TableRowToJsonFn;
-import com.google.cloud.teleport.v2.transforms.ElasticsearchTransforms.WriteToElasticsearch;
-import com.google.cloud.teleport.v2.transforms.ElasticsearchTransforms.WriteToElasticsearchOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -147,7 +147,7 @@ public class BigQueryToElasticsearch {
         .apply(
             "WriteToElasticsearch",
             WriteToElasticsearch.newBuilder()
-                .setOptions(options.as(WriteToElasticsearchOptions.class))
+                .setOptions(options.as(ElasticsearchWriteOptions.class))
                 .build());
 
     return pipeline.run();
@@ -160,5 +160,5 @@ public class BigQueryToElasticsearch {
   public interface BigQueryToElasticsearchReadOptions
       extends PipelineOptions,
           BigQueryReadOptions,
-          WriteToElasticsearchOptions {}
+          ElasticsearchWriteOptions {}
 }

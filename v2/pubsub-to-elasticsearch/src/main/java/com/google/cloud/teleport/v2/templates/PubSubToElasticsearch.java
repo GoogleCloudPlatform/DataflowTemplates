@@ -17,8 +17,8 @@ package com.google.cloud.teleport.v2.templates;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
-import com.google.cloud.teleport.v2.transforms.ElasticsearchTransforms.WriteToElasticsearch;
-import com.google.cloud.teleport.v2.transforms.ElasticsearchTransforms.WriteToElasticsearchOptions;
+import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
+import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
@@ -212,7 +212,7 @@ public class PubSubToElasticsearch {
                     .build());
 
     /*
-     * Step #3a: Write Json documents into Elasticsearch using {@link ElasticsearchTransforms.WriteToElasticsearch}.
+     * Step #3a: Write Json documents into Elasticsearch using {@link WriteToElasticsearch}.
      */
     convertedPubsubMessages
         .get(TRANSFORM_OUT)
@@ -222,7 +222,7 @@ public class PubSubToElasticsearch {
         .apply(
             "WriteToElasticsearch",
             WriteToElasticsearch.newBuilder()
-                .setOptions(options.as(WriteToElasticsearchOptions.class))
+                .setOptions(options.as(ElasticsearchWriteOptions.class))
                 .build());
 
     /*
@@ -246,10 +246,10 @@ public class PubSubToElasticsearch {
    * the executor at the command-line.
    *
    * <p>Inherits standard configuration options, options from {@link
-   * JavascriptTextTransformerOptions}, and options from {@link WriteToElasticsearchOptions}.
+   * JavascriptTextTransformerOptions}, and options from {@link ElasticsearchWriteOptions}.
    */
   public interface PubSubToElasticsearchOptions
-      extends JavascriptTextTransformerOptions, PipelineOptions, WriteToElasticsearchOptions {
+      extends JavascriptTextTransformerOptions, PipelineOptions, ElasticsearchWriteOptions {
 
     @Description(
         "The Cloud Pub/Sub subscription to consume from. "

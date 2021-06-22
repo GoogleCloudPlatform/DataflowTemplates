@@ -20,8 +20,9 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
-import com.google.cloud.teleport.v2.transforms.ElasticsearchTransforms;
+import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.io.Resources;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -239,7 +240,7 @@ public class CsvToElasticsearchTest {
   }
 
   /**
-   * Tests that the {@link ElasticsearchTransforms.WriteToElasticsearch} throws exception when only
+   * Tests that the {@link WriteToElasticsearch} throws exception when only
    * one retry configuration value is provided.
    */
   @Test
@@ -249,11 +250,11 @@ public class CsvToElasticsearchTest {
     CsvToElasticsearch.CsvToElasticsearchOptions options =
         PipelineOptionsFactory.create().as(CsvToElasticsearch.CsvToElasticsearchOptions.class);
 
-    options.setNodeAddresses("http://my-node");
+    options.setTargetNodeAddresses("http://my-node");
     options.setContainsHeaders(false);
     options.setInputFileSpec(NO_HEADER_CSV_FILE_PATH);
-    options.setIndex("test");
-    options.setDocumentType("_doc");
+    options.setWriteIndex("test");
+    options.setWriteDocumentType("_doc");
     options.setBatchSize(10000L);
     options.setBatchSizeBytes(500000L);
     options.setMaxRetryAttempts(5);
@@ -263,9 +264,9 @@ public class CsvToElasticsearchTest {
         .apply(Create.of("{}").withCoder(StringUtf8Coder.of()))
         .apply(
             "BuildWriteToElasticSearchObject",
-           ElasticsearchTransforms.WriteToElasticsearch
+           WriteToElasticsearch
                 .newBuilder()
-                .setOptions(options.as(ElasticsearchTransforms.WriteToElasticsearchOptions.class))
+                .setOptions(options.as(ElasticsearchWriteOptions.class))
                 .build());
     pipeline.run();
   }
