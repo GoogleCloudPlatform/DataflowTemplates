@@ -61,6 +61,7 @@ public class SslConsumerFactoryFn
 
   @Override
   public Consumer<byte[], byte[]> apply(Map<String, Object> config) {
+    logConfig(config);
     String bucket = sslConfig.get("bucket");
     String trustStorePath = sslConfig.get(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG);
     String keyStorePath = sslConfig.get(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG);
@@ -75,8 +76,12 @@ public class SslConsumerFactoryFn
       outputTrustStoreFilePath =
           TRUSTSTORE_LOCAL_PATH + '.' + this.keyStoreExtension.get(trustStoreType);
       outputKeyStoreFilePath = KEYSTORE_LOCAL_PATH + '.' + this.keyStoreExtension.get(keyStoreType);
-      getGcsFileAsLocal(bucket, trustStorePath, outputTrustStoreFilePath);
-      getGcsFileAsLocal(bucket, keyStorePath, outputKeyStoreFilePath);
+      if (isLocalFileNotExist(outputTrustStoreFilePath)) {
+        getGcsFileAsLocal(bucket, trustStorePath, outputTrustStoreFilePath);
+      }
+      if (isLocalFileNotExist(outputKeyStoreFilePath)) {
+        getGcsFileAsLocal(bucket, keyStorePath, outputKeyStoreFilePath);
+      }
     } catch (IOException e) {
       LOG.error("Failed to retrieve data for SSL", e);
       return new KafkaConsumer<>(config);
@@ -113,22 +118,24 @@ public class SslConsumerFactoryFn
     LOG.info("Reading contents from GCS file: {}", gcsFilePath);
     Set<StandardOpenOption> options = new HashSet<>(2);
     options.add(StandardOpenOption.CREATE);
-    options.add(StandardOpenOption.APPEND);
+    options.add(StandardOpenOption.WRITE);
+    options.add(StandardOpenOption.TRUNCATE_EXISTING);
     // Copy the GCS file into a local file and will throw an I/O exception in case file not found.
     copyGcsFileToLocal(gcsFilePath, outputFilePath, options);
   }
 
   private static void copyGcsFileToLocal(String gcsFilePath, String outputFilePath,
       Set<StandardOpenOption> options) throws IOException {
+    long transferredBytes;
     for (int i = 1; i <= 5; i++) {
       try (ReadableByteChannel readerChannel =
           FileSystems.open(FileSystems.matchSingleFileSpec(gcsFilePath).resourceId())) {
         try (FileChannel writeChannel = FileChannel.open(Paths.get(outputFilePath), options)) {
-          writeChannel.transferFrom(readerChannel, 0, Long.MAX_VALUE);
+          transferredBytes = writeChannel.transferFrom(readerChannel, 0, Long.MAX_VALUE);
         }
       }
       if (new File(outputFilePath).exists()) {
-        LOG.info("Contents from GCS file {} was written in {}", gcsFilePath, outputFilePath);
+        LOG.info("Contents from GCS file {} was written in {}. Length of file: {}", gcsFilePath, outputFilePath, transferredBytes);
         return;
       }
       LOG.warn("Failed to write file, {} retries remaining", 5 - i);
@@ -159,5 +166,23 @@ public class SslConsumerFactoryFn
       throws KeyStoreException, IOException, CertificateException, NoSuchAlgorithmException {
     KeyStore keystore = KeyStore.getInstance(keyStoreType);
     keystore.load(new FileInputStream(storePath), password.toCharArray());
+  }
+
+  private static void logConfig(Map<String, Object> config) {
+    StringBuilder builder = new StringBuilder();
+    config.forEach((key, value) -> {
+      builder.append(String.format("\t%s: %s\n", key, value));
+    });
+    LOG.info("Current config:\n" + builder);
+  }
+
+  private static boolean isLocalFileNotExist(String outputFilePath) {
+    File outputFile = new File(outputFilePath);
+    if (outputFile.exists()) {
+      LOG.info("Certificates file {} already exists. Certificate content size: {}", outputFile, outputFile.length());
+    } else {
+      LOG.info("Certificate doesn't exist on local fs.");
+    }
+    return !outputFile.exists();
   }
 }
