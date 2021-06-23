@@ -52,9 +52,9 @@ public class BigQueryToElasticsearchTest {
         PipelineOptionsFactory.create()
             .as(BigQueryToElasticsearch.BigQueryToElasticsearchReadOptions.class);
 
-    options.setTargetNodeAddresses("http://my-node");
-    options.setWriteIndex("test");
-    options.setWriteDocumentType("_doc");
+    options.setNodeAddresses("http://my-node");
+    options.setIndex("test");
+    options.setDocumentType("_doc");
     options.setInputTableSpec("my-project:my-dataset.my-table");
     options.setQuery(null);
 
@@ -88,9 +88,9 @@ public class BigQueryToElasticsearchTest {
         PipelineOptionsFactory.create()
             .as(BigQueryToElasticsearch.BigQueryToElasticsearchReadOptions.class);
 
-    options.setTargetNodeAddresses("http://my-node");
-    options.setWriteIndex("test");
-    options.setWriteDocumentType("_doc");
+    options.setNodeAddresses("http://my-node");
+    options.setIndex("test");
+    options.setDocumentType("_doc");
     options.setInputTableSpec(null);
     options.setQuery(null);
 

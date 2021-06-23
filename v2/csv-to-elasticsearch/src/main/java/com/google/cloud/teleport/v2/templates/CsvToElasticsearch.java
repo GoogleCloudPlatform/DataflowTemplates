@@ -18,10 +18,10 @@ package com.google.cloud.teleport.v2.templates;
 import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
-import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
-import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.transforms.CsvConverters.CsvPipelineOptions;
+import com.google.cloud.teleport.v2.transforms.ElasticsearchTransforms.WriteToElasticsearch;
+import com.google.cloud.teleport.v2.transforms.ElasticsearchTransforms.WriteToElasticsearchOptions;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters.WriteStringMessageErrors;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -241,7 +241,7 @@ public class CsvToElasticsearch {
         .apply(
             "WriteToElasticsearch",
             WriteToElasticsearch.newBuilder()
-                .setOptions(options.as(ElasticsearchWriteOptions.class))
+                .setOptions(options.as(WriteToElasticsearchOptions.class))
                 .build());
 
     /*
@@ -267,7 +267,7 @@ public class CsvToElasticsearch {
    * executor at the command-line.
    */
   public interface CsvToElasticsearchOptions
-      extends CsvPipelineOptions, PipelineOptions, ElasticsearchWriteOptions {
+      extends CsvPipelineOptions, PipelineOptions, WriteToElasticsearchOptions {
 
     @Description("Deadletter table for failed inserts in form: <project-id>:<dataset>.<table>")
     @Required
