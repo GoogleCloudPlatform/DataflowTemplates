@@ -899,6 +899,12 @@
           <!-- Exclude Cloud Spanner integration tests that require a GCP project to run.
           They can be run run manually using
           'mvn -Dexcluded.spanner.tests="" -Dtest=<testname> test' -->
+          <systemProperties>
+            <property>
+              <name>nashorn.args</name>
+              <value>--no-deprecation-warning</value>
+            </property>
+          </systemProperties>
           <excludedGroups>${excluded.spanner.tests}</excludedGroups>
         </configuration>
       </plugin>

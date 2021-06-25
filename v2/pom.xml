@@ -555,6 +555,12 @@
                   They can be run run manually using
                   TODO: Add support for emulator to run integration tests.
                   'mvn -Dexcluded.spanner.tests="" -Dtest=<testname> test' -->
+                  <systemProperties>
+                    <property>
+                      <name>nashorn.args</name>
+                      <value>--no-deprecation-warning</value>
+                    </property>
+                  </systemProperties>
                   <excludedGroups>${excluded.spanner.tests}</excludedGroups>
                 </configuration>
             </plugin>
