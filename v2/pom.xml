@@ -594,6 +594,7 @@
         <module>datastream-to-bigquery</module>
         <module>datastream-to-postgres</module>
         <module>datastream-to-spanner</module>
+        <module>elasticsearch-common</module>
         <module>file-format-conversion</module>
         <module>hive-to-bigquery</module>
         <module>kafka-to-bigquery</module>
