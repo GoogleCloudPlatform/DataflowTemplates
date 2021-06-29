@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2021 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -18,10 +18,10 @@ package com.google.cloud.teleport.v2.elasticsearch.templates;
 import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.elasticsearch.options.CsvToElasticsearchOptions;
+import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
+import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
-import com.google.cloud.teleport.v2.transforms.CsvConverters.CsvPipelineOptions;
-import com.google.cloud.teleport.v2.transforms.ElasticsearchTransforms.WriteToElasticsearch;
-import com.google.cloud.teleport.v2.transforms.ElasticsearchTransforms.WriteToElasticsearchOptions;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters.WriteStringMessageErrors;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -30,10 +30,7 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
-import org.apache.beam.sdk.options.Description;
-import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.WithTimestamps;
 import org.apache.beam.sdk.values.PCollectionTuple;
@@ -241,7 +238,7 @@ public class CsvToElasticsearch {
         .apply(
             "WriteToElasticsearch",
             WriteToElasticsearch.newBuilder()
-                .setOptions(options.as(WriteToElasticsearchOptions.class))
+                .setOptions(options.as(ElasticsearchWriteOptions.class))
                 .build());
 
     /*
@@ -262,17 +259,4 @@ public class CsvToElasticsearch {
     return pipeline.run();
   }
 
-  /**
-   * The {@link CsvToElasticsearchOptions} class provides the custom execution options passed by the
-   * executor at the command-line.
-   */
-  public interface CsvToElasticsearchOptions
-      extends CsvPipelineOptions, PipelineOptions, WriteToElasticsearchOptions {
-
-    @Description("Deadletter table for failed inserts in form: <project-id>:<dataset>.<table>")
-    @Required
-    String getDeadletterTable();
-
-    void setDeadletterTable(String deadletterTable);
-  }
 }

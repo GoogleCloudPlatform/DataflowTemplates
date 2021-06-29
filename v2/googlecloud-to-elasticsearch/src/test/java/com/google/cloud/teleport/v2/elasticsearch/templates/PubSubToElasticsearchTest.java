@@ -19,6 +19,8 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
+import com.google.cloud.teleport.v2.elasticsearch.options.PubSubToElasticsearchOptions;
+import com.google.cloud.teleport.v2.elasticsearch.transforms.PubSubMessageToJsonDocument;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
@@ -132,9 +134,9 @@ public class PubSubToElasticsearchTest {
     coderRegistry.registerCoderForType(
         PubSubToElasticsearch.CODER.getEncodedTypeDescriptor(), PubSubToElasticsearch.CODER);
 
-    PubSubToElasticsearch.PubSubToElasticsearchOptions options =
+    PubSubToElasticsearchOptions options =
         TestPipeline.testingPipelineOptions()
-            .as(PubSubToElasticsearch.PubSubToElasticsearchOptions.class);
+            .as(PubSubToElasticsearchOptions.class);
 
     options.setDeadletterTable("test:dataset.table");
     options.setJavascriptTextTransformFunctionName(null);
@@ -144,7 +146,7 @@ public class PubSubToElasticsearchTest {
         pipeline
             .apply(Create.of(goodTestMessages.get(0)))
             .apply(
-                PubSubToElasticsearch.PubSubMessageToJsonDocument.newBuilder()
+                PubSubMessageToJsonDocument.newBuilder()
                     .setJavascriptTextTransformFunctionName(
                         options.getJavascriptTextTransformFunctionName())
                     .setJavascriptTextTransformGcsPath(options.getJavascriptTextTransformGcsPath())
@@ -174,9 +176,9 @@ public class PubSubToElasticsearchTest {
     coderRegistry.registerCoderForType(
         PubSubToElasticsearch.CODER.getEncodedTypeDescriptor(), PubSubToElasticsearch.CODER);
 
-    PubSubToElasticsearch.PubSubToElasticsearchOptions options =
+    PubSubToElasticsearchOptions options =
         TestPipeline.testingPipelineOptions()
-            .as(PubSubToElasticsearch.PubSubToElasticsearchOptions.class);
+            .as(PubSubToElasticsearchOptions.class);
 
     options.setDeadletterTable("test:dataset.table");
     options.setJavascriptTextTransformFunctionName("transform");
@@ -186,7 +188,7 @@ public class PubSubToElasticsearchTest {
         pipeline
             .apply(Create.of(goodTestMessages.get(0)))
             .apply(
-                PubSubToElasticsearch.PubSubMessageToJsonDocument.newBuilder()
+                PubSubMessageToJsonDocument.newBuilder()
                     .setJavascriptTextTransformFunctionName(
                         options.getJavascriptTextTransformFunctionName())
                     .setJavascriptTextTransformGcsPath(options.getJavascriptTextTransformGcsPath())
@@ -216,9 +218,9 @@ public class PubSubToElasticsearchTest {
     coderRegistry.registerCoderForType(
             PubSubToElasticsearch.CODER.getEncodedTypeDescriptor(), PubSubToElasticsearch.CODER);
 
-    PubSubToElasticsearch.PubSubToElasticsearchOptions options =
+    PubSubToElasticsearchOptions options =
             TestPipeline.testingPipelineOptions()
-                    .as(PubSubToElasticsearch.PubSubToElasticsearchOptions.class);
+                    .as(PubSubToElasticsearchOptions.class);
 
     options.setDeadletterTable("test:dataset.table");
     options.setJavascriptTextTransformFunctionName("transformBad");
@@ -228,7 +230,7 @@ public class PubSubToElasticsearchTest {
             pipeline
                     .apply(Create.of(badTestMessages.get(0)))
                     .apply(
-                            PubSubToElasticsearch.PubSubMessageToJsonDocument.newBuilder()
+                            PubSubMessageToJsonDocument.newBuilder()
                                     .setJavascriptTextTransformFunctionName(
                                             options.getJavascriptTextTransformFunctionName())
                                     .setJavascriptTextTransformGcsPath(options.getJavascriptTextTransformGcsPath())
@@ -260,9 +262,9 @@ public class PubSubToElasticsearchTest {
     coderRegistry.registerCoderForType(
             PubSubToElasticsearch.CODER.getEncodedTypeDescriptor(), PubSubToElasticsearch.CODER);
 
-    PubSubToElasticsearch.PubSubToElasticsearchOptions options =
+    PubSubToElasticsearchOptions options =
             TestPipeline.testingPipelineOptions()
-                    .as(PubSubToElasticsearch.PubSubToElasticsearchOptions.class);
+                    .as(PubSubToElasticsearchOptions.class);
 
     options.setDeadletterTable("test:dataset.table");
 
@@ -270,7 +272,7 @@ public class PubSubToElasticsearchTest {
             pipeline
                     .apply(Create.of(goodTestMessages.get(goodTestMessages.size() - 1)))
                     .apply(
-                            PubSubToElasticsearch.PubSubMessageToJsonDocument.newBuilder()
+                            PubSubMessageToJsonDocument.newBuilder()
                                     .setJavascriptTextTransformFunctionName(
                                             options.getJavascriptTextTransformFunctionName())
                                     .setJavascriptTextTransformGcsPath(options.getJavascriptTextTransformGcsPath())

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2021 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +20,10 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.elasticsearch.options.CsvToElasticsearchOptions;
+import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
-import com.google.cloud.teleport.v2.transforms.ElasticsearchTransforms;
+import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.io.Resources;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -65,8 +67,8 @@ public class CsvToElasticsearchTest {
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
-    CsvToElasticsearch.CsvToElasticsearchOptions options =
-        PipelineOptionsFactory.create().as(CsvToElasticsearch.CsvToElasticsearchOptions.class);
+    CsvToElasticsearchOptions options =
+        PipelineOptionsFactory.create().as(CsvToElasticsearchOptions.class);
 
     options.setJavascriptTextTransformGcsPath(TRANSFORM_FILE_PATH);
     options.setJavascriptTextTransformFunctionName("transform");
@@ -129,8 +131,8 @@ public class CsvToElasticsearchTest {
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
-    CsvToElasticsearch.CsvToElasticsearchOptions options =
-        PipelineOptionsFactory.create().as(CsvToElasticsearch.CsvToElasticsearchOptions.class);
+    CsvToElasticsearchOptions options =
+        PipelineOptionsFactory.create().as(CsvToElasticsearchOptions.class);
 
     options.setContainsHeaders(true);
     options.setInputFileSpec(HEADER_CSV_FILE_PATH);
@@ -190,8 +192,8 @@ public class CsvToElasticsearchTest {
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
-    CsvToElasticsearch.CsvToElasticsearchOptions options =
-        PipelineOptionsFactory.create().as(CsvToElasticsearch.CsvToElasticsearchOptions.class);
+    CsvToElasticsearchOptions options =
+        PipelineOptionsFactory.create().as(CsvToElasticsearchOptions.class);
 
     options.setJsonSchemaPath(JSON_SCHEMA_FILE_PATH);
     options.setContainsHeaders(false);
@@ -239,21 +241,21 @@ public class CsvToElasticsearchTest {
   }
 
   /**
-   * Tests that the {@link ElasticsearchTransforms.WriteToElasticsearch} throws exception when only
+   * Tests that the {@link WriteToElasticsearch} throws exception when only
    * one retry configuration value is provided.
    */
   @Test
   public void testWriteToElasticsearchBuilder() {
     exceptionRule.expect(IllegalArgumentException.class);
 
-    CsvToElasticsearch.CsvToElasticsearchOptions options =
-        PipelineOptionsFactory.create().as(CsvToElasticsearch.CsvToElasticsearchOptions.class);
+    CsvToElasticsearchOptions options =
+        PipelineOptionsFactory.create().as(CsvToElasticsearchOptions.class);
 
-    options.setNodeAddresses("http://my-node");
+    options.setTargetNodeAddresses("http://my-node");
     options.setContainsHeaders(false);
     options.setInputFileSpec(NO_HEADER_CSV_FILE_PATH);
-    options.setIndex("test");
-    options.setDocumentType("_doc");
+    options.setWriteIndex("test");
+    options.setWriteDocumentType("_doc");
     options.setBatchSize(10000L);
     options.setBatchSizeBytes(500000L);
     options.setMaxRetryAttempts(5);
@@ -263,9 +265,9 @@ public class CsvToElasticsearchTest {
         .apply(Create.of("{}").withCoder(StringUtf8Coder.of()))
         .apply(
             "BuildWriteToElasticSearchObject",
-           ElasticsearchTransforms.WriteToElasticsearch
+           WriteToElasticsearch
                 .newBuilder()
-                .setOptions(options.as(ElasticsearchTransforms.WriteToElasticsearchOptions.class))
+                .setOptions(options.as(ElasticsearchWriteOptions.class))
                 .build());
     pipeline.run();
   }

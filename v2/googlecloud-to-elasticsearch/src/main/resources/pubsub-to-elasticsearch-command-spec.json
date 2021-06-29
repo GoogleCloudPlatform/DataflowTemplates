@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.elasticsearch.templates.PubSubToElasticsearch",
+  "classPath": "/template/googlecloud-to-elasticsearch/*:/template/googlecloud-to-elasticsearch/libs/*:/template/googlecloud-to-elasticsearch/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"pubsub_to_elasticsearch\"}"
+}
+}

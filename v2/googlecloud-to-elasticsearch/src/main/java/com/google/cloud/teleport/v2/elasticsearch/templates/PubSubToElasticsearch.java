@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2021 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -15,20 +15,14 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.templates;
 
-import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
-import com.google.cloud.teleport.v2.transforms.ElasticsearchTransforms.WriteToElasticsearch;
-import com.google.cloud.teleport.v2.transforms.ElasticsearchTransforms.WriteToElasticsearchOptions;
+import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
+import com.google.cloud.teleport.v2.elasticsearch.options.PubSubToElasticsearchOptions;
+import com.google.cloud.teleport.v2.elasticsearch.transforms.PubSubMessageToJsonDocument;
+import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
-import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
-import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonSyntaxException;
-import java.nio.charset.StandardCharsets;
-import javax.annotation.Nullable;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -36,22 +30,11 @@ import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesCoder;
-import org.apache.beam.sdk.metrics.Counter;
-import org.apache.beam.sdk.metrics.Metrics;
-import org.apache.beam.sdk.options.Description;
-import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.Validation.Required;
-import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.transforms.PTransform;
-import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
-import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.sdk.values.TypeDescriptors;
-import org.apache.beam.vendor.guava.v20_0.com.google.common.base.Throwables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -222,7 +205,7 @@ public class PubSubToElasticsearch {
         .apply(
             "WriteToElasticsearch",
             WriteToElasticsearch.newBuilder()
-                .setOptions(options.as(WriteToElasticsearchOptions.class))
+                .setOptions(options.as(ElasticsearchWriteOptions.class))
                 .build());
 
     /*
@@ -241,168 +224,4 @@ public class PubSubToElasticsearch {
     return pipeline.run();
   }
 
-  /**
-   * The {@link PubSubToElasticsearchOptions} class provides the custom execution options passed by
-   * the executor at the command-line.
-   *
-   * <p>Inherits standard configuration options, options from {@link
-   * JavascriptTextTransformerOptions}, and options from {@link WriteToElasticsearchOptions}.
-   */
-  public interface PubSubToElasticsearchOptions
-      extends JavascriptTextTransformerOptions, PipelineOptions, WriteToElasticsearchOptions {
-
-    @Description(
-        "The Cloud Pub/Sub subscription to consume from. "
-            + "The name should be in the format of "
-            + "projects/<project-id>/subscriptions/<subscription-name>.")
-    String getInputSubscription();
-
-    void setInputSubscription(String inputSubscription);
-
-    @Description(
-        "The dead-letter table to output to within BigQuery in <project-id>:<dataset>.<table> "
-            + "format.")
-    @Required
-    String getDeadletterTable();
-
-    void setDeadletterTable(String deadletterTable);
-  }
-
-  /**
-   * The {@link PubSubMessageToJsonDocument} class is a {@link PTransform} which transforms incoming
-   * {@link PubsubMessage} objects into JSON objects for insertion into Elasticsearch while applying
-   * an optional UDF to the input. The executions of the UDF and transformation to Json objects is
-   * done in a fail-safe way by wrapping the element with it's original payload inside the {@link
-   * FailsafeElement} class. The {@link PubSubMessageToJsonDocument} transform will output a {@link
-   * PCollectionTuple} which contains all output and dead-letter {@link PCollection}.
-   *
-   * <p>The {@link PCollectionTuple} output will contain the following {@link PCollection}:
-   *
-   * <ul>
-   *   <li>{@link PubSubToElasticsearch#TRANSFORM_OUT} - Contains all records successfully converted
-   *       to JSON objects.
-   *   <li>{@link PubSubToElasticsearch#TRANSFORM_DEADLETTER_OUT} - Contains all {@link
-   *       FailsafeElement} records which couldn't be converted to table rows.
-   * </ul>
-   */
-  @AutoValue
-  abstract static class PubSubMessageToJsonDocument
-      extends PTransform<PCollection<PubsubMessage>, PCollectionTuple> {
-
-    public static Builder newBuilder() {
-      return new AutoValue_PubSubToElasticsearch_PubSubMessageToJsonDocument.Builder();
-    }
-
-    @Nullable
-    public abstract String javascriptTextTransformGcsPath();
-
-    @Nullable
-    public abstract String javascriptTextTransformFunctionName();
-
-    @Override
-    public PCollectionTuple expand(PCollection<PubsubMessage> input) {
-
-      // Map the incoming messages into FailsafeElements so we can recover from failures
-      // across multiple transforms.
-      PCollection<FailsafeElement<PubsubMessage, String>> failsafeElements =
-          input.apply("MapToRecord", ParDo.of(new PubsubMessageToFailsafeElementFn()));
-
-      // If a Udf is supplied then use it to parse the PubSubMessages.
-      if (javascriptTextTransformGcsPath() != null) {
-        return failsafeElements.apply(
-            "InvokeUDF",
-            FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
-                .setFileSystemPath(javascriptTextTransformGcsPath())
-                .setFunctionName(javascriptTextTransformFunctionName())
-                .setSuccessTag(TRANSFORM_OUT)
-                .setFailureTag(TRANSFORM_DEADLETTER_OUT)
-                .build());
-      } else {
-        return failsafeElements.apply(
-            "ProcessPubSubMessages",
-            ParDo.of(new ProcessFailsafePubSubFn())
-                .withOutputTags(TRANSFORM_OUT, TupleTagList.of(TRANSFORM_DEADLETTER_OUT)));
-      }
-    }
-
-    /** Builder for {@link PubSubMessageToJsonDocument}. */
-    @AutoValue.Builder
-    public abstract static class Builder {
-      public abstract Builder setJavascriptTextTransformGcsPath(
-          String javascriptTextTransformGcsPath);
-
-      public abstract Builder setJavascriptTextTransformFunctionName(
-          String javascriptTextTransformFunctionName);
-
-      public abstract PubSubMessageToJsonDocument build();
-    }
-  }
-
-  /**
-   * The {@link ProcessFailsafePubSubFn} class processes a {@link FailsafeElement} containing an {@link PubsubMessage}
-   * and a String of the message's payload {@link PubsubMessage#getPayload()} into a {@link FailsafeElement} of
-   * the original {@link PubsubMessage} and a JSON string that has been processed with {@link Gson}.
-   *
-   * If {@link PubsubMessage#getAttributeMap()} is not empty then the message attributes will be serialized along with
-   * the message payload.
-   *
-   */
-  static class ProcessFailsafePubSubFn
-          extends DoFn<FailsafeElement<PubsubMessage, String>, FailsafeElement<PubsubMessage, String>> {
-
-    private static final Counter successCounter =
-            Metrics.counter(
-                    PubSubMessageToJsonDocument.class, "successful-messages-processed");
-
-    private static Gson gson = new Gson();
-
-    private static final Counter failedCounter =
-            Metrics.counter(
-                    PubSubMessageToJsonDocument.class, "failed-messages-processed");
-
-    @ProcessElement
-    public void processElement(ProcessContext context) {
-      PubsubMessage pubsubMessage = context.element().getOriginalPayload();
-
-      JsonObject messageObject = new JsonObject();
-
-      try {
-        if (pubsubMessage.getPayload().length > 0) {
-          messageObject = gson.fromJson(new String(pubsubMessage.getPayload()), JsonObject.class);
-        }
-
-        // If message attributes are present they will be serialized along with the message payload
-        if (pubsubMessage.getAttributeMap() != null) {
-          pubsubMessage.getAttributeMap().forEach(messageObject::addProperty);
-        }
-
-        context.output(
-                FailsafeElement.of(pubsubMessage, messageObject.toString()));
-        successCounter.inc();
-
-      } catch (JsonSyntaxException e) {
-        context.output(
-                TRANSFORM_DEADLETTER_OUT,
-                FailsafeElement.of(context.element())
-                        .setErrorMessage(e.getMessage())
-                        .setStacktrace(Throwables.getStackTraceAsString(e)));
-        failedCounter.inc();
-      }
-    }
-  }
-
-  /**
-   * The {@link PubsubMessageToFailsafeElementFn} wraps an incoming {@link PubsubMessage} with the
-   * {@link FailsafeElement} class so errors can be recovered from and the original message can be
-   * output to a error records table.
-   */
-  static class PubsubMessageToFailsafeElementFn
-      extends DoFn<PubsubMessage, FailsafeElement<PubsubMessage, String>> {
-    @ProcessElement
-    public void processElement(ProcessContext context) {
-      PubsubMessage message = context.element();
-      context.output(
-          FailsafeElement.of(message, new String(message.getPayload(), StandardCharsets.UTF_8)));
-    }
-  }
 }

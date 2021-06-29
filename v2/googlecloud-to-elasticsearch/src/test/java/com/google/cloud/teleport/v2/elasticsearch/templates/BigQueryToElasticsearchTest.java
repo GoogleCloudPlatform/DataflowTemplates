@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2021 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -20,6 +20,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.cloud.teleport.v2.elasticsearch.options.BigQueryToElasticsearchReadOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.PAssert;
@@ -49,13 +50,13 @@ public class BigQueryToElasticsearchTest {
   @Test
   public void testBigQueryToElasticsearchE2E() {
 
-    BigQueryToElasticsearch.BigQueryToElasticsearchReadOptions options =
+    BigQueryToElasticsearchReadOptions options =
         PipelineOptionsFactory.create()
-            .as(BigQueryToElasticsearch.BigQueryToElasticsearchReadOptions.class);
+            .as(BigQueryToElasticsearchReadOptions.class);
 
-    options.setNodeAddresses("http://my-node");
-    options.setIndex("test");
-    options.setDocumentType("_doc");
+    options.setTargetNodeAddresses("http://my-node");
+    options.setWriteIndex("test");
+    options.setWriteDocumentType("_doc");
     options.setInputTableSpec("my-project:my-dataset.my-table");
     options.setQuery(null);
 
@@ -85,13 +86,13 @@ public class BigQueryToElasticsearchTest {
   public void testNoQueryOrInputTableSpec() {
     exceptionRule.expect(IllegalArgumentException.class);
 
-    BigQueryToElasticsearch.BigQueryToElasticsearchReadOptions options =
+    BigQueryToElasticsearchReadOptions options =
         PipelineOptionsFactory.create()
-            .as(BigQueryToElasticsearch.BigQueryToElasticsearchReadOptions.class);
+            .as(BigQueryToElasticsearchReadOptions.class);
 
-    options.setNodeAddresses("http://my-node");
-    options.setIndex("test");
-    options.setDocumentType("_doc");
+    options.setTargetNodeAddresses("http://my-node");
+    options.setWriteIndex("test");
+    options.setWriteDocumentType("_doc");
     options.setInputTableSpec(null);
     options.setQuery(null);
 

@@ -13,8 +13,17 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+package com.google.cloud.teleport.v2.elasticsearch.options;
+
+import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
+import org.apache.beam.sdk.options.PipelineOptions;
 
 /**
- * Package info for elasticsearch options.
+ * The {@link BigQueryToElasticsearchReadOptions} class provides the custom execution options
+ * passed by the executor at the command-line.
  */
-package com.google.cloud.teleport.v2.elasticsearch.templates;
+public interface BigQueryToElasticsearchReadOptions
+        extends PipelineOptions,
+        BigQueryConverters.BigQueryReadOptions,
+        ElasticsearchWriteOptions {
+}
