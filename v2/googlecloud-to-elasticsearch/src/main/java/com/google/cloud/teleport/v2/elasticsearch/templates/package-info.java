@@ -15,6 +15,6 @@
  */
 
 /**
- * Package info for elasticsearch options.
+ * Package info for elasticsearch templates.
  */
 package com.google.cloud.teleport.v2.elasticsearch.templates;
