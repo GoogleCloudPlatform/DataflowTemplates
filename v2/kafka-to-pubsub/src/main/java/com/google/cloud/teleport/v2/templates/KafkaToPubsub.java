@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.kafka.consumer.Utils.configureKafka;
+import static com.google.cloud.teleport.v2.kafka.consumer.Utils.getKafkaCredentialsFromGCS;
 import static com.google.cloud.teleport.v2.kafka.consumer.Utils.getKafkaCredentialsFromVault;
 import static com.google.cloud.teleport.v2.transforms.FormatTransform.readFromKafka;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
@@ -35,6 +36,7 @@ import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.MapElements;
@@ -142,6 +144,7 @@ public class KafkaToPubsub {
   public static void main(String[] args) {
     KafkaToPubsubOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToPubsubOptions.class);
+    FileSystems.setDefaultPipelineOptions(options);
 
     run(options);
   }
@@ -169,9 +172,15 @@ public class KafkaToPubsub {
     // Configure Kafka consumer properties
     Map<String, Object> kafkaConfig = new HashMap<>();
     Map<String, String> sslConfig = null;
-    if (options.getSecretStoreUrl() != null && options.getVaultToken() != null) {
-      Map<String, Map<String, String>> credentials =
-          getKafkaCredentialsFromVault(options.getSecretStoreUrl(), options.getVaultToken());
+    if (options.getKafkaOptionsGcsPath() != null ||
+        (options.getSecretStoreUrl() != null && options.getVaultToken() != null)) {
+      Map<String, Map<String, String>> credentials;
+      if (options.getKafkaOptionsGcsPath() != null) {
+        credentials = getKafkaCredentialsFromGCS(options.getKafkaOptionsGcsPath());
+      } else {
+        credentials =
+            getKafkaCredentialsFromVault(options.getSecretStoreUrl(), options.getVaultToken());
+      }
       kafkaConfig = configureKafka(credentials.get(KafkaPubsubConstants.KAFKA_CREDENTIALS));
       sslConfig = credentials.get(KafkaPubsubConstants.SSL_CREDENTIALS);
     } else {

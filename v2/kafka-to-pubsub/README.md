@@ -133,24 +133,34 @@ gcloud dataflow flex-template build ${TEMPLATE_PATH} \
 
 ### Executing Template
 
-To deploy the pipeline, you should refer to the template file and pass the 
-[parameters](https://cloud.google.com/dataflow/docs/guides/specifying-exec-params#setting-other-cloud-dataflow-pipeline-options) 
+To deploy the pipeline, you should refer to the template file and pass the
+[parameters](https://cloud.google.com/dataflow/docs/guides/specifying-exec-params#setting-other-cloud-dataflow-pipeline-options)
 required by the pipeline.
 
 The template requires the following parameters:
-- bootstrapServers: Comma separated kafka bootstrap servers in format ip:port
-- inputTopics: Comma separated list of Kafka topics to read from
-- outputTopic: Pub/Sub topic to write the output, in the format of 'projects/yourproject/topics/yourtopic'
+
+- **bootstrapServers**: Comma separated kafka bootstrap servers in format ip:port
+- **inputTopics**: Comma separated list of Kafka topics to read from
+- **outputTopic**: Pub/Sub topic to write the output, in the format of '
+  projects/yourproject/topics/yourtopic'
 
 The template allows for the user to supply the following optional parameters:
-- javascriptTextTransformGcsPath: Path to javascript function in GCS
-- javascriptTextTransformFunctionName: Name of javascript function
-- outputDeadLetterTopic: Topic for messages failed to reach the output topic(aka. DeadLetter topic)
-- secretStoreUrl: URL to Kafka credentials in HashiCorp Vault secret storage in the format 
-'http(s)://vaultip:vaultport/path/to/credentials'
-- vaultToken: Token to access HashiCorp Vault secret storage
+
+- **javascriptTextTransformGcsPath**: Path to javascript function in GCS
+- **javascriptTextTransformFunctionName**: Name of javascript function
+- **outputDeadLetterTopic**: Topic for messages failed to reach the output topic(aka. DeadLetter
+  topic)
+- **secretStoreUrl**: URL to Kafka credentials in HashiCorp Vault secret storage in the format '
+  http(s)://vaultip:vaultport/path/to/credentials'
+- **vaultToken**: Token to access HashiCorp Vault secret storage
+- **kafkaOptionsGcsPath**: Path to Kafka credentials in GCS. This parameter can be used instead of
+  secretStoreUrl and vaultToken
+
+_Note_: If you want to provide Kafka credentials you should specify **either** secretStoreUrl and
+vaultToken or kafkaOptionsGcsPath.
 
 You can do this in 3 different ways:
+
 1. Using [Dataflow Google Cloud Console](https://console.cloud.google.com/dataflow/jobs)
 
 2. Using `gcloud` CLI tool
@@ -195,11 +205,70 @@ You can do this in 3 different ways:
         '
         "${TEMPLATES_LAUNCH_API}"
     ```
-   
-_Note_: Credentials inside secret storage should have appropriate SSL configuration with following parameters:
+
+## Providing Kafka Credentials for SSL SCRAM
+
+Credentials for Kafka can be provided either via JSON in GCS or via key/value pairs in HashiCorp
+Vault secret storage. These credentials should have appropriate configuration with following
+parameters:
+
+For SSL configuration
+
 - `bucket` - the bucket in Google Cloud Storage with SSL certificate
 - `ssl.truststore.location` - the location of the trust store file
 - `ssl.truststore.password` - the password for the trust store file
+- `ssl.truststore.type` - the type of truststore, might be `JKS` or `PKCS12`
 - `ssl.keystore.location` - the location of the key store file
 - `ssl.keystore.password` - the store password for the key store file
+- `ssl.keystore.type` - the type of keystore, might be `JKS` or `PKCS12`
 - `ssl.key.password` - the password of the private key in the key store file
+
+For SCRAM configuration
+
+- `username` - username for Kafka SCRAM authentication
+- `password` - password for Kafka SCRAM authentication
+- `sasl.mechanism` - hash mechanism for Kafka SCRAM authentication. Possible values: `SCRAM-SHA-256`
+  ; `SCRAM-SHA-512`. Defaults to `SCRAM-SHA-512`
+  
+Kafka Consumer configuration:
+
+You may put in JSON config any [supported](https://kafka.apache.org/documentation/#consumerconfigs) configuration for Kafka Consumer 
+
+For example:
+
+- `group.id` - Kafka consumer group ID. Optional parameter
+- `auto.offset.reset` - What to do when there is no initial offset in Kafka or if the current offset does not exist any more on the server:
+    - earliest: automatically reset the offset to the earliest offset
+    - latest: automatically reset the offset to the latest offset
+    - none: throw exception to the consumer if no previous offset is found for the consumer's group
+    - anything else: throw exception to the consumer.
+
+The sample JSON with SSL SCRAM parameters:
+
+```json
+{
+  "bucket": "kafka_certificates_bucket",
+  "ssl.key.password": "secret",
+  "ssl.keystore.password": "secret",
+  "ssl.keystore.location": "ssl_cert/kafka.keystore.jks",
+  "ssl.keystore.type": "JKS",
+  "ssl.truststore.password": "secret",
+  "ssl.truststore.location": "ssl_cert/kafka.truststore.jks",
+  "ssl.truststore.type": "JKS",
+  "username": "admin",
+  "password": "admin-secret",
+  "sasl.mechanism": "SCRAM-SHA-256",
+  "group.id": "group_id",
+  "auto.offset.reset": "latest"
+}
+```
+
+You can copy [this example JSON file](src/main/resources/example_kafka_credentials.json), update it
+per your settings, and then upload to GCS.
+
+## Support
+
+This template is created and contributed by **[Akvelon](https://akvelon.com/)** team.
+
+If you would like to see new features, or you found some critical bugs, please
+[contact with us](mailto:info@akvelon.com) or [share your feedback](https://akvelon.com/feedback/).
