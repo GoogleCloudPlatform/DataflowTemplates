@@ -15,45 +15,30 @@
  */
 package com.google.cloud.teleport.v2.utils;
 
-import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
-import com.google.auto.value.AutoValue;
-import com.google.common.collect.ImmutableMap;
-import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
 import com.google.protobuf.DescriptorProtos.FileDescriptorSet;
-import com.google.protobuf.Descriptors.Descriptor;
-import com.google.protobuf.Descriptors.DescriptorValidationException;
-import com.google.protobuf.Descriptors.FileDescriptor;
 import com.google.protobuf.InvalidProtocolBufferException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import org.apache.avro.Schema;
+import org.apache.beam.sdk.extensions.protobuf.ProtoDomain;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.vendor.guava.v20_0.com.google.common.io.CharStreams;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Splitter;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Schema utilities for KafkaToBigQuery pipeline. */
+/** Utilities for working with different schemas. */
 public class SchemaUtils {
 
   /* Logger for class. */
@@ -106,6 +91,8 @@ public class SchemaUtils {
           + "    }\n"
           + "  ]\n"
           + "}";
+
+  // TODO(zhoufek): Move GCS-reading methods to a separate class, since they aren't schema-related
 
   /**
    * The {@link SchemaUtils#getGcsFileAsString(String)} reads a file from GCS and returns it as a
@@ -196,178 +183,15 @@ public class SchemaUtils {
     return new Schema.Parser().parse(avroschema);
   }
 
-  /** Info for finding the descriptor for a proto message. */
-  @AutoValue
-  public abstract static class ProtoDescriptorLocation {
-    abstract String schemaPath();
-
-    abstract String protoFileName();
-
-    abstract String messageName();
-
-    public static Builder builder() {
-      return new AutoValue_SchemaUtils_ProtoDescriptorLocation.Builder();
-    }
-
-    /** Builder for {@link ProtoDescriptorLocation}. */
-    @AutoValue.Builder
-    public abstract static class Builder {
-      public abstract Builder setSchemaPath(String value);
-
-      public abstract Builder setProtoFileName(String value);
-
-      public abstract Builder setMessageName(String value);
-
-      public abstract ProtoDescriptorLocation build();
-    }
-  }
-
-  /**
-   * Gets a proto descriptor.
-   *
-   * <p>This is similar to {@link SchemaUtils#getAvroSchema(String)} but for protos.
-   *
-   * @param descriptorLocation Info on locating the descriptor.
-   */
-  public static Descriptor getProtoDescriptor(ProtoDescriptorLocation descriptorLocation) {
+  /** Returns a {@link ProtoDomain} containing all the protos found in {@code schemaFileName}. */
+  public static ProtoDomain getProtoDomain(String schemaFileName) {
     try {
-      FileDescriptorSet fileDescriptorSet =
-          FileDescriptorSet.parseFrom(getGcsFileAsBytes(descriptorLocation.schemaPath()));
+      FileDescriptorSet descriptorSet =
+          FileDescriptorSet.parseFrom(SchemaUtils.getGcsFileAsBytes(schemaFileName));
 
-      ImmutableMap<String, FileDescriptorProto> knownFiles =
-          createNameToFileDescriptorMapping(fileDescriptorSet);
-      FileDescriptorProto protoFile = knownFiles.get(descriptorLocation.protoFileName());
-      if (protoFile == null) {
-        String msg =
-            String.format(
-                "Could not find file '%s' in '%s'",
-                descriptorLocation.protoFileName(), descriptorLocation.schemaPath());
-        LOG.error(msg);
-        throw new RuntimeException(msg);
-      }
-
-      FileDescriptor fileDescriptor = getFileDescriptor(protoFile, knownFiles);
-      if (fileDescriptor == null) {
-        String msg =
-            String.format(
-                "Could not resolve '%s' in '%s', possibly due to missing dependencies.",
-                descriptorLocation.protoFileName(), descriptorLocation.schemaPath());
-        LOG.error(msg);
-        throw new RuntimeException(msg);
-      }
-
-      Descriptor descriptor = getDescriptor(fileDescriptor, descriptorLocation.messageName());
-      if (descriptor == null) {
-        String msg =
-            String.format(
-                "Could not resolve '%s' generated from '%s' in schema path '%s'",
-                descriptorLocation.messageName(),
-                descriptorLocation.protoFileName(),
-                descriptorLocation.schemaPath());
-        LOG.error(msg);
-        throw new RuntimeException(msg);
-      }
-
-      return descriptor;
+      return ProtoDomain.buildFrom(descriptorSet);
     } catch (InvalidProtocolBufferException e) {
-      LOG.error("Could not parse proto contents: " + e.getMessage());
-      throw new RuntimeException(e);
-    } catch (DescriptorValidationException e) {
-      LOG.error("Could not validator descriptor: " + e.getMessage());
-      throw new RuntimeException(e);
+      throw new IllegalArgumentException("Schema file is not valid.", e);
     }
-  }
-
-  /**
-   * Creates a mapping between a file's name and its {@link FileDescriptorProto}.
-   *
-   * @param descriptorSet the set of {@link FileDescriptorProto} objects
-   * @return an {@link ImmutableMap} where the key is the {@link String} representing the name of a
-   *     file and the value is the {@link FileDescriptorProto} representing that file.
-   */
-  private static ImmutableMap<String, FileDescriptorProto> createNameToFileDescriptorMapping(
-      FileDescriptorSet descriptorSet) {
-    return descriptorSet.getFileList().stream()
-        .collect(toImmutableMap(FileDescriptorProto::getName, proto -> proto));
-  }
-
-  /** Handles finding the descriptor for {@code messageName} from {@code file}. */
-  @Nullable
-  private static Descriptor getDescriptor(FileDescriptor file, String messageName) {
-    List<String> allNames = Splitter.on('.').splitToList(messageName);
-    if (allNames.isEmpty()) {
-      return null;
-    }
-
-    Descriptor currentDescriptor = file.findMessageTypeByName(allNames.get(0));
-    for (int i = 1; currentDescriptor != null && i < allNames.size(); ++i) {
-      currentDescriptor = currentDescriptor.findNestedTypeByName(allNames.get(i));
-    }
-
-    return currentDescriptor;
-  }
-
-  /**
-   * Handles creating the {@link FileDescriptor} for {@code root} using {@code knownFiles} to
-   * resolve dependencies.
-   *
-   * @param root The {@link FileDescriptorProto} used as the root in the dependency graph.
-   * @param knownFiles All files that are known. This should include, at minimum, all the
-   *     dependencies, including transitive dependencies, for {@code root}.
-   * @return The {@link FileDescriptor} describing {@code root}.
-   * @throws DescriptorValidationException Thrown if there is an issue create a descriptor for
-   *     {@code root} or any of its dependencies, including the transitive dependencies.
-   */
-  @Nullable
-  private static FileDescriptor getFileDescriptor(
-      FileDescriptorProto root, ImmutableMap<String, FileDescriptorProto> knownFiles)
-      throws DescriptorValidationException {
-    Map<String, FileDescriptor> resolved = new HashMap<>();
-    Deque<FileDescriptorProto> resolutionStack = new ArrayDeque<>();
-    resolutionStack.add(root);
-
-    while (!resolutionStack.isEmpty()) {
-      FileDescriptorProto current = resolutionStack.peek();
-      if (resolved.containsKey(current.getName())) {
-        resolutionStack.pop();
-        continue;
-      }
-      if (current.getDependencyCount() == 0) {
-        resolved.put(current.getName(), FileDescriptor.buildFrom(current, new FileDescriptor[0]));
-        resolutionStack.pop();
-        continue;
-      }
-
-      int startingStackSize = resolutionStack.size();
-      for (String dependency : current.getDependencyList()) {
-        if (resolved.containsKey(dependency)) {
-          continue;
-        }
-        if (!knownFiles.containsKey(dependency)) {
-          String msg = "Unknown dependency: " + dependency;
-          LOG.error(msg);
-          throw new RuntimeException(msg);
-        }
-
-        // Since protos don't support circular importing, we should be safe in assuming that
-        // the dependency isn't already on the resolution stack.
-        resolutionStack.push(knownFiles.get(dependency));
-      }
-
-      if (resolutionStack.size() == startingStackSize) {
-        Set<String> dependencySet = new HashSet<>(current.getDependencyList());
-        FileDescriptor descriptor =
-            FileDescriptor.buildFrom(
-                current,
-                resolved.entrySet().stream()
-                    .filter(entry -> dependencySet.contains(entry.getKey()))
-                    .map(Entry::getValue)
-                    .toArray(FileDescriptor[]::new));
-        resolved.put(descriptor.getName(), descriptor);
-        resolutionStack.pop();
-      }
-    }
-
-    return resolved.get(root.getName());
   }
 }

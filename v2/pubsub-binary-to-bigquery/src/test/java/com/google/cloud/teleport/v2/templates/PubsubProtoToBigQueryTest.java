@@ -54,8 +54,7 @@ public final class PubsubProtoToBigQueryTest {
     PubSubProtoToBigQueryOptions options = getOptions();
     String path = "/some/invalid.path.pb";
     options.setProtoSchemaPath(path);
-    options.setProtoFileName("some_file.proto");
-    options.setMessageName("SomeMessage");
+    options.setFullMessageName("some.message.Name");
 
     IllegalArgumentException exception =
         assertThrows(
@@ -69,49 +68,29 @@ public final class PubsubProtoToBigQueryTest {
   public void testReadPubsubMessagesWithInvalidProtoSchemaContents() {
     PubSubProtoToBigQueryOptions options = getOptions();
     options.setProtoSchemaPath(Resources.getResource("invalid_proto_schema.pb").toString());
-    options.setProtoFileName("some_file.proto");
-    options.setMessageName("SomeMessage");
+    options.setFullMessageName("some.message.Name");
 
-    RuntimeException exception =
+    IllegalArgumentException exception =
         assertThrows(
-            RuntimeException.class, () -> PubsubProtoToBigQuery.readPubsubMessages(options));
+            IllegalArgumentException.class,
+            () -> PubsubProtoToBigQuery.readPubsubMessages(options));
 
-    // TODO(zhoufek): Stop wrapping the exceptions in RuntimeException
     assertThat(exception).hasCauseThat().isInstanceOf(InvalidProtocolBufferException.class);
-  }
-
-  @Test
-  public void testReadPubsubMessagesWithInvalidProtoFile() {
-    PubSubProtoToBigQueryOptions options = getOptions();
-    options.setProtoSchemaPath(GENERATED_PROTO_SCHEMA_PATH);
-    String badFile = "some_file.proto";
-    options.setProtoFileName(badFile);
-    options.setMessageName("SomeMessage");
-
-    RuntimeException exception =
-        assertThrows(
-            RuntimeException.class, () -> PubsubProtoToBigQuery.readPubsubMessages(options));
-
-    assertThat(exception).hasMessageThat().contains(GENERATED_PROTO_SCHEMA_PATH);
-    assertThat(exception).hasMessageThat().contains(badFile);
   }
 
   @Test
   public void testReadPubsubMessagesWithInvalidMessageName() {
     PubSubProtoToBigQueryOptions options = getOptions();
     options.setProtoSchemaPath(GENERATED_PROTO_SCHEMA_PATH);
-    String protoFile = "proto_definition.proto";
-    options.setProtoFileName(protoFile);
-    String badMessage = "ThisMessageDoesNotExist";
-    options.setMessageName(badMessage);
+    String badMessageName = "invalid.message.Name";
+    options.setFullMessageName(badMessageName);
 
     RuntimeException exception =
         assertThrows(
             RuntimeException.class, () -> PubsubProtoToBigQuery.readPubsubMessages(options));
 
     assertThat(exception).hasMessageThat().contains(GENERATED_PROTO_SCHEMA_PATH);
-    assertThat(exception).hasMessageThat().contains(protoFile);
-    assertThat(exception).hasMessageThat().contains(badMessage);
+    assertThat(exception).hasMessageThat().contains(badMessageName);
   }
 
   @Test

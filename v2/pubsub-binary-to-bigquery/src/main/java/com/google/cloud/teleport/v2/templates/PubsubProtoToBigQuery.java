@@ -27,7 +27,6 @@ import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.transforms.FailsafeElementTransforms.ConvertFailsafeElementToPubsubMessage;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
-import com.google.cloud.teleport.v2.utils.SchemaUtils.ProtoDescriptorLocation;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
@@ -87,17 +86,11 @@ public final class PubsubProtoToBigQuery {
 
     void setProtoSchemaPath(String value);
 
-    @Description("The name of the .proto file used to generate the schema descriptor file.")
+    @Description("Full message name (i.e. package.name.MessageName) of the target Protobuf type.")
     @Required
-    String getProtoFileName();
+    String getFullMessageName();
 
-    void setProtoFileName(String value);
-
-    @Description("The name of the message that defines the messages in the input Pub/Sub topic.")
-    @Required
-    String getMessageName();
-
-    void setMessageName(String value);
+    void setFullMessageName(String value);
 
     @Description("GCS path to JSON file that represents the BigQuery table schema.")
     @Required
@@ -146,13 +139,13 @@ public final class PubsubProtoToBigQuery {
 
   @VisibleForTesting
   static Read<DynamicMessage> readPubsubMessages(PubSubProtoToBigQueryOptions options) {
-    Descriptor descriptor =
-        SchemaUtils.getProtoDescriptor(
-            ProtoDescriptorLocation.builder()
-                .setSchemaPath(options.getProtoSchemaPath())
-                .setProtoFileName(options.getProtoFileName())
-                .setMessageName(options.getMessageName())
-                .build());
+    String schemaPath = options.getProtoSchemaPath();
+    String messageName = options.getFullMessageName();
+    Descriptor descriptor = SchemaUtils.getProtoDomain(schemaPath).getDescriptor(messageName);
+    if (descriptor == null) {
+      throw new IllegalArgumentException(
+          messageName + " is not a recognized message in " + schemaPath);
+    }
 
     DynamicProtoCoder coder = DynamicProtoCoder.of(descriptor);
 

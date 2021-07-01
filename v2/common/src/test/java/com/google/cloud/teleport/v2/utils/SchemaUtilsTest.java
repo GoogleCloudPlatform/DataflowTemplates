@@ -15,19 +15,16 @@
  */
 package com.google.cloud.teleport.v2.utils;
 
-import static com.google.common.truth.extensions.proto.ProtoTruth.assertThat;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
-import com.google.cloud.teleport.v2.proto.testing.MyMessage;
-import com.google.cloud.teleport.v2.utils.SchemaUtils.ProtoDescriptorLocation;
 import com.google.common.io.Resources;
-import com.google.protobuf.DescriptorProtos.DescriptorProto;
-import com.google.protobuf.DescriptorProtos.FieldDescriptorProto;
+import com.google.protobuf.DescriptorProtos.FileDescriptorSet;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import org.apache.avro.Schema;
+import org.apache.beam.sdk.extensions.protobuf.ProtoDomain;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.junit.Rule;
 import org.junit.Test;
@@ -106,39 +103,16 @@ public class SchemaUtilsTest {
   }
 
   @Test
-  public void testGetProtoDescriptor() {
-    DescriptorProto expected = MyMessage.getDescriptor().toProto();
-    DescriptorProto actual =
-        SchemaUtils.getProtoDescriptor(
-                ProtoDescriptorLocation.builder()
-                    .setSchemaPath(PROTO_SCHEMA_FILE_PATH)
-                    .setProtoFileName("proto_definition.proto")
-                    .setMessageName("MyMessage")
-                    .build())
-            .toProto();
-
-    assertThat(actual)
-        // When parsing from a .pb file, the `json_name` field is set, but this is not done for
-        // the compiled descriptor.
-        .ignoringFieldDescriptors(FieldDescriptorProto.getDescriptor().findFieldByName("json_name"))
-        .isEqualTo(expected);
+  public void testGetProtoDomain() throws IOException {
+    ProtoDomain expected =
+        ProtoDomain.buildFrom(FileDescriptorSet.parseFrom(getFileBytes(PROTO_SCHEMA_FILE_PATH)));
+    ProtoDomain actual = SchemaUtils.getProtoDomain(PROTO_SCHEMA_FILE_PATH);
+    assertEquals(expected, actual);
   }
 
-  @Test
-  public void testGetProtoNested() {
-    DescriptorProto expected = MyMessage.NestedMessage.getDescriptor().toProto();
-    DescriptorProto actual =
-        SchemaUtils.getProtoDescriptor(
-                ProtoDescriptorLocation.builder()
-                    .setSchemaPath(PROTO_SCHEMA_FILE_PATH)
-                    .setProtoFileName("proto_definition.proto")
-                    .setMessageName("MyMessage.NestedMessage")
-                    .build())
-            .toProto();
-
-    assertThat(actual)
-        .ignoringFieldDescriptors(FieldDescriptorProto.getDescriptor().findFieldByName("json_name"))
-        .isEqualTo(expected);
+  @Test(expected = IllegalArgumentException.class)
+  public void testGetProtoDomainInvalidFile() {
+    SchemaUtils.getProtoDomain(AVRO_SCHEMA_FILE_PATH);
   }
 
   /** Convenience method for getting raw bytes from a file. */
