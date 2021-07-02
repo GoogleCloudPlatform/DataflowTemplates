@@ -40,6 +40,7 @@ their functionality.
 * [Pub/Sub to GCS Text](src/main/java/com/google/cloud/teleport/templates/PubsubToText.java)
 * [Pub/Sub to Pub/Sub](src/main/java/com/google/cloud/teleport/templates/PubsubToPubsub.java)
 * [Pub/Sub to Splunk](src/main/java/com/google/cloud/teleport/templates/PubSubToSplunk.java) *
+* [Pub/Sub to Snowflake](src/main/java/com/mw/pipeline/stream/DataflowToSnowflakePipeline.java)
 * [Spanner to GCS Avro](src/main/java/com/google/cloud/teleport/spanner/ExportPipeline.java)
 * [Spanner to GCS Text](src/main/java/com/google/cloud/teleport/templates/SpannerToText.java)
 * [Word Count](src/main/java/com/google/cloud/teleport/templates/WordCount.java)
