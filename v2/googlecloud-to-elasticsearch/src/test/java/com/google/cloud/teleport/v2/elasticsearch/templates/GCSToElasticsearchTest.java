@@ -41,7 +41,7 @@ import org.junit.rules.ExpectedException;
 /** Test cases for the {@link GCSToElasticsearch} class. */
 public class GCSToElasticsearchTest {
 
-  private static final String CSV_RESOURCES_DIR = "GCSToElasticsearchTest/";
+  private static final String CSV_RESOURCES_DIR = "GCSToElasticsearch/";
   private static final String TRANSFORM_FILE_PATH =
       Resources.getResource(CSV_RESOURCES_DIR + "elasticUdf.js").getPath();
   private static final String NO_HEADER_CSV_FILE_PATH =

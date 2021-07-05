@@ -45,7 +45,7 @@ import java.util.Map;
 /** Test class for {@link PubSubToElasticsearch}. */
 @RunWith(JUnit4.class)
 public class PubSubToElasticsearchTest {
-  private static final String RESOURCES_DIR = "PubSubToElasticsearchTest/";
+  private static final String RESOURCES_DIR = "PubSubToElasticsearch/";
   private static final String TRANSFORM_FILE_PATH =
       Resources.getResource(RESOURCES_DIR + "transform.js").getPath();
   private static final String BAD_TRANSFORM_FILE_PATH =
