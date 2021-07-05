@@ -19,7 +19,9 @@ The PubSubToSnowflake pipeline is a Stream pipeline which ingests data from Pub/
 **Building Template**
 
 This is a flex template which provides a flexibility to use raw or encrypted values for authentication parameters. The support source data formats are CSV, JSON (not-nested, complete JSON record in single line), and optionally AVRO (not-nested, complete JSON record in single line) with AVRO schema defined at the Pub/Sub Topic.
+
 The required setup is below:
+
 Initially generate an RSA Key to use the key pair based credentials. The template uses a connector for snowflake which is part of the Apache Beam (v2.28). Due to this dependency, the stream data load template currently supports only key pair based authentication.
 
 All sensitive parameters can be encrypted using KMS (Optional) if desired. To supply encrypted value for any parameter, embed encrypted value in templated format i.e ‘${<encryptedvalue>}’.
@@ -69,6 +71,6 @@ The template requires the following parameters. If needed, the parameters marked
 The Template can be executed either via the Dataflow console or  gcloud sdk. The following gcloud command can be used to run template:
 
 ```
-gcloud dataflow flex-template run <dataflow job> --template-file-gcs-location gs://<bucket>/templates/PubSubToSnowflake_flex --region <region> --staging-location gs://<bucket>/<folder>/ --service-account-email=<service account>@<GCP project>.iam.gserviceaccount.com --parameters username=<user name>,role=<snowflake role e.g.TAXI_ROLE>,database=<snowflake database e.g. TAXI_DB>,schema=<snowflake schema e.g. RIDES_SH>,warehouse=<Snowflake Warehouse e.g. TAXI_WH>,stagingBucketName=<Staging bucket location>,serverName=<Snowflake server name e.g. <snowflake account>.<region>.gcp.snowflakecomputing.com,inputSubscription=<pub/Sub subscription e.g. projects/<project>/subscriptions/<subscription name>,table=<snowflake table name>,snowPipe=<snowpipe name e.g. DATAFLOW_SNOWPIPE_GCP>,storageIntegrationName=<Snowflake storage integration name e.g. gcs_int_dataflow>,tokenKMSEncryptionKey=<KMS key e.g. projects/<project name>/locations/<region>/keyRings/<keyring name>/cryptoKeys/<key name>,rawPrivateKey='<Raw Private Key contents>',privateKeyPassphrase=<Encrypted passphrase>,sourceFormat=<source data format e.g. csv>
+gcloud dataflow flex-template run <dataflow job> --template-file-gcs-location gs://<bucket>/templates/PubSubToSnowflake_flex --region <region> --staging-location gs://<bucket>/<folder>/ --service-account-email=<service account>@<GCP project>.iam.gserviceaccount.com --parameters username=<user name>,role=<snowflake role e.g.TAXI_ROLE>,database=<snowflake database e.g. TAXI_DB>,schema=<snowflake schema e.g. RIDES_SH>,warehouse=<Snowflake Warehouse e.g. TAXI_WH>,stagingBucketName=<Staging bucket location>,serverName=<Snowflake server name e.g. <snowflake account>.<region>.gcp.snowflakecomputing.com,inputSubscription=<pub/Sub subscription e.g. projects/<project>/subscriptions/<subscription name>,table=<snowflake table name>,snowPipe=<snowpipe name e.g. DATAFLOW_SNOWPIPE_GCP>,storageIntegrationName=<Snowflake storage integration name e.g. gcs_int_dataflow>,tokenKMSEncryptionKey=<KMS key e.g. projects/<project name>/locations/<region>/keyRings/<keyring name>/cryptoKeys/<key name>,rawPrivateKey='<Raw Private Key contents>',privateKeyPassphrase=<passphrase>,sourceFormat=<source data format e.g. csv>
 ```
     
