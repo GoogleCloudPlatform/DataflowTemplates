@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.templates;
 
-import com.google.cloud.teleport.v2.elasticsearch.options.BigQueryToElasticsearchReadOptions;
+import com.google.cloud.teleport.v2.elasticsearch.options.BigQueryToElasticsearchOptions;
 import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.ReadBigQuery;
@@ -101,10 +101,10 @@ public class BigQueryToElasticsearch {
    * @param args Command line arguments to the pipeline.
    */
   public static void main(String[] args) {
-    BigQueryToElasticsearchReadOptions options =
+    BigQueryToElasticsearchOptions options =
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()
-            .as(BigQueryToElasticsearchReadOptions.class);
+            .as(BigQueryToElasticsearchOptions.class);
 
     run(options);
   }
@@ -115,7 +115,7 @@ public class BigQueryToElasticsearch {
    * @param options The execution parameters to the pipeline.
    * @return The result of the pipeline execution.
    */
-  private static PipelineResult run(BigQueryToElasticsearchReadOptions options) {
+  private static PipelineResult run(BigQueryToElasticsearchOptions options) {
 
     // Create the pipeline.
     Pipeline pipeline = Pipeline.create(options);
@@ -132,7 +132,7 @@ public class BigQueryToElasticsearch {
         .apply(
             "ReadFromBigQuery",
             ReadBigQuery.newBuilder()
-                .setOptions(options.as(BigQueryToElasticsearchReadOptions.class))
+                .setOptions(options.as(BigQueryToElasticsearchOptions.class))
                 .build())
 
         /*

@@ -20,7 +20,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
 import com.google.api.services.bigquery.model.TableRow;
-import com.google.cloud.teleport.v2.elasticsearch.options.BigQueryToElasticsearchReadOptions;
+import com.google.cloud.teleport.v2.elasticsearch.options.BigQueryToElasticsearchOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.PAssert;
@@ -50,9 +50,9 @@ public class BigQueryToElasticsearchTest {
   @Test
   public void testBigQueryToElasticsearchE2E() {
 
-    BigQueryToElasticsearchReadOptions options =
+    BigQueryToElasticsearchOptions options =
         PipelineOptionsFactory.create()
-            .as(BigQueryToElasticsearchReadOptions.class);
+            .as(BigQueryToElasticsearchOptions.class);
 
     options.setTargetNodeAddresses("http://my-node");
     options.setWriteIndex("test");
@@ -86,9 +86,9 @@ public class BigQueryToElasticsearchTest {
   public void testNoQueryOrInputTableSpec() {
     exceptionRule.expect(IllegalArgumentException.class);
 
-    BigQueryToElasticsearchReadOptions options =
+    BigQueryToElasticsearchOptions options =
         PipelineOptionsFactory.create()
-            .as(BigQueryToElasticsearchReadOptions.class);
+            .as(BigQueryToElasticsearchOptions.class);
 
     options.setTargetNodeAddresses("http://my-node");
     options.setWriteIndex("test");
