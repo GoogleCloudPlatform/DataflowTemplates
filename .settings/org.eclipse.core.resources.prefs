@@ -4,4 +4,6 @@ encoding//src/main/proto=UTF-8
 encoding//src/main/resources=UTF-8
 encoding//src/test/java=UTF-8
 encoding//src/test/resources=UTF-8
+encoding//target/generated-sources/protobuf/grpc-java=UTF-8
+encoding//target/generated-sources/protobuf/java=UTF-8
 encoding/<project>=UTF-8
