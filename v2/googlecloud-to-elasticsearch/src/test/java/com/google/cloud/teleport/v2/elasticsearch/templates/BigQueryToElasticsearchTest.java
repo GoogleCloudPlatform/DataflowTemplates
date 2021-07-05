@@ -21,6 +21,7 @@ import static org.junit.Assert.assertThat;
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
+import java.util.List;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
@@ -30,8 +31,6 @@ import org.apache.beam.vendor.guava.v20_0.com.google.common.collect.ImmutableLis
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-
-import java.util.List;
 
 /**
  * Test cases for {@link BigQueryToElasticsearch}.

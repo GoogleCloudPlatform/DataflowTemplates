@@ -18,8 +18,8 @@ package com.google.cloud.teleport.v2.elasticsearch.templates;
 import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
-import com.google.cloud.teleport.v2.elasticsearch.options.GCSToElasticsearchOptions;
 import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
+import com.google.cloud.teleport.v2.elasticsearch.options.GCSToElasticsearchOptions;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters.WriteStringMessageErrors;

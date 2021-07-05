@@ -20,10 +20,10 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
-import com.google.cloud.teleport.v2.elasticsearch.options.GCSToElasticsearchOptions;
 import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
-import com.google.cloud.teleport.v2.transforms.CsvConverters;
+import com.google.cloud.teleport.v2.elasticsearch.options.GCSToElasticsearchOptions;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
+import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.io.Resources;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -55,7 +55,7 @@ public class GCSToElasticsearchTest {
 
   /** Tests the {@link GCSToElasticsearch} pipeline using a Udf to parse the Csv. */
   @Test
-  public void testCsvToElasticsearchUdfE2E() {
+  public void testGCSToElasticsearchUdfE2E() {
 
     final String record = "007,CA,26.23";
     final String stringifiedJsonRecord = "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
@@ -118,7 +118,7 @@ public class GCSToElasticsearchTest {
 
   /** Tests the {@link GCSToElasticsearch} pipeline the headers of the Csv to parse it. */
   @Test
-  public void testCsvToElasticsearchHeadersE2E() {
+  public void testGCSToElasticsearchHeadersE2E() {
 
     final String record = "007,CA,26.23";
     final String stringJsonRecord = "{\"id\":\"007\",\"state\":\"CA\",\"price\":\"26.23\"}";
@@ -179,7 +179,7 @@ public class GCSToElasticsearchTest {
 
   /** Tests the {@link GCSToElasticsearch} pipeline using a JSON schema to parse the Csv. */
   @Test
-  public void testCsvToElasticsearchJsonSchemaE2E() {
+  public void testGCSToElasticsearchJsonSchemaE2E() {
 
     final String record = "007,CA,26.23";
     final String stringifiedJsonRecord = "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
