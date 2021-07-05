@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.elasticsearch.options;
 
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.Validation;
 
@@ -31,4 +32,10 @@ public interface GCSToElasticsearchOptions
     String getDeadletterTable();
 
     void setDeadletterTable(String deadletterTable);
+
+    @Description("Input format, default is CSV")
+    @Default.String("csv")
+    String getInputFormat();
+
+    void setInputFormat(String inputFormat);
 }
