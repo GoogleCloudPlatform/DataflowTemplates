@@ -20,7 +20,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
-import com.google.cloud.teleport.v2.elasticsearch.options.CsvToElasticsearchOptions;
+import com.google.cloud.teleport.v2.elasticsearch.options.GCSToElasticsearchOptions;
 import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
@@ -38,10 +38,10 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-/** Test cases for the {@link CsvToElasticsearch} class. */
-public class CsvToElasticsearchTest {
+/** Test cases for the {@link GCSToElasticsearch} class. */
+public class GCSToElasticsearchTest {
 
-  private static final String CSV_RESOURCES_DIR = "CsvToElasticsearchTest/";
+  private static final String CSV_RESOURCES_DIR = "GCSToElasticsearchTest/";
   private static final String TRANSFORM_FILE_PATH =
       Resources.getResource(CSV_RESOURCES_DIR + "elasticUdf.js").getPath();
   private static final String NO_HEADER_CSV_FILE_PATH =
@@ -53,7 +53,7 @@ public class CsvToElasticsearchTest {
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
   @Rule public ExpectedException exceptionRule = ExpectedException.none();
 
-  /** Tests the {@link CsvToElasticsearch} pipeline using a Udf to parse the Csv. */
+  /** Tests the {@link GCSToElasticsearch} pipeline using a Udf to parse the Csv. */
   @Test
   public void testCsvToElasticsearchUdfE2E() {
 
@@ -67,8 +67,8 @@ public class CsvToElasticsearchTest {
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
-    CsvToElasticsearchOptions options =
-        PipelineOptionsFactory.create().as(CsvToElasticsearchOptions.class);
+    GCSToElasticsearchOptions options =
+        PipelineOptionsFactory.create().as(GCSToElasticsearchOptions.class);
 
     options.setJavascriptTextTransformGcsPath(TRANSFORM_FILE_PATH);
     options.setJavascriptTextTransformFunctionName("transform");
@@ -85,8 +85,8 @@ public class CsvToElasticsearchTest {
                     .setDelimiter(options.getDelimiter())
                     .setHasHeaders(options.getContainsHeaders())
                     .setInputFileSpec(options.getInputFileSpec())
-                    .setHeaderTag(CsvToElasticsearch.CSV_HEADERS)
-                    .setLineTag(CsvToElasticsearch.CSV_LINES)
+                    .setHeaderTag(GCSToElasticsearch.CSV_HEADERS)
+                    .setLineTag(GCSToElasticsearch.CSV_LINES)
                     .setFileEncoding(options.getCsvFileEncoding())
                     .build())
             .apply(
@@ -96,14 +96,14 @@ public class CsvToElasticsearchTest {
                     .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
                     .setUdfFunctionName(options.getJavascriptTextTransformFunctionName())
                     .setJsonSchemaPath(options.getJsonSchemaPath())
-                    .setHeaderTag(CsvToElasticsearch.CSV_HEADERS)
-                    .setLineTag(CsvToElasticsearch.CSV_LINES)
-                    .setUdfOutputTag(CsvToElasticsearch.PROCESSING_OUT)
-                    .setUdfDeadletterTag(CsvToElasticsearch.PROCESSING_DEADLETTER_OUT)
+                    .setHeaderTag(GCSToElasticsearch.CSV_HEADERS)
+                    .setLineTag(GCSToElasticsearch.CSV_LINES)
+                    .setUdfOutputTag(GCSToElasticsearch.PROCESSING_OUT)
+                    .setUdfDeadletterTag(GCSToElasticsearch.PROCESSING_DEADLETTER_OUT)
                     .build());
 
     // Assert
-    PAssert.that(readCsvOut.get(CsvToElasticsearch.PROCESSING_OUT))
+    PAssert.that(readCsvOut.get(GCSToElasticsearch.PROCESSING_OUT))
         .satisfies(
             collection -> {
               FailsafeElement element = collection.iterator().next();
@@ -116,7 +116,7 @@ public class CsvToElasticsearchTest {
     pipeline.run();
   }
 
-  /** Tests the {@link CsvToElasticsearch} pipeline the headers of the Csv to parse it. */
+  /** Tests the {@link GCSToElasticsearch} pipeline the headers of the Csv to parse it. */
   @Test
   public void testCsvToElasticsearchHeadersE2E() {
 
@@ -131,8 +131,8 @@ public class CsvToElasticsearchTest {
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
-    CsvToElasticsearchOptions options =
-        PipelineOptionsFactory.create().as(CsvToElasticsearchOptions.class);
+    GCSToElasticsearchOptions options =
+        PipelineOptionsFactory.create().as(GCSToElasticsearchOptions.class);
 
     options.setContainsHeaders(true);
     options.setInputFileSpec(HEADER_CSV_FILE_PATH);
@@ -147,8 +147,8 @@ public class CsvToElasticsearchTest {
                     .setDelimiter(options.getDelimiter())
                     .setHasHeaders(options.getContainsHeaders())
                     .setInputFileSpec(options.getInputFileSpec())
-                    .setHeaderTag(CsvToElasticsearch.CSV_HEADERS)
-                    .setLineTag(CsvToElasticsearch.CSV_LINES)
+                    .setHeaderTag(GCSToElasticsearch.CSV_HEADERS)
+                    .setLineTag(GCSToElasticsearch.CSV_LINES)
                     .setFileEncoding(options.getCsvFileEncoding())
                     .build())
             .apply(
@@ -158,14 +158,14 @@ public class CsvToElasticsearchTest {
                     .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
                     .setUdfFunctionName(options.getJavascriptTextTransformFunctionName())
                     .setJsonSchemaPath(options.getJsonSchemaPath())
-                    .setHeaderTag(CsvToElasticsearch.CSV_HEADERS)
-                    .setLineTag(CsvToElasticsearch.CSV_LINES)
-                    .setUdfOutputTag(CsvToElasticsearch.PROCESSING_OUT)
-                    .setUdfDeadletterTag(CsvToElasticsearch.PROCESSING_DEADLETTER_OUT)
+                    .setHeaderTag(GCSToElasticsearch.CSV_HEADERS)
+                    .setLineTag(GCSToElasticsearch.CSV_LINES)
+                    .setUdfOutputTag(GCSToElasticsearch.PROCESSING_OUT)
+                    .setUdfDeadletterTag(GCSToElasticsearch.PROCESSING_DEADLETTER_OUT)
                     .build());
 
     // Assert
-    PAssert.that(readCsvOut.get(CsvToElasticsearch.PROCESSING_OUT))
+    PAssert.that(readCsvOut.get(GCSToElasticsearch.PROCESSING_OUT))
         .satisfies(
             collection -> {
               FailsafeElement element = collection.iterator().next();
@@ -178,7 +178,7 @@ public class CsvToElasticsearchTest {
     pipeline.run();
   }
 
-  /** Tests the {@link CsvToElasticsearch} pipeline using a JSON schema to parse the Csv. */
+  /** Tests the {@link GCSToElasticsearch} pipeline using a JSON schema to parse the Csv. */
   @Test
   public void testCsvToElasticsearchJsonSchemaE2E() {
 
@@ -192,8 +192,8 @@ public class CsvToElasticsearchTest {
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
-    CsvToElasticsearchOptions options =
-        PipelineOptionsFactory.create().as(CsvToElasticsearchOptions.class);
+    GCSToElasticsearchOptions options =
+        PipelineOptionsFactory.create().as(GCSToElasticsearchOptions.class);
 
     options.setJsonSchemaPath(JSON_SCHEMA_FILE_PATH);
     options.setContainsHeaders(false);
@@ -209,8 +209,8 @@ public class CsvToElasticsearchTest {
                     .setDelimiter(options.getDelimiter())
                     .setHasHeaders(options.getContainsHeaders())
                     .setInputFileSpec(options.getInputFileSpec())
-                    .setHeaderTag(CsvToElasticsearch.CSV_HEADERS)
-                    .setLineTag(CsvToElasticsearch.CSV_LINES)
+                    .setHeaderTag(GCSToElasticsearch.CSV_HEADERS)
+                    .setLineTag(GCSToElasticsearch.CSV_LINES)
                     .setFileEncoding(options.getCsvFileEncoding())
                     .build())
             .apply(
@@ -220,14 +220,14 @@ public class CsvToElasticsearchTest {
                     .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
                     .setUdfFunctionName(options.getJavascriptTextTransformFunctionName())
                     .setJsonSchemaPath(options.getJsonSchemaPath())
-                    .setHeaderTag(CsvToElasticsearch.CSV_HEADERS)
-                    .setLineTag(CsvToElasticsearch.CSV_LINES)
-                    .setUdfOutputTag(CsvToElasticsearch.PROCESSING_OUT)
-                    .setUdfDeadletterTag(CsvToElasticsearch.PROCESSING_DEADLETTER_OUT)
+                    .setHeaderTag(GCSToElasticsearch.CSV_HEADERS)
+                    .setLineTag(GCSToElasticsearch.CSV_LINES)
+                    .setUdfOutputTag(GCSToElasticsearch.PROCESSING_OUT)
+                    .setUdfDeadletterTag(GCSToElasticsearch.PROCESSING_DEADLETTER_OUT)
                     .build());
 
     // Assert
-    PAssert.that(readCsvOut.get(CsvToElasticsearch.PROCESSING_OUT))
+    PAssert.that(readCsvOut.get(GCSToElasticsearch.PROCESSING_OUT))
         .satisfies(
             collection -> {
               FailsafeElement element = collection.iterator().next();
@@ -248,8 +248,8 @@ public class CsvToElasticsearchTest {
   public void testWriteToElasticsearchBuilder() {
     exceptionRule.expect(IllegalArgumentException.class);
 
-    CsvToElasticsearchOptions options =
-        PipelineOptionsFactory.create().as(CsvToElasticsearchOptions.class);
+    GCSToElasticsearchOptions options =
+        PipelineOptionsFactory.create().as(GCSToElasticsearchOptions.class);
 
     options.setTargetNodeAddresses("http://my-node");
     options.setContainsHeaders(false);

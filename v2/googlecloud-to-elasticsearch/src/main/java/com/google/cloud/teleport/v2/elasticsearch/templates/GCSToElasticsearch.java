@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.elasticsearch.templates;
 import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
-import com.google.cloud.teleport.v2.elasticsearch.options.CsvToElasticsearchOptions;
+import com.google.cloud.teleport.v2.elasticsearch.options.GCSToElasticsearchOptions;
 import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
@@ -41,7 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link CsvToElasticsearch} pipeline exports data from one or more CSV files in Cloud Storage
+ * The {@link GCSToElasticsearch} pipeline exports data from one or more CSV files in Cloud Storage
  * to Elasticsearch.
  *
  * <p><b>Pipeline Requirements</b>
@@ -98,7 +98,7 @@ import org.slf4j.LoggerFactory;
  * # Execute template:
  * API_ROOT_URL="https://dataflow.googleapis.com"
  * TEMPLATES_LAUNCH_API="${API_ROOT_URL}/v1b3/projects/${PROJECT}/templates:launch"
- * JOB_NAME="csv-to-elasticsearch-`date +%Y%m%d-%H%M%S-%N`"
+ * JOB_NAME="gcs-to-elasticsearch-`date +%Y%m%d-%H%M%S-%N`"
  *
  * time curl -X POST -H "Content-Type: application/json"     \
  *     -H "Authorization: Bearer $(gcloud auth print-access-token)" \
@@ -124,7 +124,7 @@ import org.slf4j.LoggerFactory;
  *      '
  * </pre>
  */
-public class CsvToElasticsearch {
+public class GCSToElasticsearch {
 
   /** The tag for the headers of the CSV if required. */
   static final TupleTag<String> CSV_HEADERS = new TupleTag<String>() {};
@@ -141,7 +141,7 @@ public class CsvToElasticsearch {
       new TupleTag<FailsafeElement<String, String>>() {};
 
   /* Logger for class. */
-  private static final Logger LOG = LoggerFactory.getLogger(CsvToElasticsearch.class);
+  private static final Logger LOG = LoggerFactory.getLogger(GCSToElasticsearch.class);
 
   /** String/String Coder for FailsafeElement. */
   private static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
@@ -154,8 +154,8 @@ public class CsvToElasticsearch {
    * @param args Command line arguments to the pipeline.
    */
   public static void main(String[] args) {
-    CsvToElasticsearchOptions options =
-        PipelineOptionsFactory.fromArgs(args).withValidation().as(CsvToElasticsearchOptions.class);
+    GCSToElasticsearchOptions options =
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(GCSToElasticsearchOptions.class);
 
     run(options);
   }
@@ -166,7 +166,7 @@ public class CsvToElasticsearch {
    * @param options The execution options.
    * @return The pipeline result.
    */
-  private static PipelineResult run(CsvToElasticsearchOptions options) {
+  private static PipelineResult run(GCSToElasticsearchOptions options) {
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
 

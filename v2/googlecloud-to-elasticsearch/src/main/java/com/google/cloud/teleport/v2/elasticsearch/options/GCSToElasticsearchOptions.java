@@ -21,10 +21,10 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 
 /**
- * The {@link CsvToElasticsearchOptions} class provides the custom execution options passed by the
+ * The {@link GCSToElasticsearchOptions} class provides the custom execution options passed by the
  * executor at the command-line.
  */
-public interface CsvToElasticsearchOptions
+public interface GCSToElasticsearchOptions
         extends CsvConverters.CsvPipelineOptions, PipelineOptions, ElasticsearchWriteOptions {
 
     @Description("Deadletter table for failed inserts in form: <project-id>:<dataset>.<table>")
