@@ -133,8 +133,12 @@
             <scope>test</scope>
         </dependency>
 
-
         <!-- Misc -->
+		<dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-kms</artifactId>
+            <version>1.40.0</version>
+        </dependency>
         <dependency>
             <groupId>io.opencensus</groupId>
             <artifactId>opencensus-api</artifactId>
@@ -637,6 +641,8 @@
         <module>streaming-data-generator</module>
         <module>kafka-to-pubsub</module>
         <module>kafka-common</module>
+        <module>snowflake-common</module>
+        <module>googlecloud-to-snowflake</module>
     </modules>
 
 </project>
