@@ -20,9 +20,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
 import com.google.api.services.bigquery.model.TableRow;
-import com.google.cloud.teleport.v2.elasticsearch.options.BigQueryToElasticsearchOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
-import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
@@ -35,71 +33,57 @@ import org.junit.rules.ExpectedException;
 
 import java.util.List;
 
-/** Test cases for {@link BigQueryToElasticsearch}. */
+/**
+ * Test cases for {@link BigQueryToElasticsearch}.
+ */
 public class BigQueryToElasticsearchTest {
 
-  private static final TableRow tableRow =
-      new TableRow().set("id", "007").set("state", "CA").set("price", 26.23);
-  private static final List<TableRow> rows = ImmutableList.of(tableRow);
-  private static final String jsonifiedTableRow =
-      "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
-  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
-  @Rule public ExpectedException exceptionRule = ExpectedException.none();
+    private static final TableRow tableRow =
+            new TableRow().set("id", "007").set("state", "CA").set("price", 26.23);
+    private static final List<TableRow> rows = ImmutableList.of(tableRow);
+    private static final String jsonifiedTableRow =
+            "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
+    @Rule
+    public final transient TestPipeline pipeline = TestPipeline.create();
+    @Rule
+    public ExpectedException exceptionRule = ExpectedException.none();
 
-  /** Test the {@link BigQueryToElasticsearch} pipeline end-to-end. */
-  @Test
-  public void testBigQueryToElasticsearchE2E() {
+    /**
+     * Test the {@link BigQueryToElasticsearch} pipeline end-to-end.
+     */
+    @Test
+    public void testBigQueryToElasticsearchE2E() {
 
-    BigQueryToElasticsearchOptions options =
-        PipelineOptionsFactory.create()
-            .as(BigQueryToElasticsearchOptions.class);
+        // Build pipeline
+        PCollection<String> testStrings =
+                pipeline
+                        .apply("CreateInput", Create.of(rows))
+                        .apply("TestTableRowToJson", ParDo.of(new BigQueryConverters.TableRowToJsonFn()));
 
-    options.setTargetNodeAddresses("http://my-node");
-    options.setWriteIndex("test");
-    options.setWriteDocumentType("_doc");
-    options.setInputTableSpec("my-project:my-dataset.my-table");
-    options.setQuery(null);
+        PAssert.that(testStrings)
+                .satisfies(
+                        collection -> {
+                            String result = collection.iterator().next();
+                            assertThat(result, is(equalTo(jsonifiedTableRow)));
+                            return null;
+                        });
 
-    // Build pipeline
-    PCollection<String> testStrings =
-        pipeline
-            .apply("CreateInput", Create.of(rows))
-            .apply("TestTableRowToJson", ParDo.of(new BigQueryConverters.TableRowToJsonFn()));
+        // Execute pipeline
+        pipeline.run();
+    }
 
-    PAssert.that(testStrings)
-        .satisfies(
-            collection -> {
-              String result = collection.iterator().next();
-              assertThat(result, is(equalTo(jsonifiedTableRow)));
-              return null;
-            });
+    /**
+     * Tests that the {@link BigQueryToElasticsearch} pipeline throws an {@link
+     * IllegalArgumentException} when no query or input table spec is provided.
+     */
+    @Test
+    public void testNoQueryOrInputTableSpec() {
+        exceptionRule.expect(IllegalArgumentException.class);
 
-    // Execute pipeline
-    pipeline.run();
-  }
+        // Build pipeline
+        pipeline.apply("CreateInput", Create.of(tableRow));
 
-  /**
-   * Tests that the {@link BigQueryToElasticsearch} pipeline throws an {@link
-   * IllegalArgumentException} when no query or input table spec is provided.
-   */
-  @Test
-  public void testNoQueryOrInputTableSpec() {
-    exceptionRule.expect(IllegalArgumentException.class);
-
-    BigQueryToElasticsearchOptions options =
-        PipelineOptionsFactory.create()
-            .as(BigQueryToElasticsearchOptions.class);
-
-    options.setTargetNodeAddresses("http://my-node");
-    options.setWriteIndex("test");
-    options.setWriteDocumentType("_doc");
-    options.setInputTableSpec(null);
-    options.setQuery(null);
-
-    // Build pipeline
-    pipeline.apply("CreateInput", Create.of(tableRow));
-
-    // Execute pipeline
-    pipeline.run();
-  }
+        // Execute pipeline
+        pipeline.run();
+    }
 }

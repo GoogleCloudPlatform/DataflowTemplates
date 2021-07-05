@@ -120,7 +120,6 @@ public class GCSToElasticsearchTest {
   @Test
   public void testCsvToElasticsearchHeadersE2E() {
 
-    final String header = "id,state,price";
     final String record = "007,CA,26.23";
     final String stringJsonRecord = "{\"id\":\"007\",\"state\":\"CA\",\"price\":\"26.23\"}";
 

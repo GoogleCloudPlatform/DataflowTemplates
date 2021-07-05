@@ -52,7 +52,6 @@ public class PubSubToElasticsearchTest {
           Resources.getResource(RESOURCES_DIR + "transform.js").getPath();
   private static List<PubsubMessage> goodTestMessages;
   private static List<PubsubMessage> badTestMessages;
-  private static List<PubsubMessage> nonFilterableTestMessages;
   private static List<PubsubMessage> allTestMessages;
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 

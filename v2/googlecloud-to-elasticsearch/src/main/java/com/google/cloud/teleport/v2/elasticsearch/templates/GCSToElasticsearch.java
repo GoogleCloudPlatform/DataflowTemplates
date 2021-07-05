@@ -184,11 +184,10 @@ public class GCSToElasticsearch {
     }
 
     // Throw error if only one retry configuration parameter is set.
-    if (options.getMaxRetryAttempts() != null || options.getMaxRetryDuration() != null) {
-      checkArgument(
-          options.getMaxRetryAttempts() != null && options.getMaxRetryDuration() != null,
-          "To specify retry configuration both max attempts and max duration must be set.");
-    }
+    checkArgument(
+            (options.getMaxRetryAttempts() == null && options.getMaxRetryDuration() == null) || (
+                    options.getMaxRetryAttempts() != null && options.getMaxRetryDuration() != null),
+            "To specify retry configuration both max attempts and max duration must be set.");
 
     /*
      * Steps: 1) Read records from CSV(s) via {@link CsvConverters.ReadCsv}.
