@@ -333,20 +333,21 @@ public class DataStreamToBigQuery {
      */
     // TODO(beam 2.23): InsertRetryPolicy should be CDC compliant
     Set<String> fieldsToIgnore = getFieldsToIgnore(options.getIgnoreFields());
-    PCollection<KV<TableId, TableRow>> dataMapped = shuffledTableRows.apply(
-            "Map Data to Staging Tables",
-            new DataStreamMapper(
-                    options.as(GcpOptions.class),
-                    options.getOutputProjectId(),
-                    options.getOutputStagingDatasetTemplate(),
-                    options.getOutputStagingTableNameTemplate())
-                    .withDataStreamRootUrl(options.getDataStreamRootUrl())
-                    .withDefaultSchema(BigQueryDefaultSchemas.DATASTREAM_METADATA_SCHEMA)
-                    .withDayPartitioning(true)
-                    .withIgnoreFields(fieldsToIgnore));
 
     WriteResult writeResult =
-            dataMapped.apply(
+            shuffledTableRows
+                    .apply(
+                            "Map Data to Staging Tables",
+                            new DataStreamMapper(
+                                    options.as(GcpOptions.class),
+                                    options.getOutputProjectId(),
+                                    options.getOutputStagingDatasetTemplate(),
+                                    options.getOutputStagingTableNameTemplate())
+                                    .withDataStreamRootUrl(options.getDataStreamRootUrl())
+                                    .withDefaultSchema(BigQueryDefaultSchemas.DATASTREAM_METADATA_SCHEMA)
+                                    .withDayPartitioning(true)
+                                    .withIgnoreFields(fieldsToIgnore))
+		            .apply(
                 "Write Successful Records",
                 BigQueryIO.<KV<TableId, TableRow>>write()
                     .to(new BigQueryDynamicConverters().bigQueryDynamicDestination())
@@ -360,7 +361,18 @@ public class DataStreamToBigQuery {
                     .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
                     .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
 
-    dataMapped.apply(
+	  shuffledTableRows
+			  .apply(
+					  "Map Data To Replica Tables",
+					  new DataStreamMapper(
+							  options.as(GcpOptions.class),
+							  options.getOutputProjectId(),
+							  options.getOutputDatasetTemplate(),
+							  options.getOutputTableNameTemplate())
+							  .withDataStreamRootUrl(options.getDataStreamRootUrl())
+							  .withDefaultSchema(BigQueryDefaultSchemas.DATASTREAM_METADATA_SCHEMA)
+							  .withIgnoreFields(fieldsToIgnore))
+			  .apply(
             "Merge New Records into Replica Tables",
             new DataStreamBigQueryMerger(
                 options.as(GcpOptions.class),
@@ -407,7 +419,7 @@ public class DataStreamToBigQuery {
     return pipeline.run();
   }
 
-  private static Set<String> getFieldsToIgnore(String fields){
+  private static Set<String> getFieldsToIgnore(String fields) {
     return Arrays.stream(fields.trim().split("\\s*,\\s*")).collect(Collectors.toSet());
   }
 
