@@ -643,6 +643,11 @@
         <module>kafka-common</module>
         <module>snowflake-common</module>
         <module>googlecloud-to-snowflake</module>
+        <module>snowflake-to-googlecloud</module>
+       
+ 
+        
+
     </modules>
 
 </project>

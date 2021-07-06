@@ -53,6 +53,12 @@
 			<version>29.0-jre</version>
 		</dependency>
 
+		<dependency>
+			<groupId>io.grpc</groupId>
+			<artifactId>grpc-netty</artifactId>
+			<version>1.32.2</version>
+		</dependency>
+
 		<!-- google-cloud-kms -->
 		<dependency>
 			<groupId>com.google.cloud</groupId>

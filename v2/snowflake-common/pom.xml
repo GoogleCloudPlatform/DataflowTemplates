@@ -28,6 +28,11 @@
 			<artifactId>beam-sdks-java-io-snowflake</artifactId>
 			<version>${beam.version}</version>
 		</dependency>
+		<dependency>
+			<groupId>io.grpc</groupId>
+			<artifactId>grpc-netty</artifactId>
+			<version>1.32.2</version>
+		</dependency>
 
 		<!-- google-cloud-kms -->
 		<dependency>
