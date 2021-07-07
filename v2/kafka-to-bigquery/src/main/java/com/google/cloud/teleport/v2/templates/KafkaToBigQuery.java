@@ -15,8 +15,11 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform.readFromKafka;
+
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters.WriteKafkaMessageErrors;
@@ -40,9 +43,7 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
-import org.apache.beam.sdk.io.kafka.KafkaIO;
 import org.apache.beam.sdk.options.Description;
-import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -57,7 +58,6 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -155,8 +155,8 @@ public class KafkaToBigQuery {
       new TupleTag<FailsafeElement<KV<String, String>, String>>() {};
 
   /** The tag for the dead-letter output of the json to table row transform. */
-  static final TupleTag<FailsafeElement<KV<String, String>, String>>
-      TRANSFORM_DEADLETTER_OUT = new TupleTag<FailsafeElement<KV<String, String>, String>>() {};
+  static final TupleTag<FailsafeElement<KV<String, String>, String>> TRANSFORM_DEADLETTER_OUT =
+      new TupleTag<FailsafeElement<KV<String, String>, String>>() {};
 
   /** The default suffix for error tables if dead letter table is not specified. */
   private static final String DEFAULT_DEADLETTER_TABLE_SUFFIX = "_error_records";
@@ -167,10 +167,10 @@ public class KafkaToBigQuery {
           NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of()));
 
   /**
-   * The {@link Options} class provides the custom execution options passed by the executor at the
-   * command-line.
+   * The {@link KafkaToBQOptions} class provides the custom execution options passed by the executor
+   * at the command-line.
    */
-  public interface Options extends PipelineOptions {
+  public interface KafkaToBQOptions extends KafkaReadOptions {
 
     @Description("Table spec to write the output to")
     @Required
@@ -178,16 +178,42 @@ public class KafkaToBigQuery {
 
     void setOutputTableSpec(String outputTableSpec);
 
+    /**
+     * Get bootstrap server across releases.
+     *
+     * @deprecated This method is no longer acceptable to get bootstrap servers.
+     *     <p>Use {@link KafkaToBQOptions#getReadBootstrapServers()} instead.
+     */
     @Description("Kafka Bootstrap Servers")
-    @Required
+    @Deprecated
     String getBootstrapServers();
 
+    /**
+     * Get bootstrap server across releases.
+     *
+     * @deprecated This method is no longer acceptable to set bootstrap servers.
+     *     <p>Use {@link KafkaToBQOptions#setReadBootstrapServers()} instead.
+     */
+    @Deprecated
     void setBootstrapServers(String bootstrapServers);
 
+    /**
+     * Get bootstrap server across releases.
+     *
+     * @deprecated This method is no longer acceptable to get Input topics.
+     *     <p>Use {@link KafkaToBQOptions#getKafkaReadTopics()} instead.
+     */
+    @Deprecated
     @Description("Kafka topic(s) to read the input from")
-    @Required
     String getInputTopics();
 
+    /**
+     * Get bootstrap server across releases.
+     *
+     * @deprecated This method is no longer acceptable to set Input topics.
+     *     <p>Use {@link KafkaToBQOptions#getKafkaReadTopics()} instead.
+     */
+    @Deprecated
     void setInputTopics(String inputTopics);
 
     @Description(
@@ -211,13 +237,14 @@ public class KafkaToBigQuery {
   /**
    * The main entry-point for pipeline execution. This method will start the pipeline but will not
    * wait for it's execution to finish. If blocking execution is required, use the {@link
-   * KafkaToBigQuery#run(Options)} method to start the pipeline and invoke {@code
+   * KafkaToBigQuery#run(KafkaToBQOptions)} method to start the pipeline and invoke {@code
    * result.waitUntilFinish()} on the {@link PipelineResult}.
    *
    * @param args The command-line args passed by the executor.
    */
   public static void main(String[] args) {
-    Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
+    KafkaToBQOptions options =
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToBQOptions.class);
 
     run(options);
   }
@@ -231,7 +258,7 @@ public class KafkaToBigQuery {
    * @param options The execution options.
    * @return The pipeline result.
    */
-  public static PipelineResult run(Options options) {
+  public static PipelineResult run(KafkaToBQOptions options) {
 
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
@@ -246,8 +273,22 @@ public class KafkaToBigQuery {
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
-    List<String> topicsList = new ArrayList<>(Arrays.asList(options.getInputTopics().split(",")));
-
+    List<String> topicsList;
+    if (options.getKafkaReadTopics() != null) {
+      topicsList = new ArrayList<>(Arrays.asList(options.getKafkaReadTopics().split(",")));
+    } else if (options.getInputTopics() != null) {
+      topicsList = new ArrayList<>(Arrays.asList(options.getInputTopics().split(",")));
+    } else {
+      throw new IllegalArgumentException("Please Provide --kafkaReadTopic");
+    }
+    String bootstrapServers;
+    if (options.getReadBootstrapServers() != null) {
+      bootstrapServers = options.getReadBootstrapServers();
+    } else if (options.getBootstrapServers() != null) {
+      bootstrapServers = options.getBootstrapServers();
+    } else {
+      throw new IllegalArgumentException("Please Provide --bootstrapServers");
+    }
     /*
      * Steps:
      *  1) Read messages in from Kafka
@@ -265,16 +306,11 @@ public class KafkaToBigQuery {
              */
             .apply(
                 "ReadFromKafka",
-                KafkaIO.<String, String>read()
-                    .withConsumerConfigUpdates(
-                        ImmutableMap.of(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"))
-                    .withBootstrapServers(options.getBootstrapServers())
-                    .withTopics(topicsList)
-                    .withKeyDeserializerAndCoder(
-                        StringDeserializer.class, NullableCoder.of(StringUtf8Coder.of()))
-                    .withValueDeserializerAndCoder(
-                        StringDeserializer.class, NullableCoder.of(StringUtf8Coder.of()))
-                    .withoutMetadata())
+                readFromKafka(
+                    bootstrapServers,
+                    topicsList,
+                    ImmutableMap.of(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"),
+                    null))
 
             /*
              * Step #2: Transform the Kafka Messages into TableRows
@@ -335,8 +371,8 @@ public class KafkaToBigQuery {
         ErrorConverters.WriteStringMessageErrors.newBuilder()
             .setErrorRecordsTable(
                 ObjectUtils.firstNonNull(
-                        options.getOutputDeadletterTable(),
-                        options.getOutputTableSpec() + DEFAULT_DEADLETTER_TABLE_SUFFIX))
+                    options.getOutputDeadletterTable(),
+                    options.getOutputTableSpec() + DEFAULT_DEADLETTER_TABLE_SUFFIX))
             .setErrorRecordsTableSchema(SchemaUtils.DEADLETTER_SCHEMA)
             .build());
 
@@ -367,9 +403,9 @@ public class KafkaToBigQuery {
   static class MessageToTableRow
       extends PTransform<PCollection<KV<String, String>>, PCollectionTuple> {
 
-    private final Options options;
+    private final KafkaToBQOptions options;
 
-    MessageToTableRow(Options options) {
+    MessageToTableRow(KafkaToBQOptions options) {
       this.options = options;
     }
 

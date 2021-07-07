@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.kafka.options;
 
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.options.Validation;
 
 /**
  * The {@link KafkaWriteOptions} interface provides the custom execution options passed by the
@@ -27,14 +26,12 @@ public interface KafkaWriteOptions extends PipelineOptions {
   @Description(
       "Comma Separated list of target Kafka Bootstrap Servers (e.g:"
           + " server1:[port],server2:[port]).")
-  @Validation.Required
   String getWriteBootstrapServers();
 
   void setWriteBootstrapServers(String bootstrapServers);
 
   @Description(
       "Comma Separated list of Kafka topic(s) to read the input from (e.g: topic1,topic2).")
-  @Validation.Required
   String getKafkaWriteTopics();
 
   void setWriteTopics(String inputTopics);
