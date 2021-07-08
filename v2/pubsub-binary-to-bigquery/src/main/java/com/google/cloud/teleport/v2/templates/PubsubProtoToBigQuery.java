@@ -93,7 +93,6 @@ public final class PubsubProtoToBigQuery {
     void setFullMessageName(String value);
 
     @Description("GCS path to JSON file that represents the BigQuery table schema.")
-    @Required
     String getBigQueryTableSchemaPath();
 
     void setBigQueryTableSchemaPath(String value);
@@ -118,13 +117,14 @@ public final class PubsubProtoToBigQuery {
   private static PipelineResult run(PubSubProtoToBigQueryOptions options) {
     Pipeline pipeline = Pipeline.create(options);
 
+    Descriptor descriptor = getDescriptor(options);
     PCollection<String> maybeForUdf =
         pipeline
-            .apply("Read From Pubsub", readPubsubMessages(options))
+            .apply("Read From Pubsub", readPubsubMessages(options, descriptor))
             .apply("Dynamic Message to TableRow", new ConvertDynamicProtoMessageToJson());
 
     runUdf(maybeForUdf, options)
-        .apply("Write to BigQuery", writeToBigQuery(options))
+        .apply("Write to BigQuery", writeToBigQuery(options, descriptor))
         .getFailedInsertsWithErr()
         .apply(
             "Create Error Payload",
@@ -137,31 +137,50 @@ public final class PubsubProtoToBigQuery {
     return pipeline.run();
   }
 
+  /** Gets the {@link Descriptor} for the message type in the Pub/Sub topic. */
   @VisibleForTesting
-  static Read<DynamicMessage> readPubsubMessages(PubSubProtoToBigQueryOptions options) {
+  static Descriptor getDescriptor(PubSubProtoToBigQueryOptions options) {
     String schemaPath = options.getProtoSchemaPath();
     String messageName = options.getFullMessageName();
     Descriptor descriptor = SchemaUtils.getProtoDomain(schemaPath).getDescriptor(messageName);
+
     if (descriptor == null) {
       throw new IllegalArgumentException(
           messageName + " is not a recognized message in " + schemaPath);
     }
 
+    return descriptor;
+  }
+
+  /** Returns the {@link PTransform} for reading Pub/Sub messages. */
+  private static Read<DynamicMessage> readPubsubMessages(
+      PubSubProtoToBigQueryOptions options, Descriptor descriptor) {
     DynamicProtoCoder coder = DynamicProtoCoder.of(descriptor);
 
     return PubsubIO.readMessagesWithCoderAndParseFn(coder, parseWithCoder(coder))
         .fromSubscription(options.getInputSubscription());
   }
 
+  /**
+   * Writes messages to BigQuery, creating the table if necessary and allowed in {@code options}.
+   *
+   * <p>The BigQuery schema will be inferred from {@code descriptor} unless a JSON schema path is
+   * specified in {@code options}.
+   */
   @VisibleForTesting
-  static Write<String> writeToBigQuery(PubSubProtoToBigQueryOptions options) {
-    // Proto -> Beam schema -> BigQuery can cause errors for certain proto definitions (e.g. any
-    // with a oneof field). For that reason, we need a provided JSON schema for the BigQuery table.
-    String jsonSchema = SchemaUtils.getGcsFileAsString(options.getBigQueryTableSchemaPath());
-    return BigQueryConverters.<String>createWriteTransform(options)
-        .withJsonSchema(jsonSchema)
-        .withFormatFunction(BigQueryConverters::convertJsonToTableRow)
-        .withMethod(Method.STREAMING_INSERTS);
+  static Write<String> writeToBigQuery(
+      PubSubProtoToBigQueryOptions options, Descriptor descriptor) {
+    Write<String> write =
+        BigQueryConverters.<String>createWriteTransform(options)
+            .withFormatFunction(BigQueryConverters::convertJsonToTableRow)
+            .withMethod(Method.STREAMING_INSERTS);
+
+    String schemaPath = options.getBigQueryTableSchemaPath();
+    if (Strings.isNullOrEmpty(schemaPath)) {
+      return write.withSchema(SchemaUtils.createBigQuerySchema(descriptor));
+    } else {
+      return write.withJsonSchema(SchemaUtils.getGcsFileAsString(schemaPath));
+    }
   }
 
   /** Creates a {@link SimpleFunction} from {@code coder}. */

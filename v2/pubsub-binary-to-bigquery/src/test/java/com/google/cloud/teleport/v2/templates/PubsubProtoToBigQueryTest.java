@@ -50,7 +50,7 @@ public final class PubsubProtoToBigQueryTest {
           .toString();
 
   @Test
-  public void testReadPubsubMessagesWithInvalidSchemaPath() {
+  public void testGetDescriptorWithInvalidSchemaPath() {
     PubSubProtoToBigQueryOptions options = getOptions();
     String path = "/some/invalid.path.pb";
     options.setProtoSchemaPath(path);
@@ -58,36 +58,33 @@ public final class PubsubProtoToBigQueryTest {
 
     IllegalArgumentException exception =
         assertThrows(
-            IllegalArgumentException.class,
-            () -> PubsubProtoToBigQuery.readPubsubMessages(options));
+            IllegalArgumentException.class, () -> PubsubProtoToBigQuery.getDescriptor(options));
 
     assertThat(exception).hasMessageThat().contains(path);
   }
 
   @Test
-  public void testReadPubsubMessagesWithInvalidProtoSchemaContents() {
+  public void testGetDescriptorWithInvalidProtoSchemaContents() {
     PubSubProtoToBigQueryOptions options = getOptions();
     options.setProtoSchemaPath(Resources.getResource("invalid_proto_schema.pb").toString());
     options.setFullMessageName("some.message.Name");
 
     IllegalArgumentException exception =
         assertThrows(
-            IllegalArgumentException.class,
-            () -> PubsubProtoToBigQuery.readPubsubMessages(options));
+            IllegalArgumentException.class, () -> PubsubProtoToBigQuery.getDescriptor(options));
 
     assertThat(exception).hasCauseThat().isInstanceOf(InvalidProtocolBufferException.class);
   }
 
   @Test
-  public void testReadPubsubMessagesWithInvalidMessageName() {
+  public void testGetDescriptorWithInvalidMessageName() {
     PubSubProtoToBigQueryOptions options = getOptions();
     options.setProtoSchemaPath(GENERATED_PROTO_SCHEMA_PATH);
     String badMessageName = "invalid.message.Name";
     options.setFullMessageName(badMessageName);
 
     RuntimeException exception =
-        assertThrows(
-            RuntimeException.class, () -> PubsubProtoToBigQuery.readPubsubMessages(options));
+        assertThrows(RuntimeException.class, () -> PubsubProtoToBigQuery.getDescriptor(options));
 
     assertThat(exception).hasMessageThat().contains(GENERATED_PROTO_SCHEMA_PATH);
     assertThat(exception).hasMessageThat().contains(badMessageName);
@@ -124,7 +121,9 @@ public final class PubsubProtoToBigQueryTest {
 
     IllegalArgumentException exception =
         assertThrows(
-            IllegalArgumentException.class, () -> PubsubProtoToBigQuery.writeToBigQuery(options));
+            // Can pass a null descriptor, since it shouldn't be used.
+            IllegalArgumentException.class,
+            () -> PubsubProtoToBigQuery.writeToBigQuery(options, null));
 
     assertThat(exception).hasMessageThat().contains(path);
   }
