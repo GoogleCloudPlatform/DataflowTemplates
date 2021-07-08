@@ -124,6 +124,7 @@ public class AvroSchemaToDdlConverterTest {
     AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
     Ddl ddl = converter.toDdl(Collections.singleton(schema));
     assertThat(ddl.allTables(), hasSize(1));
+    assertThat(ddl.views(), hasSize(0));
     assertThat(
         ddl.prettyPrint(),
         equalToCompressingWhiteSpace(
@@ -147,6 +148,31 @@ public class AvroSchemaToDdlConverterTest {
                 + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"
                 + " ALTER TABLE `Users` ADD CONSTRAINT `fk`"
                 + " FOREIGN KEY (`first_name`) REFERENCES `AllowedNames` (`first_name`)"));
+  }
+
+  @Test
+  public void invokerRightsView() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Names\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerViewSecurity\" : \"INVOKER\","
+            + "  \"spannerViewQuery\" : \"SELECT first_name, last_name FROM Users\""
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.views(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE VIEW `Names` SQL SECURITY INVOKER AS SELECT first_name, last_name FROM Users"));
   }
 
   @Test

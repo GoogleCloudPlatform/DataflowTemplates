@@ -21,6 +21,7 @@ import com.google.cloud.teleport.spanner.common.Type;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
@@ -77,6 +78,8 @@ public abstract class RandomDdlGenerator {
 
   public abstract boolean getEnableCheckConstraints();
 
+  public abstract int getMaxViews();
+
   public static Builder builder() {
 
     return new AutoValue_RandomDdlGenerator.Builder()
@@ -84,6 +87,7 @@ public abstract class RandomDdlGenerator {
         .setArrayChance(20)
         .setMaxPkComponents(3)
         .setMaxBranchPerLevel(new int[] {2, 2, 1, 1, 1, 1, 1})
+        .setMaxViews(2)
         .setMaxIndex(2)
         .setMaxForeignKeys(2)
         // TODO: enable once CHECK constraints are enabled
@@ -119,6 +123,8 @@ public abstract class RandomDdlGenerator {
     public abstract Builder setEnableGeneratedColumns(boolean enable);
 
     public abstract Builder setEnableCheckConstraints(boolean checkConstraints);
+
+    public abstract Builder setMaxViews(int maxViews);
   }
 
   public abstract Builder toBuilder();
@@ -131,8 +137,47 @@ public abstract class RandomDdlGenerator {
     for (int i = 0; i < numParentTables; i++) {
       generateTable(builder, null, 0);
     }
+    int numViews = 1 + getRandom().nextInt(getMaxViews());
+    for (int i = 0; i < numViews; i++) {
+      generateView(builder);
+    }
 
     return builder.build();
+  }
+
+  private void generateView(Ddl.Builder builder) {
+    String name = generateIdentifier(getMaxIdLength());
+    View.Builder viewBuilder = builder.createView(name);
+    if (getRandom().nextBoolean()) {
+      viewBuilder.security(View.SqlSecurity.INVOKER);
+    }
+
+    Table sourceTable = selectRandomTable(builder);
+    if (sourceTable == null) {
+      viewBuilder.query("select 1");
+    } else {
+      StringBuilder queryBuilder = new StringBuilder("select ");
+      boolean firstIncluded = true;
+      for (Column column : sourceTable.columns()) {
+        if (getRandom().nextBoolean()) {
+          if (!firstIncluded) {
+            queryBuilder.append(", ");
+          }
+          queryBuilder.append(column.name());
+
+          firstIncluded = false;
+        }
+      }
+      if (firstIncluded) {
+        queryBuilder.append("1");
+      }
+      queryBuilder.append(" from ");
+      queryBuilder.append(sourceTable.name());
+
+      viewBuilder.query(queryBuilder.toString());
+    }
+
+    viewBuilder.endView();
   }
 
   private void generateTable(Ddl.Builder builder, Table parent, int level) {
@@ -323,6 +368,19 @@ public abstract class RandomDdlGenerator {
     boolean isArray = getRandom().nextInt(100) <= arrayPercentage;
     Type.Code code = randomCode(codes);
     return isArray ? Type.array(typeOf(code)) : typeOf(code);
+  }
+
+  private Table selectRandomTable(Ddl.Builder builder) {
+    Collection<Table> tables = builder.tables();
+    int tablesToSkip = getRandom().nextInt(tables.size());
+    for (Table table : tables) {
+      if (tablesToSkip > 0) {
+        --tablesToSkip;
+      } else {
+        return table;
+      }
+    }
+    return null;
   }
 
   private Type typeOf(Type.Code code) {

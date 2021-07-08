@@ -404,6 +404,10 @@ public class TextImportTransformTest {
             .asc("int_col")
             .end()
             .endTable()
+            .createView("view1")
+            .query("SELECT int_col FROM table1")
+            .security(com.google.cloud.teleport.spanner.ddl.View.SqlSecurity.INVOKER)
+            .endView()
             .build();
     return ddl;
   }

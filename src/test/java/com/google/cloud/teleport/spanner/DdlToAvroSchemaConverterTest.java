@@ -19,12 +19,14 @@ package com.google.cloud.teleport.spanner;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.teleport.spanner.common.NumericUtils;
 import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
+import com.google.cloud.teleport.spanner.ddl.View;
 import com.google.common.collect.ImmutableList;
 import java.util.Collection;
 import java.util.List;
@@ -129,6 +131,52 @@ public class DdlToAvroSchemaConverterTest {
         equalTo("CONSTRAINT ck CHECK (`first_name` != `last_name`)"));
 
     System.out.println(avroSchema.toString(true));
+  }
+
+  @Test
+  public void invokerRightsView() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", false);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Users")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("first_name")
+            .string()
+            .size(10)
+            .endColumn()
+            .column("last_name")
+            .type(Type.string())
+            .max()
+            .endColumn()
+            .endTable()
+            .createView("Names")
+            .query("SELECT first_name, last_name FROM Users")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(2));
+    Schema avroView = null;
+    for (Schema s : result) {
+      if (s.getName().equals("Names")) {
+        avroView = s;
+      }
+    }
+    assertThat(avroView, notNullValue());
+
+    assertThat(avroView.getNamespace(), equalTo("spannertest"));
+    assertThat(avroView.getProp("googleFormatVersion"), equalTo("booleans"));
+    assertThat(avroView.getProp("googleStorage"), equalTo("CloudSpanner"));
+    assertThat(
+        avroView.getProp("spannerViewQuery"), equalTo("SELECT first_name, last_name FROM Users"));
+    assertThat(avroView.getProp("spannerViewSecurity"), equalTo("INVOKER"));
+
+    assertThat(avroView.getName(), equalTo("Names"));
   }
 
   @Test

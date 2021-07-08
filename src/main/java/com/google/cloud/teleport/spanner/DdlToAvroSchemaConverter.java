@@ -21,6 +21,7 @@ import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.cloud.teleport.spanner.ddl.View;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.stream.Collectors;
@@ -97,6 +98,18 @@ public class DdlToAvroSchemaConverter {
       }
       Schema schema = fieldsAssembler.endRecord();
       schemas.add(schema);
+    }
+
+    for (View view : ddl.views()) {
+      SchemaBuilder.RecordBuilder<Schema> recordBuilder =
+          SchemaBuilder.record(view.name()).namespace(this.namespace);
+      recordBuilder.prop("googleFormatVersion", version);
+      recordBuilder.prop("googleStorage", "CloudSpanner");
+      recordBuilder.prop("spannerViewQuery", view.query());
+      if (view.security() != null) {
+        recordBuilder.prop("spannerViewSecurity", view.security().toString());
+      }
+      schemas.add(recordBuilder.fields().endRecord());
     }
 
     return schemas;
