@@ -70,8 +70,10 @@ public class MergeInfoMapper
   public MergeInfoMapper(
       DataStreamClient dataStreamClient,
       String projectId,
-      String stagingDataset, String stagingTable,
-      String replicaDataset, String replicaTable) {
+      String stagingDataset,
+      String stagingTable,
+      String replicaDataset,
+      String replicaTable) {
     this.projectId = projectId;
     this.stagingDataset = stagingDataset;
     this.stagingTable = stagingTable;
@@ -156,13 +158,13 @@ public class MergeInfoMapper
                         allSortFields,
                         METADATA_DELETED,
                         String.format("%s.%s.%s", // Staging Table
-                                projectId,
+                            projectId,
                             BigQueryConverters
                                 .formatStringTemplate(stagingDataset, row),
                             BigQueryConverters
                                 .formatStringTemplate(stagingTable, row)).replaceAll("\\$", "_"),
                         String.format("%s.%s.%s", // Replica Table
-                                projectId,
+                            projectId,
                             BigQueryConverters
                                 .formatStringTemplate(replicaDataset, row),
                             BigQueryConverters

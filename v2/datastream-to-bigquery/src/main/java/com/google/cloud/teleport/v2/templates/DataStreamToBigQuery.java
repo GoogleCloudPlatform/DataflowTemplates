@@ -30,10 +30,10 @@ import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFOptions;
 import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFToTableRow;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
-import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
-
+import java.util.regex.Pattern;
+import com.google.common.base.Splitter;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -420,7 +420,7 @@ public class DataStreamToBigQuery {
   }
 
   private static Set<String> getFieldsToIgnore(String fields) {
-    return Arrays.stream(fields.trim().split("\\s*,\\s*")).collect(Collectors.toSet());
+    return new HashSet<>(Splitter.on(Pattern.compile("\\s*,\\s*")).splitToList(fields));
   }
 
   private static TableRow removeTableRowFields(TableRow tableRow, Set<String> ignoreFields) {

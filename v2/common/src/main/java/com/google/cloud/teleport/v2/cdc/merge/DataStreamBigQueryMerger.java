@@ -53,9 +53,13 @@ public class DataStreamBigQueryMerger extends PTransform<PCollection<KV<TableId,
   public DataStreamBigQueryMerger(
       GcpOptions options,
       String projectId,
-      String stagingDataset, String stagingTable,
-      String replicaDataset, String replicaTable,
-      Duration windowDuration, BigQuery bigQueryClient, MergeConfiguration mergeConfiguration) {
+      String stagingDataset,
+      String stagingTable,
+      String replicaDataset,
+      String replicaTable,
+      Duration windowDuration,
+      BigQuery bigQueryClient,
+      MergeConfiguration mergeConfiguration) {
     this.projectId = projectId;
     this.stagingDataset = stagingDataset;
     this.stagingTable = stagingTable;
