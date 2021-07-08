@@ -16,6 +16,7 @@
 
 package com.google.cloud.teleport.templates.common;
 
+import static com.google.cloud.teleport.templates.common.SpannerConverters.getTimestampBound;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -31,10 +32,12 @@ import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.spanner.Value;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.channels.ReadableByteChannel;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.UUID;
 import org.apache.beam.sdk.io.FileSystems;
@@ -75,7 +78,12 @@ public class SpannerConverterTest implements Serializable {
     ResultSet resultSet = mock(ResultSet.class, withSettings().serializable());
     Struct struct = mock(Struct.class, withSettings().serializable());
 
-    when(databaseClient.readOnlyTransaction()).thenReturn(readOnlyTransaction);
+    String instant = Instant.now().toString();
+    ValueProvider.StaticValueProvider<String> timestamp =
+        ValueProvider.StaticValueProvider.of(instant);
+    TimestampBound tsbound = getTimestampBound(instant);
+
+    when(databaseClient.readOnlyTransaction(tsbound)).thenReturn(readOnlyTransaction);
     when(readOnlyTransaction.executeQuery(any(Statement.class))).thenReturn(resultSet);
     when(resultSet.next()).thenReturn(true).thenReturn(false);
     when(resultSet.getCurrentRowAsStruct()).thenReturn(struct);
@@ -85,7 +93,8 @@ public class SpannerConverterTest implements Serializable {
     String schemaPath = "/tmp/" + UUID.randomUUID().toString();
     ValueProvider<String> textWritePrefix = ValueProvider.StaticValueProvider.of(schemaPath);
     SpannerConverters.ExportTransform exportTransform =
-        SpannerConverters.ExportTransformFactory.create(table, spannerConfig, textWritePrefix);
+        SpannerConverters.ExportTransformFactory.create(
+            table, spannerConfig, textWritePrefix, timestamp);
     exportTransform.setDatabaseClient(databaseClient);
 
     PCollection<ReadOperation> results = pipeline.apply("Create", exportTransform);

@@ -16,26 +16,22 @@
 
 package com.google.cloud.teleport.templates;
 
-import com.google.cloud.spanner.BatchReadOnlyTransaction;
-import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.TransformTextViaJavascript;
 import com.google.cloud.teleport.templates.common.SpannerConverters;
+import com.google.cloud.teleport.templates.common.SpannerConverters.CreateTransactionFnWithTimestamp;
 import com.google.cloud.teleport.templates.common.SpannerConverters.SpannerReadOptions;
 import com.google.cloud.teleport.templates.common.TextConverters.FilesystemWriteOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.TextIO;
-import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.Transaction;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Create;
-import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -82,72 +78,6 @@ public class SpannerToText {
           JavascriptTextTransformerOptions,
           FilesystemWriteOptions {}
 
-  /* A DoFn that creates a transaction for read that honors
-   * the timestamp valueprovider parameter.
-   * From org.apache.beam.sdk.io.gcp.spanner.CreateTransactionFn
-   */
-  static class CreateTransactionFnWithTimestamp extends DoFn<Object, Transaction> {
-    private final SpannerConfig config;
-    private final ValueProvider<String> spannerSnapshotTime;
-
-    CreateTransactionFnWithTimestamp(
-        SpannerConfig config, ValueProvider<String> spannerSnapshotTime) {
-      this.config = config;
-      this.spannerSnapshotTime = spannerSnapshotTime;
-    }
-
-    private transient ExposedSpannerAccessor spannerAccessor;
-
-    @DoFn.Setup
-    public void setup() throws Exception {
-      spannerAccessor = ExposedSpannerAccessor.create(config);
-    }
-
-    @Teardown
-    public void teardown() throws Exception {
-      spannerAccessor.close();
-    }
-
-    @ProcessElement
-    public void processElement(ProcessContext c) throws Exception {
-      String timestamp = this.spannerSnapshotTime.get();
-
-      TimestampBound tsbound;
-      if ("".equals(timestamp)) {
-        /* If no timestamp is specified, read latest data */
-        tsbound = TimestampBound.strong();
-      } else {
-        /* Else try to read data in the timestamp specified. */
-        com.google.cloud.Timestamp tsVal;
-        try {
-          tsVal = com.google.cloud.Timestamp.parseTimestamp(timestamp);
-        } catch (Exception e) {
-          throw new IllegalStateException("Invalid timestamp specified " + timestamp);
-        }
-
-        /*
-         * If timestamp specified is in the future, spanner read will wait
-         * till the time has passed. Abort the job and complain early.
-         */
-        if (tsVal.compareTo(com.google.cloud.Timestamp.now()) > 0) {
-          throw new IllegalStateException("Timestamp specified is in future " + timestamp);
-        }
-
-        /*
-         * Export jobs with Timestamps which are older than
-         * maximum staleness time (one hour) fail with the FAILED_PRECONDITION
-         * error - https://cloud.google.com/spanner/docs/timestamp-bounds
-         * Hence we do not handle the case.
-         */
-
-        tsbound = TimestampBound.ofReadTimestamp(tsVal);
-      }
-      BatchReadOnlyTransaction tx =
-          spannerAccessor.getBatchClient().batchReadOnlyTransaction(tsbound);
-      c.output(Transaction.create(tx.getBatchTransactionId()));
-    }
-  }
-
   /**
    * Runs a pipeline which reads in Records from Spanner, passes in the CSV records to a Javascript
    * UDF, and writes the CSV to TextIO sink.
@@ -172,7 +102,10 @@ public class SpannerToText {
 
     PTransform<PBegin, PCollection<ReadOperation>> spannerExport =
         SpannerConverters.ExportTransformFactory.create(
-            options.getSpannerTable(), spannerConfig, options.getTextWritePrefix());
+            options.getSpannerTable(),
+            spannerConfig,
+            options.getTextWritePrefix(),
+            options.getSpannerSnapshotTime());
 
     /* CreateTransaction and CreateTransactionFn classes in SpannerIO
      * only take a timestamp object for exact staleness which works when
