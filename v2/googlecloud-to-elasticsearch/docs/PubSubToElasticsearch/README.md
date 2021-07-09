@@ -25,14 +25,14 @@ export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export TEMPLATE_MODULE=pubsub-to-elasticsearch
-export APP_ROOT=/template/${TEMPLATE_MODULE}
+export APP_ROOT=/template/googlecloud-to-elasticsearch
 export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_MODULE}-command-spec.json
 export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
 
-export NODE_ADDRESSES=<comma-separated-list-nodes>
+export TARGET_NODE_ADDRESSES=<comma-separated-list-nodes>
 export SUBSCRIPTION=<my-subscription>
-export INDEX=<my-index>
-export DOCUMENT_TYPE=<my-type>
+export WRITE_INDEX=<my-index>
+export WRITE_DOCUMENT_TYPE=<my-type>
 export DEADLETTER_TABLE=<my-project:my-dataset.my-deadletter-table>
 ```
 
@@ -68,9 +68,9 @@ mvn test
 ### Executing Template
 
 The template requires the following parameters:
-* nodeAddresses: List of Elasticsearch nodes to connect to, ex: http://my-node1,http://my-node2
-* index: The index toward which the requests will be issued, ex: my-index
-* documentType: The document type toward which the requests will be issued, ex: my-document-type
+* targetNodeAddresses: List of Elasticsearch target nodes to connect to, ex: http://my-node1,http://my-node2
+* writeIndex: The write index toward which the requests will be issued, ex: my-index
+* writeDocumentType: The write document type toward which the requests will be issued, ex: my-document-type
 * inputSubscription: PubSub subscription to read from, ex: projects/my-project/subscriptions/my-subscription
 * deadletterTable: Deadletter table for failed inserts in form: project-id:dataset.table
 
@@ -97,5 +97,5 @@ export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud beta dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters inputSubscription=${SUBSCRIPTION},nodeAddresses=${NODE_ADDRESSES},index=${INDEX},documentType=${DOCUMENT_TYPE},deadletterTable=${DEADLETTER_TABLE}
+        --parameters inputSubscription=${SUBSCRIPTION},targetNodeAddresses=${TARGET_NODE_ADDRESSES},writeIndex=${WRITE_INDEX},writeDocumentType=${WRITE_DOCUMENT_TYPE},deadletterTable=${DEADLETTER_TABLE}
 ```

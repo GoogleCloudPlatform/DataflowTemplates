@@ -1,8 +1,8 @@
 # Google Cloud to Elasticsearch Dataflow templates
 
-The [GoogleCloudToElasticsearch](/googlecloud-to-elasticsearch) 
-is the top-level module for a batch of templates designed to transfer data 
-between GCP assets and Elasticsearch clusters.
+The [GoogleCloudToElasticsearch](/googlecloud-to-elasticsearch)
+is the top-level module containing a batch 
+of templates enabling data integration between Google Cloud products and Elasticsearch.
 
 ## Templates
 * [BigQueryToElasticsearch](docs/BigQueryToElasticsearch/README.md)

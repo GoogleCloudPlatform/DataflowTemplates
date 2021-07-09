@@ -44,85 +44,9 @@ import org.slf4j.LoggerFactory;
  * The {@link GCSToElasticsearch} pipeline exports data from one or more CSV files in Cloud Storage
  * to Elasticsearch.
  *
- * <p><b>Pipeline Requirements</b>
- *
- * <ul>
- *   <li>CSV data exists in Google Cloud Storage.
- *   <li>CSV data has same schema
- *   <li>Elasticsearch node(s) exists and is reachable by Dataflow workers.
- * </ul>
- *
- * <p><b>Example Usage</b>
- *
- * <pre>
- * # Set the pipeline vars
- * PROJECT=my-project
- * BUCKET_NAME=my-bucket
- *
- * # Set containerization vars
- * IMAGE_NAME=my-image-name
- * TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
- * BASE_CONTAINER_IMAGE=my-base-container-image
- * BASE_CONTAINER_IMAGE_VERSION=my-base-container-image-version
- * APP_ROOT=/path/to/app-root
- * COMMAND_SPEC=/path/to/command-spec
- *
- * # Set vars for execution
- * export NODE_ADDRESSES=comma-separated-list-nodes
- * export INPUT_FILE_SPEC=my-file-spec
- * export JSON_SCHEMA_PATH=gs://path/to/json/schema
- * export INDEX=my-index
- * export DOCUMENT_TYPE=my-type
- * export HEADERS=false
- * export DELIMITER=","
- * export LARGE_NUM_FILES=false
- * export DEADLETTER_TABLE=my-project:my-dataset.my-deadletter-table
- * export JS_PATH=gs://path/to/udf.js
- * export JS_FUNC_NAME=my-function-name
- *
- * # Build and upload image
- * mvn clean package \
- * -Dimage=${TARGET_GCR_IMAGE} \
- * -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
- * -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
- * -Dapp-root=${APP_ROOT} \
- * -Dcommand-spec=${COMMAND_SPEC}
- *
- * # Create an image spec in GCS that contains the path to the image
- * {
- *    "docker_template_spec": {
- *       "docker_image": $TARGET_GCR_IMAGE
- *     }
- *  }
- *
- * # Execute template:
- * API_ROOT_URL="https://dataflow.googleapis.com"
- * TEMPLATES_LAUNCH_API="${API_ROOT_URL}/v1b3/projects/${PROJECT}/templates:launch"
- * JOB_NAME="gcs-to-elasticsearch-`date +%Y%m%d-%H%M%S-%N`"
- *
- * time curl -X POST -H "Content-Type: application/json"     \
- *     -H "Authorization: Bearer $(gcloud auth print-access-token)" \
- *     "${TEMPLATES_LAUNCH_API}"`
- *     `"?validateOnly=false"`
- *     `"&dynamicTemplate.gcsPath=${BUCKET_NAME}/path/to/image-spec"`
- *     `"&dynamicTemplate.stagingLocation=${BUCKET_NAME}/staging" \
- *     -d '
- *      {
- *       "jobName":"'$JOB_NAME'",
- *       "parameters": {
- *           "inputFileSpec":"'$INPUT_FILE_SPEC'",
- *                    "nodeAddresses":"'$NODE_ADDRESSES'",
- *                    "index":"'$INDEX'",
- *                    "documentType":"'$DOCUMENT_TYPE'",
- *                    "containsHeaders":"'$HEADERS'",
- *                    "delimiter":"'$DELIMITER'",
- *                    "deadletterTable":"'$DEADLETTER_TABLE'",
- *                    "javascriptTextTransformGcsPath":"'$JS_PATH'",
- *                    "javascriptTextTransformFunctionName":"'$JS_FUNC_NAME'",
- *        }
- *       }
- *      '
- * </pre>
+ * Please refer to <b><a href=
+ * "https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/master/v2/googlecloud-to-elasticsearch/docs/GCSToElasticsearch/README.md">
+ * README.md</a></b> for further information.
  */
 public class GCSToElasticsearch {
 
