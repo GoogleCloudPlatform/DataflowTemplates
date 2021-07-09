@@ -28,7 +28,7 @@
 
     <properties>
         <avro.version>1.8.2</avro.version>
-        <bigquery-api.version>v2-rev20200719-1.30.10</bigquery-api.version>
+        <bigquery-api.version>v2-rev20210410-1.31.0</bigquery-api.version>
         <bigquery.version>1.128.0</bigquery.version>
         <commons.version>1.8</commons.version>
         <commons-text.version>1.9</commons-text.version>
@@ -37,7 +37,10 @@
         <guava.version>26.0-jre</guava.version>
         <hadoop.version>2.8.5</hadoop.version>
         <jackson.version>2.11.2</jackson.version>
+        <protobuf.version>3.15.8</protobuf.version>
+        <protoc.version>3.15.8</protoc.version>
         <truth.version>1.0.1</truth.version>
+        <truth-proto-extension.version>1.0.1</truth-proto-extension.version>
     </properties>
 
     <dependencies>
@@ -134,6 +137,11 @@
             <artifactId>guava</artifactId>
             <version>${guava.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>${protobuf.version}</version>
+        </dependency>
 
         <!-- Test dependencies -->
         <dependency>
@@ -142,5 +150,37 @@
             <version>${truth.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.google.truth.extensions</groupId>
+            <artifactId>truth-proto-extension</artifactId>
+            <version>${truth-proto-extension.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+              <groupId>org.xolstice.maven.plugins</groupId>
+              <artifactId>protobuf-maven-plugin</artifactId>
+              <version>0.6.1</version>
+              <configuration>
+                <protocArtifact>com.google.protobuf:protoc:${protoc.version}:exe:${os.detected.classifier}</protocArtifact>
+                <writeDescriptorSet>true</writeDescriptorSet>
+                <includeDependenciesInDescriptorSet>true</includeDependenciesInDescriptorSet>
+                <descriptorSetFileName>schema.pb</descriptorSetFileName>
+                <!-- This path must be unique, or else it may delete existing files. -->
+                <descriptorSetOutputDirectory>${basedir}/target/generated-test-sources/protobuf/schema</descriptorSetOutputDirectory>
+              </configuration>
+              <executions>
+                <execution>
+                  <goals>
+                    <goal>compile</goal>
+                    <goal>test-compile</goal>
+                  </goals>
+                </execution>
+              </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>

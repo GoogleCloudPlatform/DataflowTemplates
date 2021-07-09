@@ -238,6 +238,7 @@ class TextRowToMutation extends DoFn<KV<String, String>, Mutation> {
           }
           break;
         case NUMERIC:
+        case JSON:
           columnValue = isNullValue ? Value.string(null) : Value.string(cellValue.trim());
           break;
         case BYTES:

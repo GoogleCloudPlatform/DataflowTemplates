@@ -86,6 +86,7 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
           builder.set(column.name()).to(readFloat64(record, avroType, fieldName).orElse(null));
           break;
         case STRING:
+        case JSON:
           builder.set(column.name()).to(readString(record, avroType, fieldName).orElse(null));
           break;
         case BYTES:
@@ -132,6 +133,7 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
                     .toFloat64Array(readFloat64Array(record, arrayType, fieldName).orElse(null));
                 break;
               case STRING:
+              case JSON:
                 builder
                     .set(column.name())
                     .toStringArray(readStringArray(record, arrayType, fieldName).orElse(null));

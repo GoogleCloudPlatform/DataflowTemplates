@@ -70,8 +70,8 @@ public class KafkaToBigQueryTest {
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
-    KafkaToBigQuery.Options options =
-            PipelineOptionsFactory.create().as(KafkaToBigQuery.Options.class);
+    KafkaToBigQuery.KafkaToBQOptions options =
+        PipelineOptionsFactory.create().as(KafkaToBigQuery.KafkaToBQOptions.class);
 
     options.setJavascriptTextTransformGcsPath(TRANSFORM_FILE_PATH);
     options.setJavascriptTextTransformFunctionName("transform");

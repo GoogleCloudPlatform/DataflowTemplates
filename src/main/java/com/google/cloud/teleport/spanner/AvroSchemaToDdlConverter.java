@@ -23,6 +23,7 @@ import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.cloud.teleport.spanner.ddl.View;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import java.util.Collection;
@@ -39,7 +40,24 @@ public class AvroSchemaToDdlConverter {
   public Ddl toDdl(Collection<Schema> avroSchemas) {
     Ddl.Builder builder = Ddl.builder();
     for (Schema schema : avroSchemas) {
-      builder.addTable(toTable(null, schema));
+      if (schema.getProp("spannerViewQuery") == null) {
+        builder.addTable(toTable(null, schema));
+      } else {
+        builder.addView(toView(null, schema));
+      }
+    }
+    return builder.build();
+  }
+
+  public View toView(String viewName, Schema schema) {
+    if (viewName == null) {
+      viewName = schema.getName();
+    }
+    LOG.debug("Converting to Ddl viewName {}", viewName);
+
+    View.Builder builder = View.builder().name(viewName).query(schema.getProp("spannerViewQuery"));
+    if (schema.getProp("spannerViewSecurity") != null) {
+      builder.security(View.SqlSecurity.valueOf(schema.getProp("spannerViewSecurity")));
     }
     return builder.build();
   }
@@ -239,6 +257,8 @@ public class AvroSchemaToDdlConverter {
         return "DATE";
       case NUMERIC:
         return "NUMERIC";
+      case JSON:
+        return "JSON";
       case ARRAY:
         {
           if (supportArray) {

@@ -74,12 +74,23 @@ class BuildReadFromTableOperations
     if (col.typeString().equals("NUMERIC")) {
       return "CAST(" + "t.`" + col.name() + "`" + " AS STRING) AS " + col.name();
     }
+    if (col.typeString().equals("JSON")) {
+      return "TO_JSON_STRING(" + "t.`" + col.name() + "`" + ") AS " + col.name();
+    }
     if (col.typeString().equals("ARRAY<NUMERIC>")) {
       return "(SELECT ARRAY_AGG(CAST(num AS STRING)) FROM UNNEST("
           + "t.`"
           + col.name()
           + "`"
           + ") AS num) AS "
+          + col.name();
+    }
+    if (col.typeString().equals("ARRAY<JSON>")) {
+      return "(SELECT ARRAY_AGG(TO_JSON_STRING(element)) FROM UNNEST("
+          + "t.`"
+          + col.name()
+          + "`"
+          + ") AS element) AS "
           + col.name();
     }
     return "t.`" + col.name() + "`";

@@ -17,6 +17,10 @@ package com.google.cloud.teleport.v2.transforms;
 
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.IOException;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -36,6 +40,8 @@ public final class FormatDatastreamJsonToJson
     extends DoFn<String, FailsafeElement<String, String>> {
 
   static final Logger LOG = LoggerFactory.getLogger(FormatDatastreamJsonToJson.class);
+  static final DateTimeFormatter DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER =
+      DateTimeFormatter.ISO_OFFSET_DATE_TIME;
   private String rowIdColumnName;
   private Map<String, String> hashedColumns = new HashMap<String, String>();
   private boolean lowercaseSourceColumns = false;
@@ -43,7 +49,7 @@ public final class FormatDatastreamJsonToJson
 
   private FormatDatastreamJsonToJson() {}
 
-  public static FormatDatastreamJsonToJson create(){
+  public static FormatDatastreamJsonToJson create() {
     return new FormatDatastreamJsonToJson();
   }
 
@@ -101,12 +107,13 @@ public final class FormatDatastreamJsonToJson
 
       // check if payload is null/empty
       // re: b/183584054
-      if (record.get("payload") == null && getSourceMetadata(record,
-              "change_type").toLowerCase() != "delete") {
-        LOG.warn("Empty payload in datastream record. and change type is not delete. ignoring.");
-        return;
+      if (record.get("payload") == null) {
+        String changeType = getSourceMetadata(record, "change_type");
+        if (changeType == null || changeType.toLowerCase() != "delete") {
+          LOG.warn("Empty payload in datastream record. and change type is not delete. ignoring.");
+          return;
+        }
       }
-
     } catch (IOException e) {
       LOG.error("Issue parsing JSON record. Unable to continue.", e);
       throw new RuntimeException(e);
@@ -133,7 +140,7 @@ public final class FormatDatastreamJsonToJson
       // MySQL Specific Metadata
       outputObject.put("_metadata_schema", getSourceMetadata(record, "database"));
       outputObject.put("_metadata_log_file", getSourceMetadata(record, "log_file"));
-      outputObject.put("_metadata_log_position", getSourceMetadata(record, "log_position"));
+      outputObject.put("_metadata_log_position", getSourceMetadataAsLong(record, "log_position"));
     } else {
       // Oracle Specific Metadata
       outputObject.put("_metadata_schema", getSourceMetadata(record, "schema"));
@@ -148,7 +155,7 @@ public final class FormatDatastreamJsonToJson
     if (payload != null) {
       Iterator<String> dataKeys = payload.getFieldNames();
 
-      while (dataKeys.hasNext()){
+      while (dataKeys.hasNext()) {
         String key = dataKeys.next();
 
         if (this.lowercaseSourceColumns) {
@@ -184,16 +191,44 @@ public final class FormatDatastreamJsonToJson
     return sourceType;
   }
 
+  private long convertTimestampStringToSeconds(String timestamp) {
+    ZonedDateTime zonedDateTime;
+    try {
+      if (!timestamp.endsWith("Z")) {
+        timestamp = timestamp + "Z";
+      }
+      zonedDateTime = ZonedDateTime.parse(timestamp,
+          DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER).withZoneSameInstant(ZoneId.of("UTC"));
+    } catch (Exception e) {
+      LOG.error("Issue parsing Timestamp " + timestamp + " to milliseconds. " + e);
+      return 0;
+    }
+    Instant result = Instant.from(zonedDateTime);
+    long unixTimestampMilli = java.util.Date.from(result).getTime();
+    long unixTimestampSec = unixTimestampMilli / 1000;
+    return unixTimestampSec;
+  }
+
   private long getMetadataTimestamp(JsonNode record) {
-    long unixTimestampMilli = record.get("read_timestamp").getLongValue();
-    return unixTimestampMilli / 1000;
+    if (record.get("read_timestamp").isLong()) {
+      long unixTimestampMilli = record.get("read_timestamp").getLongValue();
+      long unixTimestampSec = unixTimestampMilli / 1000;
+
+      return unixTimestampSec;
+    }
+    String timestamp = record.get("read_timestamp").getTextValue();
+    return convertTimestampStringToSeconds(timestamp);
   }
 
   private long getSourceTimestamp(JsonNode record) {
-    long unixTimestampMilli = record.get("source_timestamp").getLongValue();
-    long unixTimestampSec = unixTimestampMilli / 1000;
+    if (record.get("source_timestamp").isLong()) {
+      long unixTimestampMilli = record.get("source_timestamp").getLongValue();
+      long unixTimestampSec = unixTimestampMilli / 1000;
 
-    return unixTimestampSec;
+      return unixTimestampSec;
+    }
+    String timestamp = record.get("source_timestamp").getTextValue();
+    return convertTimestampStringToSeconds(timestamp);
   }
 
   private String getSourceMetadata(JsonNode record, String fieldName) {

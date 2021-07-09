@@ -65,6 +65,19 @@ Build the entire project using the maven compile command.
 mvn clean compile
 ```
 
+### Building/Testing from IntelliJ
+
+IntelliJ, by default, will often skip necessary Maven goals, leading to
+build failures. You can fix these in the Maven view by going to
+**Module_Name > Plugins > Plugin_Name** where Module_Name and Plugin_Name are
+the names of the respective module and plugin with the rule. From there,
+right-click the rule and select "Execute Before Build".
+
+The list of known rules that require this are:
+
+* common > Plugins > protobuf > protobuf:compile
+* common > Plugins > protobuf > protobuf:test-compile
+
 ### Creating a Template File
 
 Dataflow templates can be [created](https://cloud.google.com/dataflow/docs/templates/creating-templates#creating-and-staging-templates)

@@ -18,6 +18,7 @@ package com.google.cloud.teleport.spanner.ddl;
 
 import com.google.cloud.spanner.ReadContext;
 import com.google.cloud.spanner.ResultSet;
+import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.teleport.spanner.ExportProtos.Export;
 import com.google.common.base.Strings;
@@ -49,6 +50,7 @@ public class InformationSchemaScanner {
     Map<String, NavigableMap<String, Index.Builder>> indexes = Maps.newHashMap();
     listIndexes(indexes);
     listIndexColumns(builder, indexes);
+    listViews(builder);
 
     for (Map.Entry<String, NavigableMap<String, Index.Builder>> tableEntry : indexes.entrySet()) {
       String tableName = tableEntry.getKey();
@@ -289,7 +291,11 @@ public class InformationSchemaScanner {
       ImmutableList.Builder<String> options =
           allOptions.computeIfAbsent(kv, k -> ImmutableList.builder());
       if (optionType.equalsIgnoreCase("STRING")) {
-        options.add(optionName + "=\"" + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue) + "\"");
+        options.add(
+            optionName
+                + "=\""
+                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
+                + "\"");
       } else {
         options.add(optionName + "=" + optionValue);
       }
@@ -382,5 +388,27 @@ public class InformationSchemaScanner {
           name, k -> CheckConstraint.builder().name(name).expression(expression).build());
     }
     return checkConstraints;
+  }
+
+  private void listViews(Ddl.Builder builder) {
+    try {
+      ResultSet resultSet =
+          context.executeQuery(
+              Statement.of(
+                  "SELECT v.table_name, v.view_definition"
+                      + " FROM information_schema.views AS v"
+                      + " WHERE v.table_catalog = '' AND v.table_schema = ''"));
+
+      while (resultSet.next()) {
+        String viewName = resultSet.getString(0);
+        String viewQuery = resultSet.getString(1);
+        LOG.debug("Schema View {}", viewName);
+        builder.createView(viewName).query(viewQuery).security(View.SqlSecurity.INVOKER).endView();
+      }
+    } catch (SpannerException ex) {
+      LOG.warn(
+          "views query failed; assuming information_schema.views does not exist and therefore no"
+              + " views in schema");
+    }
   }
 }

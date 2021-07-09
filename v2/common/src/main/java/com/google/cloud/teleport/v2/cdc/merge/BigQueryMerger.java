@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.cdc.merge;
 
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryOptions;
-import com.google.cloud.bigquery.Job;
 import com.google.cloud.bigquery.JobId;
 import com.google.cloud.bigquery.QueryJobConfiguration;
 import com.google.cloud.bigquery.TableResult;
@@ -205,19 +204,17 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
     @ProcessElement
     public void process(ProcessContext c) throws InterruptedException {
       String statement = c.element();
-      try { 
-        Job jobInfo = issueQueryToBQ(statement);
-        LOG.info("Job Info for triggered job: {}", jobInfo);
-        jobInfo = jobInfo.waitFor();
+      try {
+        TableResult queryResult = issueQueryToBQ(statement);
         mergesIssued.inc();
-        LOG.info("Job Info for finalized job: {}", jobInfo);
+        LOG.info("Merge job executed: {}", statement);
       } catch (Exception e) {
         LOG.error("Merge Job Failed: Exception: {} Statement: {}",
           e.toString(), statement);
       }
     }
 
-    private Job issueQueryToBQ(String statement) throws InterruptedException {
+    private TableResult issueQueryToBQ(String statement) throws InterruptedException {
       QueryJobConfiguration jobConfiguration = QueryJobConfiguration.newBuilder(statement).build();
 
       String jobId = makeJobId(JOB_ID_PREFIX, statement);
@@ -225,7 +222,7 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
       LOG.info("Triggering job {} for statement |{}|", jobId, statement);
 
       TableResult result = bigQueryClient.query(jobConfiguration, JobId.of(jobId));
-      return bigQueryClient.getJob(JobId.of(jobId));
+      return result;
     }
 
     String makeJobId(String jobIdPrefix, String statement) {

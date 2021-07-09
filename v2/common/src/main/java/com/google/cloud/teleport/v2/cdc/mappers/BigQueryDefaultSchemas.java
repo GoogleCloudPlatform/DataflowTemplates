@@ -26,7 +26,8 @@ import java.util.Map;
  */
 public final class BigQueryDefaultSchemas {
 
-  public static final Map<String, StandardSQLTypeName> WEB_SDK_SCHEMA = new HashMap<String, StandardSQLTypeName>() {{
+  public static final Map<String, StandardSQLTypeName> WEB_SDK_SCHEMA =
+      new HashMap<String, StandardSQLTypeName>() {{
     put("$os", StandardSQLTypeName.STRING);
     put("$browser", StandardSQLTypeName.STRING);
     put("$referrer", StandardSQLTypeName.STRING);
@@ -46,11 +47,17 @@ public final class BigQueryDefaultSchemas {
   public static final Map<String, StandardSQLTypeName> DATASTREAM_METADATA_SCHEMA =
       new HashMap<String, StandardSQLTypeName>() {
         {
-          put("_metadata_row_id", StandardSQLTypeName.STRING);
           put("_metadata_change_type", StandardSQLTypeName.STRING);
           put("_metadata_deleted", StandardSQLTypeName.BOOL);
           put("_metadata_timestamp", StandardSQLTypeName.TIMESTAMP);
           put("_metadata_read_timestamp", StandardSQLTypeName.TIMESTAMP);
+
+          // Oracle specific metadata
+          put("_metadata_row_id", StandardSQLTypeName.STRING);
+
+          // MySQL Specific Metadata
+          put("_metadata_log_file", StandardSQLTypeName.STRING);
+          put("_metadata_log_position", StandardSQLTypeName.INT64);
         }
       };
 }

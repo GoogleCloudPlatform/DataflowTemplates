@@ -165,6 +165,7 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
     if (this.fileType.equals(JSON_SUFFIX)) {
         datastreamJsonRecords = datastreamFiles
           .apply("ReadFiles", TextIO.readFiles())
+          .apply("Reshuffle", Reshuffle.viaRandomKey())
           .apply("ParseJsonRecords", ParDo.of(
               FormatDatastreamJsonToJson.create()
                   .withStreamName(this.streamName)

@@ -15,13 +15,13 @@
  */
 package com.google.cloud.teleport.spanner;
 
-import com.google.cloud.spanner.BatchReadOnlyTransaction;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.spanner.ExportProtos.Export;
 import com.google.cloud.teleport.spanner.ExportProtos.TableManifest;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.cloud.teleport.templates.common.SpannerConverters.CreateTransactionFnWithTimestamp;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.common.base.Supplier;
@@ -65,7 +65,6 @@ import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.WriteFilesResult;
 import org.apache.beam.sdk.io.fs.ResolveOptions;
 import org.apache.beam.sdk.io.fs.ResourceId;
-import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -128,9 +127,12 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
       SpannerConfig spannerConfig,
       ValueProvider<String> outputDir,
       ValueProvider<String> testJobId) {
-    this(spannerConfig, outputDir, testJobId,
+    this(
+        spannerConfig,
+        outputDir,
+        testJobId,
         /*snapshotTime=*/ ValueProvider.StaticValueProvider.of(""),
-        /*shouldExportTimestampAsLogicalType=*/ValueProvider.StaticValueProvider.of(false));
+        /*shouldExportTimestampAsLogicalType=*/ ValueProvider.StaticValueProvider.of(false));
   }
 
   public ExportTransform(
@@ -163,9 +165,12 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
      * ParDo class CreateTransactionFnWithTimestamp had to be created for this
      * purpose.
      */
-    PCollectionView<Transaction> tx = p.apply("CreateTransaction", Create.of(1))
-        .apply("Create transaction", ParDo.of(new CreateTransactionFnWithTimestamp(spannerConfig)))
-        .apply("As PCollectionView", View.asSingleton());
+    PCollectionView<Transaction> tx =
+        p.apply("CreateTransaction", Create.of(1))
+            .apply(
+                "Create transaction",
+                ParDo.of(new CreateTransactionFnWithTimestamp(spannerConfig, snapshotTime)))
+            .apply("As PCollectionView", View.asSingleton());
 
     PCollection<Ddl> ddl =
         p.apply("Read Information Schema", new ReadInformationSchema(spannerConfig, tx));
@@ -227,8 +232,10 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                       @ProcessElement
                       public void processElement(ProcessContext c) {
                         Collection<Schema> avroSchemas =
-                            new DdlToAvroSchemaConverter("spannerexport", "1.0.0",
-                                shouldExportTimestampAsLogicalType.get())
+                            new DdlToAvroSchemaConverter(
+                                    "spannerexport",
+                                    "1.0.0",
+                                    shouldExportTimestampAsLogicalType.get())
                                 .convert(c.element());
                         for (Schema schema : avroSchemas) {
                           c.output(KV.of(schema.getName(), new SerializableSchemaSupplier(schema)));
@@ -393,8 +400,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
             .withTempDirectory(outputDir));
 
     PCollection<List<Export.Table>> metadataTables =
-        tableManifests
-            .apply("Combine table metadata", Combine.globally(new CombineTableMetadata()));
+        tableManifests.apply(
+            "Combine table metadata", Combine.globally(new CombineTableMetadata()));
 
     PCollectionView<Ddl> ddlView = ddl.apply("Cloud Spanner DDL as view", View.asSingleton());
 
@@ -585,7 +592,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
     private final PCollectionView<Ddl> ddlView;
 
-    public CreateDatabaseManifest(PCollectionView<Ddl> ddlView){
+    public CreateDatabaseManifest(PCollectionView<Ddl> ddlView) {
       this.ddlView = ddlView;
     }
 
@@ -606,41 +613,6 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
   private static String tableManifestFileName(String tableName) {
     return tableName + "-manifest.json";
-  }
-
-  /*
-   * A DoFn that creates a transaction for read that honors
-   * the timestamp valueprovider parameter.
-   * From org.apache.beam.sdk.io.gcp.spanner.CreateTransactionFn
-   */
-  class CreateTransactionFnWithTimestamp extends DoFn<Object, Transaction> {
-    private final SpannerConfig config;
-
-    CreateTransactionFnWithTimestamp(SpannerConfig config) {
-      this.config = config;
-    }
-
-    private transient ExposedSpannerAccessor spannerAccessor;
-
-    @DoFn.Setup
-    public void setup() throws Exception {
-      spannerAccessor = ExposedSpannerAccessor.create(config);
-    }
-
-    @Teardown
-    public void teardown() throws Exception {
-      spannerAccessor.close();
-    }
-
-    @ProcessElement
-    public void processElement(ProcessContext c) throws Exception {
-      String timestamp = ExportTransform.this.snapshotTime.get();
-
-      TimestampBound tsb = createTimestampBound(timestamp);
-      BatchReadOnlyTransaction tx =
-        spannerAccessor.getBatchClient().batchReadOnlyTransaction(tsb);
-      c.output(Transaction.create(tx.getBatchTransactionId()));
-    }
   }
 
   @VisibleForTesting
