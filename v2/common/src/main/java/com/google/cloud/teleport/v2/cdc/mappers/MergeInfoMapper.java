@@ -57,6 +57,7 @@ public class MergeInfoMapper
 
   private static final Logger LOG = LoggerFactory.getLogger(MergeInfoMapper.class);
   private DataStreamClient dataStreamClient;
+  private String projectId;
   private String stagingDataset;
   private String stagingTable;
   private String replicaDataset;
@@ -68,8 +69,12 @@ public class MergeInfoMapper
 
   public MergeInfoMapper(
       DataStreamClient dataStreamClient,
-      String stagingDataset, String stagingTable,
-      String replicaDataset, String replicaTable) {
+      String projectId,
+      String stagingDataset,
+      String stagingTable,
+      String replicaDataset,
+      String replicaTable) {
+    this.projectId = projectId;
     this.stagingDataset = stagingDataset;
     this.stagingTable = stagingTable;
 
@@ -89,7 +94,7 @@ public class MergeInfoMapper
 
   private synchronized void setUpTableCache() {
     if (tableCache == null) {
-      BigQuery bigquery = BigQueryOptions.getDefaultInstance().getService();
+      BigQuery bigquery = BigQueryOptions.newBuilder().setProjectId(projectId).build().getService();
       tableCache = new BigQueryTableCache(bigquery);
     }
   }
@@ -152,12 +157,14 @@ public class MergeInfoMapper
                         allPkFields,
                         allSortFields,
                         METADATA_DELETED,
-                        String.format("%s.%s", // Staging Table
+                        String.format("%s.%s.%s", // Staging Table
+                            projectId,
                             BigQueryConverters
                                 .formatStringTemplate(stagingDataset, row),
                             BigQueryConverters
                                 .formatStringTemplate(stagingTable, row)).replaceAll("\\$", "_"),
-                        String.format("%s.%s", // Replica Table
+                        String.format("%s.%s.%s", // Replica Table
+                            projectId,
                             BigQueryConverters
                                 .formatStringTemplate(replicaDataset, row),
                             BigQueryConverters

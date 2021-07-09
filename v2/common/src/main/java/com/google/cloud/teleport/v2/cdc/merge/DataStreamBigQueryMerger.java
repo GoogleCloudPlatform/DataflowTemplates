@@ -41,6 +41,7 @@ public class DataStreamBigQueryMerger extends PTransform<PCollection<KV<TableId,
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamBigQueryMerger.class);
 
   private DataStreamClient dataStreamClient;
+  private String projectId;
   private String stagingDataset;
   private String stagingTable;
   private String replicaDataset;
@@ -51,9 +52,15 @@ public class DataStreamBigQueryMerger extends PTransform<PCollection<KV<TableId,
 
   public DataStreamBigQueryMerger(
       GcpOptions options,
-      String stagingDataset, String stagingTable,
-      String replicaDataset, String replicaTable,
-      Duration windowDuration, BigQuery bigQueryClient, MergeConfiguration mergeConfiguration) {
+      String projectId,
+      String stagingDataset,
+      String stagingTable,
+      String replicaDataset,
+      String replicaTable,
+      Duration windowDuration,
+      BigQuery bigQueryClient,
+      MergeConfiguration mergeConfiguration) {
+    this.projectId = projectId == null ? options.getProject() : projectId;
     this.stagingDataset = stagingDataset;
     this.stagingTable = stagingTable;
 
@@ -104,6 +111,7 @@ public class DataStreamBigQueryMerger extends PTransform<PCollection<KV<TableId,
             "Create MergeInfo Objects",
             new MergeInfoMapper(
                 this.dataStreamClient,
+                this.projectId,
                 this.stagingDataset,
                 this.stagingTable,
                 this.replicaDataset,
