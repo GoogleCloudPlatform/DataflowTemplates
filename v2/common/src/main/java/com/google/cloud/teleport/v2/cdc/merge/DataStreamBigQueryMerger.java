@@ -60,7 +60,7 @@ public class DataStreamBigQueryMerger extends PTransform<PCollection<KV<TableId,
       Duration windowDuration,
       BigQuery bigQueryClient,
       MergeConfiguration mergeConfiguration) {
-    this.projectId = projectId;
+    this.projectId = projectId == null ? options.getProject() : projectId;
     this.stagingDataset = stagingDataset;
     this.stagingTable = stagingTable;
 

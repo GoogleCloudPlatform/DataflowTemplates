@@ -44,7 +44,7 @@ public class DataStreamMapper extends BigQueryMapper<TableRow, KV<TableId, Table
                           String projectId,
                           String datasetNameTemplate,
                           String tableNameTemplate) {
-      super(projectId);
+      super(projectId == null ? options.getProject() : projectId);
 
       this.datasetNameTemplate = datasetNameTemplate;
       this.tableNameTemplate = tableNameTemplate;
