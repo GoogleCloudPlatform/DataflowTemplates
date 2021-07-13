@@ -33,6 +33,7 @@ public interface PubSubToElasticsearchOptions
             "The Cloud Pub/Sub subscription to consume from. "
                     + "The name should be in the format of "
                     + "projects/<project-id>/subscriptions/<subscription-name>.")
+    @Validation.Required
     String getInputSubscription();
 
     void setInputSubscription(String inputSubscription);
