@@ -145,8 +145,9 @@ public class BigQueryDynamicConverters {
     @Override
     public TableDestination getTable(KV<TableId, TableRow> destination) {
       TableId tableId = destination.getKey();
-      String tableName = String.format("%s:%s.%s", tableId.getProject(), tableId.getDataset(), tableId.getTable());
-      TableDestination dest = new TableDestination(tableName, "Name of table pulled from datafields");
+      String tableName = String.format("%s.%s", tableId.getDataset(), tableId.getTable());
+      TableDestination dest =
+          new TableDestination(tableName, "Name of table pulled from datafields");
 
       return dest;
     }
@@ -158,14 +159,14 @@ public class BigQueryDynamicConverters {
       TableSchema schema = new TableSchema();
       List<TableFieldSchema> fields = new ArrayList<TableFieldSchema>();
       List<TableCell> cells = bqRow.getF();
+      for (int i = 0; i < cells.size(); i++) {
+        Map<String, Object> object = cells.get(i);
+        String header = object.keySet().iterator().next();
         /** currently all BQ data types are set to String */
-        for (Map<String, Object> object : cells) {
-            String header = object.keySet().iterator().next();
-            /** currently all BQ data types are set to String */
-            // Why do we use checkHeaderName here and not elsewhere, TODO if we add this back in
-            // fields.add(new TableFieldSchema().setName(checkHeaderName(header)).setType("STRING"));
-            fields.add(new TableFieldSchema().setName(header).setType("STRING"));
-        }
+        // Why do we use checkHeaderName here and not elsewhere, TODO if we add this back in
+        // fields.add(new TableFieldSchema().setName(checkHeaderName(header)).setType("STRING"));
+        fields.add(new TableFieldSchema().setName(header).setType("STRING"));
+      }
 
       schema.setFields(fields);
       return schema;

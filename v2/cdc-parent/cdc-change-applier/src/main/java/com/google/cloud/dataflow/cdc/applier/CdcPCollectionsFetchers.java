@@ -40,15 +40,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Classes in this file are in charge of querying Data Catalog, and building
- * a collection of {@link org.apache.beam.sdk.values.PCollection}s with schema
- * information from each source table.
+ * Classes in this file are in charge of querying Data Catalog, and building a collection of {@link
+ * org.apache.beam.sdk.values.PCollection}s with schema information from each source table.
  */
 class CdcPCollectionsFetchers {
 
   private static final Logger LOG = LoggerFactory.getLogger(CdcPCollectionsFetchers.class);
 
-  public static abstract class CdcPCollectionFetcher {
+  public abstract static class CdcPCollectionFetcher {
     public abstract Map<String, PCollection<Row>> changelogPcollections(Pipeline p);
   }
 
@@ -72,37 +71,45 @@ class CdcPCollectionsFetchers {
     public Map<String, PCollection<Row>> changelogPcollections(Pipeline p) {
       Map<String, PCollection<Row>> result = new HashMap<>();
 
-      List<TopicSubscriptionSchema> readSourceSchemas = buildTopicSubscriptionSchemas(
-          options.as(GcpOptions.class).getProject(),
-          options.getInputTopics(),
-          options.getInputSubscriptions());
+      List<TopicSubscriptionSchema> readSourceSchemas =
+          buildTopicSubscriptionSchemas(
+              options.as(GcpOptions.class).getProject(),
+              options.getInputTopics(),
+              options.getInputSubscriptions());
 
-      for (TopicSubscriptionSchema rss: readSourceSchemas) {
+      for (TopicSubscriptionSchema rss : readSourceSchemas) {
         String transformTopicPrefix = rss.topic;
 
         PCollection<PubsubMessage> pubsubData;
         if (rss.subscription == null) {
-          pubsubData = p.apply(
-              String.format("%s/Read Updates from PubSub", transformTopicPrefix),
-              PubsubIO.readMessagesWithAttributes()
-                  .fromTopic(String.format(
-                      "projects/%s/topics/%s",
-                      options.as(GcpOptions.class).getProject(), rss.topic)));
+          pubsubData =
+              p.apply(
+                  String.format("%s/Read Updates from PubSub", transformTopicPrefix),
+                  PubsubIO.readMessagesWithAttributes()
+                      .fromTopic(
+                          String.format(
+                              "projects/%s/topics/%s",
+                              options.as(GcpOptions.class).getProject(), rss.topic)));
         } else {
-          pubsubData = p.apply(
-              String.format("%s/Read Updates from PubSub", transformTopicPrefix),
-              PubsubIO.readMessagesWithAttributes().fromSubscription(String.format(
-                  "projects/%s/subscriptions/%s",
-                  options.as(GcpOptions.class).getProject(), rss.subscription)));
+          pubsubData =
+              p.apply(
+                  String.format("%s/Read Updates from PubSub", transformTopicPrefix),
+                  PubsubIO.readMessagesWithAttributes()
+                      .fromSubscription(
+                          String.format(
+                              "projects/%s/subscriptions/%s",
+                              options.as(GcpOptions.class).getProject(), rss.subscription)));
         }
 
-        PCollection<Row> collectionOfRows = pubsubData
-            .apply(String.format("%s/Extract payload", transformTopicPrefix),
-                MapElements.into(TypeDescriptor.of(byte[].class))
-                    .via(PubsubMessage::getPayload))
-            .apply(
-                String.format("%s/Decode", transformTopicPrefix),
-                DecodeRows.withSchema(rss.schema));
+        PCollection<Row> collectionOfRows =
+            pubsubData
+                .apply(
+                    String.format("%s/Extract payload", transformTopicPrefix),
+                    MapElements.into(TypeDescriptor.of(byte[].class))
+                        .via(PubsubMessage::getPayload))
+                .apply(
+                    String.format("%s/Decode", transformTopicPrefix),
+                    DecodeRows.withSchema(rss.schema));
 
         result.put(transformTopicPrefix, collectionOfRows);
       }
@@ -144,9 +151,9 @@ class CdcPCollectionsFetchers {
       ProjectTopicName pubsubTopic = getPubSubTopic();
       String entryGroupName = DataCatalogSchemaUtils.entryGroupNameForTopic(pubsubTopic.getTopic());
 
-      Map<String, Schema> tableToSchema = DataCatalogSchemaUtils.getSchemasForEntryGroup(
-          options.as(GcpOptions.class).getProject(),
-          entryGroupName);
+      Map<String, Schema> tableToSchema =
+          DataCatalogSchemaUtils.getSchemasForEntryGroup(
+              options.as(GcpOptions.class).getProject(), entryGroupName);
 
       if (tableToSchema == null) {
         throw new RuntimeException(
@@ -157,24 +164,30 @@ class CdcPCollectionsFetchers {
 
       PCollection<PubsubMessage> pubsubData;
       if (options.getInputTopics() != null && !options.getInputTopics().isEmpty()) {
-        pubsubData = p
-            .apply(PubsubIO.readMessagesWithAttributes()
-                .fromTopic(String.format(
-                    "projects/%s/topics/%s",
-                    options.as(GcpOptions.class).getProject(), options.getInputTopics())));
+        pubsubData =
+            p.apply(
+                PubsubIO.readMessagesWithAttributes()
+                    .fromTopic(
+                        String.format(
+                            "projects/%s/topics/%s",
+                            options.as(GcpOptions.class).getProject(), options.getInputTopics())));
       } else {
-        Preconditions.checkArgument(options.getInputSubscriptions() != null,
+        Preconditions.checkArgument(
+            options.getInputSubscriptions() != null,
             "Must provide an inputSubscriptions or inputTopics parameter.");
-        pubsubData = p
-            .apply(PubsubIO.readMessagesWithAttributes()
-                .fromSubscription(String.format(
-                    "projects/%s/subscriptions/%s",
-                    options.as(GcpOptions.class).getProject(), options.getInputSubscriptions())));
+        pubsubData =
+            p.apply(
+                PubsubIO.readMessagesWithAttributes()
+                    .fromSubscription(
+                        String.format(
+                            "projects/%s/subscriptions/%s",
+                            options.as(GcpOptions.class).getProject(),
+                            options.getInputSubscriptions())));
       }
 
       for (Map.Entry<String, Schema> tableAndSchema : tableToSchema.entrySet()) {
-        PCollection<Row> tableData = filterAndDecode(
-            pubsubData, tableAndSchema.getKey(), tableAndSchema.getValue());
+        PCollection<Row> tableData =
+            filterAndDecode(pubsubData, tableAndSchema.getKey(), tableAndSchema.getValue());
         result.put(tableAndSchema.getKey(), tableData);
       }
 

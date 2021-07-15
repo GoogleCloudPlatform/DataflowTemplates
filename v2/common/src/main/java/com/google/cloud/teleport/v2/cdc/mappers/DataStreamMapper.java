@@ -44,7 +44,7 @@ public class DataStreamMapper extends BigQueryMapper<TableRow, KV<TableId, Table
                           String projectId,
                           String datasetNameTemplate,
                           String tableNameTemplate) {
-      super(projectId == null ? options.getProject() : projectId);
+      super(projectId);
 
       this.datasetNameTemplate = datasetNameTemplate;
       this.tableNameTemplate = tableNameTemplate;
@@ -72,7 +72,7 @@ public class DataStreamMapper extends BigQueryMapper<TableRow, KV<TableId, Table
         BigQueryConverters.formatStringTemplate(tableNameTemplate, input)
         .replaceAll("\\$", "_");
 
-    return TableId.of(getProjectId(), datasetName, tableName);
+    return TableId.of(datasetName, tableName);
   }
 
   @Override
