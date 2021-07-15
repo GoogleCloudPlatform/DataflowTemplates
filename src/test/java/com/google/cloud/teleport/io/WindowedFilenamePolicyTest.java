@@ -75,7 +75,7 @@ public class WindowedFilenamePolicyTest {
    * The name of the temp directory.
    */
   private static final String TEMP_DIRECTORY_NAME = "temp";
-
+  
   /**
    * Gets the temporary folder resource.
    */
@@ -104,11 +104,11 @@ public class WindowedFilenamePolicyTest {
     BoundedWindow window = mock(BoundedWindow.class);
     PaneInfo paneInfo = PaneInfo.createPane(false, true, Timing.ON_TIME, 0, 0);
     WindowedFilenamePolicy policy =
-        new WindowedFilenamePolicy(
-            StaticValueProvider.of(outputDirectory.toString()),
-            StaticValueProvider.of("output"),
-            StaticValueProvider.of("-SSS-of-NNN"),
-            StaticValueProvider.of(".txt"));
+        WindowedFilenamePolicy.writeWindowedFiles()
+            .withOutputDirectory(StaticValueProvider.of(outputDirectory.toString()))
+            .withOutputFilenamePrefix(StaticValueProvider.of("output"))
+            .withShardTemplate(StaticValueProvider.of("-SSS-of-NNN"))
+            .withSuffix(StaticValueProvider.of(".txt"));
 
     // Act
     //
@@ -134,8 +134,12 @@ public class WindowedFilenamePolicyTest {
     BoundedWindow window = mock(BoundedWindow.class);
     PaneInfo paneInfo = PaneInfo.createPane(false, true, Timing.ON_TIME, 0, 0);
     WindowedFilenamePolicy policy =
-        new WindowedFilenamePolicy(
-            outputDirectory.toString(), "string-output", "-SSS-of-NNN", ".csv");
+        WindowedFilenamePolicy.writeWindowedFiles()
+            .withOutputDirectory(outputDirectory.toString())
+            .withOutputFilenamePrefix("string-output")
+            .withShardTemplate("-SSS-of-NNN")
+            .withSuffix(".csv");
+    
     // Act
     //
     ResourceId filename =
@@ -160,11 +164,11 @@ public class WindowedFilenamePolicyTest {
     BoundedWindow window = mock(BoundedWindow.class);
     PaneInfo paneInfo = PaneInfo.createPane(false, true, Timing.ON_TIME, 0, 0);
     WindowedFilenamePolicy policy =
-        new WindowedFilenamePolicy(
-            StaticValueProvider.of(outputDirectory.toString()),
-            StaticValueProvider.of("output"),
-            StaticValueProvider.of("-SSS-of-NNN"),
-            StaticValueProvider.of(null));
+        WindowedFilenamePolicy.writeWindowedFiles()
+            .withOutputDirectory(StaticValueProvider.of(outputDirectory.toString()))
+            .withOutputFilenamePrefix(StaticValueProvider.of("output"))
+            .withShardTemplate(StaticValueProvider.of("-SSS-of-NNN"))
+            .withSuffix(StaticValueProvider.of(null));
 
     // Act
     //
@@ -194,13 +198,13 @@ public class WindowedFilenamePolicyTest {
     when(window.maxTimestamp()).thenReturn(windowEnd);
     when(window.start()).thenReturn(windowBegin);
     when(window.end()).thenReturn(windowEnd);
-
+  
     WindowedFilenamePolicy policy =
-        new WindowedFilenamePolicy(
-            StaticValueProvider.of(outputDirectory.toString()),
-            StaticValueProvider.of("output"),
-            StaticValueProvider.of("-SSS-of-NNN"),
-            StaticValueProvider.of(null));
+        WindowedFilenamePolicy.writeWindowedFiles()
+            .withOutputDirectory(StaticValueProvider.of(outputDirectory.toString()))
+            .withOutputFilenamePrefix(StaticValueProvider.of("output"))
+            .withShardTemplate(StaticValueProvider.of("-SSS-of-NNN"))
+            .withSuffix(StaticValueProvider.of(null));
 
     // Act
     //
@@ -214,10 +218,10 @@ public class WindowedFilenamePolicyTest {
         filename.getCurrentDirectory().toString().endsWith("2017/01/08/10:56/"), is(equalTo(true)));
     assertThat(filename.getFilename(), is(equalTo("output-001-of-001")));
   }
-
+  
   /**
-   * Tests that unwindowedFilename() fails with an
-   * {@link UnsupportedOperationException} when invoked.
+   * Tests that unwindowedFilename() fails with an {@link UnsupportedOperationException} when
+   * invoked.
    */
   @Test
   public void testUnwindowedFilenameFails() {
@@ -225,7 +229,156 @@ public class WindowedFilenamePolicyTest {
     //
     exception.expect(UnsupportedOperationException.class);
     WindowedFilenamePolicy policy =
-        new WindowedFilenamePolicy(null, "string-output", "-SSS-of-NNN", ".csv");
+        WindowedFilenamePolicy.writeWindowedFiles()
+            .withOutputDirectory(StaticValueProvider.of(null))
+            .withOutputFilenamePrefix(StaticValueProvider.of("string-output"))
+            .withShardTemplate(StaticValueProvider.of("-SSS-of-NNN"))
+            .withSuffix(StaticValueProvider.of(".csv"));
+
     policy.unwindowedFilename(1, 1, new TestOutputFileHints());
+  }
+
+  /**
+   * Tests that windowedFilename() produces the correct directory when using a custom DateTime
+   * ValueProvider.
+   */
+  @Test
+  public void testWindowedDirectoryCustomPattern() {
+
+    ResourceId outputDirectory =
+        getBaseTempDirectory().resolve("y/M/D/H:m", StandardResolveOptions.RESOLVE_DIRECTORY);
+    IntervalWindow window = mock(IntervalWindow.class);
+    PaneInfo paneInfo = PaneInfo.createPane(false, true, Timing.ON_TIME, 0, 0);
+
+    Instant windowBegin = new DateTime(2017, 1, 8, 10, 55, 0).toInstant();
+    Instant windowEnd = new DateTime(2017, 1, 8, 10, 56, 0).toInstant();
+    when(window.maxTimestamp()).thenReturn(windowEnd);
+    when(window.start()).thenReturn(windowBegin);
+    when(window.end()).thenReturn(windowEnd);
+
+    WindowedFilenamePolicy policy =
+        WindowedFilenamePolicy.writeWindowedFiles()
+            .withOutputDirectory(StaticValueProvider.of(outputDirectory.toString()))
+            .withOutputFilenamePrefix(StaticValueProvider.of("output"))
+            .withShardTemplate(StaticValueProvider.of("-SSS-of-NNN"))
+            .withSuffix(StaticValueProvider.of(null))
+            .withYearPattern(StaticValueProvider.of("y"))
+            .withMonthPattern(StaticValueProvider.of("M"))
+            .withDayPattern(StaticValueProvider.of("D"))
+            .withHourPattern(StaticValueProvider.of("H"))
+            .withMinutePattern(StaticValueProvider.of("m"));
+
+    ResourceId filename =
+        policy.windowedFilename(1, 1, window, paneInfo, new TestOutputFileHints());
+
+    assertThat(filename, is(notNullValue()));
+    assertThat(
+        filename.getCurrentDirectory().toString().endsWith("2017/1/8/10:56/"), is(equalTo(true)));
+    assertThat(filename.getFilename(), is(equalTo("output-001-of-001")));
+  }
+
+  /**
+   * Tests that windowedFilename() produces the correct directory when using a custom DateTime
+   * String.
+   */
+  @Test
+  public void testWindowedDirectoryCustomStringPattern() {
+
+    ResourceId outputDirectory =
+        getBaseTempDirectory().resolve("y/M/D/H:m", StandardResolveOptions.RESOLVE_DIRECTORY);
+    IntervalWindow window = mock(IntervalWindow.class);
+    PaneInfo paneInfo = PaneInfo.createPane(false, true, Timing.ON_TIME, 0, 0);
+
+    Instant windowBegin = new DateTime(2017, 1, 8, 10, 55, 0).toInstant();
+    Instant windowEnd = new DateTime(2017, 1, 8, 10, 56, 0).toInstant();
+    when(window.maxTimestamp()).thenReturn(windowEnd);
+    when(window.start()).thenReturn(windowBegin);
+    when(window.end()).thenReturn(windowEnd);
+
+    WindowedFilenamePolicy policy =
+        WindowedFilenamePolicy.writeWindowedFiles()
+            .withOutputDirectory(outputDirectory.toString())
+            .withOutputFilenamePrefix("output")
+            .withShardTemplate("-SSS-of-NNN")
+            .withSuffix("")
+            .withYearPattern("y")
+            .withMonthPattern("M")
+            .withDayPattern("D")
+            .withHourPattern("H")
+            .withMinutePattern("m");
+
+    ResourceId filename =
+        policy.windowedFilename(1, 1, window, paneInfo, new TestOutputFileHints());
+
+    assertThat(filename, is(notNullValue()));
+    assertThat(
+        filename.getCurrentDirectory().toString().endsWith("2017/1/8/10:56/"), is(equalTo(true)));
+    assertThat(filename.getFilename(), is(equalTo("output-001-of-001")));
+  }
+
+  /**
+   * Tests that windowedFilename() produces the correct directory when a single {@link DateTime}
+   * pattern override is passed.
+   */
+  @Test
+  public void testWindowedDirectorySinglePattern() {
+
+    ResourceId outputDirectory =
+        getBaseTempDirectory().resolve("recommendations/mmmm/", StandardResolveOptions.RESOLVE_DIRECTORY);
+    IntervalWindow window = mock(IntervalWindow.class);
+    PaneInfo paneInfo = PaneInfo.createPane(false, true, Timing.ON_TIME, 0, 0);
+    
+    Instant windowBegin = new DateTime(2017, 1, 8, 10, 55, 0).toInstant();
+    Instant windowEnd = new DateTime(2017, 1, 8, 10, 56, 0).toInstant();
+    when(window.maxTimestamp()).thenReturn(windowEnd);
+    when(window.start()).thenReturn(windowBegin);
+    when(window.end()).thenReturn(windowEnd);
+    
+    WindowedFilenamePolicy policy =
+        WindowedFilenamePolicy.writeWindowedFiles()
+            .withOutputDirectory(outputDirectory.toString())
+            .withOutputFilenamePrefix("output")
+            .withShardTemplate("-SSS-of-NNN")
+            .withSuffix("")
+            .withMinutePattern("mmmm");
+    
+    ResourceId filename =
+        policy.windowedFilename(1, 1, window, paneInfo, new TestOutputFileHints());
+    
+    assertThat(filename, is(notNullValue()));
+    assertThat(
+        filename.getCurrentDirectory().toString().endsWith("recommendations/0056/"), is(equalTo(true)));
+    assertThat(filename.getFilename(), is(equalTo("output-001-of-001")));
+  }
+
+  /**
+   * Tests that windowedFilename() throws a {@link RuntimeException} if an invalid DateTime pattern
+   * is provided.
+   */
+  @Test
+  public void testWindowedDirectoryInvalidPattern() {
+    exception.expect(RuntimeException.class);
+    final String invalidMinutePattern = "i";
+
+    ResourceId outputDirectory =
+        getBaseTempDirectory()
+            .resolve("test/path/i", StandardResolveOptions.RESOLVE_DIRECTORY);
+    IntervalWindow window = mock(IntervalWindow.class);
+    PaneInfo paneInfo = PaneInfo.createPane(false, true, Timing.ON_TIME, 0, 0);
+  
+    Instant windowBegin = new DateTime(2017, 1, 8, 10, 55, 0).toInstant();
+    Instant windowEnd = new DateTime(2017, 1, 8, 10, 56, 0).toInstant();
+    when(window.maxTimestamp()).thenReturn(windowEnd);
+    when(window.start()).thenReturn(windowBegin);
+    when(window.end()).thenReturn(windowEnd);
+
+    WindowedFilenamePolicy policy =
+        WindowedFilenamePolicy.writeWindowedFiles()
+            .withOutputDirectory(StaticValueProvider.of(outputDirectory.toString()))
+            .withOutputFilenamePrefix(StaticValueProvider.of("output"))
+            .withShardTemplate(StaticValueProvider.of("-SSS-of-NNN"))
+            .withSuffix(StaticValueProvider.of(null))
+            .withMinutePattern(StaticValueProvider.of(invalidMinutePattern));
+    policy.windowedFilename(1, 1, window, paneInfo, new TestOutputFileHints());
   }
 }

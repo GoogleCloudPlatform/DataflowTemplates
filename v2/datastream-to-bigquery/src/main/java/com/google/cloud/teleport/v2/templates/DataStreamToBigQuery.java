@@ -30,9 +30,10 @@ import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFOptions;
 import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFToTableRow;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
-import java.util.Arrays;
+import com.google.common.base.Splitter;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -69,7 +70,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p>NOTE: Future versiosn will support: Pub/Sub, GCS, or Kafka as per DataStream
  *
- * <p>Example Usage: TODO: FIX EXMAPLE USAGE
+ * <p>Example Usage: TODO: FIX EXAMPLE USAGE
  *
  * <pre>
  * mvn compile exec:java \
@@ -88,13 +89,13 @@ import org.slf4j.LoggerFactory;
  * --outputTableNameTemplate=${BQ_TABLE_NAME_TEMPLATE} \
  * --deadLetterQueueDirectory=${DLQ_GCS_PATH} \
  * --runner=(DirectRunner|DataflowRunner)"
- *
+ *inputFileFormat
  * OPTIONAL Dataflow Params:
  * --inputFileFormat=${GCS_FILE_FORMAT}\
  * --autoscalingAlgorithm=THROUGHPUT_BASED \
- * --numWorkers=2 \
+ * --numWorkers=1 \
  * --maxNumWorkers=10 \
- * --workerMachineType=n1-highcpu-4 \
+ * --workerMachineType=n1-highcpu-16 \
  * </pre>
  */
 public class DataStreamToBigQuery {
@@ -114,20 +115,13 @@ public class DataStreamToBigQuery {
   public static final TupleTag<FailsafeElement<String, String>> TRANSFORM_DEADLETTER_OUT =
       new TupleTag<FailsafeElement<String, String>>() {};
 
-  /** Ignored metadata fields when loading to BigQuery. */
-  public static final Set<String> MAPPER_IGNORE_FIELDS = new HashSet<String>(
-    Arrays.asList(
-      "_metadata_stream", "_metadata_schema", "_metadata_table", "_metadata_source",
-      "_metadata_ssn", "_metadata_rs_id", "_metadata_tx_id",
-      "_metadata_dlq_reconsumed", "_metadata_error", "_metadata_retry_count"));
-
   /**
    * Options supported by the pipeline.
    *
    * <p>Inherits standard configuration options.</p>
    */
   public interface Options extends PipelineOptions, StreamingOptions, InputUDFOptions {
-    @Description("The GCS location of the avro files you'd like to process")
+    @Description("The GCS location of the files you'd like to process")
     String getInputFilePattern();
     void setInputFilePattern(String value);
 
@@ -136,8 +130,7 @@ public class DataStreamToBigQuery {
     String getInputFileFormat();
     void setInputFileFormat(String value);
 
-    @Description(
-        "The Pub/Sub subscription with DataStream file notifications."
+    @Description("The Pub/Sub subscription with DataStream file notifications."
             + "The name should be in the format of "
             + "projects/<project-id>/subscriptions/<subscription-name>.")
     String getGcsPubSubSubscription();
@@ -147,8 +140,7 @@ public class DataStreamToBigQuery {
     String getStreamName();
     void setStreamName(String value);
 
-    @Description(
-      "The starting DateTime used to fetch from GCS (https://tools.ietf.org/html/rfc3339).")
+    @Description("The starting DateTime used to fetch from GCS (https://tools.ietf.org/html/rfc3339).")
     @Default.String("1970-01-01T00:00:00.00Z")
     String getRfcStartDateTime();
     void setRfcStartDateTime(String value);
@@ -158,12 +150,10 @@ public class DataStreamToBigQuery {
     Integer getFileReadConcurrency();
     void setFileReadConcurrency(Integer value);
 
-    // Project ID for BigQuery Data
     @Description("The BigQuery Project ID. Default is the project for the Dataflow job.")
     String getOutputProjectId();
     void setOutputProjectId(String projectId);
 
-    // Staging Table Template Details
     @Description("The Staging BigQuery Dataset Template")
     @Default.String("{_metadata_dataset}")
     String getOutputStagingDatasetTemplate();
@@ -174,7 +164,6 @@ public class DataStreamToBigQuery {
     String getOutputStagingTableNameTemplate();
     void setOutputStagingTableNameTemplate(String value);
 
-    // Final Table Template Details
     @Description("The Replica BigQuery Dataset Template")
     @Default.String("{_metadata_dataset}")
     String getOutputDatasetTemplate();
@@ -184,6 +173,12 @@ public class DataStreamToBigQuery {
     @Default.String("{_metadata_table}")
     String getOutputTableNameTemplate();
     void setOutputTableNameTemplate(String value);
+
+    @Description("Fields to ignore in BigQuery (comma separator). Example: _metadata_stream,_metadata_schema")
+    @Default.String("_metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_ssn," +
+            "_metadata_rs_id,_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_error,_metadata_retry_count")
+    String getIgnoreFields();
+    void setIgnoreFields(String value);
 
     @Description("The number of minutes between merges for a given table")
     @Default.Integer(5)
@@ -337,25 +332,26 @@ public class DataStreamToBigQuery {
      *   failsafe: writeResult.getFailedInsertsWithErr()
      */
     // TODO(beam 2.23): InsertRetryPolicy should be CDC compliant
+    Set<String> fieldsToIgnore = getFieldsToIgnore(options.getIgnoreFields());
+
     WriteResult writeResult =
-        shuffledTableRows
-            .apply(
-                "Map Data to Staging Tables",
-                new DataStreamMapper(
-                        options.as(GcpOptions.class),
-                        options.getOutputProjectId(),
-                        options.getOutputStagingDatasetTemplate(),
-                        options.getOutputStagingTableNameTemplate())
-                    .withDataStreamRootUrl(options.getDataStreamRootUrl())
-                    .withDefaultSchema(BigQueryDefaultSchemas.DATASTREAM_METADATA_SCHEMA)
-                    .withDayPartitioning(true)
-                    .withIgnoreFields(MAPPER_IGNORE_FIELDS))
-            .apply(
+            shuffledTableRows
+                    .apply(
+                            "Map Data to Staging Tables",
+                            new DataStreamMapper(
+                                    options.as(GcpOptions.class),
+                                    options.getOutputProjectId(),
+                                    options.getOutputStagingDatasetTemplate(),
+                                    options.getOutputStagingTableNameTemplate())
+                                    .withDataStreamRootUrl(options.getDataStreamRootUrl())
+                                    .withDefaultSchema(BigQueryDefaultSchemas.DATASTREAM_METADATA_SCHEMA)
+                                    .withDayPartitioning(true)
+                                    .withIgnoreFields(fieldsToIgnore))
+		            .apply(
                 "Write Successful Records",
                 BigQueryIO.<KV<TableId, TableRow>>write()
                     .to(new BigQueryDynamicConverters().bigQueryDynamicDestination())
-                    .withFormatFunction(element ->
-                      removeTableRowFields(element.getValue(), MAPPER_IGNORE_FIELDS))
+                    .withFormatFunction(element -> removeTableRowFields(element.getValue(), fieldsToIgnore))
                     .withFormatRecordOnFailureFunction(element -> element.getValue())
                     .withoutValidation()
                     .ignoreInsertIds()
@@ -365,29 +361,30 @@ public class DataStreamToBigQuery {
                     .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
                     .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
 
-    shuffledTableRows
-        .apply(
-            "Map Data To Replica Tables",
-            new DataStreamMapper(
-                    options.as(GcpOptions.class),
-                    options.getOutputProjectId(),
-                    options.getOutputDatasetTemplate(),
-                    options.getOutputTableNameTemplate())
-                .withDataStreamRootUrl(options.getDataStreamRootUrl())
-                .withDefaultSchema(BigQueryDefaultSchemas.DATASTREAM_METADATA_SCHEMA)
-                .withIgnoreFields(MAPPER_IGNORE_FIELDS))
-        .apply(
+	  shuffledTableRows
+			  .apply(
+					  "Map Data To Replica Tables",
+					  new DataStreamMapper(
+							  options.as(GcpOptions.class),
+							  options.getOutputProjectId(),
+							  options.getOutputDatasetTemplate(),
+							  options.getOutputTableNameTemplate())
+							  .withDataStreamRootUrl(options.getDataStreamRootUrl())
+							  .withDefaultSchema(BigQueryDefaultSchemas.DATASTREAM_METADATA_SCHEMA)
+							  .withIgnoreFields(fieldsToIgnore))
+			  .apply(
             "Merge New Records into Replica Tables",
             new DataStreamBigQueryMerger(
                 options.as(GcpOptions.class),
+                options.getOutputProjectId(),
                 options.getOutputStagingDatasetTemplate(),
                 options.getOutputStagingTableNameTemplate(),
                 options.getOutputDatasetTemplate(),
                 options.getOutputTableNameTemplate(),
                 Duration.standardMinutes(
-                    options.getMergeFrequencyMinutes().intValue()),
-                null,
-                MergeConfiguration.bigQueryConfiguration())
+                        options.getMergeFrequencyMinutes()),
+                    null,
+                    MergeConfiguration.bigQueryConfiguration())
             .withDataStreamRootUrl(options.getDataStreamRootUrl()));
 
     /*
@@ -420,6 +417,10 @@ public class DataStreamToBigQuery {
 
     // Execute the pipeline and return the result.
     return pipeline.run();
+  }
+
+  private static Set<String> getFieldsToIgnore(String fields) {
+    return new HashSet<>(Splitter.on(Pattern.compile("\\s*,\\s*")).splitToList(fields));
   }
 
   private static TableRow removeTableRowFields(TableRow tableRow, Set<String> ignoreFields) {

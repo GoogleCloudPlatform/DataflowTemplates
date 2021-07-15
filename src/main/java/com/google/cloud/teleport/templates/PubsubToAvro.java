@@ -19,6 +19,7 @@ package com.google.cloud.teleport.templates;
 
 import com.google.cloud.teleport.avro.AvroPubsubMessageRecord;
 import com.google.cloud.teleport.io.WindowedFilenamePolicy;
+import com.google.cloud.teleport.options.WindowedFilenamePolicyOptions;
 import com.google.cloud.teleport.util.DurationUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -128,7 +129,7 @@ public class PubsubToAvro {
    *
    * <p>Inherits standard configuration options.
    */
-  public interface Options extends PipelineOptions, StreamingOptions {
+  public interface Options extends PipelineOptions, StreamingOptions, WindowedFilenamePolicyOptions {
     @Description(
         "The Cloud Pub/Sub subscription to consume from. "
             + "The name should be in the format of "
@@ -168,38 +169,11 @@ public class PubsubToAvro {
 
     void setOutputFilenameSuffix(ValueProvider<String> value);
 
-    @Description(
-        "The shard template of the output file. Specified as repeating sequences "
-            + "of the letters 'S' or 'N' (example: SSS-NNN). These are replaced with the "
-            + "shard number, or number of shards respectively")
-    @Default.String("W-P-SS-of-NN")
-    ValueProvider<String> getOutputShardTemplate();
-
-    void setOutputShardTemplate(ValueProvider<String> value);
-
-    @Description("The maximum number of output shards produced when writing.")
-    @Default.Integer(1)
-    Integer getNumShards();
-
-    void setNumShards(Integer value);
-
-    @Description(
-        "The window duration in which data will be written. Defaults to 5m. "
-            + "Allowed formats are: "
-            + "Ns (for seconds, example: 5s), "
-            + "Nm (for minutes, example: 12m), "
-            + "Nh (for hours, example: 2h).")
-    @Default.String("5m")
-    String getWindowDuration();
-
-    void setWindowDuration(String value);
-
     @Description("The Avro Write Temporary Directory. Must end with /")
     @Required
     ValueProvider<String> getAvroTempDirectory();
 
     void setAvroTempDirectory(ValueProvider<String> value);
-
   }
 
   /**
@@ -253,19 +227,25 @@ public class PubsubToAvro {
             "Write File(s)",
             AvroIO.write(AvroPubsubMessageRecord.class)
                 .to(
-                    new WindowedFilenamePolicy(
-                        options.getOutputDirectory(),
-                        options.getOutputFilenamePrefix(),
-                        options.getOutputShardTemplate(),
-                        options.getOutputFilenameSuffix()))
-                .withTempDirectory(NestedValueProvider.of(
-                    options.getAvroTempDirectory(),
-                    (SerializableFunction<String, ResourceId>) input ->
-                        FileBasedSink.convertToFileResourceIfPossible(input)))
+                    WindowedFilenamePolicy.writeWindowedFiles()
+                        .withOutputDirectory(options.getOutputDirectory())
+                        .withOutputFilenamePrefix(options.getOutputFilenamePrefix())
+                        .withShardTemplate(options.getOutputShardTemplate())
+                        .withSuffix(options.getOutputFilenameSuffix())
+                        .withYearPattern(options.getYearPattern())
+                        .withMonthPattern(options.getMonthPattern())
+                        .withDayPattern(options.getDayPattern())
+                        .withHourPattern(options.getHourPattern())
+                        .withMinutePattern(options.getMinutePattern()))
+                .withTempDirectory(
+                    NestedValueProvider.of(
+                        options.getAvroTempDirectory(),
+                        (SerializableFunction<String, ResourceId>)
+                            input -> FileBasedSink.convertToFileResourceIfPossible(input)))
                 /*.withTempDirectory(FileSystems.matchNewResource(
-                    options.getAvroTempDirectory(),
-                    Boolean.TRUE))
-                    */
+                options.getAvroTempDirectory(),
+                Boolean.TRUE))
+                */
                 .withWindowedWrites()
                 .withNumShards(options.getNumShards()));
 

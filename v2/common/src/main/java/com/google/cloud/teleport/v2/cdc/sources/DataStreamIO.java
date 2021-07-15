@@ -160,12 +160,12 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
 
   public PCollection<FailsafeElement<String, String>>
       expandDataStreamJsonStrings(PCollection<ReadableFile> datastreamFiles) {
-    PCollection<FailsafeElement<String, String>> datastreamJsonRecords;
+    PCollection<FailsafeElement<String, String>> datastreamRecords;
 
     if (this.fileType.equals(JSON_SUFFIX)) {
-        datastreamJsonRecords = datastreamFiles
+        datastreamRecords = datastreamFiles
           .apply("ReadFiles", TextIO.readFiles())
-          .apply("Reshuffle", Reshuffle.viaRandomKey())
+          .apply("ReshuffleRecords", Reshuffle.viaRandomKey())
           .apply("ParseJsonRecords", ParDo.of(
               FormatDatastreamJsonToJson.create()
                   .withStreamName(this.streamName)
@@ -173,7 +173,7 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
                   .withLowercaseSourceColumns(this.lowercaseSourceColumns)))
           .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
       } else {
-        datastreamJsonRecords = datastreamFiles
+        datastreamRecords = datastreamFiles
           .apply("ParseAvroRecords",
               AvroIO.parseFilesGenericRecords(
                 FormatDatastreamRecordToJson.create()
@@ -182,7 +182,7 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
                     .withLowercaseSourceColumns(this.lowercaseSourceColumns))
                 .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())));
       }
-    return datastreamJsonRecords.apply("Reshuffle", Reshuffle.viaRandomKey());
+    return datastreamRecords.apply("Reshuffle", Reshuffle.viaRandomKey());
   }
 
   class DataStreamFileIO extends PTransform<PBegin, PCollection<ReadableFile>> {
@@ -196,7 +196,7 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
         datastreamFiles = expandPollingPipeline(input);
       } else {
         throw new IllegalArgumentException(
-            "DataStreamIO requires either a GCS stream  directory or Pub/Sub Subscription");
+            "DataStreamIO requires either a GCS stream directory or Pub/Sub Subscription");
       }
 
       return datastreamFiles
@@ -232,7 +232,7 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
           .apply("GetDirectoryGlobs",
                   MapElements.into(TypeDescriptors.strings()).via(path -> path + "**"))
               .apply(
-                  "MatchDatastreamAvroFiles",
+                  "MatchDatastreamFiles",
                   FileIO.matchAll()
                       .continuously(
                           Duration.standardSeconds(5),
