@@ -21,6 +21,7 @@ import com.google.bigtable.v2.Cell;
 import com.google.bigtable.v2.Column;
 import com.google.bigtable.v2.Family;
 import com.google.bigtable.v2.Row;
+import com.google.bigtable.v2.RowFilter;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,7 +45,7 @@ import org.apache.beam.sdk.values.PCollection;
 
 /**
  * Dataflow pipeline that exports data from a Cloud Bigtable table to Parquet files in GCS.
- * Currently, filtering on Cloud Bigtable table is not supported.
+ * Currently, filtering on Cloud Bigtable table is partly supported.
  */
 public class BigtableToParquet {
 
@@ -92,6 +93,14 @@ public class BigtableToParquet {
 
     @SuppressWarnings("unused")
     void setNumShards(ValueProvider<Integer> numShards);
+    
+    @Description(
+        "The maximum number of row versions to read, default is -1 for all. ")
+    @Default.Integer(-1)
+    ValueProvider<Integer> getNumVersions();
+
+    @SuppressWarnings("unused")
+    void setNumVersions(ValueProvider<Integer> NumVersions);
   }
 
   /**
@@ -117,11 +126,20 @@ public class BigtableToParquet {
    */
   public static PipelineResult run(Options options) {
     Pipeline pipeline = Pipeline.create(PipelineUtils.tweakPipelineOptions(options));
+    Integer numVers = -1;
+    if (options.getNumVersions().isAccessible()) {
+      numVers = options.getNumVersions().get();
+    }
     BigtableIO.Read read =
         BigtableIO.read()
             .withProjectId(options.getBigtableProjectId())
             .withInstanceId(options.getBigtableInstanceId())
             .withTableId(options.getBigtableTableId());
+      
+    if (numVers > 0) {
+      RowFilter verFilter = RowFilter.newBuilder().setCellsPerColumnLimitFilter(numVers).build();
+      read = read.withRowFilter(verFilter);
+    }
 
     // Do not validate input fields if it is running as a template.
     if (options.as(DataflowPipelineOptions.class).getTemplateLocation() != null) {
