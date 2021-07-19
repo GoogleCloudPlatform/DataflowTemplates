@@ -435,8 +435,9 @@ public class DataStreamClient implements Serializable {
       case "VARBINARY":
         return StandardSQLTypeName.BYTES;
       case "DATETIME":
-      case "DATE":
         return StandardSQLTypeName.TIMESTAMP;
+      case "DATE":
+        return StandardSQLTypeName.DATE;
       // (naveronen) - i'm setting this a STRING for now, but some customers might need a different
       // solution. once we encounter such cases, we might need to adjust this
       case "SET":

@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.transforms.FormatDatastreamJsonToJson;
 import com.google.cloud.teleport.v2.transforms.FormatDatastreamRecordToJson;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.base.Strings;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -190,7 +191,7 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
     @Override
     public PCollection<ReadableFile> expand(PBegin input) {
       PCollection<ReadableFile> datastreamFiles;
-      if (gcsNotificationSubscription != null) {
+      if (!Strings.isNullOrEmpty(gcsNotificationSubscription)) {
         datastreamFiles = expandGcsPubSubPipeline(input);
       } else if (inputFilePattern != null) {
         datastreamFiles = expandPollingPipeline(input);

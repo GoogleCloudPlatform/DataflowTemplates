@@ -57,6 +57,8 @@ public class BigQueryTableRowCleaner {
 
     if (fieldType == LegacySQLTypeName.STRING) {
       cleanTableRowFieldStrings(row, tableFields, rowKey);
+    } else if (fieldType == LegacySQLTypeName.DATE) {
+      cleanTableRowFieldDates(row, tableFields, rowKey);
     }
   }
 
@@ -74,14 +76,33 @@ public class BigQueryTableRowCleaner {
     if (rowObject instanceof Boolean) {
       Boolean rowValue = (Boolean) rowObject;
       row.put(rowKey, rowValue.toString());
-    }
-    else if (rowObject instanceof LinkedHashMap) {
+    } else if (rowObject instanceof LinkedHashMap) {
       String jsonString = gson.toJson((LinkedHashMap) rowObject, Map.class);
       row.put(rowKey, jsonString);
-    }
-    else if (rowObject instanceof ArrayList) {
+    } else if (rowObject instanceof ArrayList) {
       String jsonString = gson.toJson((ArrayList) rowObject);
       row.put(rowKey, jsonString);
+    }
+  }
+
+  /**
+   * Cleans the TableRow data for a given rowKey based on the requirements
+   * of a BigQuery String column type.
+   *
+   * @param row a TableRow object to clean.
+   * @param tableFields a FieldList of Bigquery columns.
+   * @param rowKey a String with the name of the field to clean.
+   */
+  public static void cleanTableRowFieldDates(TableRow row, FieldList tableFields, String rowKey) {
+    Object rowObject = row.get(rowKey);
+    if (rowObject instanceof String) {
+      String dateString = (String) rowObject;
+      // Split only the date portion if value is a timestamp
+      if (dateString.contains("T00:00:00Z")) {
+        row.put(rowKey, dateString.replace("T00:00:00Z", ""));
+      } else if (dateString.contains("T00:00:00.000")) {
+        row.put(rowKey, dateString.replace("T00:00:00.000", ""));
+      }
     }
   }
 }
