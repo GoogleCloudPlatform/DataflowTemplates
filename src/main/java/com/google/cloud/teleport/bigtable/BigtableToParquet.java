@@ -100,7 +100,7 @@ public class BigtableToParquet {
     ValueProvider<Integer> getNumVersions();
 
     @SuppressWarnings("unused")
-    void setNumVersions(ValueProvider<Integer> NumVersions);
+    void setNumVersions(ValueProvider<Integer> numVersions);
   }
 
   /**
