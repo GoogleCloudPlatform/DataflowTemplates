@@ -1,6 +1,6 @@
 # BigQuery to Elasticsearch Dataflow Template
 
-The [BigQueryToElasticsearch](src/main/java/com/google/cloud/teleport/v2/templates/BigQueryToElasticsearch.java) pipeline ingests 
+The [BigQueryToElasticsearch](src/main/java/com/google/cloud/teleport/v2/templates/BigQueryToElasticsearch.java) pipeline ingests
 data from a BigQuery table into Elasticsearch. The template can either read the entire table or read using a supplied query.
 
 ## Getting Started
@@ -12,8 +12,8 @@ data from a BigQuery table into Elasticsearch. The template can either read the 
 * Cloud Storage bucket exists
 
 ### Building Template
-This is a Flex Template meaning that the pipeline code will be containerized and the container will be 
-run on Dataflow. 
+This is a Flex Template meaning that the pipeline code will be containerized and the container will be
+run on Dataflow.
 
 #### Building Container Image
 * Set environment variables that will be used in the build process.

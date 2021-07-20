@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner;
 
 import com.google.cloud.Timestamp;
@@ -69,11 +68,12 @@ public class SpannerRecordConverter {
           break;
         case LONG:
           if (spannerType.equals("TIMESTAMP")) {
-            long microSeconds=0L;
+            long microSeconds = 0L;
             if (!nullValue) {
               Timestamp ts = row.getTimestamp(fieldName);
-              microSeconds = TimeUnit.SECONDS.toMicros(ts.getSeconds())
-                  + TimeUnit.NANOSECONDS.toMicros(ts.getNanos());
+              microSeconds =
+                  TimeUnit.SECONDS.toMicros(ts.getSeconds())
+                      + TimeUnit.NANOSECONDS.toMicros(ts.getNanos());
             }
             builder.set(field, nullValue ? null : microSeconds);
           } else {
@@ -127,14 +127,13 @@ public class SpannerRecordConverter {
               case LONG:
                 if (spannerType.equals("ARRAY<TIMESTAMP>")) {
                   List<Long> values =
-                      row.getTimestampList(fieldName)
-                          .stream()
-                          .map(timestamp -> timestamp == null
-                                   ? null
-                                   : (TimeUnit.SECONDS.toMicros(timestamp.getSeconds())
-                                       + TimeUnit.NANOSECONDS
-                                       .toMicros(timestamp.getNanos()))
-                              )
+                      row.getTimestampList(fieldName).stream()
+                          .map(
+                              timestamp ->
+                                  timestamp == null
+                                      ? null
+                                      : (TimeUnit.SECONDS.toMicros(timestamp.getSeconds())
+                                          + TimeUnit.NANOSECONDS.toMicros(timestamp.getNanos())))
                           .collect(Collectors.toList());
                   builder.set(field, nullValue ? null : values);
                 } else {
@@ -168,8 +167,7 @@ public class SpannerRecordConverter {
                   List<ByteBuffer> value = null;
                   if (!nullValue) {
                     value =
-                        row.getBytesList(fieldName)
-                            .stream()
+                        row.getBytesList(fieldName).stream()
                             .map(
                                 bytes ->
                                     bytes == null ? null : ByteBuffer.wrap(bytes.toByteArray()))
@@ -188,8 +186,7 @@ public class SpannerRecordConverter {
                       builder.set(field, null);
                     } else {
                       List<String> values =
-                          row.getTimestampList(fieldName)
-                              .stream()
+                          row.getTimestampList(fieldName).stream()
                               .map(timestamp -> timestamp == null ? null : timestamp.toString())
                               .collect(Collectors.toList());
                       builder.set(field, values);
@@ -199,8 +196,7 @@ public class SpannerRecordConverter {
                       builder.set(field, null);
                     } else {
                       List<String> values =
-                          row.getDateList(fieldName)
-                              .stream()
+                          row.getDateList(fieldName).stream()
                               .map(date -> date == null ? null : date.toString())
                               .collect(Collectors.toList());
                       builder.set(field, values);

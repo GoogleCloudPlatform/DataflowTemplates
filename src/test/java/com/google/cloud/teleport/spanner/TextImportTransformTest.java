@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner;
 
 import static org.hamcrest.Matchers.equalTo;
@@ -121,9 +120,7 @@ public class TextImportTransformTest {
             .apply("Read manifest file", new ReadImportManifest(importManifest))
             .apply("Resolve data files", new ResolveDataFiles(importManifest, ddlView));
 
-    PAssert.that(tableAndFiles)
-        .containsInAnyOrder(
-            KV.of("table1", f11.toString()));
+    PAssert.that(tableAndFiles).containsInAnyOrder(KV.of("table1", f11.toString()));
 
     pipeline.run();
   }
@@ -238,9 +235,11 @@ public class TextImportTransformTest {
     try {
       pipeline.run();
     } catch (PipelineExecutionException e) {
-      assertThat(e.getMessage(), equalTo(
-          "java.lang.RuntimeException: Table NON_EXIST_TABLE not found in the database. "
-          + "Table must be pre-created in database"));
+      assertThat(
+          e.getMessage(),
+          equalTo(
+              "java.lang.RuntimeException: Table NON_EXIST_TABLE not found in the database. "
+                  + "Table must be pre-created in database"));
     }
   }
 
@@ -306,10 +305,12 @@ public class TextImportTransformTest {
     try {
       pipeline.run();
     } catch (PipelineExecutionException e) {
-      assertThat(e.getMessage(), equalTo(
-          "java.lang.RuntimeException: DB table table3 has one or more generated columns. An "
-            + "explict column list that excludes the generated columns must be provided in the "
-            + "manifest."));
+      assertThat(
+          e.getMessage(),
+          equalTo(
+              "java.lang.RuntimeException: DB table table3 has one or more generated columns. An "
+                  + "explict column list that excludes the generated columns must be provided in the "
+                  + "manifest."));
     }
   }
 
@@ -344,9 +345,11 @@ public class TextImportTransformTest {
     try {
       pipeline.run();
     } catch (PipelineExecutionException e) {
-      assertThat(e.getMessage(), equalTo(
-          "java.lang.RuntimeException: Column gen_col in manifest is a generated column "
-          + "in DB table table3. Generated columns cannot be imported."));
+      assertThat(
+          e.getMessage(),
+          equalTo(
+              "java.lang.RuntimeException: Column gen_col in manifest is a generated column "
+                  + "in DB table table3. Generated columns cannot be imported."));
     }
   }
 

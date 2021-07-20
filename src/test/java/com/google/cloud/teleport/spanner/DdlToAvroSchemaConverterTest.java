@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner;
 
 import static org.hamcrest.Matchers.empty;
@@ -34,39 +33,54 @@ import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.junit.Test;
 
-/**
- * Test for {@link DdlToAvroSchemaConverter}.
- */
+/** Test for {@link DdlToAvroSchemaConverter}. */
 public class DdlToAvroSchemaConverterTest {
 
   @Test
   public void emptyDb() {
-    DdlToAvroSchemaConverter converter = new DdlToAvroSchemaConverter("spannertest",
-        "booleans", false);
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", false);
     Ddl empty = Ddl.builder().build();
     assertThat(converter.convert(empty), empty());
   }
 
   @Test
   public void simple() {
-    DdlToAvroSchemaConverter converter = new DdlToAvroSchemaConverter("spannertest",
-        "booleans", false);
-    Ddl ddl = Ddl.builder()
-        .createTable("Users")
-        .column("id").int64().notNull().endColumn()
-        .column("first_name").string().size(10).endColumn()
-        .column("last_name").type(Type.string()).max().endColumn()
-        .column("full_name").type(Type.string()).max()
-        .generatedAs("CONCAT(first_name, ' ', last_name)").stored().endColumn()
-        .primaryKey().asc("id").desc("last_name").end()
-        .indexes(ImmutableList.of("CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"))
-        .foreignKeys(
-            ImmutableList.of(
-                "ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
-                    + " REFERENCES `AllowedNames` (`first_name`)"))
-        .checkConstraints(ImmutableList.of("CONSTRAINT ck CHECK (`first_name` != `last_name`)"))
-        .endTable()
-        .build();
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", false);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Users")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("first_name")
+            .string()
+            .size(10)
+            .endColumn()
+            .column("last_name")
+            .type(Type.string())
+            .max()
+            .endColumn()
+            .column("full_name")
+            .type(Type.string())
+            .max()
+            .generatedAs("CONCAT(first_name, ' ', last_name)")
+            .stored()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .desc("last_name")
+            .end()
+            .indexes(ImmutableList.of("CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"))
+            .foreignKeys(
+                ImmutableList.of(
+                    "ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
+                        + " REFERENCES `AllowedNames` (`first_name`)"))
+            .checkConstraints(ImmutableList.of("CONSTRAINT ck CHECK (`first_name` != `last_name`)"))
+            .endTable()
+            .build();
 
     Collection<Schema> result = converter.convert(ddl);
     assertThat(result, hasSize(1));
@@ -108,7 +122,8 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(3).schema(), equalTo(Schema.create(Schema.Type.NULL)));
     assertThat(fields.get(3).getProp("sqlType"), equalTo("STRING(MAX)"));
     assertThat(fields.get(3).getProp("notNull"), equalTo("false"));
-    assertThat(fields.get(3).getProp("generationExpression"),
+    assertThat(
+        fields.get(3).getProp("generationExpression"),
         equalTo("CONCAT(first_name, ' ', last_name)"));
     assertThat(fields.get(3).getProp("stored"), equalTo("true"));
 
@@ -181,8 +196,8 @@ public class DdlToAvroSchemaConverterTest {
 
   @Test
   public void allTypes() {
-    DdlToAvroSchemaConverter converter = new DdlToAvroSchemaConverter("spannertest",
-        "booleans", false);
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", false);
     Ddl ddl =
         Ddl.builder()
             .createTable("AllTYPES")
@@ -345,15 +360,23 @@ public class DdlToAvroSchemaConverterTest {
 
   @Test
   public void timestampLogicalTypeTest() {
-    DdlToAvroSchemaConverter converter = new DdlToAvroSchemaConverter("spannertest", "booleans",
-        true);
-    Ddl ddl = Ddl.builder()
-        .createTable("Users")
-        .column("id").int64().notNull().endColumn()
-        .column("timestamp_field").timestamp().endColumn()
-        .primaryKey().asc("id").end()
-        .endTable()
-        .build();
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", true);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Users")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("timestamp_field")
+            .timestamp()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
 
     Collection<Schema> result = converter.convert(ddl);
     assertThat(result, hasSize(1));
@@ -400,8 +423,9 @@ public class DdlToAvroSchemaConverterTest {
   }
 
   private Schema nullableArray(Schema.Type s) {
-    return Schema.createUnion(Schema.create(Schema.Type.NULL), Schema.createArray(
-        Schema.createUnion(Schema.create(Schema.Type.NULL), Schema.create(s))));
+    return Schema.createUnion(
+        Schema.create(Schema.Type.NULL),
+        Schema.createArray(Schema.createUnion(Schema.create(Schema.Type.NULL), Schema.create(s))));
   }
 
   private Schema nullableNumericArray() {

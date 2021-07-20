@@ -14,8 +14,5 @@
  * the License.
  */
 
-
-/**
- * Exposed Beam API classes.
- */
+/** Exposed Beam API classes. */
 package org.apache.beam.sdk.io.gcp.spanner;

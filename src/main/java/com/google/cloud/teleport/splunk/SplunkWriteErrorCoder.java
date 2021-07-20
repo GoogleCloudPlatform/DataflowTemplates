@@ -1,19 +1,18 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
-
 package com.google.cloud.teleport.splunk;
 
 import java.io.IOException;
@@ -26,17 +25,13 @@ import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.values.TypeDescriptor;
 
-/**
- * A {@link org.apache.beam.sdk.coders.Coder} for {@link SplunkWriteError} objects.
- */
+/** A {@link org.apache.beam.sdk.coders.Coder} for {@link SplunkWriteError} objects. */
 public class SplunkWriteErrorCoder extends AtomicCoder<SplunkWriteError> {
 
-  private static final SplunkWriteErrorCoder SPLUNK_WRITE_ERROR_CODER
-      = new SplunkWriteErrorCoder();
+  private static final SplunkWriteErrorCoder SPLUNK_WRITE_ERROR_CODER = new SplunkWriteErrorCoder();
 
   private static final TypeDescriptor<SplunkWriteError> TYPE_DESCRIPTOR =
-      new TypeDescriptor<SplunkWriteError>() {
-      };
+      new TypeDescriptor<SplunkWriteError>() {};
   private static final StringUtf8Coder STRING_UTF_8_CODER = StringUtf8Coder.of();
   private static final NullableCoder<String> STRING_NULLABLE_CODER =
       NullableCoder.of(STRING_UTF_8_CODER);

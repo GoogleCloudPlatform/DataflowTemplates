@@ -14,7 +14,5 @@
  * the License.
  */
 
-/**
- * Utilities to read data from CDC streams.
- */
+/** Utilities to read data from CDC streams. */
 package com.google.cloud.teleport.v2.cdc.sources;

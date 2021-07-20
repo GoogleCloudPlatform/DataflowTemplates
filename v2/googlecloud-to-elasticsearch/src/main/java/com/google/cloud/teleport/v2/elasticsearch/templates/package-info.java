@@ -14,7 +14,5 @@
  * the License.
  */
 
-/**
- * Package info for elasticsearch templates.
- */
+/** Package info for elasticsearch templates. */
 package com.google.cloud.teleport.v2.elasticsearch.templates;

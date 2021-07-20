@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner.ddl;
 
 import com.google.cloud.spanner.ReadContext;
@@ -93,9 +92,9 @@ public class InformationSchemaScanner {
     ResultSet resultSet =
         context.executeQuery(
             Statement.newBuilder(
-                "SELECT t.option_name, t.option_type, t.option_value "
-                + " FROM information_schema.database_options AS t "
-                + " WHERE t.catalog_name = '' AND t.schema_name = ''")
+                    "SELECT t.option_name, t.option_type, t.option_value "
+                        + " FROM information_schema.database_options AS t "
+                        + " WHERE t.catalog_name = '' AND t.schema_name = ''")
                 .build());
 
     ImmutableList.Builder<Export.DatabaseOption> options = ImmutableList.builder();
@@ -110,7 +109,8 @@ public class InformationSchemaScanner {
           Export.DatabaseOption.newBuilder()
               .setOptionName(optionName)
               .setOptionType(optionType)
-              .setOptionValue(optionValue).build());
+              .setOptionValue(optionValue)
+              .build());
     }
     builder.mergeDatabaseOptions(options.build());
   }
@@ -192,9 +192,8 @@ public class InformationSchemaScanner {
       boolean nullable = resultSet.getString(4).equalsIgnoreCase("YES");
       boolean isGenerated = resultSet.getString(5).equalsIgnoreCase("ALWAYS");
       String generationExpression = resultSet.isNull(6) ? "" : resultSet.getString(6);
-      boolean isStored = resultSet.isNull(7)
-          ?
-          false : resultSet.getString(7).equalsIgnoreCase("YES");
+      boolean isStored =
+          resultSet.isNull(7) ? false : resultSet.getString(7).equalsIgnoreCase("YES");
       builder
           .createTable(tableName)
           .column(columnName)
@@ -291,10 +290,10 @@ public class InformationSchemaScanner {
     ResultSet resultSet =
         context.executeQuery(
             Statement.newBuilder(
-                "SELECT t.table_name, t.column_name, t.option_name, t.option_type, t.option_value "
-                + " FROM information_schema.column_options AS t "
-                + " WHERE t.table_catalog = '' AND t.table_schema = ''"
-                + " ORDER BY t.table_name, t.column_name")
+                    "SELECT t.table_name, t.column_name, t.option_name, t.option_type, t.option_value "
+                        + " FROM information_schema.column_options AS t "
+                        + " WHERE t.table_catalog = '' AND t.table_schema = ''"
+                        + " ORDER BY t.table_name, t.column_name")
                 .build());
 
     Map<KV<String, String>, ImmutableList.Builder<String>> allOptions = Maps.newHashMap();

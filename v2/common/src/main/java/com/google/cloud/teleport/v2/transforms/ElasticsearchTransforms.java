@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -210,22 +210,18 @@ public class ElasticsearchTransforms {
     @AutoValue.Builder
     public abstract static class Builder {
       public abstract Builder setOptions(WriteToElasticsearchOptions options);
-      
+
       abstract WriteToElasticsearchOptions options();
 
       abstract WriteToElasticsearch autoBuild();
 
       public WriteToElasticsearch build() {
 
-        checkArgument(
-            options().getNodeAddresses() != null,
-                "Node address(es) must not be null.");
+        checkArgument(options().getNodeAddresses() != null, "Node address(es) must not be null.");
 
-        checkArgument(options().getDocumentType() != null,
-                "Document type must not be null.");
+        checkArgument(options().getDocumentType() != null, "Document type must not be null.");
 
-        checkArgument(options().getIndex() != null,
-                "Index must not be null.");
+        checkArgument(options().getIndex() != null, "Index must not be null.");
 
         checkArgument(
             options().getBatchSize() > 0,
@@ -236,11 +232,9 @@ public class ElasticsearchTransforms {
             "Batch size bytes must be > 0. Got: " + options().getBatchSizeBytes());
 
         /* Check that both {@link RetryConfiguration} parameters are supplied. */
-        if (options().getMaxRetryAttempts() != null
-            || options().getMaxRetryDuration() != null) {
+        if (options().getMaxRetryAttempts() != null || options().getMaxRetryDuration() != null) {
           checkArgument(
-              options().getMaxRetryDuration() != null
-                  && options().getMaxRetryAttempts() != null,
+              options().getMaxRetryDuration() != null && options().getMaxRetryAttempts() != null,
               "Both max retry duration and max attempts must be supplied.");
         }
 

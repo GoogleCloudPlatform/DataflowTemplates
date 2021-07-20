@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner.ddl;
 
 import static org.hamcrest.Matchers.equalTo;
@@ -303,7 +302,7 @@ public class InformationSchemaScannerTest {
   // TODO: enable this test once generated columns are supported.
   // @Test
   public void generatedColumns() throws Exception {
-        String statement =
+    String statement =
         "CREATE TABLE `T` ("
             + " `id`                                     INT64 NOT NULL,"
             + " `generated`                              INT64 NOT NULL AS (`id`) STORED, "

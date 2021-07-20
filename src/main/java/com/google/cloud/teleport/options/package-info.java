@@ -14,7 +14,5 @@
  * the License.
  */
 
-/**
- * Pipeline Options for templates.
- */
+/** Pipeline Options for templates. */
 package com.google.cloud.teleport.options;

@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.io;
 
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
@@ -47,64 +46,64 @@ import org.slf4j.LoggerFactory;
 public abstract class WindowedFilenamePolicy extends FilenamePolicy {
   /** The logger to output status messages to. */
   private static final Logger LOG = LoggerFactory.getLogger(WindowedFilenamePolicy.class);
-  
+
   public static WindowedFilenamePolicy writeWindowedFiles() {
     return new AutoValue_WindowedFilenamePolicy.Builder().build();
   }
-  
+
   @Nullable
   abstract ValueProvider<String> outputDirectory();
-  
+
   @Nullable
   abstract ValueProvider<String> outputFilenamePrefix();
-  
+
   @Nullable
   abstract ValueProvider<String> shardTemplate();
-  
+
   @Nullable
   abstract ValueProvider<String> suffix();
-  
+
   @Nullable
   abstract ValueProvider<String> yearPattern();
-  
+
   @Nullable
   abstract ValueProvider<String> monthPattern();
-  
+
   @Nullable
   abstract ValueProvider<String> dayPattern();
-  
+
   @Nullable
   abstract ValueProvider<String> hourPattern();
-  
+
   @Nullable
   abstract ValueProvider<String> minutePattern();
-  
+
   abstract Builder toBuilder();
-  
+
   @AutoValue.Builder
   abstract static class Builder {
-    
+
     abstract Builder setOutputDirectory(ValueProvider<String> outputDirectory);
-    
+
     abstract Builder setOutputFilenamePrefix(ValueProvider<String> outputFilenamePrefix);
-    
+
     abstract Builder setShardTemplate(ValueProvider<String> shardTemplate);
-    
+
     abstract Builder setSuffix(ValueProvider<String> suffix);
-    
+
     abstract Builder setYearPattern(ValueProvider<String> year);
-    
+
     abstract Builder setMonthPattern(ValueProvider<String> month);
-    
+
     abstract Builder setDayPattern(ValueProvider<String> day);
-    
+
     abstract Builder setHourPattern(ValueProvider<String> hour);
-    
+
     abstract Builder setMinutePattern(ValueProvider<String> minute);
-    
+
     abstract WindowedFilenamePolicy build();
   }
-  
+
   /**
    * Sets the directory to output files to.
    *
@@ -112,21 +111,25 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
    * @return {@link WindowedFilenamePolicy}
    */
   public WindowedFilenamePolicy withOutputDirectory(ValueProvider<String> outputDirectory) {
-    checkArgument(outputDirectory != null, "withOutputDirectory(outputDirectory) called with null input.");
+    checkArgument(
+        outputDirectory != null, "withOutputDirectory(outputDirectory) called with null input.");
     return toBuilder().setOutputDirectory(outputDirectory).build();
   }
-  
+
   /**
    * Sets the filename prefix of the files to write to.
    *
    * @param outputFilenamePrefix The prefix of the file to output.
    * @return {@link WindowedFilenamePolicy}
    */
-  public WindowedFilenamePolicy withOutputFilenamePrefix(ValueProvider<String> outputFilenamePrefix) {
-    checkArgument(outputFilenamePrefix != null, "withOutputFilenamePrefix(outputFilenamePrefix) called with null input.");
+  public WindowedFilenamePolicy withOutputFilenamePrefix(
+      ValueProvider<String> outputFilenamePrefix) {
+    checkArgument(
+        outputFilenamePrefix != null,
+        "withOutputFilenamePrefix(outputFilenamePrefix) called with null input.");
     return toBuilder().setOutputFilenamePrefix(outputFilenamePrefix).build();
   }
-  
+
   /**
    * Sets the shard template of the output file.
    *
@@ -134,10 +137,11 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
    * @return {@link WindowedFilenamePolicy}
    */
   public WindowedFilenamePolicy withShardTemplate(ValueProvider<String> shardTemplate) {
-    checkArgument(shardTemplate != null, "withShardTemplate(shardTemplate) called with null input.");
+    checkArgument(
+        shardTemplate != null, "withShardTemplate(shardTemplate) called with null input.");
     return toBuilder().setShardTemplate(shardTemplate).build();
   }
-  
+
   /**
    * Sets the suffix of the files to write.
    *
@@ -148,7 +152,7 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
     checkArgument(suffix != null, "withSuffix(suffix) called with null input.");
     return toBuilder().setSuffix(suffix).build();
   }
-  
+
   /**
    * Sets the custom year pattern to use for the output directory.
    *
@@ -159,7 +163,7 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
     checkArgument(year != null, "withYear(year) called with null input.");
     return toBuilder().setYearPattern(year).build();
   }
-  
+
   /**
    * Sets the custom month pattern to use for the output directory.
    *
@@ -170,7 +174,7 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
     checkArgument(month != null, "withMonth(month) called with null input.");
     return toBuilder().setMonthPattern(month).build();
   }
-  
+
   /**
    * Sets the custom day pattern to use for the output directory.
    *
@@ -181,7 +185,7 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
     checkArgument(day != null, "withDay(day) called with null input.");
     return toBuilder().setDayPattern(day).build();
   }
-  
+
   /**
    * Sets the custom hour pattern to use for the output directory.
    *
@@ -192,7 +196,7 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
     checkArgument(hour != null, "withHour(hour) called with null input.");
     return toBuilder().setHourPattern(hour).build();
   }
-  
+
   /**
    * Sets the custom minute pattern to use for the output directory.
    *
@@ -203,42 +207,52 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
     checkArgument(minute != null, "withMinute(minute) called with null input.");
     return toBuilder().setMinutePattern(minute).build();
   }
-  
+
   /**
-   * Same as {@link WindowedFilenamePolicy#withOutputDirectory(ValueProvider)} but without {@link ValueProvider}.
+   * Same as {@link WindowedFilenamePolicy#withOutputDirectory(ValueProvider)} but without {@link
+   * ValueProvider}.
    *
    * @param outputDirectory The filename baseFile.
    * @return {@link WindowedFilenamePolicy}
    */
   public WindowedFilenamePolicy withOutputDirectory(String outputDirectory) {
-    checkArgument(outputDirectory != null, "withOutputDirectory(outputDirectory) called with null input.");
+    checkArgument(
+        outputDirectory != null, "withOutputDirectory(outputDirectory) called with null input.");
     return toBuilder().setOutputDirectory(StaticValueProvider.of(outputDirectory)).build();
   }
-  
+
   /**
-   * Same as {@link WindowedFilenamePolicy#withOutputFilenamePrefix(ValueProvider)} but without {@link ValueProvider}.
+   * Same as {@link WindowedFilenamePolicy#withOutputFilenamePrefix(ValueProvider)} but without
+   * {@link ValueProvider}.
    *
    * @param outputFilenamePrefix The prefix of the file to output.
    * @return {@link WindowedFilenamePolicy}
    */
   public WindowedFilenamePolicy withOutputFilenamePrefix(String outputFilenamePrefix) {
-    checkArgument(outputFilenamePrefix != null, "withOutputFilenamePrefix(outputFilenamePrefix) called with null input.");
-    return toBuilder().setOutputFilenamePrefix(StaticValueProvider.of(outputFilenamePrefix)).build();
+    checkArgument(
+        outputFilenamePrefix != null,
+        "withOutputFilenamePrefix(outputFilenamePrefix) called with null input.");
+    return toBuilder()
+        .setOutputFilenamePrefix(StaticValueProvider.of(outputFilenamePrefix))
+        .build();
   }
-  
+
   /**
-   * Same as {@link WindowedFilenamePolicy#withShardTemplate(ValueProvider)} but without {@link ValueProvider}.
+   * Same as {@link WindowedFilenamePolicy#withShardTemplate(ValueProvider)} but without {@link
+   * ValueProvider}.
    *
    * @param shardTemplate The shard template used during file formatting.
    * @return {@link WindowedFilenamePolicy}
    */
   public WindowedFilenamePolicy withShardTemplate(String shardTemplate) {
-    checkArgument(shardTemplate != null, "withShardTemplate(shardTemplate) called with null input.");
+    checkArgument(
+        shardTemplate != null, "withShardTemplate(shardTemplate) called with null input.");
     return toBuilder().setShardTemplate(StaticValueProvider.of(shardTemplate)).build();
   }
-  
+
   /**
-   * Same as {@link WindowedFilenamePolicy#withSuffix(ValueProvider)} but without {@link ValueProvider}.
+   * Same as {@link WindowedFilenamePolicy#withSuffix(ValueProvider)} but without {@link
+   * ValueProvider}.
    *
    * @param suffix The filename suffix.
    * @return {@link WindowedFilenamePolicy}
@@ -247,9 +261,10 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
     checkArgument(suffix != null, "withSuffix(suffix) called with null input.");
     return toBuilder().setSuffix(StaticValueProvider.of(suffix)).build();
   }
-  
+
   /**
-   * Same as {@link WindowedFilenamePolicy#withYearPattern(ValueProvider)} but without {@link ValueProvider}.
+   * Same as {@link WindowedFilenamePolicy#withYearPattern(ValueProvider)} but without {@link
+   * ValueProvider}.
    *
    * @param year The custom year pattern.
    * @return {@link WindowedFilenamePolicy}
@@ -258,9 +273,10 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
     checkArgument(year != null, "withYear(year) called with null input.");
     return toBuilder().setYearPattern(StaticValueProvider.of(year)).build();
   }
-  
+
   /**
-   * Same as {@link WindowedFilenamePolicy#withMonthPattern(ValueProvider)} but without {@link ValueProvider}.
+   * Same as {@link WindowedFilenamePolicy#withMonthPattern(ValueProvider)} but without {@link
+   * ValueProvider}.
    *
    * @param month The custom month pattern.
    * @return {@link WindowedFilenamePolicy}
@@ -269,9 +285,10 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
     checkArgument(month != null, "withMonth(month) called with null input.");
     return toBuilder().setMonthPattern(StaticValueProvider.of(month)).build();
   }
-  
+
   /**
-   * Same as {@link WindowedFilenamePolicy#withDayPattern(ValueProvider)} but without {@link ValueProvider}.
+   * Same as {@link WindowedFilenamePolicy#withDayPattern(ValueProvider)} but without {@link
+   * ValueProvider}.
    *
    * @param day The custom day pattern.
    * @return {@link WindowedFilenamePolicy}
@@ -280,9 +297,10 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
     checkArgument(day != null, "withDay(day) called with null input.");
     return toBuilder().setDayPattern(StaticValueProvider.of(day)).build();
   }
-  
+
   /**
-   * Same as {@link WindowedFilenamePolicy#withHourPattern(ValueProvider)} but without {@link ValueProvider}.
+   * Same as {@link WindowedFilenamePolicy#withHourPattern(ValueProvider)} but without {@link
+   * ValueProvider}.
    *
    * @param hour The custom hour pattern.
    * @return {@link WindowedFilenamePolicy}
@@ -291,9 +309,10 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
     checkArgument(hour != null, "withHour(hour) called with null input.");
     return toBuilder().setHourPattern(StaticValueProvider.of(hour)).build();
   }
-  
+
   /**
-   * Same as {@link WindowedFilenamePolicy#withMinutePattern(ValueProvider)} but without {@link ValueProvider}.
+   * Same as {@link WindowedFilenamePolicy#withMinutePattern(ValueProvider)} but without {@link
+   * ValueProvider}.
    *
    * @param minute The custom minute pattern.
    * @return {@link WindowedFilenamePolicy}
@@ -369,15 +388,15 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
 
   /**
    * Resolves any date variables which exist in the output directory path. This allows for the
-   * dynamically changing of the output location based on the window end time.
-   * A custom pattern can be used, if provided.
+   * dynamically changing of the output location based on the window end time. A custom pattern can
+   * be used, if provided.
    *
    * @return The new output directory with all variables resolved.
    */
   public ResourceId resolveWithDateTemplates(
       ValueProvider<String> outputDirectoryStr, BoundedWindow window) {
     ResourceId outputDirectory = FileSystems.matchNewResource(outputDirectoryStr.get(), true);
-  
+
     if (window instanceof IntervalWindow) {
       IntervalWindow intervalWindow = (IntervalWindow) window;
       DateTime time = intervalWindow.end().toDateTime();
@@ -422,16 +441,17 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
         final DateTimeFormatter dayFormatter = DateTimeFormat.forPattern(dayPattern);
         final DateTimeFormatter hourFormatter = DateTimeFormat.forPattern(hourPattern);
         final DateTimeFormatter minuteFormatter = DateTimeFormat.forPattern(minutePattern);
-    
+
         outputPath = outputPath.replace(yearPattern, yearFormatter.print(time));
         outputPath = outputPath.replace(monthPattern, monthFormatter.print(time));
         outputPath = outputPath.replace(dayPattern, dayFormatter.print(time));
         outputPath = outputPath.replace(hourPattern, hourFormatter.print(time));
         outputPath = outputPath.replace(minutePattern, minuteFormatter.print(time));
       } catch (IllegalArgumentException e) {
-        throw new RuntimeException("Could not resolve custom DateTime pattern. " + e.getMessage(), e);
+        throw new RuntimeException(
+            "Could not resolve custom DateTime pattern. " + e.getMessage(), e);
       }
-  
+
       outputDirectory = FileSystems.matchNewResource(outputPath, true);
     }
     return outputDirectory;

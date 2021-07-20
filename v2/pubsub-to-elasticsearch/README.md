@@ -1,6 +1,6 @@
 # PubSub to Elasticsearch Dataflow Template
 
-The [PubSubToElasticsearch](src/main/java/com/google/cloud/teleport/v2/templates/PubSubToElasticsearch.java) pipeline 
+The [PubSubToElasticsearch](src/main/java/com/google/cloud/teleport/v2/templates/PubSubToElasticsearch.java) pipeline
 ingests data from a PubSub subscription, optionally applies a Javascript UDF if supplied and writes the data to Elasticsearch.
 
 ## Getting Started

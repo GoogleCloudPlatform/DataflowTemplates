@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -47,7 +47,7 @@ public class KafkaToBigQueryTest {
   private static final String RESOURCES_DIR = "JavascriptTextTransformerTest/";
 
   private static final String TRANSFORM_FILE_PATH =
-          Resources.getResource(RESOURCES_DIR + "transform.js").getPath();
+      Resources.getResource(RESOURCES_DIR + "transform.js").getPath();
 
   /** Tests the {@link KafkaToBigQuery} pipeline end-to-end. */
   @Test
@@ -61,11 +61,11 @@ public class KafkaToBigQueryTest {
     final KV<String, String> badMessage = KV.of(badKey, badPayload);
 
     final Instant timestamp =
-            new DateTime(2022, 2, 22, 22, 22, 22, 222, DateTimeZone.UTC).toInstant();
+        new DateTime(2022, 2, 22, 22, 22, 22, 222, DateTimeZone.UTC).toInstant();
 
     final FailsafeElementCoder<KV<String, String>, String> coder =
-            FailsafeElementCoder.of(
-                    KvCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()), StringUtf8Coder.of());
+        FailsafeElementCoder.of(
+            KvCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()), StringUtf8Coder.of());
 
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
@@ -78,52 +78,50 @@ public class KafkaToBigQueryTest {
 
     // Build pipeline
     PCollectionTuple transformOut =
-            pipeline
-                    .apply(
-                            "CreateInput",
-                            Create.of(message)
-                                    .withCoder(KvCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
-                    .apply("ConvertMessageToTableRow", new MessageToTableRow(options));
+        pipeline
+            .apply(
+                "CreateInput",
+                Create.of(message)
+                    .withCoder(KvCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+            .apply("ConvertMessageToTableRow", new MessageToTableRow(options));
 
     // Assert
     PAssert.that(transformOut.get(KafkaToBigQuery.UDF_DEADLETTER_OUT)).empty();
     PAssert.that(transformOut.get(KafkaToBigQuery.TRANSFORM_DEADLETTER_OUT)).empty();
     PAssert.that(transformOut.get(KafkaToBigQuery.TRANSFORM_OUT))
-            .satisfies(
-                    collection -> {
-                      TableRow result = collection.iterator().next();
-                      assertThat(result.get("ticker"), is(equalTo("GOOGL")));
-                      assertThat(result.get("price"), is(equalTo(1006.94)));
-                      return null;
-                    });
+        .satisfies(
+            collection -> {
+              TableRow result = collection.iterator().next();
+              assertThat(result.get("ticker"), is(equalTo("GOOGL")));
+              assertThat(result.get("price"), is(equalTo(1006.94)));
+              return null;
+            });
 
     // Execute pipeline
     pipeline.run();
 
     // Build pipeline with malformed payload
     PCollectionTuple badTransformOut =
-            pipeline
-                    .apply(
-                            "CreateBadInput",
-                            Create.of(badMessage)
-                                    .withCoder(KvCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
-                    .apply("ConvertMessageToTableRow", new MessageToTableRow(options));
+        pipeline
+            .apply(
+                "CreateBadInput",
+                Create.of(badMessage)
+                    .withCoder(KvCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+            .apply("ConvertMessageToTableRow", new MessageToTableRow(options));
 
     // Assert
     PAssert.that(badTransformOut.get(KafkaToBigQuery.UDF_DEADLETTER_OUT))
-            .satisfies(
-                    collection -> {
-                      FailsafeElement badResult = collection.iterator().next();
-                      assertThat(badResult.getOriginalPayload(), is(equalTo(badMessage)));
-                      assertThat(badResult.getPayload(), is(equalTo(badPayload)));
-                      return null;
-                    });
+        .satisfies(
+            collection -> {
+              FailsafeElement badResult = collection.iterator().next();
+              assertThat(badResult.getOriginalPayload(), is(equalTo(badMessage)));
+              assertThat(badResult.getPayload(), is(equalTo(badPayload)));
+              return null;
+            });
     PAssert.that(badTransformOut.get(KafkaToBigQuery.TRANSFORM_DEADLETTER_OUT)).empty();
     PAssert.that(badTransformOut.get(KafkaToBigQuery.TRANSFORM_OUT)).empty();
-
 
     // Execute pipeline
     pipeline.run();
   }
 }
-

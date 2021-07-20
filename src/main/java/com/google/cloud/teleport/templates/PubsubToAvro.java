@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,8 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
-
 package com.google.cloud.teleport.templates;
 
 import com.google.cloud.teleport.avro.AvroPubsubMessageRecord;
@@ -61,7 +59,6 @@ import org.apache.beam.sdk.values.PCollection;
  *      ]
  *   }
  * </pre>
- * </p>
  *
  * <p>Example Usage:
  *
@@ -80,15 +77,15 @@ import org.apache.beam.sdk.values.PCollection;
  *
  * # Build the template
  * mvn compile exec:java \
- -Dexec.mainClass=com.google.cloud.teleport.templates.${PIPELINE_NAME} \
- -Dexec.cleanupDaemonThreads=false \
- -Dexec.args=" \
- --project=${PROJECT_ID} \
- --stagingLocation=${PIPELINE_FOLDER}/staging \
- --tempLocation=${PIPELINE_FOLDER}/temp \
- --templateLocation=${PIPELINE_FOLDER}/template \
- --runner=${RUNNER} \
- --useSubscription=${USE_SUBSCRIPTION}"
+ * -Dexec.mainClass=com.google.cloud.teleport.templates.${PIPELINE_NAME} \
+ * -Dexec.cleanupDaemonThreads=false \
+ * -Dexec.args=" \
+ * --project=${PROJECT_ID} \
+ * --stagingLocation=${PIPELINE_FOLDER}/staging \
+ * --tempLocation=${PIPELINE_FOLDER}/temp \
+ * --templateLocation=${PIPELINE_FOLDER}/template \
+ * --runner=${RUNNER} \
+ * --useSubscription=${USE_SUBSCRIPTION}"
  *
  * # Execute the template
  * JOB_NAME=pubsub-to-bigquery-$USER-`date +"%Y%m%d-%H%M%S%z"`
@@ -119,8 +116,6 @@ import org.apache.beam.sdk.values.PCollection;
  * outputFilenamePrefix=windowed-file,\
  * outputFilenameSuffix=.avro"
  * </pre>
- *
- * </p>
  */
 public class PubsubToAvro {
 
@@ -129,7 +124,8 @@ public class PubsubToAvro {
    *
    * <p>Inherits standard configuration options.
    */
-  public interface Options extends PipelineOptions, StreamingOptions, WindowedFilenamePolicyOptions {
+  public interface Options
+      extends PipelineOptions, StreamingOptions, WindowedFilenamePolicyOptions {
     @Description(
         "The Cloud Pub/Sub subscription to consume from. "
             + "The name should be in the format of "
@@ -144,8 +140,7 @@ public class PubsubToAvro {
     void setInputTopic(ValueProvider<String> value);
 
     @Description(
-        "This determines whether the template reads from "
-            + "a pub/sub subscription or a topic")
+        "This determines whether the template reads from " + "a pub/sub subscription or a topic")
     @Default.Boolean(false)
     Boolean getUseSubscription();
 
@@ -209,11 +204,16 @@ public class PubsubToAvro {
      */
 
     if (options.getUseSubscription()) {
-        messages = pipeline.apply("Read PubSub Events", PubsubIO.readMessagesWithAttributes()
-          .fromSubscription(options.getInputSubscription()));
+      messages =
+          pipeline.apply(
+              "Read PubSub Events",
+              PubsubIO.readMessagesWithAttributes()
+                  .fromSubscription(options.getInputSubscription()));
     } else {
-        messages = pipeline.apply("Read PubSub Events", PubsubIO.readMessagesWithAttributes()
-          .fromTopic(options.getInputTopic()));
+      messages =
+          pipeline.apply(
+              "Read PubSub Events",
+              PubsubIO.readMessagesWithAttributes().fromTopic(options.getInputTopic()));
     }
     messages
         .apply("Map to Archive", ParDo.of(new PubsubMessageToArchiveDoFn()))

@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2021 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -48,7 +48,7 @@ public class PubSubToElasticsearchTest {
   private static final String TRANSFORM_FILE_PATH =
       Resources.getResource(RESOURCES_DIR + "transform.js").getPath();
   private static final String BAD_TRANSFORM_FILE_PATH =
-          Resources.getResource(RESOURCES_DIR + "transform.js").getPath();
+      Resources.getResource(RESOURCES_DIR + "transform.js").getPath();
   private static List<PubsubMessage> goodTestMessages;
   private static List<PubsubMessage> badTestMessages;
   private static List<PubsubMessage> allTestMessages;
@@ -106,7 +106,7 @@ public class PubSubToElasticsearchTest {
                 "{\"location\":\"IN\", \"name\":\"John\", \"age\":\"28\", \"color\":\"red\", \"coffee\":\"cappuccino\"}"
                     .getBytes(),
                 testAttributeMap2),
-                new PubsubMessage(new byte[0], testAttributeMap1));
+            new PubsubMessage(new byte[0], testAttributeMap1));
 
     badTestMessages =
         ImmutableList.of(
@@ -127,14 +127,14 @@ public class PubSubToElasticsearchTest {
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
 
     coderRegistry.registerCoderForType(
-            PubSubToElasticsearch.FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), PubSubToElasticsearch.FAILSAFE_ELEMENT_CODER);
+        PubSubToElasticsearch.FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(),
+        PubSubToElasticsearch.FAILSAFE_ELEMENT_CODER);
 
     coderRegistry.registerCoderForType(
         PubSubToElasticsearch.CODER.getEncodedTypeDescriptor(), PubSubToElasticsearch.CODER);
 
     PubSubToElasticsearchOptions options =
-        TestPipeline.testingPipelineOptions()
-            .as(PubSubToElasticsearchOptions.class);
+        TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
     options.setDeadletterTable("test:dataset.table");
     options.setJavascriptTextTransformFunctionName(null);
@@ -170,13 +170,13 @@ public class PubSubToElasticsearchTest {
 
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(
-            PubSubToElasticsearch.FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), PubSubToElasticsearch.FAILSAFE_ELEMENT_CODER);
+        PubSubToElasticsearch.FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(),
+        PubSubToElasticsearch.FAILSAFE_ELEMENT_CODER);
     coderRegistry.registerCoderForType(
         PubSubToElasticsearch.CODER.getEncodedTypeDescriptor(), PubSubToElasticsearch.CODER);
 
     PubSubToElasticsearchOptions options =
-        TestPipeline.testingPipelineOptions()
-            .as(PubSubToElasticsearchOptions.class);
+        TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
     options.setDeadletterTable("test:dataset.table");
     options.setJavascriptTextTransformFunctionName("transform");
@@ -212,37 +212,37 @@ public class PubSubToElasticsearchTest {
 
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(
-            PubSubToElasticsearch.FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), PubSubToElasticsearch.FAILSAFE_ELEMENT_CODER);
+        PubSubToElasticsearch.FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(),
+        PubSubToElasticsearch.FAILSAFE_ELEMENT_CODER);
     coderRegistry.registerCoderForType(
-            PubSubToElasticsearch.CODER.getEncodedTypeDescriptor(), PubSubToElasticsearch.CODER);
+        PubSubToElasticsearch.CODER.getEncodedTypeDescriptor(), PubSubToElasticsearch.CODER);
 
     PubSubToElasticsearchOptions options =
-            TestPipeline.testingPipelineOptions()
-                    .as(PubSubToElasticsearchOptions.class);
+        TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
     options.setDeadletterTable("test:dataset.table");
     options.setJavascriptTextTransformFunctionName("transformBad");
     options.setJavascriptTextTransformGcsPath(BAD_TRANSFORM_FILE_PATH);
 
     PCollectionTuple pc =
-            pipeline
-                    .apply(Create.of(badTestMessages.get(0)))
-                    .apply(
-                            PubSubMessageToJsonDocument.newBuilder()
-                                    .setJavascriptTextTransformFunctionName(
-                                            options.getJavascriptTextTransformFunctionName())
-                                    .setJavascriptTextTransformGcsPath(options.getJavascriptTextTransformGcsPath())
-                                    .build());
+        pipeline
+            .apply(Create.of(badTestMessages.get(0)))
+            .apply(
+                PubSubMessageToJsonDocument.newBuilder()
+                    .setJavascriptTextTransformFunctionName(
+                        options.getJavascriptTextTransformFunctionName())
+                    .setJavascriptTextTransformGcsPath(options.getJavascriptTextTransformGcsPath())
+                    .build());
 
     PAssert.that(pc.get(PubSubToElasticsearch.TRANSFORM_DEADLETTER_OUT))
-            .satisfies(
-                    collection -> {
-                      FailsafeElement<PubsubMessage, String> element = collection.iterator().next();
-                      assertThat(
-                              element.getOriginalPayload().getPayload(),
-                              is(equalTo(badTestMessages.get(0).getPayload())));
-                      return null;
-                    });
+        .satisfies(
+            collection -> {
+              FailsafeElement<PubsubMessage, String> element = collection.iterator().next();
+              assertThat(
+                  element.getOriginalPayload().getPayload(),
+                  is(equalTo(badTestMessages.get(0).getPayload())));
+              return null;
+            });
 
     PAssert.that(pc.get(PubSubToElasticsearch.TRANSFORM_OUT)).empty();
 
@@ -250,41 +250,44 @@ public class PubSubToElasticsearchTest {
     pipeline.run(options);
   }
 
-  /** Tests the {@link PubSubToElasticsearch} pipeline end-to-end with an empty message payload but attributes populated. */
+  /**
+   * Tests the {@link PubSubToElasticsearch} pipeline end-to-end with an empty message payload but
+   * attributes populated.
+   */
   @Test
   public void testPubSubToElasticsearchOnlyAttributesE2E() {
 
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(
-            PubSubToElasticsearch.FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), PubSubToElasticsearch.FAILSAFE_ELEMENT_CODER);
+        PubSubToElasticsearch.FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(),
+        PubSubToElasticsearch.FAILSAFE_ELEMENT_CODER);
     coderRegistry.registerCoderForType(
-            PubSubToElasticsearch.CODER.getEncodedTypeDescriptor(), PubSubToElasticsearch.CODER);
+        PubSubToElasticsearch.CODER.getEncodedTypeDescriptor(), PubSubToElasticsearch.CODER);
 
     PubSubToElasticsearchOptions options =
-            TestPipeline.testingPipelineOptions()
-                    .as(PubSubToElasticsearchOptions.class);
+        TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
     options.setDeadletterTable("test:dataset.table");
 
     PCollectionTuple pc =
-            pipeline
-                    .apply(Create.of(goodTestMessages.get(goodTestMessages.size() - 1)))
-                    .apply(
-                            PubSubMessageToJsonDocument.newBuilder()
-                                    .setJavascriptTextTransformFunctionName(
-                                            options.getJavascriptTextTransformFunctionName())
-                                    .setJavascriptTextTransformGcsPath(options.getJavascriptTextTransformGcsPath())
-                                    .build());
+        pipeline
+            .apply(Create.of(goodTestMessages.get(goodTestMessages.size() - 1)))
+            .apply(
+                PubSubMessageToJsonDocument.newBuilder()
+                    .setJavascriptTextTransformFunctionName(
+                        options.getJavascriptTextTransformFunctionName())
+                    .setJavascriptTextTransformGcsPath(options.getJavascriptTextTransformGcsPath())
+                    .build());
 
     PAssert.that(pc.get(PubSubToElasticsearch.TRANSFORM_OUT))
-            .satisfies(
-                    collection -> {
-                      FailsafeElement<PubsubMessage, String> element = collection.iterator().next();
-                      assertThat(
-                              new Gson().fromJson(element.getPayload(), HashMap.class),
-                              is(equalTo(element.getOriginalPayload().getAttributeMap())));
-                      return null;
-                    });
+        .satisfies(
+            collection -> {
+              FailsafeElement<PubsubMessage, String> element = collection.iterator().next();
+              assertThat(
+                  new Gson().fromJson(element.getPayload(), HashMap.class),
+                  is(equalTo(element.getOriginalPayload().getAttributeMap())));
+              return null;
+            });
 
     // Execute pipeline
     pipeline.run(options);

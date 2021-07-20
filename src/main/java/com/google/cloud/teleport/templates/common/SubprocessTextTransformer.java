@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.templates.common;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -70,8 +69,7 @@ public abstract class SubprocessTextTransformer {
     @Description("UDF Runtime Version")
     ValueProvider<String> getSubprocessRuntimeVersion();
 
-    void setSubprocessRuntimeVersion(
-        ValueProvider<String> subprocessRuntimeVersion);
+    void setSubprocessRuntimeVersion(ValueProvider<String> subprocessRuntimeVersion);
 
     @Description("UDF Subprocess Function Name")
     ValueProvider<String> getSubprocessTextTransformFunctionName();
@@ -80,9 +78,7 @@ public abstract class SubprocessTextTransformer {
         ValueProvider<String> subprocessTextTransformFunctionName);
   }
 
-  /**
-   * Grabs code from a FileSystem, loads into ProcessBuilder and hopes for the best.
-   */
+  /** Grabs code from a FileSystem, loads into ProcessBuilder and hopes for the best. */
   @AutoValue
   public abstract static class SubprocessRuntime {
     @Nullable
@@ -125,8 +121,9 @@ public abstract class SubprocessTextTransformer {
     }
 
     /**
-     * Gets a cached Javascript Invocable, if fileSystemPath() not set, returns null.
-     * NEED REPLACEMENT FOR INVOCABLE
+     * Gets a cached Javascript Invocable, if fileSystemPath() not set, returns null. NEED
+     * REPLACEMENT FOR INVOCABLE
+     *
      * @return a python Invocable or null
      */
     @Nullable
@@ -140,7 +137,7 @@ public abstract class SubprocessTextTransformer {
       if (process == null) {
         Collection<String> scripts = getScripts(fileSystemPath());
         FileWriter writer = new FileWriter(functionName());
-        for(String str: scripts) {
+        for (String str : scripts) {
           writer.write(str + System.lineSeparator());
         }
         writer.close();
@@ -151,8 +148,8 @@ public abstract class SubprocessTextTransformer {
     }
 
     /**
-     * Factory method for making a new Invocable.
-     * TODO: REPLACE WITH PROCESSBUILDER
+     * Factory method for making a new Invocable. TODO: REPLACE WITH PROCESSBUILDER
+     *
      * @param scripts
      */
     @Nullable
@@ -166,7 +163,7 @@ public abstract class SubprocessTextTransformer {
     /**
      * Build Python Runtime Environment.
      *
-     * @param pythonVersion The python runtime version to be built.  ie python3
+     * @param pythonVersion The python runtime version to be built. ie python3
      * @return None
      */
     public void buildPythonExecutable(String pythonVersion)
@@ -195,7 +192,6 @@ public abstract class SubprocessTextTransformer {
               .start();
       installRuntime.waitFor(120L, TimeUnit.SECONDS);
       installRuntime.destroy();
-
     }
 
     /**
@@ -206,7 +202,7 @@ public abstract class SubprocessTextTransformer {
      */
     @Nullable
     public List<String> invoke(String data, Integer retries)
-            throws IOException, NoSuchMethodException, InterruptedException {
+        throws IOException, NoSuchMethodException, InterruptedException {
       // Save Data in Temporary File
       LOG.info("Writing to File");
       File file = File.createTempFile("temp", null);
@@ -229,12 +225,12 @@ public abstract class SubprocessTextTransformer {
      */
     @Nullable
     public List<String> invoke(List<String> data, Integer retries)
-            throws IOException, NoSuchMethodException, InterruptedException {
+        throws IOException, NoSuchMethodException, InterruptedException {
       // Save Data in Temporary File
       LOG.info("Writing to File");
       File file = File.createTempFile("temp", null);
       BufferedWriter writer = new BufferedWriter(new FileWriter(file.getAbsolutePath()));
-      for (String event: data) {
+      for (String event : data) {
         writer.write(event);
       }
       writer.close();
@@ -248,7 +244,7 @@ public abstract class SubprocessTextTransformer {
 
     @Nullable
     public List<String> applyRuntimeToFile(File dataFile, Integer retries)
-            throws IOException, NoSuchMethodException, InterruptedException {
+        throws IOException, NoSuchMethodException, InterruptedException {
       // Vars Required in function
       Process runtime;
       String pythonVersion = runtimeVersion();
@@ -257,13 +253,14 @@ public abstract class SubprocessTextTransformer {
       // Apply Python
       try {
         LOG.info("Apply Python to File: " + dataFile.getAbsolutePath());
-        runtime = getProcessBuilder()
-                      .command(pythonVersion, functionName(), dataFile.getAbsolutePath())
-                      .start();
+        runtime =
+            getProcessBuilder()
+                .command(pythonVersion, functionName(), dataFile.getAbsolutePath())
+                .start();
         LOG.info("Waiting For Results: " + dataFile.getAbsolutePath());
-        // runtime.waitFor(2L, TimeUnit.SECONDS); // TODO need to discover if I need this, I think I do not
-      }
-      catch (IOException e) {
+        // runtime.waitFor(2L, TimeUnit.SECONDS); // TODO need to discover if I need this, I think I
+        // do not
+      } catch (IOException e) {
         LOG.info("IO Exception Seen");
         if (e.getMessage().startsWith(missingPythonErrorMessage)) {
           // Build Python and Retry
@@ -277,8 +274,8 @@ public abstract class SubprocessTextTransformer {
           throw e;
         }
       } catch (Exception e) {
-          LOG.info("Non IO Exception Seen");
-          throw e;
+        LOG.info("Non IO Exception Seen");
+        throw e;
       }
 
       // Test Runtime Exists (should not be possible to hit this case)
@@ -290,7 +287,8 @@ public abstract class SubprocessTextTransformer {
       LOG.info("Process Python Results: " + dataFile.getAbsolutePath());
       List<String> results = new ArrayList<>();
       try {
-        final BufferedReader reader = new BufferedReader(new InputStreamReader(runtime.getInputStream()));
+        final BufferedReader reader =
+            new BufferedReader(new InputStreamReader(runtime.getInputStream()));
         reader.lines().iterator().forEachRemaining(results::add);
 
         runtime.destroy();
@@ -316,9 +314,7 @@ public abstract class SubprocessTextTransformer {
       LOG.info("getting script!");
 
       List<String> scripts =
-          result
-              .metadata()
-              .stream()
+          result.metadata().stream()
               .filter(metadata -> metadata.resourceId().getFilename().endsWith(".py"))
               .map(Metadata::resourceId)
               .map(
@@ -407,8 +403,8 @@ public abstract class SubprocessTextTransformer {
                   List<String> results = new ArrayList<>();
                   String jsonString = c.element();
 
-                  //LOG.info("Logging JSON String");
-                  //LOG.info(jsonString);
+                  // LOG.info("Logging JSON String");
+                  // LOG.info(jsonString);
 
                   if (subprocessRuntime != null) {
                     Integer retries = 5;
@@ -433,7 +429,6 @@ public abstract class SubprocessTextTransformer {
    * failure.
    */
 
-
   // @AutoValue
   // public abstract static class FailsafeJavascriptUdf<T>
   //     extends PTransform<PCollection<FailsafeElement<T, String>>, PCollectionTuple> {
@@ -452,7 +447,8 @@ public abstract class SubprocessTextTransformer {
   //   /** Builder for {@link FailsafeJavascriptUdf}. */
   //   @AutoValue.Builder
   //   public abstract static class Builder<T> {
-  //     public abstract Builder<T> setFileSystemPath(@Nullable ValueProvider<String> fileSystemPath);
+  //     public abstract Builder<T> setFileSystemPath(@Nullable ValueProvider<String>
+  // fileSystemPath);
 
   //     public abstract Builder<T> setFunctionName(@Nullable ValueProvider<String> functionName);
 
@@ -530,5 +526,4 @@ public abstract class SubprocessTextTransformer {
 
     return runtime;
   }
-
 }

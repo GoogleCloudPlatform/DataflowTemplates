@@ -1,7 +1,7 @@
 # Google Cloud to Elasticsearch Dataflow templates
 
 The [GoogleCloudToElasticsearch](/googlecloud-to-elasticsearch)
-is the top-level module containing a batch 
+is the top-level module containing a batch
 of templates enabling data integration between Google Cloud products and Elasticsearch.
 
 ## Templates

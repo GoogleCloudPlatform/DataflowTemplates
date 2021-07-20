@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -42,9 +42,7 @@ import org.apache.beam.vendor.guava.v20_0.com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Class {@link MergeInfoMapper}.
- */
+/** Class {@link MergeInfoMapper}. */
 public class MergeInfoMapper
     extends PTransform<PCollection<KV<TableId, TableRow>>, PCollection<MergeInfo>> {
 
@@ -136,47 +134,54 @@ public class MergeInfoMapper
                     String tableName = (String) row.get("_metadata_table");
 
                     List<String> mergeFields = getMergeFields(tableId, row);
-                    List<String> allPkFields = getPrimaryKeys(
-                        streamName, schemaName, tableName, mergeFields);
+                    List<String> allPkFields =
+                        getPrimaryKeys(streamName, schemaName, tableName, mergeFields);
                     List<String> allSortFields = getSortFields(row);
 
                     if (allPkFields.size() == 0) {
-                      LOG.warn("Unable to retrieve primary keys for table {}.{} in stream {}. "
+                      LOG.warn(
+                          "Unable to retrieve primary keys for table {}.{} in stream {}. "
                               + "Not performing merge-based consolidation.",
-                          schemaName, tableName, streamName);
+                          schemaName,
+                          tableName,
+                          streamName);
                       foregoneMerges.inc();
                       return Lists.newArrayList();
                     } else if (allSortFields.size() == 0) {
-                      LOG.warn("Unable to retrieve sort keys for table {}.{} in stream {}. "
+                      LOG.warn(
+                          "Unable to retrieve sort keys for table {}.{} in stream {}. "
                               + "Not performing merge-based consolidation.",
-                          schemaName, tableName, streamName);
+                          schemaName,
+                          tableName,
+                          streamName);
                       foregoneMerges.inc();
                     }
 
-                    MergeInfo mergeInfo = MergeInfo.create(
-                        allPkFields,
-                        allSortFields,
-                        METADATA_DELETED,
-                        String.format("%s.%s.%s", // Staging Table
-                            projectId,
-                            BigQueryConverters
-                                .formatStringTemplate(stagingDataset, row),
-                            BigQueryConverters
-                                .formatStringTemplate(stagingTable, row)).replaceAll("\\$", "_"),
-                        String.format("%s.%s.%s", // Replica Table
-                            projectId,
-                            BigQueryConverters
-                                .formatStringTemplate(replicaDataset, row),
-                            BigQueryConverters
-                                .formatStringTemplate(replicaTable, row)).replaceAll("\\$", "_"),
-                        mergeFields);
+                    MergeInfo mergeInfo =
+                        MergeInfo.create(
+                            allPkFields,
+                            allSortFields,
+                            METADATA_DELETED,
+                            String.format(
+                                    "%s.%s.%s", // Staging Table
+                                    projectId,
+                                    BigQueryConverters.formatStringTemplate(stagingDataset, row),
+                                    BigQueryConverters.formatStringTemplate(stagingTable, row))
+                                .replaceAll("\\$", "_"),
+                            String.format(
+                                    "%s.%s.%s", // Replica Table
+                                    projectId,
+                                    BigQueryConverters.formatStringTemplate(replicaDataset, row),
+                                    BigQueryConverters.formatStringTemplate(replicaTable, row))
+                                .replaceAll("\\$", "_"),
+                            mergeFields);
 
                     return Lists.newArrayList(mergeInfo);
                   } catch (Exception e) {
                     LOG.error(
-                      "Merge Info Failure, skipping merge for: {} -> {}",
-                      element.getValue().toString(),
-                      e.toString());
+                        "Merge Info Failure, skipping merge for: {} -> {}",
+                        element.getValue().toString(),
+                        e.toString());
                     return Lists.newArrayList();
                   }
                 }));
@@ -191,8 +196,8 @@ public class MergeInfoMapper
     }
   }
 
-  public List<String> getPrimaryKeys(String streamName, String schemaName, String tableName,
-      List<String> mergeFields) {
+  public List<String> getPrimaryKeys(
+      String streamName, String schemaName, String tableName, List<String> mergeFields) {
     List<String> searchKey = ImmutableList.of(streamName, schemaName, tableName);
     List<String> primaryKeys = getPkCache().get(searchKey);
 

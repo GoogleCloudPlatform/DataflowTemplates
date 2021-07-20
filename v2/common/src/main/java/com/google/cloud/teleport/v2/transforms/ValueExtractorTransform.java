@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -26,11 +26,13 @@ import javax.script.ScriptException;
 import org.apache.beam.sdk.io.elasticsearch.ElasticsearchIO.Write.FieldValueExtractFn;
 
 /**
- * The {@link ValueExtractorTransform} allows for any Javascript function to be applied to a {@link JsonNode}.
+ * The {@link ValueExtractorTransform} allows for any Javascript function to be applied to a {@link
+ * JsonNode}.
  *
- * The transform takes in the path to the JS function via {@link ValueExtractorFn#fileSystemPath()}
- * and the name of JS function to be applied via {@link ValueExtractorFn#functionName()}. The transform will
- * return a {@link String} that is the result of the JS function.
+ * <p>The transform takes in the path to the JS function via {@link
+ * ValueExtractorFn#fileSystemPath()} and the name of JS function to be applied via {@link
+ * ValueExtractorFn#functionName()}. The transform will return a {@link String} that is the result
+ * of the JS function.
  */
 public class ValueExtractorTransform {
 
@@ -41,7 +43,8 @@ public class ValueExtractorTransform {
    * document.
    *
    * <p>If only one of {@link ValueExtractorFn#functionName()} or {@link
-   * ValueExtractorFn#fileSystemPath()} are null then {@link com.google.api.gax.rpc.InvalidArgumentException} is thrown.
+   * ValueExtractorFn#fileSystemPath()} are null then {@link
+   * com.google.api.gax.rpc.InvalidArgumentException} is thrown.
    */
   @AutoValue
   public abstract static class ValueExtractorFn implements FieldValueExtractFn {
@@ -61,15 +64,15 @@ public class ValueExtractorTransform {
         return null;
       } else {
         checkArgument(
-                functionName() != null && fileSystemPath() != null,
-                "Both function name and file system path need to be set.");
+            functionName() != null && fileSystemPath() != null,
+            "Both function name and file system path need to be set.");
       }
 
       JavascriptRuntime runtime =
-              JavascriptRuntime.newBuilder()
-                      .setFunctionName(functionName())
-                      .setFileSystemPath(fileSystemPath())
-                      .build();
+          JavascriptRuntime.newBuilder()
+              .setFunctionName(functionName())
+              .setFileSystemPath(fileSystemPath())
+              .build();
 
       try {
         return runtime.invoke(input.toString());

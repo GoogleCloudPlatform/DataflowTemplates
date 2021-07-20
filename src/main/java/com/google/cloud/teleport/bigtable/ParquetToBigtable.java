@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -42,10 +42,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link ParquetToBigtable} pipeline imports data from Parquet files in GCS to a Cloud Bigtable table. The
- * Cloud Bigtable table must be created before running the pipeline and must have a compatible table
- * schema. For example, if {@link BigtableCell} from the Parquet files has a 'family' of "f1", the
- * Bigtable table should have a column family of "f1".
+ * The {@link ParquetToBigtable} pipeline imports data from Parquet files in GCS to a Cloud Bigtable
+ * table. The Cloud Bigtable table must be created before running the pipeline and must have a
+ * compatible table schema. For example, if {@link BigtableCell} from the Parquet files has a
+ * 'family' of "f1", the Bigtable table should have a column family of "f1".
  *
  * <p><b>Pipeline Requirements</b>
  *
@@ -100,9 +100,7 @@ public class ParquetToBigtable {
 
   private static final Boolean DEFAULT_SPLIT_LARGE_ROWS = false;
 
-  /**
-   * Options for the import pipeline.
-   */
+  /** Options for the import pipeline. */
   public interface Options extends PipelineOptions {
     @Description("The project that contains the table to import into.")
     ValueProvider<String> getBigtableProjectId();
@@ -123,7 +121,7 @@ public class ParquetToBigtable {
     void setBigtableTableId(ValueProvider<String> tableId);
 
     @Description(
-            "The input file patterm to read from. (e.g. gs://mybucket/somefolder/table1*.parquet)")
+        "The input file patterm to read from. (e.g. gs://mybucket/somefolder/table1*.parquet)")
     ValueProvider<String> getInputFilePattern();
 
     @SuppressWarnings("unused")
@@ -152,10 +150,10 @@ public class ParquetToBigtable {
     Pipeline pipeline = Pipeline.create(PipelineUtils.tweakPipelineOptions(options));
 
     BigtableIO.Write write =
-            BigtableIO.write()
-                    .withProjectId(options.getBigtableProjectId())
-                    .withInstanceId(options.getBigtableInstanceId())
-                    .withTableId(options.getBigtableTableId());
+        BigtableIO.write()
+            .withProjectId(options.getBigtableProjectId())
+            .withInstanceId(options.getBigtableInstanceId())
+            .withTableId(options.getBigtableTableId());
 
     /**
      * Steps: 1) Read records from Parquet File. 2) Convert a GenericRecord to a
@@ -175,8 +173,7 @@ public class ParquetToBigtable {
     return pipeline.run();
   }
 
-  static class ParquetToBigtableFn
-          extends DoFn<GenericRecord, KV<ByteString, Iterable<Mutation>>> {
+  static class ParquetToBigtableFn extends DoFn<GenericRecord, KV<ByteString, Iterable<Mutation>>> {
 
     private final ValueProvider<Boolean> splitLargeRowsFlag;
     private Boolean splitLargeRows;
@@ -220,21 +217,22 @@ public class ParquetToBigtable {
         Mutation.SetCell setCell = null;
         if (runner.isAssignableFrom(DirectRunner.class)) {
           setCell =
-                  Mutation.SetCell.newBuilder()
-                          .setFamilyName(((GenericData.Record) element).get(0).toString())
-                          .setColumnQualifier(toByteString((ByteBuffer) ((GenericData.Record) element).get(1)))
-                          .setTimestampMicros((Long) ((GenericData.Record) element).get(2))
-                          .setValue(toByteString((ByteBuffer) ((GenericData.Record) element).get(3)))
-                          .build();
+              Mutation.SetCell.newBuilder()
+                  .setFamilyName(((GenericData.Record) element).get(0).toString())
+                  .setColumnQualifier(
+                      toByteString((ByteBuffer) ((GenericData.Record) element).get(1)))
+                  .setTimestampMicros((Long) ((GenericData.Record) element).get(2))
+                  .setValue(toByteString((ByteBuffer) ((GenericData.Record) element).get(3)))
+                  .build();
         } else {
           BigtableCell bigtableCell = (BigtableCell) element;
           setCell =
-                  Mutation.SetCell.newBuilder()
-                          .setFamilyName(bigtableCell.getFamily().toString())
-                          .setColumnQualifier(toByteString(bigtableCell.getQualifier()))
-                          .setTimestampMicros(bigtableCell.getTimestamp())
-                          .setValue(toByteString(bigtableCell.getValue()))
-                          .build();
+              Mutation.SetCell.newBuilder()
+                  .setFamilyName(bigtableCell.getFamily().toString())
+                  .setColumnQualifier(toByteString(bigtableCell.getQualifier()))
+                  .setTimestampMicros(bigtableCell.getTimestamp())
+                  .setValue(toByteString(bigtableCell.getValue()))
+                  .build();
         }
         mutations.add(Mutation.newBuilder().setSetCell(setCell).build());
         cellsProcessed++;

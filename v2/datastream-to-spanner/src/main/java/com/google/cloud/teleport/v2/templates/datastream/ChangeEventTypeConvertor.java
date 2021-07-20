@@ -1,17 +1,17 @@
 /*
- *     Copyright 2021 Google LLC
+ * Copyright (C) 2021 Google LLC
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.templates.datastream;
 
@@ -27,9 +27,8 @@ import java.time.format.DateTimeParseException;
 import org.json.JSONObject;
 
 /**
- * Utility class with methods which converts text fields in change events represented by
- * JSONObject to Cloud Spanner types.
- * TODO(b/174506187) - Add support for other data types.
+ * Utility class with methods which converts text fields in change events represented by JSONObject
+ * to Cloud Spanner types. TODO(b/174506187) - Add support for other data types.
  */
 public class ChangeEventTypeConvertor {
 
@@ -141,10 +140,8 @@ public class ChangeEventTypeConvertor {
     } catch (Exception e) {
       // Throw an exception as all conversion options are exhausted.
     }
-    throw new ChangeEventConvertorException("Unable to convert Key: "
-                                                + key + " Value: "
-                                                + changeEvent.get(key)
-                                                + "; Not a string");
+    throw new ChangeEventConvertorException(
+        "Unable to convert Key: " + key + " Value: " + changeEvent.get(key) + "; Not a string");
   }
 
   public static ByteArray toByteArray(JSONObject changeEvent, String key, boolean requiredField)
@@ -173,12 +170,13 @@ public class ChangeEventTypeConvertor {
     try {
       return Timestamp.of(parseTimestamp(changeEvent.getString(key)));
     } catch (Exception e) {
-      throw new ChangeEventConvertorException("Unable to convert Key: "
-                                                  + key + " Value: "
-                                                  + changeEvent.get(key)
-                                                  + "; Not a Timestamp");
+      throw new ChangeEventConvertorException(
+          "Unable to convert Key: "
+              + key
+              + " Value: "
+              + changeEvent.get(key)
+              + "; Not a Timestamp");
     }
-
   }
 
   public static Date toDate(JSONObject changeEvent, String key, boolean requiredField)
@@ -213,15 +211,17 @@ public class ChangeEventTypeConvertor {
   private static ZonedDateTime convertToZonedDateTime(String timestamp) {
     ZonedDateTime zonedDateTime;
     try {
-      zonedDateTime = ZonedDateTime.parse(timestamp,
-          DATASTREAM_TIMESTAMP_WITH_TZ_FORMATTER).withZoneSameInstant(ZoneId.of("UTC"));
+      zonedDateTime =
+          ZonedDateTime.parse(timestamp, DATASTREAM_TIMESTAMP_WITH_TZ_FORMATTER)
+              .withZoneSameInstant(ZoneId.of("UTC"));
     } catch (DateTimeParseException e) {
       if (!timestamp.endsWith("Z")) {
 
         // Datastream replication in JSON format does not contain 'Z' at the end of timestamp.
         timestamp = timestamp + "Z";
-        zonedDateTime = ZonedDateTime.parse(timestamp,
-            DATASTREAM_TIMESTAMP_WITH_TZ_FORMATTER).withZoneSameInstant(ZoneId.of("UTC"));
+        zonedDateTime =
+            ZonedDateTime.parse(timestamp, DATASTREAM_TIMESTAMP_WITH_TZ_FORMATTER)
+                .withZoneSameInstant(ZoneId.of("UTC"));
       } else {
         throw e;
       }

@@ -1,26 +1,26 @@
 # Dataflow Streaming Data Generator
-[StreamingDataGenerator](src/main/java/com/google/cloud/teleport/v2/templates/StreamingDataGenerator.java) - 
+[StreamingDataGenerator](src/main/java/com/google/cloud/teleport/v2/templates/StreamingDataGenerator.java) -
 templates generates either unlimited or fixed number of synthetic records/messages based on user specified
-schema template at a specific QPS, encodes as either Json/Avro/Parquet and writes to one of the sinks 
-(PubSub/BigQuery/Google Cloud Storage) as per users choice. 
+schema template at a specific QPS, encodes as either Json/Avro/Parquet and writes to one of the sinks
+(PubSub/BigQuery/Google Cloud Storage) as per users choice.
 
 Following are few use cases:
 
 1. Simulate large scale real time event publishing to Pub/Sub to measure and determine the number and size of
    consumers required to process published events.
 
-2. Generate synthetic data to systems like BigQuery, Google Cloud Storage to run either performance benchmarks 
+2. Generate synthetic data to systems like BigQuery, Google Cloud Storage to run either performance benchmarks
    / Proof of concepts.
 
 Below table outlines supported sinks and output encoding formats:
- 
+
 |  | JSON | AVRO  | PARQUET |
 | ---|:----:| :-----:|:-----:|
 | Pub/Sub | Y | Y | |
 | BigQuery | Y | |  |
 | Google Cloud Storage | Y | Y | Y |
 
-> Note the number of workers executing the pipeline must be large enough to support the supplied 
+> Note the number of workers executing the pipeline must be large enough to support the supplied
 > QPS. Use a general rule of 2,500 QPS per core in the worker pool when configuring your pipeline.
 
 ## Sample Pipeline DAG
@@ -32,17 +32,17 @@ Below table outlines supported sinks and output encoding formats:
 
 * Java 8
 * Maven 3
-* One of the following depending on Sink Type:  
+* One of the following depending on Sink Type:
   &nbsp;&nbsp;PubSub Topic
-  &nbsp;&nbsp;BigQuery Table  
-  &nbsp;&nbsp;Google Cloud Storage Bucket   
+  &nbsp;&nbsp;BigQuery Table
+  &nbsp;&nbsp;Google Cloud Storage Bucket
 
 ### Creating the Schema File
-The schema file used to generate JSON messages with fake data is based on the 
+The schema file used to generate JSON messages with fake data is based on the
 [json-data-generator](https://github.com/vincentrussell/json-data-generator) library. This library
-allows for the structuring of a sample JSON schema and injection of common faker functions to 
-instruct the data generator of what type of fake data to create in each field. See the 
-json-data-generator [docs](https://github.com/vincentrussell/json-data-generator) for more 
+allows for the structuring of a sample JSON schema and injection of common faker functions to
+instruct the data generator of what type of fake data to create in each field. See the
+json-data-generator [docs](https://github.com/vincentrussell/json-data-generator) for more
 information on the faker functions.
 
 #### Example Schema File
@@ -82,7 +82,7 @@ Pub/Sub topic.
 
 #### Example Schema file to generate Pub/Sub message with attributes
 In scenarios that require the pub/Sub message attributes, payload fields and attribute fields can be specified as shown
-below. In this example attributes represents both payload fields (eventId, eventTime) and non payload fields (appId,playerId) 
+below. In this example attributes represents both payload fields (eventId, eventTime) and non payload fields (appId,playerId)
 ```javascript
 {
     "payload": {
@@ -117,10 +117,10 @@ Based on the above schema, the message payload will be as shown below and attrib
 * Note: Template checks for presence of "^\\{\"?payload\"?:.+\"?attributes\"?:.+" pattern to determine whether to populate attributes or not
 
 #### Generate Avro Pub/Sub Messages
-To generate Avro encoded Pub/Sub messages supply following additional parameters:  
-&nbsp;&nbsp;--outputType=AVRO  
+To generate Avro encoded Pub/Sub messages supply following additional parameters:
+&nbsp;&nbsp;--outputType=AVRO
 &nbsp;&nbsp;--avroSchemaLocation=gs://bucketname/prefix/filename.avsc
-  
+
 Below is the example of avro schema corresponding to above message schema:
 ```javascript
 {
@@ -141,32 +141,32 @@ Below is the example of avro schema corresponding to above message schema:
 ** Schema should match with Avro 1.8 Specifications.
 
 #### Write to BigQuery
-  * Output table must already exists and table schema should match schema supplied to generate fake records. 
-  * Supply following additional parameters:    
-    &nbsp;&nbsp;--sinkType=BIGQUERY  
+  * Output table must already exists and table schema should match schema supplied to generate fake records.
+  * Supply following additional parameters:
+    &nbsp;&nbsp;--sinkType=BIGQUERY
     &nbsp;&nbsp;--outputTableSpec=projectid:datasetid.tableid
-  * Optional parameters are:   
-    &nbsp;&nbsp;--writeDisposition=[WRITE_APPEND|WRITE_TRUNCATE|WRITE_EMPTY]. Default is WRITE_APPEND  
-    &nbsp;&nbsp;--outputDeadletterTable=projectid:datasetid.tableid. If not supplied creates a table with name outputtableid_error_records 
+  * Optional parameters are:
+    &nbsp;&nbsp;--writeDisposition=[WRITE_APPEND|WRITE_TRUNCATE|WRITE_EMPTY]. Default is WRITE_APPEND
+    &nbsp;&nbsp;--outputDeadletterTable=projectid:datasetid.tableid. If not supplied creates a table with name outputtableid_error_records
 
-Template uses Streaming Inserts method instead of load to write data to BigQuery. Streaming Inserts are not free and subject to quota limits.  
+Template uses Streaming Inserts method instead of load to write data to BigQuery. Streaming Inserts are not free and subject to quota limits.
 For more latest informatioon check [BigQuery docs](https://cloud.google.com/bigquery/streaming-data-into-bigquery)
 
 #### Write to Google Cloud Storage
-  * Output Bucket must already exists. 
-  * Supply following additional parameters:    
-    &nbsp;&nbsp;--sinkType=GCS  
+  * Output Bucket must already exists.
+  * Supply following additional parameters:
+    &nbsp;&nbsp;--sinkType=GCS
     &nbsp;&nbsp;--outputDirectory=gs://bucketname/prefix/
-    &nbsp;&nbsp;--outputType=[AVRO|PQRQUET]. If not specified default output is JSON. 
+    &nbsp;&nbsp;--outputType=[AVRO|PQRQUET]. If not specified default output is JSON.
     &nbsp;&nbsp;--avroSchemaLocation=gs://bucketname/prefix/filename.avsc (Mandatory when Output encoding type is AVRO or PARQUET)
   * Optional parameters include:
-    &nbsp;&nbsp;--windowDuration=< Duration of fixed window >. Default is 1m (i.e 1 minute)  
-    &nbsp;&nbsp;--outputFilenamePrefix=< Prefix for each file >. Default is output-   
+    &nbsp;&nbsp;--windowDuration=< Duration of fixed window >. Default is 1m (i.e 1 minute)
+    &nbsp;&nbsp;--outputFilenamePrefix=< Prefix for each file >. Default is output-
     &nbsp;&nbsp;--numShards=< Number of output files per window >. Must be specified as 1 or higher number
 
 #### Writing fixed number of records
 By default templates generates unlimited number of messages but however if you need fixed number of messages include
-the option --messagesLimit=<number> to convert the pipeline from unbounded source to bounded source. 
+the option --messagesLimit=<number> to convert the pipeline from unbounded source to bounded source.
 
 ### Testing Pipeline
 The template unit tests can be run using:
@@ -174,7 +174,7 @@ The template unit tests can be run using:
 ```sh
 mvn test
 ```
-    
+
 ### Building Template
 Flex templates containerize the pipeline code and defines template specification file.
 
@@ -352,7 +352,7 @@ Create template spec in Google Cloud Storage with path to container image in Goo
                        "paramType": "TEXT"
                    },
                    {
-                      
+
                        "name": "autoscalingAlgorithm",
                        "label": "autoscaling Algorithm",
                        "helpText": "autoscalingAlgorithm",
@@ -361,7 +361,7 @@ Create template spec in Google Cloud Storage with path to container image in Goo
                          "^(THROUGHPUT_BASED|NONE)$"
                        ],
                        "paramType": "TEXT"
-                   }         			
+                   }
 		]
 	   },
 	"sdk_info": {

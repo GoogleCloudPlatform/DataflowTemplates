@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2021 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -24,25 +24,26 @@ import org.apache.beam.sdk.options.Validation;
  * the executor at the command-line.
  *
  * <p>Inherits standard configuration options, options from {@link
- * JavascriptTextTransformer.JavascriptTextTransformerOptions}, and options from {@link ElasticsearchWriteOptions}.
+ * JavascriptTextTransformer.JavascriptTextTransformerOptions}, and options from {@link
+ * ElasticsearchWriteOptions}.
  */
 public interface PubSubToElasticsearchOptions
-        extends JavascriptTextTransformer.JavascriptTextTransformerOptions, ElasticsearchWriteOptions {
+    extends JavascriptTextTransformer.JavascriptTextTransformerOptions, ElasticsearchWriteOptions {
 
-    @Description(
-            "The Cloud Pub/Sub subscription to consume from. "
-                    + "The name should be in the format of "
-                    + "projects/<project-id>/subscriptions/<subscription-name>.")
-    @Validation.Required
-    String getInputSubscription();
+  @Description(
+      "The Cloud Pub/Sub subscription to consume from. "
+          + "The name should be in the format of "
+          + "projects/<project-id>/subscriptions/<subscription-name>.")
+  @Validation.Required
+  String getInputSubscription();
 
-    void setInputSubscription(String inputSubscription);
+  void setInputSubscription(String inputSubscription);
 
-    @Description(
-            "The dead-letter table to output to within BigQuery in <project-id>:<dataset>.<table> "
-                    + "format.")
-    @Validation.Required
-    String getDeadletterTable();
+  @Description(
+      "The dead-letter table to output to within BigQuery in <project-id>:<dataset>.<table> "
+          + "format.")
+  @Validation.Required
+  String getDeadletterTable();
 
-    void setDeadletterTable(String deadletterTable);
+  void setDeadletterTable(String deadletterTable);
 }

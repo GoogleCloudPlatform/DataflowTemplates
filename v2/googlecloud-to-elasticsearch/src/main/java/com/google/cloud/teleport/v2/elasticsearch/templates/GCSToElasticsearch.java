@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2021 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -44,7 +44,7 @@ import org.slf4j.LoggerFactory;
  * The {@link GCSToElasticsearch} pipeline exports data from one or more CSV files in Cloud Storage
  * to Elasticsearch.
  *
- * Please refer to <b><a href=
+ * <p>Please refer to <b><a href=
  * "https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/master/v2/googlecloud-to-elasticsearch/docs/GCSToElasticsearch/README.md">
  * README.md</a></b> for further information.
  */
@@ -109,9 +109,9 @@ public class GCSToElasticsearch {
 
     // Throw error if only one retry configuration parameter is set.
     checkArgument(
-            (options.getMaxRetryAttempts() == null && options.getMaxRetryDuration() == null) || (
-                    options.getMaxRetryAttempts() != null && options.getMaxRetryDuration() != null),
-            "To specify retry configuration both max attempts and max duration must be set.");
+        (options.getMaxRetryAttempts() == null && options.getMaxRetryDuration() == null)
+            || (options.getMaxRetryAttempts() != null && options.getMaxRetryDuration() != null),
+        "To specify retry configuration both max attempts and max duration must be set.");
 
     /*
      * Steps: 1) Read records from CSV(s) via {@link CsvConverters.ReadCsv}.
@@ -181,5 +181,4 @@ public class GCSToElasticsearch {
 
     return pipeline.run();
   }
-
 }

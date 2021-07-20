@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner;
 
 import static org.hamcrest.Matchers.is;
@@ -49,8 +48,8 @@ import org.junit.rules.TemporaryFolder;
 
 /**
  * An end to end test that exports and imports a database and verifies that the content is identical
- * This requires an active GCP project with a Spanner instance.
- * Hence this test can only be run locally with a project set up using 'gcloud config'.
+ * This requires an active GCP project with a Spanner instance. Hence this test can only be run
+ * locally with a project set up using 'gcloud config'.
  */
 @Category(IntegrationTest.class)
 public class CopyDbTest {
@@ -90,34 +89,91 @@ public class CopyDbTest {
 
   @Test
   public void allTypesSchema() throws Exception {
-        Ddl ddl = Ddl.builder()
+    Ddl ddl =
+        Ddl.builder()
             .createTable("Users")
-              .column("first_name").string().max().endColumn()
-              .column("last_name").string().size(5).endColumn()
-              .column("age").int64().endColumn()
-              .primaryKey().asc("first_name").desc("last_name").end()
+            .column("first_name")
+            .string()
+            .max()
+            .endColumn()
+            .column("last_name")
+            .string()
+            .size(5)
+            .endColumn()
+            .column("age")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("first_name")
+            .desc("last_name")
+            .end()
             .endTable()
             .createTable("AllTYPES")
-              .column("first_name").string().max().endColumn()
-              .column("last_name").string().size(5).endColumn()
-              .column("id").int64().notNull().endColumn()
-              .column("bool_field").bool().endColumn()
-              .column("int64_field").int64().endColumn()
-              .column("float64_field").float64().endColumn()
-              .column("string_field").string().max().endColumn()
-              .column("bytes_field").bytes().max().endColumn()
-              .column("timestamp_field").timestamp().endColumn()
-              .column("date_field").date().endColumn()
-              .column("arr_bool_field").type(Type.array(Type.bool())).endColumn()
-              .column("arr_int64_field").type(Type.array(Type.int64())).endColumn()
-              .column("arr_float64_field").type(Type.array(Type.float64())).endColumn()
-              .column("arr_string_field").type(Type.array(Type.string())).max().endColumn()
-              .column("arr_bytes_field").type(Type.array(Type.bytes())).max().endColumn()
-              .column("arr_timestamp_field").type(Type.array(Type.timestamp())).endColumn()
-              .column("arr_date_field").type(Type.array(Type.date())).endColumn()
-              .primaryKey().asc("first_name").desc("last_name").asc("id").end()
-              .interleaveInParent("Users")
-              .onDeleteCascade()
+            .column("first_name")
+            .string()
+            .max()
+            .endColumn()
+            .column("last_name")
+            .string()
+            .size(5)
+            .endColumn()
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("bool_field")
+            .bool()
+            .endColumn()
+            .column("int64_field")
+            .int64()
+            .endColumn()
+            .column("float64_field")
+            .float64()
+            .endColumn()
+            .column("string_field")
+            .string()
+            .max()
+            .endColumn()
+            .column("bytes_field")
+            .bytes()
+            .max()
+            .endColumn()
+            .column("timestamp_field")
+            .timestamp()
+            .endColumn()
+            .column("date_field")
+            .date()
+            .endColumn()
+            .column("arr_bool_field")
+            .type(Type.array(Type.bool()))
+            .endColumn()
+            .column("arr_int64_field")
+            .type(Type.array(Type.int64()))
+            .endColumn()
+            .column("arr_float64_field")
+            .type(Type.array(Type.float64()))
+            .endColumn()
+            .column("arr_string_field")
+            .type(Type.array(Type.string()))
+            .max()
+            .endColumn()
+            .column("arr_bytes_field")
+            .type(Type.array(Type.bytes()))
+            .max()
+            .endColumn()
+            .column("arr_timestamp_field")
+            .type(Type.array(Type.timestamp()))
+            .endColumn()
+            .column("arr_date_field")
+            .type(Type.array(Type.date()))
+            .endColumn()
+            .primaryKey()
+            .asc("first_name")
+            .desc("last_name")
+            .asc("id")
+            .end()
+            .interleaveInParent("Users")
+            .onDeleteCascade()
             .endTable()
             .build();
     createAndPopulate(ddl, 100);
@@ -126,113 +182,280 @@ public class CopyDbTest {
 
   @Test
   public void emptyTables() throws Exception {
-        Ddl ddl = Ddl.builder()
+    Ddl ddl =
+        Ddl.builder()
             .createTable("Users")
-              .column("first_name").string().max().endColumn()
-              .column("last_name").string().size(5).endColumn()
-              .column("age").int64().endColumn()
-              .primaryKey().asc("first_name").desc("last_name").end()
+            .column("first_name")
+            .string()
+            .max()
+            .endColumn()
+            .column("last_name")
+            .string()
+            .size(5)
+            .endColumn()
+            .column("age")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("first_name")
+            .desc("last_name")
+            .end()
             .endTable()
             .createTable("AllTYPES")
-              .column("first_name").string().max().endColumn()
-              .column("last_name").string().size(5).endColumn()
-              .column("id").int64().notNull().endColumn()
-              .column("bool_field").bool().endColumn()
-              .column("int64_field").int64().endColumn()
-              .column("float64_field").float64().endColumn()
-              .column("string_field").string().max().endColumn()
-              .column("bytes_field").bytes().max().endColumn()
-              .column("timestamp_field").timestamp().endColumn()
-              .column("date_field").date().endColumn()
-              .column("arr_bool_field").type(Type.array(Type.bool())).endColumn()
-              .column("arr_int64_field").type(Type.array(Type.int64())).endColumn()
-              .column("arr_float64_field").type(Type.array(Type.float64())).endColumn()
-              .column("arr_string_field").type(Type.array(Type.string())).max().endColumn()
-              .column("arr_bytes_field").type(Type.array(Type.bytes())).max().endColumn()
-              .column("arr_timestamp_field").type(Type.array(Type.timestamp())).endColumn()
-              .column("arr_date_field").type(Type.array(Type.date())).endColumn()
-              .primaryKey().asc("first_name").desc("last_name").asc("id").end()
-              .interleaveInParent("Users")
+            .column("first_name")
+            .string()
+            .max()
+            .endColumn()
+            .column("last_name")
+            .string()
+            .size(5)
+            .endColumn()
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("bool_field")
+            .bool()
+            .endColumn()
+            .column("int64_field")
+            .int64()
+            .endColumn()
+            .column("float64_field")
+            .float64()
+            .endColumn()
+            .column("string_field")
+            .string()
+            .max()
+            .endColumn()
+            .column("bytes_field")
+            .bytes()
+            .max()
+            .endColumn()
+            .column("timestamp_field")
+            .timestamp()
+            .endColumn()
+            .column("date_field")
+            .date()
+            .endColumn()
+            .column("arr_bool_field")
+            .type(Type.array(Type.bool()))
+            .endColumn()
+            .column("arr_int64_field")
+            .type(Type.array(Type.int64()))
+            .endColumn()
+            .column("arr_float64_field")
+            .type(Type.array(Type.float64()))
+            .endColumn()
+            .column("arr_string_field")
+            .type(Type.array(Type.string()))
+            .max()
+            .endColumn()
+            .column("arr_bytes_field")
+            .type(Type.array(Type.bytes()))
+            .max()
+            .endColumn()
+            .column("arr_timestamp_field")
+            .type(Type.array(Type.timestamp()))
+            .endColumn()
+            .column("arr_date_field")
+            .type(Type.array(Type.date()))
+            .endColumn()
+            .primaryKey()
+            .asc("first_name")
+            .desc("last_name")
+            .asc("id")
+            .end()
+            .interleaveInParent("Users")
             .endTable()
             .build();
     createAndPopulate(ddl, 10);
 
     // Add empty tables.
-    Ddl emptyTables = Ddl.builder()
-        .createTable("empty_one")
-          .column("first").string().max().endColumn()
-          .column("second").string().size(5).endColumn()
-          .column("value").int64().endColumn()
-          .primaryKey().asc("first").desc("second").end()
-          .endTable()
-        .createTable("empty_two")
-          .column("first").string().max().endColumn()
-          .column("second").string().size(5).endColumn()
-          .column("value").int64().endColumn()
-          .column("another_value").int64().endColumn()
-          .primaryKey().asc("first").end()
-          .endTable()
-        .build();
+    Ddl emptyTables =
+        Ddl.builder()
+            .createTable("empty_one")
+            .column("first")
+            .string()
+            .max()
+            .endColumn()
+            .column("second")
+            .string()
+            .size(5)
+            .endColumn()
+            .column("value")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("first")
+            .desc("second")
+            .end()
+            .endTable()
+            .createTable("empty_two")
+            .column("first")
+            .string()
+            .max()
+            .endColumn()
+            .column("second")
+            .string()
+            .size(5)
+            .endColumn()
+            .column("value")
+            .int64()
+            .endColumn()
+            .column("another_value")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("first")
+            .end()
+            .endTable()
+            .build();
     spannerServer.updateDatabase(sourceDb, emptyTables.createTableStatements());
     runTest();
   }
 
   @Test
   public void allEmptyTables() throws Exception {
-        Ddl ddl = Ddl.builder()
+    Ddl ddl =
+        Ddl.builder()
             .createTable("Users")
-              .column("first_name").string().max().endColumn()
-              .column("last_name").string().size(5).endColumn()
-              .column("age").int64().endColumn()
-              .primaryKey().asc("first_name").desc("last_name").end()
+            .column("first_name")
+            .string()
+            .max()
+            .endColumn()
+            .column("last_name")
+            .string()
+            .size(5)
+            .endColumn()
+            .column("age")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("first_name")
+            .desc("last_name")
+            .end()
             .endTable()
             .createTable("AllTYPES")
-              .column("first_name").string().max().endColumn()
-              .column("last_name").string().size(5).endColumn()
-              .column("id").int64().notNull().endColumn()
-              .column("bool_field").bool().endColumn()
-              .column("int64_field").int64().endColumn()
-              .column("float64_field").float64().endColumn()
-              .column("string_field").string().max().endColumn()
-              .column("bytes_field").bytes().max().endColumn()
-              .column("timestamp_field").timestamp().endColumn()
-              .column("date_field").date().endColumn()
-              .column("arr_bool_field").type(Type.array(Type.bool())).endColumn()
-              .column("arr_int64_field").type(Type.array(Type.int64())).endColumn()
-              .column("arr_float64_field").type(Type.array(Type.float64())).endColumn()
-              .column("arr_string_field").type(Type.array(Type.string())).max().endColumn()
-              .column("arr_bytes_field").type(Type.array(Type.bytes())).max().endColumn()
-              .column("arr_timestamp_field").type(Type.array(Type.timestamp())).endColumn()
-              .column("arr_date_field").type(Type.array(Type.date())).endColumn()
-              .primaryKey().asc("first_name").desc("last_name").asc("id").end()
-              .interleaveInParent("Users")
+            .column("first_name")
+            .string()
+            .max()
+            .endColumn()
+            .column("last_name")
+            .string()
+            .size(5)
+            .endColumn()
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("bool_field")
+            .bool()
+            .endColumn()
+            .column("int64_field")
+            .int64()
+            .endColumn()
+            .column("float64_field")
+            .float64()
+            .endColumn()
+            .column("string_field")
+            .string()
+            .max()
+            .endColumn()
+            .column("bytes_field")
+            .bytes()
+            .max()
+            .endColumn()
+            .column("timestamp_field")
+            .timestamp()
+            .endColumn()
+            .column("date_field")
+            .date()
+            .endColumn()
+            .column("arr_bool_field")
+            .type(Type.array(Type.bool()))
+            .endColumn()
+            .column("arr_int64_field")
+            .type(Type.array(Type.int64()))
+            .endColumn()
+            .column("arr_float64_field")
+            .type(Type.array(Type.float64()))
+            .endColumn()
+            .column("arr_string_field")
+            .type(Type.array(Type.string()))
+            .max()
+            .endColumn()
+            .column("arr_bytes_field")
+            .type(Type.array(Type.bytes()))
+            .max()
+            .endColumn()
+            .column("arr_timestamp_field")
+            .type(Type.array(Type.timestamp()))
+            .endColumn()
+            .column("arr_date_field")
+            .type(Type.array(Type.date()))
+            .endColumn()
+            .primaryKey()
+            .asc("first_name")
+            .desc("last_name")
+            .asc("id")
+            .end()
+            .interleaveInParent("Users")
             .endTable()
             .build();
     createAndPopulate(ddl, 0);
     runTest();
   }
 
-
   @Test
   public void databaseOptions() throws Exception {
     Ddl.Builder ddlBuilder = Ddl.builder();
     // Table Content
-    ddlBuilder.createTable("Users")
-                .column("first_name").string().max().endColumn()
-                .column("last_name").string().size(5).endColumn()
-                .column("age").int64().endColumn()
-                .primaryKey().asc("first_name").desc("last_name").end()
-              .endTable()
-              .createTable("EmploymentData")
-                .column("first_name").string().max().endColumn()
-                .column("last_name").string().size(5).endColumn()
-                .column("id").int64().notNull().endColumn()
-                .column("age").int64().endColumn()
-                .column("address").string().max().endColumn()
-                .primaryKey().asc("first_name").desc("last_name").asc("id").end()
-                .interleaveInParent("Users")
-                .onDeleteCascade()
-              .endTable();
+    ddlBuilder
+        .createTable("Users")
+        .column("first_name")
+        .string()
+        .max()
+        .endColumn()
+        .column("last_name")
+        .string()
+        .size(5)
+        .endColumn()
+        .column("age")
+        .int64()
+        .endColumn()
+        .primaryKey()
+        .asc("first_name")
+        .desc("last_name")
+        .end()
+        .endTable()
+        .createTable("EmploymentData")
+        .column("first_name")
+        .string()
+        .max()
+        .endColumn()
+        .column("last_name")
+        .string()
+        .size(5)
+        .endColumn()
+        .column("id")
+        .int64()
+        .notNull()
+        .endColumn()
+        .column("age")
+        .int64()
+        .endColumn()
+        .column("address")
+        .string()
+        .max()
+        .endColumn()
+        .primaryKey()
+        .asc("first_name")
+        .desc("last_name")
+        .asc("id")
+        .end()
+        .interleaveInParent("Users")
+        .onDeleteCascade()
+        .endTable();
     // Allowed and well-formed database option
     List<Export.DatabaseOption> dbOptionList = new ArrayList<>();
     dbOptionList.add(
@@ -276,27 +499,46 @@ public class CopyDbTest {
 
   @Test
   public void foreignKeys() throws Exception {
-    Ddl ddl = Ddl.builder()
-        .createTable("Ref")
-        .column("id1").int64().endColumn()
-        .column("id2").int64().endColumn()
-        .primaryKey().asc("id1").asc("id2").end()
-        .endTable()
-        .createTable("Child")
-        .column("id1").int64().endColumn()
-        .column("id2").int64().endColumn()
-        .column("id3").int64().endColumn()
-        .primaryKey().asc("id1").asc("id2").asc("id3").end()
-        .interleaveInParent("Ref")
-        // Add some foreign keys that are guaranteed to be satisfied due to interleaving
-        .foreignKeys(ImmutableList.of(
-           "ALTER TABLE `Child` ADD CONSTRAINT `fk1` FOREIGN KEY (`id1`) REFERENCES `Ref` (`id1`)",
-           "ALTER TABLE `Child` ADD CONSTRAINT `fk2` FOREIGN KEY (`id2`) REFERENCES `Ref` (`id2`)",
-           "ALTER TABLE `Child` ADD CONSTRAINT `fk3` FOREIGN KEY (`id2`) REFERENCES `Ref` (`id2`)",
-           "ALTER TABLE `Child` ADD CONSTRAINT `fk4` FOREIGN KEY (`id2`, `id1`) "
-               + "REFERENCES `Ref` (`id2`, `id1`)"))
-        .endTable()
-        .build();
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Ref")
+            .column("id1")
+            .int64()
+            .endColumn()
+            .column("id2")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id1")
+            .asc("id2")
+            .end()
+            .endTable()
+            .createTable("Child")
+            .column("id1")
+            .int64()
+            .endColumn()
+            .column("id2")
+            .int64()
+            .endColumn()
+            .column("id3")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id1")
+            .asc("id2")
+            .asc("id3")
+            .end()
+            .interleaveInParent("Ref")
+            // Add some foreign keys that are guaranteed to be satisfied due to interleaving
+            .foreignKeys(
+                ImmutableList.of(
+                    "ALTER TABLE `Child` ADD CONSTRAINT `fk1` FOREIGN KEY (`id1`) REFERENCES `Ref` (`id1`)",
+                    "ALTER TABLE `Child` ADD CONSTRAINT `fk2` FOREIGN KEY (`id2`) REFERENCES `Ref` (`id2`)",
+                    "ALTER TABLE `Child` ADD CONSTRAINT `fk3` FOREIGN KEY (`id2`) REFERENCES `Ref` (`id2`)",
+                    "ALTER TABLE `Child` ADD CONSTRAINT `fk4` FOREIGN KEY (`id2`, `id1`) "
+                        + "REFERENCES `Ref` (`id2`, `id1`)"))
+            .endTable()
+            .build();
 
     createAndPopulate(ddl, 100);
     runTest();
@@ -305,14 +547,22 @@ public class CopyDbTest {
   // TODO: enable this test once CHECK constraints are enabled
   // @Test
   public void checkConstraints() throws Exception {
-    Ddl ddl = Ddl.builder()
-        .createTable("T")
-        .column("id").int64().endColumn()
-        .column("A").int64().endColumn()
-        .primaryKey().asc("id").end()
-        .checkConstraints(ImmutableList.of(
-           "CONSTRAINT `ck` CHECK(TO_HEX(SHA1(CAST(A AS STRING))) <= '~')"))
-        .endTable().build();
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("T")
+            .column("id")
+            .int64()
+            .endColumn()
+            .column("A")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .checkConstraints(
+                ImmutableList.of("CONSTRAINT `ck` CHECK(TO_HEX(SHA1(CAST(A AS STRING))) <= '~')"))
+            .endTable()
+            .build();
 
     createAndPopulate(ddl, 100);
     runTest();
@@ -334,12 +584,11 @@ public class CopyDbTest {
 
   private void runTest() {
     String tmpDirPath = tmpDir.getRoot().getAbsolutePath();
-    ValueProvider.StaticValueProvider<String> destination = ValueProvider.StaticValueProvider
-        .of(tmpDirPath);
-    ValueProvider.StaticValueProvider<String> jobId = ValueProvider.StaticValueProvider
-        .of("jobid");
-    ValueProvider.StaticValueProvider<String> source = ValueProvider.StaticValueProvider
-        .of(tmpDirPath + "/jobid");
+    ValueProvider.StaticValueProvider<String> destination =
+        ValueProvider.StaticValueProvider.of(tmpDirPath);
+    ValueProvider.StaticValueProvider<String> jobId = ValueProvider.StaticValueProvider.of("jobid");
+    ValueProvider.StaticValueProvider<String> source =
+        ValueProvider.StaticValueProvider.of(tmpDirPath + "/jobid");
 
     SpannerConfig sourceConfig = spannerServer.getSpannerConfig(sourceDb);
     exportPipeline.apply("Export", new ExportTransform(sourceConfig, destination, jobId));
@@ -360,10 +609,12 @@ public class CopyDbTest {
 
     PCollection<Long> mismatchCount =
         comparePipeline.apply("Compare", new CompareDatabases(sourceConfig, destConfig));
-    PAssert.that(mismatchCount).satisfies((x) -> {
-      assertEquals(Lists.newArrayList(x), Lists.newArrayList(0L));
-      return null;
-    });
+    PAssert.that(mismatchCount)
+        .satisfies(
+            (x) -> {
+              assertEquals(Lists.newArrayList(x), Lists.newArrayList(0L));
+              return null;
+            });
     PipelineResult compareResult = comparePipeline.run();
     compareResult.waitUntilFinish();
 

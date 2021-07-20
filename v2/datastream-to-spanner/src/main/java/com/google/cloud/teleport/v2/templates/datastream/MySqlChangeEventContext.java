@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.v2.templates.datastream;
 
 import com.google.cloud.spanner.Mutation;
@@ -27,8 +26,7 @@ import org.json.JSONObject;
  */
 class MySqlChangeEventContext extends ChangeEventContext {
 
-  public MySqlChangeEventContext(JSONObject changeEvent, Ddl ddl,
-      String shadowTablePrefix)
+  public MySqlChangeEventContext(JSONObject changeEvent, Ddl ddl, String shadowTablePrefix)
       throws ChangeEventConvertorException, InvalidChangeEventException {
     this.changeEvent = changeEvent;
     this.shadowTablePrefix = shadowTablePrefix;
@@ -49,8 +47,9 @@ class MySqlChangeEventContext extends ChangeEventContext {
             ddl, changeEvent, shadowTablePrefix);
 
     // Add timestamp information to shadow table mutation
-    Long changeEventTimestamp = ChangeEventTypeConvertor.toLong(
-        changeEvent, DatastreamConstants.MYSQL_TIMESTAMP_KEY, /*requiredField=*/true);
+    Long changeEventTimestamp =
+        ChangeEventTypeConvertor.toLong(
+            changeEvent, DatastreamConstants.MYSQL_TIMESTAMP_KEY, /*requiredField=*/ true);
     builder
         .set(DatastreamConstants.MYSQL_TIMESTAMP_SHADOW_INFO.getLeft())
         .to(Value.int64(changeEventTimestamp));
@@ -58,18 +57,18 @@ class MySqlChangeEventContext extends ChangeEventContext {
     /* MySql backfill events "can" have log file and log file position as null.
      * Set their value to a value (lexicographically) smaller than any real value.
      */
-    String logFile = ChangeEventTypeConvertor.toString(changeEvent,
-        DatastreamConstants.MYSQL_LOGFILE_KEY, /*requiredField=*/false);
+    String logFile =
+        ChangeEventTypeConvertor.toString(
+            changeEvent, DatastreamConstants.MYSQL_LOGFILE_KEY, /*requiredField=*/ false);
     if (logFile == null) {
       logFile = "";
     }
     // Add log file information to shadow table mutation
-    builder
-        .set(DatastreamConstants.MYSQL_LOGFILE_SHADOW_INFO.getLeft())
-        .to(logFile);
+    builder.set(DatastreamConstants.MYSQL_LOGFILE_SHADOW_INFO.getLeft()).to(logFile);
 
-    Long logPosition = ChangeEventTypeConvertor.toLong(changeEvent,
-        DatastreamConstants.MYSQL_LOGPOSITION_KEY, /*requiredField=*/false);
+    Long logPosition =
+        ChangeEventTypeConvertor.toLong(
+            changeEvent, DatastreamConstants.MYSQL_LOGPOSITION_KEY, /*requiredField=*/ false);
     if (logPosition == null) {
       logPosition = new Long(-1);
     }
@@ -80,5 +79,4 @@ class MySqlChangeEventContext extends ChangeEventContext {
 
     return builder.build();
   }
-
 }

@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner;
 
 import com.google.api.gax.longrunning.OperationFuture;
@@ -120,8 +119,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
   public PDone expand(PBegin begin) {
     PCollection<Export> manifest =
         begin.apply("Read manifest", new ReadExportManifestFile(importDirectory));
-    PCollectionView<Export> manifestView =
-        manifest.apply("Manifest as view", View.asSingleton());
+    PCollectionView<Export> manifestView = manifest.apply("Manifest as view", View.asSingleton());
 
     PCollection<KV<String, String>> allFiles =
         manifest.apply("Read all manifest files", new ReadManifestFiles(importDirectory));
@@ -161,15 +159,21 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
     final PCollectionTuple createTableOutput =
         begin.apply(
             "Create Cloud Spanner Tables and indexes",
-            new CreateTables(spannerConfig, avroDdlView, informationSchemaView, manifestView,
-                             earlyIndexCreateFlag));
+            new CreateTables(
+                spannerConfig,
+                avroDdlView,
+                informationSchemaView,
+                manifestView,
+                earlyIndexCreateFlag));
 
     final PCollection<Ddl> ddl = createTableOutput.get(CreateTables.getDdlObjectTag());
     final PCollectionView<List<String>> pendingIndexes =
-        createTableOutput.get(CreateTables.getPendingIndexesTag())
+        createTableOutput
+            .get(CreateTables.getPendingIndexesTag())
             .apply("As Index view", View.asSingleton());
     final PCollectionView<List<String>> pendingForeignKeys =
-        createTableOutput.get(CreateTables.getPendingForeignKeysTag())
+        createTableOutput
+            .get(CreateTables.getPendingForeignKeysTag())
             .apply("As Foreign keys view", View.asSingleton());
 
     PCollectionView<Ddl> ddlView = ddl.apply("Cloud Spanner DDL as view", View.asSingleton());
@@ -247,10 +251,11 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
       previousComputation = result.getOutput();
     }
     ddl.apply(Wait.on(previousComputation))
-       .apply("Create Indexes", new ApplyDDLTransform(spannerConfig,
-              pendingIndexes, waitForIndexes))
-       .apply("Add Foreign Keys", new ApplyDDLTransform(spannerConfig,
-              pendingForeignKeys, waitForForeignKeys));
+        .apply(
+            "Create Indexes", new ApplyDDLTransform(spannerConfig, pendingIndexes, waitForIndexes))
+        .apply(
+            "Add Foreign Keys",
+            new ApplyDDLTransform(spannerConfig, pendingForeignKeys, waitForForeignKeys));
     return PDone.in(begin.getPipeline());
   }
 
@@ -357,10 +362,10 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
       return pendingForeignKeysTag;
     }
 
-    private static final TupleTag<Ddl> ddlObjectTag = new TupleTag<Ddl>(){};
-    private static final TupleTag<List<String>> pendingIndexesTag = new TupleTag<List<String>>(){};
-    private static final TupleTag<List<String>> pendingForeignKeysTag
-        = new TupleTag<List<String>>(){};
+    private static final TupleTag<Ddl> ddlObjectTag = new TupleTag<Ddl>() {};
+    private static final TupleTag<List<String>> pendingIndexesTag = new TupleTag<List<String>>() {};
+    private static final TupleTag<List<String>> pendingForeignKeysTag =
+        new TupleTag<List<String>>() {};
 
     public CreateTables(
         SpannerConfig spannerConfig,
@@ -598,15 +603,15 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
 
       PCollection<KV<String, String>> expandedFromManifests =
           manifests.apply(
-              "Validate input files",
-              ParDo.of(new ValidateInputFiles(importDirectory)));
+              "Validate input files", ParDo.of(new ValidateInputFiles(importDirectory)));
 
       return PCollectionList.of(dataFiles).and(expandedFromManifests).apply(Flatten.pCollections());
     }
   }
 
-  /** Find checksums for the input files and validate against checksums in the manifests.
-   *  Returns multi-map of input files for each table.
+  /**
+   * Find checksums for the input files and validate against checksums in the manifests. Returns
+   * multi-map of input files for each table.
    */
   @VisibleForTesting
   static class ValidateInputFiles extends DoFn<KV<String, TableManifest>, KV<String, String>> {
@@ -630,8 +635,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
       }
     }
 
-    private void validateGcsFiles(
-        ProcessContext c, String table, TableManifest manifest) {
+    private void validateGcsFiles(ProcessContext c, String table, TableManifest manifest) {
       org.apache.beam.sdk.extensions.gcp.util.GcsUtil gcsUtil =
           c.getPipelineOptions().as(GcsOptions.class).getGcsUtil();
       // Convert file names to GcsPaths.

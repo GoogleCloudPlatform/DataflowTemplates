@@ -1,17 +1,17 @@
 /*
- *     Copyright 2019 Google LLC
+ * Copyright (C) 2019 Google LLC
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.templates;
 
@@ -43,22 +43,21 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Writes Change events from DataStream into Cloud Spanner.
- * <p>Change events are individually processed. Shadow tables store the version
- * information(that specifies the commit order) for each primary key. Shadow tables
- * are consulted before actual writes to Cloud Spanner to preserve the
- * correctness and consistency of data.</p>
  *
- * <p>Change events written successfully will be pushed onto the primary output with their
- * commit timestamps.</p>
+ * <p>Change events are individually processed. Shadow tables store the version information(that
+ * specifies the commit order) for each primary key. Shadow tables are consulted before actual
+ * writes to Cloud Spanner to preserve the correctness and consistency of data.
  *
- * <p>Change events that failed to be written will be pushed onto the secondary output
- * tagged with PERMANENT_ERROR_TAG/RETRYABLE_ERROR_TAG along with the exception that
- * caused the failure.</p>
+ * <p>Change events written successfully will be pushed onto the primary output with their commit
+ * timestamps.
+ *
+ * <p>Change events that failed to be written will be pushed onto the secondary output tagged with
+ * PERMANENT_ERROR_TAG/RETRYABLE_ERROR_TAG along with the exception that caused the failure.
  */
 class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>, Timestamp>
     implements Serializable {
 
-  //TODO - Change Cloud Spanner nomenclature in code used to read DDL.
+  // TODO - Change Cloud Spanner nomenclature in code used to read DDL.
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerTransactionWriterDoFn.class);
 
@@ -93,13 +92,16 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   private final Counter retryableErrors =
       Metrics.counter(SpannerTransactionWriterDoFn.class, "Retryable errors");
 
-  SpannerTransactionWriterDoFn(SpannerConfig spannerConfig, PCollectionView<Ddl> ddlView,
-      String shadowTablePrefix, String sourceType) {
+  SpannerTransactionWriterDoFn(
+      SpannerConfig spannerConfig,
+      PCollectionView<Ddl> ddlView,
+      String shadowTablePrefix,
+      String sourceType) {
     Preconditions.checkNotNull(spannerConfig);
     this.spannerConfig = spannerConfig;
     this.ddlView = ddlView;
-    this.shadowTablePrefix = (shadowTablePrefix.endsWith("_")) ? shadowTablePrefix
-        : shadowTablePrefix + "_";
+    this.shadowTablePrefix =
+        (shadowTablePrefix.endsWith("_")) ? shadowTablePrefix : shadowTablePrefix + "_";
     this.sourceType = sourceType;
   }
 
@@ -146,24 +148,23 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
               (TransactionCallable<Void>)
                   transaction -> {
 
-                // Sequence information for the last change event.
-                ChangeEventSequence previousChangeEventSequence =
-                    ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
-                        transaction, changeEventContext);
+                    // Sequence information for the last change event.
+                    ChangeEventSequence previousChangeEventSequence =
+                        ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
+                            transaction, changeEventContext);
 
-                /* There was a previous event recorded with a greater sequence information
-                 * than current. Hence skip the current event.
-                 */
-                if (previousChangeEventSequence != null
-                        && previousChangeEventSequence.compareTo(
-                            currentChangeEventSequence) >= 0) {
-                  return null;
-                }
+                    /* There was a previous event recorded with a greater sequence information
+                     * than current. Hence skip the current event.
+                     */
+                    if (previousChangeEventSequence != null
+                        && previousChangeEventSequence.compareTo(currentChangeEventSequence) >= 0) {
+                      return null;
+                    }
 
-                // Apply shadow and data table mutations.
-                transaction.buffer(changeEventContext.getMutations());
-                return null;
-              });
+                    // Apply shadow and data table mutations.
+                    transaction.buffer(changeEventContext.getMutations());
+                    return null;
+                  });
       com.google.cloud.Timestamp timestamp = com.google.cloud.Timestamp.now();
       c.output(timestamp);
       sucessfulEvents.inc();
@@ -193,14 +194,16 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     }
   }
 
-  void outputWithErrorTag(ProcessContext c,
+  void outputWithErrorTag(
+      ProcessContext c,
       FailsafeElement<String, String> changeEvent,
-      Exception e, TupleTag<FailsafeElement<String, String>> errorTag) {
-      // Making a copy, as the input must not be mutated.
-      FailsafeElement<String, String> output = FailsafeElement.of(changeEvent);
-      StringWriter errors = new StringWriter();
-      e.printStackTrace(new PrintWriter(errors));
-      output.setErrorMessage(errors.toString());
-      c.output(errorTag, output);
+      Exception e,
+      TupleTag<FailsafeElement<String, String>> errorTag) {
+    // Making a copy, as the input must not be mutated.
+    FailsafeElement<String, String> output = FailsafeElement.of(changeEvent);
+    StringWriter errors = new StringWriter();
+    e.printStackTrace(new PrintWriter(errors));
+    output.setErrorMessage(errors.toString());
+    c.output(errorTag, output);
   }
 }

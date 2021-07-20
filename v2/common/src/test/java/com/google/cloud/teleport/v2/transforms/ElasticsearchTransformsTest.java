@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -58,16 +58,16 @@ public class ElasticsearchTransformsTest {
     exceptionRule.expect(IllegalArgumentException.class);
 
     ElasticsearchTransforms.WriteToElasticsearchOptions options =
-            PipelineOptionsFactory.create()
-                    .as(ElasticsearchTransforms.WriteToElasticsearchOptions.class);
+        PipelineOptionsFactory.create()
+            .as(ElasticsearchTransforms.WriteToElasticsearchOptions.class);
 
     options.setNodeAddresses("http://my-node1");
     options.setIndex("testIndex");
     options.setDocumentType(null);
 
     pipeline
-            .apply("CreateInput", Create.of("test"))
-            .apply(WriteToElasticsearch.newBuilder().setOptions(options).build());
+        .apply("CreateInput", Create.of("test"))
+        .apply(WriteToElasticsearch.newBuilder().setOptions(options).build());
 
     pipeline.run();
   }
@@ -79,21 +79,24 @@ public class ElasticsearchTransformsTest {
     exceptionRule.expect(IllegalArgumentException.class);
 
     ElasticsearchTransforms.WriteToElasticsearchOptions options =
-            PipelineOptionsFactory.create()
-                    .as(ElasticsearchTransforms.WriteToElasticsearchOptions.class);
+        PipelineOptionsFactory.create()
+            .as(ElasticsearchTransforms.WriteToElasticsearchOptions.class);
 
     options.setNodeAddresses("http://my-node1");
     options.setIndex(null);
     options.setDocumentType("testType");
 
     pipeline
-            .apply("CreateInput", Create.of("test"))
-            .apply(WriteToElasticsearch.newBuilder().setOptions(options).build());
+        .apply("CreateInput", Create.of("test"))
+        .apply(WriteToElasticsearch.newBuilder().setOptions(options).build());
 
     pipeline.run();
   }
 
-  /** Tests that {@link WriteToElasticsearch} throws an exception if an invalid node address is provided. */
+  /**
+   * Tests that {@link WriteToElasticsearch} throws an exception if an invalid node address is
+   * provided.
+   */
   @Test
   public void testInvalidNodeAddresses() {
 
@@ -116,17 +119,18 @@ public class ElasticsearchTransformsTest {
     pipeline.run();
   }
 
-
-
-  /** Tests that {@link WriteToElasticsearch} throws an exception if {@link org.apache.beam.sdk.io.elasticsearch.ElasticsearchIO.RetryConfiguration} are invalid. */
+  /**
+   * Tests that {@link WriteToElasticsearch} throws an exception if {@link
+   * org.apache.beam.sdk.io.elasticsearch.ElasticsearchIO.RetryConfiguration} are invalid.
+   */
   @Test
   public void testWriteToElasticsearchOptionsRetryConfigMaxAttempts() {
 
     exceptionRule.expect(IllegalArgumentException.class);
 
     ElasticsearchTransforms.WriteToElasticsearchOptions options =
-            PipelineOptionsFactory.create()
-                    .as(ElasticsearchTransforms.WriteToElasticsearchOptions.class);
+        PipelineOptionsFactory.create()
+            .as(ElasticsearchTransforms.WriteToElasticsearchOptions.class);
 
     options.setNodeAddresses("http://my-node1");
     options.setIndex("testIndex");
@@ -135,23 +139,26 @@ public class ElasticsearchTransformsTest {
     options.setMaxRetryAttempts(null);
 
     pipeline
-            .apply("CreateInput", Create.of("test"))
-            .apply(
-                    "TestWriteToElasticsearchBadMaxAttempts",
-                    WriteToElasticsearch.newBuilder().setOptions(options).build());
+        .apply("CreateInput", Create.of("test"))
+        .apply(
+            "TestWriteToElasticsearchBadMaxAttempts",
+            WriteToElasticsearch.newBuilder().setOptions(options).build());
 
     pipeline.run();
   }
 
-  /** Tests that {@link WriteToElasticsearch} throws an exception if {@link org.apache.beam.sdk.io.elasticsearch.ElasticsearchIO.RetryConfiguration} are invalid. */
+  /**
+   * Tests that {@link WriteToElasticsearch} throws an exception if {@link
+   * org.apache.beam.sdk.io.elasticsearch.ElasticsearchIO.RetryConfiguration} are invalid.
+   */
   @Test
   public void testWriteToElasticsearchOptionsRetryConfigMaxDuration() {
 
     exceptionRule.expect(IllegalArgumentException.class);
 
     ElasticsearchTransforms.WriteToElasticsearchOptions options =
-            PipelineOptionsFactory.create()
-                    .as(ElasticsearchTransforms.WriteToElasticsearchOptions.class);
+        PipelineOptionsFactory.create()
+            .as(ElasticsearchTransforms.WriteToElasticsearchOptions.class);
 
     options.setNodeAddresses("http://my-node1");
     options.setIndex("testIndex");
@@ -160,10 +167,10 @@ public class ElasticsearchTransformsTest {
     options.setMaxRetryAttempts(3);
 
     pipeline
-            .apply("CreateInput", Create.of("test"))
-            .apply(
-                    "TestWriteToElasticsearchBadMaxDuration",
-                    WriteToElasticsearch.newBuilder().setOptions(options).build());
+        .apply("CreateInput", Create.of("test"))
+        .apply(
+            "TestWriteToElasticsearchBadMaxDuration",
+            WriteToElasticsearch.newBuilder().setOptions(options).build());
 
     pipeline.run();
   }

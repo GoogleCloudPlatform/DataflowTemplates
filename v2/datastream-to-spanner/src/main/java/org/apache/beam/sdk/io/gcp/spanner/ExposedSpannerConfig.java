@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package org.apache.beam.sdk.io.gcp.spanner;
 
 import com.google.cloud.ServiceFactory;
@@ -24,9 +23,7 @@ import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
 import org.joda.time.Duration;
 
-/**
- * Exposed spanner config.
- */
+/** Exposed spanner config. */
 public class ExposedSpannerConfig extends SpannerConfig {
   // A default host name for batch traffic.
   private static final String DEFAULT_HOST = "https://batch-spanner.googleapis.com/";
@@ -122,14 +119,29 @@ public class ExposedSpannerConfig extends SpannerConfig {
   @Override
   public String toString() {
     return "SpannerConfig{"
-         + "projectId=" + projectId + ", "
-         + "instanceId=" + instanceId + ", "
-         + "databaseId=" + databaseId + ", "
-         + "host=" + host + ", "
-         + "emulatorHost=" + emulatorHost + ", "
-         + "commitDeadline=" + commitDeadline + ", "
-         + "maxCumulativeBackoff=" + maxCumulativeBackoff + ", "
-         + "serviceFactory=" + serviceFactory
+        + "projectId="
+        + projectId
+        + ", "
+        + "instanceId="
+        + instanceId
+        + ", "
+        + "databaseId="
+        + databaseId
+        + ", "
+        + "host="
+        + host
+        + ", "
+        + "emulatorHost="
+        + emulatorHost
+        + ", "
+        + "commitDeadline="
+        + commitDeadline
+        + ", "
+        + "maxCumulativeBackoff="
+        + maxCumulativeBackoff
+        + ", "
+        + "serviceFactory="
+        + serviceFactory
         + "}";
   }
 
@@ -140,14 +152,28 @@ public class ExposedSpannerConfig extends SpannerConfig {
     }
     if (o instanceof SpannerConfig) {
       SpannerConfig that = (SpannerConfig) o;
-      return ((this.projectId == null) ? (that.getProjectId() == null) : this.projectId.equals(that.getProjectId()))
-           && ((this.instanceId == null) ? (that.getInstanceId() == null) : this.instanceId.equals(that.getInstanceId()))
-           && ((this.databaseId == null) ? (that.getDatabaseId() == null) : this.databaseId.equals(that.getDatabaseId()))
-           && ((this.host == null) ? (that.getHost() == null) : this.host.equals(that.getHost()))
-           && ((this.emulatorHost == null) ? (that.getEmulatorHost() == null) : this.emulatorHost.equals(that.getEmulatorHost()))
-           && ((this.commitDeadline == null) ? (that.getCommitDeadline() == null) : this.commitDeadline.equals(that.getCommitDeadline()))
-           && ((this.maxCumulativeBackoff == null) ? (that.getMaxCumulativeBackoff() == null) : this.maxCumulativeBackoff.equals(that.getMaxCumulativeBackoff()))
-           && ((this.serviceFactory == null) ? (that.getServiceFactory() == null) : this.serviceFactory.equals(that.getServiceFactory()));
+      return ((this.projectId == null)
+              ? (that.getProjectId() == null)
+              : this.projectId.equals(that.getProjectId()))
+          && ((this.instanceId == null)
+              ? (that.getInstanceId() == null)
+              : this.instanceId.equals(that.getInstanceId()))
+          && ((this.databaseId == null)
+              ? (that.getDatabaseId() == null)
+              : this.databaseId.equals(that.getDatabaseId()))
+          && ((this.host == null) ? (that.getHost() == null) : this.host.equals(that.getHost()))
+          && ((this.emulatorHost == null)
+              ? (that.getEmulatorHost() == null)
+              : this.emulatorHost.equals(that.getEmulatorHost()))
+          && ((this.commitDeadline == null)
+              ? (that.getCommitDeadline() == null)
+              : this.commitDeadline.equals(that.getCommitDeadline()))
+          && ((this.maxCumulativeBackoff == null)
+              ? (that.getMaxCumulativeBackoff() == null)
+              : this.maxCumulativeBackoff.equals(that.getMaxCumulativeBackoff()))
+          && ((this.serviceFactory == null)
+              ? (that.getServiceFactory() == null)
+              : this.serviceFactory.equals(that.getServiceFactory()));
     }
     return false;
   }
@@ -201,8 +227,9 @@ public class ExposedSpannerConfig extends SpannerConfig {
     private ValueProvider<Duration> commitDeadline;
     private ValueProvider<Duration> maxCumulativeBackoff;
     private ServiceFactory<Spanner, SpannerOptions> serviceFactory;
-    Builder() {
-    }
+
+    Builder() {}
+
     private Builder(SpannerConfig source) {
       this.projectId = source.getProjectId();
       this.instanceId = source.getInstanceId();
@@ -213,46 +240,56 @@ public class ExposedSpannerConfig extends SpannerConfig {
       this.maxCumulativeBackoff = source.getMaxCumulativeBackoff();
       this.serviceFactory = source.getServiceFactory();
     }
+
     @Override
     ExposedSpannerConfig.Builder setProjectId(ValueProvider<String> projectId) {
       this.projectId = projectId;
       return this;
     }
+
     @Override
     ExposedSpannerConfig.Builder setInstanceId(ValueProvider<String> instanceId) {
       this.instanceId = instanceId;
       return this;
     }
+
     @Override
     ExposedSpannerConfig.Builder setDatabaseId(ValueProvider<String> databaseId) {
       this.databaseId = databaseId;
       return this;
     }
+
     @Override
     ExposedSpannerConfig.Builder setHost(ValueProvider<String> host) {
       this.host = host;
       return this;
     }
+
     @Override
     ExposedSpannerConfig.Builder setEmulatorHost(ValueProvider<String> emulatorHost) {
       this.emulatorHost = emulatorHost;
       return this;
     }
+
     @Override
     ExposedSpannerConfig.Builder setCommitDeadline(ValueProvider<Duration> commitDeadline) {
       this.commitDeadline = commitDeadline;
       return this;
     }
+
     @Override
     SpannerConfig.Builder setMaxCumulativeBackoff(ValueProvider<Duration> maxCumulativeBackoff) {
       this.maxCumulativeBackoff = maxCumulativeBackoff;
       return this;
     }
+
     @Override
-    ExposedSpannerConfig.Builder setServiceFactory(ServiceFactory<Spanner, SpannerOptions> serviceFactory) {
+    ExposedSpannerConfig.Builder setServiceFactory(
+        ServiceFactory<Spanner, SpannerOptions> serviceFactory) {
       this.serviceFactory = serviceFactory;
       return this;
     }
+
     @Override
     public ExposedSpannerConfig build() {
       return new ExposedSpannerConfig(
@@ -266,5 +303,4 @@ public class ExposedSpannerConfig extends SpannerConfig {
           this.serviceFactory);
     }
   }
-
 }

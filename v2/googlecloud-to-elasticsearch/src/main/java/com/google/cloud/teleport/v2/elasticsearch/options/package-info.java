@@ -14,7 +14,5 @@
  * the License.
  */
 
-/**
- * Package info for elasticsearch options.
- */
+/** Package info for elasticsearch options. */
 package com.google.cloud.teleport.v2.elasticsearch.options;

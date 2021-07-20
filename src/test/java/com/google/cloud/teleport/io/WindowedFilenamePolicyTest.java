@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.io;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -43,9 +42,7 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/**
- * Test class for {@link WindowedFilenamePolicy}.
- */
+/** Test class for {@link WindowedFilenamePolicy}. */
 @RunWith(JUnit4.class)
 public class WindowedFilenamePolicyTest {
 
@@ -60,32 +57,21 @@ public class WindowedFilenamePolicyTest {
     }
   }
 
-  /**
-   * Rule for exception testing.
-   */
-  @Rule
-  public ExpectedException exception = ExpectedException.none();
+  /** Rule for exception testing. */
+  @Rule public ExpectedException exception = ExpectedException.none();
 
-  /**
-   * The temporary folder.
-   */
+  /** The temporary folder. */
   @Rule public TemporaryFolder tmpFolder = new TemporaryFolder();
 
-  /**
-   * The name of the temp directory.
-   */
+  /** The name of the temp directory. */
   private static final String TEMP_DIRECTORY_NAME = "temp";
-  
-  /**
-   * Gets the temporary folder resource.
-   */
+
+  /** Gets the temporary folder resource. */
   private ResourceId getTemporaryFolder() {
     return LocalResources.fromFile(tmpFolder.getRoot(), /* isDirectory */ true);
   }
 
-  /**
-   * Gets the base directory for temporary files.
-   */
+  /** Gets the base directory for temporary files. */
   private ResourceId getBaseTempDirectory() {
     return getTemporaryFolder()
         .resolve(TEMP_DIRECTORY_NAME, StandardResolveOptions.RESOLVE_DIRECTORY);
@@ -139,7 +125,7 @@ public class WindowedFilenamePolicyTest {
             .withOutputFilenamePrefix("string-output")
             .withShardTemplate("-SSS-of-NNN")
             .withSuffix(".csv");
-    
+
     // Act
     //
     ResourceId filename =
@@ -188,8 +174,9 @@ public class WindowedFilenamePolicyTest {
   public void testWithDynamicDirectory() throws IOException {
     // Arrange
     //
-    ResourceId outputDirectory = getBaseTempDirectory()
-        .resolve("YYYY/MM/DD/HH:mm", StandardResolveOptions.RESOLVE_DIRECTORY);
+    ResourceId outputDirectory =
+        getBaseTempDirectory()
+            .resolve("YYYY/MM/DD/HH:mm", StandardResolveOptions.RESOLVE_DIRECTORY);
     WindowedContext context = mock(WindowedContext.class);
     IntervalWindow window = mock(IntervalWindow.class);
     PaneInfo paneInfo = PaneInfo.createPane(false, true, Timing.ON_TIME, 0, 0);
@@ -198,7 +185,7 @@ public class WindowedFilenamePolicyTest {
     when(window.maxTimestamp()).thenReturn(windowEnd);
     when(window.start()).thenReturn(windowBegin);
     when(window.end()).thenReturn(windowEnd);
-  
+
     WindowedFilenamePolicy policy =
         WindowedFilenamePolicy.writeWindowedFiles()
             .withOutputDirectory(StaticValueProvider.of(outputDirectory.toString()))
@@ -218,7 +205,7 @@ public class WindowedFilenamePolicyTest {
         filename.getCurrentDirectory().toString().endsWith("2017/01/08/10:56/"), is(equalTo(true)));
     assertThat(filename.getFilename(), is(equalTo("output-001-of-001")));
   }
-  
+
   /**
    * Tests that unwindowedFilename() fails with an {@link UnsupportedOperationException} when
    * invoked.
@@ -324,16 +311,17 @@ public class WindowedFilenamePolicyTest {
   public void testWindowedDirectorySinglePattern() {
 
     ResourceId outputDirectory =
-        getBaseTempDirectory().resolve("recommendations/mmmm/", StandardResolveOptions.RESOLVE_DIRECTORY);
+        getBaseTempDirectory()
+            .resolve("recommendations/mmmm/", StandardResolveOptions.RESOLVE_DIRECTORY);
     IntervalWindow window = mock(IntervalWindow.class);
     PaneInfo paneInfo = PaneInfo.createPane(false, true, Timing.ON_TIME, 0, 0);
-    
+
     Instant windowBegin = new DateTime(2017, 1, 8, 10, 55, 0).toInstant();
     Instant windowEnd = new DateTime(2017, 1, 8, 10, 56, 0).toInstant();
     when(window.maxTimestamp()).thenReturn(windowEnd);
     when(window.start()).thenReturn(windowBegin);
     when(window.end()).thenReturn(windowEnd);
-    
+
     WindowedFilenamePolicy policy =
         WindowedFilenamePolicy.writeWindowedFiles()
             .withOutputDirectory(outputDirectory.toString())
@@ -341,13 +329,14 @@ public class WindowedFilenamePolicyTest {
             .withShardTemplate("-SSS-of-NNN")
             .withSuffix("")
             .withMinutePattern("mmmm");
-    
+
     ResourceId filename =
         policy.windowedFilename(1, 1, window, paneInfo, new TestOutputFileHints());
-    
+
     assertThat(filename, is(notNullValue()));
     assertThat(
-        filename.getCurrentDirectory().toString().endsWith("recommendations/0056/"), is(equalTo(true)));
+        filename.getCurrentDirectory().toString().endsWith("recommendations/0056/"),
+        is(equalTo(true)));
     assertThat(filename.getFilename(), is(equalTo("output-001-of-001")));
   }
 
@@ -361,11 +350,10 @@ public class WindowedFilenamePolicyTest {
     final String invalidMinutePattern = "i";
 
     ResourceId outputDirectory =
-        getBaseTempDirectory()
-            .resolve("test/path/i", StandardResolveOptions.RESOLVE_DIRECTORY);
+        getBaseTempDirectory().resolve("test/path/i", StandardResolveOptions.RESOLVE_DIRECTORY);
     IntervalWindow window = mock(IntervalWindow.class);
     PaneInfo paneInfo = PaneInfo.createPane(false, true, Timing.ON_TIME, 0, 0);
-  
+
     Instant windowBegin = new DateTime(2017, 1, 8, 10, 55, 0).toInstant();
     Instant windowEnd = new DateTime(2017, 1, 8, 10, 56, 0).toInstant();
     when(window.maxTimestamp()).thenReturn(windowEnd);

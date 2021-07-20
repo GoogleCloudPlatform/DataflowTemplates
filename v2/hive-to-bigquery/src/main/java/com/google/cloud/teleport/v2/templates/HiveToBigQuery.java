@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2020 Google Inc.
+ * Copyright (C) 2020 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.api.services.bigquery.model.TimePartitioning;
@@ -40,11 +39,9 @@ import org.apache.beam.sdk.values.Row;
 import org.apache.hadoop.conf.Configuration;
 
 /**
- * The {@link HiveToBigQuery} pipeline is a batch pipeline which ingests data
- * from Hive and outputs the resulting records to BigQuery.
- *
+ * The {@link HiveToBigQuery} pipeline is a batch pipeline which ingests data from Hive and outputs
+ * the resulting records to BigQuery.
  */
-
 public final class HiveToBigQuery {
 
   /**
@@ -84,15 +81,13 @@ public final class HiveToBigQuery {
   /**
    * The main entry-point for pipeline execution. This method will start the pipeline but will not
    * wait for it's execution to finish. If blocking execution is required, use the {@link
-   * HiveToBigQuery#run(Options)} method to start the pipeline and invoke
-   * {@code
+   * HiveToBigQuery#run(Options)} method to start the pipeline and invoke {@code
    * result.waitUntilFinish()} on the {@link PipelineResult}.
    *
    * @param args The command-line args passed by the executor.
    */
   public static void main(String[] args) {
-    Options options =
-            PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
+    Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
     run(options);
   }
@@ -104,11 +99,13 @@ public final class HiveToBigQuery {
    * @param configProperties The configuration properties like metastore URI
    * @return hiveRead Configured HCatalogIO.Read method
    */
-  private static HCatalogIO.Read getHCatalogIORead(Options options, Map<String, String> configProperties) {
-    HCatalogIO.Read hiveRead = HCatalogIO.read()
-        .withConfigProperties(configProperties)
-        .withDatabase(options.getHiveDatabaseName())
-        .withTable(options.getHiveTableName());
+  private static HCatalogIO.Read getHCatalogIORead(
+      Options options, Map<String, String> configProperties) {
+    HCatalogIO.Read hiveRead =
+        HCatalogIO.read()
+            .withConfigProperties(configProperties)
+            .withDatabase(options.getHiveDatabaseName())
+            .withTable(options.getHiveTableName());
 
     if (options.getHivePartitionCols() != null) {
       hiveRead = hiveRead.withPartitionCols(options.getHivePartitionCols());
@@ -128,7 +125,8 @@ public final class HiveToBigQuery {
    * @return bqWrite Configured BigQueryIO.Write method
    */
   private static BigQueryIO.Write getBigQueryIOWrite(Options options, PCollection<Row> rows) {
-    BigQueryIO.Write bqWrite = BigQueryIO.<Row>write()
+    BigQueryIO.Write bqWrite =
+        BigQueryIO.<Row>write()
             .to(options.getOutputTableSpec())
             .withSchema(BigQueryUtils.toTableSchema(rows.getSchema()))
             .withFormatFunction(BigQueryUtils.toTableRow())
@@ -137,7 +135,8 @@ public final class HiveToBigQuery {
             .withExtendedErrorInfo();
 
     if (options.getPartitionType() == "Time") {
-      bqWrite = bqWrite.withTimePartitioning(new TimePartitioning().setField(options.getPartitionCol()));
+      bqWrite =
+          bqWrite.withTimePartitioning(new TimePartitioning().setField(options.getPartitionCol()));
     }
     return bqWrite;
   }
@@ -168,16 +167,13 @@ public final class HiveToBigQuery {
              * Step #1: Read hive table rows from Hive.
              */
             .apply(
-                "Read from Hive source",
-                    HCatToRow.fromSpec(
-                        getHCatalogIORead(options, configProperties)));
+            "Read from Hive source",
+            HCatToRow.fromSpec(getHCatalogIORead(options, configProperties)));
 
     /*
      * Step #2: Write table rows out to BigQuery
      */
-    rows.apply(
-            "Write records to BigQuery", getBigQueryIOWrite(options, rows)
-    );
+    rows.apply("Write records to BigQuery", getBigQueryIOWrite(options, rows));
     return pipeline.run();
   }
 }

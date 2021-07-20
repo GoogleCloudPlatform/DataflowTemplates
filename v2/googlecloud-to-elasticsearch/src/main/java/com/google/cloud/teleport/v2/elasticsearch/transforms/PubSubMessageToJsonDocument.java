@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2021 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -46,55 +46,55 @@ import org.apache.beam.sdk.values.TupleTagList;
  */
 @AutoValue
 public abstract class PubSubMessageToJsonDocument
-        extends PTransform<PCollection<PubsubMessage>, PCollectionTuple> {
+    extends PTransform<PCollection<PubsubMessage>, PCollectionTuple> {
 
-    public static Builder newBuilder() {
-        return new AutoValue_PubSubMessageToJsonDocument.Builder();
+  public static Builder newBuilder() {
+    return new AutoValue_PubSubMessageToJsonDocument.Builder();
+  }
+
+  @Nullable
+  public abstract String javascriptTextTransformGcsPath();
+
+  @Nullable
+  public abstract String javascriptTextTransformFunctionName();
+
+  @Override
+  public PCollectionTuple expand(PCollection<PubsubMessage> input) {
+
+    // Map the incoming messages into FailsafeElements so we can recover from failures
+    // across multiple transforms.
+    PCollection<FailsafeElement<PubsubMessage, String>> failsafeElements =
+        input.apply("MapToRecord", ParDo.of(new PubsubMessageToFailsafeElementFn()));
+
+    // If a Udf is supplied then use it to parse the PubSubMessages.
+    if (javascriptTextTransformGcsPath() != null) {
+      return failsafeElements.apply(
+          "InvokeUDF",
+          JavascriptTextTransformer.FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
+              .setFileSystemPath(javascriptTextTransformGcsPath())
+              .setFunctionName(javascriptTextTransformFunctionName())
+              .setSuccessTag(PubSubToElasticsearch.TRANSFORM_OUT)
+              .setFailureTag(PubSubToElasticsearch.TRANSFORM_DEADLETTER_OUT)
+              .build());
+    } else {
+      return failsafeElements.apply(
+          "ProcessPubSubMessages",
+          ParDo.of(new ProcessFailsafePubSubFn())
+              .withOutputTags(
+                  PubSubToElasticsearch.TRANSFORM_OUT,
+                  TupleTagList.of(PubSubToElasticsearch.TRANSFORM_DEADLETTER_OUT)));
     }
+  }
 
-    @Nullable
-    public abstract String javascriptTextTransformGcsPath();
+  /** Builder for {@link PubSubMessageToJsonDocument}. */
+  @AutoValue.Builder
+  public abstract static class Builder {
+    public abstract Builder setJavascriptTextTransformGcsPath(
+        String javascriptTextTransformGcsPath);
 
-    @Nullable
-    public abstract String javascriptTextTransformFunctionName();
+    public abstract Builder setJavascriptTextTransformFunctionName(
+        String javascriptTextTransformFunctionName);
 
-    @Override
-    public PCollectionTuple expand(PCollection<PubsubMessage> input) {
-
-        // Map the incoming messages into FailsafeElements so we can recover from failures
-        // across multiple transforms.
-        PCollection<FailsafeElement<PubsubMessage, String>> failsafeElements =
-                input.apply("MapToRecord", ParDo.of(new PubsubMessageToFailsafeElementFn()));
-
-        // If a Udf is supplied then use it to parse the PubSubMessages.
-        if (javascriptTextTransformGcsPath() != null) {
-            return failsafeElements.apply(
-                    "InvokeUDF",
-                    JavascriptTextTransformer.FailsafeJavascriptUdf.<PubsubMessage>newBuilder()
-                            .setFileSystemPath(javascriptTextTransformGcsPath())
-                            .setFunctionName(javascriptTextTransformFunctionName())
-                            .setSuccessTag(PubSubToElasticsearch.TRANSFORM_OUT)
-                            .setFailureTag(PubSubToElasticsearch.TRANSFORM_DEADLETTER_OUT)
-                            .build());
-        } else {
-            return failsafeElements.apply(
-                    "ProcessPubSubMessages",
-                    ParDo.of(new ProcessFailsafePubSubFn())
-                            .withOutputTags(PubSubToElasticsearch.TRANSFORM_OUT, TupleTagList.of(PubSubToElasticsearch.TRANSFORM_DEADLETTER_OUT)));
-        }
-    }
-
-    /**
-     * Builder for {@link PubSubMessageToJsonDocument}.
-     */
-    @AutoValue.Builder
-    public abstract static class Builder {
-        public abstract Builder setJavascriptTextTransformGcsPath(
-                String javascriptTextTransformGcsPath);
-
-        public abstract Builder setJavascriptTextTransformFunctionName(
-                String javascriptTextTransformFunctionName);
-
-        public abstract PubSubMessageToJsonDocument build();
-    }
+    public abstract PubSubMessageToJsonDocument build();
+  }
 }

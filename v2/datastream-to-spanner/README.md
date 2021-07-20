@@ -1,7 +1,7 @@
 # DataStream to Spanner Dataflow Template
 
 The [DataStreamToSpanner](src/main/java/com/google/cloud/teleport/v2/templates/DataStreamToSpanner.java) pipeline
-ingests data supplied by DataStream, optionally applies a Javascript or Python UDF if supplied 
+ingests data supplied by DataStream, optionally applies a Javascript or Python UDF if supplied
 and writes the data to Cloud Spanner database.
 
 ## Getting Started

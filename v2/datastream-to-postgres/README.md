@@ -1,6 +1,6 @@
 # DataStream to PostgreSQL Dataflow Template
 
-The [DataStreamToPostgres](src/main/java/com/google/cloud/teleport/v2/templates/DataStreamToPostgres.java) pipeline 
+The [DataStreamToPostgres](src/main/java/com/google/cloud/teleport/v2/templates/DataStreamToPostgres.java) pipeline
 ingests data supplied by DataStream and writes the data to a Postgres Database.
 
 ## Getting Started

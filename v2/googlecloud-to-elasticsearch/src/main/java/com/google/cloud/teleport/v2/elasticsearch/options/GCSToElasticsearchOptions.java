@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2021 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -25,17 +25,17 @@ import org.apache.beam.sdk.options.Validation;
  * executor at the command-line.
  */
 public interface GCSToElasticsearchOptions
-        extends CsvConverters.CsvPipelineOptions, ElasticsearchWriteOptions {
+    extends CsvConverters.CsvPipelineOptions, ElasticsearchWriteOptions {
 
-    @Description("Deadletter table for failed inserts in form: <project-id>:<dataset>.<table>")
-    @Validation.Required
-    String getDeadletterTable();
+  @Description("Deadletter table for failed inserts in form: <project-id>:<dataset>.<table>")
+  @Validation.Required
+  String getDeadletterTable();
 
-    void setDeadletterTable(String deadletterTable);
+  void setDeadletterTable(String deadletterTable);
 
-    @Description("Input format, default is CSV")
-    @Default.String("csv")
-    String getInputFormat();
+  @Description("Input format, default is CSV")
+  @Default.String("csv")
+  String getInputFormat();
 
-    void setInputFormat(String inputFormat);
+  void setInputFormat(String inputFormat);
 }

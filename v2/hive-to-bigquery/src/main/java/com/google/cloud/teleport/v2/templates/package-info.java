@@ -14,7 +14,5 @@
  * limitations under the License.
  */
 
-/**
- * Templates for moving Hive records into BigQuery.
- */
+/** Templates for moving Hive records into BigQuery. */
 package com.google.cloud.teleport.v2.templates;

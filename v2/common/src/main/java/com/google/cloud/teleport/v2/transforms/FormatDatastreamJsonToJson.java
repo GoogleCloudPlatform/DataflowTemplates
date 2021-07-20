@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -33,8 +33,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Formats a plain datastream-json record coming from Datastream into the full JSON record
- * that we will use downstream.
+ * Formats a plain datastream-json record coming from Datastream into the full JSON record that we
+ * will use downstream.
  */
 public final class FormatDatastreamJsonToJson
     extends DoFn<String, FailsafeElement<String, String>> {
@@ -63,7 +63,7 @@ public final class FormatDatastreamJsonToJson
     return this;
   }
 
- /**
+  /**
    * Add the supplied columnName to the list of column values to be hashed.
    *
    * @param columnName The column name to look for in the data to hash.
@@ -74,14 +74,13 @@ public final class FormatDatastreamJsonToJson
   }
 
   /**
-   * Add the supplied columnName to the map of column values to be hashed.
-   * A new column with a hashed value of the first will be created.
+   * Add the supplied columnName to the map of column values to be hashed. A new column with a
+   * hashed value of the first will be created.
    *
    * @param columnName The column name to look for in the data.
    * @param newColumnName The name of the new column created with hashed data.
    */
-  public FormatDatastreamJsonToJson withHashColumnValue(
-      String columnName, String newColumnName) {
+  public FormatDatastreamJsonToJson withHashColumnValue(String columnName, String newColumnName) {
     this.hashedColumns.put(columnName, newColumnName);
     return this;
   }
@@ -91,8 +90,7 @@ public final class FormatDatastreamJsonToJson
    *
    * @param hashedColumns The map of columns to new columns to hash.
    */
-  public FormatDatastreamJsonToJson withHashColumnValues(
-      Map<String, String> hashedColumns) {
+  public FormatDatastreamJsonToJson withHashColumnValues(Map<String, String> hashedColumns) {
     this.hashedColumns = hashedColumns;
     return this;
   }
@@ -197,8 +195,9 @@ public final class FormatDatastreamJsonToJson
       if (!timestamp.endsWith("Z")) {
         timestamp = timestamp + "Z";
       }
-      zonedDateTime = ZonedDateTime.parse(timestamp,
-          DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER).withZoneSameInstant(ZoneId.of("UTC"));
+      zonedDateTime =
+          ZonedDateTime.parse(timestamp, DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER)
+              .withZoneSameInstant(ZoneId.of("UTC"));
     } catch (Exception e) {
       LOG.error("Issue parsing Timestamp " + timestamp + " to milliseconds. " + e);
       return 0;

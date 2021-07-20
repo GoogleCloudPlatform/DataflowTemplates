@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.v2.utils;
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
@@ -53,8 +52,9 @@ import org.apache.commons.lang3.BooleanUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** The {@link DataStreamClient} provides access to the DataStream APIs
- * required to process CDC DataStream data and maintain schema aligment.
+/**
+ * The {@link DataStreamClient} provides access to the DataStream APIs required to process CDC
+ * DataStream data and maintain schema aligment.
  */
 public class DataStreamClient implements Serializable {
 
@@ -91,8 +91,8 @@ public class DataStreamClient implements Serializable {
     return this.datastream;
   }
 
-  private static HttpRequestInitializer getHttpRequestInitializer(
-      Credentials credential) throws IOException {
+  private static HttpRequestInitializer getHttpRequestInitializer(Credentials credential)
+      throws IOException {
     if (credential == null) {
       try {
         return GoogleCredential.getApplicationDefault();
@@ -104,8 +104,8 @@ public class DataStreamClient implements Serializable {
     }
   }
 
-  public Map<String, StandardSQLTypeName> getObjectSchema(String streamName, String schemaName, String tableName)
-      throws IOException {
+  public Map<String, StandardSQLTypeName> getObjectSchema(
+      String streamName, String schemaName, String tableName) throws IOException {
     SourceConfig sourceConnProfile = getSourceConnectionProfile(streamName);
 
     if (sourceConnProfile.getMysqlSourceConfig() != null) {
@@ -130,12 +130,14 @@ public class DataStreamClient implements Serializable {
         throw new IOException("Source Connection Profile Type Not Supported");
       }
     } catch (IOException e) {
-      if (e.toString().contains(
-          "Quota exceeded for quota metric 'API requests' and limit 'API requests per minute' of service")) {
+      if (e.toString()
+          .contains(
+              "Quota exceeded for quota metric 'API requests' and limit 'API requests per minute' of service")) {
         try {
           Thread.sleep(60 * 1000);
           return this.getPrimaryKeys(streamName, schemaName, tableName);
-        } catch (InterruptedException i) {}
+        } catch (InterruptedException i) {
+        }
       }
       throw e;
     }
@@ -148,8 +150,7 @@ public class DataStreamClient implements Serializable {
     String parent = getParentFromConnectionProfileName(sourceConnProfileName);
 
     DiscoverConnectionProfileRequest discoverRequest =
-      new DiscoverConnectionProfileRequest()
-          .setConnectionProfileName(sourceConnProfileName);
+        new DiscoverConnectionProfileRequest().setConnectionProfileName(sourceConnProfileName);
     if (sourceConnProfile.getMysqlSourceConfig() != null) {
       MysqlRdbms mysqlRdbms = buildMysqlRdbmsForTable(schemaName, tableName);
       discoverRequest = discoverRequest.setMysqlRdbms(mysqlRdbms);
@@ -171,11 +172,9 @@ public class DataStreamClient implements Serializable {
   }
 
   /**
-   * Return a {@link Stream} with the related information required
-   * to request schema discovery.
+   * Return a {@link Stream} with the related information required to request schema discovery.
    *
-   * @param streamName The fully qualified Stream name.
-   *   ie. project/my-project/stream/my-stream
+   * @param streamName The fully qualified Stream name. ie. project/my-project/stream/my-stream
    */
   public Stream getStream(String streamName) throws IOException {
 
@@ -187,26 +186,25 @@ public class DataStreamClient implements Serializable {
   }
 
   /**
-   * Return a {@link SourceConfig} ConnectionProfile object which can be used for
-   * schema discovery and connection information.
+   * Return a {@link SourceConfig} ConnectionProfile object which can be used for schema discovery
+   * and connection information.
    *
    * @param streamName The ID of a DataStream Stream (ie. project/my-project/stream/my-stream).
    */
   public SourceConfig getSourceConnectionProfile(String streamName) throws IOException {
     Stream stream = getStream(streamName);
 
-    SourceConfig sourceConnProfile =
-      stream.getSourceConfig();
+    SourceConfig sourceConnProfile = stream.getSourceConfig();
 
     return sourceConnProfile;
   }
 
   /**
-   * Return a DataStream API parent string representing the base required for a
-   * Discovery API request (ie. projects/my-project/locations/my-location).
+   * Return a DataStream API parent string representing the base required for a Discovery API
+   * request (ie. projects/my-project/locations/my-location).
    *
-   * @param connectionProfileName The ID of a ConnectionProfile.
-   *  ie. project/my-project/locations/my-location/connectionProfiles/my-connection-profile
+   * @param connectionProfileName The ID of a ConnectionProfile. ie.
+   *     project/my-project/locations/my-location/connectionProfiles/my-connection-profile
    */
   public String getParentFromConnectionProfileName(String connectionProfileName) {
     Pattern p = Pattern.compile("(projects/.*/locations/.*)/connectionProfiles/.*");
@@ -221,8 +219,8 @@ public class DataStreamClient implements Serializable {
       throws IOException {
     Map<String, StandardSQLTypeName> objectSchema = new HashMap<String, StandardSQLTypeName>();
 
-    MysqlTable table = discoverMysqlTableSchema(
-        streamName, schemaName, tableName, sourceConnProfile);
+    MysqlTable table =
+        discoverMysqlTableSchema(streamName, schemaName, tableName, sourceConnProfile);
     for (MysqlColumn column : table.getMysqlColumns()) {
       StandardSQLTypeName bqType = convertMysqlToBigQueryColumnType(column);
       objectSchema.put(column.getColumnName(), bqType);
@@ -258,7 +256,7 @@ public class DataStreamClient implements Serializable {
       String streamName, String schemaName, String tableName, SourceConfig sourceConnProfile)
       throws IOException {
     DataStream.Projects.Locations.ConnectionProfiles.Discover discoverConnProfile =
-      getDiscoverTableRequest(streamName, schemaName, tableName, sourceConnProfile);
+        getDiscoverTableRequest(streamName, schemaName, tableName, sourceConnProfile);
 
     MysqlRdbms tableResponse = discoverConnProfile.execute().getMysqlRdbms();
     MysqlDatabase schema = tableResponse.getMysqlDatabases().get(0);
@@ -273,12 +271,9 @@ public class DataStreamClient implements Serializable {
 
     List<MysqlDatabase> mysqlDatabases = new ArrayList<MysqlDatabase>();
     mysqlDatabases.add(
-      new MysqlDatabase()
-        .setDatabaseName(databaseName)
-        .setMysqlTables(mysqlTables));
+        new MysqlDatabase().setDatabaseName(databaseName).setMysqlTables(mysqlTables));
 
-    MysqlRdbms rdbms = new MysqlRdbms()
-      .setMysqlDatabases(mysqlDatabases);
+    MysqlRdbms rdbms = new MysqlRdbms().setMysqlDatabases(mysqlDatabases);
 
     return rdbms;
   }
@@ -304,8 +299,8 @@ public class DataStreamClient implements Serializable {
       throws IOException {
     Map<String, StandardSQLTypeName> objectSchema = new HashMap<String, StandardSQLTypeName>();
 
-    OracleTable table = discoverOracleTableSchema(
-        streamName, schemaName, tableName, sourceConnProfile);
+    OracleTable table =
+        discoverOracleTableSchema(streamName, schemaName, tableName, sourceConnProfile);
     for (OracleColumn column : table.getOracleColumns()) {
       StandardSQLTypeName bqType = convertOracleToBigQueryColumnType(column);
       objectSchema.put(column.getColumnName(), bqType);
@@ -325,7 +320,7 @@ public class DataStreamClient implements Serializable {
       String streamName, String schemaName, String tableName, SourceConfig sourceConnProfile)
       throws IOException {
     DataStream.Projects.Locations.ConnectionProfiles.Discover discoverConnProfile =
-      getDiscoverTableRequest(streamName, schemaName, tableName, sourceConnProfile);
+        getDiscoverTableRequest(streamName, schemaName, tableName, sourceConnProfile);
 
     OracleRdbms tableResponse = discoverConnProfile.execute().getOracleRdbms();
     OracleSchema schema = tableResponse.getOracleSchemas().get(0);
@@ -339,13 +334,9 @@ public class DataStreamClient implements Serializable {
     oracleTables.add(new OracleTable().setTableName(tableName));
 
     List<OracleSchema> oracleSchemas = new ArrayList<OracleSchema>();
-    oracleSchemas.add(
-      new OracleSchema()
-        .setSchemaName(schemaName)
-        .setOracleTables(oracleTables));
+    oracleSchemas.add(new OracleSchema().setSchemaName(schemaName).setOracleTables(oracleTables));
 
-    OracleRdbms rdbms = new OracleRdbms()
-      .setOracleSchemas(oracleSchemas);
+    OracleRdbms rdbms = new OracleRdbms().setOracleSchemas(oracleSchemas);
 
     return rdbms;
   }
@@ -353,7 +344,7 @@ public class DataStreamClient implements Serializable {
   public StandardSQLTypeName convertOracleToBigQueryColumnType(OracleColumn column) {
     String dataType = column.getDataType();
 
-    switch(dataType) {
+    switch (dataType) {
       case "ANYDATA":
       case "BFILE":
       case "CHAR":
@@ -395,9 +386,9 @@ public class DataStreamClient implements Serializable {
     if (Pattern.matches("TIMESTAMP\\(?\\d?\\)?", dataType)) {
       return StandardSQLTypeName.TIMESTAMP;
     } else if (Pattern.matches("TIMESTAMP\\(?\\d?\\)? WITH TIME ZONE", dataType)) {
-      return StandardSQLTypeName.TIMESTAMP;    // TODO: what type do we want here?
+      return StandardSQLTypeName.TIMESTAMP; // TODO: what type do we want here?
     } else if (Pattern.matches("TIMESTAMP\\(?\\d?\\)? WITH LOCAL TIME ZONE", dataType)) {
-      return StandardSQLTypeName.TIMESTAMP;    // TODO: what type do we want here?
+      return StandardSQLTypeName.TIMESTAMP; // TODO: what type do we want here?
     } else {
       LOG.warn("Datastream Oracle Type Unknown, Default to String: \"{}\"", dataType);
       return StandardSQLTypeName.STRING;
@@ -407,7 +398,7 @@ public class DataStreamClient implements Serializable {
   public StandardSQLTypeName convertMysqlToBigQueryColumnType(MysqlColumn column) {
     String dataType = column.getDataType().toUpperCase();
 
-    switch(dataType) {
+    switch (dataType) {
       case "BLOB":
       case "VARCHAR":
       case "CHAR":
@@ -438,8 +429,9 @@ public class DataStreamClient implements Serializable {
         return StandardSQLTypeName.TIMESTAMP;
       case "DATE":
         return StandardSQLTypeName.DATE;
-      // (naveronen) - i'm setting this a STRING for now, but some customers might need a different
-      // solution. once we encounter such cases, we might need to adjust this
+        // (naveronen) - i'm setting this a STRING for now, but some customers might need a
+        // different
+        // solution. once we encounter such cases, we might need to adjust this
       case "SET":
       case "ENUM":
         return StandardSQLTypeName.STRING;
@@ -451,13 +443,12 @@ public class DataStreamClient implements Serializable {
     if (Pattern.matches("TIMESTAMP\\(?\\d?\\)?", dataType)) {
       return StandardSQLTypeName.TIMESTAMP;
     } else if (Pattern.matches("TIMESTAMP\\(?\\d?\\)? WITH TIME ZONE", dataType)) {
-      return StandardSQLTypeName.TIMESTAMP;    // TODO: what type do we want here?
+      return StandardSQLTypeName.TIMESTAMP; // TODO: what type do we want here?
     } else if (Pattern.matches("TIMESTAMP\\(?\\d?\\)? WITH LOCAL TIME ZONE", dataType)) {
-      return StandardSQLTypeName.TIMESTAMP;    // TODO: what type do we want here?
+      return StandardSQLTypeName.TIMESTAMP; // TODO: what type do we want here?
     } else {
       LOG.warn("Datastream MySQL Type Unknown, Default to String: \"{}\"", dataType);
       return StandardSQLTypeName.STRING;
     }
   }
 }
-

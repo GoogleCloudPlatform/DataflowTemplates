@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,8 +13,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.v2.templates;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -50,11 +50,9 @@ import org.junit.experimental.categories.Category;
 import org.junit.rules.TemporaryFolder;
 
 /**
- * An integration test that writes change events to Cloud Spanner.
- * This requires an active GCP project with a Spanner instance and the test can only
- * be run locally with a project set up using 'gcloud config'.
- * TODO: Add support for emulator to run tests without
- * a Cloud Spanner instance.
+ * An integration test that writes change events to Cloud Spanner. This requires an active GCP
+ * project with a Spanner instance and the test can only be run locally with a project set up using
+ * 'gcloud config'. TODO: Add support for emulator to run tests without a Cloud Spanner instance.
  */
 @Category(IntegrationTest.class)
 public class SpannerStreamingWriteIntegrationTest {
@@ -87,29 +85,42 @@ public class SpannerStreamingWriteIntegrationTest {
   }
 
   private void createTablesForTest() throws Exception {
-    Ddl ddl = Ddl.builder()
-        .createTable("Table1")
-          .column("id").int64().endColumn()
-          .column("data").int64().endColumn()
-          .primaryKey().asc("id").end()
-        .endTable()
-        .createTable("Table1_interleaved")
-          .column("id").int64().endColumn()
-          .column("id2").int64().endColumn()
-          .column("data2").int64().endColumn()
-          .primaryKey().asc("id").desc("id2").end()
-          .interleaveInParent("Table1")
-        .endTable()
-        .build();
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Table1")
+            .column("id")
+            .int64()
+            .endColumn()
+            .column("data")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .createTable("Table1_interleaved")
+            .column("id")
+            .int64()
+            .endColumn()
+            .column("id2")
+            .int64()
+            .endColumn()
+            .column("data2")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .desc("id2")
+            .end()
+            .interleaveInParent("Table1")
+            .endTable()
+            .build();
     spannerServer.createDatabase(testDb, ddl.statements());
   }
 
   private void verifyRecordCountinTable(String tableName, long count) {
-    try (
-      ReadContext rc = spannerServer.getDbClient(testDb).singleUse();
-      ResultSet rs =
-          rc.executeQuery(Statement.of("Select count(*) from " + tableName));
-    ) {
+    try (ReadContext rc = spannerServer.getDbClient(testDb).singleUse();
+        ResultSet rs = rc.executeQuery(Statement.of("Select count(*) from " + tableName)); ) {
       rs.next();
       Struct result = rs.getCurrentRowAsStruct();
       assertEquals(count, result.getLong(0));
@@ -117,29 +128,26 @@ public class SpannerStreamingWriteIntegrationTest {
   }
 
   private void verifyDataInTable1(long primaryKey, long data) {
-    try (
-      ReadContext rc = spannerServer.getDbClient(testDb).singleUse();
-      ResultSet rs =
-      rc.executeQuery(Statement.of("Select data from Table1 where id = " + primaryKey));
-    ) {
+    try (ReadContext rc = spannerServer.getDbClient(testDb).singleUse();
+        ResultSet rs =
+            rc.executeQuery(Statement.of("Select data from Table1 where id = " + primaryKey)); ) {
       assertTrue(rs.next());
       Struct result = rs.getCurrentRowAsStruct();
       assertEquals(data, result.getLong(0));
     }
   }
 
-  private void constructAndRunPipeline(
-      PCollection<FailsafeElement<String, String>> jsonRecords) {
+  private void constructAndRunPipeline(PCollection<FailsafeElement<String, String>> jsonRecords) {
     String shadowTablePrefix = "shadow";
     SpannerConfig sourceConfig = spannerServer.getSpannerConfig(testDb);
     PCollection<Ddl> ddl =
         testPipeline.apply(
             "Process Information Schema",
             new ProcessInformationSchema(sourceConfig, true, shadowTablePrefix, "oracle"));
-    PCollectionView<Ddl> ddlView = ddl.apply("Cloud Spanner DDL as view",
-        View.asSingleton());
+    PCollectionView<Ddl> ddlView = ddl.apply("Cloud Spanner DDL as view", View.asSingleton());
 
-    jsonRecords.apply("Write events to Cloud Spanner",
+    jsonRecords.apply(
+        "Write events to Cloud Spanner",
         new SpannerTransactionWriter(sourceConfig, ddlView, shadowTablePrefix, "oracle"));
 
     PipelineResult testResult = testPipeline.run();
@@ -156,8 +164,8 @@ public class SpannerStreamingWriteIntegrationTest {
     return json;
   }
 
-  private JSONObject getChangeEventForTable1(String id,
-      String data, String changeType, String scn) {
+  private JSONObject getChangeEventForTable1(
+      String id, String data, String changeType, String scn) {
     JSONObject json = getChangeEvent("Table1", changeType, scn);
     json.put("id", id);
     json.put("data", data);
@@ -165,15 +173,17 @@ public class SpannerStreamingWriteIntegrationTest {
   }
 
   @Test
-  public void canWriteInsertChangeEvents() throws Exception{
+  public void canWriteInsertChangeEvents() throws Exception {
     JSONObject json1 = getChangeEventForTable1("1", "334", "INSERT", "1");
     JSONObject json2 = getChangeEventForTable1("2", "32", "INSERT", "3");
 
     PCollection<FailsafeElement<String, String>> jsonRecords =
         testPipeline.apply(
-            Create.of(Arrays.asList(FailsafeElement.of(json1.toString(), json1.toString()),
-                          FailsafeElement.of(json2.toString(), json2.toString())))
-        .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())));
+            Create.of(
+                    Arrays.asList(
+                        FailsafeElement.of(json1.toString(), json1.toString()),
+                        FailsafeElement.of(json2.toString(), json2.toString())))
+                .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())));
 
     constructAndRunPipeline(jsonRecords);
 
@@ -183,15 +193,17 @@ public class SpannerStreamingWriteIntegrationTest {
   }
 
   @Test
-  public void canUpdateExistingRecord() throws Exception{
+  public void canUpdateExistingRecord() throws Exception {
     JSONObject json1 = getChangeEventForTable1("1", "10", "INSERT", "1");
     JSONObject json2 = getChangeEventForTable1("1", "20", "UPDATE", "3");
 
     PCollection<FailsafeElement<String, String>> jsonRecords =
         testPipeline.apply(
-            Create.of(Arrays.asList(FailsafeElement.of(json1.toString(), json1.toString()),
-                          FailsafeElement.of(json2.toString(), json2.toString())))
-        .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())));
+            Create.of(
+                    Arrays.asList(
+                        FailsafeElement.of(json1.toString(), json1.toString()),
+                        FailsafeElement.of(json2.toString(), json2.toString())))
+                .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())));
 
     constructAndRunPipeline(jsonRecords);
 
@@ -199,22 +211,23 @@ public class SpannerStreamingWriteIntegrationTest {
     verifyDataInTable1(1, 20);
   }
 
-  //@Test
-  public void canUpdateWithDisorderedAndDuplicatedEvents() throws Exception{
+  // @Test
+  public void canUpdateWithDisorderedAndDuplicatedEvents() throws Exception {
     JSONObject json1 = getChangeEventForTable1("1", "10", "INSERT", "1");
     JSONObject json2 = getChangeEventForTable1("1", "20", "UPDATE", "3");
 
     PCollection<FailsafeElement<String, String>> jsonRecords =
         testPipeline.apply(
-            Create.of(Arrays.asList(
-                          FailsafeElement.of(json2.toString(), json2.toString()),
-                          FailsafeElement.of(json1.toString(), json1.toString()),
-                          FailsafeElement.of(json2.toString(), json2.toString()),
-                          FailsafeElement.of(json1.toString(), json1.toString()),
-                          FailsafeElement.of(json2.toString(), json2.toString()),
-                          FailsafeElement.of(json2.toString(), json2.toString()),
-                          FailsafeElement.of(json1.toString(), json1.toString())))
-        .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())));
+            Create.of(
+                    Arrays.asList(
+                        FailsafeElement.of(json2.toString(), json2.toString()),
+                        FailsafeElement.of(json1.toString(), json1.toString()),
+                        FailsafeElement.of(json2.toString(), json2.toString()),
+                        FailsafeElement.of(json1.toString(), json1.toString()),
+                        FailsafeElement.of(json2.toString(), json2.toString()),
+                        FailsafeElement.of(json2.toString(), json2.toString()),
+                        FailsafeElement.of(json1.toString(), json1.toString())))
+                .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())));
 
     constructAndRunPipeline(jsonRecords);
 
@@ -223,7 +236,7 @@ public class SpannerStreamingWriteIntegrationTest {
   }
 
   @Test
-  public void canWriteDisorderedAndInterleavedChangeEvents() throws Exception{
+  public void canWriteDisorderedAndInterleavedChangeEvents() throws Exception {
     JSONObject json1 = getChangeEventForTable1("1", "334", "INSERT", "1");
     JSONObject json2 = getChangeEvent("Table1_interleaved", "INSERT", "2");
     json2.put("id", "1");
@@ -240,16 +253,17 @@ public class SpannerStreamingWriteIntegrationTest {
      */
     PCollection<FailsafeElement<String, String>> jsonRecords =
         testPipeline.apply(
-            Create.of(Arrays.asList(
-                          FailsafeElement.of(json2.toString(), json2.toString()),
-                          FailsafeElement.of(json2.toString(), json2.toString()),
-                          FailsafeElement.of(json1.toString(), json1.toString()),
-                          FailsafeElement.of(json2.toString(), json2.toString()),
-                          FailsafeElement.of(json2.toString(), json2.toString()),
-                          FailsafeElement.of(json2.toString(), json2.toString()),
-                          FailsafeElement.of(json2.toString(), json2.toString()),
-                          FailsafeElement.of(json2.toString(), json2.toString())))
-        .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())));
+            Create.of(
+                    Arrays.asList(
+                        FailsafeElement.of(json2.toString(), json2.toString()),
+                        FailsafeElement.of(json2.toString(), json2.toString()),
+                        FailsafeElement.of(json1.toString(), json1.toString()),
+                        FailsafeElement.of(json2.toString(), json2.toString()),
+                        FailsafeElement.of(json2.toString(), json2.toString()),
+                        FailsafeElement.of(json2.toString(), json2.toString()),
+                        FailsafeElement.of(json2.toString(), json2.toString()),
+                        FailsafeElement.of(json2.toString(), json2.toString())))
+                .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())));
 
     constructAndRunPipeline(jsonRecords);
 
@@ -258,19 +272,21 @@ public class SpannerStreamingWriteIntegrationTest {
   }
 
   @Test
-  public void canIgnoreCaseWhileEventProcessing() throws Exception{
+  public void canIgnoreCaseWhileEventProcessing() throws Exception {
     JSONObject json1 = getChangeEvent("Table1", "INSERT", "1");
     json1.put("ID", "1");
-    json1.put("dAtA" , "23");
+    json1.put("dAtA", "23");
     JSONObject json2 = getChangeEvent("Table1", "INSERT", "1");
     json2.put("iD", "2");
-    json2.put("DaTa" , "23");
+    json2.put("DaTa", "23");
 
     PCollection<FailsafeElement<String, String>> jsonRecords =
         testPipeline.apply(
-            Create.of(Arrays.asList(FailsafeElement.of(json1.toString(), json1.toString()),
-                          FailsafeElement.of(json2.toString(), json2.toString())))
-        .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())));
+            Create.of(
+                    Arrays.asList(
+                        FailsafeElement.of(json1.toString(), json1.toString()),
+                        FailsafeElement.of(json2.toString(), json2.toString())))
+                .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())));
 
     constructAndRunPipeline(jsonRecords);
 

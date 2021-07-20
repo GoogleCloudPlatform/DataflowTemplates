@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.templates;
 
 import com.google.cloud.teleport.templates.TextToPubsub.Options;
@@ -36,42 +35,36 @@ import org.joda.time.Duration;
  *
  * <pre>
  * {@code mvn compile exec:java \
--Dexec.mainClass=com.google.cloud.teleport.templates.TextToPubsubStream \
--Dexec.args=" \
---project=${PROJECT_ID} \
---stagingLocation=gs://${STAGING_BUCKET}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
---tempLocation=gs://${STAGING_BUCKET}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
---runner=DataflowRunner \
---inputFilePattern=gs://path/to/*.csv \
---outputTopic=projects/${PROJECT_ID}/topics/${TOPIC_NAME}"
+ * -Dexec.mainClass=com.google.cloud.teleport.templates.TextToPubsubStream \
+ * -Dexec.args=" \
+ * --project=${PROJECT_ID} \
+ * --stagingLocation=gs://${STAGING_BUCKET}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
+ * --tempLocation=gs://${STAGING_BUCKET}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
+ * --runner=DataflowRunner \
+ * --inputFilePattern=gs://path/to/*.csv \
+ * --outputTopic=projects/${PROJECT_ID}/topics/${TOPIC_NAME}"
  * }
  * </pre>
- *
  */
 public class TextToPubsubStream extends TextToPubsub {
   private static final Duration DEFAULT_POLL_INTERVAL = Duration.standardSeconds(10);
 
   /**
-   * Main entry-point for the pipeline. Reads in the
-   * command-line arguments, parses them, and executes
-   * the pipeline.
+   * Main entry-point for the pipeline. Reads in the command-line arguments, parses them, and
+   * executes the pipeline.
    *
-   * @param args  Arguments passed in from the command-line.
+   * @param args Arguments passed in from the command-line.
    */
   public static void main(String[] args) {
 
     // Parse the user options passed from the command-line
-    Options options = PipelineOptionsFactory
-      .fromArgs(args)
-      .withValidation()
-      .as(Options.class);
+    Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
     run(options);
   }
 
   /**
-   * Executes the pipeline with the provided execution
-   * parameters.
+   * Executes the pipeline with the provided execution parameters.
    *
    * @param options The execution parameters.
    */
@@ -85,12 +78,12 @@ public class TextToPubsubStream extends TextToPubsub {
      *  2) Write each text record to Pub/Sub
      */
     pipeline
-      .apply(
-        "Read Text Data",
-        TextIO.read()
-          .from(options.getInputFilePattern())
-          .watchForNewFiles(DEFAULT_POLL_INTERVAL, Watch.Growth.never()))
-      .apply("Write to PubSub", PubsubIO.writeStrings().to(options.getOutputTopic()));
+        .apply(
+            "Read Text Data",
+            TextIO.read()
+                .from(options.getInputFilePattern())
+                .watchForNewFiles(DEFAULT_POLL_INTERVAL, Watch.Growth.never()))
+        .apply("Write to PubSub", PubsubIO.writeStrings().to(options.getOutputTopic()));
 
     return pipeline.run();
   }

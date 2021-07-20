@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2020 Google Inc.
+ * Copyright (C) 2020 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.v2.cdc.mappers;
 
 import com.google.api.services.bigquery.model.TableRow;
@@ -26,26 +25,21 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * BigQueryTableRowCleaner cleans TableRow data to ensure
- * the datatypes match the table in BigQuery.
+ * BigQueryTableRowCleaner cleans TableRow data to ensure the datatypes match the table in BigQuery.
  *
- * <p>
- * BigQueryTableRowCleaner focuses on ensuring the default String mappings
- * match required loading standards for BigQuery.
- *
+ * <p>BigQueryTableRowCleaner focuses on ensuring the default String mappings match required loading
+ * standards for BigQuery.
  */
 public class BigQueryTableRowCleaner {
 
-  /**
-   * Returns {@code BigQueryTableRowCleaner} used to clean TableRow data.
-   */
+  /** Returns {@code BigQueryTableRowCleaner} used to clean TableRow data. */
   public static BigQueryTableRowCleaner getBigQueryTableRowCleaner() {
     return new BigQueryTableRowCleaner();
   }
 
   /**
-   * Cleans the TableRow data for a given rowKey if the value does not match
-   * requirements of the BigQuery Table column type.
+   * Cleans the TableRow data for a given rowKey if the value does not match requirements of the
+   * BigQuery Table column type.
    *
    * @param row a TableRow object to clean.
    * @param tableFields a FieldList of Bigquery columns.
@@ -63,8 +57,8 @@ public class BigQueryTableRowCleaner {
   }
 
   /**
-   * Cleans the TableRow data for a given rowKey based on the requirements
-   * of a BigQuery String column type.
+   * Cleans the TableRow data for a given rowKey based on the requirements of a BigQuery String
+   * column type.
    *
    * @param row a TableRow object to clean.
    * @param tableFields a FieldList of Bigquery columns.
@@ -86,8 +80,8 @@ public class BigQueryTableRowCleaner {
   }
 
   /**
-   * Cleans the TableRow data for a given rowKey based on the requirements
-   * of a BigQuery String column type.
+   * Cleans the TableRow data for a given rowKey based on the requirements of a BigQuery String
+   * column type.
    *
    * @param row a TableRow object to clean.
    * @param tableFields a FieldList of Bigquery columns.

@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -44,9 +44,7 @@ public class DataCatalogSchemaUtils {
   // TODO(pabloem)(#138): Avoid using a default location for schema catalog entities.
   public static final String DEFAULT_LOCATION = "us-central1";
 
-  /**
-   * Template for the URI of a Pub/Sub topic {@link Entry} in Data Catalog.
-   */
+  /** Template for the URI of a Pub/Sub topic {@link Entry} in Data Catalog. */
   private static final String DATA_CATALOG_PUBSUB_URI_TEMPLATE =
       "//pubsub.googleapis.com/projects/%s/topics/%s";
 
@@ -55,8 +53,8 @@ public class DataCatalogSchemaUtils {
   /**
    * Builds an {@link EntryGroup} name for a particular pubsubTopic.
    *
-   * This method is intended for use in single-topic mode, where an {@link EntryGroup} with multiple
-   * {@link Entry}s is created for a single Pub/Sub topic.
+   * <p>This method is intended for use in single-topic mode, where an {@link EntryGroup} with
+   * multiple {@link Entry}s is created for a single Pub/Sub topic.
    */
   public static String entryGroupNameForTopic(String pubsubTopic) {
     return String.format("cdc_%s", pubsubTopic);
@@ -78,7 +76,7 @@ public class DataCatalogSchemaUtils {
     }
   }
 
-  /** Retrieve all of the {@link Schema}s associated to {@link Entry}s in an {@link EntryGroup}.*/
+  /** Retrieve all of the {@link Schema}s associated to {@link Entry}s in an {@link EntryGroup}. */
   public static Map<String, Schema> getSchemasForEntryGroup(
       String gcpProject, String entryGroupId) {
     DataCatalogClient client = null;
@@ -91,13 +89,11 @@ public class DataCatalogSchemaUtils {
       return null;
     }
 
-    String formattedParent = DataCatalogClient.formatEntryGroupName(
-        gcpProject, DEFAULT_LOCATION, entryGroupId);
+    String formattedParent =
+        DataCatalogClient.formatEntryGroupName(gcpProject, DEFAULT_LOCATION, entryGroupId);
 
     List<Entry> entries = new ArrayList<>();
-    ListEntriesRequest request = ListEntriesRequest.newBuilder()
-            .setParent(formattedParent)
-            .build();
+    ListEntriesRequest request = ListEntriesRequest.newBuilder().setParent(formattedParent).build();
     while (true) {
       ListEntriesResponse response = client.listEntriesCallable().call(request);
       entries.addAll(response.getEntriesList());
@@ -112,14 +108,14 @@ public class DataCatalogSchemaUtils {
     LOG.debug("Fetched entries: {}", entries);
 
     return entries.stream()
-        .collect(Collectors.toMap(
-            Entry::getDescription, e -> SchemaUtils.toBeamSchema(e.getSchema())));
+        .collect(
+            Collectors.toMap(Entry::getDescription, e -> SchemaUtils.toBeamSchema(e.getSchema())));
   }
 
   /**
    * Retrieve the {@link Schema} associated to a Pub/Sub topics in an.
    *
-   * This method is to be used in multi-topic mode, where a single {@link Schema} is associated
+   * <p>This method is to be used in multi-topic mode, where a single {@link Schema} is associated
    * to a single Pub/Sub topic.
    */
   public static Schema getSchemaFromPubSubTopic(String gcpProject, String pubsubTopic) {
@@ -164,7 +160,7 @@ public class DataCatalogSchemaUtils {
   /**
    * Abstract class to manage Data Catalog clients and schemas from the Debezium connector.
    *
-   * It provides methods to store and retrieve schemas for given source tables in Data Catalog.
+   * <p>It provides methods to store and retrieve schemas for given source tables in Data Catalog.
    */
   public abstract static class DataCatalogSchemaManager {
     final String gcpProject;
@@ -172,7 +168,9 @@ public class DataCatalogSchemaUtils {
     DataCatalogClient client;
 
     public abstract String getPubSubTopicForTable(String tableName);
+
     public abstract Entry updateSchemaForTable(String tableName, Schema beamSchema);
+
     public String getGcpProject() {
       return gcpProject;
     }
@@ -212,17 +210,16 @@ public class DataCatalogSchemaUtils {
       setupDataCatalogClient();
       EntryGroup entryGroup =
           EntryGroup.newBuilder()
-              .setDisplayName(
-                  String.format("CDC_Debezium_on_Dataflow_%s", pubsubTopic))
-              .setDescription("This EntryGroup represents a set of change streams from tables "
-                                  + "being replicated for CDC.")
+              .setDisplayName(String.format("CDC_Debezium_on_Dataflow_%s", pubsubTopic))
+              .setDescription(
+                  "This EntryGroup represents a set of change streams from tables "
+                      + "being replicated for CDC.")
               .build();
 
       // Construct the EntryGroup request to be sent by the client.
       CreateEntryGroupRequest entryGroupRequest =
           CreateEntryGroupRequest.newBuilder()
-              .setParent(
-                  LocationName.of(getGcpProject(), location).toString())
+              .setParent(LocationName.of(getGcpProject(), location).toString())
               .setEntryGroupId(entryGroupNameForTopic(pubsubTopic))
               .setEntryGroup(entryGroup)
               .build();
@@ -255,18 +252,16 @@ public class DataCatalogSchemaUtils {
       com.google.cloud.datacatalog.v1beta1.Schema newEntrySchema =
           SchemaUtils.fromBeamSchema(beamSchema);
       LOG.info("Beam schema {} converted to Data Catalog schema {}", beamSchema, newEntrySchema);
-      LOG.error("Entry group name: {}", EntryGroupName.of(
-          getGcpProject(),
-          location,
-          entryGroupNameForTopic(pubsubTopic)).toString());
+      LOG.error(
+          "Entry group name: {}",
+          EntryGroupName.of(getGcpProject(), location, entryGroupNameForTopic(pubsubTopic))
+              .toString());
 
       CreateEntryRequest createEntryRequest =
           CreateEntryRequest.newBuilder()
               .setParent(
-                  EntryGroupName.of(
-                      getGcpProject(),
-                      location,
-                      entryGroupNameForTopic(pubsubTopic)).toString())
+                  EntryGroupName.of(getGcpProject(), location, entryGroupNameForTopic(pubsubTopic))
+                      .toString())
               .setEntryId(sanitizeEntryName(tableName))
               .setEntry(
                   Entry.newBuilder()
@@ -291,6 +286,7 @@ public class DataCatalogSchemaUtils {
   static class MultiTopicSchemaManager extends DataCatalogSchemaManager {
 
     private final String pubsubTopicPrefix;
+
     MultiTopicSchemaManager(String gcpProject, String location, String pubsubTopicPrefix) {
       super(gcpProject, location);
       this.pubsubTopicPrefix = pubsubTopicPrefix;
@@ -304,7 +300,7 @@ public class DataCatalogSchemaUtils {
     public Entry updateSchemaForTable(String tableName, Schema beamSchema) {
       setupDataCatalogClient();
       if (client == null) {
-        return null;  // TODO(pabloem) Handle a missing client
+        return null; // TODO(pabloem) Handle a missing client
       }
 
       String pubsubTopic = getPubSubTopicForTable(tableName);
@@ -318,14 +314,13 @@ public class DataCatalogSchemaUtils {
           SchemaUtils.fromBeamSchema(beamSchema);
       LOG.debug("Beam schema {} converted to Data Catalog schema {}", beamSchema, newEntrySchema);
 
-      LOG.info("Publishing schema for table {} corresponding to topic {}",
-          tableName, pubsubTopic);
-      UpdateEntryRequest updateEntryRequest = UpdateEntryRequest.newBuilder()
-          .setEntry(beforeChangeEntry.toBuilder().setSchema(newEntrySchema).build())
-          .build();
+      LOG.info("Publishing schema for table {} corresponding to topic {}", tableName, pubsubTopic);
+      UpdateEntryRequest updateEntryRequest =
+          UpdateEntryRequest.newBuilder()
+              .setEntry(beforeChangeEntry.toBuilder().setSchema(newEntrySchema).build())
+              .build();
 
       return client.updateEntry(updateEntryRequest);
     }
-
   }
 }

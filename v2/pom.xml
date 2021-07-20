@@ -585,16 +585,6 @@
                     <trimTrailingWhitespace/>
                     <endWithNewline/>
                   </format>
-                  <!-- XML files should have similar indentation to Java files. -->
-                    <format>
-                    <includes>
-                      <include>*.xml</include>
-                    </includes>
-                    <indent>
-                      <spaces>true</spaces>
-                      <spacesPerTab>2</spacesPerTab>
-                    </indent>
-                  </format>
                 </formats>
                 <java>
                   <googleJavaFormat>

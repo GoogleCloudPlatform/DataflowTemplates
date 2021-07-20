@@ -1,7 +1,7 @@
 # Kafka to BigQuery Dataflow Template
 
-The [KafkaToBigQuery](src/main/java/com/google/cloud/teleport/v2/templates/KafkaToBigQuery.java) pipeline is a 
-streaming pipeline which ingests text data from Kafka, executes a UDF, and outputs the resulting records to BigQuery. 
+The [KafkaToBigQuery](src/main/java/com/google/cloud/teleport/v2/templates/KafkaToBigQuery.java) pipeline is a
+streaming pipeline which ingests text data from Kafka, executes a UDF, and outputs the resulting records to BigQuery.
 Any errors which occur in the transformation of the data, execution of the UDF, or inserting into the output table will be
 inserted into a separate errors table in BigQuery. The errors table will be created if it does
 not exist prior to execution. Both output and error tables are specified by the user as parameters.
@@ -16,8 +16,8 @@ not exist prior to execution. Both output and error tables are specified by the 
 * The Kafka brokers are reachable from the Dataflow worker machines.
 
 ### Building Template
-This template is a flex template meaning that the pipeline code will be containerized and the container will be 
-run on Dataflow. 
+This template is a flex template meaning that the pipeline code will be containerized and the container will be
+run on Dataflow.
 
 #### Building Container Image
 * Set Environment Variables
@@ -72,7 +72,7 @@ The template requires the following parameters:
 * outputTableSpec: BigQuery table to write Kafka messages to.
 * inputTopics: Comma separated list of Kafka topics to read from.
 * javascriptTextTransformGcsPath: Path to javascript function in GCS.
-* javascriptTextTransformFunctionName: Name of javascript function. 
+* javascriptTextTransformFunctionName: Name of javascript function.
 * bootstrapServers: Comma separated list of bootstrap servers.
 
 The template allows for the user to supply the following optional parameters:

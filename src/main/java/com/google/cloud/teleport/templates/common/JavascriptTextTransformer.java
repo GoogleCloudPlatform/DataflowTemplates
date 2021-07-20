@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.templates.common;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -58,7 +57,7 @@ import org.slf4j.LoggerFactory;
 /** A Text UDF Transform Function. Note that this class's implementation is not threadsafe */
 @AutoValue
 public abstract class JavascriptTextTransformer {
-  
+
   private static final Logger LOG = LoggerFactory.getLogger(JavascriptTextTransformer.class);
 
   /** Necessary CLI options for running UDF function. */
@@ -188,9 +187,7 @@ public abstract class JavascriptTextTransformer {
           "Failed to match any files with the pattern: " + path);
 
       List<String> scripts =
-          result
-              .metadata()
-              .stream()
+          result.metadata().stream()
               .filter(metadata -> metadata.resourceId().getFilename().endsWith(".js"))
               .map(Metadata::resourceId)
               .map(
@@ -274,7 +271,7 @@ public abstract class JavascriptTextTransformer {
     public abstract @Nullable ValueProvider<String> fileSystemPath();
 
     public abstract @Nullable ValueProvider<String> functionName();
-    
+
     public abstract @Nullable ValueProvider<Boolean> loggingEnabled();
 
     public abstract TupleTag<FailsafeElement<T, String>> successTag();
@@ -291,7 +288,7 @@ public abstract class JavascriptTextTransformer {
       public abstract Builder<T> setFileSystemPath(@Nullable ValueProvider<String> fileSystemPath);
 
       public abstract Builder<T> setFunctionName(@Nullable ValueProvider<String> functionName);
-      
+
       public abstract Builder<T> setLoggingEnabled(@Nullable ValueProvider<Boolean> loggingEnabled);
 
       public abstract Builder<T> setSuccessTag(TupleTag<FailsafeElement<T, String>> successTag);
@@ -336,7 +333,7 @@ public abstract class JavascriptTextTransformer {
                           context.output(
                               FailsafeElement.of(element.getOriginalPayload(), payloadStr));
                         }
-                        
+
                       } catch (ScriptException | IOException | NoSuchMethodException e) {
                         if (loggingEnabled) {
                           LOG.warn(
@@ -350,7 +347,7 @@ public abstract class JavascriptTextTransformer {
                             FailsafeElement.of(element)
                                 .setErrorMessage(e.getMessage())
                                 .setStacktrace(Throwables.getStackTraceAsString(e)));
-                        
+
                       } catch (Exception e) {
                         context.output(
                             failureTag(),

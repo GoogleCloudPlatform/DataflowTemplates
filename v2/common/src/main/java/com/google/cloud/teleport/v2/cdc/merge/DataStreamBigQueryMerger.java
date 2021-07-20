@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -33,10 +33,9 @@ import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Class BigQueryMerger.
- */
-public class DataStreamBigQueryMerger extends PTransform<PCollection<KV<TableId, TableRow>>, PCollection<Void>> {
+/** Class BigQueryMerger. */
+public class DataStreamBigQueryMerger
+    extends PTransform<PCollection<KV<TableId, TableRow>>, PCollection<Void>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamBigQueryMerger.class);
 
@@ -72,10 +71,10 @@ public class DataStreamBigQueryMerger extends PTransform<PCollection<KV<TableId,
     this.mergeConfiguration = mergeConfiguration;
 
     try {
-        this.dataStreamClient = new DataStreamClient(options.getGcpCredential());
+      this.dataStreamClient = new DataStreamClient(options.getGcpCredential());
     } catch (IOException e) {
-        LOG.error("IOException Occurred: DataStreamClient failed initialization.");
-        this.dataStreamClient = null;
+      LOG.error("IOException Occurred: DataStreamClient failed initialization.");
+      this.dataStreamClient = null;
     }
   }
 
@@ -92,18 +91,20 @@ public class DataStreamBigQueryMerger extends PTransform<PCollection<KV<TableId,
     final MergeStatementBuilder mergeBuilder = new MergeStatementBuilder(mergeConfiguration);
 
     // Group each batch of rows into a single table object for merge
-    PCollection<KV<TableId, TableRow>> groupedByTable = input
-        .apply(
-          MapElements.into(
-            TypeDescriptors.kvs(
-              TypeDescriptors.strings(),
-              TypeDescriptors.kvs(
-                TypeDescriptor.of(TableId.class),
-                TypeDescriptor.of(TableRow.class))))
-            .via(tableInfo -> KV.of(tableInfo.getKey().toString(), tableInfo)))
-        .apply(
-          new BigQueryMerger.TriggerPerKeyOnFixedIntervals<String, KV<TableId, TableRow>>(windowDuration))
-        .apply(Values.create());
+    PCollection<KV<TableId, TableRow>> groupedByTable =
+        input
+            .apply(
+                MapElements.into(
+                        TypeDescriptors.kvs(
+                            TypeDescriptors.strings(),
+                            TypeDescriptors.kvs(
+                                TypeDescriptor.of(TableId.class),
+                                TypeDescriptor.of(TableRow.class))))
+                    .via(tableInfo -> KV.of(tableInfo.getKey().toString(), tableInfo)))
+            .apply(
+                new BigQueryMerger.TriggerPerKeyOnFixedIntervals<String, KV<TableId, TableRow>>(
+                    windowDuration))
+            .apply(Values.create());
 
     // Create MergeInfo objects using DataStream APIs
     PCollection<MergeInfo> mergeInfoRecords =

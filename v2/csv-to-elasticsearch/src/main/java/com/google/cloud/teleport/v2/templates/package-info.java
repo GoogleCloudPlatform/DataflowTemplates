@@ -14,7 +14,5 @@
  * the License.
  */
 
-/**
- * Package containing pipeline template.
- */
+/** Package containing pipeline template. */
 package com.google.cloud.teleport.v2.templates;

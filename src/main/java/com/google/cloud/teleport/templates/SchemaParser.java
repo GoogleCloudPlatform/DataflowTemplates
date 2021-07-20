@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,8 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
-
 package com.google.cloud.teleport.templates;
 
 import java.nio.channels.Channels;
@@ -26,10 +24,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A helper object to parse a JSON on GCS. Usage is to provide A GCS URL and it will return
- * a JSONObject of the file
+ * A helper object to parse a JSON on GCS. Usage is to provide A GCS URL and it will return a
+ * JSONObject of the file
  */
-public class SchemaParser{
+public class SchemaParser {
 
   private static final Logger LOG = LoggerFactory.getLogger(SchemaParser.class);
 
@@ -46,8 +44,9 @@ public class SchemaParser{
       ReadableByteChannel readableByteChannel =
           FileSystems.open(FileSystems.matchNewResource(pathToJSON, false));
 
-      String json = new String(
-          StreamUtils.getBytesWithoutClosing(Channels.newInputStream(readableByteChannel)));
+      String json =
+          new String(
+              StreamUtils.getBytesWithoutClosing(Channels.newInputStream(readableByteChannel)));
 
       return new JSONObject(json);
     } catch (Exception e) {

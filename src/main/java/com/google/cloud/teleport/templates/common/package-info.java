@@ -14,8 +14,5 @@
  * the License.
  */
 
-
-/**
- * Common Code shared between templates.
- */
+/** Common Code shared between templates. */
 package com.google.cloud.teleport.templates.common;

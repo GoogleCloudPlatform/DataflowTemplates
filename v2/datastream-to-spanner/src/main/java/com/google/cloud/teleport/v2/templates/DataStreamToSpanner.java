@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2020 Google Inc.
+ * Copyright (C) 2020 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.api.services.datastream.v1alpha1.model.SourceConfig;
@@ -91,28 +90,33 @@ public class DataStreamToSpanner {
   /**
    * Options supported by the pipeline.
    *
-   * <p>Inherits standard configuration options.</p>
+   * <p>Inherits standard configuration options.
    */
   public interface Options extends PipelineOptions, StreamingOptions {
     @Description("Instance ID to write to Spanner")
     String getInstanceId();
+
     void setInstanceId(String value);
 
     @Description("Database ID to write to Spanner")
     String getDatabaseId();
+
     void setDatabaseId(String value);
 
     @Description("GCP Project ID to write to Spanner.")
     String getProjectId();
+
     void setProjectId(String projectId);
 
     @Description("Spanner host")
     @Default.String("https://batch-spanner.googleapis.com")
     String getSpannerHost();
+
     void setSpannerHost(String value);
 
     @Description("The GCS location of the avro files you'd like to process")
     String getInputFilePattern();
+
     void setInputFilePattern(String value);
 
     @Description(
@@ -120,63 +124,75 @@ public class DataStreamToSpanner {
             + "The name should be in the format of "
             + "projects/<project-id>/subscriptions/<subscription-name>.")
     String getGcsPubSubSubscription();
+
     void setGcsPubSubSubscription(String value);
 
     @Description("The GCS output format avro/json")
     @Default.String("avro")
     String getInputFileFormat();
+
     void setInputFileFormat(String value);
 
     @Description("The DataStream Stream to Reference.")
     String getStreamName();
+
     void setStreamName(String value);
 
     @Description("The prefix for shadow tables.")
     @Default.String("shadow_")
     String getShadowTablePrefix();
+
     void setShadowTablePrefix(String value);
 
     @Description("If true, shadow tables are created for data tables.")
     @Default.Boolean(true)
     Boolean getShouldCreateShadowTables();
+
     void setShouldCreateShadowTables(Boolean value);
 
     @Description(
         "The starting DateTime used to fetch from GCS " + "(https://tools.ietf.org/html/rfc3339).")
     @Default.String("1970-01-01T00:00:00.00Z")
     String getRfcStartDateTime();
+
     void setRfcStartDateTime(String value);
 
     @Description("The number of concurrent DataStream files to read.")
     @Default.Integer(30)
     Integer getFileReadConcurrency();
+
     void setFileReadConcurrency(Integer value);
 
     // Dead Letter Queue GCS Directory
     @Description("The Dead Letter Queue GCS Prefix to use for errored data")
     @Default.String("")
     String getDeadLetterQueueDirectory();
+
     void setDeadLetterQueueDirectory(String value);
 
     @Description("The number of minutes between DLQ Retries")
     @Default.Integer(1)
     Integer getDlqRetryMinutes();
+
     void setDlqRetryMinutes(Integer value);
 
     @Description("The max number of times temporary errors can be retried through DLQ")
     @Default.Integer(5)
     Integer getDlqMaxRetryCount();
+
     void setDlqMaxRetryCount(Integer value);
 
     // DataStream API Root Url (only used for testing)
     @Description("DataStream API Root Url (only used for testing)")
     @Default.String("https://datastream.googleapis.com/")
     String getDataStreamRootUrl();
+
     void setDataStreamRootUrl(String value);
 
     // Datastream source type(only used for testing)
     @Description("Datastream Source type(only used for testing)")
     String getDatastreamSourceType();
+
     void setDatastreamSourceType(String value);
   }
 
@@ -184,7 +200,8 @@ public class DataStreamToSpanner {
     String sourceType = getSourceType(options);
     if (!DatastreamConstants.SUPPORTED_DATASTREAM_SOURCES.contains(sourceType)) {
       throw new IllegalArgumentException(
-          "Unsupported source type found: " + sourceType
+          "Unsupported source type found: "
+              + sourceType
               + ". Specify one of the following source types: "
               + DatastreamConstants.SUPPORTED_DATASTREAM_SOURCES);
     }
@@ -204,11 +221,11 @@ public class DataStreamToSpanner {
     DataStreamClient datastreamClient;
     SourceConfig sourceConfig;
     try {
-        datastreamClient = new DataStreamClient(gcpOptions.getGcpCredential());
-        sourceConfig = datastreamClient.getSourceConnectionProfile(options.getStreamName());
+      datastreamClient = new DataStreamClient(gcpOptions.getGcpCredential());
+      sourceConfig = datastreamClient.getSourceConnectionProfile(options.getStreamName());
     } catch (IOException e) {
-        LOG.error("IOException Occurred: DataStreamClient failed initialization.");
-        throw new IllegalArgumentException("Unable to initialize DatastreamClient: " + e);
+      LOG.error("IOException Occurred: DataStreamClient failed initialization.");
+      throw new IllegalArgumentException("Unable to initialize DatastreamClient: " + e);
     }
 
     if (sourceConfig.getMysqlSourceConfig() != null) {
@@ -218,21 +235,18 @@ public class DataStreamToSpanner {
     }
 
     LOG.error("Source Connection Profile Type Not Supported");
-    throw new IllegalArgumentException(
-        "Unsupported source connection profile type in Datastream");
+    throw new IllegalArgumentException("Unsupported source connection profile type in Datastream");
   }
 
   /**
    * Main entry point for executing the pipeline.
-   * @param args  The command-line arguments to the pipeline.
+   *
+   * @param args The command-line arguments to the pipeline.
    */
   public static void main(String[] args) {
     LOG.info("Starting DataStream to Cloud Spanner");
 
-    Options options = PipelineOptionsFactory
-        .fromArgs(args)
-        .withValidation()
-        .as(Options.class);
+    Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
     options.setStreaming(true);
 
@@ -245,7 +259,7 @@ public class DataStreamToSpanner {
    * Runs the pipeline with the supplied options.
    *
    * @param options The execution parameters to the pipeline.
-   * @return  The result of the pipeline execution.
+   * @return The result of the pipeline execution.
    */
   public static PipelineResult run(Options options) {
     /*
@@ -281,20 +295,21 @@ public class DataStreamToSpanner {
         pipeline.apply(
             "Process Information Schema",
             new ProcessInformationSchema(
-                spannerConfig, options.getShouldCreateShadowTables(),
-                options.getShadowTablePrefix(), options.getDatastreamSourceType()));
-    PCollectionView<Ddl> ddlView = ddl.apply("Cloud Spanner DDL as view",
-        View.asSingleton());
+                spannerConfig,
+                options.getShouldCreateShadowTables(),
+                options.getShadowTablePrefix(),
+                options.getDatastreamSourceType()));
+    PCollectionView<Ddl> ddlView = ddl.apply("Cloud Spanner DDL as view", View.asSingleton());
 
-    PCollection<FailsafeElement<String, String>> datastreamJsonRecords = pipeline
-         .apply(
-             new DataStreamIO(
+    PCollection<FailsafeElement<String, String>> datastreamJsonRecords =
+        pipeline.apply(
+            new DataStreamIO(
                     options.getStreamName(),
                     options.getInputFilePattern(),
                     options.getInputFileFormat(),
                     options.getGcsPubSubSubscription(),
                     options.getRfcStartDateTime())
-             .withFileReadConcurrency(options.getFileReadConcurrency()));
+                .withFileReadConcurrency(options.getFileReadConcurrency()));
 
     // Elements sent to the Dead Letter Queue are to be reconsumed.
     // A DLQManager is to be created using PipelineOptions, and it is in charge
@@ -303,12 +318,13 @@ public class DataStreamToSpanner {
         dlqManager.getReconsumerDataTransform(
             pipeline.apply(dlqManager.dlqReconsumer(options.getDlqRetryMinutes())));
     PCollection<FailsafeElement<String, String>> dlqJsonRecords =
-        reconsumedElements.get(DeadLetterQueueManager.RETRYABLE_ERRORS)
-        .setCoder(
-            FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+        reconsumedElements
+            .get(DeadLetterQueueManager.RETRYABLE_ERRORS)
+            .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
 
     PCollection<FailsafeElement<String, String>> jsonRecords =
-        PCollectionList.of(datastreamJsonRecords).and(dlqJsonRecords)
+        PCollectionList.of(datastreamJsonRecords)
+            .and(dlqJsonRecords)
             .apply(Flatten.pCollections())
             .apply("Reshuffle", Reshuffle.viaRandomKey());
 
@@ -318,7 +334,10 @@ public class DataStreamToSpanner {
     SpannerTransactionWriter.Result spannerWriteResults =
         jsonRecords.apply(
             "Write events to Cloud Spanner",
-            new SpannerTransactionWriter(spannerConfig, ddlView, options.getShadowTablePrefix(),
+            new SpannerTransactionWriter(
+                spannerConfig,
+                ddlView,
+                options.getShadowTablePrefix(),
                 options.getDatastreamSourceType()));
 
     /*
@@ -326,11 +345,12 @@ public class DataStreamToSpanner {
      * a) Retryable errors are written to retry GCS Dead letter queue
      * b) Severe errors are written to severe GCS Dead letter queue
      */
-      spannerWriteResults
+    spannerWriteResults
         .retryableErrors()
         .apply(
             "DLQ: Write retryable Failures to GCS",
-          MapElements.via(new StringDeadLetterQueueSanitizer())).setCoder(StringUtf8Coder.of())
+            MapElements.via(new StringDeadLetterQueueSanitizer()))
+        .setCoder(StringUtf8Coder.of())
         .apply(
             "Write To DLQ",
             DLQWriteTransform.WriteDLQ.newBuilder()
@@ -338,21 +358,22 @@ public class DataStreamToSpanner {
                 .withTmpDirectory(dlqManager.getRetryDlqDirectory() + "tmp/")
                 .build());
 
-      PCollection<FailsafeElement<String, String>> dlqErrorRecords =
-          reconsumedElements.get(DeadLetterQueueManager.PERMANENT_ERRORS)
-          .setCoder(
-              FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+    PCollection<FailsafeElement<String, String>> dlqErrorRecords =
+        reconsumedElements
+            .get(DeadLetterQueueManager.PERMANENT_ERRORS)
+            .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
 
     PCollection<FailsafeElement<String, String>> permanentErrors =
         PCollectionList.of(dlqErrorRecords)
-        .and(spannerWriteResults.permanentErrors())
-        .apply(Flatten.pCollections())
-        .apply("Reshuffle", Reshuffle.viaRandomKey());
+            .and(spannerWriteResults.permanentErrors())
+            .apply(Flatten.pCollections())
+            .apply("Reshuffle", Reshuffle.viaRandomKey());
 
     permanentErrors
         .apply(
             "DLQ: Write Severe errors to GCS",
-          MapElements.via(new StringDeadLetterQueueSanitizer())).setCoder(StringUtf8Coder.of())
+            MapElements.via(new StringDeadLetterQueueSanitizer()))
+        .setCoder(StringUtf8Coder.of())
         .apply(
             "Write To DLQ",
             DLQWriteTransform.WriteDLQ.newBuilder()

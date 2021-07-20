@@ -14,7 +14,5 @@
  * the License.
  */
 
-/**
- * Package info for pubsub to elastcisearch module.
- */
+/** Package info for pubsub to elastcisearch module. */
 package com.google.cloud.teleport.v2.templates;

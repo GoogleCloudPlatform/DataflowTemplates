@@ -1,17 +1,17 @@
 /*
- *     Copyright 2021 Google LLC
+ * Copyright (C) 2021 Google LLC
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.templates.datastream;
 
@@ -21,9 +21,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.commons.lang3.tuple.Pair;
 
-/**
- * A single class to store all constants related to Datastream.
- */
+/** A single class to store all constants related to Datastream. */
 public class DatastreamConstants {
 
   /* The key for the event change type in the event json */
@@ -65,8 +63,7 @@ public class DatastreamConstants {
 
   public static final String ORACLE_SCN_KEY = "_metadata_scn";
 
-  public static final Pair<String, String> ORACLE_SCN_SHADOW_INFO =
-      Pair.of("scn", "INT64");
+  public static final Pair<String, String> ORACLE_SCN_SHADOW_INFO = Pair.of("scn", "INT64");
 
   /* Mapping from Event keys to shadow table information for Oracle database */
   public static final Map<String, Pair<String, String>> ORACLE_SORT_ORDER;
@@ -94,18 +91,17 @@ public class DatastreamConstants {
   public static final List<String> SUPPORTED_DATASTREAM_SOURCES;
 
   static {
-    ORACLE_SORT_ORDER = ImmutableMap.of(
-        ORACLE_TIMESTAMP_KEY, ORACLE_TIMESTAMP_SHADOW_INFO,
-        ORACLE_SCN_KEY, ORACLE_SCN_SHADOW_INFO
-        );
+    ORACLE_SORT_ORDER =
+        ImmutableMap.of(
+            ORACLE_TIMESTAMP_KEY, ORACLE_TIMESTAMP_SHADOW_INFO,
+            ORACLE_SCN_KEY, ORACLE_SCN_SHADOW_INFO);
 
-    MYSQL_SORT_ORDER = ImmutableMap.of(
-        MYSQL_TIMESTAMP_KEY, MYSQL_TIMESTAMP_SHADOW_INFO,
-        MYSQL_LOGFILE_KEY, MYSQL_LOGFILE_SHADOW_INFO,
-        MYSQL_LOGPOSITION_KEY, MYSQL_LOGPOSITION_SHADOW_INFO
-        );
+    MYSQL_SORT_ORDER =
+        ImmutableMap.of(
+            MYSQL_TIMESTAMP_KEY, MYSQL_TIMESTAMP_SHADOW_INFO,
+            MYSQL_LOGFILE_KEY, MYSQL_LOGFILE_SHADOW_INFO,
+            MYSQL_LOGPOSITION_KEY, MYSQL_LOGPOSITION_SHADOW_INFO);
 
-    SUPPORTED_DATASTREAM_SOURCES = ImmutableList.of(ORACLE_SOURCE_TYPE,
-        MYSQL_SOURCE_TYPE);
+    SUPPORTED_DATASTREAM_SOURCES = ImmutableList.of(ORACLE_SOURCE_TYPE, MYSQL_SOURCE_TYPE);
   }
 }

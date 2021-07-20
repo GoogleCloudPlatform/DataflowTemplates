@@ -1,33 +1,29 @@
 /*
- *     Copyright 2021 Google LLC
+ * Copyright (C) 2021 Google LLC
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.templates.datastream;
 
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
 import org.json.JSONObject;
 
-/**
- * Factory classes that provides creation methods for ChangeEventContext.
- */
+/** Factory classes that provides creation methods for ChangeEventContext. */
 public class ChangeEventContextFactory {
 
-  private ChangeEventContextFactory() {
-  }
+  private ChangeEventContextFactory() {}
 
-  private static String getSourceType(JSONObject changeEvent)
-      throws InvalidChangeEventException {
+  private static String getSourceType(JSONObject changeEvent) throws InvalidChangeEventException {
     try {
       return changeEvent.getString(DatastreamConstants.EVENT_SOURCE_TYPE_KEY);
     } catch (Exception e) {
@@ -38,14 +34,18 @@ public class ChangeEventContextFactory {
   /*
    * Creates ChangeEventContext depending on the change event type.
    */
-  public static ChangeEventContext createChangeEventContext(JSONObject changeEvent,
-      Ddl ddl, String shadowTablePrefix, String sourceType)
+  public static ChangeEventContext createChangeEventContext(
+      JSONObject changeEvent, Ddl ddl, String shadowTablePrefix, String sourceType)
       throws ChangeEventConvertorException, InvalidChangeEventException {
 
     if (!sourceType.equals(getSourceType(changeEvent))) {
-      throw new InvalidChangeEventException("Change event with invalid source. "
-                                                + "Actual(" + getSourceType(changeEvent)
-                                                + "), Expected(" + sourceType + ")");
+      throw new InvalidChangeEventException(
+          "Change event with invalid source. "
+              + "Actual("
+              + getSourceType(changeEvent)
+              + "), Expected("
+              + sourceType
+              + ")");
     }
 
     if (DatastreamConstants.MYSQL_SOURCE_TYPE.equals(sourceType)) {

@@ -1,17 +1,17 @@
 /*
- *     Copyright 2021 Google LLC
+ * Copyright (C) 2021 Google LLC
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.templates.datastream;
 
@@ -23,8 +23,8 @@ import java.util.stream.Collectors;
 import org.json.JSONObject;
 
 /**
- * Implementation of ChangeEventSequence for Oracle database which stores change event
- * sequence information and implements the Comparator method.
+ * Implementation of ChangeEventSequence for Oracle database which stores change event sequence
+ * information and implements the Comparator method.
  */
 class OracleChangeEventSequence extends ChangeEventSequence {
 
@@ -51,16 +51,17 @@ class OracleChangeEventSequence extends ChangeEventSequence {
      */
     Long scn;
 
-    scn = ChangeEventTypeConvertor.toLong(changeEvent,
-        DatastreamConstants.ORACLE_SCN_KEY, /*requiredField=*/false);
+    scn =
+        ChangeEventTypeConvertor.toLong(
+            changeEvent, DatastreamConstants.ORACLE_SCN_KEY, /*requiredField=*/ false);
     if (scn == null) {
       scn = new Long(-1);
     }
 
     // Change events from Oracle have timestamp and SCN filled in always.
     return new OracleChangeEventSequence(
-        ChangeEventTypeConvertor.toLong(changeEvent,
-            DatastreamConstants.ORACLE_TIMESTAMP_KEY, /*requiredField=*/true),
+        ChangeEventTypeConvertor.toLong(
+            changeEvent, DatastreamConstants.ORACLE_TIMESTAMP_KEY, /*requiredField=*/ true),
         scn);
   }
 
@@ -68,16 +69,15 @@ class OracleChangeEventSequence extends ChangeEventSequence {
    * Creates a OracleChangeEventSequence by reading from a shadow table.
    */
   public static OracleChangeEventSequence createFromShadowTable(
-      final TransactionContext transactionContext,
-      String shadowTable, Key primaryKey)
+      final TransactionContext transactionContext, String shadowTable, Key primaryKey)
       throws ChangeEventSequenceCreationException {
 
     try {
       // Read columns from shadow table
-      List<String> readColumnList = DatastreamConstants.ORACLE_SORT_ORDER.values()
-          .stream()
-          .map(p -> p.getLeft())
-          .collect(Collectors.toList());
+      List<String> readColumnList =
+          DatastreamConstants.ORACLE_SORT_ORDER.values().stream()
+              .map(p -> p.getLeft())
+              .collect(Collectors.toList());
       Struct row = transactionContext.readRow(shadowTable, primaryKey, readColumnList);
 
       // This is the first event for the primary key and hence the latest event.
@@ -86,8 +86,7 @@ class OracleChangeEventSequence extends ChangeEventSequence {
       }
 
       return new OracleChangeEventSequence(
-          row.getLong(readColumnList.get(0)),
-          row.getLong(readColumnList.get(1)));
+          row.getLong(readColumnList.get(0)), row.getLong(readColumnList.get(1)));
     } catch (Exception e) {
       throw new ChangeEventSequenceCreationException(e);
     }
@@ -105,14 +104,14 @@ class OracleChangeEventSequence extends ChangeEventSequence {
   public int compareTo(ChangeEventSequence o) {
     if (!(o instanceof OracleChangeEventSequence)) {
       throw new ChangeEventSequenceComparisonException(
-          "Expected: OracleChangeEventSequence; Received: "
-              + o.getClass().getSimpleName());
+          "Expected: OracleChangeEventSequence; Received: " + o.getClass().getSimpleName());
     }
     OracleChangeEventSequence other = (OracleChangeEventSequence) o;
 
     int timestampComparisonResult = this.timestamp.compareTo(other.getTimestamp());
 
-    return (timestampComparisonResult != 0) ? timestampComparisonResult
+    return (timestampComparisonResult != 0)
+        ? timestampComparisonResult
         : (scn.compareTo(other.getSCN()));
   }
 }

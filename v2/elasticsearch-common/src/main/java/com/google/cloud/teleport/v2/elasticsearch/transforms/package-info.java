@@ -14,7 +14,5 @@
  * the License.
  */
 
-/**
- * Package info for elasticsearch transforms.
- */
+/** Package info for elasticsearch transforms. */
 package com.google.cloud.teleport.v2.elasticsearch.transforms;

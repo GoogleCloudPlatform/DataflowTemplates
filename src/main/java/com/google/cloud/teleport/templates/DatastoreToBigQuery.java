@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.templates;
 
 import com.google.cloud.teleport.templates.common.BigQueryConverters;
@@ -31,9 +30,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.options.ValueProvider;
 
-/**
- * Dataflow template which copies Datastore Entities to a BigQuery table.
- */
+/** Dataflow template which copies Datastore Entities to a BigQuery table. */
 public class DatastoreToBigQuery {
   interface DatastoreToBigQueryOptions
       extends PipelineOptions, DatastoreReadOptions, JavascriptTextTransformerOptions {
@@ -50,16 +47,15 @@ public class DatastoreToBigQuery {
   }
 
   /**
-   * Runs a pipeline which reads in Entities from Datastore, passes in the JSON encoded Entities
-   * to a Javascript UDF that returns JSON that conforms to the BigQuery TableRow spec and writes
-   * the TableRows to BigQuery.
+   * Runs a pipeline which reads in Entities from Datastore, passes in the JSON encoded Entities to
+   * a Javascript UDF that returns JSON that conforms to the BigQuery TableRow spec and writes the
+   * TableRows to BigQuery.
    *
    * @param args arguments to the pipeline
    */
   public static void main(String[] args) {
-    DatastoreToBigQueryOptions options = PipelineOptionsFactory.fromArgs(args)
-        .withValidation()
-        .as(DatastoreToBigQueryOptions.class);
+    DatastoreToBigQueryOptions options =
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(DatastoreToBigQueryOptions.class);
 
     Pipeline pipeline = Pipeline.create(options);
 

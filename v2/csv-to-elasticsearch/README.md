@@ -1,7 +1,7 @@
 # CSV to Elasticsearch Dataflow Template
 
-The [CsvToElasticsearch](src/main/java/com/google/cloud/teleport/v2/templates/CsvToElasticsearch.java) pipeline ingests 
-data from one or more CSV files in Google Cloud Storage into Elasticsearch. The template creates the schema for the 
+The [CsvToElasticsearch](src/main/java/com/google/cloud/teleport/v2/templates/CsvToElasticsearch.java) pipeline ingests
+data from one or more CSV files in Google Cloud Storage into Elasticsearch. The template creates the schema for the
 JSON document using one of the following:
 1. Javascript UDF (if provided)
 2. JSON schema (if provided)

@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2020 Google Inc.
+ * Copyright (C) 2020 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.v2.transforms;
 
 import static org.junit.Assert.assertEquals;
@@ -62,12 +61,13 @@ public class FormatDatastreamRecordToJsonTest {
 
   @Test
   public void testParseAvroGenRecord() throws IOException, URISyntaxException {
-    URL resource = getClass().getClassLoader().getResource(
-        "FormatDatastreamRecordToJsonTest/avro_file_ut.avro");
+    URL resource =
+        getClass()
+            .getClassLoader()
+            .getResource("FormatDatastreamRecordToJsonTest/avro_file_ut.avro");
     File file = new File(resource.toURI());
     DatumReader<GenericRecord> datumReader = new GenericDatumReader<>();
-    DataFileReader<GenericRecord> dataFileReader = new DataFileReader<>(
-        file, datumReader);
+    DataFileReader<GenericRecord> dataFileReader = new DataFileReader<>(file, datumReader);
     GenericRecord record = dataFileReader.next();
     String jsonData = FormatDatastreamRecordToJson.create().apply(record).getOriginalPayload();
     assertEquals(EXPECTED_FIRST_RECORD, jsonData);
@@ -76,5 +76,4 @@ public class FormatDatastreamRecordToJsonTest {
       FormatDatastreamRecordToJson.create().apply(record);
     }
   }
-
 }

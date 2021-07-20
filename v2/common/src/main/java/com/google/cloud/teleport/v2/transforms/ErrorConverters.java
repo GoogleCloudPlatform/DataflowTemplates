@@ -1,17 +1,17 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.transforms;
 
@@ -236,8 +236,7 @@ public class ErrorConverters {
     public abstract String getErrorRecordsTableSchema();
 
     @Override
-    public WriteResult expand(
-        PCollection<FailsafeElement<PubsubMessage, String>> failedRecords) {
+    public WriteResult expand(PCollection<FailsafeElement<PubsubMessage, String>> failedRecords) {
 
       return failedRecords
           .apply("FailedRecordToTableRow", ParDo.of(new FailedPubsubMessageToTableRowFn()))
@@ -309,8 +308,8 @@ public class ErrorConverters {
   }
 
   /**
-   * The {@link FailedPubsubMessageToTableRowFn} converts PubSub message which have failed processing into
-   * {@link TableRow} objects which can be output to a dead-letter table.
+   * The {@link FailedPubsubMessageToTableRowFn} converts PubSub message which have failed
+   * processing into {@link TableRow} objects which can be output to a dead-letter table.
    */
   public static class FailedPubsubMessageToTableRowFn
       extends DoFn<FailsafeElement<PubsubMessage, String>, TableRow> {
@@ -335,7 +334,6 @@ public class ErrorConverters {
       String timestamp =
           TIMESTAMP_FORMATTER.print(context.timestamp().toDateTime(DateTimeZone.UTC));
 
-
       // Build the table row
       TableRow failedRow =
           new TableRow()
@@ -354,14 +352,14 @@ public class ErrorConverters {
    * via a user provided {@link SerializableFunction}.
    *
    * <p>This {@link PTransform} can be used to create a {@link PubsubMessage} with the original
-   * payload encoded via a user provided {@link Coder} and any additional error
-   * details from {@link BigQueryInsertError} added as a message attribute.
+   * payload encoded via a user provided {@link Coder} and any additional error details from {@link
+   * BigQueryInsertError} added as a message attribute.
    *
    * @param <T> type of the original payload inserted into BigQuery
    */
   @AutoValue
-  public abstract static class BigQueryInsertErrorToPubsubMessage<T> extends
-      PTransform<PCollection<BigQueryInsertError>, PCollection<PubsubMessage>> {
+  public abstract static class BigQueryInsertErrorToPubsubMessage<T>
+      extends PTransform<PCollection<BigQueryInsertError>, PCollection<PubsubMessage>> {
 
     /**
      * Provides a builder for {@link BigQueryInsertErrorToPubsubMessage}.
@@ -381,30 +379,23 @@ public class ErrorConverters {
     @Override
     public PCollection<PubsubMessage> expand(PCollection<BigQueryInsertError> errors) {
 
-      TypeDescriptor<PubsubMessage> messageTypeDescriptor
-          = new TypeDescriptor<PubsubMessage>() {};
+      TypeDescriptor<PubsubMessage> messageTypeDescriptor = new TypeDescriptor<PubsubMessage>() {};
 
       TypeDescriptor<String> stringTypeDescriptor = TypeDescriptors.strings();
 
-      return
-          errors
-              .apply(
-                  "ConvertErrorPayload",
-                  MapElements.into(
+      return errors
+          .apply(
+              "ConvertErrorPayload",
+              MapElements.into(
                       TypeDescriptors.kvs(
                           payloadCoder().getEncodedTypeDescriptor(),
                           TypeDescriptors.maps(stringTypeDescriptor, stringTypeDescriptor)))
-                      .via(new BigQueryInsertErrorToKv()))
-              .setCoder(
-                  KvCoder.of(
-                      payloadCoder(),
-                      MapCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
-
-              .apply(
-                  "ConvertToPubsubMessage",
-                  MapElements
-                      .into(messageTypeDescriptor)
-                      .via(new KvToPubsubMessage()));
+                  .via(new BigQueryInsertErrorToKv()))
+          .setCoder(
+              KvCoder.of(payloadCoder(), MapCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+          .apply(
+              "ConvertToPubsubMessage",
+              MapElements.into(messageTypeDescriptor).via(new KvToPubsubMessage()));
     }
 
     /**
@@ -427,8 +418,8 @@ public class ErrorConverters {
       public abstract Builder<T> setPayloadCoder(Coder<T> payloadCoder);
 
       /**
-       * Sets the {@link SerializableFunction} used to translate a {@link TableRow}
-       * to the original payload.
+       * Sets the {@link SerializableFunction} used to translate a {@link TableRow} to the original
+       * payload.
        *
        * @param translateFunction function used for the translation
        */
@@ -437,9 +428,7 @@ public class ErrorConverters {
 
       abstract BigQueryInsertErrorToPubsubMessage<T> autoBuild();
 
-      /**
-       * Builds a {@link BigQueryInsertErrorToPubsubMessage}.
-       */
+      /** Builds a {@link BigQueryInsertErrorToPubsubMessage}. */
       public BigQueryInsertErrorToPubsubMessage<T> build() {
         checkNotNull(payloadCoder(), "payloadCoder is required.");
         checkNotNull(translateFunction(), "translateFunction is required.");
@@ -485,11 +474,9 @@ public class ErrorConverters {
       return builder.build();
     }
 
-    /**
-     * A {@link SerializableFunction} to convert a {@link BigQueryInsertError} to a {@link KV}.
-     */
-    private class BigQueryInsertErrorToKv implements
-        SerializableFunction<BigQueryInsertError, KV<T, Map<String, String>>> {
+    /** A {@link SerializableFunction} to convert a {@link BigQueryInsertError} to a {@link KV}. */
+    private class BigQueryInsertErrorToKv
+        implements SerializableFunction<BigQueryInsertError, KV<T, Map<String, String>>> {
 
       @Override
       public KV<T, Map<String, String>> apply(BigQueryInsertError error) {
@@ -497,11 +484,9 @@ public class ErrorConverters {
       }
     }
 
-    /**
-     * A {@link SerializableFunction} to convert a {@link KV} to a {@link PubsubMessage}.
-     */
-    private class KvToPubsubMessage implements
-        SerializableFunction<KV<T, Map<String, String>>, PubsubMessage> {
+    /** A {@link SerializableFunction} to convert a {@link KV} to a {@link PubsubMessage}. */
+    private class KvToPubsubMessage
+        implements SerializableFunction<KV<T, Map<String, String>>, PubsubMessage> {
 
       @Override
       public PubsubMessage apply(KV<T, Map<String, String>> kv) {
@@ -513,9 +498,9 @@ public class ErrorConverters {
   /**
    * {@link WriteErrorsToTextIO} is a {@link PTransform} that writes strings error messages to file
    * system using TextIO and custom line format {@link SerializableFunction} to convert errors in
-   * necessary format.
-   * <br>
+   * necessary format. <br>
    * Example of usage in pipeline:
+   *
    * <pre>{@code
    * pCollection.apply("Write to TextIO",
    *   WriteErrorsToTextIO.<String,String>newBuilder()
@@ -534,12 +519,11 @@ public class ErrorConverters {
    *
    *       return String.join(",",outputRow);
    *     })
-   * }
-   * </pre>
+   * }</pre>
    */
   @AutoValue
-  public abstract static class WriteErrorsToTextIO<T, V> extends
-      PTransform<PCollection<FailsafeElement<T, V>>, PDone> {
+  public abstract static class WriteErrorsToTextIO<T, V>
+      extends PTransform<PCollection<FailsafeElement<T, V>>, PDone> {
 
     public static <T, V> WriteErrorsToTextIO.Builder<T, V> newBuilder() {
       return new AutoValue_ErrorConverters_WriteErrorsToTextIO.Builder<>();
@@ -555,10 +539,10 @@ public class ErrorConverters {
     @Override
     public PDone expand(PCollection<FailsafeElement<T, V>> pCollection) {
 
-      PCollection<String> formattedErrorRows = pCollection
-          .apply("GetFormattedErrorRow",
-              MapElements.into(TypeDescriptors.strings())
-                  .via(translateFunction()));
+      PCollection<String> formattedErrorRows =
+          pCollection.apply(
+              "GetFormattedErrorRow",
+              MapElements.into(TypeDescriptors.strings()).via(translateFunction()));
 
       if (pCollection.isBounded() == PCollection.IsBounded.UNBOUNDED) {
         if (windowDuration() == null) {
@@ -567,16 +551,12 @@ public class ErrorConverters {
         return formattedErrorRows
             .apply(Window.into(FixedWindows.of(windowDuration())))
             .apply(TextIO.write().to(errorWritePath()).withNumShards(1).withWindowedWrites());
-
       }
 
       return formattedErrorRows.apply(TextIO.write().to(errorWritePath()).withNumShards(1));
-
     }
 
-    /**
-     * Builder for {@link WriteErrorsToTextIO}.
-     */
+    /** Builder for {@link WriteErrorsToTextIO}. */
     @AutoValue.Builder
     public abstract static class Builder<T, V> {
 

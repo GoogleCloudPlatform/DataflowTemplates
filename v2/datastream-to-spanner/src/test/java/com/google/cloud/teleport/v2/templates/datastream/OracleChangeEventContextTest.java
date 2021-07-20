@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2021 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.v2.templates.datastream;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -29,9 +28,8 @@ import org.json.JSONObject;
 import org.junit.Test;
 
 /**
- * Unit tests
- * 1) ChangeEventContextFactory methods for oracle change events.
- * 2) shadow table generation for Oracle change events.
+ * Unit tests 1) ChangeEventContextFactory methods for oracle change events. 2) shadow table
+ * generation for Oracle change events.
  */
 public final class OracleChangeEventContextTest {
 
@@ -46,23 +44,21 @@ public final class OracleChangeEventContextTest {
     // Test Change Event
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
     changeEvent.put(DatastreamConstants.ORACLE_TIMESTAMP_KEY, eventTimestamp);
-    changeEvent.put(DatastreamConstants.ORACLE_SCN_KEY , "1");
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY ,
-        DatastreamConstants.ORACLE_SOURCE_TYPE);
+    changeEvent.put(DatastreamConstants.ORACLE_SCN_KEY, "1");
+    changeEvent.put(
+        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.ORACLE_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        ChangeEventContextFactory.createChangeEventContext(changeEvent, ddl, "shadow_",
-            DatastreamConstants.ORACLE_SOURCE_TYPE);
+        ChangeEventContextFactory.createChangeEventContext(
+            changeEvent, ddl, "shadow_", DatastreamConstants.ORACLE_SOURCE_TYPE);
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
 
     // Expected result
-    Map<String, Value> expected =
-        ChangeEventConvertorTest.getExpectedMapForTestChangeEvent();
-    expected.put(DatastreamConstants.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft(),
-        Value.int64(eventTimestamp));
-    expected.put(DatastreamConstants.ORACLE_SCN_SHADOW_INFO.getLeft(),
-        Value.int64(1));
+    Map<String, Value> expected = ChangeEventConvertorTest.getExpectedMapForTestChangeEvent();
+    expected.put(
+        DatastreamConstants.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft(), Value.int64(eventTimestamp));
+    expected.put(DatastreamConstants.ORACLE_SCN_SHADOW_INFO.getLeft(), Value.int64(1));
 
     // Verify if OracleChangeEventContext was actually created.
     assertThat(changeEventContext, instanceOf(OracleChangeEventContext.class));
@@ -81,23 +77,21 @@ public final class OracleChangeEventContextTest {
     // Test Change Event
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
     changeEvent.put(DatastreamConstants.ORACLE_TIMESTAMP_KEY, eventTimestamp);
-    changeEvent.put(DatastreamConstants.ORACLE_SCN_KEY , JSONObject.NULL);
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY ,
-        DatastreamConstants.ORACLE_SOURCE_TYPE);
+    changeEvent.put(DatastreamConstants.ORACLE_SCN_KEY, JSONObject.NULL);
+    changeEvent.put(
+        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.ORACLE_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        ChangeEventContextFactory.createChangeEventContext(changeEvent, ddl, "shadow_",
-            DatastreamConstants.ORACLE_SOURCE_TYPE);
+        ChangeEventContextFactory.createChangeEventContext(
+            changeEvent, ddl, "shadow_", DatastreamConstants.ORACLE_SOURCE_TYPE);
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
 
     // Expected result
-    Map<String, Value> expected =
-        ChangeEventConvertorTest.getExpectedMapForTestChangeEvent();
-    expected.put(DatastreamConstants.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft(),
-        Value.int64(eventTimestamp));
-    expected.put(DatastreamConstants.ORACLE_SCN_SHADOW_INFO.getLeft(),
-        Value.int64(-1));
+    Map<String, Value> expected = ChangeEventConvertorTest.getExpectedMapForTestChangeEvent();
+    expected.put(
+        DatastreamConstants.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft(), Value.int64(eventTimestamp));
+    expected.put(DatastreamConstants.ORACLE_SCN_SHADOW_INFO.getLeft(), Value.int64(-1));
 
     // Verify if OracleChangeEventContext was actually created.
     assertThat(changeEventContext, instanceOf(OracleChangeEventContext.class));
@@ -116,22 +110,20 @@ public final class OracleChangeEventContextTest {
     // Test Change Event
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
     changeEvent.put(DatastreamConstants.ORACLE_TIMESTAMP_KEY, eventTimestamp);
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY ,
-        DatastreamConstants.ORACLE_SOURCE_TYPE);
+    changeEvent.put(
+        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.ORACLE_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        ChangeEventContextFactory.createChangeEventContext(changeEvent, ddl, "shadow_",
-            DatastreamConstants.ORACLE_SOURCE_TYPE);
+        ChangeEventContextFactory.createChangeEventContext(
+            changeEvent, ddl, "shadow_", DatastreamConstants.ORACLE_SOURCE_TYPE);
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
 
     // Expected result
-    Map<String, Value> expected =
-        ChangeEventConvertorTest.getExpectedMapForTestChangeEvent();
-    expected.put(DatastreamConstants.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft(),
-        Value.int64(eventTimestamp));
-    expected.put(DatastreamConstants.ORACLE_SCN_SHADOW_INFO.getLeft(),
-        Value.int64(-1));
+    Map<String, Value> expected = ChangeEventConvertorTest.getExpectedMapForTestChangeEvent();
+    expected.put(
+        DatastreamConstants.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft(), Value.int64(eventTimestamp));
+    expected.put(DatastreamConstants.ORACLE_SCN_SHADOW_INFO.getLeft(), Value.int64(-1));
 
     // Verify if OracleChangeEventContext was actually created.
     assertThat(changeEventContext, instanceOf(OracleChangeEventContext.class));

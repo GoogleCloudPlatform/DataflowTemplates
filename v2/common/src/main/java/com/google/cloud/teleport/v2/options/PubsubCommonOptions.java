@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2020 Google Inc.
+ * Copyright (C) 2020 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -27,9 +27,7 @@ public final class PubsubCommonOptions {
 
   private PubsubCommonOptions() {}
 
-  /**
-   * Provides {@link PipelineOptions} to read records from a Pub/Sub subscription.
-   */
+  /** Provides {@link PipelineOptions} to read records from a Pub/Sub subscription. */
   public interface ReadSubscriptionOptions extends PipelineOptions {
 
     @Description(
@@ -38,12 +36,11 @@ public final class PubsubCommonOptions {
             + "projects/<project-id>/subscriptions/<subscription-name>.")
     @Required
     String getInputSubscription();
+
     void setInputSubscription(String inputSubscription);
   }
 
-  /**
-   * Provides {@link PipelineOptions} to read records from a Pub/Sub topic.
-   */
+  /** Provides {@link PipelineOptions} to read records from a Pub/Sub topic. */
   public interface ReadTopicOptions extends PipelineOptions {
 
     @Description(
@@ -56,9 +53,7 @@ public final class PubsubCommonOptions {
     void setInputTopic(String outputTopic);
   }
 
-  /**
-   * Provides {@link PipelineOptions} to write records to a Pub/Sub topic.
-   */
+  /** Provides {@link PipelineOptions} to write records to a Pub/Sub topic. */
   public interface WriteTopicOptions extends PipelineOptions {
 
     @Description(
