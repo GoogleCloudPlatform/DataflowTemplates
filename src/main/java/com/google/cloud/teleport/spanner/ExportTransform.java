@@ -190,8 +190,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                       c.output(KV.of(t.name(), null));
                     }
                     // We want the resulting collection to contain the names of all entities that
-                    // need to be exported, both tables and views.  Ddl holds these separately, so we need to
-                    // add the names of all views separately here.
+                    // need to be exported, both tables and views.  Ddl holds these separately, so
+                    // we need to add the names of all views separately here.
                     for (com.google.cloud.teleport.spanner.ddl.View v : ddl.views()) {
                       c.output(KV.of(v.name(), null));
                     }

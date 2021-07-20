@@ -404,10 +404,16 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           }
                           Schema.Parser parser = new Schema.Parser();
                           List<KV<String, Schema>> missingTables = new ArrayList<>();
+                          List<KV<String, Schema>> missingViews = new ArrayList<>();
                           for (KV<String, String> kv : avroSchemas) {
-                            if (informationSchemaDdl.table(kv.getKey()) == null) {
+                            if (informationSchemaDdl.table(kv.getKey()) == null
+                                && informationSchemaDdl.view(kv.getKey()) == null) {
                               Schema schema = parser.parse(kv.getValue());
-                              missingTables.add(KV.of(kv.getKey(), schema));
+                              if (schema.getProp("spannerViewQuery") != null) {
+                                missingViews.add(KV.of(kv.getKey(), schema));
+                              } else {
+                                missingTables.add(KV.of(kv.getKey(), schema));
+                              }
                             }
                           }
                           AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
@@ -426,24 +432,21 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                                 newDdl.setOptionsStatements(spannerConfig.getDatabaseId().get()));
                           }
 
-                          if (!missingTables.isEmpty()) {
+                          if (!missingTables.isEmpty() || !missingViews.isEmpty()) {
                             Ddl.Builder builder = Ddl.builder();
+                            for (KV<String, Schema> kv : missingViews) {
+                              com.google.cloud.teleport.spanner.ddl.View view =
+                                  converter.toView(kv.getKey(), kv.getValue());
+                              builder.addView(view);
+                              mergedDdl.addView(view);
+                            }
                             for (KV<String, Schema> kv : missingTables) {
-                              if (kv.getValue().getProp("spannerViewQuery") != null) {
-                                // view
-                                com.google.cloud.teleport.spanner.ddl.View view =
-                                    converter.toView(kv.getKey(), kv.getValue());
-                                builder.addView(view);
-                                mergedDdl.addView(view);
-                              } else {
-                                // table
-                                Table table = converter.toTable(kv.getKey(), kv.getValue());
-                                builder.addTable(table);
-                                mergedDdl.addTable(table);
-                                // Account for additional DDL changes for tables being created
-                                createIndexStatements.addAll(table.indexes());
-                                createForeignKeyStatements.addAll(table.foreignKeys());
-                              }
+                              Table table = converter.toTable(kv.getKey(), kv.getValue());
+                              builder.addTable(table);
+                              mergedDdl.addTable(table);
+                              // Account for additional DDL changes for tables being created
+                              createIndexStatements.addAll(table.indexes());
+                              createForeignKeyStatements.addAll(table.foreignKeys());
                             }
                             Ddl newDdl = builder.build();
                             ddlStatements.addAll(newDdl.createTableStatements());
