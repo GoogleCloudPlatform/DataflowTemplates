@@ -78,6 +78,24 @@ The list of known rules that require this are:
 * common > Plugins > protobuf > protobuf:compile
 * common > Plugins > protobuf > protobuf:test-compile
 
+### Formatting Code
+
+From either the root directory or v2/ directory, run:
+
+```sh
+mvn spotless:apply
+```
+
+This will format the code and add a license header. To verify that the code is
+formatted correctly, run:
+
+```sh
+mvn spotless:check
+```
+
+The directory to run the commands from is based on whether the changes are under
+v2/ or not.
+
 ### Creating a Template File
 
 Dataflow templates can be [created](https://cloud.google.com/dataflow/docs/templates/creating-templates#creating-and-staging-templates)
