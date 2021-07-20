@@ -69,6 +69,9 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   // The prefix for shadow tables.
   private final String shadowTablePrefix;
 
+  // The source database type.
+  private final String sourceType;
+
   /* SpannerAccessor must be transient so that its value is not serialized at runtime. */
   private transient ExposedSpannerAccessor spannerAccessor;
 
@@ -91,12 +94,13 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       Metrics.counter(SpannerTransactionWriterDoFn.class, "Retryable errors");
 
   SpannerTransactionWriterDoFn(SpannerConfig spannerConfig, PCollectionView<Ddl> ddlView,
-      String shadowTablePrefix) {
+      String shadowTablePrefix, String sourceType) {
     Preconditions.checkNotNull(spannerConfig);
     this.spannerConfig = spannerConfig;
     this.ddlView = ddlView;
     this.shadowTablePrefix = (shadowTablePrefix.endsWith("_")) ? shadowTablePrefix
         : shadowTablePrefix + "_";
+    this.sourceType = sourceType;
   }
 
   /** Setup function connects to Cloud Spanner. */
@@ -127,7 +131,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
 
       ChangeEventContext changeEventContext =
           ChangeEventContextFactory.createChangeEventContext(
-              changeEvent, ddl, shadowTablePrefix);
+              changeEvent, ddl, shadowTablePrefix, sourceType);
 
       // Sequence information for the current change event.
       ChangeEventSequence currentChangeEventSequence =

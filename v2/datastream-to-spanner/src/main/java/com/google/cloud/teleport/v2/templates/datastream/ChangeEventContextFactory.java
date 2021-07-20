@@ -38,11 +38,15 @@ public class ChangeEventContextFactory {
   /*
    * Creates ChangeEventContext depending on the change event type.
    */
-  public static ChangeEventContext createChangeEventContext(
-      JSONObject changeEvent, Ddl ddl, String shadowTablePrefix)
+  public static ChangeEventContext createChangeEventContext(JSONObject changeEvent,
+      Ddl ddl, String shadowTablePrefix, String sourceType)
       throws ChangeEventConvertorException, InvalidChangeEventException {
 
-    String sourceType = getSourceType(changeEvent);
+    if (!sourceType.equals(getSourceType(changeEvent))) {
+      throw new InvalidChangeEventException("Change event with invalid source. "
+                                                + "Actual(" + getSourceType(changeEvent)
+                                                + "), Expected(" + sourceType + ")");
+    }
 
     if (DatastreamConstants.MYSQL_SOURCE_TYPE.equals(sourceType)) {
       return new MySqlChangeEventContext(changeEvent, ddl, shadowTablePrefix);

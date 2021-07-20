@@ -71,12 +71,17 @@ public class SpannerTransactionWriter
   /* The prefix for shadow tables */
   private final String shadowTablePrefix;
 
+  /* The datastream source database type. Eg, MySql or Oracle etc. */
+  private final String sourceType;
+
   public SpannerTransactionWriter(SpannerConfig spannerConfig,
-      PCollectionView<Ddl> ddlView, String shadowTablePrefix) {
+      PCollectionView<Ddl> ddlView, String shadowTablePrefix,
+      String sourceType) {
     Preconditions.checkNotNull(spannerConfig);
     this.spannerConfig = spannerConfig;
     this.ddlView = ddlView;
     this.shadowTablePrefix = shadowTablePrefix;
+    this.sourceType = sourceType;
   }
 
   @Override
@@ -85,7 +90,8 @@ public class SpannerTransactionWriter
     PCollectionTuple spannerWriteResults =
         input.apply(
             "Write Mutations",
-            ParDo.of(new SpannerTransactionWriterDoFn(spannerConfig, ddlView, shadowTablePrefix))
+            ParDo.of(new SpannerTransactionWriterDoFn(spannerConfig, ddlView, shadowTablePrefix,
+                         sourceType))
                 .withSideInputs(ddlView)
                 .withOutputTags(SUCCESSFUL_EVENT_TAG,
                     TupleTagList.of(Arrays.asList(PERMANENT_ERROR_TAG,

@@ -51,7 +51,8 @@ public final class OracleChangeEventContextTest {
         DatastreamConstants.ORACLE_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        ChangeEventContextFactory.createChangeEventContext(changeEvent, ddl, "shadow_");
+        ChangeEventContextFactory.createChangeEventContext(changeEvent, ddl, "shadow_",
+            DatastreamConstants.ORACLE_SOURCE_TYPE);
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
 
@@ -85,7 +86,8 @@ public final class OracleChangeEventContextTest {
         DatastreamConstants.ORACLE_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        ChangeEventContextFactory.createChangeEventContext(changeEvent, ddl, "shadow_");
+        ChangeEventContextFactory.createChangeEventContext(changeEvent, ddl, "shadow_",
+            DatastreamConstants.ORACLE_SOURCE_TYPE);
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
 
@@ -118,7 +120,8 @@ public final class OracleChangeEventContextTest {
         DatastreamConstants.ORACLE_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        ChangeEventContextFactory.createChangeEventContext(changeEvent, ddl, "shadow_");
+        ChangeEventContextFactory.createChangeEventContext(changeEvent, ddl, "shadow_",
+            DatastreamConstants.ORACLE_SOURCE_TYPE);
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
 

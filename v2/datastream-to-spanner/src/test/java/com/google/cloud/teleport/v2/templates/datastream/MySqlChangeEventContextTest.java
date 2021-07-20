@@ -52,7 +52,8 @@ public final class MySqlChangeEventContextTest {
         DatastreamConstants.MYSQL_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        ChangeEventContextFactory.createChangeEventContext(changeEvent, ddl, "shadow_");
+        ChangeEventContextFactory.createChangeEventContext(changeEvent, ddl, "shadow_",
+            DatastreamConstants.MYSQL_SOURCE_TYPE);
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
 
@@ -91,7 +92,8 @@ public final class MySqlChangeEventContextTest {
         DatastreamConstants.MYSQL_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        ChangeEventContextFactory.createChangeEventContext(changeEvent, ddl, "shadow_");
+        ChangeEventContextFactory.createChangeEventContext(changeEvent, ddl, "shadow_",
+            DatastreamConstants.MYSQL_SOURCE_TYPE);
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
 
@@ -129,7 +131,8 @@ public final class MySqlChangeEventContextTest {
         DatastreamConstants.MYSQL_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        ChangeEventContextFactory.createChangeEventContext(changeEvent, ddl, "shadow_");
+        ChangeEventContextFactory.createChangeEventContext(changeEvent, ddl, "shadow_",
+            DatastreamConstants.MYSQL_SOURCE_TYPE);
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
 

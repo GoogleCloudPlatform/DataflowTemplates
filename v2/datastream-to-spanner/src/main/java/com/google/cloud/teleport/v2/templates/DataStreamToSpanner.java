@@ -318,7 +318,8 @@ public class DataStreamToSpanner {
     SpannerTransactionWriter.Result spannerWriteResults =
         jsonRecords.apply(
             "Write events to Cloud Spanner",
-            new SpannerTransactionWriter(spannerConfig, ddlView, options.getShadowTablePrefix()));
+            new SpannerTransactionWriter(spannerConfig, ddlView, options.getShadowTablePrefix(),
+                options.getDatastreamSourceType()));
 
     /*
      * Stage 3: Write failures to GCS Dead Letter Queue
