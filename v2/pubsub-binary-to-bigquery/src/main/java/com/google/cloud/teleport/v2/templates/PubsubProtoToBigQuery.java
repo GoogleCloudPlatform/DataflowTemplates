@@ -45,6 +45,7 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.Method;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO.Read;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
@@ -92,6 +93,12 @@ public final class PubsubProtoToBigQuery {
 
     void setFullMessageName(String value);
 
+    @Description("True to preserve proto snake_case. False will convert fields to lowerCamelCase.")
+    @Default.Boolean(false)
+    Boolean getPreserveProtoFieldNames();
+
+    void setPreserveProtoFieldNames(Boolean value);
+
     @Description("GCS path to JSON file that represents the BigQuery table schema.")
     String getBigQueryTableSchemaPath();
 
@@ -121,7 +128,7 @@ public final class PubsubProtoToBigQuery {
     PCollection<String> maybeForUdf =
         pipeline
             .apply("Read From Pubsub", readPubsubMessages(options, descriptor))
-            .apply("Dynamic Message to TableRow", new ConvertDynamicProtoMessageToJson());
+            .apply("Dynamic Message to TableRow", new ConvertDynamicProtoMessageToJson(options));
 
     runUdf(maybeForUdf, options)
         .apply("Write to BigQuery", writeToBigQuery(options, descriptor))
@@ -177,7 +184,8 @@ public final class PubsubProtoToBigQuery {
 
     String schemaPath = options.getBigQueryTableSchemaPath();
     if (Strings.isNullOrEmpty(schemaPath)) {
-      return write.withSchema(SchemaUtils.createBigQuerySchema(descriptor));
+      return write.withSchema(
+          SchemaUtils.createBigQuerySchema(descriptor, options.getPreserveProtoFieldNames()));
     } else {
       return write.withJsonSchema(SchemaUtils.getGcsFileAsString(schemaPath));
     }
@@ -201,6 +209,11 @@ public final class PubsubProtoToBigQuery {
   /** {@link PTransform} that handles converting {@link PubsubMessage} values to JSON. */
   private static class ConvertDynamicProtoMessageToJson
       extends PTransform<PCollection<DynamicMessage>, PCollection<String>> {
+    private final boolean preserveProtoName;
+
+    private ConvertDynamicProtoMessageToJson(PubSubProtoToBigQueryOptions options) {
+      this.preserveProtoName = options.getPreserveProtoFieldNames();
+    }
 
     @Override
     public PCollection<String> expand(PCollection<DynamicMessage> input) {
@@ -210,7 +223,10 @@ public final class PubsubProtoToBigQuery {
               .via(
                   message -> {
                     try {
-                      return JsonFormat.printer().print(message);
+                      JsonFormat.Printer printer = JsonFormat.printer();
+                      return preserveProtoName
+                          ? printer.preservingProtoFieldNames().print(message)
+                          : printer.print(message);
                     } catch (InvalidProtocolBufferException e) {
                       throw new RuntimeException(e);
                     }

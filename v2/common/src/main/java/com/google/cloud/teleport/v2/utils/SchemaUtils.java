@@ -235,16 +235,20 @@ public class SchemaUtils {
    * <p>No description or policy tags will be set for any of the fields.
    *
    * @param descriptor a proto {@link Descriptor} to be converted into a BigQuery schema
+   * @param preserveProtoFieldNames true to keep proto snake_case. False to use lowerCamelCase. If
+   *     set to false and {@link FieldDescriptor#getJsonName()} is not set, then snake_case will be
+   *     used.
    * @return a full BigQuery schema definition
    */
-  public static TableSchema createBigQuerySchema(Descriptor descriptor) {
+  public static TableSchema createBigQuerySchema(
+      Descriptor descriptor, boolean preserveProtoFieldNames) {
     // TableSchema and TableFieldSchema work better with Beam than Schema and Field.
     List<TableFieldSchema> fields =
         descriptor.getFields().stream()
             .map(
                 fd ->
                     convertProtoFieldDescriptorToBigQueryField(
-                        fd, /* parent= */ null, /* nestingLevel= */ 1))
+                        fd, preserveProtoFieldNames, /* parent= */ null, /* nestingLevel= */ 1))
             .collect(toList());
     TableSchema schema = new TableSchema();
     schema.setFields(fields);
@@ -253,11 +257,17 @@ public class SchemaUtils {
 
   /** Handlers proto field to BigQuery field conversion. */
   private static TableFieldSchema convertProtoFieldDescriptorToBigQueryField(
-      FieldDescriptor fieldDescriptor, @Nullable FieldDescriptor parent, int nestingLevel) {
+      FieldDescriptor fieldDescriptor,
+      boolean preserveProtoFieldNames,
+      @Nullable FieldDescriptor parent,
+      int nestingLevel) {
     TableFieldSchema schema = new TableFieldSchema();
 
     String jsonName = fieldDescriptor.getJsonName();
-    schema.setName(Strings.isNullOrEmpty(jsonName) ? fieldDescriptor.getName() : jsonName);
+    schema.setName(
+        preserveProtoFieldNames || Strings.isNullOrEmpty(jsonName)
+            ? fieldDescriptor.getName()
+            : jsonName);
 
     LegacySQLTypeName sqlType = convertProtoTypeToSqlType(fieldDescriptor.getJavaType());
     schema.setType(sqlType.toString());
@@ -281,7 +291,7 @@ public class SchemaUtils {
               .map(
                   fd ->
                       convertProtoFieldDescriptorToBigQueryField(
-                          fd, fieldDescriptor, nestingLevel + 1))
+                          fd, preserveProtoFieldNames, fieldDescriptor, nestingLevel + 1))
               .collect(toList());
       schema.setFields(subFields);
     }
