@@ -429,15 +429,25 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           if (!missingTables.isEmpty()) {
                             Ddl.Builder builder = Ddl.builder();
                             for (KV<String, Schema> kv : missingTables) {
-                              Table table = converter.toTable(kv.getKey(), kv.getValue());
-                              builder.addTable(table);
-                              mergedDdl.addTable(table);
-                              // Account for additional DDL changes for tables being created
-                              createIndexStatements.addAll(table.indexes());
-                              createForeignKeyStatements.addAll(table.foreignKeys());
+                              if (kv.getValue().getProp("spannerViewQuery") != null) {
+                                // view
+                                com.google.cloud.teleport.spanner.ddl.View view =
+                                    converter.toView(kv.getKey(), kv.getValue());
+                                builder.addView(view);
+                                mergedDdl.addView(view);
+                              } else {
+                                // table
+                                Table table = converter.toTable(kv.getKey(), kv.getValue());
+                                builder.addTable(table);
+                                mergedDdl.addTable(table);
+                                // Account for additional DDL changes for tables being created
+                                createIndexStatements.addAll(table.indexes());
+                                createForeignKeyStatements.addAll(table.foreignKeys());
+                              }
                             }
                             Ddl newDdl = builder.build();
                             ddlStatements.addAll(newDdl.createTableStatements());
+                            ddlStatements.addAll(newDdl.createViewStatements());
                             // If the total DDL statements exceed the threshold, execute the create
                             // index statements when tables are created.
                             // Note that foreign keys can only be created after data load

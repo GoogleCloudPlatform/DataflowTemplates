@@ -87,7 +87,8 @@ public abstract class RandomDdlGenerator {
         .setArrayChance(20)
         .setMaxPkComponents(3)
         .setMaxBranchPerLevel(new int[] {2, 2, 1, 1, 1, 1, 1})
-        .setMaxViews(2)
+        // TODO(b/187873097): Enable views here once supported in production.
+        .setMaxViews(0)
         .setMaxIndex(2)
         .setMaxForeignKeys(2)
         // TODO: enable once CHECK constraints are enabled
@@ -137,7 +138,7 @@ public abstract class RandomDdlGenerator {
     for (int i = 0; i < numParentTables; i++) {
       generateTable(builder, null, 0);
     }
-    int numViews = 1 + getRandom().nextInt(getMaxViews());
+    int numViews = getRandom().nextInt(getMaxViews() + 1);
     for (int i = 0; i < numViews; i++) {
       generateView(builder);
     }

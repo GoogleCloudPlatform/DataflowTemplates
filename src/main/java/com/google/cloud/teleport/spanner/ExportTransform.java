@@ -177,9 +177,9 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     PCollection<ReadOperation> tables =
         ddl.apply("Build table read operations", new BuildReadFromTableOperations());
 
-    PCollection<KV<String, Void>> allTableNames =
+    PCollection<KV<String, Void>> allTableAndViewNames =
         ddl.apply(
-            "List all table names",
+            "List all table and view names",
             ParDo.of(
                 new DoFn<Ddl, KV<String, Void>>() {
 
@@ -188,6 +188,12 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                     Ddl ddl = c.element();
                     for (Table t : ddl.allTables()) {
                       c.output(KV.of(t.name(), null));
+                    }
+                    // We want the resulting collection to contain the names of all entities that
+                    // need to be exported, both tables and views.  Ddl holds these separately, so we need to
+                    // add the names of all views separately here.
+                    for (com.google.cloud.teleport.spanner.ddl.View v : ddl.views()) {
+                      c.output(KV.of(v.name(), null));
                     }
                   }
                 }));
@@ -269,14 +275,16 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     final TupleTag<Iterable<String>> nonEmptyTables = new TupleTag<>();
 
     PCollection<KV<String, CoGbkResult>> groupedTables =
-        KeyedPCollectionTuple.of(allTables, allTableNames)
+        KeyedPCollectionTuple.of(allTables, allTableAndViewNames)
             .and(nonEmptyTables, tableFiles)
             .apply("Group with all tables", CoGroupByKey.create());
 
-    // The following is to export empty tables from the database.
-    PCollection<KV<String, Iterable<String>>> emptyTables =
+    // The following is to export empty tables and views from the database.  Empty tables and views
+    // are handled together because we do not export any rows for views, only their metadata,
+    // including the queries defining them.
+    PCollection<KV<String, Iterable<String>>> emptyTablesAndViews =
         groupedTables.apply(
-            "Export empty tables",
+            "Export empty tables and views",
             ParDo.of(
                 new DoFn<KV<String, CoGbkResult>, KV<String, Iterable<String>>>() {
 
@@ -287,14 +295,16 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                     CoGbkResult coGbkResult = kv.getValue();
                     Iterable<String> only = coGbkResult.getOnly(nonEmptyTables, null);
                     if (only == null) {
-                      LOG.info("Exporting empty table " + table);
+                      LOG.info("Exporting empty table or view: " + table);
+                      // This file will contain the schema definition: column definitions for empty
+                      // tables or defining queries for views.
                       c.output(KV.of(table, Collections.singleton(table + ".avro-00000-of-00001")));
                     }
                   }
                 }));
 
-    emptyTables =
-        emptyTables.apply(
+    emptyTablesAndViews =
+        emptyTablesAndViews.apply(
             "Save empty schema files",
             ParDo.of(
                     new DoFn<KV<String, Iterable<String>>, KV<String, Iterable<String>>>() {
@@ -374,7 +384,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
     PCollection<KV<String, Iterable<String>>> allFiles =
         PCollectionList.of(tableFiles)
-            .and(emptyTables)
+            .and(emptyTablesAndViews)
             .apply("Combine all files", Flatten.pCollections());
 
     PCollection<KV<String, String>> tableManifests =

@@ -18,7 +18,6 @@ package com.google.cloud.teleport.spanner.ddl;
 
 import com.google.cloud.spanner.ReadContext;
 import com.google.cloud.spanner.ResultSet;
-import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.teleport.spanner.ExportProtos.Export;
 import com.google.common.base.Strings;
@@ -45,12 +44,12 @@ public class InformationSchemaScanner {
     Ddl.Builder builder = Ddl.builder();
     listDatabaseOptions(builder);
     listTables(builder);
+    listViews(builder);
     listColumns(builder);
     listColumnOptions(builder);
     Map<String, NavigableMap<String, Index.Builder>> indexes = Maps.newHashMap();
     listIndexes(indexes);
     listIndexColumns(builder, indexes);
-    listViews(builder);
 
     for (Map.Entry<String, NavigableMap<String, Index.Builder>> tableEntry : indexes.entrySet()) {
       String tableName = tableEntry.getKey();
@@ -117,12 +116,26 @@ public class InformationSchemaScanner {
   }
 
   private void listTables(Ddl.Builder builder) {
+    Statement.Builder queryBuilder =
+        Statement.newBuilder(
+            "SELECT t.table_name, t.parent_table_name, t.on_delete_action FROM"
+                + " information_schema.tables AS t WHERE t.table_catalog = '' AND"
+                + " t.table_schema = ''");
     ResultSet resultSet =
         context.executeQuery(
             Statement.of(
-                "SELECT t.table_name, t.parent_table_name, t.on_delete_action"
-                    + " FROM information_schema.tables AS t"
-                    + " WHERE t.table_catalog = '' AND t.table_schema = ''"));
+                "SELECT COUNT(1) FROM INFORMATION_SCHEMA.COLUMNS c WHERE c.TABLE_CATALOG = '' AND"
+                    + " c.TABLE_SCHEMA = 'INFORMATION_SCHEMA' AND c.TABLE_NAME = 'TABLES' AND"
+                    + " c.COLUMN_NAME = 'TABLE_TYPE';"));
+    // Returns a single row with a 1 if views are supported and a 0 if not.
+    resultSet.next();
+    if (resultSet.getLong(0) == 0) {
+      LOG.info("INFORMATION_SCHEMA.TABLES.TABLE_TYPE is not present; assuming no views");
+    } else {
+      queryBuilder.append(" AND t.table_type != 'VIEW'");
+    }
+
+    resultSet = context.executeQuery(queryBuilder.build());
     while (resultSet.next()) {
       String tableName = resultSet.getString(0);
       String parentTableName = resultSet.isNull(1) ? null : resultSet.getString(1);
@@ -169,6 +182,11 @@ public class InformationSchemaScanner {
                 .build());
     while (resultSet.next()) {
       String tableName = resultSet.getString(0);
+      if (builder.hasView(tableName)) {
+        // We do not need to collect columns from view definitions, and we will create phantom
+        // tables with names that collide with views if we try.
+        continue;
+      }
       String columnName = resultSet.getString(1);
       String spannerType = resultSet.getString(3);
       boolean nullable = resultSet.getString(4).equalsIgnoreCase("YES");
@@ -391,24 +409,30 @@ public class InformationSchemaScanner {
   }
 
   private void listViews(Ddl.Builder builder) {
-    try {
-      ResultSet resultSet =
-          context.executeQuery(
-              Statement.of(
-                  "SELECT v.table_name, v.view_definition"
-                      + " FROM information_schema.views AS v"
-                      + " WHERE v.table_catalog = '' AND v.table_schema = ''"));
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT COUNT(1) FROM INFORMATION_SCHEMA.TABLES t WHERE t.TABLE_CATALOG = '' AND"
+                    + " t.TABLE_SCHEMA = 'INFORMATION_SCHEMA' AND t.TABLE_NAME = 'VIEWS'"));
+    // Returns a single row with a 1 if views are supported and a 0 if not.
+    resultSet.next();
+    if (resultSet.getLong(0) == 0) {
+      LOG.info("INFORMATION_SCHEMA.VIEWS is not present; assuming no views");
+      return;
+    }
 
-      while (resultSet.next()) {
-        String viewName = resultSet.getString(0);
-        String viewQuery = resultSet.getString(1);
-        LOG.debug("Schema View {}", viewName);
-        builder.createView(viewName).query(viewQuery).security(View.SqlSecurity.INVOKER).endView();
-      }
-    } catch (SpannerException ex) {
-      LOG.warn(
-          "views query failed; assuming information_schema.views does not exist and therefore no"
-              + " views in schema");
+    resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT v.table_name, v.view_definition"
+                    + " FROM information_schema.views AS v"
+                    + " WHERE v.table_catalog = '' AND v.table_schema = ''"));
+
+    while (resultSet.next()) {
+      String viewName = resultSet.getString(0);
+      String viewQuery = resultSet.getString(1);
+      LOG.debug("Schema View {}", viewName);
+      builder.createView(viewName).query(viewQuery).security(View.SqlSecurity.INVOKER).endView();
     }
   }
 }

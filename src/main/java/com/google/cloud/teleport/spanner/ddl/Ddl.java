@@ -300,6 +300,10 @@ public class Ddl implements Serializable {
       views.put(view.name().toLowerCase(), view);
     }
 
+    public boolean hasView(String name) {
+      return views.containsKey(name);
+    }
+
     public void mergeDatabaseOptions(List<Export.DatabaseOption> databaseOptions) {
       List<Export.DatabaseOption> allowedDatabaseOptions = new ArrayList<>();
       List<String> existingOptionNames = new ArrayList<>();
