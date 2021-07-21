@@ -1,0 +1,192 @@
+{
+  "name": "Protegrity Data Tokenization",
+  "description": "Tokenizes structured plain text data from GCS or Pub/Sub input source using an external API calls to Protegrity DSG and ingests date to GCS, Bigtable or BigQuery sink",
+  "parameters": [
+    {
+      "name": "dataSchemaGcsPath",
+      "label": "GCS location of data schema",
+      "helpText": "Path to data schema file located on GCS. BigQuery compatible JSON format data schema required",
+      "paramType": "GCS_READ_FILE",
+      "isOptional": false,
+      "regexes": [
+        "^gs:\\/\\/[^\\n\\r]+$"
+      ]
+    },
+    {
+      "name": "inputGcsFilePattern",
+      "label": "GCS file pattern for input files",
+      "helpText": "GCS file pattern for files in the source bucket",
+      "paramType": "GCS_READ_FILE",
+      "isOptional": true,
+      "regexes": [
+        "^gs:\\/\\/[^\\n\\r]+$"
+      ]
+    },
+    {
+      "name": "inputGcsFileFormat",
+      "label": "File format of input files",
+      "helpText": "JSON, CSV or Avro input file format",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": [
+        "^(JSON|CSV|AVRO)$"
+      ]
+    },
+    {
+      "name": "csvContainsHeaders",
+      "label": "CSV file(s) contain headers: true or false",
+      "helpText": "`true` if CSV file(s) in the input bucket contain headers, and `false` otherwise",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": [
+        "^(true|false)$"
+      ]
+    },
+    {
+      "name": "csvDelimiter",
+      "label": "Delimiting character in CSV",
+      "helpText": "Delimiting character in CSV. Default: delimiter provided in csvFormat",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "csvFormat",
+      "label": "CSV format according to Apache Commons CSV format",
+      "helpText": "CSV format according to Apache Commons CSV format. Default is: Apache Commons CSV default\nhttps://static.javadoc.io/org.apache.commons/commons-csv/1.7/org/apache/commons/csv/CSVFormat.html#DEFAULT\nMust match format names exactly found at: https://static.javadoc.io/org.apache.commons/commons-csv/1.7/org/apache/commons/csv/CSVFormat.Predefined.html",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "inputSubscription",
+      "label": "Pub/Sub input subscriptions",
+      "helpText": "The Cloud Pub/Sub subscription to consume from. The name should be in the format of \n'projects/<project-id>/subscriptions/<subscription-name>.'",
+      "paramType": "PUBSUB_SUBSCRIPTION",
+      "isOptional": true,
+      "regexes": [
+        "^projects\\/[a-z][-a-z0-9:.]{4,61}[a-z0-9]\\/subscriptions\\/[^\\n\\r\\/]+$"
+      ]
+    },
+    {
+      "name": "dsgUri",
+      "label": "URI for DSG API",
+      "helpText": "URI for the DSG API calls",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "batchSize",
+      "label": "Batch size",
+      "helpText": "Size of the data batch to send to DSG per request",
+      "regexes": [
+        "^[0-9]*$"
+      ],
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "payloadConfigGcsPath",
+      "label": "GCS path to the payload config",
+      "helpText": "GCS path to the payload configuration file with an array of fields to extract for tokenization",
+      "paramType": "GCS_READ_FILE",
+      "isOptional": true,
+      "regexes": [
+        "^gs:\\/\\/[^\\n\\r]+$"
+      ]
+    },
+    {
+      "name": "nonTokenizedDeadLetterGcsPath",
+      "label": "GCS path for Dead letter elements",
+      "helpText": "GCS folder where failed to tokenize data will be stored",
+      "paramType": "GCS_WRITE_FOLDER",
+      "isOptional": true,
+      "regexes": [
+        "^gs:\\/\\/[^\\n\\r]+$"
+      ]
+    },
+    {
+      "name": "outputGcsDirectory",
+      "label": "GCS folder for output files",
+      "helpText": "GCS bucket folder to write data to",
+      "paramType": "GCS_WRITE_FILE",
+      "isOptional": true,
+      "regexes": [
+        "^gs:\\/\\/[^\\n\\r]+$"
+      ]
+    },
+    {
+      "name": "outputGcsFileFormat",
+      "label": "File format of output files",
+      "helpText": "File format of output files. Supported formats: JSON, CSV, Avro",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": [
+        "^(JSON|CSV|AVRO)$"
+      ]
+    },
+    {
+      "name": "windowDuration",
+      "label": "The window duration in which data will be written.",
+      "helpText": "The window duration in which data will be written. Should be specified only for 'Pub/Sub -> GCS' case.\nDefaults to 30s.\nAllowed formats are:\n Ns (for seconds, example: 5s),\n Nm (for minutes, example: 12m),\n Nh (for hours, example: 2h).",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": [
+        "^([0-9]+[smh])$"
+      ]
+    },
+    {
+      "name": "bigQueryTableName",
+      "label": "Name of the output BigQuery table",
+      "helpText": "Cloud BigQuery table name to write into. The name should be in the format: <project>:<dataset>.<table_name>.",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": [".+:.+\\..+"]
+    },
+    {
+      "name": "bigTableProjectId",
+      "label": "Project ID for the output Bigtable instance",
+      "helpText": "Project ID containing Cloud Bigtable instance to write into",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": [
+        "^[a-z][-a-z0-9:.]{4,61}[a-z0-9]$"
+      ]
+    },
+    {
+      "name": "bigTableInstanceId",
+      "label": "Bigtable Instance ID of the Bigtable output instance",
+      "helpText": "Cloud BigTable Instance ID of the Bigtable instance to write into",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": [
+        "^[a-z][a-z0-9\\-]{4,31}[a-z0-9]$"
+      ]
+    },
+    {
+      "name": "bigTableTableId",
+      "label": "ID of the output Bigtable table",
+      "helpText": "ID of the Cloud Bigtable table to write into",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": [
+        "^[_a-zA-Z0-9][-_.a-zA-Z0-9]*$"
+      ]
+    },
+    {
+      "name": "bigTableKeyColumnName",
+      "label": "Key column name for the output Bigtable table",
+      "helpText": "Column name to use as a key in Cloud Bigtable",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "bigTableColumnFamilyName",
+      "label": "Column family name for the output Bigtable table",
+      "helpText": "Column family name to use in Cloud Bigtable",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": [
+        "^[_a-zA-Z0-9][-_.a-zA-Z0-9]*$"
+      ]
+    }
+  ]
+}

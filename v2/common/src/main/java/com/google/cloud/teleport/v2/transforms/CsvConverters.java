@@ -180,6 +180,7 @@ public class CsvConverters {
 
   /** Necessary {@link PipelineOptions} options for Csv Pipelines. */
   public interface CsvPipelineOptions extends PipelineOptions, JavascriptTextTransformerOptions {
+
     @Description("Pattern to where data lives, ex: gs://mybucket/somepath/*.csv")
     String getInputFileSpec();
 
