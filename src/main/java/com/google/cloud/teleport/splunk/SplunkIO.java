@@ -65,6 +65,12 @@ public class SplunkIO {
 
     @Nullable
     abstract ValueProvider<String> token();
+    
+    @Nullable
+    abstract ValueProvider<String> tokenKmsEncryptionKey();
+    
+    @Nullable
+    abstract ValueProvider<String> tokenSecretId();
 
     @Nullable
     abstract ValueProvider<Integer> batchCount();
@@ -77,14 +83,16 @@ public class SplunkIO {
 
     @Override
     public PCollection<SplunkWriteError> expand(PCollection<SplunkEvent> input) {
-
+      
       LOG.info("Configuring SplunkEventWriter.");
-      SplunkEventWriter.Builder builder =
-          SplunkEventWriter.newBuilder()
-              .withUrl(url())
-              .withInputBatchCount(batchCount())
-              .withDisableCertificateValidation(disableCertificateValidation())
-              .withToken((token()));
+      SplunkEventWriter.Builder builder = SplunkEventWriter
+          .newBuilder()
+          .withUrl(url())
+          .withInputBatchCount(batchCount())
+          .withDisableCertificateValidation(disableCertificateValidation())
+          .withToken(token())
+          .withTokenKmsEncryptionKey(tokenKmsEncryptionKey())
+          .withTokenSecretId(tokenSecretId());
 
       SplunkEventWriter writer = builder.build();
       LOG.info("SplunkEventWriter configured");
@@ -107,6 +115,14 @@ public class SplunkIO {
       abstract Builder setToken(ValueProvider<String> token);
 
       abstract ValueProvider<String> token();
+      
+      abstract Builder setTokenKmsEncryptionKey(ValueProvider<String> tokenKmsEncryptionKey);
+      
+      abstract ValueProvider<String> tokenKmsEncryptionKey();
+      
+      abstract Builder setTokenSecretId(ValueProvider<String> tokenSecretId);
+  
+      abstract ValueProvider<String> tokenSecretId();
 
       abstract Builder setBatchCount(ValueProvider<Integer> batchCount);
 
@@ -146,7 +162,6 @@ public class SplunkIO {
        * @return {@link Builder}
        */
       public Builder withToken(ValueProvider<String> token) {
-        checkArgument(token != null, "withToken(token) called with null input.");
         return setToken(token);
       }
 
@@ -157,8 +172,47 @@ public class SplunkIO {
        * @return {@link Builder}
        */
       public Builder withToken(String token) {
-        checkArgument(token != null, "withToken(token) called with null input.");
         return setToken(ValueProvider.StaticValueProvider.of(token));
+      }
+  
+      /**
+       * Method to set the KMS Encryption Key for HEC token.
+       *
+       * @param tokenKmsEncryptionKey KMS Encryption Key for HEC token
+       * @return {@link Builder}
+       */
+      public Builder withTokenKmsEncryptionKey(ValueProvider<String> tokenKmsEncryptionKey) {
+        return setTokenKmsEncryptionKey(tokenKmsEncryptionKey);
+      }
+  
+      /**
+       * Same as {@link Builder#withTokenKmsEncryptionKey(ValueProvider)} but without {@link ValueProvider}.
+       *
+       * @param tokenKmsEncryptionKey KMS Encryption Key for HEC token
+       * @return {@link Builder}
+       */
+      public Builder withTokenKmsEncryptionKey(String tokenKmsEncryptionKey) {
+        return setTokenKmsEncryptionKey(ValueProvider.StaticValueProvider.of(tokenKmsEncryptionKey));
+      }
+  
+      /**
+       * Method to set the Secret Manager Secret Id for HEC token.
+       *
+       * @param tokenSecretId Secret Manager Secret Id for HEC token
+       * @return {@link Builder}
+       */
+      public Builder withTokenSecretId(ValueProvider<String> tokenSecretId) {
+        return setTokenSecretId(tokenSecretId);
+      }
+  
+      /**
+       * Same as {@link Builder#withTokenSecretId(ValueProvider)} but without {@link ValueProvider}.
+       *
+       * @param tokenSecretId Secret Manager Secret Id for HEC token
+       * @return {@link Builder}
+       */
+      public Builder withTokenSecretId(String tokenSecretId) {
+        return setTokenSecretId(ValueProvider.StaticValueProvider.of(tokenSecretId));
       }
 
       /**

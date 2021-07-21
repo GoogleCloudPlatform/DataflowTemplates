@@ -21,6 +21,8 @@ import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Precondi
 import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.HttpResponseException;
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.util.KMSEncryptedNestedValueProvider;
+import com.google.cloud.teleport.util.SecretManagerValueProvider;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Lists;
@@ -103,6 +105,12 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
 
   @Nullable
   abstract ValueProvider<String> token();
+  
+  @Nullable
+  abstract ValueProvider<String> tokenKmsEncryptionKey();
+  
+  @Nullable
+  abstract ValueProvider<String> tokenSecretId();
 
   @Nullable
   abstract ValueProvider<Boolean> disableCertificateValidation();
@@ -115,7 +123,9 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
 
     checkArgument(url().isAccessible(), "url is required for writing events.");
     checkArgument(isValidUrlFormat(url().get()), INVALID_URL_FORMAT_MESSAGE);
-    checkArgument(token().isAccessible(), "Access token is required for writing events.");
+  
+    String token = resolveToken(tokenSecretId(), tokenKmsEncryptionKey(), token()).get();
+    checkArgument(token != null, "Access token is required for writing events.");
 
     // Either user supplied or default batchCount.
     if (batchCount == null) {
@@ -141,11 +151,10 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
     }
 
     try {
-      HttpEventPublisher.Builder builder =
-          HttpEventPublisher.newBuilder()
-              .withUrl(url().get())
-              .withToken(token().get())
-              .withDisableCertificateValidation(disableValidation);
+      HttpEventPublisher.Builder builder = HttpEventPublisher.newBuilder()
+          .withUrl(url().get())
+          .withToken(token)
+          .withDisableCertificateValidation(disableValidation);
 
       publisher = builder.build();
       LOG.info("Successfully created HttpEventPublisher");
@@ -156,6 +165,38 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
         | UnsupportedEncodingException e) {
       LOG.error("Error creating HttpEventPublisher: {}", e.getMessage());
       throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * Utility method that returns a token based on the following conditions
+   * 1. Return the token secret stored in Secret Manager if 'secretId' is provided or
+   * 2. Decrypt the token if an encrypted token and KMS key are passed or
+   * 3. Return the plaintext token or
+   * 4. Throw an exception if no parameters are valid.
+   *
+   * @param secretId Secret ID of the secret stored in Secret Manager
+   * @param kmsKey KMS Key for decrypting an encrypted token
+   * @param token Encrypted or plaintext token
+   * @return Valid token
+   */
+  private ValueProvider<String> resolveToken(
+      ValueProvider<String> secretId, ValueProvider<String> kmsKey, ValueProvider<String> token) {
+
+    if (secretId != null && secretId.get() != null) {
+      LOG.info("Using token secret stored in Secret Manager");
+      return new SecretManagerValueProvider(secretId);
+
+    } else if ((token != null && kmsKey != null) && (token.get() != null && kmsKey.get() != null)) {
+      LOG.info("Using KMS Key to decrypt token");
+      return new KMSEncryptedNestedValueProvider(token, kmsKey);
+
+    } else if (token != null && token.get() != null) {
+      LOG.warn("Using plaintext token");
+      return token;
+      
+    } else {
+      throw new RuntimeException("A valid token is required for writing to Splunk");
     }
   }
 
@@ -334,6 +375,14 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
     abstract Builder setToken(ValueProvider<String> token);
 
     abstract ValueProvider<String> token();
+  
+    abstract Builder setTokenKmsEncryptionKey(ValueProvider<String> tokenKmsEncryptionKey);
+  
+    abstract ValueProvider<String> tokenKmsEncryptionKey();
+  
+    abstract Builder setTokenSecretId(ValueProvider<String> tokenSecretId);
+  
+    abstract ValueProvider<String> tokenSecretId();
 
     abstract Builder setDisableCertificateValidation(
         ValueProvider<Boolean> disableCertificateValidation);
@@ -375,7 +424,6 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
      * @return {@link Builder}
      */
     public Builder withToken(ValueProvider<String> token) {
-      checkArgument(token != null, "withToken(token) called with null input.");
       return setToken(token);
     }
 
@@ -386,8 +434,47 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
      * @return {@link Builder}
      */
     public Builder withToken(String token) {
-      checkArgument(token != null, "withToken(token) called with null input.");
       return setToken(ValueProvider.StaticValueProvider.of(token));
+    }
+  
+    /**
+     * Method to set the KMS Encryption Key for HEC token.
+     *
+     * @param tokenKmsEncryptionKey KMS Encryption Key for HEC token
+     * @return {@link Builder}
+     */
+    public Builder withTokenKmsEncryptionKey(ValueProvider<String> tokenKmsEncryptionKey) {
+      return setTokenKmsEncryptionKey(tokenKmsEncryptionKey);
+    }
+  
+    /**
+     * Same as {@link Builder#withTokenKmsEncryptionKey(ValueProvider)} but without {@link ValueProvider}.
+     *
+     * @param tokenKmsEncryptionKey KMS Encryption Key for HEC token
+     * @return {@link Builder}
+     */
+    public Builder withTokenKmsEncryptionKey(String tokenKmsEncryptionKey) {
+      return setTokenKmsEncryptionKey(ValueProvider.StaticValueProvider.of(tokenKmsEncryptionKey));
+    }
+  
+    /**
+     * Method to set the Secret Manager Secret Id for HEC token.
+     *
+     * @param tokenSecretId Secret Manager Secret Id for HEC token
+     * @return {@link Builder}
+     */
+    public Builder withTokenSecretId(ValueProvider<String> tokenSecretId) {
+      return setTokenSecretId(tokenSecretId);
+    }
+  
+    /**
+     * Same as {@link Builder#withTokenSecretId(ValueProvider)} but without {@link ValueProvider}.
+     *
+     * @param tokenSecretId Secret Manager Secret Id for HEC token
+     * @return {@link Builder}
+     */
+    public Builder withTokenSecretId(String tokenSecretId) {
+      return setTokenSecretId(ValueProvider.StaticValueProvider.of(tokenSecretId));
     }
 
     /**
