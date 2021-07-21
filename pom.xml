@@ -936,11 +936,10 @@
         <version>${spotless-maven-plugin.version}</version>
         <configuration>
           <formats>
-            <!-- Avoid trailing whitespace require ending newline. -->
+            <!-- Avoid trailing whitespace and require ending newline. -->
             <format>
               <includes>
                 <include>*.md</include>
-                <include>*.xml</include>
                 <include>.gitignore</include>
               </includes>
               <trimTrailingWhitespace/>
@@ -957,6 +956,14 @@
             </licenseHeader>
           </java>
         </configuration>
+        <!-- Bind to verify. -->
+        <executions>
+          <execution>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
