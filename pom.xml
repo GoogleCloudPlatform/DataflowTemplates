@@ -57,6 +57,11 @@
     <mockito-core.version>3.0.0</mockito-core.version>
     <mock-server-netty.version>5.11.1</mock-server-netty.version>
     <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
+    <slf4j.version>1.7.25</slf4j.version>
+    <joda.version>2.10.5</joda.version>
+    <google-cloud-bigtable-v2.version>1.9.1</google-cloud-bigtable-v2.version>
+    <spanner.version>3.2.1</spanner.version>
+    <gax.version>1.66.0</gax.version>
     <open-census.version>0.24.0</open-census.version>
     <bigtable.version>1.15.0</bigtable.version>
     <bigtable-beam-import.version>1.15.0</bigtable-beam-import.version>
@@ -89,19 +94,27 @@
     <kms.version>1.40.0</kms.version>
     <proto-kms.version>0.87.0</proto-kms.version>
     <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
+    <cloud-libraries-bom.version>20.0.0</cloud-libraries-bom.version>
   </properties>
 
   <dependencyManagement>
-      <dependencies>
-        <dependency>
-          <groupId>org.apache.beam</groupId>
-          <artifactId>beam-sdks-java-bom</artifactId>
-          <version>${beam.version}</version>
-          <type>pom</type>
-          <scope>import</scope>
-        </dependency>
-      </dependencies>
-    </dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.apache.beam</groupId>
+        <artifactId>beam-sdks-java-bom</artifactId>
+        <version>${beam.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.google.cloud</groupId>
+        <artifactId>libraries-bom</artifactId>
+        <version>${cloud-libraries-bom.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
   <dependencies>
     <!-- Beam -->
@@ -469,6 +482,15 @@
       <artifactId>proto</artifactId>
       <version>${tensorflow.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-secretmanager</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.google.api</groupId>
+      <artifactId>gax-grpc</artifactId>
+      <version>${gax.version}</version>
+    </dependency>
   </dependencies>
 
   <build>
@@ -649,6 +671,9 @@
                 <ignoredUsedUndeclaredDependency>
                   org.hamcrest:hamcrest
                 </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  com.google.api.grpc:proto-google-cloud-secretmanager-v1
+                </ignoredUsedUndeclaredDependency>
              </ignoredUsedUndeclaredDependencies>
              <ignoredUnusedDeclaredDependencies>
                 <ignoredUnusedDeclaredDependency>org.threeten:threetenbp</ignoredUnusedDeclaredDependency>
@@ -658,6 +683,7 @@
                 <ignoredUnusedDeclaredDependency>org.codehaus.jackson:jackson-core-asl</ignoredUnusedDeclaredDependency>
                <ignoredUnusedDeclaredDependency>org.codehaus.jackson:jackson-mapper-asl</ignoredUnusedDeclaredDependency>
                <ignoredUnusedDeclaredDependency>io.opencensus:opencensus-api</ignoredUnusedDeclaredDependency>
+               <ignoredUnusedDeclaredDependency>com.google.api:gax-grpc</ignoredUnusedDeclaredDependency>
              </ignoredUnusedDeclaredDependencies>
            </configuration>
           </execution>
