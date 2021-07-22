@@ -28,7 +28,7 @@ import org.junit.Test;
 /** Tests for the {@link ValueExtractorTransform} transform. */
 public class ValueExtractorTransformTest {
 
-  private static final String RESOURCES_DIR = "JavascriptTextTransformerTest/";
+  private static final String RESOURCES_DIR = "ValueExtractorTransformTest/";
 
   private static final String TRANSFORM_FILE_PATH =
       Resources.getResource(RESOURCES_DIR + "transform.js").getPath();
