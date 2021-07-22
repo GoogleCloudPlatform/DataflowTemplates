@@ -15,12 +15,18 @@
  */
 package com.google.cloud.teleport.spanner;
 
+import static com.google.cloud.teleport.spanner.SpannerTableFilter.getFilteredTables;
+
 import com.google.cloud.spanner.PartitionOptions;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -34,6 +40,16 @@ class BuildReadFromTableOperations
   // (which can happen with a table with a lot of columns), the PartitionResponse size is bounded.
   private static final int MAX_PARTITIONS = 1000;
 
+  // A list of tables the user intends to export from Cloud Spanner along with their
+  // original data; BuildReadFromTableOperations(tables) will create ReadOperations for
+  // those tables (along with any necessary parent or foreign key tables). If this list is empty,
+  // then ReadOperations will be made for every table in the database.
+  private final ValueProvider<String> tables;
+
+  public BuildReadFromTableOperations(ValueProvider<String> tables) {
+    this.tables = tables;
+  }
+
   @Override
   public PCollection<ReadOperation> expand(PCollection<Ddl> ddl) {
     return ddl.apply(
@@ -44,7 +60,16 @@ class BuildReadFromTableOperations
               @ProcessElement
               public void processElement(ProcessContext c) {
                 Ddl ddl = c.element();
-                for (Table table : ddl.allTables()) {
+
+                List<String> tablesList = Collections.emptyList();
+
+                // If the user provides a comma-separated list of strings, parse it into a List
+                if (!tables.get().trim().isEmpty()) {
+                  tablesList = Arrays.asList(tables.get().split(",\\s*"));
+                }
+
+                for (Table table :
+                    getFilteredTables(ddl, tablesList)) {
                   String columnsListAsString =
                       table.columns().stream()
                           .filter(x -> !x.isGenerated())

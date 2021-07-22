@@ -121,6 +121,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
   private final ValueProvider<String> outputDir;
   private final ValueProvider<String> testJobId;
   private final ValueProvider<String> snapshotTime;
+  private final ValueProvider<String> tableNames;
   private final ValueProvider<Boolean> shouldExportTimestampAsLogicalType;
 
   public ExportTransform(
@@ -132,7 +133,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
         outputDir,
         testJobId,
         /*snapshotTime=*/ ValueProvider.StaticValueProvider.of(""),
-        /*shouldExportTimestampAsLogicalType=*/ ValueProvider.StaticValueProvider.of(false));
+        /*tableNames=*/ ValueProvider.StaticValueProvider.of(""),
+        /*shouldExportTimestampAsLogicalType=*/ValueProvider.StaticValueProvider.of(false));
   }
 
   public ExportTransform(
@@ -140,11 +142,13 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
       ValueProvider<String> outputDir,
       ValueProvider<String> testJobId,
       ValueProvider<String> snapshotTime,
+      ValueProvider<String> tableNames,
       ValueProvider<Boolean> shouldExportTimestampAsLogicalType) {
     this.spannerConfig = spannerConfig;
     this.outputDir = outputDir;
     this.testJobId = testJobId;
     this.snapshotTime = snapshotTime;
+    this.tableNames = tableNames;
     this.shouldExportTimestampAsLogicalType = shouldExportTimestampAsLogicalType;
   }
 
@@ -175,7 +179,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     PCollection<Ddl> ddl =
         p.apply("Read Information Schema", new ReadInformationSchema(spannerConfig, tx));
     PCollection<ReadOperation> tables =
-        ddl.apply("Build table read operations", new BuildReadFromTableOperations());
+        ddl.apply("Build table read operations",
+            new BuildReadFromTableOperations(tableNames));
 
     PCollection<KV<String, Void>> allTableAndViewNames =
         ddl.apply(
@@ -238,10 +243,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                       @ProcessElement
                       public void processElement(ProcessContext c) {
                         Collection<Schema> avroSchemas =
-                            new DdlToAvroSchemaConverter(
-                                    "spannerexport",
-                                    "1.0.0",
-                                    shouldExportTimestampAsLogicalType.get())
+                            new DdlToAvroSchemaConverter("spannerexport", "1.0.0",
+                                shouldExportTimestampAsLogicalType.get())
                                 .convert(c.element());
                         for (Schema schema : avroSchemas) {
                           c.output(KV.of(schema.getName(), new SerializableSchemaSupplier(schema)));

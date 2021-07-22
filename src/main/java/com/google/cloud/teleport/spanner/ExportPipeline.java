@@ -86,6 +86,13 @@ public class ExportPipeline {
     ValueProvider<Boolean> getShouldExportTimestampAsLogicalType();
 
     void setShouldExportTimestampAsLogicalType(ValueProvider<Boolean> value);
+
+    @Description(
+      "If provided, these tables (along with any necessary parent or foreign key"
+        + " tables) are exported from Cloud Spanner.")
+    @Default.String(value = "")
+    ValueProvider<String> getTableNames();
+    void setTableNames(ValueProvider<String> value);
   }
 
   /**
@@ -109,15 +116,12 @@ public class ExportPipeline {
     p.begin()
         .apply(
             "Run Export",
-            new ExportTransform(
-                spannerConfig,
-                options.getOutputDir(),
-                options.getTestJobId(),
-                options.getSnapshotTime(),
+            new ExportTransform(spannerConfig, options.getOutputDir(),
+                options.getTestJobId(), options.getSnapshotTime(),
+                options.getTableNames(),
                 options.getShouldExportTimestampAsLogicalType()));
     PipelineResult result = p.run();
-    if (options.getWaitUntilFinish()
-        &&
+    if (options.getWaitUntilFinish() &&
         /* Only if template location is null, there is a dataflow job to wait for. Else it's
          * template generation which doesn't start a dataflow job.
          */

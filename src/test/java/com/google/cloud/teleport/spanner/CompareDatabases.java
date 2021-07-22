@@ -27,6 +27,7 @@ import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.Transaction;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Count;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -110,7 +111,10 @@ public class CompareDatabases extends PTransform<PBegin, PCollection<Long>> {
 
       final PCollectionView<Ddl> ddlView = sourceDdl.apply(View.asSingleton());
 
-      PCollection<ReadOperation> tables = sourceDdl.apply(new BuildReadFromTableOperations());
+      PCollection<ReadOperation> tables =
+          sourceDdl.apply(
+              new BuildReadFromTableOperations(
+                  ValueProvider.StaticValueProvider.of("")));
 
       PCollection<Struct> rows =
           tables.apply(
