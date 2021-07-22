@@ -132,6 +132,13 @@ public class SplunkConverters {
     ValueProvider<String> getTokenKMSEncryptionKey();
 
     void setTokenKMSEncryptionKey(ValueProvider<String> keyName);
+
+    @Description(
+        "Secret Manager Secret ID for the token. Should be in the format "
+            + "projects/{project}/secrets/{secret}/versions/{secret_version}")
+    ValueProvider<String> getTokenSecretId();
+
+    void setTokenSecretId(ValueProvider<String> secretId);
   }
 
   private static class FailsafeStringToSplunkEvent
