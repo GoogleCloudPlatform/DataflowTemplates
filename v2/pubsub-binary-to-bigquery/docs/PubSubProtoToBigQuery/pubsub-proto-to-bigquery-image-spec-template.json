@@ -1,0 +1,129 @@
+{
+  "image": "gcr.io/project-id/image-name",
+  "metadata": {
+    "name": "PubSub_Proto_to_BigQuery",
+    "description": "Stream Proto records from Pub/Sub to BigQuery",
+    "parameters": [
+      {
+        "name": "protoSchemaPath",
+        "label": "GCS Path to the Proto Schema File",
+        "help_text": "GCS path to a self-contained descriptor set file. Example: gs://MyBucket/schema.pb.",
+        "regexes": [
+          "^gs:\\/\\/[^\\n\\r]+$"
+        ],
+        "param_type": "GCS_READ_FILE",
+        "is_optional": false
+      },
+      {
+        "name": "fullMessageName",
+        "label": "Full Proto Message Name",
+        "help_text": "The full message name (example: package.name.MessageName).",
+        "regexes": [
+          "^.+([a-zA-Z][a-zA-Z0-9_]+\\.?)+[a-zA-Z0-9_]$"
+        ],
+        "param_type": "TEXT",
+        "is_optional": false
+      },
+      {
+        "name": "preserveProtoFieldNames",
+        "label": "Preserve Proto Field Names",
+        "help_text": "True to retain proto snake_case field names. False to convert to lowerCamelCase. (Default: false)",
+        "param_type": "TEXT",
+        "is_optional": true
+      },
+      {
+        "name": "bigQueryTableSchemaPath",
+        "label": "BigQuery Table Schema Path",
+        "help_text": "GCS path to the BigQuery schema JSON file. Example: gs://MyBucket/bq_schema.json.",
+        "regexes": [
+          "^gs:\\/\\/[^\\n\\r]+$"
+        ],
+        "param_type": "GCS_READ_FILE",
+        "is_optional": true
+      },
+      {
+        "name": "inputSubscription",
+        "label": "Input Pub/Sub subscription",
+        "help_text": "The Pub/Sub subscription to read the input from. For example, projects/your-project-id/subscriptions/your-subscription-name",
+        "regexes": [
+          "^projects\\/[^\\n\\r\\/]+\\/subscriptions\\/[^\\n\\r\\/]+$"
+        ],
+        "is_optional": false,
+        "param_type": "PUBSUB_SUBSCRIPTION"
+      },
+      {
+        "name": "outputTopic",
+        "label": "Output deadletter Pub/Sub topic",
+        "help_text": "The Pub/Sub topic to publish deadletter records to. For example, projects/your-project-id/topics/your-topic-name.",
+        "regexes": [
+          "^projects\\/[^\\n\\r\\/]+\\/topics\\/[^\\n\\r\\/]+$"
+        ],
+        "is_optional": false,
+        "param_type": PUBSUB_TOPIC
+      },
+      {
+        "name": "javascriptTextTransformGcsPath",
+        "label": "JavaScript UDF GCS Path",
+        "help_text": "GCS path to the .js file containing a UDF for transforming Pub/Sub content. For example, gs://MyBucket/path/to/udf.js",
+        "regexes": [
+          "^gs:\\/\\/[^\\n\\r]+$"
+        ],
+        "param_type": "GCS_READ_FILE",
+        "is_optional": true,
+      },
+      {
+        "name": "javascriptTextTransformFunctionName",
+        "label": "JavaScript UDF Function Name",
+        "help_text": "Name of the JS function in the UDF file that receives JSON from the pipeline.",
+        "regexes": [
+          "[a-zA-Z0-9_]+"
+        ],
+        "is_optional": true,
+        "param_type": "TEXT"
+      },
+      {
+        "name": "udfDeadLetterTopic",
+        "label": "UDF Deadletter Topic",
+        "help_text": "An optional dead-letter topic to send UDF failures to. For example, projects/your-project-id/topics/your-topic-name.",
+        "regexes": [
+          "^projects\\/[^\\n\\r\\/]+\\/topics\\/[^\\n\\r\\/]+$"
+        ],
+        "is_optional": true,
+        "param_type": "PUBSUB_TOPIC"
+      },
+      {
+        "name": "outputTableSpec",
+        "label": "BigQuery output table",
+        "help_text": "BigQuery table location to write the output to. For example, your-project-id:your-dataset.your-table-name",
+        "regexes": [
+          ".+:.+\\..+"
+        ],
+        "is_optional": false,
+        "param_type": "TEXT"
+      },
+      {
+        "name": "writeDisposition",
+        "label": "BigQuery WriteDisposition",
+        "help_text": "BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE. Default: WRITE_APPEND",
+        "regexes": [
+          "^(WRITE_APPEND|WRITE_EMPTY|WRITE_TRUNCATE)$"
+        ],
+        "is_optional": true,
+        "param_type": "TEXT"
+      },
+      {
+        "name": "createDisposition",
+        "label": "BigQuery CreateDisposition",
+        "help_text": "BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER. Default: CREATE_IF_NEEDED",
+        "regexes": [
+          "^(CREATE_IF_NEEDED|CREATE_NEVER)$"
+        ],
+        "is_optional": true,
+        "param_type": "TEXT"
+      }
+    ]
+  },
+  "sdk_info": {
+    language: JAVA
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "image": "gcr.io/project-id/image-name",
+  "metadata": {
+    "name": "Pub/Sub Avro to BigQuery streaming",
+    "description": "Stream Avro records from Pub/Sub to BigQuery",
+    "parameters": [
+      {
+        "name": "schemaPath",
+        "label": "GCS path to the Avro schema file",
+        "helpText": "GCS path to Avro schema file. For example, gs://MyBucket/file.avsc",
+        "isOptional": false,
+        "regexes": [
+          "^gs:\\/\\/[^\\n\\r]+$"
+        ],
+        "paramType": "GCS_READ_FILE"
+      },
+      {
+        "name": "inputSubscription",
+        "label": "PubSub subscription name",
+        "helpText": "The name of the subscription from which data is read. For example, projects/<project-id>/subscriptions/<subscription-name>",
+        "isOptional": false,
+        "regexes": [
+          "^projects\\/[^\\n\\r\\/]+\\/subscriptions\\/[^\\n\\r\\/]+$"
+        ],
+        "paramType": "PUBSUB_SUBSCRIPTION"
+      },
+      {
+        "name": "outputTopic",
+        "label": "Dead-letter output topic",
+        "helpText": "Pub/Sub topic to write dead-letter records. For example, projects/<project-id>/topics/<topic-name>.",
+        "isOptional": false,
+        "regexes": [
+          "^projects\\/[^\\n\\r\\/]+\\/topics\\/[^\\n\\r\\/]+$"],
+        "paramType": "PUBSUB_TOPIC"
+      },
+      {
+        "name": "outputTableSpec",
+        "label": "Output BigQuery table",
+        "helpText": "Output BigQuery table. For example, <project>:<dataset>.<table_name>",
+        "isOptional": false,
+        "regexes": [
+          ".+:.+\\..+"
+        ],
+        "paramType": "TEXT"
+      },
+      {
+        "name": "writeDisposition",
+        "label": "BigQuery WriteDisposition",
+        "helpText": "BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE. Default: WRITE_APPEND",
+        "isOptional": true,
+        "regexes": [
+          "^(WRITE_APPEND|WRITE_EMPTY|WRITE_TRUNCATE)$"
+        ],
+        "paramType": "TEXT"
+      },
+      {
+        "name": "createDisposition",
+        "label": "BigQuery CreateDisposition",
+        "helpText": "BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER. Default: CREATE_IF_NEEDED",
+        "isOptional": true,
+        "regexes": [
+          "^(CREATE_IF_NEEDED|CREATE_NEVER)$"
+        ],
+        "paramType": "TEXT"
+      }
+    ]
+  },
+  "sdkInfo": {
+    "language": "JAVA"
+  }
+}
