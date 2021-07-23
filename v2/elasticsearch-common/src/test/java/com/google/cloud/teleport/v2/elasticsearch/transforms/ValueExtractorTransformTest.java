@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.transforms;
+package com.google.cloud.teleport.v2.elasticsearch.transforms;
 
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.core.Is.is;
@@ -28,7 +28,7 @@ import org.junit.Test;
 /** Tests for the {@link ValueExtractorTransform} transform. */
 public class ValueExtractorTransformTest {
 
-  private static final String RESOURCES_DIR = "JavascriptTextTransformerTest/";
+  private static final String RESOURCES_DIR = "ValueExtractorTransformTest/";
 
   private static final String TRANSFORM_FILE_PATH =
       Resources.getResource(RESOURCES_DIR + "transform.js").getPath();
