@@ -14,7 +14,5 @@
  * limitations under the License.
  */
 
-/**
- * Coders used by the pipelines.
- */
+/** Coders used by the pipelines. */
 package com.google.cloud.teleport.v2.coders;

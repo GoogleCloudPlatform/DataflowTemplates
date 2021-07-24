@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -25,7 +25,6 @@ import com.google.common.collect.Lists;
 import java.util.List;
 import org.apache.beam.sdk.schemas.Schema;
 import org.junit.jupiter.api.Test;
-
 
 /** Tests for BigQuerySchemaUtils class. */
 public class BigQuerySchemaUtilsTest {
@@ -58,27 +57,26 @@ public class BigQuerySchemaUtilsTest {
   private static final List<Schema> UNSUPPORTED_TYPE_SCHEMAS =
       Lists.newArrayList(
           Schema.builder()
-              .addMapField(
-                  "myMapField", Schema.FieldType.STRING, Schema.FieldType.STRING)
+              .addMapField("myMapField", Schema.FieldType.STRING, Schema.FieldType.STRING)
               .build(),
-          Schema.builder()
-              .addRowField("myRowField", Schema.builder().build()).build(),
+          Schema.builder().addRowField("myRowField", Schema.builder().build()).build(),
           Schema.builder().addArrayField("myArrayField", Schema.FieldType.STRING).build());
 
   @Test
   public void testComplexSchemaToBQSchema() {
-    assertThat(BigQuerySchemaUtils.beamSchemaToBigQueryClientSchema(ALL_BEAM_SCHEMA),
-        is(ALL_BQ_SCHEMA));
+    assertThat(
+        BigQuerySchemaUtils.beamSchemaToBigQueryClientSchema(ALL_BEAM_SCHEMA), is(ALL_BQ_SCHEMA));
   }
 
   @Test
   public void testUnsupportedTypes() {
 
-    UNSUPPORTED_TYPE_SCHEMAS.forEach(schema -> {
-      assertThrows(
-          IllegalArgumentException.class,
-          () -> BigQuerySchemaUtils.beamSchemaToBigQueryClientSchema(schema),
-          "Expected an exception with unsupported type conversion, but didn't see one");
-    });
+    UNSUPPORTED_TYPE_SCHEMAS.forEach(
+        schema -> {
+          assertThrows(
+              IllegalArgumentException.class,
+              () -> BigQuerySchemaUtils.beamSchemaToBigQueryClientSchema(schema),
+              "Expected an exception with unsupported type conversion, but didn't see one");
+        });
   }
 }

@@ -1,17 +1,17 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.transforms;
 
@@ -23,6 +23,7 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.LegacySQLTypeName;
+import com.google.cloud.teleport.v2.options.BigQueryCommonOptions.WriteOptions;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.v2.utils.SerializableSchemaSupplier;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -44,8 +45,12 @@ import org.apache.beam.sdk.coders.Coder.Context;
 import org.apache.beam.sdk.extensions.gcp.util.Transport;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.TypedRead.Method;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryUtils;
+import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -62,6 +67,7 @@ import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.POutput;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
@@ -104,6 +110,33 @@ public class BigQueryConverters {
   }
 
   /**
+   * Creates a {@link Write} transform based on {@code options}.
+   *
+   * <p>Along with the values in {@code options}, the following are set by default:
+   *
+   * <ul>
+   *   <li>{@link InsertRetryPolicy#retryTransientErrors()}
+   *   <li>{@link Write#withExtendedErrorInfo()}
+   * </ul>
+   *
+   * <p>It is the responsibility of the caller to set the schema and write method on the returned
+   * value.
+   *
+   * @param options The options for configuring this write transform.
+   * @param <T> The {@link POutput} type of this write. Since type inference does not work when
+   *     setting a schema on the returned {@link Write}, this value must be explicitly set.
+   * @return The write transform, which can be further configured as needed.
+   */
+  public static <T> Write<T> createWriteTransform(WriteOptions options) {
+    return BigQueryIO.<T>write()
+        .to(options.getOutputTableSpec())
+        .withWriteDisposition(WriteDisposition.valueOf(options.getWriteDisposition()))
+        .withCreateDisposition(CreateDisposition.valueOf(options.getCreateDisposition()))
+        .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
+        .withExtendedErrorInfo();
+  }
+
+  /**
    * The {@link TableRowToJsonFn} class converts a tableRow to Json using {@link
    * #tableRowToJson(TableRow)}.
    */
@@ -117,7 +150,7 @@ public class BigQueryConverters {
   }
 
   /** Converts a {@link TableRow} into a Json string using {@link Gson}. */
-  private static String tableRowToJson(TableRow row) {
+  public static String tableRowToJson(TableRow row) {
     return new Gson().toJson(row, TableRow.class);
   }
 
@@ -463,38 +496,36 @@ public class BigQueryConverters {
   /**
    * Returns {@code String} using Key/Value style formatting.
    *
+   * <p>Extracts TableRow fields and applies values to the formatTemplate. ie.
+   * formatStringTemplate("I am {key}"{"key": "formatted"}) -> "I am formatted"
+   *
    * @param formatTemplate a String with bracketed keys to apply "I am a {key}"
    * @param row is a TableRow object which is used to supply key:values to the template
-   *
-   * <p> Extracts TableRow fields and applies values to the formatTemplate.
-   * ie. formatStringTemplate("I am {key}"{"key": "formatted"}) -> "I am formatted"
    */
   public static String formatStringTemplate(String formatTemplate, TableRow row) {
-      // Key/Value Map used to replace values in template
-      Map<String, String> values = new HashMap<>();
+    // Key/Value Map used to replace values in template
+    Map<String, String> values = new HashMap<>();
 
-      // Put all column/value pairs into key/value map
-      Set<String> rowKeys = row.keySet();
-      for (String rowKey : rowKeys) {
+    // Put all column/value pairs into key/value map
+    Set<String> rowKeys = row.keySet();
+    for (String rowKey : rowKeys) {
       // Only String types can be used in comparison
       if (row.get(rowKey) instanceof String) {
-          values.put(rowKey, (String) row.get(rowKey));
-        }
+        values.put(rowKey, (String) row.get(rowKey));
       }
-      // Substitute any templated values in the template
-      String result = StringSubstitutor.replace(formatTemplate, values, "{", "}");
-      return result;
+    }
+    // Substitute any templated values in the template
+    String result = StringSubstitutor.replace(formatTemplate, values, "{", "}");
+    return result;
   }
 
-  /**
-   * A {@link SerializableFunction} to convert a {@link TableRow} to a {@link GenericRecord}.
-   */
-  public static class TableRowToGenericRecordFn implements
-      SerializableFunction<TableRow, GenericRecord> {
+  /** A {@link SerializableFunction} to convert a {@link TableRow} to a {@link GenericRecord}. */
+  public static class TableRowToGenericRecordFn
+      implements SerializableFunction<TableRow, GenericRecord> {
 
     /**
-     * Creates a {@link SerializableFunction} that uses a {@link Schema} to translate a
-     * {@link TableRow} into a {@link GenericRecord}.
+     * Creates a {@link SerializableFunction} that uses a {@link Schema} to translate a {@link
+     * TableRow} into a {@link GenericRecord}.
      *
      * @param avroSchema schema to be used for the {@link GenericRecord}
      * @return a {@link GenericRecord} based on the {@link TableRow}
@@ -520,13 +551,12 @@ public class BigQueryConverters {
   }
 
   /**
-   * The {@link BigQueryTableConfigManager} POJO Class to manage 
-   * the BigQuery Output Table configurations.  It allows for
-   * a full table path or a set of table template params
-   * to be supplied interchangably.
+   * The {@link BigQueryTableConfigManager} POJO Class to manage the BigQuery Output Table
+   * configurations. It allows for a full table path or a set of table template params to be
+   * supplied interchangeably.
    *
-   * <p>Optionally supply projectIdVal, datasetTemplateVal, and tableTemplateVal
-   * or the config manager will default to using outputTableSpec.
+   * <p>Optionally supply projectIdVal, datasetTemplateVal, and tableTemplateVal or the config
+   * manager will default to using outputTableSpec.
    */
   public static class BigQueryTableConfigManager {
 
@@ -541,16 +571,17 @@ public class BigQueryConverters {
      * @param datasetTemplateVal The BQ Dataset value or a templated value.
      * @param tableTemplateVal The BQ Table value or a templated value.
      * @param outputTableSpec The full path of a BQ Table ie. `project:dataset.table`
-     *
-     * <p>Optionally supply projectIdVal, datasetTemplateVal, and tableTemplateVal
-     * or the config manager will default to using outputTableSpec.
+     *     <p>Optionally supply projectIdVal, datasetTemplateVal, and tableTemplateVal or the config
+     *     manager will default to using outputTableSpec.
      */
-    public BigQueryTableConfigManager(String projectIdVal, String datasetTemplateVal,
-                                      String tableTemplateVal, String outputTableSpec) {
+    public BigQueryTableConfigManager(
+        String projectIdVal,
+        String datasetTemplateVal,
+        String tableTemplateVal,
+        String outputTableSpec) {
       if (datasetTemplateVal == null || tableTemplateVal == null) {
         // Legacy Config Option
-        List<String> tableObjs = 
-            Splitter.on(CharMatcher.anyOf(":.")).splitToList(outputTableSpec);
+        List<String> tableObjs = Splitter.on(CharMatcher.anyOf(":.")).splitToList(outputTableSpec);
 
         this.projectId = tableObjs.get(0);
         this.datasetTemplate = tableObjs.get(1);
@@ -579,9 +610,8 @@ public class BigQueryConverters {
     }
 
     public String getOutputTableSpec() {
-      String tableSpec = 
-          String.format(
-              "%s:%s.%s", this.projectId, this.datasetTemplate, this.tableTemplate);
+      String tableSpec =
+          String.format("%s:%s.%s", this.projectId, this.datasetTemplate, this.tableTemplate);
       return tableSpec;
     }
   }
@@ -591,16 +621,14 @@ public class BigQueryConverters {
    * defaultDeadLetterTableSuffix is returned instead.
    */
   /**
-     * Return a {@code String} table name to be used as a dead letter queue.
-     *
-     * @param deadletterTable Default dead letter table to use.
-     * @param outputTableSpec Name of the BigQuery output table for successful rows.
-     * @param defaultDeadLetterTableSuffix An optional suffix off the successful table.
-     */
+   * Return a {@code String} table name to be used as a dead letter queue.
+   *
+   * @param deadletterTable Default dead letter table to use.
+   * @param outputTableSpec Name of the BigQuery output table for successful rows.
+   * @param defaultDeadLetterTableSuffix An optional suffix off the successful table.
+   */
   public static String maybeUseDefaultDeadletterTable(
-      String deadletterTable,
-      String outputTableSpec,
-      String defaultDeadLetterTableSuffix) {
+      String deadletterTable, String outputTableSpec, String defaultDeadLetterTableSuffix) {
     if (deadletterTable == null) {
       return outputTableSpec + defaultDeadLetterTableSuffix;
     } else {
@@ -608,27 +636,29 @@ public class BigQueryConverters {
     }
   }
 
-  public static final Map<String, LegacySQLTypeName> BQ_TYPE_STRINGS = new HashMap<String, LegacySQLTypeName>() {{
-    put("BOOLEAN", LegacySQLTypeName.BOOLEAN);
-    put("BYTES", LegacySQLTypeName.BYTES);
-    put("DATE", LegacySQLTypeName.DATE);
-    put("DATETIME", LegacySQLTypeName.DATETIME);
-    put("FLOAT", LegacySQLTypeName.FLOAT);
-    put("INTEGER", LegacySQLTypeName.INTEGER);
-    put("NUMERIC", LegacySQLTypeName.NUMERIC);
-    put("RECORD", LegacySQLTypeName.RECORD);
-    put("STRING", LegacySQLTypeName.STRING);
-    put("TIME", LegacySQLTypeName.TIME);
-    put("TIMESTAMP", LegacySQLTypeName.TIMESTAMP);
-  }};
+  public static final Map<String, LegacySQLTypeName> BQ_TYPE_STRINGS =
+      new HashMap<String, LegacySQLTypeName>() {
+        {
+          put("BOOLEAN", LegacySQLTypeName.BOOLEAN);
+          put("BYTES", LegacySQLTypeName.BYTES);
+          put("DATE", LegacySQLTypeName.DATE);
+          put("DATETIME", LegacySQLTypeName.DATETIME);
+          put("FLOAT", LegacySQLTypeName.FLOAT);
+          put("INTEGER", LegacySQLTypeName.INTEGER);
+          put("NUMERIC", LegacySQLTypeName.NUMERIC);
+          put("RECORD", LegacySQLTypeName.RECORD);
+          put("STRING", LegacySQLTypeName.STRING);
+          put("TIME", LegacySQLTypeName.TIME);
+          put("TIMESTAMP", LegacySQLTypeName.TIMESTAMP);
+        }
+      };
 
   /**
-   * The {@link SchemaUtils} Class to easily convert from
-   * a json string to a BigQuery List<Field>.
+   * The {@link SchemaUtils} Class to easily convert from a json string to a BigQuery List<Field>.
    */
   public static class SchemaUtils {
 
-    private static final Type gsonSchemaType = new TypeToken<List<Map>>() { }.getType();
+    private static final Type gsonSchemaType = new TypeToken<List<Map>>() {}.getType();
 
     private static Field mapToField(Map fMap) {
       String typeStr = fMap.get("type").toString();
@@ -664,6 +694,64 @@ public class BigQueryConverters {
         List<Map> jsonFields = gson.fromJson(schemaStr, gsonSchemaType);
         return listToFields(jsonFields);
       }
+    }
+  }
+
+  /** Converts a row to tableRow via {@link BigQueryUtils#toTableRow()}. */
+  public static SerializableFunction<Row, TableRow> rowToTableRowFn = BigQueryUtils::toTableRow;
+
+  /**
+   * The {@link FailsafeRowToTableRow} transform converts {@link Row} to {@link TableRow} objects.
+   * The transform accepts a {@link FailsafeElement} object so the original payload of the incoming
+   * record can be maintained across multiple series of transforms.
+   */
+  @AutoValue
+  public abstract static class FailsafeRowToTableRow<T>
+      extends PTransform<PCollection<FailsafeElement<T, Row>>, PCollectionTuple> {
+
+    public static <T> Builder<T> newBuilder() {
+      return new AutoValue_BigQueryConverters_FailsafeRowToTableRow.Builder<>();
+    }
+
+    public abstract TupleTag<TableRow> successTag();
+
+    public abstract TupleTag<FailsafeElement<T, Row>> failureTag();
+
+    @Override
+    public PCollectionTuple expand(PCollection<FailsafeElement<T, Row>> failsafeElements) {
+      return failsafeElements.apply(
+          "FailsafeRowToTableRow",
+          ParDo.of(
+                  new DoFn<FailsafeElement<T, Row>, TableRow>() {
+                    @ProcessElement
+                    public void processElement(ProcessContext context) {
+                      FailsafeElement<T, Row> element = context.element();
+                      Row row = element.getPayload();
+
+                      try {
+                        TableRow tableRow = BigQueryUtils.toTableRow(row);
+                        context.output(tableRow);
+                      } catch (Exception e) {
+                        context.output(
+                            failureTag(),
+                            FailsafeElement.of(element)
+                                .setErrorMessage(e.getMessage())
+                                .setStacktrace(Throwables.getStackTraceAsString(e)));
+                      }
+                    }
+                  })
+              .withOutputTags(successTag(), TupleTagList.of(failureTag())));
+    }
+
+    /** Builder for {@link FailsafeRowToTableRow}. */
+    @AutoValue.Builder
+    public abstract static class Builder<T> {
+
+      public abstract Builder<T> setSuccessTag(TupleTag<TableRow> successTag);
+
+      public abstract Builder<T> setFailureTag(TupleTag<FailsafeElement<T, Row>> failureTag);
+
+      public abstract FailsafeRowToTableRow<T> build();
     }
   }
 }

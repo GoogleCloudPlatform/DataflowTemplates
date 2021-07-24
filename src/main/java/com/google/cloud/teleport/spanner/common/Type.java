@@ -1,17 +1,17 @@
 /*
- * Copyright (C) 2017 Google Inc.
+ * Copyright (C) 2017 Google LLC
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *       http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.spanner.common;
 
@@ -45,6 +45,7 @@ public final class Type implements Serializable {
   private static final Type TYPE_FLOAT64 = new Type(Code.FLOAT64, null, null);
   private static final Type TYPE_NUMERIC = new Type(Code.NUMERIC, null, null);
   private static final Type TYPE_STRING = new Type(Code.STRING, null, null);
+  private static final Type TYPE_JSON = new Type(Code.JSON, null, null);
   private static final Type TYPE_BYTES = new Type(Code.BYTES, null, null);
   private static final Type TYPE_TIMESTAMP = new Type(Code.TIMESTAMP, null, null);
   private static final Type TYPE_DATE = new Type(Code.DATE, null, null);
@@ -53,6 +54,7 @@ public final class Type implements Serializable {
   private static final Type TYPE_ARRAY_FLOAT64 = new Type(Code.ARRAY, TYPE_FLOAT64, null);
   private static final Type TYPE_ARRAY_NUMERIC = new Type(Code.ARRAY, TYPE_NUMERIC, null);
   private static final Type TYPE_ARRAY_STRING = new Type(Code.ARRAY, TYPE_STRING, null);
+  private static final Type TYPE_ARRAY_JSON = new Type(Code.ARRAY, TYPE_JSON, null);
   private static final Type TYPE_ARRAY_BYTES = new Type(Code.ARRAY, TYPE_BYTES, null);
   private static final Type TYPE_ARRAY_TIMESTAMP = new Type(Code.ARRAY, TYPE_TIMESTAMP, null);
   private static final Type TYPE_ARRAY_DATE = new Type(Code.ARRAY, TYPE_DATE, null);
@@ -93,6 +95,11 @@ public final class Type implements Serializable {
     return TYPE_STRING;
   }
 
+  /** Returns the descriptor for the {@code JSON} type. */
+  public static Type json() {
+    return TYPE_JSON;
+  }
+
   /** Returns the descriptor for the {@code BYTES} type: a variable-length byte string. */
   public static Type bytes() {
     return TYPE_BYTES;
@@ -128,6 +135,8 @@ public final class Type implements Serializable {
         return TYPE_ARRAY_NUMERIC;
       case STRING:
         return TYPE_ARRAY_STRING;
+      case JSON:
+        return TYPE_ARRAY_JSON;
       case BYTES:
         return TYPE_ARRAY_BYTES;
       case TIMESTAMP:
@@ -181,6 +190,7 @@ public final class Type implements Serializable {
     NUMERIC(TypeCode.NUMERIC),
     FLOAT64(TypeCode.FLOAT64),
     STRING(TypeCode.STRING),
+    JSON(TypeCode.JSON),
     BYTES(TypeCode.BYTES),
     TIMESTAMP(TypeCode.TIMESTAMP),
     DATE(TypeCode.DATE),
@@ -395,6 +405,8 @@ public final class Type implements Serializable {
         return numeric();
       case STRING:
         return string();
+      case JSON:
+        return json();
       case BYTES:
         return bytes();
       case TIMESTAMP:

@@ -6,7 +6,7 @@ The [FileFormatConversion](src/main/java/com/google/cloud/teleport/v2/templates/
 * Avro to Parquet
 * Parquet to Avro
 
-## Getting started 
+## Getting started
 
 ### Requirements
 * Java 8
@@ -14,7 +14,7 @@ The [FileFormatConversion](src/main/java/com/google/cloud/teleport/v2/templates/
 * Input file in Cloud Storage exists
 * Cloud Storage output bucket exists
 
-  
+
 ### Building Template
 This is a flex template meaning that the pipeline code will be containerized and the container will be used to launch the pipeline.
 
@@ -70,13 +70,13 @@ The pipeline requires the following parameters:
 * inputFileSpec: GCS bucket to read input file from (e.g. gs://mybucket/path/file)
 * outputBucket: GCS bucket to write output file(s) to (e.g. gs://mybucket/path/). Must end with a slash.
 * containsHeaders: Set to true if Csv file contains headers.
-* schema: Path to [Avro schema](https://avro.apache.org/docs/1.8.1/spec.html#schemas) (e.g. gs://mybucket/path/).  
+* schema: Path to [Avro schema](https://avro.apache.org/docs/1.8.1/spec.html#schemas) (e.g. gs://mybucket/path/).
   NOTE: The order of fields in the Avro schema must match the order of the columns exactly in the Csv file.
 
 The pipeline has the following optional parameters:
-* csvFormat: Csv format according to [Apache Commons CSV format](https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html). Default is: Default  
+* csvFormat: Csv format according to [Apache Commons CSV format](https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html). Default is: Default
   NOTE: Must match format names exactly found [here](http://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html#Default).
-* delimiter: Delimiter for the CSV file. Default: comma (,).  
+* delimiter: Delimiter for the CSV file. Default: comma (,).
 * outputFilePrefix: The prefix of the files to write to. Default: output.
 * numShards: The maximum number of output shards produced when writing. Default: decided by runner.
 
@@ -92,7 +92,7 @@ The pipeline requires the following parameters:
 The pipeline has the following optional parameters:
 * outputFilenamePrefix: The prefix of the files to write to. Default: output.
 * numShards: The maximum number of output shards produced when writing. Default: decided by runner.
-  
+
 #### Parquet to Avro
 
 The pipeline requires the following parameters:
@@ -105,9 +105,9 @@ The pipeline requires the following parameters:
 The pipeline has the following optional parameters:
 * outputFilenamePrefix: The prefix of the files to write to. Default: output.
 * numShards: The maximum number of output shards produced when writing. Default: decided by runner.
-  
+
 ### Executing template
-  
+
 Template can be executed using the following API call:
 ```sh
 export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"

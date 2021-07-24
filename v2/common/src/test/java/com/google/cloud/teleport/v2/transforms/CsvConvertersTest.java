@@ -1,17 +1,17 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.transforms;
 
@@ -71,7 +71,7 @@ public class CsvConvertersTest {
   private static final String HEADER_CSV_FILE_PATH =
       Resources.getResource(CSV_RESOURCES_DIR + "with_headers.csv").getPath();
 
-  private static final String TEST_JSON_SCHEMA__PATH =
+  private static final String TEST_JSON_SCHEMA_PATH =
       Resources.getResource(CSV_RESOURCES_DIR + "testSchema.json").getPath();
 
   private static final String TEST_AVRO_SCHEMA_PATH =
@@ -79,6 +79,8 @@ public class CsvConvertersTest {
 
   private static final String TEST_AVRO_SCHEMA_TWO_PATH =
       Resources.getResource(CSV_RESOURCES_DIR + "testAvroSchemaTwo.json").getPath();
+
+  private static final String CSV_FILE_ENCODING = "UTF-8";
 
   private static final String HEADER_STRING = "id,state,price";
 
@@ -123,6 +125,7 @@ public class CsvConvertersTest {
                 .setInputFileSpec(options.getInputFileSpec())
                 .setHeaderTag(CSV_HEADERS)
                 .setLineTag(CSV_LINES)
+                .setFileEncoding(options.getCsvFileEncoding())
                 .build());
 
     PAssert.that(readCsvOut.get(CSV_LINES))
@@ -160,6 +163,7 @@ public class CsvConvertersTest {
                 .setInputFileSpec(options.getInputFileSpec())
                 .setHeaderTag(CSV_HEADERS)
                 .setLineTag(CSV_LINES)
+                .setFileEncoding(options.getCsvFileEncoding())
                 .build());
 
     PAssert.that(readCsvHeadersOut.get(CSV_LINES))
@@ -197,6 +201,7 @@ public class CsvConvertersTest {
             .setLineTag(CSV_LINES)
             .setCsvFormat("Default")
             .setDelimiter(",")
+            .setFileEncoding(CSV_FILE_ENCODING)
             .build());
 
     pipeline.run();
@@ -216,6 +221,7 @@ public class CsvConvertersTest {
             .setLineTag(CSV_LINES)
             .setCsvFormat("Default")
             .setDelimiter(",")
+            .setFileEncoding(CSV_FILE_ENCODING)
             .build());
 
     pipeline.run();
@@ -245,7 +251,7 @@ public class CsvConvertersTest {
                 .setDelimiter(",")
                 .setUdfFileSystemPath(null)
                 .setUdfFunctionName(null)
-                .setJsonSchemaPath(TEST_JSON_SCHEMA__PATH)
+                .setJsonSchemaPath(TEST_JSON_SCHEMA_PATH)
                 .setHeaderTag(CSV_HEADERS)
                 .setLineTag(CSV_LINES)
                 .setUdfOutputTag(PROCESSING_OUT)
@@ -504,6 +510,7 @@ public class CsvConvertersTest {
                 .setInputFileSpec(options.getInputFileSpec())
                 .setHeaderTag(CSV_HEADERS)
                 .setLineTag(CSV_LINES)
+                .setFileEncoding(options.getCsvFileEncoding())
                 .build());
 
     PAssert.that(readCsvOut.get(CSV_LINES))
@@ -539,6 +546,7 @@ public class CsvConvertersTest {
                     .setLineTag(CSV_LINES)
                     .setCsvFormat("Default")
                     .setDelimiter(",")
+                    .setFileEncoding(CSV_FILE_ENCODING)
                     .build())
             .get(CSV_LINES)
             .apply(
@@ -570,6 +578,7 @@ public class CsvConvertersTest {
                 .setLineTag(CSV_LINES)
                 .setCsvFormat("Default")
                 .setDelimiter(",")
+                .setFileEncoding(CSV_FILE_ENCODING)
                 .build())
         .get(CSV_LINES)
         .apply(

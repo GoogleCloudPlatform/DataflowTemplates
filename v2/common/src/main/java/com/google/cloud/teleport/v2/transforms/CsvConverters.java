@@ -1,17 +1,17 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.transforms;
 
@@ -26,12 +26,13 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.stream.JsonWriter;
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.StringReader;
 import java.io.StringWriter;
+import java.nio.channels.Channels;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
@@ -221,6 +222,14 @@ public class CsvConverters {
     Boolean getLargeNumFiles();
 
     void setLargeNumFiles(Boolean largeNumFiles);
+
+    @Description(
+        "CSV File encoding format. Default: UTF-8. Allowed Values are US-ASCII"
+            + ",ISO-8859-1,UTF-8,UTF-16")
+    @Default.String("UTF-8")
+    String getCsvFileEncoding();
+
+    void setCsvFileEncoding(String csvFileEncoding);
   }
 
   /**
@@ -260,6 +269,9 @@ public class CsvConverters {
     @Nullable
     public abstract String jsonSchemaPath();
 
+    @Nullable
+    public abstract String jsonSchema();
+
     public abstract TupleTag<String> headerTag();
 
     public abstract TupleTag<String> lineTag();
@@ -293,9 +305,11 @@ public class CsvConverters {
       }
 
       // If no udf then use json schema
-      if (jsonSchemaPath() != null) {
-
-        String schema = SchemaUtils.getGcsFileAsString(jsonSchemaPath());
+      if (jsonSchemaPath() != null || jsonSchema() != null) {
+        String schema =
+            jsonSchemaPath() != null
+                ? SchemaUtils.getGcsFileAsString(jsonSchemaPath())
+                : jsonSchema();
 
         return lineFailsafeElements.apply(
             "LineToDocumentUsingSchema",
@@ -346,6 +360,8 @@ public class CsvConverters {
       public abstract Builder setUdfFunctionName(String udfFunctionName);
 
       public abstract Builder setJsonSchemaPath(String jsonSchemaPath);
+
+      public abstract Builder setJsonSchema(String jsonSchema);
 
       public abstract Builder setHeaderTag(TupleTag<String> headerTag);
 
@@ -459,6 +475,8 @@ public class CsvConverters {
 
     public abstract TupleTag<String> lineTag();
 
+    public abstract String fileEncoding();
+
     @Override
     public PCollectionTuple expand(PBegin input) {
 
@@ -468,7 +486,9 @@ public class CsvConverters {
             .apply("ReadMatches", FileIO.readMatches())
             .apply(
                 "ReadCsvWithHeaders",
-                ParDo.of(new GetCsvHeadersFn(headerTag(), lineTag(), csvFormat(), delimiter()))
+                ParDo.of(
+                        new GetCsvHeadersFn(
+                            headerTag(), lineTag(), csvFormat(), delimiter(), fileEncoding()))
                     .withOutputTags(headerTag(), TupleTagList.of(lineTag())));
       }
 
@@ -491,6 +511,8 @@ public class CsvConverters {
       public abstract Builder setHeaderTag(TupleTag<String> headerTag);
 
       public abstract Builder setLineTag(TupleTag<String> lineTag);
+
+      public abstract Builder setFileEncoding(String fileEncoding);
 
       abstract ReadCsv autoBuild();
 
@@ -519,35 +541,44 @@ public class CsvConverters {
     private final TupleTag<String> headerTag;
     private final TupleTag<String> linesTag;
     private CSVFormat csvFormat;
+    private final String fileEncoding;
+    private final String delimiter;
 
     GetCsvHeadersFn(
-        TupleTag<String> headerTag, TupleTag<String> linesTag, String csvFormat, String delimiter) {
+        TupleTag<String> headerTag,
+        TupleTag<String> linesTag,
+        String csvFormat,
+        String delimiter,
+        String fileEncoding) {
       this.headerTag = headerTag;
       this.linesTag = linesTag;
       this.csvFormat = getCsvFormat(csvFormat, delimiter);
+      this.fileEncoding = fileEncoding;
+      this.delimiter = String.valueOf(this.csvFormat.getDelimiter());
     }
 
     @ProcessElement
     public void processElement(ProcessContext context, MultiOutputReceiver outputReceiver) {
-      ReadableFile f = context.element();
+      ReadableFile filePath = context.element();
       String headers;
-      List<String> records = null;
-      String delimiter = String.valueOf(this.csvFormat.getDelimiter());
       try {
-        String csvFileString = f.readFullyAsUTF8String();
-        StringReader reader = new StringReader(csvFileString);
-        CSVParser parser = CSVParser.parse(reader, this.csvFormat.withFirstRecordAsHeader());
-        records =
-            parser.getRecords().stream()
-                .map(i -> String.join(delimiter, i))
-                .collect(Collectors.toList());
-        headers = String.join(delimiter, parser.getHeaderNames());
+        BufferedReader bufferedReader =
+            new BufferedReader(
+                Channels.newReader(filePath.open(), Charset.forName(this.fileEncoding).name()));
+        CSVParser parser =
+            CSVParser.parse(bufferedReader, this.csvFormat.withFirstRecordAsHeader());
+        outputReceiver
+            .get(this.headerTag)
+            .output(String.join(this.delimiter, parser.getHeaderNames()));
+        parser
+            .iterator()
+            .forEachRemaining(
+                record ->
+                    outputReceiver.get(this.linesTag).output(String.join(this.delimiter, record)));
       } catch (IOException ioe) {
         LOG.error("Headers do not match, consistency cannot be guaranteed");
         throw new RuntimeException("Could not read Csv headers: " + ioe.getMessage());
       }
-      outputReceiver.get(this.headerTag).output(headers);
-      records.forEach(r -> outputReceiver.get(this.linesTag).output(r));
     }
   }
 

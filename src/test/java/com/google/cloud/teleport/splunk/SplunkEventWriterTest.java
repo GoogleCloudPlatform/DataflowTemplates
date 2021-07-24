@@ -1,19 +1,18 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
-
 package com.google.cloud.teleport.splunk;
 
 import static com.google.common.truth.Truth.assertThat;
@@ -43,19 +42,15 @@ import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 import org.mockserver.verify.VerificationTimes;
 
-/**
- * Unit tests for {@link com.google.cloud.teleport.splunk.SplunkEventWriter} class.
- */
+/** Unit tests for {@link com.google.cloud.teleport.splunk.SplunkEventWriter} class. */
 public class SplunkEventWriterTest {
 
   private static final String EXPECTED_PATH = "/" + HttpEventPublisher.HEC_URL_PATH;
 
-  @Rule
-  public final transient TestPipeline pipeline = TestPipeline.create();
+  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
   // We create a MockServerRule to simulate an actual Splunk HEC server.
-  @Rule
-  public MockServerRule mockServerRule;
+  @Rule public MockServerRule mockServerRule;
   private MockServerClient mockServerClient;
 
   @Before
@@ -67,9 +62,7 @@ public class SplunkEventWriterTest {
     }
   }
 
-  /**
-   * Test building {@link SplunkEventWriter} with missing URL.
-   */
+  /** Test building {@link SplunkEventWriter} with missing URL. */
   @Test
   public void eventWriterMissingURL() {
 
@@ -79,16 +72,56 @@ public class SplunkEventWriterTest {
     assertThat(thrown).hasMessageThat().contains("url needs to be provided");
   }
 
+  /** Test building {@link SplunkEventWriter} with missing URL protocol. */
+  @Test
+  public void eventWriterMissingURLProtocol() {
+
+    Exception thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> SplunkEventWriter.newBuilder().withUrl("test-url").build());
+
+    assertThat(thrown).hasMessageThat().contains(SplunkEventWriter.INVALID_URL_FORMAT_MESSAGE);
+  }
+
+  /** Test building {@link SplunkEventWriter} with an invalid URL. */
+  @Test
+  public void eventWriterInvalidURL() {
+
+    Exception thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> SplunkEventWriter.newBuilder().withUrl("http://1.2.3").build());
+
+    assertThat(thrown).hasMessageThat().contains(SplunkEventWriter.INVALID_URL_FORMAT_MESSAGE);
+  }
+
   /**
-   * /** Test building {@link SplunkEventWriter} with missing token.
+   * Test building {@link SplunkEventWriter} with the 'services/collector/event' path appended to
+   * the URL.
    */
+  @Test
+  public void eventWriterFullEndpoint() {
+
+    Exception thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                SplunkEventWriter.newBuilder()
+                    .withUrl("http://test-url:8088/services/collector/event")
+                    .build());
+
+    assertThat(thrown).hasMessageThat().contains(SplunkEventWriter.INVALID_URL_FORMAT_MESSAGE);
+  }
+
+  /** Test building {@link SplunkEventWriter} with missing token. */
   @Test
   public void eventWriterMissingToken() {
 
     Exception thrown =
         assertThrows(
             NullPointerException.class,
-            () -> SplunkEventWriter.newBuilder().withUrl("test-url").build());
+            () -> SplunkEventWriter.newBuilder().withUrl("http://test-url").build());
 
     assertThat(thrown).hasMessageThat().contains("token needs to be provided");
   }
@@ -100,15 +133,13 @@ public class SplunkEventWriterTest {
   public void eventWriterDefaultBatchCountAndValidation() {
 
     SplunkEventWriter writer =
-        SplunkEventWriter.newBuilder().withUrl("test-url").withToken("test-token").build();
+        SplunkEventWriter.newBuilder().withUrl("http://test-url").withToken("test-token").build();
 
     assertThat(writer.inputBatchCount()).isNull();
     assertThat(writer.disableCertificateValidation()).isNull();
   }
 
-  /**
-   * Test building {@link SplunkEventWriter} with custom batchcount and certificate validation .
-   */
+  /** Test building {@link SplunkEventWriter} with custom batchcount and certificate validation . */
   @Test
   public void eventWriterCustomBatchCountAndValidation() {
 
@@ -116,7 +147,7 @@ public class SplunkEventWriterTest {
     Boolean certificateValidation = false;
     SplunkEventWriter writer =
         SplunkEventWriter.newBuilder()
-            .withUrl("test-url")
+            .withUrl("http://test-url")
             .withToken("test-token")
             .withInputBatchCount(StaticValueProvider.of(batchCount))
             .withDisableCertificateValidation(StaticValueProvider.of(certificateValidation))
@@ -126,9 +157,7 @@ public class SplunkEventWriterTest {
     assertThat(writer.disableCertificateValidation().get()).isEqualTo(certificateValidation);
   }
 
-  /**
-   * Test successful POST request for single batch.
-   */
+  /** Test successful POST request for single batch. */
   @Test
   @Category(NeedsRunner.class)
   public void successfulSplunkWriteSingleBatchTest() {
@@ -188,9 +217,7 @@ public class SplunkEventWriterTest {
         HttpRequest.request(EXPECTED_PATH), VerificationTimes.exactly(testEvents.size()));
   }
 
-  /**
-   * Test successful POST request for multi batch.
-   */
+  /** Test successful POST request for multi batch. */
   @Test
   @Category(NeedsRunner.class)
   public void successfulSplunkWriteMultiBatchTest() {
@@ -234,8 +261,9 @@ public class SplunkEventWriterTest {
                 ParDo.of(
                     SplunkEventWriter.newBuilder()
                         .withUrl(Joiner.on(':').join("http://localhost", testPort))
-                        .withInputBatchCount(StaticValueProvider
-                            .of(testEvents.size())) // all requests in a single batch.
+                        .withInputBatchCount(
+                            StaticValueProvider.of(
+                                testEvents.size())) // all requests in a single batch.
                         .withToken("test-token")
                         .build()))
             .setCoder(SplunkWriteErrorCoder.of());
@@ -249,9 +277,7 @@ public class SplunkEventWriterTest {
     mockServerClient.verify(HttpRequest.request(EXPECTED_PATH), VerificationTimes.once());
   }
 
-  /**
-   * Test failed POST request.
-   */
+  /** Test failed POST request. */
   @Test
   @Category(NeedsRunner.class)
   public void failedSplunkWriteSingleBatchTest() {
@@ -285,8 +311,9 @@ public class SplunkEventWriterTest {
                 ParDo.of(
                     SplunkEventWriter.newBuilder()
                         .withUrl(Joiner.on(':').join("http://localhost", testPort))
-                        .withInputBatchCount(StaticValueProvider
-                            .of(testEvents.size())) // all requests in a single batch.
+                        .withInputBatchCount(
+                            StaticValueProvider.of(
+                                testEvents.size())) // all requests in a single batch.
                         .withToken("test-token")
                         .build()))
             .setCoder(SplunkWriteErrorCoder.of());

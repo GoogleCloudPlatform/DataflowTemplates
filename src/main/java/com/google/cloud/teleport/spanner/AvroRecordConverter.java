@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner;
 
 import com.google.cloud.ByteArray;
@@ -86,6 +85,7 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
           builder.set(column.name()).to(readFloat64(record, avroType, fieldName).orElse(null));
           break;
         case STRING:
+        case JSON:
           builder.set(column.name()).to(readString(record, avroType, fieldName).orElse(null));
           break;
         case BYTES:
@@ -132,6 +132,7 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
                     .toFloat64Array(readFloat64Array(record, arrayType, fieldName).orElse(null));
                 break;
               case STRING:
+              case JSON:
                 builder
                     .set(column.name())
                     .toStringArray(readStringArray(record, arrayType, fieldName).orElse(null));
@@ -188,8 +189,7 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
             return Optional.empty();
           }
           return Optional.of(
-              value
-                  .stream()
+              value.stream()
                   .map(x -> x == null ? null : ByteArray.copyFrom(x.getBytes()))
                   .collect(Collectors.toList()));
         }
@@ -200,8 +200,7 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
             return Optional.empty();
           }
           return Optional.of(
-              value
-                  .stream()
+              value.stream()
                   .map(x -> x == null ? null : ByteArray.copyFrom(x))
                   .collect(Collectors.toList()));
         }
@@ -221,8 +220,7 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
             return Optional.empty();
           }
           return Optional.of(
-              value
-                  .stream()
+              value.stream()
                   .map(x -> x == null ? null : Date.parseDate(x.toString()))
                   .collect(Collectors.toList()));
         }
@@ -269,14 +267,12 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
           // Default to microseconds
           if (logicalType == null || LogicalTypes.timestampMicros().equals(logicalType)) {
             return Optional.of(
-                value
-                    .stream()
+                value.stream()
                     .map(x -> x == null ? null : Timestamp.ofTimeMicroseconds(x))
                     .collect(Collectors.toList()));
           } else if (LogicalTypes.timestampMillis().equals(logicalType)) {
             return Optional.of(
-                value
-                    .stream()
+                value.stream()
                     .map(x -> x == null ? null : Timestamp.ofTimeMicroseconds(1000L * x))
                     .collect(Collectors.toList()));
           } else {
@@ -289,8 +285,7 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
         {
           List<Utf8> value = (List<Utf8>) fieldValue;
           return Optional.of(
-              value
-                  .stream()
+              value.stream()
                   .map(x -> x == null ? null : Timestamp.parseTimestamp(x.toString()))
                   .collect(Collectors.toList()));
         }
@@ -334,8 +329,8 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
       return Optional.empty();
     }
     switch (avroType) {
-      // For type check at compile time, the type of x has to be specified (as cast) so that
-      // convertability to double can be verified.
+        // For type check at compile time, the type of x has to be specified (as cast) so that
+        // convertability to double can be verified.
       case DOUBLE:
         return Optional.of((List<Double>) fieldValue);
       case FLOAT:
@@ -354,21 +349,22 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
                   .map(x -> x == null ? null : Double.valueOf(x))
                   .collect(Collectors.toList()));
         }
-      case LONG: {
+      case LONG:
+        {
           List<Long> value = (List<Long>) record.get(fieldName);
           return Optional.of(
               value.stream()
                   .map(x -> x == null ? null : Double.valueOf(x))
                   .collect(Collectors.toList()));
-      }
-      case STRING: {
+        }
+      case STRING:
+        {
           List<Utf8> value = (List<Utf8>) record.get(fieldName);
           return Optional.of(
-              value
-                  .stream()
+              value.stream()
                   .map(x -> x == null ? null : Double.valueOf(x.toString()))
                   .collect(Collectors.toList()));
-      }
+        }
       default:
         throw new IllegalArgumentException("Cannot interpret " + avroType + " as FLOAT64");
     }
@@ -383,24 +379,26 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
       return Optional.empty();
     }
     switch (avroType) {
-      // For type check at compile time, the type of x has to be specified (as cast) so that
-      // convertability to long can be verified.
+        // For type check at compile time, the type of x has to be specified (as cast) so that
+        // convertability to long can be verified.
       case LONG:
         return Optional.of((List<Long>) fieldValue);
-      case INT: {
+      case INT:
+        {
           List<Integer> value = (List<Integer>) fieldValue;
           return Optional.of(
               value.stream()
                   .map(x -> x == null ? null : Long.valueOf(x))
                   .collect(Collectors.toList()));
-      }
-      case STRING: {
+        }
+      case STRING:
+        {
           List<Utf8> value = (List<Utf8>) fieldValue;
           return Optional.of(
               value.stream()
                   .map(x -> x == null ? null : Long.valueOf(x.toString()))
                   .collect(Collectors.toList()));
-      }
+        }
       default:
         throw new IllegalArgumentException("Cannot interpret " + avroType + " as INT64");
     }
@@ -420,8 +418,7 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
             return Optional.empty();
           }
           List<Boolean> result =
-              value
-                  .stream()
+              value.stream()
                   .map(x -> x == null ? null : Boolean.valueOf(x.toString()))
                   .collect(Collectors.toList());
           return Optional.of(result);

@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner;
 
 import static org.hamcrest.Matchers.empty;
@@ -26,9 +25,7 @@ import java.util.Collections;
 import org.apache.avro.Schema;
 import org.junit.Test;
 
-/**
- * Tests {@link AvroSchemaToDdlConverter}.
- */
+/** Tests {@link AvroSchemaToDdlConverter}. */
 public class AvroSchemaToDdlConverterTest {
 
   @Test
@@ -84,11 +81,26 @@ public class AvroSchemaToDdlConverterTest {
             + "    \"name\":\"numericArr\","
             + "    \"type\": [\"null\",{\"type\":\"array\",\"items\":[\"null\",{\"type\":\"bytes\","
             + "              \"logicalType\":\"decimal\",\"precision\":38,\"scale\":9}]}]"
-                             // Omitting sqlType
+            // Omitting sqlType
             + "  }, {"
             + "    \"name\":\"notNumericArr\","
             + "    \"type\": [\"null\",{\"type\":\"array\",\"items\":[\"null\",{\"type\":\"bytes\","
-            +                "\"logicalType\":\"decimal\",\"precision\":35}]}]" // Omitting sqlType
+            + "              \"logicalType\":\"decimal\",\"precision\":35}]}]" // Omitting sqlType
+            + "  }, {"
+            + "    \"name\" : \"json\","
+            + "    \"type\" : [ \"null\", \"string\" ],"
+            + "    \"sqlType\" : \"JSON\""
+            + "  }, {"
+            + "    \"name\" : \"notJson\","
+            + "    \"type\" : [ \"null\", \"string\" ]" // Omitting sqlType
+            + "  }, {"
+            + "    \"name\":\"jsonArr\","
+            + "    \"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",\"string\"]}],"
+            + "    \"sqlType\":\"ARRAY<JSON>\""
+            + "  }, {"
+            + "    \"name\":\"notJsonArr\","
+            + "    \"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",\"string\"]}]"
+            // Omitting sqlType
             + "  }],"
             + "  \"googleStorage\" : \"CloudSpanner\","
             + "  \"spannerParent\" : \"\","
@@ -109,6 +121,7 @@ public class AvroSchemaToDdlConverterTest {
     AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
     Ddl ddl = converter.toDdl(Collections.singleton(schema));
     assertThat(ddl.allTables(), hasSize(1));
+    assertThat(ddl.views(), hasSize(0));
     assertThat(
         ddl.prettyPrint(),
         equalToCompressingWhiteSpace(
@@ -123,6 +136,10 @@ public class AvroSchemaToDdlConverterTest {
                 + " `notNumeric2`     BYTES(MAX),"
                 + " `numericArr`      ARRAY<NUMERIC>,"
                 + " `notNumericArr`   ARRAY<BYTES(MAX)>,"
+                + " `json`            JSON,"
+                + " `notJson`         STRING(MAX),"
+                + " `jsonArr`         ARRAY<JSON>,"
+                + " `notJsonArr`      ARRAY<STRING(MAX)>,"
                 + " CONSTRAINT `ck` CHECK(`first_name` != 'last_name'),"
                 + " ) PRIMARY KEY (`id` ASC, `last_name` DESC)"
                 + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"
@@ -131,26 +148,53 @@ public class AvroSchemaToDdlConverterTest {
   }
 
   @Test
+  public void invokerRightsView() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Names\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerViewSecurity\" : \"INVOKER\","
+            + "  \"spannerViewQuery\" : \"SELECT first_name, last_name FROM Users\""
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.views(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE VIEW `Names` SQL SECURITY INVOKER AS SELECT first_name, last_name FROM Users"));
+  }
+
+  @Test
   public void columnOptions() {
-    String avroString = "{"
-        + "  \"type\" : \"record\","
-        + "  \"name\" : \"Users\","
-        + "  \"namespace\" : \"spannertest\","
-        + "  \"fields\" : [ {"
-        + "    \"name\" : \"id\","
-        + "    \"type\" : \"long\","
-        + "    \"sqlType\" : \"INT64\""
-        + "  }, {"
-        + "    \"name\" : \"first_name\","
-        + "    \"type\" : [ \"null\", \"string\" ],"
-        + "    \"sqlType\" : \"STRING(10)\","
-        + "    \"spannerOption_0\" : \"allow_commit_timestamp=TRUE\","
-        + "    \"spannerOption_1\" : \"my_random_opt=\\\"1\\\"\""
-        + "  }],"
-        + "  \"googleStorage\" : \"CloudSpanner\"," + "  \"spannerParent\" : \"\","
-        + "  \"googleFormatVersion\" : \"booleans\","
-        + "  \"spannerPrimaryKey_0\" : \"`id` ASC\""
-        + "}";
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Users\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"id\","
+            + "    \"type\" : \"long\","
+            + "    \"sqlType\" : \"INT64\""
+            + "  }, {"
+            + "    \"name\" : \"first_name\","
+            + "    \"type\" : [ \"null\", \"string\" ],"
+            + "    \"sqlType\" : \"STRING(10)\","
+            + "    \"spannerOption_0\" : \"allow_commit_timestamp=TRUE\","
+            + "    \"spannerOption_1\" : \"my_random_opt=\\\"1\\\"\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"`id` ASC\""
+            + "}";
 
     Schema schema = new Schema.Parser().parse(avroString);
 

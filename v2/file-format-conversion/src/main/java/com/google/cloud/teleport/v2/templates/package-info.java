@@ -14,7 +14,5 @@
  * the License.
  */
 
-/**
- * File format conversion template for Google Cloud Teleport.
- */
+/** File format conversion template for Google Cloud Teleport. */
 package com.google.cloud.teleport.v2.templates;

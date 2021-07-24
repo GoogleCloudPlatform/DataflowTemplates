@@ -14,8 +14,5 @@
  * the License.
  */
 
-
-/**
- * Utility classes for reading / writing / transforming Avro data.
- */
+/** Utility classes for reading / writing / transforming Avro data. */
 package com.google.cloud.teleport.avro;

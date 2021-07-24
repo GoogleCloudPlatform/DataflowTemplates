@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2020 Google Inc.
+ * Copyright (C) 2020 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -110,19 +110,19 @@ import org.slf4j.LoggerFactory;
  *         -H "Authorization: Bearer $(gcloud auth print-access-token)" \
  *         -d '
  *          {
-*              "launch_parameter": {
-*                  "jobName": "'$JOB_NAME'",
-*                  "containerSpecGcsPath": "'$TEMPLATE_PATH'",
-*                  "parameters": {
-*                      "bootstrapServers": "broker_1:9091, broker_2:9092",
-*                      "inputTopics": "topic1, topic2",
-*                      "outputTopic": "projects/'$PROJECT'/topics/your-topic-name",
-*                      "outputDeadLetterTopic": "projects/'$PROJECT'/topics/dead-letter-topic-name",
-*                      "javascriptTextTransformGcsPath": "gs://path/to/udf",
-*                      "javascriptTextTransformFunctionName": "your-js-function",
-*                      "secretStoreUrl": "http(s)://host:port/path/to/credentials",
-*                      "vaultToken": "your-token"
-*                  }
+ *              "launch_parameter": {
+ *                  "jobName": "'$JOB_NAME'",
+ *                  "containerSpecGcsPath": "'$TEMPLATE_PATH'",
+ *                  "parameters": {
+ *                      "bootstrapServers": "broker_1:9091, broker_2:9092",
+ *                      "inputTopics": "topic1, topic2",
+ *                      "outputTopic": "projects/'$PROJECT'/topics/your-topic-name",
+ *                      "outputDeadLetterTopic": "projects/'$PROJECT'/topics/dead-letter-topic-name",
+ *                      "javascriptTextTransformGcsPath": "gs://path/to/udf",
+ *                      "javascriptTextTransformFunctionName": "your-js-function",
+ *                      "secretStoreUrl": "http(s)://host:port/path/to/credentials",
+ *                      "vaultToken": "your-token"
+ *                  }
  *              }
  *          }
  *         '

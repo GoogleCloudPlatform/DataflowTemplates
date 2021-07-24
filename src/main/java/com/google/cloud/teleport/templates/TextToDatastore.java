@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.templates;
 
 import com.google.cloud.teleport.templates.common.DatastoreConverters.DatastoreWriteOptions;
@@ -36,19 +35,17 @@ import org.apache.beam.sdk.values.TupleTag;
  */
 public class TextToDatastore {
 
-  /**
-   * TextToDatastore Pipeline Options.
-   */
-  public interface TextToDatastoreOptions extends
-      PipelineOptions,
-      FilesystemReadOptions,
-      JavascriptTextTransformerOptions,
-      DatastoreWriteOptions,
-      ErrorWriteOptions {}
+  /** TextToDatastore Pipeline Options. */
+  public interface TextToDatastoreOptions
+      extends PipelineOptions,
+          FilesystemReadOptions,
+          JavascriptTextTransformerOptions,
+          DatastoreWriteOptions,
+          ErrorWriteOptions {}
 
   /**
-   * Runs a pipeline which reads from a Text Source, passes the Text to a Javascript UDF,
-   * writes the JSON encoded Entities to a TextIO sink.
+   * Runs a pipeline which reads from a Text Source, passes the Text to a Javascript UDF, writes the
+   * JSON encoded Entities to a TextIO sink.
    *
    * <p>If your Text Source does not contain JSON encoded Entities, then you'll need to supply a
    * Javascript UDF which transforms your data to be JSON encoded Entities.
@@ -56,29 +53,30 @@ public class TextToDatastore {
    * @param args arguments to the pipeline
    */
   public static void main(String[] args) {
-    TextToDatastoreOptions options = PipelineOptionsFactory.fromArgs(args)
-        .withValidation()
-        .as(TextToDatastoreOptions.class);
+    TextToDatastoreOptions options =
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(TextToDatastoreOptions.class);
 
-    TupleTag<String> errorTag = new TupleTag<String>("errors"){};
+    TupleTag<String> errorTag = new TupleTag<String>("errors") {};
 
     Pipeline pipeline = Pipeline.create(options);
 
     pipeline
-        .apply(TextIO.read()
-            .from(options.getTextReadPattern()))
-        .apply(TransformTextViaJavascript.newBuilder()
-            .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
-            .setFunctionName(options.getJavascriptTextTransformFunctionName())
-            .build())
-        .apply(WriteJsonEntities.newBuilder()
-            .setProjectId(options.getDatastoreWriteProjectId())
-            .setErrorTag(errorTag)
-            .build())
-        .apply(LogErrors.newBuilder()
-            .setErrorWritePath(options.getErrorWritePath())
-            .setErrorTag(errorTag)
-            .build());
+        .apply(TextIO.read().from(options.getTextReadPattern()))
+        .apply(
+            TransformTextViaJavascript.newBuilder()
+                .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                .build())
+        .apply(
+            WriteJsonEntities.newBuilder()
+                .setProjectId(options.getDatastoreWriteProjectId())
+                .setErrorTag(errorTag)
+                .build())
+        .apply(
+            LogErrors.newBuilder()
+                .setErrorWritePath(options.getErrorWritePath())
+                .setErrorTag(errorTag)
+                .build());
 
     pipeline.run();
   }

@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.v2.cdc.mappers;
 
 import com.google.api.services.bigquery.model.TableRow;
@@ -21,7 +20,6 @@ import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryOptions;
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.FieldList;
-import com.google.cloud.bigquery.LegacySQLTypeName;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.StandardTableDefinition;
@@ -38,6 +36,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.SimpleFunction;
@@ -47,12 +46,12 @@ import org.slf4j.LoggerFactory;
 
 /**
  * BigQueryMapper is intended to be easily extensible to enable BigQuery schema management during
- * pipeline execution.  New fields and tables will be automatically added to BigQuery when they are
+ * pipeline execution. New fields and tables will be automatically added to BigQuery when they are
  * detected and before data causes BQ load failures.
  *
- * The BigQueryMapper can be easily extended by overriding: - public TableId getTableId(InputT
+ * <p>The BigQueryMapper can be easily extended by overriding: - public TableId getTableId(InputT
  * input) - public TableRow getTableRow(InputT input) - public OutputT getOutputObject(InputT input)
- * - public Map<String, LegacySQLTypeName> getInputSchema(TableId tableId, TableRow row)
+ * - public Map<String, StandardSQLTypeName> getInputSchema(TableId tableId, TableRow row)
  */
 public class BigQueryMapper<InputT, OutputT>
     extends PTransform<PCollection<InputT>, PCollection<OutputT>> {
@@ -61,14 +60,13 @@ public class BigQueryMapper<InputT, OutputT>
   private BigQuery bigquery;
   private BigQueryTableRowCleaner bqTableRowCleaner;
   private boolean dayPartitioning = false;
-  private Map<String, LegacySQLTypeName> defaultSchema;
+  private Map<String, StandardSQLTypeName> defaultSchema;
   private Set<String> ignoreFields = new HashSet<String>();
   private int mapperRetries = 5;
   private final String projectId;
   private static BigQueryTableCache tableCache;
   private static final Cache<String, TableId> tableLockMap =
-      CacheBuilder.newBuilder().<String, TableId>build();
-
+      CacheBuilder.newBuilder().expireAfterWrite(10, TimeUnit.MINUTES).<String, TableId>build();
 
   public BigQueryMapper(String projectId) {
     this.projectId = projectId;
@@ -89,8 +87,8 @@ public class BigQueryMapper<InputT, OutputT>
   /* Return a HashMap with the Column->Column Type Mapping required from the source
       Implementing getInputSchema will allow the mapper class to support your desired format
   */
-  public Map<String, LegacySQLTypeName> getInputSchema(TableId tableId, TableRow row) {
-    return new HashMap<String, LegacySQLTypeName>();
+  public Map<String, StandardSQLTypeName> getInputSchema(TableId tableId, TableRow row) {
+    return new HashMap<String, StandardSQLTypeName>();
   }
 
   public void setMapperRetries(int retries) {
@@ -106,19 +104,18 @@ public class BigQueryMapper<InputT, OutputT>
   }
 
   public BigQueryMapper<InputT, OutputT> withDefaultSchema(
-      Map<String, LegacySQLTypeName> defaultSchema) {
+      Map<String, StandardSQLTypeName> defaultSchema) {
     this.defaultSchema = defaultSchema;
     return this;
   }
 
   /**
-   * The function {@link withDefaultSchemaFromGCS} reads a BigQuery Schema file
-   * from GCS and stores it to be used in the Mapper schema logic.
+   * The function {@link withDefaultSchemaFromGCS} reads a BigQuery Schema file from GCS and stores
+   * it to be used in the Mapper schema logic.
    *
    * @param filePath path to file in GCS
    */
-  public BigQueryMapper<InputT, OutputT> withDefaultSchemaFromGCS(
-      String filePath) {
+  public BigQueryMapper<InputT, OutputT> withDefaultSchemaFromGCS(String filePath) {
     if (filePath == null) {
       return this;
     }
@@ -127,9 +124,9 @@ public class BigQueryMapper<InputT, OutputT>
     String schemaStr = SchemaUtils.getGcsFileAsString(filePath);
     List<Field> schemaFields = BigQueryConverters.SchemaUtils.schemaFromString(schemaStr);
 
-    Map<String, LegacySQLTypeName> schema = new HashMap<String, LegacySQLTypeName>();
+    Map<String, StandardSQLTypeName> schema = new HashMap<String, StandardSQLTypeName>();
     for (Field field : schemaFields) {
-      schema.put(field.getName(), field.getType());
+      schema.put(field.getName(), field.getType().getStandardType());
     }
 
     this.defaultSchema = schema;
@@ -137,8 +134,8 @@ public class BigQueryMapper<InputT, OutputT>
   }
 
   /**
-   * The function {@link withDayPartitioning} sets a boolean value dictating if
-   * day partitioning shoud be applied to new tables created in BigQuery.
+   * The function {@link withDayPartitioning} sets a boolean value dictating if day partitioning
+   * shoud be applied to new tables created in BigQuery.
    *
    * @param dayPartitioning A boolean value if day partitioning should be applied.
    */
@@ -148,8 +145,8 @@ public class BigQueryMapper<InputT, OutputT>
   }
 
   /**
-   * The function {@link withIgnoreFields} sets a list of fields to be ignored
-   * when mapping new columns to a BigQuery Table.
+   * The function {@link withIgnoreFields} sets a list of fields to be ignored when mapping new
+   * columns to a BigQuery Table.
    *
    * @param fields A Set of fields to ignore.
    */
@@ -163,8 +160,8 @@ public class BigQueryMapper<InputT, OutputT>
       implementing getInputSchema (for complex and dynamic cases)
       and submitting a static default schema.
   */
-  private Map<String, LegacySQLTypeName> getObjectSchema(TableId tableId, TableRow row) {
-    Map<String, LegacySQLTypeName> inputSchema = getInputSchema(tableId, row);
+  private Map<String, StandardSQLTypeName> getObjectSchema(TableId tableId, TableRow row) {
+    Map<String, StandardSQLTypeName> inputSchema = getInputSchema(tableId, row);
     if (this.defaultSchema != null) {
       inputSchema.putAll(this.defaultSchema);
     }
@@ -174,8 +171,11 @@ public class BigQueryMapper<InputT, OutputT>
 
   private synchronized void setUpTableCache() {
     if (this.tableCache == null) {
-      this.tableCache = (BigQueryTableCache) new BigQueryTableCache(bigquery)
-        .withCacheNumRetries(3);
+      this.tableCache =
+          (BigQueryTableCache)
+              new BigQueryTableCache(bigquery)
+                  .withCacheResetTimeUnitValue(60)
+                  .withCacheNumRetries(3);
     }
   }
 
@@ -215,8 +215,7 @@ public class BigQueryMapper<InputT, OutputT>
                 applyMapperToTableRow(tableId, row, retries);
                 return getOutputObject(input);
               }
-            })
-        );
+            }));
   }
 
   /**
@@ -229,8 +228,8 @@ public class BigQueryMapper<InputT, OutputT>
   }
 
   /**
-   * Returns {@code TableRow} after cleaning each field according to
-   * the data type found in BigQuery.
+   * Returns {@code TableRow} after cleaning each field according to the data type found in
+   * BigQuery.
    *
    * @param tableId a TableId referencing the BigQuery table to be loaded to.
    * @param row a TableRow with the raw data to be loaded into BigQuery.
@@ -261,16 +260,18 @@ public class BigQueryMapper<InputT, OutputT>
    * @param inputSchema The source schema lookup to be used in mapping.
    * @param retries Number of remaining retries before error is raised.
    */
-  private void applyMapperToTableRow(
-      TableId tableId, TableRow row, int retries) {
+  private void applyMapperToTableRow(TableId tableId, TableRow row, int retries) {
     try {
       updateTableIfRequired(tableId, row);
     } catch (Exception e) {
       if (retries > 0) {
         try {
           int sleepSecs = (getMapperRetries() - retries + 1) * 5;
-          LOG.info("Mapper Retry {} Remaining: {}: {}",
-              String.valueOf(retries), tableId.toString(), e.toString());
+          LOG.info(
+              "Mapper Retry {} Remaining: {}: {}",
+              String.valueOf(retries),
+              tableId.toString(),
+              e.toString());
           Thread.sleep(sleepSecs);
           applyMapperToTableRow(tableId, row, retries - 1);
         } catch (InterruptedException i) {
@@ -292,11 +293,10 @@ public class BigQueryMapper<InputT, OutputT>
    * @param row a TableRow with the raw data to be loaded into BigQuery.
    * @param inputSchema The source schema lookup to be used in mapping.
    */
-  private void updateTableIfRequired(
-      TableId tableId, TableRow row) {
+  private void updateTableIfRequired(TableId tableId, TableRow row) {
     Table table = this.tableCache.getOrCreateBigQueryTable(tableId, this.dayPartitioning);
 
-    Map<String, LegacySQLTypeName> inputSchema = new HashMap<String, LegacySQLTypeName>();
+    Map<String, StandardSQLTypeName> inputSchema = new HashMap<String, StandardSQLTypeName>();
     List<Field> newFieldList = getNewTableFields(row, table, inputSchema, this.ignoreFields);
 
     if (newFieldList.size() > 0) {
@@ -327,7 +327,7 @@ public class BigQueryMapper<InputT, OutputT>
     TableId tableLock = getTableLock(tableId);
     synchronized (tableLock) {
       Table table = this.tableCache.get(tableId);
-      Map<String, LegacySQLTypeName> inputSchema = getObjectSchema(tableId, row);
+      Map<String, StandardSQLTypeName> inputSchema = getObjectSchema(tableId, row);
 
       List<Field> newFieldList = getNewTableFields(row, table, inputSchema, ignoreFields);
       if (newFieldList.size() > 0) {
@@ -338,8 +338,7 @@ public class BigQueryMapper<InputT, OutputT>
         }
 
         // Add all new columns to the list
-        LOG.info("Mapping New Columns for: {} -> {}",
-          tableId.toString(), newFieldList.toString());
+        LOG.info("Mapping New Columns for: {} -> {}", tableId.toString(), newFieldList.toString());
         for (Field field : newFieldList) {
           fieldList.add(field);
         }
@@ -355,7 +354,10 @@ public class BigQueryMapper<InputT, OutputT>
   }
 
   public static List<Field> getNewTableFields(
-      TableRow row, Table table, Map<String, LegacySQLTypeName> inputSchema, Set<String> ignoreFields) {
+      TableRow row,
+      Table table,
+      Map<String, StandardSQLTypeName> inputSchema,
+      Set<String> ignoreFields) {
     List<Field> newFieldList = new ArrayList<Field>();
     FieldList tableFields = table.getDefinition().getSchema().getFields();
     Set<String> rowKeys = row.keySet();
@@ -374,11 +376,11 @@ public class BigQueryMapper<InputT, OutputT>
     return newFieldList;
   }
 
-  public static void addNewTableField(String rowKey, List<Field> newFieldList, 
-      Map<String, LegacySQLTypeName> inputSchema) {
+  public static void addNewTableField(
+      String rowKey, List<Field> newFieldList, Map<String, StandardSQLTypeName> inputSchema) {
     Field newField;
     if (inputSchema.containsKey(rowKey)) {
-      newField = Field.of(rowKey, inputSchema.get(rowKey).getStandardType());
+      newField = Field.of(rowKey, inputSchema.get(rowKey));
     } else {
       newField = Field.of(rowKey, StandardSQLTypeName.STRING);
     }

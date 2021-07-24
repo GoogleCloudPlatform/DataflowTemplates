@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -37,45 +37,33 @@ import org.slf4j.impl.StaticLoggerBinder;
  * <p>The connector expects configuration to be passed via Properties files. By default, the
  * connector will look for a properties file in {@literal /etc/dataflow_cdc.properties}, and it
  * expects the following parameters:
+ *
  * <ul>
- *   <li>{@literal databaseName} - the name of the database instance.</li>
- *   <li>
- *     {@literal databaseUsername} - a user with privileges to access the binary log for MySQL.
- *   </li>
- *   <li>
- *     {@literal databasePassword} - the password to use to log into the database. This parameter
- *     can be passed with the default properties file, or in a separate properties file
- *     (default: {@literal /etc/dataflow_cdc_password.properties}).</li>
- *  <li>{@literal databaseAddress} - the IP or DNS address for a MySQL database.</li>
- *  <li>{@literal databasePort} - the port to connect to the database. Default is 3306.</li>
- *  <li>{@literal gcpProject} - the GCP project where the PubSub topic with updates resides.</li>
- *  <li>
- *    {@literal gcpPubsubTopicPrefix} - the prefix to PubSub topics to push updates for each MySQL
- *    table.
- *  </li>
- *  <li>
- *    {@literal whitelistedTables} - a comma-separated list of tables to monitor. The name of the
- *    table should be fully qualified (e.g. "myinstance.mydb.mytable1,myinstance.mydb2.mytable2").
- *  </li>
- *  <li>
- *    {@literal inMemoryOffsetStorage} - true/false whether or not to store changelog offsets in
- *    memory. Setting this to true means that the connector is not resilient to restarts.
- *    This configuration is generally useful for ephemeral tests (default: {@literal false}).
- *  </li>
- *  <li>
- *    {@literal offsetStorageFile} the file to use to store changelog offsets from MySQL. This is
- *    necessary on restarts of the connector (default: {@literal /opt/dataflow-cdc/offset-tracker}).
- *  </li>
- *  <li>
- *    {@literal databaseManagementSystem} the kind of database that the connector will connect to.
- *    Options are: {@literal mysql}, {@literal postgres}. (default: {@literal mysql}).
- *  </li>
- *  <li>
- *    {@literal singleTopicMode} - true/false whether to publish changes from all tables into a
- *    single PubSub topic, or into a separate topic for every database table to use. If this option
- *    is set to {@literal true}, then updates will be pushed to the PubSub topic provided in
- *    {@literal gcpPubsubTopicPrefix}. (default: {@literal false}).
- *  </li>
+ *   <li>{@literal databaseName} - the name of the database instance.
+ *   <li>{@literal databaseUsername} - a user with privileges to access the binary log for MySQL.
+ *   <li>{@literal databasePassword} - the password to use to log into the database. This parameter
+ *       can be passed with the default properties file, or in a separate properties file (default:
+ *       {@literal /etc/dataflow_cdc_password.properties}).
+ *   <li>{@literal databaseAddress} - the IP or DNS address for a MySQL database.
+ *   <li>{@literal databasePort} - the port to connect to the database. Default is 3306.
+ *   <li>{@literal gcpProject} - the GCP project where the PubSub topic with updates resides.
+ *   <li>{@literal gcpPubsubTopicPrefix} - the prefix to PubSub topics to push updates for each
+ *       MySQL table.
+ *   <li>{@literal whitelistedTables} - a comma-separated list of tables to monitor. The name of the
+ *       table should be fully qualified (e.g.
+ *       "myinstance.mydb.mytable1,myinstance.mydb2.mytable2").
+ *   <li>{@literal inMemoryOffsetStorage} - true/false whether or not to store changelog offsets in
+ *       memory. Setting this to true means that the connector is not resilient to restarts. This
+ *       configuration is generally useful for ephemeral tests (default: {@literal false}).
+ *   <li>{@literal offsetStorageFile} the file to use to store changelog offsets from MySQL. This is
+ *       necessary on restarts of the connector (default: {@literal
+ *       /opt/dataflow-cdc/offset-tracker}).
+ *   <li>{@literal databaseManagementSystem} the kind of database that the connector will connect
+ *       to. Options are: {@literal mysql}, {@literal postgres}. (default: {@literal mysql}).
+ *   <li>{@literal singleTopicMode} - true/false whether to publish changes from all tables into a
+ *       single PubSub topic, or into a separate topic for every database table to use. If this
+ *       option is set to {@literal true}, then updates will be pushed to the PubSub topic provided
+ *       in {@literal gcpPubsubTopicPrefix}. (default: {@literal false}).
  * </ul>
  *
  * <p>To override the default properties files, addresses can be passed to them. For example, to
@@ -107,23 +95,24 @@ public class App {
 
   public static final String DEFAULT_RDBMS = "mysql";
 
-    public static void main(String[] args) throws Exception {
-        final Logger logger = LoggerFactory.getLogger(App.class);
+  public static void main(String[] args) throws Exception {
+    final Logger logger = LoggerFactory.getLogger(App.class);
 
-        // Printing the information about the bindings for SLF4J:
-        Configuration config = getConnectorConfiguration(args);
-        final StaticLoggerBinder binder = StaticLoggerBinder.getSingleton();
-        System.out.println("Logger Binding: " + binder.getLoggerFactory());
-        System.out.println(binder.getLoggerFactoryClassStr());
+    // Printing the information about the bindings for SLF4J:
+    Configuration config = getConnectorConfiguration(args);
+    final StaticLoggerBinder binder = StaticLoggerBinder.getSingleton();
+    System.out.println("Logger Binding: " + binder.getLoggerFactory());
+    System.out.println(binder.getLoggerFactoryClassStr());
 
-        String dbPassword = config.getString("databasePassword");
-        config.clearProperty("databasePassword");
-        logger.info("Configuration for program (with DB password hidden) is: \n{}",
-            ConfigurationUtils.toString(config));
-        config.setProperty("databasePassword", dbPassword);
+    String dbPassword = config.getString("databasePassword");
+    config.clearProperty("databasePassword");
+    logger.info(
+        "Configuration for program (with DB password hidden) is: \n{}",
+        ConfigurationUtils.toString(config));
+    config.setProperty("databasePassword", dbPassword);
 
-        logger.info("GOOGLE_APPLICATION_CREDENTIALS: {}",
-            System.getenv("GOOGLE_APPLICATION_CREDENTIALS"));
+    logger.info(
+        "GOOGLE_APPLICATION_CREDENTIALS: {}", System.getenv("GOOGLE_APPLICATION_CREDENTIALS"));
 
     // Properties to be passed directly to Debezium
     ImmutableConfiguration debeziumConfig = config.immutableSubset("debezium");
@@ -143,45 +132,42 @@ public class App {
         config.getString("whitelistedTables"),
         config.getString("databaseManagementSystem", DEFAULT_RDBMS),
         debeziumConfig);
+  }
+
+  /**
+   * Load the application configuration to start the MySQL CDC connector.
+   *
+   * <p>This method has the following scenarios:
+   *
+   * <p>* Get the main properties file: * If zero arguments are passed, it uses the default
+   * properties file location. * If more than zero arguments are passed, it uses the first argument
+   * to get a properties file. * If necessary, get the password file: * If the first properties file
+   * does not contain the "databasePassword" property, then it tries to read the second properties
+   * file, which only contains the database password. * If less than 2 arguments are passed, then
+   * use the default password file location. * If 2 arguments are passed, it uses the second
+   * argument to get a password file. * Add the "databasePassword" property from this file to the
+   * main configuration.
+   *
+   * @param args are the arguments passed to the application via the console.
+   * @return
+   * @throws ConfigurationException
+   */
+  static Configuration getConnectorConfiguration(String[] args) throws ConfigurationException {
+    Configurations configs = new Configurations();
+
+    String propertiesFile = args.length == 0 ? DEFAULT_PROPERTIES_FILE_LOCATION : args[0];
+
+    Configuration result = configs.properties(new File(propertiesFile));
+
+    if (result.get(Object.class, "databasePassword", MISSING) == MISSING) {
+      String passwordFile = args.length < 2 ? PASSWORD_FILE_LOCATION : args[1];
+
+      Configuration passwordConfig = configs.properties(new File(passwordFile));
+      result.addProperty("databasePassword", passwordConfig.getString("databasePassword"));
     }
 
-    /**
-     * Load the application configuration to start the MySQL CDC connector.
-     *
-     * This method has the following scenarios:
-     *
-     * * Get the main properties file:
-     *   * If zero arguments are passed, it uses the default properties file location.
-     *   * If more than zero arguments are passed, it uses the first argument to get a properties
-     *       file.
-     * * If necessary, get the password file:
-     *   * If the first properties file does not contain the "databasePassword" property, then it
-     *       tries to read the second properties file, which only contains the database password.
-     *   * If less than 2 arguments are passed, then use the default password file location.
-     *   * If 2 arguments are passed, it uses the second argument to get a password file.
-     *   * Add the "databasePassword" property from this file to the main configuration.
-     *
-     * @param args are the arguments passed to the application via the console.
-     * @return
-     * @throws ConfigurationException
-     */
-    static Configuration getConnectorConfiguration(String[] args)
-        throws ConfigurationException {
-        Configurations configs = new Configurations();
-
-        String propertiesFile = args.length == 0 ? DEFAULT_PROPERTIES_FILE_LOCATION : args[0];
-
-        Configuration result = configs.properties(new File(propertiesFile));
-
-        if (result.get(Object.class, "databasePassword", MISSING) == MISSING) {
-            String passwordFile = args.length < 2 ? PASSWORD_FILE_LOCATION : args[1];
-
-            Configuration passwordConfig = configs.properties(new File(passwordFile));
-            result.addProperty("databasePassword", passwordConfig.getString("databasePassword"));
-        }
-
-        return result;
-    }
+    return result;
+  }
 
   static void startSender(
       String databaseName,
@@ -199,16 +185,19 @@ public class App {
       String rdbms,
       ImmutableConfiguration debeziumConfig) {
     checkNotNull(databaseName, "Please provide a databaseName parameter. Got %s", databaseName);
-    checkNotNull(databaseUserName, "Please provide a databaseUserName parameter. Got %s",
-        databaseUserName);
-    checkNotNull(databasePassword, "Please provide a databasePassword parameter. Got %s",
-        databasePassword);
+    checkNotNull(
+        databaseUserName, "Please provide a databaseUserName parameter. Got %s", databaseUserName);
+    checkNotNull(
+        databasePassword, "Please provide a databasePassword parameter. Got %s", databasePassword);
     checkNotNull(databasePort, "Please provide a databasePort parameter. Got %s", databasePort);
     checkNotNull(gcpProject, "Please provide a gcpProject parameter. Got %s", gcpProject);
-    checkNotNull(gcpPubsubTopic, "Please provide a gcpPubsubTopicPrefix parameter. Got %s",
-        gcpPubsubTopic);
-    checkNotNull(rdbms, "Please provide a databaseManagementSystem parameter."
-        + " This can be either mysql or postgres. Got %s", rdbms);
+    checkNotNull(
+        gcpPubsubTopic, "Please provide a gcpPubsubTopicPrefix parameter. Got %s", gcpPubsubTopic);
+    checkNotNull(
+        rdbms,
+        "Please provide a databaseManagementSystem parameter."
+            + " This can be either mysql or postgres. Got %s",
+        rdbms);
     DebeziumToPubSubDataSender dataSender =
         new DebeziumToPubSubDataSender(
             databaseName,
@@ -225,6 +214,6 @@ public class App {
             new HashSet<>(Arrays.asList(commaSeparatedWhiteListedTables.split(","))),
             rdbms,
             debeziumConfig);
-        dataSender.run();
-    }
+    dataSender.run();
+  }
 }

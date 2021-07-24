@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -36,9 +36,7 @@ import org.apache.beam.sdk.values.KV;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * This DoFn receives {@link BigQueryAction} instances, and issues them into BigQuery.
- */
+/** This DoFn receives {@link BigQueryAction} instances, and issues them into BigQuery. */
 public class BigQueryStatementIssuingFn extends DoFn<KV<String, BigQueryAction>, Void> {
 
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryStatementIssuingFn.class);
@@ -72,8 +70,9 @@ public class BigQueryStatementIssuingFn extends DoFn<KV<String, BigQueryAction>,
   }
 
   private Table createBigQueryTable(BigQueryAction action) {
-    TableDefinition definition = StandardTableDefinition.of(
-        BigQuerySchemaUtils.beamSchemaToBigQueryClientSchema(action.tableSchema));
+    TableDefinition definition =
+        StandardTableDefinition.of(
+            BigQuerySchemaUtils.beamSchemaToBigQueryClientSchema(action.tableSchema));
 
     TableId tableId = TableId.of(action.projectId, action.dataset, action.tableName);
     TableInfo tableInfo = TableInfo.newBuilder(tableId, definition).build();
@@ -92,8 +91,7 @@ public class BigQueryStatementIssuingFn extends DoFn<KV<String, BigQueryAction>,
   }
 
   private Job issueQueryToBQ(String statement) throws InterruptedException {
-    QueryJobConfiguration jobConfiguration = QueryJobConfiguration.newBuilder(statement)
-        .build();
+    QueryJobConfiguration jobConfiguration = QueryJobConfiguration.newBuilder(statement).build();
 
     String jobId = makeJobId(jobIdPrefix, statement);
 
@@ -104,14 +102,11 @@ public class BigQueryStatementIssuingFn extends DoFn<KV<String, BigQueryAction>,
   }
 
   static String makeJobId(String jobIdPrefix, String statement) {
-    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy_MM_dd_HH_mm_ssz")
-        .withZone(ZoneId.of("UTC"));
+    DateTimeFormatter formatter =
+        DateTimeFormatter.ofPattern("yyyy_MM_dd_HH_mm_ssz").withZone(ZoneId.of("UTC"));
     String randomId = UUID.randomUUID().toString();
-    return String.format("%s_%d_%s_%s",
-        jobIdPrefix,
-        Math.abs(statement.hashCode()),
-        formatter.format(Instant.now()),
-        randomId);
+    return String.format(
+        "%s_%d_%s_%s",
+        jobIdPrefix, Math.abs(statement.hashCode()), formatter.format(Instant.now()), randomId);
   }
-
 }

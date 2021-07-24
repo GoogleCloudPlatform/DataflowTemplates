@@ -14,9 +14,5 @@
  * the License.
  */
 
-
-/**
- * Utility classes for dynamic mapping of data passing through Dataflow into Outputs.
- */
+/** Utility classes for dynamic mapping of data passing through Dataflow into Outputs. */
 package com.google.cloud.teleport.v2.cdc.mappers;
-

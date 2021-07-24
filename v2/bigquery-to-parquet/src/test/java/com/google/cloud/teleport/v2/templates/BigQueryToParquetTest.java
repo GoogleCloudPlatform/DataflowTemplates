@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -31,15 +31,15 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class BigQueryToParquetTest {
 
-  private static final String SCHEMA = "{\"type\":\"record\",\"name\":\"__root__\",\"fields\":" +
-          "[{\"name\":\"device_id\",\"type\":[\"null\",\"string\"]}," +
-          "{\"name\":\"temperature_c\",\"type\":[\"null\",\"double\"]}," +
-          "{\"name\":\"temperature_f\",\"type\":[\"null\",\"double\"]}," +
-          "{\"name\":\"sample_time\",\"type\":[\"null\",{\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}]}," +
-          "{\"name\":\"humidity\",\"type\":[\"null\",\"double\"]}]}";
+  private static final String SCHEMA =
+      "{\"type\":\"record\",\"name\":\"__root__\",\"fields\":"
+          + "[{\"name\":\"device_id\",\"type\":[\"null\",\"string\"]},"
+          + "{\"name\":\"temperature_c\",\"type\":[\"null\",\"double\"]},"
+          + "{\"name\":\"temperature_f\",\"type\":[\"null\",\"double\"]},"
+          + "{\"name\":\"sample_time\",\"type\":[\"null\",{\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}]},"
+          + "{\"name\":\"humidity\",\"type\":[\"null\",\"double\"]}]}";
   private static final String TABLE = "fantasmic-999999:great_data.table";
   private BigQueryStorageClient client = mock(BigQueryStorageClient.class);
-
 
   /** Test {@link ReadSessionFactory} throws exception when invalid table reference is provided. */
   @Test(expected = IllegalArgumentException.class)
@@ -58,5 +58,4 @@ public class BigQueryToParquetTest {
     Schema schema = new Schema.Parser().parse(SCHEMA);
     assertEquals(schema.toString(), SCHEMA);
   }
-
 }

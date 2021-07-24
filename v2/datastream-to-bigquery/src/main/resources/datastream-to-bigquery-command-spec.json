@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.DataStreamToBigQuery",
+  "classPath": "/template/datastream-to-bigquery/*:/template/datastream-to-bigquery/libs/*:/template/datastream-to-bigquery/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"datastream_to_bigquery\"}"
+  }
+}

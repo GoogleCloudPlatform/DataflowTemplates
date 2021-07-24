@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -49,9 +49,7 @@ import org.slf4j.LoggerFactory;
 public class FormatDatastreamRecordToJson
     implements SerializableFunction<GenericRecord, FailsafeElement<String, String>> {
 
-  /**
-   * Names of the custom avro types that we'll be using.
-   */
+  /** Names of the custom avro types that we'll be using. */
   public static class CustomAvroTypes {
     public static final String VARCHAR = "varchar";
     public static final String NUMBER = "number";
@@ -66,7 +64,7 @@ public class FormatDatastreamRecordToJson
   private String streamName;
   private boolean lowercaseSourceColumns = false;
   private String rowIdColumnName;
-  private static Map<String, String> hashedColumns = new HashMap<String, String>();
+  private Map<String, String> hashedColumns = new HashMap<String, String>();
 
   private FormatDatastreamRecordToJson() {}
 
@@ -79,8 +77,8 @@ public class FormatDatastreamRecordToJson
     return this;
   }
 
-  public FormatDatastreamRecordToJson withLowercaseSourceColumns() {
-    this.lowercaseSourceColumns = true;
+  public FormatDatastreamRecordToJson withLowercaseSourceColumns(Boolean lowercaseSourceColumns) {
+    this.lowercaseSourceColumns = lowercaseSourceColumns;
     return this;
   }
 
@@ -95,15 +93,24 @@ public class FormatDatastreamRecordToJson
   }
 
   /**
-   * Add the supplied columnName to the map of column values to be hashed.
-   * A new column with a hashed value of the first will be created.
+   * Add the supplied columnName to the map of column values to be hashed. A new column with a
+   * hashed value of the first will be created.
    *
    * @param columnName The column name to look for in the data.
    * @param newColumnName The name of the new column created with hashed data.
    */
-  public FormatDatastreamRecordToJson withHashColumnValue(
-      String columnName, String newColumnName) {
+  public FormatDatastreamRecordToJson withHashColumnValue(String columnName, String newColumnName) {
     this.hashedColumns.put(columnName, newColumnName);
+    return this;
+  }
+
+  /**
+   * Set the map of columns values to hash.
+   *
+   * @param hashedColumns The map of columns to new columns to hash.
+   */
+  public FormatDatastreamRecordToJson withHashColumnValues(Map<String, String> hashedColumns) {
+    this.hashedColumns = hashedColumns;
     return this;
   }
 
@@ -117,28 +124,38 @@ public class FormatDatastreamRecordToJson
     }
 
     // General DataStream Metadata
+    String sourceType = getSourceType(record);
+
     outputObject.put("_metadata_stream", getStreamName(record));
     outputObject.put("_metadata_timestamp", getSourceTimestamp(record));
     outputObject.put("_metadata_read_timestamp", getMetadataTimestamp(record));
+    outputObject.put("_metadata_read_method", record.get("read_method").toString());
+    outputObject.put("_metadata_source_type", sourceType);
 
     // Source Specific Metadata
     outputObject.put("_metadata_deleted", getMetadataIsDeleted(record));
-    outputObject.put("_metadata_schema", getMetadataSchema(record));
     outputObject.put("_metadata_table", getMetadataTable(record));
     outputObject.put("_metadata_change_type", getMetadataChangeType(record));
 
-    // Oracle Specific Metadata
-    outputObject.put("_metadata_row_id", getOracleRowId(record));
-    outputObject.put("_metadata_scn", getOracleScn(record));
-    outputObject.put("_metadata_ssn", getOracleSsn(record));
-    outputObject.put("_metadata_rs_id", getOracleRsId(record));
-    outputObject.put("_metadata_tx_id", getOracleTxId(record));
-
+    if (sourceType.equals("mysql")) {
+      // MySQL Specific Metadata
+      outputObject.put("_metadata_schema", getMetadataDatabase(record));
+      outputObject.put("_metadata_log_file", getSourceMetadata(record, "log_file"));
+      outputObject.put("_metadata_log_position", getSourceMetadata(record, "log_position"));
+    } else {
+      // Oracle Specific Metadata
+      outputObject.put("_metadata_schema", getMetadataSchema(record));
+      outputObject.put("_metadata_row_id", getOracleRowId(record));
+      outputObject.put("_metadata_scn", getOracleScn(record));
+      outputObject.put("_metadata_ssn", getOracleSsn(record));
+      outputObject.put("_metadata_rs_id", getOracleRsId(record));
+      outputObject.put("_metadata_tx_id", getOracleTxId(record));
+    }
     // Hash columns supplied to be hashed
-    applyHashToColumns(record, outputObject);
+    applyHashToColumns(outputObject);
 
     // All Raw Metadata
-    outputObject.put("_metadata_source", getSourceMetadata(record));
+    outputObject.put("_metadata_source", getSourceMetadataJson(record));
 
     return FailsafeElement.of(outputObject.toString(), outputObject.toString());
   }
@@ -151,7 +168,7 @@ public class FormatDatastreamRecordToJson
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode loweredOutputObject = mapper.createObjectNode();
 
-    for (Iterator<String> fieldNames=outputObject.getFieldNames(); fieldNames.hasNext(); ) {
+    for (Iterator<String> fieldNames = outputObject.getFieldNames(); fieldNames.hasNext(); ) {
       String fieldName = fieldNames.next();
       loweredOutputObject.put(fieldName.toLowerCase(), outputObject.get(fieldName));
     }
@@ -159,7 +176,7 @@ public class FormatDatastreamRecordToJson
     return loweredOutputObject;
   }
 
-  private JsonNode getSourceMetadata(GenericRecord record) {
+  private JsonNode getSourceMetadataJson(GenericRecord record) {
     ObjectMapper mapper = new ObjectMapper();
     JsonNode dataInput;
     try {
@@ -178,6 +195,12 @@ public class FormatDatastreamRecordToJson
     return this.streamName;
   }
 
+  private String getSourceType(GenericRecord record) {
+    String sourceType = record.get("read_method").toString().split("-")[0];
+    // TODO: consider validating the value is mysql or oracle
+    return sourceType;
+  }
+
   private long getMetadataTimestamp(GenericRecord record) {
     long unixTimestampMilli = (long) record.get("read_timestamp");
     return unixTimestampMilli / 1000;
@@ -190,8 +213,20 @@ public class FormatDatastreamRecordToJson
     return unixTimestampSec;
   }
 
+  private String getSourceMetadata(GenericRecord record, String fieldName) {
+    if (((GenericRecord) record.get("source_metadata")).get(fieldName) != null) {
+      return ((GenericRecord) record.get("source_metadata")).get(fieldName).toString();
+    }
+
+    return null;
+  }
+
   private String getMetadataSchema(GenericRecord record) {
     return ((GenericRecord) record.get("source_metadata")).get("schema").toString();
+  }
+
+  private String getMetadataDatabase(GenericRecord record) {
+    return ((GenericRecord) record.get("source_metadata")).get("database").toString();
   }
 
   private String getMetadataTable(GenericRecord record) {
@@ -224,12 +259,12 @@ public class FormatDatastreamRecordToJson
     return null;
   }
 
-  private void applyHashToColumns(GenericRecord record, ObjectNode outputObject) {
-    for (String columnName: this.hashedColumns.keySet()) {
-      if (record.get(columnName) != null) {
+  private void applyHashToColumns(ObjectNode outputObject) {
+    for (String columnName : this.hashedColumns.keySet()) {
+      if (outputObject.get(columnName) != null) {
         // TODO: discuss hash algorithm to use
         String newColumnName = this.hashedColumns.get(columnName);
-        int hashedValue = record.get(columnName).toString().hashCode();
+        int hashedValue = outputObject.get(columnName).toString().hashCode();
         outputObject.put(newColumnName, hashedValue);
       }
     }
@@ -269,9 +304,7 @@ public class FormatDatastreamRecordToJson
 
   static class UnifiedTypesFormatter {
     public static void payloadToJson(GenericRecord payloadRecord, ObjectNode jsonNode) {
-      for (Field f : payloadRecord
-          .getSchema()
-          .getFields()) {
+      for (Field f : payloadRecord.getSchema().getFields()) {
         putField(f.name(), f.schema(), payloadRecord, jsonNode);
       }
     }
@@ -308,36 +341,34 @@ public class FormatDatastreamRecordToJson
           break;
         case RECORD:
           handleDatastreamRecordType(
-              fieldName,
-              fieldSchema,
-              (GenericRecord) record.get(fieldName),
-              jsonObject);
+              fieldName, fieldSchema, (GenericRecord) record.get(fieldName), jsonObject);
           break;
         case NULL:
-          // We represent nulls by not adding the key to the JSON object.
+          // Add key as null
+          jsonObject.putNull(fieldName);
           break;
         case UNION:
           List<Schema> types = fieldSchema.getTypes();
           if (types.size() == 2
               && types.stream().anyMatch(s -> s.getType().equals(Schema.Type.NULL))) {
-            // We represent nulls by not adding the key to the JSON object.
             if (record.get(fieldName) == null) {
-              break;  // This element is null.
+              // Add key as null
+              jsonObject.putNull(fieldName);
+              break; // This element is null.
             }
-            Schema actualSchema = types.stream()
-                .filter(s -> !s.getType().equals(Schema.Type.NULL))
-                .findFirst().get();
+            Schema actualSchema =
+                types.stream().filter(s -> !s.getType().equals(Schema.Type.NULL)).findFirst().get();
             putField(fieldName, actualSchema, record, jsonObject);
             break;
           }
-          FormatDatastreamRecordToJson.LOG.error("Unknown field type {} for field {} in record {}.",
-              fieldSchema, fieldName, record);
+          FormatDatastreamRecordToJson.LOG.error(
+              "Unknown field type {} for field {} in record {}.", fieldSchema, fieldName, record);
           break;
         case ARRAY:
         case FIXED:
         default:
-          FormatDatastreamRecordToJson.LOG.error("Unknown field type {} for field {} in record {}.",
-              fieldSchema, fieldName, record);
+          FormatDatastreamRecordToJson.LOG.error(
+              "Unknown field type {} for field {} in record {}.", fieldSchema, fieldName, record);
           break;
       }
     }
@@ -346,27 +377,22 @@ public class FormatDatastreamRecordToJson
         String fieldName, Schema fieldSchema, GenericRecord element, ObjectNode jsonObject) {
       // TODO(pabloem) Actually test this.
       if (fieldSchema.getLogicalType() instanceof LogicalTypes.Date) {
-        org.joda.time.LocalDate date = DATE_CONVERSION.fromInt(
-            (Integer) element.get(fieldName), fieldSchema, fieldSchema.getLogicalType());
-        LocalDate javaDate = LocalDate.of(
-            date.getYear(), date.getMonthOfYear(), date.getDayOfMonth());
-        jsonObject.put(
-            fieldName,
-            javaDate.format(DEFAULT_DATE_FORMATTER));
-      } else if (fieldSchema.getLogicalType() instanceof  LogicalTypes.Decimal) {
-        BigDecimal bigDecimal = FormatDatastreamRecordToJson.DECIMAL_CONVERSION.fromBytes(
-            (ByteBuffer) element.get(fieldName), fieldSchema, fieldSchema.getLogicalType());
-        jsonObject.put(
-            fieldName,
-            bigDecimal.toPlainString());
+        org.joda.time.LocalDate date =
+            DATE_CONVERSION.fromInt(
+                (Integer) element.get(fieldName), fieldSchema, fieldSchema.getLogicalType());
+        LocalDate javaDate =
+            LocalDate.of(date.getYear(), date.getMonthOfYear(), date.getDayOfMonth());
+        jsonObject.put(fieldName, javaDate.format(DEFAULT_DATE_FORMATTER));
+      } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.Decimal) {
+        BigDecimal bigDecimal =
+            FormatDatastreamRecordToJson.DECIMAL_CONVERSION.fromBytes(
+                (ByteBuffer) element.get(fieldName), fieldSchema, fieldSchema.getLogicalType());
+        jsonObject.put(fieldName, bigDecimal.toPlainString());
       } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMicros
           || fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMillis) {
-        Integer factor =
-            fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMillis ? 1 : 1000;
+        Integer factor = fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMillis ? 1 : 1000;
         Duration duration = Duration.ofMillis(((Long) element.get(fieldName)) / factor);
-        jsonObject.put(
-            fieldName,
-            duration.toString());
+        jsonObject.put(fieldName, duration.toString());
       } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimestampMicros
           || fieldSchema.getLogicalType() instanceof LogicalTypes.TimestampMillis) {
         Integer factor =
@@ -378,12 +404,15 @@ public class FormatDatastreamRecordToJson
       } else if (fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.NUMBER)) {
         String number = (String) element.get(fieldName);
         jsonObject.put(fieldName, number);
-      } else if (fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.VARCHAR)){
+      } else if (fieldSchema.getLogicalType().getName().equals(CustomAvroTypes.VARCHAR)) {
         String varcharValue = (String) element.get(fieldName);
         jsonObject.put(fieldName, varcharValue);
       } else {
-        LOG.error("Unknown field type {} for field {} in {}. Ignoring it.",
-            fieldSchema, fieldName, element.get(fieldName));
+        LOG.error(
+            "Unknown field type {} for field {} in {}. Ignoring it.",
+            fieldSchema,
+            fieldName,
+            element.get(fieldName));
       }
     }
 
@@ -398,39 +427,31 @@ public class FormatDatastreamRecordToJson
           // Datastream Varchars are represented with their value and length.
           // For us, we only care about values.
           element.get("value");
-          jsonObject.put(
-              fieldName,
-              element.get("value").toString());
+          jsonObject.put(fieldName, element.get("value").toString());
           break;
         case "calendarDate":
-          LocalDate date = LocalDate.of(
-              (Integer) element.get("year"),
-              (Integer) element.get("month"),
-              (Integer) element.get("day"));
-          jsonObject.put(
-              fieldName,
-              date.format(DEFAULT_DATE_FORMATTER));
+          LocalDate date =
+              LocalDate.of(
+                  (Integer) element.get("year"),
+                  (Integer) element.get("month"),
+                  (Integer) element.get("day"));
+          jsonObject.put(fieldName, date.format(DEFAULT_DATE_FORMATTER));
           break;
         case "year":
-          jsonObject.put(
-              fieldName,
-              (Integer) element.get("year"));
+          jsonObject.put(fieldName, (Integer) element.get("year"));
           break;
         case "timestampTz":
           // Timestamp comes in microseconds
-          Instant timestamp = Instant.ofEpochMilli(
-              ((Long) element.get("timestamp")) / 1000);
+          Instant timestamp = Instant.ofEpochMilli(((Long) element.get("timestamp")) / 1000);
           // Offset comes in milliseconds
-          ZoneOffset offset = ZoneOffset.ofTotalSeconds(
-              ((Number) element.get("offset")).intValue() / 1000);
+          ZoneOffset offset =
+              ZoneOffset.ofTotalSeconds(((Number) element.get("offset")).intValue() / 1000);
           ZonedDateTime fullDate = timestamp.atOffset(offset).toZonedDateTime();
-          jsonObject.put(
-              fieldName,
-              fullDate.format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
+          jsonObject.put(fieldName, fullDate.format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
           break;
         default:
-          LOG.warn("Unknown field type {} for field {} in record {}.",
-              fieldSchema, fieldName, element);
+          LOG.warn(
+              "Unknown field type {} for field {} in record {}.", fieldSchema, fieldName, element);
           ObjectMapper mapper = new ObjectMapper();
           JsonNode dataInput;
           try {

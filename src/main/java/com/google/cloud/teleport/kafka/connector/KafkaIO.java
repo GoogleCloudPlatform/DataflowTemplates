@@ -1,19 +1,17 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Copyright (C) 2021 Google LLC
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.kafka.connector;
 
@@ -375,8 +373,8 @@ public class KafkaIO {
 
     /** ValueProvider version of {@link #withTopic(String)}. */
     public Read<K, V> withTopic(ValueProvider<String> topic) {
-      return withTopics(ValueProvider.NestedValueProvider.of(
-          topic, new SingletonListTranslator<>()));
+      return withTopics(
+          ValueProvider.NestedValueProvider.of(topic, new SingletonListTranslator<>()));
     }
 
     /**
@@ -400,9 +398,8 @@ public class KafkaIO {
     }
 
     /**
-     * This is a {@link ValueProvider} version of {@link #withTopics(List)}.
-     * When topic names are not available statically, number of splits should be provided
-     * using #withNumberOfSplits().
+     * This is a {@link ValueProvider} version of {@link #withTopics(List)}. When topic names are
+     * not available statically, number of splits should be provided using #withNumberOfSplits().
      */
     public Read<K, V> withTopics(ValueProvider<List<String>> topics) {
       checkState(
@@ -424,11 +421,11 @@ public class KafkaIO {
 
     /**
      * Sets number of splits for the reader. Normally the number of splits is based on partitions
-     * for the input topics and number splits suggested by the runner. Bun in some cases,
-     * input topic names, number of workers, or the partitions may not be available
-     * during job construction time (e.g. while using Dataflow Templates). {@link UnboundedSource}
-     * API requires fixed number of splits during job construction time. This allows statically
-     * setting number of partitions.
+     * for the input topics and number splits suggested by the runner. Bun in some cases, input
+     * topic names, number of workers, or the partitions may not be available during job
+     * construction time (e.g. while using Dataflow Templates). {@link UnboundedSource} API requires
+     * fixed number of splits during job construction time. This allows statically setting number of
+     * partitions.
      */
     public Read<K, V> withNumSplits(int numSplits) {
       checkArgument(numSplits >= 1);
@@ -675,8 +672,7 @@ public class KafkaIO {
 
     @Override
     public PCollection<KafkaRecord<K, V>> expand(PBegin input) {
-      checkArgument(getBootstrapServers() != null,
-                    "withBootstrapServers() is required");
+      checkArgument(getBootstrapServers() != null, "withBootstrapServers() is required");
       checkArgument(
           getTopics() != null || getTopicPartitions().size() > 0,
           "Either withTopic(), withTopics() or withTopicPartitions() is required");
@@ -810,8 +806,8 @@ public class KafkaIO {
       List<TopicPartition> topicPartitions = getTopicPartitions();
       if (topics != null) {
         if (topics.isAccessible()) {
-          builder.add(DisplayData.item("topics", Joiner.on(",").join(topics.get()))
-                          .withLabel("Topic/s"));
+          builder.add(
+              DisplayData.item("topics", Joiner.on(",").join(topics.get())).withLabel("Topic/s"));
         } else {
           builder.add(DisplayData.item("topics", topics).withLabel("Topic/s"));
         }

@@ -1,19 +1,18 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
-
 package com.google.cloud.teleport.splunk;
 
 import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkArgument;
@@ -22,8 +21,11 @@ import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Precondi
 import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.HttpResponseException;
 import com.google.auto.value.AutoValue;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Lists;
+import com.google.common.net.InetAddresses;
+import com.google.common.net.InternetDomainName;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.io.IOException;
@@ -32,6 +34,8 @@ import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -51,9 +55,7 @@ import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * A {@link DoFn} to write {@link SplunkEvent}s to Splunk's HEC endpoint.
- */
+/** A {@link DoFn} to write {@link SplunkEvent}s to Splunk's HEC endpoint. */
 @AutoValue
 public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, SplunkWriteError> {
 
@@ -61,15 +63,21 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
   private static final Boolean DEFAULT_DISABLE_CERTIFICATE_VALIDATION = false;
   private static final Logger LOG = LoggerFactory.getLogger(SplunkEventWriter.class);
   private static final long DEFAULT_FLUSH_DELAY = 2;
-  private static final Counter INPUT_COUNTER = Metrics
-      .counter(SplunkEventWriter.class, "inbound-events");
-  private static final Counter SUCCESS_WRITES = Metrics
-      .counter(SplunkEventWriter.class, "outbound-successful-events");
-  private static final Counter FAILED_WRITES = Metrics
-      .counter(SplunkEventWriter.class, "outbound-failed-events");
+  private static final Counter INPUT_COUNTER =
+      Metrics.counter(SplunkEventWriter.class, "inbound-events");
+  private static final Counter SUCCESS_WRITES =
+      Metrics.counter(SplunkEventWriter.class, "outbound-successful-events");
+  private static final Counter FAILED_WRITES =
+      Metrics.counter(SplunkEventWriter.class, "outbound-failed-events");
   private static final String BUFFER_STATE_NAME = "buffer";
   private static final String COUNT_STATE_NAME = "count";
   private static final String TIME_ID_NAME = "expiry";
+
+  @VisibleForTesting
+  protected static final String INVALID_URL_FORMAT_MESSAGE =
+      "Invalid url format. Url format should match PROTOCOL://HOST[:PORT], where PORT is optional. "
+          + "Supported Protocols are http and https. eg: http://hostname:8088";
+
   @StateId(BUFFER_STATE_NAME)
   private final StateSpec<BagState<SplunkEvent>> buffer = StateSpecs.bag();
 
@@ -82,7 +90,7 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
   private Integer batchCount;
   private Boolean disableValidation;
   private HttpEventPublisher publisher;
-  
+
   private static final Gson GSON =
       new GsonBuilder().setFieldNamingStrategy(f -> f.getName().toLowerCase()).create();
 
@@ -106,6 +114,7 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
   public void setup() {
 
     checkArgument(url().isAccessible(), "url is required for writing events.");
+    checkArgument(isValidUrlFormat(url().get()), INVALID_URL_FORMAT_MESSAGE);
     checkArgument(token().isAccessible(), "Access token is required for writing events.");
 
     // Either user supplied or default batchCount.
@@ -132,15 +141,19 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
     }
 
     try {
-      HttpEventPublisher.Builder builder = HttpEventPublisher.newBuilder()
-          .withUrl(url().get())
-          .withToken(token().get())
-          .withDisableCertificateValidation(disableValidation);
+      HttpEventPublisher.Builder builder =
+          HttpEventPublisher.newBuilder()
+              .withUrl(url().get())
+              .withToken(token().get())
+              .withDisableCertificateValidation(disableValidation);
 
       publisher = builder.build();
       LOG.info("Successfully created HttpEventPublisher");
 
-    } catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException | UnsupportedEncodingException e) {
+    } catch (NoSuchAlgorithmException
+        | KeyStoreException
+        | KeyManagementException
+        | UnsupportedEncodingException e) {
       LOG.error("Error creating HttpEventPublisher: {}", e.getMessage());
       throw new RuntimeException(e);
     }
@@ -153,7 +166,8 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
       BoundedWindow window,
       @StateId(BUFFER_STATE_NAME) BagState<SplunkEvent> bufferState,
       @StateId(COUNT_STATE_NAME) ValueState<Long> countState,
-      @TimerId(TIME_ID_NAME) Timer timer) throws IOException {
+      @TimerId(TIME_ID_NAME) Timer timer)
+      throws IOException {
 
     Long count = MoreObjects.<Long>firstNonNull(countState.read(), 0L);
     SplunkEvent event = input.getValue();
@@ -171,9 +185,11 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
   }
 
   @OnTimer(TIME_ID_NAME)
-  public void onExpiry(OutputReceiver<SplunkWriteError> receiver,
+  public void onExpiry(
+      OutputReceiver<SplunkWriteError> receiver,
       @StateId(BUFFER_STATE_NAME) BagState<SplunkEvent> bufferState,
-      @StateId(COUNT_STATE_NAME) ValueState<Long> countState) throws IOException {
+      @StateId(COUNT_STATE_NAME) ValueState<Long> countState)
+      throws IOException {
 
     if (MoreObjects.<Long>firstNonNull(countState.read(), 0L) > 0) {
       LOG.info("Flushing window with {} events", countState.read());
@@ -202,7 +218,8 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
   private void flush(
       OutputReceiver<SplunkWriteError> receiver,
       @StateId(BUFFER_STATE_NAME) BagState<SplunkEvent> bufferState,
-      @StateId(COUNT_STATE_NAME) ValueState<Long> countState) throws IOException {
+      @StateId(COUNT_STATE_NAME) ValueState<Long> countState)
+      throws IOException {
 
     if (!bufferState.isEmpty().read()) {
 
@@ -225,7 +242,9 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
       } catch (HttpResponseException e) {
         LOG.error(
             "Error writing to Splunk. StatusCode: {}, content: {}, StatusMessage: {}",
-            e.getStatusCode(), e.getContent(), e.getStatusMessage());
+            e.getStatusCode(),
+            e.getContent(),
+            e.getStatusMessage());
         logWriteFailures(countState);
 
         flushWriteFailures(events, e.getStatusMessage(), e.getStatusCode(), receiver);
@@ -249,9 +268,7 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
     }
   }
 
-  /**
-   * Utility method to log write failures and handle metrics.
-   */
+  /** Utility method to log write failures and handle metrics. */
   private void logWriteFailures(@StateId(COUNT_STATE_NAME) ValueState<Long> countState) {
     LOG.error("Failed to write {} events", countState.read());
     FAILED_WRITES.inc(countState.read());
@@ -270,7 +287,7 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
       String statusMessage,
       Integer statusCode,
       OutputReceiver<SplunkWriteError> receiver) {
-    
+
     checkNotNull(events, "SplunkEvents cannot be null.");
 
     SplunkWriteError.Builder builder = SplunkWriteError.newBuilder();
@@ -289,6 +306,22 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
 
       receiver.output(error);
     }
+  }
+
+  /**
+   * Checks whether the HEC URL matches the format PROTOCOL://HOST[:PORT].
+   *
+   * @param url for HEC event collector
+   * @return true if the URL is valid
+   */
+  private static boolean isValidUrlFormat(String url) {
+    Pattern pattern = Pattern.compile("^http(s?)://([^:]+)(:[0-9]+)?$");
+    Matcher matcher = pattern.matcher(url);
+    if (matcher.find()) {
+      String host = matcher.group(2);
+      return InetAddresses.isInetAddress(host) || InternetDomainName.isValid(host);
+    }
+    return false;
   }
 
   @AutoValue.Builder
@@ -317,6 +350,9 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
      */
     public Builder withUrl(ValueProvider<String> url) {
       checkArgument(url != null, "withURL(url) called with null input.");
+      if (url.isAccessible()) {
+        checkArgument(isValidUrlFormat(url.get()), INVALID_URL_FORMAT_MESSAGE);
+      }
       return setUrl(url);
     }
 
@@ -328,6 +364,7 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
      */
     public Builder withUrl(String url) {
       checkArgument(url != null, "withURL(url) called with null input.");
+      checkArgument(isValidUrlFormat(url), INVALID_URL_FORMAT_MESSAGE);
       return setUrl(ValueProvider.StaticValueProvider.of(url));
     }
 
@@ -374,9 +411,7 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
       return setDisableCertificateValidation(disableCertificateValidation);
     }
 
-    /**
-     * Build a new {@link SplunkEventWriter} objects based on the configuration.
-     */
+    /** Build a new {@link SplunkEventWriter} objects based on the configuration. */
     public SplunkEventWriter build() {
       checkNotNull(url(), "url needs to be provided.");
       checkNotNull(token(), "token needs to be provided.");
@@ -384,5 +419,4 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
       return autoBuild();
     }
   }
-
 }

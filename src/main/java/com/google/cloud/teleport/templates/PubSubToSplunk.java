@@ -1,19 +1,18 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
-
 package com.google.cloud.teleport.templates;
 
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
@@ -30,11 +29,12 @@ import com.google.cloud.teleport.templates.common.SplunkConverters;
 import com.google.cloud.teleport.templates.common.SplunkConverters.SplunkOptions;
 import com.google.cloud.teleport.util.KMSEncryptedNestedValueProvider;
 import com.google.cloud.teleport.values.FailsafeElement;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.JsonSerializer;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonSyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -146,20 +146,17 @@ public class PubSubToSplunk {
       new TupleTag<FailsafeElement<String, String>>() {};
 
   /** GSON to process a {@link PubsubMessage}. */
-  private static final Gson GSON =
-      new GsonBuilder()
-          .registerTypeAdapter(
-              byte[].class,
-              (JsonSerializer<byte[]>)
-                  (bytes, type, jsonSerializationContext) ->
-                      new JsonPrimitive(new String(bytes, StandardCharsets.UTF_8)))
-          .create();
+  private static final Gson GSON = new Gson();
 
   /** Logger for class. */
   private static final Logger LOG = LoggerFactory.getLogger(PubSubToSplunk.class);
-  
-  private static final Boolean DEFAULT_INCLUDE_PUBSUBMESSAGE = false;
-  
+
+  private static final Boolean DEFAULT_INCLUDE_PUBSUB_MESSAGE = false;
+
+  @VisibleForTesting protected static final String PUBSUB_MESSAGE_ATTRIBUTE_FIELD = "attributes";
+  @VisibleForTesting protected static final String PUBSUB_MESSAGE_DATA_FIELD = "data";
+  private static final String PUBSUB_MESSAGE_ID_FIELD = "messageId";
+
   /**
    * The main entry-point for pipeline execution. This method will start the pipeline but will not
    * wait for it's execution to finish. If blocking execution is required, use the {@link
@@ -169,7 +166,7 @@ public class PubSubToSplunk {
    * @param args The command-line args passed by the executor.
    */
   public static void main(String[] args) {
-    
+
     PubSubToSplunkOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(PubSubToSplunkOptions.class);
 
@@ -227,6 +224,7 @@ public class PubSubToSplunk {
                 FailsafeJavascriptUdf.<String>newBuilder()
                     .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
                     .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                    .setLoggingEnabled(ValueProvider.StaticValueProvider.of(true))
                     .setSuccessTag(UDF_OUT)
                     .setFailureTag(UDF_DEADLETTER_OUT)
                     .build());
@@ -292,20 +290,20 @@ public class PubSubToSplunk {
             ErrorConverters.WriteStringMessageErrorsToPubSub.newBuilder()
                 .setErrorRecordsTopic(options.getOutputDeadletterTopic())
                 .build());
-  
+
     return pipeline.run();
   }
-  
+
   /**
    * The {@link PubSubToSplunkOptions} class provides the custom options passed by the executor at
    * the command line.
    */
   public interface PubSubToSplunkOptions
       extends SplunkOptions,
-      PubsubReadSubscriptionOptions,
-      PubsubWriteDeadletterTopicOptions,
-      JavascriptTextTransformerOptions {}
-  
+          PubsubReadSubscriptionOptions,
+          PubsubWriteDeadletterTopicOptions,
+          JavascriptTextTransformerOptions {}
+
   /**
    * A {@link PTransform} that reads messages from a Pub/Sub subscription, increments a counter and
    * returns a {@link PCollection} of {@link String} messages.
@@ -314,8 +312,10 @@ public class PubSubToSplunk {
     private final ValueProvider<String> subscriptionName;
     private final ValueProvider<Boolean> inputIncludePubsubMessageFlag;
     private Boolean includePubsubMessage;
-  
-    ReadMessages(ValueProvider<String> subscriptionName, ValueProvider<Boolean> inputIncludePubsubMessageFlag) {
+
+    ReadMessages(
+        ValueProvider<String> subscriptionName,
+        ValueProvider<Boolean> inputIncludePubsubMessageFlag) {
       this.subscriptionName = subscriptionName;
       this.inputIncludePubsubMessageFlag = inputIncludePubsubMessageFlag;
     }
@@ -330,7 +330,7 @@ public class PubSubToSplunk {
               "ExtractMessageIfRequired",
               ParDo.of(
                   new DoFn<PubsubMessage, String>() {
-                    
+
                     @Setup
                     public void setup() {
                       if (inputIncludePubsubMessageFlag != null) {
@@ -338,14 +338,14 @@ public class PubSubToSplunk {
                       }
                       includePubsubMessage =
                           MoreObjects.firstNonNull(
-                              includePubsubMessage, DEFAULT_INCLUDE_PUBSUBMESSAGE);
+                              includePubsubMessage, DEFAULT_INCLUDE_PUBSUB_MESSAGE);
                       LOG.info("includePubsubMessage set to: {}", includePubsubMessage);
                     }
 
                     @ProcessElement
                     public void processElement(ProcessContext context) {
                       if (includePubsubMessage) {
-                        context.output(GSON.toJson(context.element()));
+                        context.output(formatPubsubMessage(context.element()));
                       } else {
                         context.output(
                             new String(context.element().getPayload(), StandardCharsets.UTF_8));
@@ -364,16 +364,62 @@ public class PubSubToSplunk {
                   }));
     }
   }
-  
+
   /**
    * Utility method to decrypt a Splunk HEC token.
    *
-   * @param unencryptedToken The Splunk HEC token as a Base64 encoded {@link String} encrypted with a Cloud KMS Key.
+   * @param unencryptedToken The Splunk HEC token as a Base64 encoded {@link String} encrypted with
+   *     a Cloud KMS Key.
    * @param kmsKey The Cloud KMS Encryption Key to decrypt the Splunk HEC token.
    * @return Decrypted Splunk HEC token.
    */
   private static ValueProvider<String> maybeDecrypt(
       ValueProvider<String> unencryptedToken, ValueProvider<String> kmsKey) {
     return new KMSEncryptedNestedValueProvider(unencryptedToken, kmsKey);
+  }
+
+  /**
+   * Utility method that formats {@link org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage} according
+   * to the model defined in {@link com.google.pubsub.v1.PubsubMessage}.
+   *
+   * @param pubsubMessage {@link org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage}
+   * @return JSON String that adheres to the model defined in {@link
+   *     com.google.pubsub.v1.PubsubMessage}
+   */
+  @VisibleForTesting
+  protected static String formatPubsubMessage(PubsubMessage pubsubMessage) {
+    JsonObject messageJson = new JsonObject();
+
+    String payload = new String(pubsubMessage.getPayload(), StandardCharsets.UTF_8);
+    try {
+      JsonObject data = GSON.fromJson(payload, JsonObject.class);
+      messageJson.add(PUBSUB_MESSAGE_DATA_FIELD, data);
+    } catch (JsonSyntaxException e) {
+      messageJson.addProperty(PUBSUB_MESSAGE_DATA_FIELD, payload);
+    }
+
+    JsonObject attributes = getAttributesJson(pubsubMessage.getAttributeMap());
+    messageJson.add(PUBSUB_MESSAGE_ATTRIBUTE_FIELD, attributes);
+
+    if (pubsubMessage.getMessageId() != null) {
+      messageJson.addProperty(PUBSUB_MESSAGE_ID_FIELD, pubsubMessage.getMessageId());
+    }
+
+    return messageJson.toString();
+  }
+
+  /**
+   * Constructs a {@link JsonObject} from a {@link Map} of Pub/Sub attributes.
+   *
+   * @param attributesMap {@link Map} of Pub/Sub attributes
+   * @return {@link JsonObject} of Pub/Sub attributes
+   */
+  private static JsonObject getAttributesJson(Map<String, String> attributesMap) {
+    JsonObject attributesJson = new JsonObject();
+    for (String key : attributesMap.keySet()) {
+      attributesJson.addProperty(key, attributesMap.get(key));
+    }
+
+    return attributesJson;
   }
 }

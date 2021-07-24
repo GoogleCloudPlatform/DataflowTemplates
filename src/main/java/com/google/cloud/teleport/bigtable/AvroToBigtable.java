@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.bigtable;
 
 import com.google.bigtable.v2.Mutation;
@@ -95,7 +94,6 @@ final class AvroToBigtable {
    */
   public static void main(String[] args) {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
-
     PipelineResult result = run(options);
 
     // Wait for pipeline to finish only if it is not constructing a template.
@@ -105,7 +103,7 @@ final class AvroToBigtable {
   }
 
   public static PipelineResult run(Options options) {
-    Pipeline pipeline = Pipeline.create(options);
+    Pipeline pipeline = Pipeline.create(PipelineUtils.tweakPipelineOptions(options));
 
     BigtableIO.Write write =
         BigtableIO.write()

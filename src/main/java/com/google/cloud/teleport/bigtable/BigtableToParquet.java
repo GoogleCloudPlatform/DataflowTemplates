@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -76,7 +76,8 @@ public class BigtableToParquet {
     void setOutputDirectory(ValueProvider<String> outputDirectory);
 
     @Description(
-        "The prefix for each exported file in outputDirectory. Default file prefix is set to \"output\".")
+        "The prefix for each exported file in outputDirectory. Default file prefix is set to"
+            + " \"output\".")
     @Default.String("output")
     ValueProvider<String> getFilenamePrefix();
 
@@ -84,7 +85,8 @@ public class BigtableToParquet {
     void setFilenamePrefix(ValueProvider<String> filenamePrefix);
 
     @Description(
-        "The maximum number of output shards produced when writing. Default number is runner defined. ")
+        "The maximum number of output shards produced when writing. Default number is runner"
+            + " defined. ")
     @Default.Integer(0)
     ValueProvider<Integer> getNumShards();
 
@@ -114,7 +116,7 @@ public class BigtableToParquet {
    * @param options arguments to the pipeline
    */
   public static PipelineResult run(Options options) {
-    Pipeline pipeline = Pipeline.create(options);
+    Pipeline pipeline = Pipeline.create(PipelineUtils.tweakPipelineOptions(options));
     BigtableIO.Read read =
         BigtableIO.read()
             .withProjectId(options.getBigtableProjectId())
@@ -127,10 +129,8 @@ public class BigtableToParquet {
     }
 
     /**
-     * Steps:
-     * 1) Read records from Bigtable.
-     * 2) Convert a Bigtable Row to a GenericRecord.
-     * 3) Write GenericRecord(s) to GCS in parquet format.
+     * Steps: 1) Read records from Bigtable. 2) Convert a Bigtable Row to a GenericRecord. 3) Write
+     * GenericRecord(s) to GCS in parquet format.
      */
     pipeline
         .apply("Read from Bigtable", read)

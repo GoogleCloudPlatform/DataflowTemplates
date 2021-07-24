@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -33,10 +33,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This class implements the {@link DynamicDestinations} interface to control writing to
- * BigQuery tables with changelogs.
+ * This class implements the {@link DynamicDestinations} interface to control writing to BigQuery
+ * tables with changelogs.
  *
- * It controls the tasks of identifying the changelog table for each row representing a change,
+ * <p>It controls the tasks of identifying the changelog table for each row representing a change,
  * and providing the schema for that table.
  */
 class ChangelogTableDynamicDestinations extends DynamicDestinations<TableRow, String> {
@@ -91,10 +91,11 @@ class ChangelogTableDynamicDestinations extends DynamicDestinations<TableRow, St
   public TableDestination getTable(String targetTable) {
     String changelogTableName = getBigQueryTableName(targetTable, true);
 
-    TableReference tableRef = new TableReference()
-        .setTableId(changelogTableName)
-        .setDatasetId(changeLogDataset)
-        .setProjectId(gcpProjectId);
+    TableReference tableRef =
+        new TableReference()
+            .setTableId(changelogTableName)
+            .setDatasetId(changeLogDataset)
+            .setProjectId(gcpProjectId);
     String description = String.format("Changelog Table for {}", targetTable);
 
     return new TableDestination(tableRef, description);
@@ -105,24 +106,28 @@ class ChangelogTableDynamicDestinations extends DynamicDestinations<TableRow, St
     Map<String, KV<Schema, Schema>> schemaMap = this.sideInput(schemaMapView);
     KV<Schema, Schema> keyAndValueSchemas = schemaMap.get(targetTable);
 
-    TableFieldSchema rowSchema = new TableFieldSchema()
-        .setName("fullRecord")
-        .setType("RECORD")
-        .setMode("NULLABLE")   // This field is null for deletions
-        .setFields(BigQueryUtils.toTableSchema(keyAndValueSchemas.getValue()).getFields());
+    TableFieldSchema rowSchema =
+        new TableFieldSchema()
+            .setName("fullRecord")
+            .setType("RECORD")
+            .setMode("NULLABLE") // This field is null for deletions
+            .setFields(BigQueryUtils.toTableSchema(keyAndValueSchemas.getValue()).getFields());
 
-    TableFieldSchema pkSchema = new TableFieldSchema()
-        .setName("primaryKey")
-        .setType("RECORD")
-        .setFields(BigQueryUtils.toTableSchema(keyAndValueSchemas.getKey()).getFields());
+    TableFieldSchema pkSchema =
+        new TableFieldSchema()
+            .setName("primaryKey")
+            .setType("RECORD")
+            .setFields(BigQueryUtils.toTableSchema(keyAndValueSchemas.getKey()).getFields());
 
-    TableSchema changelogTableSchema = new TableSchema()
-        .setFields(Arrays.asList(
-            rowSchema,
-            pkSchema,
-            new TableFieldSchema().setName("operation").setType("STRING"),
-            new TableFieldSchema().setName("timestampMs").setType("INT64"),
-            new TableFieldSchema().setName("tableName").setType("STRING")));
+    TableSchema changelogTableSchema =
+        new TableSchema()
+            .setFields(
+                Arrays.asList(
+                    rowSchema,
+                    pkSchema,
+                    new TableFieldSchema().setName("operation").setType("STRING"),
+                    new TableFieldSchema().setName("timestampMs").setType("INT64"),
+                    new TableFieldSchema().setName("tableName").setType("STRING")));
 
     return changelogTableSchema;
   }
@@ -131,5 +136,4 @@ class ChangelogTableDynamicDestinations extends DynamicDestinations<TableRow, St
   public List<PCollectionView<?>> getSideInputs() {
     return Arrays.asList(schemaMapView);
   }
-
 }

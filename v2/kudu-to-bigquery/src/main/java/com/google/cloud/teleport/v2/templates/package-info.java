@@ -14,7 +14,5 @@
  * limitations under the License.
  */
 
-/**
- * Package to hold template code.
- */
+/** Package to hold template code. */
 package com.google.cloud.teleport.v2.templates;
