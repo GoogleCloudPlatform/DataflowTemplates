@@ -20,6 +20,8 @@ import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Precondi
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
 import java.util.Optional;
+
+import com.google.cloud.teleport.v2.elasticsearch.utils.ConnectionInformation;
 import org.apache.beam.sdk.io.elasticsearch.ElasticsearchIO;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PCollection;
@@ -31,7 +33,7 @@ import org.joda.time.Duration;
  * using the following options.
  *
  * <ul>
- *   <li>{@link ElasticsearchWriteOptions#getTargetNodeAddresses()} - comma separated list of nodes.
+ *   <li>{@link ElasticsearchWriteOptions#getTargetNodeAddresses()} - CloudId or URL.
  *   <li>{@link ElasticsearchWriteOptions#getWriteIndex()} - index to output documents to.
  *   <li>{@link ElasticsearchWriteOptions#getWriteDocumentType()} - document type to write to.
  *   <li>{@link ElasticsearchWriteOptions#getBatchSize()} - batch size in number of documents
@@ -68,10 +70,11 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
 
   @Override
   public PDone expand(PCollection<String> jsonStrings) {
+    ConnectionInformation connectionInformation = new ConnectionInformation(options().getTargetNodeAddresses());
 
     ElasticsearchIO.ConnectionConfiguration config =
         ElasticsearchIO.ConnectionConfiguration.create(
-            options().getTargetNodeAddresses().split(","),
+            new String[]{connectionInformation.getElasticsearchURL()},
             options().getWriteIndex(),
             options().getWriteDocumentType())
             .withUsername(options().getElasticsearchUsername())
