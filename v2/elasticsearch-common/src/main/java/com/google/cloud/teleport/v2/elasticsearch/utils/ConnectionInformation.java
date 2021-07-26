@@ -91,6 +91,9 @@ public class ConnectionInformation {
         this.kibanaHost = "https://" + decodedParts[2]  + "." + domain;
     }
 
+    /**
+     * Type of ConnectionInformation.
+     * **/
     public enum Type {
         URL,
         CLOUD_ID

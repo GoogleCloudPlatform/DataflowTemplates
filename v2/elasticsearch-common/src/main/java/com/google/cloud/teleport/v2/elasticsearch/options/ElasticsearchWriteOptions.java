@@ -54,16 +54,18 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
   void setWriteElasticsearchPassword(String writeElasticsearchPassword);
 
   @Description("Write Dataset used to build index in format: logs-gcp.{Dataset}-{Namespace}")
+  @Validation.Required
   @Default.String("pubsub")
   String getWriteDataset();
 
   void setWriteDataset(String writeDataset);
 
   @Description("Write Namespace used to build index in format: logs-gcp.{Dataset}-{Namespace}")
+  @Validation.Required
   @Default.String("default")
   String getWriteNamespace();
 
-  String setWriteNamespace(String writeNamespace);
+  void setWriteNamespace(String writeNamespace);
 
   @Description("Batch size in number of documents. Default: 1000")
   @Default.Long(1000)

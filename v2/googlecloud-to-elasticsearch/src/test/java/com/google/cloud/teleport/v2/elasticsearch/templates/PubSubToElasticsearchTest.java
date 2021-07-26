@@ -139,6 +139,8 @@ public class PubSubToElasticsearchTest {
     options.setDeadletterTable("test:dataset.table");
     options.setJavascriptTextTransformFunctionName(null);
     options.setJavascriptTextTransformGcsPath(null);
+    options.setWriteDataset("pubsub");
+    options.setWriteNamespace("default");
     options.setWriteElasticsearchUsername("test");
     options.setWriteElasticsearchPassword("test");
 
@@ -183,6 +185,8 @@ public class PubSubToElasticsearchTest {
     options.setDeadletterTable("test:dataset.table");
     options.setJavascriptTextTransformFunctionName("transform");
     options.setJavascriptTextTransformGcsPath(TRANSFORM_FILE_PATH);
+    options.setWriteDataset("pubsub");
+    options.setWriteNamespace("default");
     options.setWriteElasticsearchUsername("test");
     options.setWriteElasticsearchPassword("test");
 
@@ -227,6 +231,8 @@ public class PubSubToElasticsearchTest {
     options.setDeadletterTable("test:dataset.table");
     options.setJavascriptTextTransformFunctionName("transformBad");
     options.setJavascriptTextTransformGcsPath(BAD_TRANSFORM_FILE_PATH);
+    options.setWriteDataset("pubsub");
+    options.setWriteNamespace("default");
     options.setWriteElasticsearchUsername("test");
     options.setWriteElasticsearchPassword("test");
 
@@ -274,6 +280,8 @@ public class PubSubToElasticsearchTest {
         TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
     options.setDeadletterTable("test:dataset.table");
+    options.setWriteDataset("pubsub");
+    options.setWriteNamespace("default");
     options.setWriteElasticsearchUsername("test");
     options.setWriteElasticsearchPassword("test");
 

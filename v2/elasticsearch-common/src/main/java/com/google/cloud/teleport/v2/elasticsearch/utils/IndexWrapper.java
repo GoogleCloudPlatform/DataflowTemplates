@@ -6,15 +6,20 @@ import java.util.Arrays;
  * IndexWrapper builds index based on parameters dataset and namespace.
  * **/
 public class IndexWrapper {
-    private final DATASET dataset;
+    private final Dataset dataset;
     private final String namespace;
 
     public IndexWrapper(String dataset, String namespace) {
-        this.dataset = Arrays.stream(DATASET.values())
+        this.dataset = Arrays.stream(Dataset.values())
                 .filter(value -> value.toString().equalsIgnoreCase(dataset))
                 .findFirst()
-                .orElse(DATASET.PUBSUB);
+                .orElse(Dataset.PUBSUB);
 
+        this.namespace = namespace;
+    }
+
+    public IndexWrapper(Dataset dataset, String namespace) {
+        this.dataset = dataset;
         this.namespace = namespace;
     }
 
@@ -23,7 +28,10 @@ public class IndexWrapper {
         return "logs-gcp." + this.dataset.toString().toLowerCase() + "-" + this.namespace;
     }
 
-    private enum DATASET {
+    /**
+     * Enum of possible dataset values.
+     */
+    public enum Dataset {
         AUDIT,
         VPCFLOW,
         FIREWALL,

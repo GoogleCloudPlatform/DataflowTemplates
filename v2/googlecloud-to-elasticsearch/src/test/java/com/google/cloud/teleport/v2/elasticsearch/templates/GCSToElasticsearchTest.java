@@ -74,6 +74,8 @@ public class GCSToElasticsearchTest {
     options.setJavascriptTextTransformFunctionName("transform");
     options.setContainsHeaders(false);
     options.setInputFileSpec(NO_HEADER_CSV_FILE_PATH);
+    options.setWriteDataset("pubsub");
+    options.setWriteNamespace("default");
     options.setWriteElasticsearchUsername("test");
     options.setWriteElasticsearchPassword("test");
 
@@ -137,6 +139,8 @@ public class GCSToElasticsearchTest {
 
     options.setContainsHeaders(true);
     options.setInputFileSpec(HEADER_CSV_FILE_PATH);
+    options.setWriteDataset("pubsub");
+    options.setWriteNamespace("default");
     options.setWriteElasticsearchUsername("test");
     options.setWriteElasticsearchPassword("test");
 
@@ -201,6 +205,8 @@ public class GCSToElasticsearchTest {
     options.setJsonSchemaPath(JSON_SCHEMA_FILE_PATH);
     options.setContainsHeaders(false);
     options.setInputFileSpec(NO_HEADER_CSV_FILE_PATH);
+    options.setWriteDataset("pubsub");
+    options.setWriteNamespace("default");
     options.setWriteElasticsearchUsername("test");
     options.setWriteElasticsearchPassword("test");
 
@@ -259,13 +265,14 @@ public class GCSToElasticsearchTest {
     options.setTargetNodeAddresses("http://my-node");
     options.setContainsHeaders(false);
     options.setInputFileSpec(NO_HEADER_CSV_FILE_PATH);
-    options.setWriteIndex("test");
     options.setWriteDocumentType("_doc");
     options.setBatchSize(10000L);
     options.setBatchSizeBytes(500000L);
     options.setMaxRetryAttempts(5);
     options.setMaxRetryDuration(null);
     options.setUsePartialUpdate(false);
+    options.setWriteDataset("pubsub");
+    options.setWriteNamespace("default");
     options.setWriteElasticsearchUsername("test");
     options.setWriteElasticsearchPassword("test");
     pipeline
