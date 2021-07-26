@@ -69,40 +69,4 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
   Boolean getUsePartialUpdate();
 
   void setUsePartialUpdate(Boolean usePartialUpdates);
-
-  @Description(
-      "Optional: Path to Javascript function to extract Id from document, ex: gs://path/to/idFn.js. Default: null")
-  String getIdFnPath();
-
-  void setIdFnPath(String idFnPath);
-
-  @Description(
-      "Optional: Name of Javascript function to extract Id from document, ex: myIdFn. Default: null")
-  String getIdFnName();
-
-  void setIdFnName(String idFnName);
-
-  @Description(
-      "Optional: Path to Javascript function to extract Index from document that document will be routed to, ex: gs://path/to/indexFn.js. Default: null")
-  String getIndexFnPath();
-
-  void setIndexFnPath(String indexFnPath);
-
-  @Description(
-      "Optional: Name of Javascript function to extract Index from document, ex: myIndexFn. Default: null")
-  String getIndexFnName();
-
-  void setIndexFnName(String indexFnName);
-
-  @Description(
-      "Optional: Path to Javascript function to extract Type from document that document will be routed to, ex: gs://path/to/typeFn.js. Default: null")
-  String getTypeFnPath();
-
-  void setTypeFnPath(String typeFnPath);
-
-  @Description(
-      "Optional: Name of Javascript function to extract Type from document, ex: myTypeFn. Default: null")
-  String getTypeFnName();
-
-  void setTypeFnName(String typeFnName);
 }
