@@ -161,12 +161,12 @@ public class StreamingDataGeneratorTest {
 
   /** Tests generation of fake Json data message with attributes. */
   @Test
-  public void testJsonMessageGenerator_WithAttributes_returnsFakeMessageContaingAttributes()
+  public void testJsonMessageGenerator_WithAttributes_returnsFakeMessageContainingAttributes()
       throws IOException {
     // Arrange
     String schema =
         "{\n"
-            + "\t\"payload\": {\n"
+            + "  \t\"payload\": {\n"
             + "\t\t\"eventId\": \"{{put(\"eventId\",uuid())}}\",\n"
             + "\t\t\"eventTime\": {{put(\"eventTime\", timestamp())}},\n"
             + "\t\t\"username\": \"{{put(\"username \", username())}}\",\n"
@@ -176,7 +176,7 @@ public class StreamingDataGeneratorTest {
             + "\t\t\"teamavg\": {{put(\"teamavg\",float(100000, 10000000,\"%.7f\"))}},\n"
             + "\t\t\"completed\": {{bool()}}\n"
             + "\t},\n"
-            + "\t\"attributes\": {\n"
+            + "  \t\"attributes\": {\n"
             + "\t\t\"eventId\": \"{{get(\"eventId\")}}\",\n"
             + "\t\t\"eventTime\": {{get(\"eventTime\")}},\n"
             + "\t\t\"appId\": {{ integer(1, 10) }},\n"

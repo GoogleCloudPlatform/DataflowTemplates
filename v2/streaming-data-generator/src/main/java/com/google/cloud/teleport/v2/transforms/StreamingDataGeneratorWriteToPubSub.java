@@ -87,7 +87,7 @@ public final class StreamingDataGeneratorWriteToPubSub {
     private ObjectMapper mapper;
     private TypeReference<HashMap<String, String>> hashMapRef;
     private static final Pattern ATTRIBUTE_PATTERN =
-        Pattern.compile("^\\{\"?payload\"?:.+\"?attributes\"?:.+");
+        Pattern.compile("^\\{\\s*\"?payload\"?:.+\"?attributes\"?:.+");
     private static final int PUBSUB_ATTRIBUTE_VALUE_MAX_LENGTH = 1024;
     private boolean hasAttributes;
 
