@@ -34,12 +34,13 @@ export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_MODULE}-command-spec.json
 export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
 
 export INPUT_TABLE_SPEC=<my-project:my-dataset.my-table>
-export TARGET_NODE_ADDRESSES=<comma-separated-list-nodes>
-export WRITE_INDEX=<my-index>
+export TARGET_NODE_ADDRESSES=<url-or-cloud_id>
+export WRITE_DATASET=<write-dataset>
+export WRITE_NAMESPACE=<write-namespace>
 export WRITE_DOCUMENT_TYPE=<my-type>
 export USE_LEGACY_SQL=false
-export ELASTICSEARCH_USERNAME=<username>
-export ELASTICSEARCH_PASSWORD=<password>
+export WRITE_ELASTICSEARCH_USERNAME=<write-username>
+export WRITE_ELASTICSEARCH_PASSWORD=<write-password>
 
 gcloud config set project ${PROJECT}
 ```
@@ -79,13 +80,6 @@ echo '{
               "isOptional":false
           },
           {
-              "name":"writeIndex",
-              "label":"Elasticsearch write index",
-              "helpText":"The write index toward which the requests will be issued, ex: my-index",
-              "paramType":"TEXT",
-              "isOptional":false
-          },
-          {
               "name":"writeDocumentType",
               "label":"The write document type",
               "helpText":"The write document type toward which the requests will be issued, ex: my-document-type",
@@ -93,16 +87,30 @@ echo '{
               "isOptional":false
           },
           {
-              "name":"elasticsearchUsername",
-              "label":"Username for elasticsearch endpoint",
-              "helpText":"Username for elasticsearch endpoint",
+              "name":"writeElasticsearchUsername",
+              "label":"Write Elasticsearch username for elasticsearch endpoint",
+              "helpText":"Write Elasticsearch username for elasticsearch endpoint",
               "paramType":"TEXT",
               "isOptional":false
           },
           {
-              "name":"elasticsearchPassword",
-              "label":"Password for elasticsearch endpoint",
-              "helpText":"Password for elasticsearch endpoint",
+              "name":"writeElasticsearchPassword",
+              "label":"Write Elasticsearch password for elasticsearch endpoint",
+              "helpText":"Write Elasticsearch password for elasticsearch endpoint",
+              "paramType":"TEXT",
+              "isOptional":false
+          },
+          {
+              "name":"writeDataset",
+              "label":"Write Dataset used to build index",
+              "helpText":"Write Dataset used to build index in format: logs-gcp.{Dataset}-{Namespace}",
+              "paramType":"TEXT",
+              "isOptional":false
+          },
+          {
+              "name":"writeNamespace",
+              "label":"Write Namespace used to build index",
+              "helpText":"Write Namespace used to build index in format: logs-gcp.{Dataset}-{Namespace}",
               "paramType":"TEXT",
               "isOptional":false
           },
@@ -156,48 +164,6 @@ echo '{
               "isOptional":true
           },
           {
-              "name":"idFnPath",
-              "label":"Path to javascript file",
-              "helpText":"Path to javascript file containing function to extract Id from document, ex: gs://path/to/idFn.js. Default: null",
-              "paramType":"TEXT",
-              "isOptional":true
-          },
-          {
-              "name":"idFnName",
-              "label":"Name of javascript function",
-              "helpText":"Name of javascript function to extract Id from document. Default: null",
-              "paramType":"TEXT",
-              "isOptional":true
-          },
-          {
-              "name":"indexFnPath",
-              "label":"Path to javascript file containing function to extract Index",
-              "helpText":"Path to javascript file containing function to extract Index from document, ex: gs://path/to/indexFn.js. Default: null",
-              "paramType":"TEXT",
-              "isOptional":true
-          },
-          {
-              "name":"indexFnName",
-              "label":"Name of javascript function to extract Index from document",
-              "helpText":"Name of javascript function to extract Index from document. Default: null.    * Will override index provided.",
-              "paramType":"TEXT",
-              "isOptional":true
-          },
-          {
-              "name":"typeFnPath",
-              "label":"Path to javascript file containing function to extract Type",
-              "helpText":"Path to javascript file containing function to extract Type from document, ex: gs://path/to/typeFn.js. Default: null",
-              "paramType":"TEXT",
-              "isOptional":true
-          },
-          {
-              "name":"typeFnName",
-              "label":"Name of javascript function to extract Type from document",
-              "helpText":"Name of javascript function to extract Type from document. Default: null.    * Will override type provided.",
-              "paramType":"TEXT",
-              "isOptional":true
-          },
-          {
               "name":"autoscalingAlgorithm","label":"Autoscaling algorithm to use",
               "helpText":"Autoscaling algorithm to use: THROUGHPUT_BASED",
               "paramType":"TEXT",
@@ -241,11 +207,12 @@ mvn test
 
 The template requires the following parameters:
 * inputTableSpec: Table in BigQuery to read from in form of: my-project:my-dataset.my-table. Either this or query must be provided.
-* targetNodeAddresses: Comma separated list of Elasticsearch nodes to connect to, ex: http://my-node1,http://my-node2
-* writeIndex: The write index toward which the requests will be issued, ex: my-index
+* targetNodeAddresses: URL to Elasticsearch node or CloudId
+* writeDataset: The write Dataset used to build index in format: logs-gcp.{Dataset}-{Namespace}
+* writeNamespace: The write Namespace used to build index in format: logs-gcp.{Dataset}-{Namespace}
 * writeDocumentType: The write document type toward which the requests will be issued, ex: my-document-type
-* elasticsearchUsername: Username used to connect to Elasticsearch endpoint
-* elasticsearchPassword: Password used to connect to Elasticsearch endpoint
+* writeElasticsearchUsername: Write Elasticsearch username used to connect to Elasticsearch endpoint
+* writeElasticsearchPassword: Write Elasticsearch password used to connect to Elasticsearch endpoint
 
 The template has the following optional parameters:
 * useLegacySql: Set to true to use legacy SQL (only applicable if supplying query). Default: false
@@ -257,14 +224,6 @@ The template has the following optional parameters:
 * maxRetryAttempts: Max retry attempts, must be > 0. Default: no retries
 * maxRetryDuration: Max retry duration in milliseconds, must be > 0. Default: no retries
 * usePartialUpdates: Set to true to issue partial updates. Default: false
-* idFnPath: Path to javascript file containing function to extract Id from document, ex: gs://path/to/idFn.js. Default: null
-* idFnName: Name of javascript function to extract Id from document. Default: null
-* indexFnPath: Path to javascript file containing function to extract Index from document, ex: gs://path/to/indexFn.js. Default: null
-* indexFnName: Name of javascript function to extract Index from document. Default: null
-    * Will override index provided.
-* typeFnPath: Path to javascript file containing function to extract Type from document, ex: gs://path/to/typeFn.js. Default: null
-* typeFnName: Name of javascript function to extract Type from document. Default: null
-    * Will override type provided.
 
 Template can be executed using the following gcloud command:
 ```sh
@@ -272,5 +231,5 @@ export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud beta dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters inputTableSpec=${INPUT_TABLE_SPEC},targetNodeAddresses=${TARGET_NODE_ADDRESSES},writeIndex=${WRITE_INDEX},writeDocumentType=${WRITE_DOCUMENT_TYPE},elasticsearchUsername=${ELASTICSEARCH_USERNAME},elasticsearchPassword=${ELASTICSEARCH_PASSWORD},useLegacySql=${USE_LEGACY_SQL}
+        --parameters inputTableSpec=${INPUT_TABLE_SPEC},targetNodeAddresses=${TARGET_NODE_ADDRESSES},writeDataset=${WRITE_DATASET},writeNamespace=${WRITE_NAMESPACE},writeDocumentType=${WRITE_DOCUMENT_TYPE},writeElasticsearchUsername=${WRITE_ELASTICSEARCH_USERNAME},writeElasticsearchPassword=${WRITE_ELASTICSEARCH_PASSWORD},useLegacySql=${USE_LEGACY_SQL}
 ```

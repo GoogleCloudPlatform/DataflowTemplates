@@ -41,17 +41,29 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   void setWriteDocumentType(String writeDocumentType);
 
-  @Description("Username for elasticsearch endpoint")
+  @Description("Write username for elasticsearch endpoint")
   @Validation.Required
-  String getElasticsearchUsername();
+  String getWriteElasticsearchUsername();
 
-  void setElasticsearchUsername(String elasticsearchUsername);
+  void setWriteElasticsearchUsername(String writeElasticsearchUsername);
 
-  @Description("Password for elasticsearch endpoint")
+  @Description("Write password for elasticsearch endpoint")
   @Validation.Required
-  String getElasticsearchPassword();
+  String getWriteElasticsearchPassword();
 
-  void setElasticsearchPassword(String elasticsearchPassword);
+  void setWriteElasticsearchPassword(String writeElasticsearchPassword);
+
+  @Description("Write Dataset used to build index in format: logs-gcp.{Dataset}-{Namespace}")
+  @Default.String("pubsub")
+  String getWriteDataset();
+
+  void setWriteDataset(String writeDataset);
+
+  @Description("Write Namespace used to build index in format: logs-gcp.{Dataset}-{Namespace}")
+  @Default.String("default")
+  String getWriteNamespace();
+
+  String setWriteNamespace(String writeNamespace);
 
   @Description("Batch size in number of documents. Default: 1000")
   @Default.Long(1000)

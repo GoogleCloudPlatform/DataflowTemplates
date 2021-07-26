@@ -74,8 +74,8 @@ public class GCSToElasticsearchTest {
     options.setJavascriptTextTransformFunctionName("transform");
     options.setContainsHeaders(false);
     options.setInputFileSpec(NO_HEADER_CSV_FILE_PATH);
-    options.setElasticsearchUsername("test");
-    options.setElasticsearchPassword("test");
+    options.setWriteElasticsearchUsername("test");
+    options.setWriteElasticsearchPassword("test");
 
     // Build pipeline with no headers.
     PCollectionTuple readCsvOut =
@@ -137,8 +137,8 @@ public class GCSToElasticsearchTest {
 
     options.setContainsHeaders(true);
     options.setInputFileSpec(HEADER_CSV_FILE_PATH);
-    options.setElasticsearchUsername("test");
-    options.setElasticsearchPassword("test");
+    options.setWriteElasticsearchUsername("test");
+    options.setWriteElasticsearchPassword("test");
 
     // Build pipeline with no headers.
     PCollectionTuple readCsvOut =
@@ -201,8 +201,8 @@ public class GCSToElasticsearchTest {
     options.setJsonSchemaPath(JSON_SCHEMA_FILE_PATH);
     options.setContainsHeaders(false);
     options.setInputFileSpec(NO_HEADER_CSV_FILE_PATH);
-    options.setElasticsearchUsername("test");
-    options.setElasticsearchPassword("test");
+    options.setWriteElasticsearchUsername("test");
+    options.setWriteElasticsearchPassword("test");
 
     // Build pipeline with no headers.
     PCollectionTuple readCsvOut =
@@ -266,8 +266,8 @@ public class GCSToElasticsearchTest {
     options.setMaxRetryAttempts(5);
     options.setMaxRetryDuration(null);
     options.setUsePartialUpdate(false);
-    options.setElasticsearchUsername("test");
-    options.setElasticsearchPassword("test");
+    options.setWriteElasticsearchUsername("test");
+    options.setWriteElasticsearchPassword("test");
     pipeline
         .apply(Create.of("{}").withCoder(StringUtf8Coder.of()))
         .apply(

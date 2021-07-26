@@ -19,9 +19,9 @@ import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Precondi
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
-import java.util.Optional;
-
 import com.google.cloud.teleport.v2.elasticsearch.utils.ConnectionInformation;
+import com.google.cloud.teleport.v2.elasticsearch.utils.IndexWrapper;
+import java.util.Optional;
 import org.apache.beam.sdk.io.elasticsearch.ElasticsearchIO;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PCollection;
@@ -71,14 +71,15 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
   @Override
   public PDone expand(PCollection<String> jsonStrings) {
     ConnectionInformation connectionInformation = new ConnectionInformation(options().getTargetNodeAddresses());
+    IndexWrapper writeIndexWrapper = new IndexWrapper(options().getWriteDataset(), options().getWriteNamespace());
 
     ElasticsearchIO.ConnectionConfiguration config =
         ElasticsearchIO.ConnectionConfiguration.create(
             new String[]{connectionInformation.getElasticsearchURL()},
-            options().getWriteIndex(),
+            writeIndexWrapper.toString(),
             options().getWriteDocumentType())
-            .withUsername(options().getElasticsearchUsername())
-            .withPassword(options().getElasticsearchPassword());
+            .withUsername(options().getWriteElasticsearchUsername())
+            .withPassword(options().getWriteElasticsearchPassword());
 
     ElasticsearchIO.Write write =
         ElasticsearchIO.write()
@@ -114,10 +115,10 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
           options().getWriteDocumentType() != null, "Write Document type must not be null.");
 
       checkArgument(
-              options().getElasticsearchUsername() != null, "Elasticsearch username must not be null.");
+              options().getWriteElasticsearchUsername() != null, "Elasticsearch username must not be null.");
 
       checkArgument(
-              options().getElasticsearchPassword() != null, "Elasticsearch password must not be null.");
+              options().getWriteElasticsearchPassword() != null, "Elasticsearch password must not be null.");
 
       checkArgument(options().getWriteIndex() != null, "Write Index must not be null.");
 

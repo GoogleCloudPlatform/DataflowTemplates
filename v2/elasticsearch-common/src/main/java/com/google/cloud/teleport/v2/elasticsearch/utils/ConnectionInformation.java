@@ -3,6 +3,10 @@ package com.google.cloud.teleport.v2.elasticsearch.utils;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
+/**
+ * ConnectionInformation class used to parse connectionInformation option.
+ * ConnectionInformation option can contain URL to Elasticsearch host or CloudId.
+ */
 public class ConnectionInformation {
     private String elasticsearchURL;
     private String kibanaURL;
@@ -34,7 +38,8 @@ public class ConnectionInformation {
     }
 
     private Type checkType(String connectionInformation){
-        return connectionInformation.toLowerCase().startsWith("https://")
+        return connectionInformation.toLowerCase().startsWith("http://")
+                || connectionInformation.toLowerCase().startsWith("https://")
                 ? Type.URL : Type.CLOUD_ID;
     }
 
