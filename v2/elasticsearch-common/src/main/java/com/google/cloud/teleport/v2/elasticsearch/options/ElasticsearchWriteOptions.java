@@ -29,12 +29,6 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   void setTargetNodeAddresses(String targetNodeAddresses);
 
-  @Description("The index toward which the requests will be issued, ex: my-index")
-  @Validation.Required
-  String getWriteIndex();
-
-  void setWriteIndex(String writeIndex);
-
   @Description("The document type toward which the requests will be issued, ex: my-document-type")
   @Default.String("_doc")
   String getWriteDocumentType();
@@ -55,14 +49,12 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   @Description("Write Dataset used to build index in format: logs-gcp.{Dataset}-{Namespace}")
   @Validation.Required
-  @Default.String("pubsub")
   String getWriteDataset();
 
   void setWriteDataset(String writeDataset);
 
   @Description("Write Namespace used to build index in format: logs-gcp.{Dataset}-{Namespace}")
   @Validation.Required
-  @Default.String("default")
   String getWriteNamespace();
 
   void setWriteNamespace(String writeNamespace);

@@ -91,13 +91,6 @@ echo '{
               "isOptional":false
           },
           {
-              "name":"writeIndex",
-              "label":"Elasticsearch write index",
-              "helpText":"The write index toward which the requests will be issued, ex: my-index",
-              "paramType":"TEXT",
-              "isOptional":false
-          },
-          {
               "name":"writeDocumentType",
               "label":"The write document type",
               "helpText":"The write document type toward which the requests will be issued, ex: my-document-type",

@@ -34,7 +34,8 @@ import org.joda.time.Duration;
  *
  * <ul>
  *   <li>{@link ElasticsearchWriteOptions#getTargetNodeAddresses()} - CloudId or URL.
- *   <li>{@link ElasticsearchWriteOptions#getWriteIndex()} - index to output documents to.
+ *   <li>{@link ElasticsearchWriteOptions#getWriteDataset()} ()} - Write dataset used to build index.
+ *   <li>{@link ElasticsearchWriteOptions#getWriteNamespace()} ()} ()} - Write namespace used to build index
  *   <li>{@link ElasticsearchWriteOptions#getWriteDocumentType()} - document type to write to.
  *   <li>{@link ElasticsearchWriteOptions#getBatchSize()} - batch size in number of documents
  *       (Default:1000).
@@ -49,10 +50,8 @@ import org.joda.time.Duration;
  * </ul>
  *
  * For {@link ElasticsearchIO#write()} with {@link ValueExtractorTransform.ValueExtractorFn} if the
- * function returns null then the index or type provided as {@link
- * ElasticsearchWriteOptions#getWriteIndex()} or {@link
- * ElasticsearchWriteOptions#getWriteDocumentType()} will be used. For IdFn if function returns null
- * then the id for the document will be assigned by {@link ElasticsearchIO}.
+ * function returns null then the index or type provided as {@link ConnectionInformation} or {@link
+ * ElasticsearchWriteOptions#getWriteDocumentType()} will be used.
  */
 @AutoValue
 public abstract class WriteToElasticsearch extends PTransform<PCollection<String>, PDone> {
@@ -120,7 +119,9 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
       checkArgument(
               options().getWriteElasticsearchPassword() != null, "Elasticsearch password must not be null.");
 
-      checkArgument(options().getWriteIndex() != null, "Write Index must not be null.");
+      checkArgument(options().getWriteDataset() != null, "Write dataset must not be null.");
+
+      checkArgument(options().getWriteNamespace() != null, "Write namespace must not be null.");
 
       checkArgument(
           options().getBatchSize() > 0, "Batch size must be > 0. Got: " + options().getBatchSize());

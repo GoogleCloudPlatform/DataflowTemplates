@@ -1,5 +1,7 @@
 package com.google.cloud.teleport.v2.elasticsearch.utils;
 
+import org.apache.commons.lang.StringUtils;
+
 import java.util.Arrays;
 
 /**
@@ -8,6 +10,7 @@ import java.util.Arrays;
 public class IndexWrapper {
     private final Dataset dataset;
     private final String namespace;
+    private static final String DEFAULT_NAMESPACE="default";
 
     public IndexWrapper(String dataset, String namespace) {
         this.dataset = Arrays.stream(Dataset.values())
@@ -15,12 +18,12 @@ public class IndexWrapper {
                 .findFirst()
                 .orElse(Dataset.PUBSUB);
 
-        this.namespace = namespace;
+        this.namespace = StringUtils.isNotBlank(namespace) ? namespace : DEFAULT_NAMESPACE;
     }
 
     public IndexWrapper(Dataset dataset, String namespace) {
         this.dataset = dataset;
-        this.namespace = namespace;
+        this.namespace = StringUtils.isNotBlank(namespace) ? namespace : DEFAULT_NAMESPACE;
     }
 
     @Override

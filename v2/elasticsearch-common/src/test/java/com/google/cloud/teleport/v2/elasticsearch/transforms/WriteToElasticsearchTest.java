@@ -40,7 +40,10 @@ public class WriteToElasticsearchTest {
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
     options.setTargetNodeAddresses(null);
-    options.setWriteIndex("testIndex");
+    options.setWriteDataset("pubsub");
+    options.setWriteNamespace("default");
+    options.setWriteElasticsearchUsername("test");
+    options.setWriteElasticsearchPassword("test");
     options.setWriteDocumentType("testType");
 
     pipeline
@@ -60,7 +63,10 @@ public class WriteToElasticsearchTest {
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
     options.setTargetNodeAddresses("http://my-node1");
-    options.setWriteIndex("testIndex");
+    options.setWriteDataset("pubsub");
+    options.setWriteNamespace("default");
+    options.setWriteElasticsearchUsername("test");
+    options.setWriteElasticsearchPassword("test");
     options.setWriteDocumentType(null);
 
     pipeline
@@ -70,9 +76,9 @@ public class WriteToElasticsearchTest {
     pipeline.run();
   }
 
-  /** Tests {@link WriteToElasticsearch} throws an exception if a null index is provided. */
+  /** Tests {@link WriteToElasticsearch} throws an exception if a null connectionInformation is provided. */
   @Test
-  public void testNullIndex() {
+  public void testNullConnectionInformation() {
 
     exceptionRule.expect(IllegalArgumentException.class);
 
@@ -80,7 +86,8 @@ public class WriteToElasticsearchTest {
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
     options.setTargetNodeAddresses("http://my-node1");
-    options.setWriteIndex(null);
+    options.setWriteElasticsearchUsername("test");
+    options.setWriteElasticsearchPassword("test");
     options.setWriteDocumentType("testType");
 
     pipeline
@@ -97,13 +104,16 @@ public class WriteToElasticsearchTest {
   @Test
   public void testInvalidNodeAddresses() {
 
-    exceptionRule.expect(IllegalArgumentException.class);
+    exceptionRule.expect(IllegalStateException.class);
 
     ElasticsearchWriteOptions options =
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
     options.setTargetNodeAddresses(",");
-    options.setWriteIndex("testIndex");
+    options.setWriteDataset("pubsub");
+    options.setWriteNamespace("default");
+    options.setWriteElasticsearchUsername("test");
+    options.setWriteElasticsearchPassword("test");
     options.setWriteDocumentType("testType");
 
     pipeline
@@ -128,7 +138,10 @@ public class WriteToElasticsearchTest {
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
     options.setTargetNodeAddresses("http://my-node1");
-    options.setWriteIndex("testIndex");
+    options.setWriteDataset("pubsub");
+    options.setWriteNamespace("default");
+    options.setWriteElasticsearchUsername("test");
+    options.setWriteElasticsearchPassword("test");
     options.setWriteDocumentType("testDoc");
     options.setMaxRetryDuration(500L);
     options.setMaxRetryAttempts(null);
@@ -155,7 +168,10 @@ public class WriteToElasticsearchTest {
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
     options.setTargetNodeAddresses("http://my-node1");
-    options.setWriteIndex("testIndex");
+    options.setWriteDataset("pubsub");
+    options.setWriteNamespace("default");
+    options.setWriteElasticsearchUsername("test");
+    options.setWriteElasticsearchPassword("test");
     options.setWriteDocumentType("testDoc");
     options.setMaxRetryDuration(null);
     options.setMaxRetryAttempts(3);
