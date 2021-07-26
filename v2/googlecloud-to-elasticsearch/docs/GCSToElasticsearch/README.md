@@ -49,6 +49,8 @@ export WRITE_DOCUMENT_TYPE=<my-type>
 export HEADERS=false
 export DEADLETTER_TABLE=<my-project:my-dataset.my-deadletter-table>
 export DELIMITER=","
+export ELASTICSEARCH_USERNAME=<username>
+export ELASTICSEARCH_PASSWORD=<password>
 
 gcloud config set project ${PROJECT}
 ```
@@ -98,6 +100,20 @@ echo '{
               "name":"writeDocumentType",
               "label":"The write document type",
               "helpText":"The write document type toward which the requests will be issued, ex: my-document-type",
+              "paramType":"TEXT",
+              "isOptional":false
+          },
+          {
+              "name":"elasticsearchUsername",
+              "label":"Username for elasticsearch endpoint",
+              "helpText":"Username for elasticsearch endpoint",
+              "paramType":"TEXT",
+              "isOptional":false
+          },
+          {
+              "name":"elasticsearchPassword",
+              "label":"Password for elasticsearch endpoint",
+              "helpText":"Password for elasticsearch endpoint",
               "paramType":"TEXT",
               "isOptional":false
           },
@@ -291,6 +307,8 @@ The template requires the following parameters:
 * containsHeaders: Set to true if file(s) contain headers.
 * deadletterTable: Deadletter table in BigQuery for failed inserts in form: project-id:dataset.table
 * delimiter: Delimiting character in CSV file(s). Default: use delimiter found in csvFormat
+* elasticsearchUsername: Username used to connect to Elasticsearch endpoint
+* elasticsearchPassword: Password used to connect to Elasticsearch endpoint
 
 The template has the following optional parameters:
 * inputFormat: The format of the input files, default is CSV.
@@ -320,5 +338,5 @@ export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud beta dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters inputFileSpec=${INPUT_FILE_SPEC},targetNodeAddresses=${TARGET_NODE_ADDRESSES},writeIndex=${WRITE_INDEX},writeDocumentType=${WRITE_DOCUMENT_TYPE},containsHeaders=${HEADERS},deadletterTable=${DEADLETTER_TABLE},delimiter=${DELIMITER}
+        --parameters inputFileSpec=${INPUT_FILE_SPEC},targetNodeAddresses=${TARGET_NODE_ADDRESSES},writeIndex=${WRITE_INDEX},writeDocumentType=${WRITE_DOCUMENT_TYPE},elasticsearchUsername=${ELASTICSEARCH_USERNAME},elasticsearchPassword=${ELASTICSEARCH_PASSWORD},containsHeaders=${HEADERS},deadletterTable=${DEADLETTER_TABLE},delimiter=${DELIMITER}
 ```

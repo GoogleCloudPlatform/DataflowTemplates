@@ -36,10 +36,22 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
   void setWriteIndex(String writeIndex);
 
   @Description("The document type toward which the requests will be issued, ex: my-document-type")
-  @Validation.Required
+  @Default.String("_doc")
   String getWriteDocumentType();
 
   void setWriteDocumentType(String writeDocumentType);
+
+  @Description("Username for elasticsearch endpoint")
+  @Validation.Required
+  String getElasticsearchUsername();
+
+  void setElasticsearchUsername(String elasticsearchUsername);
+
+  @Description("Password for elasticsearch endpoint")
+  @Validation.Required
+  String getElasticsearchPassword();
+
+  void setElasticsearchPassword(String elasticsearchPassword);
 
   @Description("Batch size in number of documents. Default: 1000")
   @Default.Long(1000)

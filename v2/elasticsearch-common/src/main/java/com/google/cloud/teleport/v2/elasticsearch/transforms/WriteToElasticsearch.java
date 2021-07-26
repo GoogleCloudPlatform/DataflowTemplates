@@ -73,7 +73,9 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
         ElasticsearchIO.ConnectionConfiguration.create(
             options().getTargetNodeAddresses().split(","),
             options().getWriteIndex(),
-            options().getWriteDocumentType());
+            options().getWriteDocumentType())
+            .withUsername(options().getElasticsearchUsername())
+            .withPassword(options().getElasticsearchPassword());
 
     ElasticsearchIO.Write write =
         ElasticsearchIO.write()
@@ -107,6 +109,12 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
 
       checkArgument(
           options().getWriteDocumentType() != null, "Write Document type must not be null.");
+
+      checkArgument(
+              options().getElasticsearchUsername() != null, "Elasticsearch username must not be null.");
+
+      checkArgument(
+              options().getElasticsearchPassword() != null, "Elasticsearch password must not be null.");
 
       checkArgument(options().getWriteIndex() != null, "Write Index must not be null.");
 

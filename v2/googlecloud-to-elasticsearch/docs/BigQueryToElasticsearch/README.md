@@ -38,6 +38,8 @@ export TARGET_NODE_ADDRESSES=<comma-separated-list-nodes>
 export WRITE_INDEX=<my-index>
 export WRITE_DOCUMENT_TYPE=<my-type>
 export USE_LEGACY_SQL=false
+export ELASTICSEARCH_USERNAME=<username>
+export ELASTICSEARCH_PASSWORD=<password>
 
 gcloud config set project ${PROJECT}
 ```
@@ -87,6 +89,20 @@ echo '{
               "name":"writeDocumentType",
               "label":"The write document type",
               "helpText":"The write document type toward which the requests will be issued, ex: my-document-type",
+              "paramType":"TEXT",
+              "isOptional":false
+          },
+          {
+              "name":"elasticsearchUsername",
+              "label":"Username for elasticsearch endpoint",
+              "helpText":"Username for elasticsearch endpoint",
+              "paramType":"TEXT",
+              "isOptional":false
+          },
+          {
+              "name":"elasticsearchPassword",
+              "label":"Password for elasticsearch endpoint",
+              "helpText":"Password for elasticsearch endpoint",
               "paramType":"TEXT",
               "isOptional":false
           },
@@ -228,6 +244,8 @@ The template requires the following parameters:
 * targetNodeAddresses: Comma separated list of Elasticsearch nodes to connect to, ex: http://my-node1,http://my-node2
 * writeIndex: The write index toward which the requests will be issued, ex: my-index
 * writeDocumentType: The write document type toward which the requests will be issued, ex: my-document-type
+* elasticsearchUsername: Username used to connect to Elasticsearch endpoint
+* elasticsearchPassword: Password used to connect to Elasticsearch endpoint
 
 The template has the following optional parameters:
 * useLegacySql: Set to true to use legacy SQL (only applicable if supplying query). Default: false
@@ -254,5 +272,5 @@ export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud beta dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters inputTableSpec=${INPUT_TABLE_SPEC},targetNodeAddresses=${TARGET_NODE_ADDRESSES},writeIndex=${WRITE_INDEX},writeDocumentType=${WRITE_DOCUMENT_TYPE},useLegacySql=${USE_LEGACY_SQL}
+        --parameters inputTableSpec=${INPUT_TABLE_SPEC},targetNodeAddresses=${TARGET_NODE_ADDRESSES},writeIndex=${WRITE_INDEX},writeDocumentType=${WRITE_DOCUMENT_TYPE},elasticsearchUsername=${ELASTICSEARCH_USERNAME},elasticsearchPassword=${ELASTICSEARCH_PASSWORD},useLegacySql=${USE_LEGACY_SQL}
 ```
