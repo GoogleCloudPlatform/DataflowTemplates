@@ -15,11 +15,13 @@
  */
 package com.google.cloud.teleport.v2.templates.datastream;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
 import java.util.Arrays;
-import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * ChangeEventContext class converts change events to Cloud Spanner mutations and stores all
@@ -27,8 +29,10 @@ import org.json.JSONObject;
  */
 public abstract class ChangeEventContext {
 
-  // The change event from Datastream.
-  protected JSONObject changeEvent;
+  private static final Logger LOG = LoggerFactory.getLogger(ChangeEventContext.class);
+
+  // The JsonNode representation of the change event.
+  protected JsonNode changeEvent;
 
   // Cloud Spanner mutation for the change event.
   protected Mutation dataMutation;
@@ -61,8 +65,7 @@ public abstract class ChangeEventContext {
     this.shadowTableMutation = generateShadowTableMutation(ddl);
   }
 
-  // Getter method for change event.
-  public JSONObject getChangeEvent() {
+  public JsonNode getChangeEvent() {
     return changeEvent;
   }
 
@@ -80,6 +83,7 @@ public abstract class ChangeEventContext {
   public Mutation getShadowTableMutation() {
     return shadowTableMutation;
   }
+
   // Getter method for the shadow table.
   public String getShadowTable() {
     return shadowTable;

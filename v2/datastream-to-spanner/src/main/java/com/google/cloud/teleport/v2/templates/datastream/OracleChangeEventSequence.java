@@ -20,7 +20,6 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionContext;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.json.JSONObject;
 
 /**
  * Implementation of ChangeEventSequence for Oracle database which stores change event sequence
@@ -43,7 +42,7 @@ class OracleChangeEventSequence extends ChangeEventSequence {
   /*
    * Creates OracleChangeEventSequence from change event
    */
-  public static OracleChangeEventSequence createFromChangeEvent(JSONObject changeEvent)
+  public static OracleChangeEventSequence createFromChangeEvent(ChangeEventContext ctx)
       throws ChangeEventConvertorException, InvalidChangeEventException {
 
     /* Backfill events from Oracle "can" have only timestamp metadata filled in.
@@ -51,17 +50,16 @@ class OracleChangeEventSequence extends ChangeEventSequence {
      */
     Long scn;
 
-    scn =
-        ChangeEventTypeConvertor.toLong(
-            changeEvent, DatastreamConstants.ORACLE_SCN_KEY, /*requiredField=*/ false);
+    scn = ChangeEventTypeConvertor.toLong(ctx.getChangeEvent(),
+        DatastreamConstants.ORACLE_SCN_KEY, /*requiredField=*/false);
     if (scn == null) {
       scn = new Long(-1);
     }
 
     // Change events from Oracle have timestamp and SCN filled in always.
     return new OracleChangeEventSequence(
-        ChangeEventTypeConvertor.toLong(
-            changeEvent, DatastreamConstants.ORACLE_TIMESTAMP_KEY, /*requiredField=*/ true),
+        ChangeEventTypeConvertor.toLong(ctx.getChangeEvent(),
+            DatastreamConstants.ORACLE_TIMESTAMP_KEY, /*requiredField=*/true),
         scn);
   }
 

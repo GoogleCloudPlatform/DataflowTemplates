@@ -19,6 +19,9 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
@@ -26,6 +29,7 @@ import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -37,6 +41,17 @@ import org.junit.Test;
  * ChangeEventConvertor class and validates the input.
  */
 public class ChangeEventConvertorTest {
+
+  public static JsonNode parseChangeEvent(String json) {
+    try {
+      ObjectMapper mapper = new ObjectMapper();
+      mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+      return mapper.readTree(json);
+    } catch (IOException e) {
+      // No action. Return null.
+    }
+    return null;
+  }
 
   static Ddl getTestDdl() {
     /* Creates DDL with 2 tables with the same fields but with different primary key
@@ -289,7 +304,8 @@ public class ChangeEventConvertorTest {
   public void canConvertValidChangeEventToMutation() throws Exception {
     Ddl ddl = getTestDdl();
     JSONObject changeEvent = getTestChangeEvent("Users");
-    Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, changeEvent);
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, ce);
     Map<String, Value> actual = mutation.asMap();
     Map<String, Value> expected = getExpectedMapForTestChangeEvent();
 
@@ -305,7 +321,8 @@ public class ChangeEventConvertorTest {
     changeEvent.put("first_name", "A");
     changeEvent.put("last_name", "B");
     changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
-    Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, changeEvent);
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, ce);
     Map<String, Value> actual = mutation.asMap();
     Map<String, Value> expected =
         new HashMap<String, Value>() {
@@ -326,7 +343,8 @@ public class ChangeEventConvertorTest {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
     changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
-    Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, changeEvent);
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, ce);
   }
 
   @Test(expected = ChangeEventConvertorException.class)
@@ -336,7 +354,8 @@ public class ChangeEventConvertorTest {
     changeEvent.put("first_name", "A");
     changeEvent.put("last_name", JSONObject.NULL);
     changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
-    Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, changeEvent);
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, ce);
   }
 
   @Test(expected = ChangeEventConvertorException.class)
@@ -344,7 +363,8 @@ public class ChangeEventConvertorTest {
     Ddl ddl = getTestDdl();
     JSONObject changeEvent = getTestChangeEvent("Users");
     changeEvent.put("timestamp_field", "2020-12-asdf");
-    Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, changeEvent);
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, ce);
   }
 
   @Test(expected = ChangeEventConvertorException.class)
@@ -352,7 +372,8 @@ public class ChangeEventConvertorTest {
     Ddl ddl = getTestDdl();
     JSONObject changeEvent = getTestChangeEvent("Users");
     changeEvent.put("date_field", "asdf");
-    Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, changeEvent);
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, ce);
   }
 
   @Test(expected = ChangeEventConvertorException.class)
@@ -360,7 +381,8 @@ public class ChangeEventConvertorTest {
     Ddl ddl = getTestDdl();
     JSONObject changeEvent = getTestChangeEvent("Users");
     changeEvent.put("int64_field", "asdfas");
-    Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, changeEvent);
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, ce);
   }
 
   @Test(expected = ChangeEventConvertorException.class)
@@ -368,7 +390,8 @@ public class ChangeEventConvertorTest {
     Ddl ddl = getTestDdl();
     JSONObject changeEvent = getTestChangeEvent("Users");
     changeEvent.put("float64_field", "asdfasdf");
-    Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, changeEvent);
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, ce);
   }
 
   @Test
@@ -376,7 +399,8 @@ public class ChangeEventConvertorTest {
     Ddl ddl = getTestDdl();
     JSONObject changeEvent = getTestChangeEvent("Users2");
     changeEvent.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, "DELETE");
-    Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, changeEvent);
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, ce);
     Map<String, Value> expected = getExpectedMapForTestChangeEvent();
 
     assertEquals(mutation.getTable(), "Users2");
@@ -387,8 +411,9 @@ public class ChangeEventConvertorTest {
   public void canConvertChangeEventToShadowMutation() throws Exception {
     Ddl ddl = getTestDdl();
     JSONObject changeEvent = getTestChangeEvent("Users2");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
     Mutation mutation =
-        ChangeEventConvertor.changeEventToShadowTableMutationBuilder(ddl, changeEvent, "shadow_")
+        ChangeEventConvertor.changeEventToShadowTableMutationBuilder(ddl, ce, "shadow_")
             .build();
     Map<String, Value> actual = mutation.asMap();
     Map<String, Value> expected = getExpectedMapForTestChangeEvent();
@@ -403,9 +428,10 @@ public class ChangeEventConvertorTest {
     Ddl ddl = getTestDdl();
     JSONObject changeEvent = getTestChangeEvent("Users2");
     changeEvent.remove("last_name");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
     Mutation mutation =
-        ChangeEventConvertor.changeEventToShadowTableMutationBuilder(ddl, changeEvent, "shadow_")
-            .build();
+        ChangeEventConvertor.changeEventToShadowTableMutationBuilder(ddl,
+            ce, "shadow_").build();
     // Expect an Exception to be thrown as a primary key is missing.
   }
 
@@ -414,9 +440,10 @@ public class ChangeEventConvertorTest {
     Ddl ddl = getTestDdl();
     JSONObject changeEvent = getTestChangeEvent("Users2");
     changeEvent.put("timestamp_field", "2020-12-asdf");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
     Mutation mutation =
-        ChangeEventConvertor.changeEventToShadowTableMutationBuilder(ddl, changeEvent, "shadow_")
-            .build();
+        ChangeEventConvertor.changeEventToShadowTableMutationBuilder(ddl,
+            ce, "shadow_").build();
     // Expect an Exception to be thrown with Invalid timestamp
   }
 
@@ -425,9 +452,10 @@ public class ChangeEventConvertorTest {
     Ddl ddl = getTestDdl();
     JSONObject changeEvent = getTestChangeEvent("Users2");
     changeEvent.put("int64_field", "asdfas");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
     Mutation mutation =
-        ChangeEventConvertor.changeEventToShadowTableMutationBuilder(ddl, changeEvent, "shadow_")
-            .build();
+        ChangeEventConvertor.changeEventToShadowTableMutationBuilder(ddl,
+            ce, "shadow_").build();
     // Expect an Exception to be thrown with Invalid int64
   }
 
@@ -436,9 +464,10 @@ public class ChangeEventConvertorTest {
     Ddl ddl = getTestDdl();
     JSONObject changeEvent = getTestChangeEvent("Users2");
     changeEvent.put("float64_field", "asdfas");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
     Mutation mutation =
-        ChangeEventConvertor.changeEventToShadowTableMutationBuilder(ddl, changeEvent, "shadow_")
-            .build();
+        ChangeEventConvertor.changeEventToShadowTableMutationBuilder(ddl,
+            ce, "shadow_").build();
     // Expect an Exception to be thrown with Invalid Float64
   }
 
@@ -446,7 +475,9 @@ public class ChangeEventConvertorTest {
   public void canConvertChangeEventToPrimaryKey() throws Exception {
     Ddl ddl = getTestDdl();
     JSONObject changeEvent = getTestChangeEvent("Users2");
-    Key key = ChangeEventConvertor.changeEventToPrimaryKey(ddl, changeEvent);
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    Key key = ChangeEventConvertor.
+        changeEventToPrimaryKey(ddl, ce);
     Iterable<Object> keyParts = key.getParts();
     ArrayList<Object> expectedKeyParts = new ArrayList<>();
     expectedKeyParts.add("A");
@@ -471,7 +502,8 @@ public class ChangeEventConvertorTest {
     Ddl ddl = getTestDdl();
     JSONObject changeEvent = getTestChangeEvent("Users2");
     changeEvent.remove("last_name");
-    Key key = ChangeEventConvertor.changeEventToPrimaryKey(ddl, changeEvent);
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    Key key = ChangeEventConvertor.changeEventToPrimaryKey(ddl, ce);
     // Expect an exception since the event is missing a primary key
   }
 
@@ -480,7 +512,8 @@ public class ChangeEventConvertorTest {
     Ddl ddl = getTestDdl();
     JSONObject changeEvent = getTestChangeEvent("Users2");
     changeEvent.put("timestamp_field", "2020-12-asdf");
-    Key key = ChangeEventConvertor.changeEventToPrimaryKey(ddl, changeEvent);
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    Key key = ChangeEventConvertor.changeEventToPrimaryKey(ddl, ce);
     // Expect an exception since the event has invalid timestamp
   }
 
@@ -489,7 +522,8 @@ public class ChangeEventConvertorTest {
     Ddl ddl = getTestDdl();
     JSONObject changeEvent = getTestChangeEvent("Users2");
     changeEvent.put("date_field", "asdf");
-    Key key = ChangeEventConvertor.changeEventToPrimaryKey(ddl, changeEvent);
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    Key key = ChangeEventConvertor.changeEventToPrimaryKey(ddl, ce);
     // Expect an exception since the event has invalid timestamp
   }
 
@@ -498,7 +532,8 @@ public class ChangeEventConvertorTest {
     Ddl ddl = getTestDdl();
     JSONObject changeEvent = getTestChangeEvent("Users2");
     changeEvent.put("int64_field", "asdfas");
-    Key key = ChangeEventConvertor.changeEventToPrimaryKey(ddl, changeEvent);
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    Key key = ChangeEventConvertor.changeEventToPrimaryKey(ddl, ce);
     // Expect an exception since the event has invalid timestamp
   }
 
@@ -507,7 +542,8 @@ public class ChangeEventConvertorTest {
     Ddl ddl = getTestDdl();
     JSONObject changeEvent = getTestChangeEvent("Users2");
     changeEvent.put("float64_field", "asdfasdf");
-    Key key = ChangeEventConvertor.changeEventToPrimaryKey(ddl, changeEvent);
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    Key key = ChangeEventConvertor.changeEventToPrimaryKey(ddl, ce);
     // Expect an exception since the event has invalid timestamp
   }
 }

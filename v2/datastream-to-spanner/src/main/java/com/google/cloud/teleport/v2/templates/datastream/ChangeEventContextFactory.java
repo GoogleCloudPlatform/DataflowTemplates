@@ -15,17 +15,18 @@
  */
 package com.google.cloud.teleport.v2.templates.datastream;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
-import org.json.JSONObject;
 
 /** Factory classes that provides creation methods for ChangeEventContext. */
 public class ChangeEventContextFactory {
 
   private ChangeEventContextFactory() {}
 
-  private static String getSourceType(JSONObject changeEvent) throws InvalidChangeEventException {
+  private static String getSourceType(JsonNode changeEvent)
+      throws InvalidChangeEventException {
     try {
-      return changeEvent.getString(DatastreamConstants.EVENT_SOURCE_TYPE_KEY);
+      return changeEvent.get(DatastreamConstants.EVENT_SOURCE_TYPE_KEY).asText();
     } catch (Exception e) {
       throw new InvalidChangeEventException(e);
     }
@@ -35,7 +36,7 @@ public class ChangeEventContextFactory {
    * Creates ChangeEventContext depending on the change event type.
    */
   public static ChangeEventContext createChangeEventContext(
-      JSONObject changeEvent, Ddl ddl, String shadowTablePrefix, String sourceType)
+      JsonNode changeEvent, Ddl ddl, String shadowTablePrefix, String sourceType)
       throws ChangeEventConvertorException, InvalidChangeEventException {
 
     if (!sourceType.equals(getSourceType(changeEvent))) {

@@ -15,6 +15,9 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
@@ -37,7 +40,6 @@ import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,6 +72,9 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
 
   // The source database type.
   private final String sourceType;
+
+  // Jackson Object mapper.
+  private transient ObjectMapper mapper;
 
   /* SpannerAccessor must be transient so that its value is not serialized at runtime. */
   private transient ExposedSpannerAccessor spannerAccessor;
@@ -109,6 +114,9 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   @Setup
   public void setup() {
     spannerAccessor = ExposedSpannerAccessor.create(spannerConfig);
+    mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+
   }
 
   /** Teardown function disconnects from the Cloud Spanner. */
@@ -129,7 +137,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
      * can be retried based on the exception type.
      */
     try {
-      JSONObject changeEvent = new JSONObject(msg.getPayload());
+      JsonNode changeEvent = mapper.readTree(msg.getPayload());
 
       ChangeEventContext changeEventContext =
           ChangeEventContextFactory.createChangeEventContext(

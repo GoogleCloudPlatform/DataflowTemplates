@@ -24,4 +24,8 @@ public class ChangeEventConvertorException extends Exception {
   public ChangeEventConvertorException(String message) {
     super(message);
   }
+
+  public ChangeEventConvertorException(String message, Exception e) {
+    super(message, e);
+  }
 }

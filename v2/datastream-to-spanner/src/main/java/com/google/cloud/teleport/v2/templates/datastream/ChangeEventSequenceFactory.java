@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates.datastream;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.spanner.TransactionContext;
-import org.json.JSONObject;
 
 /**
  * Factory classes for ChangeEventSequence classes which provides methods for 1) creating
@@ -27,9 +27,10 @@ public class ChangeEventSequenceFactory {
 
   private ChangeEventSequenceFactory() {}
 
-  private static String getSourceType(JSONObject changeEvent) throws InvalidChangeEventException {
+  private static String getSourceType(JsonNode changeEvent)
+      throws InvalidChangeEventException {
     try {
-      return changeEvent.getString(DatastreamConstants.EVENT_SOURCE_TYPE_KEY);
+      return changeEvent.get(DatastreamConstants.EVENT_SOURCE_TYPE_KEY).asText();
     } catch (Exception e) {
       throw new InvalidChangeEventException(e);
     }
@@ -42,14 +43,13 @@ public class ChangeEventSequenceFactory {
       ChangeEventContext changeEventContext)
       throws ChangeEventConvertorException, InvalidChangeEventException {
 
-    JSONObject changeEvent = changeEventContext.getChangeEvent();
-    String sourceType = getSourceType(changeEvent);
+    String sourceType = getSourceType(changeEventContext.getChangeEvent());
 
     // Create ChangeEventSequence from change event JSON.
     if (DatastreamConstants.MYSQL_SOURCE_TYPE.equals(sourceType)) {
-      return MySqlChangeEventSequence.createFromChangeEvent(changeEvent);
+      return MySqlChangeEventSequence.createFromChangeEvent(changeEventContext);
     } else if (DatastreamConstants.ORACLE_SOURCE_TYPE.equals(sourceType)) {
-      return OracleChangeEventSequence.createFromChangeEvent(changeEvent);
+      return OracleChangeEventSequence.createFromChangeEvent(changeEventContext);
     }
     throw new InvalidChangeEventException("Unsupported source database: " + sourceType);
   }
@@ -62,8 +62,7 @@ public class ChangeEventSequenceFactory {
       final TransactionContext transactionContext, final ChangeEventContext changeEventContext)
       throws ChangeEventSequenceCreationException, InvalidChangeEventException {
 
-    JSONObject changeEvent = changeEventContext.getChangeEvent();
-    String sourceType = getSourceType(changeEvent);
+    String sourceType = getSourceType(changeEventContext.getChangeEvent());
 
     if (DatastreamConstants.MYSQL_SOURCE_TYPE.equals(sourceType)) {
       return MySqlChangeEventSequence.createFromShadowTable(

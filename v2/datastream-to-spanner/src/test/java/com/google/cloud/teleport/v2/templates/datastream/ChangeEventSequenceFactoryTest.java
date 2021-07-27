@@ -23,6 +23,9 @@ import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionContext;
@@ -34,9 +37,9 @@ public final class ChangeEventSequenceFactoryTest {
 
   private final long eventTimestamp = 1615159728L;
 
-  ChangeEventContext getMockMySqlChangeEventContext(
-      boolean addMysqlPositionFields, boolean cdcEvent) {
-    // Create dummy mysql change event.
+  ChangeEventContext getMockMySqlChangeEventContext(boolean addMysqlPositionFields,
+      boolean cdcEvent) throws Exception {
+    //Create dummy mysql change event.
     JSONObject mysqlChangeEvent = new JSONObject();
     mysqlChangeEvent.put(
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.MYSQL_SOURCE_TYPE);
@@ -53,18 +56,22 @@ public final class ChangeEventSequenceFactoryTest {
       }
     }
 
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    JsonNode jsonNode = mapper.readTree(mysqlChangeEvent.toString());
+
     // Prepare mock ChangeEventContext.
     ChangeEventContext mockContext = mock(ChangeEventContext.class);
-    when(mockContext.getChangeEvent()).thenReturn(mysqlChangeEvent);
+    when(mockContext.getChangeEvent()).thenReturn(jsonNode);
     when(mockContext.getPrimaryKey()).thenReturn(Key.of("test"));
     when(mockContext.getShadowTable()).thenReturn("test");
 
     return mockContext;
   }
 
-  ChangeEventContext getMockOracleChangeEventContext(
-      boolean addOraclePositionFields, boolean cdcEvent) {
-    // Create dummy oracle change event.
+  ChangeEventContext getMockOracleChangeEventContext(boolean addOraclePositionFields,
+      boolean cdcEvent) throws Exception {
+    //Create dummy oracle change event.
     JSONObject oracleChangeEvent = new JSONObject();
     oracleChangeEvent.put(
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.ORACLE_SOURCE_TYPE);
@@ -78,10 +85,13 @@ public final class ChangeEventSequenceFactoryTest {
         oracleChangeEvent.put(DatastreamConstants.ORACLE_SCN_KEY, JSONObject.NULL);
       }
     }
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    JsonNode jsonNode = mapper.readTree(oracleChangeEvent.toString());
 
     // Prepare mock ChangeEventContext.
     ChangeEventContext mockContext = mock(ChangeEventContext.class);
-    when(mockContext.getChangeEvent()).thenReturn(oracleChangeEvent);
+    when(mockContext.getChangeEvent()).thenReturn(jsonNode);
     when(mockContext.getPrimaryKey()).thenReturn(Key.of("test"));
     when(mockContext.getShadowTable()).thenReturn("test");
 

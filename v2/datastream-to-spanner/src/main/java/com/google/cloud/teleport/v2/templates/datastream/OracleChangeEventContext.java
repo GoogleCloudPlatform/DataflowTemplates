@@ -15,10 +15,10 @@
  */
 package com.google.cloud.teleport.v2.templates.datastream;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
-import org.json.JSONObject;
 
 /**
  * Oracle implementation of ChangeEventContext that provides implementation of the
@@ -26,11 +26,11 @@ import org.json.JSONObject;
  */
 class OracleChangeEventContext extends ChangeEventContext {
 
-  public OracleChangeEventContext(JSONObject changeEvent, Ddl ddl, String shadowTablePrefix)
+  public OracleChangeEventContext(JsonNode changeEvent, Ddl ddl, String shadowTablePrefix)
       throws ChangeEventConvertorException, InvalidChangeEventException {
     this.changeEvent = changeEvent;
     this.shadowTablePrefix = shadowTablePrefix;
-    this.dataTable = changeEvent.getString(DatastreamConstants.EVENT_TABLE_NAME_KEY);
+    this.dataTable = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
     this.shadowTable = shadowTablePrefix + this.dataTable;
     convertChangeEventToMutation(ddl);
   }

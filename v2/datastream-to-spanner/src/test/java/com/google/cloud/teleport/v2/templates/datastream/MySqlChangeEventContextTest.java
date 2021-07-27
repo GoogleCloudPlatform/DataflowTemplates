@@ -20,9 +20,13 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
+import java.io.IOException;
 import java.util.Map;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -32,6 +36,12 @@ import org.junit.Test;
  * generation for mysql change events.
  */
 public final class MySqlChangeEventContextTest {
+
+  private JsonNode getJsonNode(String json) throws IOException {
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    return mapper.readTree(json);
+  }
 
   @Test
   public void canGenerateShadowTableMutation() throws Exception {
@@ -50,8 +60,8 @@ public final class MySqlChangeEventContextTest {
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.MYSQL_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        ChangeEventContextFactory.createChangeEventContext(
-            changeEvent, ddl, "shadow_", DatastreamConstants.MYSQL_SOURCE_TYPE);
+        ChangeEventContextFactory.createChangeEventContext(getJsonNode(changeEvent.toString()),
+            ddl, "shadow_", DatastreamConstants.MYSQL_SOURCE_TYPE);
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
 
@@ -88,8 +98,8 @@ public final class MySqlChangeEventContextTest {
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.MYSQL_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        ChangeEventContextFactory.createChangeEventContext(
-            changeEvent, ddl, "shadow_", DatastreamConstants.MYSQL_SOURCE_TYPE);
+        ChangeEventContextFactory.createChangeEventContext(getJsonNode(changeEvent.toString()),
+            ddl, "shadow_", DatastreamConstants.MYSQL_SOURCE_TYPE);
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
 
@@ -124,8 +134,8 @@ public final class MySqlChangeEventContextTest {
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.MYSQL_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        ChangeEventContextFactory.createChangeEventContext(
-            changeEvent, ddl, "shadow_", DatastreamConstants.MYSQL_SOURCE_TYPE);
+        ChangeEventContextFactory.createChangeEventContext(getJsonNode(changeEvent.toString()),
+            ddl, "shadow_", DatastreamConstants.MYSQL_SOURCE_TYPE);
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
 
