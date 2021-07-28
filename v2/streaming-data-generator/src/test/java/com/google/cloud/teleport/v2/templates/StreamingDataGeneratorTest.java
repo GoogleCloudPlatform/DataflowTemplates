@@ -166,7 +166,7 @@ public class StreamingDataGeneratorTest {
     // Arrange
     String schema =
         "{\n"
-            + "  \t\"payload\": {\n"
+            + "\t\"payload\": {\n"
             + "\t\t\"eventId\": \"{{put(\"eventId\",uuid())}}\",\n"
             + "\t\t\"eventTime\": {{put(\"eventTime\", timestamp())}},\n"
             + "\t\t\"username\": \"{{put(\"username \", username())}}\",\n"
@@ -176,12 +176,72 @@ public class StreamingDataGeneratorTest {
             + "\t\t\"teamavg\": {{put(\"teamavg\",float(100000, 10000000,\"%.7f\"))}},\n"
             + "\t\t\"completed\": {{bool()}}\n"
             + "\t},\n"
-            + "  \t\"attributes\": {\n"
+            + "\t\"attributes\": {\n"
             + "\t\t\"eventId\": \"{{get(\"eventId\")}}\",\n"
             + "\t\t\"eventTime\": {{get(\"eventTime\")}},\n"
             + "\t\t\"appId\": {{ integer(1, 10) }},\n"
             + "\t\t\"teamavg\": {{get(\"teamavg\")}}\n"
             + "\t}\n"
+            + "}";
+    File file = tempFolder.newFile();
+    writeToFile(file.getAbsolutePath(), schema);
+    StreamingDataGenerator.StreamingDataGeneratorOptions options =
+        getPipelineOptions(
+            new String[] {"--schemaLocation=" + file.getAbsolutePath(), "--topic=test"});
+
+    // Act
+    PCollection<PubsubMessage> results =
+        pipeline
+            .apply("CreateInput", Create.of(0L))
+            .apply(
+                "GenerateMessage",
+                ParDo.of(
+                    new StreamingDataGenerator.MessageGeneratorFn(options.getSchemaLocation())))
+            .apply(
+                "Generate JSON PubSub Messages",
+                ParDo.of(
+                    new StreamingDataGeneratorWriteToPubSub.JsonPubSubMessageFn(
+                        options.getSchemaLocation())));
+
+    // Assert
+    PAssert.that(results)
+        .satisfies(
+            input -> {
+              PubsubMessage message = input.iterator().next();
+
+              assertNotNull(message);
+              assertNotNull(message.getPayload());
+              assertEquals(4, message.getAttributeMap().size());
+
+              return null;
+            });
+
+    pipeline.run();
+  }
+
+  /** Tests generation of fake Json data message with attributes using schema with space indentation. */
+  @Test
+  public void testJsonMessageGenerator_WithAttributes_WithSpaceIndentation_returnsFakeMessageContainingAttributes()
+      throws IOException {
+    // Arrange
+    String schema =
+        "{\n"
+            + "  \"payload\": {\n"
+            + "    \"eventId\": \"{{put(\"eventId\",uuid())}}\",\n"
+            + "    \"eventTime\": {{put(\"eventTime\", timestamp())}},\n"
+            + "    \"username\": \"{{put(\"username \", username())}}\",\n"
+            + "    \"ipv4\": \"{{ipv4()}}\",\n"
+            + "    \"country\": \"{{country()}}\",\n"
+            + "    \"score\": {{ integer(0, 100) }},\n"
+            + "    \"teamavg\": {{put(\"teamavg\",float(100000, 10000000,\"%.7f\"))}},\n"
+            + "   \"completed\": {{bool()}}\n"
+            + "  },\n"
+            + "  \"attributes\": {\n"
+            + "    \"eventId\": \"{{get(\"eventId\")}}\",\n"
+            + "    \"eventTime\": {{get(\"eventTime\")}},\n"
+            + "    \"appId\": {{ integer(1, 10) }},\n"
+            + "    \"teamavg\": {{get(\"teamavg\")}}\n"
+            + "  }\n"
             + "}";
     File file = tempFolder.newFile();
     writeToFile(file.getAbsolutePath(), schema);
