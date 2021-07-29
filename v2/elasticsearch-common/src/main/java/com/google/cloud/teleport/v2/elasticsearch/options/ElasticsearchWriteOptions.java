@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.options;
 
-import com.google.cloud.teleport.v2.elasticsearch.utils.Dataset;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -42,23 +41,9 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
   void setWriteElasticsearchPassword(String writeElasticsearchPassword);
 
   @Description("The index toward which the requests will be issued, ex: my-index")
-  String getIndex();
+  String getWriteIndex();
 
-  void setIndex(String index);
-
-  @Description("The type of logs sent via Pub/Sub for which we have out of the box dashboard. " +
-          "Known log types values are audit, vpcflow, and firewall. " +
-          "If no known log type is detected, we default to pubsub")
-  @Default.Enum("PUBSUB")
-  Dataset getWriteDataset();
-
-  void setWriteDataset(Dataset writeDataset);
-
-  @Description("The namespace for dataset. Default is default")
-  @Default.String("default")
-  String getWriteNamespace();
-
-  void setWriteNamespace(String writeNamespace);
+  void setWriteIndex(String writeIndex);
 
   @Description("Batch size in number of documents. Default: 1000")
   @Default.Long(1000)

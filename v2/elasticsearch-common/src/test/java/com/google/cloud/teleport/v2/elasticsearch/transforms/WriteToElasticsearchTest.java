@@ -19,7 +19,6 @@ import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOpti
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -52,7 +51,6 @@ public class WriteToElasticsearchTest {
   }
 
   /** Tests {@link WriteToElasticsearch} throws an exception if a null index is provided. */
-  @Ignore
   @Test
   public void testNullType() {
 
@@ -85,6 +83,7 @@ public class WriteToElasticsearchTest {
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
     options.setConnectionUrl(",");
+    options.setWriteIndex("index");
     options.setWriteElasticsearchUsername("test");
     options.setWriteElasticsearchPassword("test");
 

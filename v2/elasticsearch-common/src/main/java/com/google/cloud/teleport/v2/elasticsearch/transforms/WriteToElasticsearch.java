@@ -20,13 +20,11 @@ import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Precondi
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
 import com.google.cloud.teleport.v2.elasticsearch.utils.ConnectionInformation;
-import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIndex;
 import java.util.Optional;
 import org.apache.beam.sdk.io.elasticsearch.ElasticsearchIO;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
-import org.apache.commons.lang.StringUtils;
 import org.joda.time.Duration;
 
 /**
@@ -35,8 +33,7 @@ import org.joda.time.Duration;
  *
  * <ul>
  *   <li>{@link ElasticsearchWriteOptions#getConnectionUrl()} - CloudId or URL.
- *   <li>{@link ElasticsearchWriteOptions#getWriteDataset()} ()} - Write dataset used to build index.
- *   <li>{@link ElasticsearchWriteOptions#getWriteNamespace()} ()} ()} - Write namespace used to build index
+ *   <li>{@link ElasticsearchWriteOptions#getWriteIndex()} ()} ()} ()} - Elasticsearch write index.
  *   <li>{@link ElasticsearchWriteOptions#getBatchSize()} - batch size in number of documents
  *       (Default:1000).
  *   <li>{@link ElasticsearchWriteOptions#getBatchSizeBytes()} - batch size in number of bytes
@@ -71,15 +68,11 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
   @Override
   public PDone expand(PCollection<String> jsonStrings) {
     ConnectionInformation connectionInformation = new ConnectionInformation(options().getConnectionUrl());
-    //Dataset and namespace used for PubSub only
-    String writeIndex = StringUtils.isNotBlank(options().getIndex())
-            ? options().getIndex()
-            : new ElasticsearchIndex(options().getWriteDataset(), options().getWriteNamespace()).getIndex();
 
     ElasticsearchIO.ConnectionConfiguration config =
         ElasticsearchIO.ConnectionConfiguration.create(
             new String[]{connectionInformation.getElasticsearchURL().toString()},
-            writeIndex,
+            options().getWriteIndex(),
             DOCUMENT_TYPE)
             .withUsername(options().getWriteElasticsearchUsername())
             .withPassword(options().getWriteElasticsearchPassword());
@@ -120,9 +113,7 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
       checkArgument(
               options().getWriteElasticsearchPassword() != null, "Elasticsearch password is required.");
 
-      checkArgument(options().getWriteDataset() != null, "Dataset should be one of audit, firewall or vpcflow.");
-
-      checkArgument(options().getWriteNamespace() != null, "Namespace is not valid and can't be empty.");
+      checkArgument(options().getWriteIndex() != null, "Elasticsearch index should not be null.");
 
       checkArgument(
           options().getBatchSize() > 0, "Batch size must be > 0. Got: " + options().getBatchSize());

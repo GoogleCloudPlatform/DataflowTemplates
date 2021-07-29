@@ -15,7 +15,9 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.options;
 
+import com.google.cloud.teleport.v2.elasticsearch.utils.Dataset;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.Validation;
 
@@ -38,6 +40,20 @@ public interface PubSubToElasticsearchOptions
   String getInputSubscription();
 
   void setInputSubscription(String inputSubscription);
+
+  @Description("The type of logs sent via Pub/Sub for which we have out of the box dashboard. " +
+          "Known log types values are audit, vpcflow, and firewall. " +
+          "If no known log type is detected, we default to pubsub")
+  @Default.Enum("PUBSUB")
+  Dataset getWriteDataset();
+
+  void setWriteDataset(Dataset writeDataset);
+
+  @Description("The namespace for dataset. Default is default")
+  @Default.String("default")
+  String getWriteNamespace();
+
+  void setWriteNamespace(String writeNamespace);
 
   @Description(
       "The dead-letter table to output to within BigQuery in <project-id>:<dataset>.<table> "

@@ -19,6 +19,7 @@ import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.elasticsearch.options.PubSubToElasticsearchOptions;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.PubSubMessageToJsonDocument;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
+import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIndex;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -80,6 +81,10 @@ public class PubSubToElasticsearch {
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()
             .as(PubSubToElasticsearchOptions.class);
+
+    pubSubToElasticsearchOptions.setWriteIndex(
+            new ElasticsearchIndex(pubSubToElasticsearchOptions.getWriteDataset(),
+            pubSubToElasticsearchOptions.getWriteNamespace()).getIndex());
 
     run(pubSubToElasticsearchOptions);
   }
