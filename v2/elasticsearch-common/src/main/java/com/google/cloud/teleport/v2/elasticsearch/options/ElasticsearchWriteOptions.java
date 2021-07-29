@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.options;
 
+import com.google.cloud.teleport.v2.elasticsearch.utils.Dataset;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -22,39 +23,39 @@ import org.apache.beam.sdk.options.Validation;
 
 /** The {@link ElasticsearchWriteOptions} with the common write options for Elasticsearch. * */
 public interface ElasticsearchWriteOptions extends PipelineOptions {
-  @Description(
-      "Comma separated list of Elasticsearch nodes to connect to, ex: http://my-node1,http://my-node2")
+  @Description("Elasticsearch URL in format http://hostname:[port] or Base64 encoded CloudId")
   @Validation.Required
-  String getTargetNodeAddresses();
+  String getConnectionUrl();
 
-  void setTargetNodeAddresses(String targetNodeAddresses);
+  void setConnectionUrl(String connectionUrl);
 
-  @Description("The document type toward which the requests will be issued, ex: my-document-type")
-  @Default.String("_doc")
-  String getWriteDocumentType();
-
-  void setWriteDocumentType(String writeDocumentType);
-
-  @Description("Write username for elasticsearch endpoint")
+  @Description("Username for Elasticsearch endpoint")
   @Validation.Required
   String getWriteElasticsearchUsername();
 
   void setWriteElasticsearchUsername(String writeElasticsearchUsername);
 
-  @Description("Write password for elasticsearch endpoint")
+  @Description("Password for Elasticsearch endpoint")
   @Validation.Required
   String getWriteElasticsearchPassword();
 
   void setWriteElasticsearchPassword(String writeElasticsearchPassword);
 
-  @Description("Write Dataset used to build index in format: logs-gcp.{Dataset}-{Namespace}")
-  @Validation.Required
-  String getWriteDataset();
+  @Description("The index toward which the requests will be issued, ex: my-index")
+  String getIndex();
 
-  void setWriteDataset(String writeDataset);
+  void setIndex(String index);
 
-  @Description("Write Namespace used to build index in format: logs-gcp.{Dataset}-{Namespace}")
-  @Validation.Required
+  @Description("The type of logs sent via Pub/Sub for which we have out of the box dashboard. " +
+          "Known log types values are audit, vpcflow, and firewall. " +
+          "If no known log type is detected, we default to pubsub")
+  @Default.Enum("PUBSUB")
+  Dataset getWriteDataset();
+
+  void setWriteDataset(Dataset writeDataset);
+
+  @Description("The namespace for dataset. Default is default")
+  @Default.String("default")
   String getWriteNamespace();
 
   void setWriteNamespace(String writeNamespace);

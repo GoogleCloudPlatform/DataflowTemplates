@@ -43,10 +43,8 @@ export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_MODULE}-command-spec.json
 export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
 
 export INPUT_FILE_SPEC=<my-file-spec>
-export TARGET_NODE_ADDRESSES=<url-or-cloud_id>
-export WRITE_DATASET=<write-dataset>
-export WRITE_NAMESPACE=<write-namespace>
-export WRITE_DOCUMENT_TYPE=<my-type>
+export CONNECTION_URL=<url-or-cloud_id>
+export WRITE_INDEX=<my-index>
 export HEADERS=false
 export DEADLETTER_TABLE=<my-project:my-dataset.my-deadletter-table>
 export DELIMITER=","
@@ -84,16 +82,9 @@ echo '{
               "isOptional":false
           },
           {
-              "name":"targetNodeAddresses",
-              "label":"Comma separated list of Elasticsearch target nodes",
-              "helpText":"Comma separated list of Elasticsearch target nodes to connect to, ex: http://my-node1,http://my-node2",
-              "paramType":"TEXT",
-              "isOptional":false
-          },
-          {
-              "name":"writeDocumentType",
-              "label":"The write document type",
-              "helpText":"The write document type toward which the requests will be issued, ex: my-document-type",
+              "name":"connectionUrl",
+              "label":"Elasticsearch URL in format http://hostname:[port] or Base64 encoded CloudId",
+              "helpText":"Elasticsearch URL in format http://hostname:[port] or Base64 encoded CloudId",
               "paramType":"TEXT",
               "isOptional":false
           },
@@ -112,16 +103,9 @@ echo '{
               "isOptional":false
           },
           {
-              "name":"writeDataset",
-              "label":"Write Dataset used to build index",
-              "helpText":"Write Dataset used to build index in format: logs-gcp.{Dataset}-{Namespace}",
-              "paramType":"TEXT",
-              "isOptional":false
-          },
-          {
-              "name":"writeNamespace",
-              "label":"Write Namespace used to build index",
-              "helpText":"Write Namespace used to build index in format: logs-gcp.{Dataset}-{Namespace}",
+              "name":"writeIndex",
+              "label":"Elasticsearch write index",
+              "helpText":"The write index toward which the requests will be issued, ex: my-index",
               "paramType":"TEXT",
               "isOptional":false
           },
@@ -267,10 +251,8 @@ mvn test
 
 The template requires the following parameters:
 * inputFileSpec: Pattern to where data lives, ex: gs://mybucket/somepath/*.csv
-* targetNodeAddresses: URL to Elasticsearch node or CloudId
-* writeDataset: The write Dataset used to build index in format: logs-gcp.{Dataset}-{Namespace}
-* writeNamespace: The write Namespace used to build index in format: logs-gcp.{Dataset}-{Namespace}
-* writeDocumentType: The write document type toward which the requests will be issued, ex: my-document-type
+* connectionUrl: Elasticsearch URL in format http://hostname:[port] or Base64 encoded CloudId
+* writeIndex: The write index toward which the requests will be issued, ex: my-index
 * containsHeaders: Set to true if file(s) contain headers.
 * deadletterTable: Deadletter table in BigQuery for failed inserts in form: project-id:dataset.table
 * delimiter: Delimiting character in CSV file(s). Default: use delimiter found in csvFormat
@@ -297,5 +279,5 @@ export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud beta dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters inputFileSpec=${INPUT_FILE_SPEC},targetNodeAddresses=${TARGET_NODE_ADDRESSES},writeDataset=${WRITE_DATASET},writeNamespace=${WRITE_NAMESPACE},writeDocumentType=${WRITE_DOCUMENT_TYPE},writeElasticsearchUsername=${WRITE_ELASTICSEARCH_USERNAME},writeElasticsearchPassword=${WRITE_ELASTICSEARCH_PASSWORD},containsHeaders=${HEADERS},deadletterTable=${DEADLETTER_TABLE},delimiter=${DELIMITER}
+        --parameters inputFileSpec=${INPUT_FILE_SPEC},connectionUrl=${CONNECTION_URL},writeIndex=${WRITE_INDEX},writeDocumentType=${WRITE_DOCUMENT_TYPE},writeElasticsearchUsername=${WRITE_ELASTICSEARCH_USERNAME},writeElasticsearchPassword=${WRITE_ELASTICSEARCH_PASSWORD},containsHeaders=${HEADERS},deadletterTable=${DEADLETTER_TABLE},delimiter=${DELIMITER}
 ```

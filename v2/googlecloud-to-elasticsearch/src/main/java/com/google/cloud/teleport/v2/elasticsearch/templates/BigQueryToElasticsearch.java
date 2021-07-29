@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.elasticsearch.templates;
 
 import com.google.cloud.teleport.v2.elasticsearch.options.BigQueryToElasticsearchOptions;
-import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.ReadBigQuery;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.TableRowToJsonFn;
@@ -85,7 +84,7 @@ public class BigQueryToElasticsearch {
         .apply(
             "WriteToElasticsearch",
             WriteToElasticsearch.newBuilder()
-                .setOptions(options.as(ElasticsearchWriteOptions.class))
+                .setOptions(options.as(BigQueryToElasticsearchOptions.class))
                 .build());
 
     return pipeline.run();

@@ -19,6 +19,7 @@ import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOpti
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -30,21 +31,18 @@ public class WriteToElasticsearchTest {
 
   @Rule public ExpectedException exceptionRule = ExpectedException.none();
 
-  /** Tests {@link WriteToElasticsearch} throws an exception if a null node address is provided. */
+  /** Tests {@link WriteToElasticsearch} throws an exception if a null ConnectionInformation is provided. */
   @Test
-  public void testNullNodeAddresses() {
+  public void testNullConnectionInformation() {
 
     exceptionRule.expect(IllegalArgumentException.class);
 
     ElasticsearchWriteOptions options =
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
-    options.setTargetNodeAddresses(null);
-    options.setWriteDataset("pubsub");
-    options.setWriteNamespace("default");
+    options.setConnectionUrl(null);
     options.setWriteElasticsearchUsername("test");
     options.setWriteElasticsearchPassword("test");
-    options.setWriteDocumentType("testType");
 
     pipeline
         .apply("CreateInput", Create.of("test"))
@@ -54,6 +52,7 @@ public class WriteToElasticsearchTest {
   }
 
   /** Tests {@link WriteToElasticsearch} throws an exception if a null index is provided. */
+  @Ignore
   @Test
   public void testNullType() {
 
@@ -62,33 +61,9 @@ public class WriteToElasticsearchTest {
     ElasticsearchWriteOptions options =
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
-    options.setTargetNodeAddresses("http://my-node1");
-    options.setWriteDataset("pubsub");
-    options.setWriteNamespace("default");
+    options.setConnectionUrl("https://host.domain");
     options.setWriteElasticsearchUsername("test");
     options.setWriteElasticsearchPassword("test");
-    options.setWriteDocumentType(null);
-
-    pipeline
-        .apply("CreateInput", Create.of("test"))
-        .apply(WriteToElasticsearch.newBuilder().setOptions(options).build());
-
-    pipeline.run();
-  }
-
-  /** Tests {@link WriteToElasticsearch} throws an exception if a null connectionInformation is provided. */
-  @Test
-  public void testNullConnectionInformation() {
-
-    exceptionRule.expect(IllegalArgumentException.class);
-
-    ElasticsearchWriteOptions options =
-        PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
-
-    options.setTargetNodeAddresses("http://my-node1");
-    options.setWriteElasticsearchUsername("test");
-    options.setWriteElasticsearchPassword("test");
-    options.setWriteDocumentType("testType");
 
     pipeline
         .apply("CreateInput", Create.of("test"))
@@ -98,23 +73,20 @@ public class WriteToElasticsearchTest {
   }
 
   /**
-   * Tests that {@link WriteToElasticsearch} throws an exception if an invalid node address is
+   * Tests that {@link WriteToElasticsearch} throws an exception if an invalid ConnectionInformation is
    * provided.
    */
   @Test
-  public void testInvalidNodeAddresses() {
+  public void testInvalidConnectionInformation() {
 
     exceptionRule.expect(IllegalStateException.class);
 
     ElasticsearchWriteOptions options =
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
-    options.setTargetNodeAddresses(",");
-    options.setWriteDataset("pubsub");
-    options.setWriteNamespace("default");
+    options.setConnectionUrl(",");
     options.setWriteElasticsearchUsername("test");
     options.setWriteElasticsearchPassword("test");
-    options.setWriteDocumentType("testType");
 
     pipeline
         .apply("CreateInput", Create.of("test"))
@@ -137,12 +109,9 @@ public class WriteToElasticsearchTest {
     ElasticsearchWriteOptions options =
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
-    options.setTargetNodeAddresses("http://my-node1");
-    options.setWriteDataset("pubsub");
-    options.setWriteNamespace("default");
+    options.setConnectionUrl("https://host.domain");
     options.setWriteElasticsearchUsername("test");
     options.setWriteElasticsearchPassword("test");
-    options.setWriteDocumentType("testDoc");
     options.setMaxRetryDuration(500L);
     options.setMaxRetryAttempts(null);
 
@@ -167,12 +136,9 @@ public class WriteToElasticsearchTest {
     ElasticsearchWriteOptions options =
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
-    options.setTargetNodeAddresses("http://my-node1");
-    options.setWriteDataset("pubsub");
-    options.setWriteNamespace("default");
+    options.setConnectionUrl("https://host.domain");
     options.setWriteElasticsearchUsername("test");
     options.setWriteElasticsearchPassword("test");
-    options.setWriteDocumentType("testDoc");
     options.setMaxRetryDuration(null);
     options.setMaxRetryAttempts(3);
 

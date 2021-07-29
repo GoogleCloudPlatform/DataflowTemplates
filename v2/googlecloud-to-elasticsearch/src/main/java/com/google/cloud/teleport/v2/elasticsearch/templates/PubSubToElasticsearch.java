@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.elasticsearch.templates;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
-import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
 import com.google.cloud.teleport.v2.elasticsearch.options.PubSubToElasticsearchOptions;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.PubSubMessageToJsonDocument;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
@@ -143,7 +142,7 @@ public class PubSubToElasticsearch {
         .apply(
             "WriteToElasticsearch",
             WriteToElasticsearch.newBuilder()
-                .setOptions(options.as(ElasticsearchWriteOptions.class))
+                .setOptions(options.as(PubSubToElasticsearchOptions.class))
                 .build());
 
     /*
