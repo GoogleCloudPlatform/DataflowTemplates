@@ -141,7 +141,8 @@ public class ExportTimestampTest {
 
     // Export the database and note the timestamp ts1
     spannerServer.createDatabase(destDbPrefix + chkpt1, Collections.emptyList());
-    exportAndImportDbAtTime(sourceDb, destDbPrefix + chkpt1, chkpt1, "", "",
+    exportAndImportDbAtTime(sourceDb, destDbPrefix + chkpt1, chkpt1,
+                            "", /* ts = "" */
                             exportPipeline1, importPipeline1);
     String chkPt1Ts = getCurrentTimestamp();
 
@@ -155,7 +156,8 @@ public class ExportTimestampTest {
     // Add more records to the table, export the database and note the timestamp ts3
     spannerServer.populateRandomData(sourceDb, ddl, 100);
     spannerServer.createDatabase(destDbPrefix + chkpt3, Collections.emptyList());
-    exportAndImportDbAtTime(sourceDb, destDbPrefix + chkpt3, chkpt3, "", "",
+    exportAndImportDbAtTime(sourceDb, destDbPrefix + chkpt3, chkpt3,
+                            "", /* ts = "" */
                             exportPipeline2, importPipeline2);
     String chkPt3Ts = getCurrentTimestamp();
 
@@ -163,18 +165,18 @@ public class ExportTimestampTest {
     spannerServer.createDatabase(destDbPrefix + chkPt1WithTs, Collections.emptyList());
     exportAndImportDbAtTime(sourceDb, destDbPrefix + chkPt1WithTs,
                             chkPt1WithTs, chkPt1Ts,
-                            "", exportPipeline3, importPipeline3);
+                            exportPipeline3, importPipeline3);
 
     // Export timestamp with timestamp ts2
     spannerServer.createDatabase(destDbPrefix + chkPt2WithTs, Collections.emptyList());
     exportAndImportDbAtTime(sourceDb, destDbPrefix + chkPt2WithTs,
                             chkPt2WithTs, chkPt2Ts,
-                            "", exportPipeline4, importPipeline4);
+                            exportPipeline4, importPipeline4);
 
     // Export timestamp with timestamp ts3
     spannerServer.createDatabase(destDbPrefix + chkPt3WithTs, Collections.emptyList());
     exportAndImportDbAtTime(sourceDb, destDbPrefix + chkPt3WithTs, chkPt3WithTs, chkPt3Ts,
-                            "", exportPipeline5, importPipeline5);
+                            exportPipeline5, importPipeline5);
 
     // Compare databases exported at ts1 and exported later specifying timestamp ts1
     compareDbs(destDbPrefix + chkpt1, destDbPrefix + chkPt1WithTs, comparePipeline1);
@@ -185,7 +187,7 @@ public class ExportTimestampTest {
   }
 
   private void exportAndImportDbAtTime(String sourceDb, String destDb,
-                                       String jobIdName, String ts, String tableNames,
+                                       String jobIdName, String ts,
                                        TestPipeline exportPipeline,
                                        TestPipeline importPipeline) {
     ValueProvider.StaticValueProvider<String> destination = ValueProvider.StaticValueProvider
@@ -196,12 +198,15 @@ public class ExportTimestampTest {
         .of(tmpDir + "/" + jobIdName);
     ValueProvider.StaticValueProvider<String> timestamp = ValueProvider.StaticValueProvider.of(ts);
     ValueProvider.StaticValueProvider<String> tables = ValueProvider.StaticValueProvider
-        .of(tableNames);
+        .of("");
+    ValueProvider.StaticValueProvider<Boolean> exportRelatedTables =
+        ValueProvider.StaticValueProvider.of(false);
     ValueProvider.StaticValueProvider<Boolean> exportAsLogicalType =
         ValueProvider.StaticValueProvider.of(false);
     SpannerConfig sourceConfig = spannerServer.getSpannerConfig(sourceDb);
     exportPipeline.apply("Export", new ExportTransform(sourceConfig, destination,
                                                        jobId, timestamp, tables,
+                                                       exportRelatedTables,
                                                        exportAsLogicalType));
     PipelineResult exportResult = exportPipeline.run();
     exportResult.waitUntilFinish();

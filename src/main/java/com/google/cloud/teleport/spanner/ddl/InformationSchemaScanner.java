@@ -69,7 +69,10 @@ public class InformationSchemaScanner {
       ImmutableList.Builder<String> tableForeignKeys = ImmutableList.builder();
       for (Map.Entry<String, ForeignKey.Builder> entry : tableEntry.getValue().entrySet()) {
         ForeignKey.Builder foreignKeyBuilder = entry.getValue();
-        tableForeignKeys.add(foreignKeyBuilder.build().prettyPrint());
+        ForeignKey fkBuilder = foreignKeyBuilder.build();
+        // Add the table and referenced table to the referencedTables TreeMultiMap of the ddl
+        builder.addReferencedTable(fkBuilder.table(), fkBuilder.referencedTable());
+        tableForeignKeys.add(fkBuilder.prettyPrint());
       }
       builder.createTable(tableName).foreignKeys(tableForeignKeys.build()).endTable();
     }

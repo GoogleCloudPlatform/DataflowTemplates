@@ -46,16 +46,20 @@ public class Ddl implements Serializable {
   private ImmutableSortedMap<String, Table> tables;
   private ImmutableSortedMap<String, View> views;
   private TreeMultimap<String, String> parents;
+  // This is only populated by InformationSchemaScanner and not while reading from AVRO files.
+  private TreeMultimap<String, String> referencedTables;
   private final ImmutableList<Export.DatabaseOption> databaseOptions;
 
   private Ddl(
       ImmutableSortedMap<String, Table> tables,
       ImmutableSortedMap<String, View> views,
       TreeMultimap<String, String> parents,
+      TreeMultimap<String, String> referencedTables,
       ImmutableList<Export.DatabaseOption> databaseOptions) {
     this.tables = tables;
     this.views = views;
     this.parents = parents;
+    this.referencedTables = referencedTables;
     this.databaseOptions = databaseOptions;
   }
 
@@ -83,6 +87,28 @@ public class Ddl implements Serializable {
   private NavigableSet<String> childTableNames(String table) {
     return parents.get(table.toLowerCase());
   }
+
+  public Collection<Table> allReferencedTables(String table) {
+    return Collections2.transform(
+        referencedTableNames(table),
+        new Function<String, Table>() {
+
+          @Nullable
+          @Override
+          public Table apply(@Nullable String input) {
+            return table(input);
+          }
+        });
+  }
+
+  private NavigableSet<String> referencedTableNames(String table) {
+    return referencedTables.get(table.toLowerCase());
+  }
+
+  public void addNewReferencedTable(String table, String referencedTable) {
+    referencedTables.put(table.toLowerCase(), referencedTable.toLowerCase());
+  }
+
 
   public Table table(String tableName) {
     return tables.get(tableName.toLowerCase());
@@ -265,6 +291,7 @@ public class Ddl implements Serializable {
     private Map<String, Table> tables = Maps.newLinkedHashMap();
     private Map<String, View> views = Maps.newLinkedHashMap();
     private TreeMultimap<String, String> parents = TreeMultimap.create();
+    private TreeMultimap<String, String> referencedTables = TreeMultimap.create();
     private ImmutableList<Export.DatabaseOption> databaseOptions = ImmutableList.of();
 
     public Table.Builder createTable(String name) {
@@ -281,6 +308,10 @@ public class Ddl implements Serializable {
       String parent =
           table.interleaveInParent() == null ? ROOT : table.interleaveInParent().toLowerCase();
       parents.put(parent, name);
+    }
+
+    public void addReferencedTable(String table, String referencedTable) {
+      referencedTables.put(table.toLowerCase(), referencedTable.toLowerCase());
     }
 
     public Collection<Table> tables() {
@@ -327,6 +358,7 @@ public class Ddl implements Serializable {
           ImmutableSortedMap.copyOf(tables),
           ImmutableSortedMap.copyOf(views),
           parents,
+          referencedTables,
           databaseOptions);
     }
   }
@@ -336,6 +368,7 @@ public class Ddl implements Serializable {
     builder.tables.putAll(tables);
     builder.views.putAll(views);
     builder.parents.putAll(parents);
+    builder.referencedTables.putAll(referencedTables);
     builder.databaseOptions = databaseOptions;
     return builder;
   }
@@ -357,6 +390,10 @@ public class Ddl implements Serializable {
     if (parents != null ? !parents.equals(ddl.parents) : ddl.parents != null) {
       return false;
     }
+    if (referencedTables != null ? !referencedTables.equals(ddl.referencedTables)
+            : ddl.referencedTables != null) {
+      return false;
+    }
     if (views != null ? !views.equals(ddl.views) : ddl.views != null) {
       return false;
     }
@@ -367,6 +404,7 @@ public class Ddl implements Serializable {
   public int hashCode() {
     int result = tables != null ? tables.hashCode() : 0;
     result = 31 * result + (parents != null ? parents.hashCode() : 0);
+    result = 31 * result + (referencedTables != null ? referencedTables.hashCode() : 0);
     result = 31 * result + (views != null ? views.hashCode() : 0);
     result = 31 * result + (databaseOptions != null ? databaseOptions.hashCode() : 0);
     return result;

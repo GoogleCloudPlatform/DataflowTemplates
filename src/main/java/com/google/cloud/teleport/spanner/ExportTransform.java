@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.spanner;
 
+import static com.google.cloud.teleport.spanner.SpannerTableFilter.getFilteredTables;
+
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.spanner.ExportProtos.Export;
@@ -44,6 +46,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.file.DataFileWriter;
@@ -122,6 +125,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
   private final ValueProvider<String> testJobId;
   private final ValueProvider<String> snapshotTime;
   private final ValueProvider<String> tableNames;
+  private final ValueProvider<Boolean> exportRelatedTables;
   private final ValueProvider<Boolean> shouldExportTimestampAsLogicalType;
 
   public ExportTransform(
@@ -134,6 +138,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
         testJobId,
         /*snapshotTime=*/ ValueProvider.StaticValueProvider.of(""),
         /*tableNames=*/ ValueProvider.StaticValueProvider.of(""),
+        /*exportRelatedTables=*/ ValueProvider.StaticValueProvider.of(false),
         /*shouldExportTimestampAsLogicalType=*/ValueProvider.StaticValueProvider.of(false));
   }
 
@@ -143,12 +148,14 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
       ValueProvider<String> testJobId,
       ValueProvider<String> snapshotTime,
       ValueProvider<String> tableNames,
+      ValueProvider<Boolean> exportRelatedTables,
       ValueProvider<Boolean> shouldExportTimestampAsLogicalType) {
     this.spannerConfig = spannerConfig;
     this.outputDir = outputDir;
     this.testJobId = testJobId;
     this.snapshotTime = snapshotTime;
     this.tableNames = tableNames;
+    this.exportRelatedTables = exportRelatedTables;
     this.shouldExportTimestampAsLogicalType = shouldExportTimestampAsLogicalType;
   }
 
@@ -178,6 +185,43 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
     PCollection<Ddl> ddl =
         p.apply("Read Information Schema", new ReadInformationSchema(spannerConfig, tx));
+
+    PCollection<Ddl> exportState =
+        ddl.apply(
+            "Check export conditions",
+            ParDo.of(
+                new DoFn<Ddl, Ddl>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) throws Exception {
+                    Ddl ddl = c.element();
+                    List<String> tablesList = Collections.emptyList();
+
+                    // If the user provides a comma-separated list of strings, parse it into a List
+                    if (!tableNames.get().trim().isEmpty()) {
+                      tablesList = Arrays.asList(tableNames.get().split(",\\s*"));
+                    }
+
+                    List<String> filteredTables =
+                        getFilteredTables(ddl, tablesList).stream()
+                            .map(t -> t.name())
+                            .collect(Collectors.toList());
+
+                    // If user has specified a list of tables without including required
+                    // related tables, and not explicitly set shouldExportRelatedTables,
+                    // throw an exception.
+                    if (tablesList.size() != 0
+                        && !(tablesList.equals(filteredTables))
+                        && !exportRelatedTables.get()) {
+                      throw new Exception(
+                          "Attempted to export table(s) requiring parent and/or foreign keys tables"
+                              + " without setting the shouldExportRelatedTables parameter. Set"
+                              + " --shouldExportRelatedTables=true to export all necessary"
+                              + " tables.");
+                    }
+                    c.output(ddl);
+                  }
+                }));
     PCollection<ReadOperation> tables =
         ddl.apply("Build table read operations",
             new BuildReadFromTableOperations(tableNames));

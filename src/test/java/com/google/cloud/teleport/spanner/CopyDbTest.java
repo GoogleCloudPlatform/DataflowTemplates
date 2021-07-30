@@ -140,6 +140,7 @@ public class CopyDbTest {
         destDbPrefix + fullExportChkpt,
         fullExportChkpt,
         "",
+        /* relatedTables =*/ false,
         exportPipeline,
         importPipeline);
 
@@ -195,6 +196,7 @@ public class CopyDbTest {
         destDbPrefix + usersChkpt,
         usersChkpt,
         usersTable,
+        /* relatedTables =*/ false,
         exportPipeline,
         importPipeline);
 
@@ -255,6 +257,7 @@ public class CopyDbTest {
         destDbPrefix + multiTableChkpt,
         multiTableChkpt,
         usersTable + "," + allTypesTable,
+        /* relatedTables =*/ false,
         exportPipeline,
         importPipeline);
 
@@ -323,6 +326,7 @@ public class CopyDbTest {
         destDbPrefix + emptyChkpt,
         emptyChkpt,
         emptyTable,
+        /* relatedTables =*/ false,
         exportPipeline,
         importPipeline);
 
@@ -585,6 +589,7 @@ public class CopyDbTest {
 
   private void exportAndImportDb(String sourceDb, String destDb,
                                        String jobIdName, String tableNames,
+                                       Boolean relatedTables,
                                        TestPipeline exportPipeline,
                                        TestPipeline importPipeline) {
     String tmpDirPath = tmpDir.getRoot().getAbsolutePath();
@@ -597,11 +602,14 @@ public class CopyDbTest {
     ValueProvider.StaticValueProvider<String> timestamp = ValueProvider.StaticValueProvider.of("");
     ValueProvider.StaticValueProvider<String> tables = ValueProvider.StaticValueProvider
         .of(tableNames);
+    ValueProvider.StaticValueProvider<Boolean> exportRelatedTables =
+        ValueProvider.StaticValueProvider.of(relatedTables);
     ValueProvider.StaticValueProvider<Boolean> exportAsLogicalType =
         ValueProvider.StaticValueProvider.of(false);
     SpannerConfig sourceConfig = spannerServer.getSpannerConfig(sourceDb);
     exportPipeline.apply("Export", new ExportTransform(sourceConfig, destination,
                                                        jobId, timestamp, tables,
+                                                       exportRelatedTables,
                                                        exportAsLogicalType));
     PipelineResult exportResult = exportPipeline.run();
     exportResult.waitUntilFinish();
