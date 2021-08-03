@@ -40,8 +40,8 @@ public class WriteToElasticsearchTest {
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
     options.setConnectionUrl(null);
-    options.setWriteElasticsearchUsername("test");
-    options.setWriteElasticsearchPassword("test");
+    options.setElasticsearchUsername("test");
+    options.setElasticsearchPassword("test");
 
     pipeline
         .apply("CreateInput", Create.of("test"))
@@ -60,8 +60,8 @@ public class WriteToElasticsearchTest {
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
     options.setConnectionUrl("https://host.domain");
-    options.setWriteElasticsearchUsername("test");
-    options.setWriteElasticsearchPassword("test");
+    options.setElasticsearchUsername("test");
+    options.setElasticsearchPassword("test");
 
     pipeline
         .apply("CreateInput", Create.of("test"))
@@ -83,9 +83,9 @@ public class WriteToElasticsearchTest {
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
     options.setConnectionUrl(",");
-    options.setWriteIndex("index");
-    options.setWriteElasticsearchUsername("test");
-    options.setWriteElasticsearchPassword("test");
+    options.setIndex("index");
+    options.setElasticsearchUsername("test");
+    options.setElasticsearchPassword("test");
 
     pipeline
         .apply("CreateInput", Create.of("test"))
@@ -109,8 +109,8 @@ public class WriteToElasticsearchTest {
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
     options.setConnectionUrl("https://host.domain");
-    options.setWriteElasticsearchUsername("test");
-    options.setWriteElasticsearchPassword("test");
+    options.setElasticsearchUsername("test");
+    options.setElasticsearchPassword("test");
     options.setMaxRetryDuration(500L);
     options.setMaxRetryAttempts(null);
 
@@ -136,8 +136,8 @@ public class WriteToElasticsearchTest {
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
     options.setConnectionUrl("https://host.domain");
-    options.setWriteElasticsearchUsername("test");
-    options.setWriteElasticsearchPassword("test");
+    options.setElasticsearchUsername("test");
+    options.setElasticsearchPassword("test");
     options.setMaxRetryDuration(null);
     options.setMaxRetryAttempts(3);
 

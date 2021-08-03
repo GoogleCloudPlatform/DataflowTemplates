@@ -30,20 +30,20 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   @Description("Username for Elasticsearch endpoint")
   @Validation.Required
-  String getWriteElasticsearchUsername();
+  String getElasticsearchUsername();
 
-  void setWriteElasticsearchUsername(String writeElasticsearchUsername);
+  void setElasticsearchUsername(String elasticsearchUsername);
 
   @Description("Password for Elasticsearch endpoint")
   @Validation.Required
-  String getWriteElasticsearchPassword();
+  String getElasticsearchPassword();
 
-  void setWriteElasticsearchPassword(String writeElasticsearchPassword);
+  void setElasticsearchPassword(String elasticsearchPassword);
 
   @Description("The index toward which the requests will be issued, ex: my-index")
-  String getWriteIndex();
+  String getIndex();
 
-  void setWriteIndex(String writeIndex);
+  void setIndex(String index);
 
   @Description("Batch size in number of documents. Default: 1000")
   @Default.Long(1000)
@@ -67,10 +67,4 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
   Long getMaxRetryDuration();
 
   void setMaxRetryDuration(Long maxRetryDuration);
-
-  @Description("Set to true to issue partial updates. Default: false")
-  @Default.Boolean(false)
-  Boolean getUsePartialUpdate();
-
-  void setUsePartialUpdate(Boolean usePartialUpdates);
 }

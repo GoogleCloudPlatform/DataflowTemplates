@@ -44,12 +44,12 @@ export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.j
 
 export INPUT_FILE_SPEC=<my-file-spec>
 export CONNECTION_URL=<url-or-cloud_id>
-export WRITE_INDEX=<my-index>
+export INDEX=<my-index>
 export HEADERS=false
 export DEADLETTER_TABLE=<my-project:my-dataset.my-deadletter-table>
 export DELIMITER=","
-export WRITE_ELASTICSEARCH_USERNAME=<write-username>
-export WRITE_ELASTICSEARCH_PASSWORD=<write-password>
+export ELASTICSEARCH_USERNAME=<username>
+export ELASTICSEARCH_PASSWORD=<password>
 
 gcloud config set project ${PROJECT}
 ```
@@ -83,29 +83,29 @@ echo '{
           },
           {
               "name":"connectionUrl",
-              "label":"Elasticsearch URL in format http://hostname:[port] or Base64 encoded CloudId",
-              "helpText":"Elasticsearch URL in format http://hostname:[port] or Base64 encoded CloudId",
+              "label":"Elasticsearch URL in the format https://hostname:[port] or specify CloudID if using Elastic Cloud",
+              "helpText":"Elasticsearch URL in the format https://hostname:[port] or specify CloudID if using Elastic Cloud",
               "paramType":"TEXT",
               "isOptional":false
           },
           {
-              "name":"writeElasticsearchUsername",
-              "label":"Write Elasticsearch username for elasticsearch endpoint",
-              "helpText":"Write Elasticsearch username for elasticsearch endpoint",
+              "name":"elasticsearchUsername",
+              "label":"Username for Elasticsearch endpoint",
+              "helpText":"Username for Elasticsearch endpoint",
               "paramType":"TEXT",
               "isOptional":false
           },
           {
-              "name":"writeElasticsearchPassword",
-              "label":"Write Elasticsearch password for elasticsearch endpoint",
-              "helpText":"Write Elasticsearch password for elasticsearch endpoint",
+              "name":"elasticsearchPassword",
+              "label":"Password for Elasticsearch endpoint",
+              "helpText":"Password for Elasticsearch endpoint",
               "paramType":"TEXT",
               "isOptional":false
           },
           {
-              "name":"writeIndex",
-              "label":"Elasticsearch write index",
-              "helpText":"The write index toward which the requests will be issued, ex: my-index",
+              "name":"index",
+              "label":"Elasticsearch index",
+              "helpText":"The index toward which the requests will be issued, ex: my-index",
               "paramType":"TEXT",
               "isOptional":false
           },
@@ -201,13 +201,6 @@ echo '{
               "isOptional":true
           },
           {
-              "name":"usePartialUpdates",
-              "label":"Set to true to issue partial updates",
-              "helpText":"Set to true to issue partial updates. Default: false",
-              "paramType":"TEXT",
-              "isOptional":true
-          },
-          {
               "name":"autoscalingAlgorithm","label":"Autoscaling algorithm to use",
               "helpText":"Autoscaling algorithm to use: THROUGHPUT_BASED",
               "paramType":"TEXT",
@@ -252,12 +245,12 @@ mvn test
 The template requires the following parameters:
 * inputFileSpec: Pattern to where data lives, ex: gs://mybucket/somepath/*.csv
 * connectionUrl: Elasticsearch URL in format http://hostname:[port] or Base64 encoded CloudId
-* writeIndex: The write index toward which the requests will be issued, ex: my-index
+* index: The index toward which the requests will be issued, ex: my-index
 * containsHeaders: Set to true if file(s) contain headers.
 * deadletterTable: Deadletter table in BigQuery for failed inserts in form: project-id:dataset.table
 * delimiter: Delimiting character in CSV file(s). Default: use delimiter found in csvFormat
-* writeElasticsearchUsername: Write Elasticsearch username used to connect to Elasticsearch endpoint
-* writeElasticsearchPassword: Write Elasticsearch password used to connect to Elasticsearch endpoint
+* elasticsearchUsername: Elasticsearch username used to connect to Elasticsearch endpoint
+* elasticsearchPassword: Elasticsearch password used to connect to Elasticsearch endpoint
 
 The template has the following optional parameters:
 * inputFormat: The format of the input files, default is CSV.
@@ -271,7 +264,6 @@ The template has the following optional parameters:
 * javascriptTextTransformFunctionName: UDF Javascript Function Name. Default: null
 * maxRetryAttempts: Max retry attempts, must be > 0. Default: no retries
 * maxRetryDuration: Max retry duration in milliseconds, must be > 0. Default: no retries
-* usePartialUpdates: Set to true to issue partial updates. Default: false
 
 Template can be executed using the following gcloud command:
 ```sh
@@ -279,5 +271,5 @@ export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud beta dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters inputFileSpec=${INPUT_FILE_SPEC},connectionUrl=${CONNECTION_URL},writeIndex=${WRITE_INDEX},writeDocumentType=${WRITE_DOCUMENT_TYPE},writeElasticsearchUsername=${WRITE_ELASTICSEARCH_USERNAME},writeElasticsearchPassword=${WRITE_ELASTICSEARCH_PASSWORD},containsHeaders=${HEADERS},deadletterTable=${DEADLETTER_TABLE},delimiter=${DELIMITER}
+        --parameters inputFileSpec=${INPUT_FILE_SPEC},connectionUrl=${CONNECTION_URL},index=${INDEX},elasticsearchUsername=${ELASTICSEARCH_USERNAME},elasticsearchPassword=${ELASTICSEARCH_PASSWORD},containsHeaders=${HEADERS},deadletterTable=${DEADLETTER_TABLE},delimiter=${DELIMITER}
 ```

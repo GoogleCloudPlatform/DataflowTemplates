@@ -33,7 +33,7 @@ import org.joda.time.Duration;
  *
  * <ul>
  *   <li>{@link ElasticsearchWriteOptions#getConnectionUrl()} - CloudId or URL.
- *   <li>{@link ElasticsearchWriteOptions#getWriteIndex()} ()} ()} ()} - Elasticsearch write index.
+ *   <li>{@link ElasticsearchWriteOptions#getIndex()} ()} ()} ()} - Elasticsearch write index.
  *   <li>{@link ElasticsearchWriteOptions#getBatchSize()} - batch size in number of documents
  *       (Default:1000).
  *   <li>{@link ElasticsearchWriteOptions#getBatchSizeBytes()} - batch size in number of bytes
@@ -42,8 +42,6 @@ import org.joda.time.Duration;
  *       for {@link ElasticsearchIO.RetryConfiguration}.
  *   <li>{@link ElasticsearchWriteOptions#getMaxRetryDuration()} - optional: maximum retry duration
  *       for {@link ElasticsearchIO.RetryConfiguration}.
- *   <li>{@link ElasticsearchWriteOptions#getUsePartialUpdate()} - use partial updates instead of
- *       insertions (Default: false).
  * </ul>
  *
  * For {@link ElasticsearchIO#write()} with {@link ValueExtractorTransform.ValueExtractorFn} if the
@@ -63,6 +61,10 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
 
   public abstract ElasticsearchWriteOptions options();
 
+  /**
+   * Types have been removed in ES 7.0. Default will be _doc.
+   * See https://www.elastic.co/guide/en/elasticsearch/reference/current/removal-of-types.html"
+   */
   private static final String DOCUMENT_TYPE="_doc";
 
   @Override
@@ -72,17 +74,16 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
     ElasticsearchIO.ConnectionConfiguration config =
         ElasticsearchIO.ConnectionConfiguration.create(
             new String[]{connectionInformation.getElasticsearchURL().toString()},
-            options().getWriteIndex(),
+            options().getIndex(),
             DOCUMENT_TYPE)
-            .withUsername(options().getWriteElasticsearchUsername())
-            .withPassword(options().getWriteElasticsearchPassword());
+            .withUsername(options().getElasticsearchUsername())
+            .withPassword(options().getElasticsearchPassword());
 
     ElasticsearchIO.Write write =
         ElasticsearchIO.write()
             .withConnectionConfiguration(config)
             .withMaxBatchSize(options().getBatchSize())
-            .withMaxBatchSizeBytes(options().getBatchSizeBytes())
-            .withUsePartialUpdate(options().getUsePartialUpdate());
+            .withMaxBatchSizeBytes(options().getBatchSizeBytes());
 
     if (Optional.ofNullable(options().getMaxRetryAttempts()).isPresent()) {
       write.withRetryConfiguration(
@@ -108,12 +109,12 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
           options().getConnectionUrl() != null, "ConnectionUrl is required.");
 
       checkArgument(
-              options().getWriteElasticsearchUsername() != null, "Elasticsearch username is required.");
+              options().getElasticsearchUsername() != null, "Elasticsearch username is required.");
 
       checkArgument(
-              options().getWriteElasticsearchPassword() != null, "Elasticsearch password is required.");
+              options().getElasticsearchPassword() != null, "Elasticsearch password is required.");
 
-      checkArgument(options().getWriteIndex() != null, "Elasticsearch index should not be null.");
+      checkArgument(options().getIndex() != null, "Elasticsearch index should not be null.");
 
       checkArgument(
           options().getBatchSize() > 0, "Batch size must be > 0. Got: " + options().getBatchSize());

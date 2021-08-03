@@ -82,7 +82,7 @@ public class PubSubToElasticsearch {
             .withValidation()
             .as(PubSubToElasticsearchOptions.class);
 
-    pubSubToElasticsearchOptions.setWriteIndex(
+    pubSubToElasticsearchOptions.setIndex(
             new ElasticsearchIndex(pubSubToElasticsearchOptions.getWriteDataset(),
             pubSubToElasticsearchOptions.getWriteNamespace()).getIndex());
 

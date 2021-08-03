@@ -35,10 +35,10 @@ export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.j
 
 export INPUT_TABLE_SPEC=<my-project:my-dataset.my-table>
 export CONNECTION_URL=<url-or-cloud_id>
-export WRITE_INDEX=<my-index>
+export INDEX=<my-index>
 export USE_LEGACY_SQL=false
-export WRITE_ELASTICSEARCH_USERNAME=<write-username>
-export WRITE_ELASTICSEARCH_PASSWORD=<write-password>
+export ELASTICSEARCH_USERNAME=<username>
+export ELASTICSEARCH_PASSWORD=<password>
 
 gcloud config set project ${PROJECT}
 ```
@@ -72,29 +72,29 @@ echo '{
           },
           {
               "name":"connectionUrl",
-              "label":"Elasticsearch URL in format http://hostname:[port] or Base64 encoded CloudId",
-              "helpText":"Elasticsearch URL in format http://hostname:[port] or Base64 encoded CloudId",
+              "label":"Elasticsearch URL in the format https://hostname:[port] or specify CloudID if using Elastic Cloud",
+              "helpText":"Elasticsearch URL in the format https://hostname:[port] or specify CloudID if using Elastic Cloud",
               "paramType":"TEXT",
               "isOptional":false
           },
           {
-              "name":"writeElasticsearchUsername",
-              "label":"Write Elasticsearch username for elasticsearch endpoint",
-              "helpText":"Write Elasticsearch username for elasticsearch endpoint",
+              "name":"elasticsearchUsername",
+              "label":"Username for Elasticsearch endpoint",
+              "helpText":"Username for Elasticsearch endpoint",
               "paramType":"TEXT",
               "isOptional":false
           },
           {
-              "name":"writeElasticsearchPassword",
-              "label":"Write Elasticsearch password for elasticsearch endpoint",
-              "helpText":"Write Elasticsearch password for elasticsearch endpoint",
+              "name":"elasticsearchPassword",
+              "label":"Password for Elasticsearch endpoint",
+              "helpText":"Password for Elasticsearch endpoint",
               "paramType":"TEXT",
               "isOptional":false
           },
           {
-              "name":"writeIndex",
-              "label":"Elasticsearch write index",
-              "helpText":"The write index toward which the requests will be issued, ex: my-index",
+              "name":"index",
+              "label":"Elasticsearch index",
+              "helpText":"The index toward which the requests will be issued, ex: my-index",
               "paramType":"TEXT",
               "isOptional":false
           },
@@ -137,13 +137,6 @@ echo '{
               "name":"maxRetryDuration",
               "label":"Max retry duration in milliseconds",
               "helpText":"Max retry duration in milliseconds, must be > 0. Default: no retries",
-              "paramType":"TEXT",
-              "isOptional":true
-          },
-          {
-              "name":"usePartialUpdates",
-              "label":"Set to true to issue partial updates",
-              "helpText":"Set to true to issue partial updates. Default: false",
               "paramType":"TEXT",
               "isOptional":true
           },
@@ -192,9 +185,9 @@ mvn test
 The template requires the following parameters:
 * inputTableSpec: Table in BigQuery to read from in form of: my-project:my-dataset.my-table. Either this or query must be provided.
 * connectionUrl: Elasticsearch URL in format http://hostname:[port] or Base64 encoded CloudId
-* writeIndex: The write index toward which the requests will be issued, ex: my-index
-* writeElasticsearchUsername: Write Elasticsearch username used to connect to Elasticsearch endpoint
-* writeElasticsearchPassword: Write Elasticsearch password used to connect to Elasticsearch endpoint
+* index: The index toward which the requests will be issued, ex: my-index
+* elasticsearchUsername: Elasticsearch username used to connect to Elasticsearch endpoint
+* elasticsearchPassword: Elasticsearch password used to connect to Elasticsearch endpoint
 
 The template has the following optional parameters:
 * useLegacySql: Set to true to use legacy SQL (only applicable if supplying query). Default: false
@@ -205,7 +198,6 @@ The template has the following optional parameters:
 * batchSizeBytes: Batch size in number of bytes. Default: 5242880 (5mb)
 * maxRetryAttempts: Max retry attempts, must be > 0. Default: no retries
 * maxRetryDuration: Max retry duration in milliseconds, must be > 0. Default: no retries
-* usePartialUpdates: Set to true to issue partial updates. Default: false
 
 Template can be executed using the following gcloud command:
 ```sh
@@ -213,5 +205,5 @@ export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud beta dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters inputTableSpec=${INPUT_TABLE_SPEC},connectionUrl=${CONNECTION_URL},writeIndex=${WRITE_INDEX},writeElasticsearchUsername=${WRITE_ELASTICSEARCH_USERNAME},writeElasticsearchPassword=${WRITE_ELASTICSEARCH_PASSWORD},useLegacySql=${USE_LEGACY_SQL}
+        --parameters inputTableSpec=${INPUT_TABLE_SPEC},connectionUrl=${CONNECTION_URL},index=${INDEX},elasticsearchUsername=${ELASTICSEARCH_USERNAME},elasticsearchPassword=${ELASTICSEARCH_PASSWORD},useLegacySql=${USE_LEGACY_SQL}
 ```
