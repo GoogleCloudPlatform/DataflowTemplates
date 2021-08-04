@@ -31,8 +31,8 @@ export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.j
 
 export CONNECTION_URL=<url-or-cloud_id>
 export SUBSCRIPTION=<my-subscription>
-export WRITE_DATASET=<write-dataset>
-export WRITE_NAMESPACE=<write-namespace>
+export DATASET=<dataset>
+export NAMESPACE=<namespace>
 export DEADLETTER_TABLE=<my-project:my-dataset.my-deadletter-table>
 export ELASTICSEARCH_USERNAME=<username>
 export ELASTICSEARCH_PASSWORD=<password>
@@ -88,14 +88,14 @@ echo '{
               "isOptional":false
           },
           {
-              "name":"writeDataset",
+              "name":"dataset",
               "label":"The type of logs sent via Pub/Sub for which we have out of the box dashboard. Known log types values are audit, vpcflow, and firewall. If no known log type is detected, we default to pubsub",
               "helpText":"The type of logs sent via Pub/Sub for which we have out of the box dashboard. Known log types values are audit, vpcflow, and firewall. If no known log type is detected, we default to pubsub",
               "paramType":"TEXT",
               "isOptional":false
           },
           {
-              "name":"writeNamespace",
+              "name":"namespace",
               "label":"The namespace for dataset. Default is default",
               "helpText":"The namespace for dataset. Default is default",
               "paramType":"TEXT",
@@ -179,8 +179,8 @@ mvn test
 
 The template requires the following parameters:
 * connectionUrl: Elasticsearch URL in format http://hostname:[port] or Base64 encoded CloudId
-* writeDataset: The type of logs sent via Pub/Sub for which we have out of the box dashboard. Known log types values are audit, vpcflow, and firewall. If no known log type is detected, we default to pubsub
-* writeNamespace: The namespace for dataset. Default is default
+* dataset: The type of logs sent via Pub/Sub for which we have out of the box dashboard. Known log types values are audit, vpcflow, and firewall. If no known log type is detected, we default to pubsub
+* namespace: The namespace for dataset. Default is default
 * inputSubscription: PubSub subscription to read from, ex: projects/my-project/subscriptions/my-subscription
 * deadletterTable: Deadletter table for failed inserts in form: project-id:dataset.table
 * elasticsearchUsername: Elasticsearch username used to connect to Elasticsearch endpoint
@@ -200,5 +200,5 @@ export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud beta dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters inputSubscription=${SUBSCRIPTION},connectionUrl=${CONNECTION_URL},writeDataset=${WRITE_DATASET},writeNamespace=${WRITE_NAMESPACE},elasticsearchUsername=${ELASTICSEARCH_USERNAME},elasticsearchPassword=${ELASTICSEARCH_PASSWORD},deadletterTable=${DEADLETTER_TABLE}
+        --parameters inputSubscription=${SUBSCRIPTION},connectionUrl=${CONNECTION_URL},dataset=${DATASET},namespace=${NAMESPACE},elasticsearchUsername=${ELASTICSEARCH_USERNAME},elasticsearchPassword=${ELASTICSEARCH_PASSWORD},deadletterTable=${DEADLETTER_TABLE}
 ```

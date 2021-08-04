@@ -45,15 +45,15 @@ public interface PubSubToElasticsearchOptions
           "Known log types values are audit, vpcflow, and firewall. " +
           "If no known log type is detected, we default to pubsub")
   @Default.Enum("PUBSUB")
-  Dataset getWriteDataset();
+  Dataset getDataset();
 
-  void setWriteDataset(Dataset writeDataset);
+  void setDataset(Dataset dataset);
 
   @Description("The namespace for dataset. Default is default")
   @Default.String("default")
-  String getWriteNamespace();
+  String getNamespace();
 
-  void setWriteNamespace(String writeNamespace);
+  void setNamespace(String namespace);
 
   @Description(
       "The dead-letter table to output to within BigQuery in <project-id>:<dataset>.<table> "

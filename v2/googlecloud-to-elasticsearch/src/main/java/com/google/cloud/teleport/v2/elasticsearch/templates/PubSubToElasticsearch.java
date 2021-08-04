@@ -83,8 +83,8 @@ public class PubSubToElasticsearch {
             .as(PubSubToElasticsearchOptions.class);
 
     pubSubToElasticsearchOptions.setIndex(
-            new ElasticsearchIndex(pubSubToElasticsearchOptions.getWriteDataset(),
-            pubSubToElasticsearchOptions.getWriteNamespace()).getIndex());
+            new ElasticsearchIndex(pubSubToElasticsearchOptions.getDataset(),
+            pubSubToElasticsearchOptions.getNamespace()).getIndex());
 
     run(pubSubToElasticsearchOptions);
   }
