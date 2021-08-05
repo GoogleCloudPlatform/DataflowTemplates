@@ -13,7 +13,7 @@ Pipeline flow is illustrated below:
 * Java 8
 * Maven
 * BigQuery table exists
-* Elasticsearch Instance exists
+* Elasticsearch Instance exists (Elasticsearch 7.0 and above)
 
 ### Building Template
 This is a Flex Template meaning that the pipeline code will be containerized, and the container will be

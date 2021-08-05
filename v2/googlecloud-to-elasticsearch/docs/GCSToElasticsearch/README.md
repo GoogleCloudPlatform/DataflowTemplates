@@ -21,7 +21,7 @@ Pipeline flow is illustrated below:
 * Java 8
 * Maven
 * Cloud Storage bucket exists
-* Elasticsearch nodes are reachable from the Dataflow workers
+* Elasticsearch nodes are reachable from the Dataflow workers (Elasticsearch 7.0 and above)
 * Csv schema is the same for all Csvs.
 
 ### Building Template

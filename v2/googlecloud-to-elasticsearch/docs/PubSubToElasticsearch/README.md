@@ -9,7 +9,7 @@ ingests data from a PubSub subscription, optionally applies a Javascript UDF if 
 * Java 8
 * Maven
 * PubSub Subscription exists
-* Elasticsearch host(s) exists and is operational
+* Elasticsearch host(s) exists and is operational (Elasticsearch 7.0 and above)
 
 ### Building Template
 This is a Flex Template meaning that the pipeline code will be containerized, and the container will be

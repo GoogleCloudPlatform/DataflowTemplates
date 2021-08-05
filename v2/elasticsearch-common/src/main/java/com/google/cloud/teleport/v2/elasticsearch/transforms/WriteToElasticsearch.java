@@ -79,19 +79,19 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
             .withUsername(options().getElasticsearchUsername())
             .withPassword(options().getElasticsearchPassword());
 
-    ElasticsearchIO.Write write =
+    ElasticsearchIO.Write elasticsearchWriter =
         ElasticsearchIO.write()
             .withConnectionConfiguration(config)
             .withMaxBatchSize(options().getBatchSize())
             .withMaxBatchSizeBytes(options().getBatchSizeBytes());
 
     if (Optional.ofNullable(options().getMaxRetryAttempts()).isPresent()) {
-      write.withRetryConfiguration(
+      elasticsearchWriter.withRetryConfiguration(
           ElasticsearchIO.RetryConfiguration.create(
               options().getMaxRetryAttempts(), getDuration(options().getMaxRetryDuration())));
     }
 
-    return jsonStrings.apply("WriteDocuments", write);
+    return jsonStrings.apply("WriteDocuments", elasticsearchWriter);
   }
 
   /** Builder for {@link WriteToElasticsearch}. */
