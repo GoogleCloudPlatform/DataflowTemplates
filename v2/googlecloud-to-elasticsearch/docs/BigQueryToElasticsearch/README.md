@@ -139,31 +139,6 @@ echo '{
               "helpText":"Max retry duration in milliseconds, must be > 0. Default: no retries",
               "paramType":"TEXT",
               "isOptional":true
-          },
-          {
-              "name":"autoscalingAlgorithm","label":"Autoscaling algorithm to use",
-              "helpText":"Autoscaling algorithm to use: THROUGHPUT_BASED",
-              "paramType":"TEXT",
-              "isOptional":true
-          },
-          {
-              "name":"numWorkers","label":"Number of workers Dataflow will start with",
-              "helpText":"Number of workers Dataflow will start with",
-              "paramType":"TEXT",
-              "isOptional":true
-          },
-  
-          {
-              "name":"maxNumWorkers","label":"Maximum number of workers Dataflow job will use",
-              "helpText":"Maximum number of workers Dataflow job will use",
-              "paramType":"TEXT",
-              "isOptional":true
-          },
-          {
-              "name":"workerMachineType","label":"Worker Machine Type to use in Dataflow Job",
-              "helpText":"Machine Type to Use: n1-standard-4",
-              "paramType":"TEXT",
-              "isOptional":true
           }
       ]
     },
