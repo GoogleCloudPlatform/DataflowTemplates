@@ -13,7 +13,7 @@ Pipeline flow is illustrated below:
 * Java 8
 * Maven
 * BigQuery table exists
-* Elasticsearch Instance exists
+* Elasticsearch Instance exists (Elasticsearch 7.0 and above)
 
 ### Building Template
 This is a Flex Template meaning that the pipeline code will be containerized, and the container will be
@@ -34,10 +34,11 @@ export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_MODULE}-command-spec.json
 export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
 
 export INPUT_TABLE_SPEC=<my-project:my-dataset.my-table>
-export TARGET_NODE_ADDRESSES=<comma-separated-list-nodes>
-export WRITE_INDEX=<my-index>
-export WRITE_DOCUMENT_TYPE=<my-type>
+export CONNECTION_URL=<url-or-cloud_id>
+export INDEX=<my-index>
 export USE_LEGACY_SQL=false
+export ELASTICSEARCH_USERNAME=<username>
+export ELASTICSEARCH_PASSWORD=<password>
 
 gcloud config set project ${PROJECT}
 ```
@@ -70,23 +71,30 @@ echo '{
               "isOptional":false
           },
           {
-              "name":"targetNodeAddresses",
-              "label":"Comma separated list of Elasticsearch target nodes",
-              "helpText":"Comma separated list of Elasticsearch target nodes to connect to, ex: http://my-node1,http://my-node2",
+              "name":"connectionUrl",
+              "label":"Elasticsearch URL in the format https://hostname:[port] or specify CloudID if using Elastic Cloud",
+              "helpText":"Elasticsearch URL in the format https://hostname:[port] or specify CloudID if using Elastic Cloud",
               "paramType":"TEXT",
               "isOptional":false
           },
           {
-              "name":"writeIndex",
-              "label":"Elasticsearch write index",
-              "helpText":"The write index toward which the requests will be issued, ex: my-index",
+              "name":"elasticsearchUsername",
+              "label":"Username for Elasticsearch endpoint",
+              "helpText":"Username for Elasticsearch endpoint",
               "paramType":"TEXT",
               "isOptional":false
           },
           {
-              "name":"writeDocumentType",
-              "label":"The write document type",
-              "helpText":"The write document type toward which the requests will be issued, ex: my-document-type",
+              "name":"elasticsearchPassword",
+              "label":"Password for Elasticsearch endpoint",
+              "helpText":"Password for Elasticsearch endpoint",
+              "paramType":"TEXT",
+              "isOptional":false
+          },
+          {
+              "name":"index",
+              "label":"Elasticsearch index",
+              "helpText":"The index toward which the requests will be issued, ex: my-index",
               "paramType":"TEXT",
               "isOptional":false
           },
@@ -131,80 +139,6 @@ echo '{
               "helpText":"Max retry duration in milliseconds, must be > 0. Default: no retries",
               "paramType":"TEXT",
               "isOptional":true
-          },
-          {
-              "name":"usePartialUpdates",
-              "label":"Set to true to issue partial updates",
-              "helpText":"Set to true to issue partial updates. Default: false",
-              "paramType":"TEXT",
-              "isOptional":true
-          },
-          {
-              "name":"idFnPath",
-              "label":"Path to javascript file",
-              "helpText":"Path to javascript file containing function to extract Id from document, ex: gs://path/to/idFn.js. Default: null",
-              "paramType":"TEXT",
-              "isOptional":true
-          },
-          {
-              "name":"idFnName",
-              "label":"Name of javascript function",
-              "helpText":"Name of javascript function to extract Id from document. Default: null",
-              "paramType":"TEXT",
-              "isOptional":true
-          },
-          {
-              "name":"indexFnPath",
-              "label":"Path to javascript file containing function to extract Index",
-              "helpText":"Path to javascript file containing function to extract Index from document, ex: gs://path/to/indexFn.js. Default: null",
-              "paramType":"TEXT",
-              "isOptional":true
-          },
-          {
-              "name":"indexFnName",
-              "label":"Name of javascript function to extract Index from document",
-              "helpText":"Name of javascript function to extract Index from document. Default: null.    * Will override index provided.",
-              "paramType":"TEXT",
-              "isOptional":true
-          },
-          {
-              "name":"typeFnPath",
-              "label":"Path to javascript file containing function to extract Type",
-              "helpText":"Path to javascript file containing function to extract Type from document, ex: gs://path/to/typeFn.js. Default: null",
-              "paramType":"TEXT",
-              "isOptional":true
-          },
-          {
-              "name":"typeFnName",
-              "label":"Name of javascript function to extract Type from document",
-              "helpText":"Name of javascript function to extract Type from document. Default: null.    * Will override type provided.",
-              "paramType":"TEXT",
-              "isOptional":true
-          },
-          {
-              "name":"autoscalingAlgorithm","label":"Autoscaling algorithm to use",
-              "helpText":"Autoscaling algorithm to use: THROUGHPUT_BASED",
-              "paramType":"TEXT",
-              "isOptional":true
-          },
-          {
-              "name":"numWorkers","label":"Number of workers Dataflow will start with",
-              "helpText":"Number of workers Dataflow will start with",
-              "paramType":"TEXT",
-              "isOptional":true
-          },
-  
-          {
-              "name":"maxNumWorkers","label":"Maximum number of workers Dataflow job will use",
-              "helpText":"Maximum number of workers Dataflow job will use",
-              "paramType":"TEXT",
-              "isOptional":true
-          },
-          {
-              "name":"workerMachineType","label":"Worker Machine Type to use in Dataflow Job",
-              "helpText":"Machine Type to Use: n1-standard-4",
-              "paramType":"TEXT",
-              "isOptional":true
           }
       ]
     },
@@ -225,9 +159,10 @@ mvn test
 
 The template requires the following parameters:
 * inputTableSpec: Table in BigQuery to read from in form of: my-project:my-dataset.my-table. Either this or query must be provided.
-* targetNodeAddresses: Comma separated list of Elasticsearch nodes to connect to, ex: http://my-node1,http://my-node2
-* writeIndex: The write index toward which the requests will be issued, ex: my-index
-* writeDocumentType: The write document type toward which the requests will be issued, ex: my-document-type
+* connectionUrl: Elasticsearch URL in format http://hostname:[port] or Base64 encoded CloudId
+* index: The index toward which the requests will be issued, ex: my-index
+* elasticsearchUsername: Elasticsearch username used to connect to Elasticsearch endpoint
+* elasticsearchPassword: Elasticsearch password used to connect to Elasticsearch endpoint
 
 The template has the following optional parameters:
 * useLegacySql: Set to true to use legacy SQL (only applicable if supplying query). Default: false
@@ -238,15 +173,6 @@ The template has the following optional parameters:
 * batchSizeBytes: Batch size in number of bytes. Default: 5242880 (5mb)
 * maxRetryAttempts: Max retry attempts, must be > 0. Default: no retries
 * maxRetryDuration: Max retry duration in milliseconds, must be > 0. Default: no retries
-* usePartialUpdates: Set to true to issue partial updates. Default: false
-* idFnPath: Path to javascript file containing function to extract Id from document, ex: gs://path/to/idFn.js. Default: null
-* idFnName: Name of javascript function to extract Id from document. Default: null
-* indexFnPath: Path to javascript file containing function to extract Index from document, ex: gs://path/to/indexFn.js. Default: null
-* indexFnName: Name of javascript function to extract Index from document. Default: null
-    * Will override index provided.
-* typeFnPath: Path to javascript file containing function to extract Type from document, ex: gs://path/to/typeFn.js. Default: null
-* typeFnName: Name of javascript function to extract Type from document. Default: null
-    * Will override type provided.
 
 Template can be executed using the following gcloud command:
 ```sh
@@ -254,5 +180,5 @@ export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud beta dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters inputTableSpec=${INPUT_TABLE_SPEC},targetNodeAddresses=${TARGET_NODE_ADDRESSES},writeIndex=${WRITE_INDEX},writeDocumentType=${WRITE_DOCUMENT_TYPE},useLegacySql=${USE_LEGACY_SQL}
+        --parameters inputTableSpec=${INPUT_TABLE_SPEC},connectionUrl=${CONNECTION_URL},index=${INDEX},elasticsearchUsername=${ELASTICSEARCH_USERNAME},elasticsearchPassword=${ELASTICSEARCH_PASSWORD},useLegacySql=${USE_LEGACY_SQL}
 ```

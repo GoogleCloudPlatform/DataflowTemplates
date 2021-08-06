@@ -30,18 +30,18 @@ public class WriteToElasticsearchTest {
 
   @Rule public ExpectedException exceptionRule = ExpectedException.none();
 
-  /** Tests {@link WriteToElasticsearch} throws an exception if a null node address is provided. */
+  /** Tests {@link WriteToElasticsearch} throws an exception if a null ConnectionInformation is provided. */
   @Test
-  public void testNullNodeAddresses() {
+  public void testNullConnectionInformation() {
 
     exceptionRule.expect(IllegalArgumentException.class);
 
     ElasticsearchWriteOptions options =
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
-    options.setTargetNodeAddresses(null);
-    options.setWriteIndex("testIndex");
-    options.setWriteDocumentType("testType");
+    options.setConnectionUrl(null);
+    options.setElasticsearchUsername("test");
+    options.setElasticsearchPassword("test");
 
     pipeline
         .apply("CreateInput", Create.of("test"))
@@ -59,29 +59,9 @@ public class WriteToElasticsearchTest {
     ElasticsearchWriteOptions options =
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
-    options.setTargetNodeAddresses("http://my-node1");
-    options.setWriteIndex("testIndex");
-    options.setWriteDocumentType(null);
-
-    pipeline
-        .apply("CreateInput", Create.of("test"))
-        .apply(WriteToElasticsearch.newBuilder().setOptions(options).build());
-
-    pipeline.run();
-  }
-
-  /** Tests {@link WriteToElasticsearch} throws an exception if a null index is provided. */
-  @Test
-  public void testNullIndex() {
-
-    exceptionRule.expect(IllegalArgumentException.class);
-
-    ElasticsearchWriteOptions options =
-        PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
-
-    options.setTargetNodeAddresses("http://my-node1");
-    options.setWriteIndex(null);
-    options.setWriteDocumentType("testType");
+    options.setConnectionUrl("https://host.domain");
+    options.setElasticsearchUsername("test");
+    options.setElasticsearchPassword("test");
 
     pipeline
         .apply("CreateInput", Create.of("test"))
@@ -91,20 +71,21 @@ public class WriteToElasticsearchTest {
   }
 
   /**
-   * Tests that {@link WriteToElasticsearch} throws an exception if an invalid node address is
+   * Tests that {@link WriteToElasticsearch} throws an exception if an invalid ConnectionInformation is
    * provided.
    */
   @Test
-  public void testInvalidNodeAddresses() {
+  public void testInvalidConnectionInformation() {
 
-    exceptionRule.expect(IllegalArgumentException.class);
+    exceptionRule.expect(IllegalStateException.class);
 
     ElasticsearchWriteOptions options =
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
-    options.setTargetNodeAddresses(",");
-    options.setWriteIndex("testIndex");
-    options.setWriteDocumentType("testType");
+    options.setConnectionUrl(",");
+    options.setIndex("index");
+    options.setElasticsearchUsername("test");
+    options.setElasticsearchPassword("test");
 
     pipeline
         .apply("CreateInput", Create.of("test"))
@@ -127,9 +108,9 @@ public class WriteToElasticsearchTest {
     ElasticsearchWriteOptions options =
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
-    options.setTargetNodeAddresses("http://my-node1");
-    options.setWriteIndex("testIndex");
-    options.setWriteDocumentType("testDoc");
+    options.setConnectionUrl("https://host.domain");
+    options.setElasticsearchUsername("test");
+    options.setElasticsearchPassword("test");
     options.setMaxRetryDuration(500L);
     options.setMaxRetryAttempts(null);
 
@@ -154,9 +135,9 @@ public class WriteToElasticsearchTest {
     ElasticsearchWriteOptions options =
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
-    options.setTargetNodeAddresses("http://my-node1");
-    options.setWriteIndex("testIndex");
-    options.setWriteDocumentType("testDoc");
+    options.setConnectionUrl("https://host.domain");
+    options.setElasticsearchUsername("test");
+    options.setElasticsearchPassword("test");
     options.setMaxRetryDuration(null);
     options.setMaxRetryAttempts(3);
 

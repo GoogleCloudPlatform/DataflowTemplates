@@ -19,6 +19,7 @@ import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Precondi
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
+import com.google.cloud.teleport.v2.elasticsearch.utils.ConnectionInformation;
 import java.util.Optional;
 import org.apache.beam.sdk.io.elasticsearch.ElasticsearchIO;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -31,9 +32,8 @@ import org.joda.time.Duration;
  * using the following options.
  *
  * <ul>
- *   <li>{@link ElasticsearchWriteOptions#getTargetNodeAddresses()} - comma separated list of nodes.
- *   <li>{@link ElasticsearchWriteOptions#getWriteIndex()} - index to output documents to.
- *   <li>{@link ElasticsearchWriteOptions#getWriteDocumentType()} - document type to write to.
+ *   <li>{@link ElasticsearchWriteOptions#getConnectionUrl()} - CloudId or URL.
+ *   <li>{@link ElasticsearchWriteOptions#getIndex()} ()} ()} ()} - Elasticsearch write index.
  *   <li>{@link ElasticsearchWriteOptions#getBatchSize()} - batch size in number of documents
  *       (Default:1000).
  *   <li>{@link ElasticsearchWriteOptions#getBatchSizeBytes()} - batch size in number of bytes
@@ -42,15 +42,10 @@ import org.joda.time.Duration;
  *       for {@link ElasticsearchIO.RetryConfiguration}.
  *   <li>{@link ElasticsearchWriteOptions#getMaxRetryDuration()} - optional: maximum retry duration
  *       for {@link ElasticsearchIO.RetryConfiguration}.
- *   <li>{@link ElasticsearchWriteOptions#getUsePartialUpdate()} - use partial updates instead of
- *       insertions (Default: false).
  * </ul>
  *
  * For {@link ElasticsearchIO#write()} with {@link ValueExtractorTransform.ValueExtractorFn} if the
- * function returns null then the index or type provided as {@link
- * ElasticsearchWriteOptions#getWriteIndex()} or {@link
- * ElasticsearchWriteOptions#getWriteDocumentType()} will be used. For IdFn if function returns null
- * then the id for the document will be assigned by {@link ElasticsearchIO}.
+ * function returns null then the index or type provided as {@link ConnectionInformation}.
  */
 @AutoValue
 public abstract class WriteToElasticsearch extends PTransform<PCollection<String>, PDone> {
@@ -66,46 +61,37 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
 
   public abstract ElasticsearchWriteOptions options();
 
+  /**
+   * Types have been removed in ES 7.0. Default will be _doc.
+   * See https://www.elastic.co/guide/en/elasticsearch/reference/current/removal-of-types.html"
+   */
+  private static final String DOCUMENT_TYPE="_doc";
+
   @Override
   public PDone expand(PCollection<String> jsonStrings) {
+    ConnectionInformation connectionInformation = new ConnectionInformation(options().getConnectionUrl());
 
     ElasticsearchIO.ConnectionConfiguration config =
         ElasticsearchIO.ConnectionConfiguration.create(
-            options().getTargetNodeAddresses().split(","),
-            options().getWriteIndex(),
-            options().getWriteDocumentType());
+            new String[]{connectionInformation.getElasticsearchURL().toString()},
+            options().getIndex(),
+            DOCUMENT_TYPE)
+            .withUsername(options().getElasticsearchUsername())
+            .withPassword(options().getElasticsearchPassword());
 
-    ElasticsearchIO.Write write =
+    ElasticsearchIO.Write elasticsearchWriter =
         ElasticsearchIO.write()
             .withConnectionConfiguration(config)
             .withMaxBatchSize(options().getBatchSize())
-            .withMaxBatchSizeBytes(options().getBatchSizeBytes())
-            .withUsePartialUpdate(options().getUsePartialUpdate());
+            .withMaxBatchSizeBytes(options().getBatchSizeBytes());
 
     if (Optional.ofNullable(options().getMaxRetryAttempts()).isPresent()) {
-      write.withRetryConfiguration(
+      elasticsearchWriter.withRetryConfiguration(
           ElasticsearchIO.RetryConfiguration.create(
               options().getMaxRetryAttempts(), getDuration(options().getMaxRetryDuration())));
     }
 
-    return jsonStrings.apply(
-        "WriteDocuments",
-        write
-            .withIdFn(
-                ValueExtractorTransform.ValueExtractorFn.newBuilder()
-                    .setFileSystemPath(options().getIdFnPath())
-                    .setFunctionName(options().getIdFnName())
-                    .build())
-            .withIndexFn(
-                ValueExtractorTransform.ValueExtractorFn.newBuilder()
-                    .setFileSystemPath(options().getIndexFnPath())
-                    .setFunctionName(options().getIndexFnName())
-                    .build())
-            .withTypeFn(
-                ValueExtractorTransform.ValueExtractorFn.newBuilder()
-                    .setFileSystemPath(options().getTypeFnPath())
-                    .setFunctionName(options().getTypeFnName())
-                    .build()));
+    return jsonStrings.apply("WriteDocuments", elasticsearchWriter);
   }
 
   /** Builder for {@link WriteToElasticsearch}. */
@@ -120,12 +106,15 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
     public WriteToElasticsearch build() {
 
       checkArgument(
-          options().getTargetNodeAddresses() != null, "Target Node address(es) must not be null.");
+          options().getConnectionUrl() != null, "ConnectionUrl is required.");
 
       checkArgument(
-          options().getWriteDocumentType() != null, "Write Document type must not be null.");
+              options().getElasticsearchUsername() != null, "Elasticsearch username is required.");
 
-      checkArgument(options().getWriteIndex() != null, "Write Index must not be null.");
+      checkArgument(
+              options().getElasticsearchPassword() != null, "Elasticsearch password is required.");
+
+      checkArgument(options().getIndex() != null, "Elasticsearch index should not be null.");
 
       checkArgument(
           options().getBatchSize() > 0, "Batch size must be > 0. Got: " + options().getBatchSize());
@@ -139,24 +128,6 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
         checkArgument(
             options().getMaxRetryDuration() != null && options().getMaxRetryAttempts() != null,
             "Both max retry duration and max attempts must be supplied.");
-      }
-
-      if (options().getIdFnName() != null || options().getIdFnPath() != null) {
-        checkArgument(
-            options().getIdFnName() != null && options().getIdFnPath() != null,
-            "Both IdFn name and path must be supplied.");
-      }
-
-      if (options().getIndexFnName() != null || options().getIndexFnPath() != null) {
-        checkArgument(
-            options().getIndexFnName() != null && options().getIndexFnPath() != null,
-            "Both IndexFn name and path must be supplied.");
-      }
-
-      if (options().getTypeFnName() != null || options().getTypeFnPath() != null) {
-        checkArgument(
-            options().getTypeFnName() != null && options().getTypeFnPath() != null,
-            "Both TypeFn name and path must be supplied.");
       }
 
       return autoBuild();

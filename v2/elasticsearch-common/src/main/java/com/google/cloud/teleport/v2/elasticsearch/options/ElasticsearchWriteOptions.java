@@ -22,24 +22,28 @@ import org.apache.beam.sdk.options.Validation;
 
 /** The {@link ElasticsearchWriteOptions} with the common write options for Elasticsearch. * */
 public interface ElasticsearchWriteOptions extends PipelineOptions {
-  @Description(
-      "Comma separated list of Elasticsearch nodes to connect to, ex: http://my-node1,http://my-node2")
+  @Description("Elasticsearch URL in format http://hostname:[port] or Base64 encoded CloudId")
   @Validation.Required
-  String getTargetNodeAddresses();
+  String getConnectionUrl();
 
-  void setTargetNodeAddresses(String targetNodeAddresses);
+  void setConnectionUrl(String connectionUrl);
+
+  @Description("Username for Elasticsearch endpoint")
+  @Validation.Required
+  String getElasticsearchUsername();
+
+  void setElasticsearchUsername(String elasticsearchUsername);
+
+  @Description("Password for Elasticsearch endpoint")
+  @Validation.Required
+  String getElasticsearchPassword();
+
+  void setElasticsearchPassword(String elasticsearchPassword);
 
   @Description("The index toward which the requests will be issued, ex: my-index")
-  @Validation.Required
-  String getWriteIndex();
+  String getIndex();
 
-  void setWriteIndex(String writeIndex);
-
-  @Description("The document type toward which the requests will be issued, ex: my-document-type")
-  @Validation.Required
-  String getWriteDocumentType();
-
-  void setWriteDocumentType(String writeDocumentType);
+  void setIndex(String index);
 
   @Description("Batch size in number of documents. Default: 1000")
   @Default.Long(1000)
@@ -63,46 +67,4 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
   Long getMaxRetryDuration();
 
   void setMaxRetryDuration(Long maxRetryDuration);
-
-  @Description("Set to true to issue partial updates. Default: false")
-  @Default.Boolean(false)
-  Boolean getUsePartialUpdate();
-
-  void setUsePartialUpdate(Boolean usePartialUpdates);
-
-  @Description(
-      "Optional: Path to Javascript function to extract Id from document, ex: gs://path/to/idFn.js. Default: null")
-  String getIdFnPath();
-
-  void setIdFnPath(String idFnPath);
-
-  @Description(
-      "Optional: Name of Javascript function to extract Id from document, ex: myIdFn. Default: null")
-  String getIdFnName();
-
-  void setIdFnName(String idFnName);
-
-  @Description(
-      "Optional: Path to Javascript function to extract Index from document that document will be routed to, ex: gs://path/to/indexFn.js. Default: null")
-  String getIndexFnPath();
-
-  void setIndexFnPath(String indexFnPath);
-
-  @Description(
-      "Optional: Name of Javascript function to extract Index from document, ex: myIndexFn. Default: null")
-  String getIndexFnName();
-
-  void setIndexFnName(String indexFnName);
-
-  @Description(
-      "Optional: Path to Javascript function to extract Type from document that document will be routed to, ex: gs://path/to/typeFn.js. Default: null")
-  String getTypeFnPath();
-
-  void setTypeFnPath(String typeFnPath);
-
-  @Description(
-      "Optional: Name of Javascript function to extract Type from document, ex: myTypeFn. Default: null")
-  String getTypeFnName();
-
-  void setTypeFnName(String typeFnName);
 }
