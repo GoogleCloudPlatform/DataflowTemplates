@@ -147,10 +147,7 @@ public abstract class RandomDdlGenerator {
 
   private void generateView(Ddl.Builder builder) {
     String name = generateIdentifier(getMaxIdLength());
-    View.Builder viewBuilder = builder.createView(name);
-    if (getRandom().nextBoolean()) {
-      viewBuilder.security(View.SqlSecurity.INVOKER);
-    }
+    View.Builder viewBuilder = builder.createView(name).security(View.SqlSecurity.INVOKER);
 
     Table sourceTable = selectRandomTable(builder);
     if (sourceTable == null) {
