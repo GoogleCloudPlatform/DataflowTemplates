@@ -197,6 +197,15 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                     Ddl ddl = c.element();
                     List<String> tablesList = Collections.emptyList();
 
+                    // If the user sets shouldRelatedTables to true without providing
+                    // a list of export tables, throw an exception.
+                    if (tableNames.get().trim().isEmpty() && exportRelatedTables.get()) {
+                      throw new Exception(
+                          "Invalid usage of --tableNames and --shouldExportRelatedTables. Set"
+                              + " --shouldExportRelatedTables=true only if --tableNames is given"
+                              + " selected tables for export.");
+                    }
+
                     // If the user provides a comma-separated list of strings, parse it into a List
                     if (!tableNames.get().trim().isEmpty()) {
                       tablesList = Arrays.asList(tableNames.get().split(",\\s*"));
