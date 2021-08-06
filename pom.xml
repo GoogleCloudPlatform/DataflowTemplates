@@ -36,7 +36,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <apache-http-client-v2>1.31.0</apache-http-client-v2>
+    <apache-http-client-v2>1.39.2</apache-http-client-v2>
     <avro.version>1.8.2</avro.version>
     <checkstyle.version>8.7</checkstyle.version>
     <beam.version>2.29.0</beam.version>
