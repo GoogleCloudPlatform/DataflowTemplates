@@ -15,10 +15,7 @@
  */
 package com.google.cloud.teleport.io;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.junit.Assert.assertThat;
+import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -103,8 +100,8 @@ public class WindowedFilenamePolicyTest {
 
     // Assert
     //
-    assertThat(filename, is(notNullValue()));
-    assertThat(filename.getFilename(), is(equalTo("output-001-of-001.txt")));
+    assertThat(filename).isNotNull();
+    assertThat(filename.getFilename()).isEqualTo("output-001-of-001.txt");
   }
 
   /**
@@ -133,8 +130,8 @@ public class WindowedFilenamePolicyTest {
 
     // Assert
     //
-    assertThat(filename, is(notNullValue()));
-    assertThat(filename.getFilename(), is(equalTo("string-output-001-of-001.csv")));
+    assertThat(filename).isNotNull();
+    assertThat(filename.getFilename()).isEqualTo("string-output-001-of-001.csv");
   }
 
   /**
@@ -162,8 +159,8 @@ public class WindowedFilenamePolicyTest {
         policy.windowedFilename(1, 1, window, paneInfo, new TestOutputFileHints());
     // Assert
     //
-    assertThat(filename, is(notNullValue()));
-    assertThat(filename.getFilename(), is(equalTo("output-001-of-001")));
+    assertThat(filename).isNotNull();
+    assertThat(filename.getFilename()).isEqualTo("output-001-of-001");
   }
 
   /**
@@ -200,10 +197,9 @@ public class WindowedFilenamePolicyTest {
 
     // Assert
     //
-    assertThat(filename, is(notNullValue()));
-    assertThat(
-        filename.getCurrentDirectory().toString().endsWith("2017/01/08/10:56/"), is(equalTo(true)));
-    assertThat(filename.getFilename(), is(equalTo("output-001-of-001")));
+    assertThat(filename).isNotNull();
+    assertThat(filename.getCurrentDirectory().toString()).endsWith("2017/01/08/10:56/");
+    assertThat(filename.getFilename()).isEqualTo("output-001-of-001");
   }
 
   /**
@@ -258,10 +254,9 @@ public class WindowedFilenamePolicyTest {
     ResourceId filename =
         policy.windowedFilename(1, 1, window, paneInfo, new TestOutputFileHints());
 
-    assertThat(filename, is(notNullValue()));
-    assertThat(
-        filename.getCurrentDirectory().toString().endsWith("2017/1/8/10:56/"), is(equalTo(true)));
-    assertThat(filename.getFilename(), is(equalTo("output-001-of-001")));
+    assertThat(filename).isNotNull();
+    assertThat(filename.getCurrentDirectory().toString()).endsWith("2017/1/8/10:56/");
+    assertThat(filename.getFilename()).isEqualTo("output-001-of-001");
   }
 
   /**
@@ -297,10 +292,9 @@ public class WindowedFilenamePolicyTest {
     ResourceId filename =
         policy.windowedFilename(1, 1, window, paneInfo, new TestOutputFileHints());
 
-    assertThat(filename, is(notNullValue()));
-    assertThat(
-        filename.getCurrentDirectory().toString().endsWith("2017/1/8/10:56/"), is(equalTo(true)));
-    assertThat(filename.getFilename(), is(equalTo("output-001-of-001")));
+    assertThat(filename).isNotNull();
+    assertThat(filename.getCurrentDirectory().toString()).endsWith("2017/1/8/10:56/");
+    assertThat(filename.getFilename()).isEqualTo("output-001-of-001");
   }
 
   /**
@@ -333,11 +327,42 @@ public class WindowedFilenamePolicyTest {
     ResourceId filename =
         policy.windowedFilename(1, 1, window, paneInfo, new TestOutputFileHints());
 
-    assertThat(filename, is(notNullValue()));
-    assertThat(
-        filename.getCurrentDirectory().toString().endsWith("recommendations/0056/"),
-        is(equalTo(true)));
-    assertThat(filename.getFilename(), is(equalTo("output-001-of-001")));
+    assertThat(filename).isNotNull();
+    assertThat(filename.getCurrentDirectory().toString()).endsWith("recommendations/0056/");
+    assertThat(filename.getFilename()).isEqualTo("output-001-of-001");
+  }
+
+  @Test
+  public void testWindowedDirectoryWrappedPattern() {
+    // Arrange
+    ResourceId outputDirectory =
+        getBaseTempDirectory()
+            .resolve("recommendations/{mm}/", StandardResolveOptions.RESOLVE_DIRECTORY);
+    IntervalWindow window = mock(IntervalWindow.class);
+    PaneInfo paneInfo = PaneInfo.createPane(false, true, Timing.ON_TIME, 0, 0);
+
+    Instant windowBegin = new DateTime(2017, 1, 8, 10, 55, 0).toInstant();
+    Instant windowEnd = new DateTime(2017, 1, 8, 10, 56, 0).toInstant();
+    when(window.maxTimestamp()).thenReturn(windowEnd);
+    when(window.start()).thenReturn(windowBegin);
+    when(window.end()).thenReturn(windowEnd);
+
+    WindowedFilenamePolicy policy =
+        WindowedFilenamePolicy.writeWindowedFiles()
+            .withOutputDirectory(outputDirectory.toString())
+            .withOutputFilenamePrefix("output")
+            .withShardTemplate("-SSS-of-NNN")
+            .withSuffix("")
+            .withMinutePattern("{mm}");
+
+    // Act
+    ResourceId filename =
+        policy.windowedFilename(1, 1, window, paneInfo, new TestOutputFileHints());
+
+    // Assert
+    assertThat(filename).isNotNull();
+    assertThat(filename.getCurrentDirectory().toString()).endsWith("recommendations/56/");
+    assertThat(filename.getFilename()).isEqualTo("output-001-of-001");
   }
 
   /**

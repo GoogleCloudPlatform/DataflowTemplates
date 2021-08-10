@@ -18,6 +18,8 @@ package com.google.cloud.teleport.io;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
+import com.google.re2j.Matcher;
+import com.google.re2j.Pattern;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.io.DefaultFilenamePolicy;
 import org.apache.beam.sdk.io.FileBasedSink.FilenamePolicy;
@@ -30,7 +32,8 @@ import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.IntervalWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
-import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.MoreObjects;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Joiner;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
@@ -46,6 +49,27 @@ import org.slf4j.LoggerFactory;
 public abstract class WindowedFilenamePolicy extends FilenamePolicy {
   /** The logger to output status messages to. */
   private static final Logger LOG = LoggerFactory.getLogger(WindowedFilenamePolicy.class);
+
+  // Exclude alphanumeric and directory delimiter from wrapping the Joda pattern.
+  private static final String EXCLUDED_GROUP_WRAPPER_REGEX = "[^A-Za-z0-9/]";
+
+  private static final String YEAR_GROUP_NAME = "year";
+  private static final Pattern YEAR_PATTERN_REGEX =
+      createUserPatternRegex(YEAR_GROUP_NAME, "y+", "Y+");
+
+  private static final String MONTH_GROUP_NAME = "month";
+  private static final Pattern MONTH_PATTERN_REGEX = createUserPatternRegex(MONTH_GROUP_NAME, "M+");
+
+  private static final String DAY_GROUP_NAME = "day";
+  private static final Pattern DAY_PATTERN_REGEX =
+      createUserPatternRegex(DAY_GROUP_NAME, "D+", "d+");
+
+  private static final String HOUR_GROUP_NAME = "hour";
+  private static final Pattern HOUR_PATTERN_REGEX = createUserPatternRegex(HOUR_GROUP_NAME, "H+");
+
+  private static final String MINUTE_GROUP_NAME = "minute";
+  private static final Pattern MINUTE_PATTERN_REGEX =
+      createUserPatternRegex(MINUTE_GROUP_NAME, "m+");
 
   public static WindowedFilenamePolicy writeWindowedFiles() {
     return new AutoValue_WindowedFilenamePolicy.Builder().build();
@@ -402,51 +426,46 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
       DateTime time = intervalWindow.end().toDateTime();
       String outputPath = outputDirectory.toString();
 
-      // Default Date patterns.
-      String yearPattern = "YYYY";
-      String monthPattern = "MM";
-      String dayPattern = "DD";
-      String hourPattern = "HH";
-      String minutePattern = "mm";
+      String userYearPattern = getUserPattern(yearPattern(), /* defaultValue= */ "YYYY");
+      String userMonthPattern = getUserPattern(monthPattern(), /* defaultValue= */ "MM");
+      String userDayPattern = getUserPattern(dayPattern(), /* defaultValue= */ "DD");
+      String userHourPattern = getUserPattern(hourPattern(), /* defaultValue= */ "HH");
+      String userMinutePattern = getUserPattern(minutePattern(), /* defaultValue= */ "mm");
+      LOG.debug(
+          "User patterns set to: Year: {}, Month: {}, Day: {}, Hour: {}, Minute: {}",
+          userDayPattern,
+          userMonthPattern,
+          userDayPattern,
+          userHourPattern,
+          userMinutePattern);
 
-      // Use a custom pattern, if provided.
-      if (yearPattern() != null) {
-        yearPattern = MoreObjects.firstNonNull(yearPattern().get(), yearPattern);
-      }
-      LOG.debug("Year pattern set to: {}", yearPattern);
-
-      if (monthPattern() != null) {
-        monthPattern = MoreObjects.firstNonNull(monthPattern().get(), monthPattern);
-      }
-      LOG.debug("Month pattern set to: {}", monthPattern);
-
-      if (dayPattern() != null) {
-        dayPattern = MoreObjects.firstNonNull(dayPattern().get(), dayPattern);
-      }
-      LOG.debug("Day pattern set to: {}", dayPattern);
-
-      if (hourPattern() != null) {
-        hourPattern = MoreObjects.firstNonNull(hourPattern().get(), hourPattern);
-      }
-      LOG.debug("Hour pattern set to: {}", hourPattern);
-
-      if (minutePattern() != null) {
-        minutePattern = MoreObjects.firstNonNull(minutePattern().get(), minutePattern);
-      }
-      LOG.debug("Minute pattern set to: {}", minutePattern);
+      String jodaYearPattern = getJodaPattern(userYearPattern, YEAR_PATTERN_REGEX, YEAR_GROUP_NAME);
+      String jodaMonthPattern =
+          getJodaPattern(userMonthPattern, MONTH_PATTERN_REGEX, MONTH_GROUP_NAME);
+      String jodaDayPattern = getJodaPattern(userDayPattern, DAY_PATTERN_REGEX, DAY_GROUP_NAME);
+      String jodaHourPattern = getJodaPattern(userHourPattern, HOUR_PATTERN_REGEX, HOUR_GROUP_NAME);
+      String jodaMinutePattern =
+          getJodaPattern(userMinutePattern, MINUTE_PATTERN_REGEX, MINUTE_GROUP_NAME);
+      LOG.debug(
+          "Time patterns set to: Year: {}, Month: {}, Day: {}, Hour: {}, Minute: {}",
+          jodaYearPattern,
+          jodaMonthPattern,
+          jodaDayPattern,
+          jodaHourPattern,
+          jodaMinutePattern);
 
       try {
-        final DateTimeFormatter yearFormatter = DateTimeFormat.forPattern(yearPattern);
-        final DateTimeFormatter monthFormatter = DateTimeFormat.forPattern(monthPattern);
-        final DateTimeFormatter dayFormatter = DateTimeFormat.forPattern(dayPattern);
-        final DateTimeFormatter hourFormatter = DateTimeFormat.forPattern(hourPattern);
-        final DateTimeFormatter minuteFormatter = DateTimeFormat.forPattern(minutePattern);
+        final DateTimeFormatter yearFormatter = DateTimeFormat.forPattern(jodaYearPattern);
+        final DateTimeFormatter monthFormatter = DateTimeFormat.forPattern(jodaMonthPattern);
+        final DateTimeFormatter dayFormatter = DateTimeFormat.forPattern(jodaDayPattern);
+        final DateTimeFormatter hourFormatter = DateTimeFormat.forPattern(jodaHourPattern);
+        final DateTimeFormatter minuteFormatter = DateTimeFormat.forPattern(jodaMinutePattern);
 
-        outputPath = outputPath.replace(yearPattern, yearFormatter.print(time));
-        outputPath = outputPath.replace(monthPattern, monthFormatter.print(time));
-        outputPath = outputPath.replace(dayPattern, dayFormatter.print(time));
-        outputPath = outputPath.replace(hourPattern, hourFormatter.print(time));
-        outputPath = outputPath.replace(minutePattern, minuteFormatter.print(time));
+        outputPath = outputPath.replace(userYearPattern, yearFormatter.print(time));
+        outputPath = outputPath.replace(userMonthPattern, monthFormatter.print(time));
+        outputPath = outputPath.replace(userDayPattern, dayFormatter.print(time));
+        outputPath = outputPath.replace(userHourPattern, hourFormatter.print(time));
+        outputPath = outputPath.replace(userMinutePattern, minuteFormatter.print(time));
       } catch (IllegalArgumentException e) {
         throw new RuntimeException(
             "Could not resolve custom DateTime pattern. " + e.getMessage(), e);
@@ -455,5 +474,56 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
       outputDirectory = FileSystems.matchNewResource(outputPath, true);
     }
     return outputDirectory;
+  }
+
+  /**
+   * Returns a compiled {@link Pattern} whose regex will include a group with {@code
+   * timePatternGroupName} with all the options in {@code timePatterns}.
+   *
+   * <p>The resulting group will be equivalent to the following in RE2 syntax:
+   * (?P<timePatternGroupName>timePattern1|...|timePatternN)
+   *
+   * <p>The above group will also be surrounded by an optional match of {@link
+   * WindowedFilenamePolicy#EXCLUDED_GROUP_WRAPPER_REGEX}.
+   */
+  private static Pattern createUserPatternRegex(
+      String timePatternGroupName, String... timePatterns) {
+    String timePatternGroup = Joiner.on('|').join(timePatterns);
+    String regex =
+        String.format(
+            "%s?(?P<%s>%s)%s?",
+            EXCLUDED_GROUP_WRAPPER_REGEX,
+            timePatternGroupName,
+            timePatternGroup,
+            EXCLUDED_GROUP_WRAPPER_REGEX);
+    return Pattern.compile(regex);
+  }
+
+  /**
+   * Returns the {@code userValue} string value or {@code default} if the user value isn't provided.
+   */
+  private static String getUserPattern(
+      @Nullable ValueProvider<String> userValue, String defaultValue) {
+    String userPattern =
+        userValue != null && !Strings.isNullOrEmpty(userValue.get())
+            ? userValue.get()
+            : defaultValue;
+    LOG.debug("User pattern set to: {}", userPattern);
+    return userPattern;
+  }
+
+  /**
+   * Gets the Joda-compliant pattern from the user-provided pattern.
+   *
+   * @param userPattern user-provided pattern for replacement
+   * @param regex regex that defines valid user patterns
+   * @param groupName named group within regex that matches the Joda-compliant pattern
+   * @return the Joda-compliant pattern (equivalent to {@code groupName})
+   */
+  private static String getJodaPattern(String userPattern, Pattern regex, String groupName) {
+    Matcher matcher = regex.matcher(userPattern);
+    checkArgument(
+        matcher.find(), "Datetime pattern '%s' does not match regex '%s'", userPattern, regex);
+    return matcher.group(groupName);
   }
 }
