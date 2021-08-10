@@ -233,6 +233,17 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                             .map(t -> t.name())
                             .collect(Collectors.toList());
 
+                    // Save any missing necessary export table names; save a copy of the original
+                    // table list to bypass 'final or effectively final' condition of the lambda
+                    // expression below.
+                    List<String> usersTables = tablesList.stream().collect(Collectors.toList());
+                    List<String> missingTables =
+                        filteredTables.stream()
+                            .distinct()
+                            .filter(t -> !usersTables.contains(t))
+                            .collect(Collectors.toList());
+                    Collections.sort(missingTables);
+
                     // If user has specified a list of tables without including required
                     // related tables, and not explicitly set shouldExportRelatedTables,
                     // throw an exception.
@@ -243,7 +254,9 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                           "Attempted to export table(s) requiring parent and/or foreign keys tables"
                               + " without setting the shouldExportRelatedTables parameter. Set"
                               + " --shouldExportRelatedTables=true to export all necessary"
-                              + " tables.");
+                              + " tables, or add "
+                              + String.join(", ", missingTables)
+                              + " to --tableNames.");
                     }
                     c.output(ddl);
                   }

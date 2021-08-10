@@ -272,58 +272,91 @@ public final class ExportRelatedTablesCheckTest {
    * need to be exported */
   @Test
   public void exportTableWithRelatedTablesAndWithoutFlag_stopsPipelineExecution() throws Exception {
-    Ddl ddl =
-        Ddl.builder()
-            .createTable("table_a")
-            .column("id1")
-            .int64()
-            .endColumn()
-            .column("id2")
-            .int64()
-            .endColumn()
-            .primaryKey()
-            .asc("id1")
-            .asc("id2")
-            .end()
-            .endTable()
-            .createTable("table_b")
-            .column("id1")
-            .int64()
-            .endColumn()
-            .column("id2")
-            .int64()
-            .endColumn()
-            .column("id3")
-            .int64()
-            .endColumn()
-            .primaryKey()
-            .asc("id1")
-            .asc("id2")
-            .asc("id3")
-            .end()
-            .endTable()
-            .createTable("table_c")
-            .column("id1")
-            .int64()
-            .endColumn()
-            .column("id2")
-            .int64()
-            .endColumn()
-            .column("id3")
-            .int64()
-            .endColumn()
-            .primaryKey()
-            .asc("id1")
-            .asc("id2")
-            .asc("id3")
-            .end()
-            .interleaveInParent("table_b")
-            .endTable()
-            .build();
-
-    // Add to referencedTable field (i.e. `table_c` would have a foreign key constraint
-    // referencing `table_a` )
-    ddl.addNewReferencedTable("table_c", "table_a");
+    Ddl ddl = Ddl.builder()
+        .createTable("table_a")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").end()
+        .endTable()
+        .createTable("table_b")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .column("id3").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").asc("id3").end()
+        .endTable()
+        .createTable("table_c")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .column("id3").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").asc("id3").end()
+          .interleaveInParent("table_b")
+          .foreignKeys(
+                ImmutableList.of(
+                    "ALTER TABLE `table_c` ADD CONSTRAINT `fk_table_b` FOREIGN KEY (`id1`)"
+                        + " REFERENCES `table_b` (`id1`)"))
+        .endTable()
+        .createTable("table_d")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .column("id3").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").asc("id3").end()
+        .endTable()
+        .createTable("table_e")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .column("id3").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").asc("id3").end()
+        .endTable()
+        .createTable("table_f")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .column("id3").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").asc("id3").end()
+          .interleaveInParent("table_e")
+          .foreignKeys(
+                ImmutableList.of(
+                    "ALTER TABLE `table_f` ADD CONSTRAINT `fk_table_f` FOREIGN KEY (`id2`)"
+                        + " REFERENCES `table_e` (`id2`)"))
+        .endTable()
+        .createTable("table_g")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .column("id3").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").asc("id3").end()
+        .endTable()
+        .createTable("table_h")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .column("id3").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").asc("id3").end()
+        .endTable()
+        .createTable("table_i")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .column("id3").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").asc("id3").end()
+          .interleaveInParent("table_h")
+        .endTable()
+        .createTable("table_j")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .column("id3").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").asc("id3").end()
+          .interleaveInParent("table_i")
+        .endTable()
+        .createTable("table_k")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .column("id3").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").asc("id3").end()
+        .endTable()
+        .createTable("table_l")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .column("id3").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").asc("id3").end()
+        .endTable()
+        .build();
 
     createAndPopulate(ddl, /* numBatches = */ 100);
 
@@ -331,17 +364,26 @@ public final class ExportRelatedTablesCheckTest {
     // Attempt to export a single table that requires additional related tables
     // (without --shouldExportRelatedTables set/setting --shouldExportRelatedTables true)
     spannerServer.createDatabase(destDbPrefix + chkptThree, Collections.emptyList());
-    assertThrows(
+    Exception exception = assertThrows(
         PipelineExecutionException.class,
         () ->
             exportAndImportDb(
                 sourceDb,
                 destDbPrefix + chkptThree,
                 chkptThree,
-                tableC,
+                String.join(",", ImmutableList.of(tableA, tableC, tableF, tableJ)),
                 /* relatedTables =*/ false,
                 exportPipeline,
                 importPipeline));
+
+    List<String> missingTables = ImmutableList.of(tableB, tableE, tableH, tableI);
+    assertEquals(
+        "java.lang.Exception: Attempted to export table(s) requiring parent and/or foreign keys"
+            + " tables without setting the shouldExportRelatedTables parameter. Set"
+            + " --shouldExportRelatedTables=true to export all necessary tables, or add "
+            + String.join(", ", missingTables)
+            + " to --tableNames.",
+        exception.getMessage());
   }
 
   /* Validates that pipeline execution fails when --tableNames is not filled and
