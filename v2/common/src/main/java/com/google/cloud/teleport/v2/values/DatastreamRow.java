@@ -16,6 +16,9 @@
 package com.google.cloud.teleport.v2.values;
 
 import com.google.api.services.bigquery.model.TableRow;
+import java.util.Arrays;
+import java.util.List;
+import org.codehaus.jackson.JsonNode;
 
 /**
  * The {@link DatastreamRow} class holds the value of a specific Datastream JSON record. The data
@@ -26,9 +29,11 @@ import com.google.api.services.bigquery.model.TableRow;
 public class DatastreamRow {
 
   private TableRow tableRow;
+  private JsonNode jsonRow;
 
-  private DatastreamRow(TableRow tableRow) {
+  private DatastreamRow(TableRow tableRow, JsonNode jsonRow) {
     this.tableRow = tableRow;
+    this.jsonRow = jsonRow;
   }
 
   /**
@@ -37,26 +42,61 @@ public class DatastreamRow {
    * @param tableRow A TableRow object with Datastream data in it.
    */
   public static DatastreamRow of(TableRow tableRow) {
-    return new DatastreamRow(tableRow);
+    return new DatastreamRow(tableRow, null);
+  }
+
+  /**
+   * Build a {@code DatastreamRow} for use in pipelines.
+   *
+   * @param jsonRow A JsonNode object with Datastream data in it.
+   */
+  public static DatastreamRow of(JsonNode jsonRow) {
+    return new DatastreamRow(null, jsonRow);
   }
 
   /* Return the String stream name for the given data. */
   public String getStreamName() {
-    return (String) tableRow.get("_metadata_stream");
+    return getStringValue("_metadata_stream");
+  }
+
+  /* Return the String source type for the given data (eg. mysql, oracle). */
+  public String getSourceType() {
+    return getStringValue("_metadata_source_type");
   }
 
   /* Return the String source schema name for the given data. */
   public String getSchemaName() {
-    return (String) tableRow.get("_metadata_schema");
+    return getStringValue("_metadata_schema");
   }
 
   /* Return the String source table name for the given data. */
   public String getTableName() {
-    return (String) tableRow.get("_metadata_table");
+    return getStringValue("_metadata_table");
+  }
+
+  public String getStringValue(String field) {
+    if (this.jsonRow != null) {
+      return (String) jsonRow.get(field).getTextValue();
+    } else {
+      return (String) tableRow.get(field);
+    }
+  }
+
+  public List<String> getSortFields() {
+    if (this.getSourceType() == "mysql") {
+      return Arrays.asList("_metadata_timestamp", "_metadata_log_file", "_metadata_log_position");
+    } else {
+      // Current default is oracle.
+      return Arrays.asList("_metadata_timestamp", "_metadata_scn");
+    }
   }
 
   @Override
   public String toString() {
-    return this.tableRow.toString();
+    if (this.jsonRow != null) {
+      return this.jsonRow.toString();
+    } else {
+      return this.tableRow.toString();
+    }
   }
 }
