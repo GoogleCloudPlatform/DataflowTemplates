@@ -20,6 +20,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.sameInstance;
 import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingWhiteSpace;
 import static org.junit.Assert.assertThat;
 
@@ -153,6 +154,30 @@ public class InformationSchemaScannerTest {
 
     // Verify pretty print.
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(allTypes));
+  }
+
+  @Test
+  public void simpleView() throws Exception {
+    String tableDef =
+        "CREATE TABLE Users ("
+            + " id INT64 NOT NULL,"
+            + " name STRING(MAX),"
+            + ") PRIMARY KEY (id)";
+    String viewDef = "CREATE VIEW Names SQL SECURITY INVOKER AS SELECT u.name FROM Users u";
+
+    spannerServer.createDatabase(dbId, Arrays.asList(tableDef, viewDef));
+    Ddl ddl = getDatabaseDdl();
+
+    assertThat(ddl.allTables(), hasSize(1));
+    assertThat(ddl.table("Users"), notNullValue());
+    assertThat(ddl.table("uSers"), notNullValue());
+
+    assertThat(ddl.views(), hasSize(1));
+    View view = ddl.view("Names");
+    assertThat(view, notNullValue());
+    assertThat(ddl.view("nAmes"), sameInstance(view));
+
+    assertThat(view.query(), equalTo("SELECT u.name FROM Users u"));
   }
 
   @Test

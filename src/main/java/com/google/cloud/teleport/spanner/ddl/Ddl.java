@@ -331,7 +331,7 @@ public class Ddl implements Serializable {
     }
 
     public boolean hasView(String name) {
-      return views.containsKey(name);
+      return views.containsKey(name.toLowerCase());
     }
 
     public void mergeDatabaseOptions(List<Export.DatabaseOption> databaseOptions) {
