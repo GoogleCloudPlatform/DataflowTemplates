@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2021 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner;
 
 import static com.google.cloud.teleport.spanner.SpannerTableFilter.getFilteredTables;
@@ -113,26 +112,54 @@ public final class ExportRelatedTablesCheckTest {
    * --shouldExportRelatedTables paramters are not filled */
   @Test
   public void exportDbWithoutTableNamesAndFlag_exportsFullDb() throws Exception {
-    Ddl ddl = Ddl.builder()
-        .createTable("table_a")
-          .column("id1").int64().endColumn()
-          .column("id2").int64().endColumn()
-          .primaryKey().asc("id1").asc("id2").end()
-        .endTable()
-        .createTable("table_b")
-          .column("id1").int64().endColumn()
-          .column("id2").int64().endColumn()
-          .column("id3").int64().endColumn()
-          .primaryKey().asc("id1").asc("id2").asc("id3").end()
-        .endTable()
-        .createTable("table_c")
-          .column("id1").int64().endColumn()
-          .column("id2").int64().endColumn()
-          .column("id3").int64().endColumn()
-          .primaryKey().asc("id1").asc("id2").asc("id3").end()
-          .interleaveInParent("table_b")
-        .endTable()
-        .build();
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("table_a")
+            .column("id1")
+            .int64()
+            .endColumn()
+            .column("id2")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id1")
+            .asc("id2")
+            .end()
+            .endTable()
+            .createTable("table_b")
+            .column("id1")
+            .int64()
+            .endColumn()
+            .column("id2")
+            .int64()
+            .endColumn()
+            .column("id3")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id1")
+            .asc("id2")
+            .asc("id3")
+            .end()
+            .endTable()
+            .createTable("table_c")
+            .column("id1")
+            .int64()
+            .endColumn()
+            .column("id2")
+            .int64()
+            .endColumn()
+            .column("id3")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id1")
+            .asc("id2")
+            .asc("id3")
+            .end()
+            .interleaveInParent("table_b")
+            .endTable()
+            .build();
 
     // Add to referencedTable field (i.e. `table_c` would have a foreign key constraint
     // referencing `table_a` )
@@ -167,26 +194,54 @@ public final class ExportRelatedTablesCheckTest {
   @Test
   public void exportTableWithoutRelatedTablesAndWithoutFlag_exportsSelectedTable()
       throws Exception {
-    Ddl ddl = Ddl.builder()
-        .createTable("table_a")
-          .column("id1").int64().endColumn()
-          .column("id2").int64().endColumn()
-          .primaryKey().asc("id1").asc("id2").end()
-        .endTable()
-        .createTable("table_b")
-          .column("id1").int64().endColumn()
-          .column("id2").int64().endColumn()
-          .column("id3").int64().endColumn()
-          .primaryKey().asc("id1").asc("id2").asc("id3").end()
-          .interleaveInParent("table_a")
-        .endTable()
-        .createTable("table_c")
-          .column("id1").int64().endColumn()
-          .column("id2").int64().endColumn()
-          .column("id3").int64().endColumn()
-          .primaryKey().asc("id1").asc("id2").asc("id3").end()
-        .endTable()
-        .build();
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("table_a")
+            .column("id1")
+            .int64()
+            .endColumn()
+            .column("id2")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id1")
+            .asc("id2")
+            .end()
+            .endTable()
+            .createTable("table_b")
+            .column("id1")
+            .int64()
+            .endColumn()
+            .column("id2")
+            .int64()
+            .endColumn()
+            .column("id3")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id1")
+            .asc("id2")
+            .asc("id3")
+            .end()
+            .interleaveInParent("table_a")
+            .endTable()
+            .createTable("table_c")
+            .column("id1")
+            .int64()
+            .endColumn()
+            .column("id2")
+            .int64()
+            .endColumn()
+            .column("id3")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id1")
+            .asc("id2")
+            .asc("id3")
+            .end()
+            .endTable()
+            .build();
 
     createAndPopulate(ddl, /* numBatches = */ 100);
 
@@ -217,26 +272,54 @@ public final class ExportRelatedTablesCheckTest {
    * need to be exported */
   @Test
   public void exportTableWithRelatedTablesAndWithoutFlag_stopsPipelineExecution() throws Exception {
-    Ddl ddl = Ddl.builder()
-        .createTable("table_a")
-          .column("id1").int64().endColumn()
-          .column("id2").int64().endColumn()
-          .primaryKey().asc("id1").asc("id2").end()
-        .endTable()
-        .createTable("table_b")
-          .column("id1").int64().endColumn()
-          .column("id2").int64().endColumn()
-          .column("id3").int64().endColumn()
-          .primaryKey().asc("id1").asc("id2").asc("id3").end()
-        .endTable()
-        .createTable("table_c")
-          .column("id1").int64().endColumn()
-          .column("id2").int64().endColumn()
-          .column("id3").int64().endColumn()
-          .primaryKey().asc("id1").asc("id2").asc("id3").end()
-          .interleaveInParent("table_b")
-        .endTable()
-        .build();
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("table_a")
+            .column("id1")
+            .int64()
+            .endColumn()
+            .column("id2")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id1")
+            .asc("id2")
+            .end()
+            .endTable()
+            .createTable("table_b")
+            .column("id1")
+            .int64()
+            .endColumn()
+            .column("id2")
+            .int64()
+            .endColumn()
+            .column("id3")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id1")
+            .asc("id2")
+            .asc("id3")
+            .end()
+            .endTable()
+            .createTable("table_c")
+            .column("id1")
+            .int64()
+            .endColumn()
+            .column("id2")
+            .int64()
+            .endColumn()
+            .column("id3")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id1")
+            .asc("id2")
+            .asc("id3")
+            .end()
+            .interleaveInParent("table_b")
+            .endTable()
+            .build();
 
     // Add to referencedTable field (i.e. `table_c` would have a foreign key constraint
     // referencing `table_a` )
@@ -265,26 +348,54 @@ public final class ExportRelatedTablesCheckTest {
    * --shouldExportRelatedTables is set to true */
   @Test
   public void exportFullDbWithFlagTrue() throws Exception {
-    Ddl ddl = Ddl.builder()
-        .createTable("table_a")
-          .column("id1").int64().endColumn()
-          .column("id2").int64().endColumn()
-          .primaryKey().asc("id1").asc("id2").end()
-        .endTable()
-        .createTable("table_b")
-          .column("id1").int64().endColumn()
-          .column("id2").int64().endColumn()
-          .column("id3").int64().endColumn()
-          .primaryKey().asc("id1").asc("id2").asc("id3").end()
-        .endTable()
-        .createTable("table_c")
-          .column("id1").int64().endColumn()
-          .column("id2").int64().endColumn()
-          .column("id3").int64().endColumn()
-          .primaryKey().asc("id1").asc("id2").asc("id3").end()
-          .interleaveInParent("table_b")
-        .endTable()
-        .build();
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("table_a")
+            .column("id1")
+            .int64()
+            .endColumn()
+            .column("id2")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id1")
+            .asc("id2")
+            .end()
+            .endTable()
+            .createTable("table_b")
+            .column("id1")
+            .int64()
+            .endColumn()
+            .column("id2")
+            .int64()
+            .endColumn()
+            .column("id3")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id1")
+            .asc("id2")
+            .asc("id3")
+            .end()
+            .endTable()
+            .createTable("table_c")
+            .column("id1")
+            .int64()
+            .endColumn()
+            .column("id2")
+            .int64()
+            .endColumn()
+            .column("id3")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id1")
+            .asc("id2")
+            .asc("id3")
+            .end()
+            .interleaveInParent("table_b")
+            .endTable()
+            .build();
 
     // Add to referencedTable field (i.e. `table_c` would have a foreign key constraint
     // referencing `table_a` )
@@ -312,26 +423,54 @@ public final class ExportRelatedTablesCheckTest {
    * --shouldExportRelatedTables is set to false (either intentionally or by default) */
   @Test
   public void exportFullDbWithFlagFalse() throws Exception {
-    Ddl ddl = Ddl.builder()
-        .createTable("table_a")
-          .column("id1").int64().endColumn()
-          .column("id2").int64().endColumn()
-          .primaryKey().asc("id1").asc("id2").end()
-        .endTable()
-        .createTable("table_b")
-          .column("id1").int64().endColumn()
-          .column("id2").int64().endColumn()
-          .column("id3").int64().endColumn()
-          .primaryKey().asc("id1").asc("id2").asc("id3").end()
-        .endTable()
-        .createTable("table_c")
-          .column("id1").int64().endColumn()
-          .column("id2").int64().endColumn()
-          .column("id3").int64().endColumn()
-          .primaryKey().asc("id1").asc("id2").asc("id3").end()
-          .interleaveInParent("table_b")
-        .endTable()
-        .build();
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("table_a")
+            .column("id1")
+            .int64()
+            .endColumn()
+            .column("id2")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id1")
+            .asc("id2")
+            .end()
+            .endTable()
+            .createTable("table_b")
+            .column("id1")
+            .int64()
+            .endColumn()
+            .column("id2")
+            .int64()
+            .endColumn()
+            .column("id3")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id1")
+            .asc("id2")
+            .asc("id3")
+            .end()
+            .endTable()
+            .createTable("table_c")
+            .column("id1")
+            .int64()
+            .endColumn()
+            .column("id2")
+            .int64()
+            .endColumn()
+            .column("id3")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id1")
+            .asc("id2")
+            .asc("id3")
+            .end()
+            .interleaveInParent("table_b")
+            .endTable()
+            .build();
 
     // Add to referencedTable field (i.e. `table_c` would have a foreign key constraint
     // referencing `table_a` )
@@ -365,36 +504,74 @@ public final class ExportRelatedTablesCheckTest {
    * --shouldExportRelatedTables is set to true, and additional tables need to be exported */
   @Test
   public void exportSelectedAndNecessaryTables() throws Exception {
-    Ddl ddl = Ddl.builder()
-        .createTable("table_a")
-          .column("id1").int64().endColumn()
-          .column("id2").int64().endColumn()
-          .primaryKey().asc("id1").asc("id2").end()
-        .endTable()
-        .createTable("table_b")
-          .column("id1").int64().endColumn()
-          .column("id2").int64().endColumn()
-          .column("id3").int64().endColumn()
-          .primaryKey().asc("id1").asc("id2").asc("id3").end()
-        .endTable()
-        .createTable("table_c")
-          .column("id1").int64().endColumn()
-          .column("id2").int64().endColumn()
-          .column("id3").int64().endColumn()
-          .primaryKey().asc("id1").asc("id2").asc("id3").end()
-          .interleaveInParent("table_b")
-          .foreignKeys(
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("table_a")
+            .column("id1")
+            .int64()
+            .endColumn()
+            .column("id2")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id1")
+            .asc("id2")
+            .end()
+            .endTable()
+            .createTable("table_b")
+            .column("id1")
+            .int64()
+            .endColumn()
+            .column("id2")
+            .int64()
+            .endColumn()
+            .column("id3")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id1")
+            .asc("id2")
+            .asc("id3")
+            .end()
+            .endTable()
+            .createTable("table_c")
+            .column("id1")
+            .int64()
+            .endColumn()
+            .column("id2")
+            .int64()
+            .endColumn()
+            .column("id3")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id1")
+            .asc("id2")
+            .asc("id3")
+            .end()
+            .interleaveInParent("table_b")
+            .foreignKeys(
                 ImmutableList.of(
                     "ALTER TABLE `table_c` ADD CONSTRAINT `fk1` FOREIGN KEY (`id1`) REFERENCES"
                         + " `table_b` (`id1`)"))
-        .endTable()
-        .createTable("table_d")
-          .column("id1").int64().endColumn()
-          .column("id2").int64().endColumn()
-          .column("id3").int64().endColumn()
-          .primaryKey().asc("id1").asc("id2").asc("id3").end()
-        .endTable()
-        .build();
+            .endTable()
+            .createTable("table_d")
+            .column("id1")
+            .int64()
+            .endColumn()
+            .column("id2")
+            .int64()
+            .endColumn()
+            .column("id3")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("id1")
+            .asc("id2")
+            .asc("id3")
+            .end()
+            .endTable()
+            .build();
 
     createAndPopulate(ddl, /* numBatches = */ 100);
 
@@ -434,9 +611,8 @@ public final class ExportRelatedTablesCheckTest {
     ddl.prettyPrint();
 
     // Get all the tables names from the random Ddl
-    List<String> tableNames = ddl.allTables().stream()
-            .map(t -> t.name())
-            .collect(Collectors.toList());
+    List<String> tableNames =
+        ddl.allTables().stream().map(t -> t.name()).collect(Collectors.toList());
 
     // Select a random number of random tables from the Ddl to export
     Random rand = new Random();
@@ -463,8 +639,7 @@ public final class ExportRelatedTablesCheckTest {
 
     // Compare the tables in the ddl to ensure all original tables were re-created during the import
     Collections.sort(tableNames);
-    compareExpectedTables(
-        destDbPrefix + chkptSeven, tableNames);
+    compareExpectedTables(destDbPrefix + chkptSeven, tableNames);
 
     // Get ALL the exported tables by calling the getFilteredTables() helper
     List<String> filteredTables =
@@ -659,38 +834,51 @@ public final class ExportRelatedTablesCheckTest {
     assertEquals(0, getRowCount(destDbPrefix + chkptNine, tableL));
   }
 
-  private void exportAndImportDb(String sourceDb, String destDb,
-                                       String jobIdName, String tableNames,
-                                       Boolean relatedTables,
-                                       TestPipeline exportPipeline,
-                                       TestPipeline importPipeline) {
+  private void exportAndImportDb(
+      String sourceDb,
+      String destDb,
+      String jobIdName,
+      String tableNames,
+      Boolean relatedTables,
+      TestPipeline exportPipeline,
+      TestPipeline importPipeline) {
     String tmpDirPath = tmpDir.getRoot().getAbsolutePath();
-    ValueProvider.StaticValueProvider<String> destination = ValueProvider.StaticValueProvider
-        .of(tmpDirPath);
-    ValueProvider.StaticValueProvider<String> jobId = ValueProvider.StaticValueProvider
-        .of(jobIdName);
-    ValueProvider.StaticValueProvider<String> source = ValueProvider.StaticValueProvider
-        .of(tmpDirPath + "/" + jobIdName);
+    ValueProvider.StaticValueProvider<String> destination =
+        ValueProvider.StaticValueProvider.of(tmpDirPath);
+    ValueProvider.StaticValueProvider<String> jobId =
+        ValueProvider.StaticValueProvider.of(jobIdName);
+    ValueProvider.StaticValueProvider<String> source =
+        ValueProvider.StaticValueProvider.of(tmpDirPath + "/" + jobIdName);
     ValueProvider.StaticValueProvider<String> timestamp = ValueProvider.StaticValueProvider.of("");
-    ValueProvider.StaticValueProvider<String> tables = ValueProvider.StaticValueProvider
-        .of(tableNames);
+    ValueProvider.StaticValueProvider<String> tables =
+        ValueProvider.StaticValueProvider.of(tableNames);
     ValueProvider.StaticValueProvider<Boolean> exportRelatedTables =
         ValueProvider.StaticValueProvider.of(relatedTables);
     ValueProvider.StaticValueProvider<Boolean> exportAsLogicalType =
         ValueProvider.StaticValueProvider.of(false);
     SpannerConfig sourceConfig = spannerServer.getSpannerConfig(sourceDb);
-    exportPipeline.apply("Export", new ExportTransform(sourceConfig, destination,
-                                                       jobId, timestamp, tables,
-                                                       exportRelatedTables,
-                                                       exportAsLogicalType));
+    exportPipeline.apply(
+        "Export",
+        new ExportTransform(
+            sourceConfig,
+            destination,
+            jobId,
+            timestamp,
+            tables,
+            exportRelatedTables,
+            exportAsLogicalType));
     PipelineResult exportResult = exportPipeline.run();
     exportResult.waitUntilFinish();
 
     SpannerConfig copyConfig = spannerServer.getSpannerConfig(destDb);
-    importPipeline.apply("Import", new ImportTransform(
-        copyConfig, source, ValueProvider.StaticValueProvider.of(true),
-        ValueProvider.StaticValueProvider.of(true),
-        ValueProvider.StaticValueProvider.of(true)));
+    importPipeline.apply(
+        "Import",
+        new ImportTransform(
+            copyConfig,
+            source,
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();
   }
@@ -711,7 +899,7 @@ public final class ExportRelatedTablesCheckTest {
     List<String> tableNames = Lists.newArrayList();
 
     for (Table t : ddl.allTables()) {
-       tableNames.add(t.name());
+      tableNames.add(t.name());
     }
     return tableNames;
   }
@@ -732,9 +920,7 @@ public final class ExportRelatedTablesCheckTest {
     ReadOnlyTransaction context = dbClient.readOnlyTransaction();
     // Execute query to determine how many rows are in the table
     ResultSet resultSet =
-      context.executeQuery(
-          Statement.of(
-              String.format("SELECT COUNT(1) FROM `%s`", tableName)));
+        context.executeQuery(Statement.of(String.format("SELECT COUNT(1) FROM `%s`", tableName)));
     while (resultSet.next()) {
       long rows = resultSet.getLong(0);
       return rows;

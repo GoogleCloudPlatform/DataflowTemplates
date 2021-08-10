@@ -139,7 +139,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
         /*snapshotTime=*/ ValueProvider.StaticValueProvider.of(""),
         /*tableNames=*/ ValueProvider.StaticValueProvider.of(""),
         /*exportRelatedTables=*/ ValueProvider.StaticValueProvider.of(false),
-        /*shouldExportTimestampAsLogicalType=*/ValueProvider.StaticValueProvider.of(false));
+        /*shouldExportTimestampAsLogicalType=*/ ValueProvider.StaticValueProvider.of(false));
   }
 
   public ExportTransform(
@@ -249,8 +249,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   }
                 }));
     PCollection<ReadOperation> tables =
-        ddl.apply("Build table read operations",
-            new BuildReadFromTableOperations(tableNames));
+        ddl.apply("Build table read operations", new BuildReadFromTableOperations(tableNames));
 
     PCollection<KV<String, Void>> allTableAndViewNames =
         ddl.apply(
@@ -313,8 +312,10 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                       @ProcessElement
                       public void processElement(ProcessContext c) {
                         Collection<Schema> avroSchemas =
-                            new DdlToAvroSchemaConverter("spannerexport", "1.0.0",
-                                shouldExportTimestampAsLogicalType.get())
+                            new DdlToAvroSchemaConverter(
+                                    "spannerexport",
+                                    "1.0.0",
+                                    shouldExportTimestampAsLogicalType.get())
                                 .convert(c.element());
                         for (Schema schema : avroSchemas) {
                           c.output(KV.of(schema.getName(), new SerializableSchemaSupplier(schema)));

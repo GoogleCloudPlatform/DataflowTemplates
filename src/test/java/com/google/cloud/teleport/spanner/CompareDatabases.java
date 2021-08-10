@@ -113,8 +113,7 @@ public class CompareDatabases extends PTransform<PBegin, PCollection<Long>> {
 
       PCollection<ReadOperation> tables =
           sourceDdl.apply(
-              new BuildReadFromTableOperations(
-                  ValueProvider.StaticValueProvider.of("")));
+              new BuildReadFromTableOperations(ValueProvider.StaticValueProvider.of("")));
 
       PCollection<Struct> rows =
           tables.apply(

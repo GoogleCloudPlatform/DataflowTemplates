@@ -68,8 +68,7 @@ class BuildReadFromTableOperations
                   tablesList = Arrays.asList(tables.get().split(",\\s*"));
                 }
 
-                for (Table table :
-                    getFilteredTables(ddl, tablesList)) {
+                for (Table table : getFilteredTables(ddl, tablesList)) {
                   String columnsListAsString =
                       table.columns().stream()
                           .filter(x -> !x.isGenerated())

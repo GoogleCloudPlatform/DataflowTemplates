@@ -109,7 +109,6 @@ public class Ddl implements Serializable {
     referencedTables.put(table.toLowerCase(), referencedTable.toLowerCase());
   }
 
-
   public Table table(String tableName) {
     return tables.get(tableName.toLowerCase());
   }
@@ -390,8 +389,9 @@ public class Ddl implements Serializable {
     if (parents != null ? !parents.equals(ddl.parents) : ddl.parents != null) {
       return false;
     }
-    if (referencedTables != null ? !referencedTables.equals(ddl.referencedTables)
-            : ddl.referencedTables != null) {
+    if (referencedTables != null
+        ? !referencedTables.equals(ddl.referencedTables)
+        : ddl.referencedTables != null) {
       return false;
     }
     if (views != null ? !views.equals(ddl.views) : ddl.views != null) {

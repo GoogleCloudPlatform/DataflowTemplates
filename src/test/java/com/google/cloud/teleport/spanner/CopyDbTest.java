@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.spanner;
 
-
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingWhiteSpace;
 import static org.junit.Assert.assertEquals;
@@ -52,9 +51,9 @@ import org.junit.rules.TemporaryFolder;
 
 /**
  * An end to end test that exports and imports a database and verifies that the content is
- * identical. Additionally, this test verifies the behavior of table level export.
- * This requires an active GCP project with a Spanner instance. Hence this test can only be run
- * locally with a project set up using 'gcloud config'.
+ * identical. Additionally, this test verifies the behavior of table level export. This requires an
+ * active GCP project with a Spanner instance. Hence this test can only be run locally with a
+ * project set up using 'gcloud config'.
  */
 @Category(IntegrationTest.class)
 public class CopyDbTest {
@@ -97,6 +96,7 @@ public class CopyDbTest {
   /* Validates behavior of exporting full db without selecting any tables */
   @Test
   public void exportWithoutTableSelection() throws Exception {
+    // spotless:off
     Ddl ddl = Ddl.builder()
             .createTable("Users")
               .column("first_name").string().max().endColumn()
@@ -131,6 +131,7 @@ public class CopyDbTest {
               .primaryKey().asc("first_name").desc("last_name").asc("id").end()
             .endTable()
             .build();
+    // spotless:on
 
     createAndPopulate(ddl, 100);
 
@@ -160,6 +161,7 @@ public class CopyDbTest {
   /* Validates behavior of single table database exporting */
   @Test
   public void exportSingleTable() throws Exception {
+    // spotless:off
     Ddl ddl = Ddl.builder()
             .createTable("Users")
               .column("first_name").string().max().endColumn()
@@ -188,6 +190,7 @@ public class CopyDbTest {
               .primaryKey().asc("first_name").desc("last_name").asc("id").end()
             .endTable()
             .build();
+    // spotless:on
 
     createAndPopulate(ddl, 100);
     // Export and import the table 'Users' from the database only
@@ -214,6 +217,7 @@ public class CopyDbTest {
   /* Validates behavior of exporting multiple unrelated tables */
   @Test
   public void exportMultipleTables() throws Exception {
+    // spotless:off
     Ddl ddl = Ddl.builder()
             .createTable("Users")
               .column("first_name").string().max().endColumn()
@@ -248,6 +252,7 @@ public class CopyDbTest {
               .primaryKey().asc("first_name").desc("last_name").asc("id").end()
             .endTable()
             .build();
+    // spotless:on
 
     createAndPopulate(ddl, 100);
 
@@ -278,6 +283,7 @@ public class CopyDbTest {
   /* Validates behavior of exporting a single, empty table from a database */
   @Test
   public void exportSingleEmptyTable() throws Exception {
+    // spotless:off
     Ddl ddl = Ddl.builder()
             .createTable("Users")
               .column("first_name").string().max().endColumn()
@@ -318,6 +324,7 @@ public class CopyDbTest {
           .primaryKey().asc("first").desc("second").end()
           .endTable()
         .build();
+    // spotless:on
     spannerServer.updateDatabase(sourceDb, ddlEmptyTable.createTableStatements());
 
     // Export an empty table from a database
@@ -346,6 +353,7 @@ public class CopyDbTest {
 
   @Test
   public void allTypesSchema() throws Exception {
+    // spotless:off
         Ddl ddl = Ddl.builder()
             .createTable("Users")
               .column("first_name").string().max().endColumn()
@@ -376,12 +384,14 @@ public class CopyDbTest {
               .onDeleteCascade()
             .endTable()
             .build();
+    // spotless:on
     createAndPopulate(ddl, 100);
     runTest();
   }
 
   @Test
   public void emptyTables() throws Exception {
+    // spotless:off
         Ddl ddl = Ddl.builder()
             .createTable("Users")
               .column("first_name").string().max().endColumn()
@@ -429,12 +439,14 @@ public class CopyDbTest {
           .primaryKey().asc("first").end()
           .endTable()
         .build();
+    // spotless:on
     spannerServer.updateDatabase(sourceDb, emptyTables.createTableStatements());
     runTest();
   }
 
   @Test
   public void allEmptyTables() throws Exception {
+    // spotless:off
         Ddl ddl = Ddl.builder()
             .createTable("Users")
               .column("first_name").string().max().endColumn()
@@ -464,15 +476,16 @@ public class CopyDbTest {
               .interleaveInParent("Users")
             .endTable()
             .build();
+    // spotless:on
     createAndPopulate(ddl, 0);
     runTest();
   }
-
 
   @Test
   public void databaseOptions() throws Exception {
     Ddl.Builder ddlBuilder = Ddl.builder();
     // Table Content
+    // spotless:off
     ddlBuilder.createTable("Users")
                 .column("first_name").string().max().endColumn()
                 .column("last_name").string().size(5).endColumn()
@@ -489,6 +502,7 @@ public class CopyDbTest {
                 .interleaveInParent("Users")
                 .onDeleteCascade()
               .endTable();
+    // spotless:on
     // Allowed and well-formed database option
     List<Export.DatabaseOption> dbOptionList = new ArrayList<>();
     dbOptionList.add(
@@ -532,6 +546,7 @@ public class CopyDbTest {
 
   @Test
   public void foreignKeys() throws Exception {
+    // spotless:off
     Ddl ddl = Ddl.builder()
         .createTable("Ref")
         .column("id1").int64().endColumn()
@@ -553,6 +568,7 @@ public class CopyDbTest {
                + "REFERENCES `Ref` (`id2`, `id1`)"))
         .endTable()
         .build();
+    // spotless:on
 
     createAndPopulate(ddl, 100);
     runTest();
@@ -561,6 +577,7 @@ public class CopyDbTest {
   // TODO: enable this test once CHECK constraints are enabled
   // @Test
   public void checkConstraints() throws Exception {
+    // spotless:off
     Ddl ddl = Ddl.builder()
         .createTable("T")
         .column("id").int64().endColumn()
@@ -569,6 +586,7 @@ public class CopyDbTest {
         .checkConstraints(ImmutableList.of(
            "CONSTRAINT `ck` CHECK(TO_HEX(SHA1(CAST(A AS STRING))) <= '~')"))
         .endTable().build();
+    // spotless:on
 
     createAndPopulate(ddl, 100);
     runTest();
@@ -588,50 +606,62 @@ public class CopyDbTest {
     runTest();
   }
 
-  private void exportAndImportDb(String sourceDb, String destDb,
-                                       String jobIdName, String tableNames,
-                                       Boolean relatedTables,
-                                       TestPipeline exportPipeline,
-                                       TestPipeline importPipeline) {
+  private void exportAndImportDb(
+      String sourceDb,
+      String destDb,
+      String jobIdName,
+      String tableNames,
+      Boolean relatedTables,
+      TestPipeline exportPipeline,
+      TestPipeline importPipeline) {
     String tmpDirPath = tmpDir.getRoot().getAbsolutePath();
-    ValueProvider.StaticValueProvider<String> destination = ValueProvider.StaticValueProvider
-        .of(tmpDirPath);
-    ValueProvider.StaticValueProvider<String> jobId = ValueProvider.StaticValueProvider
-        .of(jobIdName);
-    ValueProvider.StaticValueProvider<String> source = ValueProvider.StaticValueProvider
-        .of(tmpDirPath + "/" + jobIdName);
+    ValueProvider.StaticValueProvider<String> destination =
+        ValueProvider.StaticValueProvider.of(tmpDirPath);
+    ValueProvider.StaticValueProvider<String> jobId =
+        ValueProvider.StaticValueProvider.of(jobIdName);
+    ValueProvider.StaticValueProvider<String> source =
+        ValueProvider.StaticValueProvider.of(tmpDirPath + "/" + jobIdName);
     ValueProvider.StaticValueProvider<String> timestamp = ValueProvider.StaticValueProvider.of("");
-    ValueProvider.StaticValueProvider<String> tables = ValueProvider.StaticValueProvider
-        .of(tableNames);
+    ValueProvider.StaticValueProvider<String> tables =
+        ValueProvider.StaticValueProvider.of(tableNames);
     ValueProvider.StaticValueProvider<Boolean> exportRelatedTables =
         ValueProvider.StaticValueProvider.of(relatedTables);
     ValueProvider.StaticValueProvider<Boolean> exportAsLogicalType =
         ValueProvider.StaticValueProvider.of(false);
     SpannerConfig sourceConfig = spannerServer.getSpannerConfig(sourceDb);
-    exportPipeline.apply("Export", new ExportTransform(sourceConfig, destination,
-                                                       jobId, timestamp, tables,
-                                                       exportRelatedTables,
-                                                       exportAsLogicalType));
+    exportPipeline.apply(
+        "Export",
+        new ExportTransform(
+            sourceConfig,
+            destination,
+            jobId,
+            timestamp,
+            tables,
+            exportRelatedTables,
+            exportAsLogicalType));
     PipelineResult exportResult = exportPipeline.run();
     exportResult.waitUntilFinish();
 
     SpannerConfig copyConfig = spannerServer.getSpannerConfig(destDb);
-    importPipeline.apply("Import", new ImportTransform(
-        copyConfig, source, ValueProvider.StaticValueProvider.of(true),
-        ValueProvider.StaticValueProvider.of(true),
-        ValueProvider.StaticValueProvider.of(true)));
+    importPipeline.apply(
+        "Import",
+        new ImportTransform(
+            copyConfig,
+            source,
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();
   }
 
   private void runTest() {
     String tmpDirPath = tmpDir.getRoot().getAbsolutePath();
-    ValueProvider.StaticValueProvider<String> destination = ValueProvider.StaticValueProvider
-        .of(tmpDirPath);
-    ValueProvider.StaticValueProvider<String> jobId = ValueProvider.StaticValueProvider
-        .of("jobid");
-    ValueProvider.StaticValueProvider<String> source = ValueProvider.StaticValueProvider
-        .of(tmpDirPath + "/jobid");
+    ValueProvider.StaticValueProvider<String> destination =
+        ValueProvider.StaticValueProvider.of(tmpDirPath);
+    ValueProvider.StaticValueProvider<String> jobId = ValueProvider.StaticValueProvider.of("jobid");
+    ValueProvider.StaticValueProvider<String> source =
+        ValueProvider.StaticValueProvider.of(tmpDirPath + "/jobid");
 
     SpannerConfig sourceConfig = spannerServer.getSpannerConfig(sourceDb);
     exportPipeline.apply("Export", new ExportTransform(sourceConfig, destination, jobId));
@@ -652,10 +682,12 @@ public class CopyDbTest {
 
     PCollection<Long> mismatchCount =
         comparePipeline.apply("Compare", new CompareDatabases(sourceConfig, destConfig));
-    PAssert.that(mismatchCount).satisfies((x) -> {
-      assertEquals(Lists.newArrayList(x), Lists.newArrayList(0L));
-      return null;
-    });
+    PAssert.that(mismatchCount)
+        .satisfies(
+            (x) -> {
+              assertEquals(Lists.newArrayList(x), Lists.newArrayList(0L));
+              return null;
+            });
     PipelineResult compareResult = comparePipeline.run();
     compareResult.waitUntilFinish();
 
@@ -681,7 +713,7 @@ public class CopyDbTest {
     List<String> tableNames = Lists.newArrayList();
 
     for (Table t : ddl.allTables()) {
-       tableNames.add(t.name());
+      tableNames.add(t.name());
     }
     return tableNames;
   }
@@ -702,9 +734,7 @@ public class CopyDbTest {
     ReadOnlyTransaction context = dbClient.readOnlyTransaction();
     // Execute query to determine how many rows are in the table
     ResultSet resultSet =
-      context.executeQuery(
-          Statement.of(
-              String.format("SELECT COUNT(1) FROM `%s`", tableName)));
+        context.executeQuery(Statement.of(String.format("SELECT COUNT(1) FROM `%s`", tableName)));
     while (resultSet.next()) {
       long rows = resultSet.getLong(0);
       return rows;

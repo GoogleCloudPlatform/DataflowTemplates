@@ -586,6 +586,7 @@
                   </format>
                 </formats>
                 <java>
+                  <toggleOffOn />
                   <googleJavaFormat>
                     <version>1.8</version>
                     <style>GOOGLE</style>
