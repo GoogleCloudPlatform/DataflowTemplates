@@ -27,8 +27,6 @@
 
     <properties>
         <hive.version>2.1.0</hive.version>
-        <hadoop.version>2.8.5</hadoop.version>
-        <jackson.version>2.11.2</jackson.version>
         <truth.version>1.0.1</truth.version>
     </properties>
 
@@ -38,21 +36,6 @@
             <artifactId>common</artifactId>
             <version>1.0-SNAPSHOT</version>
             <scope>compile</scope>
-        </dependency>
-        <dependency>
-          <groupId>com.fasterxml.jackson.core</groupId>
-          <artifactId>jackson-databind</artifactId>
-          <version>${jackson.version}</version>
-        </dependency>
-        <dependency>
-          <groupId>com.fasterxml.jackson.core</groupId>
-          <artifactId>jackson-annotations</artifactId>
-          <version>${jackson.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-core</artifactId>
-            <version>${jackson.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.hive</groupId>
@@ -147,12 +130,10 @@
         <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-sdks-java-io-hadoop-file-system</artifactId>
-            <version>${beam.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-sdks-java-io-hcatalog</artifactId>
-            <version>${beam.version}</version>
         </dependency>
       </dependencies>
 

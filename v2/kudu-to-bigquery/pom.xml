@@ -25,20 +25,10 @@
     <artifactId>kudu-to-bigquery</artifactId>
     <modelVersion>4.0.0</modelVersion>
 
-    <properties>
-        <kuduclient.version>1.11.1</kuduclient.version>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-sdks-java-io-kudu</artifactId>
-            <version>${beam.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.kudu</groupId>
-            <artifactId>kudu-client</artifactId>
-            <version>${kuduclient.version}</version>
         </dependency>
     </dependencies>
 
