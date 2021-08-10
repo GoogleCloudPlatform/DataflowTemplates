@@ -325,7 +325,8 @@ public class FormatDatastreamRecordToJson
           jsonObject.put(fieldName, (byte[]) record.get(fieldName));
           break;
         case FLOAT:
-          jsonObject.put(fieldName, (Float) record.get(fieldName));
+          String value = ((Float) record.get(fieldName)).toString();
+          jsonObject.put(fieldName, Double.valueOf(value));
           break;
         case DOUBLE:
           jsonObject.put(fieldName, (Double) record.get(fieldName));
