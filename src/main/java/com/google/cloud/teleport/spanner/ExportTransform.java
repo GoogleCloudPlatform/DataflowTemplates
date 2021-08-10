@@ -211,6 +211,23 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                       tablesList = Arrays.asList(tableNames.get().split(",\\s*"));
                     }
 
+                    // If the user provided any invalid table names, throw an exception.
+                    List<String> allSpannerTables =
+                        ddl.allTables().stream().map(t -> t.name()).collect(Collectors.toList());
+
+                    List<String> invalidTables =
+                        tablesList.stream()
+                            .distinct()
+                            .filter(t -> !allSpannerTables.contains(t))
+                            .collect(Collectors.toList());
+
+                    if (invalidTables.size() != 0) {
+                      throw new Exception(
+                          "INVALID_ARGUMENT: Table(s) not found: "
+                              + String.join(", ", invalidTables)
+                              + ".");
+                    }
+
                     List<String> filteredTables =
                         getFilteredTables(ddl, tablesList).stream()
                             .map(t -> t.name())

@@ -64,6 +64,14 @@ public final class ExportRelatedTablesCheckTest {
   private final String tableB = "table_b";
   private final String tableC = "table_c";
   private final String tableD = "table_d";
+  private final String tableE = "table_e";
+  private final String tableF = "table_f";
+  private final String tableG = "table_g";
+  private final String tableH = "table_h";
+  private final String tableI = "table_i";
+  private final String tableJ = "table_j";
+  private final String tableK = "table_k";
+  private final String tableL = "table_l";
   private final String chkptOne = "chkpt1";
   private final String chkptTwo = "chkpt2";
   private final String chkptThree = "chkpt3";
@@ -71,6 +79,8 @@ public final class ExportRelatedTablesCheckTest {
   private final String chkptFive = "chkpt5";
   private final String chkptSix = "chkpt6";
   private final String chkptSeven = "chkpt7";
+  private final String chkptEight = "chkpt8";
+  private final String chkptNine = "chkpt9";
 
   @Rule public final transient TestPipeline exportPipeline = TestPipeline.create();
   @Rule public final transient TestPipeline importPipeline = TestPipeline.create();
@@ -80,7 +90,6 @@ public final class ExportRelatedTablesCheckTest {
 
   @After
   public void teardown() {
-    // Add something to close spanner client
     spannerServer.dropDatabase(sourceDb);
     spannerServer.dropDatabase(destinationDb);
     spannerServer.dropDatabase(destDbPrefix + chkptOne);
@@ -90,6 +99,8 @@ public final class ExportRelatedTablesCheckTest {
     spannerServer.dropDatabase(destDbPrefix + chkptFive);
     spannerServer.dropDatabase(destDbPrefix + chkptSix);
     spannerServer.dropDatabase(destDbPrefix + chkptSeven);
+    spannerServer.dropDatabase(destDbPrefix + chkptEight);
+    spannerServer.dropDatabase(destDbPrefix + chkptNine);
   }
 
   private void createAndPopulate(Ddl ddl, int numBatches) throws Exception {
@@ -235,7 +246,7 @@ public final class ExportRelatedTablesCheckTest {
 
     // Expected PipelineExecutionException caused by Exception:
     // Attempt to export a single table that requires additional related tables
-    // (without --shouldExportRelatedTables set/setting --shouldExportRelatedTables false)
+    // (without --shouldExportRelatedTables set/setting --shouldExportRelatedTables true)
     spannerServer.createDatabase(destDbPrefix + chkptThree, Collections.emptyList());
     assertThrows(
         PipelineExecutionException.class,
@@ -472,6 +483,180 @@ public final class ExportRelatedTablesCheckTest {
         assertEquals(0, getRowCount(destDbPrefix + chkptSeven, table));
       }
     }
+  }
+
+  /* Validates that pipeline execution fails when --tableNames is given a table that doesn't
+   * exist in the database */
+  @Test
+  public void exportNonExistentTable_stopsPipelineExecution() throws Exception {
+    Ddl ddl = Ddl.builder()
+        .createTable("table_a")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").end()
+        .endTable()
+        .createTable("table_b")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .column("id3").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").asc("id3").end()
+        .endTable()
+        .createTable("table_c")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .column("id3").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").asc("id3").end()
+          .interleaveInParent("table_b")
+        .endTable()
+        .build();
+
+    // Add to referencedTable field (i.e. `table_c` would have a foreign key constraint
+    // referencing `table_a`)
+    ddl.addNewReferencedTable("table_c", "table_a");
+
+    createAndPopulate(ddl, /* numBatches = */ 100);
+
+    // Expected PipelineExecutionException caused by Exception:
+    // Attempt to export a non existent table 'table_d'.
+    spannerServer.createDatabase(destDbPrefix + chkptEight, Collections.emptyList());
+    assertThrows(
+        PipelineExecutionException.class,
+        () ->
+            exportAndImportDb(
+                sourceDb,
+                destDbPrefix + chkptEight,
+                chkptEight,
+                tableD,
+                /* relatedTables =*/ false,
+                exportPipeline,
+                importPipeline));
+  }
+
+  /* Validates that pipeline executes table level export for this complex ddl when --tableNames
+   * is provided, --shouldExportRelatedTables is set to true, and additional tables need
+   * to be exported. */
+  @Test
+  public void exportSelectedAndNecessaryTablesInComplexDdl() throws Exception {
+    Ddl ddl = Ddl.builder()
+        .createTable("table_a")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").end()
+        .endTable()
+        .createTable("table_b")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .column("id3").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").asc("id3").end()
+        .endTable()
+        .createTable("table_c")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .column("id3").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").asc("id3").end()
+          .interleaveInParent("table_b")
+          .foreignKeys(
+                ImmutableList.of(
+                    "ALTER TABLE `table_c` ADD CONSTRAINT `fk_table_b` FOREIGN KEY (`id1`)"
+                        + " REFERENCES `table_b` (`id1`)"))
+        .endTable()
+        .createTable("table_d")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .column("id3").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").asc("id3").end()
+        .endTable()
+        .createTable("table_e")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .column("id3").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").asc("id3").end()
+        .endTable()
+        .createTable("table_f")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .column("id3").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").asc("id3").end()
+          .interleaveInParent("table_e")
+          .foreignKeys(
+                ImmutableList.of(
+                    "ALTER TABLE `table_f` ADD CONSTRAINT `fk_table_f` FOREIGN KEY (`id2`)"
+                        + " REFERENCES `table_e` (`id2`)"))
+        .endTable()
+        .createTable("table_g")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .column("id3").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").asc("id3").end()
+        .endTable()
+        .createTable("table_h")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .column("id3").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").asc("id3").end()
+        .endTable()
+        .createTable("table_i")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .column("id3").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").asc("id3").end()
+          .interleaveInParent("table_h")
+        .endTable()
+        .createTable("table_j")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .column("id3").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").asc("id3").end()
+          .interleaveInParent("table_i")
+        .endTable()
+        .createTable("table_k")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .column("id3").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").asc("id3").end()
+        .endTable()
+        .createTable("table_l")
+          .column("id1").int64().endColumn()
+          .column("id2").int64().endColumn()
+          .column("id3").int64().endColumn()
+          .primaryKey().asc("id1").asc("id2").asc("id3").end()
+        .endTable()
+        .build();
+
+    createAndPopulate(ddl, /* numBatches = */ 100);
+
+    // Export the single table along with it's required tables
+    spannerServer.createDatabase(destDbPrefix + chkptNine, Collections.emptyList());
+    exportAndImportDb(
+        sourceDb,
+        destDbPrefix + chkptNine,
+        chkptNine,
+        String.join(",", ImmutableList.of(tableA, tableC, tableF, tableJ)),
+        /* relatedTables =*/ true,
+        exportPipeline,
+        importPipeline);
+
+    // Compare the tables in the ddl to ensure all original tables were re-created during the import
+    compareExpectedTables(
+        destDbPrefix + chkptNine,
+        ImmutableList.of(
+            tableA, tableB, tableC, tableD, tableE, tableF, tableG, tableH, tableI, tableJ, tableK,
+            tableL));
+
+    // Check to see expected tables were exported with their original data
+    assertFalse(getRowCount(destDbPrefix + chkptNine, tableA) == 0);
+    assertFalse(getRowCount(destDbPrefix + chkptNine, tableB) == 0);
+    assertFalse(getRowCount(destDbPrefix + chkptNine, tableC) == 0);
+    assertFalse(getRowCount(destDbPrefix + chkptNine, tableE) == 0);
+    assertFalse(getRowCount(destDbPrefix + chkptNine, tableF) == 0);
+    assertFalse(getRowCount(destDbPrefix + chkptNine, tableH) == 0);
+    assertFalse(getRowCount(destDbPrefix + chkptNine, tableI) == 0);
+    assertFalse(getRowCount(destDbPrefix + chkptNine, tableJ) == 0);
+
+    // Check to see expected tables exported without data
+    assertEquals(0, getRowCount(destDbPrefix + chkptNine, tableD));
+    assertEquals(0, getRowCount(destDbPrefix + chkptNine, tableK));
+    assertEquals(0, getRowCount(destDbPrefix + chkptNine, tableL));
   }
 
   private void exportAndImportDb(String sourceDb, String destDb,
