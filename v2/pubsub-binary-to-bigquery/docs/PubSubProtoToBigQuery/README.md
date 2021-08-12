@@ -99,12 +99,12 @@ The template requires the following parameters:
     as package.name.OuterMessage.InnerMessage. Be sure to use the value set with
     the `package` statement, not the `java_package` statement.
 *   inputSubscription: The name of the subscription from which data is read. For
-    example, projects/<project-id>/subscriptions/<subscription-name>.
+    example, projects/\<project-id\>/subscriptions/\<subscription-name\>.
 *   outputTopic: Pub/Sub topic to write dead-letter records. For example,
-    projects/<project-id>/topics/<topic-name>.
+    projects/\<project-id\>/topics/\<topic-name\>.
 *   outputTableSpec: Output BigQuery table. For example,
-    <project>:<dataset>.<table_name>. If the table already exists, it must have
-    a schema already set.
+    \<project\>:\<dataset\>.\<table_name\>. If the table already exists, it must
+    have a schema already set.
 
 The template has the following optional parameters:
 
@@ -120,8 +120,9 @@ The template has the following optional parameters:
 *   javascriptTextTransformFunctionName: Name of the JavaScript UDF function.
     This must be provided if `javascriptTextTransformGcsPath` is provided.
 *   udfDeadLetterTopic: Dead-letter Pub/Sub topic to send UDF failures to. For
-    example, projects/<project-id>/topics/<topic-name>. If this is not provided,
-    UDF failures will be sent to the same dead-letter topic as in `outputTopic`.
+    example, projects/\<project-id\>/topics/\<topic-name\>. If this is not
+    provided, UDF failures will be sent to the same dead-letter topic as in
+    `outputTopic`.
 *   writeDisposition: BigQuery WriteDisposition. For example, WRITE_APPEND,
     WRITE_EMPTY or WRITE_TRUNCATE. Default: WRITE_APPEND
 *   createDisposition: BigQuery CreateDisposition. For example,
