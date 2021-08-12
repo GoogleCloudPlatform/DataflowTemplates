@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.utils;
 
+import com.fasterxml.jackson.annotation.JsonValue;
+
 /**
  * Enum of possible dataset values.
  */
@@ -22,5 +24,10 @@ public enum Dataset {
     AUDIT,
     VPCFLOW,
     FIREWALL,
-    PUBSUB
+    PUBSUB;
+
+    @JsonValue
+    public String getKey() {
+        return name().toLowerCase();
+    }
 }
