@@ -24,6 +24,7 @@ import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
+import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.InformationSchemaScanner;
 import com.google.cloud.teleport.spanner.ddl.RandomDdlGenerator;
@@ -59,6 +60,14 @@ public final class ExportRelatedTablesCheckTest {
   private final String sourceDb = "flagdb-source" + Long.toString(numericTime);
   private final String destinationDb = "flagdb-dest" + Long.toString(numericTime);
   private final String destDbPrefix = "import";
+  private final String usersTable = "Users";
+  private final String allTypesTable = "AllTYPES";
+  private final String peopleTable = "People";
+  private final String emptyTable = "empty_table";
+  private final String fullExportChkpt = "fullexportchkpt";
+  private final String usersChkpt = "userschkpt";
+  private final String multiTableChkpt = "multichkpt";
+  private final String emptyChkpt = "emptychkpt";
   private final String tableA = "table_a";
   private final String tableB = "table_b";
   private final String tableC = "table_c";
@@ -91,6 +100,10 @@ public final class ExportRelatedTablesCheckTest {
   public void teardown() {
     spannerServer.dropDatabase(sourceDb);
     spannerServer.dropDatabase(destinationDb);
+    spannerServer.dropDatabase(destDbPrefix + fullExportChkpt);
+    spannerServer.dropDatabase(destDbPrefix + usersChkpt);
+    spannerServer.dropDatabase(destDbPrefix + multiTableChkpt);
+    spannerServer.dropDatabase(destDbPrefix + emptyChkpt);
     spannerServer.dropDatabase(destDbPrefix + chkptOne);
     spannerServer.dropDatabase(destDbPrefix + chkptTwo);
     spannerServer.dropDatabase(destDbPrefix + chkptThree);
@@ -106,6 +119,248 @@ public final class ExportRelatedTablesCheckTest {
     spannerServer.createDatabase(sourceDb, ddl.statements());
     spannerServer.createDatabase(destinationDb, Collections.emptyList());
     spannerServer.populateRandomData(sourceDb, ddl, numBatches);
+  }
+
+  /* Validates behavior of exporting full db without selecting any tables */
+  @Test
+  public void exportWithoutTableSelection() throws Exception {
+    Ddl ddl = Ddl.builder()
+            .createTable("Users")
+              .column("first_name").string().max().endColumn()
+              .column("last_name").string().size(5).endColumn()
+              .column("age").int64().endColumn()
+              .primaryKey().asc("first_name").desc("last_name").end()
+            .endTable()
+            .createTable("People")
+              .column("id").int64().notNull().endColumn()
+              .column("name").string().max().endColumn()
+              .column("age").int64().endColumn()
+              .primaryKey().asc("id").end()
+            .endTable()
+            .createTable("AllTYPES")
+              .column("first_name").string().max().endColumn()
+              .column("last_name").string().size(5).endColumn()
+              .column("id").int64().notNull().endColumn()
+              .column("bool_field").bool().endColumn()
+              .column("int64_field").int64().endColumn()
+              .column("float64_field").float64().endColumn()
+              .column("string_field").string().max().endColumn()
+              .column("bytes_field").bytes().max().endColumn()
+              .column("timestamp_field").timestamp().endColumn()
+              .column("date_field").date().endColumn()
+              .column("arr_bool_field").type(Type.array(Type.bool())).endColumn()
+              .column("arr_int64_field").type(Type.array(Type.int64())).endColumn()
+              .column("arr_float64_field").type(Type.array(Type.float64())).endColumn()
+              .column("arr_string_field").type(Type.array(Type.string())).max().endColumn()
+              .column("arr_bytes_field").type(Type.array(Type.bytes())).max().endColumn()
+              .column("arr_timestamp_field").type(Type.array(Type.timestamp())).endColumn()
+              .column("arr_date_field").type(Type.array(Type.date())).endColumn()
+              .primaryKey().asc("first_name").desc("last_name").asc("id").end()
+            .endTable()
+            .build();
+
+    createAndPopulate(ddl, 100);
+
+    // Export and import all tables from the database
+    spannerServer.createDatabase(destDbPrefix + fullExportChkpt, Collections.emptyList());
+    exportAndImportDb(
+        sourceDb,
+        destDbPrefix + fullExportChkpt,
+        fullExportChkpt,
+        "",
+        /* relatedTables =*/ false,
+        exportPipeline,
+        importPipeline);
+
+    // Compare the tables in the ddl to ensure all original tables were re-created during the import
+    compareExpectedTables(
+        destDbPrefix + fullExportChkpt, ImmutableList.of(allTypesTable, peopleTable, usersTable));
+
+
+    // Check to see selected tables exported with data and and unselected tables did not
+    List<String> exportTables = ImmutableList.of(allTypesTable, peopleTable, usersTable);
+    List<String> unselectedTables = Collections.emptyList();
+    compareExpectedTableRows(destDbPrefix + fullExportChkpt, exportTables, unselectedTables);
+  }
+
+  /* Validates behavior of single table database exporting */
+  @Test
+  public void exportSingleTable() throws Exception {
+    Ddl ddl = Ddl.builder()
+            .createTable("Users")
+              .column("first_name").string().max().endColumn()
+              .column("last_name").string().size(5).endColumn()
+              .column("age").int64().endColumn()
+              .primaryKey().asc("first_name").desc("last_name").end()
+            .endTable()
+            .createTable("AllTYPES")
+              .column("first_name").string().max().endColumn()
+              .column("last_name").string().size(5).endColumn()
+              .column("id").int64().notNull().endColumn()
+              .column("bool_field").bool().endColumn()
+              .column("int64_field").int64().endColumn()
+              .column("float64_field").float64().endColumn()
+              .column("string_field").string().max().endColumn()
+              .column("bytes_field").bytes().max().endColumn()
+              .column("timestamp_field").timestamp().endColumn()
+              .column("date_field").date().endColumn()
+              .column("arr_bool_field").type(Type.array(Type.bool())).endColumn()
+              .column("arr_int64_field").type(Type.array(Type.int64())).endColumn()
+              .column("arr_float64_field").type(Type.array(Type.float64())).endColumn()
+              .column("arr_string_field").type(Type.array(Type.string())).max().endColumn()
+              .column("arr_bytes_field").type(Type.array(Type.bytes())).max().endColumn()
+              .column("arr_timestamp_field").type(Type.array(Type.timestamp())).endColumn()
+              .column("arr_date_field").type(Type.array(Type.date())).endColumn()
+              .primaryKey().asc("first_name").desc("last_name").asc("id").end()
+            .endTable()
+            .build();
+
+    createAndPopulate(ddl, 100);
+    // Export and import the table 'Users' from the database only
+    spannerServer.createDatabase(destDbPrefix + usersChkpt, Collections.emptyList());
+    exportAndImportDb(
+        sourceDb,
+        destDbPrefix + usersChkpt,
+        usersChkpt,
+        usersTable,
+        /* relatedTables =*/ false,
+        exportPipeline,
+        importPipeline);
+
+    // Compare the tables in the ddl to ensure all original tables were re-created during the import
+    compareExpectedTables(destDbPrefix + usersChkpt, ImmutableList.of(allTypesTable, usersTable));
+
+    // Check to see selected tables exported with data and and unselected tables did not
+    List<String> exportTables = ImmutableList.of(usersTable);
+    List<String> unselectedTables = ImmutableList.of(allTypesTable);
+    compareExpectedTableRows(destDbPrefix + usersChkpt, exportTables, unselectedTables);
+  }
+
+  /* Validates behavior of exporting multiple unrelated tables */
+  @Test
+  public void exportMultipleTables() throws Exception {
+    Ddl ddl = Ddl.builder()
+            .createTable("Users")
+              .column("first_name").string().max().endColumn()
+              .column("last_name").string().size(5).endColumn()
+              .column("age").int64().endColumn()
+              .primaryKey().asc("first_name").desc("last_name").end()
+            .endTable()
+            .createTable("People")
+              .column("id").int64().notNull().endColumn()
+              .column("name").string().max().endColumn()
+              .column("age").int64().endColumn()
+              .primaryKey().asc("id").end()
+            .endTable()
+            .createTable("AllTYPES")
+              .column("first_name").string().max().endColumn()
+              .column("last_name").string().size(5).endColumn()
+              .column("id").int64().notNull().endColumn()
+              .column("bool_field").bool().endColumn()
+              .column("int64_field").int64().endColumn()
+              .column("float64_field").float64().endColumn()
+              .column("string_field").string().max().endColumn()
+              .column("bytes_field").bytes().max().endColumn()
+              .column("timestamp_field").timestamp().endColumn()
+              .column("date_field").date().endColumn()
+              .column("arr_bool_field").type(Type.array(Type.bool())).endColumn()
+              .column("arr_int64_field").type(Type.array(Type.int64())).endColumn()
+              .column("arr_float64_field").type(Type.array(Type.float64())).endColumn()
+              .column("arr_string_field").type(Type.array(Type.string())).max().endColumn()
+              .column("arr_bytes_field").type(Type.array(Type.bytes())).max().endColumn()
+              .column("arr_timestamp_field").type(Type.array(Type.timestamp())).endColumn()
+              .column("arr_date_field").type(Type.array(Type.date())).endColumn()
+              .primaryKey().asc("first_name").desc("last_name").asc("id").end()
+            .endTable()
+            .build();
+
+    createAndPopulate(ddl, 100);
+
+    // Export and import two specific tables from the database containing three tables
+    spannerServer.createDatabase(destDbPrefix + multiTableChkpt, Collections.emptyList());
+    exportAndImportDb(
+        sourceDb,
+        destDbPrefix + multiTableChkpt,
+        multiTableChkpt,
+        usersTable + "," + allTypesTable,
+        /* relatedTables =*/ false,
+        exportPipeline,
+        importPipeline);
+
+    // Compare the tables in the ddl to ensure all original tables were re-created during the import
+    compareExpectedTables(
+        destDbPrefix + multiTableChkpt, ImmutableList.of(allTypesTable, peopleTable, usersTable));
+
+    // Check to see selected tables exported with data and and unselected tables did not
+    List<String> exportTables = ImmutableList.of(allTypesTable, usersTable);
+    List<String> unselectedTables = ImmutableList.of(peopleTable);
+    compareExpectedTableRows(destDbPrefix + multiTableChkpt, exportTables, unselectedTables);
+  }
+
+  /* Validates behavior of exporting a single, empty table from a database */
+  @Test
+  public void exportSingleEmptyTable() throws Exception {
+    Ddl ddl = Ddl.builder()
+            .createTable("Users")
+              .column("first_name").string().max().endColumn()
+              .column("last_name").string().size(5).endColumn()
+              .column("age").int64().endColumn()
+              .primaryKey().asc("first_name").desc("last_name").end()
+            .endTable()
+            .createTable("AllTYPES")
+              .column("first_name").string().max().endColumn()
+              .column("last_name").string().size(5).endColumn()
+              .column("id").int64().notNull().endColumn()
+              .column("bool_field").bool().endColumn()
+              .column("int64_field").int64().endColumn()
+              .column("float64_field").float64().endColumn()
+              .column("string_field").string().max().endColumn()
+              .column("bytes_field").bytes().max().endColumn()
+              .column("timestamp_field").timestamp().endColumn()
+              .column("date_field").date().endColumn()
+              .column("arr_bool_field").type(Type.array(Type.bool())).endColumn()
+              .column("arr_int64_field").type(Type.array(Type.int64())).endColumn()
+              .column("arr_float64_field").type(Type.array(Type.float64())).endColumn()
+              .column("arr_string_field").type(Type.array(Type.string())).max().endColumn()
+              .column("arr_bytes_field").type(Type.array(Type.bytes())).max().endColumn()
+              .column("arr_timestamp_field").type(Type.array(Type.timestamp())).endColumn()
+              .column("arr_date_field").type(Type.array(Type.date())).endColumn()
+              .primaryKey().asc("first_name").desc("last_name").asc("id").end()
+            .endTable()
+            .build();
+
+    createAndPopulate(ddl, 100);
+
+    // Add empty table.
+    Ddl ddlEmptyTable = Ddl.builder()
+        .createTable("empty_table")
+          .column("first").string().max().endColumn()
+          .column("second").string().size(5).endColumn()
+          .column("value").int64().endColumn()
+          .primaryKey().asc("first").desc("second").end()
+          .endTable()
+        .build();
+    spannerServer.updateDatabase(sourceDb, ddlEmptyTable.createTableStatements());
+
+    // Export an empty table from a database
+    spannerServer.createDatabase(destDbPrefix + emptyChkpt, Collections.emptyList());
+    exportAndImportDb(
+        sourceDb,
+        destDbPrefix + emptyChkpt,
+        emptyChkpt,
+        emptyTable,
+        /* relatedTables =*/ false,
+        exportPipeline,
+        importPipeline);
+
+    // Compare the tables in the ddl to ensure all original tables were re-created during the import
+    compareExpectedTables(
+        destDbPrefix + emptyChkpt, ImmutableList.of(allTypesTable, usersTable, emptyTable));
+
+    // Check to see selected tables exported with data and and unselected tables did not
+    List<String> exportTables = Collections.emptyList();
+    List<String> unselectedTables = ImmutableList.of(allTypesTable, usersTable, emptyTable);
+    compareExpectedTableRows(destDbPrefix + emptyChkpt, exportTables, unselectedTables);
   }
 
   /* Validates that pipeline executes full-db export when --tableNames and
@@ -181,12 +436,10 @@ public final class ExportRelatedTablesCheckTest {
     // Compare the tables in the ddl to ensure all original tables were re-created during the import
     compareExpectedTables(destDbPrefix + chkptOne, ImmutableList.of(tableA, tableB, tableC));
 
-    // Check to see all tables exported with their original data
-    assertFalse(getRowCount(destDbPrefix + chkptOne, tableA) == 0);
-
-    assertFalse(getRowCount(destDbPrefix + chkptOne, tableB) == 0);
-
-    assertFalse(getRowCount(destDbPrefix + chkptOne, tableC) == 0);
+    // Check to see selected tables exported with data and and unselected tables did not
+    List<String> exportTables = ImmutableList.of(tableA, tableB, tableC);
+    List<String> unselectedTables = Collections.emptyList();
+    compareExpectedTableRows(destDbPrefix + chkptOne, exportTables, unselectedTables);
   }
 
   /* Validates that pipeline exports single table that has no related tables when
@@ -259,12 +512,10 @@ public final class ExportRelatedTablesCheckTest {
     // Compare the tables in the ddl to ensure all original tables were re-created during the import
     compareExpectedTables(destDbPrefix + chkptTwo, ImmutableList.of(tableA, tableB, tableC));
 
-    // Check to see table_a and table_b exported without data
-    assertEquals(0, getRowCount(destDbPrefix + chkptTwo, tableA));
-    assertEquals(0, getRowCount(destDbPrefix + chkptTwo, tableB));
-
-    // Check to see table_c exported with its original data
-    assertFalse(getRowCount(destDbPrefix + chkptTwo, tableC) == 0);
+    // Check to see selected tables exported with data and and unselected tables did not
+    List<String> exportTables = ImmutableList.of(tableC);
+    List<String> unselectedTables = ImmutableList.of(tableA, tableB);
+    compareExpectedTableRows(destDbPrefix + chkptTwo, exportTables, unselectedTables);
   }
 
   /* Validates that pipeline execution fails when --tableNames is provided and
@@ -534,12 +785,10 @@ public final class ExportRelatedTablesCheckTest {
     // Compare the tables in the ddl to ensure all original tables were re-created during the import
     compareExpectedTables(destDbPrefix + chkptFive, ImmutableList.of(tableA, tableB, tableC));
 
-    // Check to see all tables exported with their original data
-    assertFalse(getRowCount(destDbPrefix + chkptFive, tableA) == 0);
-
-    assertFalse(getRowCount(destDbPrefix + chkptFive, tableB) == 0);
-
-    assertFalse(getRowCount(destDbPrefix + chkptFive, tableC) == 0);
+    // Check to see selected tables exported with data and and unselected tables did not
+    List<String> exportTables = ImmutableList.of(tableA, tableB, tableC);
+    List<String> unselectedTables = Collections.emptyList();
+    compareExpectedTableRows(destDbPrefix + chkptFive, exportTables, unselectedTables);
   }
 
   /* Validates that pipeline executes table level export when --tableNames is provided,
@@ -632,14 +881,10 @@ public final class ExportRelatedTablesCheckTest {
     compareExpectedTables(
         destDbPrefix + chkptSix, ImmutableList.of(tableA, tableB, tableC, tableD));
 
-    // Check to table_b, and table_c were exported with their original data
-    assertFalse(getRowCount(destDbPrefix + chkptSix, tableB) == 0);
-
-    assertFalse(getRowCount(destDbPrefix + chkptSix, tableC) == 0);
-
-    // Check to see table_a table_d exported without data
-    assertEquals(0, getRowCount(destDbPrefix + chkptSix, tableA));
-    assertEquals(0, getRowCount(destDbPrefix + chkptSix, tableD));
+    // Check to see selected tables exported with data and and unselected tables did not
+    List<String> exportTables = ImmutableList.of(tableB, tableC);
+    List<String> unselectedTables = ImmutableList.of(tableA, tableD);
+    compareExpectedTableRows(destDbPrefix + chkptSix, exportTables, unselectedTables);
   }
 
   /* Validates behavior of table filtering using randomly generated table and randomly selected
@@ -689,17 +934,14 @@ public final class ExportRelatedTablesCheckTest {
             .map(t -> t.name())
             .collect(Collectors.toList());
 
-    // Check to see that every randomly chosen table was exported with data
-    for (String exortTable : filteredTables) {
-      assertFalse(getRowCount(destDbPrefix + chkptSeven, exortTable) == 0);
-    }
+    List<String> unselectedTables =
+        tableNames.stream()
+            .distinct()
+            .filter(t -> !filteredTables.contains(t))
+            .collect(Collectors.toList());
 
-    // Check to see that every unselected table was exported without data
-    for (String table : tableNames) {
-      if (!(filteredTables.contains(table))) {
-        assertEquals(0, getRowCount(destDbPrefix + chkptSeven, table));
-      }
-    }
+    // Check to see selected tables exported with data and and unselected tables did not
+    compareExpectedTableRows(destDbPrefix + chkptSeven, filteredTables, unselectedTables);
   }
 
   /* Validates that pipeline execution fails when --tableNames is given a table that doesn't
@@ -860,20 +1102,11 @@ public final class ExportRelatedTablesCheckTest {
             tableA, tableB, tableC, tableD, tableE, tableF, tableG, tableH, tableI, tableJ, tableK,
             tableL));
 
-    // Check to see expected tables were exported with their original data
-    assertFalse(getRowCount(destDbPrefix + chkptNine, tableA) == 0);
-    assertFalse(getRowCount(destDbPrefix + chkptNine, tableB) == 0);
-    assertFalse(getRowCount(destDbPrefix + chkptNine, tableC) == 0);
-    assertFalse(getRowCount(destDbPrefix + chkptNine, tableE) == 0);
-    assertFalse(getRowCount(destDbPrefix + chkptNine, tableF) == 0);
-    assertFalse(getRowCount(destDbPrefix + chkptNine, tableH) == 0);
-    assertFalse(getRowCount(destDbPrefix + chkptNine, tableI) == 0);
-    assertFalse(getRowCount(destDbPrefix + chkptNine, tableJ) == 0);
-
-    // Check to see expected tables exported without data
-    assertEquals(0, getRowCount(destDbPrefix + chkptNine, tableD));
-    assertEquals(0, getRowCount(destDbPrefix + chkptNine, tableK));
-    assertEquals(0, getRowCount(destDbPrefix + chkptNine, tableL));
+    // Check to see selected tables exported with data and and unselected tables did not
+    List<String> exportTables =
+        ImmutableList.of(tableA, tableB, tableC, tableE, tableF, tableH, tableI, tableJ);
+    List<String> unselectedTables = ImmutableList.of(tableD, tableK, tableL);
+    compareExpectedTableRows(destDbPrefix + chkptNine, exportTables, unselectedTables);
   }
 
   private void exportAndImportDb(
@@ -923,6 +1156,20 @@ public final class ExportRelatedTablesCheckTest {
             ValueProvider.StaticValueProvider.of(true)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();
+  }
+
+  /* Compares the tables in a database against their expected row counts */
+  private void compareExpectedTableRows(
+      String db, List<String> exportTables, List<String> unselectedTables) {
+    // Check to see that every table that should be exported with data contains rows upon import
+    for (String table : exportTables) {
+      assertFalse(getRowCount(db, table) == 0);
+    }
+
+    // Check to see that every unselected table was exported without data
+    for (String table : unselectedTables) {
+      assertEquals(0, getRowCount(db, table));
+    }
   }
 
   /* Compares a given List of strings for the expected tables in a database (in alphabetical order)
