@@ -19,6 +19,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -26,6 +28,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 
 /**
  * Utility class with methods which converts text fields in change events represented by JSONObject
@@ -165,6 +168,29 @@ public class ChangeEventTypeConvertor {
       throw new ChangeEventConvertorException("Unable to convert field " + key + " to Date",
           e);
     }
+  }
+
+  private static boolean isNumeric(String str) {
+    return str.matches("-?\\d+(\\.\\d+)?");  //match a number with optional '-' and decimal.
+  }
+
+  /*
+   * This function converts the JSON field to string. In addition, this function also checks
+   * if the field is a number.
+   */
+  public static BigDecimal toNumericBigDecimal(JsonNode changeEvent, String key,
+      boolean requiredField)
+      throws ChangeEventConvertorException {
+
+    String value = toString(changeEvent, key, requiredField);
+    if (NumberUtils.isCreatable(value) || NumberUtils.isParsable(value) || isNumeric(value)) {
+      return new BigDecimal(value).setScale(9, RoundingMode.HALF_UP);
+    }
+    throw new ChangeEventConvertorException("Unable to convert field " + key
+                                                + " to Numeric. Creatable("
+                                                + NumberUtils.isCreatable(value)
+                                                + "), Parsable("
+                                                + NumberUtils.isParsable(value) + ")");
   }
 
   /* Checks if the change event has the key and a value associated with this. This

@@ -138,6 +138,10 @@ public class ChangeEventConvertor {
                 ChangeEventTypeConvertor.toString(
                     changeEvent, keyColName, /*requiredField=*/ true));
             break;
+          case NUMERIC:
+            pk.append(ChangeEventTypeConvertor.toNumericBigDecimal(changeEvent, keyColName,
+                          /*requiredField=*/true));
+            break;
           case BYTES:
             pk.append(
                 ChangeEventTypeConvertor.toByteArray(
@@ -228,6 +232,10 @@ public class ChangeEventConvertor {
         case STRING:
           columnValue = Value.string(ChangeEventTypeConvertor.toString(
                                          changeEvent, colName, requiredField));
+          break;
+        case NUMERIC:
+          columnValue = Value.numeric(ChangeEventTypeConvertor.toNumericBigDecimal(
+                                          changeEvent, colName, requiredField));
           break;
         case BYTES:
           columnValue = Value.bytes(ChangeEventTypeConvertor.toByteArray(

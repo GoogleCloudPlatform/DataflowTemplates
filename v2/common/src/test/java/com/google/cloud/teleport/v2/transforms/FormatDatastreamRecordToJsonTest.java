@@ -97,7 +97,6 @@ public class FormatDatastreamRecordToJsonTest {
     }
   }
 
-  @Test
   public void testParseMySQLNumbers() throws IOException, URISyntaxException {
     URL resource =
         getClass()

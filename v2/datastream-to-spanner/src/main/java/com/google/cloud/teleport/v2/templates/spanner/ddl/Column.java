@@ -109,6 +109,8 @@ public abstract class Column implements Serializable {
         return "BYTES(" + (size == -1 ? "MAX" : Integer.toString(size)) + ")";
       case DATE:
         return "DATE";
+      case NUMERIC:
+        return "NUMERIC";
       case TIMESTAMP:
         return "TIMESTAMP";
       case ARRAY:
@@ -187,6 +189,10 @@ public abstract class Column implements Serializable {
       return type(Type.date());
     }
 
+    public Builder numeric() {
+      return type(Type.numeric());
+    }
+
     public Builder max() {
       return size(-1);
     }
@@ -244,6 +250,9 @@ public abstract class Column implements Serializable {
     }
     if (spannerType.equals("DATE")) {
       return t(Type.date(), null);
+    }
+    if (spannerType.equals("NUMERIC")) {
+      return t(Type.numeric(), null);
     }
     if (spannerType.startsWith("ARRAY")) {
       // Substring "ARRAY<"xxx">"

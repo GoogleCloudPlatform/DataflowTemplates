@@ -264,6 +264,98 @@ public final class ChangeEventTypeConvertorTest {
   }
 
   /*
+   * Tests for numeric string conversion. Tests json with large numbers and decimals encoded as
+   * JSON strings and numbers.
+   */
+  @Test
+  public void canConvertToNumericBigDecimal() throws Exception {
+    String jsonChangeEvent = "{ "
+        + "\"field1\" : 123456789.0123456789,"
+        + "\"field2\" : -123456789.0123456789,"
+        + "\"field3\" : \"-123456789.0123456789\","
+        + "\"field4\" : 9223372036854775807,"
+        + "\"field5\" : \"9223372036854775807\","
+        + "\"field6\" : \"123345678903456545422346373223.903495832\","
+        + "\"field7\" : 123345678903456545422346373223.903495832,"
+        + "\"field8\" : 1233456789034565454223463732234502384848374579495483732758539938558,"
+        + "\"field9\" : \"1233456789034565454223463732234502384848374579495483732758539938558\","
+        + "\"field10\" : \"1.2334567890345654542E10\","
+        + "\"field11\" : 123345.678903456545422346373223903495832,"
+        + "\"field12\" : \"123345.678903456545422346373223903495832\""
+        + " }";
+    JsonNode ce = getJsonNode(jsonChangeEvent);
+
+    assertEquals(
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field1", /*requiredField=*/true)
+            .toString(),
+        new String("123456789.012345679"));
+    assertEquals(
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field2", /*requiredField=*/true)
+            .toString(),
+        new String("-123456789.012345679"));
+    assertEquals(
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field3", /*requiredField=*/true)
+            .toString(),
+        new String("-123456789.012345679"));
+    assertEquals(
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field4", /*requiredField=*/true)
+            .toString(),
+        new String("9223372036854775807.000000000"));
+    assertEquals(
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field5", /*requiredField=*/true)
+            .toString(),
+        new String("9223372036854775807.000000000"));
+    assertEquals(
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field6", /*requiredField=*/true)
+            .toString(),
+        new String("123345678903456545422346373223.903495832"));
+    assertEquals(
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field7", /*requiredField=*/true)
+            .toString(),
+        new String("123345678903456545422346373223.903495832"));
+    assertEquals(
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field8", /*requiredField=*/true)
+            .toString(),
+        new String("1233456789034565454223463732234502384848374579495483732758539938558.000000000"));
+    assertEquals(
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field9", /*requiredField=*/true)
+            .toString(),
+        new String("1233456789034565454223463732234502384848374579495483732758539938558.000000000"));
+    assertEquals(
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field10", /*requiredField=*/true)
+            .toString(),
+        new String("12334567890.345654542"));
+    assertEquals(
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field11", /*requiredField=*/true)
+            .toString(),
+        new String("123345.678903457"));
+    assertEquals(
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field12", /*requiredField=*/true)
+            .toString(),
+        new String("123345.678903457"));
+  }
+
+  @Test(expected = ChangeEventConvertorException.class)
+  public void cannotConvertRandomStringToNumeric() throws Exception {
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("field1", "asd123456.789");
+    JsonNode ce = getJsonNode(changeEvent.toString());
+    assertEquals(ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field1", /*requiredField=*/true)
+                     .toString(),
+        new Long(123457));
+  }
+
+  @Test(expected = ChangeEventConvertorException.class)
+  public void cannotConvertBooleanToNumeric() throws Exception {
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("field1", true);
+    JsonNode ce = getJsonNode(changeEvent.toString());
+    assertEquals(ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field1", /*requiredField=*/true)
+                     .toString(),
+        new Long(123457));
+  }
+
+  /*
    * Tests for bytearray conversion
    */
   @Test
