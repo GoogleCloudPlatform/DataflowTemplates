@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.channels.ReadableByteChannel;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.UUID;
 import org.apache.beam.sdk.io.FileSystems;
@@ -77,7 +78,13 @@ public class SpannerConverterTest implements Serializable {
     ResultSet resultSet = mock(ResultSet.class, withSettings().serializable());
     Struct struct = mock(Struct.class, withSettings().serializable());
 
-    String instant = Instant.now().toString();
+    /*
+     * Get a second earlier than current time to avoid tests failing due to time mismatch across
+     * machines. A future timestamp is regarded as illegal when creating a timestamp bounded
+     * transaction.
+     */
+    String instant = Instant.now().minus(1, ChronoUnit.SECONDS).toString();
+
     ValueProvider.StaticValueProvider<String> timestamp =
         ValueProvider.StaticValueProvider.of(instant);
     TimestampBound tsbound = getTimestampBound(instant);
@@ -99,7 +106,7 @@ public class SpannerConverterTest implements Serializable {
     PCollection<ReadOperation> results = pipeline.apply("Create", exportTransform);
     ReadOperation readOperation =
         ReadOperation.create()
-            .withQuery("SELECT id FROM `table`")
+            .withQuery("SELECT `id` FROM `table`")
             .withPartitionOptions(PartitionOptions.newBuilder().setMaxPartitions(1000).build());
     PAssert.that(results).containsInAnyOrder(readOperation);
     pipeline.run();

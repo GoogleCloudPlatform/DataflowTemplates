@@ -255,25 +255,25 @@ public class SpannerConverters {
 
       private String createColumnExpression(String columnName, String columnType) {
         if (columnType.equals("NUMERIC")) {
-          return "CAST(" + columnName + " AS STRING) AS " + columnName;
+          return "CAST(`" + columnName + "` AS STRING) AS " + columnName;
         }
         if (columnType.equals("JSON")) {
-          return "TO_JSON_STRING(" + columnName + ") AS " + columnName;
+          return "TO_JSON_STRING(`" + columnName + "`) AS " + columnName;
         }
 
         if (columnType.equals("ARRAY<NUMERIC>")) {
-          return "(SELECT ARRAY_AGG(CAST(num AS STRING)) FROM UNNEST("
+          return "(SELECT ARRAY_AGG(CAST(num AS STRING)) FROM UNNEST(`"
               + columnName
-              + ") AS num) AS "
+              + "`) AS num) AS "
               + columnName;
         }
         if (columnType.equals("ARRAY<JSON>")) {
-          return "(SELECT ARRAY_AGG(TO_JSON_STRING(element)) FROM UNNEST("
+          return "(SELECT ARRAY_AGG(TO_JSON_STRING(element)) FROM UNNEST(`"
               + columnName
-              + ") AS element) AS "
+              + "`) AS element) AS "
               + columnName;
         }
-        return columnName;
+        return "`" + columnName + "`";
       }
 
       private void saveSchema(String content, String schemaPath) {
