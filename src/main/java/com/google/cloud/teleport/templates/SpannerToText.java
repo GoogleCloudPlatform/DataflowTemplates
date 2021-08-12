@@ -15,8 +15,6 @@
  */
 package com.google.cloud.teleport.templates;
 
-import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.JavascriptTextTransformerOptions;
-import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.TransformTextViaJavascript;
 import com.google.cloud.teleport.templates.common.SpannerConverters;
 import com.google.cloud.teleport.templates.common.SpannerConverters.CreateTransactionFnWithTimestamp;
 import com.google.cloud.teleport.templates.common.SpannerConverters.SpannerReadOptions;
@@ -74,12 +72,10 @@ public class SpannerToText {
   public interface SpannerToTextOptions
       extends PipelineOptions,
           SpannerReadOptions,
-          JavascriptTextTransformerOptions,
           FilesystemWriteOptions {}
 
   /**
-   * Runs a pipeline which reads in Records from Spanner, passes in the CSV records to a Javascript
-   * UDF, and writes the CSV to TextIO sink.
+   * Runs a pipeline which reads in Records from Spanner, and writes the CSV to TextIO sink.
    *
    * @param args arguments to the pipeline
    */
@@ -139,16 +135,6 @@ public class SpannerToText {
                 MapElements.into(TypeDescriptors.strings())
                     .via(struct -> (new SpannerConverters.StructCsvPrinter()).print(struct)));
 
-    if (options.getJavascriptTextTransformGcsPath().isAccessible()) {
-      // The UDF function takes a CSV row as an input and produces a transformed CSV row
-      csv =
-          csv.apply(
-              "JavascriptUDF",
-              TransformTextViaJavascript.newBuilder()
-                  .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
-                  .setFunctionName(options.getJavascriptTextTransformFunctionName())
-                  .build());
-    }
     csv.apply(
         "Write to storage", TextIO.write().to(options.getTextWritePrefix()).withSuffix(".csv"));
 
