@@ -118,20 +118,50 @@ public class App {
     ImmutableConfiguration debeziumConfig = config.immutableSubset("debezium");
 
     startSender(
-        config.getString("databaseName"),
-        config.getString("databaseUsername"),
-        config.getString("databasePassword"),
-        config.getString("databaseAddress"),
-        config.getString("databasePort", "3306"), // MySQL default port is 3306
-        config.getString("gcpProject"),
-        config.getString("gcpPubsubTopicPrefix"),
-        config.getString("offsetStorageFile", DEFAULT_OFFSET_STORAGE_FILE),
-        config.getString("databaseHistoryFile", DEFAULT_DATABASE_HISTORY_FILE),
+        checkParsing(config.getString("databaseName"), "databaseName", logger),
+        checkParsing(config.getString("databaseUsername"), "databaseUsername", logger),
+        checkParsing(config.getString("databasePassword"), "databasePassword", logger),
+        checkParsing(config.getString("databaseAddress"), "databaseAddress", logger),
+        checkParsing(
+            config.getString("databasePort", "3306"),
+            "databasePort",
+            logger), // MySQL default port is 3306
+        checkParsing(config.getString("gcpProject"), "gcpProject", logger),
+        checkParsing(config.getString("gcpPubsubTopicPrefix"), "gcpPubsubTopicPrefix", logger),
+        checkParsing(
+            config.getString("offsetStorageFile", DEFAULT_OFFSET_STORAGE_FILE),
+            "offsetStorageFile",
+            logger),
+        checkParsing(
+            config.getString("databaseHistoryFile", DEFAULT_DATABASE_HISTORY_FILE),
+            "databaseHistoryFile",
+            logger),
         config.getBoolean("inMemoryOffsetStorage", false),
         config.getBoolean("singleTopicMode", false),
-        config.getString("whitelistedTables"),
-        config.getString("databaseManagementSystem", DEFAULT_RDBMS),
+        checkParsing(config.getString("whitelistedTables"), "whitelistedTables", logger),
+        checkParsing(
+            config.getString("databaseManagementSystem", DEFAULT_RDBMS),
+            "databaseManagementSystem",
+            logger),
         debeziumConfig);
+  }
+
+  /**
+   * Handle messy parsing.
+   *
+   * <p>This method gives warning when the parsed property is bounded with quotation marks. This
+   * helps debugging when potential messy parsing exists.
+   *
+   * @param parsedString is the String parsed by config
+   * @param propertyName is the String name of the property being parsed
+   * @param logger is the logger for printing warnings
+   * @return parsedString is the String parsed by config
+   */
+  private static String checkParsing(String parsedString, String propertyName, Logger logger) {
+    if (parsedString.startsWith("\"") || parsedString.startsWith("'")) {
+      logger.warn("{} starts with a quotation mark. Please make sure it's intended", propertyName);
+    }
+    return parsedString;
   }
 
   /**

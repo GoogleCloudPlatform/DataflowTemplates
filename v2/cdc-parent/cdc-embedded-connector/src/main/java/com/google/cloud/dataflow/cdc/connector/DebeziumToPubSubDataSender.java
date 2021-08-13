@@ -54,6 +54,7 @@ public class DebeziumToPubSubDataSender implements Runnable {
       new ImmutableMap.Builder<String, String>()
           .put("mysql", "io.debezium.connector.mysql.MySqlConnector")
           .put("postgres", "io.debezium.connector.postgresql.PostgresConnector")
+          .put("sqlserver", "io.debezium.connector.sqlserver.SqlServerConnector")
           .build();
 
   private static final Logger LOG = LoggerFactory.getLogger(DebeziumToPubSubDataSender.class);
