@@ -1,0 +1,8 @@
+  
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.PubSubToSnowflake",
+  "classPath": "/template/googlecloud-to-snowflake/*:/template/googlecloud-to-snowflake/libs/*:/template/googlecloud-to-snowflake/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"PubSubToSnowflake\"}"
+  }
+}
