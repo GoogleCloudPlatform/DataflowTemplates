@@ -15,6 +15,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+/**
+ * This class was included and changed as a temporary solution to cover Elasticsearch's requirement
+ * of op_type for data streams. The required feature will be available with Apache Beam 2.33.0.
+ * After migrating to Apache Beam 2.33.0 this class should be removed.
+ * Jira ticket: <a href="https://issues.apache.org/jira/browse/BEAM-12601">Support append-only indices in ES output</a>.
+ * Github pull request: <a href="https://github.com/apache/beam/pull/15257">[BEAM-12601] Add append-only option</a>.
+ */
 package com.google.cloud.teleport.v2.elasticsearch.utils;
 
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
@@ -152,7 +160,6 @@ import org.slf4j.LoggerFactory;
  * socket timeout of 30000ms. {@code withConnectTimeout()} can be used to override the default
  * connect timeout of 1000ms.
  */
-// TODO: remove this class after release of Apache Beam 2.33.0
 @Experimental(Kind.SOURCE_SINK)
 @SuppressWarnings({
   "nullness" // TODO(https://issues.apache.org/jira/browse/BEAM-10402)
