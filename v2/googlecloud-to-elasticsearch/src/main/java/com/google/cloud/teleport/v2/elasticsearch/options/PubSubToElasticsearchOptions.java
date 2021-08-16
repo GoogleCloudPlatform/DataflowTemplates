@@ -19,7 +19,6 @@ import com.google.cloud.teleport.v2.elasticsearch.utils.Dataset;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
-import org.apache.beam.sdk.options.Hidden;
 import org.apache.beam.sdk.options.Validation;
 
 /**
