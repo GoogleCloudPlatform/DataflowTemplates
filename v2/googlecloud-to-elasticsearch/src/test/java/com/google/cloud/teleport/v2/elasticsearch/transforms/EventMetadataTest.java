@@ -26,20 +26,29 @@ import java.util.stream.Collectors;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.commons.lang.StringUtils;
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 /**
- * EventMetadata.
+ * Test cases for {@link EventMetadata}.
+ * Used to test the correctness of {@link EventMetadata} implementation,
+ * including insertion of metadata and error handling.
  */
 public class EventMetadataTest {
 
     private static final String RESOURCES_DIR = "EventMetadata/";
     private static final String INPUT_MESSAGE_FILE_PATH =
             Resources.getResource(RESOURCES_DIR + "inputMessage.json").getPath();
+    private static final String INPUT_MESSAGE_INVALID_FILE_PATH =
+            Resources.getResource(RESOURCES_DIR + "inputMessageInvalid.json").getPath();
     private static final boolean IS_WINDOWS = System.getProperty("os.name").contains("indow");
 
+    @Rule
+    public ExpectedException exceptionRule = ExpectedException.none();
+
     @Test
-    public void testEventMetadata() {
+    public void testEventMetadata() throws IOException {
         PubSubToElasticsearchOptions options =
                 TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
@@ -50,7 +59,12 @@ public class EventMetadataTest {
         options.setNamespace("test-namespace");
         options.setElasticsearchTemplateVersion("999.999.999");
 
-        String inputMessage = "{\"message\":\"test message\", \"timestamp\":\"2021-08-11T19:55:54.834736Z\"}";
+        String inputMessage = Files.lines(
+                Paths.get(
+                        IS_WINDOWS
+                                ? INPUT_MESSAGE_FILE_PATH.substring(1)
+                                : INPUT_MESSAGE_FILE_PATH), StandardCharsets.UTF_8)
+                .collect(Collectors.joining());
 
         EventMetadata eventMetadata = EventMetadata.build(inputMessage, options);
 
@@ -63,7 +77,7 @@ public class EventMetadataTest {
         Assert.assertEquals(Dataset.AUDIT.getKey(), enrichedMessageAsJson.get("data_stream").get("dataset").textValue());
         Assert.assertEquals("test-namespace", enrichedMessageAsJson.get("data_stream").get("namespace").textValue());
         Assert.assertEquals(Dataset.AUDIT.getKey(), enrichedMessageAsJson.get("service").get("type").textValue());
-        Assert.assertEquals("2021-08-11T19:55:54.834736Z", enrichedMessageAsJson.get("@timestamp").textValue());
+        Assert.assertEquals("2021-07-14T10:35:17.528142Z", enrichedMessageAsJson.get("@timestamp").textValue());
     }
 
     @Test
@@ -94,7 +108,9 @@ public class EventMetadataTest {
     }
 
     @Test
-    public void testEventMetadataAsList() {
+    public void testEventMetadataAppendFailed() throws IOException {
+        exceptionRule.expect(IllegalStateException.class);
+
         PubSubToElasticsearchOptions options =
                 TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
@@ -104,10 +120,44 @@ public class EventMetadataTest {
         options.setDataset(Dataset.AUDIT);
         options.setNamespace("test-namespace");
 
-        String inputMessage = "{\"message\":\"test message\"}";
+        String inputMessageInvalid = Files.lines(
+                Paths.get(
+                        IS_WINDOWS
+                                ? INPUT_MESSAGE_INVALID_FILE_PATH.substring(1)
+                                : INPUT_MESSAGE_INVALID_FILE_PATH), StandardCharsets.UTF_8)
+                .collect(Collectors.joining());
+
+        EventMetadata eventMetadata = EventMetadata.build(inputMessageInvalid, options);
+
+        JsonNode enrichedMessageAsJson = eventMetadata.getEnrichedMessageAsJsonNode();
+
+        //if elasticsearchTemplateVersion is not set, 1.0.0 is the default value
+        Assert.assertEquals("1.0.0", enrichedMessageAsJson.get("agent").get("version").textValue());
+        Assert.assertEquals(enrichedMessageAsJson.get("data_stream").get("dataset").textValue(), Dataset.AUDIT.getKey());
+    }
+
+
+    @Test
+    public void testEventMetadataAsList() throws IOException {
+        PubSubToElasticsearchOptions options =
+                TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
+
+        options.setDeadletterTable("test:dataset.table");
+        options.setElasticsearchUsername("test");
+        options.setElasticsearchPassword("test");
+        options.setDataset(Dataset.AUDIT);
+        options.setNamespace("test-namespace");
+
+        String inputMessage = Files.lines(
+                Paths.get(
+                        IS_WINDOWS
+                                ? INPUT_MESSAGE_FILE_PATH.substring(1)
+                                : INPUT_MESSAGE_FILE_PATH), StandardCharsets.UTF_8)
+                .collect(Collectors.joining());
 
         EventMetadata eventMetadata = EventMetadata.build(inputMessage, options);
 
         Assert.assertTrue(eventMetadata.asList().size() > 0);
+        Assert.assertTrue(eventMetadata.asList().stream().anyMatch(x -> x.has("@timestamp")));
     }
 }

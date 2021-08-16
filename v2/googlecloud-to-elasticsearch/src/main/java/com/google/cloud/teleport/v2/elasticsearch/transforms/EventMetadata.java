@@ -27,10 +27,11 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
-import org.apache.commons.lang.StringUtils;
 
 /**
- * EventMetadata adds metadata required by Elasticsearch.
+ * EventMetadata is used to insert metadata required by Elasticsearch.
+ * The metadata helps Elasticsearch to visualize events on the dashboards,
+ * also uniform message format is needed for data analytics.
  */
 public class EventMetadata implements Serializable {
 
@@ -53,39 +54,29 @@ public class EventMetadata implements Serializable {
     @JsonIgnore
     private JsonNode enrichedMessage;
     @JsonIgnore
-    private PubSubToElasticsearchOptions pubSubToElasticsearchOptions;
-    @JsonIgnore
     final ObjectMapper objectMapper = new ObjectMapper();
 
     private EventMetadata(String inputMessage, PubSubToElasticsearchOptions pubSubToElasticsearchOptions) {
         this.inputMessage = inputMessage;
-        this.pubSubToElasticsearchOptions = pubSubToElasticsearchOptions;
         event = new Event();
         dataStream = new DataStream();
         ecs = new Ecs();
         service = new Service();
         message = inputMessage;
 
-        JsonNode node = null;
         try {
-            node = objectMapper.readTree(inputMessage);
-            this.timestamp = findTimestampValue(node);
+            this.timestamp = findTimestampValue(objectMapper.readTree(inputMessage));
         } catch (JsonProcessingException e) {
-            throw new IllegalStateException("Error processing input message.", e);
+            throw new IllegalStateException("Cannot parse input message as JSON.", e);
         } catch (NoSuchElementException e) {
+            //if timestamp is not found, we generate it
             this.timestamp = new java.sql.Timestamp(System.currentTimeMillis()).toInstant().toString();
         }
 
         agent = new Agent();
-        agent.name = "";
-        agent.version = StringUtils.isNotBlank(pubSubToElasticsearchOptions.getElasticsearchTemplateVersion()) ?
-                pubSubToElasticsearchOptions.getElasticsearchTemplateVersion()
-                : "1.0.0";
-        agent.id = "";
-
+        agent.version = pubSubToElasticsearchOptions.getElasticsearchTemplateVersion();
         dataStream.dataset = pubSubToElasticsearchOptions.getDataset();
         dataStream.namespace = pubSubToElasticsearchOptions.getNamespace();
-
         service.type = event.dataset = pubSubToElasticsearchOptions.getDataset();
     }
 
@@ -105,11 +96,11 @@ public class EventMetadata implements Serializable {
         @JsonProperty("type")
         private final String type = "dataflow";
         @JsonProperty("name")
-        private String name;
+        private final String name = "";
         @JsonProperty("version")
         private String version;
         @JsonProperty("id")
-        private String id;
+        private final String id = "";
     }
 
     private class DataStream {
@@ -139,9 +130,7 @@ public class EventMetadata implements Serializable {
     }
 
     public static EventMetadata build(String inputMessage, PubSubToElasticsearchOptions pubSubToElasticsearchOptions) {
-        EventMetadata eventMetadata = new EventMetadata(inputMessage, pubSubToElasticsearchOptions);
-        eventMetadata.enrich();
-        return eventMetadata;
+        return new EventMetadata(inputMessage, pubSubToElasticsearchOptions);
     }
 
     private void enrich() {
@@ -157,6 +146,10 @@ public class EventMetadata implements Serializable {
     }
 
     public String getEnrichedMessageAsString() {
+        if (enrichedMessage == null) {
+            this.enrich();
+        }
+
         try {
             return objectMapper.writeValueAsString(enrichedMessage);
         } catch (JsonProcessingException e) {
@@ -165,12 +158,18 @@ public class EventMetadata implements Serializable {
     }
 
     public JsonNode getEnrichedMessageAsJsonNode() {
+        if (enrichedMessage == null) {
+            this.enrich();
+        }
+
         return enrichedMessage;
     }
 
     private String findTimestampValue(JsonNode node) throws NoSuchElementException {
-        if (node.has("timestamp")) {
-            return node.get("timestamp").asText();
+        if (node.has("protoPayload")) {
+            if(node.get("protoPayload").has("timestamp")) {
+                return node.get("protoPayload").get("timestamp").asText();
+            }
         }
 
         throw new NoSuchElementException();
@@ -178,10 +177,8 @@ public class EventMetadata implements Serializable {
 
     @Override
     public String toString() {
-        String node = null;
         try {
-            node = objectMapper.writerFor(EventMetadata.class).writeValueAsString(this);
-            return node;
+            return objectMapper.writerFor(EventMetadata.class).writeValueAsString(this);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Error writing EventMetadata as String.", e);
         }
