@@ -82,9 +82,7 @@ public class EventMetadata implements Serializable {
 
     public List<JsonNode> asList() {
         JsonNode root = objectMapper.convertValue(this, JsonNode.class);
-
         List<JsonNode> nodes = new ArrayList<>();
-
         for (JsonNode node : root) {
             nodes.add(node);
         }
