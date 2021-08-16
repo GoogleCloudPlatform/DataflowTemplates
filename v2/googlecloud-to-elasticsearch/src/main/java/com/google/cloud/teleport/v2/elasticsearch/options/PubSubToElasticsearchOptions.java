@@ -65,7 +65,7 @@ public interface PubSubToElasticsearchOptions
   void setDeadletterTable(String deadletterTable);
 
   @Description("Dataflow template version, should be set by GCP.")
-  @Hidden
+  @Default.String("1.0.0")
   String getElasticsearchTemplateVersion();
 
   void setElasticsearchTemplateVersion(String elasticsearchTemplateVersion);
