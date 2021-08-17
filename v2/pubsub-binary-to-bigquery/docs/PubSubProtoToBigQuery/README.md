@@ -100,7 +100,7 @@ The template requires the following parameters:
     the `package` statement, not the `java_package` statement.
 *   inputSubscription: The name of the subscription from which data is read. For
     example, projects/\<project-id\>/subscriptions/\<subscription-name\>.
-*   outputTopic: Pub/Sub topic to write dead-letter records. For example,
+*   outputTopic: Pub/Sub topic to write unprocessed records. For example,
     projects/\<project-id\>/topics/\<topic-name\>.
 *   outputTableSpec: Output BigQuery table. For example,
     \<project\>:\<dataset\>.\<table_name\>. If the table already exists, it must
@@ -119,10 +119,9 @@ The template has the following optional parameters:
     example, gs://MyBucket/udf.js.
 *   javascriptTextTransformFunctionName: Name of the JavaScript UDF function.
     This must be provided if `javascriptTextTransformGcsPath` is provided.
-*   udfDeadLetterTopic: Dead-letter Pub/Sub topic to send UDF failures to. For
-    example, projects/\<project-id\>/topics/\<topic-name\>. If this is not
-    provided, UDF failures will be sent to the same dead-letter topic as in
-    `outputTopic`.
+*   udfOutputTopic: Output Pub/Sub topic to send UDF failures to. For example,
+    projects/\<project-id\>/topics/\<topic-name\>. If this is not provided, UDF
+    failures will be sent to `outputTopic`.
 *   writeDisposition: BigQuery WriteDisposition. For example, WRITE_APPEND,
     WRITE_EMPTY or WRITE_TRUNCATE. Default: WRITE_APPEND
 *   createDisposition: BigQuery CreateDisposition. For example,

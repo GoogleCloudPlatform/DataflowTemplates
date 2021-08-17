@@ -63,7 +63,7 @@ import org.apache.commons.lang.ArrayUtils;
  * A template for writing <a href="https://developers.google.com/protocol-buffers">Protobuf</a>
  * records from Pub/Sub to BigQuery.
  *
- * <p>Persistent failures are written to a Pub/Sub dead-letter topic.
+ * <p>Persistent failures are written to a Pub/Sub unprocessed topic.
  */
 public final class PubsubProtoToBigQuery {
   private static final TupleTag<FailsafeElement<String, String>> UDF_SUCCESS_TAG = new TupleTag<>();
@@ -113,10 +113,10 @@ public final class PubsubProtoToBigQuery {
 
     void setJavascriptTextTransformFunctionName(String javascriptTextTransformFunctionName);
 
-    @Description("Dead-letter topic for UDF failures")
-    String getUdfDeadLetterTopic();
+    @Description("Pub/Sub topic for UDF failures")
+    String getUdfOutputTopic();
 
-    void setUdfDeadLetterTopic(String udfDeadLetterTopic);
+    void setUdfOutputTopic(String udfOutputTopic);
   }
 
   /** Runs the pipeline and returns the results. */
@@ -238,7 +238,7 @@ public final class PubsubProtoToBigQuery {
    *
    * <p>If {@code options} is configured so as not to run the UDF, then the UDF will not be called.
    *
-   * <p>This may add a branch to the pipeline for outputting failed UDF records to a dead-letter
+   * <p>This may add a branch to the pipeline for outputting failed UDF records to an unprocessed
    * topic.
    *
    * @param jsonCollection {@link PCollection} of JSON strings for use as input to the UDF
@@ -274,7 +274,7 @@ public final class PubsubProtoToBigQuery {
                 .setOriginalPayloadSerializeFn(s -> ArrayUtils.toObject(s.getBytes(UTF_8)))
                 .setErrorMessageAttributeKey("udfErrorMessage")
                 .build())
-        .apply("Write Failed UDF", writeUdfToDeadLetter(options));
+        .apply("Write Failed UDF", writeUdfFailures(options));
 
     return maybeSuccess
         .get(UDF_SUCCESS_TAG)
@@ -315,14 +315,14 @@ public final class PubsubProtoToBigQuery {
   }
 
   /**
-   * Returns a {@link PubsubIO.Write} configured to write UDF failures to the appropriate
-   * dead-letter topic.
+   * Returns a {@link PubsubIO.Write} configured to write UDF failures to the appropriate output
+   * topic.
    */
-  private static PubsubIO.Write<PubsubMessage> writeUdfToDeadLetter(
+  private static PubsubIO.Write<PubsubMessage> writeUdfFailures(
       PubSubProtoToBigQueryOptions options) {
     PubsubIO.Write<PubsubMessage> write = PubsubIO.writeMessages();
-    return Strings.isNullOrEmpty(options.getUdfDeadLetterTopic())
+    return Strings.isNullOrEmpty(options.getUdfOutputTopic())
         ? write.to(options.getOutputTopic())
-        : write.to(options.getUdfDeadLetterTopic());
+        : write.to(options.getUdfOutputTopic());
   }
 }
