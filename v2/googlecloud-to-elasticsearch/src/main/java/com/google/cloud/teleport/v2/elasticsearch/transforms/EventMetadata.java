@@ -57,26 +57,29 @@ public class EventMetadata implements Serializable {
     final ObjectMapper objectMapper = new ObjectMapper();
 
     private EventMetadata(String inputMessage, PubSubToElasticsearchOptions pubSubToElasticsearchOptions) {
-        this.inputMessage = inputMessage;
-        event = new Event();
-        dataStream = new DataStream();
-        ecs = new Ecs();
-        service = new Service();
-        message = inputMessage;
 
         try {
             this.timestamp = findTimestampValue(objectMapper.readTree(inputMessage));
         } catch (JsonProcessingException e) {
-            throw new IllegalStateException("Cannot parse input message as JSON.", e);
+            throw new IllegalStateException("Cannot parse input message as JSON: " + inputMessage, e);
         } catch (NoSuchElementException e) {
             //if timestamp is not found, we generate it
             this.timestamp = new java.sql.Timestamp(System.currentTimeMillis()).toInstant().toString();
         }
 
+        this.inputMessage = inputMessage;
+
+        ecs = new Ecs();
+        message = inputMessage;
         agent = new Agent();
         agent.version = pubSubToElasticsearchOptions.getElasticsearchTemplateVersion();
+
+        dataStream = new DataStream();
         dataStream.dataset = pubSubToElasticsearchOptions.getDataset();
         dataStream.namespace = pubSubToElasticsearchOptions.getNamespace();
+
+        service = new Service();
+        event = new Event();
         service.type = event.dataset = pubSubToElasticsearchOptions.getDataset();
     }
 
@@ -139,7 +142,7 @@ public class EventMetadata implements Serializable {
             ((ObjectNode) enrichedMessage).putAll(metadata);
             ((ObjectNode) enrichedMessage).remove("timestamp");
         } catch (JsonProcessingException e) {
-            throw new IllegalStateException("Error processing input message.", e);
+            throw new IllegalStateException("Exception occurred while processing input message: " + inputMessage, e);
         }
     }
 
@@ -151,7 +154,8 @@ public class EventMetadata implements Serializable {
         try {
             return objectMapper.writeValueAsString(enrichedMessage);
         } catch (JsonProcessingException e) {
-            throw new IllegalStateException("Error building enriched message.", e);
+            throw new IllegalStateException("Exception occurred while building enriched message: " + enrichedMessage, e);
+
         }
     }
 
@@ -170,15 +174,15 @@ public class EventMetadata implements Serializable {
             }
         }
 
-        throw new NoSuchElementException();
+        throw new NoSuchElementException("Unable to find \"timestamp\" value");
     }
 
     @Override
     public String toString() {
         try {
-            return objectMapper.writerFor(EventMetadata.class).writeValueAsString(this);
+            return objectMapper.writeValueAsString(this);
         } catch (JsonProcessingException e) {
-            throw new IllegalStateException("Error writing EventMetadata as String.", e);
+            throw new IllegalStateException("Exception occurred while writing EventMetadata as String.", e);
         }
     }
 

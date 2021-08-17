@@ -42,7 +42,7 @@ public class EventMetadataTest {
             Resources.getResource(RESOURCES_DIR + "inputMessage.json").getPath();
     private static final String INPUT_MESSAGE_INVALID_FILE_PATH =
             Resources.getResource(RESOURCES_DIR + "inputMessageInvalid.json").getPath();
-    private static final boolean IS_WINDOWS = System.getProperty("os.name").contains("indow");
+    private static final boolean IS_WINDOWS = System.getProperty("os.name").contains("Windows");
 
     @Rule
     public ExpectedException exceptionRule = ExpectedException.none();
@@ -52,22 +52,15 @@ public class EventMetadataTest {
         PubSubToElasticsearchOptions options =
                 TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
-        options.setDeadletterTable("test:dataset.table");
+        options.setErrorOutputTable("test:dataset.table");
         options.setElasticsearchUsername("test");
         options.setElasticsearchPassword("test");
         options.setDataset(Dataset.AUDIT);
         options.setNamespace("test-namespace");
         options.setElasticsearchTemplateVersion("999.999.999");
 
-        String inputMessage = Files.lines(
-                Paths.get(
-                        IS_WINDOWS
-                                ? INPUT_MESSAGE_FILE_PATH.substring(1)
-                                : INPUT_MESSAGE_FILE_PATH), StandardCharsets.UTF_8)
-                .collect(Collectors.joining());
-
+        String inputMessage = readInputMessage(INPUT_MESSAGE_FILE_PATH);
         EventMetadata eventMetadata = EventMetadata.build(inputMessage, options);
-
         JsonNode enrichedMessageAsJson = eventMetadata.getEnrichedMessageAsJsonNode();
         String enrichedMessageAsString = eventMetadata.getEnrichedMessageAsString();
 
@@ -85,21 +78,14 @@ public class EventMetadataTest {
         PubSubToElasticsearchOptions options =
                 TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
-        options.setDeadletterTable("test:dataset.table");
+        options.setErrorOutputTable("test:dataset.table");
         options.setElasticsearchUsername("test");
         options.setElasticsearchPassword("test");
         options.setDataset(Dataset.AUDIT);
         options.setNamespace("test-namespace");
 
-        String inputMessage = Files.lines(
-                Paths.get(
-                        IS_WINDOWS
-                                ? INPUT_MESSAGE_FILE_PATH.substring(1)
-                                : INPUT_MESSAGE_FILE_PATH), StandardCharsets.UTF_8)
-                .collect(Collectors.joining());
-
+        String inputMessage = readInputMessage(INPUT_MESSAGE_FILE_PATH);
         EventMetadata eventMetadata = EventMetadata.build(inputMessage, options);
-
         JsonNode enrichedMessageAsJson = eventMetadata.getEnrichedMessageAsJsonNode();
 
         //if elasticsearchTemplateVersion is not set, 1.0.0 is the default value
@@ -114,21 +100,14 @@ public class EventMetadataTest {
         PubSubToElasticsearchOptions options =
                 TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
-        options.setDeadletterTable("test:dataset.table");
+        options.setErrorOutputTable("test:dataset.table");
         options.setElasticsearchUsername("test");
         options.setElasticsearchPassword("test");
         options.setDataset(Dataset.AUDIT);
         options.setNamespace("test-namespace");
 
-        String inputMessageInvalid = Files.lines(
-                Paths.get(
-                        IS_WINDOWS
-                                ? INPUT_MESSAGE_INVALID_FILE_PATH.substring(1)
-                                : INPUT_MESSAGE_INVALID_FILE_PATH), StandardCharsets.UTF_8)
-                .collect(Collectors.joining());
-
+        String inputMessageInvalid = readInputMessage(INPUT_MESSAGE_INVALID_FILE_PATH);
         EventMetadata eventMetadata = EventMetadata.build(inputMessageInvalid, options);
-
         JsonNode enrichedMessageAsJson = eventMetadata.getEnrichedMessageAsJsonNode();
 
         //if elasticsearchTemplateVersion is not set, 1.0.0 is the default value
@@ -142,22 +121,21 @@ public class EventMetadataTest {
         PubSubToElasticsearchOptions options =
                 TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
-        options.setDeadletterTable("test:dataset.table");
+        options.setErrorOutputTable("test:dataset.table");
         options.setElasticsearchUsername("test");
         options.setElasticsearchPassword("test");
         options.setDataset(Dataset.AUDIT);
         options.setNamespace("test-namespace");
 
-        String inputMessage = Files.lines(
-                Paths.get(
-                        IS_WINDOWS
-                                ? INPUT_MESSAGE_FILE_PATH.substring(1)
-                                : INPUT_MESSAGE_FILE_PATH), StandardCharsets.UTF_8)
-                .collect(Collectors.joining());
-
+        String inputMessage = readInputMessage(INPUT_MESSAGE_FILE_PATH);
         EventMetadata eventMetadata = EventMetadata.build(inputMessage, options);
 
         Assert.assertTrue(eventMetadata.asList().size() > 0);
         Assert.assertTrue(eventMetadata.asList().stream().anyMatch(x -> x.has("@timestamp")));
+    }
+
+    private String readInputMessage(String filePath) throws IOException {
+        return Files.lines(Paths.get(IS_WINDOWS ? filePath.substring(1) : filePath), StandardCharsets.UTF_8)
+                .collect(Collectors.joining());
     }
 }

@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
 /**
  * The {@link PubSubToElasticsearch} pipeline is a streaming pipeline which ingests data in JSON
  * format from PubSub, applies a Javascript UDF if provided and writes the resulting records to
- * Elasticsearch. If the element fails to be processed then it is written to a deadletter table in
+ * Elasticsearch. If the element fails to be processed then it is written to an error output table in
  * BigQuery.
  *
  * <p>Please refer to <b><a href=
@@ -55,7 +55,7 @@ public class PubSubToElasticsearch {
   public static final TupleTag<FailsafeElement<PubsubMessage, String>> TRANSFORM_OUT =
       new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
 
-  /** The tag for the dead-letter output of the json to table row transform. */
+  /** The tag for the error output table of the json to table row transform. */
   public static final TupleTag<FailsafeElement<PubsubMessage, String>> TRANSFORM_DEADLETTER_OUT =
       new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
 
@@ -153,14 +153,14 @@ public class PubSubToElasticsearch {
                 .build());
 
     /*
-     * Step 3b: Write elements that failed processing to deadletter table via {@link BigQueryIO}.
+     * Step 3b: Write elements that failed processing to error output table via {@link BigQueryIO}.
      */
     convertedPubsubMessages
         .get(TRANSFORM_DEADLETTER_OUT)
         .apply(
             "WriteTransformFailuresToBigQuery",
             ErrorConverters.WritePubsubMessageErrors.newBuilder()
-                .setErrorRecordsTable(options.getDeadletterTable())
+                .setErrorRecordsTable(options.getErrorOutputTable())
                 .setErrorRecordsTableSchema(SchemaUtils.DEADLETTER_SCHEMA)
                 .build());
 
