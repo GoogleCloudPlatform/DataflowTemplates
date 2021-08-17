@@ -56,12 +56,12 @@ public interface PubSubToElasticsearchOptions
   void setNamespace(String namespace);
 
   @Description(
-      "The dead-letter table to output to within BigQuery in <project-id>:<dataset>.<table> "
+      "The table to output errors within BigQuery in <project-id>:<dataset>.<table> "
           + "format.")
   @Validation.Required
-  String getDeadletterTable();
+  String getErrorOutputTable();
 
-  void setDeadletterTable(String deadletterTable);
+  void setErrorOutputTable(String errorOutputTable);
 
   @Description("Dataflow template version, should be set by GCP.")
   @Default.String("1.0.0")
