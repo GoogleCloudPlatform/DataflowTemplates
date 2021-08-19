@@ -28,6 +28,6 @@ public class ElasticsearchIndex {
     }
 
     public String getIndex(){
-        return "logs-" + this.dataset.toString().toLowerCase() + "-" + this.namespace;
+        return "logs-" + this.dataset.getKeyWithPrefix().toLowerCase() + "-" + this.namespace;
     }
 }
