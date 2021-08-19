@@ -30,4 +30,11 @@ public enum Dataset {
     public String getKey() {
         return name().toLowerCase();
     }
+
+    /**
+     * This method is used to get Dataset literal with the "gcp." prefix.
+     * **/
+    public String getKeyWithPrefix() {
+        return "gcp." + name().toLowerCase();
+    }
 }

@@ -22,8 +22,7 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 
 /**
- * ProcessEventMetadata used to enrich input message
- * with metadata provided by {@link EventMetadata}.
+ * ProcessEventMetadata is used to enrich input message from Pub/Sub with metadata.
  */
 public class ProcessEventMetadata extends PTransform<PCollection<String>, PCollection<String>> {
 
@@ -39,7 +38,7 @@ public class ProcessEventMetadata extends PTransform<PCollection<String>, PColle
             String input = context.element();
             PubSubToElasticsearchOptions options = context.getPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
-            context.output(EventMetadata.build(input, options).getEnrichedMessageAsString());
+            context.output(EventMetadataBuilder.build(input, options).getEnrichedMessageAsString());
         }
     }
 }

@@ -31,17 +31,17 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 /**
- * Test cases for {@link EventMetadata}.
- * Used to test the correctness of {@link EventMetadata} implementation,
+ * Test cases for {@link EventMetadataBuilder}.
+ * Used to test the correctness of {@link EventMetadataBuilder} implementation,
  * including insertion of metadata and error handling.
  */
-public class EventMetadataTest {
+public class EventMetadataBuilderTest {
 
-    private static final String RESOURCES_DIR = "EventMetadata/";
+    private static final String RESOURCES_DIR = "EventMetadataBuilder/";
     private static final String INPUT_MESSAGE_FILE_PATH =
-            Resources.getResource(RESOURCES_DIR + "inputMessage.json").getPath();
+            Resources.getResource(RESOURCES_DIR + "inputGCPAuditlogMessage.json").getPath();
     private static final String INPUT_MESSAGE_INVALID_FILE_PATH =
-            Resources.getResource(RESOURCES_DIR + "inputMessageInvalid.json").getPath();
+            Resources.getResource(RESOURCES_DIR + "inputGCPAuditlogMessageInvalid.json").getPath();
     private static final boolean IS_WINDOWS = System.getProperty("os.name").contains("Windows");
 
     @Rule
@@ -60,16 +60,16 @@ public class EventMetadataTest {
         options.setElasticsearchTemplateVersion("999.999.999");
 
         String inputMessage = readInputMessage(INPUT_MESSAGE_FILE_PATH);
-        EventMetadata eventMetadata = EventMetadata.build(inputMessage, options);
-        JsonNode enrichedMessageAsJson = eventMetadata.getEnrichedMessageAsJsonNode();
-        String enrichedMessageAsString = eventMetadata.getEnrichedMessageAsString();
+        EventMetadataBuilder eventMetadataBuilder = EventMetadataBuilder.build(inputMessage, options);
+        JsonNode enrichedMessageAsJson = eventMetadataBuilder.getEnrichedMessageAsJsonNode();
+        String enrichedMessageAsString = eventMetadataBuilder.getEnrichedMessageAsString();
 
         Assert.assertTrue(StringUtils.isNotBlank(enrichedMessageAsString));
         Assert.assertEquals(inputMessage, enrichedMessageAsJson.get("message").textValue());
         Assert.assertEquals("999.999.999", enrichedMessageAsJson.get("agent").get("version").textValue());
-        Assert.assertEquals(Dataset.AUDIT.getKey(), enrichedMessageAsJson.get("data_stream").get("dataset").textValue());
+        Assert.assertEquals(Dataset.AUDIT.getKeyWithPrefix(), enrichedMessageAsJson.get("data_stream").get("dataset").textValue());
         Assert.assertEquals("test-namespace", enrichedMessageAsJson.get("data_stream").get("namespace").textValue());
-        Assert.assertEquals(Dataset.AUDIT.getKey(), enrichedMessageAsJson.get("service").get("type").textValue());
+        Assert.assertEquals(Dataset.AUDIT.getKeyWithPrefix(), enrichedMessageAsJson.get("service").get("type").textValue());
         Assert.assertEquals("2021-07-14T10:35:17.528142Z", enrichedMessageAsJson.get("@timestamp").textValue());
     }
 
@@ -85,12 +85,12 @@ public class EventMetadataTest {
         options.setNamespace("test-namespace");
 
         String inputMessage = readInputMessage(INPUT_MESSAGE_FILE_PATH);
-        EventMetadata eventMetadata = EventMetadata.build(inputMessage, options);
-        JsonNode enrichedMessageAsJson = eventMetadata.getEnrichedMessageAsJsonNode();
+        EventMetadataBuilder eventMetadataBuilder = EventMetadataBuilder.build(inputMessage, options);
+        JsonNode enrichedMessageAsJson = eventMetadataBuilder.getEnrichedMessageAsJsonNode();
 
         //if elasticsearchTemplateVersion is not set, 1.0.0 is the default value
         Assert.assertEquals("1.0.0", enrichedMessageAsJson.get("agent").get("version").textValue());
-        Assert.assertEquals(enrichedMessageAsJson.get("data_stream").get("dataset").textValue(), Dataset.AUDIT.getKey());
+        Assert.assertEquals(enrichedMessageAsJson.get("data_stream").get("dataset").textValue(), Dataset.AUDIT.getKeyWithPrefix());
     }
 
     @Test
@@ -107,31 +107,12 @@ public class EventMetadataTest {
         options.setNamespace("test-namespace");
 
         String inputMessageInvalid = readInputMessage(INPUT_MESSAGE_INVALID_FILE_PATH);
-        EventMetadata eventMetadata = EventMetadata.build(inputMessageInvalid, options);
-        JsonNode enrichedMessageAsJson = eventMetadata.getEnrichedMessageAsJsonNode();
+        EventMetadataBuilder eventMetadataBuilder = EventMetadataBuilder.build(inputMessageInvalid, options);
+        JsonNode enrichedMessageAsJson = eventMetadataBuilder.getEnrichedMessageAsJsonNode();
 
         //if elasticsearchTemplateVersion is not set, 1.0.0 is the default value
         Assert.assertEquals("1.0.0", enrichedMessageAsJson.get("agent").get("version").textValue());
-        Assert.assertEquals(enrichedMessageAsJson.get("data_stream").get("dataset").textValue(), Dataset.AUDIT.getKey());
-    }
-
-
-    @Test
-    public void testEventMetadataAsList() throws IOException {
-        PubSubToElasticsearchOptions options =
-                TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
-
-        options.setErrorOutputTable("test:dataset.table");
-        options.setElasticsearchUsername("test");
-        options.setElasticsearchPassword("test");
-        options.setDataset(Dataset.AUDIT);
-        options.setNamespace("test-namespace");
-
-        String inputMessage = readInputMessage(INPUT_MESSAGE_FILE_PATH);
-        EventMetadata eventMetadata = EventMetadata.build(inputMessage, options);
-
-        Assert.assertTrue(eventMetadata.asList().size() > 0);
-        Assert.assertTrue(eventMetadata.asList().stream().anyMatch(x -> x.has("@timestamp")));
+        Assert.assertEquals(enrichedMessageAsJson.get("data_stream").get("dataset").textValue(), Dataset.AUDIT.getKeyWithPrefix());
     }
 
     private String readInputMessage(String filePath) throws IOException {
