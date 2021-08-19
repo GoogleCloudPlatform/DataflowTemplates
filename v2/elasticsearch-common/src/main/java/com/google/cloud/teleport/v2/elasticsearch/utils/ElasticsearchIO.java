@@ -1050,6 +1050,9 @@ public class ElasticsearchIO {
      */
     public interface FieldValueExtractFn extends SerializableFunction<JsonNode, String> {}
 
+    /**
+     * BooleanFieldValueExtractFn class.
+     */
     public interface BooleanFieldValueExtractFn extends SerializableFunction<JsonNode, Boolean> {}
 
     abstract @Nullable ConnectionConfiguration getConnectionConfiguration();
