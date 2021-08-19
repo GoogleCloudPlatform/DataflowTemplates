@@ -25,10 +25,6 @@
     <artifactId>kafka-to-bigquery</artifactId>
     <modelVersion>4.0.0</modelVersion>
 
-    <properties>
-        <kafka-clients.version>2.3.0</kafka-clients.version>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>com.google.cloud.teleport.v2</groupId>

@@ -31,11 +31,9 @@
   <packaging>pom</packaging>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <beam.version>2.29.0</beam.version>
     <debezium.version>0.9.5.Final</debezium.version>
     <grpc.version>1.35.0</grpc.version>
     <guava.version>25.1-jre</guava.version>
-    <slf4j.version>1.7.25</slf4j.version>
     <gcp.version>1.82.0</gcp.version>
     <data-catalog.version>0.35.0</data-catalog.version>
   </properties>
@@ -136,13 +134,6 @@
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
       <version>${guava.version}</version>
-      <scope>compile</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
-      <version>${slf4j.version}</version>
       <scope>compile</scope>
     </dependency>
 
