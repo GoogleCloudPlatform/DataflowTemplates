@@ -136,7 +136,7 @@ public class PubSubToElasticsearchTest {
     PubSubToElasticsearchOptions options =
         TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
-    options.setDeadletterTable("test:dataset.table");
+    options.setErrorOutputTable("test:dataset.table");
     options.setJavascriptTextTransformFunctionName(null);
     options.setJavascriptTextTransformGcsPath(null);
     options.setElasticsearchUsername("test");
@@ -180,7 +180,7 @@ public class PubSubToElasticsearchTest {
     PubSubToElasticsearchOptions options =
         TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
-    options.setDeadletterTable("test:dataset.table");
+    options.setErrorOutputTable("test:dataset.table");
     options.setJavascriptTextTransformFunctionName("transform");
     options.setJavascriptTextTransformGcsPath(TRANSFORM_FILE_PATH);
     options.setElasticsearchUsername("test");
@@ -224,7 +224,7 @@ public class PubSubToElasticsearchTest {
     PubSubToElasticsearchOptions options =
         TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
-    options.setDeadletterTable("test:dataset.table");
+    options.setErrorOutputTable("test:dataset.table");
     options.setJavascriptTextTransformFunctionName("transformBad");
     options.setJavascriptTextTransformGcsPath(BAD_TRANSFORM_FILE_PATH);
     options.setElasticsearchUsername("test");
@@ -273,7 +273,7 @@ public class PubSubToElasticsearchTest {
     PubSubToElasticsearchOptions options =
         TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
-    options.setDeadletterTable("test:dataset.table");
+    options.setErrorOutputTable("test:dataset.table");
     options.setElasticsearchUsername("test");
     options.setElasticsearchPassword("test");
 

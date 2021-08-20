@@ -1,0 +1,72 @@
+{
+  "insertId": "-vse57b6yehgdfv",
+  "logName": "projects/test-project/logs/cloudaudit.googleapis.com%2Factivity",
+  "operation": {
+    "first": true,
+    "id": "operation-247257-zxdvr3tye-u6ras-wrw",
+    "producer": "compute.googleapis.com"
+  },
+  "protoPayload": {
+    "@type": "type.googleapis.com/google.cloud.audit.AuditLog",
+    "authenticationInfo": {
+      "principalEmail": "test.user@e.mail",
+      "authorizationInfo": [
+        {
+          "granted": true,
+          "permission": "compute.instanceTemplates.delete",
+          "resourceAttributes": {
+            "name": "projects/test-project/dataflow-vpc-logs-test",
+            "service": "compute",
+            "type": "compute.instanceTemplates"
+          }
+        }
+      ],
+      "methodName": "beta.compute.instanceTemplates.delete",
+      "request": {
+        "@type": "type.googleapis.com/compute.instanceTemplates.delete"
+      },
+      "requestMetadata": {
+        "callerIp": "1093:001:3298:010::",
+        "callerSuppliedUserAgent": "cloud_workflow_service",
+        "destinationAttributes": {},
+        "requestAttributes": {
+          "auth": {},
+          "time": "2021-06-16T10:35:18.026857Z"
+        }
+      },
+      "resourceLocation": {
+        "currentLocations": [
+          "global"
+        ]
+      },
+      "resourceName": "projects/test-project/global/instanceTemplates/dataflow-vpc-logs-test",
+      "response": {
+        "@type": "type.googleapis.com/operation",
+        "id": "3091872918637922442",
+        "insertTime": "2021-06-16T03:35:17.754-07:00",
+        "name": "operation-1623062117495-5c42a98f63152-f3f8a19a-0596f78e",
+        "operationType": "delete",
+        "progress": "0",
+        "selfLink": "https://www.googleapis.com/compute/beta/projects/test-project/global/operations/operation-test",
+        "selfLinkWithId": "https://www.googleapis.com/compute/beta/projects/test-project/global/operations/253",
+        "startTime": "2021-06-16T03:35:17.760-07:00",
+        "status": "RUNNING",
+        "targetId": "2631778721762134947",
+        "targetLink": "https://www.googleapis.com/compute/beta/projects/test-project/global/instanceTemplates/dataflow-vpc-logs-test",
+        "user": "test@dataflow-service-producer-prod.iam.gserviceaccount.com"
+      },
+      "serviceName": "compute.googleapis.com"
+    },
+    "receiveTimestamp": "2021-06-16T10:35:18.949914607Z",
+    "resource": {
+      "labels": {
+        "instance_template_id": "2631778721762134947",
+        "instance_template_name": "dataflow-vpc-logs-06070330-phpo-harness",
+        "project_id": "arcane-mission-311713"
+      },
+      "type": "gce_instance_template"
+    },
+    "severity": "NOTICE",
+    "timestamp": "2021-07-14T10:35:17.528142Z"
+  }
+}
