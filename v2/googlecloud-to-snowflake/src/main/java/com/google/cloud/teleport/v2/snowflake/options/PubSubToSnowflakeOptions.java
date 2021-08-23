@@ -23,19 +23,17 @@ import org.apache.beam.sdk.options.Description;
  * Provides {@link PubSubToSnowflakeOptions} to read records from a Pub/Sub subscription and 
  * write to Snowflake table.
  */
-public interface PubSubToSnowflakeOptions extends ReadSubscriptionOptions,SnowflakePipelineOptions {
+public interface PubSubToSnowflakeOptions extends ReadSubscriptionOptions, SnowflakePipelineOptions {
 
-    
-    @Description(
-    		"KMS Encryption Key for decrypting the secrets. The Key should be in the format "
-    		+ "projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}")
-    String getTokenKMSEncryptionKey();
-    
-    void setTokenKMSEncryptionKey(String keyName);
-    
-    @Description("csv/json format of the source data ")
-    String getSourceFormat();
-    
-    void setSourceFormat(String format);
-    
+	@Description("KMS Encryption Key for decrypting the secrets. The Key should be in the format "
+			+ "projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}")
+	String getTokenKMSEncryptionKey();
+
+	void setTokenKMSEncryptionKey(String keyName);
+
+	@Description("csv/json format of the source data ")
+	String getSourceFormat();
+
+	void setSourceFormat(String format);
+
 }

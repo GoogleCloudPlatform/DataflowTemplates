@@ -42,7 +42,7 @@ public class PubsubToSnowflakeUtil {
         options.setStorageIntegrationName(ValueProvider.StaticValueProvider.of("dummy"));
         options.setRawPrivateKey(ValueProvider.StaticValueProvider.of("dummy"));
         options.setPrivateKeyPassphrase(ValueProvider.StaticValueProvider.of("dummy"));
-        options.setTokenKMSEncryptionKey("dummy");
+        options.setTokenKMSEncryptionKey("projects/dummy/locations/dummy/keyRings/dummy/cryptoKeys/dummy");
         options.setSourceFormat("json");
         options.setTempLocation("gs://bucket-name/temp/");
         options.setStreaming(true);

@@ -15,6 +15,6 @@
  */
 
 /**
- * Common {@link org.apache.beam.sdk.options.PipelineOptions} used by Dataflow Flex templates.
+ * Pipeline options for data integration templates between google cloud to snowflake.
  */
 package com.google.cloud.teleport.v2.snowflake.options;

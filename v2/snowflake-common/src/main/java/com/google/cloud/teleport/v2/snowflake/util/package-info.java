@@ -15,6 +15,6 @@
  */
 
 /**
- * Helpers for Dataflow flex templates.
+ *  Helpers for Snowflake Dataflow templates.
  */
 package com.google.cloud.teleport.v2.snowflake.util;

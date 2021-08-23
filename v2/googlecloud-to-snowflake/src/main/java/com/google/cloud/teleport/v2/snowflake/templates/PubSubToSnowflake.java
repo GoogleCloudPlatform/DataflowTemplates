@@ -15,43 +15,50 @@
  */
 package com.google.cloud.teleport.v2.snowflake.templates;
 
-import static com.google.cloud.teleport.v2.snowflake.util.DecryptUtil.getRawEncrypted;
-import static com.google.cloud.teleport.v2.snowflake.util.SimpleMapper.getCsvUserDataMapper;
+
+import static com.google.cloud.teleport.v2.snowflake.util.SimpleMapper.getUserDataMapper;
 
 import com.google.cloud.teleport.v2.snowflake.options.PubSubToSnowflakeOptions;
+import com.google.cloud.teleport.v2.snowflake.util.DecryptUtil;
+import java.io.IOException;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.snowflake.SnowflakeIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 
+
 /**
- * The {@link PubsubToSnowflake} is a Stream pipeline which ingests CSV format messages
+ * The {@link PubSubToSnowflake} is a Streaming pipeline which ingests CSV format messages
  * from Pub/Sub subscription and outputs them into a Snowflake table.
  *
  */
 public class PubSubToSnowflake {
 
-	  /**
+	  
+	/**
 	   * Runs the pipeline to completion with the specified options.
 	   * 
-	   * @param options the execution options.
+	   * @param pubSubToSnowflakeOptions the execution options.
 	   * @return the pipeline result.
+	 * @throws IOException 
 	   **/	
-    public static PipelineResult run(PubSubToSnowflakeOptions options) {
+	
+	
+    public static PipelineResult run(PubSubToSnowflakeOptions pubSubToSnowflakeOptions) throws IOException {
         
-        String inputSubscription = getRawEncrypted(options.getInputSubscription(),options.getTokenKMSEncryptionKey());      
-        String table = getRawEncrypted(options.getTable(),options.getTokenKMSEncryptionKey());
-        String storageIntegrationName = getRawEncrypted(options.getStorageIntegrationName(),options.getTokenKMSEncryptionKey());
-        String stagingBucketName = getRawEncrypted(options.getStagingBucketName(),options.getTokenKMSEncryptionKey());
-        String snowPipe = getRawEncrypted(options.getSnowPipe(),options.getTokenKMSEncryptionKey());
-        String sourceFormat = getRawEncrypted(options.getSourceFormat(),options.getTokenKMSEncryptionKey());
+    	DecryptUtil decryptUtil = new DecryptUtil(pubSubToSnowflakeOptions.getTokenKMSEncryptionKey());
     	
-        
+    	String inputSubscription = decryptUtil.decryptIfRequired(pubSubToSnowflakeOptions.getInputSubscription());      
+        String table = decryptUtil.decryptIfRequired(pubSubToSnowflakeOptions.getTable());
+        String storageIntegrationName = decryptUtil.decryptIfRequired(pubSubToSnowflakeOptions.getStorageIntegrationName());
+        String stagingBucketName = decryptUtil.decryptIfRequired(pubSubToSnowflakeOptions.getStagingBucketName());
+        String snowPipe = decryptUtil.decryptIfRequired(pubSubToSnowflakeOptions.getSnowPipe());
+        String sourceFormat = decryptUtil.decryptIfRequired(pubSubToSnowflakeOptions.getSourceFormat());
+    	
+        final SnowflakeIO.DataSourceConfiguration dataSourceConfiguration = getSnowFlakeDataSourceConfiguration(pubSubToSnowflakeOptions);
 
-        final SnowflakeIO.DataSourceConfiguration dataSourceConfiguration = getSnowFlakeDataSourceConfiguration(options);
-
-        Pipeline pipeline = Pipeline.create(options);
+        Pipeline pipeline = Pipeline.create(pubSubToSnowflakeOptions);
 
         pipeline
                 .apply("Read PubSub Events",
@@ -62,7 +69,7 @@ public class PubSubToSnowflake {
                                 .withDataSourceConfiguration(dataSourceConfiguration)
                                 .withStorageIntegrationName(storageIntegrationName)
                                 .withStagingBucketName(stagingBucketName)
-                                .withUserDataMapper(getCsvUserDataMapper(sourceFormat))
+                                .withUserDataMapper(getUserDataMapper(sourceFormat))
                                 .withSnowPipe(snowPipe));
 
         return pipeline.run();
@@ -73,21 +80,24 @@ public class PubSubToSnowflake {
      * Builds and returns Snowflake DataSource configuration object based on executor specified options 
      * to support various authentication methods(Key Pair, Username and password & OAuth).
      * 
-     * @param options the execution options.
+     * @param pubSubToSnowflakeOptions the execution options.
      * @return the Snowflake DataSource configuration.
+     * @throws IOException 
      */
-    private static SnowflakeIO.DataSourceConfiguration getSnowFlakeDataSourceConfiguration(PubSubToSnowflakeOptions options){
+    private static SnowflakeIO.DataSourceConfiguration getSnowFlakeDataSourceConfiguration(PubSubToSnowflakeOptions pubSubToSnowflakeOptions) throws IOException{
     	
-        String userName = getRawEncrypted(options.getUsername(),options.getTokenKMSEncryptionKey());
-        String password = getRawEncrypted(options.getPassword(),options.getTokenKMSEncryptionKey());
-        String oauthToken = getRawEncrypted(options.getOauthToken(),options.getTokenKMSEncryptionKey());
-        String rawPrivateKey = getRawEncrypted(options.getRawPrivateKey(),options.getTokenKMSEncryptionKey());
-        String privateKeyPassphrase = getRawEncrypted(options.getPrivateKeyPassphrase(),options.getTokenKMSEncryptionKey());
-        String role = getRawEncrypted(options.getRole(),options.getTokenKMSEncryptionKey());
-        String serverName = getRawEncrypted(options.getServerName(),options.getTokenKMSEncryptionKey());
-        String database = getRawEncrypted(options.getDatabase(),options.getTokenKMSEncryptionKey());
-        String warehouse = getRawEncrypted(options.getWarehouse(),options.getTokenKMSEncryptionKey());
-        String schema = getRawEncrypted(options.getSchema(),options.getTokenKMSEncryptionKey());
+    	DecryptUtil decryptUtil= new DecryptUtil(pubSubToSnowflakeOptions.getTokenKMSEncryptionKey());
+    	
+        String userName = decryptUtil.decryptIfRequired(pubSubToSnowflakeOptions.getUsername());
+        String password = decryptUtil.decryptIfRequired(pubSubToSnowflakeOptions.getPassword());
+        String oauthToken = decryptUtil.decryptIfRequired(pubSubToSnowflakeOptions.getOauthToken());
+        String rawPrivateKey = decryptUtil.decryptIfRequired(pubSubToSnowflakeOptions.getRawPrivateKey());
+        String privateKeyPassphrase = decryptUtil.decryptIfRequired(pubSubToSnowflakeOptions.getPrivateKeyPassphrase());
+        String role = decryptUtil.decryptIfRequired(pubSubToSnowflakeOptions.getRole());
+        String serverName = decryptUtil.decryptIfRequired(pubSubToSnowflakeOptions.getServerName());
+        String database = decryptUtil.decryptIfRequired(pubSubToSnowflakeOptions.getDatabase());
+        String warehouse = decryptUtil.decryptIfRequired(pubSubToSnowflakeOptions.getWarehouse());
+        String schema = decryptUtil.decryptIfRequired(pubSubToSnowflakeOptions.getSchema());
                 
     	return SnowflakeIO.DataSourceConfiguration.create()
     			.withKeyPairRawAuth(userName,rawPrivateKey,privateKeyPassphrase)
@@ -105,14 +115,13 @@ public class PubSubToSnowflake {
      * 
      * 
      * @param args command-line args passed by the executor.
+     * @throws IOException 
      */
-    public static void main(String[] args) {
-    	PubSubToSnowflakeOptions options = PipelineOptionsFactory.fromArgs().withoutStrictParsing()
-                .fromArgs(args)
-                .as(PubSubToSnowflakeOptions.class);
-        options.setStreaming(true);
-        run(options);
-    }
-    
-}
+	public static void main(String[] args) throws IOException {
+		PubSubToSnowflakeOptions pubSubToSnowflakeOptions = PipelineOptionsFactory.fromArgs(args).withValidation()
+				.fromArgs(args).as(PubSubToSnowflakeOptions.class);
+		pubSubToSnowflakeOptions.setStreaming(true);
+		run(pubSubToSnowflakeOptions);
+	}
 
+}

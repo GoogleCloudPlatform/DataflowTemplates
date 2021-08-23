@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.snowflake.util;
 
-import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.apache.beam.sdk.io.snowflake.SnowflakeIO;
 
@@ -27,37 +26,20 @@ import org.apache.beam.sdk.io.snowflake.SnowflakeIO;
  */
 public class SimpleMapper {
 
+	private static final String COMMA_SEPARATOR_REGEX = ",";
+
 	/**
 	 * Maps user data from specified format to String[].
 	 * 
 	 * @param sourceFormat either json or csv
 	 * @return data as String[]
 	 */
-	public static SnowflakeIO.UserDataMapper<String> getCsvUserDataMapper(String sourceFormat) {
-		if("json".equalsIgnoreCase(sourceFormat)) {
-			return (SnowflakeIO.UserDataMapper<String>) recordLine -> {
-				
-				JsonObject jo = (JsonObject) JsonParser.parseString(recordLine);
-
-				return jo.entrySet().stream()
-						.map(entry -> entry.getValue().getAsString())
-						.toArray();
-			};
+	public static SnowflakeIO.UserDataMapper<String> getUserDataMapper(String sourceFormat) {
+		if ("json".equalsIgnoreCase(sourceFormat)) {
+			return (SnowflakeIO.UserDataMapper<String>) recordLine -> JsonParser.parseString(recordLine).getAsJsonObject().entrySet()
+					.stream().map(entry -> entry.getValue().getAsString()).toArray();
 		}
-		else
-		{
-			return (SnowflakeIO.UserDataMapper<String>) recordLine -> recordLine.split(",", -1);
-		}
-	}
-	
-	
-	/**
-	 * Maps String[] to user specified data format.
-	 * 
-	 * @return
-	 */
-	public static SnowflakeIO.CsvMapper<String> getCsvMapper() {
-		return (SnowflakeIO.CsvMapper<String>) record -> String.join(",", record);
+		return (SnowflakeIO.UserDataMapper<String>) recordLine -> recordLine.split(COMMA_SEPARATOR_REGEX, -1);
 	}
 
 }

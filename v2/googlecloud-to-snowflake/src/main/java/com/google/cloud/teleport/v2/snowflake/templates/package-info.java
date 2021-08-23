@@ -15,6 +15,6 @@
  */
 
 /**
- * All Dataflow pipelines contained within the project.
+ * Contains data integration templates between google cloud to snowflake.
  */
 package com.google.cloud.teleport.v2.snowflake.templates;
