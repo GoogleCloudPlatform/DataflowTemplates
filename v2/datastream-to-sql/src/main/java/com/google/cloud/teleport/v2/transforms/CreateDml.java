@@ -85,7 +85,7 @@ public class CreateDml {
           .apply("Reshuffle Into Buckets",
             Reshuffle.<FailsafeElement<String, String>>viaRandomKey()
                 .withNumBuckets(NUM_THREADS))
-          .apply("Format to Postgres DML", ParDo.of(datastreamToDML));
+          .apply("Format to DML", ParDo.of(datastreamToDML));
     }
   }
 }
