@@ -30,11 +30,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.extensions.gcp.util.GcsUtil;
 import org.apache.beam.sdk.extensions.gcp.util.GcsUtil.GcsUtilFactory;
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
-import org.apache.beam.sdk.io.AvroIO;
+import org.apache.beam.sdk.io.AvroSource;
+import org.apache.beam.sdk.io.FileBasedSource;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileIO.ReadableFile;
 import org.apache.beam.sdk.io.FileSystems;
@@ -49,6 +52,7 @@ import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.Values;
 import org.apache.beam.sdk.transforms.Watch;
 import org.apache.beam.sdk.transforms.Watch.Growth;
@@ -62,6 +66,7 @@ import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+// import org.apache.beam.sdk.io.range.OffsetRange;
 
 /**
  * Class designed to inspect the directory tree produced by Cloud DataStream.
@@ -164,9 +169,14 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
       PCollection<ReadableFile> datastreamFiles) {
     PCollection<FailsafeElement<String, String>> datastreamRecords;
 
+    FailsafeElementCoder coder =
+        FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
     if (this.fileType.equals(JSON_SUFFIX)) {
       datastreamRecords =
           datastreamFiles
+              .apply(
+                  "FileReadConcurrency",
+                  Reshuffle.<ReadableFile>viaRandomKey().withNumBuckets(fileReadConcurrency))
               .apply("ReadFiles", TextIO.readFiles())
               .apply("ReshuffleRecords", Reshuffle.viaRandomKey())
               .apply(
@@ -176,20 +186,58 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
                           .withStreamName(this.streamName)
                           .withHashColumnValues(this.hashedColumns)
                           .withLowercaseSourceColumns(this.lowercaseSourceColumns)))
-              .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+              .setCoder(coder);
     } else {
+      SerializableFunction<GenericRecord, FailsafeElement<String, String>> parseFn =
+          FormatDatastreamRecordToJson.create()
+              .withStreamName(this.streamName)
+              .withHashColumnValues(this.hashedColumns)
+              .withLowercaseSourceColumns(this.lowercaseSourceColumns);
       datastreamRecords =
-          datastreamFiles.apply(
-              "ParseAvroRecords",
-              AvroIO.parseFilesGenericRecords(
-                      FormatDatastreamRecordToJson.create()
-                          .withStreamName(this.streamName)
-                          .withHashColumnValues(this.hashedColumns)
-                          .withLowercaseSourceColumns(this.lowercaseSourceColumns))
-                  .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())));
+          datastreamFiles
+          .apply("ParseAvroRows",
+              ParDo.of(new ReadFileRangesFn<FailsafeElement<String, String>>(
+                           new CreateParseSourceFn(parseFn, coder),
+                           new ReadFileRangesFn.ReadFileRangesFnExceptionHandler())))
+          .setCoder(coder);
     }
     return datastreamRecords.apply("Reshuffle", Reshuffle.viaRandomKey());
   }
+
+  private static class CreateParseSourceFn
+      implements SerializableFunction<String, FileBasedSource<FailsafeElement<String, String>>> {
+    private final SerializableFunction<GenericRecord, FailsafeElement<String, String>> parseFn;
+    private final Coder<FailsafeElement<String, String>> coder;
+
+    CreateParseSourceFn(
+        SerializableFunction<GenericRecord, FailsafeElement<String, String>> parseFn,
+        Coder<FailsafeElement<String, String>> coder) {
+      this.parseFn = parseFn;
+      this.coder = coder;
+    }
+
+    @Override
+    public FileBasedSource<FailsafeElement<String, String>> apply(String input) {
+      return AvroSource.from(input).withParseFn(parseFn, coder);
+    }
+  }
+
+  /** A class to handle errors which occur during file reads. */
+//   class AvroFileExceptionHandler
+//       extends ReadFileRangesFn.ReadFileRangesFnExceptionHandler {
+
+//     /*
+//      * Applies the desired handler logic to the given exception and returns
+//      * false to avoid throwing exceptions.
+//      */
+//     @Override
+//     public boolean apply(ReadableFile file, OffsetRange range, Exception e) {
+//       LOG.error(
+//           "Avro File Read Failure {}",
+//           file.getMetadata().resourceId().toString());
+//       return false;
+//     }
+//   }
 
   class DataStreamFileIO extends PTransform<PBegin, PCollection<ReadableFile>> {
 
@@ -205,9 +253,7 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
             "DataStreamIO requires either a GCS stream directory or Pub/Sub Subscription");
       }
 
-      return datastreamFiles.apply(
-          "FileReadConcurrency",
-          Reshuffle.<ReadableFile>viaRandomKey().withNumBuckets(fileReadConcurrency));
+      return datastreamFiles;
     }
 
     public PCollection<ReadableFile> expandGcsPubSubPipeline(PBegin input) {

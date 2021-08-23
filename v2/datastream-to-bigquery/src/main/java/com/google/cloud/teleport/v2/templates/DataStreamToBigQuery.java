@@ -310,8 +310,9 @@ public class DataStreamToBigQuery {
     // of building pieces of the DLQ.
     PCollection<FailsafeElement<String, String>> dlqJsonRecords =
         pipeline
-            .apply(dlqManager.dlqReconsumer(options.getDlqRetryMinutes()))
-            .apply(
+            .apply("DLQ Consumer/reader",
+                dlqManager.dlqReconsumer(options.getDlqRetryMinutes()))
+            .apply("DLQ Consumer/cleaner",
                 ParDo.of(
                     new DoFn<String, FailsafeElement<String, String>>() {
                       @ProcessElement
@@ -324,7 +325,8 @@ public class DataStreamToBigQuery {
             .setCoder(FAILSAFE_ELEMENT_CODER);
 
     PCollection<FailsafeElement<String, String>> jsonRecords =
-        PCollectionList.of(datastreamJsonRecords).and(dlqJsonRecords).apply(Flatten.pCollections());
+        PCollectionList.of(datastreamJsonRecords).and(dlqJsonRecords)
+            .apply("Merge Datastream & DLQ", Flatten.pCollections());
 
     /*
      * Stage 2: Write JSON Strings to TableRow PCollectionTuple
@@ -332,13 +334,13 @@ public class DataStreamToBigQuery {
      *   b) Convert JSON String FailsafeElements to TableRow's (tableRowRecords)
      */
     PCollectionTuple tableRowRecords =
-        jsonRecords.apply("ApplyUdfAndConvertToTableRow", failsafeTableRowTransformer);
+        jsonRecords.apply("UDF to TableRow/udf", failsafeTableRowTransformer);
 
     PCollection<TableRow> shuffledTableRows =
         tableRowRecords
             .get(failsafeTableRowTransformer.transformOut)
             .apply(
-                "ReShuffleToLimitRequestConcurrency",
+                "UDF to TableRow/ReShuffle",
                 Reshuffle.<TableRow>viaRandomKey().withNumBuckets(100));
 
     /*
@@ -354,7 +356,7 @@ public class DataStreamToBigQuery {
     WriteResult writeResult =
         shuffledTableRows
             .apply(
-                "Map Data to Staging Tables",
+                "Map to Staging Tables",
                 new DataStreamMapper(
                         options.as(GcpOptions.class),
                         options.getOutputProjectId(),
@@ -381,7 +383,7 @@ public class DataStreamToBigQuery {
 
     shuffledTableRows
         .apply(
-            "Map Data To Replica Tables",
+            "Map To Replica Tables",
             new DataStreamMapper(
                     options.as(GcpOptions.class),
                     options.getOutputProjectId(),
@@ -391,7 +393,7 @@ public class DataStreamToBigQuery {
                 .withDefaultSchema(BigQueryDefaultSchemas.DATASTREAM_METADATA_SCHEMA)
                 .withIgnoreFields(fieldsToIgnore))
         .apply(
-            "Merge New Records into Replica Tables",
+            "Merge into Replica Tables",
             new DataStreamBigQueryMerger(
                     options.as(GcpOptions.class),
                     options.getOutputProjectId(),
@@ -410,25 +412,21 @@ public class DataStreamToBigQuery {
     PCollection<String> udfDlqJson =
         PCollectionList.of(tableRowRecords.get(failsafeTableRowTransformer.udfDeadletterOut))
             .and(tableRowRecords.get(failsafeTableRowTransformer.transformDeadletterOut))
-            // ImmutableList.of(
-            //     tableRowRecords.get(failsafeTableRowTransformer.udfDeadletterOut),
-            //     tableRowRecords.get(failsafeTableRowTransformer.transformDeadletterOut))
-            // )
-            .apply("Flatten", Flatten.pCollections())
-            .apply("Sanitize records", MapElements.via(new StringDeadLetterQueueSanitizer()));
+            .apply("UDF Failures/Flatten", Flatten.pCollections())
+            .apply("UDF Failures/Sanitize", MapElements.via(new StringDeadLetterQueueSanitizer()));
 
     PCollection<String> bqWriteDlqJson =
         writeResult
             .getFailedInsertsWithErr()
             .apply(
-                "DLQ: Write Insert Failures to GCS",
+                "BigQuery Failures",
                 MapElements.via(new BigQueryDeadLetterQueueSanitizer()));
 
     PCollectionList.of(udfDlqJson)
         .and(bqWriteDlqJson)
-        .apply("Flatten", Flatten.pCollections())
+        .apply("Write To DLQ/Flatten", Flatten.pCollections())
         .apply(
-            "Write To DLQ",
+            "Write To DLQ/Writer",
             DLQWriteTransform.WriteDLQ.newBuilder()
                 .withDlqDirectory(dlqDirectory)
                 .withTmpDirectory(tempDlqDir)
