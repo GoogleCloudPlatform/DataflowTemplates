@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -31,14 +31,12 @@ import org.slf4j.LoggerFactory;
 /**
  * Translate a Debezium SourceRecord into a Beam {@class Row} object to be pushed to PubSub.
  *
- * Information on the Debezium schema:
+ * <p>Information on the Debezium schema:
  * https://debezium.io/docs/connectors/mysql/#change-events-value
  */
 public class DebeziumSourceRecordToDataflowCdcFormatTranslator {
 
-  /**
-   * The type of operation being performed in a database.
-   */
+  /** The type of operation being performed in a database. */
   public static final class Operation {
     public static final String INSERT = "INSERT";
     public static final String UPDATE = "UPDATE";
@@ -46,8 +44,8 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslator {
     public static final String READ = "READ";
   }
 
-  private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(
-      DebeziumSourceRecordToDataflowCdcFormatTranslator.class);
+  private static final org.slf4j.Logger LOG =
+      LoggerFactory.getLogger(DebeziumSourceRecordToDataflowCdcFormatTranslator.class);
 
   private final Map<String, org.apache.beam.sdk.schemas.Schema> knownSchemas = new HashMap<>();
 
@@ -84,13 +82,14 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslator {
     Long timestampMs = recordValue.getInt64("ts_ms");
 
     if (!knownSchemas.containsKey(qualifiedTableName)) {
-      org.apache.beam.sdk.schemas.Schema.Builder schemaBuilder = org.apache.beam.sdk.schemas.Schema
-          .builder()
-          .addStringField(DataflowCdcRowFormat.OPERATION)
-          .addStringField(DataflowCdcRowFormat.TABLE_NAME)
-          .addField(org.apache.beam.sdk.schemas.Schema.Field.nullable(
-              DataflowCdcRowFormat.FULL_RECORD, FieldType.row(afterValueRow.getSchema())))
-          .addInt64Field(DataflowCdcRowFormat.TIMESTAMP_MS);
+      org.apache.beam.sdk.schemas.Schema.Builder schemaBuilder =
+          org.apache.beam.sdk.schemas.Schema.builder()
+              .addStringField(DataflowCdcRowFormat.OPERATION)
+              .addStringField(DataflowCdcRowFormat.TABLE_NAME)
+              .addField(
+                  org.apache.beam.sdk.schemas.Schema.Field.nullable(
+                      DataflowCdcRowFormat.FULL_RECORD, FieldType.row(afterValueRow.getSchema())))
+              .addInt64Field(DataflowCdcRowFormat.TIMESTAMP_MS);
 
       if (hasPK) {
         schemaBuilder.addRowField(DataflowCdcRowFormat.PRIMARY_KEY, primaryKey.getSchema());
@@ -99,11 +98,12 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslator {
     }
     org.apache.beam.sdk.schemas.Schema finalBeamSchema = knownSchemas.get(qualifiedTableName);
 
-    Row.Builder beamRowBuilder = Row.withSchema(finalBeamSchema)
-        .addValue(operation)
-        .addValue(qualifiedTableName)
-        .addValue(afterValueRow)
-        .addValue(timestampMs);
+    Row.Builder beamRowBuilder =
+        Row.withSchema(finalBeamSchema)
+            .addValue(operation)
+            .addValue(qualifiedTableName)
+            .addValue(afterValueRow)
+            .addValue(timestampMs);
 
     if (hasPK) {
       beamRowBuilder.addValue(primaryKey);
@@ -148,56 +148,56 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslator {
         case INT8:
         case INT16:
           if (f.schema().isOptional()) {
-            beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
-                f.name(), FieldType.INT16);
+            beamField =
+                org.apache.beam.sdk.schemas.Schema.Field.nullable(f.name(), FieldType.INT16);
           } else {
             beamField = org.apache.beam.sdk.schemas.Schema.Field.of(f.name(), FieldType.INT16);
           }
           break;
         case INT32:
           if (f.schema().isOptional()) {
-            beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
-                f.name(), FieldType.INT32);
+            beamField =
+                org.apache.beam.sdk.schemas.Schema.Field.nullable(f.name(), FieldType.INT32);
           } else {
             beamField = org.apache.beam.sdk.schemas.Schema.Field.of(f.name(), FieldType.INT32);
           }
           break;
         case INT64:
           if (f.schema().isOptional()) {
-            beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
-                f.name(), FieldType.INT64);
+            beamField =
+                org.apache.beam.sdk.schemas.Schema.Field.nullable(f.name(), FieldType.INT64);
           } else {
             beamField = org.apache.beam.sdk.schemas.Schema.Field.of(f.name(), FieldType.INT64);
           }
           break;
         case FLOAT32:
           if (f.schema().isOptional()) {
-            beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
-                f.name(), FieldType.FLOAT);
+            beamField =
+                org.apache.beam.sdk.schemas.Schema.Field.nullable(f.name(), FieldType.FLOAT);
           } else {
             beamField = org.apache.beam.sdk.schemas.Schema.Field.of(f.name(), FieldType.FLOAT);
           }
           break;
         case FLOAT64:
           if (f.schema().isOptional()) {
-            beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
-                f.name(), FieldType.DOUBLE);
+            beamField =
+                org.apache.beam.sdk.schemas.Schema.Field.nullable(f.name(), FieldType.DOUBLE);
           } else {
             beamField = org.apache.beam.sdk.schemas.Schema.Field.of(f.name(), FieldType.DOUBLE);
           }
           break;
         case BOOLEAN:
           if (f.schema().isOptional()) {
-            beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
-                f.name(), FieldType.BOOLEAN);
+            beamField =
+                org.apache.beam.sdk.schemas.Schema.Field.nullable(f.name(), FieldType.BOOLEAN);
           } else {
             beamField = org.apache.beam.sdk.schemas.Schema.Field.of(f.name(), FieldType.BOOLEAN);
           }
           break;
         case STRING:
           if (f.schema().isOptional()) {
-            beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
-                f.name(), FieldType.STRING);
+            beamField =
+                org.apache.beam.sdk.schemas.Schema.Field.nullable(f.name(), FieldType.STRING);
           } else {
             beamField = org.apache.beam.sdk.schemas.Schema.Field.of(f.name(), FieldType.STRING);
           }
@@ -205,15 +205,15 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslator {
         case BYTES:
           if (Decimal.LOGICAL_NAME.equals(f.schema().name())) {
             if (f.schema().isOptional()) {
-              beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
-                      f.name(), FieldType.DECIMAL);
+              beamField =
+                  org.apache.beam.sdk.schemas.Schema.Field.nullable(f.name(), FieldType.DECIMAL);
             } else {
               beamField = org.apache.beam.sdk.schemas.Schema.Field.of(f.name(), FieldType.DECIMAL);
             }
           } else {
             if (f.schema().isOptional()) {
-              beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
-                      f.name(), FieldType.BYTES);
+              beamField =
+                  org.apache.beam.sdk.schemas.Schema.Field.nullable(f.name(), FieldType.BYTES);
             } else {
               beamField = org.apache.beam.sdk.schemas.Schema.Field.of(f.name(), FieldType.BYTES);
             }
@@ -221,11 +221,13 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslator {
           break;
         case STRUCT:
           if (f.schema().isOptional()) {
-            beamField = org.apache.beam.sdk.schemas.Schema.Field.nullable(
-                f.name(), FieldType.row(kafkaSchemaToBeamRowSchema(f.schema())));
+            beamField =
+                org.apache.beam.sdk.schemas.Schema.Field.nullable(
+                    f.name(), FieldType.row(kafkaSchemaToBeamRowSchema(f.schema())));
           } else {
-            beamField = org.apache.beam.sdk.schemas.Schema.Field.of(
-                f.name(), FieldType.row(kafkaSchemaToBeamRowSchema(f.schema())));
+            beamField =
+                org.apache.beam.sdk.schemas.Schema.Field.of(
+                    f.name(), FieldType.row(kafkaSchemaToBeamRowSchema(f.schema())));
           }
           break;
         case MAP:
@@ -238,8 +240,7 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslator {
       if (f.schema().name() != null && !f.schema().name().isEmpty()) {
         FieldType fieldType = beamField.getType();
         fieldType = fieldType.withMetadata("logicalType", f.schema().name());
-        beamField = beamField.withType(fieldType)
-            .withDescription(f.schema().name());
+        beamField = beamField.withType(fieldType).withDescription(f.schema().name());
       }
       beamSchemaBuilder.addField(beamField);
     }
@@ -295,7 +296,7 @@ public class DebeziumSourceRecordToDataflowCdcFormatTranslator {
   }
 
   private static Row handleValue(org.apache.kafka.connect.data.Schema schema, Object value) {
-    org.apache.beam.sdk.schemas.Schema beamSchema =  kafkaSchemaToBeamRowSchema(schema);
+    org.apache.beam.sdk.schemas.Schema beamSchema = kafkaSchemaToBeamRowSchema(schema);
     Row.Builder rowBuilder = Row.withSchema(beamSchema);
     return kafkaSourceRecordToBeamRow((Struct) value, rowBuilder);
   }

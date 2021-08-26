@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.v2.transforms;
 
 import static com.google.common.truth.Truth.assertThat;
@@ -90,21 +89,20 @@ public class ErrorConvertersTest implements Serializable {
         .apply(Create.of("Hello", "World", "Colin"))
         .apply(
             ParDo.of(
-                new DoFn<String, String>() {
-                  @ProcessElement
-                  public void processElement(ProcessContext c) {
-                    if (c.element().equals("Hello")) {
-                      c.output(c.element());
-                    } else {
-                      c.output(errorTag, c.element());
-                    }
-                  }
-                })
+                    new DoFn<String, String>() {
+                      @ProcessElement
+                      public void processElement(ProcessContext c) {
+                        if (c.element().equals("Hello")) {
+                          c.output(c.element());
+                        } else {
+                          c.output(errorTag, c.element());
+                        }
+                      }
+                    })
                 .withOutputTags(goodTag, TupleTagList.of(errorTag)))
         .apply(
             ErrorConverters.LogErrors.newBuilder()
-                .setErrorWritePath(
-                    tmpFolder.getRoot().getAbsolutePath() + "errors.txt")
+                .setErrorWritePath(tmpFolder.getRoot().getAbsolutePath() + "errors.txt")
                 .setErrorTag(errorTag)
                 .build());
 
@@ -180,20 +178,17 @@ public class ErrorConvertersTest implements Serializable {
 
   @Test
   @Category(NeedsRunner.class)
-  public void transformConvertsBigQueryInsertErrorToPubsubMessage()
-      throws IOException {
+  public void transformConvertsBigQueryInsertErrorToPubsubMessage() throws IOException {
 
     GenericRecord expectedRecord = BigQueryConvertersTest.generateNestedAvroRecord();
     String errorMessage = "small-test-message";
-    BigQueryInsertError bigQueryInsertError =
-        getBigQueryInsertError(expectedRecord, errorMessage);
+    BigQueryInsertError bigQueryInsertError = getBigQueryInsertError(expectedRecord, errorMessage);
     ErrorConverters.BigQueryInsertErrorToPubsubMessage<GenericRecord> converter =
         getConverter(expectedRecord.getSchema(), AvroCoder.of(expectedRecord.getSchema()));
 
     PCollection<PubsubMessage> output =
         pipeline
-            .apply(Create.of(bigQueryInsertError)
-                .withCoder(BigQueryInsertErrorCoder.of()))
+            .apply(Create.of(bigQueryInsertError).withCoder(BigQueryInsertErrorCoder.of()))
             .apply(converter);
 
     PubsubMessage expectedMessage =
@@ -201,11 +196,12 @@ public class ErrorConvertersTest implements Serializable {
     byte[] expectedPayload = expectedMessage.getPayload();
     Map<String, String> expectedAttributes = expectedMessage.getAttributeMap();
     PAssert.thatSingleton(output)
-        .satisfies(input -> {
-          assertThat(input.getPayload()).isEqualTo(expectedPayload);
-          assertThat(input.getAttributeMap()).isEqualTo(expectedAttributes);
-          return null;
-        });
+        .satisfies(
+            input -> {
+              assertThat(input.getPayload()).isEqualTo(expectedPayload);
+              assertThat(input.getAttributeMap()).isEqualTo(expectedAttributes);
+              return null;
+            });
     pipeline.run();
   }
 
@@ -216,15 +212,13 @@ public class ErrorConvertersTest implements Serializable {
 
     GenericRecord expectedRecord = BigQueryConvertersTest.generateNestedAvroRecord();
     String errorMessage = Strings.repeat("a", 1000);
-    BigQueryInsertError bigQueryInsertError =
-        getBigQueryInsertError(expectedRecord, errorMessage);
+    BigQueryInsertError bigQueryInsertError = getBigQueryInsertError(expectedRecord, errorMessage);
     ErrorConverters.BigQueryInsertErrorToPubsubMessage<GenericRecord> converter =
         getConverter(expectedRecord.getSchema(), AvroCoder.of(expectedRecord.getSchema()));
 
     PCollection<PubsubMessage> output =
         pipeline
-            .apply(Create.of(bigQueryInsertError)
-                .withCoder(BigQueryInsertErrorCoder.of()))
+            .apply(Create.of(bigQueryInsertError).withCoder(BigQueryInsertErrorCoder.of()))
             .apply(converter);
 
     // Expecting a truncated message with a truncation indicator suffix.
@@ -233,16 +227,16 @@ public class ErrorConvertersTest implements Serializable {
             bigQueryInsertError.getError().toString(),
             /* maxLength= */ 512,
             /* truncationIndicator= */ "...");
-    PubsubMessage expectedMessage =
-        getPubsubMessage(expectedRecord, expectedErrorMessage);
+    PubsubMessage expectedMessage = getPubsubMessage(expectedRecord, expectedErrorMessage);
     byte[] expectedPayload = expectedMessage.getPayload();
     Map<String, String> expectedAttributes = expectedMessage.getAttributeMap();
     PAssert.thatSingleton(output)
-        .satisfies(input -> {
-          assertThat(input.getPayload()).isEqualTo(expectedPayload);
-          assertThat(input.getAttributeMap()).isEqualTo(expectedAttributes);
-          return null;
-        });
+        .satisfies(
+            input -> {
+              assertThat(input.getPayload()).isEqualTo(expectedPayload);
+              assertThat(input.getAttributeMap()).isEqualTo(expectedAttributes);
+              return null;
+            });
     pipeline.run();
   }
 
@@ -252,11 +246,10 @@ public class ErrorConvertersTest implements Serializable {
    * @param record payload to be used for the test
    * @param errorMessage error message for the test
    */
-  private static BigQueryInsertError getBigQueryInsertError(GenericRecord record,
-      String errorMessage) {
+  private static BigQueryInsertError getBigQueryInsertError(
+      GenericRecord record, String errorMessage) {
 
-    Row beamRow = AvroUtils
-        .toBeamRowStrict(record, AvroUtils.toBeamSchema(record.getSchema()));
+    Row beamRow = AvroUtils.toBeamRowStrict(record, AvroUtils.toBeamSchema(record.getSchema()));
     TableRow tableRow = BigQueryUtils.toTableRow(beamRow);
 
     TableReference tableReference = new TableReference();
@@ -287,9 +280,8 @@ public class ErrorConvertersTest implements Serializable {
       throws IOException {
     AvroCoder<GenericRecord> coder = AvroCoder.of(record.getSchema());
     String errorKey = "error";
-    Map<String, String> attributeMap = ImmutableMap.<String, String>builder()
-        .put(errorKey, errorValue)
-        .build();
+    Map<String, String> attributeMap =
+        ImmutableMap.<String, String>builder().put(errorKey, errorValue).build();
     return new PubsubMessage(CoderUtils.encodeToByteArray(coder, record), attributeMap);
   }
 

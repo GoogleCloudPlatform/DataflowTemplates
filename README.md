@@ -25,6 +25,7 @@ their functionality.
 * [Datastore to GCS Text](src/main/java/com/google/cloud/teleport/templates/DatastoreToText.java) *
 * [Datastore to Pub/Sub](src/main/java/com/google/cloud/teleport/templates/DatastoreToPubsub.java) *
 * [Datastore Unique Schema Count](src/main/java/com/google/cloud/teleport/templates/DatastoreSchemasCountToText.java)
+* [DLP Text to BigQuery (Streaming)](src/main/java/com/google/cloud/teleport/templates/DLPTextToBigQueryStreaming.java)
 * [GCS Avro to Bigtable](src/main/java/com/google/cloud/teleport/bigtable/AvroToBigtable.java)
 * [GCS Avro to Spanner](src/main/java/com/google/cloud/teleport/spanner/ImportPipeline.java)
 * [GCS Text to Spanner](src/main/java/com/google/cloud/teleport/spanner/TextImportPipeline.java)
@@ -63,6 +64,37 @@ Build the entire project using the maven compile command.
 ```sh
 mvn clean compile
 ```
+
+### Building/Testing from IntelliJ
+
+IntelliJ, by default, will often skip necessary Maven goals, leading to
+build failures. You can fix these in the Maven view by going to
+**Module_Name > Plugins > Plugin_Name** where Module_Name and Plugin_Name are
+the names of the respective module and plugin with the rule. From there,
+right-click the rule and select "Execute Before Build".
+
+The list of known rules that require this are:
+
+* common > Plugins > protobuf > protobuf:compile
+* common > Plugins > protobuf > protobuf:test-compile
+
+### Formatting Code
+
+From either the root directory or v2/ directory, run:
+
+```sh
+mvn spotless:apply
+```
+
+This will format the code and add a license header. To verify that the code is
+formatted correctly, run:
+
+```sh
+mvn spotless:check
+```
+
+The directory to run the commands from is based on whether the changes are under
+v2/ or not.
 
 ### Creating a Template File
 

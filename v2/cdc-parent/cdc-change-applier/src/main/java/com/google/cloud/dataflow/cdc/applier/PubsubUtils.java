@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -66,9 +66,9 @@ public class PubsubUtils {
   }
 
   /**
-   * Data class to hold triplets of a topic, a subscription to that topic, and the Beam schema
-   * for data published in that topic.
-   **/
+   * Data class to hold triplets of a topic, a subscription to that topic, and the Beam schema for
+   * data published in that topic.
+   */
   public static class TopicSubscriptionSchema {
     final String topic;
     final String subscription;
@@ -88,46 +88,46 @@ public class PubsubUtils {
     List<Schema> schemaList;
     if (subscriptions != null) {
       subscriptionList = Arrays.asList(subscriptions.split(","));
-      topicList = subscriptionList.stream()
-          .map(s -> {
-            try {
-              return PubsubUtils.getPubSubTopicFromSubscription(gcpProject, s).getTopic();
-            } catch (IOException e) {
-              throw new RuntimeException(e);
-            }
-          })
-          .collect(Collectors.toList());
+      topicList =
+          subscriptionList.stream()
+              .map(
+                  s -> {
+                    try {
+                      return PubsubUtils.getPubSubTopicFromSubscription(gcpProject, s).getTopic();
+                    } catch (IOException e) {
+                      throw new RuntimeException(e);
+                    }
+                  })
+              .collect(Collectors.toList());
     } else {
       topicList = Arrays.asList(topics.split(","));
-      subscriptionList = topicList.stream()
-          .map(t -> (String) null)
-          .collect(Collectors.toList());
+      subscriptionList = topicList.stream().map(t -> (String) null).collect(Collectors.toList());
     }
 
     LOG.info("Topic list is: {}", topicList);
     LOG.info("Subscription list is: {}", subscriptionList);
 
-    schemaList = topicList.stream()
-        .map(topic -> PubsubUtils.getBeamSchemaForTopic(gcpProject, topic))
-        .map(schema -> {
-          if (schema == null || schema.getFields().size() == 0) {
-            throw new RuntimeException("Received a null or empty schema. Can not continue");
-          } else {
-            return schema;
-          }
-        })
-        .collect(Collectors.toList());
+    schemaList =
+        topicList.stream()
+            .map(topic -> PubsubUtils.getBeamSchemaForTopic(gcpProject, topic))
+            .map(
+                schema -> {
+                  if (schema == null || schema.getFields().size() == 0) {
+                    throw new RuntimeException("Received a null or empty schema. Can not continue");
+                  } else {
+                    return schema;
+                  }
+                })
+            .collect(Collectors.toList());
 
     LOG.info("Schema list is: {}", schemaList);
 
     List<TopicSubscriptionSchema> result = new ArrayList<>();
     for (int i = 0; i < topicList.size(); i++) {
-      result.add(new TopicSubscriptionSchema(
-          topicList.get(i),
-          subscriptionList.get(i),
-          schemaList.get(i)));
+      result.add(
+          new TopicSubscriptionSchema(
+              topicList.get(i), subscriptionList.get(i), schemaList.get(i)));
     }
     return result;
   }
-
 }

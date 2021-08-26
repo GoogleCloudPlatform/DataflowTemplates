@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner;
 
 import static org.hamcrest.Matchers.is;
@@ -46,9 +45,8 @@ import org.junit.experimental.categories.Category;
 import org.junit.rules.TemporaryFolder;
 
 /**
- * Tests import of Avro files.
- * This requires an active GCP project with a Spanner instance.
- * Hence this test can only be run locally with a project set up using 'gcloud config'.
+ * Tests import of Avro files. This requires an active GCP project with a Spanner instance. Hence
+ * this test can only be run locally with a project set up using 'gcloud config'.
  */
 @Category(IntegrationTest.class)
 public class ImportFromAvroTest {
@@ -84,26 +82,32 @@ public class ImportFromAvroTest {
         .requiredString("required_string_boolean");
     Schema schema = fieldAssembler.endRecord();
     String spannerSchema =
-        "CREATE TABLE `AvroTable` (" + "`id`                                    INT64 NOT NULL,"
+        "CREATE TABLE `AvroTable` ("
+            + "`id`                                    INT64 NOT NULL,"
             + "`optional_boolean`                      BOOL,"
             + "`required_boolean`                      BOOL NOT NULL,"
             + "`optional_string_boolean`               BOOL,"
             + "`required_string_boolean`               BOOL NOT NULL,"
             + ") PRIMARY KEY (`id`)";
 
-    runTest(schema, spannerSchema, Arrays.asList(new GenericRecordBuilder(schema)
-        .set("id", 1L)
-        .set("required_boolean", true)
-        .set("optional_boolean", false)
-        .set("required_string_boolean", "FALSE")
-        .set("optional_string_boolean", "TRUE")
-        .build(), new GenericRecordBuilder(schema)
-        .set("id", 2L)
-        .set("required_boolean", false)
-        .set("optional_boolean", true)
-        .set("required_string_boolean", "true")
-        .set("optional_string_boolean", "f")
-        .build()));
+    runTest(
+        schema,
+        spannerSchema,
+        Arrays.asList(
+            new GenericRecordBuilder(schema)
+                .set("id", 1L)
+                .set("required_boolean", true)
+                .set("optional_boolean", false)
+                .set("required_string_boolean", "FALSE")
+                .set("optional_string_boolean", "TRUE")
+                .build(),
+            new GenericRecordBuilder(schema)
+                .set("id", 2L)
+                .set("required_boolean", false)
+                .set("optional_boolean", true)
+                .set("required_string_boolean", "true")
+                .set("optional_string_boolean", "f")
+                .build()));
   }
 
   @Test
@@ -123,7 +127,8 @@ public class ImportFromAvroTest {
         .requiredString("required_string_long");
     Schema schema = fieldAssembler.endRecord();
     String spannerSchema =
-        "CREATE TABLE `AvroTable` (" + "`id`                                    INT64 NOT NULL,"
+        "CREATE TABLE `AvroTable` ("
+            + "`id`                                    INT64 NOT NULL,"
             + "`optional_int`                          INT64,"
             + "`required_int`                          INT64 NOT NULL,"
             + "`optional_long`                         INT64,"
@@ -132,23 +137,28 @@ public class ImportFromAvroTest {
             + "`required_string_long`                  INT64 NOT NULL,"
             + ") PRIMARY KEY (`id`)";
 
-    runTest(schema, spannerSchema, Arrays.asList(new GenericRecordBuilder(schema)
-        .set("id", 1L)
-        .set("optional_int", 1)
-        .set("optional_long", 2L)
-        .set("required_long", 3L)
-        .set("required_int", 4)
-        .set("optional_string_long", "1000")
-        .set("required_string_long", "5000")
-        .build(), new GenericRecordBuilder(schema)
-        .set("id", 2L)
-        .set("optional_int", 10)
-        .set("optional_long", 20L)
-        .set("required_long", 30L)
-        .set("required_int", 40)
-        .set("optional_string_long", "10000")
-        .set("required_string_long", "50000")
-        .build()));
+    runTest(
+        schema,
+        spannerSchema,
+        Arrays.asList(
+            new GenericRecordBuilder(schema)
+                .set("id", 1L)
+                .set("optional_int", 1)
+                .set("optional_long", 2L)
+                .set("required_long", 3L)
+                .set("required_int", 4)
+                .set("optional_string_long", "1000")
+                .set("required_string_long", "5000")
+                .build(),
+            new GenericRecordBuilder(schema)
+                .set("id", 2L)
+                .set("optional_int", 10)
+                .set("optional_long", 20L)
+                .set("required_long", 30L)
+                .set("required_int", 40)
+                .set("optional_string_long", "10000")
+                .set("required_string_long", "50000")
+                .build()));
   }
 
   @Test
@@ -173,7 +183,8 @@ public class ImportFromAvroTest {
         .requiredString("required_string_double");
     Schema schema = fieldAssembler.endRecord();
     String spannerSchema =
-        "CREATE TABLE `AvroTable` (" + "`id`                                    INT64 NOT NULL,"
+        "CREATE TABLE `AvroTable` ("
+            + "`id`                                    INT64 NOT NULL,"
             + "`optional_int`                          FLOAT64,"
             + "`required_int`                          FLOAT64 NOT NULL,"
             + "`optional_long`                         FLOAT64,"
@@ -186,31 +197,36 @@ public class ImportFromAvroTest {
             + "`required_string_double`                FLOAT64 NOT NULL,"
             + ") PRIMARY KEY (`id`)";
 
-    runTest(schema, spannerSchema, Arrays.asList(new GenericRecordBuilder(schema)
-        .set("id", 1L)
-        .set("optional_int", 1)
-        .set("required_int", 4)
-        .set("optional_long", 2L)
-        .set("required_long", 3L)
-        .set("optional_float", 2.3f)
-        .set("required_float", 3.4f)
-        .set("optional_double", 2.5)
-        .set("required_double", 3.6)
-        .set("optional_string_double", "100.30")
-        .set("required_string_double", "0.1e-3")
-        .build(), new GenericRecordBuilder(schema)
-        .set("id", 2L)
-        .set("optional_int", 10)
-        .set("required_int", 40)
-        .set("optional_long", 20L)
-        .set("required_long", 30L)
-        .set("optional_float", 2.03f)
-        .set("required_float", 3.14f)
-        .set("optional_double", 2.05)
-        .set("required_double", 3.16)
-        .set("optional_string_double", "100.301")
-        .set("required_string_double", "1.1e-3")
-        .build()));
+    runTest(
+        schema,
+        spannerSchema,
+        Arrays.asList(
+            new GenericRecordBuilder(schema)
+                .set("id", 1L)
+                .set("optional_int", 1)
+                .set("required_int", 4)
+                .set("optional_long", 2L)
+                .set("required_long", 3L)
+                .set("optional_float", 2.3f)
+                .set("required_float", 3.4f)
+                .set("optional_double", 2.5)
+                .set("required_double", 3.6)
+                .set("optional_string_double", "100.30")
+                .set("required_string_double", "0.1e-3")
+                .build(),
+            new GenericRecordBuilder(schema)
+                .set("id", 2L)
+                .set("optional_int", 10)
+                .set("required_int", 40)
+                .set("optional_long", 20L)
+                .set("required_long", 30L)
+                .set("optional_float", 2.03f)
+                .set("required_float", 3.14f)
+                .set("optional_double", 2.05)
+                .set("required_double", 3.16)
+                .set("optional_string_double", "100.301")
+                .set("required_string_double", "1.1e-3")
+                .build()));
   }
 
   @Test
@@ -236,7 +252,8 @@ public class ImportFromAvroTest {
         .requiredString("required_string");
     Schema schema = fieldAssembler.endRecord();
     String spannerSchema =
-        "CREATE TABLE `AvroTable` (" + "`id`                                    INT64 NOT NULL,"
+        "CREATE TABLE `AvroTable` ("
+            + "`id`                                    INT64 NOT NULL,"
             + "`optional_int`                          STRING(10),"
             + "`required_int`                          STRING(MAX) NOT NULL,"
             + "`optional_long`                         STRING(MAX),"
@@ -249,31 +266,36 @@ public class ImportFromAvroTest {
             + "`required_string`                       STRING(30) NOT NULL,"
             + ") PRIMARY KEY (`id`)";
 
-    runTest(schema, spannerSchema, Arrays.asList(new GenericRecordBuilder(schema)
-        .set("id", 1L)
-        .set("optional_int", 1)
-        .set("required_int", 4)
-        .set("optional_long", 2L)
-        .set("required_long", 3L)
-        .set("optional_float", 2.3f)
-        .set("required_float", 3.4f)
-        .set("optional_double", 2.5)
-        .set("required_double", 3.6)
-        .set("optional_string", "ONE STRING")
-        .set("required_string", "TWO STRING")
-        .build(), new GenericRecordBuilder(schema)
-        .set("id", 2L)
-        .set("optional_int", 10)
-        .set("required_int", 40)
-        .set("optional_long", 20L)
-        .set("required_long", 30L)
-        .set("optional_float", 2.03f)
-        .set("required_float", 3.14f)
-        .set("optional_double", 2.05)
-        .set("required_double", 3.16)
-        .set("optional_string", null)
-        .set("required_string", "THE STRING")
-        .build()));
+    runTest(
+        schema,
+        spannerSchema,
+        Arrays.asList(
+            new GenericRecordBuilder(schema)
+                .set("id", 1L)
+                .set("optional_int", 1)
+                .set("required_int", 4)
+                .set("optional_long", 2L)
+                .set("required_long", 3L)
+                .set("optional_float", 2.3f)
+                .set("required_float", 3.4f)
+                .set("optional_double", 2.5)
+                .set("required_double", 3.6)
+                .set("optional_string", "ONE STRING")
+                .set("required_string", "TWO STRING")
+                .build(),
+            new GenericRecordBuilder(schema)
+                .set("id", 2L)
+                .set("optional_int", 10)
+                .set("required_int", 40)
+                .set("optional_long", 20L)
+                .set("required_long", 30L)
+                .set("optional_float", 2.03f)
+                .set("required_float", 3.14f)
+                .set("optional_double", 2.05)
+                .set("required_double", 3.16)
+                .set("optional_string", null)
+                .set("required_string", "THE STRING")
+                .build()));
   }
 
   @Test
@@ -339,7 +361,9 @@ public class ImportFromAvroTest {
             // String columns
             .optionalString("optional_string")
             .requiredString("required_string")
-            .name("required_int").type(dateType).noDefault()
+            .name("required_int")
+            .type(dateType)
+            .noDefault()
             .endRecord();
     String spannerSchema =
         "CREATE TABLE `AvroTable` ("
@@ -387,29 +411,34 @@ public class ImportFromAvroTest {
             + "`required_generated`                    INT64 NOT NULL AS (`id`) STORED,"
             + ") PRIMARY KEY (`id`)";
 
-    runTest(schema, spannerSchema, Arrays.asList(new GenericRecordBuilder(schema)
-        .set("id", 1L)
-        .set("optional_generated", 1L)
-        .set("required_generated", 1L)
-        .build()));
+    runTest(
+        schema,
+        spannerSchema,
+        Arrays.asList(
+            new GenericRecordBuilder(schema)
+                .set("id", 1L)
+                .set("optional_generated", 1L)
+                .set("required_generated", 1L)
+                .build()));
   }
 
   private void runTest(Schema avroSchema, String spannerSchema, Iterable<GenericRecord> records)
       throws Exception {
     // Create the Avro file to be imported.
     String fileName = "avroFile.avro";
-    ExportProtos.Export exportProto = ExportProtos.Export.newBuilder()
-        .addTables(
-            ExportProtos.Export.Table.newBuilder()
-            .setName("AvroTable")
-            .addDataFiles(fileName)
-            .build())
-        .addDatabaseOptions(
-            ExportProtos.Export.DatabaseOption.newBuilder()
-            .setOptionName("version_retention_period")
-            .setOptionValue("\"4d\"")
-            .build())
-        .build();
+    ExportProtos.Export exportProto =
+        ExportProtos.Export.newBuilder()
+            .addTables(
+                ExportProtos.Export.Table.newBuilder()
+                    .setName("AvroTable")
+                    .addDataFiles(fileName)
+                    .build())
+            .addDatabaseOptions(
+                ExportProtos.Export.DatabaseOption.newBuilder()
+                    .setOptionName("version_retention_period")
+                    .setOptionValue("\"4d\"")
+                    .build())
+            .build();
     JsonFormat.printer().print(exportProto);
 
     File manifestFile = tmpDir.newFile("spanner-export.json");
@@ -419,8 +448,8 @@ public class ImportFromAvroTest {
         JsonFormat.printer().print(exportProto).getBytes(StandardCharsets.UTF_8));
 
     File avroFile = tmpDir.newFile(fileName);
-    try (DataFileWriter<GenericRecord> fileWriter = new DataFileWriter<>(
-        new GenericDatumWriter<>(avroSchema))) {
+    try (DataFileWriter<GenericRecord> fileWriter =
+        new DataFileWriter<>(new GenericDatumWriter<>(avroSchema))) {
       fileWriter.create(avroSchema, avroFile);
 
       for (GenericRecord r : records) {

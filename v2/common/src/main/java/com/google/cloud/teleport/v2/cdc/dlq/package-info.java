@@ -14,8 +14,5 @@
  * the License.
  */
 
-
-/**
- * Package com.google.cloud.teleport.cdc.dlq.
- */
+/** Package com.google.cloud.teleport.cdc.dlq. */
 package com.google.cloud.teleport.v2.cdc.dlq;

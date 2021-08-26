@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
  * Builds merge statements for synchronizing a table containing a log of changes with a table
  * containing a replica of a source table.
  *
- * The changelog and replica table are joined on a primary key, which is a subset of columns from
+ * <p>The changelog and replica table are joined on a primary key, which is a subset of columns from
  * the replica table. Only the latest change (by timestamp) in the changelog table is utilized to
  * perform updates in the replica table.
  */
@@ -56,25 +56,21 @@ public class MergeStatementBuildingFn
 
   private boolean createdCache;
 
-  MergeStatementBuildingFn(
-      String changelogDatasetId,
-      String replicaDatasetId,
-      String projectId) {
+  MergeStatementBuildingFn(String changelogDatasetId, String replicaDatasetId, String projectId) {
     this.changelogDatasetId = changelogDatasetId;
     this.replicaDatasetId = replicaDatasetId;
     this.projectId = projectId;
     this.createdCache = false;
 
-    this.tablesCreated = Metrics.counter(
-        MergeStatementBuildingFn.class, "createTableStatementsIssued");
-    this.mergeStatementsIssued = Metrics.counter(
-        MergeStatementBuildingFn.class, "mergeStatementsIssued");
+    this.tablesCreated =
+        Metrics.counter(MergeStatementBuildingFn.class, "createTableStatementsIssued");
+    this.mergeStatementsIssued =
+        Metrics.counter(MergeStatementBuildingFn.class, "mergeStatementsIssued");
   }
 
   @ProcessElement
   public void processElement(
-      ProcessContext c,
-      @StateId("table_created") ValueState<Boolean> tableCreated) {
+      ProcessContext c, @StateId("table_created") ValueState<Boolean> tableCreated) {
     KV<String, KV<Schema, Schema>> tableAndSchemas = c.element();
 
     // Start by actually fetching whether we created the table or not.
@@ -86,26 +82,27 @@ public class MergeStatementBuildingFn
     if (!createdCache) {
       tableCreated.write(true);
       createdCache = true;
-      c.output(KV.of(tableAndSchemas.getKey(),
-          buildCreateTableAction(tableAndSchemas, projectId, replicaDatasetId)));
+      c.output(
+          KV.of(
+              tableAndSchemas.getKey(),
+              buildCreateTableAction(tableAndSchemas, projectId, replicaDatasetId)));
       this.tablesCreated.inc();
     }
 
-    c.output(KV.of(tableAndSchemas.getKey(),
-        buildMergeStatementAction(
-            tableAndSchemas, projectId, changelogDatasetId, replicaDatasetId)));
+    c.output(
+        KV.of(
+            tableAndSchemas.getKey(),
+            buildMergeStatementAction(
+                tableAndSchemas, projectId, changelogDatasetId, replicaDatasetId)));
     this.mergeStatementsIssued.inc();
   }
 
   static final BigQueryAction buildCreateTableAction(
-      KV<String, KV<Schema, Schema>> tableAndSchemas,
-      String projectId,
-      String replicaDatasetId) {
+      KV<String, KV<Schema, Schema>> tableAndSchemas, String projectId, String replicaDatasetId) {
     Schema tableSchema = tableAndSchemas.getValue().getValue();
-    String tableName = ChangelogTableDynamicDestinations.getBigQueryTableName(
-        tableAndSchemas.getKey(), false);
-    return BigQueryAction.createTable(
-        projectId, replicaDatasetId, tableName, tableSchema);
+    String tableName =
+        ChangelogTableDynamicDestinations.getBigQueryTableName(tableAndSchemas.getKey(), false);
+    return BigQueryAction.createTable(projectId, replicaDatasetId, tableName, tableSchema);
   }
 
   static final BigQueryAction buildMergeStatementAction(
@@ -113,131 +110,156 @@ public class MergeStatementBuildingFn
       String projectId,
       String changelogDatasetId,
       String replicaDatasetId) {
-    String tableName = ChangelogTableDynamicDestinations.getBigQueryTableName(
-        tableAndSchemas.getKey(), false);
+    String tableName =
+        ChangelogTableDynamicDestinations.getBigQueryTableName(tableAndSchemas.getKey(), false);
 
-    String changeLogTableName = ChangelogTableDynamicDestinations.getBigQueryTableName(
-        tableAndSchemas.getKey(), true);
+    String changeLogTableName =
+        ChangelogTableDynamicDestinations.getBigQueryTableName(tableAndSchemas.getKey(), true);
 
     Schema primaryKeySchema = tableAndSchemas.getValue().getKey();
-    List<String> pkColumnNames = primaryKeySchema.getFields().stream()
-        .map(f -> f.getName()).collect(Collectors.toList());
+    List<String> pkColumnNames =
+        primaryKeySchema.getFields().stream().map(f -> f.getName()).collect(Collectors.toList());
 
     Schema allColumnsSchema = tableAndSchemas.getValue().getValue();
-    List<String> allColumnNames = allColumnsSchema.getFields().stream()
-        .map(f -> f.getName()).collect(Collectors.toList());
+    List<String> allColumnNames =
+        allColumnsSchema.getFields().stream().map(f -> f.getName()).collect(Collectors.toList());
 
-    String mergeStatement = buildQueryMergeReplicaTableWithChangeLogTable(
-        tableName, changeLogTableName,
-        pkColumnNames, allColumnNames,
-        projectId, changelogDatasetId, replicaDatasetId);
+    String mergeStatement =
+        buildQueryMergeReplicaTableWithChangeLogTable(
+            tableName,
+            changeLogTableName,
+            pkColumnNames,
+            allColumnNames,
+            projectId,
+            changelogDatasetId,
+            replicaDatasetId);
     LOG.debug("Merge statement for table {} is: {}", tableName, mergeStatement);
     return BigQueryAction.query(mergeStatement);
   }
 
-  static final String CREATE_TABLE_TEMPLATE = String.join("",
-      "CREATE TABLE IF NOT EXISTS `%s.%s.%s` ");
+  static final String CREATE_TABLE_TEMPLATE =
+      String.join("", "CREATE TABLE IF NOT EXISTS `%s.%s.%s` ");
 
-  static final String MERGE_REPLICA_WITH_CHANGELOG_TABLES = String.join("",
-      "MERGE `%s.%s.%s` AS replica ",
-      "USING (%s) AS changelog ",
-      "ON %s ",
-      "WHEN MATCHED AND changelog.operation = \"DELETE\" ",
-      "THEN DELETE ",
-      "WHEN MATCHED THEN %s ",
-      "WHEN NOT MATCHED BY TARGET AND changelog.operation != \"DELETE\" THEN %s");
+  static final String MERGE_REPLICA_WITH_CHANGELOG_TABLES =
+      String.join(
+          "",
+          "MERGE `%s.%s.%s` AS replica ",
+          "USING (%s) AS changelog ",
+          "ON %s ",
+          "WHEN MATCHED AND changelog.operation = \"DELETE\" ",
+          "THEN DELETE ",
+          "WHEN MATCHED THEN %s ",
+          "WHEN NOT MATCHED BY TARGET AND changelog.operation != \"DELETE\" THEN %s");
 
   public static String buildQueryMergeReplicaTableWithChangeLogTable(
-      String replicaTableName, String changelogTableName,
-      List<String>pkColumns, List<String> rowColumns,
-      String projectId, String changelogDatasetId, String replicaDatasetId) {
+      String replicaTableName,
+      String changelogTableName,
+      List<String> pkColumns,
+      List<String> rowColumns,
+      String projectId,
+      String changelogDatasetId,
+      String replicaDatasetId) {
 
-    String changeLogLatestChangePerKey = buildQueryGetLatestChangePerPrimaryKey(
-        changelogTableName, pkColumns, projectId, changelogDatasetId);
+    String changeLogLatestChangePerKey =
+        buildQueryGetLatestChangePerPrimaryKey(
+            changelogTableName, pkColumns, projectId, changelogDatasetId);
 
-    String finalMergeQuery = String.format(MERGE_REPLICA_WITH_CHANGELOG_TABLES,
-        projectId, replicaDatasetId, replicaTableName,   // Target table for merge
-        changeLogLatestChangePerKey,                        // Source table for merge
-        buildJoinConditions(
-            pkColumns, "replica", "changelog" + ".primaryKey"),
-        buildUpdateStatement(rowColumns),                   // Perform update
-        buildInsertStatement(rowColumns,
-            rowColumns.stream().map(col -> "fullRecord." + col).collect(Collectors.toList())));
+    String finalMergeQuery =
+        String.format(
+            MERGE_REPLICA_WITH_CHANGELOG_TABLES,
+            projectId,
+            replicaDatasetId,
+            replicaTableName, // Target table for merge
+            changeLogLatestChangePerKey, // Source table for merge
+            buildJoinConditions(pkColumns, "replica", "changelog" + ".primaryKey"),
+            buildUpdateStatement(rowColumns), // Perform update
+            buildInsertStatement(
+                rowColumns,
+                rowColumns.stream().map(col -> "fullRecord." + col).collect(Collectors.toList())));
     return finalMergeQuery;
   }
 
   static final String UPDATE_STATEMENT = "UPDATE SET %s";
 
   static String buildUpdateStatement(List<String> rowColumns) {
-    List<String> assignmentStatements = rowColumns.stream()
-        .map(column -> String.format("%s = changelog.fullRecord.%s", column, column))
-        .collect(Collectors.toList());
+    List<String> assignmentStatements =
+        rowColumns.stream()
+            .map(column -> String.format("%s = changelog.fullRecord.%s", column, column))
+            .collect(Collectors.toList());
 
-    return String.format(UPDATE_STATEMENT,
-        String.join(", ", assignmentStatements));
+    return String.format(UPDATE_STATEMENT, String.join(", ", assignmentStatements));
   }
 
   static final String INSERT_STATEMENT = "INSERT(%s) VALUES (%s)";
 
   static String buildInsertStatement(
       List<String> primaryRowColumns, List<String> secondaryRowColumns) {
-    return String.format(INSERT_STATEMENT,
+    return String.format(
+        INSERT_STATEMENT,
         String.join(", ", primaryRowColumns),
         String.join(", ", secondaryRowColumns));
   }
 
-  static final String LATEST_CHANGE_PER_PK = String.join("",
-      "SELECT * FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY %s ORDER BY %s DESC) as row_num ",
-      "FROM (%s) AS ts_table ",
-      "INNER JOIN `%s.%s.%s` AS source_table ",
-      "ON %s) WHERE row_num = 1 "
-  );
+  static final String LATEST_CHANGE_PER_PK =
+      String.join(
+          "",
+          "SELECT * FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY %s ORDER BY %s DESC) as row_num ",
+          "FROM (%s) AS ts_table ",
+          "INNER JOIN `%s.%s.%s` AS source_table ",
+          "ON %s) WHERE row_num = 1 ");
 
   static final String MAXIMUM_TIMESTAMP_PER_PK =
       "SELECT %s, MAX(%s) as max_ts_ms FROM `%s.%s.%s` GROUP BY %s";
 
   public static String buildQueryGetLatestChangePerPrimaryKey(
-      String tableName, List<String>pkColumns, String projectId, String datasetId) {
-    List<String> qualifiedPkColumns = pkColumns.
-        stream()
-        .map(s -> String.format("primaryKey.%s", s))
-        .collect(Collectors.toList());
+      String tableName, List<String> pkColumns, String projectId, String datasetId) {
+    List<String> qualifiedPkColumns =
+        pkColumns.stream().map(s -> String.format("primaryKey.%s", s)).collect(Collectors.toList());
 
-    String maxTimestampPerPkStatement = buildQueryGetMaximumTimestampPerPrimaryKey(
-        tableName, qualifiedPkColumns, projectId, datasetId);
+    String maxTimestampPerPkStatement =
+        buildQueryGetMaximumTimestampPerPrimaryKey(
+            tableName, qualifiedPkColumns, projectId, datasetId);
 
-    String joinStatement = buildJoinConditions(
-        pkColumns, "source_table.primaryKey", "ts_table")
-        + " AND source_table.timestampMs = ts_table.max_ts_ms";
+    String joinStatement =
+        buildJoinConditions(pkColumns, "source_table.primaryKey", "ts_table")
+            + " AND source_table.timestampMs = ts_table.max_ts_ms";
 
-    String fullStatement = String.format(
-        LATEST_CHANGE_PER_PK,
-        String.join(", ", pkColumns), DataflowCdcRowFormat.TIMESTAMP_MS,
-        maxTimestampPerPkStatement,       // FROM PARAMETERS
-        projectId, datasetId, tableName,  // INNER JOIN PARAMETERS
-        joinStatement);                   // JOIN STATEMENT (e.g. ON A.a = B.a AND A.c = B.c ....)
+    String fullStatement =
+        String.format(
+            LATEST_CHANGE_PER_PK,
+            String.join(", ", pkColumns),
+            DataflowCdcRowFormat.TIMESTAMP_MS,
+            maxTimestampPerPkStatement, // FROM PARAMETERS
+            projectId,
+            datasetId,
+            tableName, // INNER JOIN PARAMETERS
+            joinStatement); // JOIN STATEMENT (e.g. ON A.a = B.a AND A.c = B.c ....)
 
     return fullStatement;
   }
 
   public static String buildJoinConditions(
       List<String> pkColumns, final String leftTableName, final String rightTableName) {
-    List<String> equalityConditions = pkColumns.stream()
-        .map(col -> String.format("%s.%s = %s.%s", leftTableName, col, rightTableName, col))
-        .collect(Collectors.toList());
+    List<String> equalityConditions =
+        pkColumns.stream()
+            .map(col -> String.format("%s.%s = %s.%s", leftTableName, col, rightTableName, col))
+            .collect(Collectors.toList());
     return String.join(" AND ", equalityConditions);
   }
 
   public static String buildQueryGetMaximumTimestampPerPrimaryKey(
-      String tableName, List<String>pkColumns, String projectId, String datasetId) {
+      String tableName, List<String> pkColumns, String projectId, String datasetId) {
     String pkCommaJoinedString = String.join(", ", pkColumns);
 
-    String maxTimestampPerPkStatement = String.format(
-        MAXIMUM_TIMESTAMP_PER_PK,
-        pkCommaJoinedString, DataflowCdcRowFormat.TIMESTAMP_MS,  // SELECT SECTION PARAMETERS
-        projectId, datasetId, tableName,                // FROM SECTION PARAMETERS
-        pkCommaJoinedString);                           // GROUP BY SECTION PARAMETERS
+    String maxTimestampPerPkStatement =
+        String.format(
+            MAXIMUM_TIMESTAMP_PER_PK,
+            pkCommaJoinedString,
+            DataflowCdcRowFormat.TIMESTAMP_MS, // SELECT SECTION PARAMETERS
+            projectId,
+            datasetId,
+            tableName, // FROM SECTION PARAMETERS
+            pkCommaJoinedString); // GROUP BY SECTION PARAMETERS
     return maxTimestampPerPkStatement;
   }
-
 }

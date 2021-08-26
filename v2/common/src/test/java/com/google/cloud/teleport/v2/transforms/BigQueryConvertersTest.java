@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.v2.transforms;
 
 import static com.google.common.truth.Truth.assertThat;
@@ -70,34 +69,33 @@ public class BigQueryConvertersTest {
   static final TableRow ROW =
       new TableRow().set("id", "007").set("state", "CA").set("price", 26.23);
   /** The tag for the main output of the json transformation. */
-
   static final TupleTag<FailsafeElement<TableRow, String>> TRANSFORM_OUT =
-          new TupleTag<FailsafeElement<TableRow, String>>() {};
+      new TupleTag<FailsafeElement<TableRow, String>>() {};
   /** The tag for the dead-letter output of the json to table row transform. */
   static final TupleTag<FailsafeElement<TableRow, String>> TRANSFORM_DEADLETTER_OUT =
-          new TupleTag<FailsafeElement<TableRow, String>>() {};
+      new TupleTag<FailsafeElement<TableRow, String>>() {};
   /** The tag for the main output of the json transformation. */
   static final TupleTag<FailsafeElement<TableRow, String>> UDF_OUT =
-          new TupleTag<FailsafeElement<TableRow, String>>() {};
+      new TupleTag<FailsafeElement<TableRow, String>>() {};
   /** The tag for the dead-letter output of the json to table row transform. */
   static final TupleTag<FailsafeElement<TableRow, String>> UDF_TRANSFORM_DEADLETTER_OUT =
-          new TupleTag<FailsafeElement<TableRow, String>>() {};
+      new TupleTag<FailsafeElement<TableRow, String>>() {};
   /** String/String Coder for FailsafeElement. */
   static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
-          FailsafeElementCoder.of(
-                  NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of()));
+      FailsafeElementCoder.of(
+          NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of()));
   /** TableRow/String Coder for FailsafeElement. */
   static final FailsafeElementCoder<TableRow, String> FAILSAFE_TABLE_ROW_ELEMENT_CODER =
-          FailsafeElementCoder.of(TableRowJsonCoder.of(), NullableCoder.of(StringUtf8Coder.of()));
+      FailsafeElementCoder.of(TableRowJsonCoder.of(), NullableCoder.of(StringUtf8Coder.of()));
   // Define the TupleTag's here otherwise the anonymous class will force the test method to
   // be serialized.
   private static final TupleTag<TableRow> TABLE_ROW_TAG = new TupleTag<TableRow>() {};
   private static final TupleTag<FailsafeElement<PubsubMessage, String>> FAILSAFE_ELM_TAG =
       new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
   private static final String jsonifiedTableRow =
-          "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
+      "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
   private static final String udfOutputRow =
-          "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23,\"someProp\":\"someValue\"}";
+      "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23,\"someProp\":\"someValue\"}";
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
   @Rule public ExpectedException expectedException = ExpectedException.none();
   private ValueProvider<String> entityKind = StaticValueProvider.of("TestEntity");
@@ -347,64 +345,69 @@ public class BigQueryConvertersTest {
     pipeline.run();
   }
 
-  /** Tests that {@link BigQueryConverters.TableRowToFailsafeJsonDocument} transform returns the correct element. */
+  /**
+   * Tests that {@link BigQueryConverters.TableRowToFailsafeJsonDocument} transform returns the
+   * correct element.
+   */
   @Test
   public void testTableRowToJsonDocument() {
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
 
     coderRegistry.registerCoderForType(
-            FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(),
-            FAILSAFE_ELEMENT_CODER);
+        FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
 
     coderRegistry.registerCoderForType(
-            FAILSAFE_TABLE_ROW_ELEMENT_CODER.getEncodedTypeDescriptor(),
-            FAILSAFE_TABLE_ROW_ELEMENT_CODER);
+        FAILSAFE_TABLE_ROW_ELEMENT_CODER.getEncodedTypeDescriptor(),
+        FAILSAFE_TABLE_ROW_ELEMENT_CODER);
 
     BigQueryConverters.BigQueryReadOptions options =
-            PipelineOptionsFactory.create().as(BigQueryConverters.BigQueryReadOptions.class);
+        PipelineOptionsFactory.create().as(BigQueryConverters.BigQueryReadOptions.class);
 
     options.setInputTableSpec(null);
     options.setQuery(null);
 
-
     PCollectionTuple testTuple =
-    pipeline
-        .apply("Create Input", Create.<TableRow>of(ROW).withCoder(TableRowJsonCoder.of()))
-        .apply(
-            "TestRowToDocument",
-            BigQueryConverters.TableRowToFailsafeJsonDocument.newBuilder()
-                .setTransformDeadletterOutTag(TRANSFORM_DEADLETTER_OUT)
-                .setTransformOutTag(TRANSFORM_OUT)
-                .setUdfDeadletterOutTag(UDF_TRANSFORM_DEADLETTER_OUT)
-                .setUdfOutTag(UDF_OUT)
-                .setOptions(options.as(JavascriptTextTransformer.JavascriptTextTransformerOptions.class))
-                .build());
+        pipeline
+            .apply("Create Input", Create.<TableRow>of(ROW).withCoder(TableRowJsonCoder.of()))
+            .apply(
+                "TestRowToDocument",
+                BigQueryConverters.TableRowToFailsafeJsonDocument.newBuilder()
+                    .setTransformDeadletterOutTag(TRANSFORM_DEADLETTER_OUT)
+                    .setTransformOutTag(TRANSFORM_OUT)
+                    .setUdfDeadletterOutTag(UDF_TRANSFORM_DEADLETTER_OUT)
+                    .setUdfOutTag(UDF_OUT)
+                    .setOptions(
+                        options.as(
+                            JavascriptTextTransformer.JavascriptTextTransformerOptions.class))
+                    .build());
 
     // Assert
-    PAssert.that(testTuple.get(TRANSFORM_OUT)).satisfies(
+    PAssert.that(testTuple.get(TRANSFORM_OUT))
+        .satisfies(
             collection -> {
               FailsafeElement<TableRow, String> element = collection.iterator().next();
               assertThat(element.getOriginalPayload()).isEqualTo(ROW);
               assertThat(element.getPayload()).isEqualTo(jsonifiedTableRow);
               return null;
-            }
-    );
+            });
 
     // Execute pipeline
     pipeline.run();
   }
 
-  /** Tests that {@link BigQueryConverters.BigQueryTableConfigManager}
-   * returns expected table names when supplying templated values.
+  /**
+   * Tests that {@link BigQueryConverters.BigQueryTableConfigManager} returns expected table names
+   * when supplying templated values.
    */
   @Test
   public void serializableFunctionConvertsTableRowToGenericRecordUsingSchema() {
     GenericRecord expectedRecord = generateNestedAvroRecord();
-    Row testRow = AvroUtils
-        .toBeamRowStrict(expectedRecord, AvroUtils.toBeamSchema(expectedRecord.getSchema()));
+    Row testRow =
+        AvroUtils.toBeamRowStrict(
+            expectedRecord, AvroUtils.toBeamSchema(expectedRecord.getSchema()));
     TableRow inputRow = BigQueryUtils.toTableRow(testRow);
-    TableRowToGenericRecordFn rowToGenericRecordFn = TableRowToGenericRecordFn
-        .of(expectedRecord.getSchema());
+    TableRowToGenericRecordFn rowToGenericRecordFn =
+        TableRowToGenericRecordFn.of(expectedRecord.getSchema());
 
     GenericRecord actualRecord = rowToGenericRecordFn.apply(inputRow);
 
@@ -417,7 +420,7 @@ public class BigQueryConvertersTest {
     String tableTemplateVal = "my_table";
     String outputTableSpec = "";
 
-    BigQueryTableConfigManager mgr = 
+    BigQueryTableConfigManager mgr =
         new BigQueryTableConfigManager(
             projectIdVal, datasetTemplateVal,
             tableTemplateVal, outputTableSpec);
@@ -426,8 +429,9 @@ public class BigQueryConvertersTest {
     assertThat(mgr.getOutputTableSpec()).isEqualTo(outputTableSpecResult);
   }
 
-  /** Tests that {@link BigQueryConverters.BigQueryTableConfigManager}
-   * returns expected table names when supplying full table path.
+  /**
+   * Tests that {@link BigQueryConverters.BigQueryTableConfigManager} returns expected table names
+   * when supplying full table path.
    */
   @Test
   public void testBigQueryTableConfigManagerTableSpec() {
@@ -436,7 +440,7 @@ public class BigQueryConvertersTest {
     String tableTemplateVal = null;
     String outputTableSpec = "my_project:my_dataset.my_table";
 
-    BigQueryTableConfigManager mgr = 
+    BigQueryTableConfigManager mgr =
         new BigQueryTableConfigManager(
             projectIdVal, datasetTemplateVal,
             tableTemplateVal, outputTableSpec);
@@ -445,8 +449,9 @@ public class BigQueryConvertersTest {
     assertThat(mgr.getTableTemplate()).isEqualTo("my_table");
   }
 
-  /** Tests that {@link BigQueryConverters.SchemaUtils} properly
-   * cleans and returns a BigQuery Schema from a JSON string.
+  /**
+   * Tests that {@link BigQueryConverters.SchemaUtils} properly cleans and returns a BigQuery Schema
+   * from a JSON string.
    */
   @Test
   public void testSchemaUtils() {

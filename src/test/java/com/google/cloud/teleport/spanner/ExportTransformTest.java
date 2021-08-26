@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner;
 
 import static org.hamcrest.Matchers.is;
@@ -58,7 +57,7 @@ public class ExportTransformTest {
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
   @Test
-  public void buildTableManifests() throws  Exception {
+  public void buildTableManifests() throws Exception {
     Path f1 = Files.createTempFile("table1-file", "1");
     Path f2 = Files.createTempFile("table1-file", "2");
     Path f3 = Files.createTempFile("table2-file", "1");

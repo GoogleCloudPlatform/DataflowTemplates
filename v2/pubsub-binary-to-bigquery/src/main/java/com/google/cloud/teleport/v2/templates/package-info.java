@@ -14,7 +14,5 @@
  * the License.
  */
 
-/**
- * Templates for streaming binary records from Pub/Sub to BigQuery.
- */
+/** Templates for streaming binary records from Pub/Sub to BigQuery. */
 package com.google.cloud.teleport.v2.templates;

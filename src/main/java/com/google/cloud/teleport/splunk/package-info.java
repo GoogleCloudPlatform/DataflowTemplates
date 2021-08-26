@@ -14,8 +14,5 @@
  * the License.
  */
 
-
-/**
- * SplunkIO support for templates.
- */
+/** SplunkIO support for templates. */
 package com.google.cloud.teleport.splunk;

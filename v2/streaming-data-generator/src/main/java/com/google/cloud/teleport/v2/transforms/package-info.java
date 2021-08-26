@@ -14,8 +14,5 @@
  * the License.
  */
 
-/**
- * Package for transforms used by pipelines.
- */
+/** Package for transforms used by pipelines. */
 package com.google.cloud.teleport.v2.transforms;
-

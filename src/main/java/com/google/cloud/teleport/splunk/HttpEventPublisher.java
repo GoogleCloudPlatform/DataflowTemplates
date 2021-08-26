@@ -1,19 +1,18 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
-
 package com.google.cloud.teleport.splunk;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -73,8 +72,7 @@ public abstract class HttpEventPublisher {
   private static final Gson GSON =
       new GsonBuilder().setFieldNamingStrategy(f -> f.getName().toLowerCase()).create();
 
-  @VisibleForTesting
-  protected static final String HEC_URL_PATH = "services/collector/event";
+  @VisibleForTesting protected static final String HEC_URL_PATH = "services/collector/event";
 
   private static final HttpMediaType MEDIA_TYPE =
       new HttpMediaType("application/json;profile=urn:splunk:event:1.0;charset=utf-8");
@@ -85,7 +83,7 @@ public abstract class HttpEventPublisher {
   private static final String AUTHORIZATION_SCHEME = "Splunk %s";
 
   private static final String HTTPS_PROTOCOL_PREFIX = "https";
-  
+
   public static Builder newBuilder() {
     return new AutoValue_HttpEventPublisher.Builder();
   }
@@ -123,7 +121,7 @@ public abstract class HttpEventPublisher {
     HttpIOExceptionHandler ioExceptionHandler =
         new HttpBackOffIOExceptionHandler(getConfiguredBackOff());
     request.setIOExceptionHandler(ioExceptionHandler);
-    
+
     setHeaders(request, token());
 
     return request.execute();
@@ -253,8 +251,8 @@ public abstract class HttpEventPublisher {
     }
 
     /**
-     * Method to max timeout for {@link ExponentialBackOff}. Otherwise uses the default
-     * setting for {@link ExponentialBackOff}.
+     * Method to max timeout for {@link ExponentialBackOff}. Otherwise uses the default setting for
+     * {@link ExponentialBackOff}.
      *
      * @param maxElapsedMillis max elapsed time in milliseconds for timeout.
      * @return {@link Builder}

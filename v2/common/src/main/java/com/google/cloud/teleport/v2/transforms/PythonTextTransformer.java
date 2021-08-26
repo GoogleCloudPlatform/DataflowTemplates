@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.v2.transforms;
 
 import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkArgument;
@@ -94,7 +93,6 @@ public abstract class PythonTextTransformer implements Serializable {
     Integer getRuntimeRetries();
 
     void setRuntimeRetries(Integer runtimeRetries);
-
   }
 
   /** Grabs code from a FileSystem, loads into ProcessBuilder. */
@@ -145,8 +143,9 @@ public abstract class PythonTextTransformer implements Serializable {
     }
 
     /**
-     * Gets a cached Javascript Invocable, if fileSystemPath() not set, returns null.
-     * NEED REPLACEMENT FOR INVOCABLE
+     * Gets a cached Javascript Invocable, if fileSystemPath() not set, returns null. NEED
+     * REPLACEMENT FOR INVOCABLE
+     *
      * @return a python Invocable or null
      */
     @Nullable
@@ -161,8 +160,9 @@ public abstract class PythonTextTransformer implements Serializable {
         Collection<String> scripts = getScripts(fileSystemPath());
         FileWriter writer = new FileWriter(functionName());
         if (scripts.size() == 0) {
-            throw new IllegalArgumentException(String.format("Python UDF Transform: file {} not valid.", fileSystemPath()));
-           }
+          throw new IllegalArgumentException(
+              String.format("Python UDF Transform: file {} not valid.", fileSystemPath()));
+        }
         for (String str : scripts) {
           writer.write(str + System.lineSeparator());
         }
@@ -175,6 +175,7 @@ public abstract class PythonTextTransformer implements Serializable {
 
     /**
      * Factory method for making a new Invocable.
+     *
      * @param scripts
      */
     @Nullable
@@ -187,7 +188,7 @@ public abstract class PythonTextTransformer implements Serializable {
     /**
      * Build Python Runtime Environment.
      *
-     * @param pythonVersion The python runtime version to be built.  ie python3
+     * @param pythonVersion The python runtime version to be built. ie python3
      * @return None
      */
     public void buildPythonExecutable(String pythonVersion)
@@ -216,7 +217,6 @@ public abstract class PythonTextTransformer implements Serializable {
               .start();
       installRuntime.waitFor(120L, TimeUnit.SECONDS);
       installRuntime.destroy();
-
     }
 
     /**
@@ -227,10 +227,9 @@ public abstract class PythonTextTransformer implements Serializable {
      */
     @Nullable
     public List<String> invoke(File file, Integer retries)
-            throws IOException, NoSuchMethodException, InterruptedException {
+        throws IOException, NoSuchMethodException, InterruptedException {
       // Save Data in Temporary File
       LOG.info("Applying runtime");
-
 
       // Apply Python
       List<String> results = applyRuntimeToFile(file, retries);
@@ -240,7 +239,7 @@ public abstract class PythonTextTransformer implements Serializable {
 
     @Nullable
     public List<String> applyRuntimeToFile(File dataFile, Integer retries)
-            throws IOException, NoSuchMethodException, InterruptedException {
+        throws IOException, NoSuchMethodException, InterruptedException {
       // Vars Required in function
       Process runtime;
       String pythonVersion = runtimeVersion();
@@ -250,9 +249,10 @@ public abstract class PythonTextTransformer implements Serializable {
       // Apply Python
       try {
         LOG.info("Apply Python to File: " + dataFile.getAbsolutePath());
-        runtime = getProcessBuilder()
-                      .command(pythonVersion, functionName(), dataFile.getAbsolutePath())
-                      .start();
+        runtime =
+            getProcessBuilder()
+                .command(pythonVersion, functionName(), dataFile.getAbsolutePath())
+                .start();
         LOG.info("Waiting For Results: " + dataFile.getAbsolutePath());
         if (retriesRemaining > 0) {
           if (runtime != null) {
@@ -272,10 +272,10 @@ public abstract class PythonTextTransformer implements Serializable {
           }
         } else {
           throw e;
-          }
-        } catch (Exception e) {
-          LOG.info("Non IO Exception Seen");
-          throw e;
+        }
+      } catch (Exception e) {
+        LOG.info("Non IO Exception Seen");
+        throw e;
       }
 
       // Test Runtime Exists (should not be possible to hit this case)
@@ -287,7 +287,8 @@ public abstract class PythonTextTransformer implements Serializable {
       LOG.info("Process Python Results: " + dataFile.getAbsolutePath());
       List<String> results = new ArrayList<>();
       try {
-        final BufferedReader reader = new BufferedReader(new InputStreamReader(runtime.getInputStream()));
+        final BufferedReader reader =
+            new BufferedReader(new InputStreamReader(runtime.getInputStream()));
         reader.lines().iterator().forEachRemaining(results::add);
       } catch (Exception e) {
         e.printStackTrace();
@@ -313,9 +314,7 @@ public abstract class PythonTextTransformer implements Serializable {
       LOG.info("getting script!");
 
       List<String> scripts =
-          result
-              .metadata()
-              .stream()
+          result.metadata().stream()
               .filter(metadata -> metadata.resourceId().getFilename().endsWith(".py"))
               .map(Metadata::resourceId)
               .map(
@@ -434,9 +433,11 @@ public abstract class PythonTextTransformer implements Serializable {
                       batchCounter = 0;
                       batchLimit = 1000;
                       processUUID = UUID.randomUUID().toString();
-                      manifestFile = File.createTempFile(String.format("manifest_%s", processUUID), null);
+                      manifestFile =
+                          File.createTempFile(String.format("manifest_%s", processUUID), null);
                       futures = new HashMap<String, FailsafeElement<T, String>>();
-                      dataWriter = new BufferedWriter(new FileWriter(manifestFile.getAbsolutePath()));
+                      dataWriter =
+                          new BufferedWriter(new FileWriter(manifestFile.getAbsolutePath()));
                       LOG.info("file is at {}", manifestFile.getAbsolutePath());
 
                       // initialize a temp file (non local) and a counter
@@ -444,9 +445,9 @@ public abstract class PythonTextTransformer implements Serializable {
 
                     }
 
-
                     @ProcessElement
-                    public void processElement(ProcessContext context, BoundedWindow window) throws IOException {
+                    public void processElement(ProcessContext context, BoundedWindow window)
+                        throws IOException {
                       this.window = window;
                       FailsafeElement<T, String> element = context.element();
                       String payloadStr = element.getPayload();
@@ -470,16 +471,15 @@ public abstract class PythonTextTransformer implements Serializable {
                     // TODO: create an execute batch fn
 
                     @FinishBundle
-                    public void finishBundle(FinishBundleContext context) throws IOException,
-                        NoSuchMethodException,
-                        InterruptedException {
+                    public void finishBundle(FinishBundleContext context)
+                        throws IOException, NoSuchMethodException, InterruptedException {
                       LOG.info("closing batch at {} events", batchCounter);
                       Integer retries = runtimeRetries();
                       List<String> results = new ArrayList<>();
                       LOG.info("executing the batch!!!");
                       results = pythonRuntime.invoke(manifestFile, retries);
                       LOG.info("processed {} number of records", results.size());
-                      for (int iter = 0; iter < results.size(); iter++){
+                      for (int iter = 0; iter < results.size(); iter++) {
                         String event = results.get(iter);
                         JSONObject json = new JSONObject(event);
                         String eventId = json.getString("id");
@@ -489,14 +489,15 @@ public abstract class PythonTextTransformer implements Serializable {
                         if (json.getString("status").equals("SUCCESS")) {
                           String transformedEvent = json.getJSONObject("event").toString();
                           context.output(
-                            FailsafeElement.of(originalEvent.getOriginalPayload(),
-                                               json.getJSONObject("event").toString()),
+                              FailsafeElement.of(
+                                  originalEvent.getOriginalPayload(),
+                                  json.getJSONObject("event").toString()),
                               window.maxTimestamp(),
                               window);
                           successCounter.inc();
                         } else if (json.getString("status").equals("FAILED")) {
                           context.output(
-                                  originalEvent
+                              originalEvent
                                   .setErrorMessage(json.getString("error_message"))
                                   .setStacktrace(json.getString("error_message")),
                               window.maxTimestamp(),
@@ -510,11 +511,10 @@ public abstract class PythonTextTransformer implements Serializable {
                       dataWriter.close();
                       manifestFile.delete();
                     }
-                  }
-                ).withOutputTags(successTag(), TupleTagList.of(failureTag()))
-          );
-      }
+                  })
+              .withOutputTags(successTag(), TupleTagList.of(failureTag())));
     }
+  }
 
   /**
    * Retrieves a {@link PythonRuntime} configured to invoke the specified function within the
@@ -540,23 +540,4 @@ public abstract class PythonTextTransformer implements Serializable {
 
     return runtime;
   }
-
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

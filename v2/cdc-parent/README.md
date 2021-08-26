@@ -399,4 +399,3 @@ The solution ends up resolving types like this:
 | Time / time duration  | `TIME`  | `INTEGER`  | Translates a time into number of microseconds (since midnight).  |
 | Date  | `DATE`  | `INTEGER`  | Represents number of days since epoch. Better conversion TBD.  |
 | Datetime  | `DATETIME`  | `INTEGER`  | Represents number of microseconds since epoch. Better conversion TBD.  |
-

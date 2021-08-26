@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.templates;
 
 import com.google.api.services.bigquery.model.TableCell;
@@ -131,6 +130,7 @@ import org.slf4j.LoggerFactory;
  * --zone=us-east1-d \
  * --parameters \
  * "inputFilePattern=gs://<bucketName>/<fileName>.csv, batchSize=15,datasetName=<BQDatasetId>,
+ *  dlpProjectId=<projectId>,
  *  deidentifyTemplateName=projects/{projectId}/deidentifyTemplates/{deIdTemplateId}
  * </pre>
  */
@@ -205,8 +205,10 @@ public class DLPTextToBigQueryStreaming {
             .apply(
                 "Fixed Window(30 Sec)",
                 Window.<KV<String, ReadableFile>>into(FixedWindows.of(WINDOW_INTERVAL))
-                    .triggering(Repeatedly.forever(
-                        AfterProcessingTime.pastFirstElementInPane().plusDelayOf(Duration.ZERO)))
+                    .triggering(
+                        Repeatedly.forever(
+                            AfterProcessingTime.pastFirstElementInPane()
+                                .plusDelayOf(Duration.ZERO)))
                     .discardingFiredPanes()
                     .withAllowedLateness(Duration.ZERO))
             .apply(GroupByKey.create());
@@ -444,7 +446,8 @@ public class DLPTextToBigQueryStreaming {
      * @throws IOException
      */
     @GetInitialRestriction
-    public OffsetRange getInitialRestriction(@Element KV<String, ReadableFile> csvFile) throws IOException {
+    public OffsetRange getInitialRestriction(@Element KV<String, ReadableFile> csvFile)
+        throws IOException {
 
       int rowCount = 0;
       int totalSplit = 0;
@@ -478,7 +481,9 @@ public class DLPTextToBigQueryStreaming {
      */
     @SplitRestriction
     public void splitRestriction(
-        @Element KV<String, ReadableFile> csvFile,@Restriction OffsetRange range, OutputReceiver<OffsetRange> out) {
+        @Element KV<String, ReadableFile> csvFile,
+        @Restriction OffsetRange range,
+        OutputReceiver<OffsetRange> out) {
       /** split the initial restriction by 1 */
       for (final OffsetRange p : range.split(1, 1)) {
         out.output(p);
@@ -728,7 +733,7 @@ public class DLPTextToBigQueryStreaming {
 
     if (channel != null) {
 
-      br = new BufferedReader(Channels.newReader(channel, Charsets.ISO_8859_1.name()));
+      br = new BufferedReader(Channels.newReader(channel, Charsets.UTF_8.name()));
     }
 
     return br;

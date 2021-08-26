@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.templates;
 
 import com.google.api.services.bigquery.model.TableFieldSchema;
@@ -56,6 +55,7 @@ public class BigQueryToTFRecord {
    * BigQueryToTFRecord#buildFeature} method creating a TensorFlow feature from the record.
    */
   private static final String TRAIN = "train/";
+
   private static final String TEST = "test/";
   private static final String VAL = "val/";
 
@@ -90,7 +90,6 @@ public class BigQueryToTFRecord {
         feature.getInt64ListBuilder().addValue(boolAsInt);
       }
     }
-
   }
 
   /**
@@ -161,8 +160,11 @@ public class BigQueryToTFRecord {
     Features.Builder features = example.getFeaturesBuilder();
     GenericRecord record = schemaAndRecord.getRecord();
     for (TableFieldSchema field : schemaAndRecord.getTableSchema().getFields()) {
-      Feature feature = buildFeature(record.get(field.getName()), field.getType());
-      features.putFeature(field.getName(), feature);
+      Object fieldValue = record.get(field.getName());
+      if (fieldValue != null) {
+        Feature feature = buildFeature(fieldValue, field.getType());
+        features.putFeature(field.getName(), feature);
+      }
     }
     return example.build().toByteArray();
   }
@@ -184,36 +186,39 @@ public class BigQueryToTFRecord {
    * The {@link BigQueryToTFRecord#applyTrainTestValSplit} method transforms the PCollection by
    * randomly partitioning it into PCollections for each dataset.
    */
-  static PCollectionList<byte[]> applyTrainTestValSplit(PCollection<byte[]> input,
+  static PCollectionList<byte[]> applyTrainTestValSplit(
+      PCollection<byte[]> input,
       ValueProvider<Float> trainingPercentage,
       ValueProvider<Float> testingPercentage,
       ValueProvider<Float> validationPercentage,
       Random rand) {
-    return input
-        .apply(Partition.of(
+    return input.apply(
+        Partition.of(
             3,
-            (Partition.PartitionFn<byte[]>) (number, numPartitions) -> {
-              Float train = trainingPercentage.get();
-              Float test = testingPercentage.get();
-              Float validation = validationPercentage.get();
-              Double d = rand.nextDouble();
-              if (train + test + validation != 1) {
-                throw new RuntimeException(String.format("Train %.2f, Test %.2f, Validation"
-                    + " %.2f percentages must add up to 100 percent", train, test, validation));
-              }
-              if (d < train) {
-                return 0;
-              } else if (d >= train && d < train + test) {
-                return 1;
-              } else {
-                return 2;
-              }
-            }));
+            (Partition.PartitionFn<byte[]>)
+                (number, numPartitions) -> {
+                  Float train = trainingPercentage.get();
+                  Float test = testingPercentage.get();
+                  Float validation = validationPercentage.get();
+                  Double d = rand.nextDouble();
+                  if (train + test + validation != 1) {
+                    throw new RuntimeException(
+                        String.format(
+                            "Train %.2f, Test %.2f, Validation"
+                                + " %.2f percentages must add up to 100 percent",
+                            train, test, validation));
+                  }
+                  if (d < train) {
+                    return 0;
+                  } else if (d >= train && d < train + test) {
+                    return 1;
+                  } else {
+                    return 2;
+                  }
+                }));
   }
 
-  /**
-   * Run the pipeline.
-   */
+  /** Run the pipeline. */
   public static void main(String[] args) {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     run(options);
@@ -244,53 +249,58 @@ public class BigQueryToTFRecord {
                     .usingStandardSql()
                     .withMethod(BigQueryIO.TypedRead.Method.DIRECT_READ)
                 // Enable BigQuery Storage API
-            ).apply("ReshuffleResults", Reshuffle.viaRandomKey());
+                )
+            .apply("ReshuffleResults", Reshuffle.viaRandomKey());
 
-    PCollectionList<byte[]> partitionedExamples = applyTrainTestValSplit(
-        bigQueryToExamples,
-        options.getTrainingPercentage(),
-        options.getTestingPercentage(),
-        options.getValidationPercentage(),
-        rand);
+    PCollectionList<byte[]> partitionedExamples =
+        applyTrainTestValSplit(
+            bigQueryToExamples,
+            options.getTrainingPercentage(),
+            options.getTestingPercentage(),
+            options.getValidationPercentage(),
+            rand);
 
-    partitionedExamples.get(0).apply(
-        "WriteTFTrainingRecord",
-        FileIO.<byte[]>write()
-            .via(TFRecordIO.sink())
-            .to(ValueProvider.NestedValueProvider.of(
-                options.getOutputDirectory(),
-                dir -> concatURI(dir, TRAIN)))
-            .withNumShards(0)
-            .withSuffix(options.getOutputSuffix()));
+    partitionedExamples
+        .get(0)
+        .apply(
+            "WriteTFTrainingRecord",
+            FileIO.<byte[]>write()
+                .via(TFRecordIO.sink())
+                .to(
+                    ValueProvider.NestedValueProvider.of(
+                        options.getOutputDirectory(), dir -> concatURI(dir, TRAIN)))
+                .withNumShards(0)
+                .withSuffix(options.getOutputSuffix()));
 
-    partitionedExamples.get(1).apply(
-        "WriteTFTestingRecord",
-        FileIO.<byte[]>write()
-            .via(TFRecordIO.sink())
-            .to(ValueProvider.NestedValueProvider.of(
-                options.getOutputDirectory(),
-                dir -> concatURI(dir, TEST)))
-            .withNumShards(0)
-            .withSuffix(options.getOutputSuffix()));
+    partitionedExamples
+        .get(1)
+        .apply(
+            "WriteTFTestingRecord",
+            FileIO.<byte[]>write()
+                .via(TFRecordIO.sink())
+                .to(
+                    ValueProvider.NestedValueProvider.of(
+                        options.getOutputDirectory(), dir -> concatURI(dir, TEST)))
+                .withNumShards(0)
+                .withSuffix(options.getOutputSuffix()));
 
-    partitionedExamples.get(2).apply(
-        "WriteTFValidationRecord",
-        FileIO.<byte[]>write()
-            .via(TFRecordIO.sink())
-            .to(ValueProvider.NestedValueProvider.of(
-                options.getOutputDirectory(),
-                dir -> concatURI(dir, VAL)))
-            .withNumShards(0)
-            .withSuffix(options.getOutputSuffix()));
+    partitionedExamples
+        .get(2)
+        .apply(
+            "WriteTFValidationRecord",
+            FileIO.<byte[]>write()
+                .via(TFRecordIO.sink())
+                .to(
+                    ValueProvider.NestedValueProvider.of(
+                        options.getOutputDirectory(), dir -> concatURI(dir, VAL)))
+                .withNumShards(0)
+                .withSuffix(options.getOutputSuffix()));
 
     return pipeline.run();
   }
 
-  /**
-   * Define command line arguments.
-   */
-  public interface Options
-      extends BigQueryReadOptions {
+  /** Define command line arguments. */
+  public interface Options extends BigQueryReadOptions {
 
     @Description("The GCS directory to store output TFRecord files.")
     ValueProvider<String> getOutputDirectory();

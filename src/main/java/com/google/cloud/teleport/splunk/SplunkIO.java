@@ -1,19 +1,18 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
-
 package com.google.cloud.teleport.splunk;
 
 import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkArgument;
@@ -45,8 +44,7 @@ public class SplunkIO {
 
   private static final Logger LOG = LoggerFactory.getLogger(SplunkIO.class);
 
-  private SplunkIO() {
-  }
+  private SplunkIO() {}
 
   public static Write.Builder writeBuilder() {
     return new AutoValue_SplunkIO_Write.Builder();
@@ -81,12 +79,12 @@ public class SplunkIO {
     public PCollection<SplunkWriteError> expand(PCollection<SplunkEvent> input) {
 
       LOG.info("Configuring SplunkEventWriter.");
-      SplunkEventWriter.Builder builder = SplunkEventWriter
-          .newBuilder()
-          .withUrl(url())
-          .withInputBatchCount(batchCount())
-          .withDisableCertificateValidation(disableCertificateValidation())
-          .withToken((token()));
+      SplunkEventWriter.Builder builder =
+          SplunkEventWriter.newBuilder()
+              .withUrl(url())
+              .withInputBatchCount(batchCount())
+              .withDisableCertificateValidation(disableCertificateValidation())
+              .withToken((token()));
 
       SplunkEventWriter writer = builder.build();
       LOG.info("SplunkEventWriter configured");
@@ -94,12 +92,11 @@ public class SplunkIO {
       // Return a PCollection<SplunkWriteError>
       return input
           .apply("Create KV pairs", CreateKeys.of(parallelism()))
-          .apply("Write Splunk events", ParDo.of(writer)).setCoder(SplunkWriteErrorCoder.of());
+          .apply("Write Splunk events", ParDo.of(writer))
+          .setCoder(SplunkWriteErrorCoder.of());
     }
 
-    /**
-     * A builder for creating {@link Write} objects.
-     */
+    /** A builder for creating {@link Write} objects. */
     @AutoValue.Builder
     public abstract static class Builder {
 
@@ -171,8 +168,7 @@ public class SplunkIO {
        * @return {@link Builder}
        */
       public Builder withBatchCount(ValueProvider<Integer> batchCount) {
-        checkArgument(batchCount != null,
-            "withBatchCount(batchCount) called with null input.");
+        checkArgument(batchCount != null, "withBatchCount(batchCount) called with null input.");
         return setBatchCount(batchCount);
       }
 
@@ -183,7 +179,8 @@ public class SplunkIO {
        * @return {@link Builder}
        */
       public Builder withBatchCount(Integer batchCount) {
-        checkArgument(batchCount != null,
+        checkArgument(
+            batchCount != null,
             "withMaxEventsBatchCount(maxEventsBatchCount) called with null input.");
         return setBatchCount(ValueProvider.StaticValueProvider.of(batchCount));
       }
@@ -195,8 +192,7 @@ public class SplunkIO {
        * @return {@link Builder}
        */
       public Builder withParallelism(ValueProvider<Integer> parallelism) {
-        checkArgument(parallelism != null,
-            "withParallelism(parallelism) called with null input.");
+        checkArgument(parallelism != null, "withParallelism(parallelism) called with null input.");
         return setParallelism(parallelism);
       }
 
@@ -207,8 +203,7 @@ public class SplunkIO {
        * @return {@link Builder}
        */
       public Builder withParallelism(Integer parallelism) {
-        checkArgument(parallelism != null,
-            "withParallelism(parallelism) called with null input.");
+        checkArgument(parallelism != null, "withParallelism(parallelism) called with null input.");
         return setParallelism(ValueProvider.StaticValueProvider.of(parallelism));
       }
 
@@ -220,7 +215,8 @@ public class SplunkIO {
        */
       public Builder withDisableCertificateValidation(
           ValueProvider<Boolean> disableCertificateValidation) {
-        checkArgument(disableCertificateValidation != null,
+        checkArgument(
+            disableCertificateValidation != null,
             "withDisableCertificateValidation(disableCertificateValidation) called with null input.");
         return setDisableCertificateValidation(disableCertificateValidation);
       }
@@ -233,7 +229,8 @@ public class SplunkIO {
        * @return {@link Builder}
        */
       public Builder withDisableCertificateValidation(Boolean disableCertificateValidation) {
-        checkArgument(disableCertificateValidation != null,
+        checkArgument(
+            disableCertificateValidation != null,
             "withDisableCertificateValidation(disableCertificateValidation) called with null input.");
         return setDisableCertificateValidation(
             ValueProvider.StaticValueProvider.of((disableCertificateValidation)));
@@ -247,8 +244,8 @@ public class SplunkIO {
       }
     }
 
-    private static class CreateKeys extends
-        PTransform<PCollection<SplunkEvent>, PCollection<KV<Integer, SplunkEvent>>> {
+    private static class CreateKeys
+        extends PTransform<PCollection<SplunkEvent>, PCollection<KV<Integer, SplunkEvent>>> {
 
       private static final Integer DEFAULT_PARALLELISM = 1;
 
@@ -266,10 +263,8 @@ public class SplunkIO {
       public PCollection<KV<Integer, SplunkEvent>> expand(PCollection<SplunkEvent> input) {
 
         return input
-            .apply("Inject Keys",
-                ParDo.of(new CreateKeysFn(this.requestedKeys))
-            ).setCoder(KvCoder.of(BigEndianIntegerCoder.of(), SplunkEventCoder.of()));
-
+            .apply("Inject Keys", ParDo.of(new CreateKeysFn(this.requestedKeys)))
+            .setCoder(KvCoder.of(BigEndianIntegerCoder.of(), SplunkEventCoder.of()));
       }
 
       private class CreateKeysFn extends DoFn<SplunkEvent, KV<Integer, SplunkEvent>> {
@@ -302,7 +297,6 @@ public class SplunkIO {
           context.output(
               KV.of(ThreadLocalRandom.current().nextInt(calculatedParallelism), context.element()));
         }
-
       }
     }
   }

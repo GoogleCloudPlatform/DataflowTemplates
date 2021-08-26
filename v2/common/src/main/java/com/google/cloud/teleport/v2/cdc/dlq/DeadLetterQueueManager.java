@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2020 Google Inc.
+ * Copyright (C) 2020 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -38,8 +38,7 @@ import org.slf4j.LoggerFactory;
  */
 public class DeadLetterQueueManager implements Serializable {
 
-  private static final Logger LOG = LoggerFactory.getLogger(
-      DeadLetterQueueManager.class);
+  private static final Logger LOG = LoggerFactory.getLogger(DeadLetterQueueManager.class);
 
   private static final String DATETIME_FILEPATH_SUFFIX = "YYYY/MM/DD/HH/mm/";
   private final String retryDlqDirectory;
@@ -47,14 +46,14 @@ public class DeadLetterQueueManager implements Serializable {
   private final int maxRetries;
 
   /* The tag for change events which were retried over the specified count */
-  public static final TupleTag<FailsafeElement<String, String>>
-      PERMANENT_ERRORS = new TupleTag<FailsafeElement<String, String>>();
+  public static final TupleTag<FailsafeElement<String, String>> PERMANENT_ERRORS =
+      new TupleTag<FailsafeElement<String, String>>();
   /* The tag for successfully reconsumed change events */
-  public static final TupleTag<FailsafeElement<String, String>>
-      RETRYABLE_ERRORS = new TupleTag<FailsafeElement<String, String>>();
+  public static final TupleTag<FailsafeElement<String, String>> RETRYABLE_ERRORS =
+      new TupleTag<FailsafeElement<String, String>>();
 
-  private DeadLetterQueueManager(String retryDlqDirectory,
-      String severeDlqDirectory, int maxRetries) {
+  private DeadLetterQueueManager(
+      String retryDlqDirectory, String severeDlqDirectory, int maxRetries) {
     this.retryDlqDirectory = retryDlqDirectory;
     this.severeDlqDirectory = severeDlqDirectory;
     this.maxRetries = maxRetries;
@@ -65,12 +64,14 @@ public class DeadLetterQueueManager implements Serializable {
   }
 
   public static DeadLetterQueueManager create(String dlqDirectory, int maxRetries) {
-    String retryDlqUri = FileSystems.matchNewResource(dlqDirectory, true)
-        .resolve("retry", StandardResolveOptions.RESOLVE_DIRECTORY)
-        .toString();
-    String severeDlqUri = FileSystems.matchNewResource(dlqDirectory, true)
-        .resolve("severe", StandardResolveOptions.RESOLVE_DIRECTORY)
-        .toString();
+    String retryDlqUri =
+        FileSystems.matchNewResource(dlqDirectory, true)
+            .resolve("retry", StandardResolveOptions.RESOLVE_DIRECTORY)
+            .toString();
+    String severeDlqUri =
+        FileSystems.matchNewResource(dlqDirectory, true)
+            .resolve("severe", StandardResolveOptions.RESOLVE_DIRECTORY)
+            .toString();
     return new DeadLetterQueueManager(retryDlqUri, severeDlqUri, maxRetries);
   }
 
@@ -98,45 +99,39 @@ public class DeadLetterQueueManager implements Serializable {
     return FileBasedDeadLetterQueueReconsumer.create(retryDlqDirectory, recheckPeriodMinutes);
   }
 
-  public PCollectionTuple
-    getReconsumerDataTransform(PCollection<String> reconsumedElements) {
+  public PCollectionTuple getReconsumerDataTransform(PCollection<String> reconsumedElements) {
     return reconsumedElements.apply(
-          ParDo.of(
-              new DoFn<String, FailsafeElement<String, String>>() {
-                @ProcessElement
-                public void process(
-                    @Element String input,
-                    MultiOutputReceiver output) {
-                  FailsafeElement<String, String> element =
-                      FailsafeElement.of(input, input);
-                  // Early Return if maxRetries is set to 0
-                  if (maxRetries == 0) {
-                    output.get(RETRYABLE_ERRORS).output(element);
-                    return;
-                  }
-                  try {
-                    /* Remove error from metadata and populate error field
-                     * in failsafe element.
-                     */
-                    ObjectMapper mapper = new ObjectMapper();
-                    JsonNode jsonDLQElement = mapper.readTree(input);
-                    int retryCount = jsonDLQElement.get("_metadata_retry_count").asInt();
-                    if (retryCount <= maxRetries) {
+        ParDo.of(
+                new DoFn<String, FailsafeElement<String, String>>() {
+                  @ProcessElement
+                  public void process(@Element String input, MultiOutputReceiver output) {
+                    FailsafeElement<String, String> element = FailsafeElement.of(input, input);
+                    // Early Return if maxRetries is set to 0
+                    if (maxRetries == 0) {
                       output.get(RETRYABLE_ERRORS).output(element);
                       return;
                     }
+                    try {
+                      /* Remove error from metadata and populate error field
+                       * in failsafe element.
+                       */
+                      ObjectMapper mapper = new ObjectMapper();
+                      JsonNode jsonDLQElement = mapper.readTree(input);
+                      int retryCount = jsonDLQElement.get("_metadata_retry_count").asInt();
+                      if (retryCount <= maxRetries) {
+                        output.get(RETRYABLE_ERRORS).output(element);
+                        return;
+                      }
 
-                    String error = jsonDLQElement.get("_metadata_error").asText();
-                    element.setErrorMessage(error);
-                    output.get(PERMANENT_ERRORS).output(element);
-                  } catch (IOException e) {
-                    LOG.error("Issue parsing JSON record {}. Unable to continue.",
-                        input , e);
-                    output.get(PERMANENT_ERRORS).output(element);
+                      String error = jsonDLQElement.get("_metadata_error").asText();
+                      element.setErrorMessage(error);
+                      output.get(PERMANENT_ERRORS).output(element);
+                    } catch (IOException e) {
+                      LOG.error("Issue parsing JSON record {}. Unable to continue.", input, e);
+                      output.get(PERMANENT_ERRORS).output(element);
+                    }
                   }
-
-                }
-              }).withOutputTags(RETRYABLE_ERRORS,
-                  TupleTagList.of(PERMANENT_ERRORS)));
+                })
+            .withOutputTags(RETRYABLE_ERRORS, TupleTagList.of(PERMANENT_ERRORS)));
   }
 }

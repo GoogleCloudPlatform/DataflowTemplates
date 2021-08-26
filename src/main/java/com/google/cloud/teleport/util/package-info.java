@@ -14,8 +14,5 @@
  * the License.
  */
 
-
-/**
- * Utility classes.
- */
+/** Utility classes. */
 package com.google.cloud.teleport.util;

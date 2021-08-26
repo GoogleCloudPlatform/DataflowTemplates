@@ -1,20 +1,18 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
  * License for the specific language governing permissions and limitations under
  * the License.
- *
  */
-
 package com.google.cloud.teleport.bigtable;
 
 import com.google.bigtable.v2.Mutation;
@@ -252,6 +250,7 @@ public class BeamRowToBigtableFn extends DoFn<Row, KV<ByteString, Iterable<Mutat
 
   /**
    * Helper method to create a SetCell operation.
+   *
    * @param columnFamily the column family to apply the value on.
    * @param columnQualifier the column qualifier to apply the value on.
    * @param value the value to apply.
@@ -266,8 +265,10 @@ public class BeamRowToBigtableFn extends DoFn<Row, KV<ByteString, Iterable<Mutat
   }
 
   /**
-   * Method serializes a primitive to a ByteString. Most types are serialized with the {@link Bytes toBytes toBytes} method.
-   * Bytes and byte arrays pass through as they are whilst DATETIME types gets converted to a ISO8601 formatted String.
+   * Method serializes a primitive to a ByteString. Most types are serialized with the {@link Bytes
+   * toBytes toBytes} method. Bytes and byte arrays pass through as they are whilst DATETIME types
+   * gets converted to a ISO8601 formatted String.
+   *
    * @param type the {@link Row row} field type
    * @param value the value from the {@link Row row}
    * @return a ByteString.
@@ -325,8 +326,10 @@ public class BeamRowToBigtableFn extends DoFn<Row, KV<ByteString, Iterable<Mutat
   }
 
   /**
-   * Method serializes a primitive to a String. Most types are serialized with the standard toString method.
-   * Bytes and byte arrays pass through as they are whilst DATETIME types gets converted to a ISO8601 formatted String.
+   * Method serializes a primitive to a String. Most types are serialized with the standard toString
+   * method. Bytes and byte arrays pass through as they are whilst DATETIME types gets converted to
+   * a ISO8601 formatted String.
+   *
    * @param type the {@link Row row} field type
    * @param value the value from the {@link Row row}
    * @return a ByteString.

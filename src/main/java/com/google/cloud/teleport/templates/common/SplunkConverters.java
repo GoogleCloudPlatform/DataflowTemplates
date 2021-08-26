@@ -1,25 +1,27 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
-
 package com.google.cloud.teleport.templates.common;
 
 import com.google.api.client.util.DateTime;
 import com.google.cloud.teleport.splunk.SplunkEvent;
 import com.google.cloud.teleport.values.FailsafeElement;
 import com.google.common.base.Throwables;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.Description;
@@ -58,8 +60,13 @@ public class SplunkConverters {
   private static final String HEC_TIME_KEY = "time";
   private static final String HEC_SOURCE_KEY = "source";
   private static final String HEC_SOURCE_TYPE_KEY = "sourcetype";
-
+  private static final String HEC_FIELDS_KEY = "fields";
   private static final String TIMESTAMP_KEY = "timestamp";
+
+  private static final Gson GSON = new Gson();
+
+  protected static final String PUBSUB_MESSAGE_ATTRIBUTE_FIELD = "attributes";
+  protected static final String PUBSUB_MESSAGE_DATA_FIELD = "data";
 
   /**
    * Returns a {@link FailsafeStringToSplunkEvent} {@link PTransform} that consumes {@link
@@ -112,10 +119,11 @@ public class SplunkConverters {
     ValueProvider<Integer> getParallelism();
 
     void setParallelism(ValueProvider<Integer> parallelism);
-  
-    @Description("Determines whether the template forwards a PubsubMessage or just the underlying data.")
+
+    @Description(
+        "Determines whether the template forwards a PubsubMessage or just the underlying data.")
     ValueProvider<Boolean> getIncludePubsubMessage();
-  
+
     void setIncludePubsubMessage(ValueProvider<Boolean> includePubsubMessage);
 
     @Description(
@@ -183,6 +191,11 @@ public class SplunkConverters {
                           String parsedTimestamp;
                           if (metadataAvailable) {
                             parsedTimestamp = metadata.optString(HEC_TIME_KEY);
+                          } else if (isPubsubMessage(json)
+                              && json.getJSONObject(PUBSUB_MESSAGE_DATA_FIELD).has(TIMESTAMP_KEY)) {
+                            parsedTimestamp =
+                                json.getJSONObject(PUBSUB_MESSAGE_DATA_FIELD)
+                                    .getString(TIMESTAMP_KEY);
                           } else {
                             parsedTimestamp = json.optString(TIMESTAMP_KEY);
                           }
@@ -192,7 +205,7 @@ public class SplunkConverters {
                               builder.withTime(DateTime.parseRfc3339(parsedTimestamp).getValue());
                             } catch (NumberFormatException n) {
                               // We log this exception but don't want to fail the entire record.
-                              LOG.debug(
+                              LOG.warn(
                                   "Unable to parse non-rfc3339 formatted timestamp: {}",
                                   parsedTimestamp);
                             }
@@ -224,6 +237,17 @@ public class SplunkConverters {
                             String event = metadata.optString(HEC_EVENT_KEY);
                             if (!event.isEmpty()) {
                               builder.withEvent(event);
+                            }
+
+                            String fields = metadata.optString(HEC_FIELDS_KEY);
+                            if (!fields.isEmpty()) {
+                              try {
+                                builder.withFields(GSON.fromJson(fields, JsonObject.class));
+                              } catch (JsonParseException e) {
+                                LOG.warn(
+                                    "Unable to convert 'fields' metadata value:{} into JSON object",
+                                    fields);
+                              }
                             }
                             // We remove the _metadata entry from the payload
                             // to avoid duplicates in Splunk. The relevant entries
@@ -261,6 +285,17 @@ public class SplunkConverters {
                     }
                   })
               .withOutputTags(splunkEventOutputTag, TupleTagList.of(splunkDeadletterTag)));
+    }
+
+    /**
+     * Determines whether the JSON payload is a Pub/Sub message by checking for the 'data' and
+     * 'attributes' fields.
+     *
+     * @param json {@link JSONObject} payload
+     * @return true if the payload is a Pub/Sub message and false otherwise
+     */
+    private boolean isPubsubMessage(JSONObject json) {
+      return json.has(PUBSUB_MESSAGE_DATA_FIELD) && json.has(PUBSUB_MESSAGE_ATTRIBUTE_FIELD);
     }
   }
 }

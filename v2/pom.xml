@@ -29,9 +29,10 @@
         <autovalue.annotations.version>1.7.4</autovalue.annotations.version>
         <autovalue.service.version>1.0-rc6</autovalue.service.version>
         <checkstyle.version>8.7</checkstyle.version>
-        <beam.version>2.27.0</beam.version>
+        <beam.version>2.29.0</beam.version>
         <beam-vendor-guava.version>0.1</beam-vendor-guava.version>
         <hamcrest.version>2.1</hamcrest.version>
+        <hadoop.version>2.10.1</hadoop.version>
         <java.version>1.8</java.version>
         <jib.maven.version>2.6.0</jib.maven.version>
         <junit.version>4.13</junit.version>
@@ -49,25 +50,33 @@
         <mockito-core.version>3.0.0</mockito-core.version>
         <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
         <slf4j.version>1.7.25</slf4j.version>
-        <joda.version>2.10.5</joda.version>
-        <findbugs.version>3.0.1</findbugs.version>
         <mvn-target-dir>${basedir}/target</mvn-target-dir>
-        <derby.version>10.15.2.0</derby.version>
         <json.version>20200518</json.version>
         <excluded.spanner.tests>com.google.cloud.teleport.v2.spanner.IntegrationTest</excluded.spanner.tests>
+        <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
     </properties>
+
+    <dependencyManagement>
+      <dependencies>
+        <dependency>
+          <groupId>org.apache.beam</groupId>
+          <artifactId>beam-sdks-java-bom</artifactId>
+          <version>${beam.version}</version>
+          <type>pom</type>
+          <scope>import</scope>
+        </dependency>
+      </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <!-- Beam -->
         <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-sdks-java-core</artifactId>
-            <version>${beam.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
-            <version>${beam.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>junit</groupId>
@@ -78,23 +87,19 @@
         <dependency>
           <groupId>org.apache.beam</groupId>
           <artifactId>beam-sdks-java-io-jdbc</artifactId>
-          <version>${beam.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-sdks-java-extensions-google-cloud-platform-core</artifactId>
-            <version>${beam.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
-            <version>${beam.version}</version>
         </dependency>
         <dependency>
             <!-- Direct runner included for local development and testing. -->
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-runners-direct-java</artifactId>
-            <version>${beam.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>
@@ -127,24 +132,7 @@
             <version>${mockito-core.version}</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.apache.derby</groupId>
-            <artifactId>derby</artifactId>
-            <version>${derby.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.derby</groupId>
-            <artifactId>derbyclient</artifactId>
-            <version>${derby.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.derby</groupId>
-            <artifactId>derbynet</artifactId>
-            <version>${derby.version}</version>
-            <scope>test</scope>
-        </dependency>
+
 
         <!-- Misc -->
         <dependency>
@@ -170,23 +158,8 @@
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>${slf4j.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
             <version>${slf4j.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>joda-time</groupId>
-            <artifactId>joda-time</artifactId>
-            <version>${joda.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.google.code.findbugs</groupId>
-            <artifactId>jsr305</artifactId>
-            <version>${findbugs.version}</version>
         </dependency>
         <dependency>
             <groupId>org.json</groupId>
@@ -573,8 +546,54 @@
                   They can be run run manually using
                   TODO: Add support for emulator to run integration tests.
                   'mvn -Dexcluded.spanner.tests="" -Dtest=<testname> test' -->
+                  <systemProperties>
+                    <property>
+                      <name>nashorn.args</name>
+                      <value>--no-deprecation-warning</value>
+                    </property>
+                  </systemProperties>
                   <excludedGroups>${excluded.spanner.tests}</excludedGroups>
                 </configuration>
+            </plugin>
+
+            <!-- Keep this equivalent with ../pom.xml. Unfortunately, we need to duplicate the
+            plugin until we can fix errors introduced by adding v2 as a child module of the root
+            teleport module. -->
+            <plugin>
+              <groupId>com.diffplug.spotless</groupId>
+              <artifactId>spotless-maven-plugin</artifactId>
+              <version>${spotless-maven-plugin.version}</version>
+              <configuration>
+                <formats>
+                  <!-- Avoid trailing whitespace and require ending newline. -->
+                  <format>
+                    <includes>
+                      <!-- .gitignore does not need to be included here. -->
+                      <include>*.md</include>
+                    </includes>
+                    <trimTrailingWhitespace/>
+                    <endWithNewline/>
+                  </format>
+                </formats>
+                <java>
+                  <toggleOffOn />
+                  <googleJavaFormat>
+                    <version>1.8</version>
+                    <style>GOOGLE</style>
+                  </googleJavaFormat>
+                  <licenseHeader>
+                    <file>JAVA_LICENSE_HEADER</file>
+                  </licenseHeader>
+                </java>
+              </configuration>
+              <!-- Bind to verify. -->
+              <executions>
+                <execution>
+                  <goals>
+                    <goal>check</goal>
+                  </goals>
+                </execution>
+              </executions>
             </plugin>
         </plugins>
     </build>
@@ -598,25 +617,26 @@
 
 
     <modules>
-        <module>bigquery-to-elasticsearch</module>
         <module>bigquery-to-parquet</module>
         <module>common</module>
         <module>cdc-parent</module>
-        <module>csv-to-elasticsearch</module>
         <module>datastream-to-bigquery</module>
         <module>datastream-to-postgres</module>
         <module>datastream-to-spanner</module>
+        <module>datastream-to-sql</module>
+        <module>elasticsearch-common</module>
         <module>file-format-conversion</module>
+        <module>googlecloud-to-elasticsearch</module>
         <module>hive-to-bigquery</module>
         <module>kafka-to-bigquery</module>
         <module>kafka-to-gcs</module>
         <module>kudu-to-bigquery</module>
         <module>pubsub-binary-to-bigquery</module>
         <module>pubsub-cdc-to-bigquery</module>
-        <module>pubsub-to-elasticsearch</module>
         <module>pubsub-to-mongodb</module>
         <module>streaming-data-generator</module>
         <module>kafka-to-pubsub</module>
+        <module>kafka-common</module>
     </modules>
 
 </project>

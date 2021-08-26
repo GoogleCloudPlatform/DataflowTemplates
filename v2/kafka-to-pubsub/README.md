@@ -1,8 +1,8 @@
 # Dataflow Flex Template to ingest data from Apache Kafka to Google Cloud Pub/Sub
 
-This directory contains a Dataflow Flex Template that creates a pipeline 
-to read data from a single or multiple topics from 
-[Apache Kafka](https://kafka.apache.org/) and write data into a single topic 
+This directory contains a Dataflow Flex Template that creates a pipeline
+to read data from a single or multiple topics from
+[Apache Kafka](https://kafka.apache.org/) and write data into a single topic
 in [Google Pub/Sub](https://cloud.google.com/pubsub).
 
 Supported data formats:
@@ -20,13 +20,13 @@ Supported destination configuration:
 Supported SSL certificate location:
 - Bucket in [Google Cloud Storage](https://cloud.google.com/storage)
 
-In a simple scenario, the template will create an Apache Beam pipeline that will read messages 
-from a source Kafka server with a source topic, and stream the text messages 
-into specified Pub/Sub destination topic. 
-Other scenarios may need Kafka SASL/SCRAM authentication, that can be performed over plain text or SSL encrypted connection. 
-The template supports using a single Kafka user account to authenticate in the provided source Kafka servers and topics. 
-To support SASL authentication over SSL the template will need access to a secrets vault service with 
-Kafka username and password, and with SSL certificate location in Google Cloud Storage Bucket, currently supporting HashiCorp Vault. 
+In a simple scenario, the template will create an Apache Beam pipeline that will read messages
+from a source Kafka server with a source topic, and stream the text messages
+into specified Pub/Sub destination topic.
+Other scenarios may need Kafka SASL/SCRAM authentication, that can be performed over plain text or SSL encrypted connection.
+The template supports using a single Kafka user account to authenticate in the provided source Kafka servers and topics.
+To support SASL authentication over SSL the template will need access to a secrets vault service with
+Kafka username and password, and with SSL certificate location in Google Cloud Storage Bucket, currently supporting HashiCorp Vault.
 
 ## Requirements
 
@@ -56,7 +56,7 @@ REGION=<my-region>
 
 #### Template Metadata Storage Bucket Creation
 
-The Dataflow Flex template has to store its metadata in a bucket in 
+The Dataflow Flex template has to store its metadata in a bucket in
 [Google Cloud Storage](https://cloud.google.com/storage), so it can be executed from the Google Cloud Platform.
 Create the bucket in Google Cloud Storage if it doesn't exist yet:
 
@@ -81,12 +81,12 @@ JS_FUNC_NAME=my-js-function
 
 ## Build Apache Kafka to Google Cloud Pub/Sub Flex Dataflow Template
 
-Dataflow Flex Templates package the pipeline as a Docker image and stage these images 
+Dataflow Flex Templates package the pipeline as a Docker image and stage these images
 on your project's [Container Registry](https://cloud.google.com/container-registry).
 
 ### Assembling the Uber-JAR
 
-The Dataflow Flex Templates require your Java project to be built into 
+The Dataflow Flex Templates require your Java project to be built into
 an Uber JAR file.
 
 Navigate to the v2 folder:
@@ -101,16 +101,16 @@ Build the Uber JAR:
 mvn package -am -pl kafka-to-pubsub
 ```
 
-ℹ️ An **Uber JAR** - also known as **fat JAR** - is a single JAR file that contains 
+ℹ️ An **Uber JAR** - also known as **fat JAR** - is a single JAR file that contains
 both target package *and* all its dependencies.
 
-The result of the `package` task execution is a `kafka-to-pubsub-1.0-SNAPSHOT.jar` 
+The result of the `package` task execution is a `kafka-to-pubsub-1.0-SNAPSHOT.jar`
 file that is generated under the `target` folder in kafka-to-pubsub directory.
 
 ### Creating the Dataflow Flex Template
 
 To execute the template you need to create the template spec file containing all
-the necessary information to run the job. This template already has the following 
+the necessary information to run the job. This template already has the following
 [metadata file](src/main/resources/kafka_to_pubsub_metadata.json) in resources.
 
 Navigate to the template folder:
@@ -182,7 +182,7 @@ You can do this in 3 different ways:
     API_ROOT_URL="https://dataflow.googleapis.com"
     TEMPLATES_LAUNCH_API="${API_ROOT_URL}/v1b3/projects/${PROJECT}/locations/${REGION}/flexTemplates:launch"
     JOB_NAME="kafka-to-pubsub-`date +%Y%m%d-%H%M%S-%N`"
-    
+
     time curl -X POST -H "Content-Type: application/json" \
         -H "Authorization: Bearer $(gcloud auth print-access-token)" \
         -d '

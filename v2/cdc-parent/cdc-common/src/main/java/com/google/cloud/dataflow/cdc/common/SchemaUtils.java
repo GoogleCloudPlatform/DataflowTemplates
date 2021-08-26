@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -33,8 +33,7 @@ public class SchemaUtils {
 
   private static final Logger LOG = LoggerFactory.getLogger(SchemaUtils.class);
 
-  private static final ImmutableBiMap<String, TypeName>
-      FIELD_TYPE_NAMES =
+  private static final ImmutableBiMap<String, TypeName> FIELD_TYPE_NAMES =
       ImmutableBiMap.<String, org.apache.beam.sdk.schemas.Schema.TypeName>builder()
           .put("BOOL", org.apache.beam.sdk.schemas.Schema.TypeName.BOOLEAN)
           .put("BYTES", org.apache.beam.sdk.schemas.Schema.TypeName.BYTES)
@@ -47,13 +46,10 @@ public class SchemaUtils {
           .put("TIMESTAMP", org.apache.beam.sdk.schemas.Schema.TypeName.DATETIME)
           .build();
 
-  private static final ImmutableBiMap<String, FieldType>
-      LOGICAL_FIELD_TYPES =
+  private static final ImmutableBiMap<String, FieldType> LOGICAL_FIELD_TYPES =
       ImmutableBiMap.<String, org.apache.beam.sdk.schemas.Schema.FieldType>builder()
-          .put("DATE", org.apache.beam.sdk.schemas.Schema.FieldType.logicalType(
-              SqlTypes.DATE))
-          .put("TIME", org.apache.beam.sdk.schemas.Schema.FieldType.logicalType(
-              SqlTypes.TIME))
+          .put("DATE", org.apache.beam.sdk.schemas.Schema.FieldType.logicalType(SqlTypes.DATE))
+          .put("TIME", org.apache.beam.sdk.schemas.Schema.FieldType.logicalType(SqlTypes.TIME))
           .put("MAP<STRING,STRING>", FieldType.map(FieldType.STRING, FieldType.STRING))
           .build();
 
@@ -65,8 +61,7 @@ public class SchemaUtils {
       List<ColumnSchema> cols) {
     org.apache.beam.sdk.schemas.Schema.Builder schemaBuilder =
         org.apache.beam.sdk.schemas.Schema.builder();
-    cols.forEach(
-        col -> schemaBuilder.addField(toBeamField(col)));
+    cols.forEach(col -> schemaBuilder.addField(toBeamField(col)));
     return schemaBuilder.build();
   }
 
@@ -77,7 +72,7 @@ public class SchemaUtils {
     Field field = Field.of(name, beamFieldType);
 
     if (Strings.isNullOrEmpty(columnSchema.getMode())
-            || "NULLABLE".equals(columnSchema.getMode())) {
+        || "NULLABLE".equals(columnSchema.getMode())) {
       field = field.withNullable(true);
     } else if ("REQUIRED".equals(columnSchema.getMode())) {
       field = field.withNullable(false);
@@ -111,9 +106,10 @@ public class SchemaUtils {
   }
 
   static Schema fromBeamSchema(org.apache.beam.sdk.schemas.Schema beamSchema) {
-    List<ColumnSchema> catalogColumns = beamSchema.getFields().stream()
-        .map(SchemaUtils::fromBeamField)
-        .collect(Collectors.toList());
+    List<ColumnSchema> catalogColumns =
+        beamSchema.getFields().stream()
+            .map(SchemaUtils::fromBeamField)
+            .collect(Collectors.toList());
 
     return Schema.newBuilder().addAllColumns(catalogColumns).build();
   }
@@ -137,18 +133,11 @@ public class SchemaUtils {
           .build();
     } else if (LOGICAL_FIELD_TYPES.inverse().containsKey(beamField.getType())) {
       String columnType = LOGICAL_FIELD_TYPES.inverse().get(beamField.getType());
-      return columnBuilder
-          .setColumn(beamField.getName())
-          .setType(columnType)
-          .build();
+      return columnBuilder.setColumn(beamField.getName()).setType(columnType).build();
     } else {
       String columnType = FIELD_TYPE_NAMES.inverse().get(beamField.getType().getTypeName());
       // TODO(pabloem): Include other characteristics of the field (e.g. required/nullable/etc).
-      return columnBuilder
-          .setColumn(beamField.getName())
-          .setType(columnType)
-          .build();
+      return columnBuilder.setColumn(beamField.getName()).setType(columnType).build();
     }
   }
-
 }

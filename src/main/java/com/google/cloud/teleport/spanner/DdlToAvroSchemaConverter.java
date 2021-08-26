@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner;
 
 import com.google.cloud.teleport.spanner.common.NumericUtils;
@@ -21,6 +20,7 @@ import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.cloud.teleport.spanner.ddl.View;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.stream.Collectors;
@@ -34,8 +34,8 @@ public class DdlToAvroSchemaConverter {
   private final String version;
   private final Boolean shouldExportTimestampAsLogicalType;
 
-  public DdlToAvroSchemaConverter(String namespace, String version,
-      Boolean shouldExportTimestampAsLogicalType) {
+  public DdlToAvroSchemaConverter(
+      String namespace, String version, Boolean shouldExportTimestampAsLogicalType) {
     this.namespace = namespace;
     this.version = version;
     this.shouldExportTimestampAsLogicalType = shouldExportTimestampAsLogicalType;
@@ -99,6 +99,18 @@ public class DdlToAvroSchemaConverter {
       schemas.add(schema);
     }
 
+    for (View view : ddl.views()) {
+      SchemaBuilder.RecordBuilder<Schema> recordBuilder =
+          SchemaBuilder.record(view.name()).namespace(this.namespace);
+      recordBuilder.prop("googleFormatVersion", version);
+      recordBuilder.prop("googleStorage", "CloudSpanner");
+      recordBuilder.prop("spannerViewQuery", view.query());
+      if (view.security() != null) {
+        recordBuilder.prop("spannerViewSecurity", view.security().toString());
+      }
+      schemas.add(recordBuilder.fields().endRecord());
+    }
+
     return schemas;
   }
 
@@ -111,6 +123,8 @@ public class DdlToAvroSchemaConverter {
       case FLOAT64:
         return SchemaBuilder.builder().doubleType();
       case STRING:
+      case DATE:
+      case JSON:
         return SchemaBuilder.builder().stringType();
       case BYTES:
         return SchemaBuilder.builder().bytesType();
@@ -118,8 +132,6 @@ public class DdlToAvroSchemaConverter {
         return shouldExportTimestampAsLogicalType
             ? LogicalTypes.timestampMicros().addToSchema(SchemaBuilder.builder().longType())
             : SchemaBuilder.builder().stringType();
-      case DATE:
-        return SchemaBuilder.builder().stringType();
       case NUMERIC:
         return LogicalTypes.decimal(NumericUtils.PRECISION, NumericUtils.SCALE)
             .addToSchema(SchemaBuilder.builder().bytesType());

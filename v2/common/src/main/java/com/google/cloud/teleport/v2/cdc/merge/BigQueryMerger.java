@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.cdc.merge;
 
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryOptions;
-import com.google.cloud.bigquery.Job;
 import com.google.cloud.bigquery.JobId;
 import com.google.cloud.bigquery.QueryJobConfiguration;
 import com.google.cloud.bigquery.TableResult;
@@ -48,9 +47,7 @@ import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Class BigQueryMerger.
- */
+/** Class BigQueryMerger. */
 public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollection<Void>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryMerger.class);
@@ -69,36 +66,38 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
   @Override
   public PCollection<Void> expand(PCollection<MergeInfo> input) {
     final MergeStatementBuilder mergeBuilder = new MergeStatementBuilder(mergeConfiguration);
-    PCollection<MergeInfo> mergeInfoRecords = input
-        .apply(
-            MapElements.into(
-                TypeDescriptors.kvs(
-                    TypeDescriptors.strings(), TypeDescriptor.of(MergeInfo.class)))
-                .via(mergeInfo -> KV.of(mergeInfo.getReplicaTable(), mergeInfo)))
-        .apply(new TriggerPerKeyOnFixedIntervals<String, MergeInfo>(windowDuration))
-        .apply(Values.create());
+    PCollection<MergeInfo> mergeInfoRecords =
+        input
+            .apply(
+                MapElements.into(
+                        TypeDescriptors.kvs(
+                            TypeDescriptors.strings(), TypeDescriptor.of(MergeInfo.class)))
+                    .via(mergeInfo -> KV.of(mergeInfo.getReplicaTable(), mergeInfo)))
+            .apply(new TriggerPerKeyOnFixedIntervals<String, MergeInfo>(windowDuration))
+            .apply(Values.create());
 
     return expandExecuteMerge(mergeInfoRecords, mergeConfiguration, testBigQueryClient);
   }
 
-  /**
-   * The extended expand function which builds and executes Merge queries.
-   */
+  /** The extended expand function which builds and executes Merge queries. */
   public static PCollection<Void> expandExecuteMerge(
-        PCollection<MergeInfo> input,
-        MergeConfiguration mergeConfiguration,
-        BigQuery bigQueryClient) {
+      PCollection<MergeInfo> input,
+      MergeConfiguration mergeConfiguration,
+      BigQuery bigQueryClient) {
     final MergeStatementBuilder mergeBuilder = new MergeStatementBuilder(mergeConfiguration);
     return input
-        .apply(MapElements.into(TypeDescriptors.strings()).via(mergeInfo -> {
-          return mergeBuilder.buildMergeStatement(
-              mergeInfo.getReplicaTable(),
-              mergeInfo.getStagingTable(),
-              mergeInfo.getAllPkFields(),
-              mergeInfo.getOrderByFields(),
-              mergeInfo.getDeleteField(),
-              mergeInfo.getAllFields());
-        }))
+        .apply(
+            MapElements.into(TypeDescriptors.strings())
+                .via(
+                    mergeInfo -> {
+                      return mergeBuilder.buildMergeStatement(
+                          mergeInfo.getReplicaTable(),
+                          mergeInfo.getStagingTable(),
+                          mergeInfo.getAllPkFields(),
+                          mergeInfo.getOrderByFields(),
+                          mergeInfo.getDeleteField(),
+                          mergeInfo.getAllFields());
+                    }))
         .apply(ParDo.of(new BigQueryStatementIssuingFn(bigQueryClient)))
         .apply(
             MapElements.into(TypeDescriptors.voids())
@@ -109,6 +108,7 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
 
   /**
    * Class {@link TriggerPerKeyOnFixedIntervals}.
+   *
    * @param <K> key.
    * @param <V> value.
    */
@@ -172,13 +172,10 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
       public void cleanKeysProcessed(FinishBundleContext c) {
         keysProcessed.clear();
       }
-
     }
   }
 
-  /**
-   * Class {@link BigQueryStatementIssuingFn}.
-   */
+  /** Class {@link BigQueryStatementIssuingFn}. */
   public static class BigQueryStatementIssuingFn extends DoFn<String, Void> {
 
     public static final String JOB_ID_PREFIX = "bigstream_to_bq";
@@ -205,19 +202,16 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
     @ProcessElement
     public void process(ProcessContext c) throws InterruptedException {
       String statement = c.element();
-      try { 
-        Job jobInfo = issueQueryToBQ(statement);
-        LOG.info("Job Info for triggered job: {}", jobInfo);
-        jobInfo = jobInfo.waitFor();
+      try {
+        TableResult queryResult = issueQueryToBQ(statement);
         mergesIssued.inc();
-        LOG.info("Job Info for finalized job: {}", jobInfo);
+        LOG.info("Merge job executed: {}", statement);
       } catch (Exception e) {
-        LOG.error("Merge Job Failed: Exception: {} Statement: {}",
-          e.toString(), statement);
+        LOG.error("Merge Job Failed: Exception: {} Statement: {}", e.toString(), statement);
       }
     }
 
-    private Job issueQueryToBQ(String statement) throws InterruptedException {
+    private TableResult issueQueryToBQ(String statement) throws InterruptedException {
       QueryJobConfiguration jobConfiguration = QueryJobConfiguration.newBuilder(statement).build();
 
       String jobId = makeJobId(JOB_ID_PREFIX, statement);
@@ -225,7 +219,7 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
       LOG.info("Triggering job {} for statement |{}|", jobId, statement);
 
       TableResult result = bigQueryClient.query(jobConfiguration, JobId.of(jobId));
-      return bigQueryClient.getJob(JobId.of(jobId));
+      return result;
     }
 
     String makeJobId(String jobIdPrefix, String statement) {

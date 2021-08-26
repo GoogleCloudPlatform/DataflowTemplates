@@ -14,7 +14,5 @@
  * the License.
  */
 
-/**
- * Common {@link org.apache.beam.sdk.options.PipelineOptions} used by Flex templates.
- */
+/** Common {@link org.apache.beam.sdk.options.PipelineOptions} used by Flex templates. */
 package com.google.cloud.teleport.v2.options;

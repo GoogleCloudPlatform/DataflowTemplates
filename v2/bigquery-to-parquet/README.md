@@ -12,8 +12,8 @@ from a BigQuery table into one or more Parquet files in Google Cloud Storage.
 * Cloud Storage bucket exists
 
 ### Building Template
-This is a Flex Template meaning that the pipeline code will be containerized and the container will be 
-run on Dataflow. 
+This is a Flex Template meaning that the pipeline code will be containerized and the container will be
+run on Dataflow.
 
 #### Building Container Image
 * Set environment variables that will be used in the build process.

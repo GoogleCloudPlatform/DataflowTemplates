@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2016 Google Inc.
+ * Copyright (C) 2016 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,9 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.templates;
-
 
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.TextIO;
@@ -34,9 +32,7 @@ import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 
-/**
- * An template that counts words in Shakespeare.
- */
+/** An template that counts words in Shakespeare. */
 public class WordCount {
 
   static class ExtractWordsFn extends DoFn<String, String> {
@@ -72,18 +68,16 @@ public class WordCount {
    * A PTransform that converts a PCollection containing lines of text into a PCollection of
    * formatted word counts.
    */
-  public static class CountWords extends PTransform<PCollection<String>,
-        PCollection<KV<String, Long>>> {
+  public static class CountWords
+      extends PTransform<PCollection<String>, PCollection<KV<String, Long>>> {
     @Override
     public PCollection<KV<String, Long>> expand(PCollection<String> lines) {
 
       // Convert lines of text into individual words.
-      PCollection<String> words = lines.apply(
-          ParDo.of(new ExtractWordsFn()));
+      PCollection<String> words = lines.apply(ParDo.of(new ExtractWordsFn()));
 
       // Count the number of times each word occurs.
-      PCollection<KV<String, Long>> wordCounts =
-          words.apply(Count.<String>perElement());
+      PCollection<KV<String, Long>> wordCounts = words.apply(Count.<String>perElement());
 
       return wordCounts;
     }
@@ -97,21 +91,23 @@ public class WordCount {
   public interface WordCountOptions extends PipelineOptions {
     @Description("Path of the file to read from")
     ValueProvider<String> getInputFile();
+
     void setInputFile(ValueProvider<String> value);
 
     @Description("Path of the file to write to")
     ValueProvider<String> getOutput();
+
     void setOutput(ValueProvider<String> value);
   }
 
   public static void main(String[] args) {
-    WordCountOptions options = PipelineOptionsFactory.fromArgs(args).withValidation()
-      .as(WordCountOptions.class);
+    WordCountOptions options =
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(WordCountOptions.class);
     Pipeline p = Pipeline.create(options);
     p.apply("ReadLines", TextIO.read().from(options.getInputFile()))
-     .apply(new CountWords())
-     .apply(MapElements.via(new FormatAsTextFn()))
-     .apply("WriteCounts", TextIO.write().to(options.getOutput()));
+        .apply(new CountWords())
+        .apply(MapElements.via(new FormatAsTextFn()))
+        .apply("WriteCounts", TextIO.write().to(options.getOutput()));
 
     p.run();
   }

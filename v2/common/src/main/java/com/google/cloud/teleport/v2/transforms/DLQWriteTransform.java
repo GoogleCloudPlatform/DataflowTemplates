@@ -1,17 +1,17 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.transforms;
 
@@ -35,8 +35,8 @@ import org.joda.time.Instant;
 public class DLQWriteTransform {
 
   /**
-   * The {@link DLQWriteTransform} class is a {@link PTransform} that takes a PCollection
-   * of Strings as input and writes them to DLQ directory.
+   * The {@link DLQWriteTransform} class is a {@link PTransform} that takes a PCollection of Strings
+   * as input and writes them to DLQ directory.
    */
   @AutoValue
   public abstract static class WriteDLQ extends PTransform<PCollection<String>, PDone> {
@@ -51,21 +51,23 @@ public class DLQWriteTransform {
 
     @Override
     public PDone expand(PCollection<String> input) {
-      return input.apply(
-          ParDo.of(
-              new DoFn<String, String>() {
-                @ProcessElement
-                public void process(ProcessContext context) {
-                  Instant now = Instant.now();
-                  context.outputWithTimestamp(context.element(), now);
-                }
-              }))
+      return input
+          .apply(
+              ParDo.of(
+                  new DoFn<String, String>() {
+                    @ProcessElement
+                    public void process(ProcessContext context) {
+                      Instant now = Instant.now();
+                      context.outputWithTimestamp(context.element(), now);
+                    }
+                  }))
           .apply(
               "Creating 1m Window",
               Window.<String>into(FixedWindows.of(Duration.standardMinutes(1)))
-                  .triggering(Repeatedly.forever(
-                                  AfterProcessingTime.pastFirstElementInPane()
-                                      .plusDelayOf(Duration.standardMinutes(1))))
+                  .triggering(
+                      Repeatedly.forever(
+                          AfterProcessingTime.pastFirstElementInPane()
+                              .plusDelayOf(Duration.standardMinutes(1))))
                   .withAllowedLateness(Duration.ZERO)
                   .discardingFiredPanes())
           .apply(
@@ -75,11 +77,9 @@ public class DLQWriteTransform {
                   .withNumShards(20)
                   .to(
                       new WindowedFilenamePolicy(
-                          dlqDirectory(),
-                          "error", "-SSSSS-of-NNNNN", ".json"))
+                          dlqDirectory(), "error", "-SSSSS-of-NNNNN", ".json"))
                   .withTempDirectory(
-                      FileBasedSink.convertToFileResourceIfPossible(
-                          tmpDirectory())));
+                      FileBasedSink.convertToFileResourceIfPossible(tmpDirectory())));
     }
 
     /** Builder for {@link WriteDLQ}. */

@@ -2,7 +2,7 @@
 
 The [KafkaToGCS](src/main/java/com/google/cloud/teleport/v2/templates/KafkaToGCS.java) pipeline reads message from Kafka topic(s) and stores to Google Cloud Storage bucket in user specified file format. The sink data can be stored in a Text, Avro or a Parquet File Format.
 
-## Getting started 
+## Getting started
 
 ### Requirements
 * Java 8
@@ -11,7 +11,7 @@ The [KafkaToGCS](src/main/java/com/google/cloud/teleport/v2/templates/KafkaToGCS
 * Kafka Topic(s) exists.
 * Google Cloud Storage output bucket exists.
 
-  
+
 ### Building Template
 This is a flex template meaning that the pipeline code will be containerized and the container will be used to launch the pipeline.
 

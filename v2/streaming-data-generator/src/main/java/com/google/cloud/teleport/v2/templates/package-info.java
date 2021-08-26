@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-/**
- * All Dataflow pipelines contained within the project.
- */
-//package com.google.cloud.teleport.v2.templates;
+/** All Dataflow pipelines contained within the project. */
+// package com.google.cloud.teleport.v2.templates;
 
 package com.google.cloud.teleport.v2.templates;

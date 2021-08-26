@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -41,21 +41,14 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/**
- * Tests for ParquetToBigtable.
- */
+/** Tests for ParquetToBigtable. */
 @RunWith(JUnit4.class)
 public class ParquetToBigtableTest {
 
-  /**
-   * Rule for pipeline testing.
-   */
-  @Rule
-  public final transient TestPipeline pipeline = TestPipeline.create();
+  /** Rule for pipeline testing. */
+  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
-  /**
-   * Test whether {@link ParquetToBigtable} correctly maps a GenericRecord to a KV.
-   */
+  /** Test whether {@link ParquetToBigtable} correctly maps a GenericRecord to a KV. */
   @Test
   public void applyParquettoBigtableFn() throws Exception {
 
@@ -67,20 +60,20 @@ public class ParquetToBigtableTest {
     addParquetCell(cells1, "family1", "column2", 1, "30");
     addParquetCell(cells1, "family2", "column1", 1, "40");
     GenericRecord parquetRow1 =
-            new GenericRecordBuilder(BigtableRow.getClassSchema())
-                    .set("key", key1)
-                    .set("cells", cells1)
-                    .build();
+        new GenericRecordBuilder(BigtableRow.getClassSchema())
+            .set("key", key1)
+            .set("cells", cells1)
+            .build();
 
     byte[] rowKey2 = "row2".getBytes();
     ByteBuffer key2 = ByteBuffer.wrap(rowKey2);
     List<BigtableCell> cells2 = new ArrayList<>();
     addParquetCell(cells2, "family2", "column2", 2, "40");
     GenericRecord parquetRow2 =
-            new GenericRecordBuilder(BigtableRow.getClassSchema())
-                    .set("key", key2)
-                    .set("cells", cells2)
-                    .build();
+        new GenericRecordBuilder(BigtableRow.getClassSchema())
+            .set("key", key2)
+            .set("cells", cells2)
+            .build();
     final List<GenericRecord> parquetRows = ImmutableList.of(parquetRow1, parquetRow2);
 
     KV<ByteString, Iterable<Mutation>> rowMutations1 = createBigtableRowMutations("row1");
@@ -91,7 +84,7 @@ public class ParquetToBigtableTest {
     KV<ByteString, Iterable<Mutation>> rowMutations2 = createBigtableRowMutations("row2");
     addBigtableMutation(rowMutations2, "family2", "column2", 2, "40");
     final List<KV<ByteString, Iterable<Mutation>>> expectedBigtableRows =
-            ImmutableList.of(rowMutations1, rowMutations2);
+        ImmutableList.of(rowMutations1, rowMutations2);
 
     PCollection<KV<ByteString, Iterable<Mutation>>> bigtableRows =
         pipeline

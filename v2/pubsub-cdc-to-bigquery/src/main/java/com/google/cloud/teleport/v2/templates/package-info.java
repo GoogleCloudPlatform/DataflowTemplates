@@ -14,7 +14,5 @@
  * the License.
  */
 
-/**
- * Package info for pubsub to bigquery module.
- */
+/** Package info for pubsub to bigquery module. */
 package com.google.cloud.teleport.v2.templates;

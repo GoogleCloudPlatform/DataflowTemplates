@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner;
 
 import static org.hamcrest.Matchers.is;
@@ -30,7 +29,7 @@ import com.google.cloud.teleport.spanner.ddl.InformationSchemaScanner;
 import com.google.cloud.teleport.spanner.ddl.RandomDdlGenerator;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import java.io.IOException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -41,34 +40,30 @@ import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.values.PCollection;
 import org.junit.After;
-import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.TemporaryFolder;
 
 /**
- * An end to end test that exports and imports a database and verifies that the content is identical
- * This requires an active GCP project with a Spanner instance.
- * Hence this test can only be run locally with a project set up using 'gcloud config'.
+ * An end to end test that exports and imports a database and verifies that the content is
+ * identical. Additionally, this test verifies the behavior of table level export. This requires an
+ * active GCP project with a Spanner instance. Hence this test can only be run locally with a
+ * project set up using 'gcloud config'.
  */
 @Category(IntegrationTest.class)
 public class CopyDbTest {
-  private final String sourceDb = "copydb-source";
-  private final String destinationDb = "copydb-dest";
+  private final Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+  private final long numericTime = timestamp.getTime();
+  private final String sourceDb = "copydb-source" + Long.toString(numericTime);
+  private final String destinationDb = "copydb-dest" + Long.toString(numericTime);
+  private final String destDbPrefix = "import";
 
   @Rule public final transient TestPipeline exportPipeline = TestPipeline.create();
   @Rule public final transient TestPipeline importPipeline = TestPipeline.create();
   @Rule public final transient TestPipeline comparePipeline = TestPipeline.create();
   @Rule public final TemporaryFolder tmpDir = new TemporaryFolder();
   @Rule public final SpannerServerResource spannerServer = new SpannerServerResource();
-
-  @Before
-  public void setup() {
-    // Just to make sure an old database is not left over.
-    spannerServer.dropDatabase(sourceDb);
-    spannerServer.dropDatabase(destinationDb);
-  }
 
   @After
   public void teardown() {
@@ -77,12 +72,6 @@ public class CopyDbTest {
   }
 
   private void createAndPopulate(Ddl ddl, int numBatches) throws Exception {
-    try {
-      ddl.prettyPrint(System.out);
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-
     spannerServer.createDatabase(sourceDb, ddl.statements());
     spannerServer.createDatabase(destinationDb, Collections.emptyList());
     spannerServer.populateRandomData(sourceDb, ddl, numBatches);
@@ -90,6 +79,7 @@ public class CopyDbTest {
 
   @Test
   public void allTypesSchema() throws Exception {
+    // spotless:off
         Ddl ddl = Ddl.builder()
             .createTable("Users")
               .column("first_name").string().max().endColumn()
@@ -120,12 +110,14 @@ public class CopyDbTest {
               .onDeleteCascade()
             .endTable()
             .build();
+    // spotless:on
     createAndPopulate(ddl, 100);
     runTest();
   }
 
   @Test
   public void emptyTables() throws Exception {
+    // spotless:off
         Ddl ddl = Ddl.builder()
             .createTable("Users")
               .column("first_name").string().max().endColumn()
@@ -173,12 +165,14 @@ public class CopyDbTest {
           .primaryKey().asc("first").end()
           .endTable()
         .build();
+    // spotless:on
     spannerServer.updateDatabase(sourceDb, emptyTables.createTableStatements());
     runTest();
   }
 
   @Test
   public void allEmptyTables() throws Exception {
+    // spotless:off
         Ddl ddl = Ddl.builder()
             .createTable("Users")
               .column("first_name").string().max().endColumn()
@@ -208,15 +202,16 @@ public class CopyDbTest {
               .interleaveInParent("Users")
             .endTable()
             .build();
+    // spotless:on
     createAndPopulate(ddl, 0);
     runTest();
   }
-
 
   @Test
   public void databaseOptions() throws Exception {
     Ddl.Builder ddlBuilder = Ddl.builder();
     // Table Content
+    // spotless:off
     ddlBuilder.createTable("Users")
                 .column("first_name").string().max().endColumn()
                 .column("last_name").string().size(5).endColumn()
@@ -233,6 +228,7 @@ public class CopyDbTest {
                 .interleaveInParent("Users")
                 .onDeleteCascade()
               .endTable();
+    // spotless:on
     // Allowed and well-formed database option
     List<Export.DatabaseOption> dbOptionList = new ArrayList<>();
     dbOptionList.add(
@@ -276,6 +272,7 @@ public class CopyDbTest {
 
   @Test
   public void foreignKeys() throws Exception {
+    // spotless:off
     Ddl ddl = Ddl.builder()
         .createTable("Ref")
         .column("id1").int64().endColumn()
@@ -297,6 +294,7 @@ public class CopyDbTest {
                + "REFERENCES `Ref` (`id2`, `id1`)"))
         .endTable()
         .build();
+    // spotless:on
 
     createAndPopulate(ddl, 100);
     runTest();
@@ -305,6 +303,7 @@ public class CopyDbTest {
   // TODO: enable this test once CHECK constraints are enabled
   // @Test
   public void checkConstraints() throws Exception {
+    // spotless:off
     Ddl ddl = Ddl.builder()
         .createTable("T")
         .column("id").int64().endColumn()
@@ -313,6 +312,7 @@ public class CopyDbTest {
         .checkConstraints(ImmutableList.of(
            "CONSTRAINT `ck` CHECK(TO_HEX(SHA1(CAST(A AS STRING))) <= '~')"))
         .endTable().build();
+    // spotless:on
 
     createAndPopulate(ddl, 100);
     runTest();
@@ -334,12 +334,11 @@ public class CopyDbTest {
 
   private void runTest() {
     String tmpDirPath = tmpDir.getRoot().getAbsolutePath();
-    ValueProvider.StaticValueProvider<String> destination = ValueProvider.StaticValueProvider
-        .of(tmpDirPath);
-    ValueProvider.StaticValueProvider<String> jobId = ValueProvider.StaticValueProvider
-        .of("jobid");
-    ValueProvider.StaticValueProvider<String> source = ValueProvider.StaticValueProvider
-        .of(tmpDirPath + "/jobid");
+    ValueProvider.StaticValueProvider<String> destination =
+        ValueProvider.StaticValueProvider.of(tmpDirPath);
+    ValueProvider.StaticValueProvider<String> jobId = ValueProvider.StaticValueProvider.of("jobid");
+    ValueProvider.StaticValueProvider<String> source =
+        ValueProvider.StaticValueProvider.of(tmpDirPath + "/jobid");
 
     SpannerConfig sourceConfig = spannerServer.getSpannerConfig(sourceDb);
     exportPipeline.apply("Export", new ExportTransform(sourceConfig, destination, jobId));
@@ -360,10 +359,12 @@ public class CopyDbTest {
 
     PCollection<Long> mismatchCount =
         comparePipeline.apply("Compare", new CompareDatabases(sourceConfig, destConfig));
-    PAssert.that(mismatchCount).satisfies((x) -> {
-      assertEquals(Lists.newArrayList(x), Lists.newArrayList(0L));
-      return null;
-    });
+    PAssert.that(mismatchCount)
+        .satisfies(
+            (x) -> {
+              assertEquals(Lists.newArrayList(x), Lists.newArrayList(0L));
+              return null;
+            });
     PipelineResult compareResult = comparePipeline.run();
     compareResult.waitUntilFinish();
 
@@ -373,6 +374,7 @@ public class CopyDbTest {
     assertThat(sourceDdl.prettyPrint(), equalToCompressingWhiteSpace(destinationDdl.prettyPrint()));
   }
 
+  /* Returns the Ddl representing a Spanner database for given a String for the database name */
   private Ddl readDdl(String db) {
     DatabaseClient dbClient = spannerServer.getDbClient(db);
     Ddl ddl;

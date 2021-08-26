@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -15,13 +15,15 @@
  */
 package com.google.cloud.teleport.spanner;
 
-import com.google.cloud.spanner.BatchReadOnlyTransaction;
+import static com.google.cloud.teleport.spanner.SpannerTableFilter.getFilteredTables;
+
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.spanner.ExportProtos.Export;
 import com.google.cloud.teleport.spanner.ExportProtos.TableManifest;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.cloud.teleport.templates.common.SpannerConverters.CreateTransactionFnWithTimestamp;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.common.base.Supplier;
@@ -44,6 +46,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.file.DataFileWriter;
@@ -65,7 +68,6 @@ import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.WriteFilesResult;
 import org.apache.beam.sdk.io.fs.ResolveOptions;
 import org.apache.beam.sdk.io.fs.ResourceId;
-import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -122,15 +124,22 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
   private final ValueProvider<String> outputDir;
   private final ValueProvider<String> testJobId;
   private final ValueProvider<String> snapshotTime;
+  private final ValueProvider<String> tableNames;
+  private final ValueProvider<Boolean> exportRelatedTables;
   private final ValueProvider<Boolean> shouldExportTimestampAsLogicalType;
 
   public ExportTransform(
       SpannerConfig spannerConfig,
       ValueProvider<String> outputDir,
       ValueProvider<String> testJobId) {
-    this(spannerConfig, outputDir, testJobId,
+    this(
+        spannerConfig,
+        outputDir,
+        testJobId,
         /*snapshotTime=*/ ValueProvider.StaticValueProvider.of(""),
-        /*shouldExportTimestampAsLogicalType=*/ValueProvider.StaticValueProvider.of(false));
+        /*tableNames=*/ ValueProvider.StaticValueProvider.of(""),
+        /*exportRelatedTables=*/ ValueProvider.StaticValueProvider.of(false),
+        /*shouldExportTimestampAsLogicalType=*/ ValueProvider.StaticValueProvider.of(false));
   }
 
   public ExportTransform(
@@ -138,11 +147,15 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
       ValueProvider<String> outputDir,
       ValueProvider<String> testJobId,
       ValueProvider<String> snapshotTime,
+      ValueProvider<String> tableNames,
+      ValueProvider<Boolean> exportRelatedTables,
       ValueProvider<Boolean> shouldExportTimestampAsLogicalType) {
     this.spannerConfig = spannerConfig;
     this.outputDir = outputDir;
     this.testJobId = testJobId;
     this.snapshotTime = snapshotTime;
+    this.tableNames = tableNames;
+    this.exportRelatedTables = exportRelatedTables;
     this.shouldExportTimestampAsLogicalType = shouldExportTimestampAsLogicalType;
   }
 
@@ -163,18 +176,97 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
      * ParDo class CreateTransactionFnWithTimestamp had to be created for this
      * purpose.
      */
-    PCollectionView<Transaction> tx = p.apply("CreateTransaction", Create.of(1))
-        .apply("Create transaction", ParDo.of(new CreateTransactionFnWithTimestamp(spannerConfig)))
-        .apply("As PCollectionView", View.asSingleton());
+    PCollectionView<Transaction> tx =
+        p.apply("CreateTransaction", Create.of(1))
+            .apply(
+                "Create transaction",
+                ParDo.of(new CreateTransactionFnWithTimestamp(spannerConfig, snapshotTime)))
+            .apply("As PCollectionView", View.asSingleton());
 
     PCollection<Ddl> ddl =
         p.apply("Read Information Schema", new ReadInformationSchema(spannerConfig, tx));
-    PCollection<ReadOperation> tables =
-        ddl.apply("Build table read operations", new BuildReadFromTableOperations());
 
-    PCollection<KV<String, Void>> allTableNames =
+    PCollection<Ddl> exportState =
         ddl.apply(
-            "List all table names",
+            "Check export conditions",
+            ParDo.of(
+                new DoFn<Ddl, Ddl>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) throws Exception {
+                    Ddl ddl = c.element();
+                    List<String> tablesList = Collections.emptyList();
+
+                    // If the user sets shouldRelatedTables to true without providing
+                    // a list of export tables, throw an exception.
+                    if (tableNames.get().trim().isEmpty() && exportRelatedTables.get()) {
+                      throw new Exception(
+                          "Invalid usage of --tableNames and --shouldExportRelatedTables. Set"
+                              + " --shouldExportRelatedTables=true only if --tableNames is given"
+                              + " selected tables for export.");
+                    }
+
+                    // If the user provides a comma-separated list of strings, parse it into a List
+                    if (!tableNames.get().trim().isEmpty()) {
+                      tablesList = Arrays.asList(tableNames.get().split(",\\s*"));
+                    }
+
+                    // If the user provided any invalid table names, throw an exception.
+                    List<String> allSpannerTables =
+                        ddl.allTables().stream().map(t -> t.name()).collect(Collectors.toList());
+
+                    List<String> invalidTables =
+                        tablesList.stream()
+                            .distinct()
+                            .filter(t -> !allSpannerTables.contains(t))
+                            .collect(Collectors.toList());
+
+                    if (invalidTables.size() != 0) {
+                      throw new Exception(
+                          "INVALID_ARGUMENT: Table(s) not found: "
+                              + String.join(", ", invalidTables)
+                              + ".");
+                    }
+
+                    List<String> filteredTables =
+                        getFilteredTables(ddl, tablesList).stream()
+                            .map(t -> t.name())
+                            .collect(Collectors.toList());
+
+                    // Save any missing necessary export table names; save a copy of the original
+                    // table list to bypass 'final or effectively final' condition of the lambda
+                    // expression below.
+                    List<String> usersTables = tablesList.stream().collect(Collectors.toList());
+                    List<String> missingTables =
+                        filteredTables.stream()
+                            .distinct()
+                            .filter(t -> !usersTables.contains(t))
+                            .collect(Collectors.toList());
+                    Collections.sort(missingTables);
+
+                    // If user has specified a list of tables without including required
+                    // related tables, and not explicitly set shouldExportRelatedTables,
+                    // throw an exception.
+                    if (tablesList.size() != 0
+                        && !(tablesList.equals(filteredTables))
+                        && !exportRelatedTables.get()) {
+                      throw new Exception(
+                          "Attempted to export table(s) requiring parent and/or foreign keys tables"
+                              + " without setting the shouldExportRelatedTables parameter. Set"
+                              + " --shouldExportRelatedTables=true to export all necessary"
+                              + " tables, or add "
+                              + String.join(", ", missingTables)
+                              + " to --tableNames.");
+                    }
+                    c.output(ddl);
+                  }
+                }));
+    PCollection<ReadOperation> tables =
+        ddl.apply("Build table read operations", new BuildReadFromTableOperations(tableNames));
+
+    PCollection<KV<String, Void>> allTableAndViewNames =
+        ddl.apply(
+            "List all table and view names",
             ParDo.of(
                 new DoFn<Ddl, KV<String, Void>>() {
 
@@ -183,6 +275,12 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                     Ddl ddl = c.element();
                     for (Table t : ddl.allTables()) {
                       c.output(KV.of(t.name(), null));
+                    }
+                    // We want the resulting collection to contain the names of all entities that
+                    // need to be exported, both tables and views.  Ddl holds these separately, so
+                    // we need to add the names of all views separately here.
+                    for (com.google.cloud.teleport.spanner.ddl.View v : ddl.views()) {
+                      c.output(KV.of(v.name(), null));
                     }
                   }
                 }));
@@ -227,8 +325,10 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                       @ProcessElement
                       public void processElement(ProcessContext c) {
                         Collection<Schema> avroSchemas =
-                            new DdlToAvroSchemaConverter("spannerexport", "1.0.0",
-                                shouldExportTimestampAsLogicalType.get())
+                            new DdlToAvroSchemaConverter(
+                                    "spannerexport",
+                                    "1.0.0",
+                                    shouldExportTimestampAsLogicalType.get())
                                 .convert(c.element());
                         for (Schema schema : avroSchemas) {
                           c.output(KV.of(schema.getName(), new SerializableSchemaSupplier(schema)));
@@ -262,14 +362,16 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     final TupleTag<Iterable<String>> nonEmptyTables = new TupleTag<>();
 
     PCollection<KV<String, CoGbkResult>> groupedTables =
-        KeyedPCollectionTuple.of(allTables, allTableNames)
+        KeyedPCollectionTuple.of(allTables, allTableAndViewNames)
             .and(nonEmptyTables, tableFiles)
             .apply("Group with all tables", CoGroupByKey.create());
 
-    // The following is to export empty tables from the database.
-    PCollection<KV<String, Iterable<String>>> emptyTables =
+    // The following is to export empty tables and views from the database.  Empty tables and views
+    // are handled together because we do not export any rows for views, only their metadata,
+    // including the queries defining them.
+    PCollection<KV<String, Iterable<String>>> emptyTablesAndViews =
         groupedTables.apply(
-            "Export empty tables",
+            "Export empty tables and views",
             ParDo.of(
                 new DoFn<KV<String, CoGbkResult>, KV<String, Iterable<String>>>() {
 
@@ -280,14 +382,16 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                     CoGbkResult coGbkResult = kv.getValue();
                     Iterable<String> only = coGbkResult.getOnly(nonEmptyTables, null);
                     if (only == null) {
-                      LOG.info("Exporting empty table " + table);
+                      LOG.info("Exporting empty table or view: " + table);
+                      // This file will contain the schema definition: column definitions for empty
+                      // tables or defining queries for views.
                       c.output(KV.of(table, Collections.singleton(table + ".avro-00000-of-00001")));
                     }
                   }
                 }));
 
-    emptyTables =
-        emptyTables.apply(
+    emptyTablesAndViews =
+        emptyTablesAndViews.apply(
             "Save empty schema files",
             ParDo.of(
                     new DoFn<KV<String, Iterable<String>>, KV<String, Iterable<String>>>() {
@@ -367,7 +471,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
     PCollection<KV<String, Iterable<String>>> allFiles =
         PCollectionList.of(tableFiles)
-            .and(emptyTables)
+            .and(emptyTablesAndViews)
             .apply("Combine all files", Flatten.pCollections());
 
     PCollection<KV<String, String>> tableManifests =
@@ -393,8 +497,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
             .withTempDirectory(outputDir));
 
     PCollection<List<Export.Table>> metadataTables =
-        tableManifests
-            .apply("Combine table metadata", Combine.globally(new CombineTableMetadata()));
+        tableManifests.apply(
+            "Combine table metadata", Combine.globally(new CombineTableMetadata()));
 
     PCollectionView<Ddl> ddlView = ddl.apply("Cloud Spanner DDL as view", View.asSingleton());
 
@@ -585,7 +689,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
     private final PCollectionView<Ddl> ddlView;
 
-    public CreateDatabaseManifest(PCollectionView<Ddl> ddlView){
+    public CreateDatabaseManifest(PCollectionView<Ddl> ddlView) {
       this.ddlView = ddlView;
     }
 
@@ -606,41 +710,6 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
   private static String tableManifestFileName(String tableName) {
     return tableName + "-manifest.json";
-  }
-
-  /*
-   * A DoFn that creates a transaction for read that honors
-   * the timestamp valueprovider parameter.
-   * From org.apache.beam.sdk.io.gcp.spanner.CreateTransactionFn
-   */
-  class CreateTransactionFnWithTimestamp extends DoFn<Object, Transaction> {
-    private final SpannerConfig config;
-
-    CreateTransactionFnWithTimestamp(SpannerConfig config) {
-      this.config = config;
-    }
-
-    private transient ExposedSpannerAccessor spannerAccessor;
-
-    @DoFn.Setup
-    public void setup() throws Exception {
-      spannerAccessor = ExposedSpannerAccessor.create(config);
-    }
-
-    @Teardown
-    public void teardown() throws Exception {
-      spannerAccessor.close();
-    }
-
-    @ProcessElement
-    public void processElement(ProcessContext c) throws Exception {
-      String timestamp = ExportTransform.this.snapshotTime.get();
-
-      TimestampBound tsb = createTimestampBound(timestamp);
-      BatchReadOnlyTransaction tx =
-        spannerAccessor.getBatchClient().batchReadOnlyTransaction(tsb);
-      c.output(Transaction.create(tx.getBatchTransactionId()));
-    }
   }
 
   @VisibleForTesting
