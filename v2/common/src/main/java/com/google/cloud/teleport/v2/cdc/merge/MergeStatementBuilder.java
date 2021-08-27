@@ -134,7 +134,7 @@ public class MergeStatementBuilder implements Serializable {
         buildOrderByFieldsSql(orderByFields),
         buildDeletedFieldSql(deletedFieldName),
         stagingTable,
-        buildRetentionWhereClause());
+        buildRetentionWhereClause(deletedFieldName));
   }
 
   private String buildOrderByFieldsSql(List<String> orderByFields) {
@@ -158,12 +158,18 @@ public class MergeStatementBuilder implements Serializable {
   public static final String RETENTION_WHERE_TEMPLATE =
       String.join(
           "",
-          "WHERE _PARTITIONTIME >= TIMESTAMP(DATE_ADD(CURRENT_DATE(), INTERVAL -%s DAY)) ",
-          "OR _PARTITIONTIME IS NULL");
+          "WHERE _PARTITIONTIME IS NULL ",
+          "OR _PARTITIONTIME >= TIMESTAMP(DATE_ADD(CURRENT_DATE(), INTERVAL -%s DAY)) ",
+          "OR (%s ",
+          "AND _PARTITIONTIME >= TIMESTAMP(DATE_ADD(CURRENT_DATE(), INTERVAL -%s DAY)))");
 
-  String buildRetentionWhereClause() {
+  String buildRetentionWhereClause(String deletedFieldName) {
     if (configuration.supportPartitionedTables()) {
-      return String.format(RETENTION_WHERE_TEMPLATE, configuration.partitionRetention());
+      return String.format(
+          RETENTION_WHERE_TEMPLATE,
+          configuration.partitionRetention(),
+          deletedFieldName,
+          configuration.partitionRetention() + 1);
     } else {
       return "";
     }
