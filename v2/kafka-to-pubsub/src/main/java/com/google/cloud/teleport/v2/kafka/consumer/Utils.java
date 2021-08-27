@@ -24,8 +24,8 @@ import static com.google.cloud.teleport.v2.templates.KafkaPubsubConstants.USERNA
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.beam.vendor.grpc.v1p26p0.com.google.gson.JsonObject;
-import org.apache.beam.vendor.grpc.v1p26p0.com.google.gson.JsonParser;
+import org.apache.beam.vendor.grpc.v1p36p0.com.google.gson.JsonObject;
+import org.apache.beam.vendor.grpc.v1p36p0.com.google.gson.JsonParser;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
