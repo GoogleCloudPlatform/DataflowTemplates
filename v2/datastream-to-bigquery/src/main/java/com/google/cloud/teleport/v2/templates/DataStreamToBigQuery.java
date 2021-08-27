@@ -187,10 +187,11 @@ public class DataStreamToBigQuery {
     void setOutputTableNameTemplate(String value);
 
     @Description(
-        "Fields to ignore in BigQuery (comma separator). Example: _metadata_stream,_metadata_schema")
+        "Fields to ignore in BigQuery (comma separator). eg. _metadata_stream,_metadata_schema")
     @Default.String(
         "_metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_ssn,"
-            + "_metadata_rs_id,_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_error,_metadata_retry_count")
+            + "_metadata_rs_id,_metadata_tx_id,_metadata_dlq_reconsumed,"
+            + "_metadata_error,_metadata_retry_count")
     String getIgnoreFields();
 
     void setIgnoreFields(String value);
