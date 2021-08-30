@@ -160,7 +160,7 @@ public class PubSubToElasticsearch {
         .apply(
             "WriteTransformFailuresToBigQuery",
             ErrorConverters.WritePubsubMessageErrors.newBuilder()
-                .setErrorRecordsTable(options.getErrorOutputTable())
+                .setErrorRecordsTable(options.getErrorOutputTable().trim())
                 .setErrorRecordsTableSchema(SchemaUtils.DEADLETTER_SCHEMA)
                 .build());
 
