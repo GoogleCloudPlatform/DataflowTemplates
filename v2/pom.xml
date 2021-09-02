@@ -33,6 +33,7 @@
         <beam-vendor-guava.version>0.1</beam-vendor-guava.version>
         <hamcrest.version>2.1</hamcrest.version>
         <hadoop.version>2.10.1</hadoop.version>
+        <guava.version>30.1-jre</guava.version>
         <java.version>1.8</java.version>
         <jib.maven.version>2.6.0</jib.maven.version>
         <junit.version>4.13</junit.version>
@@ -533,7 +534,7 @@
                     <dependency>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>extra-enforcer-rules</artifactId>
-                        <version>1.0-beta-6</version>
+                        <version>1.3</version>
                     </dependency>
                 </dependencies>
             </plugin>
@@ -613,8 +614,17 @@
                 </repository>
             </repositories>
         </profile>
+        <profile>
+            <id>confluent-repo</id>
+            <repositories>
+                <repository>
+                    <!-- Required for io.confluent:kafka-avro-serializer artifact -->
+                    <id>confluent</id>
+                    <url>https://packages.confluent.io/maven/</url>
+                </repository>
+            </repositories>
+        </profile>
     </profiles>
-
 
     <modules>
         <module>bigquery-to-parquet</module>
@@ -627,6 +637,7 @@
         <module>elasticsearch-common</module>
         <module>file-format-conversion</module>
         <module>googlecloud-to-elasticsearch</module>
+        <module>googlecloud-to-googlecloud</module>
         <module>hive-to-bigquery</module>
         <module>kafka-to-bigquery</module>
         <module>kafka-to-gcs</module>
