@@ -72,6 +72,7 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
   private static final String BUFFER_STATE_NAME = "buffer";
   private static final String COUNT_STATE_NAME = "count";
   private static final String TIME_ID_NAME = "expiry";
+  private static final Pattern URL_PATTERN = Pattern.compile("^http(s?)://([^:]+)(:[0-9]+)?$");
 
   @VisibleForTesting
   protected static final String INVALID_URL_FORMAT_MESSAGE =
@@ -315,8 +316,7 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
    * @return true if the URL is valid
    */
   private static boolean isValidUrlFormat(String url) {
-    Pattern pattern = Pattern.compile("^http(s?)://([^:]+)(:[0-9]+)?$");
-    Matcher matcher = pattern.matcher(url);
+    Matcher matcher = URL_PATTERN.matcher(url);
     if (matcher.find()) {
       String host = matcher.group(2);
       return InetAddresses.isInetAddress(host) || InternetDomainName.isValid(host);

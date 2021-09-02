@@ -27,6 +27,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.regex.Pattern;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 
@@ -44,6 +45,7 @@ public class ChangeEventTypeConvertor {
   // TODO: Use formatter from FormatDatastreamRecordToJson
   private static final DateTimeFormatter DATASTREAM_DATE_FORMATTER =
       DateTimeFormatter.ISO_LOCAL_DATE;
+  private static final Pattern NUMERIC_PATTERN = Pattern.compile("-?\\d+(\\.\\d+)?");
 
   public static Boolean toBoolean(JsonNode changeEvent, String key, boolean requiredField)
       throws ChangeEventConvertorException {
@@ -171,7 +173,7 @@ public class ChangeEventTypeConvertor {
   }
 
   private static boolean isNumeric(String str) {
-    return str.matches("-?\\d+(\\.\\d+)?");  //match a number with optional '-' and decimal.
+    return NUMERIC_PATTERN.matcher(str).matches();  //match a number with optional '-' and decimal.
   }
 
   /*

@@ -29,6 +29,7 @@ import java.util.regex.Pattern;
  * ConnectionInformation option can contain URL to Elasticsearch host or CloudId.
  */
 public class ConnectionInformation {
+    private static final Pattern URL_PATTERN = Pattern.compile("^http(s?)://([^:]+)(:[0-9]+)?$");
     private URL elasticsearchURL;
     private URL kibanaURL;
     private Type type;
@@ -46,8 +47,7 @@ public class ConnectionInformation {
     }
 
     private static boolean isValidUrlFormat(String url) {
-        Pattern pattern = Pattern.compile("^http(s?)://([^:]+)(:[0-9]+)?$");
-        Matcher matcher = pattern.matcher(url);
+        Matcher matcher = URL_PATTERN.matcher(url);
         if (matcher.find()) {
             String host = matcher.group(2);
             return InetAddresses.isInetAddress(host) || InternetDomainName.isValid(host);
@@ -55,7 +55,7 @@ public class ConnectionInformation {
         return false;
     }
 
-    public ConnectionInformation(String connectionInformation){
+    public ConnectionInformation(String connectionInformation) {
         try {
             parse(connectionInformation);
         } catch (MalformedURLException e) {

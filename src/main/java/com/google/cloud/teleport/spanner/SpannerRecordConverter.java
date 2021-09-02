@@ -30,6 +30,8 @@ import org.apache.avro.generic.GenericRecordBuilder;
 
 /** Converts {@link Struct} to Avro record of specified {@link Schema}. */
 public class SpannerRecordConverter {
+  private static final Pattern STRING_PATTERN = Pattern.compile("STRING\\((?:MAX|[0-9]+)\\)");
+  private static final Pattern ARRAY_PATTERN = Pattern.compile("ARRAY<STRING\\((?:MAX|[0-9]+)\\)>");
   private final Schema schema;
 
   public SpannerRecordConverter(Schema schema) {
@@ -97,7 +99,7 @@ public class SpannerRecordConverter {
               field, nullValue ? null : ByteBuffer.wrap(row.getBytes(fieldName).toByteArray()));
           break;
         case STRING:
-          if (Pattern.matches("STRING\\((?:MAX|[0-9]+)\\)", spannerType)
+          if (STRING_PATTERN.matcher(spannerType).matches()
               || spannerType.equals("JSON")) {
             builder.set(field, nullValue ? null : row.getString(fieldName));
           } else if (spannerType.equals("TIMESTAMP")) {
@@ -178,7 +180,7 @@ public class SpannerRecordConverter {
                 }
               case STRING:
                 {
-                  if (Pattern.matches("ARRAY<STRING\\((?:MAX|[0-9]+)\\)>", spannerType)
+                  if (ARRAY_PATTERN.matcher(spannerType).matches()
                       || spannerType.equals("ARRAY<JSON>")) {
                     builder.set(field, nullValue ? null : row.getStringList(fieldName));
                   } else if (spannerType.equals("ARRAY<TIMESTAMP>")) {
