@@ -39,6 +39,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -142,11 +143,11 @@ public class DLPTextToBigQueryStreaming {
   /** Expected only CSV file in GCS bucket. */
   private static final String ALLOWED_FILE_EXTENSION = String.valueOf("csv");
   /** Regular expression that matches valid BQ table IDs. */
-  private static final String TABLE_REGEXP = "[-\\w$@]{1,1024}";
+  private static final Pattern TABLE_REGEXP = Pattern.compile("[-\\w$@]{1,1024}");
   /** Default batch size if value not provided in execution. */
   private static final Integer DEFAULT_BATCH_SIZE = 100;
   /** Regular expression that matches valid BQ column name . */
-  private static final String COLUMN_NAME_REGEXP = "^[A-Za-z_]+[A-Za-z_0-9]*$";
+  private static final Pattern COLUMN_NAME_REGEXP = Pattern.compile("^[A-Za-z_]+[A-Za-z_0-9]*$");
   /** Default window interval to create side inputs for header records. */
   private static final Duration WINDOW_INTERVAL = Duration.standardSeconds(30);
 
@@ -706,7 +707,7 @@ public class DLPTextToBigQueryStreaming {
     /** taking out .csv extension from file name e.g fileName.csv->fileName */
     String[] fileKey = csvFileName.split("\\.", 2);
 
-    if (!fileKey[1].equals(ALLOWED_FILE_EXTENSION) || !fileKey[0].matches(TABLE_REGEXP)) {
+    if (!fileKey[1].equals(ALLOWED_FILE_EXTENSION) || !TABLE_REGEXP.matcher(fileKey[0]).matches()) {
       throw new RuntimeException(
           "[Filename must contain a CSV extension "
               + " BQ table name must contain only letters, numbers, or underscores ["
@@ -759,7 +760,7 @@ public class DLPTextToBigQueryStreaming {
     String checkedHeader = name.replaceAll("\\s", "_");
     checkedHeader = checkedHeader.replaceAll("'", "");
     checkedHeader = checkedHeader.replaceAll("/", "");
-    if (!checkedHeader.matches(COLUMN_NAME_REGEXP)) {
+    if (!COLUMN_NAME_REGEXP.matcher(checkedHeader).matches()) {
       throw new IllegalArgumentException("Column name can't be matched to a valid format " + name);
     }
     return checkedHeader;

@@ -59,6 +59,14 @@ import org.slf4j.LoggerFactory;
 public class DataStreamClient implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamClient.class);
+  private static final Pattern PARENT_IN_CONNECTION_PROFILE_PATTERN =
+      Pattern.compile("(projects/.*/locations/.*)/connectionProfiles/.*");
+  private static final Pattern TIMESTAMP_PATTERN = Pattern.compile("TIMESTAMP\\(?\\d?\\)?");
+  private static final Pattern TIMESTAMP_WITH_TIMEZONE_PATTERN =
+      Pattern.compile("TIMESTAMP\\(?\\d?\\)? WITH TIME ZONE");
+  private static final Pattern TIMESTAMP_WITH_LOCAL_TIMEZONE_PATTERN =
+      Pattern.compile("TIMESTAMP\\(?\\d?\\)? WITH LOCAL TIME ZONE");
+
   private final Credentials credentials;
   private transient DataStream datastream;
   private String rootUrl = "https://datastream.googleapis.com/";
@@ -207,8 +215,7 @@ public class DataStreamClient implements Serializable {
    *     project/my-project/locations/my-location/connectionProfiles/my-connection-profile
    */
   public String getParentFromConnectionProfileName(String connectionProfileName) {
-    Pattern p = Pattern.compile("(projects/.*/locations/.*)/connectionProfiles/.*");
-    Matcher m = p.matcher(connectionProfileName);
+    Matcher m = PARENT_IN_CONNECTION_PROFILE_PATTERN.matcher(connectionProfileName);
     m.find();
 
     return m.group(1);
@@ -383,11 +390,11 @@ public class DataStreamClient implements Serializable {
       default:
     }
 
-    if (Pattern.matches("TIMESTAMP\\(?\\d?\\)?", dataType)) {
+    if (TIMESTAMP_PATTERN.matcher(dataType).matches()) {
       return StandardSQLTypeName.TIMESTAMP;
-    } else if (Pattern.matches("TIMESTAMP\\(?\\d?\\)? WITH TIME ZONE", dataType)) {
+    } else if (TIMESTAMP_WITH_TIMEZONE_PATTERN.matcher(dataType).matches()) {
       return StandardSQLTypeName.TIMESTAMP; // TODO: what type do we want here?
-    } else if (Pattern.matches("TIMESTAMP\\(?\\d?\\)? WITH LOCAL TIME ZONE", dataType)) {
+    } else if (TIMESTAMP_WITH_LOCAL_TIMEZONE_PATTERN.matcher(dataType).matches()) {
       return StandardSQLTypeName.TIMESTAMP; // TODO: what type do we want here?
     } else {
       LOG.warn("Datastream Oracle Type Unknown, Default to String: \"{}\"", dataType);
@@ -440,11 +447,11 @@ public class DataStreamClient implements Serializable {
       default:
     }
 
-    if (Pattern.matches("TIMESTAMP\\(?\\d?\\)?", dataType)) {
+    if (TIMESTAMP_PATTERN.matcher(dataType).matches()) {
       return StandardSQLTypeName.TIMESTAMP;
-    } else if (Pattern.matches("TIMESTAMP\\(?\\d?\\)? WITH TIME ZONE", dataType)) {
+    } else if (TIMESTAMP_WITH_TIMEZONE_PATTERN.matcher(dataType).matches()) {
       return StandardSQLTypeName.TIMESTAMP; // TODO: what type do we want here?
-    } else if (Pattern.matches("TIMESTAMP\\(?\\d?\\)? WITH LOCAL TIME ZONE", dataType)) {
+    } else if (TIMESTAMP_WITH_LOCAL_TIMEZONE_PATTERN.matcher(dataType).matches()) {
       return StandardSQLTypeName.TIMESTAMP; // TODO: what type do we want here?
     } else {
       LOG.warn("Datastream MySQL Type Unknown, Default to String: \"{}\"", dataType);
