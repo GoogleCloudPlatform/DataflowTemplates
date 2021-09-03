@@ -238,7 +238,7 @@ public class ElasticsearchIO {
           }
         }
       }
-      throw new IOException(errorMessages.toString() + "\n DEBUG INFO: " + searchResult.path("errors").asText());
+      throw new IOException(errorMessages.toString());
     }
   }
 
