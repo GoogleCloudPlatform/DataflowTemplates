@@ -40,8 +40,7 @@ public class WriteToElasticsearchTest {
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
     options.setConnectionUrl(null);
-    options.setElasticsearchUsername("test");
-    options.setElasticsearchPassword("test");
+    options.setApiKey("key");
 
     pipeline
         .apply("CreateInput", Create.of("test"))
@@ -60,8 +59,7 @@ public class WriteToElasticsearchTest {
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
     options.setConnectionUrl("https://host.domain");
-    options.setElasticsearchUsername("test");
-    options.setElasticsearchPassword("test");
+    options.setApiKey("key");
 
     pipeline
         .apply("CreateInput", Create.of("test"))
@@ -84,8 +82,7 @@ public class WriteToElasticsearchTest {
 
     options.setConnectionUrl(",");
     options.setIndex("index");
-    options.setElasticsearchUsername("test");
-    options.setElasticsearchPassword("test");
+    options.setApiKey("key");
 
     pipeline
         .apply("CreateInput", Create.of("test"))
@@ -109,8 +106,7 @@ public class WriteToElasticsearchTest {
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
     options.setConnectionUrl("https://host.domain");
-    options.setElasticsearchUsername("test");
-    options.setElasticsearchPassword("test");
+    options.setApiKey("key");
     options.setMaxRetryDuration(500L);
     options.setMaxRetryAttempts(null);
 
@@ -136,8 +132,7 @@ public class WriteToElasticsearchTest {
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
     options.setConnectionUrl("https://host.domain");
-    options.setElasticsearchUsername("test");
-    options.setElasticsearchPassword("test");
+    options.setApiKey("key");
     options.setMaxRetryDuration(null);
     options.setMaxRetryAttempts(3);
 

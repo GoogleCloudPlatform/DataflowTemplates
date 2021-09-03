@@ -76,8 +76,7 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
             new String[]{connectionInformation.getElasticsearchURL().toString()},
             options().getIndex(),
             DOCUMENT_TYPE)
-            .withUsername(options().getElasticsearchUsername())
-            .withPassword(options().getElasticsearchPassword());
+            .withApiKey(options().getApiKey());
 
     ElasticsearchIO.Write elasticsearchWriter =
         ElasticsearchIO.write()
@@ -109,10 +108,7 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
           options().getConnectionUrl() != null, "ConnectionUrl is required.");
 
       checkArgument(
-              options().getElasticsearchUsername() != null, "Elasticsearch username is required.");
-
-      checkArgument(
-              options().getElasticsearchPassword() != null, "Elasticsearch password is required.");
+              options().getApiKey() != null, "ApiKey is required.");
 
       checkArgument(options().getIndex() != null, "Elasticsearch index should not be null.");
 
