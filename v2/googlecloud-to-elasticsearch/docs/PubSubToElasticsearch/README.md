@@ -32,7 +32,7 @@ The template requires the following parameters:
 * connectionUrl: Elasticsearch URL in format http://hostname:[port] or CloudId
 * inputSubscription: PubSub subscription to read from, ex: projects/my-project/subscriptions/my-subscription
 * errorOutputTable: Error output table for failed inserts in form: project-id:dataset.table
-* apiKey: Elasticsearch api key used to connect to Elasticsearch endpoint
+* apiKey: API key for access without requiring basic authentication. Refer  https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request.
 
 The template has the following optional parameters:
 * dataset: The type of logs sent via Pub/Sub for which we have out of the box dashboard. Known log types values are `audit`, `vpcflow`, and `firewall`. If no known log type is detected, we default to `pubsub` type.
@@ -106,8 +106,8 @@ echo '{
           },
           {
               "name":"apiKey",
-              "label":"ApiKey for Elasticsearch endpoint",
-              "helpText":"ApiKey for Elasticsearch endpoint",
+              "label":"API key for access without requiring basic authentication",
+              "helpText":"API key for access without requiring basic authentication",
               "paramType":"TEXT",
               "isOptional":false
           },

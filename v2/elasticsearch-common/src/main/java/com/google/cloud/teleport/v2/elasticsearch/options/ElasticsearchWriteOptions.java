@@ -28,7 +28,8 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   void setConnectionUrl(String connectionUrl);
 
-  @Description("Specify ApiKey")
+  @Description("API key for access without requiring basic authentication. " +
+          "Refer  https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request")
   @Validation.Required
   String getApiKey();
 
