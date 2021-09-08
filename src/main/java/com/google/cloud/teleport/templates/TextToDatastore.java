@@ -70,6 +70,8 @@ public class TextToDatastore {
         .apply(
             WriteJsonEntities.newBuilder()
                 .setProjectId(options.getDatastoreWriteProjectId())
+                .setHintNumWorkers(options.getDatastoreHintNumWorkers())
+                .setThrottleRampup(options.getDatastoreThrottleRampup())
                 .setErrorTag(errorTag)
                 .build())
         .apply(
