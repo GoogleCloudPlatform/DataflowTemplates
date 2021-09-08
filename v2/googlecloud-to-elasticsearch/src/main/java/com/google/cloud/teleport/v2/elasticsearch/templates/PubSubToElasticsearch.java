@@ -33,9 +33,11 @@ import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesCoder;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TypeDescriptors;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -155,16 +157,16 @@ public class PubSubToElasticsearch {
                 .build());
 
     /*
-     * Step 3b: Write elements that failed processing to error output table via {@link BigQueryIO}.
+     * Step 3b: Write elements that failed processing to deadletter PubSub topic via {@link PubSubIO}.
      */
-    convertedPubsubMessages
-        .get(TRANSFORM_DEADLETTER_OUT)
-        .apply(
-            "WriteTransformFailuresToBigQuery",
-            ErrorConverters.WritePubsubMessageErrors.newBuilder()
-                .setErrorRecordsTable(options.getErrorOutputTable())
-                .setErrorRecordsTableSchema(SchemaUtils.DEADLETTER_SCHEMA)
-                .build());
+    if (StringUtils.isNotBlank(options.getErrorOutputTopic())) {
+      convertedPubsubMessages
+              .get(TRANSFORM_DEADLETTER_OUT)
+              .apply(ParDo.of(new FailedPubsubMessageToPubsubTopicFn()))
+              .apply(
+                      "writeFailureMessages",
+                      PubsubIO.writeMessages().to(options.getErrorOutputTopic()));
+    }
 
     // Execute the pipeline and return the result.
     return pipeline.run();
