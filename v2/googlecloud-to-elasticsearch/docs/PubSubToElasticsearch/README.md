@@ -31,7 +31,7 @@ To enable the out of the box integration:
 The template requires the following parameters:
 * connectionUrl: Elasticsearch URL in format http://hostname:[port] or CloudId
 * inputSubscription: PubSub subscription to read from, ex: projects/my-project/subscriptions/my-subscription
-* errorOutputTable: Error output table for failed inserts in form: project-id:dataset.table
+* errorOutputTopic: Error output topic for failed inserts
 * apiKey: API key for access without requiring basic authentication. Refer  https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request.
 
 The template has the following optional parameters:
@@ -65,7 +65,7 @@ export CONNECTION_URL=<url-or-cloud_id>
 export SUBSCRIPTION=<my-subscription>
 export DATASET=<dataset>
 export NAMESPACE=<namespace>
-export ERROR_OUTPUT_TABLE=<my-project:my-dataset.my-error-output-table>
+export ERROR_OUTPUT_TOPIC=<error-output-topic>
 export API_KEY=<api-key>
 ```
 
@@ -126,9 +126,9 @@ echo '{
               "isOptional":true
           },
           {
-              "name":"errorOutputTable",
-              "label":"Error output table in BigQuery for failed inserts",
-              "helpText":"Error output table in BigQuery for failed inserts in form: project-id:dataset.table",
+              "name":"errorOutputTopic",
+              "label":"Error output topic for failed inserts",
+              "helpText":"Error output topic for failed inserts",
               "paramType":"TEXT",
               "isOptional":false
           },
@@ -184,5 +184,5 @@ export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud beta dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters inputSubscription=${SUBSCRIPTION},connectionUrl=${CONNECTION_URL},dataset=${DATASET},namespace=${NAMESPACE},apiKey=${API_KEY},errorOutputTable=${ERROR_OUTPUT_TABLE}
+        --parameters inputSubscription=${SUBSCRIPTION},connectionUrl=${CONNECTION_URL},dataset=${DATASET},namespace=${NAMESPACE},apiKey=${API_KEY},errorOutputTopic=${ERROR_OUTPUT_TOPIC}
 ```
