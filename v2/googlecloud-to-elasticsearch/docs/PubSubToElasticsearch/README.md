@@ -32,8 +32,7 @@ The template requires the following parameters:
 * connectionUrl: Elasticsearch URL in format http://hostname:[port] or CloudId
 * inputSubscription: PubSub subscription to read from, ex: projects/my-project/subscriptions/my-subscription
 * errorOutputTable: Error output table for failed inserts in form: project-id:dataset.table
-* elasticsearchUsername: Elasticsearch username used to connect to Elasticsearch endpoint
-* elasticsearchPassword: Elasticsearch password used to connect to Elasticsearch endpoint
+* apiKey: API key for access without requiring basic authentication. Refer  https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request.
 
 The template has the following optional parameters:
 * dataset: The type of logs sent via Pub/Sub for which we have out of the box dashboard. Known log types values are `audit`, `vpcflow`, and `firewall`. If no known log type is detected, we default to `pubsub` type.
@@ -67,8 +66,7 @@ export SUBSCRIPTION=<my-subscription>
 export DATASET=<dataset>
 export NAMESPACE=<namespace>
 export ERROR_OUTPUT_TABLE=<my-project:my-dataset.my-error-output-table>
-export ELASTICSEARCH_USERNAME=<username>
-export ELASTICSEARCH_PASSWORD=<password>
+export API_KEY=<api-key>
 ```
 
 * Build and push image to Google Container Repository
@@ -107,16 +105,9 @@ echo '{
               "isOptional":false
           },
           {
-              "name":"elasticsearchUsername",
-              "label":"Username for Elasticsearch endpoint",
-              "helpText":"Username for Elasticsearch endpoint",
-              "paramType":"TEXT",
-              "isOptional":false
-          },
-          {
-              "name":"elasticsearchPassword",
-              "label":"Password for Elasticsearch endpoint",
-              "helpText":"Password for Elasticsearch endpoint",
+              "name":"apiKey",
+              "label":"API key for access without requiring basic authentication",
+              "helpText":"API key for access without requiring basic authentication",
               "paramType":"TEXT",
               "isOptional":false
           },
@@ -193,5 +184,5 @@ export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud beta dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters inputSubscription=${SUBSCRIPTION},connectionUrl=${CONNECTION_URL},dataset=${DATASET},namespace=${NAMESPACE},elasticsearchUsername=${ELASTICSEARCH_USERNAME},elasticsearchPassword=${ELASTICSEARCH_PASSWORD},errorOutputTable=${ERROR_OUTPUT_TABLE}
+        --parameters inputSubscription=${SUBSCRIPTION},connectionUrl=${CONNECTION_URL},dataset=${DATASET},namespace=${NAMESPACE},apiKey=${API_KEY},errorOutputTable=${ERROR_OUTPUT_TABLE}
 ```

@@ -53,8 +53,7 @@ public class EventMetadataBuilderTest {
                 TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
         options.setErrorOutputTable("test:dataset.table");
-        options.setElasticsearchUsername("test");
-        options.setElasticsearchPassword("test");
+        options.setApiKey("key");
         options.setDataset(Dataset.AUDIT);
         options.setNamespace("test-namespace");
         options.setElasticsearchTemplateVersion("999.999.999");
@@ -79,8 +78,7 @@ public class EventMetadataBuilderTest {
                 TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
         options.setErrorOutputTable("test:dataset.table");
-        options.setElasticsearchUsername("test");
-        options.setElasticsearchPassword("test");
+        options.setApiKey("key");
         options.setDataset(Dataset.AUDIT);
         options.setNamespace("test-namespace");
 
@@ -101,8 +99,7 @@ public class EventMetadataBuilderTest {
                 TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
         options.setErrorOutputTable("test:dataset.table");
-        options.setElasticsearchUsername("test");
-        options.setElasticsearchPassword("test");
+        options.setApiKey("key");
         options.setDataset(Dataset.AUDIT);
         options.setNamespace("test-namespace");
 

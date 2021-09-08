@@ -139,8 +139,7 @@ public class PubSubToElasticsearchTest {
     options.setErrorOutputTable("test:dataset.table");
     options.setJavascriptTextTransformFunctionName(null);
     options.setJavascriptTextTransformGcsPath(null);
-    options.setElasticsearchUsername("test");
-    options.setElasticsearchPassword("test");
+    options.setApiKey("key");
 
     PCollectionTuple pc =
         pipeline
@@ -183,8 +182,7 @@ public class PubSubToElasticsearchTest {
     options.setErrorOutputTable("test:dataset.table");
     options.setJavascriptTextTransformFunctionName("transform");
     options.setJavascriptTextTransformGcsPath(TRANSFORM_FILE_PATH);
-    options.setElasticsearchUsername("test");
-    options.setElasticsearchPassword("test");
+    options.setApiKey("key");
 
     PCollectionTuple pc =
         pipeline
@@ -227,8 +225,7 @@ public class PubSubToElasticsearchTest {
     options.setErrorOutputTable("test:dataset.table");
     options.setJavascriptTextTransformFunctionName("transformBad");
     options.setJavascriptTextTransformGcsPath(BAD_TRANSFORM_FILE_PATH);
-    options.setElasticsearchUsername("test");
-    options.setElasticsearchPassword("test");
+    options.setApiKey("key");
 
     PCollectionTuple pc =
         pipeline
@@ -274,8 +271,7 @@ public class PubSubToElasticsearchTest {
         TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
     options.setErrorOutputTable("test:dataset.table");
-    options.setElasticsearchUsername("test");
-    options.setElasticsearchPassword("test");
+    options.setApiKey("key");
 
     PCollectionTuple pc =
         pipeline

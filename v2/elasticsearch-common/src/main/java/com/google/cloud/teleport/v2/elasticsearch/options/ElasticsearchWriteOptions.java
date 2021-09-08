@@ -28,17 +28,12 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   void setConnectionUrl(String connectionUrl);
 
-  @Description("Username for Elasticsearch endpoint")
+  @Description("API key for access without requiring basic authentication. " +
+          "Refer  https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request")
   @Validation.Required
-  String getElasticsearchUsername();
+  String getApiKey();
 
-  void setElasticsearchUsername(String elasticsearchUsername);
-
-  @Description("Password for Elasticsearch endpoint")
-  @Validation.Required
-  String getElasticsearchPassword();
-
-  void setElasticsearchPassword(String elasticsearchPassword);
+  void setApiKey(String apiKey);
 
   @Description("The index toward which the requests will be issued, ex: my-index")
   String getIndex();
