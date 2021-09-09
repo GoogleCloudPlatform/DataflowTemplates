@@ -22,6 +22,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.teleport.v2.elasticsearch.options.PubSubToElasticsearchOptions;
+import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchUtils;
+
 import java.io.Serializable;
 import java.util.NoSuchElementException;
 
@@ -62,7 +64,7 @@ public class EventMetadataBuilder implements Serializable {
         eventMetadata = new EventMetadata();
 
         try {
-            eventMetadata.timestamp = getTimestampFromOriginalPayload(objectMapper.readTree(inputMessage));
+            eventMetadata.timestamp = ElasticsearchUtils.getTimestampFromOriginalPayload(objectMapper.readTree(inputMessage));
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Cannot parse input message as JSON: " + inputMessage, e);
         } catch (NoSuchElementException e) {
@@ -119,19 +121,6 @@ public class EventMetadataBuilder implements Serializable {
         }
 
         return enrichedMessage;
-    }
-
-    private String getTimestampFromOriginalPayload(JsonNode node) throws NoSuchElementException {
-        if(node.has("timestamp")) {
-            return node.get("timestamp").asText();
-        } else {
-            if (node.has("protoPayload")
-                && node.get("protoPayload").has("timestamp")) {
-                    return node.get("protoPayload").get("timestamp").asText();
-            }
-        }
-
-        throw new NoSuchElementException("Unable to find \"timestamp\" value");
     }
 
     @Override

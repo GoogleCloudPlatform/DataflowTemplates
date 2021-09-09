@@ -15,12 +15,11 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.transforms;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.nio.charset.StandardCharsets;
-import java.util.NoSuchElementException;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.transforms.DoFn;
 
@@ -45,7 +44,7 @@ public class FailedPubsubMessageToPubsubTopicFn
         // Format the timestamp for insertion
         String timestamp;
         try {
-            timestamp = getOrGenerateTimestamp(OBJECT_MAPPER.readTree(message));
+            timestamp = ElasticsearchUtils.getTimestampFromOriginalPayload(OBJECT_MAPPER.readTree(message));
         } catch (Exception e) {
             timestamp = new java.sql.Timestamp(System.currentTimeMillis()).toInstant().toString();
         }
@@ -61,7 +60,7 @@ public class FailedPubsubMessageToPubsubTopicFn
         context.output(new PubsubMessage(outputMessage.toString().getBytes(StandardCharsets.UTF_8), null));
     }
 
-    private String getOrGenerateTimestamp(JsonNode node) throws NoSuchElementException {
+    /*private String getOrGenerateTimestamp(JsonNode node) throws NoSuchElementException {
         if(node.has("timestamp")) {
             return node.get("timestamp").asText();
         } else {
@@ -72,6 +71,6 @@ public class FailedPubsubMessageToPubsubTopicFn
         }
 
         return new java.sql.Timestamp(System.currentTimeMillis()).toInstant().toString();
-    }
+    }*/
 
 }
