@@ -136,7 +136,7 @@ public class PubSubToElasticsearchTest {
     PubSubToElasticsearchOptions options =
         TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
-    options.setErrorOutputTopic("test:dataset.table");
+    options.setErrorOutputTopic("test:pubsub.topic");
     options.setJavascriptTextTransformFunctionName(null);
     options.setJavascriptTextTransformGcsPath(null);
     options.setApiKey("key");
@@ -179,7 +179,7 @@ public class PubSubToElasticsearchTest {
     PubSubToElasticsearchOptions options =
         TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
-    options.setErrorOutputTopic("test:dataset.table");
+    options.setErrorOutputTopic("test:pubsub.topic");
     options.setJavascriptTextTransformFunctionName("transform");
     options.setJavascriptTextTransformGcsPath(TRANSFORM_FILE_PATH);
     options.setApiKey("key");
@@ -222,7 +222,7 @@ public class PubSubToElasticsearchTest {
     PubSubToElasticsearchOptions options =
         TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
-    options.setErrorOutputTopic("test:dataset.table");
+    options.setErrorOutputTopic("test:pubsub.topic");
     options.setJavascriptTextTransformFunctionName("transformBad");
     options.setJavascriptTextTransformGcsPath(BAD_TRANSFORM_FILE_PATH);
     options.setApiKey("key");
@@ -270,7 +270,7 @@ public class PubSubToElasticsearchTest {
     PubSubToElasticsearchOptions options =
         TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
-    options.setErrorOutputTopic("test:dataset.table");
+    options.setErrorOutputTopic("test:pubsub.topic");
     options.setApiKey("key");
 
     PCollectionTuple pc =

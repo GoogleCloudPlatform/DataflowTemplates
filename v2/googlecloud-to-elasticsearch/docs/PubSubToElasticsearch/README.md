@@ -31,7 +31,7 @@ To enable the out of the box integration:
 The template requires the following parameters:
 * connectionUrl: Elasticsearch URL in format http://hostname:[port] or CloudId
 * inputSubscription: PubSub subscription to read from, ex: projects/my-project/subscriptions/my-subscription
-* errorOutputTopic: Error output topic for failed inserts
+* errorOutputTopic: Error output topic in Pub/Sub for failed inserts
 * apiKey: API key for access without requiring basic authentication. Refer  https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request.
 
 The template has the following optional parameters:
@@ -127,8 +127,8 @@ echo '{
           },
           {
               "name":"errorOutputTopic",
-              "label":"Error output topic for failed inserts",
-              "helpText":"Error output topic for failed inserts",
+              "label":"Error output topic in Pub/Sub for failed inserts",
+              "helpText":"Error output topic in Pub/Sub for failed inserts",
               "paramType":"TEXT",
               "isOptional":false
           },
