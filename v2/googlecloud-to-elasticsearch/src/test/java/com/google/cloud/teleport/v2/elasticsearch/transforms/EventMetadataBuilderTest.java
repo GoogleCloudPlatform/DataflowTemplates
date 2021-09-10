@@ -52,7 +52,7 @@ public class EventMetadataBuilderTest {
         PubSubToElasticsearchOptions options =
                 TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
-        options.setErrorOutputTopic("test:dataset.table");
+        options.setErrorOutputTopic("projects/test/topics/test-error-topic");
         options.setApiKey("key");
         options.setDataset(Dataset.AUDIT);
         options.setNamespace("test-namespace");
@@ -77,7 +77,7 @@ public class EventMetadataBuilderTest {
         PubSubToElasticsearchOptions options =
                 TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
-        options.setErrorOutputTopic("test:dataset.table");
+        options.setErrorOutputTopic("projects/test/topics/test-error-topic");
         options.setApiKey("key");
         options.setDataset(Dataset.AUDIT);
         options.setNamespace("test-namespace");
@@ -98,7 +98,7 @@ public class EventMetadataBuilderTest {
         PubSubToElasticsearchOptions options =
                 TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
-        options.setErrorOutputTopic("test:dataset.table");
+        options.setErrorOutputTopic("projects/test/topics/test-error-topic");
         options.setApiKey("key");
         options.setDataset(Dataset.AUDIT);
         options.setNamespace("test-namespace");

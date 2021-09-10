@@ -36,7 +36,6 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TypeDescriptors;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +56,7 @@ public class PubSubToElasticsearch {
       new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
 
   /** The tag for the error output table of the json to table row transform. */
-  public static final TupleTag<FailsafeElement<PubsubMessage, String>> TRANSFORM_DEADLETTER_OUT =
+  public static final TupleTag<FailsafeElement<PubsubMessage, String>> TRANSFORM_ERROROUTPUT_OUT =
       new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
 
   /** Pubsub message/string coder for pipeline. */
@@ -154,16 +153,15 @@ public class PubSubToElasticsearch {
                 .build());
 
     /*
-     * Step 3b: Write elements that failed processing to deadletter PubSub topic via {@link PubSubIO}.
+     * Step 3b: Write elements that failed processing to error output PubSub topic via {@link PubSubIO}.
      */
-    if (StringUtils.isNotBlank(options.getErrorOutputTopic())) {
-      convertedPubsubMessages
-              .get(TRANSFORM_DEADLETTER_OUT)
-              .apply(ParDo.of(new FailedPubsubMessageToPubsubTopicFn()))
-              .apply(
-                      "writeFailureMessages",
-                      PubsubIO.writeMessages().to(options.getErrorOutputTopic()));
-    }
+    convertedPubsubMessages
+            .get(TRANSFORM_ERROROUTPUT_OUT)
+            .apply(ParDo.of(new FailedPubsubMessageToPubsubTopicFn()))
+            .apply(
+                    "writeFailureMessages",
+                    PubsubIO.writeMessages().to(options.getErrorOutputTopic()));
+
 
     // Execute the pipeline and return the result.
     return pipeline.run();

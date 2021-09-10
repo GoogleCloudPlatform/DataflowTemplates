@@ -21,6 +21,8 @@ import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.nio.charset.StandardCharsets;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 
 /**
@@ -30,7 +32,15 @@ import org.apache.beam.sdk.transforms.DoFn;
 public class FailedPubsubMessageToPubsubTopicFn
         extends DoFn<FailsafeElement<PubsubMessage, String>, PubsubMessage> {
 
+    private static final String ERROR_MESSAGE = "errorMessage";
+    private static final String ERROR_STACKTRACE = "stackTrace";
+    private static final String ERROR_TIMESTAMP = "timestamp";
+    private static final String ERROR_PAYLOAD_STRING = "payloadString";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    /** Counter to track total failed messages. */
+    private static final Counter ERROR_MESSAGES_COUNTER =
+            Metrics.counter(FailedPubsubMessageToPubsubTopicFn.class, "total-failed-messages");
 
     @ProcessElement
     public void processElement(ProcessContext context) {
@@ -52,25 +62,14 @@ public class FailedPubsubMessageToPubsubTopicFn
         // Build the output PubSub message
         ObjectNode outputMessage = OBJECT_MAPPER.createObjectNode();
         outputMessage
-                .put("@timestamp", timestamp)
-                .put("errorMessage", failsafeElement.getErrorMessage())
-                .put("stacktrace", failsafeElement.getStacktrace())
-                .put("payloadString", message);
+                .put(ERROR_TIMESTAMP, timestamp)
+                .put(ERROR_MESSAGE, failsafeElement.getErrorMessage())
+                .put(ERROR_STACKTRACE, failsafeElement.getStacktrace())
+                .put(ERROR_PAYLOAD_STRING, message);
+
+        ERROR_MESSAGES_COUNTER.inc();
 
         context.output(new PubsubMessage(outputMessage.toString().getBytes(StandardCharsets.UTF_8), null));
     }
-
-    /*private String getOrGenerateTimestamp(JsonNode node) throws NoSuchElementException {
-        if(node.has("timestamp")) {
-            return node.get("timestamp").asText();
-        } else {
-            if (node.has("protoPayload")
-                    && node.get("protoPayload").has("timestamp")) {
-                return node.get("protoPayload").get("timestamp").asText();
-            }
-        }
-
-        return new java.sql.Timestamp(System.currentTimeMillis()).toInstant().toString();
-    }*/
 
 }

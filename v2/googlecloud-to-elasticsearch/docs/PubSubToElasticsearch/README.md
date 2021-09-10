@@ -32,7 +32,7 @@ The template requires the following parameters:
 * connectionUrl: Elasticsearch URL in format http://hostname:[port] or CloudId
 * inputSubscription: PubSub subscription to read from, ex: projects/my-project/subscriptions/my-subscription
 * errorOutputTopic: Error output topic in Pub/Sub for failed inserts
-* apiKey: API key for access without requiring basic authentication. Refer  https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request.
+* apiKey: BaseAPI key for access without requiring basic authentication. Refer  https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request.
 
 The template has the following optional parameters:
 * dataset: The type of logs sent via Pub/Sub for which we have out of the box dashboard. Known log types values are `audit`, `vpcflow`, and `firewall`. If no known log type is detected, we default to `pubsub` type.
@@ -106,8 +106,8 @@ echo '{
           },
           {
               "name":"apiKey",
-              "label":"API key for access without requiring basic authentication",
-              "helpText":"API key for access without requiring basic authentication",
+              "label":"API key in Base64 for access without requiring basic authentication",
+              "helpText":"API key in Base64 for access without requiring basic authentication",
               "paramType":"TEXT",
               "isOptional":false
           },
@@ -129,7 +129,7 @@ echo '{
               "name":"errorOutputTopic",
               "label":"Error output topic in Pub/Sub for failed inserts",
               "helpText":"Error output topic in Pub/Sub for failed inserts",
-              "paramType":"TEXT",
+              "paramType":"PUBSUB_TOPIC",
               "isOptional":false
           },
           {
