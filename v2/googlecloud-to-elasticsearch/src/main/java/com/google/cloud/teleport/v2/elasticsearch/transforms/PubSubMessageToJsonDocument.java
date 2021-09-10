@@ -40,7 +40,7 @@ import org.apache.beam.sdk.values.TupleTagList;
  * <ul>
  *   <li>{@link PubSubToElasticsearch#TRANSFORM_OUT} - Contains all records successfully converted
  *       to JSON objects.
- *   <li>{@link PubSubToElasticsearch#TRANSFORM_DEADLETTER_OUT} - Contains all {@link
+ *   <li>{@link PubSubToElasticsearch#TRANSFORM_ERROROUTPUT_OUT} - Contains all {@link
  *       FailsafeElement} records which couldn't be converted to table rows.
  * </ul>
  */
@@ -74,7 +74,7 @@ public abstract class PubSubMessageToJsonDocument
               .setFileSystemPath(javascriptTextTransformGcsPath())
               .setFunctionName(javascriptTextTransformFunctionName())
               .setSuccessTag(PubSubToElasticsearch.TRANSFORM_OUT)
-              .setFailureTag(PubSubToElasticsearch.TRANSFORM_DEADLETTER_OUT)
+              .setFailureTag(PubSubToElasticsearch.TRANSFORM_ERROROUTPUT_OUT)
               .build());
     } else {
       return failsafeElements.apply(
@@ -82,7 +82,7 @@ public abstract class PubSubMessageToJsonDocument
           ParDo.of(new ProcessFailsafePubSubFn())
               .withOutputTags(
                   PubSubToElasticsearch.TRANSFORM_OUT,
-                  TupleTagList.of(PubSubToElasticsearch.TRANSFORM_DEADLETTER_OUT)));
+                  TupleTagList.of(PubSubToElasticsearch.TRANSFORM_ERROROUTPUT_OUT)));
     }
   }
 

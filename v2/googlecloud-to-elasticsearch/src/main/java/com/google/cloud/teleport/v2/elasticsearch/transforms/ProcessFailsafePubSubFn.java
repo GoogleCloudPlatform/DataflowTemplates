@@ -67,7 +67,7 @@ public class ProcessFailsafePubSubFn
 
     } catch (JsonSyntaxException e) {
       context.output(
-          PubSubToElasticsearch.TRANSFORM_DEADLETTER_OUT,
+          PubSubToElasticsearch.TRANSFORM_ERROROUTPUT_OUT,
           FailsafeElement.of(context.element())
               .setErrorMessage(e.getMessage())
               .setStacktrace(Throwables.getStackTraceAsString(e)));
