@@ -61,23 +61,23 @@ public class FormatDatastreamRecordToJsonTest {
 
   private static final String EXPECTED_NUMERIC_RECORD =
       "{\"id\":2,\"bitty\":0,\"booly\":0,\"tiny\":-1,\"small\":-1,\"medium\":-1,"
-      + "\"inty\":-1,\"big\":-1,\"floater\":1.2,\"doubler\":1.3,"
-      + "\"decimaler\":\"11.22\",\"tinyu\":255,\"smallu\":65535,\"mediumu\":16777215,"
-      + "\"intyu\":4294967295,\"bigu\":\"0\","
-      + "\"_metadata_stream\":\"projects/545418958905/locations/us-central1/streams/stream31\","
-      + "\"_metadata_timestamp\":1628184913,"
-      + "\"_metadata_read_timestamp\":1628184913,"
-      + "\"_metadata_read_method\":\"mysql-cdc-binlog\","
-      + "\"_metadata_source_type\":\"mysql\","
-      + "\"_metadata_deleted\":false,"
-      + "\"_metadata_table\":\"numbers\","
-      + "\"_metadata_change_type\":\"INSERT\","
-      + "\"_metadata_schema\":\"user1\","
-      + "\"_metadata_log_file\":\"mysql-bin.000025\","
-      + "\"_metadata_log_position\":\"78443804\","
-      + "\"_metadata_source\":{\"table\":\"numbers\",\"database\":\"user1\","
-      + "\"primary_keys\":[\"id\"],\"log_file\":\"mysql-bin.000025\","
-      + "\"log_position\":78443804,\"change_type\":\"INSERT\",\"is_deleted\":false}}";
+          + "\"inty\":-1,\"big\":-1,\"floater\":1.2,\"doubler\":1.3,"
+          + "\"decimaler\":\"11.22\",\"tinyu\":255,\"smallu\":65535,\"mediumu\":16777215,"
+          + "\"intyu\":4294967295,\"bigu\":\"0\","
+          + "\"_metadata_stream\":\"projects/545418958905/locations/us-central1/streams/stream31\","
+          + "\"_metadata_timestamp\":1628184913,"
+          + "\"_metadata_read_timestamp\":1628184913,"
+          + "\"_metadata_read_method\":\"mysql-cdc-binlog\","
+          + "\"_metadata_source_type\":\"mysql\","
+          + "\"_metadata_deleted\":false,"
+          + "\"_metadata_table\":\"numbers\","
+          + "\"_metadata_change_type\":\"INSERT\","
+          + "\"_metadata_schema\":\"user1\","
+          + "\"_metadata_log_file\":\"mysql-bin.000025\","
+          + "\"_metadata_log_position\":\"78443804\","
+          + "\"_metadata_source\":{\"table\":\"numbers\",\"database\":\"user1\","
+          + "\"primary_keys\":[\"id\"],\"log_file\":\"mysql-bin.000025\","
+          + "\"log_position\":78443804,\"change_type\":\"INSERT\",\"is_deleted\":false}}";
 
   @Test
   public void testParseAvroGenRecord() throws IOException, URISyntaxException {

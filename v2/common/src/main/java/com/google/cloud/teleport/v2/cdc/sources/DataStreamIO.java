@@ -195,10 +195,12 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
       datastreamRecords =
           datastreamFiles
               .apply("ReshuffleFiles", Reshuffle.<ReadableFile>viaRandomKey())
-              .apply("ParseAvroRows",
-                  ParDo.of(new ReadFileRangesFn<FailsafeElement<String, String>>(
-                               new CreateParseSourceFn(parseFn, coder),
-                               new ReadFileRangesFn.ReadFileRangesFnExceptionHandler())))
+              .apply(
+                  "ParseAvroRows",
+                  ParDo.of(
+                      new ReadFileRangesFn<FailsafeElement<String, String>>(
+                          new CreateParseSourceFn(parseFn, coder),
+                          new ReadFileRangesFn.ReadFileRangesFnExceptionHandler())))
               .setCoder(coder);
     }
     return datastreamRecords.apply("Reshuffle", Reshuffle.viaRandomKey());
