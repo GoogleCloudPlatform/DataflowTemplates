@@ -20,6 +20,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -69,7 +72,10 @@ public class FailedPubsubMessageToPubsubTopicFn
 
         ERROR_MESSAGES_COUNTER.inc();
 
-        context.output(new PubsubMessage(outputMessage.toString().getBytes(StandardCharsets.UTF_8), null));
+        Map<String, String> attributes = new HashMap<>(pubsubMessage.getAttributeMap());
+        attributes.put(ERROR_MESSAGE, failsafeElement.getErrorMessage());
+
+        context.output(new PubsubMessage(outputMessage.toString().getBytes(StandardCharsets.UTF_8), attributes));
     }
 
 }
