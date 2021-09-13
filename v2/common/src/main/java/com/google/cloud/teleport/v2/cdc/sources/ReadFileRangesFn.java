@@ -83,9 +83,7 @@ public class ReadFileRangesFn<T> extends DoFn<ReadableFile, T> implements Serial
     FileBasedSource<T> source =
         CompressedSource.from(createSource.apply(file.getMetadata().resourceId().toString()))
             .withCompression(file.getCompression());
-    try (BoundedSource.BoundedReader<T> reader =
-        source
-            .createReader(c.getPipelineOptions())) {
+    try (BoundedSource.BoundedReader<T> reader = source.createReader(c.getPipelineOptions())) {
       for (boolean more = reader.start(); more; more = reader.advance()) {
         c.output(reader.getCurrent());
       }
@@ -104,9 +102,7 @@ public class ReadFileRangesFn<T> extends DoFn<ReadableFile, T> implements Serial
      * if the exception should be thrown.
      */
     public boolean apply(ReadableFile file, OffsetRange range, Exception e) {
-      LOG.error(
-          "Avro File Read Failure {}",
-          file.getMetadata().resourceId().toString());
+      LOG.error("Avro File Read Failure {}", file.getMetadata().resourceId().toString());
       return false;
       // return true;
     }
