@@ -14,7 +14,5 @@
  * the License.
  */
 
-/**
- * Package info for DataStream to Postgres module.
- */
+/** Package info for DataStream to Postgres module. */
 package com.google.cloud.teleport.v2.templates;

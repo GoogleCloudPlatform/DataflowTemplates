@@ -116,7 +116,6 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     spannerAccessor = ExposedSpannerAccessor.create(spannerConfig);
     mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
-
   }
 
   /** Teardown function disconnects from the Cloud Spanner. */

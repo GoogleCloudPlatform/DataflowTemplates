@@ -311,9 +311,9 @@ public class DataStreamToBigQuery {
     // of building pieces of the DLQ.
     PCollection<FailsafeElement<String, String>> dlqJsonRecords =
         pipeline
-            .apply("DLQ Consumer/reader",
-                dlqManager.dlqReconsumer(options.getDlqRetryMinutes()))
-            .apply("DLQ Consumer/cleaner",
+            .apply("DLQ Consumer/reader", dlqManager.dlqReconsumer(options.getDlqRetryMinutes()))
+            .apply(
+                "DLQ Consumer/cleaner",
                 ParDo.of(
                     new DoFn<String, FailsafeElement<String, String>>() {
                       @ProcessElement
@@ -326,7 +326,8 @@ public class DataStreamToBigQuery {
             .setCoder(FAILSAFE_ELEMENT_CODER);
 
     PCollection<FailsafeElement<String, String>> jsonRecords =
-        PCollectionList.of(datastreamJsonRecords).and(dlqJsonRecords)
+        PCollectionList.of(datastreamJsonRecords)
+            .and(dlqJsonRecords)
             .apply("Merge Datastream & DLQ", Flatten.pCollections());
 
     /*
@@ -419,9 +420,7 @@ public class DataStreamToBigQuery {
     PCollection<String> bqWriteDlqJson =
         writeResult
             .getFailedInsertsWithErr()
-            .apply(
-                "BigQuery Failures",
-                MapElements.via(new BigQueryDeadLetterQueueSanitizer()));
+            .apply("BigQuery Failures", MapElements.via(new BigQueryDeadLetterQueueSanitizer()));
 
     PCollectionList.of(udfDlqJson)
         .and(bqWriteDlqJson)

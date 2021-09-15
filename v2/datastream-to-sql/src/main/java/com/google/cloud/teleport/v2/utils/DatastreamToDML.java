@@ -1,19 +1,17 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Copyright (C) 2021 Google LLC
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.utils;
 
@@ -43,9 +41,7 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * A set of Database Migration utilities to convert JSON data to DML.
- */
+/** A set of Database Migration utilities to convert JSON data to DML. */
 public abstract class DatastreamToDML
     extends DoFn<FailsafeElement<String, String>, KV<String, DmlInfo>> {
 
@@ -60,17 +56,23 @@ public abstract class DatastreamToDML
   public String quoteCharacter;
 
   public abstract String getDefaultQuoteCharacter();
+
   public abstract String getDeleteDmlStatement();
+
   public abstract String getUpsertDmlStatement();
+
   public abstract String getInsertDmlStatement();
+
   public abstract String getTargetCatalogName(DatastreamRow row);
+
   public abstract String getTargetSchemaName(DatastreamRow row);
+
   public abstract String getTargetTableName(DatastreamRow row);
 
   /* An exception for delete DML without a primary key */
   private class DeletedWithoutPrimaryKey extends RuntimeException {
     public DeletedWithoutPrimaryKey(String errorMessage) {
-        super(errorMessage);
+      super(errorMessage);
     }
   }
 
@@ -123,15 +125,14 @@ public abstract class DatastreamToDML
 
   private synchronized void setUpTableCache() {
     if (tableCache == null) {
-      tableCache = new JdbcTableCache(this.getDataSource())
-        .withCacheResetTimeUnitValue(1440);
+      tableCache = new JdbcTableCache(this.getDataSource()).withCacheResetTimeUnitValue(1440);
     }
   }
 
   private synchronized void setUpPrimaryKeyCache() {
     if (primaryKeyCache == null) {
-      primaryKeyCache = new JdbcPrimaryKeyCache(this.getDataSource())
-        .withCacheResetTimeUnitValue(1440);
+      primaryKeyCache =
+          new JdbcPrimaryKeyCache(this.getDataSource()).withCacheResetTimeUnitValue(1440);
     }
   }
 
@@ -198,14 +199,14 @@ public abstract class DatastreamToDML
 
       String dmlSql = StringSubstitutor.replace(dmlSqlTemplate, sqlTemplateValues, "{", "}");
       return DmlInfo.of(
-        failsafeValue,
-        dmlSql,
-        schemaName,
-        tableName,
-        primaryKeys,
-        orderByFields,
-        primaryKeyValues,
-        orderByValues);
+          failsafeValue,
+          dmlSql,
+          schemaName,
+          tableName,
+          primaryKeys,
+          orderByFields,
+          primaryKeyValues,
+          orderByValues);
     } catch (DeletedWithoutPrimaryKey e) {
       LOG.error("CDC Error: {} :: {}", rowObj.toString(), e.toString());
       return null;
@@ -231,15 +232,19 @@ public abstract class DatastreamToDML
   }
 
   public Map<String, String> getSqlTemplateValues(
-      JsonNode rowObj, String catalogName, String schemaName, String tableName,
-      List<String> primaryKeys, Map<String, String> tableSchema) {
+      JsonNode rowObj,
+      String catalogName,
+      String schemaName,
+      String tableName,
+      List<String> primaryKeys,
+      Map<String, String> tableSchema) {
     Map<String, String> sqlTemplateValues = new HashMap<>();
 
     sqlTemplateValues.put("quoted_catalog_name", quote(catalogName));
     sqlTemplateValues.put("quoted_schema_name", quote(schemaName));
     sqlTemplateValues.put("quoted_table_name", quote(tableName));
-    sqlTemplateValues.put("primary_key_kv_sql",
-        getPrimaryKeyToValueFilterSql(rowObj, primaryKeys, tableSchema));
+    sqlTemplateValues.put(
+        "primary_key_kv_sql", getPrimaryKeyToValueFilterSql(rowObj, primaryKeys, tableSchema));
     sqlTemplateValues.put("quoted_column_names", getColumnsListSql(rowObj, tableSchema));
     sqlTemplateValues.put("column_value_sql", getColumnsValuesSql(rowObj, tableSchema));
     sqlTemplateValues.put("primary_key_names_sql", String.join(",", primaryKeys)); // TODO: quoted?
@@ -248,8 +253,8 @@ public abstract class DatastreamToDML
     return sqlTemplateValues;
   }
 
-  public static String getValueSql(JsonNode rowObj, String columnName,
-      Map<String, String> tableSchema) {
+  public static String getValueSql(
+      JsonNode rowObj, String columnName, Map<String, String> tableSchema) {
     String columnValue;
 
     JsonNode columnObj = rowObj.get(columnName);
@@ -268,7 +273,7 @@ public abstract class DatastreamToDML
   }
 
   public static String cleanSql(String str) {
-  if (str == null) {
+    if (str == null) {
       return null;
     }
     String cleanedNullBytes = StringUtils.replace(str, "\u0000", "");
@@ -302,7 +307,7 @@ public abstract class DatastreamToDML
       // Add column name
       String quotedColumnName = quote(columnName);
       if (columnsListSql == "") {
-          columnsListSql = quotedColumnName;
+        columnsListSql = quotedColumnName;
       } else {
         columnsListSql = columnsListSql + "," + quotedColumnName;
       }
@@ -322,7 +327,7 @@ public abstract class DatastreamToDML
 
       String columnValue = getValueSql(rowObj, columnName, tableSchema);
       if (valuesInsertSql == "") {
-          valuesInsertSql = columnValue;
+        valuesInsertSql = columnValue;
       } else {
         valuesInsertSql = valuesInsertSql + "," + columnValue;
       }
@@ -352,8 +357,8 @@ public abstract class DatastreamToDML
     return onUpdateSql;
   }
 
-  public String getPrimaryKeyToValueFilterSql(JsonNode rowObj, List<String> primaryKeys,
-      Map<String, String> tableSchema) {
+  public String getPrimaryKeyToValueFilterSql(
+      JsonNode rowObj, List<String> primaryKeys, Map<String, String> tableSchema) {
     String pkToValueSql = "";
 
     for (String columnName : primaryKeys) {
@@ -380,8 +385,10 @@ public abstract class DatastreamToDML
     } catch (SQLException e) {
       if (retriesRemaining > 0) {
         int sleepSecs = (maxRetries - retriesRemaining + 1) * 10;
-        LOG.info("SQLException: Will retry after {} seconds: Connection Error: {}",
-          sleepSecs, e.toString());
+        LOG.info(
+            "SQLException: Will retry after {} seconds: Connection Error: {}",
+            sleepSecs,
+            e.toString());
         try {
           Thread.sleep(sleepSecs * 1000);
           return getConnection(dataSource, retriesRemaining - 1, maxRetries);
@@ -396,16 +403,15 @@ public abstract class DatastreamToDML
   }
 
   /**
-   * The {@link JdbcTableCache} manages safely getting and setting JDBC Table objects from a
-   * local cache for each worker thread.
+   * The {@link JdbcTableCache} manages safely getting and setting JDBC Table objects from a local
+   * cache for each worker thread.
    *
    * <p>The key factors addressed are ensuring expiration of cached tables, consistent update
    * behavior to ensure reliabillity, and easy cache reloads. Open Question: Does the class require
    * thread-safe behaviors? Currently it does not since there is no iteration and get/set are not
    * continuous.
    */
-  public static class JdbcTableCache
-      extends MappedObjectCache<List<String>, Map<String, String>> {
+  public static class JdbcTableCache extends MappedObjectCache<List<String>, Map<String, String>> {
 
     private DataSource dataSource;
     private static final int MAX_RETRIES = 5;
@@ -435,7 +441,10 @@ public abstract class DatastreamToDML
           int sleepSecs = (MAX_RETRIES - retriesRemaining + 1) * 10;
           LOG.info(
               "SQLException, will retry after {} seconds: Failed to Retrieve Schema: {}.{} : {}",
-            sleepSecs, schemaName, tableName, e.toString());
+              sleepSecs,
+              schemaName,
+              tableName,
+              e.toString());
           try {
             Thread.sleep(sleepSecs * 1000);
             return getTableSchema(catalogName, schemaName, tableName, retriesRemaining - 1);
@@ -443,8 +452,11 @@ public abstract class DatastreamToDML
             LOG.info("InterruptedException retrieving schema: {}.{}", schemaName, tableName);
           }
         }
-        LOG.error("SQLException: Failed to Retrieve Schema: {}.{} : {}",
-          schemaName, tableName, e.toString());
+        LOG.error(
+            "SQLException: Failed to Retrieve Schema: {}.{} : {}",
+            schemaName,
+            tableName,
+            e.toString());
       }
 
       return tableSchema;
@@ -456,24 +468,23 @@ public abstract class DatastreamToDML
       String schemaName = key.get(1);
       String tableName = key.get(2);
 
-      Map<String, String> tableSchema = getTableSchema(
-          catalogName, schemaName, tableName, MAX_RETRIES);
+      Map<String, String> tableSchema =
+          getTableSchema(catalogName, schemaName, tableName, MAX_RETRIES);
 
       return tableSchema;
     }
   }
 
   /**
-   * The {@link JdbcPrimaryKeyCache} manages safely getting and setting JDBC Table PKs from a
-   * local cache for each worker thread.
+   * The {@link JdbcPrimaryKeyCache} manages safely getting and setting JDBC Table PKs from a local
+   * cache for each worker thread.
    *
    * <p>The key factors addressed are ensuring expiration of cached tables, consistent update
    * behavior to ensure reliabillity, and easy cache reloads. Open Question: Does the class require
    * thread-safe behaviors? Currently it does not since there is no iteration and get/set are not
    * continuous.
    */
-  public static class JdbcPrimaryKeyCache
-      extends MappedObjectCache<List<String>, List<String>> {
+  public static class JdbcPrimaryKeyCache extends MappedObjectCache<List<String>, List<String>> {
 
     private DataSource dataSource;
     private static final int MAX_RETRIES = 5;
@@ -492,8 +503,8 @@ public abstract class DatastreamToDML
       List<String> primaryKeys = new ArrayList<String>();
       try (Connection connection = getConnection(this.dataSource, MAX_RETRIES, MAX_RETRIES)) {
         DatabaseMetaData metaData = connection.getMetaData();
-        try (ResultSet jdbcPrimaryKeys = metaData.getPrimaryKeys(
-            catalogName, schemaName, tableName)) {
+        try (ResultSet jdbcPrimaryKeys =
+            metaData.getPrimaryKeys(catalogName, schemaName, tableName)) {
           while (jdbcPrimaryKeys.next()) {
             primaryKeys.add(jdbcPrimaryKeys.getString("COLUMN_NAME"));
           }
@@ -502,8 +513,11 @@ public abstract class DatastreamToDML
         if (retriesRemaining > 0) {
           int sleepSecs = (MAX_RETRIES - retriesRemaining + 1) * 10;
           LOG.info(
-            "SQLException, will retry after {} seconds: Failed to Retrieve Primary Key: {}.{} : {}",
-            sleepSecs, schemaName, tableName, e.toString());
+              "SQLException, will retry after {} seconds: Failed to Retrieve Primary Key: {}.{} : {}",
+              sleepSecs,
+              schemaName,
+              tableName,
+              e.toString());
           try {
             Thread.sleep(sleepSecs * 1000);
             return getTablePrimaryKeys(catalogName, schemaName, tableName, retriesRemaining - 1);
@@ -512,8 +526,10 @@ public abstract class DatastreamToDML
           }
         }
         LOG.error(
-          "SQLException: Failed to Retrieve Primary Key: {}.{} : {}",
-          schemaName, tableName, e.toString());
+            "SQLException: Failed to Retrieve Primary Key: {}.{} : {}",
+            schemaName,
+            tableName,
+            e.toString());
       }
 
       return primaryKeys;
@@ -525,8 +541,8 @@ public abstract class DatastreamToDML
       String schemaName = key.get(1);
       String tableName = key.get(2);
 
-      List<String> primaryKeys = getTablePrimaryKeys(
-          catalogName, schemaName, tableName, MAX_RETRIES);
+      List<String> primaryKeys =
+          getTablePrimaryKeys(catalogName, schemaName, tableName, MAX_RETRIES);
 
       return primaryKeys;
     }

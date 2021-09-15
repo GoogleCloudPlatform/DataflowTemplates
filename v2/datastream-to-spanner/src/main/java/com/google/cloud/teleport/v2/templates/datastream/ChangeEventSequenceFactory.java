@@ -27,8 +27,7 @@ public class ChangeEventSequenceFactory {
 
   private ChangeEventSequenceFactory() {}
 
-  private static String getSourceType(JsonNode changeEvent)
-      throws InvalidChangeEventException {
+  private static String getSourceType(JsonNode changeEvent) throws InvalidChangeEventException {
     try {
       return changeEvent.get(DatastreamConstants.EVENT_SOURCE_TYPE_KEY).asText();
     } catch (Exception e) {

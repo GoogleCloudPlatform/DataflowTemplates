@@ -17,24 +17,20 @@ package com.google.cloud.teleport.v2.elasticsearch.utils;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 
-/**
- * Enum of possible dataset values.
- */
+/** Enum of possible dataset values. */
 public enum Dataset {
-    AUDIT,
-    VPCFLOW,
-    FIREWALL,
-    PUBSUB;
+  AUDIT,
+  VPCFLOW,
+  FIREWALL,
+  PUBSUB;
 
-    @JsonValue
-    public String getKey() {
-        return name().toLowerCase();
-    }
+  @JsonValue
+  public String getKey() {
+    return name().toLowerCase();
+  }
 
-    /**
-     * This method is used to get Dataset literal with the "gcp." prefix.
-     * **/
-    public String getKeyWithPrefix() {
-        return "gcp." + name().toLowerCase();
-    }
+  /** This method is used to get Dataset literal with the "gcp." prefix. * */
+  public String getKeyWithPrefix() {
+    return "gcp." + name().toLowerCase();
+  }
 }

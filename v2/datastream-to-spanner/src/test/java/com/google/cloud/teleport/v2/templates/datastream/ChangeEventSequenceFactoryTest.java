@@ -37,9 +37,9 @@ public final class ChangeEventSequenceFactoryTest {
 
   private final long eventTimestamp = 1615159728L;
 
-  ChangeEventContext getMockMySqlChangeEventContext(boolean addMysqlPositionFields,
-      boolean cdcEvent) throws Exception {
-    //Create dummy mysql change event.
+  ChangeEventContext getMockMySqlChangeEventContext(
+      boolean addMysqlPositionFields, boolean cdcEvent) throws Exception {
+    // Create dummy mysql change event.
     JSONObject mysqlChangeEvent = new JSONObject();
     mysqlChangeEvent.put(
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.MYSQL_SOURCE_TYPE);
@@ -69,9 +69,9 @@ public final class ChangeEventSequenceFactoryTest {
     return mockContext;
   }
 
-  ChangeEventContext getMockOracleChangeEventContext(boolean addOraclePositionFields,
-      boolean cdcEvent) throws Exception {
-    //Create dummy oracle change event.
+  ChangeEventContext getMockOracleChangeEventContext(
+      boolean addOraclePositionFields, boolean cdcEvent) throws Exception {
+    // Create dummy oracle change event.
     JSONObject oracleChangeEvent = new JSONObject();
     oracleChangeEvent.put(
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.ORACLE_SOURCE_TYPE);
