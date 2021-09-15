@@ -3399,15 +3399,33 @@ public class CloudDataplex
               return this;
             }
 
-            /** Optional. Filter request. */
+            /**
+             * Optional. Filter request. Filters are case-sensitive. The following formats are
+             * supported:path = "/user/directory/notebook1.ipynb" path =
+             * starts_with("/my/notebook/directory/file.ipynb") labels.key1 = "value1" labels:key1
+             * is_notebook is_sql_script = trueThese restrictions can be coinjoined with AND, OR and
+             * NOT conjunctions.
+             */
             @com.google.api.client.util.Key private java.lang.String filter;
 
-            /** Optional. Filter request. */
+            /**
+             * Optional. Filter request. Filters are case-sensitive. The following formats are
+             * supported:path = "/user/directory/notebook1.ipynb" path =
+             * starts_with("/my/notebook/directory/file.ipynb") labels.key1 = "value1" labels:key1
+             * is_notebook is_sql_script = trueThese restrictions can be coinjoined with AND, OR and
+             * NOT conjunctions.
+             */
             public java.lang.String getFilter() {
               return filter;
             }
 
-            /** Optional. Filter request. */
+            /**
+             * Optional. Filter request. Filters are case-sensitive. The following formats are
+             * supported:path = "/user/directory/notebook1.ipynb" path =
+             * starts_with("/my/notebook/directory/file.ipynb") labels.key1 = "value1" labels:key1
+             * is_notebook is_sql_script = trueThese restrictions can be coinjoined with AND, OR and
+             * NOT conjunctions.
+             */
             public List setFilter(java.lang.String filter) {
               this.filter = filter;
               return this;
@@ -4007,268 +4025,6 @@ public class CloudDataplex
             @Override
             public TestIamPermissions set(String parameterName, Object value) {
               return (TestIamPermissions) super.set(parameterName, value);
-            }
-          }
-        }
-        /**
-         * An accessor for creating requests from the Environment collection.
-         *
-         * <p>The typical use is:
-         *
-         * <pre>
-         *   {@code CloudDataplex dataplex = new CloudDataplex(...);}
-         *   {@code CloudDataplex.Environment.List request = dataplex.environment().list(parameters ...)}
-         * </pre>
-         *
-         * @return the resource collection
-         */
-        public Environment environment() {
-          return new Environment();
-        }
-
-        /** The "environment" collection of methods. */
-        public class Environment {
-
-          /**
-           * An accessor for creating requests from the Sessions collection.
-           *
-           * <p>The typical use is:
-           *
-           * <pre>
-           *   {@code CloudDataplex dataplex = new CloudDataplex(...);}
-           *   {@code CloudDataplex.Sessions.List request = dataplex.sessions().list(parameters ...)}
-           * </pre>
-           *
-           * @return the resource collection
-           */
-          public Sessions sessions() {
-            return new Sessions();
-          }
-
-          /** The "sessions" collection of methods. */
-          public class Sessions {
-
-            /**
-             * Lists session resources in an environment.
-             *
-             * <p>Create a request for the method "sessions.list".
-             *
-             * <p>This request holds the parameters needed by the dataplex server. After setting any
-             * optional parameters, call the {@link List#execute()} method to invoke the remote
-             * operation.
-             *
-             * @param parent Required. The resource name of the parent environment:
-             *     projects/{project_number}/locations/{location_id}/lakes/{lake_id}/environment/{environment
-             *     _id}
-             * @return the request
-             */
-            public List list(java.lang.String parent) throws java.io.IOException {
-              List result = new List(parent);
-              initialize(result);
-              return result;
-            }
-
-            public class List
-                extends CloudDataplexRequest<
-                    com.google.api.services.dataplex.v1.model
-                        .GoogleCloudDataplexV1ListSessionsResponse> {
-
-              private static final String REST_PATH = "v1/{+parent}/sessions";
-
-              private final java.util.regex.Pattern PARENT_PATTERN =
-                  java.util.regex.Pattern.compile(
-                      "^projects/[^/]+/locations/[^/]+/lakes/[^/]+/environment/[^/]+$");
-
-              /**
-               * Lists session resources in an environment.
-               *
-               * <p>Create a request for the method "sessions.list".
-               *
-               * <p>This request holds the parameters needed by the the dataplex server. After
-               * setting any optional parameters, call the {@link List#execute()} method to invoke
-               * the remote operation.
-               *
-               * <p>{@link
-               * List#initialize(com.google.api.client.googleapis.services.AbstractGoogleClientRequest)}
-               * must be called to initialize this instance immediately after invoking the
-               * constructor.
-               *
-               * @param parent Required. The resource name of the parent environment:
-               *     projects/{project_number}/locations/{location_id}/lakes/{lake_id}/environment/{environment
-               *     _id}
-               * @since 1.13
-               */
-              protected List(java.lang.String parent) {
-                super(
-                    CloudDataplex.this,
-                    "GET",
-                    REST_PATH,
-                    null,
-                    com.google.api.services.dataplex.v1.model
-                        .GoogleCloudDataplexV1ListSessionsResponse.class);
-                this.parent =
-                    com.google.api.client.util.Preconditions.checkNotNull(
-                        parent, "Required parameter parent must be specified.");
-                if (!getSuppressPatternChecks()) {
-                  com.google.api.client.util.Preconditions.checkArgument(
-                      PARENT_PATTERN.matcher(parent).matches(),
-                      "Parameter parent must conform to the pattern "
-                          + "^projects/[^/]+/locations/[^/]+/lakes/[^/]+/environment/[^/]+$");
-                }
-              }
-
-              @Override
-              public com.google.api.client.http.HttpResponse executeUsingHead()
-                  throws java.io.IOException {
-                return super.executeUsingHead();
-              }
-
-              @Override
-              public com.google.api.client.http.HttpRequest buildHttpRequestUsingHead()
-                  throws java.io.IOException {
-                return super.buildHttpRequestUsingHead();
-              }
-
-              @Override
-              public List set$Xgafv(java.lang.String $Xgafv) {
-                return (List) super.set$Xgafv($Xgafv);
-              }
-
-              @Override
-              public List setAccessToken(java.lang.String accessToken) {
-                return (List) super.setAccessToken(accessToken);
-              }
-
-              @Override
-              public List setAlt(java.lang.String alt) {
-                return (List) super.setAlt(alt);
-              }
-
-              @Override
-              public List setCallback(java.lang.String callback) {
-                return (List) super.setCallback(callback);
-              }
-
-              @Override
-              public List setFields(java.lang.String fields) {
-                return (List) super.setFields(fields);
-              }
-
-              @Override
-              public List setKey(java.lang.String key) {
-                return (List) super.setKey(key);
-              }
-
-              @Override
-              public List setOauthToken(java.lang.String oauthToken) {
-                return (List) super.setOauthToken(oauthToken);
-              }
-
-              @Override
-              public List setPrettyPrint(java.lang.Boolean prettyPrint) {
-                return (List) super.setPrettyPrint(prettyPrint);
-              }
-
-              @Override
-              public List setQuotaUser(java.lang.String quotaUser) {
-                return (List) super.setQuotaUser(quotaUser);
-              }
-
-              @Override
-              public List setUploadType(java.lang.String uploadType) {
-                return (List) super.setUploadType(uploadType);
-              }
-
-              @Override
-              public List setUploadProtocol(java.lang.String uploadProtocol) {
-                return (List) super.setUploadProtocol(uploadProtocol);
-              }
-
-              /**
-               * Required. The resource name of the parent environment: projects/{project_number}/lo
-               * cations/{location_id}/lakes/{lake_id}/environment/{environment_id}
-               */
-              @com.google.api.client.util.Key private java.lang.String parent;
-
-              /**
-               * Required. The resource name of the parent environment:
-               * projects/{project_number}/locations/{location_id}/lakes/{lake_id}/environment/{environment_id}
-               */
-              public java.lang.String getParent() {
-                return parent;
-              }
-
-              /**
-               * Required. The resource name of the parent environment: projects/{project_number}/lo
-               * cations/{location_id}/lakes/{lake_id}/environment/{environment_id}
-               */
-              public List setParent(java.lang.String parent) {
-                if (!getSuppressPatternChecks()) {
-                  com.google.api.client.util.Preconditions.checkArgument(
-                      PARENT_PATTERN.matcher(parent).matches(),
-                      "Parameter parent must conform to the pattern "
-                          + "^projects/[^/]+/locations/[^/]+/lakes/[^/]+/environment/[^/]+$");
-                }
-                this.parent = parent;
-                return this;
-              }
-
-              /**
-               * Optional. Maximum number of sessions to return. The service may return fewer than
-               * this value. If unspecified, at most 10 sessions will be returned. The maximum value
-               * is 1000; values above 1000 will be coerced to 1000.
-               */
-              @com.google.api.client.util.Key private java.lang.Integer pageSize;
-
-              /**
-               * Optional. Maximum number of sessions to return. The service may return fewer than
-               * this value. If unspecified, at most 10 sessions will be returned. The maximum value
-               * is 1000; values above 1000 will be coerced to 1000.
-               */
-              public java.lang.Integer getPageSize() {
-                return pageSize;
-              }
-
-              /**
-               * Optional. Maximum number of sessions to return. The service may return fewer than
-               * this value. If unspecified, at most 10 sessions will be returned. The maximum value
-               * is 1000; values above 1000 will be coerced to 1000.
-               */
-              public List setPageSize(java.lang.Integer pageSize) {
-                this.pageSize = pageSize;
-                return this;
-              }
-
-              /**
-               * Optional. Page token received from a previous ListSessions call. Provide this to
-               * retrieve the subsequent page. When paginating, all other parameters provided to
-               * ListSessions must match the call that provided the page token.
-               */
-              @com.google.api.client.util.Key private java.lang.String pageToken;
-
-              /**
-               * Optional. Page token received from a previous ListSessions call. Provide this to
-               * retrieve the subsequent page. When paginating, all other parameters provided to
-               * ListSessions must match the call that provided the page token.
-               */
-              public java.lang.String getPageToken() {
-                return pageToken;
-              }
-
-              /**
-               * Optional. Page token received from a previous ListSessions call. Provide this to
-               * retrieve the subsequent page. When paginating, all other parameters provided to
-               * ListSessions must match the call that provided the page token.
-               */
-              public List setPageToken(java.lang.String pageToken) {
-                this.pageToken = pageToken;
-                return this;
-              }
-
-              @Override
-              public List set(String parameterName, Object value) {
-                return (List) super.set(parameterName, value);
-              }
             }
           }
         }
@@ -5819,6 +5575,249 @@ public class CloudDataplex
             @Override
             public TestIamPermissions set(String parameterName, Object value) {
               return (TestIamPermissions) super.set(parameterName, value);
+            }
+          }
+
+          /**
+           * An accessor for creating requests from the Sessions collection.
+           *
+           * <p>The typical use is:
+           *
+           * <pre>
+           *   {@code CloudDataplex dataplex = new CloudDataplex(...);}
+           *   {@code CloudDataplex.Sessions.List request = dataplex.sessions().list(parameters ...)}
+           * </pre>
+           *
+           * @return the resource collection
+           */
+          public Sessions sessions() {
+            return new Sessions();
+          }
+
+          /** The "sessions" collection of methods. */
+          public class Sessions {
+
+            /**
+             * Lists session resources in an environment.
+             *
+             * <p>Create a request for the method "sessions.list".
+             *
+             * <p>This request holds the parameters needed by the dataplex server. After setting any
+             * optional parameters, call the {@link List#execute()} method to invoke the remote
+             * operation.
+             *
+             * @param parent Required. The resource name of the parent environment:
+             *     projects/{project_number}/locations/{location_id}/lakes/{lake_id}/environment/{environment
+             *     _id}
+             * @return the request
+             */
+            public List list(java.lang.String parent) throws java.io.IOException {
+              List result = new List(parent);
+              initialize(result);
+              return result;
+            }
+
+            public class List
+                extends CloudDataplexRequest<
+                    com.google.api.services.dataplex.v1.model
+                        .GoogleCloudDataplexV1ListSessionsResponse> {
+
+              private static final String REST_PATH = "v1/{+parent}/sessions";
+
+              private final java.util.regex.Pattern PARENT_PATTERN =
+                  java.util.regex.Pattern.compile(
+                      "^projects/[^/]+/locations/[^/]+/lakes/[^/]+/environments/[^/]+$");
+
+              /**
+               * Lists session resources in an environment.
+               *
+               * <p>Create a request for the method "sessions.list".
+               *
+               * <p>This request holds the parameters needed by the the dataplex server. After
+               * setting any optional parameters, call the {@link List#execute()} method to invoke
+               * the remote operation.
+               *
+               * <p>{@link
+               * List#initialize(com.google.api.client.googleapis.services.AbstractGoogleClientRequest)}
+               * must be called to initialize this instance immediately after invoking the
+               * constructor.
+               *
+               * @param parent Required. The resource name of the parent environment:
+               *     projects/{project_number}/locations/{location_id}/lakes/{lake_id}/environment/{environment
+               *     _id}
+               * @since 1.13
+               */
+              protected List(java.lang.String parent) {
+                super(
+                    CloudDataplex.this,
+                    "GET",
+                    REST_PATH,
+                    null,
+                    com.google.api.services.dataplex.v1.model
+                        .GoogleCloudDataplexV1ListSessionsResponse.class);
+                this.parent =
+                    com.google.api.client.util.Preconditions.checkNotNull(
+                        parent, "Required parameter parent must be specified.");
+                if (!getSuppressPatternChecks()) {
+                  com.google.api.client.util.Preconditions.checkArgument(
+                      PARENT_PATTERN.matcher(parent).matches(),
+                      "Parameter parent must conform to the pattern "
+                          + "^projects/[^/]+/locations/[^/]+/lakes/[^/]+/environments/[^/]+$");
+                }
+              }
+
+              @Override
+              public com.google.api.client.http.HttpResponse executeUsingHead()
+                  throws java.io.IOException {
+                return super.executeUsingHead();
+              }
+
+              @Override
+              public com.google.api.client.http.HttpRequest buildHttpRequestUsingHead()
+                  throws java.io.IOException {
+                return super.buildHttpRequestUsingHead();
+              }
+
+              @Override
+              public List set$Xgafv(java.lang.String $Xgafv) {
+                return (List) super.set$Xgafv($Xgafv);
+              }
+
+              @Override
+              public List setAccessToken(java.lang.String accessToken) {
+                return (List) super.setAccessToken(accessToken);
+              }
+
+              @Override
+              public List setAlt(java.lang.String alt) {
+                return (List) super.setAlt(alt);
+              }
+
+              @Override
+              public List setCallback(java.lang.String callback) {
+                return (List) super.setCallback(callback);
+              }
+
+              @Override
+              public List setFields(java.lang.String fields) {
+                return (List) super.setFields(fields);
+              }
+
+              @Override
+              public List setKey(java.lang.String key) {
+                return (List) super.setKey(key);
+              }
+
+              @Override
+              public List setOauthToken(java.lang.String oauthToken) {
+                return (List) super.setOauthToken(oauthToken);
+              }
+
+              @Override
+              public List setPrettyPrint(java.lang.Boolean prettyPrint) {
+                return (List) super.setPrettyPrint(prettyPrint);
+              }
+
+              @Override
+              public List setQuotaUser(java.lang.String quotaUser) {
+                return (List) super.setQuotaUser(quotaUser);
+              }
+
+              @Override
+              public List setUploadType(java.lang.String uploadType) {
+                return (List) super.setUploadType(uploadType);
+              }
+
+              @Override
+              public List setUploadProtocol(java.lang.String uploadProtocol) {
+                return (List) super.setUploadProtocol(uploadProtocol);
+              }
+
+              /**
+               * Required. The resource name of the parent environment: projects/{project_number}/lo
+               * cations/{location_id}/lakes/{lake_id}/environment/{environment_id}
+               */
+              @com.google.api.client.util.Key private java.lang.String parent;
+
+              /**
+               * Required. The resource name of the parent environment:
+               * projects/{project_number}/locations/{location_id}/lakes/{lake_id}/environment/{environment_id}
+               */
+              public java.lang.String getParent() {
+                return parent;
+              }
+
+              /**
+               * Required. The resource name of the parent environment: projects/{project_number}/lo
+               * cations/{location_id}/lakes/{lake_id}/environment/{environment_id}
+               */
+              public List setParent(java.lang.String parent) {
+                if (!getSuppressPatternChecks()) {
+                  com.google.api.client.util.Preconditions.checkArgument(
+                      PARENT_PATTERN.matcher(parent).matches(),
+                      "Parameter parent must conform to the pattern "
+                          + "^projects/[^/]+/locations/[^/]+/lakes/[^/]+/environments/[^/]+$");
+                }
+                this.parent = parent;
+                return this;
+              }
+
+              /**
+               * Optional. Maximum number of sessions to return. The service may return fewer than
+               * this value. If unspecified, at most 10 sessions will be returned. The maximum value
+               * is 1000; values above 1000 will be coerced to 1000.
+               */
+              @com.google.api.client.util.Key private java.lang.Integer pageSize;
+
+              /**
+               * Optional. Maximum number of sessions to return. The service may return fewer than
+               * this value. If unspecified, at most 10 sessions will be returned. The maximum value
+               * is 1000; values above 1000 will be coerced to 1000.
+               */
+              public java.lang.Integer getPageSize() {
+                return pageSize;
+              }
+
+              /**
+               * Optional. Maximum number of sessions to return. The service may return fewer than
+               * this value. If unspecified, at most 10 sessions will be returned. The maximum value
+               * is 1000; values above 1000 will be coerced to 1000.
+               */
+              public List setPageSize(java.lang.Integer pageSize) {
+                this.pageSize = pageSize;
+                return this;
+              }
+
+              /**
+               * Optional. Page token received from a previous ListSessions call. Provide this to
+               * retrieve the subsequent page. When paginating, all other parameters provided to
+               * ListSessions must match the call that provided the page token.
+               */
+              @com.google.api.client.util.Key private java.lang.String pageToken;
+
+              /**
+               * Optional. Page token received from a previous ListSessions call. Provide this to
+               * retrieve the subsequent page. When paginating, all other parameters provided to
+               * ListSessions must match the call that provided the page token.
+               */
+              public java.lang.String getPageToken() {
+                return pageToken;
+              }
+
+              /**
+               * Optional. Page token received from a previous ListSessions call. Provide this to
+               * retrieve the subsequent page. When paginating, all other parameters provided to
+               * ListSessions must match the call that provided the page token.
+               */
+              public List setPageToken(java.lang.String pageToken) {
+                this.pageToken = pageToken;
+                return this;
+              }
+
+              @Override
+              public List set(String parameterName, Object value) {
+                return (List) super.set(parameterName, value);
+              }
             }
           }
         }
@@ -12292,7 +12291,8 @@ public class CloudDataplex
              *
              * @param name Required. The resource name of the entity:
              *     projects/{project_number}/locations/{location_id}/lakes/{lake_id}
-             *     /zones/{zone_id}/entities/{entity_id}
+             *     /zones/{zone_id}/entities/{entity_id_or_entity_uid} The entity id part could
+             *     either be the entity unique ID or the user provided ID.
              * @return the request
              */
             public Get get(java.lang.String name) throws java.io.IOException {
@@ -12327,7 +12327,8 @@ public class CloudDataplex
                *
                * @param name Required. The resource name of the entity:
                *     projects/{project_number}/locations/{location_id}/lakes/{lake_id}
-               *     /zones/{zone_id}/entities/{entity_id}
+               *     /zones/{zone_id}/entities/{entity_id_or_entity_uid} The entity id part could
+               *     either be the entity unique ID or the user provided ID.
                * @since 1.13
                */
               protected Get(java.lang.String name) {
@@ -12418,14 +12419,16 @@ public class CloudDataplex
               /**
                * Required. The resource name of the entity:
                * projects/{project_number}/locations/{location_id}/lakes/{lake_id}
-               * /zones/{zone_id}/entities/{entity_id}
+               * /zones/{zone_id}/entities/{entity_id_or_entity_uid} The entity id part could either
+               * be the entity unique ID or the user provided ID.
                */
               @com.google.api.client.util.Key private java.lang.String name;
 
               /**
                * Required. The resource name of the entity:
                * projects/{project_number}/locations/{location_id}/lakes/{lake_id}
-               * /zones/{zone_id}/entities/{entity_id}
+               * /zones/{zone_id}/entities/{entity_id_or_entity_uid} The entity id part could either
+               * be the entity unique ID or the user provided ID.
                */
               public java.lang.String getName() {
                 return name;
@@ -12434,7 +12437,8 @@ public class CloudDataplex
               /**
                * Required. The resource name of the entity:
                * projects/{project_number}/locations/{location_id}/lakes/{lake_id}
-               * /zones/{zone_id}/entities/{entity_id}
+               * /zones/{zone_id}/entities/{entity_id_or_entity_uid} The entity id part could either
+               * be the entity unique ID or the user provided ID.
                */
               public Get setName(java.lang.String name) {
                 if (!getSuppressPatternChecks()) {

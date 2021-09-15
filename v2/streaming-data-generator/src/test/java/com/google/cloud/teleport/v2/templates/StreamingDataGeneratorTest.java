@@ -219,10 +219,13 @@ public class StreamingDataGeneratorTest {
     pipeline.run();
   }
 
-  /** Tests generation of fake Json data message with attributes using schema with space indentation. */
+  /**
+   * Tests generation of fake Json data message with attributes using schema with space indentation.
+   */
   @Test
-  public void testJsonMessageGenerator_WithAttributes_WithSpaceIndentation_returnsFakeMessageContainingAttributes()
-      throws IOException {
+  public void
+      testJsonMessageGenerator_WithAttributes_WithSpaceIndentation_returnsFakeMessageContainingAttributes()
+          throws IOException {
     // Arrange
     String schema =
         "{\n"

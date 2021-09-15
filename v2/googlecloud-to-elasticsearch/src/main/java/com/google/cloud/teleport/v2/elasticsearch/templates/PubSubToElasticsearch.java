@@ -42,8 +42,8 @@ import org.slf4j.LoggerFactory;
 /**
  * The {@link PubSubToElasticsearch} pipeline is a streaming pipeline which ingests data in JSON
  * format from PubSub, applies a Javascript UDF if provided and writes the resulting records to
- * Elasticsearch. If the element fails to be processed then it is written to an error output table in
- * BigQuery.
+ * Elasticsearch. If the element fails to be processed then it is written to an error output table
+ * in BigQuery.
  *
  * <p>Please refer to <b><a href=
  * "https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/master/v2/googlecloud-to-elasticsearch/docs/PubSubToElasticsearch/README.md">
@@ -84,8 +84,10 @@ public class PubSubToElasticsearch {
             .as(PubSubToElasticsearchOptions.class);
 
     pubSubToElasticsearchOptions.setIndex(
-            new ElasticsearchIndex(pubSubToElasticsearchOptions.getDataset(),
-            pubSubToElasticsearchOptions.getNamespace()).getIndex());
+        new ElasticsearchIndex(
+                pubSubToElasticsearchOptions.getDataset(),
+                pubSubToElasticsearchOptions.getNamespace())
+            .getIndex());
 
     run(pubSubToElasticsearchOptions);
   }
@@ -167,5 +169,4 @@ public class PubSubToElasticsearch {
     // Execute the pipeline and return the result.
     return pipeline.run();
   }
-
 }

@@ -41,9 +41,10 @@ public interface PubSubToElasticsearchOptions
 
   void setInputSubscription(String inputSubscription);
 
-  @Description("The type of logs sent via Pub/Sub for which we have out of the box dashboard. " +
-          "Known log types values are audit, vpcflow, and firewall. " +
-          "If no known log type is detected, we default to pubsub")
+  @Description(
+      "The type of logs sent via Pub/Sub for which we have out of the box dashboard. "
+          + "Known log types values are audit, vpcflow, and firewall. "
+          + "If no known log type is detected, we default to pubsub")
   @Default.Enum("PUBSUB")
   Dataset getDataset();
 
@@ -56,8 +57,7 @@ public interface PubSubToElasticsearchOptions
   void setNamespace(String namespace);
 
   @Description(
-      "The table to output errors within BigQuery in <project-id>:<dataset>.<table> "
-          + "format.")
+      "The table to output errors within BigQuery in <project-id>:<dataset>.<table> " + "format.")
   @Validation.Required
   String getErrorOutputTable();
 

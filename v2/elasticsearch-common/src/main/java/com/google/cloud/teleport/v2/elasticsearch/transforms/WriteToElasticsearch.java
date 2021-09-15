@@ -62,20 +62,21 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
   public abstract ElasticsearchWriteOptions options();
 
   /**
-   * Types have been removed in ES 7.0. Default will be _doc.
-   * See https://www.elastic.co/guide/en/elasticsearch/reference/current/removal-of-types.html"
+   * Types have been removed in ES 7.0. Default will be _doc. See
+   * https://www.elastic.co/guide/en/elasticsearch/reference/current/removal-of-types.html"
    */
-  private static final String DOCUMENT_TYPE="_doc";
+  private static final String DOCUMENT_TYPE = "_doc";
 
   @Override
   public PDone expand(PCollection<String> jsonStrings) {
-    ConnectionInformation connectionInformation = new ConnectionInformation(options().getConnectionUrl());
+    ConnectionInformation connectionInformation =
+        new ConnectionInformation(options().getConnectionUrl());
 
     ElasticsearchIO.ConnectionConfiguration config =
         ElasticsearchIO.ConnectionConfiguration.create(
-            new String[]{connectionInformation.getElasticsearchURL().toString()},
-            options().getIndex(),
-            DOCUMENT_TYPE)
+                new String[] {connectionInformation.getElasticsearchURL().toString()},
+                options().getIndex(),
+                DOCUMENT_TYPE)
             .withApiKey(options().getApiKey());
 
     ElasticsearchIO.Write elasticsearchWriter =
@@ -104,11 +105,9 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
 
     public WriteToElasticsearch build() {
 
-      checkArgument(
-          options().getConnectionUrl() != null, "ConnectionUrl is required.");
+      checkArgument(options().getConnectionUrl() != null, "ConnectionUrl is required.");
 
-      checkArgument(
-              options().getApiKey() != null, "ApiKey is required.");
+      checkArgument(options().getApiKey() != null, "ApiKey is required.");
 
       checkArgument(options().getIndex() != null, "Elasticsearch index should not be null.");
 

@@ -59,25 +59,26 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
 
     logFile =
         ChangeEventTypeConvertor.toString(
-            ctx.getChangeEvent(), DatastreamConstants.MYSQL_LOGFILE_KEY,
-            /*requiredField=*/false);
+            ctx.getChangeEvent(), DatastreamConstants.MYSQL_LOGFILE_KEY, /*requiredField=*/ false);
     if (logFile == null) {
       logFile = "";
     }
 
     logPosition =
         ChangeEventTypeConvertor.toLong(
-            ctx.getChangeEvent(), DatastreamConstants.MYSQL_LOGPOSITION_KEY,
-            /*requiredField=*/false);
+            ctx.getChangeEvent(),
+            DatastreamConstants.MYSQL_LOGPOSITION_KEY,
+            /*requiredField=*/ false);
     if (logPosition == null) {
       logPosition = new Long(-1);
     }
 
     // Create MySqlChangeEventSequence from JSON keys in change event.
     return new MySqlChangeEventSequence(
-        ChangeEventTypeConvertor.toLong(ctx.getChangeEvent(),
-            DatastreamConstants.MYSQL_TIMESTAMP_KEY, /*requiredField=*/true),
-        logFile, logPosition);
+        ChangeEventTypeConvertor.toLong(
+            ctx.getChangeEvent(), DatastreamConstants.MYSQL_TIMESTAMP_KEY, /*requiredField=*/ true),
+        logFile,
+        logPosition);
   }
 
   /*

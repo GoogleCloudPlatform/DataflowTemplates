@@ -26,44 +26,46 @@ import org.junit.rules.ExpectedException;
 /** Tests for the {@link ConnectionInformation} util. */
 public class ConnectionInformationTest {
 
-    /** Rule for exception testing. */
-    @Rule
-    public ExpectedException expectedException = ExpectedException.none();
+  /** Rule for exception testing. */
+  @Rule public ExpectedException expectedException = ExpectedException.none();
 
-    @Test
-    public void testParseUrl() {
-        String testUrl = "https://host.domain:443";
+  @Test
+  public void testParseUrl() {
+    String testUrl = "https://host.domain:443";
 
-        ConnectionInformation connectionInformation = new ConnectionInformation(testUrl);
+    ConnectionInformation connectionInformation = new ConnectionInformation(testUrl);
 
-        Assert.assertThat(connectionInformation.getType(), is(equalTo(ConnectionInformation.Type.URL)));
-        Assert.assertThat(connectionInformation.getElasticsearchURL().toString(), is(equalTo(testUrl)));
-    }
+    Assert.assertThat(connectionInformation.getType(), is(equalTo(ConnectionInformation.Type.URL)));
+    Assert.assertThat(connectionInformation.getElasticsearchURL().toString(), is(equalTo(testUrl)));
+  }
 
-    @Test
-    public void testParseCloudId() {
-        String testUrl = "deployment-name:dXMtY2VudHJhbDEuZ2NwLmNsb3VkLmVzLmlvJDNjYTgyYTBlMD" +
-                "Q3MjQ0NjViNDQyYzA3N2E4NnVhc2Q1JDU4OWFlODhlZmFjMHFmZjdhMTQzOXR1MjdsYWFmZnIz";
+  @Test
+  public void testParseCloudId() {
+    String testUrl =
+        "deployment-name:dXMtY2VudHJhbDEuZ2NwLmNsb3VkLmVzLmlvJDNjYTgyYTBlMD"
+            + "Q3MjQ0NjViNDQyYzA3N2E4NnVhc2Q1JDU4OWFlODhlZmFjMHFmZjdhMTQzOXR1MjdsYWFmZnIz";
 
-        ConnectionInformation connectionInformation = new ConnectionInformation(testUrl);
+    ConnectionInformation connectionInformation = new ConnectionInformation(testUrl);
 
-        Assert.assertThat(connectionInformation.getType(), is(ConnectionInformation.Type.CLOUD_ID));
-        Assert.assertThat(connectionInformation.getElasticsearchURL().toString(),
-                is(equalTo("https://3ca82a0e04724465b442c077a86uasd5.us-central1.gcp.cloud.es.io:443")));
-        Assert.assertThat(connectionInformation.getKibanaURL().toString(),
-                is(equalTo("https://589ae88efac0qff7a1439tu27laaffr3.us-central1.gcp.cloud.es.io:443")));
-    }
+    Assert.assertThat(connectionInformation.getType(), is(ConnectionInformation.Type.CLOUD_ID));
+    Assert.assertThat(
+        connectionInformation.getElasticsearchURL().toString(),
+        is(equalTo("https://3ca82a0e04724465b442c077a86uasd5.us-central1.gcp.cloud.es.io:443")));
+    Assert.assertThat(
+        connectionInformation.getKibanaURL().toString(),
+        is(equalTo("https://589ae88efac0qff7a1439tu27laaffr3.us-central1.gcp.cloud.es.io:443")));
+  }
 
-    @Test
-    public void testParseMalformedUrl() {
-        expectedException.expect(IllegalArgumentException.class);
-        expectedException.expectMessage("Illegal base64");
+  @Test
+  public void testParseMalformedUrl() {
+    expectedException.expect(IllegalArgumentException.class);
+    expectedException.expectMessage("Illegal base64");
 
-        String testUrl = "htteps://host./hrfc.domain:443";
+    String testUrl = "htteps://host./hrfc.domain:443";
 
-        ConnectionInformation connectionInformation = new ConnectionInformation(testUrl);
+    ConnectionInformation connectionInformation = new ConnectionInformation(testUrl);
 
-        Assert.assertThat(connectionInformation.getType(), is(equalTo(ConnectionInformation.Type.URL)));
-        Assert.assertThat(connectionInformation.getElasticsearchURL().toString(), is(equalTo(testUrl)));
-    }
+    Assert.assertThat(connectionInformation.getType(), is(equalTo(ConnectionInformation.Type.URL)));
+    Assert.assertThat(connectionInformation.getElasticsearchURL().toString(), is(equalTo(testUrl)));
+  }
 }

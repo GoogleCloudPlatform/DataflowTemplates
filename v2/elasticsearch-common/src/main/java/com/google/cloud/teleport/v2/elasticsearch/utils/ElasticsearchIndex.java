@@ -15,19 +15,17 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.utils;
 
-/**
- * ElasticsearchIndex builds index based on parameters dataset and namespace.
- * **/
+/** ElasticsearchIndex builds index based on parameters dataset and namespace. * */
 public class ElasticsearchIndex {
-    private final Dataset dataset;
-    private final String namespace;
+  private final Dataset dataset;
+  private final String namespace;
 
-    public ElasticsearchIndex(Dataset dataset, String namespace) {
-        this.dataset = dataset;
-        this.namespace = namespace;
-    }
+  public ElasticsearchIndex(Dataset dataset, String namespace) {
+    this.dataset = dataset;
+    this.namespace = namespace;
+  }
 
-    public String getIndex(){
-        return "logs-" + this.dataset.getKeyWithPrefix().toLowerCase() + "-" + this.namespace;
-    }
+  public String getIndex() {
+    return "logs-" + this.dataset.getKeyWithPrefix().toLowerCase() + "-" + this.namespace;
+  }
 }

@@ -30,7 +30,10 @@ public class WriteToElasticsearchTest {
 
   @Rule public ExpectedException exceptionRule = ExpectedException.none();
 
-  /** Tests {@link WriteToElasticsearch} throws an exception if a null ConnectionInformation is provided. */
+  /**
+   * Tests {@link WriteToElasticsearch} throws an exception if a null ConnectionInformation is
+   * provided.
+   */
   @Test
   public void testNullConnectionInformation() {
 
@@ -69,8 +72,8 @@ public class WriteToElasticsearchTest {
   }
 
   /**
-   * Tests that {@link WriteToElasticsearch} throws an exception if an invalid ConnectionInformation is
-   * provided.
+   * Tests that {@link WriteToElasticsearch} throws an exception if an invalid ConnectionInformation
+   * is provided.
    */
   @Test
   public void testInvalidConnectionInformation() {

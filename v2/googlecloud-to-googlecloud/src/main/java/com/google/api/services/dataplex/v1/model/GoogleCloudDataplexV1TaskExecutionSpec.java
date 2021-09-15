@@ -42,12 +42,6 @@ public final class GoogleCloudDataplexV1TaskExecutionSpec
   @com.google.api.client.util.Key private java.util.Map<String, java.lang.String> args;
 
   /**
-   * Number of retry attempts before aborting. Set to zero to never attempt to retry a failed task.
-   * The value may be {@code null}.
-   */
-  @com.google.api.client.util.Key private java.lang.Integer maxRetries;
-
-  /**
    * Optional. The project in which jobs are run. By default, the project containing the Lake is
    * used. The value may be {@code null}.
    */
@@ -94,25 +88,6 @@ public final class GoogleCloudDataplexV1TaskExecutionSpec
   public GoogleCloudDataplexV1TaskExecutionSpec setArgs(
       java.util.Map<String, java.lang.String> args) {
     this.args = args;
-    return this;
-  }
-
-  /**
-   * Number of retry attempts before aborting. Set to zero to never attempt to retry a failed task.
-   *
-   * @return value or {@code null} for none
-   */
-  public java.lang.Integer getMaxRetries() {
-    return maxRetries;
-  }
-
-  /**
-   * Number of retry attempts before aborting. Set to zero to never attempt to retry a failed task.
-   *
-   * @param maxRetries maxRetries or {@code null} for none
-   */
-  public GoogleCloudDataplexV1TaskExecutionSpec setMaxRetries(java.lang.Integer maxRetries) {
-    this.maxRetries = maxRetries;
     return this;
   }
 

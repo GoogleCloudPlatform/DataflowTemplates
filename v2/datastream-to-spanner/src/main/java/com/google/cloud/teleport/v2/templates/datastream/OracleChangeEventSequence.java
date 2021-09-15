@@ -50,16 +50,19 @@ class OracleChangeEventSequence extends ChangeEventSequence {
      */
     Long scn;
 
-    scn = ChangeEventTypeConvertor.toLong(ctx.getChangeEvent(),
-        DatastreamConstants.ORACLE_SCN_KEY, /*requiredField=*/false);
+    scn =
+        ChangeEventTypeConvertor.toLong(
+            ctx.getChangeEvent(), DatastreamConstants.ORACLE_SCN_KEY, /*requiredField=*/ false);
     if (scn == null) {
       scn = new Long(-1);
     }
 
     // Change events from Oracle have timestamp and SCN filled in always.
     return new OracleChangeEventSequence(
-        ChangeEventTypeConvertor.toLong(ctx.getChangeEvent(),
-            DatastreamConstants.ORACLE_TIMESTAMP_KEY, /*requiredField=*/true),
+        ChangeEventTypeConvertor.toLong(
+            ctx.getChangeEvent(),
+            DatastreamConstants.ORACLE_TIMESTAMP_KEY,
+            /*requiredField=*/ true),
         scn);
   }
 
