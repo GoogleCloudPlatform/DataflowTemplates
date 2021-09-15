@@ -32,7 +32,7 @@ The template requires the following parameters:
 * connectionUrl: Elasticsearch URL in format http://hostname:[port] or CloudId
 * inputSubscription: PubSub subscription to read from, ex: projects/my-project/subscriptions/my-subscription
 * errorOutputTopic: Error output topic in Pub/Sub for failed inserts
-* apiKey: BaseAPI key for access without requiring basic authentication. Refer  https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request.
+* apiKey: Base64 Encoded API Key for access without requiring basic authentication. Refer  https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request.
 
 The template has the following optional parameters:
 * elasticsearchUsername: Elasticsearch username used to connect to Elasticsearch endpoint. Overrides ApiKey option if specified.
@@ -110,8 +110,8 @@ echo '{
           },
           {
               "name":"apiKey",
-              "label":"API key in Base64 for access without requiring basic authentication",
-              "helpText":"API key in Base64 for access without requiring basic authentication",
+              "label":"Base64 Encoded API Key for access without requiring basic authentication",
+              "helpText":"Base64 Encoded API Key for access without requiring basic authentication",
               "paramType":"TEXT",
               "isOptional":false
           },
