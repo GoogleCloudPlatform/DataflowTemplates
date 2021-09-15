@@ -31,10 +31,12 @@ To enable the out of the box integration:
 The template requires the following parameters:
 * connectionUrl: Elasticsearch URL in format http://hostname:[port] or CloudId
 * inputSubscription: PubSub subscription to read from, ex: projects/my-project/subscriptions/my-subscription
-* errorOutputTable: Error output table for failed inserts in form: project-id:dataset.table
-* apiKey: API key for access without requiring basic authentication. Refer  https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request.
+* errorOutputTopic: Error output topic in Pub/Sub for failed inserts
+* apiKey: Base64 Encoded API Key for access without requiring basic authentication. Refer  https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request.
 
 The template has the following optional parameters:
+* elasticsearchUsername: Elasticsearch username used to connect to Elasticsearch endpoint. Overrides ApiKey option if specified.
+* elasticsearchPassword: Elasticsearch password used to connect to Elasticsearch endpoint. Overrides ApiKey option if specified.
 * dataset: The type of logs sent via Pub/Sub for which we have out of the box dashboard. Known log types values are `audit`, `vpcflow`, and `firewall`. If no known log type is detected, we default to `pubsub` type.
 * namespace: An arbitrary grouping, such as an environment (dev, prod, or qa), a team, or a strategic business unit. Default is `default`
 * batchSize: Batch size in number of documents. Default: 1000
@@ -65,8 +67,10 @@ export CONNECTION_URL=<url-or-cloud_id>
 export SUBSCRIPTION=<my-subscription>
 export DATASET=<dataset>
 export NAMESPACE=<namespace>
-export ERROR_OUTPUT_TABLE=<my-project:my-dataset.my-error-output-table>
+export ERROR_OUTPUT_TOPIC=<error-output-topic>
 export API_KEY=<api-key>
+export ELASTICSEARCH_USERNAME=<username>
+export ELASTICSEARCH_PASSWORD=<password>
 ```
 
 * Build and push image to Google Container Repository
@@ -106,8 +110,8 @@ echo '{
           },
           {
               "name":"apiKey",
-              "label":"API key for access without requiring basic authentication",
-              "helpText":"API key for access without requiring basic authentication",
+              "label":"Base64 Encoded API Key for access without requiring basic authentication",
+              "helpText":"Base64 Encoded API Key for access without requiring basic authentication",
               "paramType":"TEXT",
               "isOptional":false
           },
@@ -126,11 +130,25 @@ echo '{
               "isOptional":true
           },
           {
-              "name":"errorOutputTable",
-              "label":"Error output table in BigQuery for failed inserts",
-              "helpText":"Error output table in BigQuery for failed inserts in form: project-id:dataset.table",
-              "paramType":"TEXT",
+              "name":"errorOutputTopic",
+              "label":"Error output topic in Pub/Sub for failed inserts",
+              "helpText":"Error output topic in Pub/Sub for failed inserts",
+              "paramType":"PUBSUB_TOPIC",
               "isOptional":false
+          },
+          {
+              "name":"elasticsearchUsername",
+              "label":"Username for Elasticsearch endpoint. Overrides ApiKey option if specified.",
+              "helpText":"Username for Elasticsearch endpoint. Overrides ApiKey option if specified.",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"elasticsearchPassword",
+              "label":"Password for Elasticsearch endpoint. Overrides ApiKey option if specified.",
+              "helpText":"Password for Elasticsearch endpoint. Overrides ApiKey option if specified.",
+              "paramType":"TEXT",
+              "isOptional":true
           },
           {
               "name":"batchSize",
@@ -184,5 +202,5 @@ export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud beta dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters inputSubscription=${SUBSCRIPTION},connectionUrl=${CONNECTION_URL},dataset=${DATASET},namespace=${NAMESPACE},apiKey=${API_KEY},errorOutputTable=${ERROR_OUTPUT_TABLE}
+        --parameters inputSubscription=${SUBSCRIPTION},connectionUrl=${CONNECTION_URL},dataset=${DATASET},namespace=${NAMESPACE},apiKey=${API_KEY},errorOutputTopic=${ERROR_OUTPUT_TOPIC}
 ```
