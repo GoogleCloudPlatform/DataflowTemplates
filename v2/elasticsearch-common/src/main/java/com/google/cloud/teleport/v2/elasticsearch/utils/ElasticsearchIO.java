@@ -191,7 +191,7 @@ public class ElasticsearchIO {
     return mapper.readValue(responseEntity.getContent(), JsonNode.class);
   }
 
-  static void checkForErrors(HttpEntity responseEntity, int backendVersion, boolean partialUpdate)
+  static void checkForErrors(HttpEntity requestBody, HttpEntity responseEntity, int backendVersion, boolean partialUpdate)
       throws IOException {
     JsonNode searchResult = parseResponse(responseEntity);
     boolean errors = searchResult.path("errors").asBoolean();
@@ -228,7 +228,10 @@ public class ElasticsearchIO {
           }
         }
       }
-      throw new IOException(errorMessages.toString());
+      throw new IOException(errorMessages
+                + "DEBUG: \n"
+                + "Request: " + parseResponse(requestBody) + "\n\n"
+                + "Response: " + parseResponse(responseEntity) + "\n\n");
     }
   }
 
@@ -1480,7 +1483,7 @@ public class ElasticsearchIO {
             && spec.getRetryConfiguration().getRetryPredicate().test(responseEntity)) {
           responseEntity = handleRetry("POST", endPoint, Collections.emptyMap(), requestBody);
         }
-        checkForErrors(responseEntity, backendVersion, spec.getUsePartialUpdate());
+        checkForErrors(requestBody, responseEntity, backendVersion, spec.getUsePartialUpdate());
       }
 
       /** retry request based on retry configuration policy. */

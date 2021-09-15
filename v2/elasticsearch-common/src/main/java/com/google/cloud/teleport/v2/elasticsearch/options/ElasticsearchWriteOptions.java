@@ -36,6 +36,16 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   void setApiKey(String apiKey);
 
+  @Description("Username for Elasticsearch endpoint. Overrides ApiKey option if specified.")
+  String getElasticsearchUsername();
+
+  void setElasticsearchUsername(String elasticsearchUsername);
+
+  @Description("Password for Elasticsearch endpoint. Overrides ApiKey option if specified.")
+  String getElasticsearchPassword();
+
+  void setElasticsearchPassword(String elasticsearchPassword);
+
   @Description("The index toward which the requests will be issued, ex: my-index")
   String getIndex();
 
