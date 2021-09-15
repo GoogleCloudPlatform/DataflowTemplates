@@ -21,7 +21,7 @@ import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
-import java.util.Map;   
+import java.util.Map;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;

@@ -35,6 +35,8 @@ The template requires the following parameters:
 * apiKey: BaseAPI key for access without requiring basic authentication. Refer  https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request.
 
 The template has the following optional parameters:
+* elasticsearchUsername: Elasticsearch username used to connect to Elasticsearch endpoint. Overrides ApiKey option if specified.
+* elasticsearchPassword: Elasticsearch password used to connect to Elasticsearch endpoint. Overrides ApiKey option if specified.
 * dataset: The type of logs sent via Pub/Sub for which we have out of the box dashboard. Known log types values are `audit`, `vpcflow`, and `firewall`. If no known log type is detected, we default to `pubsub` type.
 * namespace: An arbitrary grouping, such as an environment (dev, prod, or qa), a team, or a strategic business unit. Default is `default`
 * batchSize: Batch size in number of documents. Default: 1000
@@ -67,6 +69,8 @@ export DATASET=<dataset>
 export NAMESPACE=<namespace>
 export ERROR_OUTPUT_TOPIC=<error-output-topic>
 export API_KEY=<api-key>
+export ELASTICSEARCH_USERNAME=<username>
+export ELASTICSEARCH_PASSWORD=<password>
 ```
 
 * Build and push image to Google Container Repository
@@ -131,6 +135,20 @@ echo '{
               "helpText":"Error output topic in Pub/Sub for failed inserts",
               "paramType":"PUBSUB_TOPIC",
               "isOptional":false
+          },
+          {
+              "name":"elasticsearchUsername",
+              "label":"Username for Elasticsearch endpoint. Overrides ApiKey option if specified.",
+              "helpText":"Username for Elasticsearch endpoint. Overrides ApiKey option if specified.",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"elasticsearchPassword",
+              "label":"Password for Elasticsearch endpoint. Overrides ApiKey option if specified.",
+              "helpText":"Password for Elasticsearch endpoint. Overrides ApiKey option if specified.",
+              "paramType":"TEXT",
+              "isOptional":true
           },
           {
               "name":"batchSize",
