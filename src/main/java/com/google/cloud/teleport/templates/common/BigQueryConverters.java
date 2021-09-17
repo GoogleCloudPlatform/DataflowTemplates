@@ -58,8 +58,13 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.commons.text.StringSubstitutor;
+import org.apache.hadoop.hbase.client.Mutation;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.util.Bytes;
 
-/** Common transforms for Teleport BigQueryIO. */
+/**
+ * Common transforms for Teleport BigQueryIO.
+ */
 public class BigQueryConverters {
 
   public static final int MAX_STRING_SIZE_BYTES = 1500;
@@ -79,8 +84,11 @@ public class BigQueryConverters {
           "TIME",
           "DATETIME");
 
-  /** Options for reading data from BigQuery. */
+  /**
+   * Options for reading data from BigQuery.
+   */
   public interface BigQueryReadOptions extends PipelineOptions {
+
     @Description("SQL query in standard SQL to pull data from BigQuery")
     ValueProvider<String> getReadQuery();
 
@@ -97,12 +105,16 @@ public class BigQueryConverters {
     void setInvalidOutputPath(ValueProvider<String> value);
   }
 
-  /** Factory method for {@link JsonToTableRow}. */
+  /**
+   * Factory method for {@link JsonToTableRow}.
+   */
   public static PTransform<PCollection<String>, PCollection<TableRow>> jsonToTableRow() {
     return new JsonToTableRow();
   }
 
-  /** Converts UTF8 encoded Json records to TableRow records. */
+  /**
+   * Converts UTF8 encoded Json records to TableRow records.
+   */
   private static class JsonToTableRow
       extends PTransform<PCollection<String>, PCollection<TableRow>> {
 
@@ -137,9 +149,12 @@ public class BigQueryConverters {
       return new AutoValue_BigQueryConverters_FailsafeJsonToTableRow.Builder<>();
     }
 
-    /** Builder for {@link FailsafeJsonToTableRow}. */
+    /**
+     * Builder for {@link FailsafeJsonToTableRow}.
+     */
     @AutoValue.Builder
     public abstract static class Builder<T> {
+
       public abstract Builder<T> setSuccessTag(TupleTag<TableRow> successTag);
 
       public abstract Builder<T> setFailureTag(TupleTag<FailsafeElement<T, String>> failureTag);
@@ -152,29 +167,130 @@ public class BigQueryConverters {
       return failsafeElements.apply(
           "JsonToTableRow",
           ParDo.of(
-                  new DoFn<FailsafeElement<T, String>, TableRow>() {
-                    @ProcessElement
-                    public void processElement(ProcessContext context) {
-                      FailsafeElement<T, String> element = context.element();
-                      String json = element.getPayload();
+              new DoFn<FailsafeElement<T, String>, TableRow>() {
+                @ProcessElement
+                public void processElement(ProcessContext context) {
+                  FailsafeElement<T, String> element = context.element();
+                  String json = element.getPayload();
 
-                      try {
-                        TableRow row = convertJsonToTableRow(json);
-                        context.output(row);
-                      } catch (Exception e) {
-                        context.output(
-                            failureTag(),
-                            FailsafeElement.of(element)
-                                .setErrorMessage(e.getMessage())
-                                .setStacktrace(Throwables.getStackTraceAsString(e)));
-                      }
-                    }
-                  })
+                  try {
+                    TableRow row = convertJsonToTableRow(json);
+                    context.output(row);
+                  } catch (Exception e) {
+                    context.output(
+                        failureTag(),
+                        FailsafeElement.of(element)
+                            .setErrorMessage(e.getMessage())
+                            .setStacktrace(Throwables.getStackTraceAsString(e)));
+                  }
+                }
+              })
               .withOutputTags(successTag(), TupleTagList.of(failureTag())));
     }
   }
 
-  /** Reads data from BigQuery and converts it to Datastore Entity format. */
+  /**
+   * Reads data from BigQuery and converts it to Bigtable mutation.
+   */
+  @AutoValue
+  public abstract static class BigQueryToMutation extends
+      PTransform<PBegin, PCollection<Mutation>> {
+
+    abstract ValueProvider<String> query();
+
+    abstract ValueProvider<String> columnFamily();
+
+    abstract ValueProvider<String> rowkey();
+
+    /**
+     * Builder for BigQuery.
+     */
+    @AutoValue.Builder
+    public abstract static class Builder {
+
+      public abstract Builder setQuery(ValueProvider<String> query);
+
+      public abstract Builder setColumnFamily(ValueProvider<String> columnFamily);
+
+      public abstract Builder setRowkey(ValueProvider<String> rowkey);
+
+      public abstract BigQueryToMutation build();
+    }
+
+    public static Builder newBuilder() {
+      return new AutoValue_BigQueryConverters_BigQueryToMutation.Builder();
+    }
+
+    @Override
+    public PCollection<Mutation> expand(PBegin begin) {
+      return begin
+          .apply(
+              "AvroToMutation",
+              BigQueryIO.read(
+                  AvroToMutation.newBuilder()
+                      .setColumnFamily(columnFamily())
+                      .setRowkey(rowkey())
+                      .build())
+                  .fromQuery(query())
+                  .withoutValidation()
+                  .withTemplateCompatibility()
+                  .usingStandardSql());
+    }
+  }
+
+
+  /**
+   * Converts from the BigQuery Avro format into Bigtable mutation.
+   */
+  @AutoValue
+  public abstract static class AvroToMutation
+      implements SerializableFunction<SchemaAndRecord, Mutation> {
+
+    public abstract ValueProvider<String> columnFamily();
+
+    public abstract ValueProvider<String> rowkey();
+
+    /**
+     * Builder for AvroToEntity.
+     */
+    @AutoValue.Builder
+    public abstract static class Builder {
+
+      public abstract Builder setColumnFamily(ValueProvider<String> value);
+
+      public abstract Builder setRowkey(ValueProvider<String> rowkey);
+
+      public abstract AvroToMutation build();
+    }
+
+    public static Builder newBuilder() {
+      return new AutoValue_BigQueryConverters_AvroToMutation.Builder();
+    }
+
+    public Mutation apply(SchemaAndRecord record) {
+      GenericRecord row = record.getRecord();
+      String rowkey = row.get(rowkey().get()).toString();
+      Put put = new Put(Bytes.toBytes(rowkey));
+
+
+      List<TableFieldSchema> columns = record.getTableSchema().getFields();
+      for (TableFieldSchema column : columns) {
+        String columnName = column.getName();
+        String columnValue = row.get(columnName).toString();
+        // TODO: handle other types and column families
+        put.addColumn(
+            Bytes.toBytes(columnFamily().get()),
+            Bytes.toBytes(columnName),
+            Bytes.toBytes(columnValue));
+      }
+      return put;
+    }
+  }
+
+
+  /**
+   * Reads data from BigQuery and converts it to Datastore Entity format.
+   */
   @AutoValue
   public abstract static class BigQueryToEntity extends PTransform<PBegin, PCollectionTuple> {
 
@@ -191,9 +307,12 @@ public class BigQueryConverters {
 
     abstract TupleTag<String> failureTag();
 
-    /** Builder for BigQuery. */
+    /**
+     * Builder for BigQuery.
+     */
     @AutoValue.Builder
     public abstract static class Builder {
+
       public abstract Builder setQuery(ValueProvider<String> query);
 
       public abstract Builder setEntityKind(ValueProvider<String> entityKind);
@@ -219,11 +338,11 @@ public class BigQueryConverters {
           .apply(
               "AvroToEntity",
               BigQueryIO.read(
-                      AvroToEntity.newBuilder()
-                          .setEntityKind(entityKind())
-                          .setUniqueNameColumn(uniqueNameColumn())
-                          .setNamespace(namespace())
-                          .build())
+                  AvroToEntity.newBuilder()
+                      .setEntityKind(entityKind())
+                      .setUniqueNameColumn(uniqueNameColumn())
+                      .setNamespace(namespace())
+                      .build())
                   .fromQuery(query())
                   .withoutValidation()
                   .withTemplateCompatibility()
@@ -237,7 +356,9 @@ public class BigQueryConverters {
     }
   }
 
-  /** Converts from the BigQuery Avro format into Datastore Entity. */
+  /**
+   * Converts from the BigQuery Avro format into Datastore Entity.
+   */
   @AutoValue
   public abstract static class AvroToEntity
       implements SerializableFunction<SchemaAndRecord, Entity> {
@@ -249,9 +370,12 @@ public class BigQueryConverters {
     @Nullable
     public abstract ValueProvider<String> namespace();
 
-    /** Builder for AvroToEntity. */
+    /**
+     * Builder for AvroToEntity.
+     */
     @AutoValue.Builder
     public abstract static class Builder {
+
       public abstract Builder setEntityKind(ValueProvider<String> entityKind);
 
       public abstract Builder setUniqueNameColumn(ValueProvider<String> uniqueNameColumn);
@@ -427,7 +551,8 @@ public class BigQueryConverters {
 
   /**
    * Return a formatted String Using Key/Value Style formatting from the TableRow applied to the
-   * Format Template. ie. formatStringTemplate("I am {key}"{"key": "formatted"}) -> "I am formatted"
+   * Format Template. ie. formatStringTemplate("I am {key}"{"key": "formatted"}) -> "I am
+   * formatted"
    */
   public static String formatStringTemplate(String formatTemplate, TableRow row) {
     // Key/Value Map used to replace values in template
