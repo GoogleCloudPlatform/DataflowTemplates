@@ -13,9 +13,8 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.transforms;
+package com.google.cloud.teleport.v2.templates;
 
-import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -33,12 +32,11 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.api.services.bigquery.model.TimePartitioning;
 import com.google.cloud.bigquery.BigQuery;
-import com.google.cloud.bigquery.DatasetId;
 import com.google.cloud.bigquery.EmptyTableResult;
+import com.google.cloud.bigquery.QueryJobConfiguration;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.v2.templates.DataplexBigQueryToGcs.DataplexBigQueryToGcsOptions;
-import com.google.cloud.teleport.v2.transforms.AbstractDataplexBigQueryToGcsTransform.FileFormat;
-import com.google.cloud.teleport.v2.transforms.AbstractDataplexBigQueryToGcsTransform.Options;
+import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform.FileFormat;
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import com.google.common.collect.ImmutableList;
@@ -51,14 +49,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.ListCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.AvroIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryHelpers;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.TypedRead;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryServices;
 import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import org.apache.beam.sdk.io.gcp.testing.FakeBigQueryServices;
@@ -83,12 +79,11 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
-/** Unit tests for {@link DataplexBigQueryPartitionToGcsTransform}. */
+/** Unit tests for {@link DataplexBigQueryToGcs}. */
 @RunWith(JUnit4.class)
-public class DataplexBigQueryPartitionToGcsTransformTest {
+public class DataplexBigQueryToGcsTest {
   private static final String PROJECT = "test-project1";
   private static final String DATASET = "test-dataset1";
-  private static final String TABLE = "tableA-partitioned";
 
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
@@ -101,13 +96,12 @@ public class DataplexBigQueryPartitionToGcsTransformTest {
   private CustomFakeJobService fakeJobService;
   private FakeDatasetService fakeDatasetService;
   private DataplexBigQueryToGcsOptions options;
-  private BigQueryTable table;
-  private BigQueryTablePartition fakePartition;
   private File outDir;
-  private List<TableRow> defaultPartitionRecords;
-  private List<String> defaultExpectedRecords;
+  private TableRow[] defaultRecords;
+  private String[] defaultExpectedRecords;
   private TableSchema bqSchema;
   private Schema avroSchema;
+  private Map<String, BigQueryTable> tableByName;
 
   @Before
   public void setUp() throws InterruptedException, IOException {
@@ -137,46 +131,70 @@ public class DataplexBigQueryPartitionToGcsTransformTest {
 
     long modTime = System.currentTimeMillis() * 1000;
 
-    fakePartition =
+    BigQueryTablePartition p1 =
+        BigQueryTablePartition.builder()
+            .setPartitionName("p1")
+            .setLastModificationTime(modTime)
+            .build();
+    BigQueryTablePartition p2 =
         BigQueryTablePartition.builder()
             .setPartitionName("p2")
             .setLastModificationTime(modTime)
             .build();
 
-    table =
+    BigQueryTable t1 =
         BigQueryTable.builder()
-            .setTableName(TABLE)
-            .setDatasetId(DatasetId.of(PROJECT, DATASET))
+            .setTableName("partitioned_table")
+            .setProject(PROJECT)
+            .setDataset(DATASET)
             .setSchema(avroSchema)
             .setLastModificationTime(modTime)
             .setPartitioningColumn("ts")
+            .setPartitions(Arrays.asList(p1, p2))
             .build();
 
-    defaultPartitionRecords =
-        ImmutableList.of(
-            new TableRow().set("ts", 1L).set("s1", "1001").set("i1", 2001L),
-            new TableRow().set("ts", 2L).set("s1", "1002").set("i1", 2002L),
-            new TableRow().set("ts", 3L).set("s1", "1003").set("i1", 2003L),
-            new TableRow().set("ts", 4L).set("s1", "1004").set("i1", null),
-            new TableRow().set("ts", 5L).set("s1", "1005").set("i1", 2005L));
+    BigQueryTable t2 =
+        BigQueryTable.builder()
+            .setTableName("unpartitioned_table")
+            .setProject(PROJECT)
+            .setDataset(DATASET)
+            .setSchema(avroSchema)
+            .setLastModificationTime(modTime)
+            .build();
+
+    tableByName = new HashMap<>();
+    tableByName.put(t1.getTableName(), t1);
+    tableByName.put(t2.getTableName(), t2);
+
+    defaultRecords =
+        new TableRow[] {
+          new TableRow().set("ts", 1L).set("s1", "1001").set("i1", 2001L),
+          new TableRow().set("ts", 2L).set("s1", "1002").set("i1", 2002L),
+          new TableRow().set("ts", 3L).set("s1", "1003").set("i1", 2003L),
+          new TableRow().set("ts", 4L).set("s1", "1004").set("i1", null),
+          new TableRow().set("ts", 5L).set("s1", "1005").set("i1", 2005L)
+        };
 
     defaultExpectedRecords =
-        Arrays.asList(
-            "{\"ts\": 1, \"s1\": \"1001\", \"i1\": 2001}",
-            "{\"ts\": 2, \"s1\": \"1002\", \"i1\": 2002}",
-            "{\"ts\": 3, \"s1\": \"1003\", \"i1\": 2003}",
-            "{\"ts\": 4, \"s1\": \"1004\", \"i1\": null}",
-            "{\"ts\": 5, \"s1\": \"1005\", \"i1\": 2005}");
+        new String[] {
+          "{\"ts\": 1, \"s1\": \"1001\", \"i1\": 2001}",
+          "{\"ts\": 2, \"s1\": \"1002\", \"i1\": 2002}",
+          "{\"ts\": 3, \"s1\": \"1003\", \"i1\": 2003}",
+          "{\"ts\": 4, \"s1\": \"1004\", \"i1\": null}",
+          "{\"ts\": 5, \"s1\": \"1005\", \"i1\": 2005}"
+        };
 
     FakeDatasetService.setUp();
     fakeDatasetService = new FakeDatasetService();
     fakeDatasetService.createDataset(PROJECT, DATASET, "", "", null);
     fakeDatasetService.createTable(
         new Table()
-            .setTableReference(table.toTableReference())
+            .setTableReference(t1.toTableReference())
             .setSchema(bqSchema)
             .setRequirePartitionFilter(true)
             .setTimePartitioning(new TimePartitioning().setField("ts").setType("DAY")));
+    fakeDatasetService.createTable(
+        new Table().setTableReference(t2.toTableReference()).setSchema(bqSchema));
     fakeJobService = new CustomFakeJobService();
     bqFakeServices =
         new FakeBigQueryServices()
@@ -188,174 +206,147 @@ public class DataplexBigQueryPartitionToGcsTransformTest {
   }
 
   @Test
-  public void testTargetPathContainsPartitionNameAndValue() {
-    DataplexBigQueryPartitionToGcsTransform t =
-        new DataplexBigQueryPartitionToGcsTransform(options, "test-bucket1", table, fakePartition);
-
-    String expectedPath =
-        String.format(
-            "gs://test-bucket1/%s/ts=%s", table.getTableName(), fakePartition.getPartitionName());
-    assertThat(t.getTargetPath()).isEqualTo(expectedPath);
-  }
-
-  @Test
   @Category(NeedsRunner.class)
-  public void testTransform_mainPathWithAllStepsEnabled() throws Exception {
-    insertDefaultPartitionData();
+  public void testE2E_mainPathWithAllStepsEnabled() throws Exception {
+    insertTableData("unpartitioned_table", defaultRecords);
+    insertPartitionData("partitioned_table", "p1", Arrays.copyOfRange(defaultRecords, 0, 2));
+    insertPartitionData("partitioned_table", "p2", Arrays.copyOfRange(defaultRecords, 2, 5));
+    // Some data is inserted into p3 just to check that it actually does NOT get exported.
+    // The partitioned_table BigQueryTable object doesn't actually have p3 in the partition list.
+    insertPartitionData("partitioned_table", "p3", defaultRecords);
+
     options.setDeleteSourceData(true);
     options.setUpdateDataplexMetadata(true);
 
-    runTransform(options, table, fakePartition);
+    runTransform("unpartitioned_table", "partitioned_table");
 
-    String expectedDeletedPartitionName =
-        table.getTableName() + "$" + fakePartition.getPartitionName();
-    verify(bqMock, times(1)).delete(TableId.of(PROJECT, DATASET, expectedDeletedPartitionName));
+    verify(bqMock, times(1))
+        .query(
+            QueryJobConfiguration.newBuilder(
+                    "truncate table `test-project1.test-dataset1.unpartitioned_table`")
+                .build());
+    verify(bqMock, times(1)).delete(tableId("partitioned_table$p1"));
+    verify(bqMock, times(1)).delete(tableId("partitioned_table$p2"));
     verifyNoMoreInteractions(bqMock);
 
-    PCollection<String> actualRecords =
+    PCollection<String> actualUnpartitionedRecords =
         testPipeline
-            .apply(ParquetIO.read(avroSchema).from(outDir.toPath().resolve("*.parquet").toString()))
-            .apply(MapElements.into(TypeDescriptors.strings()).via(Object::toString));
-    PAssert.that(actualRecords).containsInAnyOrder(defaultExpectedRecords);
+            .apply(
+                "readTableFiles",
+                ParquetIO.read(avroSchema)
+                    .from(outDir.getAbsolutePath() + "/unpartitioned_table/*.parquet"))
+            .apply(
+                "mapTableFiles", MapElements.into(TypeDescriptors.strings()).via(Object::toString));
+    PCollection<String> actualPartitionedRecords1 =
+        testPipeline
+            .apply(
+                "readP1Files",
+                ParquetIO.read(avroSchema)
+                    .from(outDir.getAbsolutePath() + "/partitioned_table/ts=p1/*.parquet"))
+            .apply("mapP1Files", MapElements.into(TypeDescriptors.strings()).via(Object::toString));
+    PCollection<String> actualPartitionedRecords2 =
+        testPipeline
+            .apply(
+                "readP2Files",
+                ParquetIO.read(avroSchema)
+                    .from(outDir.getAbsolutePath() + "/partitioned_table/ts=p2/*.parquet"))
+            .apply("mapP2Files", MapElements.into(TypeDescriptors.strings()).via(Object::toString));
+    PCollection<String> actualPartitionedRecords3 =
+        testPipeline
+            .apply(
+                "readP3Files",
+                ParquetIO.read(avroSchema)
+                    .from(outDir.getAbsolutePath() + "/partitioned_table/ts=p3/*.parquet"))
+            .apply("mapP3Files", MapElements.into(TypeDescriptors.strings()).via(Object::toString));
+
+    PAssert.that(actualUnpartitionedRecords).containsInAnyOrder(defaultExpectedRecords);
+    PAssert.that(actualPartitionedRecords1)
+        .containsInAnyOrder(Arrays.copyOfRange(defaultExpectedRecords, 0, 2));
+    PAssert.that(actualPartitionedRecords2)
+        .containsInAnyOrder(Arrays.copyOfRange(defaultExpectedRecords, 2, 5));
+    PAssert.that(actualPartitionedRecords3).empty();
 
     testPipeline.run();
   }
 
   @Test
   @Category(NeedsRunner.class)
-  public void testTransform_withAvroFileFormat_producesAvroFiles() throws Exception {
-    insertDefaultPartitionData();
+  public void testE2E_withAvroFileFormat_producesAvroFiles() throws Exception {
+    insertTableData("unpartitioned_table", defaultRecords);
     options.setFileFormat(FileFormat.AVRO);
 
-    runTransform(options, table, fakePartition);
+    runTransform("unpartitioned_table");
 
     PCollection<String> actualRecords =
         testPipeline
             .apply(
+                "readTableFiles",
                 AvroIO.readGenericRecords(avroSchema)
-                    .from(outDir.toPath().resolve("*.avro").toString()))
-            .apply(MapElements.into(TypeDescriptors.strings()).via(Object::toString));
+                    .from(outDir.getAbsolutePath() + "/unpartitioned_table/*.avro"))
+            .apply(
+                "mapTableFiles", MapElements.into(TypeDescriptors.strings()).via(Object::toString));
     PAssert.that(actualRecords).containsInAnyOrder(defaultExpectedRecords);
 
     testPipeline.run();
   }
 
   @Test
-  @Category(NeedsRunner.class)
-  public void testTransform_withDeleteSourceDataDefault_doesntTruncatePartition() throws Exception {
-    insertDefaultPartitionData();
+  public void testE2E_withDeleteSourceDataDefault_doesntTruncateData() throws Exception {
+    insertTableData("unpartitioned_table", defaultRecords);
+    insertPartitionData("partitioned_table", "p1", defaultRecords);
+    insertPartitionData("partitioned_table", "p2", defaultRecords);
 
-    runTransform(options, table, fakePartition);
+    runTransform("unpartitioned_table", "partitioned_table");
 
     verifyNoMoreInteractions(bqMock);
   }
 
   @Test
-  @Category(NeedsRunner.class)
-  public void testTransform_withDeleteSourceDataDisabled_doesntTruncatePartition()
-      throws Exception {
-    insertDefaultPartitionData();
+  public void testE2E_withDeleteSourceDataDisabled_doesntTruncateData() throws Exception {
     options.setDeleteSourceData(false);
+    insertTableData("unpartitioned_table", defaultRecords);
+    insertPartitionData("partitioned_table", "p1", defaultRecords);
+    insertPartitionData("partitioned_table", "p2", defaultRecords);
 
-    runTransform(options, table, fakePartition);
+    runTransform("unpartitioned_table", "partitioned_table");
 
     verifyNoMoreInteractions(bqMock);
   }
 
-  /**
-   * Test that DataplexBigQueryPartitionToGcsTransform doesn't attempt to delete special BigQuery
-   * partitions even if {@code deleteSourceData = true}.
-   *
-   * <p>As per <a
-   * href="https://cloud.google.com/bigquery/docs/managing-partitioned-tables#delete_a_partition">
-   * this documentation</a>, special partitions "__NULL__" and "__UNPARTITIONED__" cannot be
-   * deleted.
-   */
-  @Test
-  @Category(NeedsRunner.class)
-  public void testTransform_withDeleteSourceDataEnabled_doesntTruncateSpecialPartitions()
+  private void insertTableData(String tableName, TableRow... records) throws Exception {
+    fakeDatasetService.insertAll(
+        tableByName.get(tableName).toTableReference(), Arrays.asList(records), null);
+  }
+
+  private void insertPartitionData(String tableName, String partitionName, TableRow... records)
       throws Exception {
-    options.setDeleteSourceData(true);
-
-    BigQueryTablePartition.Builder builder =
-        BigQueryTablePartition.builder().setLastModificationTime(System.currentTimeMillis() * 1000);
-    BigQueryTablePartition p1 = builder.setPartitionName("__NULL__").build();
-    BigQueryTablePartition p2 = builder.setPartitionName("__UNPARTITIONED__").build();
-    BigQueryTablePartition p3 = builder.setPartitionName("NORMAL_PARTITION").build();
-    insertDefaultPartitionData(p1);
-    insertDefaultPartitionData(p2);
-    insertDefaultPartitionData(p3);
-
-    runTransform(options, table, p1);
-    runTransform(options, table, p2);
-    runTransform(options, table, p3);
-
-    String expectedDeletedPartitionName = table.getTableName() + "$NORMAL_PARTITION";
-    verify(bqMock, times(1)).delete(TableId.of(PROJECT, DATASET, expectedDeletedPartitionName));
-    verifyNoMoreInteractions(bqMock);
-  }
-
-  private void insertDefaultPartitionData() throws Exception {
-    insertDefaultPartitionData(fakePartition);
-  }
-
-  private void insertDefaultPartitionData(BigQueryTablePartition targetPartition) throws Exception {
-    // This transform isn't supposed to read the table directly, but it's supposed to read the table
-    // data with a SQL query (with a partition decorator). So we register expected sql with some
-    // results here, instead of inserting the records into the table.
+    // Partition transform isn't supposed to read the table directly, but it's supposed to read the
+    // table data with a SQL query (with a partition decorator). So we register expected sql with
+    // some results here, instead of inserting the records into the table.
 
     String expectedSql =
-        String.format(
-            "select * from [%s.%s.%s$%s]",
-            PROJECT, DATASET, table.getTableName(), targetPartition.getPartitionName());
-    fakeJobService.expectQuery(expectedSql, table, bqSchema, defaultPartitionRecords);
+        String.format("select * from [%s.%s.%s$%s]", PROJECT, DATASET, tableName, partitionName);
+    fakeJobService.expectQuery(
+        expectedSql, tableByName.get(tableName), bqSchema, Arrays.asList(records));
   }
 
-  private void runTransform(
-      Options options, BigQueryTable table, BigQueryTablePartition partition) {
+  private void runTransform(String... tableNames) {
+    BigQueryTable[] tables = new BigQueryTable[tableNames.length];
+    for (int i = 0; i < tableNames.length; i++) {
+      tables[i] = tableByName.get(tableNames[i]);
+    }
+    runTransform(tables);
+  }
+
+  private void runTransform(BigQueryTable... tables) {
     Pipeline p = Pipeline.create(options);
-    p.apply(
-        new TestDataplexBigQueryPartitionToGcsTransform(
-            options, table, outDir, bqFakeServices, partition));
+    DataplexBigQueryToGcs.transformPipeline(
+        p, Arrays.asList(tables), options, outDir.getAbsolutePath(), bqFakeServices, () -> bqMock);
     p.run();
   }
 
-  private static class TestDataplexBigQueryPartitionToGcsTransform
-      extends DataplexBigQueryPartitionToGcsTransform {
-
-    private final String targetPath;
-    private final BigQueryServices testBqServices;
-
-    public TestDataplexBigQueryPartitionToGcsTransform(
-        Options options,
-        BigQueryTable table,
-        File targetDir,
-        BigQueryServices testBqServices,
-        BigQueryTablePartition partition) {
-      // Bucket used in getTargetPath() doesn't matter as we're overriding this method anyway.
-      super(options, "non-existing-bucket", table, partition);
-      this.targetPath = targetDir.getAbsolutePath();
-      this.testBqServices = testBqServices;
-    }
-
-    protected String getOriginalTargetPath() {
-      return super.getTargetPath();
-    }
-
-    @Override
-    protected String getTargetPath() {
-      return targetPath;
-    }
-
-    @Override
-    protected TypedRead<GenericRecord> getBigQueryRead() {
-      return super.getBigQueryRead().withTestServices(testBqServices).withoutValidation();
-    }
-
-    @Override
-    BigQuery createBqClient() {
-      return bqMock;
-    }
+  private static TableId tableId(String tableName) {
+    return TableId.of(PROJECT, DATASET, tableName);
   }
 
   private static class CustomFakeJobService extends FakeJobService {

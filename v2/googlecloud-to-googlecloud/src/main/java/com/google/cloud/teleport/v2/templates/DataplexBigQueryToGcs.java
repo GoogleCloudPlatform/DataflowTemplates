@@ -25,24 +25,40 @@ import com.google.cloud.bigquery.DatasetId;
 import com.google.cloud.bigquery.storage.v1beta1.BigQueryStorageClient;
 import com.google.cloud.teleport.v2.clients.DataplexClient;
 import com.google.cloud.teleport.v2.clients.DefaultDataplexClient;
-import com.google.cloud.teleport.v2.transforms.AbstractDataplexBigQueryToGcsTransform;
-import com.google.cloud.teleport.v2.transforms.DataplexBigQueryPartitionToGcsTransform;
-import com.google.cloud.teleport.v2.transforms.DataplexBigQueryTableToGcsTransform;
+import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform;
+import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform.FileFormat;
+import com.google.cloud.teleport.v2.transforms.DeleteBigQueryDataFn;
+import com.google.cloud.teleport.v2.transforms.DeleteBigQueryDataFn.BigQueryClientFactory;
+import com.google.cloud.teleport.v2.transforms.UpdateDataplexBigQueryToGcsExportMetadataTransform;
 import com.google.cloud.teleport.v2.utils.BigQueryMetadataLoader;
 import com.google.cloud.teleport.v2.utils.BigQueryUtils;
 import com.google.cloud.teleport.v2.utils.StorageUtils;
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
+import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryServices;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
+import org.apache.beam.sdk.transforms.Flatten;
+import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.Wait;
+import org.apache.beam.sdk.transforms.WithKeys;
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionList;
+import org.apache.beam.sdk.values.TypeDescriptor;
+import org.apache.beam.sdk.values.TypeDescriptors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +85,10 @@ public class DataplexBigQueryToGcs {
    * the executor at the command-line.
    */
   public interface DataplexBigQueryToGcsOptions
-      extends AbstractDataplexBigQueryToGcsTransform.Options, GcpOptions {
+      extends GcpOptions,
+          DeleteBigQueryDataFn.Options,
+          UpdateDataplexBigQueryToGcsExportMetadataTransform.Options {
+
     @Description(
         "Dataplex asset name for the the BigQuery dataset to tier data from. Format:"
             + " projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset"
@@ -114,6 +133,13 @@ public class DataplexBigQueryToGcs {
     Integer getMaxParallelBigQueryMetadataRequests();
 
     void setMaxParallelBigQueryMetadataRequests(Integer maxParallelBigQueryMetadataRequests);
+
+    @Description("Output file format in GCS. Format: PARQUET, AVRO, or ORC. Default: PARQUET.")
+    @Default.Enum("PARQUET")
+    @Required
+    FileFormat getFileFormat();
+
+    void setFileFormat(FileFormat fileFormat);
   }
 
   /**
@@ -172,34 +198,64 @@ public class DataplexBigQueryToGcs {
             options.getSourceBigQueryAssetName(),
             DataplexAssetResourceSpec.BIGQUERY_DATASET);
 
-    String bucketName = StorageUtils.parseBucketUrn(gcsResource);
+    String targetRootPath = "gs://" + StorageUtils.parseBucketUrn(gcsResource);
     DatasetId datasetId = BigQueryUtils.parseDatasetUrn(bqResource);
     BigQueryMetadataLoader metadataLoader =
-        new BigQueryMetadataLoader(bqClient, bqsClient, maxParallelBigQueryRequests);
+        new FilteringBigQueryMetadataLoader(bqClient, bqsClient, maxParallelBigQueryRequests);
     List<BigQueryTable> tables = metadataLoader.loadDatasetMetadata(datasetId);
 
-    tables.forEach(
-        table -> {
-          if (!table.isPartitioned()) {
-            pipeline.apply(
-                String.format("Table-%s", table.getTableName()),
-                new DataplexBigQueryTableToGcsTransform(options, bucketName, table));
-          } else {
-            table
-                .getPartitions()
-                .forEach(
-                    partition -> {
-                      pipeline.apply(
-                          String.format(
-                              "Partition-%s-%s",
-                              table.getTableName(), partition.getPartitionName()),
-                          new DataplexBigQueryPartitionToGcsTransform(
-                              options, bucketName, table, partition));
-                    });
-          }
-        });
+    transformPipeline(pipeline, tables, options, targetRootPath, null, null);
 
     return pipeline;
+  }
+
+  @VisibleForTesting
+  static void transformPipeline(
+      Pipeline pipeline,
+      List<BigQueryTable> tables,
+      DataplexBigQueryToGcsOptions options,
+      String targetRootPath,
+      BigQueryServices testBqServices,
+      BigQueryClientFactory testBqClientFactory) {
+
+    List<PCollection<KV<BigQueryTable, KV<BigQueryTablePartition, String>>>> fileCollections =
+        new ArrayList<>(tables.size());
+    tables.forEach(
+        table -> {
+          fileCollections.add(
+              pipeline
+                  .apply(
+                      String.format("ExportTable-%s", table.getTableName()),
+                      new BigQueryTableToGcsTransform(
+                              table, targetRootPath, options.getFileFormat())
+                          .withTestServices(testBqServices))
+                  .apply(
+                      String.format("AttachTableKeys-%s", table.getTableName()),
+                      WithKeys.of(table)));
+        });
+
+    PCollection<KV<BigQueryTable, KV<BigQueryTablePartition, String>>> exportFileResults =
+        PCollectionList.of(fileCollections).apply("FlattenTableResults", Flatten.pCollections());
+
+    PCollection<Void> metadataUpdateResults =
+        exportFileResults.apply(
+            "UpdateDataplexMetadata", new UpdateDataplexBigQueryToGcsExportMetadataTransform());
+
+    exportFileResults
+        .apply(
+            MapElements.into(
+                    TypeDescriptors.kvs(
+                        TypeDescriptor.of(BigQueryTable.class),
+                        TypeDescriptor.of(BigQueryTablePartition.class)))
+                .via(
+                    (SerializableFunction<
+                            KV<BigQueryTable, KV<BigQueryTablePartition, String>>,
+                            KV<BigQueryTable, BigQueryTablePartition>>)
+                        input -> KV.of(input.getKey(), input.getValue().getKey())))
+        .apply("WaitForMetadataUpdate", Wait.on(metadataUpdateResults))
+        .apply(
+            "TruncateBigQueryData",
+            ParDo.of(new DeleteBigQueryDataFn().withTestBqClientFactory(testBqClientFactory)));
   }
 
   /**

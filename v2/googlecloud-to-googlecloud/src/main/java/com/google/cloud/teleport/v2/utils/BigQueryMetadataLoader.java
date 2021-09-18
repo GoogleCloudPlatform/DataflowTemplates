@@ -108,7 +108,8 @@ public class BigQueryMetadataLoader {
                     () -> {
                       BigQueryTable.Builder table =
                           BigQueryTable.builder()
-                              .setDatasetId(datasetId)
+                              .setProject(datasetId.getProject())
+                              .setDataset(datasetId.getDataset())
                               .setTableName(row.get(0).getStringValue())
                               .setLastModificationTime(row.get(1).getTimestampValue())
                               .setPartitioningColumn(
@@ -178,7 +179,10 @@ public class BigQueryMetadataLoader {
 
     ReadSession session =
         BigQueryUtils.createReadSession(
-            bqsClient, table.getDatasetId(), table.getTableName(), readOptions.build());
+            bqsClient,
+            DatasetId.of(table.getProject(), table.getDataset()),
+            table.getTableName(),
+            readOptions.build());
 
     table.setSchema(new Schema.Parser().parse(session.getAvroSchema().getSchema()));
     LOG.info("Loaded schema for table {}: {}", table.getTableName(), table.getSchema());
@@ -194,7 +198,7 @@ public class BigQueryMetadataLoader {
             "select partition_id, last_modified_time\n"
                 + "from `%s.%s.INFORMATION_SCHEMA.PARTITIONS`\n"
                 + "where table_name = @table_name",
-            table.getDatasetId().getProject(), table.getDatasetId().getDataset());
+            table.getProject(), table.getDataset());
 
     TableResult partitionRows =
         bqClient.query(
