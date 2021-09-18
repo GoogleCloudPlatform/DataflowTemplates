@@ -17,16 +17,24 @@ package com.google.cloud.teleport.v2.values;
 
 import com.google.api.services.bigquery.model.TableReference;
 import com.google.auto.value.AutoValue;
-import com.google.cloud.bigquery.DatasetId;
+import com.google.cloud.teleport.v2.utils.SerializableSchemaSupplier;
+import java.io.Serializable;
 import java.util.List;
 import javax.annotation.Nullable;
 import org.apache.avro.Schema;
+import org.apache.beam.sdk.coders.DefaultCoder;
+import org.apache.beam.sdk.schemas.AutoValueSchema;
+import org.apache.beam.sdk.schemas.SchemaCoder;
+import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 
 /** BigQuery table metadata. */
 @AutoValue
-public abstract class BigQueryTable {
+@DefaultCoder(SchemaCoder.class)
+@DefaultSchema(AutoValueSchema.class)
+public abstract class BigQueryTable implements Serializable {
+  public abstract String getProject();
 
-  public abstract DatasetId getDatasetId();
+  public abstract String getDataset();
 
   public abstract String getTableName();
 
@@ -39,7 +47,11 @@ public abstract class BigQueryTable {
   /** @return timestamp in microseconds since epoch (UNIX time) */
   public abstract long getLastModificationTime();
 
-  public abstract Schema getSchema();
+  public abstract SerializableSchemaSupplier getSchemaSupplier();
+
+  public Schema getSchema() {
+    return getSchemaSupplier().get();
+  }
 
   public static Builder builder() {
     return new AutoValue_BigQueryTable.Builder();
@@ -51,18 +63,23 @@ public abstract class BigQueryTable {
 
   public TableReference toTableReference() {
     return new TableReference()
-        .setDatasetId(getDatasetId().getDataset())
-        .setProjectId(getDatasetId().getProject())
+        .setDatasetId(getDataset())
+        .setProjectId(getProject())
         .setTableId(getTableName());
   }
+
+  public abstract Builder toBuilder();
 
   /** Builder for {@link BigQueryTable}. */
   @AutoValue.Builder
   public abstract static class Builder {
+    public abstract String getProject();
 
-    public abstract DatasetId getDatasetId();
+    public abstract Builder setProject(String value);
 
-    public abstract Builder setDatasetId(DatasetId value);
+    public abstract String getDataset();
+
+    public abstract Builder setDataset(String value);
 
     public abstract String getTableName();
 
@@ -79,10 +96,18 @@ public abstract class BigQueryTable {
     /** @param value timestamp in microseconds since epoch (UNIX time) */
     public abstract Builder setLastModificationTime(long value);
 
-    public abstract Schema getSchema();
+    public abstract SerializableSchemaSupplier getSchemaSupplier();
 
-    public abstract Builder setSchema(Schema schema);
+    public abstract Builder setSchemaSupplier(SerializableSchemaSupplier schema);
 
     public abstract BigQueryTable build();
+
+    public Schema getSchema() {
+      return getSchemaSupplier().get();
+    }
+
+    public Builder setSchema(Schema schema) {
+      return setSchemaSupplier(SerializableSchemaSupplier.of(schema));
+    }
   }
 }

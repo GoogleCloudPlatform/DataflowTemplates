@@ -16,10 +16,17 @@
 package com.google.cloud.teleport.v2.values;
 
 import com.google.auto.value.AutoValue;
+import java.io.Serializable;
+import org.apache.beam.sdk.coders.DefaultCoder;
+import org.apache.beam.sdk.schemas.AutoValueSchema;
+import org.apache.beam.sdk.schemas.SchemaCoder;
+import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 
 /** BigQuery table partition metadata. */
 @AutoValue
-public abstract class BigQueryTablePartition {
+@DefaultCoder(SchemaCoder.class)
+@DefaultSchema(AutoValueSchema.class)
+public abstract class BigQueryTablePartition implements Serializable {
 
   public abstract String getPartitionName();
 
