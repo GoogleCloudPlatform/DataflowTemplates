@@ -136,6 +136,7 @@ public class FormatDatastreamRecordToJson
     outputObject.put("_metadata_deleted", getMetadataIsDeleted(record));
     outputObject.put("_metadata_table", getMetadataTable(record));
     outputObject.put("_metadata_change_type", getMetadataChangeType(record));
+    outputObject.put("_metadata_primary_keys", getPrimaryKeys(record));
 
     if (sourceType.equals("mysql")) {
       // MySQL Specific Metadata
@@ -239,6 +240,17 @@ public class FormatDatastreamRecordToJson
     }
 
     return null;
+  }
+
+  private JsonNode getPrimaryKeys(GenericRecord record) {
+    GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
+    if (sourceMetadata.get("primary_keys") == null) {
+      return null;
+    }
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode dataInput = getSourceMetadataJson(record);
+    return dataInput.get("primary_keys");
   }
 
   private Boolean getMetadataIsDeleted(GenericRecord record) {

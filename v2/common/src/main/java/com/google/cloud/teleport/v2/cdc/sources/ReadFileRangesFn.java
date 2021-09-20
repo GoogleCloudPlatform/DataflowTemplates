@@ -44,7 +44,7 @@ public class ReadFileRangesFn<T> extends DoFn<ReadableFile, T> implements Serial
   private final SerializableFunction<String, ? extends FileBasedSource<T>> createSource;
   private final ReadFileRangesFnExceptionHandler exceptionHandler;
   private boolean acquiredPermit = false;
-  private static final Semaphore jvmThreads = new Semaphore(10, true);
+  private static final Semaphore jvmThreads = new Semaphore(5, true);
 
   public ReadFileRangesFn(
       SerializableFunction<String, ? extends FileBasedSource<T>> createSource,
@@ -61,12 +61,14 @@ public class ReadFileRangesFn<T> extends DoFn<ReadableFile, T> implements Serial
       throw e;
     }
     acquiredPermit = true;
+    LOG.info(String.format("StartBundle: %d", jvmThreads.availablePermits()));
   }
 
   @FinishBundle
   public void finishBundle() throws Exception {
     jvmThreads.release();
     acquiredPermit = false;
+    LOG.info(String.format("FinishBundle: %d", jvmThreads.availablePermits()));
   }
 
   @Teardown
