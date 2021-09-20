@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.clients;
 
-import com.google.api.services.dataplex.v1.CloudDataplex.Projects.Locations.Lakes.Zones.Assets;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Asset;
 import com.google.cloud.teleport.v2.values.EntityMetadata;
 import com.google.common.collect.ImmutableList;
@@ -29,9 +28,32 @@ public interface DataplexClient {
    *
    * @param assetName example:
    *     projects/{name}/locations/{location}/lakes/{lake}/zones/{zone}/assets/{asset}
+   * @return an asset from Dataplex
    */
   GoogleCloudDataplexV1Asset getAsset(String assetName) throws IOException;
 
-  /** Updates the metadata for {@code asset}. */
-  void updateMetadata(Assets asset, ImmutableList<EntityMetadata> metadata);
+  /**
+   * Creates the metadata for {@code asset}.
+   *
+   * <p>Implementations may or may not throw an exception on failure. They should document their
+   * chosen behavior.
+   *
+   * @param assetName example:
+   *     projects/{name}/locations/{location}/lakes/{lake}/zones/{zone}/assets/{asset}
+   * @param metadata entities and partitions to create and/or update
+   * @param createBehavior what to do if an entity already exists (partitions can only be created)
+   *     Implementations may create some or all of the non-existing records.
+   */
+  void createMetadata(
+      String assetName, ImmutableList<EntityMetadata> metadata, CreateBehavior createBehavior)
+      throws IOException;
+
+  /** Determines what to do on a create request if a given resource already exists. */
+  enum CreateBehavior {
+    /** Fail (exit method) if the resource exists. */
+    FAIL_IF_EXISTS,
+
+    /** Update the existing resource with the new metadata. */
+    UPDATE_IF_EXISTS
+  }
 }
