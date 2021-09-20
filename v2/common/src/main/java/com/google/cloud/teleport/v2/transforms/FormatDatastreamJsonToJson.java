@@ -132,6 +132,7 @@ public final class FormatDatastreamJsonToJson
     outputObject.put("_metadata_deleted", getMetadataIsDeleted(record));
     outputObject.put("_metadata_table", getSourceMetadata(record, "table"));
     outputObject.put("_metadata_change_type", getSourceMetadata(record, "change_type"));
+    outputObject.put("_metadata_primary_keys", getPrimaryKeys(record));
 
     // Source Specific Metadata
     if (sourceType.equals("mysql")) {
@@ -170,10 +171,6 @@ public final class FormatDatastreamJsonToJson
     outputObject.put("_metadata_source", getSourceMetadata(record));
 
     c.output(FailsafeElement.of(outputObject.toString(), outputObject.toString()));
-  }
-
-  private JsonNode getSourceMetadata(JsonNode record) {
-    return record.get("source_metadata");
   }
 
   private String getStreamName(JsonNode record) {
@@ -230,6 +227,10 @@ public final class FormatDatastreamJsonToJson
     return convertTimestampStringToSeconds(timestamp);
   }
 
+  private JsonNode getSourceMetadata(JsonNode record) {
+    return record.get("source_metadata");
+  }
+
   private String getSourceMetadata(JsonNode record, String fieldName) {
     JsonNode md = getSourceMetadata(record);
     if (md == null || md.isNull()) {
@@ -242,6 +243,15 @@ public final class FormatDatastreamJsonToJson
     }
 
     return value.getTextValue();
+  }
+
+  private JsonNode getPrimaryKeys(JsonNode record) {
+    JsonNode md = getSourceMetadata(record);
+    if (md == null || md.isNull()) {
+      return null;
+    }
+
+    return md.get("primary_keys");
   }
 
   private Long getSourceMetadataAsLong(JsonNode record, String fieldName) {

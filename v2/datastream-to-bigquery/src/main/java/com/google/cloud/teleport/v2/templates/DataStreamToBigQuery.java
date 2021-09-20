@@ -190,7 +190,7 @@ public class DataStreamToBigQuery {
         "Fields to ignore in BigQuery (comma separator). eg. _metadata_stream,_metadata_schema")
     @Default.String(
         "_metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_ssn,"
-            + "_metadata_rs_id,_metadata_tx_id,_metadata_dlq_reconsumed,"
+            + "_metadata_rs_id,_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,"
             + "_metadata_error,_metadata_retry_count")
     String getIgnoreFields();
 
@@ -219,6 +219,12 @@ public class DataStreamToBigQuery {
     String getDataStreamRootUrl();
 
     void setDataStreamRootUrl(String value);
+
+    @Description("Switch to disable MERGE queries for this job.")
+    @Default.Boolean(true)
+    Boolean getApplyMerge();
+
+    void setApplyMerge(Boolean value);
   }
 
   /**
@@ -383,30 +389,32 @@ public class DataStreamToBigQuery {
                     .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
                     .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
 
-    shuffledTableRows
-        .apply(
-            "Map To Replica Tables",
-            new DataStreamMapper(
-                    options.as(GcpOptions.class),
-                    options.getOutputProjectId(),
-                    options.getOutputDatasetTemplate(),
-                    options.getOutputTableNameTemplate())
-                .withDataStreamRootUrl(options.getDataStreamRootUrl())
-                .withDefaultSchema(BigQueryDefaultSchemas.DATASTREAM_METADATA_SCHEMA)
-                .withIgnoreFields(fieldsToIgnore))
-        .apply(
-            "Merge into Replica Tables",
-            new DataStreamBigQueryMerger(
-                    options.as(GcpOptions.class),
-                    options.getOutputProjectId(),
-                    options.getOutputStagingDatasetTemplate(),
-                    options.getOutputStagingTableNameTemplate(),
-                    options.getOutputDatasetTemplate(),
-                    options.getOutputTableNameTemplate(),
-                    Duration.standardMinutes(options.getMergeFrequencyMinutes()),
-                    null,
-                    MergeConfiguration.bigQueryConfiguration())
-                .withDataStreamRootUrl(options.getDataStreamRootUrl()));
+    if (options.getApplyMerge()) {
+      shuffledTableRows
+          .apply(
+              "Map To Replica Tables",
+              new DataStreamMapper(
+                      options.as(GcpOptions.class),
+                      options.getOutputProjectId(),
+                      options.getOutputDatasetTemplate(),
+                      options.getOutputTableNameTemplate())
+                  .withDataStreamRootUrl(options.getDataStreamRootUrl())
+                  .withDefaultSchema(BigQueryDefaultSchemas.DATASTREAM_METADATA_SCHEMA)
+                  .withIgnoreFields(fieldsToIgnore))
+          .apply(
+              "Merge into Replica Tables",
+              new DataStreamBigQueryMerger(
+                      options.as(GcpOptions.class),
+                      options.getOutputProjectId(),
+                      options.getOutputStagingDatasetTemplate(),
+                      options.getOutputStagingTableNameTemplate(),
+                      options.getOutputDatasetTemplate(),
+                      options.getOutputTableNameTemplate(),
+                      Duration.standardMinutes(options.getMergeFrequencyMinutes()),
+                      null,
+                      MergeConfiguration.bigQueryConfiguration())
+                  .withDataStreamRootUrl(options.getDataStreamRootUrl()));
+    }
 
     /*
      * Stage 4: Write Failures to GCS Dead Letter Queue
