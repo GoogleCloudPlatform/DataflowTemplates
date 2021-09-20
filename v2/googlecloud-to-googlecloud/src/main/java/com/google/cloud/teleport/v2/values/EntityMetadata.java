@@ -15,12 +15,33 @@
  */
 package com.google.cloud.teleport.v2.values;
 
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkState;
+
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Entity;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Schema;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1StorageFormat;
 import com.google.auto.value.AutoValue;
 import com.google.common.collect.ImmutableList;
+import java.util.UUID;
 
-/** The metadata for Dataplex entities. */
+/**
+ * The metadata for Dataplex entities.
+ *
+ * <p>The following fields a required:
+ *
+ * <ul>
+ *   <li>storageFormat
+ *   <li>dataPath
+ *   <li>schema
+ * </ul>
+ *
+ * <p>The following fields are optional:
+ *
+ * <ul>
+ *   <li>assetName: Left optional to make it simpler to create multiple entities under one asset.
+ *   <li>id: If not provided, a UUID will be used
+ * </ul>
+ */
 @AutoValue
 public abstract class EntityMetadata {
 
@@ -38,6 +59,10 @@ public abstract class EntityMetadata {
     BIGQUERY
   }
 
+  public abstract String assetName();
+
+  public abstract String id();
+
   public abstract EntityType entityType();
 
   public abstract StorageSystem storageSystem();
@@ -51,12 +76,38 @@ public abstract class EntityMetadata {
   public abstract ImmutableList<PartitionMetadata> partitions();
 
   public static Builder builder() {
-    return new AutoValue_EntityMetadata.Builder();
+    return new AutoValue_EntityMetadata.Builder().setId(UUID.randomUUID().toString());
+  }
+
+  /** Converts this to a {@link GoogleCloudDataplexV1Entity}. */
+  public GoogleCloudDataplexV1Entity toDataplexEntity() {
+    return setDataplexEntity(new GoogleCloudDataplexV1Entity());
+  }
+
+  /** Updates {@code entity} with all the values in this instance. */
+  public void updateDataplexEntity(GoogleCloudDataplexV1Entity entity) {
+    setDataplexEntity(entity);
+  }
+
+  /** Handles setting all the values of {@code entity} before returning it. */
+  private GoogleCloudDataplexV1Entity setDataplexEntity(GoogleCloudDataplexV1Entity entity) {
+    return entity
+        .setAsset(assetName())
+        .setId(id())
+        .setType(entityType().toString())
+        .setSystem(storageSystem().toString())
+        .setFormat(storageFormat())
+        .setDataPath(dataPath())
+        .setSchema(schema());
   }
 
   /** Builder for {@link EntityMetadata}. */
   @AutoValue.Builder
   public abstract static class Builder {
+    public abstract Builder setAssetName(String value);
+
+    public abstract Builder setId(String value);
+
     public abstract Builder setEntityType(EntityType value);
 
     public abstract Builder setStorageSystem(StorageSystem value);
@@ -69,6 +120,12 @@ public abstract class EntityMetadata {
 
     public abstract Builder setPartitions(ImmutableList<PartitionMetadata> value);
 
-    public abstract EntityMetadata build();
+    abstract EntityMetadata autoBuild();
+
+    public EntityMetadata build() {
+      EntityMetadata metadata = autoBuild();
+      checkState(!metadata.dataPath().isEmpty(), "dataPath cannot be empty");
+      return metadata;
+    }
   }
 }
