@@ -15,6 +15,7 @@ their functionality.
 
 ## Template Pipelines
 
+* [BigQuery to Bigtable](src/main/java/com/google/cloud/teleport/templates/BigQueryToBigtable.java)
 * [BigQuery to Datastore](src/main/java/com/google/cloud/teleport/templates/BigQueryToDatastore.java)
 * [BigQuery to TFRecords](src/main/java/com/google/cloud/teleport/templates/BigQueryToTFRecord.java)
 * [Bigtable to GCS Avro](src/main/java/com/google/cloud/teleport/bigtable/BigtableToAvro.java)
