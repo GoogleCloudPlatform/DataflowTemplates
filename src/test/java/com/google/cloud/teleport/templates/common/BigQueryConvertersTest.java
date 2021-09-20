@@ -28,6 +28,7 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.templates.common.BigQueryConverters.AvroToEntity;
+import com.google.cloud.teleport.templates.common.BigQueryConverters.AvroToMutation;
 import com.google.cloud.teleport.templates.common.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.values.FailsafeElement;
 import com.google.common.base.Strings;
@@ -61,6 +62,10 @@ import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.client.Mutation;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -75,6 +80,24 @@ public class BigQueryConvertersTest {
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
   @Rule public ExpectedException expectedException = ExpectedException.none();
 
+  // Setup for Bigtable conversions
+  private ValueProvider<String> rowkey = StaticValueProvider.of("id");
+  private ValueProvider<String> columnFamily = StaticValueProvider.of("cf");
+  private AvroToMutation avroToMutationConverter =
+      AvroToMutation.newBuilder().setRowkey(rowkey).setColumnFamily(columnFamily).build();
+
+  // Setup for Datastore conversions
+  private ValueProvider<String> entityKind = StaticValueProvider.of("TestEntity");
+  private ValueProvider<String> uniqueNameColumn = StaticValueProvider.of("id");
+  private ValueProvider<String> namespace = StaticValueProvider.of("bq-to-ds-test");
+
+  private AvroToEntity avroToEntityConverter =
+      AvroToEntity.newBuilder()
+          .setEntityKind(entityKind)
+          .setUniqueNameColumn(uniqueNameColumn)
+          .setNamespace(namespace)
+          .build();
+
   // Define the TupleTag's here otherwise the anonymous class will force the test method to
   // be serialized.
   private static final TupleTag<TableRow> TABLE_ROW_TAG = new TupleTag<TableRow>() {};
@@ -82,15 +105,6 @@ public class BigQueryConvertersTest {
   private static final TupleTag<FailsafeElement<PubsubMessage, String>> FAILSAFE_ELM_TAG =
       new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
 
-  private ValueProvider<String> entityKind = StaticValueProvider.of("TestEntity");
-  private ValueProvider<String> uniqueNameColumn = StaticValueProvider.of("id");
-  private ValueProvider<String> namespace = StaticValueProvider.of("bq-to-ds-test");
-  private AvroToEntity converter =
-      AvroToEntity.newBuilder()
-          .setEntityKind(entityKind)
-          .setUniqueNameColumn(uniqueNameColumn)
-          .setNamespace(namespace)
-          .build();
   private String avroSchemaTemplate =
       new StringBuilder()
           .append("{")
@@ -156,6 +170,41 @@ public class BigQueryConvertersTest {
   private String dateTimeField = "full_date";
   private String dateTimeFieldDesc = "Full publication date";
   private String dateTimeFieldValue = "2013-08-19 23:28:20.000567";
+
+  /** Tests that {@link BigQueryConverters.AvroToMutation} creates a Mutation. */
+  @Test
+  public void testAvroToMutation() {
+    // Create test data
+    List<TableFieldSchema> fields = new ArrayList<>();
+    fields.add(new TableFieldSchema().setName(rowkey.get()).setType("STRING"));
+    fields.add(new TableFieldSchema().setName(shortStringField).setType("STRING"));
+    TableSchema bqSchema = new TableSchema().setFields(fields);
+    Schema avroSchema =
+        new Schema.Parser()
+            .parse(
+                String.format(
+                    avroSchemaTemplate,
+                    new StringBuilder()
+                        .append(
+                            String.format(avroFieldTemplate, rowkey.get(), "string", idFieldDesc))
+                        .append(",")
+                        .append(generateShortStringField())));
+    GenericRecordBuilder builder = new GenericRecordBuilder(avroSchema);
+    builder.set(idField, idFieldValueStr);
+    builder.set(shortStringField, shortStringFieldValue);
+    Record record = builder.build();
+    SchemaAndRecord inputBqData = new SchemaAndRecord(record, bqSchema);
+    // Run the test
+    Mutation mutation = avroToMutationConverter.apply(inputBqData);
+    assertEquals(Bytes.toString(mutation.getRow()), idFieldValueStr);
+    assertEquals(1, mutation.getFamilyCellMap().size());
+
+    List<Cell> cells = mutation.getFamilyCellMap().get(Bytes.toBytes(columnFamily.get()));
+    assertEquals(idField, Bytes.toString(CellUtil.cloneQualifier(cells.get(0))));
+    assertEquals(idFieldValueStr, Bytes.toString(CellUtil.cloneValue(cells.get(0))));
+    assertEquals(shortStringField, Bytes.toString(CellUtil.cloneQualifier(cells.get(1))));
+    assertEquals(shortStringFieldValue, Bytes.toString(CellUtil.cloneValue(cells.get(1))));
+  }
 
   /**
    * Tests {@link BigQueryConverters.JsonToTableRow} converts a valid Json TableRow to a TableRow.
@@ -602,7 +651,7 @@ public class BigQueryConvertersTest {
             shortStringField, "string", shortStringFieldDesc, shortStringFieldValue);
     SchemaAndRecord inputBqData = new SchemaAndRecord(record, bqSchema);
     // Run the test
-    Entity outputEntity = converter.apply(inputBqData);
+    Entity outputEntity = avroToEntityConverter.apply(inputBqData);
     assertTrue(!outputEntity.hasKey());
   }
 
@@ -633,7 +682,7 @@ public class BigQueryConvertersTest {
     Record record = builder.build();
     SchemaAndRecord inputBqData = new SchemaAndRecord(record, bqSchema);
     // Run the test
-    Entity outputEntity = converter.apply(inputBqData);
+    Entity outputEntity = avroToEntityConverter.apply(inputBqData);
     assertTrue(!outputEntity.hasKey());
   }
 
@@ -664,7 +713,7 @@ public class BigQueryConvertersTest {
     Record record = builder.build();
     SchemaAndRecord inputBqData = new SchemaAndRecord(record, bqSchema);
     // Run the test
-    Entity outputEntity = converter.apply(inputBqData);
+    Entity outputEntity = avroToEntityConverter.apply(inputBqData);
     assertTrue(!outputEntity.hasKey());
   }
 
@@ -695,7 +744,7 @@ public class BigQueryConvertersTest {
     Record record = builder.build();
     SchemaAndRecord inputBqData = new SchemaAndRecord(record, bqSchema);
     // Run the test
-    Entity outputEntity = converter.apply(inputBqData);
+    Entity outputEntity = avroToEntityConverter.apply(inputBqData);
     assertTrue(outputEntity.hasKey());
     assertEquals(idFieldValueStr, outputEntity.getKey().getPath(0).getName());
     validateMetadata(outputEntity);
@@ -728,7 +777,7 @@ public class BigQueryConvertersTest {
     Record record = builder.build();
     SchemaAndRecord inputBqData = new SchemaAndRecord(record, bqSchema);
     // Run the test
-    Entity outputEntity = converter.apply(inputBqData);
+    Entity outputEntity = avroToEntityConverter.apply(inputBqData);
     assertTrue(outputEntity.hasKey());
     assertEquals(idFieldValueStr, outputEntity.getKey().getPath(0).getName());
     validateMetadata(outputEntity);
@@ -804,7 +853,7 @@ public class BigQueryConvertersTest {
     Record record = builder.build();
     SchemaAndRecord inputBqData = new SchemaAndRecord(record, bqSchema);
     // Run the test
-    Entity outputEntity = converter.apply(inputBqData);
+    Entity outputEntity = avroToEntityConverter.apply(inputBqData);
     // Assess results
     assertTrue(!outputEntity.hasKey());
     assertTrue(
@@ -830,7 +879,7 @@ public class BigQueryConvertersTest {
     Record record = generateNestedAvroRecord();
     SchemaAndRecord inputBqData = new SchemaAndRecord(record, bqSchema);
     // Run the test
-    Entity outputEntity = converter.apply(inputBqData);
+    Entity outputEntity = avroToEntityConverter.apply(inputBqData);
     // Assess results
     String expectedCauseMessage = String.format("Column [address] of type [RECORD] not supported.");
     assertTrue(!outputEntity.hasKey());
@@ -928,7 +977,7 @@ public class BigQueryConvertersTest {
     SchemaAndRecord inputBqData = new SchemaAndRecord(record, bqSchema);
 
     // Run the test
-    Entity outputEntity = converter.apply(inputBqData);
+    Entity outputEntity = avroToEntityConverter.apply(inputBqData);
     Map<String, Value> properties = outputEntity.getPropertiesMap();
 
     // Assess results
@@ -985,6 +1034,7 @@ public class BigQueryConvertersTest {
     assertEquals(entityKind.get(), outputEntity.getKey().getPath(0).getKind());
     assertEquals(namespace.get(), outputEntity.getKey().getPartitionId().getNamespaceId());
   }
+
   /** Generates an Avro record with a single field. */
   private Record generateSingleFieldAvroRecord(
       String name, String type, String description, Object value) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Google LLC
+ * Copyright (C) 2021 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -19,14 +19,10 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 
-/**
- * Transforms & DoFns & Options for Teleport BigtableIO.
- */
+/** Transforms & DoFns & Options for Teleport BigtableIO. */
 public class BigtableConverters {
 
-  /**
-   * Options for writing Bigtable rows.
-   */
+  /** Options for writing Bigtable rows. */
   public interface BigtableWriteOptions extends PipelineOptions {
 
     @Description("GCP Project Id of where to write the Bigtable rows")
@@ -49,5 +45,4 @@ public class BigtableConverters {
 
     void setBigtableWriteColumnFamily(ValueProvider<String> bigtableWriteColumnFamily);
   }
-
 }

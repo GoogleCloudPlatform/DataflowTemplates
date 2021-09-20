@@ -62,9 +62,7 @@ import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 
-/**
- * Common transforms for Teleport BigQueryIO.
- */
+/** Common transforms for Teleport BigQueryIO. */
 public class BigQueryConverters {
 
   public static final int MAX_STRING_SIZE_BYTES = 1500;
@@ -84,9 +82,7 @@ public class BigQueryConverters {
           "TIME",
           "DATETIME");
 
-  /**
-   * Options for reading data from BigQuery.
-   */
+  /** Options for reading data from BigQuery. */
   public interface BigQueryReadOptions extends PipelineOptions {
 
     @Description("SQL query in standard SQL to pull data from BigQuery")
@@ -105,16 +101,12 @@ public class BigQueryConverters {
     void setInvalidOutputPath(ValueProvider<String> value);
   }
 
-  /**
-   * Factory method for {@link JsonToTableRow}.
-   */
+  /** Factory method for {@link JsonToTableRow}. */
   public static PTransform<PCollection<String>, PCollection<TableRow>> jsonToTableRow() {
     return new JsonToTableRow();
   }
 
-  /**
-   * Converts UTF8 encoded Json records to TableRow records.
-   */
+  /** Converts UTF8 encoded Json records to TableRow records. */
   private static class JsonToTableRow
       extends PTransform<PCollection<String>, PCollection<TableRow>> {
 
@@ -149,9 +141,7 @@ public class BigQueryConverters {
       return new AutoValue_BigQueryConverters_FailsafeJsonToTableRow.Builder<>();
     }
 
-    /**
-     * Builder for {@link FailsafeJsonToTableRow}.
-     */
+    /** Builder for {@link FailsafeJsonToTableRow}. */
     @AutoValue.Builder
     public abstract static class Builder<T> {
 
@@ -167,34 +157,32 @@ public class BigQueryConverters {
       return failsafeElements.apply(
           "JsonToTableRow",
           ParDo.of(
-              new DoFn<FailsafeElement<T, String>, TableRow>() {
-                @ProcessElement
-                public void processElement(ProcessContext context) {
-                  FailsafeElement<T, String> element = context.element();
-                  String json = element.getPayload();
+                  new DoFn<FailsafeElement<T, String>, TableRow>() {
+                    @ProcessElement
+                    public void processElement(ProcessContext context) {
+                      FailsafeElement<T, String> element = context.element();
+                      String json = element.getPayload();
 
-                  try {
-                    TableRow row = convertJsonToTableRow(json);
-                    context.output(row);
-                  } catch (Exception e) {
-                    context.output(
-                        failureTag(),
-                        FailsafeElement.of(element)
-                            .setErrorMessage(e.getMessage())
-                            .setStacktrace(Throwables.getStackTraceAsString(e)));
-                  }
-                }
-              })
+                      try {
+                        TableRow row = convertJsonToTableRow(json);
+                        context.output(row);
+                      } catch (Exception e) {
+                        context.output(
+                            failureTag(),
+                            FailsafeElement.of(element)
+                                .setErrorMessage(e.getMessage())
+                                .setStacktrace(Throwables.getStackTraceAsString(e)));
+                      }
+                    }
+                  })
               .withOutputTags(successTag(), TupleTagList.of(failureTag())));
     }
   }
 
-  /**
-   * Reads data from BigQuery and converts it to Bigtable mutation.
-   */
+  /** Reads data from BigQuery and converts it to Bigtable mutation. */
   @AutoValue
-  public abstract static class BigQueryToMutation extends
-      PTransform<PBegin, PCollection<Mutation>> {
+  public abstract static class BigQueryToMutation
+      extends PTransform<PBegin, PCollection<Mutation>> {
 
     abstract ValueProvider<String> query();
 
@@ -202,9 +190,7 @@ public class BigQueryConverters {
 
     abstract ValueProvider<String> rowkey();
 
-    /**
-     * Builder for BigQuery.
-     */
+    /** Builder for BigQuery. */
     @AutoValue.Builder
     public abstract static class Builder {
 
@@ -223,25 +209,21 @@ public class BigQueryConverters {
 
     @Override
     public PCollection<Mutation> expand(PBegin begin) {
-      return begin
-          .apply(
-              "AvroToMutation",
-              BigQueryIO.read(
+      return begin.apply(
+          "AvroToMutation",
+          BigQueryIO.read(
                   AvroToMutation.newBuilder()
                       .setColumnFamily(columnFamily())
                       .setRowkey(rowkey())
                       .build())
-                  .fromQuery(query())
-                  .withoutValidation()
-                  .withTemplateCompatibility()
-                  .usingStandardSql());
+              .fromQuery(query())
+              .withoutValidation()
+              .withTemplateCompatibility()
+              .usingStandardSql());
     }
   }
 
-
-  /**
-   * Converts from the BigQuery Avro format into Bigtable mutation.
-   */
+  /** Converts from the BigQuery Avro format into Bigtable mutation. */
   @AutoValue
   public abstract static class AvroToMutation
       implements SerializableFunction<SchemaAndRecord, Mutation> {
@@ -250,9 +232,7 @@ public class BigQueryConverters {
 
     public abstract ValueProvider<String> rowkey();
 
-    /**
-     * Builder for AvroToEntity.
-     */
+    /** Builder for AvroToEntity. */
     @AutoValue.Builder
     public abstract static class Builder {
 
@@ -272,7 +252,6 @@ public class BigQueryConverters {
       String rowkey = row.get(rowkey().get()).toString();
       Put put = new Put(Bytes.toBytes(rowkey));
 
-
       List<TableFieldSchema> columns = record.getTableSchema().getFields();
       for (TableFieldSchema column : columns) {
         String columnName = column.getName();
@@ -287,10 +266,7 @@ public class BigQueryConverters {
     }
   }
 
-
-  /**
-   * Reads data from BigQuery and converts it to Datastore Entity format.
-   */
+  /** Reads data from BigQuery and converts it to Datastore Entity format. */
   @AutoValue
   public abstract static class BigQueryToEntity extends PTransform<PBegin, PCollectionTuple> {
 
@@ -307,9 +283,7 @@ public class BigQueryConverters {
 
     abstract TupleTag<String> failureTag();
 
-    /**
-     * Builder for BigQuery.
-     */
+    /** Builder for BigQuery. */
     @AutoValue.Builder
     public abstract static class Builder {
 
@@ -338,11 +312,11 @@ public class BigQueryConverters {
           .apply(
               "AvroToEntity",
               BigQueryIO.read(
-                  AvroToEntity.newBuilder()
-                      .setEntityKind(entityKind())
-                      .setUniqueNameColumn(uniqueNameColumn())
-                      .setNamespace(namespace())
-                      .build())
+                      AvroToEntity.newBuilder()
+                          .setEntityKind(entityKind())
+                          .setUniqueNameColumn(uniqueNameColumn())
+                          .setNamespace(namespace())
+                          .build())
                   .fromQuery(query())
                   .withoutValidation()
                   .withTemplateCompatibility()
@@ -356,9 +330,7 @@ public class BigQueryConverters {
     }
   }
 
-  /**
-   * Converts from the BigQuery Avro format into Datastore Entity.
-   */
+  /** Converts from the BigQuery Avro format into Datastore Entity. */
   @AutoValue
   public abstract static class AvroToEntity
       implements SerializableFunction<SchemaAndRecord, Entity> {
@@ -370,9 +342,7 @@ public class BigQueryConverters {
     @Nullable
     public abstract ValueProvider<String> namespace();
 
-    /**
-     * Builder for AvroToEntity.
-     */
+    /** Builder for AvroToEntity. */
     @AutoValue.Builder
     public abstract static class Builder {
 
@@ -551,8 +521,7 @@ public class BigQueryConverters {
 
   /**
    * Return a formatted String Using Key/Value Style formatting from the TableRow applied to the
-   * Format Template. ie. formatStringTemplate("I am {key}"{"key": "formatted"}) -> "I am
-   * formatted"
+   * Format Template. ie. formatStringTemplate("I am {key}"{"key": "formatted"}) -> "I am formatted"
    */
   public static String formatStringTemplate(String formatTemplate, TableRow row) {
     // Key/Value Map used to replace values in template

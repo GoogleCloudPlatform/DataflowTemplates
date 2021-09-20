@@ -70,9 +70,7 @@ public class SpannerToText {
 
   /** Custom PipelineOptions. */
   public interface SpannerToTextOptions
-      extends PipelineOptions,
-          SpannerReadOptions,
-          FilesystemWriteOptions {}
+      extends PipelineOptions, SpannerReadOptions, FilesystemWriteOptions {}
 
   /**
    * Runs a pipeline which reads in Records from Spanner, and writes the CSV to TextIO sink.

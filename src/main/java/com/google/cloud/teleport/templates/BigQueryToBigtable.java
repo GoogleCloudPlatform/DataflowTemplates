@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Google LLC
+ * Copyright (C) 2021 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -18,18 +18,10 @@ package com.google.cloud.teleport.templates;
 import com.google.cloud.bigtable.beam.CloudBigtableIO;
 import com.google.cloud.bigtable.beam.CloudBigtableTableConfiguration;
 import com.google.cloud.teleport.templates.common.BigQueryConverters.BigQueryReadOptions;
-import com.google.cloud.teleport.templates.common.BigQueryConverters.BigQueryToEntity;
 import com.google.cloud.teleport.templates.common.BigQueryConverters.BigQueryToMutation;
 import com.google.cloud.teleport.templates.common.BigtableConverters.BigtableWriteOptions;
-import com.google.cloud.teleport.templates.common.DatastoreConverters.DatastoreWriteOptions;
-import com.google.cloud.teleport.templates.common.DatastoreConverters.WriteEntities;
-import com.google.cloud.teleport.templates.common.ErrorConverters.ErrorWriteOptions;
-import com.google.cloud.teleport.templates.common.ErrorConverters.LogErrors;
-import com.google.datastore.v1.Entity;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.values.PCollectionTuple;
-import org.apache.beam.sdk.values.TupleTag;
 
 /**
  * Dataflow template which reads BigQuery data and writes it to Bigtable. The source data can be
@@ -37,12 +29,8 @@ import org.apache.beam.sdk.values.TupleTag;
  */
 public class BigQueryToBigtable {
 
-  /**
-   * Custom PipelineOptions.
-   */
-  public interface BigQueryToBigtableOptions extends BigQueryReadOptions, BigtableWriteOptions {
-
-  }
+  /** Custom PipelineOptions. */
+  public interface BigQueryToBigtableOptions extends BigQueryReadOptions, BigtableWriteOptions {}
 
   /**
    * Runs a pipeline which reads data from BigQuery and writes it to Bigtable.
@@ -50,8 +38,6 @@ public class BigQueryToBigtable {
    * @param args arguments to the pipeline
    */
   public static void main(String[] args) {
-
-
     BigQueryToBigtableOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(BigQueryToBigtableOptions.class);
     CloudBigtableTableConfiguration bigtableTableConfig =
@@ -63,12 +49,13 @@ public class BigQueryToBigtable {
 
     Pipeline pipeline = Pipeline.create(options);
 
-    pipeline.apply(
-        BigQueryToMutation.newBuilder()
-            .setQuery(options.getReadQuery())
-            .setColumnFamily(options.getBigtableWriteColumnFamily())
-            .setRowkey(options.getReadIdColumn())
-            .build())
+    pipeline
+        .apply(
+            BigQueryToMutation.newBuilder()
+                .setQuery(options.getReadQuery())
+                .setColumnFamily(options.getBigtableWriteColumnFamily())
+                .setRowkey(options.getReadIdColumn())
+                .build())
         .apply(CloudBigtableIO.writeToTable(bigtableTableConfig));
 
     pipeline.run();
