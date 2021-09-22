@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Asset;
 import com.google.cloud.bigquery.BigQuery;
@@ -32,14 +32,16 @@ import com.google.cloud.teleport.v2.transforms.DeleteBigQueryDataFn.BigQueryClie
 import com.google.cloud.teleport.v2.transforms.UpdateDataplexBigQueryToGcsExportMetadataTransform;
 import com.google.cloud.teleport.v2.utils.BigQueryMetadataLoader;
 import com.google.cloud.teleport.v2.utils.BigQueryUtils;
-import com.google.cloud.teleport.v2.utils.StorageUtils;
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Splitter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
@@ -59,6 +61,8 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.beam.sdk.values.TypeDescriptors;
+import org.joda.time.Instant;
+import org.joda.time.format.ISODateTimeFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -100,7 +104,8 @@ public class DataplexBigQueryToGcs {
 
     @Description(
         "A comma-separated list of BigQuery tables to tier. If none specified, all tables will be"
-            + " tiered. Table name format: <project>:<dataset>.<table>.")
+            + " tiered. Tables should be specified by their name only (no project/dataset prefix)."
+            + " Case-sensitive!")
     String getTableRefs();
 
     void setTableRefs(String tableRefs);
@@ -114,16 +119,16 @@ public class DataplexBigQueryToGcs {
 
     void setDestinationGscBucketAssetName(String destinationGscBucketAssetName);
 
-    // TODO(an2x): time zone handling?
-
     @Description(
-        "Move data older than this date. For partitioned tables, move partitions last updated"
-            + " before this date. For non-partitioned tables, move if the table was last updated"
-            + " before this date. If not specified, move all tables / partitions. Format:"
-            + " YYYY-MM-DD.")
-    String getBeforeDate();
+        "Move data older than this date (and optional time). For partitioned tables, move"
+            + " partitions last modified before this date/time. For non-partitioned tables,"
+            + " move if the table was last modified before this date/time. If not specified,"
+            + " move all tables / partitions. The date/time is parsed in the default time zone"
+            + " by default, but optinal suffixes Z and +HH:mm are supported. Format:"
+            + " YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss or YYYY-MM-DDTHH:mm:ss+03:00.")
+    String getExportDataModifiedBeforeDateTime();
 
-    void setBeforeDate(String beforeDate);
+    void setExportDataModifiedBeforeDateTime(String exportDataModifiedBeforeDateTime);
 
     @Description(
         "The maximum number of parallel requests that will be sent to BigQuery when loading"
@@ -198,11 +203,12 @@ public class DataplexBigQueryToGcs {
             options.getSourceBigQueryAssetName(),
             DataplexAssetResourceSpec.BIGQUERY_DATASET);
 
-    String targetRootPath = "gs://" + StorageUtils.parseBucketUrn(gcsResource);
+    String targetRootPath = "gs://" + gcsResource;
     DatasetId datasetId = BigQueryUtils.parseDatasetUrn(bqResource);
     BigQueryMetadataLoader metadataLoader =
-        new FilteringBigQueryMetadataLoader(bqClient, bqsClient, maxParallelBigQueryRequests);
-    List<BigQueryTable> tables = metadataLoader.loadDatasetMetadata(datasetId);
+        new BigQueryMetadataLoader(bqClient, bqsClient, maxParallelBigQueryRequests);
+    List<BigQueryTable> tables =
+        metadataLoader.loadDatasetMetadata(datasetId, new MetadataFilter(options));
 
     transformPipeline(pipeline, tables, options, targetRootPath, null, null);
 
@@ -283,20 +289,63 @@ public class DataplexBigQueryToGcs {
     return resourceName;
   }
 
-  private static class FilteringBigQueryMetadataLoader extends BigQueryMetadataLoader {
-    public FilteringBigQueryMetadataLoader(
-        BigQuery bqClient, BigQueryStorageClient bqsClient, int maxParallelRequests) {
-      super(bqClient, bqsClient, maxParallelRequests);
+  @VisibleForTesting
+  static class MetadataFilter implements BigQueryMetadataLoader.Filter {
+    private static final Splitter SPLITTER = Splitter.on(',').trimResults().omitEmptyStrings();
+
+    private final Instant maxLastModifiedTime;
+    private final Set<String> includeTables;
+
+    @VisibleForTesting
+    MetadataFilter(DataplexBigQueryToGcsOptions options) {
+      String dateTime = options.getExportDataModifiedBeforeDateTime();
+      if (dateTime != null && !dateTime.isEmpty()) {
+        this.maxLastModifiedTime =
+            Instant.parse(dateTime, ISODateTimeFormat.dateOptionalTimeParser());
+      } else {
+        this.maxLastModifiedTime = null;
+      }
+
+      String tableRefs = options.getTableRefs();
+      if (tableRefs != null && !tableRefs.isEmpty()) {
+        List<String> tableRefList = SPLITTER.splitToList(tableRefs);
+        checkArgument(
+            !tableRefList.isEmpty(),
+            "Got an non-empty tableRefs param '%s', but couldn't parse it into a valid table list,"
+                + " please check its format.",
+            tableRefs);
+        this.includeTables = new HashSet<>(tableRefList);
+      } else {
+        this.includeTables = null;
+      }
     }
 
-    protected boolean shouldSkipUnpartitionedTable(BigQueryTable.Builder table) {
-      // TODO(an2x): check table name and last modification time.
+    private boolean shouldSkipTableName(BigQueryTable.Builder table) {
+      if (includeTables != null && !includeTables.contains(table.getTableName())) {
+        return true;
+      }
       return false;
     }
 
-    protected boolean shouldSkipPartitionedTable(
+    @Override
+    public boolean shouldSkipUnpartitionedTable(BigQueryTable.Builder table) {
+      if (shouldSkipTableName(table)) {
+        return true;
+      }
+      // Check the last modified time only for NOT partitioned table.
+      // If a table is partitioned, we check the last modified time on partition level only.
+      if (maxLastModifiedTime != null
+          // BigQuery timestamps are in microseconds so / 1000.
+          && maxLastModifiedTime.isBefore(table.getLastModificationTime() / 1000)) {
+        return true;
+      }
+      return false;
+    }
+
+    @Override
+    public boolean shouldSkipPartitionedTable(
         BigQueryTable.Builder table, List<BigQueryTablePartition> partitions) {
-      if (shouldSkipUnpartitionedTable(table)) {
+      if (shouldSkipTableName(table)) {
         return true;
       }
       if (partitions.isEmpty()) {
@@ -310,9 +359,13 @@ public class DataplexBigQueryToGcs {
     }
 
     @Override
-    protected boolean shouldSkipPartition(
+    public boolean shouldSkipPartition(
         BigQueryTable.Builder table, BigQueryTablePartition partition) {
-      // TODO(an2x): check last modification time.
+      if (maxLastModifiedTime != null
+          // BigQuery timestamps are in microseconds so / 1000.
+          && maxLastModifiedTime.isBefore(partition.getLastModificationTime() / 1000)) {
+        return true;
+      }
       return false;
     }
   }
