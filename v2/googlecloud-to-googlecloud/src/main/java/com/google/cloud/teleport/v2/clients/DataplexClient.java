@@ -16,9 +16,11 @@
 package com.google.cloud.teleport.v2.clients;
 
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Asset;
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Entity;
 import com.google.cloud.teleport.v2.values.EntityMetadata;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
+import java.util.List;
 
 /** Interface for interacting with Google Cloud Dataplex. */
 public interface DataplexClient {
@@ -31,6 +33,27 @@ public interface DataplexClient {
    * @return an asset from Dataplex
    */
   GoogleCloudDataplexV1Asset getAsset(String assetName) throws IOException;
+
+  /**
+   * Get Cloud Storage (StorageSystem.CLOUD_STORAGE) entities of the given asset.
+   *
+   * @param assetName example:
+   *     projects/{name}/locations/{location}/lakes/{lake}/zones/{zone}/assets/{asset}
+   */
+  ImmutableList<GoogleCloudDataplexV1Entity> getCloudStorageEntities(String assetName)
+      throws IOException;
+
+  /**
+   * Get entities by their names.
+   *
+   * @param entityNames example:
+   *     projects/{project_number}/locations/{location_id}/lakes/{lake_id}/zones/{zone_id}/entities/
+   *     {entity_id_1},
+   *     projects/{project_number}/locations/{location_id}/lakes/{lake_id}/zones/{zone_id}/entities/
+   *     {entity_id_2}
+   */
+  ImmutableList<GoogleCloudDataplexV1Entity> getEntities(List<String> entityNames)
+      throws IOException;
 
   /**
    * Creates the metadata for {@code asset}.
