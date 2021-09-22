@@ -26,12 +26,16 @@ import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.services.dataplex.v1.CloudDataplex;
+import com.google.api.services.dataplex.v1.CloudDataplex.Projects.Locations.Lakes.Zones.Entities;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Asset;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Entity;
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1ListEntitiesResponse;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Partition;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.teleport.v2.values.EntityMetadata;
+import com.google.cloud.teleport.v2.values.EntityMetadata.StorageSystem;
+import com.google.cloud.teleport.v2.values.GetEntityRequestEntityView;
 import com.google.cloud.teleport.v2.values.PartitionMetadata;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -42,6 +46,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,6 +102,26 @@ public final class DefaultDataplexClient implements DataplexClient {
   @Override
   public GoogleCloudDataplexV1Asset getAsset(String assetName) throws IOException {
     return client.projects().locations().lakes().zones().assets().get(assetName).execute();
+  }
+
+  @Override
+  public ImmutableList<GoogleCloudDataplexV1Entity> getCloudStorageEntities(String assetName)
+      throws IOException {
+    // the list entities response doesn't include entities' schemas, so the implementation is to
+    // collect the entity names first and then request entities with schemas separately
+    return getEntities(getCloudStorageEntityNames(assetName));
+  }
+
+  @Override
+  public ImmutableList<GoogleCloudDataplexV1Entity> getEntities(List<String> entityNames)
+      throws IOException {
+    Entities entities = client.projects().locations().lakes().zones().entities();
+    ImmutableList.Builder<GoogleCloudDataplexV1Entity> result = ImmutableList.builder();
+    for (String entityName : entityNames) {
+      result.add(
+          entities.get(entityName).setView(GetEntityRequestEntityView.FULL.name()).execute());
+    }
+    return result.build();
   }
 
   /**
@@ -192,25 +217,44 @@ public final class DefaultDataplexClient implements DataplexClient {
     return flattened;
   }
 
+  /** Get Cloud Storage entity names of the given asset. */
+  private ImmutableList<String> getCloudStorageEntityNames(String assetName) throws IOException {
+    return getEntitiesUnderAssetStream(assetName)
+        .filter(e -> Objects.equals(e.getSystem(), StorageSystem.CLOUD_STORAGE.name()))
+        .map(GoogleCloudDataplexV1Entity::getName)
+        .collect(toImmutableList());
+  }
+
   /** Gets all entities under {@code assetName}. */
   private List<GoogleCloudDataplexV1Entity> getEntitiesUnderAsset(String assetName)
       throws IOException {
-    return client
-        .projects()
-        .locations()
-        .lakes()
-        .zones()
-        .entities()
-        .list(getZoneFromAsset(assetName))
-        .execute()
-        .getEntities()
-        .stream()
+    return getEntitiesUnderAssetStream(assetName).collect(toList());
+  }
+
+  /** Gets a stream of all entities under {@code assetName}. */
+  private Stream<GoogleCloudDataplexV1Entity> getEntitiesUnderAssetStream(String assetName)
+      throws IOException {
+    Entities entities = client.projects().locations().lakes().zones().entities();
+    String zoneName = getZoneFromAsset(assetName);
+
+    GoogleCloudDataplexV1ListEntitiesResponse response = entities.list(zoneName).execute();
+    Stream<GoogleCloudDataplexV1Entity> result = getEntitiesUnderAssetForPage(response, assetName);
+    // the result of the list is paginated with the default page size being 10
+    while (response.getNextPageToken() != null) {
+      response = entities.list(zoneName).setPageToken(response.getNextPageToken()).execute();
+      result = Stream.concat(result, getEntitiesUnderAssetForPage(response, assetName));
+    }
+    return result;
+  }
+
+  private static Stream<GoogleCloudDataplexV1Entity> getEntitiesUnderAssetForPage(
+      GoogleCloudDataplexV1ListEntitiesResponse response, String assetName) {
+    return response.getEntities().stream()
         // Unfortunately, getting the entities from under an asset is not supported, so we need to
         // do the filtering on our end. Hopefully, the number of assets under a zone remain small
         // enough that this won't be too expensive.
         // TODO(zhoufek): Switch to just getting from an asset if/when Dataplex supports it.
-        .filter(e -> Objects.equals(assetName, e.getAsset()))
-        .collect(toList());
+        .filter(e -> Objects.equals(assetName, e.getAsset()));
   }
 
   /** Handles just the creation of entities. Each entity is logged after creation. */
