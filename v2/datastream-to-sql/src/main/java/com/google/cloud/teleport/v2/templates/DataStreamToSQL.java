@@ -260,10 +260,9 @@ public class DataStreamToSQL {
      *   a) Convert JSON String FailsafeElements to TableRow's (tableRowRecords)
      * Stage 3) Filter stale rows using stateful PK transform
      */
-    PCollection<DmlInfo> dmlStatements =
-        datastreamJsonRecords
-            .apply("Format to SQL DML", CreateDml.createDmlObjects(dataSourceConfiguration))
-            .apply("DML Stateful Processing", ProcessDml.statefulOrderByPK());
+    PCollection<DmlInfo> dmlStatements = datastreamJsonRecords
+        .apply("Format to DML", CreateDml.of(dataSourceConfiguration))
+        .apply("DML Stateful Processing", ProcessDml.statefulOrderByPK());
 
     /*
      * Stage 4: Write Inserts to CloudSQL

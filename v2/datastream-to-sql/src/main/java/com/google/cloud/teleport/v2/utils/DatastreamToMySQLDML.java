@@ -59,7 +59,7 @@ public class DatastreamToMySQLDML extends DatastreamToDML {
   @Override
   public String getTargetCatalogName(DatastreamRow row) {
     String schemaName = row.getSchemaName();
-    return schemaName.toLowerCase();
+    return cleanSchemaName(schemaName);
   }
 
   @Override
@@ -70,6 +70,6 @@ public class DatastreamToMySQLDML extends DatastreamToDML {
   @Override
   public String getTargetTableName(DatastreamRow row) {
     String tableName = row.getTableName();
-    return tableName.toLowerCase();
+    return cleanTableName(tableName);
   }
 }
