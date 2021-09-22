@@ -32,6 +32,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import javax.annotation.Nullable;
 import org.apache.avro.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,27 +59,13 @@ public class BigQueryMetadataLoader {
     this.maxParallelRequests = maxParallelRequests;
   }
 
-  protected boolean shouldSkipUnpartitionedTable(BigQueryTable.Builder table) {
-    return false;
-  }
-
-  protected boolean shouldSkipPartitionedTable(
-      BigQueryTable.Builder table, List<BigQueryTablePartition> partitions) {
-    return false;
-  }
-
-  protected boolean shouldSkipPartition(
-      BigQueryTable.Builder table, BigQueryTablePartition partition) {
-    return false;
-  }
-
   /**
-   * Loads metadata for all tables in the dataset {@code datasetId} returning only those that match
-   * the template filters and have anything to load (e.g. if it's a partitioned table and beforeDate
-   * param is set, but all partitioned were modified after beforeDate, it will skip the whole
-   * table).
+   * Loads metadata for all tables in the dataset {@code datasetId} returning only those accepted by
+   * the {@code filter}.
+   *
+   * @param filter if {@code null}, will include all tables and partitions
    */
-  public List<BigQueryTable> loadDatasetMetadata(DatasetId datasetId)
+  public List<BigQueryTable> loadDatasetMetadata(DatasetId datasetId, @Nullable Filter filter)
       throws InterruptedException, ExecutionException {
 
     String tableSql =
@@ -115,7 +102,7 @@ public class BigQueryMetadataLoader {
                               .setPartitioningColumn(
                                   !row.get(2).isNull() ? row.get(2).getStringValue() : null);
 
-                      if (!loadTableMetadata(table)) {
+                      if (!loadTableMetadata(table, filter)) {
                         return null;
                       }
 
@@ -139,19 +126,21 @@ public class BigQueryMetadataLoader {
   /**
    * Populates {@code table} builder with additional metadata like partition names and schema.
    *
+   * @param filter optional filter to skip a subset of tables
    * @return {@code true} if the table matches all filters and should be included in the results,
    *     {@code false} if it should be skipped
    */
-  private boolean loadTableMetadata(BigQueryTable.Builder table) throws InterruptedException {
+  private boolean loadTableMetadata(BigQueryTable.Builder table, Filter filter)
+      throws InterruptedException {
     TableReadOptions.Builder readOptions = TableReadOptions.newBuilder();
 
     if (table.getPartitioningColumn() == null) {
-      if (shouldSkipUnpartitionedTable(table)) {
+      if (filter != null && filter.shouldSkipUnpartitionedTable(table)) {
         return false;
       }
     } else {
-      List<BigQueryTablePartition> partitions = loadTablePartitions(table);
-      if (shouldSkipPartitionedTable(table, partitions)) {
+      List<BigQueryTablePartition> partitions = loadTablePartitions(table, filter);
+      if (filter != null && filter.shouldSkipPartitionedTable(table, partitions)) {
         return false;
       }
 
@@ -190,8 +179,8 @@ public class BigQueryMetadataLoader {
     return true;
   }
 
-  private List<BigQueryTablePartition> loadTablePartitions(BigQueryTable.Builder table)
-      throws InterruptedException {
+  private List<BigQueryTablePartition> loadTablePartitions(
+      BigQueryTable.Builder table, Filter filter) throws InterruptedException {
 
     String partitionSql =
         String.format(
@@ -217,10 +206,26 @@ public class BigQueryMetadataLoader {
                       .setPartitionName(r.get(0).getStringValue())
                       .setLastModificationTime(r.get(1).getTimestampValue())
                       .build();
-              if (!shouldSkipPartition(table, p)) {
+              if (filter == null || !filter.shouldSkipPartition(table, p)) {
                 partitions.add(p);
               }
             });
     return partitions;
+  }
+
+  /**
+   * An optional filter to be provided for the {@link BigQueryMetadataLoader} to exclude unwanted
+   * tables or partitions.
+   *
+   * <p>More efficient than filtering <b>after</b> loading (e.g. the metadata loader may skip
+   * loading the list of partitions for a table when the whole table is filtered out anyway).
+   */
+  public interface Filter {
+    boolean shouldSkipUnpartitionedTable(BigQueryTable.Builder table);
+
+    boolean shouldSkipPartitionedTable(
+        BigQueryTable.Builder table, List<BigQueryTablePartition> partitions);
+
+    boolean shouldSkipPartition(BigQueryTable.Builder table, BigQueryTablePartition partition);
   }
 }
