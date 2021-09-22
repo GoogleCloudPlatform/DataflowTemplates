@@ -54,6 +54,7 @@ public abstract class DatastreamToDML
   private DataSourceConfiguration dataSourceConfiguration;
   private DataSource dataSource;
   public String quoteCharacter;
+  private static Map<String, String> schemaMap = new HashMap<String, String>();
 
   public abstract String getDefaultQuoteCharacter();
 
@@ -86,6 +87,11 @@ public abstract class DatastreamToDML
     return this;
   }
 
+  public DatastreamToDML withSchemaMap(Map<String, String> schemaMap) {
+    this.schemaMap = schemaMap;
+    return this;
+  }
+
   @ProcessElement
   public void processElement(ProcessContext context) {
     FailsafeElement<String, String> element = context.element();
@@ -106,6 +112,25 @@ public abstract class DatastreamToDML
       // TODO(dhercher): Push failure to DLQ collection
       LOG.error("IOException: {} :: {}", jsonString, e.toString());
     }
+  }
+
+  protected String cleanTableName(String tableName) {
+    return applyLowercase(tableName);
+  }
+
+  protected String cleanSchemaName(String schemaName) {
+    schemaName = applySchemaMap(schemaName);
+    schemaName = applyLowercase(schemaName);
+
+    return schemaName;
+  }
+
+  protected String applySchemaMap(String sourceSchema) {
+    return schemaMap.getOrDefault(sourceSchema, sourceSchema);
+  }
+
+  protected String applyLowercase(String name) {
+    return name.toLowerCase();
   }
 
   // TODO(dhercher): Only if source is oracle, pull from DatastreamRow

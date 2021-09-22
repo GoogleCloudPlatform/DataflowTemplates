@@ -64,12 +64,12 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
   @Override
   public String getTargetSchemaName(DatastreamRow row) {
     String schemaName = row.getSchemaName();
-    return schemaName.toLowerCase();
+    return cleanSchemaName(schemaName);
   }
 
   @Override
   public String getTargetTableName(DatastreamRow row) {
     String tableName = row.getTableName();
-    return tableName.toLowerCase();
+    return cleanTableName(tableName);
   }
 }
