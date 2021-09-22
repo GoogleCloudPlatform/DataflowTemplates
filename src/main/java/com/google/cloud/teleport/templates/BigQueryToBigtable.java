@@ -44,6 +44,7 @@ public class BigQueryToBigtable {
         new CloudBigtableTableConfiguration.Builder()
             .withProjectId(options.getBigtableWriteProjectId())
             .withInstanceId(options.getBigtableWriteInstanceId())
+            .withAppProfileId(options.getBigtableWriteAppProfile())
             .withTableId(options.getBigtableWriteTableId())
             .build();
 

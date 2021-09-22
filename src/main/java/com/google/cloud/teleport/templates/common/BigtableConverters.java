@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.templates.common;
 
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -32,6 +33,12 @@ public class BigtableConverters {
 
     @Description("Bigtable Instance id")
     ValueProvider<String> getBigtableWriteInstanceId();
+
+    void setBigtableWriteInstanceId(ValueProvider<String> bigtableWriteInstanceId);
+
+    @Description("Bigtable app profile")
+    @Default.String("default")
+    ValueProvider<String> getBigtableWriteAppProfile();
 
     void setBigtableWriteInstanceId(ValueProvider<String> bigtableWriteInstanceId);
 
