@@ -24,9 +24,15 @@ import org.apache.avro.SchemaBuilder.BaseTypeBuilder;
 import org.apache.avro.SchemaBuilder.FieldAssembler;
 import org.apache.avro.SchemaBuilder.RecordBuilder;
 import org.apache.avro.SchemaBuilder.TypeBuilder;
+import org.apache.avro.SchemaNormalization;
 
 /** Utility methods for Dataplex and Avro schemas. */
 public final class Schemas {
+
+  /** Serialize Avro schema to JSON format. */
+  public static String serialize(Schema schema) throws SchemaConversionException {
+    return SchemaNormalization.toParsingForm(schema);
+  }
 
   /** Convert Dataplex schema to a correpsonding Avro schema. */
   public static Schema dataplexSchemaToAvro(GoogleCloudDataplexV1Schema dataplexSchema)

@@ -27,9 +27,11 @@ import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.services.dataplex.v1.CloudDataplex;
 import com.google.api.services.dataplex.v1.CloudDataplex.Projects.Locations.Lakes.Zones.Entities;
+import com.google.api.services.dataplex.v1.CloudDataplex.Projects.Locations.Lakes.Zones.Entities.Partitions;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Asset;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Entity;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1ListEntitiesResponse;
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1ListPartitionsResponse;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Partition;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.GoogleCredentials;
@@ -120,6 +122,20 @@ public final class DefaultDataplexClient implements DataplexClient {
     for (String entityName : entityNames) {
       result.add(
           entities.get(entityName).setView(GetEntityRequestEntityView.FULL.name()).execute());
+    }
+    return result.build();
+  }
+
+  public ImmutableList<GoogleCloudDataplexV1Partition> getPartitions(String entityName)
+      throws IOException {
+    ImmutableList.Builder<GoogleCloudDataplexV1Partition> result = ImmutableList.builder();
+    Partitions partitions = client.projects().locations().lakes().zones().entities().partitions();
+    GoogleCloudDataplexV1ListPartitionsResponse response = partitions.list(entityName).execute();
+    result.addAll(response.getPartitions());
+    // the result of the list is paginated with the default page size being 10
+    while (response.getNextPageToken() != null) {
+      response = partitions.list(entityName).setPageToken(response.getNextPageToken()).execute();
+      result.addAll(response.getPartitions());
     }
     return result.build();
   }

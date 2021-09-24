@@ -587,18 +587,32 @@ public class CsvConverters {
    * GenericRecord}.
    */
   public static class StringToGenericRecordFn extends DoFn<String, GenericRecord> {
-    String schemaLocation;
-    String delimiter;
-    Schema schema;
+    private String serializedSchema;
+    private final String delimiter;
+    private Schema schema;
 
     public StringToGenericRecordFn(String schemaLocation, String delimiter) {
-      this.schemaLocation = schemaLocation;
+      withSchemaLocation(schemaLocation);
       this.delimiter = delimiter;
+    }
+
+    public StringToGenericRecordFn(String delimiter) {
+      this.delimiter = delimiter;
+    }
+
+    public StringToGenericRecordFn withSchemaLocation(String schemaLocation) {
+      this.serializedSchema = SchemaUtils.getGcsFileAsString(schemaLocation);
+      return this;
+    }
+
+    public StringToGenericRecordFn withSerializedSchema(String serializedSchema) {
+      this.serializedSchema = serializedSchema;
+      return this;
     }
 
     @Setup
     public void setup() {
-      schema = SchemaUtils.getAvroSchema(schemaLocation);
+      schema = SchemaUtils.parseAvroSchema(serializedSchema);
     }
 
     @ProcessElement

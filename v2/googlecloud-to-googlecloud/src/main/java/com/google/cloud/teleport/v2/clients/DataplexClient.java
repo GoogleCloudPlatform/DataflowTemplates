@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.clients;
 
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Asset;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Entity;
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Partition;
 import com.google.cloud.teleport.v2.values.EntityMetadata;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
@@ -54,6 +55,15 @@ public interface DataplexClient {
    */
   ImmutableList<GoogleCloudDataplexV1Entity> getEntities(List<String> entityNames)
       throws IOException;
+
+  /**
+   * Get partitions of the entity.
+   *
+   * @param entityName example:
+   *     projects/{project_number}/locations/{location_id}/lakes/{lake_id}/zones/{zone_id}/entities/
+   *     {entity_id}`
+   */
+  ImmutableList<GoogleCloudDataplexV1Partition> getPartitions(String entityName) throws IOException;
 
   /**
    * Creates the metadata for {@code asset}.
