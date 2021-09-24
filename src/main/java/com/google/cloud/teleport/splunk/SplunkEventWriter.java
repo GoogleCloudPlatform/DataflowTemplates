@@ -262,8 +262,23 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
         bufferState.clear();
         countState.clear();
 
-        if (response != null) {
-          response.disconnect();
+        // We've observed cases where errors at this point can cause the pipeline to keep retrying
+        // the same events over and over (e.g. from Dataflow Runner's Pub/Sub implementation). Since
+        // the events have either been published or wrapped for error handling, we can safely
+        // ignore this error, though there may or may not be a leak of some type depending on
+        // HttpResponse's implementation. However, any potential leak would still happen if we let
+        // the exception fall through, so this isn't considered a major issue.
+        try {
+          if (response != null) {
+            response.disconnect();
+          }
+        } catch (IOException e) {
+          LOG.warn(
+              "Error trying to disconnect from Splunk: {}\n"
+                  + "Messages should still have either been published or prepared for error"
+                  + " handling, but there might be a connection leak.\nStack Trace: {}",
+              e.getMessage(),
+              e.getStackTrace());
         }
       }
     }
