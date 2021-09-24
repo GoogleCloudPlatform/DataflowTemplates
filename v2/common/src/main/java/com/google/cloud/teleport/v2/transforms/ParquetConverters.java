@@ -20,6 +20,7 @@ import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Precondi
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
+import javax.annotation.Nullable;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.parquet.ParquetIO;
@@ -53,7 +54,8 @@ public class ParquetConverters {
     void setSchema(String schema);
 
     @Description(
-        "The maximum number of output shards produced when writing. Default value is decided by Runner.")
+        "The maximum number of output shards produced when writing. Default value is decided by"
+            + " Runner.")
     @Default.Integer(0)
     Integer getNumShards();
 
@@ -77,7 +79,11 @@ public class ParquetConverters {
       return new AutoValue_ParquetConverters_ReadParquetFile.Builder();
     }
 
+    @Nullable
     public abstract String schema();
+
+    @Nullable
+    public abstract String serializedSchema();
 
     public abstract String inputFileSpec();
 
@@ -85,7 +91,11 @@ public class ParquetConverters {
     public PCollection<GenericRecord> expand(PBegin input) {
       return input.apply(
           "ReadParquetFile",
-          ParquetIO.read(SchemaUtils.getAvroSchema(schema())).from(inputFileSpec()));
+          ParquetIO.read(
+                  serializedSchema() != null
+                      ? SchemaUtils.parseAvroSchema(serializedSchema())
+                      : SchemaUtils.getAvroSchema(schema()))
+              .from(inputFileSpec()));
     }
 
     /** Builder for {@link ReadParquetFile}. */
@@ -94,6 +104,10 @@ public class ParquetConverters {
       public abstract Builder setSchema(String schema);
 
       public abstract String schema();
+
+      public abstract Builder setSerializedSchema(String schema);
+
+      public abstract String serializedSchema();
 
       public abstract Builder setInputFileSpec(String inputFile);
 
@@ -107,6 +121,11 @@ public class ParquetConverters {
         return setInputFileSpec(inputFileSpec);
       }
 
+      public Builder withSerializedSchema(String schema) {
+        checkArgument(schema != null, "withSerializedSchema(schema) called with null input.");
+        return setSerializedSchema(schema);
+      }
+
       public Builder withSchema(String schema) {
         checkArgument(schema != null, "withSchema(schema) called with null input.");
         return setSchema(schema);
@@ -114,7 +133,10 @@ public class ParquetConverters {
 
       public ReadParquetFile build() {
         checkNotNull(inputFileSpec(), "provide a Parquet file to read from.");
-        checkNotNull(schema(), "schema needs to be provided while reading a Parquet file.");
+        if ((schema() == null) == (serializedSchema() == null)) {
+          throw new IllegalArgumentException(
+              "Either schema location or serialized schema must be set.");
+        }
 
         return autoBuild();
       }
@@ -134,7 +156,11 @@ public class ParquetConverters {
       return new AutoValue_ParquetConverters_WriteParquetFile.Builder();
     }
 
+    @Nullable
     public abstract String schema();
+
+    @Nullable
+    public abstract String serializedSchema();
 
     public abstract String outputFile();
 
@@ -147,7 +173,11 @@ public class ParquetConverters {
       return input.apply(
           "WriteParquetFile(s)",
           FileIO.<GenericRecord>write()
-              .via(ParquetIO.sink(SchemaUtils.getAvroSchema(schema())))
+              .via(
+                  ParquetIO.sink(
+                      serializedSchema() != null
+                          ? SchemaUtils.parseAvroSchema(serializedSchema())
+                          : SchemaUtils.getAvroSchema(schema())))
               .to(outputFile())
               .withNumShards(numShards())
               .withPrefix(outputFilePrefix())
@@ -160,6 +190,10 @@ public class ParquetConverters {
       public abstract Builder setSchema(String schema);
 
       public abstract String schema();
+
+      public abstract Builder setSerializedSchema(String schema);
+
+      public abstract String serializedSchema();
 
       public abstract Builder setOutputFile(String outputFile);
 
@@ -181,8 +215,16 @@ public class ParquetConverters {
         return setSchema(schema);
       }
 
+      public Builder withSerializedSchema(String schema) {
+        checkArgument(schema != null, "withSerializedSchema(schema) called with null input.");
+        return setSerializedSchema(schema);
+      }
+
       public WriteParquetFile build() {
-        checkNotNull(schema(), "provide an Avro schema to read the Parquet file.");
+        if ((schema() == null) == (serializedSchema() == null)) {
+          throw new IllegalArgumentException(
+              "Either schema location or serialized schema must be set.");
+        }
         checkNotNull(outputFile(), "provide a location to write the output Parquet file to.");
 
         return autoBuild();

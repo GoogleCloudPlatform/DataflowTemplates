@@ -20,6 +20,7 @@ import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Precondi
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
+import javax.annotation.Nullable;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.io.AvroIO;
 import org.apache.beam.sdk.options.Default;
@@ -52,7 +53,8 @@ public class AvroConverters {
     void setSchema(String schema);
 
     @Description(
-        "The maximum number of output shards produced when writing. Default value is decided by Runner.")
+        "The maximum number of output shards produced when writing. Default value is decided by"
+            + " Runner.")
     @Default.Integer(0)
     Integer getNumShards();
 
@@ -75,7 +77,11 @@ public class AvroConverters {
       return new AutoValue_AvroConverters_ReadAvroFile.Builder();
     }
 
+    @Nullable
     public abstract String schema();
+
+    @Nullable
+    public abstract String serializedSchema();
 
     public abstract String inputFileSpec();
 
@@ -83,7 +89,11 @@ public class AvroConverters {
     public PCollection<GenericRecord> expand(PBegin input) {
       return input.apply(
           "ReadAvroFile",
-          AvroIO.readGenericRecords(SchemaUtils.getAvroSchema(schema())).from(inputFileSpec()));
+          AvroIO.readGenericRecords(
+                  serializedSchema() != null
+                      ? SchemaUtils.parseAvroSchema(serializedSchema())
+                      : SchemaUtils.getAvroSchema(schema()))
+              .from(inputFileSpec()));
     }
 
     /** Builder for {@link ReadAvroFile}. */
@@ -92,6 +102,10 @@ public class AvroConverters {
       public abstract Builder setSchema(String schema);
 
       public abstract String schema();
+
+      public abstract Builder setSerializedSchema(String schema);
+
+      public abstract String serializedSchema();
 
       public abstract Builder setInputFileSpec(String inputFile);
 
@@ -104,6 +118,11 @@ public class AvroConverters {
         return setSchema(schema);
       }
 
+      public Builder withSerializedSchema(String schema) {
+        checkArgument(schema != null, "withSerializedSchema(schema) called with null input.");
+        return setSerializedSchema(schema);
+      }
+
       public Builder withInputFileSpec(String inputFileSpec) {
         checkArgument(
             inputFileSpec != null, "withInputFileSpec(inputFileSpec) called with null input.");
@@ -112,7 +131,10 @@ public class AvroConverters {
 
       public ReadAvroFile build() {
         checkNotNull(inputFileSpec(), "provide an Avro file to read from.");
-        checkNotNull(schema(), "provide an Avro schema to read an Avro file.");
+        if ((schema() == null) == (serializedSchema() == null)) {
+          throw new IllegalArgumentException(
+              "Either schema location or serialized schema must be set.");
+        }
 
         return autoBuild();
       }
@@ -129,7 +151,11 @@ public class AvroConverters {
       return new AutoValue_AvroConverters_WriteAvroFile.Builder();
     }
 
+    @Nullable
     public abstract String schema();
+
+    @Nullable
+    public abstract String serializedSchema();
 
     public abstract String outputFile();
 
@@ -141,7 +167,10 @@ public class AvroConverters {
     public POutput expand(PCollection<GenericRecord> input) {
       return input.apply(
           "WriteAvroFile(s)",
-          AvroIO.writeGenericRecords(SchemaUtils.getAvroSchema(schema()))
+          AvroIO.writeGenericRecords(
+                  serializedSchema() != null
+                      ? SchemaUtils.parseAvroSchema(serializedSchema())
+                      : SchemaUtils.getAvroSchema(schema()))
               .to(outputFile().concat(outputFilePrefix()))
               .withNumShards(numShards())
               .withSuffix(AVRO_SUFFIX));
@@ -153,6 +182,10 @@ public class AvroConverters {
       public abstract Builder setSchema(String schema);
 
       public abstract String schema();
+
+      public abstract Builder setSerializedSchema(String schema);
+
+      public abstract String serializedSchema();
 
       public abstract Builder setOutputFile(String outputFile);
 
@@ -174,8 +207,16 @@ public class AvroConverters {
         return setSchema(schema);
       }
 
+      public Builder withSerializedSchema(String schema) {
+        checkArgument(schema != null, "withSerializedSchema(schema) called with null input.");
+        return setSerializedSchema(schema);
+      }
+
       public WriteAvroFile build() {
-        checkNotNull(schema(), "provide an Avro schema to write an Avro file.");
+        if ((schema() == null) == (serializedSchema() == null)) {
+          throw new IllegalArgumentException(
+              "Either schema location or serialized schema must be set.");
+        }
         checkNotNull(outputFile(), "provide a location to write the output Avro file to.");
 
         return autoBuild();
