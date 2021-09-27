@@ -1,8 +1,9 @@
 # GCS to Elasticsearch Dataflow Template
 
 The [GCSToElasticsearch](../../src/main/java/com/google/cloud/teleport/v2/elasticsearch/templates/GCSToElasticsearch.java) pipeline ingests
-data from one or more CSV files in Google Cloud Storage into Elasticsearch. The template creates the schema for the
-JSON document using one of the following:
+data from one or more CSV files in Google Cloud Storage into Elasticsearch. [Elasticsearch](https://www.elastic.co/elasticsearch/) is a real-time, distributed storage, search, and analytics engine brought to you by Elastic, the creators of the [Elastic Stack](https://www.elastic.co/elastic-stack/) (Elasticsearch, Logstash, Kibana, and Beats). [Kibana](https://www.elastic.co/kibana/) is a free and open user interface that lets you visualize your Elasticsearch data and navigate the Elastic Stack. You can use Kibana to search, view, and interact with data stored in Elasticsearch indices. 
+
+The template creates the schema for the JSON document using one of the following:
 1. Javascript UDF (if provided)
 2. JSON schema (if provided)
 3. CSV headers* (default)
@@ -11,11 +12,35 @@ If either a UDF or JSON schema is provided then it will be used instead of the C
 
 \*<b>NOTE:</b> All values will be written to Elasticsearch as strings if headers are used.
 
-Pipeline flow is illustrated below:
-
-![alt text](../img/gcs-to-elasticsearch-dataflow.png "GCS to Elasticsearch pipeline flow")
-
 ## Getting Started
+
+The simplest way to set up Elasticsearch is to create a managed deployment with Elasticsearch Service on [Elastic Cloud](https://www.elastic.co/guide/en/elasticsearch/reference/current/getting-started.html#run-elasticsearch). You can deploy Elasticsearch on many [Google Cloud regions](https://www.elastic.co/guide/en/cloud/current/ec-regions-templates-instances.html) globally. If you prefer to manage your own environment, you can install and run [Elasticsearch using Docker](https://www.elastic.co/guide/en/elasticsearch/reference/current/getting-started.html#run-elasticsearch).
+
+### Parameters
+
+The template requires the following parameters:
+* connectionUrl: Elasticsearch URL in format http://hostname:[port] or CloudId
+* inputFileSpec: Pattern to where data lives in GCS. Example: `gs://mybucket/somepath/*.csv`
+* errorOutputTopic: Error output topic in Pub/Sub for failed inserts
+* apiKey: Base64 Encoded API Key for access without requiring basic authentication. Refer  https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request.
+* index: Destination index in Elasticsearch
+* deadletterTable: Deadletter table in BigQuery for failed inserts in form: project-id:dataset.table
+
+The template has the following optional parameters:
+
+* containsHeaders: Set to true if file(s) contain headers.
+* delimiter: Delimiting character in CSV file(s). Default: use delimiter found in csvFormat
+* inputFormat: The format of the input files, default is CSV.
+* csvFormat: Csv format according to [Apache Commons CSV format](https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html). Default is: Default
+  <br><b>NOTE:</b> Must match format names exactly found [here](http://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html#Default)
+* jsonSchemaPath: Path to JSON schema, ex gs://path/to/schema. Default: null.
+* largeNumFiles: Set to true if number of files is in the tens of thousands. Default: false
+* batchSize: Batch size in number of documents. Default: 1000
+* batchSizeBytes: Batch size in number of bytes. Default: 5242880 (5mb)
+* javascriptTextTransformGcsPath: Gcs path to javascript udf source. Udf will be preferred option for transformation if supplied. Default: null
+* javascriptTextTransformFunctionName: UDF Javascript Function Name. Default: null
+* maxRetryAttempts: Max retry attempts, must be > 0. Default: no retries
+* maxRetryDuration: Max retry duration in milliseconds, must be > 0. Default: no retries
 
 ### Requirements
 * Java 8
@@ -72,7 +97,7 @@ echo '{
     "image":"'${TARGET_GCR_IMAGE}'",
     "metadata":{
       "name":"GCS to Elasticsearch",
-      "description":"Replicates from a file stored in GCS into Elasticsearch",
+      "description":"Ingests data from files stored in GCS into Elasticsearch",
       "parameters":[
           {
               "name":"inputFileSpec",
@@ -217,29 +242,6 @@ mvn test
 
 ### Executing Template
 
-The template requires the following parameters:
-* inputFileSpec: Pattern to where data lives, ex: gs://mybucket/somepath/*.csv
-* connectionUrl: Elasticsearch URL in format http://hostname:[port] or Base64 encoded CloudId
-* index: The index toward which the requests will be issued, ex: my-index
-* containsHeaders: Set to true if file(s) contain headers.
-* deadletterTable: Deadletter table in BigQuery for failed inserts in form: project-id:dataset.table
-* delimiter: Delimiting character in CSV file(s). Default: use delimiter found in csvFormat
-* elasticsearchUsername: Elasticsearch username used to connect to Elasticsearch endpoint
-* elasticsearchPassword: Elasticsearch password used to connect to Elasticsearch endpoint
-
-The template has the following optional parameters:
-* inputFormat: The format of the input files, default is CSV.
-* csvFormat: Csv format according to [Apache Commons CSV format](https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html). Default is: Default
-  <br><b>NOTE:</b> Must match format names exactly found [here](http://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html#Default)
-* jsonSchemaPath: Path to JSON schema, ex gs://path/to/schema. Default: null.
-* largeNumFiles: Set to true if number of files is in the tens of thousands. Default: false
-* batchSize: Batch size in number of documents. Default: 1000
-* batchSizeBytes: Batch size in number of bytes. Default: 5242880 (5mb)
-* javascriptTextTransformGcsPath: Gcs path to javascript udf source. Udf will be preferred option for transformation if supplied. Default: null
-* javascriptTextTransformFunctionName: UDF Javascript Function Name. Default: null
-* maxRetryAttempts: Max retry attempts, must be > 0. Default: no retries
-* maxRetryDuration: Max retry duration in milliseconds, must be > 0. Default: no retries
-
 Template can be executed using the following gcloud command:
 ```sh
 export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
@@ -248,3 +250,9 @@ gcloud beta dataflow flex-template run ${JOB_NAME} \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
         --parameters inputFileSpec=${INPUT_FILE_SPEC},connectionUrl=${CONNECTION_URL},index=${INDEX},elasticsearchUsername=${ELASTICSEARCH_USERNAME},elasticsearchPassword=${ELASTICSEARCH_PASSWORD},containsHeaders=${HEADERS},deadletterTable=${DEADLETTER_TABLE},delimiter=${DELIMITER}
 ```
+
+## Pipeline flow
+
+Pipeline flow is illustrated below:
+
+![alt text](../img/gcs-to-elasticsearch-dataflow.png "GCS to Elasticsearch pipeline flow")
