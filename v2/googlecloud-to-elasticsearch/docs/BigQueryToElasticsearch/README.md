@@ -1,13 +1,34 @@
 # BigQuery to Elasticsearch Dataflow Template
 
 The [BigQueryToElasticsearch](../../src/main/java/com/google/cloud/teleport/v2/elasticsearch/templates/BigQueryToElasticsearch.java) pipeline ingests
-data from a BigQuery table into Elasticsearch. The template can either read the entire table or read using a supplied query.
+data from a BigQuery table into Elasticsearch as a batch job. BigQuery users can ingest data into Elasticsearch and then query and analyze the search results using Elasticsearch APIs or Kibana. The template can either read the entire table or read using a supplied query and ingest the results to Elasticsearch index.
 
-Pipeline flow is illustrated below:
-
-![alt text](../img/bigquery-to-elasticsearch-dataflow.png "BigQuery to Elasticsearch pipeline flow")
+## Use Cases
+It’s common to utilize the output of BigQuery SQL jobs to create further views and tables in BigQuery, or create dashboards to share with other stakeholders and teams in your organization — of which can be achieved with Kibana, Elastic’s native data visualization tool! Another key use case for BigQuery and the Elastic Stack is a full-text search. You can now search data in BigQuery with a few clicks by using the Dataflow template.
 
 ## Getting Started
+
+The simplest way to set up Elasticsearch is to create a managed deployment with Elasticsearch Service on [Elastic Cloud](https://www.elastic.co/guide/en/elasticsearch/reference/current/getting-started.html#run-elasticsearch). You can deploy Elasticsearch on many [Google Cloud regions](https://www.elastic.co/guide/en/cloud/current/ec-regions-templates-instances.html) globally. If you prefer to manage your own environment, you can install and run [Elasticsearch using Docker](https://www.elastic.co/guide/en/elasticsearch/reference/current/getting-started.html#run-elasticsearch).
+
+### Parameters
+
+The template requires the following parameters:
+* inputTableSpec: Table in BigQuery to read from in form of: my-project:my-dataset.my-table. Either this or query must be provided.
+* index: Destination index in Elasticsearch
+* connectionUrl: Elasticsearch URL in format http://hostname:[port] or CloudId
+* apiKey: Base64 Encoded API Key for access without requiring basic authentication. Refer  https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request.
+
+The template has the following optional parameters:
+* useLegacySql: Set to true to use legacy SQL (only applicable if supplying query). Default: false
+* query: Query to run against input table,
+    * For Standard SQL  ex: 'SELECT max_temperature FROM \`clouddataflow-readonly.samples.weather_stations\`'
+    * For Legacy SQL ex: 'SELECT max_temperature FROM [clouddataflow-readonly:samples.weather_stations]'
+* batchSize: Batch size in number of documents. Default: 1000
+* batchSizeBytes: Batch size in number of bytes. Default: 5242880 (5mb)
+* maxRetryAttempts: Max retry attempts, must be > 0. Default: no retries
+* maxRetryDuration: Max retry duration in milliseconds, must be > 0. Default: no retries
+* elasticsearchUsername: Elasticsearch username used to connect to Elasticsearch endpoint. Overrides ApiKey option if specified.
+* elasticsearchPassword: Elasticsearch password used to connect to Elasticsearch endpoint. Overrides ApiKey option if specified.
 
 ### Requirements
 * Java 8
@@ -61,7 +82,7 @@ echo '{
     "image":"'${TARGET_GCR_IMAGE}'",
     "metadata":{
       "name":"BigQuery to Elasticsearch",
-      "description":"Replicates BigQuery data into an Elasticsearch index",
+      "description":"Ingests BigQuery data into an Elasticsearch index",
       "parameters":[
           {
               "name":"inputTableSpec",
@@ -157,23 +178,6 @@ mvn test
 
 ### Executing Template
 
-The template requires the following parameters:
-* inputTableSpec: Table in BigQuery to read from in form of: my-project:my-dataset.my-table. Either this or query must be provided.
-* connectionUrl: Elasticsearch URL in format http://hostname:[port] or Base64 encoded CloudId
-* index: The index toward which the requests will be issued, ex: my-index
-* elasticsearchUsername: Elasticsearch username used to connect to Elasticsearch endpoint
-* elasticsearchPassword: Elasticsearch password used to connect to Elasticsearch endpoint
-
-The template has the following optional parameters:
-* useLegacySql: Set to true to use legacy SQL (only applicable if supplying query). Default: false
-* query: Query to run against input table,
-    * For Standard SQL  ex: 'SELECT max_temperature FROM \`clouddataflow-readonly.samples.weather_stations\`'
-    * For Legacy SQL ex: 'SELECT max_temperature FROM [clouddataflow-readonly:samples.weather_stations]'
-* batchSize: Batch size in number of documents. Default: 1000
-* batchSizeBytes: Batch size in number of bytes. Default: 5242880 (5mb)
-* maxRetryAttempts: Max retry attempts, must be > 0. Default: no retries
-* maxRetryDuration: Max retry duration in milliseconds, must be > 0. Default: no retries
-
 Template can be executed using the following gcloud command:
 ```sh
 export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
@@ -182,3 +186,9 @@ gcloud beta dataflow flex-template run ${JOB_NAME} \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
         --parameters inputTableSpec=${INPUT_TABLE_SPEC},connectionUrl=${CONNECTION_URL},index=${INDEX},elasticsearchUsername=${ELASTICSEARCH_USERNAME},elasticsearchPassword=${ELASTICSEARCH_PASSWORD},useLegacySql=${USE_LEGACY_SQL}
 ```
+
+## Pipeline Flow
+
+Pipeline flow is illustrated below:
+
+![alt text](../img/bigquery-to-elasticsearch-dataflow.png "BigQuery to Elasticsearch pipeline flow")
