@@ -126,6 +126,7 @@ public final class DefaultDataplexClient implements DataplexClient {
     return result.build();
   }
 
+  @Override
   public ImmutableList<GoogleCloudDataplexV1Partition> getPartitions(String entityName)
       throws IOException {
     ImmutableList.Builder<GoogleCloudDataplexV1Partition> result = ImmutableList.builder();
@@ -157,6 +158,13 @@ public final class DefaultDataplexClient implements DataplexClient {
   public void createMetadata(
       String assetName, ImmutableList<EntityMetadata> metadata, CreateBehavior createBehavior)
       throws IOException {
+    // Metadata updates can lead to unpredictable results if automatic discovery enabled.
+    GoogleCloudDataplexV1Asset asset = getAsset(assetName);
+    if (asset.getDiscoverySpec().getEnabled()) {
+      LOG.warn("Automatic discovery enabled for asset `{}`. Skipping creating metadata", assetName);
+      return;
+    }
+
     Map<EntityMetadata, GoogleCloudDataplexV1Entity> metadataToEntities;
     try {
       metadataToEntities = createEntities(assetName, metadata, createBehavior);

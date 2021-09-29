@@ -61,7 +61,7 @@ public interface DataplexClient {
    *
    * @param entityName example:
    *     projects/{project_number}/locations/{location_id}/lakes/{lake_id}/zones/{zone_id}/entities/
-   *     {entity_id}`
+   *     {entity_id}
    */
   ImmutableList<GoogleCloudDataplexV1Partition> getPartitions(String entityName) throws IOException;
 
