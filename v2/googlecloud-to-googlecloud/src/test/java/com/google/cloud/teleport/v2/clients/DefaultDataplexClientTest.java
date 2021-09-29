@@ -19,15 +19,26 @@ import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.api.services.dataplex.v1.CloudDataplex;
+import com.google.api.services.dataplex.v1.CloudDataplex.Projects.Locations.Lakes.Zones;
+import com.google.api.services.dataplex.v1.CloudDataplex.Projects.Locations.Lakes.Zones.Assets;
 import com.google.api.services.dataplex.v1.CloudDataplex.Projects.Locations.Lakes.Zones.Entities;
 import com.google.api.services.dataplex.v1.CloudDataplex.Projects.Locations.Lakes.Zones.Entities.Partitions;
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Asset;
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1AssetDiscoverySpec;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Entity;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1ListEntitiesResponse;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1ListPartitionsResponse;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Partition;
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Schema;
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1StorageFormat;
+import com.google.cloud.teleport.v2.clients.DataplexClient.CreateBehavior;
+import com.google.cloud.teleport.v2.values.EntityMetadata;
+import com.google.cloud.teleport.v2.values.EntityMetadata.EntityType;
 import com.google.cloud.teleport.v2.values.EntityMetadata.StorageSystem;
 import com.google.cloud.teleport.v2.values.GetEntityRequestEntityView;
 import com.google.common.collect.ImmutableList;
@@ -45,6 +56,18 @@ public class DefaultDataplexClientTest {
   private static final String ASSET_NAME1 = ZONE_NAME + "/asset/asset_1";
   private static final String ASSET_NAME2 = ZONE_NAME + "/asset/asset_2";
   private static final String PAGE_TOKEN = "token_1";
+
+  // Metadata for use in tests where it doens't  matter what the values are
+  private static final EntityMetadata UNUSED_METADATA =
+      EntityMetadata.builder()
+          .setDataPath("invalid")
+          .setSchema(new GoogleCloudDataplexV1Schema())
+          .setStorageFormat(new GoogleCloudDataplexV1StorageFormat())
+          .setEntityType(EntityType.TYPE_UNSPECIFIED)
+          .setStorageSystem(StorageSystem.STORAGE_SYSTEM_UNSPECIFIED)
+          .setAssetName("invalid")
+          .setId("invalid")
+          .build();
 
   @Test
   public void testGetGetCloudStorageEntitiesByAssetName() throws IOException {
@@ -209,5 +232,31 @@ public class DefaultDataplexClientTest {
     assertEquals(
         ImmutableList.of(partition1, partition2, partition3),
         DefaultDataplexClient.withClient(cloudDataplexClient).getPartitions("entity0"));
+  }
+
+  @Test
+  public void testCreateEntitiesWhenDiscoveryEnabled() throws IOException {
+    CloudDataplex dataplex = mock(CloudDataplex.class, Answers.RETURNS_DEEP_STUBS);
+    Zones zones = getZones(dataplex);
+    Assets assets = getAssets(dataplex);
+    when(assets.get(any()).execute())
+        .thenReturn(
+            new GoogleCloudDataplexV1Asset()
+                .setDiscoverySpec(new GoogleCloudDataplexV1AssetDiscoverySpec().setEnabled(true)));
+    DataplexClient client = DefaultDataplexClient.withClient(dataplex);
+
+    client.createMetadata(
+        ASSET_NAME1, ImmutableList.of(UNUSED_METADATA), CreateBehavior.UPDATE_IF_EXISTS);
+
+    verify(assets).get(ASSET_NAME1);
+    verify(zones, never()).entities(); // Enough to know nothing was done with partitions
+  }
+
+  private static Zones getZones(CloudDataplex dataplex) {
+    return dataplex.projects().locations().lakes().zones();
+  }
+
+  private static Assets getAssets(CloudDataplex dataplex) {
+    return dataplex.projects().locations().lakes().zones().assets();
   }
 }

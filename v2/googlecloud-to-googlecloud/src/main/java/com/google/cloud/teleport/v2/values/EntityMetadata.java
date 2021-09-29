@@ -76,7 +76,10 @@ public abstract class EntityMetadata {
   public abstract ImmutableList<PartitionMetadata> partitions();
 
   public static Builder builder() {
-    return new AutoValue_EntityMetadata.Builder().setId(UUID.randomUUID().toString());
+    return new AutoValue_EntityMetadata.Builder()
+        .setAssetName("")
+        .setId(UUID.randomUUID().toString())
+        .setPartitions(ImmutableList.of());
   }
 
   /** Converts this to a {@link GoogleCloudDataplexV1Entity}. */
