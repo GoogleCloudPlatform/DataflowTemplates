@@ -21,16 +21,14 @@ import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Partition;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1StorageFormatCsvOptions;
 import com.google.cloud.teleport.v2.clients.DataplexClient;
 import com.google.cloud.teleport.v2.clients.DefaultDataplexClient;
-import com.google.cloud.teleport.v2.transforms.AvroConverters;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.transforms.JsonConverters;
-import com.google.cloud.teleport.v2.transforms.ParquetConverters;
 import com.google.cloud.teleport.v2.utils.Schemas;
 import com.google.cloud.teleport.v2.utils.StorageUtils;
 import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
+import com.google.cloud.teleport.v2.values.DataplexCompression;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import java.io.IOException;
 import java.util.List;
 import org.apache.avro.Schema;
@@ -39,6 +37,11 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
+import org.apache.beam.sdk.io.AvroIO;
+import org.apache.beam.sdk.io.FileIO;
+import org.apache.beam.sdk.io.FileIO.Sink;
+import org.apache.beam.sdk.io.parquet.ParquetIO;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -73,11 +76,19 @@ public class DataplexFileFormatConversion {
 
     void setInputEntities(List<String> inputEntities);
 
-    @Description("Output file format.")
+    @Description("Output file format. Format: PARQUET, AVRO, or ORC. Default: none.")
     @Required
-    String getOutputFileFormat();
+    OutputFileFormat getOutputFileFormat();
 
-    void setOutputFileFormat(String outputFileFormat);
+    void setOutputFileFormat(OutputFileFormat outputFileFormat);
+
+    @Description(
+        "Output file compression. Format: UNCOMPRESSED, SNAPPY, GZIP, or BZIP2. Default:"
+            + " SNAPPY. BZIP2 not supported for PARQUET files.")
+    @Default.Enum("SNAPPY")
+    DataplexCompression getOutputFileCompression();
+
+    void setOutputFileCompression(DataplexCompression outputFileCompression);
 
     @Description("Output asset.")
     @Required
@@ -86,16 +97,24 @@ public class DataplexFileFormatConversion {
     void setOutputAsset(String outputAsset);
   }
 
-  /** The {@link FileFormat} enum contains all valid file formats. */
-  enum FileFormat {
+  /** Supported input file formats. */
+  public enum InputFileFormat {
     CSV,
-    JSON,
-    AVRO,
-    PARQUET
+    JSON
   }
 
-  private static final ImmutableSet<FileFormat> VALID_FILE_OUTPUT_FORMATS =
-      ImmutableSet.of(FileFormat.AVRO, FileFormat.PARQUET);
+  /** Supported output file formats. */
+  public enum OutputFileFormat {
+    PARQUET(".parquet"),
+    AVRO(".avro"),
+    ORC(".orc");
+
+    private final String fileSuffix;
+
+    OutputFileFormat(String fileSuffix) {
+      this.fileSuffix = fileSuffix;
+    }
+  }
 
   /**
    * Main entry point for pipeline execution.
@@ -126,12 +145,6 @@ public class DataplexFileFormatConversion {
       DataplexClient dataplex,
       OutputPathProvider outputPathProvider)
       throws IOException {
-    FileFormat outputFileFormat = FileFormat.valueOf(options.getOutputFileFormat().toUpperCase());
-
-    if (!VALID_FILE_OUTPUT_FORMATS.contains(outputFileFormat)) {
-      throw new IllegalArgumentException(
-          "Output file format must be one of: " + VALID_FILE_OUTPUT_FORMATS);
-    }
     if ((options.getInputAsset() == null) == (options.getInputEntities() == null)) {
       throw new IllegalArgumentException(
           "Either input asset or input entities list must be provided");
@@ -163,7 +176,8 @@ public class DataplexFileFormatConversion {
             new ConvertFiles(
                 entity,
                 entityToFileSpec(entity),
-                outputFileFormat,
+                options.getOutputFileFormat(),
+                options.getOutputFileCompression(),
                 outputPathProvider.outputPathFrom(entity.getDataPath(), outputBucket)));
       } else {
         for (GoogleCloudDataplexV1Partition partition : partitions) {
@@ -172,7 +186,8 @@ public class DataplexFileFormatConversion {
               new ConvertFiles(
                   entity,
                   partitionToFileSpec(partition),
-                  outputFileFormat,
+                  options.getOutputFileFormat(),
+                  options.getOutputFileCompression(),
                   outputPathProvider.outputPathFrom(partition.getLocation(), outputBucket)));
         }
       }
@@ -212,7 +227,6 @@ public class DataplexFileFormatConversion {
   }
 
   private static class ConvertFiles extends PTransform<PBegin, PDone> {
-
     /** The tag for the headers of the CSV if required. */
     private static final TupleTag<String> CSV_HEADERS = new TupleTag<String>() {};
 
@@ -220,22 +234,22 @@ public class DataplexFileFormatConversion {
     private static final TupleTag<String> CSV_LINES = new TupleTag<String>() {};
 
     private final GoogleCloudDataplexV1Entity entity;
-
     private final String inputFileSpec;
-
-    private final FileFormat outputFileFormat;
-
+    private final OutputFileFormat outputFileFormat;
+    private final DataplexCompression outputFileCompression;
     private final String outputPath;
 
     protected ConvertFiles(
         GoogleCloudDataplexV1Entity entity,
         String inputFileSpec,
-        FileFormat outputFileFormat,
+        OutputFileFormat outputFileFormat,
+        DataplexCompression outputFileCompression,
         String outputPath) {
       super();
       this.entity = entity;
       this.outputFileFormat = outputFileFormat;
       this.inputFileSpec = inputFileSpec;
+      this.outputFileCompression = outputFileCompression;
       this.outputPath = outputPath;
     }
 
@@ -244,7 +258,7 @@ public class DataplexFileFormatConversion {
       Schema schema = Schemas.dataplexSchemaToAvro(entity.getSchema());
       String serializedSchema = Schemas.serialize(schema);
       PCollection<GenericRecord> records;
-      switch (FileFormat.valueOf(entity.getFormat().getFormat())) {
+      switch (InputFileFormat.valueOf(entity.getFormat().getFormat())) {
         case CSV:
           records =
               input
@@ -265,34 +279,31 @@ public class DataplexFileFormatConversion {
           break;
         default:
           throw new IllegalArgumentException(
-              "Unexpected input files format: " + entity.getFormat().getFormat());
+              "Unexpected input file format: " + entity.getFormat().getFormat());
       }
 
+      Sink<GenericRecord> sink;
       switch (outputFileFormat) {
-        case AVRO:
-          records.apply(
-              "WriteAvroFile(s)",
-              AvroConverters.WriteAvroFile.newBuilder()
-                  .withOutputFile(ensurePathEndsWithSlash(outputPath))
-                  .withSerializedSchema(serializedSchema)
-                  .setOutputFilePrefix(entityToOutputFilePrefix(entity))
-                  .setNumShards(1)
-                  .build());
-          break;
         case PARQUET:
-          records.apply(
-              "WriteParquetFile(s)",
-              ParquetConverters.WriteParquetFile.newBuilder()
-                  .withOutputFile(ensurePathEndsWithSlash(outputPath))
-                  .withSerializedSchema(serializedSchema)
-                  .setOutputFilePrefix(entityToOutputFilePrefix(entity))
-                  .setNumShards(1)
-                  .build());
+          sink =
+              ParquetIO.sink(schema).withCompressionCodec(outputFileCompression.getParquetCodec());
+          break;
+        case AVRO:
+          sink = AvroIO.<GenericRecord>sink(schema).withCodec(outputFileCompression.getAvroCodec());
           break;
         default:
-          throw new IllegalArgumentException(
-              "Invalid output file format, got: " + outputFileFormat);
+          throw new UnsupportedOperationException(
+              "Output format is not implemented: " + outputFileFormat);
       }
+
+      records.apply(
+          "WriteFile(s)",
+          FileIO.<GenericRecord>write()
+              .via(sink)
+              .to(ensurePathEndsWithSlash(outputPath))
+              .withPrefix(entityToOutputFilePrefix(entity))
+              .withSuffix(outputFileFormat.fileSuffix)
+              .withNumShards(1)); // Must be 1 as we can only have 1 file per Dataplex partition.
 
       return PDone.in(input.getPipeline());
     }

@@ -15,8 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.v2.templates.DataplexFileFormatConversion.FileFormat.AVRO;
-import static com.google.cloud.teleport.v2.templates.DataplexFileFormatConversion.FileFormat.PARQUET;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -28,11 +26,13 @@ import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Schema;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1SchemaSchemaField;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1StorageFormat;
 import com.google.cloud.teleport.v2.clients.DataplexClient;
-import com.google.cloud.teleport.v2.templates.DataplexFileFormatConversion.FileFormat;
 import com.google.cloud.teleport.v2.templates.DataplexFileFormatConversion.FileFormatConversionOptions;
+import com.google.cloud.teleport.v2.templates.DataplexFileFormatConversion.InputFileFormat;
+import com.google.cloud.teleport.v2.templates.DataplexFileFormatConversion.OutputFileFormat;
 import com.google.cloud.teleport.v2.transforms.AvroConverters;
 import com.google.cloud.teleport.v2.transforms.ParquetConverters;
 import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
+import com.google.cloud.teleport.v2.values.DataplexCompression;
 import com.google.cloud.teleport.v2.values.EntityMetadata.StorageSystem;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
@@ -88,7 +88,7 @@ public class DataplexFileFormatConversionTest {
       new GoogleCloudDataplexV1Entity()
           .setName("projects/p1/locations/l1/lakes/l1}/zones/z1/entities/e1")
           .setSystem(StorageSystem.CLOUD_STORAGE.name())
-          .setFormat(new GoogleCloudDataplexV1StorageFormat().setFormat(FileFormat.CSV.name()))
+          .setFormat(new GoogleCloudDataplexV1StorageFormat().setFormat(InputFileFormat.CSV.name()))
           .setSchema(SCHEMA);
 
   private static final GoogleCloudDataplexV1Partition partition11 =
@@ -109,7 +109,8 @@ public class DataplexFileFormatConversionTest {
           .setName("projects/p1/locations/l1/lakes/l1}/zones/z1/entities/e2")
           .setAsset(asset2.getName())
           .setSystem(StorageSystem.CLOUD_STORAGE.name())
-          .setFormat(new GoogleCloudDataplexV1StorageFormat().setFormat(FileFormat.JSON.name()))
+          .setFormat(
+              new GoogleCloudDataplexV1StorageFormat().setFormat(InputFileFormat.JSON.name()))
           .setDataPath(Resources.getResource(RESOURCES_DIR + "/entity2").getPath())
           .setSchema(SCHEMA);
 
@@ -146,7 +147,7 @@ public class DataplexFileFormatConversionTest {
     FileFormatConversionOptions options =
         PipelineOptionsFactory.create().as(FileFormatConversionOptions.class);
     options.setInputEntities(ImmutableList.of(entity1.getName()));
-    options.setOutputFileFormat(AVRO.name());
+    options.setOutputFileFormat(OutputFileFormat.AVRO);
     options.setOutputAsset(outputAsset.getName());
 
     DataplexFileFormatConversion.run(
@@ -156,7 +157,7 @@ public class DataplexFileFormatConversionTest {
         readPipeline.apply(
             "ReadAvroFile",
             AvroConverters.ReadAvroFile.newBuilder()
-                .withInputFileSpec(temporaryFolder.getRoot().getAbsolutePath() + "/**")
+                .withInputFileSpec(temporaryFolder.getRoot().getAbsolutePath() + "/**/*.avro")
                 .withSerializedSchema(EXPECT_SERIALIZED_AVRO_SCHEMA)
                 .build());
 
@@ -165,10 +166,10 @@ public class DataplexFileFormatConversionTest {
     readPipeline.run();
   }
 
-  /** Tests JSON to Pargquet conversion for an asset with entity. */
+  /** Tests JSON to Parquet conversion for an asset with entity using non-default compression. */
   @Test
   @Category(NeedsRunner.class)
-  public void testAssetWithEntityJsonToParquetE2E() throws IOException {
+  public void testAssetWithEntityJsonToGzippedParquetE2E() throws IOException {
     DataplexClient dataplex = mock(DataplexClient.class);
     when(dataplex.getCloudStorageEntities(asset2.getName())).thenReturn(ImmutableList.of(entity2));
     when(dataplex.getPartitions(entity2.getName())).thenReturn(ImmutableList.of());
@@ -177,8 +178,9 @@ public class DataplexFileFormatConversionTest {
     FileFormatConversionOptions options =
         PipelineOptionsFactory.create().as(FileFormatConversionOptions.class);
     options.setInputAsset(asset2.getName());
-    options.setOutputFileFormat(PARQUET.name());
+    options.setOutputFileFormat(OutputFileFormat.PARQUET);
     options.setOutputAsset(outputAsset.getName());
+    options.setOutputFileCompression(DataplexCompression.GZIP);
 
     DataplexFileFormatConversion.run(
         mainPipeline, options, dataplex, DataplexFileFormatConversionTest::outputPathProvider);
@@ -187,7 +189,7 @@ public class DataplexFileFormatConversionTest {
         readPipeline.apply(
             "ReadParquetFile",
             ParquetConverters.ReadParquetFile.newBuilder()
-                .withInputFileSpec(temporaryFolder.getRoot().getAbsolutePath() + "/**")
+                .withInputFileSpec(temporaryFolder.getRoot().getAbsolutePath() + "/**/*.parquet")
                 .withSerializedSchema(EXPECT_SERIALIZED_AVRO_SCHEMA)
                 .build());
 
