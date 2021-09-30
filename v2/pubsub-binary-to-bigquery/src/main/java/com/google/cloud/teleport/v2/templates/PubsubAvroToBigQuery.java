@@ -90,7 +90,8 @@ public final class PubsubAvroToBigQuery {
             .apply(
                 "Read Avro records",
                 PubsubIO.readAvroGenericRecords(schema)
-                    .fromSubscription(options.getInputSubscription()))
+                    .fromSubscription(options.getInputSubscription())
+                    .withDeadLetterTopic(options.getOutputTopic()))
             // Workaround for BEAM-12256. Eagerly convert to rows to avoid
             // the RowToGenericRecord function that doesn't handle all data
             // types.
