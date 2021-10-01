@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.clients;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Asset;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Entity;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Partition;
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Zone;
 import com.google.cloud.teleport.v2.values.EntityMetadata;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
@@ -25,6 +26,15 @@ import java.util.List;
 
 /** Interface for interacting with Google Cloud Dataplex. */
 public interface DataplexClient {
+
+  /**
+   * Looks up the Dataplex zone by its name.
+   *
+   * @param zoneName example:
+   *     projects/{name}/locations/{location}/lakes/{lake}/zones/{zone}/assets/{asset}
+   * @return a Dataplex zone
+   */
+  GoogleCloudDataplexV1Zone getZone(String zoneName) throws IOException;
 
   /**
    * Looks up the Dataplex asset by its name.

@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.clients;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -36,6 +37,8 @@ import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1ListPartit
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Partition;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Schema;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1StorageFormat;
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Zone;
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1ZoneDiscoverySpec;
 import com.google.cloud.teleport.v2.clients.DataplexClient.CreateBehavior;
 import com.google.cloud.teleport.v2.values.EntityMetadata;
 import com.google.cloud.teleport.v2.values.EntityMetadata.EntityType;
@@ -68,6 +71,16 @@ public class DefaultDataplexClientTest {
           .setAssetName("invalid")
           .setId("invalid")
           .build();
+
+  private static final GoogleCloudDataplexV1AssetDiscoverySpec ENABLED_ASSET_DISCOVERY_SPEC =
+      new GoogleCloudDataplexV1AssetDiscoverySpec().setEnabled(true);
+  private static final GoogleCloudDataplexV1AssetDiscoverySpec DISABLED_ASSET_DISCOVERY_SPEC =
+      new GoogleCloudDataplexV1AssetDiscoverySpec().setEnabled(false);
+
+  private static final GoogleCloudDataplexV1ZoneDiscoverySpec ENABLED_ZONE_DISCOVERY_SPEC =
+      new GoogleCloudDataplexV1ZoneDiscoverySpec().setEnabled(true);
+  private static final GoogleCloudDataplexV1ZoneDiscoverySpec DISABLED_ZONE_DISCOVERY_SPEC =
+      new GoogleCloudDataplexV1ZoneDiscoverySpec().setEnabled(false);
 
   @Test
   public void testGetGetCloudStorageEntitiesByAssetName() throws IOException {
@@ -239,16 +252,22 @@ public class DefaultDataplexClientTest {
     CloudDataplex dataplex = mock(CloudDataplex.class, Answers.RETURNS_DEEP_STUBS);
     Zones zones = getZones(dataplex);
     Assets assets = getAssets(dataplex);
+    // Don't care about the order they're checked, so set up for two calls.
     when(assets.get(any()).execute())
-        .thenReturn(
-            new GoogleCloudDataplexV1Asset()
-                .setDiscoverySpec(new GoogleCloudDataplexV1AssetDiscoverySpec().setEnabled(true)));
+        .thenReturn(createAsset(ENABLED_ASSET_DISCOVERY_SPEC))
+        .thenReturn(createAsset(DISABLED_ASSET_DISCOVERY_SPEC));
+    when(zones.get(any()).execute())
+        .thenReturn(createZone(ENABLED_ZONE_DISCOVERY_SPEC))
+        .thenReturn(createZone(DISABLED_ZONE_DISCOVERY_SPEC));
     DataplexClient client = DefaultDataplexClient.withClient(dataplex);
 
     client.createMetadata(
         ASSET_NAME1, ImmutableList.of(UNUSED_METADATA), CreateBehavior.UPDATE_IF_EXISTS);
+    client.createMetadata(
+        ASSET_NAME1, ImmutableList.of(UNUSED_METADATA), CreateBehavior.UPDATE_IF_EXISTS);
 
-    verify(assets).get(ASSET_NAME1);
+    verify(assets, atLeastOnce()).get(ASSET_NAME1);
+    verify(zones, atLeastOnce()).get(ZONE_NAME);
     verify(zones, never()).entities(); // Enough to know nothing was done with partitions
   }
 
@@ -258,5 +277,15 @@ public class DefaultDataplexClientTest {
 
   private static Assets getAssets(CloudDataplex dataplex) {
     return dataplex.projects().locations().lakes().zones().assets();
+  }
+
+  private static GoogleCloudDataplexV1Zone createZone(
+      GoogleCloudDataplexV1ZoneDiscoverySpec discoverySpec) {
+    return new GoogleCloudDataplexV1Zone().setDiscoverySpec(discoverySpec);
+  }
+
+  private static GoogleCloudDataplexV1Asset createAsset(
+      GoogleCloudDataplexV1AssetDiscoverySpec discoverySpec) {
+    return new GoogleCloudDataplexV1Asset().setDiscoverySpec(discoverySpec);
   }
 }

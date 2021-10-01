@@ -33,6 +33,7 @@ import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Entity;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1ListEntitiesResponse;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1ListPartitionsResponse;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Partition;
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Zone;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.teleport.v2.values.EntityMetadata;
@@ -102,6 +103,11 @@ public final class DefaultDataplexClient implements DataplexClient {
   }
 
   @Override
+  public GoogleCloudDataplexV1Zone getZone(String zoneName) throws IOException {
+    return client.projects().locations().lakes().zones().get(zoneName).execute();
+  }
+
+  @Override
   public GoogleCloudDataplexV1Asset getAsset(String assetName) throws IOException {
     return client.projects().locations().lakes().zones().assets().get(assetName).execute();
   }
@@ -158,10 +164,8 @@ public final class DefaultDataplexClient implements DataplexClient {
   public void createMetadata(
       String assetName, ImmutableList<EntityMetadata> metadata, CreateBehavior createBehavior)
       throws IOException {
-    // Metadata updates can lead to unpredictable results if automatic discovery enabled.
-    GoogleCloudDataplexV1Asset asset = getAsset(assetName);
-    if (asset.getDiscoverySpec().getEnabled()) {
-      LOG.warn("Automatic discovery enabled for asset `{}`. Skipping creating metadata", assetName);
+    if (shouldSkipCreatingMetadata(assetName)) {
+      LOG.warn("Skipping creating metadata.");
       return;
     }
 
@@ -192,6 +196,32 @@ public final class DefaultDataplexClient implements DataplexClient {
           e.getMessage(),
           nameToPartitions.keySet());
     }
+  }
+
+  /**
+   * Determines if we should skip creating metadata under {@code assetName}.
+   *
+   * <p>Currently, we skip creating metadata if discovery is enabled on either the zone or asset.
+   * Trying to create metadata manually when this is enabled can lead to undefined behavior.
+   *
+   * @param assetName name of the asset to check
+   * @return true if we should skip metadata creation, false otherwise
+   */
+  private boolean shouldSkipCreatingMetadata(String assetName) throws IOException {
+    GoogleCloudDataplexV1Asset asset = getAsset(assetName);
+    if (asset.getDiscoverySpec().getEnabled()) {
+      LOG.warn("Automatic discovery enabled for asset `{}`.", assetName);
+      return true;
+    }
+
+    String zoneName = getZoneFromAsset(assetName);
+    GoogleCloudDataplexV1Zone zone = getZone(zoneName);
+    if (zone.getDiscoverySpec().getEnabled()) {
+      LOG.warn("Automatic discovery enabled for zone `{}`", zoneName);
+      return true;
+    }
+
+    return false;
   }
 
   /**
