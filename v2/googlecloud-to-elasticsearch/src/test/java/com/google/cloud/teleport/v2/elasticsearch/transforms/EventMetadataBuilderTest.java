@@ -25,7 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.testing.TestPipeline;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -66,11 +66,18 @@ public class EventMetadataBuilderTest {
 
         Assert.assertTrue(StringUtils.isNotBlank(enrichedMessageAsString));
         Assert.assertEquals(inputMessage, enrichedMessageAsJson.get("message").textValue());
-        Assert.assertEquals("999.999.999", enrichedMessageAsJson.get("agent").get("version").textValue());
-        Assert.assertEquals(Dataset.AUDIT.getKeyWithPrefix(), enrichedMessageAsJson.get("data_stream").get("dataset").textValue());
-        Assert.assertEquals("test-namespace", enrichedMessageAsJson.get("data_stream").get("namespace").textValue());
-        Assert.assertEquals(Dataset.AUDIT.getKeyWithPrefix(), enrichedMessageAsJson.get("service").get("type").textValue());
-        Assert.assertEquals("2021-07-14T10:35:17.528142Z", enrichedMessageAsJson.get("@timestamp").textValue());
+    Assert.assertEquals(
+        "999.999.999", enrichedMessageAsJson.get("agent").get("version").textValue());
+    Assert.assertEquals(
+        Dataset.AUDIT.getKeyWithPrefix(),
+        enrichedMessageAsJson.get("data_stream").get("dataset").textValue());
+    Assert.assertEquals(
+        "test-namespace", enrichedMessageAsJson.get("data_stream").get("namespace").textValue());
+    Assert.assertEquals(
+        Dataset.AUDIT.getKeyWithPrefix(),
+        enrichedMessageAsJson.get("service").get("type").textValue());
+    Assert.assertEquals(
+        "2021-07-14T10:35:17.528142Z", enrichedMessageAsJson.get("@timestamp").textValue());
     }
 
     @Test
@@ -89,7 +96,9 @@ public class EventMetadataBuilderTest {
 
         //if elasticsearchTemplateVersion is not set, 1.0.0 is the default value
         Assert.assertEquals("1.0.0", enrichedMessageAsJson.get("agent").get("version").textValue());
-        Assert.assertEquals(enrichedMessageAsJson.get("data_stream").get("dataset").textValue(), Dataset.AUDIT.getKeyWithPrefix());
+    Assert.assertEquals(
+        enrichedMessageAsJson.get("data_stream").get("dataset").textValue(),
+        Dataset.AUDIT.getKeyWithPrefix());
     }
 
     @Test
@@ -110,7 +119,9 @@ public class EventMetadataBuilderTest {
 
         //if elasticsearchTemplateVersion is not set, 1.0.0 is the default value
         Assert.assertEquals("1.0.0", enrichedMessageAsJson.get("agent").get("version").textValue());
-        Assert.assertEquals(enrichedMessageAsJson.get("data_stream").get("dataset").textValue(), Dataset.AUDIT.getKeyWithPrefix());
+    Assert.assertEquals(
+        enrichedMessageAsJson.get("data_stream").get("dataset").textValue(),
+        Dataset.AUDIT.getKeyWithPrefix());
     }
 
     private String readInputMessage(String filePath) throws IOException {
