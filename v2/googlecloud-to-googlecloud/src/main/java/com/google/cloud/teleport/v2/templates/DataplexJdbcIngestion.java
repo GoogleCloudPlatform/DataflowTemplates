@@ -15,12 +15,18 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Asset;
+import com.google.cloud.teleport.v2.clients.DataplexClient;
+import com.google.cloud.teleport.v2.clients.DefaultDataplexClient;
 import com.google.cloud.teleport.v2.io.DynamicJdbcIO;
 import com.google.cloud.teleport.v2.io.DynamicJdbcIO.DynamicDataSourceConfiguration;
 import com.google.cloud.teleport.v2.options.DataplexJdbcIngestionOptions;
 import com.google.cloud.teleport.v2.utils.JdbcConverters;
 import com.google.cloud.teleport.v2.utils.KMSEncryptedNestedValue;
+import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
@@ -63,9 +69,53 @@ public class DataplexJdbcIngestion {
 
     Pipeline pipeline = Pipeline.create(options);
 
-    buildPipelineBQ(pipeline, options);
+    DataplexClient dataplexClient = DefaultDataplexClient.withDefaultClient();
+    resolveAsset(pipeline, options, dataplexClient);
 
     pipeline.run();
+  }
+
+  /**
+   * Resolves a Dataplex asset name into the corresponding resource spec, verifying that the asset
+   * is of the correct type. Then build the pipeline accordingly.
+   *
+   * @param pipeline Initialized pipeline.
+   * @param options Runtime options for the pipeline.
+   * @param dataplexClient Dataplex client to connect to Dataplex via asset name.
+   */
+  private static void resolveAsset(
+      Pipeline pipeline, DataplexJdbcIngestionOptions options, DataplexClient dataplexClient)
+      throws IOException {
+
+    String assetName = options.getOutputAsset();
+    LOG.info("Resolving asset: {}", assetName);
+    GoogleCloudDataplexV1Asset asset = dataplexClient.getAsset(assetName);
+    checkNotNull(asset.getResourceSpec(), "Asset has no ResourceSpec.");
+    String assetType = asset.getResourceSpec().getType();
+    checkNotNull(assetType, "Asset has no type.");
+    LOG.info("Resolved resource type: {}", assetType);
+
+    String resourceName = asset.getResourceSpec().getName();
+    checkNotNull(resourceName, "Asset has no resource name.");
+    LOG.info("Resolved resource name: {}", resourceName);
+
+    if (DataplexAssetResourceSpec.BIGQUERY_DATASET.name().equals(assetType)) {
+      buildPipelineBQ(pipeline, options);
+    } else if (DataplexAssetResourceSpec.STORAGE_BUCKET.name().equals(assetType)) {
+      // TODO: builds pipeline to GCS
+    } else {
+      throw new IllegalArgumentException(
+          String.format(
+              "Asset "
+                  + assetName
+                  + " is of type "
+                  + assetType
+                  + ". Only "
+                  + DataplexAssetResourceSpec.BIGQUERY_DATASET.name()
+                  + "and "
+                  + DataplexAssetResourceSpec.STORAGE_BUCKET.name()
+                  + " supported."));
+    }
   }
 
   @VisibleForTesting
@@ -85,6 +135,8 @@ public class DataplexJdbcIngestion {
                 .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER)
                 .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
                 .to(options.getOutputTable()));
+    // TODO: partition
+    // TODO: Dataplex Metadata Update
   }
 
   static DynamicDataSourceConfiguration configDataSource(DataplexJdbcIngestionOptions options) {
