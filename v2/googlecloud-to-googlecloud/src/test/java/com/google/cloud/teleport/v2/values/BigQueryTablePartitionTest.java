@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.values;
 import static com.google.common.truth.Truth.assertThat;
 
 import org.apache.beam.sdk.testing.NeedsRunner;
-import org.apache.commons.lang.SerializationUtils;
+import org.apache.commons.lang3.SerializationUtils;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
