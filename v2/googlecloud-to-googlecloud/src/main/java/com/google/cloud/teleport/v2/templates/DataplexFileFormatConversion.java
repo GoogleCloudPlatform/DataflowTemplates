@@ -24,7 +24,6 @@ import com.google.cloud.teleport.v2.clients.DefaultDataplexClient;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.transforms.JsonConverters;
 import com.google.cloud.teleport.v2.utils.Schemas;
-import com.google.cloud.teleport.v2.utils.StorageUtils;
 import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
 import com.google.cloud.teleport.v2.values.DataplexCompression;
 import com.google.common.base.Strings;
@@ -155,12 +154,14 @@ public class DataplexFileFormatConversion {
         || outputAsset.getResourceSpec() == null
         || !DataplexAssetResourceSpec.STORAGE_BUCKET
             .name()
-            .equals(outputAsset.getResourceSpec().getType())) {
+            .equals(outputAsset.getResourceSpec().getType())
+        || outputAsset.getResourceSpec().getName() == null) {
       throw new IllegalArgumentException(
-          "Output asset must be an existing asset with resource spec type of "
+          "Output asset must be an existing asset with resource spec name being a GCS bucket and"
+              + " resource spec type of "
               + DataplexAssetResourceSpec.STORAGE_BUCKET.name());
     }
-    String outputBucket = StorageUtils.parseBucketUrn(outputAsset.getResourceSpec().getName());
+    String outputBucket = outputAsset.getResourceSpec().getName();
 
     ImmutableList<GoogleCloudDataplexV1Entity> entities =
         options.getInputAsset() != null

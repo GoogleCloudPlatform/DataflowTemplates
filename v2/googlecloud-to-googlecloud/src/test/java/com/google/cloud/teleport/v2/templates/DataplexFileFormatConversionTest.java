@@ -130,7 +130,7 @@ public class DataplexFileFormatConversionTest {
     outputAsset.setResourceSpec(
         new GoogleCloudDataplexV1AssetResourceSpec()
             .setType(DataplexAssetResourceSpec.STORAGE_BUCKET.name())
-            .setName("projects/p1/buckets/" + tempDir));
+            .setName(tempDir));
   }
 
   /** Tests CSV to Avro conversion for an entity with partitions. */
