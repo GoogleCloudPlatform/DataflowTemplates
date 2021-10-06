@@ -20,6 +20,7 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Partition;
 import com.google.auto.value.AutoValue;
 import com.google.common.collect.ImmutableList;
+import java.io.Serializable;
 
 /**
  * Partition metadata for Dataplex.
@@ -27,7 +28,7 @@ import com.google.common.collect.ImmutableList;
  * <p>All values are necessary.
  */
 @AutoValue
-public abstract class PartitionMetadata {
+public abstract class PartitionMetadata implements Serializable {
   public abstract String location();
 
   public abstract ImmutableList<String> values();
