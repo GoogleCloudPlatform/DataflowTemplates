@@ -117,4 +117,10 @@ public interface DataplexJdbcIngestionOptions extends PipelineOptions {
   String getLoadProperties();
 
   void setLoadProperties(String loadProperties);
+
+  // input schema as a param before the completion of auto schema discovery
+  @Description("Path to Avro schema. ")
+  String getSchemaPath();
+
+  void setSchemaPath(String schemaPath);
 }

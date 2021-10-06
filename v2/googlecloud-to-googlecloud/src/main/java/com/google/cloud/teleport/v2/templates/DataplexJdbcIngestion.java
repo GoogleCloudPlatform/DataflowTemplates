@@ -26,11 +26,15 @@ import com.google.cloud.teleport.v2.io.DynamicJdbcIO.DynamicDataSourceConfigurat
 import com.google.cloud.teleport.v2.options.DataplexJdbcIngestionOptions;
 import com.google.cloud.teleport.v2.utils.JdbcConverters;
 import com.google.cloud.teleport.v2.utils.KMSEncryptedNestedValue;
+import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -70,39 +74,15 @@ public class DataplexJdbcIngestion {
     Pipeline pipeline = Pipeline.create(options);
 
     DataplexClient dataplexClient = DefaultDataplexClient.withDefaultClient();
-    resolveAsset(pipeline, options, dataplexClient);
-
-    pipeline.run();
-  }
-
-  /**
-   * Resolves a Dataplex asset name into the corresponding resource spec, verifying that the asset
-   * is of the correct type. Then build the pipeline accordingly.
-   *
-   * @param pipeline Initialized pipeline.
-   * @param options Runtime options for the pipeline.
-   * @param dataplexClient Dataplex client to connect to Dataplex via asset name.
-   */
-  private static void resolveAsset(
-      Pipeline pipeline, DataplexJdbcIngestionOptions options, DataplexClient dataplexClient)
-      throws IOException {
-
     String assetName = options.getOutputAsset();
-    LOG.info("Resolving asset: {}", assetName);
-    GoogleCloudDataplexV1Asset asset = dataplexClient.getAsset(assetName);
-    checkNotNull(asset.getResourceSpec(), "Asset has no ResourceSpec.");
+    GoogleCloudDataplexV1Asset asset = resolveAsset(assetName, dataplexClient);
+
     String assetType = asset.getResourceSpec().getType();
-    checkNotNull(assetType, "Asset has no type.");
-    LOG.info("Resolved resource type: {}", assetType);
-
-    String resourceName = asset.getResourceSpec().getName();
-    checkNotNull(resourceName, "Asset has no resource name.");
-    LOG.info("Resolved resource name: {}", resourceName);
-
     if (DataplexAssetResourceSpec.BIGQUERY_DATASET.name().equals(assetType)) {
-      buildPipelineBQ(pipeline, options);
+      buildBigQueryPipeline(pipeline, options);
     } else if (DataplexAssetResourceSpec.STORAGE_BUCKET.name().equals(assetType)) {
-      // TODO: builds pipeline to GCS
+      String targetRootPath = "gs://" + asset.getResourceSpec().getName();
+      buildGcsPipeline(pipeline, options, targetRootPath);
     } else {
       throw new IllegalArgumentException(
           String.format(
@@ -116,10 +96,52 @@ public class DataplexJdbcIngestion {
                   + DataplexAssetResourceSpec.STORAGE_BUCKET.name()
                   + " supported."));
     }
+
+    pipeline.run();
+  }
+
+  /**
+   * Resolves a Dataplex asset.
+   *
+   * @param assetName Asset name from which the Dataplex asset will be resolved.
+   * @param dataplexClient Dataplex client to connect to Dataplex via asset name.
+   * @return The resolved asset
+   */
+  private static GoogleCloudDataplexV1Asset resolveAsset(
+      String assetName, DataplexClient dataplexClient) throws IOException {
+
+    LOG.info("Resolving asset: {}", assetName);
+    GoogleCloudDataplexV1Asset asset = dataplexClient.getAsset(assetName);
+    checkNotNull(asset.getResourceSpec(), "Asset has no ResourceSpec.");
+    String assetType = asset.getResourceSpec().getType();
+    checkNotNull(assetType, "Asset has no type.");
+    LOG.info("Resolved resource type: {}", assetType);
+
+    String resourceName = asset.getResourceSpec().getName();
+    checkNotNull(resourceName, "Asset has no resource name.");
+    LOG.info("Resolved resource name: {}", resourceName);
+    return asset;
   }
 
   @VisibleForTesting
-  static void buildPipelineBQ(Pipeline pipeline, DataplexJdbcIngestionOptions options) {
+  static void buildGcsPipeline(
+      Pipeline pipeline, DataplexJdbcIngestionOptions options, String targetRootPath) {
+    // TODO: Add auto schema discovery
+    checkNotNull(options.getSchemaPath(), "Path to Avro schema is required when writing to GCS.");
+    Schema schema = SchemaUtils.getAvroSchema(options.getSchemaPath());
+    pipeline.apply(
+        "Read from JdbcIO",
+        DynamicJdbcIO.<GenericRecord>read()
+            .withDataSourceConfiguration(configDataSource(options))
+            .withQuery(options.getQuery())
+            .withCoder(AvroCoder.of(schema))
+            .withRowMapper(JdbcConverters.getResultSetToGenericRecord(schema)));
+    // TODO: write to transform that writes GenericRecords to GCS with partition
+    // TODO: Dataplex Metadata Update
+  }
+
+  @VisibleForTesting
+  static void buildBigQueryPipeline(Pipeline pipeline, DataplexJdbcIngestionOptions options) {
     pipeline
         .apply(
             "Read from JdbcIO",
