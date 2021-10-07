@@ -42,13 +42,14 @@ public abstract class MergeConfiguration implements Serializable {
           "MERGE `{replicaTable}` AS {replicaAlias} ",
           "USING ({stagingViewSql}) AS {stagingAlias} ",
           "ON {joinCondition} ",
-          "WHEN MATCHED AND {timestampCompareSql} AND {stagingAlias}.{deleteColumn}=True THEN DELETE ", // TODO entire block should be configurably removed
+          "WHEN MATCHED AND {timestampCompareSql} AND {stagingAlias}.{deleteColumn}=True THEN"
+              + " DELETE ", // TODO entire block should be configurably removed
           "WHEN MATCHED AND {timestampCompareSql} THEN {mergeUpdateSql} ",
           "WHEN NOT MATCHED BY TARGET AND {stagingAlias}.{deleteColumn}!=True ",
           "THEN {mergeInsertSql}");
 
   public static final Boolean DEFAULT_SUPPORT_PARTITIONED_TABLES = true;
-  public static final Integer DEFAULT_PARTITION_RETENTION = 3;
+  public static final Integer DEFAULT_PARTITION_RETENTION = 1;
 
   // BigQuery-specific properties
   public static final String BIGQUERY_QUOTE_CHARACTER = "`";

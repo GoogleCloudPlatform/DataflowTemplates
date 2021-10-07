@@ -130,8 +130,8 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
                   .triggering(
                       Repeatedly.forever(
                           AfterProcessingTime.pastFirstElementInPane()
-                              .alignedTo(intervalDuration, org.joda.time.Instant.now())
-                              .plusDelayOf(intervalDuration))))
+                              .alignedTo(intervalDuration)
+                              .plusDelayOf(Duration.standardMinutes(5)))))
           .apply(ParDo.of(new FilterPerGroupValues<K, V>()))
           .apply(GroupByKey.create())
           .apply(

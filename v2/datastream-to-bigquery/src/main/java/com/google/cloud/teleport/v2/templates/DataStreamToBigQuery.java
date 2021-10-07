@@ -41,6 +41,7 @@ import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.options.Default;
@@ -119,7 +120,8 @@ public class DataStreamToBigQuery {
    *
    * <p>Inherits standard configuration options.
    */
-  public interface Options extends PipelineOptions, StreamingOptions, InputUDFOptions {
+  public interface Options
+      extends PipelineOptions, StreamingOptions, InputUDFOptions, BigQueryOptions {
     @Description("The GCS location of the files you'd like to process")
     String getInputFilePattern();
 
@@ -238,6 +240,7 @@ public class DataStreamToBigQuery {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
     options.setStreaming(true);
+    options.setEnableStreamingEngine(true);
 
     validateOptions(options);
     run(options);
