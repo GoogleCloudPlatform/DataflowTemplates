@@ -361,7 +361,7 @@ public abstract class SentinelEventWriter extends DoFn<KV<Integer, SentinelEvent
       /**
        * Same as {@link Builder#withUrl(ValueProvider)} but without {@link ValueProvider}.
        *
-       * @param url for HEC event collector
+       * @param url for event collector
        * @return {@link Builder}
        */
       public Builder withUrl(String url) {
@@ -371,7 +371,7 @@ public abstract class SentinelEventWriter extends DoFn<KV<Integer, SentinelEvent
       }
   
       /**
-       * Method to set the authentication token for HEC.
+       * Method to set the authentication token.
        *
        * @param token Authentication token for HEC event collector
        * @return {@link Builder}
@@ -382,7 +382,18 @@ public abstract class SentinelEventWriter extends DoFn<KV<Integer, SentinelEvent
       }
   
       /**
-       * Same as {@link Builder#withCustomerId(ValueProvider)} but without {@link ValueProvider}.
+       * Method to set the authentication token.
+       *
+       * @param token Authentication token for event collector
+       * @return {@link Builder}
+       */
+      public Builder withToken(String token) {
+        checkArgument(token != null, "withToken(token) called with null input.");
+        return setToken(ValueProvider.StaticValueProvider.of(token));
+      }
+
+      /**
+       * Set customerId.
        *
        * @param customerId for event collector
        * @return {@link Builder}
@@ -391,7 +402,18 @@ public abstract class SentinelEventWriter extends DoFn<KV<Integer, SentinelEvent
         checkArgument(customerId != null, "withCustomerId(customerId) called with null input.");
         return setCustomerId(customerId);
       }
-  
+
+      /**
+       * Same as {@link Builder#withCustomerId(ValueProvider)} but without {@link ValueProvider}.
+       *
+       * @param customerId for event collector
+       * @return {@link Builder}
+       */
+      public Builder withCustomerId(String customerId) {
+        checkArgument(customerId != null, "withCustomerId(customerId) called with null input.");
+        return setCustomerId(ValueProvider.StaticValueProvider.of(customerId));
+      }
+
       /**
        * Same as {@link Builder#withLogTableName(ValueProvider)} but without {@link ValueProvider}.
        *
@@ -402,6 +424,17 @@ public abstract class SentinelEventWriter extends DoFn<KV<Integer, SentinelEvent
         checkArgument(logTableName != null, "withLogTableName(logTableName) called with null input.");
         return setLogTableName(logTableName);
       }  
+
+      /**
+       * Same as {@link Builder#withLogTableName(ValueProvider)} but without {@link ValueProvider}.
+       *
+       * @param logTableName for event collector
+       * @return {@link Builder}
+       */
+      public Builder withLogTableName(String logTableName) {
+        checkArgument(logTableName != null, "withLogTableName(logTableName) called with null input.");
+        return setLogTableName(ValueProvider.StaticValueProvider.of(logTableName));
+      } 
 
       /**
        * Method to set the inputBatchCount.
