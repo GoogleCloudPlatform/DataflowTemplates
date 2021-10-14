@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.options;
 
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -111,12 +112,15 @@ public interface DataplexJdbcIngestionOptions extends PipelineOptions {
   void setParitionColumn(String partitionColumn);
 
   @Description(
-      "If the partition exists - should it overwrite / append or fail the load."
+      "If the table exists - should it overwrite / append or fail the load. "
+          + "Default: WRITE_APPEND. "
+          + "This currently only supports writing to BigQuery."
           + "Allowed formats are: "
-          + "append, overwrite, Fail")
-  String getLoadProperties();
+          + "WRITE_APPEND / WRITE_TRUNCATE / WRITE_EMPTY")
+  @Default.Enum("WRITE_APPEND")
+  WriteDisposition getWriteDisposition();
 
-  void setLoadProperties(String loadProperties);
+  void setWriteDisposition(WriteDisposition writeDisposition);
 
   // input schema as a param before the completion of auto schema discovery
   @Description("Path to Avro schema. ")
