@@ -155,7 +155,7 @@ public class DataplexJdbcIngestion {
             BigQueryIO.writeTableRows()
                 .withoutValidation()
                 .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER)
-                .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
+                .withWriteDisposition(options.getWriteDisposition())
                 .to(options.getOutputTable()));
     // TODO: partition
     // TODO: Dataplex Metadata Update
