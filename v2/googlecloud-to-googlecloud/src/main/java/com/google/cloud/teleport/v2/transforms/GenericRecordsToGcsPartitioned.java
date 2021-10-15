@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.transforms;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 
+import com.google.cloud.teleport.v2.io.AvroSinkWithJodaDatesConversion;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.PartitionMetadata;
 import com.google.common.collect.ImmutableList;
@@ -36,7 +37,6 @@ import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.ListCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.coders.VarIntCoder;
-import org.apache.beam.sdk.io.AvroIO;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileIO.Sink;
 import org.apache.beam.sdk.io.FileIO.Write;
@@ -46,6 +46,7 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
+import org.joda.time.ReadableInstant;
 
 /**
  * A {@link PTransform} that partitions a collection of {@link GenericRecord} by datetime field and
@@ -127,7 +128,7 @@ public class GenericRecordsToGcsPartitioned
         sink = ParquetIO.sink(schema);
         break;
       case AVRO:
-        sink = AvroIO.sink(schema);
+        sink = new AvroSinkWithJodaDatesConversion<>(schema);
         break;
       default:
         throw new UnsupportedOperationException(
@@ -144,7 +145,9 @@ public class GenericRecordsToGcsPartitioned
                 .by(
                     (GenericRecord r) ->
                         partitioningSchema.toPartition(
-                            Instant.ofEpochMilli((Long) r.get(partitionColumnName)).atZone(zoneId)))
+                            Instant.ofEpochMilli(
+                                    partitionColumnValueToMillis(r.get(partitionColumnName)))
+                                .atZone(zoneId)))
                 // set the coder for the partition -- List<KV<String,String>>
                 .withDestinationCoder(
                     ListCoder.of(KvCoder.of(StringUtf8Coder.of(), VarIntCoder.of())))
@@ -195,6 +198,26 @@ public class GenericRecordsToGcsPartitioned
                   .collect(Collectors.joining(", "))));
     }
     return zoneId;
+  }
+
+  /**
+   * This method is used to address the static initialization in
+   * org.apache.beam.sdk.schemas.utils.AvroUtils static initialization.
+   *
+   * <p>A usage of AvroUtils changes how Avro treats `timestamp-millis` "globally", and so if
+   * AvroUtils is used, even in a unrelated classes, the `timestamp-millis` is returned as Joda
+   * timestamps, and if AvroUtils is not used `timestamp-millis` is returned as long. This method
+   * handles both cases and returns long millis.
+   */
+  private static long partitionColumnValueToMillis(Object value) {
+    if (value instanceof Long) {
+      return (Long) value;
+    } else if (value instanceof ReadableInstant) {
+      return ((ReadableInstant) value).getMillis();
+    } else {
+      throw new IllegalArgumentException(
+          "The partition column value is an instance of unsupported class: " + value.getClass());
+    }
   }
 
   private static String partitionToPath(List<KV<String, Integer>> partition) {

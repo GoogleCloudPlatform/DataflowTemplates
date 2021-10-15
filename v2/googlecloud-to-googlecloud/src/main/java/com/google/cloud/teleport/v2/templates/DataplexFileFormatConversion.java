@@ -21,6 +21,7 @@ import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Partition;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1StorageFormatCsvOptions;
 import com.google.cloud.teleport.v2.clients.DataplexClient;
 import com.google.cloud.teleport.v2.clients.DefaultDataplexClient;
+import com.google.cloud.teleport.v2.io.AvroSinkWithJodaDatesConversion;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.transforms.JsonConverters;
 import com.google.cloud.teleport.v2.utils.Schemas;
@@ -36,7 +37,6 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
-import org.apache.beam.sdk.io.AvroIO;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileIO.Sink;
 import org.apache.beam.sdk.io.parquet.ParquetIO;
@@ -290,7 +290,9 @@ public class DataplexFileFormatConversion {
               ParquetIO.sink(schema).withCompressionCodec(outputFileCompression.getParquetCodec());
           break;
         case AVRO:
-          sink = AvroIO.<GenericRecord>sink(schema).withCodec(outputFileCompression.getAvroCodec());
+          sink =
+              new AvroSinkWithJodaDatesConversion<GenericRecord>(schema)
+                  .withCodec(outputFileCompression.getAvroCodec());
           break;
         default:
           throw new UnsupportedOperationException(
