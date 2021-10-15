@@ -30,7 +30,6 @@ import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
-import java.util.concurrent.ExecutionException;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.Pipeline;
@@ -64,8 +63,7 @@ public class DataplexJdbcIngestion {
    *
    * @param args Command line arguments to the pipeline.
    */
-  public static void main(String[] args)
-      throws IOException, InterruptedException, ExecutionException {
+  public static void main(String[] args) throws IOException {
     DataplexJdbcIngestionOptions options =
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()
@@ -73,7 +71,8 @@ public class DataplexJdbcIngestion {
 
     Pipeline pipeline = Pipeline.create(options);
 
-    DataplexClient dataplexClient = DefaultDataplexClient.withDefaultClient();
+    DataplexClient dataplexClient =
+        DefaultDataplexClient.withDefaultClient(options.getGcpCredential());
     String assetName = options.getOutputAsset();
     GoogleCloudDataplexV1Asset asset = resolveAsset(assetName, dataplexClient);
 

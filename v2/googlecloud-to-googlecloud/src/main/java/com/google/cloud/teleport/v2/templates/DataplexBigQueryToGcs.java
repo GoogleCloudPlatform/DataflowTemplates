@@ -37,6 +37,7 @@ import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Splitter;
+import com.google.re2j.Pattern;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -48,6 +49,7 @@ import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryServices;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.ExperimentalOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.transforms.Flatten;
@@ -90,6 +92,7 @@ public class DataplexBigQueryToGcs {
    */
   public interface DataplexBigQueryToGcsOptions
       extends GcpOptions,
+          ExperimentalOptions,
           DeleteBigQueryDataFn.Options,
           UpdateDataplexBigQueryToGcsExportMetadataTransform.Options {
 
@@ -145,6 +148,12 @@ public class DataplexBigQueryToGcs {
     FileFormat getFileFormat();
 
     void setFileFormat(FileFormat fileFormat);
+
+    @Description(
+        "Process partitions with partition ID matching this regexp only. Default: process all.")
+    String getPartitionIdRegExp();
+
+    void setPartitionIdRegExp(String partitionIdRegExp);
   }
 
   /**
@@ -160,14 +169,25 @@ public class DataplexBigQueryToGcs {
             .withValidation()
             .as(DataplexBigQueryToGcsOptions.class);
 
+    List<String> experiments = new ArrayList<>();
+    if (options.getExperiments() != null) {
+      experiments.addAll(options.getExperiments());
+    }
+    if (!experiments.contains("upload_graph")) {
+      experiments.add("upload_graph");
+    }
+    options.setExperiments(experiments);
+
     Pipeline pipeline;
 
-    DataplexClient dataplex = DefaultDataplexClient.withDefaultClient();
+    DataplexClient dataplex = DefaultDataplexClient.withDefaultClient(options.getGcpCredential());
     BigQuery bqClient = BigQueryOptions.getDefaultInstance().getService();
     try (BigQueryStorageClient bqsClient = BigQueryStorageClient.create()) {
+      LOG.info("Building the pipeline...");
       pipeline = buildPipeline(options, dataplex, bqClient, bqsClient);
     }
 
+    LOG.info("Running the pipeline.");
     pipeline.run();
   }
 
@@ -207,10 +227,15 @@ public class DataplexBigQueryToGcs {
     DatasetId datasetId = BigQueryUtils.parseDatasetUrn(bqResource);
     BigQueryMetadataLoader metadataLoader =
         new BigQueryMetadataLoader(bqClient, bqsClient, maxParallelBigQueryRequests);
+
+    LOG.info("Loading BigQuery metadata...");
     List<BigQueryTable> tables =
         metadataLoader.loadDatasetMetadata(datasetId, new MetadataFilter(options));
+    LOG.info("Loaded {} table(s).", tables.size());
 
-    transformPipeline(pipeline, tables, options, targetRootPath, null, null);
+    if (!tables.isEmpty()) {
+      transformPipeline(pipeline, tables, options, targetRootPath, null, null);
+    }
 
     return pipeline;
   }
@@ -295,6 +320,7 @@ public class DataplexBigQueryToGcs {
 
     private final Instant maxLastModifiedTime;
     private final Set<String> includeTables;
+    private final Pattern includePartitions;
 
     @VisibleForTesting
     MetadataFilter(DataplexBigQueryToGcsOptions options) {
@@ -317,6 +343,13 @@ public class DataplexBigQueryToGcs {
         this.includeTables = new HashSet<>(tableRefList);
       } else {
         this.includeTables = null;
+      }
+
+      String partitionRegExp = options.getPartitionIdRegExp();
+      if (partitionRegExp != null && !partitionRegExp.isEmpty()) {
+        this.includePartitions = Pattern.compile(partitionRegExp);
+      } else {
+        this.includePartitions = null;
       }
     }
 
@@ -364,6 +397,13 @@ public class DataplexBigQueryToGcs {
       if (maxLastModifiedTime != null
           // BigQuery timestamps are in microseconds so / 1000.
           && maxLastModifiedTime.isBefore(partition.getLastModificationTime() / 1000)) {
+        return true;
+      }
+      if (includePartitions != null && !includePartitions.matches(partition.getPartitionName())) {
+        LOG.info(
+            "Skipping partition {} not matching regexp: {}",
+            partition.getPartitionName(),
+            includePartitions.pattern());
         return true;
       }
       return false;

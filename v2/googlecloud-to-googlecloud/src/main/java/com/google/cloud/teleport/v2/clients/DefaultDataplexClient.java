@@ -34,8 +34,8 @@ import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1ListEntiti
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1ListPartitionsResponse;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Partition;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Zone;
+import com.google.auth.Credentials;
 import com.google.auth.http.HttpCredentialsAdapter;
-import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.teleport.v2.values.EntityMetadata;
 import com.google.cloud.teleport.v2.values.EntityMetadata.StorageSystem;
 import com.google.cloud.teleport.v2.values.GetEntityRequestEntityView;
@@ -87,11 +87,10 @@ public final class DefaultDataplexClient implements DataplexClient {
    *
    * @return a new instance of {@link DefaultDataplexClient}
    */
-  public static DefaultDataplexClient withDefaultClient() throws IOException {
+  public static DefaultDataplexClient withDefaultClient(Credentials credential) throws IOException {
     HttpTransport transport = Utils.getDefaultTransport();
     JsonFactory jsonFactory = Utils.getDefaultJsonFactory();
-    HttpRequestInitializer httpInitializer =
-        new HttpCredentialsAdapter(GoogleCredentials.getApplicationDefault());
+    HttpRequestInitializer httpInitializer = new HttpCredentialsAdapter(credential);
 
     CloudDataplex client =
         new CloudDataplex.Builder(transport, jsonFactory, httpInitializer)

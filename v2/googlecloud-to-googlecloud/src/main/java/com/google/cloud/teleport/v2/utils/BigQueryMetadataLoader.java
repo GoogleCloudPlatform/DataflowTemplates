@@ -78,7 +78,8 @@ public class BigQueryMetadataLoader {
                 + "        and c.table_schema = t.dataset_id\n"
                 + "        and c.table_name = t.table_id\n"
                 + "        and c.is_partitioning_column = 'YES') as partitioning_column,\n"
-                + "  from `%s.%s.__TABLES__` t",
+                + "  from `%s.%s.__TABLES__` t\n"
+                + " where type = 1", // Tables only (1), not views (2), or external tables (3).
             datasetId.getProject(),
             datasetId.getDataset(),
             datasetId.getProject(),
@@ -102,8 +103,13 @@ public class BigQueryMetadataLoader {
                               .setPartitioningColumn(
                                   !row.get(2).isNull() ? row.get(2).getStringValue() : null);
 
-                      if (!loadTableMetadata(table, filter)) {
-                        return null;
+                      try {
+                        if (!loadTableMetadata(table, filter)) {
+                          return null;
+                        }
+                      } catch (RuntimeException e) {
+                        throw new RuntimeException(
+                            "Error loading table " + table.getTableName() + " metadata.", e);
                       }
 
                       return table.build();
