@@ -35,6 +35,7 @@ import com.google.cloud.teleport.v2.utils.BigQueryUtils;
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
+import com.google.cloud.teleport.v2.values.DataplexCompression;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Splitter;
 import com.google.re2j.Pattern;
@@ -150,6 +151,14 @@ public class DataplexBigQueryToGcs {
     void setFileFormat(FileFormat fileFormat);
 
     @Description(
+        "Output file compression. Format: UNCOMPRESSED, SNAPPY, GZIP, or BZIP2. Default:"
+            + " SNAPPY. BZIP2 not supported for PARQUET files.")
+    @Default.Enum("SNAPPY")
+    DataplexCompression getFileCompression();
+
+    void setFileCompression(DataplexCompression fileCompression);
+
+    @Description(
         "Process partitions with partition ID matching this regexp only. Default: process all.")
     String getPartitionIdRegExp();
 
@@ -258,7 +267,10 @@ public class DataplexBigQueryToGcs {
                   .apply(
                       String.format("ExportTable-%s", table.getTableName()),
                       new BigQueryTableToGcsTransform(
-                              table, targetRootPath, options.getFileFormat())
+                              table,
+                              targetRootPath,
+                              options.getFileFormat(),
+                              options.getFileCompression())
                           .withTestServices(testBqServices))
                   .apply(
                       String.format("AttachTableKeys-%s", table.getTableName()),

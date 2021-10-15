@@ -17,9 +17,11 @@ package com.google.cloud.teleport.v2.transforms;
 
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
+import com.google.cloud.teleport.v2.values.DataplexCompression;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.io.AvroIO;
@@ -57,25 +59,31 @@ public class BigQueryTableToGcsTransform
 
   private final BigQueryTable table;
   private final FileFormat outputFileFormat;
+  private final DataplexCompression outputFileCompression;
   private final String targetRootPath;
   private transient BigQueryServices testServices;
 
   public BigQueryTableToGcsTransform(
-      BigQueryTable table, String targetRootPath, FileFormat outputFileFormat) {
+      BigQueryTable table,
+      String targetRootPath,
+      FileFormat outputFileFormat,
+      DataplexCompression outputFileCompression) {
     this.table = table;
     this.targetRootPath = targetRootPath;
     this.outputFileFormat = outputFileFormat;
+    this.outputFileCompression = outputFileCompression;
   }
 
   @Override
   public PCollection<KV<BigQueryTablePartition, String>> expand(PBegin begin) {
+    Schema schema = table.getSchema();
     Sink<GenericRecord> sink;
     switch (outputFileFormat) {
       case PARQUET:
-        sink = ParquetIO.sink(table.getSchema());
+        sink = ParquetIO.sink(schema).withCompressionCodec(outputFileCompression.getParquetCodec());
         break;
       case AVRO:
-        sink = AvroIO.sink(table.getSchema());
+        sink = AvroIO.<GenericRecord>sink(schema).withCodec(outputFileCompression.getAvroCodec());
         break;
       default:
         throw new UnsupportedOperationException(
