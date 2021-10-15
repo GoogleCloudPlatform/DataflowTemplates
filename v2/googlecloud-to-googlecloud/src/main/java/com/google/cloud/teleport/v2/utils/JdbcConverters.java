@@ -21,9 +21,6 @@ import java.sql.ResultSetMetaData;
 import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
-import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericData;
-import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
 
 /** Common code for Teleport DataplexJdbcIngestion. */
@@ -85,71 +82,6 @@ public class JdbcConverters {
       }
 
       return outputTableRow;
-    }
-  }
-
-  /** Factory method for {@link ResultSetToGenericRecord}. */
-  public static JdbcIO.RowMapper<GenericRecord> getResultSetToGenericRecord(Schema schema) {
-    return new ResultSetToGenericRecord(schema);
-  }
-
-  /**
-   * {@link JdbcIO.RowMapper} implementation to convert Jdbc ResultSet rows to UTF-8 encoded JSONs.
-   */
-  private static class ResultSetToGenericRecord implements JdbcIO.RowMapper<GenericRecord> {
-
-    static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
-    static DateTimeFormatter datetimeFormatter =
-        DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss.SSSSSS");
-    static SimpleDateFormat timestampFormatter =
-        new SimpleDateFormat("yyyy-MM-dd hh:mm:ss.SSSSSSXXX");
-
-    private final Schema resultSchema;
-
-    public ResultSetToGenericRecord(Schema schema) {
-      this.resultSchema = schema;
-    }
-
-    @Override
-    public GenericRecord mapRow(ResultSet resultSet) throws Exception {
-
-      ResultSetMetaData metaData = resultSet.getMetaData();
-
-      GenericRecord outputGenericRecord = new GenericData.Record(resultSchema);
-
-      for (int i = 1; i <= metaData.getColumnCount(); i++) {
-        if (resultSet.getObject(i) == null) {
-          outputGenericRecord.put(metaData.getColumnName(i), resultSet.getObject(i));
-          continue;
-        }
-
-        /*
-         * DATE:      EPOCH MILLISECONDS -> yyyy-MM-dd
-         * DATETIME:  EPOCH MILLISECONDS -> yyyy-MM-dd hh:mm:ss.SSSSSS
-         * TIMESTAMP: EPOCH MILLISECONDS -> yyyy-MM-dd hh:mm:ss.SSSSSSXXX
-         *
-         * MySQL drivers have ColumnTypeName in all caps and postgres in small case
-         */
-        switch (metaData.getColumnTypeName(i).toLowerCase()) {
-          case "date":
-            outputGenericRecord.put(
-                metaData.getColumnName(i), dateFormatter.format(resultSet.getObject(i)));
-            break;
-          case "datetime":
-            outputGenericRecord.put(
-                metaData.getColumnName(i),
-                datetimeFormatter.format((TemporalAccessor) resultSet.getObject(i)));
-            break;
-          case "timestamp":
-            outputGenericRecord.put(
-                metaData.getColumnName(i), timestampFormatter.format(resultSet.getObject(i)));
-            break;
-          default:
-            outputGenericRecord.put(metaData.getColumnName(i), resultSet.getObject(i));
-        }
-      }
-
-      return outputGenericRecord;
     }
   }
 }

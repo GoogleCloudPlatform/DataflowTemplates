@@ -32,4 +32,8 @@ public final class BeamSchemaUtil {
   public static Schema toBeamSchema(ResultSetMetaData md) throws SQLException {
     return SchemaUtil.toBeamSchema(md);
   }
+
+  public static SchemaUtil.BeamRowMapper of(Schema schema) {
+    return SchemaUtil.BeamRowMapper.of(schema);
+  }
 }

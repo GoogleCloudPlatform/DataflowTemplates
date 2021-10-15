@@ -248,7 +248,7 @@ public class DynamicJdbcIO {
     }
 
     @VisibleForTesting
-    DataSource buildDatasource() {
+    public DataSource buildDatasource() {
       BasicDataSource basicDataSource = new BasicDataSource();
       if (getDriverClassName() != null) {
         if (getDriverClassName() == null) {

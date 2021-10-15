@@ -242,6 +242,33 @@ public class GenericRecordsToGcsPartitionedTest {
     readPipeline.run();
   }
 
+  @Test
+  public void testNoPartitioning() {
+    Record record11 = new Record(SCHEMA);
+    record11.put("x", true);
+    record11.put("date", dateToEpochMillis(2010, 1));
+    Record record12 = new Record(SCHEMA);
+    record12.put("x", false);
+    record12.put("date", dateToEpochMillis(2010, 1));
+    Record record21 = new Record(SCHEMA);
+    record21.put("x", true);
+    record21.put("date", dateToEpochMillis(2010, 2));
+
+    String tmpRootPath = temporaryFolder.getRoot().getAbsolutePath();
+
+    mainPipeline
+        .apply(
+            Create.<GenericRecord>of(record11, record12, record21).withCoder(AvroCoder.of(SCHEMA)))
+        .apply(
+            "GenericRecordsToGCS",
+            new GenericRecordsToGcsPartitioned(
+                tmpRootPath, SERIALIZED_SCHEMA, null, null, OutputFileFormat.AVRO));
+
+    mainPipeline.run();
+
+    verifyRecordsExists(tmpRootPath + "/*", record11, record12, record21);
+  }
+
   private void verifyRecordsExists(String path, GenericRecord... expectedRecords) {
     PCollection<GenericRecord> readAvroFile =
         readPipeline.apply(
