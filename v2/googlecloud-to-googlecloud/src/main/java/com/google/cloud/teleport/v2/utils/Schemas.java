@@ -58,7 +58,7 @@ public final class Schemas {
    * This method is very similar to a private method:
    * org.apache.beam.sdk.io.jdbc.JdbcIO.ReadRows.inferBeamSchema().
    */
-  private static org.apache.beam.sdk.schemas.Schema jdbcSchemaToBeamSchema(
+  public static org.apache.beam.sdk.schemas.Schema jdbcSchemaToBeamSchema(
       DataSource dataSource, String query) {
     try (Connection conn = dataSource.getConnection();
         PreparedStatement statement =

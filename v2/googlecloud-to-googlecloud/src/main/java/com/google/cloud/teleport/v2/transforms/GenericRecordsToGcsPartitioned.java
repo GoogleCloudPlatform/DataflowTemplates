@@ -29,6 +29,7 @@ import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 import org.apache.avro.LogicalType;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
@@ -43,10 +44,14 @@ import org.apache.beam.sdk.io.FileIO.Write;
 import org.apache.beam.sdk.io.parquet.ParquetIO;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.TypeDescriptors;
 import org.joda.time.ReadableInstant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A {@link PTransform} that partitions a collection of {@link GenericRecord} by datetime field and
@@ -61,6 +66,9 @@ import org.joda.time.ReadableInstant;
  */
 public class GenericRecordsToGcsPartitioned
     extends PTransform<PCollection<GenericRecord>, PCollection<PartitionMetadata>> {
+
+  /* Logger for class.*/
+  private static final Logger LOG = LoggerFactory.getLogger(GenericRecordsToGcsPartitioned.class);
 
   private static final ImmutableMap<LogicalType, ZoneId> AVRO_DATE_TIME_LOGICAL_TYPES =
       ImmutableMap.of(
@@ -100,17 +108,17 @@ public class GenericRecordsToGcsPartitioned
 
   private final String serializedAvroSchema;
 
-  private final String partitionColumnName;
+  @Nullable private final String partitionColumnName;
 
-  private final PartitioningSchema partitioningSchema;
+  @Nullable private final PartitioningSchema partitioningSchema;
 
   private final OutputFileFormat outputFileFormat;
 
   public GenericRecordsToGcsPartitioned(
       String gcsPath,
       String serializedAvroSchema,
-      String partitionColumnName,
-      PartitioningSchema partitioningSchema,
+      @Nullable String partitionColumnName,
+      @Nullable PartitioningSchema partitioningSchema,
       OutputFileFormat outputFileFormat) {
     this.gcsPath = gcsPath;
     this.serializedAvroSchema = serializedAvroSchema;
@@ -133,6 +141,37 @@ public class GenericRecordsToGcsPartitioned
       default:
         throw new UnsupportedOperationException(
             "Output format is not implemented: " + outputFileFormat);
+    }
+
+    if (partitionColumnName == null || partitioningSchema == null) {
+      LOG.info(
+          "PartitionColumnName or/and PartitioningSchema not provided. "
+              + "Writing to GCS without partition");
+      return input
+          .apply(
+              "Write to Storage with No Partition",
+              FileIO.<GenericRecord>write()
+                  .withSuffix(outputFileFormat.fileSuffix)
+                  .via(sink)
+                  .to(gcsPath))
+          // Dummy conversion to Dataplex partition metadata
+          // TODO(weiwenxu) Change after Dataplex metadata update is enabled
+          .getPerDestinationOutputFilenames()
+          .apply(
+              "MapFileNames",
+              MapElements.into(TypeDescriptors.strings())
+                  .via((SerializableFunction<KV<Void, String>, String>) KV::getValue))
+          .apply(
+              MapElements.via(
+                  new SimpleFunction<String, PartitionMetadata>() {
+                    @Override
+                    public PartitionMetadata apply(String path) {
+                      return PartitionMetadata.builder()
+                          .setValues(ImmutableList.of("1"))
+                          .setLocation(withoutFileName(path))
+                          .build();
+                    }
+                  }));
     }
 
     ZoneId zoneId = getZoneId(schema);

@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.options;
 
+import com.google.cloud.teleport.v2.transforms.GenericRecordsToGcsPartitioned.OutputFileFormat;
+import com.google.cloud.teleport.v2.transforms.GenericRecordsToGcsPartitioned.PartitioningSchema;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.options.Default;
@@ -98,11 +100,11 @@ public interface DataplexJdbcIngestionOptions extends GcpOptions, PipelineOption
   @Description(
       "The partition scheme when writing the file. Default: daily. "
           + "Allowed formats are: "
-          + "daily, monthly, hourly")
-  @Default.String("daily")
-  String getPartitioningScheme();
+          + "DAILY, MONTHLY, HOURLY")
+  @Default.Enum("DAILY")
+  PartitioningSchema getPartitioningScheme();
 
-  void setPartitioningScheme(String partitioningScheme);
+  void setPartitioningScheme(PartitioningSchema partitioningScheme);
 
   @Description(
       "The partition column on which the partition is based. "
@@ -123,9 +125,9 @@ public interface DataplexJdbcIngestionOptions extends GcpOptions, PipelineOption
 
   void setWriteDisposition(WriteDisposition writeDisposition);
 
-  // input schema as a param before the completion of auto schema discovery
-  @Description("Path to Avro schema. ")
-  String getSchemaPath();
+  @Description("Output file format in GCS. Format: PARQUET, AVRO, or ORC. Default: PARQUET.")
+  @Default.Enum("PARQUET")
+  OutputFileFormat getFileFormat();
 
-  void setSchemaPath(String schemaPath);
+  void setFileFormat(OutputFileFormat fileFormat);
 }

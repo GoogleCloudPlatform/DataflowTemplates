@@ -17,7 +17,10 @@ package com.google.cloud.teleport.v2.io;
 
 import static org.junit.Assert.assertTrue;
 
+import com.google.cloud.teleport.v2.io.DynamicJdbcIO.DynamicDataSourceConfiguration;
 import com.google.cloud.teleport.v2.utils.KMSEncryptedNestedValue;
+import com.google.cloud.teleport.v2.utils.Schemas;
+import com.google.common.collect.Lists;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.InetAddress;
@@ -36,14 +39,18 @@ import java.util.stream.IntStream;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.coders.BigEndianIntegerCoder;
 import org.apache.beam.sdk.coders.KvCoder;
+import org.apache.beam.sdk.coders.RowCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.io.jdbc.BeamSchemaUtil;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
+import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.testing.NeedsRunner;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Count;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.Row;
 import org.apache.derby.drda.NetworkServerControl;
 import org.apache.derby.jdbc.ClientDataSource;
 import org.junit.AfterClass;
@@ -218,6 +225,47 @@ public class DynamicJdbcIOTest {
             .collect(Collectors.toList());
 
     PAssert.that(rows).containsInAnyOrder(expectedList);
+    pipeline.run();
+  }
+
+  @Test
+  @Category(NeedsRunner.class)
+  public void testReadRows() throws Exception {
+
+    DynamicDataSourceConfiguration dataSourceConfig =
+        DynamicJdbcIO.DynamicDataSourceConfiguration.create(
+            "org.apache.derby.jdbc.ClientDriver",
+            maybeDecrypt("jdbc:derby://localhost:" + port + "/target/beam", null));
+    String query = "select name, id from " + readTableName;
+
+    org.apache.beam.sdk.schemas.Schema beamSchema =
+        Schemas.jdbcSchemaToBeamSchema(dataSourceConfig.buildDatasource(), query);
+
+    PCollection<Row> resultRows =
+        pipeline.apply(
+            DynamicJdbcIO.<Row>read()
+                .withDataSourceConfiguration(dataSourceConfig)
+                .withQuery(query)
+                .withCoder(RowCoder.of(beamSchema))
+                .withRowMapper(BeamSchemaUtil.of(beamSchema)));
+
+    PAssert.thatSingleton(resultRows.apply("Count", Count.globally()))
+        .isEqualTo((long) EXPECTED_ROW_COUNT);
+
+    Schema schema =
+        Schema.builder()
+            .addField("name", Schema.FieldType.STRING)
+            .addField("id", Schema.FieldType.INT32)
+            .build();
+
+    List<Row> expectedList = Lists.newArrayListWithExpectedSize(EXPECTED_ROW_COUNT);
+    for (int i = 0; i < EXPECTED_ROW_COUNT; i++) {
+      Row row = Row.withSchema(schema).addValues(TEST_ROW_SUFFIX + "-" + i, i).build();
+      expectedList.add(row);
+    }
+
+    PAssert.that(resultRows).containsInAnyOrder(expectedList);
+
     pipeline.run();
   }
 
