@@ -20,8 +20,13 @@ import static org.junit.Assert.assertEquals;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Schema;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1SchemaSchemaField;
 import com.google.common.collect.ImmutableList;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Parser;
+import org.apache.derby.jdbc.EmbeddedDataSource;
 import org.junit.Test;
 
 /** Unit tests for Dataplex and Avro schem utilities. */
@@ -120,5 +125,28 @@ public class SchemasTest {
 
     String str = "1234" + null;
     assertEquals(expectedAvroSchema, Schemas.dataplexSchemaToAvro(dataplexSchema));
+  }
+
+  @Test
+  public void testJdbcSchemaToAvro() throws SQLException {
+    System.setProperty("derby.stream.error.field", "System.out"); // log to console, not a log file
+    try (Connection conn = DriverManager.getConnection("jdbc:derby:memory:booksdb;create=true");
+        Statement statement = conn.createStatement(); ) {
+      statement.execute("CREATE TABLE book (book_id int primary key, title varchar(128))");
+    }
+
+    EmbeddedDataSource ds = new EmbeddedDataSource();
+    ds.setDatabaseName("memory:booksdb");
+    Schema schema = Schemas.jdbcSchemaToAvro(ds, "select * from book");
+
+    Schema expectedSchema =
+        new Parser()
+            .parse(
+                "{\"type\":\"record\",\"name\":\"topLevelRecord\",\"fields\":["
+                    + " {\"name\":\"BOOK_ID\",\"type\":\"int\"},   {\"name\":\"TITLE\",\"type\":"
+                    + "   [\"null\","
+                    + "   {\"type\":\"string\",\"logicalType\":\"varchar\",\"maxLength\":128}]}]}");
+
+    assertEquals(expectedSchema, schema);
   }
 }

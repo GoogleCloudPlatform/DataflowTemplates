@@ -13,15 +13,23 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.utils;
+package org.apache.beam.sdk.io.jdbc;
 
-/** An exception for the failures during the Dataplex to Avro schema conversions. */
-final class SchemaConversionException extends RuntimeException {
-  public SchemaConversionException(String message) {
-    super(message);
-  }
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import org.apache.beam.sdk.schemas.Schema;
 
-  public SchemaConversionException(String message, Throwable cause) {
-    super(message, cause);
+/**
+ * This class is used to expose the package level method {@link SchemaUtil#toBeamSchema} to the
+ * Teleport project.
+ *
+ * This util class is temporary until {@link SchemaUtil#toBeamSchema} is made public in Apache Beam.
+ */
+public final class BeamSchemaUtil {
+
+  private BeamSchemaUtil() {}
+
+  public static Schema toBeamSchema(ResultSetMetaData md) throws SQLException {
+    return SchemaUtil.toBeamSchema(md);
   }
 }
