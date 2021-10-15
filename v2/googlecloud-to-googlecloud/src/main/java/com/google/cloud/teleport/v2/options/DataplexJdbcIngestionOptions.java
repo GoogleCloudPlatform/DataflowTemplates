@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.options;
 
+import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
@@ -25,7 +26,7 @@ import org.apache.beam.sdk.options.Validation;
  * The {@link Options} class provides the custom execution options passed by the executor at the
  * command-line.
  */
-public interface DataplexJdbcIngestionOptions extends PipelineOptions {
+public interface DataplexJdbcIngestionOptions extends GcpOptions, PipelineOptions {
   @Description(
       "Comma separate list of driver class/dependency jar file GCS paths "
           + "for example "

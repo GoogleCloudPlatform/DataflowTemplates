@@ -36,6 +36,7 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.AvroCoder;
+import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileIO.Sink;
@@ -63,7 +64,7 @@ public class DataplexFileFormatConversion {
    * The {@link FileFormatConversionOptions} provides the custom execution options passed by the
    * executor at the command-line.
    */
-  public interface FileFormatConversionOptions extends PipelineOptions {
+  public interface FileFormatConversionOptions extends GcpOptions, PipelineOptions {
 
     @Description("Input asset.")
     String getInputAsset();
@@ -129,7 +130,7 @@ public class DataplexFileFormatConversion {
     run(
         Pipeline.create(options),
         options,
-        DefaultDataplexClient.withDefaultClient(),
+        DefaultDataplexClient.withDefaultClient(options.getGcpCredential()),
         DataplexFileFormatConversion::gcsOutputPathFrom);
   }
 

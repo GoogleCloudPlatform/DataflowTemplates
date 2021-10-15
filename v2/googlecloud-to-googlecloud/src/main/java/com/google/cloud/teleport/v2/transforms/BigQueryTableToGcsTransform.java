@@ -58,7 +58,7 @@ public class BigQueryTableToGcsTransform
   private final BigQueryTable table;
   private final FileFormat outputFileFormat;
   private final String targetRootPath;
-  private BigQueryServices testServices;
+  private transient BigQueryServices testServices;
 
   public BigQueryTableToGcsTransform(
       BigQueryTable table, String targetRootPath, FileFormat outputFileFormat) {
@@ -103,8 +103,8 @@ public class BigQueryTableToGcsTransform
     String targetPath = String.format("%s/%s", targetRootPath, table.getTableName());
 
     return begin
-        .apply(tableNodeName("ReadFromBigQuery"), getDefaultRead().from(table.toTableReference()))
-        .apply(tableNodeName("WriteToStorage"), getDefaultWrite().via(sink).to(targetPath))
+        .apply(tableNodeName("Read"), getDefaultRead().from(table.toTableReference()))
+        .apply(tableNodeName("Write"), getDefaultWrite().via(sink).to(targetPath))
         .getPerDestinationOutputFilenames()
         .apply(
             tableNodeName("MapFileNames"),
@@ -135,10 +135,8 @@ public class BigQueryTableToGcsTransform
             partition.getPartitionName());
 
     return begin
-        .apply(partitionNodeName("ReadFromBigQuery", partition), getDefaultRead().fromQuery(sql))
-        .apply(
-            partitionNodeName("WriteToStorage", partition),
-            getDefaultWrite().via(sink).to(targetPath))
+        .apply(partitionNodeName("Read", partition), getDefaultRead().fromQuery(sql))
+        .apply(partitionNodeName("Write", partition), getDefaultWrite().via(sink).to(targetPath))
         .getPerDestinationOutputFilenames()
         .apply(
             partitionNodeName("MapFileNames", partition),
@@ -151,6 +149,9 @@ public class BigQueryTableToGcsTransform
     TypedRead<GenericRecord> read =
         BigQueryIO.read(SchemaAndRecord::getRecord)
             .withTemplateCompatibility()
+            // Performance hit due to validation is too big. When exporting a table with thousands
+            // of partitions launching the job takes more than 12 minutes (Flex template timeout).
+            .withoutValidation()
             // TODO: Switch to DIRECT_READ when the BigQueryIO bug is fixed.
             // There is probably a bug in BigQueryIO that causes "IllegalMutationException:
             // PTransform BigQueryIO.TypedRead/ParDo(Anonymous)/ParMultiDo(Anonymous) mutated
@@ -168,11 +169,11 @@ public class BigQueryTableToGcsTransform
   }
 
   private String tableNodeName(String prefix) {
-    return String.format("%s-%s", prefix, table.getTableName());
+    return String.format("%s-T%s", prefix, table.getTableName());
   }
 
   private String partitionNodeName(String prefix, BigQueryTablePartition partition) {
-    return String.format("%s-%s-%s", prefix, table.getTableName(), partition.getPartitionName());
+    return String.format("%s-P%s", prefix, partition.getPartitionName());
   }
 
   @VisibleForTesting
