@@ -96,11 +96,6 @@ public class DatastoreConverters {
     @Default.Integer(500)
     Integer getDatastoreHintNumWorkers();
     void setDatastoreHintNumWorkers(Integer value);
-
-    @Description("Whether to throttle during ramp-up")
-    @Default.Boolean(true)
-    Boolean getDatastoreThrottleRampup();
-    void setDatastoreThrottleRampup(Boolean value);
   }
 
   /** Options for deleting Datastore Entities. */
@@ -114,11 +109,6 @@ public class DatastoreConverters {
     @Default.Integer(500)
     Integer getDatastoreHintNumWorkers();
     void setDatastoreHintNumWorkers(Integer value);
-
-    @Description("Whether to throttle during ramp-up")
-    @Default.Boolean(true)
-    Boolean getDatastoreThrottleRampup();
-    void setDatastoreThrottleRampup(Boolean value);
   }
 
   /** Options for reading Unique datastore Schemas. */
