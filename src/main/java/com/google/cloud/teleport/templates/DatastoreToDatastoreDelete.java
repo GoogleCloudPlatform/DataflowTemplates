@@ -68,7 +68,6 @@ public class DatastoreToDatastoreDelete {
             DatastoreDeleteEntityJson.newBuilder()
                 .setProjectId(options.getDatastoreDeleteProjectId())
                 .setHintNumWorkers(options.getDatastoreHintNumWorkers())
-                .setThrottleRampup(options.getDatastoreThrottleRampup())
                 .build());
 
     pipeline.run();

@@ -60,7 +60,6 @@ public class PubsubToDatastore {
             WriteJsonEntities.newBuilder()
                 .setProjectId(options.getDatastoreWriteProjectId())
                 .setHintNumWorkers(options.getDatastoreHintNumWorkers())
-                .setThrottleRampup(options.getDatastoreThrottleRampup())
                 .build());
 
     pipeline.run();
