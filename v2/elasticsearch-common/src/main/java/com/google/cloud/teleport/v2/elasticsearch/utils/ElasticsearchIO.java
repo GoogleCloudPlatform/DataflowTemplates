@@ -179,6 +179,7 @@ public class ElasticsearchIO {
         // advised default starting batch size in ES docs
         .setMaxBatchSizeBytes(5L * 1024L * 1024L)
         .setUsePartialUpdate(false) // default is document upsert
+        .setVerboseDebugMessages(false)
         .build();
   }
 
@@ -191,7 +192,8 @@ public class ElasticsearchIO {
     return mapper.readValue(responseEntity.getContent(), JsonNode.class);
   }
 
-  static void checkForErrors(HttpEntity responseEntity, int backendVersion, boolean partialUpdate)
+  static void checkForErrors(HttpEntity requestBody, HttpEntity responseEntity, int backendVersion,
+                             boolean partialUpdate, Boolean verboseDebugMessages)
       throws IOException {
     JsonNode searchResult = parseResponse(responseEntity);
     boolean errors = searchResult.path("errors").asBoolean();
@@ -228,7 +230,12 @@ public class ElasticsearchIO {
           }
         }
       }
-      throw new IOException(errorMessages.toString());
+
+      if (!verboseDebugMessages) {
+        throw new IOException(errorMessages.toString());
+      } else {
+        throw new IOException(errorMessages + "\n" + searchResult.toPrettyString());
+      }
     }
   }
 
@@ -1104,6 +1111,8 @@ public class ElasticsearchIO {
 
     abstract @Nullable BooleanFieldValueExtractFn getIsDeleteFn();
 
+    abstract Boolean getVerboseDebugMessages();
+
     abstract Builder builder();
 
     @AutoValue.Builder
@@ -1125,6 +1134,8 @@ public class ElasticsearchIO {
       abstract Builder setRetryConfiguration(RetryConfiguration retryConfiguration);
 
       abstract Builder setIsDeleteFn(BooleanFieldValueExtractFn isDeleteFn);
+
+      abstract Builder setVerboseDebugMessages(Boolean verboseDebugMessages);
 
       abstract Write build();
     }
@@ -1265,6 +1276,16 @@ public class ElasticsearchIO {
     public Write withIsDeleteFn(BooleanFieldValueExtractFn isDeleteFn) {
       checkArgument(isDeleteFn != null, "deleteFn is required");
       return builder().setIsDeleteFn(isDeleteFn).build();
+    }
+
+    /**
+     * Enable additional debug output.
+     *
+     * @param isVerboseDebugMessages set to true for enable debug messages
+     * @return the {@link Write} with the function set
+     */
+    public Write withVerboseDebugMessages(Boolean isVerboseDebugMessages) {
+      return builder().setVerboseDebugMessages(isVerboseDebugMessages).build();
     }
 
     @Override
@@ -1480,7 +1501,7 @@ public class ElasticsearchIO {
             && spec.getRetryConfiguration().getRetryPredicate().test(responseEntity)) {
           responseEntity = handleRetry("POST", endPoint, Collections.emptyMap(), requestBody);
         }
-        checkForErrors(responseEntity, backendVersion, spec.getUsePartialUpdate());
+        checkForErrors(requestBody, responseEntity, backendVersion, spec.getUsePartialUpdate(), spec.getVerboseDebugMessages());
       }
 
       /** retry request based on retry configuration policy. */

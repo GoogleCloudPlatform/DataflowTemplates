@@ -92,7 +92,8 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
                 ElasticsearchIO.write()
                         .withConnectionConfiguration(config)
                         .withMaxBatchSize(options().getBatchSize())
-                        .withMaxBatchSizeBytes(options().getBatchSizeBytes());
+                        .withMaxBatchSizeBytes(options().getBatchSizeBytes())
+                        .withVerboseDebugMessages(options().getVerboseDebugMessages());
 
         if (Optional.ofNullable(options().getMaxRetryAttempts()).isPresent()) {
             elasticsearchWriter.withRetryConfiguration(

@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.options;
 
+import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -73,4 +74,10 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
   Long getMaxRetryDuration();
 
   void setMaxRetryDuration(Long maxRetryDuration);
+
+  @Description("Enable additional debug output")
+  @Default.Boolean(false)
+  Boolean getVerboseDebugMessages();
+
+  void setVerboseDebugMessages(Boolean verboseDebugMessages);
 }
