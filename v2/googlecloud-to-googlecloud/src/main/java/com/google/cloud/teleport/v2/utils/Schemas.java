@@ -29,7 +29,6 @@ import org.apache.avro.SchemaBuilder.BaseTypeBuilder;
 import org.apache.avro.SchemaBuilder.FieldAssembler;
 import org.apache.avro.SchemaBuilder.RecordBuilder;
 import org.apache.avro.SchemaBuilder.TypeBuilder;
-import org.apache.avro.SchemaNormalization;
 import org.apache.beam.sdk.io.jdbc.BeamSchemaUtil;
 import org.apache.beam.sdk.schemas.utils.AvroUtils;
 
@@ -40,7 +39,7 @@ public final class Schemas {
 
   /** Serialize Avro schema to JSON format. */
   public static String serialize(Schema schema) throws SchemaConversionException {
-    return SchemaNormalization.toParsingForm(schema);
+    return schema.toString();
   }
 
   /** Convert Dataplex schema to a corresponding Avro schema. */

@@ -225,11 +225,29 @@ public class GenericRecordsToGcsPartitioned
 
   private ZoneId getZoneId(Schema schema) {
     Schema partitionFieldType = schema.getField(partitionColumnName).schema();
-    ZoneId zoneId = AVRO_DATE_TIME_LOGICAL_TYPES.get(partitionFieldType.getLogicalType());
+    // check if the partition field is nullable, inspired by {@code Schema.isNullable()} of Avro 1.9
+    if (schema.getType() == Schema.Type.UNION) {
+      partitionFieldType =
+          partitionFieldType.getTypes().stream()
+              .filter(t -> t.getType() != Schema.Type.NULL)
+              .findFirst()
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          String.format(
+                              "Partition field %s is of unsupported type: %s",
+                              partitionColumnName, schema.getField(partitionColumnName).schema())));
+    }
+
+    // get zone according to the logical-type if there is no logical-type assume UTC time-zone
+    ZoneId zoneId =
+        AVRO_DATE_TIME_LOGICAL_TYPES.getOrDefault(
+            partitionFieldType.getLogicalType(), ZoneOffset.UTC);
     if (zoneId == null) {
       throw new IllegalArgumentException(
           String.format(
-              "Partition field `%s` is of an unsupported type: %s, supported logical types: %s",
+              "Partition field `%s` is of an unsupported type: %s, supported types are `long` types"
+                  + " with logical types: %s",
               partitionColumnName,
               partitionFieldType,
               AVRO_DATE_TIME_LOGICAL_TYPES.keySet().stream()

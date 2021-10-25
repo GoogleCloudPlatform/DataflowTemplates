@@ -128,6 +128,37 @@ public class SchemasTest {
   }
 
   @Test
+  public void testSerializeDeserializeAvroSchema() {
+    Schema schema =
+        new Parser()
+            .parse(
+                "{"
+                    + "\"name\": \"Schema\","
+                    + "\"type\": \"record\","
+                    + "\"fields\": ["
+                    // primitive
+                    + "   {\"name\": \"a\", \"type\": \"int\"},"
+                    // optional primitive
+                    + "   {\"name\": \"b\", \"type\": [\"null\", \"int\"]},"
+                    // optional datetime
+                    + "   {\"name\": \"c\", \"type\": [\"null\","
+                    + "                               {\"type\":\"long\","
+                    + "                                \"logicalType\":\"timestamp-millis\"}]},"
+                    // array
+                    + "   {\"name\": \"xs\", \"type\": {\"type\":\"array\",\"items\":\"string\"}},"
+                    // nested record
+                    + "   {\"name\": \"yz\", \"type\": {"
+                    + "       \"type\": \"record\", \"name\": \"yz.Record\", \"fields\": ["
+                    + "           {\"name\": \"y\", \"type\": \"int\"},"
+                    + "           {\"name\": \"z\", \"type\": \"int\"}]}"
+                    + "   }"
+                    + "]"
+                    + "}");
+
+    assertEquals(schema, SchemaUtils.parseAvroSchema(Schemas.serialize(schema)));
+  }
+
+  @Test
   public void testJdbcSchemaToAvro() throws SQLException {
     System.setProperty("derby.stream.error.field", "System.out"); // log to console, not a log file
     try (Connection conn = DriverManager.getConnection("jdbc:derby:memory:booksdb;create=true");
