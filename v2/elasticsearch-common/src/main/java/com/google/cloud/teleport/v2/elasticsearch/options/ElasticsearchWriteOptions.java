@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.options;
 
-import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
