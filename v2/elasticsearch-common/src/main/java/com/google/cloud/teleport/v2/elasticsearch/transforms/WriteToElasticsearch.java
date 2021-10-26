@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.transforms;
 
-import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
@@ -122,8 +122,8 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
 
             checkArgument(options().getIndex() != null, "Elasticsearch index should not be null.");
 
-            checkArgument(
-                    options().getBatchSize() > 0, "Batch size must be > 0. Got: " + options().getBatchSize());
+      checkArgument(
+          options().getBatchSize() > 0, "Batch size must be > 0. Got: " + options().getBatchSize());
 
             checkArgument(
                     options().getBatchSizeBytes() > 0,
