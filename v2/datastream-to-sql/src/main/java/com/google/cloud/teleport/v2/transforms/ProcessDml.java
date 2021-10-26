@@ -95,7 +95,6 @@ public class ProcessDml {
       if (dmlInfo.getDmlSql().equals("")) {
         return;
       }
-      LOG.info("DML: {}", dmlInfo.getDmlSql());
 
       // TODO(dhercher): More complex compare w/o String.join
       String lastSortKey = myState.read();
