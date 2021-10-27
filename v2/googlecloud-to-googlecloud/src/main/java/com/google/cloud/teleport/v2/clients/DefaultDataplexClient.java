@@ -137,6 +137,9 @@ public final class DefaultDataplexClient implements DataplexClient {
     ImmutableList.Builder<GoogleCloudDataplexV1Partition> result = ImmutableList.builder();
     Partitions partitions = client.projects().locations().lakes().zones().entities().partitions();
     GoogleCloudDataplexV1ListPartitionsResponse response = partitions.list(entityName).execute();
+    if (response.getPartitions() == null) {
+      return ImmutableList.of();
+    }
     result.addAll(response.getPartitions());
     // the result of the list is paginated with the default page size being 10
     while (response.getNextPageToken() != null) {
