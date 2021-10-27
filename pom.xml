@@ -667,6 +667,7 @@
           <target>${java.version}</target>
           <parameters>true</parameters>
           <testCompilerArgument>-parameters</testCompilerArgument>
+          <forceJavacCompilerUse>true</forceJavacCompilerUse>
         </configuration>
       </plugin>
 

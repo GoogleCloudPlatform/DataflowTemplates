@@ -132,6 +132,11 @@ public class SplunkConverters {
     ValueProvider<String> getTokenKMSEncryptionKey();
 
     void setTokenKMSEncryptionKey(ValueProvider<String> keyName);
+
+    @Description("Pattern to where certificate lives, ex: gs://mybucket/somepath/*.crt")
+    ValueProvider<String> getSelfSignedCertificatePath();
+
+    void setSelfSignedCertificatePath(ValueProvider<String> selfSignedCertificatePath);
   }
 
   private static class FailsafeStringToSplunkEvent

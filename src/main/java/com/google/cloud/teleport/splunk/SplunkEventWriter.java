@@ -21,6 +21,7 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.HttpResponseException;
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.util.GCSUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Lists;
@@ -29,10 +30,10 @@ import com.google.common.net.InternetDomainName;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -109,6 +110,9 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
   abstract ValueProvider<Boolean> disableCertificateValidation();
 
   @Nullable
+  abstract ValueProvider<String> selfSignedCertificatePath();
+
+  @Nullable
   abstract ValueProvider<Integer> inputBatchCount();
 
   @Setup
@@ -148,13 +152,19 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
               .withToken(token().get())
               .withDisableCertificateValidation(disableValidation);
 
+      if (selfSignedCertificatePath() != null && selfSignedCertificatePath().get() != null) {
+        builder.withSelfSignedCertificate(
+            GCSUtils.getGcsFileAsBytes(selfSignedCertificatePath().get()));
+      }
+
       publisher = builder.build();
       LOG.info("Successfully created HttpEventPublisher");
 
-    } catch (NoSuchAlgorithmException
+    } catch (CertificateException
+        | NoSuchAlgorithmException
         | KeyStoreException
         | KeyManagementException
-        | UnsupportedEncodingException e) {
+        | IOException e) {
       LOG.error("Error creating HttpEventPublisher: {}", e.getMessage());
       throw new RuntimeException(e);
     }
@@ -353,6 +363,8 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
     abstract Builder setDisableCertificateValidation(
         ValueProvider<Boolean> disableCertificateValidation);
 
+    abstract Builder setSelfSignedCertificatePath(ValueProvider<String> selfSignedCertificatePath);
+
     abstract Builder setInputBatchCount(ValueProvider<Integer> inputBatchCount);
 
     abstract SplunkEventWriter autoBuild();
@@ -424,6 +436,16 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
     public Builder withDisableCertificateValidation(
         ValueProvider<Boolean> disableCertificateValidation) {
       return setDisableCertificateValidation(disableCertificateValidation);
+    }
+
+    /**
+     * Method to set the self signed certificate path.
+     *
+     * @param selfSignedCertificatePath Path to self-signed certificate
+     * @return {@link Builder}
+     */
+    public Builder withSelfSignedCertificatePath(ValueProvider<String> selfSignedCertificatePath) {
+      return setSelfSignedCertificatePath(selfSignedCertificatePath);
     }
 
     /** Build a new {@link SplunkEventWriter} objects based on the configuration. */
