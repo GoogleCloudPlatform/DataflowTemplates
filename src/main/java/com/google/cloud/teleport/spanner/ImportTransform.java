@@ -485,7 +485,8 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                                     ddlStatements,
                                     null);
                             try {
-                              op.get(5, TimeUnit.MINUTES);
+                              // TODO: Wait till operation is complete.
+                              op.get(30, TimeUnit.MINUTES);
                             } catch (InterruptedException
                                 | ExecutionException
                                 | TimeoutException e) {
