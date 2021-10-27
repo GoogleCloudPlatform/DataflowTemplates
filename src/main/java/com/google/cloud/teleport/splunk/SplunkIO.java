@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.splunk;
 
-import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkArgument;
-import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkNotNull;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.auto.value.AutoValue;
 import java.util.concurrent.ThreadLocalRandom;
@@ -31,7 +31,7 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.vendor.guava.v20_0.com.google.common.base.MoreObjects;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.MoreObjects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -217,7 +217,8 @@ public class SplunkIO {
           ValueProvider<Boolean> disableCertificateValidation) {
         checkArgument(
             disableCertificateValidation != null,
-            "withDisableCertificateValidation(disableCertificateValidation) called with null input.");
+            "withDisableCertificateValidation(disableCertificateValidation) called with null"
+                + " input.");
         return setDisableCertificateValidation(disableCertificateValidation);
       }
 
@@ -231,7 +232,8 @@ public class SplunkIO {
       public Builder withDisableCertificateValidation(Boolean disableCertificateValidation) {
         checkArgument(
             disableCertificateValidation != null,
-            "withDisableCertificateValidation(disableCertificateValidation) called with null input.");
+            "withDisableCertificateValidation(disableCertificateValidation) called with null"
+                + " input.");
         return setDisableCertificateValidation(
             ValueProvider.StaticValueProvider.of((disableCertificateValidation)));
       }
