@@ -24,6 +24,7 @@ import com.google.common.io.Resources;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.function.Consumer;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Parser;
 import org.apache.avro.generic.GenericData;
@@ -47,6 +48,18 @@ public class JsonConvertersTest {
 
   private static final String ONE_FIELD_RECORD_FILE_PATH =
       Resources.getResource(JSON_RESOURCES_DIR + "one_field_record.json").getPath();
+
+  private static final String ONE_NULL_FIELD_EXPLICIT_FILE_PATH =
+      Resources.getResource(JSON_RESOURCES_DIR + "one_null_field_explicit.json").getPath();
+
+  private static final String ONE_NULL_FIELD_IMPLICIT_FILE_PATH =
+      Resources.getResource(JSON_RESOURCES_DIR + "one_null_field_implicit.json").getPath();
+
+  private static final String ONE_NOT_NULL_FIELD_FILE_PATH =
+      Resources.getResource(JSON_RESOURCES_DIR + "one_not_null_field.json").getPath();
+
+  private static final String NUMERIC_FIELDS_RECORD_FILE_PATH =
+      Resources.getResource(JSON_RESOURCES_DIR + "numeric_fields_record.json").getPath();
 
   private static final String NESTED_FIELDS_RECORD_FILE_PATH =
       Resources.getResource(JSON_RESOURCES_DIR + "nested_fields_record.json").getPath();
@@ -81,7 +94,7 @@ public class JsonConvertersTest {
 
   /**
    * Tests if {@link JsonConverters.StringToGenericRecordFn} creates a proper GenericRecord of a
-   * simple 2 fields JSON records.
+   * simple 1 field JSON records.
    */
   @Test
   public void testOneFieldJsonRecordToGenericRecord() {
@@ -104,6 +117,48 @@ public class JsonConvertersTest {
                 "TestReadJson",
                 JsonConverters.ReadJson.newBuilder()
                     .setInputFileSpec(ONE_FIELD_RECORD_FILE_PATH)
+                    .build())
+            .apply(
+                "ConvertStringToGenericRecord",
+                ParDo.of(new StringToGenericRecordFn(serializedSchema)))
+            .setCoder(AvroCoder.of(GenericRecord.class, schema));
+
+    PAssert.that(pCollection).containsInAnyOrder(expected);
+
+    pipeline.run();
+  }
+
+  /**
+   * Tests if {@link JsonConverters.StringToGenericRecordFn} creates a proper GenericRecord of a
+   * simple numeric fields JSON records.
+   */
+  @Test
+  public void testNumericFieldsJsonRecordToGenericRecord() {
+    String serializedSchema =
+        "{"
+            + "\"name\": \"Schema\","
+            + "\"type\": \"record\","
+            + "\"fields\": ["
+            + "   {\"name\": \"i\", \"type\": \"int\"},"
+            + "   {\"name\": \"l\", \"type\": \"long\"},"
+            + "   {\"name\": \"f\", \"type\": \"float\"},"
+            + "   {\"name\": \"d\", \"type\": \"double\"}"
+            + "]"
+            + "}";
+    Schema schema = new Parser().parse(serializedSchema);
+
+    GenericRecord expected = new Record(schema);
+    expected.put("i", 42);
+    expected.put("l", 42L);
+    expected.put("f", 42F);
+    expected.put("d", 42D);
+
+    PCollection<GenericRecord> pCollection =
+        pipeline
+            .apply(
+                "TestReadJson",
+                JsonConverters.ReadJson.newBuilder()
+                    .setInputFileSpec(NUMERIC_FIELDS_RECORD_FILE_PATH)
                     .build())
             .apply(
                 "ConvertStringToGenericRecord",
@@ -201,6 +256,63 @@ public class JsonConvertersTest {
                 JsonConverters.ReadJson.newBuilder()
                     .setInputFileSpec(ARRAY_OF_RECORDS_RECORD_FILE_PATH)
                     .build())
+            .apply(
+                "ConvertStringToGenericRecord",
+                ParDo.of(new StringToGenericRecordFn(serializedSchema)))
+            .setCoder(AvroCoder.of(GenericRecord.class, schema));
+
+    PAssert.that(pCollection).containsInAnyOrder(expected);
+
+    pipeline.run();
+  }
+
+  @Test
+  public void testOneNullableFieldExplicitJsonExplicitAvro() {
+    testOneNullableFieldJsonRecordToGenericRecord(
+        ONE_NULL_FIELD_EXPLICIT_FILE_PATH, r -> r.put("x", null));
+  }
+
+  @Test
+  public void testOneNullableFieldExplicitJsonImplicitAvro() {
+    testOneNullableFieldJsonRecordToGenericRecord(ONE_NULL_FIELD_EXPLICIT_FILE_PATH, r -> {});
+  }
+
+  @Test
+  public void testOneNullableFieldImplicitJsonExplicitAvro() {
+    testOneNullableFieldJsonRecordToGenericRecord(
+        ONE_NULL_FIELD_IMPLICIT_FILE_PATH, r -> r.put("x", null));
+  }
+
+  @Test
+  public void testOneNullableFieldImplicitJsonImplicitAvro() {
+    testOneNullableFieldJsonRecordToGenericRecord(ONE_NULL_FIELD_IMPLICIT_FILE_PATH, r -> {});
+  }
+
+  @Test
+  public void testOneNullableFieldNonNullValue() {
+    testOneNullableFieldJsonRecordToGenericRecord(
+        ONE_NOT_NULL_FIELD_FILE_PATH, r -> r.put("x", 42L));
+  }
+
+  private void testOneNullableFieldJsonRecordToGenericRecord(
+      String inputFile, Consumer<GenericRecord> genericRecordSetter) {
+    String serializedSchema =
+        "{"
+            + "\"name\": \"Schema\","
+            + "\"type\": \"record\","
+            + "\"fields\": ["
+            + "   {\"name\": \"x\", \"type\": [\"null\", \"long\"]}"
+            + "]"
+            + "}";
+    Schema schema = new Parser().parse(serializedSchema);
+    GenericRecord expected = new Record(schema);
+    genericRecordSetter.accept(expected);
+
+    PCollection<GenericRecord> pCollection =
+        pipeline
+            .apply(
+                "TestReadJson",
+                JsonConverters.ReadJson.newBuilder().setInputFileSpec(inputFile).build())
             .apply(
                 "ConvertStringToGenericRecord",
                 ParDo.of(new StringToGenericRecordFn(serializedSchema)))
