@@ -99,8 +99,7 @@ public class SpannerRecordConverter {
               field, nullValue ? null : ByteBuffer.wrap(row.getBytes(fieldName).toByteArray()));
           break;
         case STRING:
-          if (STRING_PATTERN.matcher(spannerType).matches()
-              || spannerType.equals("JSON")) {
+          if (STRING_PATTERN.matcher(spannerType).matches() || spannerType.equals("JSON")) {
             builder.set(field, nullValue ? null : row.getString(fieldName));
           } else if (spannerType.equals("TIMESTAMP")) {
             builder.set(field, nullValue ? null : row.getTimestamp(fieldName).toString());
