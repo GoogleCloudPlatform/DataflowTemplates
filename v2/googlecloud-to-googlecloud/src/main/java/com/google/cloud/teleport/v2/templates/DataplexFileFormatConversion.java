@@ -27,10 +27,11 @@ import com.google.cloud.teleport.v2.transforms.JsonConverters;
 import com.google.cloud.teleport.v2.utils.Schemas;
 import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
 import com.google.cloud.teleport.v2.values.DataplexCompression;
+import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
-import java.util.List;
+import java.util.regex.Pattern;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.Pipeline;
@@ -66,15 +67,10 @@ public class DataplexFileFormatConversion {
    */
   public interface FileFormatConversionOptions extends GcpOptions, PipelineOptions {
 
-    @Description("Input asset.")
-    String getInputAsset();
+    @Description("Input asset or entities list.")
+    String getInputAssetOrEntitiesList();
 
-    void setInputAsset(String inputAsset);
-
-    @Description("Input entities list.")
-    List<String> getInputEntities();
-
-    void setInputEntities(List<String> inputEntities);
+    void setInputAssetOrEntitiesList(String inputAssetOrEntitiesList);
 
     @Description("Output file format. Format: PARQUET, AVRO, or ORC. Default: none.")
     @Required
@@ -116,6 +112,17 @@ public class DataplexFileFormatConversion {
     }
   }
 
+  private static final Pattern ASSET_PATTERN =
+      Pattern.compile(
+          "^projects/[^\\n\\r/]+/locations/[^\\n\\r/]+/lakes/[^\\n\\r/]+/zones/[^\\n\\r/]+"
+              + "/assets/[^\\n\\r/]+$");
+  private static final Pattern ENTITIES_PATTERN =
+      Pattern.compile(
+          "^projects/[^\\n\\r/]+/locations/[^\\n\\r/]+/lakes/[^\\n\\r/]+/zones/[^\\n\\r/]+"
+              + "/entities/[^\\n\\r/]+"
+              + "(,projects/[^\\n\\r/]+/locations/[^\\n\\r/]+/lakes/[^\\n\\r/]+/zones/[^\\n\\r/]+"
+              + "/entities/[^\\n\\r/]+)*$");
+
   /**
    * Main entry point for pipeline execution.
    *
@@ -145,7 +152,9 @@ public class DataplexFileFormatConversion {
       DataplexClient dataplex,
       OutputPathProvider outputPathProvider)
       throws IOException {
-    if ((options.getInputAsset() == null) == (options.getInputEntities() == null)) {
+    boolean isInputAsset = ASSET_PATTERN.matcher(options.getInputAssetOrEntitiesList()).matches();
+    if (!isInputAsset
+        && !ENTITIES_PATTERN.matcher(options.getInputAssetOrEntitiesList()).matches()) {
       throw new IllegalArgumentException(
           "Either input asset or input entities list must be provided");
     }
@@ -165,9 +174,10 @@ public class DataplexFileFormatConversion {
     String outputBucket = outputAsset.getResourceSpec().getName();
 
     ImmutableList<GoogleCloudDataplexV1Entity> entities =
-        options.getInputAsset() != null
-            ? dataplex.getCloudStorageEntities(options.getInputAsset())
-            : dataplex.getEntities(options.getInputEntities());
+        isInputAsset
+            ? dataplex.getCloudStorageEntities(options.getInputAssetOrEntitiesList())
+            : dataplex.getEntities(
+                Splitter.on(',').trimResults().splitToList(options.getInputAssetOrEntitiesList()));
 
     for (GoogleCloudDataplexV1Entity entity : entities) {
       ImmutableList<GoogleCloudDataplexV1Partition> partitions =

@@ -146,7 +146,7 @@ public class DataplexFileFormatConversionTest {
 
     FileFormatConversionOptions options =
         PipelineOptionsFactory.create().as(FileFormatConversionOptions.class);
-    options.setInputEntities(ImmutableList.of(entity1.getName()));
+    options.setInputAssetOrEntitiesList(entity1.getName());
     options.setOutputFileFormat(OutputFileFormat.AVRO);
     options.setOutputAsset(outputAsset.getName());
 
@@ -177,7 +177,7 @@ public class DataplexFileFormatConversionTest {
 
     FileFormatConversionOptions options =
         PipelineOptionsFactory.create().as(FileFormatConversionOptions.class);
-    options.setInputAsset(asset2.getName());
+    options.setInputAssetOrEntitiesList(asset2.getName());
     options.setOutputFileFormat(OutputFileFormat.PARQUET);
     options.setOutputAsset(outputAsset.getName());
     options.setOutputFileCompression(DataplexCompression.GZIP);
