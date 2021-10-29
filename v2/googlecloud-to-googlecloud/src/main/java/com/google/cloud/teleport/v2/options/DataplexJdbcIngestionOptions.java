@@ -53,6 +53,7 @@ public interface DataplexJdbcIngestionOptions extends GcpOptions, PipelineOption
 
   @Description(
       "JDBC connection property string. " + "for example: unicode=true&characterEncoding=UTF-8")
+  @Validation.Required
   String getConnectionProperties();
 
   void setConnectionProperties(String connectionProperties);
