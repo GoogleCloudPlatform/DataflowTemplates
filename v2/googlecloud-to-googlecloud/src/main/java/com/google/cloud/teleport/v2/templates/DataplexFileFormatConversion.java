@@ -336,7 +336,7 @@ public class DataplexFileFormatConversion {
       }
       // TODO(olegsa): consider updating CsvConverters.ReadCsv to support
       //  GoogleCloudDataplexV1StorageFormatCsvOptions.getQuote (probably rare case)
-      return CsvConverters.ReadCsv.newBuilder()
+      return builder
           .setInputFileSpec(inputFileSpec)
           .setFileEncoding(csvOptions.getEncoding() != null ? csvOptions.getEncoding() : "UTF-8")
           .setHasHeaders(csvOptions.getHeaderRows() != null && csvOptions.getHeaderRows() > 0)
