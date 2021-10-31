@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.apache.beam.sdk.testing.TestPipeline;
+import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.junit.Before;
 import org.junit.Test;
@@ -182,6 +183,38 @@ public class DataplexBigQueryToGcsFilterTest {
     Filter f = new MetadataFilter(options);
     assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isTrue();
     assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isFalse();
+  }
+
+  @Test
+  public void test_whenBeforeDateIs1DayDuration_dateParsedCorrectly() {
+    // current time in the DEFAULT time zone minus one day:
+    long micros = Instant.now().minus(Duration.standardDays(1)).getMillis() * 1000L;
+
+    BigQueryTable.Builder olderTable = table().setLastModificationTime(micros - 100000L);
+    BigQueryTable.Builder newerTable = table().setLastModificationTime(micros + 100000L);
+
+    options.setTableRefs(null);
+    options.setExportDataModifiedBeforeDateTime("-P1D");
+
+    Filter f = new MetadataFilter(options);
+    assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isTrue();
+    assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isFalse();
+  }
+
+  @Test
+  public void test_whenBeforeDateIs1Day3HoursDuration_dateParsedCorrectly() {
+    // current time in the DEFAULT time zone minus 1 day 3 hours:
+    long micros = Instant.now().minus(Duration.millis(27 * 60 * 60 * 1000)).getMillis() * 1000L;
+
+    BigQueryTable.Builder olderTable = table().setLastModificationTime(micros - 100000L);
+    BigQueryTable.Builder newerTable = table().setLastModificationTime(micros + 100000L);
+
+    options.setTableRefs(null);
+    options.setExportDataModifiedBeforeDateTime("-p1dt3h");
+
+    Filter f = new MetadataFilter(options);
+    assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isTrue();
+    assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isFalse();
   }
 
   @Test
