@@ -37,6 +37,7 @@ The template requires the following parameters:
 The template has the following optional parameters:
 * elasticsearchUsername: Elasticsearch username used to connect to Elasticsearch endpoint. Overrides ApiKey option if specified.
 * elasticsearchPassword: Elasticsearch password used to connect to Elasticsearch endpoint. Overrides ApiKey option if specified.
+* verboseDebugMessages: Log entire input message for debugging purposes
 * dataset: The type of logs sent via Pub/Sub for which we have out of the box dashboard. Known log types values are `audit`, `vpcflow`, and `firewall`. If no known log type is detected, we default to `pubsub` type.
 * namespace: An arbitrary grouping, such as an environment (dev, prod, or qa), a team, or a strategic business unit. Default is `default`
 * batchSize: Batch size in number of documents. Default: 1000
@@ -147,6 +148,13 @@ echo '{
               "name":"elasticsearchPassword",
               "label":"Password for Elasticsearch endpoint. Overrides ApiKey option if specified.",
               "helpText":"Password for Elasticsearch endpoint. Overrides ApiKey option if specified.",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"verboseDebugMessages",
+              "label":"Log entire input message for debugging purposes.",
+              "helpText":"Log entire input message for debugging purposes.",
               "paramType":"TEXT",
               "isOptional":true
           },

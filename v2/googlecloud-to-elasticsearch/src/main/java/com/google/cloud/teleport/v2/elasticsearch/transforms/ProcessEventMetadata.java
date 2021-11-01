@@ -20,9 +20,13 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** ProcessEventMetadata is used to enrich input message from Pub/Sub with metadata. */
 public class ProcessEventMetadata extends PTransform<PCollection<String>, PCollection<String>> {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ProcessEventMetadata.class);
 
   @Override
   public PCollection<String> expand(PCollection<String> input) {
@@ -36,6 +40,11 @@ public class ProcessEventMetadata extends PTransform<PCollection<String>, PColle
       String input = context.element();
       PubSubToElasticsearchOptions options =
           context.getPipelineOptions().as(PubSubToElasticsearchOptions.class);
+
+      //Log input message
+      if (options.getVerboseDebugMessages()) {
+        LOG.info("Input message: " + input);
+      }
 
       context.output(EventMetadataBuilder.build(input, options).getEnrichedMessageAsString());
     }
