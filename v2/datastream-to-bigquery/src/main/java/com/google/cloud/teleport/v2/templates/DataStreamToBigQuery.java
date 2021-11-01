@@ -21,7 +21,8 @@ import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.cdc.mappers.BigQueryDefaultSchemas;
 import com.google.cloud.teleport.v2.cdc.mappers.DataStreamMapper;
-import com.google.cloud.teleport.v2.cdc.merge.DataStreamBigQueryMerger;
+import com.google.cloud.teleport.v2.cdc.mappers.MergeInfoMapper;
+import com.google.cloud.teleport.v2.cdc.merge.BigQueryMerger;
 import com.google.cloud.teleport.v2.cdc.merge.MergeConfiguration;
 import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
@@ -286,6 +287,7 @@ public class DataStreamToBigQuery {
     Pipeline pipeline = Pipeline.create(options);
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
 
+    String bigqueryProjectId = getBigQueryProjectId(options);
     String dlqDirectory = dlqManager.getRetryDlqDirectoryWithDateTime();
     String tempDlqDir = dlqManager.getRetryDlqDirectory() + "tmp/";
 
@@ -405,18 +407,19 @@ public class DataStreamToBigQuery {
                   .withDefaultSchema(BigQueryDefaultSchemas.DATASTREAM_METADATA_SCHEMA)
                   .withIgnoreFields(fieldsToIgnore))
           .apply(
-              "Merge into Replica Tables",
-              new DataStreamBigQueryMerger(
-                      options.as(GcpOptions.class),
-                      options.getOutputProjectId(),
-                      options.getOutputStagingDatasetTemplate(),
-                      options.getOutputStagingTableNameTemplate(),
-                      options.getOutputDatasetTemplate(),
-                      options.getOutputTableNameTemplate(),
-                      Duration.standardMinutes(options.getMergeFrequencyMinutes()),
-                      null,
-                      MergeConfiguration.bigQueryConfiguration())
-                  .withDataStreamRootUrl(options.getDataStreamRootUrl()));
+              "BigQuery Merge/Build MergeInfo",
+              new MergeInfoMapper(
+                  bigqueryProjectId,
+                  options.getOutputStagingDatasetTemplate(),
+                  options.getOutputStagingTableNameTemplate(),
+                  options.getOutputDatasetTemplate(),
+                  options.getOutputTableNameTemplate()))
+          .apply(
+              "BigQuery Merge/Merge into Replica Tables",
+              BigQueryMerger.of(
+                  MergeConfiguration.bigQueryConfiguration()
+                      .withMergeWindowDuration(
+                          Duration.standardMinutes(options.getMergeFrequencyMinutes()))));
     }
 
     /*
@@ -462,6 +465,12 @@ public class DataStreamToBigQuery {
     }
 
     return cleanTableRow;
+  }
+
+  private static String getBigQueryProjectId(Options options) {
+    return options.getOutputProjectId() == null
+        ? options.as(GcpOptions.class).getProject()
+        : options.getOutputProjectId();
   }
 
   private static DeadLetterQueueManager buildDlqManager(Options options) {
