@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.cdc.merge;
 
 import com.google.auto.value.AutoValue;
 import java.io.Serializable;
+import org.joda.time.Duration;
 
 /** Class {@link MergeConfiguration}. */
 @AutoValue
@@ -36,7 +37,7 @@ public abstract class MergeConfiguration implements Serializable {
    * means that the REPLICA table does not contain a row that is contained in the STAGING table.
    * <b>Therefore, insert this new row.</b>
    */
-  public static final String DEFAULT_MERGE_QUERY_TEMPLATE =
+  private static final String DEFAULT_MERGE_QUERY_TEMPLATE =
       String.join(
           "",
           "MERGE `{replicaTable}` AS {replicaAlias} ",
@@ -48,8 +49,9 @@ public abstract class MergeConfiguration implements Serializable {
           "WHEN NOT MATCHED BY TARGET AND {stagingAlias}.{deleteColumn}!=True ",
           "THEN {mergeInsertSql}");
 
-  public static final Boolean DEFAULT_SUPPORT_PARTITIONED_TABLES = true;
-  public static final Integer DEFAULT_PARTITION_RETENTION = 1;
+  private static final Boolean DEFAULT_SUPPORT_PARTITIONED_TABLES = true;
+  private static final Integer DEFAULT_PARTITION_RETENTION_DAYS = 1;
+  private static final Duration DEFAULT_MERGE_WINDOW_DURATION = Duration.standardMinutes(30);
 
   // BigQuery-specific properties
   public static final String BIGQUERY_QUOTE_CHARACTER = "`";
@@ -62,8 +64,18 @@ public abstract class MergeConfiguration implements Serializable {
 
   public abstract Integer partitionRetention();
 
+  public abstract Duration mergeWindowDuration();
+
   public static MergeConfiguration bigQueryConfiguration() {
     return MergeConfiguration.builder().setQuoteCharacter(BIGQUERY_QUOTE_CHARACTER).build();
+  }
+
+  public MergeConfiguration withPartitionRetention(int partitionRetention) {
+    return this.toBuilder().setPartitionRetention(Integer.valueOf(partitionRetention)).build();
+  }
+
+  public MergeConfiguration withMergeWindowDuration(Duration duration) {
+    return this.toBuilder().setMergeWindowDuration(duration).build();
   }
 
   public abstract Builder toBuilder();
@@ -72,8 +84,9 @@ public abstract class MergeConfiguration implements Serializable {
     return new AutoValue_MergeConfiguration.Builder()
         .setMergeQueryTemplate(DEFAULT_MERGE_QUERY_TEMPLATE)
         .setSupportPartitionedTables(DEFAULT_SUPPORT_PARTITIONED_TABLES)
-        .setPartitionRetention(DEFAULT_PARTITION_RETENTION)
-        .setSupportPartitionedTables(true);
+        .setPartitionRetention(DEFAULT_PARTITION_RETENTION_DAYS)
+        .setSupportPartitionedTables(true)
+        .setMergeWindowDuration(DEFAULT_MERGE_WINDOW_DURATION);
   }
 
   @AutoValue.Builder
@@ -85,6 +98,8 @@ public abstract class MergeConfiguration implements Serializable {
     abstract Builder setMergeQueryTemplate(String mergeQueryTemplate);
 
     abstract Builder setPartitionRetention(Integer partitionRetention);
+
+    abstract Builder setMergeWindowDuration(Duration mergeWindowDuration);
 
     abstract MergeConfiguration build();
   }
