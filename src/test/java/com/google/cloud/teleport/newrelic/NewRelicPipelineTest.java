@@ -29,6 +29,7 @@ import java.time.ZoneOffset;
 
 import static com.google.cloud.teleport.newrelic.utils.HttpClient.APPLICATION_GZIP;
 import static com.google.cloud.teleport.newrelic.utils.HttpClient.APPLICATION_JSON;
+import static com.google.cloud.teleport.templates.PubsubToNewRelic.PLUGIN_VERSION;
 import static org.junit.Assume.assumeNoException;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -287,10 +288,15 @@ public class NewRelicPipelineTest {
     }
 
     private String jsonArrayOf(final JsonObject... jsonObjects) {
-        JsonArray arr = new JsonArray();
+        JsonObject payload = new JsonObject();
+        JsonObject commonPayload = new JsonObject();
+        commonPayload.addProperty("plugin.source", "gcp-dataflow-" + PLUGIN_VERSION);
+        payload.add("common", commonPayload);
+        JsonArray logs = new JsonArray();
         for (JsonObject obj : jsonObjects) {
-            arr.add(obj);
+            logs.add(obj);
         }
-        return arr.toString();
+        payload.add("logs", logs);
+        return payload.toString();
     }
 }

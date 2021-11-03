@@ -75,6 +75,8 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
  */
 public class PubsubToNewRelic {
 
+    public static final String PLUGIN_VERSION = "1.0.0";
+
     /**
      * String/String Coder for FailsafeElement.
      */
