@@ -13,10 +13,10 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
  */
 public class NewRelicConfig {
     protected static final String DEFAULT_LOGS_API_URL = "https://log-api.newrelic.com/log/v1";
-    protected static final int DEFAULT_BATCH_COUNT = 1;
+    protected static final int DEFAULT_BATCH_COUNT = 100;
     protected static final boolean DEFAULT_DISABLE_CERTIFICATE_VALIDATION = false;
     protected static final boolean DEFAULT_USE_COMPRESSION = true;
-    public static final long DEFAULT_FLUSH_DELAY = 2;
+    public static final long DEFAULT_FLUSH_DELAY = 5;
     protected static final Integer DEFAULT_PARALLELISM = 1;
 
     private final ValueProvider<String> logsApiUrl;
