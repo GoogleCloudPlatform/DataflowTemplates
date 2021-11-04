@@ -2,8 +2,8 @@ package com.google.cloud.teleport.newrelic.config;
 
 import com.google.cloud.teleport.util.KMSEncryptedNestedValueProvider;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.commons.lang.builder.ToStringBuilder;
 
-import static com.google.cloud.teleport.newrelic.utils.ConfigHelper.valueOrDefault;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 /**
@@ -96,5 +96,33 @@ public class NewRelicConfig {
 
     public ValueProvider<Boolean> getUseCompression() {
         return useCompression;
+    }
+
+    @Override
+    public String toString() {
+        return new ToStringBuilder(this)
+                .append("logsApiUrl", logsApiUrl)
+                .append("licenseKey", licenseKey)
+                .append("batchCount", batchCount)
+                .append("parallelism", parallelism)
+                .append("disableCertificateValidation", disableCertificateValidation)
+                .append("useCompression", useCompression)
+                .append("flushDelay", flushDelay)
+                .toString();
+    }
+
+    /**
+     * Returns the value included in the provided ValueProvider, if it's available and non-null. In any other case,
+     * it returns the default value provided in the second argument.
+     *
+     * @param value        The value to use, if it's non-null.
+     * @param defaultValue Fallback value to use if the provided ValueProvider is null or holds a null value.
+     * @param <T>          The type of the value being read
+     * @return The value included in the provided ValueProvider, if it's available and non-null, otherwise the default value.
+     */
+    private static <T> ValueProvider<T> valueOrDefault(ValueProvider<T> value, T defaultValue) {
+        return (value != null && value.isAccessible()) && value.get() != null
+                ? ValueProvider.StaticValueProvider.of(value.get())
+                : ValueProvider.StaticValueProvider.of(defaultValue);
     }
 }

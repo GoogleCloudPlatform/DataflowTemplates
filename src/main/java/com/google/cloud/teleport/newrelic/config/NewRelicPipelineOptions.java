@@ -20,7 +20,7 @@ public interface NewRelicPipelineOptions extends PipelineOptions {
 
     void setLogsApiUrl(ValueProvider<String> logsApiUrl);
 
-    @Description("Batch count for sending multiple events to NewRelic in a single POST.")
+    @Description("Maximum number of log records to aggregate into a batch before sending them to NewRelic in a single HTTP POST request.")
     ValueProvider<Integer> getBatchCount();
 
 

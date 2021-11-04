@@ -1,17 +1,16 @@
 package com.google.cloud.teleport.templates;
 
-import com.google.cloud.teleport.coders.FailsafeElementCoder;
-import com.google.cloud.teleport.newrelic.dtos.NewRelicLogRecord;
 import com.google.cloud.teleport.newrelic.NewRelicPipeline;
 import com.google.cloud.teleport.newrelic.config.NewRelicConfig;
 import com.google.cloud.teleport.newrelic.config.PubsubToNewRelicPipelineOptions;
-import com.google.cloud.teleport.newrelic.ptransforms.ReadMessagesFromPubSub;
+import com.google.cloud.teleport.newrelic.dtos.NewRelicLogRecord;
 import com.google.cloud.teleport.newrelic.ptransforms.NewRelicIO;
-import com.google.cloud.teleport.newrelic.utils.ConfigHelper;
+import com.google.cloud.teleport.newrelic.ptransforms.ReadMessagesFromPubSub;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The {@link PubsubToNewRelic} pipeline is a streaming pipeline which ingests data from Cloud
@@ -80,11 +79,7 @@ public class PubsubToNewRelic {
 
     public static final String PLUGIN_VERSION = "1.0.0";
 
-    /**
-     * String/String Coder for FailsafeElement.
-     */
-    public static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
-            FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
+    private static final Logger LOG = LoggerFactory.getLogger(PubsubToNewRelic.class);
 
     /**
      * The main entry-point for pipeline execution. This method will start the pipeline but will not
@@ -106,7 +101,7 @@ public class PubsubToNewRelic {
         final Pipeline pipeline = Pipeline.create(options);
 
         final NewRelicConfig newRelicConfig = NewRelicConfig.fromPipelineOptions(options);
-        ConfigHelper.logConfiguration(newRelicConfig);
+        LOG.debug("Using configuration: {}", newRelicConfig);
 
         final NewRelicPipeline nrPipeline = new NewRelicPipeline(
                 pipeline,
