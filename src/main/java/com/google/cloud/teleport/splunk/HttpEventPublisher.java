@@ -104,7 +104,7 @@ public abstract class HttpEventPublisher {
   abstract String token();
 
   @Nullable
-  abstract byte[] selfSignedCertificate();
+  abstract byte[] rootCaCertificate();
 
   @Nullable
   abstract Integer maxElapsedMillis();
@@ -218,9 +218,9 @@ public abstract class HttpEventPublisher {
 
     abstract Boolean disableCertificateValidation();
 
-    abstract Builder setSelfSignedCertificate(byte[] certificate);
+    abstract Builder setRootCaCertificate(byte[] certificate);
 
-    abstract byte[] selfSignedCertificate();
+    abstract byte[] rootCaCertificate();
 
     abstract Builder setMaxElapsedMillis(Integer maxElapsedMillis);
 
@@ -256,9 +256,9 @@ public abstract class HttpEventPublisher {
      * @param certificate User provided self-signed certificate
      * @return {@link Builder}
      */
-    public Builder withSelfSignedCertificate(byte[] certificate) {
-      checkNotNull(certificate, "withSelfSignedCertificate(certificate) called with null input.");
-      return setSelfSignedCertificate(certificate);
+    public Builder withRootCaCertificate(byte[] certificate) {
+      checkNotNull(certificate, "withRootCa(certificate) called with null input.");
+      return setRootCaCertificate(certificate);
     }
 
     /**
@@ -293,8 +293,9 @@ public abstract class HttpEventPublisher {
      *
      * @return {@link HttpEventPublisher}
      */
-    public HttpEventPublisher build() throws NoSuchAlgorithmException,
-        KeyStoreException, KeyManagementException, CertificateException {
+    public HttpEventPublisher build()
+        throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException,
+            CertificateException, IOException {
 
       checkNotNull(token(), "Authentication token needs to be specified via withToken(token).");
       checkNotNull(genericUrl(), "URL needs to be specified via withUrl(url).");
@@ -313,7 +314,7 @@ public abstract class HttpEventPublisher {
 
       CloseableHttpClient httpClient =
           getHttpClient(
-              DEFAULT_MAX_CONNECTIONS, disableCertificateValidation(), selfSignedCertificate());
+              DEFAULT_MAX_CONNECTIONS, disableCertificateValidation(), rootCaCertificate());
 
       setTransport(new ApacheHttpTransport(httpClient));
       setRequestFactory(transport().createRequestFactory());
@@ -341,9 +342,9 @@ public abstract class HttpEventPublisher {
      * @param disableCertificateValidation should disable certificate validation.
      */
     private CloseableHttpClient getHttpClient(
-        int maxConnections, boolean disableCertificateValidation, byte[] selfSignedCertificate)
+        int maxConnections, boolean disableCertificateValidation, byte[] rootCaCertificate)
         throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException,
-            CertificateException {
+            CertificateException, IOException {
 
       HttpClientBuilder builder = ApacheHttpTransport.newDefaultHttpClientBuilder();
 
@@ -362,9 +363,9 @@ public abstract class HttpEventPublisher {
               SSLContextBuilder.create()
                   .loadTrustMaterial((TrustStrategy) (chain, authType) -> true)
                   .build();
-        } else if (selfSignedCertificate != null) {
+        } else if (rootCaCertificate != null) {
           LOG.info("Self-Signed Certificate provided");
-          InputStream inStream = new ByteArrayInputStream(selfSignedCertificate);
+          InputStream inStream = new ByteArrayInputStream(rootCaCertificate);
           CertificateFactory cf = CertificateFactory.getInstance("X.509");
           X509Certificate cert = (X509Certificate) cf.generateCertificate(inStream);
           CustomX509TrustManager customTrustManager =

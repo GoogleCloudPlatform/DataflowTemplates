@@ -133,10 +133,10 @@ public class SplunkConverters {
 
     void setTokenKMSEncryptionKey(ValueProvider<String> keyName);
 
-    @Description("Pattern to where certificate lives, ex: gs://mybucket/somepath/*.crt")
-    ValueProvider<String> getSelfSignedCertificatePath();
+    @Description("Path to root CA in GCS, ex: gs://mybucket/somepath/rootCA.crt")
+    ValueProvider<String> getRootCaCertificatePath();
 
-    void setSelfSignedCertificatePath(ValueProvider<String> selfSignedCertificatePath);
+    void setRootCaCertificatePath(ValueProvider<String> rootCaPath);
   }
 
   private static class FailsafeStringToSplunkEvent

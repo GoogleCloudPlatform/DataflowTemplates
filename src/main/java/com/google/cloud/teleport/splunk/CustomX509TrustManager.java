@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.splunk;
 
+import java.io.IOException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -24,49 +25,58 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
 
-/**
- * A Custom X509TrustManager that trusts a user provided self signed certificate and default CA's.
- */
+/** A Custom X509TrustManager that trusts a user provided CA and default CA's. */
 public class CustomX509TrustManager implements X509TrustManager {
 
-    X509TrustManager defaultTrustManager;
-    X509Certificate userCertificate;
+  private final X509TrustManager defaultTrustManager;
+  private final X509TrustManager userTrustManager;
 
-    public CustomX509TrustManager(X509Certificate userCertificate)
-        throws KeyStoreException, NoSuchAlgorithmException {
-        this.userCertificate = userCertificate;
-        //Get Default Trust Manager
-        TrustManagerFactory trustMgrFactory = TrustManagerFactory.getInstance(
-            TrustManagerFactory.getDefaultAlgorithm());
-        trustMgrFactory.init((KeyStore) null);
-        for (TrustManager tm : trustMgrFactory.getTrustManagers()) {
-            if (tm instanceof X509TrustManager) {
-                defaultTrustManager = (X509TrustManager) tm;
-                break;
-            }
-        }
-    }
+  public CustomX509TrustManager(X509Certificate userCertificate)
+      throws CertificateException, KeyStoreException, NoSuchAlgorithmException, IOException {
+    // Get Default Trust Manager
+    TrustManagerFactory trustMgrFactory =
+        TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+    trustMgrFactory.init((KeyStore) null);
+    defaultTrustManager = getX509TrustManager(trustMgrFactory.getTrustManagers());
 
-    @Override
-    public void checkClientTrusted(X509Certificate[] chain, String authType)
-        throws CertificateException {
-        defaultTrustManager.checkClientTrusted(chain, authType);
-    }
+    // Create Trust Manager with user provided certificate
+    KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
+    trustStore.load(null, null);
+    trustStore.setCertificateEntry("User Provided Root CA", userCertificate);
+    trustMgrFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+    trustMgrFactory.init(trustStore);
+    userTrustManager = getX509TrustManager(trustMgrFactory.getTrustManagers());
+  }
 
-    public void checkServerTrusted(X509Certificate[] chain, String authType)
-            throws CertificateException {
-        try {
-            defaultTrustManager.checkServerTrusted(chain, authType);
-        } catch (CertificateException ce) {
-            /* Handle untrusted certificates */
-            if (chain[0] != userCertificate) {
-                throw ce;
-            }
-        }
+  private X509TrustManager getX509TrustManager(TrustManager[] trustManagers) {
+    for (TrustManager tm : trustManagers) {
+      if (tm instanceof X509TrustManager) {
+        return (X509TrustManager) tm;
+      }
     }
+    return null;
+  }
 
-    @Override
-    public X509Certificate[] getAcceptedIssuers() {
-        return defaultTrustManager.getAcceptedIssuers();
+  @Override
+  public void checkClientTrusted(X509Certificate[] chain, String authType)
+      throws CertificateException {
+    defaultTrustManager.checkClientTrusted(chain, authType);
+  }
+
+  @Override
+  public void checkServerTrusted(X509Certificate[] chain, String authType)
+      throws CertificateException {
+    try {
+      defaultTrustManager.checkServerTrusted(chain, authType);
+    } catch (CertificateException ce) {
+      // If the certificate chain couldn't be verified using the default trust manager,
+      // try verifying the same with the user-provided root CA
+      userTrustManager.checkServerTrusted(chain, authType);
     }
+  }
+
+  @Override
+  public X509Certificate[] getAcceptedIssuers() {
+    return defaultTrustManager.getAcceptedIssuers();
+  }
 }

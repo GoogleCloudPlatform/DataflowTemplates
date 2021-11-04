@@ -73,12 +73,12 @@ public class HttpEventPublisherTest {
 
   private static final List<SplunkEvent> SPLUNK_EVENTS =
       ImmutableList.of(SPLUNK_TEST_EVENT_1, SPLUNK_TEST_EVENT_2);
-  private static final String RECOGNIZED_CERTIFICATE_PATH =
-      "certificates/RecognizedSelfSignedCertificate.crt";
-  private static final String UNRECOGNIZED_CERTIFICATE_PATH =
-      "certificates/UnrecognizedSelfSignedCertificate.crt";
+  private static final String ROOT_CA_PATH = "PubsubToSplunkTestData/RootCA.crt";
+  private static final String INCORRECT_ROOT_CA_PATH = "PubsubToSplunkTestData/RootCA_2.crt";
+  private static final String CERTIFICATE_PATH =
+      "PubsubToSplunkTestData/RootCASignedCertificate.crt";
   private static final String KEY_PATH =
-      Resources.getResource("certificates/privateKey.key").getPath();
+      Resources.getResource("PubsubToSplunkTestData/PrivateKey.key").getPath();
   private static final String EXPECTED_PATH = "/" + HttpEventPublisher.HEC_URL_PATH;
   private ClientAndServer mockServer;
 
@@ -86,7 +86,7 @@ public class HttpEventPublisherTest {
   public void setUp() throws IOException {
     ConfigurationProperties.disableSystemOut(true);
     ConfigurationProperties.privateKeyPath(KEY_PATH);
-    ConfigurationProperties.x509CertificatePath(RECOGNIZED_CERTIFICATE_PATH);
+    ConfigurationProperties.x509CertificatePath(CERTIFICATE_PATH);
     ServerSocket socket = new ServerSocket(0);
     int port = socket.getLocalPort();
     socket.close();
@@ -97,7 +97,7 @@ public class HttpEventPublisherTest {
   @Test
   public void stringPayloadTest()
       throws UnsupportedEncodingException, NoSuchAlgorithmException, KeyStoreException,
-          KeyManagementException, CertificateException {
+          KeyManagementException, CertificateException, IOException {
 
     HttpEventPublisher publisher =
         HttpEventPublisher.newBuilder()
@@ -120,8 +120,9 @@ public class HttpEventPublisherTest {
 
   /** Test whether {@link HttpContent} is created from the list of {@link SplunkEvent}s. */
   @Test
-  public void contentTest() throws NoSuchAlgorithmException,
-      KeyStoreException, KeyManagementException, IOException, CertificateException {
+  public void contentTest()
+      throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException, IOException,
+          CertificateException, IOException {
 
     HttpEventPublisher publisher =
         HttpEventPublisher.newBuilder()
@@ -196,29 +197,28 @@ public class HttpEventPublisherTest {
   }
 
   @Test(expected = CertificateException.class)
-  public void invalidSelfSignedCertificateTest() throws Exception {
+  public void invalidRootCaTest() throws Exception {
     HttpEventPublisher publisherWithInvalidCert =
         HttpEventPublisher.newBuilder()
             .withUrl("https://example.com")
             .withToken("test-token")
             .withDisableCertificateValidation(false)
-            .withSelfSignedCertificate("invalid_cert".getBytes())
+            .withRootCaCertificate("invalid_ca".getBytes())
             .build();
   }
 
+  /** Tests if a self-signed certificate is trusted if its root CA is passed. */
   @Test
   public void recognizedSelfSignedCertificateTest() throws Exception {
     mockServerListening(200);
-    byte[] recognizedCert =
-        Resources.toString(
-                Resources.getResource(RECOGNIZED_CERTIFICATE_PATH), StandardCharsets.UTF_8)
-            .getBytes();
+    byte[] rootCa =
+        Resources.toString(Resources.getResource(ROOT_CA_PATH), StandardCharsets.UTF_8).getBytes();
     HttpEventPublisher publisher =
         HttpEventPublisher.newBuilder()
             .withUrl("https://localhost:" + String.valueOf(mockServer.getPort()))
             .withToken("test-token")
             .withDisableCertificateValidation(false)
-            .withSelfSignedCertificate(recognizedCert)
+            .withRootCaCertificate(rootCa)
             .build();
     publisher.execute(SPLUNK_EVENTS);
 
@@ -226,19 +226,22 @@ public class HttpEventPublisherTest {
     mockServer.verify(HttpRequest.request(EXPECTED_PATH), VerificationTimes.once());
   }
 
+  /**
+   * Tests if a self-signed certificate is not trusted if it is not derived by the root CA which is
+   * passed.
+   */
   @Test(expected = SSLHandshakeException.class)
   public void unrecognizedSelfSignedCertificateTest() throws Exception {
     mockServerListening(200);
-    byte[] unrecognizedCert =
-        Resources.toString(
-                Resources.getResource(UNRECOGNIZED_CERTIFICATE_PATH), StandardCharsets.UTF_8)
+    byte[] rootCa =
+        Resources.toString(Resources.getResource(INCORRECT_ROOT_CA_PATH), StandardCharsets.UTF_8)
             .getBytes();
     HttpEventPublisher publisher =
         HttpEventPublisher.newBuilder()
             .withUrl("https://localhost:" + String.valueOf(mockServer.getPort()))
             .withToken("test-token")
             .withDisableCertificateValidation(false)
-            .withSelfSignedCertificate(unrecognizedCert)
+            .withRootCaCertificate(rootCa)
             .build();
     publisher.execute(SPLUNK_EVENTS);
   }
