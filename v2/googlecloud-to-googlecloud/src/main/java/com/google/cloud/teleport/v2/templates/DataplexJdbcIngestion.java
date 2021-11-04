@@ -90,7 +90,8 @@ public class DataplexJdbcIngestion {
     if (DataplexAssetResourceSpec.BIGQUERY_DATASET.name().equals(assetType)) {
       buildBigQueryPipeline(pipeline, options, dataSourceConfig);
     } else if (DataplexAssetResourceSpec.STORAGE_BUCKET.name().equals(assetType)) {
-      String targetRootPath = "gs://" + asset.getResourceSpec().getName();
+      String targetRootPath =
+          "gs://" + asset.getResourceSpec().getName() + "/" + options.getOutputTable();
       buildGcsPipeline(pipeline, options, dataSourceConfig, targetRootPath);
     } else {
       throw new IllegalArgumentException(

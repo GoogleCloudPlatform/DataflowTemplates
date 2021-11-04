@@ -59,11 +59,13 @@ public interface DataplexJdbcIngestionOptions extends GcpOptions, PipelineOption
   void setConnectionProperties(String connectionProperties);
 
   @Description("JDBC connection user name. ")
+  @Validation.Required
   String getUsername();
 
   void setUsername(String username);
 
   @Description("JDBC connection password. ")
+  @Validation.Required
   String getPassword();
 
   void setPassword(String password);
@@ -75,8 +77,11 @@ public interface DataplexJdbcIngestionOptions extends GcpOptions, PipelineOption
   void setQuery(String query);
 
   @Description(
-      "BigQuery Table spec to write the output to"
-          + "for example: some-project-id:somedataset.sometable")
+      "BigQuery output table or GCS top folder name to write to. "
+          + "If it's a BigQuery table, it should be in the format of "
+          + "some-project-id:somedataset.sometable."
+          + "If it's a GCS top folder, just provide the folder name.")
+  @Validation.Required
   String getOutputTable();
 
   void setOutputTable(String value);
@@ -94,6 +99,7 @@ public interface DataplexJdbcIngestionOptions extends GcpOptions, PipelineOption
       "Dataplex output asset ID to which the results are stored to. Should be in the format of"
           + " projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset"
           + " name>")
+  @Validation.Required
   String getOutputAsset();
 
   void setOutputAsset(String outputAsset);
