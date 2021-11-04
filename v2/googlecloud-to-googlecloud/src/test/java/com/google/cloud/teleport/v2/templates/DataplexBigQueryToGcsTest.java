@@ -39,6 +39,7 @@ import com.google.cloud.teleport.v2.templates.DataplexBigQueryToGcs.DataplexBigQ
 import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform.FileFormat;
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
+import com.google.cloud.teleport.v2.values.DataplexCompression;
 import com.google.common.collect.ImmutableList;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -269,11 +270,13 @@ public class DataplexBigQueryToGcsTest {
     testPipeline.run();
   }
 
+  /** Tests export in Avro format using non-default compression. */
   @Test
   @Category(NeedsRunner.class)
-  public void testE2E_withAvroFileFormat_producesAvroFiles() throws Exception {
+  public void testE2E_withAvroFileFormatAndGzipCompression_producesAvroFiles() throws Exception {
     insertTableData("unpartitioned_table", defaultRecords);
     options.setFileFormat(FileFormat.AVRO);
+    options.setFileCompression(DataplexCompression.GZIP);
 
     runTransform("unpartitioned_table");
 

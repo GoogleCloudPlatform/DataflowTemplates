@@ -24,20 +24,28 @@ import com.google.cloud.teleport.v2.clients.DefaultDataplexClient;
 import com.google.cloud.teleport.v2.io.DynamicJdbcIO;
 import com.google.cloud.teleport.v2.io.DynamicJdbcIO.DynamicDataSourceConfiguration;
 import com.google.cloud.teleport.v2.options.DataplexJdbcIngestionOptions;
+import com.google.cloud.teleport.v2.transforms.BeamRowToGenericRecordFn;
+import com.google.cloud.teleport.v2.transforms.GenericRecordsToGcsPartitioned;
 import com.google.cloud.teleport.v2.utils.JdbcConverters;
 import com.google.cloud.teleport.v2.utils.KMSEncryptedNestedValue;
-import com.google.cloud.teleport.v2.utils.SchemaUtils;
+import com.google.cloud.teleport.v2.utils.Schemas;
 import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
+import com.google.cloud.teleport.v2.values.PartitionMetadata;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
-import java.util.concurrent.ExecutionException;
-import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.AvroCoder;
+import org.apache.beam.sdk.coders.RowCoder;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
+import org.apache.beam.sdk.io.jdbc.BeamSchemaUtil;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.schemas.Schema;
+import org.apache.beam.sdk.schemas.utils.AvroUtils;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.Row;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,8 +72,7 @@ public class DataplexJdbcIngestion {
    *
    * @param args Command line arguments to the pipeline.
    */
-  public static void main(String[] args)
-      throws IOException, InterruptedException, ExecutionException {
+  public static void main(String[] args) throws IOException {
     DataplexJdbcIngestionOptions options =
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()
@@ -73,16 +80,18 @@ public class DataplexJdbcIngestion {
 
     Pipeline pipeline = Pipeline.create(options);
 
-    DataplexClient dataplexClient = DefaultDataplexClient.withDefaultClient();
+    DataplexClient dataplexClient =
+        DefaultDataplexClient.withDefaultClient(options.getGcpCredential());
     String assetName = options.getOutputAsset();
     GoogleCloudDataplexV1Asset asset = resolveAsset(assetName, dataplexClient);
 
+    DynamicDataSourceConfiguration dataSourceConfig = configDataSource(options);
     String assetType = asset.getResourceSpec().getType();
     if (DataplexAssetResourceSpec.BIGQUERY_DATASET.name().equals(assetType)) {
-      buildBigQueryPipeline(pipeline, options);
+      buildBigQueryPipeline(pipeline, options, dataSourceConfig);
     } else if (DataplexAssetResourceSpec.STORAGE_BUCKET.name().equals(assetType)) {
       String targetRootPath = "gs://" + asset.getResourceSpec().getName();
-      buildGcsPipeline(pipeline, options, targetRootPath);
+      buildGcsPipeline(pipeline, options, dataSourceConfig, targetRootPath);
     } else {
       throw new IllegalArgumentException(
           String.format(
@@ -125,28 +134,53 @@ public class DataplexJdbcIngestion {
 
   @VisibleForTesting
   static void buildGcsPipeline(
-      Pipeline pipeline, DataplexJdbcIngestionOptions options, String targetRootPath) {
-    // TODO: Add auto schema discovery
-    checkNotNull(options.getSchemaPath(), "Path to Avro schema is required when writing to GCS.");
-    Schema schema = SchemaUtils.getAvroSchema(options.getSchemaPath());
-    pipeline.apply(
-        "Read from JdbcIO",
-        DynamicJdbcIO.<GenericRecord>read()
-            .withDataSourceConfiguration(configDataSource(options))
-            .withQuery(options.getQuery())
-            .withCoder(AvroCoder.of(schema))
-            .withRowMapper(JdbcConverters.getResultSetToGenericRecord(schema)));
-    // TODO: write to transform that writes GenericRecords to GCS with partition
-    // TODO: Dataplex Metadata Update
+      Pipeline pipeline,
+      DataplexJdbcIngestionOptions options,
+      DynamicDataSourceConfiguration dataSourceConfig,
+      String targetRootPath) {
+
+    // Auto inferring beam schema
+    Schema beamSchema =
+        Schemas.jdbcSchemaToBeamSchema(dataSourceConfig.buildDatasource(), options.getQuery());
+    // Convert to Avro Schema
+    org.apache.avro.Schema avroSchema = AvroUtils.toAvroSchema(beamSchema);
+
+    // Read from JdbcIO and convert ResultSet to Beam Row
+    PCollection<Row> resultRows =
+        pipeline.apply(
+            "Read from JdbcIO",
+            DynamicJdbcIO.<Row>read()
+                .withDataSourceConfiguration(dataSourceConfig)
+                .withQuery(options.getQuery())
+                .withCoder(RowCoder.of(beamSchema))
+                .withRowMapper(BeamSchemaUtil.of(beamSchema)));
+    // Convert Beam Row to GenericRecord
+    PCollection<GenericRecord> genericRecords =
+        resultRows
+            .apply("convert to GenericRecord", ParDo.of(new BeamRowToGenericRecordFn(avroSchema)))
+            .setCoder(AvroCoder.of(avroSchema));
+    // Write to GCS bucket
+    PCollection<PartitionMetadata> metadata =
+        genericRecords.apply(
+            "Write to GCS",
+            new GenericRecordsToGcsPartitioned(
+                targetRootPath,
+                Schemas.serialize(avroSchema),
+                options.getParitionColumn(),
+                options.getPartitioningScheme(),
+                options.getFileFormat()));
   }
 
   @VisibleForTesting
-  static void buildBigQueryPipeline(Pipeline pipeline, DataplexJdbcIngestionOptions options) {
+  static void buildBigQueryPipeline(
+      Pipeline pipeline,
+      DataplexJdbcIngestionOptions options,
+      DynamicDataSourceConfiguration dataSourceConfig) {
     pipeline
         .apply(
             "Read from JdbcIO",
             DynamicJdbcIO.<TableRow>read()
-                .withDataSourceConfiguration(configDataSource(options))
+                .withDataSourceConfiguration(dataSourceConfig)
                 .withQuery(options.getQuery())
                 .withCoder(TableRowJsonCoder.of())
                 .withRowMapper(JdbcConverters.getResultSetToTableRow()))
@@ -155,10 +189,8 @@ public class DataplexJdbcIngestion {
             BigQueryIO.writeTableRows()
                 .withoutValidation()
                 .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER)
-                .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
+                .withWriteDisposition(options.getWriteDisposition())
                 .to(options.getOutputTable()));
-    // TODO: partition
-    // TODO: Dataplex Metadata Update
   }
 
   static DynamicDataSourceConfiguration configDataSource(DataplexJdbcIngestionOptions options) {

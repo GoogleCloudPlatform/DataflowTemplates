@@ -17,27 +17,55 @@ package com.google.cloud.teleport.v2.utils;
 
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Schema;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1SchemaSchemaField;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
+import javax.sql.DataSource;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.SchemaBuilder.BaseTypeBuilder;
 import org.apache.avro.SchemaBuilder.FieldAssembler;
 import org.apache.avro.SchemaBuilder.RecordBuilder;
 import org.apache.avro.SchemaBuilder.TypeBuilder;
-import org.apache.avro.SchemaNormalization;
+import org.apache.beam.sdk.io.jdbc.BeamSchemaUtil;
+import org.apache.beam.sdk.schemas.utils.AvroUtils;
 
 /** Utility methods for Dataplex and Avro schemas. */
 public final class Schemas {
 
+  private Schemas() {}
+
   /** Serialize Avro schema to JSON format. */
   public static String serialize(Schema schema) throws SchemaConversionException {
-    return SchemaNormalization.toParsingForm(schema);
+    return schema.toString();
   }
 
-  /** Convert Dataplex schema to a correpsonding Avro schema. */
+  /** Convert Dataplex schema to a corresponding Avro schema. */
   public static Schema dataplexSchemaToAvro(GoogleCloudDataplexV1Schema dataplexSchema)
       throws SchemaConversionException {
     return dataplexFieldsToAvro(dataplexSchema.getFields(), SchemaBuilder.record("Schema"));
+  }
+
+  /** Convert JDBC schema to a corresponding Avro schema. */
+  public static Schema jdbcSchemaToAvro(DataSource dataSource, String query) {
+    return AvroUtils.toAvroSchema(jdbcSchemaToBeamSchema(dataSource, query));
+  }
+
+  /**
+   * This method is very similar to a private method:
+   * org.apache.beam.sdk.io.jdbc.JdbcIO.ReadRows.inferBeamSchema().
+   */
+  public static org.apache.beam.sdk.schemas.Schema jdbcSchemaToBeamSchema(
+      DataSource dataSource, String query) {
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement statement =
+            conn.prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
+      return BeamSchemaUtil.toBeamSchema(statement.getMetaData());
+    } catch (SQLException e) {
+      throw new SchemaConversionException("Failed to infer Beam schema for query: " + query, e);
+    }
   }
 
   private static Schema dataplexFieldsToAvro(
@@ -49,7 +77,7 @@ public final class Schemas {
       TypeBuilder<Schema> fieldTypeBuilder = SchemaBuilder.builder();
       BaseTypeBuilder<Schema> fieldTypeBuilderWithMode;
       switch (dataplexField.getMode()) {
-        case "NULLABLE ":
+        case "NULLABLE":
           fieldTypeBuilderWithMode = fieldTypeBuilder.nullable();
           break;
         case "REQUIRED":

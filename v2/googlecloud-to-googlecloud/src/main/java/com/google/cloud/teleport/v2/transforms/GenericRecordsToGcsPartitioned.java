@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.transforms;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 
+import com.google.cloud.teleport.v2.io.AvroSinkWithJodaDatesConversion;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.PartitionMetadata;
 import com.google.common.collect.ImmutableList;
@@ -28,6 +29,7 @@ import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 import org.apache.avro.LogicalType;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
@@ -36,16 +38,20 @@ import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.ListCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.coders.VarIntCoder;
-import org.apache.beam.sdk.io.AvroIO;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileIO.Sink;
 import org.apache.beam.sdk.io.FileIO.Write;
 import org.apache.beam.sdk.io.parquet.ParquetIO;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.TypeDescriptors;
+import org.joda.time.ReadableInstant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A {@link PTransform} that partitions a collection of {@link GenericRecord} by datetime field and
@@ -60,6 +66,9 @@ import org.apache.beam.sdk.values.PCollection;
  */
 public class GenericRecordsToGcsPartitioned
     extends PTransform<PCollection<GenericRecord>, PCollection<PartitionMetadata>> {
+
+  /* Logger for class.*/
+  private static final Logger LOG = LoggerFactory.getLogger(GenericRecordsToGcsPartitioned.class);
 
   private static final ImmutableMap<LogicalType, ZoneId> AVRO_DATE_TIME_LOGICAL_TYPES =
       ImmutableMap.of(
@@ -99,17 +108,17 @@ public class GenericRecordsToGcsPartitioned
 
   private final String serializedAvroSchema;
 
-  private final String partitionColumnName;
+  @Nullable private final String partitionColumnName;
 
-  private final PartitioningSchema partitioningSchema;
+  @Nullable private final PartitioningSchema partitioningSchema;
 
   private final OutputFileFormat outputFileFormat;
 
   public GenericRecordsToGcsPartitioned(
       String gcsPath,
       String serializedAvroSchema,
-      String partitionColumnName,
-      PartitioningSchema partitioningSchema,
+      @Nullable String partitionColumnName,
+      @Nullable PartitioningSchema partitioningSchema,
       OutputFileFormat outputFileFormat) {
     this.gcsPath = gcsPath;
     this.serializedAvroSchema = serializedAvroSchema;
@@ -127,11 +136,42 @@ public class GenericRecordsToGcsPartitioned
         sink = ParquetIO.sink(schema);
         break;
       case AVRO:
-        sink = AvroIO.sink(schema);
+        sink = new AvroSinkWithJodaDatesConversion<>(schema);
         break;
       default:
         throw new UnsupportedOperationException(
             "Output format is not implemented: " + outputFileFormat);
+    }
+
+    if (partitionColumnName == null || partitioningSchema == null) {
+      LOG.info(
+          "PartitionColumnName or/and PartitioningSchema not provided. "
+              + "Writing to GCS without partition");
+      return input
+          .apply(
+              "Write to Storage with No Partition",
+              FileIO.<GenericRecord>write()
+                  .withSuffix(outputFileFormat.fileSuffix)
+                  .via(sink)
+                  .to(gcsPath))
+          // Dummy conversion to Dataplex partition metadata
+          // TODO(weiwenxu) Change after Dataplex metadata update is enabled
+          .getPerDestinationOutputFilenames()
+          .apply(
+              "MapFileNames",
+              MapElements.into(TypeDescriptors.strings())
+                  .via((SerializableFunction<KV<Void, String>, String>) KV::getValue))
+          .apply(
+              MapElements.via(
+                  new SimpleFunction<String, PartitionMetadata>() {
+                    @Override
+                    public PartitionMetadata apply(String path) {
+                      return PartitionMetadata.builder()
+                          .setValues(ImmutableList.of("1"))
+                          .setLocation(withoutFileName(path))
+                          .build();
+                    }
+                  }));
     }
 
     ZoneId zoneId = getZoneId(schema);
@@ -144,7 +184,9 @@ public class GenericRecordsToGcsPartitioned
                 .by(
                     (GenericRecord r) ->
                         partitioningSchema.toPartition(
-                            Instant.ofEpochMilli((Long) r.get(partitionColumnName)).atZone(zoneId)))
+                            Instant.ofEpochMilli(
+                                    partitionColumnValueToMillis(r.get(partitionColumnName)))
+                                .atZone(zoneId)))
                 // set the coder for the partition -- List<KV<String,String>>
                 .withDestinationCoder(
                     ListCoder.of(KvCoder.of(StringUtf8Coder.of(), VarIntCoder.of())))
@@ -183,11 +225,29 @@ public class GenericRecordsToGcsPartitioned
 
   private ZoneId getZoneId(Schema schema) {
     Schema partitionFieldType = schema.getField(partitionColumnName).schema();
-    ZoneId zoneId = AVRO_DATE_TIME_LOGICAL_TYPES.get(partitionFieldType.getLogicalType());
+    // check if the partition field is nullable, inspired by {@code Schema.isNullable()} of Avro 1.9
+    if (schema.getType() == Schema.Type.UNION) {
+      partitionFieldType =
+          partitionFieldType.getTypes().stream()
+              .filter(t -> t.getType() != Schema.Type.NULL)
+              .findFirst()
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          String.format(
+                              "Partition field %s is of unsupported type: %s",
+                              partitionColumnName, schema.getField(partitionColumnName).schema())));
+    }
+
+    // get zone according to the logical-type if there is no logical-type assume UTC time-zone
+    ZoneId zoneId =
+        AVRO_DATE_TIME_LOGICAL_TYPES.getOrDefault(
+            partitionFieldType.getLogicalType(), ZoneOffset.UTC);
     if (zoneId == null) {
       throw new IllegalArgumentException(
           String.format(
-              "Partition field `%s` is of an unsupported type: %s, supported logical types: %s",
+              "Partition field `%s` is of an unsupported type: %s, supported types are `long` types"
+                  + " with logical types: %s",
               partitionColumnName,
               partitionFieldType,
               AVRO_DATE_TIME_LOGICAL_TYPES.keySet().stream()
@@ -195,6 +255,26 @@ public class GenericRecordsToGcsPartitioned
                   .collect(Collectors.joining(", "))));
     }
     return zoneId;
+  }
+
+  /**
+   * This method is used to address the static initialization in
+   * org.apache.beam.sdk.schemas.utils.AvroUtils static initialization.
+   *
+   * <p>A usage of AvroUtils changes how Avro treats `timestamp-millis` "globally", and so if
+   * AvroUtils is used, even in a unrelated classes, the `timestamp-millis` is returned as Joda
+   * timestamps, and if AvroUtils is not used `timestamp-millis` is returned as long. This method
+   * handles both cases and returns long millis.
+   */
+  private static long partitionColumnValueToMillis(Object value) {
+    if (value instanceof Long) {
+      return (Long) value;
+    } else if (value instanceof ReadableInstant) {
+      return ((ReadableInstant) value).getMillis();
+    } else {
+      throw new IllegalArgumentException(
+          "The partition column value is an instance of unsupported class: " + value.getClass());
+    }
   }
 
   private static String partitionToPath(List<KV<String, Integer>> partition) {

@@ -16,11 +16,13 @@
 package com.google.cloud.teleport.splunk;
 
 import static com.google.common.truth.Truth.assertThat;
-import static org.junit.Assume.assumeNoException;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockserver.integration.ClientAndServer.startClientAndServer;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
+import java.io.IOException;
+import java.net.ServerSocket;
 import java.util.List;
 import org.apache.beam.sdk.coders.BigEndianIntegerCoder;
 import org.apache.beam.sdk.coders.KvCoder;
@@ -36,8 +38,8 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.mockserver.client.MockServerClient;
-import org.mockserver.junit.MockServerRule;
+import org.mockserver.configuration.ConfigurationProperties;
+import org.mockserver.integration.ClientAndServer;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 import org.mockserver.verify.VerificationTimes;
@@ -50,16 +52,15 @@ public class SplunkEventWriterTest {
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
   // We create a MockServerRule to simulate an actual Splunk HEC server.
-  @Rule public MockServerRule mockServerRule;
-  private MockServerClient mockServerClient;
+  private ClientAndServer mockServer;
 
   @Before
-  public void setup() {
-    try {
-      mockServerRule = new MockServerRule(this);
-    } catch (Exception e) {
-      assumeNoException(e);
-    }
+  public void setup() throws IOException {
+    ConfigurationProperties.disableSystemOut(true);
+    ServerSocket socket = new ServerSocket(0);
+    int port = socket.getLocalPort();
+    socket.close();
+    mockServer = startClientAndServer(port);
   }
 
   /** Test building {@link SplunkEventWriter} with missing URL. */
@@ -67,7 +68,7 @@ public class SplunkEventWriterTest {
   public void eventWriterMissingURL() {
 
     Exception thrown =
-            assertThrows(NullPointerException.class, () -> SplunkEventWriter.newBuilder().build());
+        assertThrows(NullPointerException.class, () -> SplunkEventWriter.newBuilder().build());
 
     assertThat(thrown).hasMessageThat().contains("url needs to be provided");
   }
@@ -77,9 +78,9 @@ public class SplunkEventWriterTest {
   public void eventWriterMissingURLProtocol() {
 
     Exception thrown =
-            assertThrows(
-                    IllegalArgumentException.class,
-                    () -> SplunkEventWriter.newBuilder().withUrl("test-url").build());
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> SplunkEventWriter.newBuilder().withUrl("test-url").build());
 
     assertThat(thrown).hasMessageThat().contains(SplunkEventWriter.INVALID_URL_FORMAT_MESSAGE);
   }
@@ -89,9 +90,9 @@ public class SplunkEventWriterTest {
   public void eventWriterInvalidURL() {
 
     Exception thrown =
-            assertThrows(
-                    IllegalArgumentException.class,
-                    () -> SplunkEventWriter.newBuilder().withUrl("http://1.2.3").build());
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> SplunkEventWriter.newBuilder().withUrl("http://1.2.3").build());
 
     assertThat(thrown).hasMessageThat().contains(SplunkEventWriter.INVALID_URL_FORMAT_MESSAGE);
   }
@@ -104,12 +105,12 @@ public class SplunkEventWriterTest {
   public void eventWriterFullEndpoint() {
 
     Exception thrown =
-            assertThrows(
-                    IllegalArgumentException.class,
-                    () ->
-                            SplunkEventWriter.newBuilder()
-                                    .withUrl("http://test-url:8088/services/collector/event")
-                                    .build());
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                SplunkEventWriter.newBuilder()
+                    .withUrl("http://test-url:8088/services/collector/event")
+                    .build());
 
     assertThat(thrown).hasMessageThat().contains(SplunkEventWriter.INVALID_URL_FORMAT_MESSAGE);
   }
@@ -119,9 +120,9 @@ public class SplunkEventWriterTest {
   public void eventWriterMissingToken() {
 
     Exception thrown =
-            assertThrows(
-                    NullPointerException.class,
-                    () -> SplunkEventWriter.newBuilder().withUrl("http://test-url").build());
+        assertThrows(
+            NullPointerException.class,
+            () -> SplunkEventWriter.newBuilder().withUrl("http://test-url").build());
 
     assertThat(thrown).hasMessageThat().contains("token needs to be provided");
   }
@@ -133,7 +134,7 @@ public class SplunkEventWriterTest {
   public void eventWriterDefaultBatchCountAndValidation() {
 
     SplunkEventWriter writer =
-            SplunkEventWriter.newBuilder().withUrl("http://test-url").withToken("test-token").build();
+        SplunkEventWriter.newBuilder().withUrl("http://test-url").withToken("test-token").build();
 
     assertThat(writer.inputBatchCount()).isNull();
     assertThat(writer.disableCertificateValidation()).isNull();
@@ -146,12 +147,12 @@ public class SplunkEventWriterTest {
     Integer batchCount = 30;
     Boolean certificateValidation = false;
     SplunkEventWriter writer =
-            SplunkEventWriter.newBuilder()
-                    .withUrl("http://test-url")
-                    .withToken("test-token")
-                    .withInputBatchCount(StaticValueProvider.of(batchCount))
-                    .withDisableCertificateValidation(StaticValueProvider.of(certificateValidation))
-                    .build();
+        SplunkEventWriter.newBuilder()
+            .withUrl("http://test-url")
+            .withToken("test-token")
+            .withInputBatchCount(StaticValueProvider.of(batchCount))
+            .withDisableCertificateValidation(StaticValueProvider.of(certificateValidation))
+            .build();
 
     assertThat(writer.inputBatchCount().get()).isEqualTo(batchCount);
     assertThat(writer.disableCertificateValidation().get()).isEqualTo(certificateValidation);
@@ -165,47 +166,47 @@ public class SplunkEventWriterTest {
     // Create server expectation for success.
     mockServerListening(200);
 
-    int testPort = mockServerRule.getPort();
+    int testPort = mockServer.getPort();
 
     List<KV<Integer, SplunkEvent>> testEvents =
-            ImmutableList.of(
-                    KV.of(
-                            123,
-                            SplunkEvent.newBuilder()
-                                    .withEvent("test-event-1")
-                                    .withHost("test-host-1")
-                                    .withIndex("test-index-1")
-                                    .withSource("test-source-1")
-                                    .withSourceType("test-source-type-1")
-                                    .withTime(12345L)
-                                    .build()),
-                    KV.of(
-                            123,
-                            SplunkEvent.newBuilder()
-                                    .withEvent("test-event-2")
-                                    .withHost("test-host-2")
-                                    .withIndex("test-index-2")
-                                    .withSource("test-source-2")
-                                    .withSourceType("test-source-type-2")
-                                    .withTime(12345L)
-                                    .build()));
+        ImmutableList.of(
+            KV.of(
+                123,
+                SplunkEvent.newBuilder()
+                    .withEvent("test-event-1")
+                    .withHost("test-host-1")
+                    .withIndex("test-index-1")
+                    .withSource("test-source-1")
+                    .withSourceType("test-source-type-1")
+                    .withTime(12345L)
+                    .build()),
+            KV.of(
+                123,
+                SplunkEvent.newBuilder()
+                    .withEvent("test-event-2")
+                    .withHost("test-host-2")
+                    .withIndex("test-index-2")
+                    .withSource("test-source-2")
+                    .withSourceType("test-source-type-2")
+                    .withTime(12345L)
+                    .build()));
 
     PCollection<SplunkWriteError> actual =
-            pipeline
-                    .apply(
-                            "Create Input data",
-                            Create.of(testEvents)
-                                    .withCoder(KvCoder.of(BigEndianIntegerCoder.of(), SplunkEventCoder.of())))
-                    .apply(
-                            "SplunkEventWriter",
-                            ParDo.of(
-                                    SplunkEventWriter.newBuilder()
-                                            .withUrl(Joiner.on(':').join("http://localhost", testPort))
-                                            .withInputBatchCount(
-                                                    StaticValueProvider.of(1)) // Test one request per SplunkEvent
-                                            .withToken("test-token")
-                                            .build()))
-                    .setCoder(SplunkWriteErrorCoder.of());
+        pipeline
+            .apply(
+                "Create Input data",
+                Create.of(testEvents)
+                    .withCoder(KvCoder.of(BigEndianIntegerCoder.of(), SplunkEventCoder.of())))
+            .apply(
+                "SplunkEventWriter",
+                ParDo.of(
+                    SplunkEventWriter.newBuilder()
+                        .withUrl(Joiner.on(':').join("http://localhost", testPort))
+                        .withInputBatchCount(
+                            StaticValueProvider.of(1)) // Test one request per SplunkEvent
+                        .withToken("test-token")
+                        .build()))
+            .setCoder(SplunkWriteErrorCoder.of());
 
     // All successful responses.
     PAssert.that(actual).empty();
@@ -213,8 +214,8 @@ public class SplunkEventWriterTest {
     pipeline.run();
 
     // Server received exactly the expected number of POST requests.
-    mockServerClient.verify(
-            HttpRequest.request(EXPECTED_PATH), VerificationTimes.exactly(testEvents.size()));
+    mockServer.verify(
+        HttpRequest.request(EXPECTED_PATH), VerificationTimes.exactly(testEvents.size()));
   }
 
   /** Test successful POST request for multi batch. */
@@ -225,48 +226,48 @@ public class SplunkEventWriterTest {
     // Create server expectation for success.
     mockServerListening(200);
 
-    int testPort = mockServerRule.getPort();
+    int testPort = mockServer.getPort();
 
     List<KV<Integer, SplunkEvent>> testEvents =
-            ImmutableList.of(
-                    KV.of(
-                            123,
-                            SplunkEvent.newBuilder()
-                                    .withEvent("test-event-1")
-                                    .withHost("test-host-1")
-                                    .withIndex("test-index-1")
-                                    .withSource("test-source-1")
-                                    .withSourceType("test-source-type-1")
-                                    .withTime(12345L)
-                                    .build()),
-                    KV.of(
-                            123,
-                            SplunkEvent.newBuilder()
-                                    .withEvent("test-event-2")
-                                    .withHost("test-host-2")
-                                    .withIndex("test-index-2")
-                                    .withSource("test-source-2")
-                                    .withSourceType("test-source-type-2")
-                                    .withTime(12345L)
-                                    .build()));
+        ImmutableList.of(
+            KV.of(
+                123,
+                SplunkEvent.newBuilder()
+                    .withEvent("test-event-1")
+                    .withHost("test-host-1")
+                    .withIndex("test-index-1")
+                    .withSource("test-source-1")
+                    .withSourceType("test-source-type-1")
+                    .withTime(12345L)
+                    .build()),
+            KV.of(
+                123,
+                SplunkEvent.newBuilder()
+                    .withEvent("test-event-2")
+                    .withHost("test-host-2")
+                    .withIndex("test-index-2")
+                    .withSource("test-source-2")
+                    .withSourceType("test-source-type-2")
+                    .withTime(12345L)
+                    .build()));
 
     PCollection<SplunkWriteError> actual =
-            pipeline
-                    .apply(
-                            "Create Input data",
-                            Create.of(testEvents)
-                                    .withCoder(KvCoder.of(BigEndianIntegerCoder.of(), SplunkEventCoder.of())))
-                    .apply(
-                            "SplunkEventWriter",
-                            ParDo.of(
-                                    SplunkEventWriter.newBuilder()
-                                            .withUrl(Joiner.on(':').join("http://localhost", testPort))
-                                            .withInputBatchCount(
-                                                    StaticValueProvider.of(
-                                                            testEvents.size())) // all requests in a single batch.
-                                            .withToken("test-token")
-                                            .build()))
-                    .setCoder(SplunkWriteErrorCoder.of());
+        pipeline
+            .apply(
+                "Create Input data",
+                Create.of(testEvents)
+                    .withCoder(KvCoder.of(BigEndianIntegerCoder.of(), SplunkEventCoder.of())))
+            .apply(
+                "SplunkEventWriter",
+                ParDo.of(
+                    SplunkEventWriter.newBuilder()
+                        .withUrl(Joiner.on(':').join("http://localhost", testPort))
+                        .withInputBatchCount(
+                            StaticValueProvider.of(
+                                testEvents.size())) // all requests in a single batch.
+                        .withToken("test-token")
+                        .build()))
+            .setCoder(SplunkWriteErrorCoder.of());
 
     // All successful responses.
     PAssert.that(actual).empty();
@@ -274,7 +275,7 @@ public class SplunkEventWriterTest {
     pipeline.run();
 
     // Server received exactly one POST request.
-    mockServerClient.verify(HttpRequest.request(EXPECTED_PATH), VerificationTimes.once());
+    mockServer.verify(HttpRequest.request(EXPECTED_PATH), VerificationTimes.once());
   }
 
   /** Test failed POST request. */
@@ -285,64 +286,60 @@ public class SplunkEventWriterTest {
     // Create server expectation for FAILURE.
     mockServerListening(404);
 
-    int testPort = mockServerRule.getPort();
+    int testPort = mockServer.getPort();
 
     List<KV<Integer, SplunkEvent>> testEvents =
-            ImmutableList.of(
-                    KV.of(
-                            123,
-                            SplunkEvent.newBuilder()
-                                    .withEvent("test-event-1")
-                                    .withHost("test-host-1")
-                                    .withIndex("test-index-1")
-                                    .withSource("test-source-1")
-                                    .withSourceType("test-source-type-1")
-                                    .withTime(12345L)
-                                    .build()));
+        ImmutableList.of(
+            KV.of(
+                123,
+                SplunkEvent.newBuilder()
+                    .withEvent("test-event-1")
+                    .withHost("test-host-1")
+                    .withIndex("test-index-1")
+                    .withSource("test-source-1")
+                    .withSourceType("test-source-type-1")
+                    .withTime(12345L)
+                    .build()));
 
     PCollection<SplunkWriteError> actual =
-            pipeline
-                    .apply(
-                            "Create Input data",
-                            Create.of(testEvents)
-                                    .withCoder(KvCoder.of(BigEndianIntegerCoder.of(), SplunkEventCoder.of())))
-                    .apply(
-                            "SplunkEventWriter",
-                            ParDo.of(
-                                    SplunkEventWriter.newBuilder()
-                                            .withUrl(Joiner.on(':').join("http://localhost", testPort))
-                                            .withInputBatchCount(
-                                                    StaticValueProvider.of(
-                                                            testEvents.size())) // all requests in a single batch.
-                                            .withToken("test-token")
-                                            .build()))
-                    .setCoder(SplunkWriteErrorCoder.of());
+        pipeline
+            .apply(
+                "Create Input data",
+                Create.of(testEvents)
+                    .withCoder(KvCoder.of(BigEndianIntegerCoder.of(), SplunkEventCoder.of())))
+            .apply(
+                "SplunkEventWriter",
+                ParDo.of(
+                    SplunkEventWriter.newBuilder()
+                        .withUrl(Joiner.on(':').join("http://localhost", testPort))
+                        .withInputBatchCount(
+                            StaticValueProvider.of(
+                                testEvents.size())) // all requests in a single batch.
+                        .withToken("test-token")
+                        .build()))
+            .setCoder(SplunkWriteErrorCoder.of());
 
     // Expect a single 404 Not found SplunkWriteError
     PAssert.that(actual)
-            .containsInAnyOrder(
-                    SplunkWriteError.newBuilder()
-                            .withStatusCode(404)
-                            .withStatusMessage("Not Found")
-                            .withPayload(
-                                    "{\"time\":12345,\"host\":\"test-host-1\","
-                                            + "\"source\":\"test-source-1\",\"sourcetype\":\"test-source-type-1\","
-                                            + "\"index\":\"test-index-1\",\"event\":\"test-event-1\"}")
-                            .build());
+        .containsInAnyOrder(
+            SplunkWriteError.newBuilder()
+                .withStatusCode(404)
+                .withStatusMessage("Not Found")
+                .withPayload(
+                    "{\"time\":12345,\"host\":\"test-host-1\","
+                        + "\"source\":\"test-source-1\",\"sourcetype\":\"test-source-type-1\","
+                        + "\"index\":\"test-index-1\",\"event\":\"test-event-1\"}")
+                .build());
 
     pipeline.run();
 
     // Server received exactly one POST request.
-    mockServerClient.verify(HttpRequest.request(EXPECTED_PATH), VerificationTimes.once());
+    mockServer.verify(HttpRequest.request(EXPECTED_PATH), VerificationTimes.once());
   }
 
   private void mockServerListening(int statusCode) {
-    try {
-      mockServerClient
-              .when(HttpRequest.request(EXPECTED_PATH))
-              .respond(HttpResponse.response().withStatusCode(statusCode));
-    } catch (Exception e) {
-      assumeNoException(e);
-    }
+    mockServer
+        .when(HttpRequest.request(EXPECTED_PATH))
+        .respond(HttpResponse.response().withStatusCode(statusCode));
   }
 }

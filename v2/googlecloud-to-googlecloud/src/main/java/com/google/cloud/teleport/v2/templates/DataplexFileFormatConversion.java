@@ -21,22 +21,24 @@ import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Partition;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1StorageFormatCsvOptions;
 import com.google.cloud.teleport.v2.clients.DataplexClient;
 import com.google.cloud.teleport.v2.clients.DefaultDataplexClient;
+import com.google.cloud.teleport.v2.io.AvroSinkWithJodaDatesConversion;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.transforms.JsonConverters;
 import com.google.cloud.teleport.v2.utils.Schemas;
 import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
 import com.google.cloud.teleport.v2.values.DataplexCompression;
+import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
-import java.util.List;
+import java.util.regex.Pattern;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.AvroCoder;
+import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
-import org.apache.beam.sdk.io.AvroIO;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileIO.Sink;
 import org.apache.beam.sdk.io.parquet.ParquetIO;
@@ -63,17 +65,12 @@ public class DataplexFileFormatConversion {
    * The {@link FileFormatConversionOptions} provides the custom execution options passed by the
    * executor at the command-line.
    */
-  public interface FileFormatConversionOptions extends PipelineOptions {
+  public interface FileFormatConversionOptions extends GcpOptions, PipelineOptions {
 
-    @Description("Input asset.")
-    String getInputAsset();
+    @Description("Input asset or entities list.")
+    String getInputAssetOrEntitiesList();
 
-    void setInputAsset(String inputAsset);
-
-    @Description("Input entities list.")
-    List<String> getInputEntities();
-
-    void setInputEntities(List<String> inputEntities);
+    void setInputAssetOrEntitiesList(String inputAssetOrEntitiesList);
 
     @Description("Output file format. Format: PARQUET, AVRO, or ORC. Default: none.")
     @Required
@@ -115,6 +112,17 @@ public class DataplexFileFormatConversion {
     }
   }
 
+  private static final Pattern ASSET_PATTERN =
+      Pattern.compile(
+          "^projects/[^\\n\\r/]+/locations/[^\\n\\r/]+/lakes/[^\\n\\r/]+/zones/[^\\n\\r/]+"
+              + "/assets/[^\\n\\r/]+$");
+  private static final Pattern ENTITIES_PATTERN =
+      Pattern.compile(
+          "^projects/[^\\n\\r/]+/locations/[^\\n\\r/]+/lakes/[^\\n\\r/]+/zones/[^\\n\\r/]+"
+              + "/entities/[^\\n\\r/]+"
+              + "(,projects/[^\\n\\r/]+/locations/[^\\n\\r/]+/lakes/[^\\n\\r/]+/zones/[^\\n\\r/]+"
+              + "/entities/[^\\n\\r/]+)*$");
+
   /**
    * Main entry point for pipeline execution.
    *
@@ -129,7 +137,7 @@ public class DataplexFileFormatConversion {
     run(
         Pipeline.create(options),
         options,
-        DefaultDataplexClient.withDefaultClient(),
+        DefaultDataplexClient.withDefaultClient(options.getGcpCredential()),
         DataplexFileFormatConversion::gcsOutputPathFrom);
   }
 
@@ -144,7 +152,9 @@ public class DataplexFileFormatConversion {
       DataplexClient dataplex,
       OutputPathProvider outputPathProvider)
       throws IOException {
-    if ((options.getInputAsset() == null) == (options.getInputEntities() == null)) {
+    boolean isInputAsset = ASSET_PATTERN.matcher(options.getInputAssetOrEntitiesList()).matches();
+    if (!isInputAsset
+        && !ENTITIES_PATTERN.matcher(options.getInputAssetOrEntitiesList()).matches()) {
       throw new IllegalArgumentException(
           "Either input asset or input entities list must be provided");
     }
@@ -164,9 +174,10 @@ public class DataplexFileFormatConversion {
     String outputBucket = outputAsset.getResourceSpec().getName();
 
     ImmutableList<GoogleCloudDataplexV1Entity> entities =
-        options.getInputAsset() != null
-            ? dataplex.getCloudStorageEntities(options.getInputAsset())
-            : dataplex.getEntities(options.getInputEntities());
+        isInputAsset
+            ? dataplex.getCloudStorageEntities(options.getInputAssetOrEntitiesList())
+            : dataplex.getEntities(
+                Splitter.on(',').trimResults().splitToList(options.getInputAssetOrEntitiesList()));
 
     for (GoogleCloudDataplexV1Entity entity : entities) {
       ImmutableList<GoogleCloudDataplexV1Partition> partitions =
@@ -290,7 +301,9 @@ public class DataplexFileFormatConversion {
               ParquetIO.sink(schema).withCompressionCodec(outputFileCompression.getParquetCodec());
           break;
         case AVRO:
-          sink = AvroIO.<GenericRecord>sink(schema).withCodec(outputFileCompression.getAvroCodec());
+          sink =
+              new AvroSinkWithJodaDatesConversion<GenericRecord>(schema)
+                  .withCodec(outputFileCompression.getAvroCodec());
           break;
         default:
           throw new UnsupportedOperationException(
@@ -333,7 +346,7 @@ public class DataplexFileFormatConversion {
       }
       // TODO(olegsa): consider updating CsvConverters.ReadCsv to support
       //  GoogleCloudDataplexV1StorageFormatCsvOptions.getQuote (probably rare case)
-      return CsvConverters.ReadCsv.newBuilder()
+      return builder
           .setInputFileSpec(inputFileSpec)
           .setFileEncoding(csvOptions.getEncoding() != null ? csvOptions.getEncoding() : "UTF-8")
           .setHasHeaders(csvOptions.getHeaderRows() != null && csvOptions.getHeaderRows() > 0)

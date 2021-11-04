@@ -21,7 +21,9 @@ import com.google.cloud.teleport.v2.transforms.CreateDml;
 import com.google.cloud.teleport.v2.transforms.ProcessDml;
 import com.google.cloud.teleport.v2.values.DmlInfo;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.base.Splitter;
 import java.sql.SQLException;
+import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.options.Default;
@@ -147,6 +149,12 @@ public class DataStreamToSQL {
     String getDatabaseName();
 
     void setDatabaseName(String value);
+
+    @Description("Schema Naming Map")
+    @Default.String("")
+    String getSchemaMap();
+
+    void setSchemaMap(String value);
   }
 
   /**
@@ -239,6 +247,8 @@ public class DataStreamToSQL {
 
     CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration = getDataSourceConfiguration(options);
     validateOptions(options, dataSourceConfiguration);
+    Map<String, String> schemaMap =
+        Splitter.on(",").withKeyValueSeparator(":").split(options.getSchemaMap());
 
     /*
      * Stage 1: Ingest and Normalize Data to FailsafeElement with JSON Strings
@@ -260,9 +270,10 @@ public class DataStreamToSQL {
      *   a) Convert JSON String FailsafeElements to TableRow's (tableRowRecords)
      * Stage 3) Filter stale rows using stateful PK transform
      */
-    PCollection<DmlInfo> dmlStatements = datastreamJsonRecords
-        .apply("Format to DML", CreateDml.of(dataSourceConfiguration))
-        .apply("DML Stateful Processing", ProcessDml.statefulOrderByPK());
+    PCollection<DmlInfo> dmlStatements =
+        datastreamJsonRecords
+            .apply("Format to DML", CreateDml.of(dataSourceConfiguration).withSchemaMap(schemaMap))
+            .apply("DML Stateful Processing", ProcessDml.statefulOrderByPK());
 
     /*
      * Stage 4: Write Inserts to CloudSQL

@@ -40,7 +40,6 @@
     <avro.version>1.8.2</avro.version>
     <checkstyle.version>8.7</checkstyle.version>
     <beam.version>2.32.0</beam.version>
-    <beam-vendor-guava.version>0.1</beam-vendor-guava.version>
     <extra.enforcer.rules.version>1.3</extra.enforcer.rules.version>
     <hamcrest.version>2.1</hamcrest.version>
     <java.version>1.8</java.version>
@@ -144,11 +143,6 @@
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-io-jdbc</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.beam</groupId>
-      <artifactId>beam-vendor-guava-20_0</artifactId>
-      <version>${beam-vendor-guava.version}</version>
     </dependency>
 
     <!-- Dependencies needed for the Cassandra to CBT pipeline -->
@@ -673,6 +667,7 @@
           <target>${java.version}</target>
           <parameters>true</parameters>
           <testCompilerArgument>-parameters</testCompilerArgument>
+          <forceJavacCompilerUse>true</forceJavacCompilerUse>
         </configuration>
       </plugin>
 

@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.cdc.dlq;
 
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -136,6 +137,7 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
       for (ResourceId file : filesToRemove) {
         try {
           FileSystems.delete(Collections.singleton(file));
+          LOG.info("Deleted file {}.", file);
         } catch (IOException e) {
           LOG.error("Unable to delete file {}. Exception: {}", file, e);
           failedDeletions.inc();
@@ -178,8 +180,15 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
         return;
       }
 
-      InputStream jsonStream = Channels.newInputStream(FileSystems.open(dlqFile.resourceId()));
-      BufferedReader jsonReader = new BufferedReader(new InputStreamReader(jsonStream));
+      BufferedReader jsonReader;
+      try {
+        InputStream jsonStream = Channels.newInputStream(FileSystems.open(dlqFile.resourceId()));
+        jsonReader = new BufferedReader(new InputStreamReader(jsonStream));
+      } catch (FileNotFoundException e) {
+        // If the file does exist, it will be retried on the next trigger.
+        LOG.warn("DLQ File Not Found: {}", dlqFile.resourceId().toString());
+        return;
+      }
 
       // Assuming that files are JSONLines formatted.
       ObjectMapper mapper = new ObjectMapper();

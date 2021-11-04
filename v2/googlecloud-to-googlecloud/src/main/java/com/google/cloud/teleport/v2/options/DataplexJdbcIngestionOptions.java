@@ -15,6 +15,10 @@
  */
 package com.google.cloud.teleport.v2.options;
 
+import com.google.cloud.teleport.v2.transforms.GenericRecordsToGcsPartitioned.OutputFileFormat;
+import com.google.cloud.teleport.v2.transforms.GenericRecordsToGcsPartitioned.PartitioningSchema;
+import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -24,7 +28,7 @@ import org.apache.beam.sdk.options.Validation;
  * The {@link Options} class provides the custom execution options passed by the executor at the
  * command-line.
  */
-public interface DataplexJdbcIngestionOptions extends PipelineOptions {
+public interface DataplexJdbcIngestionOptions extends GcpOptions, PipelineOptions {
   @Description(
       "Comma separate list of driver class/dependency jar file GCS paths "
           + "for example "
@@ -49,6 +53,7 @@ public interface DataplexJdbcIngestionOptions extends PipelineOptions {
 
   @Description(
       "JDBC connection property string. " + "for example: unicode=true&characterEncoding=UTF-8")
+  @Validation.Required
   String getConnectionProperties();
 
   void setConnectionProperties(String connectionProperties);
@@ -96,11 +101,11 @@ public interface DataplexJdbcIngestionOptions extends PipelineOptions {
   @Description(
       "The partition scheme when writing the file. Default: daily. "
           + "Allowed formats are: "
-          + "daily, monthly, hourly")
-  @Default.String("daily")
-  String getPartitioningScheme();
+          + "DAILY, MONTHLY, HOURLY")
+  @Default.Enum("DAILY")
+  PartitioningSchema getPartitioningScheme();
 
-  void setPartitioningScheme(String partitioningScheme);
+  void setPartitioningScheme(PartitioningSchema partitioningScheme);
 
   @Description(
       "The partition column on which the partition is based. "
@@ -111,16 +116,19 @@ public interface DataplexJdbcIngestionOptions extends PipelineOptions {
   void setParitionColumn(String partitionColumn);
 
   @Description(
-      "If the partition exists - should it overwrite / append or fail the load."
+      "If the table exists - should it overwrite / append or fail the load. "
+          + "Default: WRITE_APPEND. "
+          + "This currently only supports writing to BigQuery."
           + "Allowed formats are: "
-          + "append, overwrite, Fail")
-  String getLoadProperties();
+          + "WRITE_APPEND / WRITE_TRUNCATE / WRITE_EMPTY")
+  @Default.Enum("WRITE_APPEND")
+  WriteDisposition getWriteDisposition();
 
-  void setLoadProperties(String loadProperties);
+  void setWriteDisposition(WriteDisposition writeDisposition);
 
-  // input schema as a param before the completion of auto schema discovery
-  @Description("Path to Avro schema. ")
-  String getSchemaPath();
+  @Description("Output file format in GCS. Format: PARQUET, AVRO, or ORC. Default: PARQUET.")
+  @Default.Enum("PARQUET")
+  OutputFileFormat getFileFormat();
 
-  void setSchemaPath(String schemaPath);
+  void setFileFormat(OutputFileFormat fileFormat);
 }

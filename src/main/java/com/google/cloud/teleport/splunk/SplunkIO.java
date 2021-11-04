@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.splunk;
 
-import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkArgument;
-import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkNotNull;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.auto.value.AutoValue;
 import java.util.concurrent.ThreadLocalRandom;
@@ -31,7 +31,7 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.vendor.guava.v20_0.com.google.common.base.MoreObjects;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.MoreObjects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,6 +75,9 @@ public class SplunkIO {
     @Nullable
     abstract ValueProvider<Boolean> disableCertificateValidation();
 
+    @Nullable
+    abstract ValueProvider<String> selfSignedCertificatePath();
+
     @Override
     public PCollection<SplunkWriteError> expand(PCollection<SplunkEvent> input) {
 
@@ -84,7 +87,8 @@ public class SplunkIO {
               .withUrl(url())
               .withInputBatchCount(batchCount())
               .withDisableCertificateValidation(disableCertificateValidation())
-              .withToken((token()));
+              .withToken((token()))
+              .withSelfSignedCertificatePath(selfSignedCertificatePath());
 
       SplunkEventWriter writer = builder.build();
       LOG.info("SplunkEventWriter configured");
@@ -114,6 +118,9 @@ public class SplunkIO {
 
       abstract Builder setDisableCertificateValidation(
           ValueProvider<Boolean> disableCertificateValidation);
+
+      abstract Builder setSelfSignedCertificatePath(
+          ValueProvider<String> selfSignedCertificatePath);
 
       abstract Write autoBuild();
 
@@ -217,7 +224,8 @@ public class SplunkIO {
           ValueProvider<Boolean> disableCertificateValidation) {
         checkArgument(
             disableCertificateValidation != null,
-            "withDisableCertificateValidation(disableCertificateValidation) called with null input.");
+            "withDisableCertificateValidation(disableCertificateValidation) called with null"
+                + " input.");
         return setDisableCertificateValidation(disableCertificateValidation);
       }
 
@@ -231,9 +239,36 @@ public class SplunkIO {
       public Builder withDisableCertificateValidation(Boolean disableCertificateValidation) {
         checkArgument(
             disableCertificateValidation != null,
-            "withDisableCertificateValidation(disableCertificateValidation) called with null input.");
+            "withDisableCertificateValidation(disableCertificateValidation) called with null"
+                + " input.");
         return setDisableCertificateValidation(
             ValueProvider.StaticValueProvider.of((disableCertificateValidation)));
+      }
+
+      /**
+       * Method to set the self signed certificate path.
+       *
+       * @param selfSignedCertificatePath Path to self-signed certificate
+       * @return {@link Builder}
+       */
+      public Builder withSelfSignedCertificatePath(
+          ValueProvider<String> selfSignedCertificatePath) {
+        return setSelfSignedCertificatePath(selfSignedCertificatePath);
+      }
+
+      /**
+       * Same as {@link Builder#withSelfSignedCertificatePath(ValueProvider)} but without a {@link
+       * ValueProvider}.
+       *
+       * @param selfSignedCertificatePath Path to self-signed certificate
+       * @return {@link Builder}
+       */
+      public Builder withSelfSignedCertificatePath(String selfSignedCertificatePath) {
+        checkArgument(
+            selfSignedCertificatePath != null,
+            "withSelfSignedCertificatePath(selfSignedCertificatePath) called with null input.");
+        return setSelfSignedCertificatePath(
+            ValueProvider.StaticValueProvider.of(selfSignedCertificatePath));
       }
 
       public Write build() {

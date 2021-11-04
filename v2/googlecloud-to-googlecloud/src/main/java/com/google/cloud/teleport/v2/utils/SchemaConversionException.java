@@ -20,4 +20,8 @@ final class SchemaConversionException extends RuntimeException {
   public SchemaConversionException(String message) {
     super(message);
   }
+
+  public SchemaConversionException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }
