@@ -16,7 +16,7 @@ public class NewRelicConfig {
     protected static final int DEFAULT_BATCH_COUNT = 100;
     protected static final boolean DEFAULT_DISABLE_CERTIFICATE_VALIDATION = false;
     protected static final boolean DEFAULT_USE_COMPRESSION = true;
-    public static final long DEFAULT_FLUSH_DELAY = 5;
+    protected static final int DEFAULT_FLUSH_DELAY = 2;
     protected static final Integer DEFAULT_PARALLELISM = 1;
 
     private final ValueProvider<String> logsApiUrl;
@@ -25,16 +25,19 @@ public class NewRelicConfig {
     private final ValueProvider<Integer> parallelism;
     private final ValueProvider<Boolean> disableCertificateValidation;
     private final ValueProvider<Boolean> useCompression;
+    private final ValueProvider<Integer> flushDelay;
 
     private NewRelicConfig(final ValueProvider<String> logsApiUrl,
                            final ValueProvider<String> licenseKey,
                            final ValueProvider<Integer> batchCount,
+                           final ValueProvider<Integer> flushDelay,
                            final ValueProvider<Integer> parallelism,
                            final ValueProvider<Boolean> disableCertificateValidation,
                            final ValueProvider<Boolean> useCompression) {
         this.logsApiUrl = logsApiUrl;
         this.licenseKey = licenseKey;
         this.batchCount = batchCount;
+        this.flushDelay = flushDelay;
         this.parallelism = parallelism;
         this.disableCertificateValidation = disableCertificateValidation;
         this.useCompression = useCompression;
@@ -49,6 +52,7 @@ public class NewRelicConfig {
                         ? maybeDecrypt(newRelicOptions.getLicenseKey(), newRelicOptions.getTokenKMSEncryptionKey())
                         : newRelicOptions.getLicenseKey(),
                 valueOrDefault(newRelicOptions.getBatchCount(), DEFAULT_BATCH_COUNT),
+                valueOrDefault(newRelicOptions.getFlushDelay(), DEFAULT_FLUSH_DELAY),
                 valueOrDefault(newRelicOptions.getParallelism(), DEFAULT_PARALLELISM),
                 valueOrDefault(newRelicOptions.getDisableCertificateValidation(), DEFAULT_DISABLE_CERTIFICATE_VALIDATION),
                 valueOrDefault(newRelicOptions.getUseCompression(), DEFAULT_USE_COMPRESSION));
@@ -76,6 +80,10 @@ public class NewRelicConfig {
 
     public ValueProvider<Integer> getBatchCount() {
         return batchCount;
+    }
+
+    public ValueProvider<Integer> getFlushDelay() {
+        return flushDelay;
     }
 
     public ValueProvider<Integer> getParallelism() {

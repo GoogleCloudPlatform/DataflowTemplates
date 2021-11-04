@@ -23,7 +23,13 @@ public interface NewRelicPipelineOptions extends PipelineOptions {
     @Description("Batch count for sending multiple events to NewRelic in a single POST.")
     ValueProvider<Integer> getBatchCount();
 
+
     void setBatchCount(ValueProvider<Integer> batchCount);
+
+    void setFlushDelay(ValueProvider<Integer> flushDelay);
+
+    @Description("Number of seconds to wait for additional logs (up to batchCount) since the reception of the last log record in non-full batch, before flushing them to New Relic Logs.")
+    ValueProvider<Integer> getFlushDelay();
 
     @Description("Disable SSL certificate validation.")
     ValueProvider<Boolean> getDisableCertificateValidation();

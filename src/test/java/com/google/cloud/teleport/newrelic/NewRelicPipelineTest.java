@@ -89,7 +89,7 @@ public class NewRelicPipelineTest {
         NewRelicPipeline pipeline = new NewRelicPipeline(
                 testPipeline,
                 Create.of(PLAINTEXT_MESSAGE, JSON_MESSAGE),
-                new NewRelicIO(getNewRelicConfig(url, 10, 1, false)));
+                new NewRelicIO(getNewRelicConfig(url, 2, 10, 1, false)));
 
         // When
         pipeline.run().waitUntilFinish(Duration.millis(100));
@@ -111,7 +111,7 @@ public class NewRelicPipelineTest {
         NewRelicPipeline pipeline = new NewRelicPipeline(
                 testPipeline,
                 Create.of(PLAINTEXT_MESSAGE, PLAINTEXT_MESSAGE, PLAINTEXT_MESSAGE, PLAINTEXT_MESSAGE, PLAINTEXT_MESSAGE),
-                new NewRelicIO(getNewRelicConfig(url, 2, 1, false)));
+                new NewRelicIO(getNewRelicConfig(url, 2, 2, 1, false)));
 
         // When
         pipeline.run().waitUntilFinish(Duration.millis(100));
@@ -132,17 +132,18 @@ public class NewRelicPipelineTest {
     @Test
     public void testMessagesAreNotFlushedIfTimerDoesNotExpire() {
         // Given
+        final int flushDelay = 2;
         final TestStream<String> logRecordLines = TestStream.create(StringUtf8Coder.of())
                 .advanceWatermarkTo(new Instant(0))
                 .addElements(PLAINTEXT_MESSAGE)
-                .advanceWatermarkTo(new Instant(0).plus(Duration.standardSeconds(1)))
+                .advanceWatermarkTo(new Instant(0).plus(Duration.standardSeconds(flushDelay - 1)))
                 .addElements(JSON_MESSAGE)
                 .advanceWatermarkToInfinity();
 
         NewRelicPipeline pipeline = new NewRelicPipeline(
                 testPipeline,
                 logRecordLines,
-                new NewRelicIO(getNewRelicConfig(url, 10, 1, false)));
+                new NewRelicIO(getNewRelicConfig(url, 10, flushDelay, 1, false)));
 
         // When
         pipeline.run().waitUntilFinish(Duration.millis(100));
@@ -159,17 +160,18 @@ public class NewRelicPipelineTest {
     @Test
     public void testMessagesAreFlushedIfTimerExpires() {
         // Given
+        final int flushDelay = 2;
         final TestStream<String> logRecordLines = TestStream.create(StringUtf8Coder.of())
                 .advanceWatermarkTo(new Instant(0))
                 .addElements(PLAINTEXT_MESSAGE)
-                .advanceWatermarkTo(new Instant(0).plus(Duration.standardSeconds(3)))
+                .advanceWatermarkTo(new Instant(0).plus(Duration.standardSeconds(flushDelay + 1)))
                 .addElements(JSON_MESSAGE)
                 .advanceWatermarkToInfinity();
 
         NewRelicPipeline pipeline = new NewRelicPipeline(
                 testPipeline,
                 logRecordLines,
-                new NewRelicIO(getNewRelicConfig(url, 10, 1, false)));
+                new NewRelicIO(getNewRelicConfig(url, 10, flushDelay, 1, false)));
 
         // When
         pipeline.run().waitUntilFinish(Duration.millis(100));
@@ -193,7 +195,7 @@ public class NewRelicPipelineTest {
         NewRelicPipeline pipeline = new NewRelicPipeline(
                 testPipeline,
                 Create.of(JSON_MESSAGE),
-                new NewRelicIO(getNewRelicConfig(url, 1, 1, true)));
+                new NewRelicIO(getNewRelicConfig(url, 1, 2, 1, true)));
 
         // When
         pipeline.run().waitUntilFinish(Duration.millis(100));
@@ -209,7 +211,7 @@ public class NewRelicPipelineTest {
         NewRelicPipeline pipeline = new NewRelicPipeline(
                 testPipeline,
                 Create.of(PLAINTEXT_MESSAGE),
-                new NewRelicIO(getNewRelicConfig(urlRate, 10, 1, false)));
+                new NewRelicIO(getNewRelicConfig(urlRate, 10, 2,  1, false)));
         mockServerClient.reset();
 
         mockServerClient
@@ -231,7 +233,7 @@ public class NewRelicPipelineTest {
         NewRelicPipeline pipeline = new NewRelicPipeline(
                 testPipeline,
                 Create.of(PLAINTEXT_MESSAGE),
-                new NewRelicIO(getNewRelicConfig(urlRate, 10, 1, false)));
+                new NewRelicIO(getNewRelicConfig(urlRate, 10, 2, 1, false)));
         mockServerClient.reset();
 
         mockServerClient
@@ -246,11 +248,12 @@ public class NewRelicPipelineTest {
         mockServerClient.verify(baseJsonRequest(), VerificationTimes.exactly(1));
     }
 
-    private NewRelicConfig getNewRelicConfig(final String url, final Integer batchCount, final Integer parallelism, final Boolean useCompression) {
+    private NewRelicConfig getNewRelicConfig(final String url, final Integer batchCount, final Integer flushDelay, final Integer parallelism, final Boolean useCompression) {
         final NewRelicConfig newRelicConfig = mock(NewRelicConfig.class);
         when(newRelicConfig.getLogsApiUrl()).thenReturn(StaticValueProvider.of(url));
         when(newRelicConfig.getLicenseKey()).thenReturn(StaticValueProvider.of(LICENSE_KEY));
         when(newRelicConfig.getBatchCount()).thenReturn(StaticValueProvider.of(batchCount));
+        when(newRelicConfig.getFlushDelay()).thenReturn(StaticValueProvider.of(flushDelay));
         when(newRelicConfig.getParallelism()).thenReturn(StaticValueProvider.of(parallelism));
         when(newRelicConfig.getDisableCertificateValidation()).thenReturn(StaticValueProvider.of(false));
         when(newRelicConfig.getUseCompression()).thenReturn(StaticValueProvider.of(useCompression));

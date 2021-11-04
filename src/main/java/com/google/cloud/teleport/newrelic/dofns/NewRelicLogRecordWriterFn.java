@@ -50,7 +50,6 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
-import static com.google.cloud.teleport.newrelic.config.NewRelicConfig.DEFAULT_FLUSH_DELAY;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
 
 /**
@@ -83,6 +82,7 @@ public class NewRelicLogRecordWriterFn extends DoFn<KV<Integer, NewRelicLogRecor
     private final ValueProvider<String> licenseKey;
     private final ValueProvider<Boolean> disableCertificateValidation;
     private final ValueProvider<Integer> batchCount;
+    private final ValueProvider<Integer> flushDelay;
     private final ValueProvider<Boolean> useCompression;
 
     public NewRelicLogRecordWriterFn(final NewRelicConfig newRelicConfig) {
@@ -90,6 +90,7 @@ public class NewRelicLogRecordWriterFn extends DoFn<KV<Integer, NewRelicLogRecor
         this.licenseKey = newRelicConfig.getLicenseKey();
         this.disableCertificateValidation = newRelicConfig.getDisableCertificateValidation();
         this.batchCount = newRelicConfig.getBatchCount();
+        this.flushDelay = newRelicConfig.getFlushDelay();
         this.useCompression = newRelicConfig.getUseCompression();
     }
 
@@ -123,7 +124,7 @@ public class NewRelicLogRecordWriterFn extends DoFn<KV<Integer, NewRelicLogRecor
         bufferState.add(logRecord);
         count += 1;
         countState.write(count);
-        timer.offset(Duration.standardSeconds(DEFAULT_FLUSH_DELAY)).setRelative();
+        timer.offset(Duration.standardSeconds(flushDelay.get())).setRelative();
 
         if (count >= batchCount.get()) {
             LOG.debug("Flushing batch of {} events", count);

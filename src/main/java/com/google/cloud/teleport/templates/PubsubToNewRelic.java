@@ -50,7 +50,8 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
  *
  * # Execute the template
  * JOB_NAME=pubsub-to-NewRelic-$USER-`date +"%Y%m%d-%H%M%S%z"`
- * BATCH_COUNT=1
+ * BATCH_COUNT=10
+ * FLUSH_DELAY=2
  * PARALLELISM=5
  * REGION=us-west1
  *
@@ -70,6 +71,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
  * licenseKey=${NR_LICENSE_KEY},\
  * logsApiUrl=${NR_LOG_ENDPOINT},\
  * batchCount=${BATCH_COUNT},\
+ * flushDelay=${FLUSH_DELAY},\
  * parallelism=${PARALLELISM},\
  * disableCertificateValidation=false,\
  * useCompression=true"
