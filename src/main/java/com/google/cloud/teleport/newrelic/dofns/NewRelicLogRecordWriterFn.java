@@ -19,10 +19,10 @@ package com.google.cloud.teleport.newrelic.dofns;
 import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.HttpResponseException;
-import com.google.cloud.teleport.newrelic.utils.HttpClient;
 import com.google.cloud.teleport.newrelic.config.NewRelicConfig;
 import com.google.cloud.teleport.newrelic.dtos.NewRelicLogApiSendError;
 import com.google.cloud.teleport.newrelic.dtos.NewRelicLogRecord;
+import com.google.cloud.teleport.newrelic.utils.HttpClient;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
@@ -50,8 +50,6 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
-import static com.google.cloud.teleport.newrelic.utils.ConfigHelper.valueOrDefault;
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
 
 /**
@@ -60,10 +58,7 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 public class NewRelicLogRecordWriterFn extends DoFn<KV<Integer, NewRelicLogRecord>, NewRelicLogApiSendError> {
 
     private static final Logger LOG = LoggerFactory.getLogger(NewRelicLogRecordWriterFn.class);
-    private static final int DEFAULT_BATCH_COUNT = 1;
-    private static final boolean DEFAULT_DISABLE_CERTIFICATE_VALIDATION = false;
-    private static final boolean DEFAULT_USE_COMPRESSION = true;
-    private static final long DEFAULT_FLUSH_DELAY = 2;
+
     private static final Counter INPUT_COUNTER = Metrics.counter(NewRelicLogRecordWriterFn.class, "inbound-events");
     private static final Counter SUCCESS_WRITES = Metrics.counter(NewRelicLogRecordWriterFn.class, "outbound-successful-events");
     private static final Counter FAILED_WRITES = Metrics.counter(NewRelicLogRecordWriterFn.class, "outbound-failed-events");
@@ -80,46 +75,33 @@ public class NewRelicLogRecordWriterFn extends DoFn<KV<Integer, NewRelicLogRecor
     private final TimerSpec expirySpec = TimerSpecs.timer(TimeDomain.EVENT_TIME);
 
     // Non-serialized fields: these are set up once the DoFn has potentially been deserialized, in the @Setup method.
-    private Integer batchCount;
-    private Boolean disableCertificateValidation;
-    private Boolean useCompression;
     private HttpClient httpClient;
 
     // Serialized fields
     private final ValueProvider<String> logsApiUrl;
-    private final ValueProvider<String> apiKey;
-    private final ValueProvider<Boolean> inputDisableCertificateValidation;
-    private final ValueProvider<Integer> inputBatchCount;
-    private final ValueProvider<Boolean> inputUseCompression;
+    private final ValueProvider<String> licenseKey;
+    private final ValueProvider<Boolean> disableCertificateValidation;
+    private final ValueProvider<Integer> batchCount;
+    private final ValueProvider<Integer> flushDelay;
+    private final ValueProvider<Boolean> useCompression;
 
     public NewRelicLogRecordWriterFn(final NewRelicConfig newRelicConfig) {
         this.logsApiUrl = newRelicConfig.getLogsApiUrl();
-        this.apiKey = newRelicConfig.getLicenseKey();
-        this.inputDisableCertificateValidation = newRelicConfig.getDisableCertificateValidation();
-        this.inputBatchCount = newRelicConfig.getBatchCount();
-        this.inputUseCompression = newRelicConfig.getUseCompression();
+        this.licenseKey = newRelicConfig.getLicenseKey();
+        this.disableCertificateValidation = newRelicConfig.getDisableCertificateValidation();
+        this.batchCount = newRelicConfig.getBatchCount();
+        this.flushDelay = newRelicConfig.getFlushDelay();
+        this.useCompression = newRelicConfig.getUseCompression();
     }
 
     @Setup
     public void setup() {
-        checkArgument(logsApiUrl != null && logsApiUrl.isAccessible(), "url is required for writing events.");
-        checkArgument(apiKey != null && apiKey.isAccessible(), "API key is required for writing events.");
-
-        batchCount = valueOrDefault (inputBatchCount, DEFAULT_BATCH_COUNT);
-        LOG.info("Batch count set to: {}", batchCount);
-
-        disableCertificateValidation = valueOrDefault(inputDisableCertificateValidation, DEFAULT_DISABLE_CERTIFICATE_VALIDATION);
-        LOG.info("Disable certificate validation set to: {}", disableCertificateValidation);
-
-        useCompression = valueOrDefault(inputUseCompression, DEFAULT_USE_COMPRESSION);
-        LOG.info("Use Compression set to: {}", useCompression);
-
         try {
             this.httpClient = HttpClient.init(
                     new GenericUrl(logsApiUrl.get()),
-                    apiKey.get(),
-                    disableCertificateValidation,
-                    useCompression);
+                    licenseKey.get(),
+                    disableCertificateValidation.get(),
+                    useCompression.get());
             LOG.info("Successfully created HttpClient");
         } catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException e) {
             LOG.error("Error creating HttpClient", e);
@@ -142,9 +124,9 @@ public class NewRelicLogRecordWriterFn extends DoFn<KV<Integer, NewRelicLogRecor
         bufferState.add(logRecord);
         count += 1;
         countState.write(count);
-        timer.offset(Duration.standardSeconds(DEFAULT_FLUSH_DELAY)).setRelative();
+        timer.offset(Duration.standardSeconds(flushDelay.get())).setRelative();
 
-        if (count >= batchCount) {
+        if (count >= batchCount.get()) {
             LOG.debug("Flushing batch of {} events", count);
             flush(receiver, bufferState, countState);
         }
@@ -214,10 +196,10 @@ public class NewRelicLogRecordWriterFn extends DoFn<KV<Integer, NewRelicLogRecor
     /**
      * Utility method to un-batch and flush failed write log records.
      *
-     * @param logRecords List of {@link NewRelicLogRecord}s to un-batch
+     * @param logRecords    List of {@link NewRelicLogRecord}s to un-batch
      * @param statusMessage Status message to be added to {@link NewRelicLogApiSendError}
-     * @param statusCode Status code to be added to {@link NewRelicLogApiSendError}
-     * @param receiver Receiver to write {@link NewRelicLogApiSendError}s to
+     * @param statusCode    Status code to be added to {@link NewRelicLogApiSendError}
+     * @param receiver      Receiver to write {@link NewRelicLogApiSendError}s to
      */
     private static void flushWriteFailures(
             List<NewRelicLogRecord> logRecords,

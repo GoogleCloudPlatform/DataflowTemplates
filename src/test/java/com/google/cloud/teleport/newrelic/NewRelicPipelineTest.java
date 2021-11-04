@@ -5,7 +5,7 @@ import com.google.cloud.teleport.newrelic.ptransforms.NewRelicIO;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
-import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.testing.TestStream;
 import org.apache.beam.sdk.transforms.Create;
@@ -41,7 +41,7 @@ import static org.mockserver.integration.ClientAndServer.startClientAndServer;
 public class NewRelicPipelineTest {
 
     private static final String EXPECTED_PATH = "/log/v1";
-    private static final String API_KEY = "an-api-key";
+    private static final String LICENSE_KEY = "a-license-key";
     private static final String PLAINTEXT_MESSAGE = "A PLAINTEXT log message";
     private static final JsonObject EXPECTED_PLAINTEXT_MESSAGE_JSON;
     private static final LocalDateTime SOME_DATETIME = LocalDateTime.of(2021, Month.DECEMBER, 25, 23, 0, 0, 900);
@@ -89,7 +89,7 @@ public class NewRelicPipelineTest {
         NewRelicPipeline pipeline = new NewRelicPipeline(
                 testPipeline,
                 Create.of(PLAINTEXT_MESSAGE, JSON_MESSAGE),
-                new NewRelicIO(getNewRelicConfig(url, 10, 1, false)));
+                new NewRelicIO(getNewRelicConfig(url, 2, 10, 1, false)));
 
         // When
         pipeline.run().waitUntilFinish(Duration.millis(100));
@@ -101,23 +101,8 @@ public class NewRelicPipelineTest {
         // Check the body contains the expected messages
         final String expectedBody = jsonArrayOf(EXPECTED_PLAINTEXT_MESSAGE_JSON, EXPECTED_JSON_MESSAGE_JSON);
         mockServerClient.verify(baseJsonRequest()
-                .withBody(JsonBody.json(expectedBody)),
+                        .withBody(JsonBody.json(expectedBody)),
                 VerificationTimes.once());
-    }
-
-    @Test
-    public void testPubSubMessagesAreSentToNewRelicUsingDefaultValues() {
-        // Given
-        NewRelicPipeline pipeline = new NewRelicPipeline(
-                testPipeline,
-                Create.of(PLAINTEXT_MESSAGE, JSON_MESSAGE),
-                new NewRelicIO(getNewRelicConfig(url, null, 1, false)));
-
-        // When
-        pipeline.run().waitUntilFinish(Duration.millis(100));
-
-        // Then
-        mockServerClient.verify(baseJsonRequest(), VerificationTimes.exactly(2));
     }
 
     @Test
@@ -126,7 +111,7 @@ public class NewRelicPipelineTest {
         NewRelicPipeline pipeline = new NewRelicPipeline(
                 testPipeline,
                 Create.of(PLAINTEXT_MESSAGE, PLAINTEXT_MESSAGE, PLAINTEXT_MESSAGE, PLAINTEXT_MESSAGE, PLAINTEXT_MESSAGE),
-                new NewRelicIO(getNewRelicConfig(url, 2, 1, false)));
+                new NewRelicIO(getNewRelicConfig(url, 2, 2, 1, false)));
 
         // When
         pipeline.run().waitUntilFinish(Duration.millis(100));
@@ -147,17 +132,18 @@ public class NewRelicPipelineTest {
     @Test
     public void testMessagesAreNotFlushedIfTimerDoesNotExpire() {
         // Given
+        final int flushDelay = 2;
         final TestStream<String> logRecordLines = TestStream.create(StringUtf8Coder.of())
                 .advanceWatermarkTo(new Instant(0))
                 .addElements(PLAINTEXT_MESSAGE)
-                .advanceWatermarkTo(new Instant(0).plus(Duration.standardSeconds(1)))
+                .advanceWatermarkTo(new Instant(0).plus(Duration.standardSeconds(flushDelay - 1)))
                 .addElements(JSON_MESSAGE)
                 .advanceWatermarkToInfinity();
 
         NewRelicPipeline pipeline = new NewRelicPipeline(
                 testPipeline,
                 logRecordLines,
-                new NewRelicIO(getNewRelicConfig(url, 10, 1, false)));
+                new NewRelicIO(getNewRelicConfig(url, 10, flushDelay, 1, false)));
 
         // When
         pipeline.run().waitUntilFinish(Duration.millis(100));
@@ -168,23 +154,24 @@ public class NewRelicPipelineTest {
 
         // Check the bodies contain the expected messages for each batch
         final String body = jsonArrayOf(EXPECTED_PLAINTEXT_MESSAGE_JSON, EXPECTED_JSON_MESSAGE_JSON);
-        mockServerClient.verify(baseJsonRequest().withBody(JsonBody.json(body)),VerificationTimes.once());
+        mockServerClient.verify(baseJsonRequest().withBody(JsonBody.json(body)), VerificationTimes.once());
     }
 
     @Test
     public void testMessagesAreFlushedIfTimerExpires() {
         // Given
+        final int flushDelay = 2;
         final TestStream<String> logRecordLines = TestStream.create(StringUtf8Coder.of())
                 .advanceWatermarkTo(new Instant(0))
                 .addElements(PLAINTEXT_MESSAGE)
-                .advanceWatermarkTo(new Instant(0).plus(Duration.standardSeconds(3)))
+                .advanceWatermarkTo(new Instant(0).plus(Duration.standardSeconds(flushDelay + 1)))
                 .addElements(JSON_MESSAGE)
                 .advanceWatermarkToInfinity();
 
         NewRelicPipeline pipeline = new NewRelicPipeline(
                 testPipeline,
                 logRecordLines,
-                new NewRelicIO(getNewRelicConfig(url, 10, 1, false)));
+                new NewRelicIO(getNewRelicConfig(url, 10, flushDelay, 1, false)));
 
         // When
         pipeline.run().waitUntilFinish(Duration.millis(100));
@@ -208,7 +195,7 @@ public class NewRelicPipelineTest {
         NewRelicPipeline pipeline = new NewRelicPipeline(
                 testPipeline,
                 Create.of(JSON_MESSAGE),
-                new NewRelicIO(getNewRelicConfig(url, 1, 1, true)));
+                new NewRelicIO(getNewRelicConfig(url, 1, 2, 1, true)));
 
         // When
         pipeline.run().waitUntilFinish(Duration.millis(100));
@@ -224,7 +211,7 @@ public class NewRelicPipelineTest {
         NewRelicPipeline pipeline = new NewRelicPipeline(
                 testPipeline,
                 Create.of(PLAINTEXT_MESSAGE),
-                new NewRelicIO(getNewRelicConfig(urlRate, 10, 1, false)));
+                new NewRelicIO(getNewRelicConfig(urlRate, 10, 2,  1, false)));
         mockServerClient.reset();
 
         mockServerClient
@@ -246,7 +233,7 @@ public class NewRelicPipelineTest {
         NewRelicPipeline pipeline = new NewRelicPipeline(
                 testPipeline,
                 Create.of(PLAINTEXT_MESSAGE),
-                new NewRelicIO(getNewRelicConfig(urlRate, 10, 1, false)));
+                new NewRelicIO(getNewRelicConfig(urlRate, 10, 2, 1, false)));
         mockServerClient.reset();
 
         mockServerClient
@@ -261,14 +248,15 @@ public class NewRelicPipelineTest {
         mockServerClient.verify(baseJsonRequest(), VerificationTimes.exactly(1));
     }
 
-    private NewRelicConfig getNewRelicConfig(final String url, final Integer batchCount, final Integer parallelism, final Boolean useCompression) {
+    private NewRelicConfig getNewRelicConfig(final String url, final Integer batchCount, final Integer flushDelay, final Integer parallelism, final Boolean useCompression) {
         final NewRelicConfig newRelicConfig = mock(NewRelicConfig.class);
-        when(newRelicConfig.getLogsApiUrl()).thenReturn(ValueProvider.StaticValueProvider.of(url));
-        when(newRelicConfig.getLicenseKey()).thenReturn(ValueProvider.StaticValueProvider.of(API_KEY));
-        when(newRelicConfig.getBatchCount()).thenReturn(ValueProvider.StaticValueProvider.of(batchCount));
-        when(newRelicConfig.getParallelism()).thenReturn(ValueProvider.StaticValueProvider.of(parallelism));
-        when(newRelicConfig.getDisableCertificateValidation()).thenReturn(ValueProvider.StaticValueProvider.of(false));
-        when(newRelicConfig.getUseCompression()).thenReturn(ValueProvider.StaticValueProvider.of(useCompression));
+        when(newRelicConfig.getLogsApiUrl()).thenReturn(StaticValueProvider.of(url));
+        when(newRelicConfig.getLicenseKey()).thenReturn(StaticValueProvider.of(LICENSE_KEY));
+        when(newRelicConfig.getBatchCount()).thenReturn(StaticValueProvider.of(batchCount));
+        when(newRelicConfig.getFlushDelay()).thenReturn(StaticValueProvider.of(flushDelay));
+        when(newRelicConfig.getParallelism()).thenReturn(StaticValueProvider.of(parallelism));
+        when(newRelicConfig.getDisableCertificateValidation()).thenReturn(StaticValueProvider.of(false));
+        when(newRelicConfig.getUseCompression()).thenReturn(StaticValueProvider.of(useCompression));
 
         return newRelicConfig;
     }
@@ -277,14 +265,14 @@ public class NewRelicPipelineTest {
         return HttpRequest.request(EXPECTED_PATH)
                 .withMethod("POST")
                 .withHeader(Header.header("Content-Type", APPLICATION_JSON))
-                .withHeader(Header.header("api-key", API_KEY));
+                .withHeader(Header.header("api-key", LICENSE_KEY));
     }
 
     private HttpRequest baseGzipRequest() {
         return HttpRequest.request(EXPECTED_PATH)
                 .withMethod("POST")
                 .withHeader(Header.header("Content-Type", APPLICATION_GZIP))
-                .withHeader(Header.header("api-key", API_KEY));
+                .withHeader(Header.header("api-key", LICENSE_KEY));
     }
 
     private String jsonArrayOf(final JsonObject... jsonObjects) {

@@ -1,16 +1,16 @@
 package com.google.cloud.teleport.templates;
 
-import com.google.cloud.teleport.coders.FailsafeElementCoder;
-import com.google.cloud.teleport.newrelic.dtos.NewRelicLogRecord;
 import com.google.cloud.teleport.newrelic.NewRelicPipeline;
 import com.google.cloud.teleport.newrelic.config.NewRelicConfig;
 import com.google.cloud.teleport.newrelic.config.PubsubToNewRelicPipelineOptions;
-import com.google.cloud.teleport.newrelic.ptransforms.ReadMessagesFromPubSub;
+import com.google.cloud.teleport.newrelic.dtos.NewRelicLogRecord;
 import com.google.cloud.teleport.newrelic.ptransforms.NewRelicIO;
+import com.google.cloud.teleport.newrelic.ptransforms.ReadMessagesFromPubSub;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The {@link PubsubToNewRelic} pipeline is a streaming pipeline which ingests data from Cloud
@@ -49,7 +49,8 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
  *
  * # Execute the template
  * JOB_NAME=pubsub-to-NewRelic-$USER-`date +"%Y%m%d-%H%M%S%z"`
- * BATCH_COUNT=1
+ * BATCH_COUNT=10
+ * FLUSH_DELAY=2
  * PARALLELISM=5
  * REGION=us-west1
  *
@@ -69,6 +70,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
  * licenseKey=${NR_LICENSE_KEY},\
  * logsApiUrl=${NR_LOG_ENDPOINT},\
  * batchCount=${BATCH_COUNT},\
+ * flushDelay=${FLUSH_DELAY},\
  * parallelism=${PARALLELISM},\
  * disableCertificateValidation=false,\
  * useCompression=true"
@@ -77,11 +79,7 @@ public class PubsubToNewRelic {
 
     public static final String PLUGIN_VERSION = "1.0.0";
 
-    /**
-     * String/String Coder for FailsafeElement.
-     */
-    public static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
-            FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
+    private static final Logger LOG = LoggerFactory.getLogger(PubsubToNewRelic.class);
 
     /**
      * The main entry-point for pipeline execution. This method will start the pipeline but will not
@@ -102,10 +100,13 @@ public class PubsubToNewRelic {
     public static PipelineResult run(PubsubToNewRelicPipelineOptions options) {
         final Pipeline pipeline = Pipeline.create(options);
 
+        final NewRelicConfig newRelicConfig = NewRelicConfig.fromPipelineOptions(options);
+        LOG.debug("Using configuration: {}", newRelicConfig);
+
         final NewRelicPipeline nrPipeline = new NewRelicPipeline(
                 pipeline,
                 new ReadMessagesFromPubSub(options.getInputSubscription()),
-                new NewRelicIO(NewRelicConfig.fromPipelineOptions(options))
+                new NewRelicIO(newRelicConfig)
         );
 
         return nrPipeline.run();
