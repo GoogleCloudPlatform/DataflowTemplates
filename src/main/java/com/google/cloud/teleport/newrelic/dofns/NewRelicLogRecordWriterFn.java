@@ -50,6 +50,7 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
 
 /**
@@ -96,6 +97,8 @@ public class NewRelicLogRecordWriterFn extends DoFn<KV<Integer, NewRelicLogRecor
 
     @Setup
     public void setup() {
+        checkArgument(licenseKey != null && licenseKey.isAccessible() && licenseKey.get() != null, "New Relic License Key is required for writing events.");
+
         try {
             this.httpClient = HttpClient.init(
                     new GenericUrl(logsApiUrl.get()),
