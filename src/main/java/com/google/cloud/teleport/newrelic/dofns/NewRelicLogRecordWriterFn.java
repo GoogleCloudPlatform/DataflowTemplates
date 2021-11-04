@@ -19,10 +19,10 @@ package com.google.cloud.teleport.newrelic.dofns;
 import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.HttpResponseException;
-import com.google.cloud.teleport.newrelic.utils.HttpClient;
 import com.google.cloud.teleport.newrelic.config.NewRelicConfig;
 import com.google.cloud.teleport.newrelic.dtos.NewRelicLogApiSendError;
 import com.google.cloud.teleport.newrelic.dtos.NewRelicLogRecord;
+import com.google.cloud.teleport.newrelic.utils.HttpClient;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
@@ -51,7 +51,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
 import static com.google.cloud.teleport.newrelic.config.NewRelicConfig.DEFAULT_FLUSH_DELAY;
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
 
 /**
@@ -96,9 +95,6 @@ public class NewRelicLogRecordWriterFn extends DoFn<KV<Integer, NewRelicLogRecor
 
     @Setup
     public void setup() {
-        checkArgument(logsApiUrl != null && logsApiUrl.isAccessible(), "url is required for writing events.");
-        checkArgument(licenseKey != null && licenseKey.isAccessible(), "API key is required for writing events.");
-
         try {
             this.httpClient = HttpClient.init(
                     new GenericUrl(logsApiUrl.get()),
@@ -199,10 +195,10 @@ public class NewRelicLogRecordWriterFn extends DoFn<KV<Integer, NewRelicLogRecor
     /**
      * Utility method to un-batch and flush failed write log records.
      *
-     * @param logRecords List of {@link NewRelicLogRecord}s to un-batch
+     * @param logRecords    List of {@link NewRelicLogRecord}s to un-batch
      * @param statusMessage Status message to be added to {@link NewRelicLogApiSendError}
-     * @param statusCode Status code to be added to {@link NewRelicLogApiSendError}
-     * @param receiver Receiver to write {@link NewRelicLogApiSendError}s to
+     * @param statusCode    Status code to be added to {@link NewRelicLogApiSendError}
+     * @param receiver      Receiver to write {@link NewRelicLogApiSendError}s to
      */
     private static void flushWriteFailures(
             List<NewRelicLogRecord> logRecords,

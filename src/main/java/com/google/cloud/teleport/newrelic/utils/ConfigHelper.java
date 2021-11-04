@@ -23,7 +23,7 @@ public class ConfigHelper {
      */
     public static <T> ValueProvider<T> valueOrDefault(ValueProvider<T> value, T defaultValue ) {
         return (value != null && value.isAccessible()) && value.get() != null
-                ? value
+                ? StaticValueProvider.of(value.get())
                 : StaticValueProvider.of(defaultValue);
     }
 

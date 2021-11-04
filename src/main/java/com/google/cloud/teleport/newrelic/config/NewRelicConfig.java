@@ -4,6 +4,7 @@ import com.google.cloud.teleport.util.KMSEncryptedNestedValueProvider;
 import org.apache.beam.sdk.options.ValueProvider;
 
 import static com.google.cloud.teleport.newrelic.utils.ConfigHelper.valueOrDefault;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 /**
  * The NewRelicConfig contains the {@link NewRelicPipelineOptions} that were supplied
@@ -11,6 +12,7 @@ import static com.google.cloud.teleport.newrelic.utils.ConfigHelper.valueOrDefau
  * transform to conveniently batch and send the processed logs to New Relic.
  */
 public class NewRelicConfig {
+    protected static final String DEFAULT_LOGS_API_URL = "https://log-api.newrelic.com/log/v1";
     protected static final int DEFAULT_BATCH_COUNT = 1;
     protected static final boolean DEFAULT_DISABLE_CERTIFICATE_VALIDATION = false;
     protected static final boolean DEFAULT_USE_COMPRESSION = true;
@@ -39,8 +41,10 @@ public class NewRelicConfig {
     }
 
     public static NewRelicConfig fromPipelineOptions(final NewRelicPipelineOptions newRelicOptions) {
+        checkArgument(newRelicOptions.getLicenseKey() != null && newRelicOptions.getLicenseKey().isAccessible() && newRelicOptions.getLicenseKey().get() != null, "New Relic License Key is required for writing events.");
+
         return new NewRelicConfig(
-                newRelicOptions.getLogsApiUrl(),
+                valueOrDefault(newRelicOptions.getLogsApiUrl(), DEFAULT_LOGS_API_URL),
                 newRelicOptions.getTokenKMSEncryptionKey().isAccessible()
                         ? maybeDecrypt(newRelicOptions.getLicenseKey(), newRelicOptions.getTokenKMSEncryptionKey())
                         : newRelicOptions.getLicenseKey(),
