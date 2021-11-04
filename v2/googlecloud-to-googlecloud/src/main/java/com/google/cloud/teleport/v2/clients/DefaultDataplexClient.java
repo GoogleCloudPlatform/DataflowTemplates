@@ -305,12 +305,18 @@ public final class DefaultDataplexClient implements DataplexClient {
 
   private static Stream<GoogleCloudDataplexV1Entity> getEntitiesUnderAssetForPage(
       GoogleCloudDataplexV1ListEntitiesResponse response, String assetName) {
+    // The entities created after Sept 2021 should contain short asset names and entities created
+    // before that should contain full names.
+    String assetShortName = getShortAssetNameFromAsset(assetName);
     return response.getEntities().stream()
         // Unfortunately, getting the entities from under an asset is not supported, so we need to
         // do the filtering on our end. Hopefully, the number of assets under a zone remain small
         // enough that this won't be too expensive.
         // TODO(zhoufek): Switch to just getting from an asset if/when Dataplex supports it.
-        .filter(e -> Objects.equals(assetName, e.getAsset()));
+        .filter(
+            e ->
+                Objects.equals(assetShortName, e.getAsset())
+                    || Objects.equals(assetName, e.getAsset()));
   }
 
   /** Handles just the creation of entities. Each entity is logged after creation. */
@@ -398,5 +404,9 @@ public final class DefaultDataplexClient implements DataplexClient {
     }
     throw new IllegalArgumentException(
         String.format("Asset '%s' not properly formatted", assetName));
+  }
+
+  private static String getShortAssetNameFromAsset(String assetName) {
+    return assetName.substring(assetName.lastIndexOf('/') + 1);
   }
 }
