@@ -14,6 +14,7 @@ import com.google.api.client.util.StringUtils;
 import com.google.cloud.teleport.newrelic.dtos.NewRelicLogRecord;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableSet;
@@ -175,12 +176,18 @@ public class HttpClient {
      * Utility method to transform a list of {@link NewRelicLogRecord}s into the body of the HTTP call to New Relic
      */
     private String buildBody(List<NewRelicLogRecord> logRecords) {
-        final JsonObject commonAttributes = new JsonObject();
-        commonAttributes.addProperty(PLUGIN_SOURCE_ATTR, PLUGIN_SOURCE_VALUE);
-        final JsonObject payload = new JsonObject();
-        payload.add("common", commonAttributes);
-        payload.add("logs", GSON.toJsonTree(logRecords, new TypeToken<List<NewRelicLogRecord>>() {
-        }.getType()));
+        final JsonObject common = new JsonObject();
+        final JsonObject attributes = new JsonObject();
+        attributes.addProperty(PLUGIN_SOURCE_ATTR, PLUGIN_SOURCE_VALUE);
+        common.add("attributes", attributes);
+
+        final JsonObject logsBlock = new JsonObject();
+        logsBlock.add("common", common);
+        logsBlock.add("logs", GSON.toJsonTree(logRecords, new TypeToken<List<NewRelicLogRecord>>() {}.getType()));
+
+        final JsonArray payload = new JsonArray();
+        payload.add(logsBlock);
+
         return payload.toString();
     }
 

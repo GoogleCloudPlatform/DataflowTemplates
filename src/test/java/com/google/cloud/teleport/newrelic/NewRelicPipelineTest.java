@@ -288,15 +288,23 @@ public class NewRelicPipelineTest {
     }
 
     private String jsonArrayOf(final JsonObject... jsonObjects) {
-        JsonObject payload = new JsonObject();
-        JsonObject commonPayload = new JsonObject();
-        commonPayload.addProperty("plugin.source", "gcp-dataflow-" + PLUGIN_VERSION);
-        payload.add("common", commonPayload);
-        JsonArray logs = new JsonArray();
+        final JsonObject attributes = new JsonObject();
+        attributes.addProperty("plugin.source", "gcp-dataflow-" + PLUGIN_VERSION);
+        final JsonObject common = new JsonObject();
+        common.add("attributes", attributes);
+
+        final JsonArray logs = new JsonArray();
         for (JsonObject obj : jsonObjects) {
             logs.add(obj);
         }
-        payload.add("logs", logs);
+
+        final JsonObject logsBlock = new JsonObject();
+        logsBlock.add("common", common);
+        logsBlock.add("logs", logs);
+
+        final JsonArray payload = new JsonArray();
+        payload.add(logsBlock);
+
         return payload.toString();
     }
 }
