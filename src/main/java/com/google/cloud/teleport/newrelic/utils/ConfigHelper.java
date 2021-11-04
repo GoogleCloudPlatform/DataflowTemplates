@@ -28,7 +28,9 @@ public class ConfigHelper {
     }
 
     public static void logConfiguration(final NewRelicConfig newRelicConfig) {
+        LOG.info("Logs API url set to: {}", newRelicConfig.getLogsApiUrl());
         LOG.info("Batch count set to: {}", newRelicConfig.getBatchCount().get());
+        LOG.info("Flush delay set to: {}", newRelicConfig.getFlushDelay().get());
         LOG.info("Disable certificate validation set to: {}", newRelicConfig.getDisableCertificateValidation().get());
         LOG.info("Use Compression set to: {}", newRelicConfig.getUseCompression().get());
         LOG.info("Parallelism set to: {}", newRelicConfig.getParallelism().get());
