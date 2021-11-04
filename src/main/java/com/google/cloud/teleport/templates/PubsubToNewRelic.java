@@ -7,6 +7,7 @@ import com.google.cloud.teleport.newrelic.config.NewRelicConfig;
 import com.google.cloud.teleport.newrelic.config.PubsubToNewRelicPipelineOptions;
 import com.google.cloud.teleport.newrelic.ptransforms.ReadMessagesFromPubSub;
 import com.google.cloud.teleport.newrelic.ptransforms.NewRelicIO;
+import com.google.cloud.teleport.newrelic.utils.ConfigHelper;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
@@ -102,10 +103,13 @@ public class PubsubToNewRelic {
     public static PipelineResult run(PubsubToNewRelicPipelineOptions options) {
         final Pipeline pipeline = Pipeline.create(options);
 
+        final NewRelicConfig newRelicConfig = NewRelicConfig.fromPipelineOptions(options);
+        ConfigHelper.logConfiguration(newRelicConfig);
+
         final NewRelicPipeline nrPipeline = new NewRelicPipeline(
                 pipeline,
                 new ReadMessagesFromPubSub(options.getInputSubscription()),
-                new NewRelicIO(NewRelicConfig.fromPipelineOptions(options))
+                new NewRelicIO(newRelicConfig)
         );
 
         return nrPipeline.run();

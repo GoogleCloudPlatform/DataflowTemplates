@@ -3,12 +3,20 @@ package com.google.cloud.teleport.newrelic.config;
 import com.google.cloud.teleport.util.KMSEncryptedNestedValueProvider;
 import org.apache.beam.sdk.options.ValueProvider;
 
+import static com.google.cloud.teleport.newrelic.utils.ConfigHelper.valueOrDefault;
+
 /**
  * The NewRelicConfig contains the {@link NewRelicPipelineOptions} that were supplied
  * when starting the Apache Beam job, and which will be used by the {@link com.google.cloud.teleport.newrelic.ptransforms.NewRelicIO}
  * transform to conveniently batch and send the processed logs to New Relic.
  */
 public class NewRelicConfig {
+    protected static final int DEFAULT_BATCH_COUNT = 1;
+    protected static final boolean DEFAULT_DISABLE_CERTIFICATE_VALIDATION = false;
+    protected static final boolean DEFAULT_USE_COMPRESSION = true;
+    public static final long DEFAULT_FLUSH_DELAY = 2;
+    protected static final Integer DEFAULT_PARALLELISM = 1;
+
     private final ValueProvider<String> logsApiUrl;
     private final ValueProvider<String> licenseKey;
     private final ValueProvider<Integer> batchCount;
@@ -36,10 +44,10 @@ public class NewRelicConfig {
                 newRelicOptions.getTokenKMSEncryptionKey().isAccessible()
                         ? maybeDecrypt(newRelicOptions.getLicenseKey(), newRelicOptions.getTokenKMSEncryptionKey())
                         : newRelicOptions.getLicenseKey(),
-                newRelicOptions.getBatchCount(),
-                newRelicOptions.getParallelism(),
-                newRelicOptions.getDisableCertificateValidation(),
-                newRelicOptions.getUseCompression());
+                valueOrDefault(newRelicOptions.getBatchCount(), DEFAULT_BATCH_COUNT),
+                valueOrDefault(newRelicOptions.getParallelism(), DEFAULT_PARALLELISM),
+                valueOrDefault(newRelicOptions.getDisableCertificateValidation(), DEFAULT_DISABLE_CERTIFICATE_VALIDATION),
+                valueOrDefault(newRelicOptions.getUseCompression(), DEFAULT_USE_COMPRESSION));
     }
 
     /**

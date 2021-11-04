@@ -50,7 +50,7 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
-import static com.google.cloud.teleport.newrelic.utils.ConfigHelper.valueOrDefault;
+import static com.google.cloud.teleport.newrelic.config.NewRelicConfig.DEFAULT_FLUSH_DELAY;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
 
@@ -60,10 +60,7 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 public class NewRelicLogRecordWriterFn extends DoFn<KV<Integer, NewRelicLogRecord>, NewRelicLogApiSendError> {
 
     private static final Logger LOG = LoggerFactory.getLogger(NewRelicLogRecordWriterFn.class);
-    private static final int DEFAULT_BATCH_COUNT = 1;
-    private static final boolean DEFAULT_DISABLE_CERTIFICATE_VALIDATION = false;
-    private static final boolean DEFAULT_USE_COMPRESSION = true;
-    private static final long DEFAULT_FLUSH_DELAY = 2;
+
     private static final Counter INPUT_COUNTER = Metrics.counter(NewRelicLogRecordWriterFn.class, "inbound-events");
     private static final Counter SUCCESS_WRITES = Metrics.counter(NewRelicLogRecordWriterFn.class, "outbound-successful-events");
     private static final Counter FAILED_WRITES = Metrics.counter(NewRelicLogRecordWriterFn.class, "outbound-failed-events");
@@ -80,46 +77,34 @@ public class NewRelicLogRecordWriterFn extends DoFn<KV<Integer, NewRelicLogRecor
     private final TimerSpec expirySpec = TimerSpecs.timer(TimeDomain.EVENT_TIME);
 
     // Non-serialized fields: these are set up once the DoFn has potentially been deserialized, in the @Setup method.
-    private Integer batchCount;
-    private Boolean disableCertificateValidation;
-    private Boolean useCompression;
     private HttpClient httpClient;
 
     // Serialized fields
     private final ValueProvider<String> logsApiUrl;
-    private final ValueProvider<String> apiKey;
-    private final ValueProvider<Boolean> inputDisableCertificateValidation;
-    private final ValueProvider<Integer> inputBatchCount;
-    private final ValueProvider<Boolean> inputUseCompression;
+    private final ValueProvider<String> licenseKey;
+    private final ValueProvider<Boolean> disableCertificateValidation;
+    private final ValueProvider<Integer> batchCount;
+    private final ValueProvider<Boolean> useCompression;
 
     public NewRelicLogRecordWriterFn(final NewRelicConfig newRelicConfig) {
         this.logsApiUrl = newRelicConfig.getLogsApiUrl();
-        this.apiKey = newRelicConfig.getLicenseKey();
-        this.inputDisableCertificateValidation = newRelicConfig.getDisableCertificateValidation();
-        this.inputBatchCount = newRelicConfig.getBatchCount();
-        this.inputUseCompression = newRelicConfig.getUseCompression();
+        this.licenseKey = newRelicConfig.getLicenseKey();
+        this.disableCertificateValidation = newRelicConfig.getDisableCertificateValidation();
+        this.batchCount = newRelicConfig.getBatchCount();
+        this.useCompression = newRelicConfig.getUseCompression();
     }
 
     @Setup
     public void setup() {
         checkArgument(logsApiUrl != null && logsApiUrl.isAccessible(), "url is required for writing events.");
-        checkArgument(apiKey != null && apiKey.isAccessible(), "API key is required for writing events.");
-
-        batchCount = valueOrDefault (inputBatchCount, DEFAULT_BATCH_COUNT);
-        LOG.info("Batch count set to: {}", batchCount);
-
-        disableCertificateValidation = valueOrDefault(inputDisableCertificateValidation, DEFAULT_DISABLE_CERTIFICATE_VALIDATION);
-        LOG.info("Disable certificate validation set to: {}", disableCertificateValidation);
-
-        useCompression = valueOrDefault(inputUseCompression, DEFAULT_USE_COMPRESSION);
-        LOG.info("Use Compression set to: {}", useCompression);
+        checkArgument(licenseKey != null && licenseKey.isAccessible(), "API key is required for writing events.");
 
         try {
             this.httpClient = HttpClient.init(
                     new GenericUrl(logsApiUrl.get()),
-                    apiKey.get(),
-                    disableCertificateValidation,
-                    useCompression);
+                    licenseKey.get(),
+                    disableCertificateValidation.get(),
+                    useCompression.get());
             LOG.info("Successfully created HttpClient");
         } catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException e) {
             LOG.error("Error creating HttpClient", e);
@@ -144,7 +129,7 @@ public class NewRelicLogRecordWriterFn extends DoFn<KV<Integer, NewRelicLogRecor
         countState.write(count);
         timer.offset(Duration.standardSeconds(DEFAULT_FLUSH_DELAY)).setRelative();
 
-        if (count >= batchCount) {
+        if (count >= batchCount.get()) {
             LOG.debug("Flushing batch of {} events", count);
             flush(receiver, bufferState, countState);
         }
