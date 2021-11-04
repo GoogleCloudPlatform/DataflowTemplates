@@ -14,6 +14,8 @@ import com.google.api.client.util.StringUtils;
 import com.google.cloud.teleport.newrelic.dtos.NewRelicLogRecord;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableSet;
 import org.apache.http.client.config.CookieSpecs;
@@ -36,6 +38,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Set;
 
+import static com.google.cloud.teleport.templates.PubsubToNewRelic.PLUGIN_VERSION;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
@@ -56,6 +59,8 @@ public class HttpClient {
     public static final String APPLICATION_GZIP = "application/gzip";
     public static final String APPLICATION_JSON = "application/json";
     public static final String API_KEY = "Api-Key";
+    private static final String PLUGIN_SOURCE_ATTR = "plugin.source";
+    private static final String PLUGIN_SOURCE_VALUE = "gcp-dataflow-" + PLUGIN_VERSION;
 
     static {
         RESPONSE_HANDLER = new HttpBackOffUnsuccessfulResponseHandler(
@@ -154,25 +159,36 @@ public class HttpClient {
      * @return {@link HttpResponse} Response for the performed HTTP POST .
      */
     public HttpResponse send(final List<NewRelicLogRecord> logRecords) throws IOException {
-        final byte[] bodyBytes = StringUtils.getBytesUtf8(toJsonString(logRecords));
+        final byte[] bodyBytes = StringUtils.getBytesUtf8(buildBody(logRecords));
         final String contentType = useCompression ? APPLICATION_GZIP : APPLICATION_JSON;
         final HttpContent content = new ByteArrayContent(contentType, bodyBytes);
 
         final HttpRequest request = requestFactory.buildPostRequest(logsApiUrl, content);
         request.setUnsuccessfulResponseHandler(RESPONSE_HANDLER);
         request.getHeaders().set(API_KEY, licenseKey);
-        if(useCompression) {
+        if (useCompression) {
             request.setEncoding(GZIP_ENCODING);
         }
         return request.execute();
     }
 
     /**
-     * Utility method to transform a list of {@link NewRelicLogRecord}s into a JSON array string.
+     * Utility method to transform a list of {@link NewRelicLogRecord}s into the body of the HTTP call to New Relic
      */
-    private String toJsonString(List<NewRelicLogRecord> logRecords) {
-        return GSON.toJsonTree(logRecords, new TypeToken<List<NewRelicLogRecord>>() {
-        }.getType()).toString();
+    private String buildBody(List<NewRelicLogRecord> logRecords) {
+        final JsonObject common = new JsonObject();
+        final JsonObject attributes = new JsonObject();
+        attributes.addProperty(PLUGIN_SOURCE_ATTR, PLUGIN_SOURCE_VALUE);
+        common.add("attributes", attributes);
+
+        final JsonObject logsBlock = new JsonObject();
+        logsBlock.add("common", common);
+        logsBlock.add("logs", GSON.toJsonTree(logRecords, new TypeToken<List<NewRelicLogRecord>>() {}.getType()));
+
+        final JsonArray payload = new JsonArray();
+        payload.add(logsBlock);
+
+        return payload.toString();
     }
 
     /**
