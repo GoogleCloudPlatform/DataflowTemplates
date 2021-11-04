@@ -76,7 +76,7 @@ public class SplunkIO {
     abstract ValueProvider<Boolean> disableCertificateValidation();
 
     @Nullable
-    abstract ValueProvider<String> selfSignedCertificatePath();
+    abstract ValueProvider<String> rootCaCertificatePath();
 
     @Override
     public PCollection<SplunkWriteError> expand(PCollection<SplunkEvent> input) {
@@ -88,7 +88,7 @@ public class SplunkIO {
               .withInputBatchCount(batchCount())
               .withDisableCertificateValidation(disableCertificateValidation())
               .withToken((token()))
-              .withSelfSignedCertificatePath(selfSignedCertificatePath());
+              .withRootCaCertificatePath(rootCaCertificatePath());
 
       SplunkEventWriter writer = builder.build();
       LOG.info("SplunkEventWriter configured");
@@ -119,8 +119,7 @@ public class SplunkIO {
       abstract Builder setDisableCertificateValidation(
           ValueProvider<Boolean> disableCertificateValidation);
 
-      abstract Builder setSelfSignedCertificatePath(
-          ValueProvider<String> selfSignedCertificatePath);
+      abstract Builder setRootCaCertificatePath(ValueProvider<String> rootCaCertificatePath);
 
       abstract Write autoBuild();
 
@@ -248,27 +247,25 @@ public class SplunkIO {
       /**
        * Method to set the self signed certificate path.
        *
-       * @param selfSignedCertificatePath Path to self-signed certificate
+       * @param rootCaCertificatePath Path to self-signed certificate
        * @return {@link Builder}
        */
-      public Builder withSelfSignedCertificatePath(
-          ValueProvider<String> selfSignedCertificatePath) {
-        return setSelfSignedCertificatePath(selfSignedCertificatePath);
+      public Builder withRootCaCertificatePath(ValueProvider<String> rootCaCertificatePath) {
+        return setRootCaCertificatePath(rootCaCertificatePath);
       }
 
       /**
-       * Same as {@link Builder#withSelfSignedCertificatePath(ValueProvider)} but without a {@link
-       * ValueProvider}.
+       * Same as {@link Builder#withRootCaPath(ValueProvider)} but without a {@link ValueProvider}.
        *
-       * @param selfSignedCertificatePath Path to self-signed certificate
+       * @param rootCaCertificatePath Path to self-signed certificate
        * @return {@link Builder}
        */
-      public Builder withSelfSignedCertificatePath(String selfSignedCertificatePath) {
+      public Builder withRootCaCertificatePath(String rootCaCertificatePath) {
         checkArgument(
-            selfSignedCertificatePath != null,
-            "withSelfSignedCertificatePath(selfSignedCertificatePath) called with null input.");
-        return setSelfSignedCertificatePath(
-            ValueProvider.StaticValueProvider.of(selfSignedCertificatePath));
+            rootCaCertificatePath != null,
+            "withRootCaCertificatePath(rootCaCertificatePath) called with null input.");
+        return setRootCaCertificatePath(
+            ValueProvider.StaticValueProvider.of(rootCaCertificatePath));
       }
 
       public Write build() {

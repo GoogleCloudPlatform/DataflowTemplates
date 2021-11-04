@@ -110,7 +110,7 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
   abstract ValueProvider<Boolean> disableCertificateValidation();
 
   @Nullable
-  abstract ValueProvider<String> selfSignedCertificatePath();
+  abstract ValueProvider<String> rootCaCertificatePath();
 
   @Nullable
   abstract ValueProvider<Integer> inputBatchCount();
@@ -152,9 +152,8 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
               .withToken(token().get())
               .withDisableCertificateValidation(disableValidation);
 
-      if (selfSignedCertificatePath() != null && selfSignedCertificatePath().get() != null) {
-        builder.withSelfSignedCertificate(
-            GCSUtils.getGcsFileAsBytes(selfSignedCertificatePath().get()));
+      if (rootCaCertificatePath() != null && rootCaCertificatePath().get() != null) {
+        builder.withRootCaCertificate(GCSUtils.getGcsFileAsBytes(rootCaCertificatePath().get()));
       }
 
       publisher = builder.build();
@@ -363,7 +362,7 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
     abstract Builder setDisableCertificateValidation(
         ValueProvider<Boolean> disableCertificateValidation);
 
-    abstract Builder setSelfSignedCertificatePath(ValueProvider<String> selfSignedCertificatePath);
+    abstract Builder setRootCaCertificatePath(ValueProvider<String> rootCaCertificatePath);
 
     abstract Builder setInputBatchCount(ValueProvider<Integer> inputBatchCount);
 
@@ -441,11 +440,11 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
     /**
      * Method to set the self signed certificate path.
      *
-     * @param selfSignedCertificatePath Path to self-signed certificate
+     * @param rootCaCertificatePath Path to self-signed certificate
      * @return {@link Builder}
      */
-    public Builder withSelfSignedCertificatePath(ValueProvider<String> selfSignedCertificatePath) {
-      return setSelfSignedCertificatePath(selfSignedCertificatePath);
+    public Builder withRootCaCertificatePath(ValueProvider<String> rootCaCertificatePath) {
+      return setRootCaCertificatePath(rootCaCertificatePath);
     }
 
     /** Build a new {@link SplunkEventWriter} objects based on the configuration. */
