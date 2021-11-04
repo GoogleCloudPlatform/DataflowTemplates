@@ -4,8 +4,6 @@ import com.google.cloud.teleport.util.KMSEncryptedNestedValueProvider;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
-
 /**
  * The NewRelicConfig contains the {@link NewRelicPipelineOptions} that were supplied
  * when starting the Apache Beam job, and which will be used by the {@link com.google.cloud.teleport.newrelic.ptransforms.NewRelicIO}
@@ -44,8 +42,6 @@ public class NewRelicConfig {
     }
 
     public static NewRelicConfig fromPipelineOptions(final NewRelicPipelineOptions newRelicOptions) {
-        checkArgument(newRelicOptions.getLicenseKey() != null && newRelicOptions.getLicenseKey().isAccessible() && newRelicOptions.getLicenseKey().get() != null, "New Relic License Key is required for writing events.");
-
         return new NewRelicConfig(
                 valueOrDefault(newRelicOptions.getLogsApiUrl(), DEFAULT_LOGS_API_URL),
                 newRelicOptions.getTokenKMSEncryptionKey().isAccessible()
