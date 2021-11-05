@@ -56,7 +56,8 @@ public class DefaultDataplexClientTest {
 
   private static final String ZONE_NAME =
       "projects/project_1/locations/location_1/lakes/lake_1/zones/zone_1";
-  private static final String ASSET_NAME1 = ZONE_NAME + "/asset/asset_1";
+  private static final String SHORT_ASSET_NAME1 = "asset_1";
+  private static final String ASSET_NAME1 = ZONE_NAME + "/asset/" + SHORT_ASSET_NAME1;
   private static final String ASSET_NAME2 = ZONE_NAME + "/asset/asset_2";
   private static final String PAGE_TOKEN = "token_1";
 
@@ -108,11 +109,12 @@ public class DefaultDataplexClientTest {
         new GoogleCloudDataplexV1Entity()
             .setName("entity4")
             .setAsset(ASSET_NAME2)
-            .setSystem(StorageSystem.CLOUD_STORAGE.name()); // schema mismatch
+            .setSystem(StorageSystem.CLOUD_STORAGE.name()); // asset mismatch
+    // an entity with a short asset name
     GoogleCloudDataplexV1Entity entity5 =
         new GoogleCloudDataplexV1Entity()
             .setName("entity5")
-            .setAsset(ASSET_NAME1)
+            .setAsset(SHORT_ASSET_NAME1)
             .setSystem(StorageSystem.CLOUD_STORAGE.name());
     GoogleCloudDataplexV1ListEntitiesResponse response1 =
         new GoogleCloudDataplexV1ListEntitiesResponse();

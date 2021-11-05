@@ -17,6 +17,7 @@ package com.google.cloud.teleport.splunk;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
@@ -32,41 +33,48 @@ import org.junit.runners.JUnit4;
 public final class CustomX509TrustManagerTest {
 
   private CustomX509TrustManager customTrustManager;
+  private X509Certificate rootCa;
   private X509Certificate recognizedSelfSignedCertificate;
   private X509Certificate unrecognizedSelfSignedCertificate;
 
   @Before
   public void setUp()
       throws NoSuchAlgorithmException, CertificateException, FileNotFoundException,
-          KeyStoreException {
+          KeyStoreException, IOException {
     CertificateFactory cf = CertificateFactory.getInstance("X.509");
     ClassLoader classLoader = this.getClass().getClassLoader();
+    FileInputStream rootCaInputStream =
+        new FileInputStream(classLoader.getResource("PubsubToSplunkTestData/RootCA.crt").getFile());
     FileInputStream recognizedInputStream =
         new FileInputStream(
-            classLoader.getResource("certificates/RecognizedSelfSignedCertificate.crt").getFile());
+            classLoader
+                .getResource("PubsubToSplunkTestData/RootCASignedCertificate.crt")
+                .getFile());
     FileInputStream unrecognizedInputStream =
         new FileInputStream(
             classLoader
-                .getResource("certificates/UnrecognizedSelfSignedCertificate.crt")
+                .getResource("PubsubToSplunkTestData/UnrecognizedSelfSignedCertificate.crt")
                 .getFile());
-    recognizedSelfSignedCertificate =
-        (X509Certificate) cf.generateCertificate(recognizedInputStream);
-    unrecognizedSelfSignedCertificate =
-        (X509Certificate) cf.generateCertificate(unrecognizedInputStream);
+    rootCa = (X509Certificate) cf.generateCertificate(rootCaInputStream);
+    recognizedSelfSignedCertificate = (X509Certificate)
+        cf.generateCertificate(recognizedInputStream);
+    unrecognizedSelfSignedCertificate = (X509Certificate)
+        cf.generateCertificate(unrecognizedInputStream);
 
-    customTrustManager = new CustomX509TrustManager(recognizedSelfSignedCertificate);
+    customTrustManager = new CustomX509TrustManager(rootCa);
   }
 
   /**
-   * Tests whether a recognized (user provided) self-signed certificate is accepted by TrustManager.
-   */
+   * Tests whether a recognized (user provided) self-signed certificate
+   *  is accepted by TrustManager.
+   * */
   @Test
   public void testCustomX509TrustManagerWithRecognizedCertificate() throws CertificateException {
     customTrustManager.checkServerTrusted(
         new X509Certificate[] {recognizedSelfSignedCertificate}, "RSA");
   }
 
-  /** Tests whether a unrecognized self-signed certificate is rejected by TrustManager. */
+  /** Tests whether a unrecognized self-signed certificate is rejected by TrustManager.*/
   @Test(expected = Exception.class)
   public void testCustomX509TrustManagerWithUnrecognizedCertificate() throws CertificateException {
     customTrustManager.checkServerTrusted(
