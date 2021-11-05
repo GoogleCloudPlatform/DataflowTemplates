@@ -32,27 +32,27 @@ public class NewRelicLogRecord {
 
   @Override
   public boolean equals(Object o) {
-      if (this == o) {
-          return true;
-      }
+    if (this == o) {
+      return true;
+    }
 
-      if (o == null || getClass() != o.getClass()) {
-          return false;
-      }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
 
     NewRelicLogRecord that = (NewRelicLogRecord) o;
 
     return new EqualsBuilder()
-            .append(message, that.message)
-            .append(timestamp, that.timestamp)
-            .isEquals();
+      .append(message, that.message)
+      .append(timestamp, that.timestamp)
+      .isEquals();
   }
 
   @Override
   public int hashCode() {
     return new HashCodeBuilder(17, 37)
-            .append(message)
-            .append(timestamp)
-            .toHashCode();
+      .append(message)
+      .append(timestamp)
+      .toHashCode();
   }
 }

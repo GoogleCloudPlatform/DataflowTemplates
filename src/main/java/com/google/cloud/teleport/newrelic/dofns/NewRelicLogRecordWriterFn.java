@@ -100,10 +100,10 @@ public class NewRelicLogRecordWriterFn extends DoFn<KV<Integer, NewRelicLogRecor
 
     try {
       this.httpClient = HttpClient.init(
-              new GenericUrl(logsApiUrl.get()),
-              licenseKey.get(),
-              disableCertificateValidation.get(),
-              useCompression.get());
+        new GenericUrl(logsApiUrl.get()),
+        licenseKey.get(),
+        disableCertificateValidation.get(),
+        useCompression.get());
       LOG.info("Successfully created HttpClient");
     } catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException e) {
       LOG.error("Error creating HttpClient", e);
@@ -114,11 +114,11 @@ public class NewRelicLogRecordWriterFn extends DoFn<KV<Integer, NewRelicLogRecor
 
   @ProcessElement
   public void processElement(
-          @Element KV<Integer, NewRelicLogRecord> input,
-          OutputReceiver<NewRelicLogApiSendError> receiver,
-          @AlwaysFetched @StateId(BUFFER_STATE_NAME) BagState<NewRelicLogRecord> bufferState,
-          @AlwaysFetched @StateId(COUNT_STATE_NAME) ValueState<Long> countState,
-          @TimerId(TIME_ID_NAME) Timer timer) throws IOException {
+    @Element KV<Integer, NewRelicLogRecord> input,
+    OutputReceiver<NewRelicLogApiSendError> receiver,
+    @AlwaysFetched @StateId(BUFFER_STATE_NAME) BagState<NewRelicLogRecord> bufferState,
+    @AlwaysFetched @StateId(COUNT_STATE_NAME) ValueState<Long> countState,
+    @TimerId(TIME_ID_NAME) Timer timer) throws IOException {
 
     Long count = MoreObjects.<Long>firstNonNull(countState.read(), 0L);
     final NewRelicLogRecord logRecord = input.getValue();
@@ -151,9 +151,9 @@ public class NewRelicLogRecordWriterFn extends DoFn<KV<Integer, NewRelicLogRecor
    * @param receiver Receiver to write {@link NewRelicLogApiSendError}s to
    */
   private void flush(
-          OutputReceiver<NewRelicLogApiSendError> receiver,
-          @StateId(BUFFER_STATE_NAME) BagState<NewRelicLogRecord> bufferState,
-          @StateId(COUNT_STATE_NAME) ValueState<Long> countState) throws IOException {
+    OutputReceiver<NewRelicLogApiSendError> receiver,
+    @StateId(BUFFER_STATE_NAME) BagState<NewRelicLogRecord> bufferState,
+    @StateId(COUNT_STATE_NAME) ValueState<Long> countState) throws IOException {
 
     if (!bufferState.isEmpty().read()) {
       // Important to close this response to avoid connection leak.
@@ -166,12 +166,12 @@ public class NewRelicLogRecordWriterFn extends DoFn<KV<Integer, NewRelicLogRecor
 
         if (!response.isSuccessStatusCode()) {
           LOG.error("Error writing to New Relic. StatusCode: {}, Content: {}, StatusMessage: {}",
-                  response.getStatusCode(), response.getContent(), response.getStatusMessage());
+            response.getStatusCode(), response.getContent(), response.getStatusMessage());
           logWriteFailures(countState);
           flushWriteFailures(logRecords, response.getStatusMessage(), response.getStatusCode(), receiver);
         } else {
           LOG.debug("Successfully wrote {} log records in {}ms. Response code {} and body: {}",
-                  countState.read(), duration, response.getStatusCode(), response.parseAsString());
+            countState.read(), duration, response.getStatusCode(), response.parseAsString());
           SUCCESS_WRITES.inc(countState.read());
         }
       } catch (HttpResponseException e) {
@@ -204,10 +204,10 @@ public class NewRelicLogRecordWriterFn extends DoFn<KV<Integer, NewRelicLogRecor
    * @param receiver      Receiver to write {@link NewRelicLogApiSendError}s to
    */
   private static void flushWriteFailures(
-          List<NewRelicLogRecord> logRecords,
-          String statusMessage,
-          Integer statusCode,
-          OutputReceiver<NewRelicLogApiSendError> receiver) {
+    List<NewRelicLogRecord> logRecords,
+    String statusMessage,
+    Integer statusCode,
+    OutputReceiver<NewRelicLogApiSendError> receiver) {
 
     checkNotNull(logRecords, "New Relic logRecords cannot be null.");
 

@@ -92,7 +92,7 @@ public class PubsubToNewRelic {
   public static void main(String[] args) {
 
     final PubsubToNewRelicPipelineOptions options =
-            PipelineOptionsFactory.fromArgs(args).withValidation().as(PubsubToNewRelicPipelineOptions.class);
+      PipelineOptionsFactory.fromArgs(args).withValidation().as(PubsubToNewRelicPipelineOptions.class);
 
     run(options);
   }
@@ -104,9 +104,9 @@ public class PubsubToNewRelic {
     LOG.debug("Using configuration: {}", newRelicConfig);
 
     final NewRelicPipeline nrPipeline = new NewRelicPipeline(
-            pipeline,
-            new ReadMessagesFromPubSub(options.getInputSubscription()),
-            new NewRelicIO(newRelicConfig)
+      pipeline,
+      new ReadMessagesFromPubSub(options.getInputSubscription()),
+      new NewRelicIO(newRelicConfig)
     );
 
     return nrPipeline.run();

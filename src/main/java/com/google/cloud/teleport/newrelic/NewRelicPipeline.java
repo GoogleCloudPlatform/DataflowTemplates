@@ -28,7 +28,7 @@ public class NewRelicPipeline {
    * String/String Coder for FailsafeElement.
    */
   public static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
-          FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
+    FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
 
   /**
    * The tag for successful {@link NewRelicLogRecord} conversion.
@@ -40,8 +40,8 @@ public class NewRelicPipeline {
    * The tag for failed {@link NewRelicLogRecord} conversion.
    */
   private static final TupleTag<FailsafeElement<String, String>> FAILED_CONVERSIONS =
-          new TupleTag<FailsafeElement<String, String>>() {
-          };
+    new TupleTag<FailsafeElement<String, String>>() {
+    };
 
   private final PTransform<PBegin, PCollection<String>> pubsubMessageReaderTransform;
   private final PTransform<PCollection<NewRelicLogRecord>, PCollection<NewRelicLogApiSendError>> newrelicMessageWriterTransform;
@@ -75,19 +75,19 @@ public class NewRelicPipeline {
 
     // 2) Convert message to FailsafeElement for processing.
     PCollection<FailsafeElement<String, String>> transformedOutput =
-            stringMessages.apply(
-                    "Transform to Failsafe Element",
-                    MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
-                            .via(input -> FailsafeElement.of(input, input)));
+      stringMessages.apply(
+        "Transform to Failsafe Element",
+        MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
+          .via(input -> FailsafeElement.of(input, input)));
 
     // 3) Convert successfully transformed messages into NewRelicRecords objects
     PCollectionTuple convertToEventTuple = transformedOutput
-            .apply("Transform to NewRelicLogRecord", FailsafeStringToNewRelicRecords.withOutputTags(SUCCESSFUL_CONVERSIONS, FAILED_CONVERSIONS));
+      .apply("Transform to NewRelicLogRecord", FailsafeStringToNewRelicRecords.withOutputTags(SUCCESSFUL_CONVERSIONS, FAILED_CONVERSIONS));
 
     // 4) Write NewRelicRecords to NewRelic's Log API end point.
     convertToEventTuple
-            .get(SUCCESSFUL_CONVERSIONS)
-            .apply("Forward logs to New Relic", newrelicMessageWriterTransform);
+      .get(SUCCESSFUL_CONVERSIONS)
+      .apply("Forward logs to New Relic", newrelicMessageWriterTransform);
 
     return pipeline.run();
   }

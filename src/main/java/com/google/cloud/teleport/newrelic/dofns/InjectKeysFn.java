@@ -22,8 +22,8 @@ public class InjectKeysFn extends DoFn<NewRelicLogRecord, KV<Integer, NewRelicLo
 
   @ProcessElement
   public void processElement(
-          @Element NewRelicLogRecord inputElement,
-          OutputReceiver<KV<Integer, NewRelicLogRecord>> outputReceiver) {
+    @Element NewRelicLogRecord inputElement,
+    OutputReceiver<KV<Integer, NewRelicLogRecord>> outputReceiver) {
     outputReceiver.output(KV.of(ThreadLocalRandom.current().nextInt(specifiedParallelism.get()), inputElement));
   }
 }

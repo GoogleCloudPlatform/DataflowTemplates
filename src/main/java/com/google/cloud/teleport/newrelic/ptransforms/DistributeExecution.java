@@ -17,7 +17,7 @@ import org.apache.beam.sdk.values.PCollection;
  * the same key will be processed by the same worker instance.
  */
 public class DistributeExecution extends
-        PTransform<PCollection<NewRelicLogRecord>, PCollection<KV<Integer, NewRelicLogRecord>>> {
+  PTransform<PCollection<NewRelicLogRecord>, PCollection<KV<Integer, NewRelicLogRecord>>> {
 
   private final ValueProvider<Integer> specifiedParallelism;
 
@@ -33,7 +33,7 @@ public class DistributeExecution extends
   public PCollection<KV<Integer, NewRelicLogRecord>> expand(PCollection<NewRelicLogRecord> input) {
 
     return input
-            .apply("Inject Keys", ParDo.of(new InjectKeysFn(this.specifiedParallelism)))
-            .setCoder(KvCoder.of(BigEndianIntegerCoder.of(), NewRelicLogRecordCoder.getInstance()));
+      .apply("Inject Keys", ParDo.of(new InjectKeysFn(this.specifiedParallelism)))
+      .setCoder(KvCoder.of(BigEndianIntegerCoder.of(), NewRelicLogRecordCoder.getInstance()));
   }
 }

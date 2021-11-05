@@ -51,15 +51,15 @@ public class NewRelicConfig {
    */
   public static NewRelicConfig fromPipelineOptions(final NewRelicPipelineOptions newRelicOptions) {
     return new NewRelicConfig(
-            valueOrDefault(newRelicOptions.getLogsApiUrl(), DEFAULT_LOGS_API_URL),
-            newRelicOptions.getTokenKMSEncryptionKey().isAccessible()
-                    ? maybeDecrypt(newRelicOptions.getLicenseKey(), newRelicOptions.getTokenKMSEncryptionKey())
-                    : newRelicOptions.getLicenseKey(),
-            valueOrDefault(newRelicOptions.getBatchCount(), DEFAULT_BATCH_COUNT),
-            valueOrDefault(newRelicOptions.getFlushDelay(), DEFAULT_FLUSH_DELAY),
-            valueOrDefault(newRelicOptions.getParallelism(), DEFAULT_PARALLELISM),
-            valueOrDefault(newRelicOptions.getDisableCertificateValidation(), DEFAULT_DISABLE_CERTIFICATE_VALIDATION),
-            valueOrDefault(newRelicOptions.getUseCompression(), DEFAULT_USE_COMPRESSION));
+      valueOrDefault(newRelicOptions.getLogsApiUrl(), DEFAULT_LOGS_API_URL),
+      newRelicOptions.getTokenKMSEncryptionKey().isAccessible()
+        ? maybeDecrypt(newRelicOptions.getLicenseKey(), newRelicOptions.getTokenKMSEncryptionKey())
+        : newRelicOptions.getLicenseKey(),
+      valueOrDefault(newRelicOptions.getBatchCount(), DEFAULT_BATCH_COUNT),
+      valueOrDefault(newRelicOptions.getFlushDelay(), DEFAULT_FLUSH_DELAY),
+      valueOrDefault(newRelicOptions.getParallelism(), DEFAULT_PARALLELISM),
+      valueOrDefault(newRelicOptions.getDisableCertificateValidation(), DEFAULT_DISABLE_CERTIFICATE_VALIDATION),
+      valueOrDefault(newRelicOptions.getUseCompression(), DEFAULT_USE_COMPRESSION));
   }
 
   /**
@@ -70,7 +70,7 @@ public class NewRelicConfig {
    * @return Decrypted NewRelic API token.
    */
   private static ValueProvider<String> maybeDecrypt(
-          ValueProvider<String> unencryptedToken, ValueProvider<String> kmsKey) {
+    ValueProvider<String> unencryptedToken, ValueProvider<String> kmsKey) {
     return new KMSEncryptedNestedValueProvider(unencryptedToken, kmsKey);
   }
 
@@ -105,14 +105,14 @@ public class NewRelicConfig {
   @Override
   public String toString() {
     return new ToStringBuilder(this)
-            .append("logsApiUrl", logsApiUrl)
-            .append("licenseKey", licenseKey)
-            .append("batchCount", batchCount)
-            .append("parallelism", parallelism)
-            .append("disableCertificateValidation", disableCertificateValidation)
-            .append("useCompression", useCompression)
-            .append("flushDelay", flushDelay)
-            .toString();
+      .append("logsApiUrl", logsApiUrl)
+      .append("licenseKey", licenseKey)
+      .append("batchCount", batchCount)
+      .append("parallelism", parallelism)
+      .append("disableCertificateValidation", disableCertificateValidation)
+      .append("useCompression", useCompression)
+      .append("flushDelay", flushDelay)
+      .toString();
   }
 
   /**
@@ -126,7 +126,7 @@ public class NewRelicConfig {
    */
   private static <T> ValueProvider<T> valueOrDefault(ValueProvider<T> value, T defaultValue) {
     return (value != null && value.isAccessible()) && value.get() != null
-            ? ValueProvider.StaticValueProvider.of(value.get())
-            : ValueProvider.StaticValueProvider.of(defaultValue);
+      ? ValueProvider.StaticValueProvider.of(value.get())
+      : ValueProvider.StaticValueProvider.of(defaultValue);
   }
 }

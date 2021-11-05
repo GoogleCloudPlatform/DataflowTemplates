@@ -25,21 +25,21 @@ public class ReadMessagesFromPubSub extends PTransform<PBegin, PCollection<Strin
   @Override
   public PCollection<String> expand(PBegin input) {
     return input
-            .apply(
-                    "ReadPubsubMessage",
-                    PubsubIO.readMessagesWithAttributes().fromSubscription(subscriptionName))
-            .apply(
-                    "ExtractDataAsString",
-                    ParDo.of(
-                            new DoFn<PubsubMessage, String>() {
-                              @ProcessElement
-                              public void processElement(
-                                      @Element PubsubMessage inputElement,
-                                      OutputReceiver<String> outputReceiver
-                              ) {
-                                // TODO Check whether we should also consider the attribute map present in the PubsubMessage
-                                outputReceiver.output(new String(inputElement.getPayload(), StandardCharsets.UTF_8));
-                              }
-                            }));
+      .apply(
+        "ReadPubsubMessage",
+        PubsubIO.readMessagesWithAttributes().fromSubscription(subscriptionName))
+      .apply(
+        "ExtractDataAsString",
+        ParDo.of(
+          new DoFn<PubsubMessage, String>() {
+            @ProcessElement
+            public void processElement(
+              @Element PubsubMessage inputElement,
+              OutputReceiver<String> outputReceiver
+            ) {
+              // TODO Check whether we should also consider the attribute map present in the PubsubMessage
+              outputReceiver.output(new String(inputElement.getPayload(), StandardCharsets.UTF_8));
+            }
+          }));
   }
 }

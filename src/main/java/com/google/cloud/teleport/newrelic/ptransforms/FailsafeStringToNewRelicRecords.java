@@ -58,8 +58,8 @@ public class FailsafeStringToNewRelicRecords extends PTransform<PCollection<Fail
 
       @ProcessElement
       public void processElement(
-              @Element FailsafeElement<String, String> inputElement,
-              MultiOutputReceiver outputReceivers
+        @Element FailsafeElement<String, String> inputElement,
+        MultiOutputReceiver outputReceivers
       ) {
         final String input = inputElement.getPayload();
 
@@ -71,7 +71,7 @@ public class FailsafeStringToNewRelicRecords extends PTransform<PCollection<Fail
         } catch (Exception e) {
           CONVERSION_ERRORS.inc();
           outputReceivers.get(failedConversionsTag).output(FailsafeElement.of(input, input).setErrorMessage(e.getMessage())
-                  .setStacktrace(Throwables.getStackTraceAsString(e)));
+            .setStacktrace(Throwables.getStackTraceAsString(e)));
         }
       }
     }).withOutputTags(successfulConversionsTag, TupleTagList.of(failedConversionsTag)));

@@ -41,29 +41,29 @@ public class NewRelicLogApiSendError {
 
   @Override
   public boolean equals(Object o) {
-      if (this == o) {
-          return true;
-      }
+    if (this == o) {
+      return true;
+    }
 
-      if (o == null || getClass() != o.getClass()) {
-          return false;
-      }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
 
     NewRelicLogApiSendError that = (NewRelicLogApiSendError) o;
 
     return new EqualsBuilder()
-            .append(payload, that.payload)
-            .append(statusMessage, that.statusMessage)
-            .append(statusCode, that.statusCode)
-            .isEquals();
+      .append(payload, that.payload)
+      .append(statusMessage, that.statusMessage)
+      .append(statusCode, that.statusCode)
+      .isEquals();
   }
 
   @Override
   public int hashCode() {
     return new HashCodeBuilder(17, 37)
-            .append(payload)
-            .append(statusMessage)
-            .append(statusCode)
-            .toHashCode();
+      .append(payload)
+      .append(statusMessage)
+      .append(statusCode)
+      .toHashCode();
   }
 }

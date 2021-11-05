@@ -63,7 +63,7 @@ public class HttpClient {
 
   static {
     RESPONSE_HANDLER = new HttpBackOffUnsuccessfulResponseHandler(
-            new ExponentialBackOff.Builder().setMaxElapsedTimeMillis(MAX_ELAPSED_MILLIS).build()
+      new ExponentialBackOff.Builder().setMaxElapsedTimeMillis(MAX_ELAPSED_MILLIS).build()
     );
     RESPONSE_HANDLER.setBackOffRequired((HttpResponse response) -> RETRYABLE_STATUS_CODES.contains(response.getStatusCode()));
   }
@@ -92,10 +92,10 @@ public class HttpClient {
    * @return {@link HttpClient}
    */
   public static HttpClient init(
-          final GenericUrl logsApiUrl,
-          final String licenseKey,
-          final Boolean disableCertificateValidation,
-          final Boolean useCompression) throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException {
+    final GenericUrl logsApiUrl,
+    final String licenseKey,
+    final Boolean disableCertificateValidation,
+    final Boolean useCompression) throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException {
 
     checkNotNull(licenseKey, "The New Relic License Key needs to be specified.");
     checkNotNull(logsApiUrl, "The New Relic Logs URL needs to be specified.");
@@ -104,18 +104,18 @@ public class HttpClient {
     LOG.info("Defaulting max backoff time to: {} milliseconds ", MAX_ELAPSED_MILLIS);
 
     CloseableHttpClient httpClient = getHttpClient(
-            logsApiUrl.getScheme().equalsIgnoreCase(HTTPS_PROTOCOL_PREFIX),
-            DEFAULT_MAX_CONNECTIONS,
-            disableCertificateValidation);
+      logsApiUrl.getScheme().equalsIgnoreCase(HTTPS_PROTOCOL_PREFIX),
+      DEFAULT_MAX_CONNECTIONS,
+      disableCertificateValidation);
 
     final ApacheHttpTransport transport = new ApacheHttpTransport(httpClient);
 
     return new HttpClient(
-            logsApiUrl,
-            licenseKey,
-            useCompression,
-            transport,
-            transport.createRequestFactory());
+      logsApiUrl,
+      licenseKey,
+      useCompression,
+      transport,
+      transport.createRequestFactory());
   }
 
   /**
@@ -126,7 +126,7 @@ public class HttpClient {
    * @param disableCertificateValidation should disable certificate validation (only relevant when using SSL).
    */
   private static CloseableHttpClient getHttpClient(final boolean useSsl, int maxConnections, boolean disableCertificateValidation)
-          throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException {
+    throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException {
 
     final HttpClientBuilder builder = ApacheHttpTransport.newDefaultHttpClientBuilder();
 
