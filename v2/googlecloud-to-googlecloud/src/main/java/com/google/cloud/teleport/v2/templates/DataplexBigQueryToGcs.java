@@ -120,9 +120,9 @@ public class DataplexBigQueryToGcs {
             + " projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset"
             + " name>.")
     @Required
-    String getDestinationGscBucketAssetName();
+    String getDestinationGcsBucketAssetName();
 
-    void setDestinationGscBucketAssetName(String destinationGscBucketAssetName);
+    void setDestinationGcsBucketAssetName(String destinationGcsBucketAssetName);
 
     @Description(
         "The parameter can either be: 1) unspecified, 2) date (and optional time) 3) Duration.\n"
@@ -233,7 +233,7 @@ public class DataplexBigQueryToGcs {
     String gcsResource =
         resolveAsset(
             dataplex,
-            options.getDestinationGscBucketAssetName(),
+            options.getDestinationGcsBucketAssetName(),
             DataplexAssetResourceSpec.STORAGE_BUCKET);
     String bqResource =
         resolveAsset(
