@@ -14,5 +14,5 @@
  * the License.
  */
 
-/** Contains main logic of the PubsubToNewRelic template. */
-package com.google.cloud.teleport.newrelic;
+/** Contains DoFns used by the PubsubToNewRelic template. */
+package com.google.cloud.teleport.newrelic.dofns;

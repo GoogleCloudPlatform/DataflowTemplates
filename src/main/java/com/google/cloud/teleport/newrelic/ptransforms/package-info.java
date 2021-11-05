@@ -14,5 +14,5 @@
  * the License.
  */
 
-/** Contains main logic of the PubsubToNewRelic template. */
-package com.google.cloud.teleport.newrelic;
+/** Contains PTransforms used by the PubsubToNewRelic template in the NewRelicPipeline. */
+package com.google.cloud.teleport.newrelic.ptransforms;

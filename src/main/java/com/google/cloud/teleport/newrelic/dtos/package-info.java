@@ -14,5 +14,5 @@
  * the License.
  */
 
-/** Contains main logic of the PubsubToNewRelic template. */
-package com.google.cloud.teleport.newrelic;
+/** Contains DTOs used by the PubsubToNewRelic template, transmitted over the NewRelicPipeline. */
+package com.google.cloud.teleport.newrelic.dtos;
