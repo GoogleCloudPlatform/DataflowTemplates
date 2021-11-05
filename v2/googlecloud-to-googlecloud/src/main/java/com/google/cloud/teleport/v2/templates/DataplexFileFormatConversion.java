@@ -22,8 +22,10 @@ import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1StorageFor
 import com.google.cloud.teleport.v2.clients.DataplexClient;
 import com.google.cloud.teleport.v2.clients.DefaultDataplexClient;
 import com.google.cloud.teleport.v2.io.AvroSinkWithJodaDatesConversion;
+import com.google.cloud.teleport.v2.transforms.AvroConverters;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.transforms.JsonConverters;
+import com.google.cloud.teleport.v2.transforms.ParquetConverters;
 import com.google.cloud.teleport.v2.utils.Schemas;
 import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
 import com.google.cloud.teleport.v2.values.DataplexCompression;
@@ -96,7 +98,9 @@ public class DataplexFileFormatConversion {
   /** Supported input file formats. */
   public enum InputFileFormat {
     CSV,
-    JSON
+    JSON,
+    PARQUET,
+    AVRO
   }
 
   /** Supported output file formats. */
@@ -288,6 +292,24 @@ public class DataplexFileFormatConversion {
                   .apply(
                       "ConvertToGenericRecord", ParDo.of(jsonToGenericRecordFn(serializedSchema)))
                   .setCoder(AvroCoder.of(GenericRecord.class, schema));
+          break;
+        case PARQUET:
+          records =
+              input.apply(
+                  "ReadParquetFile",
+                  ParquetConverters.ReadParquetFile.newBuilder()
+                      .withInputFileSpec(inputFileSpec)
+                      .withSerializedSchema(serializedSchema)
+                      .build());
+          break;
+        case AVRO:
+          records =
+              input.apply(
+                  "ReadAvroFile",
+                  AvroConverters.ReadAvroFile.newBuilder()
+                      .withInputFileSpec(inputFileSpec)
+                      .withSerializedSchema(serializedSchema)
+                      .build());
           break;
         default:
           throw new IllegalArgumentException(
