@@ -62,15 +62,6 @@ public class NewRelicConfigTest {
         assertThat(newRelicConfig.getParallelism().get()).isEqualTo(DEFAULT_PARALLELISM);
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void shouldThrowAnErrorIfLicenseKeyNotSpecified() {
-        // Given
-        final NewRelicPipelineOptions pipelineOptions = getPipelineOptions(null, null, null, null, null, null, null);
-
-        // When - Then
-        NewRelicConfig.fromPipelineOptions(pipelineOptions);
-    }
-
     private static NewRelicPipelineOptions getPipelineOptions(final String logsApiUrl, final String licenseKey, final Integer batchCount, final Integer flushDelay, final Integer parallelism, final Boolean useCompression, final Boolean disableCertificateValidation) {
         final NewRelicPipelineOptions pipelineOptions = mock(NewRelicPipelineOptions.class);
 
