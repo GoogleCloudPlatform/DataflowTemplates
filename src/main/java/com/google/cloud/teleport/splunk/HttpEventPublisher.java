@@ -293,8 +293,9 @@ public abstract class HttpEventPublisher {
      *
      * @return {@link HttpEventPublisher}
      */
-    public HttpEventPublisher build() throws NoSuchAlgorithmException,
-        KeyStoreException, KeyManagementException, CertificateException {
+    public HttpEventPublisher build()
+        throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException,
+            CertificateException {
 
       checkNotNull(token(), "Authentication token needs to be specified via withToken(token).");
       checkNotNull(genericUrl(), "URL needs to be specified via withUrl(url).");
@@ -355,7 +356,7 @@ public abstract class HttpEventPublisher {
                 ? NoopHostnameVerifier.INSTANCE
                 : new DefaultHostnameVerifier();
 
-        SSLContext sslContext =  SSLContextBuilder.create().build();
+        SSLContext sslContext = SSLContextBuilder.create().build();
         if (disableCertificateValidation) {
           LOG.info("Certificate validation is disabled");
           sslContext =
@@ -367,8 +368,7 @@ public abstract class HttpEventPublisher {
           InputStream inStream = new ByteArrayInputStream(selfSignedCertificate);
           CertificateFactory cf = CertificateFactory.getInstance("X.509");
           X509Certificate cert = (X509Certificate) cf.generateCertificate(inStream);
-          CustomX509TrustManager customTrustManager =
-              new CustomX509TrustManager(cert);
+          CustomX509TrustManager customTrustManager = new CustomX509TrustManager(cert);
           sslContext.init(null, new TrustManager[] {customTrustManager}, null);
         }
 
