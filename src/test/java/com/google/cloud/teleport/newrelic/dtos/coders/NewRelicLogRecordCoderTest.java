@@ -1,9 +1,10 @@
 package com.google.cloud.teleport.newrelic.dtos.coders;
 
-import com.google.cloud.teleport.newrelic.dtos.NewRelicLogRecord;
-import org.apache.beam.sdk.coders.CoderException;
-import org.junit.jupiter.api.Test;
+import static com.google.common.truth.Truth.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
 
+import com.google.cloud.teleport.newrelic.dtos.NewRelicLogRecord;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PipedInputStream;
@@ -11,10 +12,8 @@ import java.io.PipedOutputStream;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.time.ZoneOffset;
-
-import static com.google.common.truth.Truth.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.mock;
+import org.apache.beam.sdk.coders.CoderException;
+import org.junit.jupiter.api.Test;
 
 class NewRelicLogRecordCoderTest {
     private static final LocalDateTime SOME_DATE_TIME = LocalDateTime.of(1987, Month.AUGUST, 8, 21, 0, 0);

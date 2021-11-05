@@ -15,6 +15,6 @@
  */
 
 /**
- * Contains main logic of the PubsubToNewRelic template.
+ * Contains the coders used to serialize/deserialize the DTOs transmitted over the NewRelicPipeline.
  */
-package com.google.cloud.teleport.newrelic;
+package com.google.cloud.teleport.newrelic.dtos.coders;

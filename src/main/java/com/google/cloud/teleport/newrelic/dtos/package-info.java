@@ -15,6 +15,6 @@
  */
 
 /**
- * Contains main logic of the PubsubToNewRelic template.
+ * Contains DTOs used by the PubsubToNewRelic template, transmitted over the NewRelicPipeline.
  */
-package com.google.cloud.teleport.newrelic;
+package com.google.cloud.teleport.newrelic.dtos;

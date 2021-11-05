@@ -15,6 +15,6 @@
  */
 
 /**
- * Contains main logic of the PubsubToNewRelic template.
+ * Contains PTransforms used by the PubsubToNewRelic template in the NewRelicPipeline.
  */
-package com.google.cloud.teleport.newrelic;
+package com.google.cloud.teleport.newrelic.ptransforms;

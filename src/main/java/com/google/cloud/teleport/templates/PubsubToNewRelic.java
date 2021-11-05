@@ -25,16 +25,16 @@ import org.slf4j.LoggerFactory;
  * </ul>
  *
  * <p><b>Example Usage</b>
- *
- * <pre>
+ * <p>
+ * <p>
  * # Set the pipeline vars
  * PROJECT_ID=PROJECT ID HERE
  * BUCKET_NAME=BUCKET NAME HERE
  * PIPELINE_BUCKET_FOLDER=gs://${BUCKET_NAME}/dataflow/pipelines/pubsub-to-newrelic
- *
+ * <p>
  * # Set the runner
  * RUNNER=DataflowRunner
- *
+ * <p>
  * # Build the template
  * mvn compile exec:java \
  * -Dexec.mainClass=com.google.cloud.teleport.templates.PubsubToNewRelic \
@@ -46,21 +46,21 @@ import org.slf4j.LoggerFactory;
  * --templateLocation=${PIPELINE_BUCKET_FOLDER}/template/PubsubToNewRelic \
  * --runner=${RUNNER}
  * "
- *
+ * <p>
  * # Execute the template
  * JOB_NAME=pubsub-to-NewRelic-$USER-`date +"%Y%m%d-%H%M%S%z"`
  * BATCH_COUNT=10
  * FLUSH_DELAY=2
  * PARALLELISM=5
  * REGION=us-west1
- *
+ * <p>
  * INPUT_SUB_NAME=SUB NAME WHERE LOGS ARE
- *
+ * <p>
  * NR_LOG_ENDPOINT=https://log-api.newrelic.com/log/v1
- *
+ * <p>
  * NR_LICENSE_KEY=YOUR NEW RELIC LICENSE KEY
- *
- *
+ * <p>
+ * <p>
  * # Execute the templated pipeline:
  * gcloud dataflow jobs run ${JOB_NAME} \
  * --gcs-location=${PIPELINE_FOLDER}/template/PubsubToNewRelic \
@@ -77,38 +77,38 @@ import org.slf4j.LoggerFactory;
  */
 public class PubsubToNewRelic {
 
-    public static final String PLUGIN_VERSION = "1.0.0";
+  public static final String PLUGIN_VERSION = "1.0.0";
 
-    private static final Logger LOG = LoggerFactory.getLogger(PubsubToNewRelic.class);
+  private static final Logger LOG = LoggerFactory.getLogger(PubsubToNewRelic.class);
 
-    /**
-     * The main entry-point for pipeline execution. This method will start the pipeline but will not
-     * wait for it's execution to finish. If blocking execution is required, use the {@link
-     * PubsubToNewRelic#run(PubsubToNewRelicPipelineOptions)} method to start the pipeline and invoke {@code
-     * result.waitUntilFinish()} on the {@link PipelineResult}.
-     *
-     * @param args The command-line args passed by the executor.
-     */
-    public static void main(String[] args) {
+  /**
+   * The main entry-point for pipeline execution. This method will start the pipeline but will not
+   * wait for it's execution to finish. If blocking execution is required, use the {@link
+   * PubsubToNewRelic#run(PubsubToNewRelicPipelineOptions)} method to start the pipeline and invoke {@code
+   * result.waitUntilFinish()} on the {@link PipelineResult}.
+   *
+   * @param args The command-line args passed by the executor.
+   */
+  public static void main(String[] args) {
 
-        final PubsubToNewRelicPipelineOptions options =
-                PipelineOptionsFactory.fromArgs(args).withValidation().as(PubsubToNewRelicPipelineOptions.class);
+    final PubsubToNewRelicPipelineOptions options =
+            PipelineOptionsFactory.fromArgs(args).withValidation().as(PubsubToNewRelicPipelineOptions.class);
 
-        run(options);
-    }
+    run(options);
+  }
 
-    public static PipelineResult run(PubsubToNewRelicPipelineOptions options) {
-        final Pipeline pipeline = Pipeline.create(options);
+  public static PipelineResult run(PubsubToNewRelicPipelineOptions options) {
+    final Pipeline pipeline = Pipeline.create(options);
 
-        final NewRelicConfig newRelicConfig = NewRelicConfig.fromPipelineOptions(options);
-        LOG.debug("Using configuration: {}", newRelicConfig);
+    final NewRelicConfig newRelicConfig = NewRelicConfig.fromPipelineOptions(options);
+    LOG.debug("Using configuration: {}", newRelicConfig);
 
-        final NewRelicPipeline nrPipeline = new NewRelicPipeline(
-                pipeline,
-                new ReadMessagesFromPubSub(options.getInputSubscription()),
-                new NewRelicIO(newRelicConfig)
-        );
+    final NewRelicPipeline nrPipeline = new NewRelicPipeline(
+            pipeline,
+            new ReadMessagesFromPubSub(options.getInputSubscription()),
+            new NewRelicIO(newRelicConfig)
+    );
 
-        return nrPipeline.run();
-    }
+    return nrPipeline.run();
+  }
 }

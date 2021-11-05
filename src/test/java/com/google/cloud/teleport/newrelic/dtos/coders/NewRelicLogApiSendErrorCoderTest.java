@@ -1,13 +1,12 @@
 package com.google.cloud.teleport.newrelic.dtos.coders;
 
-import com.google.cloud.teleport.newrelic.dtos.NewRelicLogApiSendError;
-import org.junit.jupiter.api.Test;
+import static com.google.common.truth.Truth.assertThat;
 
+import com.google.cloud.teleport.newrelic.dtos.NewRelicLogApiSendError;
 import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
-
-import static com.google.common.truth.Truth.assertThat;
+import org.junit.jupiter.api.Test;
 
 class NewRelicLogApiSendErrorCoderTest {
 

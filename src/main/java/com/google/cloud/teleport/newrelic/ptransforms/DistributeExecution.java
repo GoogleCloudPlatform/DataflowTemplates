@@ -19,21 +19,21 @@ import org.apache.beam.sdk.values.PCollection;
 public class DistributeExecution extends
         PTransform<PCollection<NewRelicLogRecord>, PCollection<KV<Integer, NewRelicLogRecord>>> {
 
-    private final ValueProvider<Integer> specifiedParallelism;
+  private final ValueProvider<Integer> specifiedParallelism;
 
-    private DistributeExecution(ValueProvider<Integer> specifiedParallelism) {
-        this.specifiedParallelism = specifiedParallelism;
-    }
+  private DistributeExecution(ValueProvider<Integer> specifiedParallelism) {
+    this.specifiedParallelism = specifiedParallelism;
+  }
 
-    public static DistributeExecution withParallelism(ValueProvider<Integer> specifiedParallelism) {
-        return new DistributeExecution(specifiedParallelism);
-    }
+  public static DistributeExecution withParallelism(ValueProvider<Integer> specifiedParallelism) {
+    return new DistributeExecution(specifiedParallelism);
+  }
 
-    @Override
-    public PCollection<KV<Integer, NewRelicLogRecord>> expand(PCollection<NewRelicLogRecord> input) {
+  @Override
+  public PCollection<KV<Integer, NewRelicLogRecord>> expand(PCollection<NewRelicLogRecord> input) {
 
-        return input
-                .apply("Inject Keys", ParDo.of(new InjectKeysFn(this.specifiedParallelism)))
-                .setCoder(KvCoder.of(BigEndianIntegerCoder.of(), NewRelicLogRecordCoder.getInstance()));
-    }
+    return input
+            .apply("Inject Keys", ParDo.of(new InjectKeysFn(this.specifiedParallelism)))
+            .setCoder(KvCoder.of(BigEndianIntegerCoder.of(), NewRelicLogRecordCoder.getInstance()));
+  }
 }

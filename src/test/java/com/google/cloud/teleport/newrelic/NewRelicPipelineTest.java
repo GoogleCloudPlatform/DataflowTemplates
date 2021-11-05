@@ -1,9 +1,20 @@
 package com.google.cloud.teleport.newrelic;
 
+import static com.google.cloud.teleport.newrelic.utils.HttpClient.APPLICATION_GZIP;
+import static com.google.cloud.teleport.newrelic.utils.HttpClient.APPLICATION_JSON;
+import static com.google.cloud.teleport.templates.PubsubToNewRelic.PLUGIN_VERSION;
+import static org.junit.Assume.assumeNoException;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.mockserver.integration.ClientAndServer.startClientAndServer;
+
 import com.google.cloud.teleport.newrelic.config.NewRelicConfig;
 import com.google.cloud.teleport.newrelic.ptransforms.NewRelicIO;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import java.time.LocalDateTime;
+import java.time.Month;
+import java.time.ZoneOffset;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.testing.TestPipeline;
@@ -22,18 +33,6 @@ import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 import org.mockserver.model.JsonBody;
 import org.mockserver.verify.VerificationTimes;
-
-import java.time.LocalDateTime;
-import java.time.Month;
-import java.time.ZoneOffset;
-
-import static com.google.cloud.teleport.newrelic.utils.HttpClient.APPLICATION_GZIP;
-import static com.google.cloud.teleport.newrelic.utils.HttpClient.APPLICATION_JSON;
-import static com.google.cloud.teleport.templates.PubsubToNewRelic.PLUGIN_VERSION;
-import static org.junit.Assume.assumeNoException;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.mockserver.integration.ClientAndServer.startClientAndServer;
 
 /**
  * Unit tests for {@link NewRelicPipelineTest}.

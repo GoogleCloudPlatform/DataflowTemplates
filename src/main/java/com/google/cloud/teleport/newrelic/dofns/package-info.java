@@ -15,6 +15,6 @@
  */
 
 /**
- * Contains main logic of the PubsubToNewRelic template.
+ * Contains DoFns used by the PubsubToNewRelic template.
  */
-package com.google.cloud.teleport.newrelic;
+package com.google.cloud.teleport.newrelic.dofns;

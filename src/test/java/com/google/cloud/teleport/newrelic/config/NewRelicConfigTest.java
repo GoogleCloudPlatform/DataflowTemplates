@@ -1,8 +1,5 @@
 package com.google.cloud.teleport.newrelic.config;
 
-import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
-import org.junit.Test;
-
 import static com.google.cloud.teleport.newrelic.config.NewRelicConfig.DEFAULT_BATCH_COUNT;
 import static com.google.cloud.teleport.newrelic.config.NewRelicConfig.DEFAULT_DISABLE_CERTIFICATE_VALIDATION;
 import static com.google.cloud.teleport.newrelic.config.NewRelicConfig.DEFAULT_FLUSH_DELAY;
@@ -13,6 +10,12 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
+import org.junit.Test;
+
+/**
+ * Tests the {@link NewRelicConfig} class.
+ */
 public class NewRelicConfigTest {
 
     private static final String SOME_LOGS_API_URL = "https://force-logs.grogu.sw";

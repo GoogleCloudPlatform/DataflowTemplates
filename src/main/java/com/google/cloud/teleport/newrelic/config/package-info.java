@@ -15,6 +15,6 @@
  */
 
 /**
- * Contains main logic of the PubsubToNewRelic template.
+ * Contains the configuration classes of the PubsubToNewRelic template.
  */
-package com.google.cloud.teleport.newrelic;
+package com.google.cloud.teleport.newrelic.config;

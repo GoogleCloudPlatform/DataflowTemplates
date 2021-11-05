@@ -1,11 +1,10 @@
 package com.google.cloud.teleport.newrelic.dofns;
 
 import com.google.cloud.teleport.newrelic.dtos.NewRelicLogRecord;
+import java.util.concurrent.ThreadLocalRandom;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
-
-import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * The InjectKeysFn associates a numeric Key, between 0 (inclusive) and "specifiedParallelism" (exclusive),
@@ -15,16 +14,16 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public class InjectKeysFn extends DoFn<NewRelicLogRecord, KV<Integer, NewRelicLogRecord>> {
 
-    private final ValueProvider<Integer> specifiedParallelism;
+  private final ValueProvider<Integer> specifiedParallelism;
 
-    public InjectKeysFn(ValueProvider<Integer> specifiedParallelism) {
-        this.specifiedParallelism = specifiedParallelism;
-    }
+  public InjectKeysFn(ValueProvider<Integer> specifiedParallelism) {
+    this.specifiedParallelism = specifiedParallelism;
+  }
 
-    @ProcessElement
-    public void processElement(
-            @Element NewRelicLogRecord inputElement,
-            OutputReceiver<KV<Integer, NewRelicLogRecord>> outputReceiver) {
-        outputReceiver.output(KV.of(ThreadLocalRandom.current().nextInt(specifiedParallelism.get()), inputElement));
-    }
+  @ProcessElement
+  public void processElement(
+          @Element NewRelicLogRecord inputElement,
+          OutputReceiver<KV<Integer, NewRelicLogRecord>> outputReceiver) {
+    outputReceiver.output(KV.of(ThreadLocalRandom.current().nextInt(specifiedParallelism.get()), inputElement));
+  }
 }
