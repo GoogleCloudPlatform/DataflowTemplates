@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.newrelic.ptransforms;
 
 import com.google.api.client.util.DateTime;
@@ -21,71 +36,89 @@ import org.slf4j.LoggerFactory;
 /**
  * Transforms messages (either as plain strings or as JSON strings) to {@link NewRelicLogRecord}s.
  */
-public class FailsafeStringToNewRelicRecords extends PTransform<PCollection<FailsafeElement<String, String>>, PCollectionTuple> {
+public class FailsafeStringToNewRelicRecords
+    extends PTransform<PCollection<FailsafeElement<String, String>>, PCollectionTuple> {
 
   private static final Logger LOG = LoggerFactory.getLogger(FailsafeStringToNewRelicRecords.class);
   private static final String TIMESTAMP_KEY = "timestamp";
-  private static final Counter CONVERSION_ERRORS = Metrics.counter(FailsafeStringToNewRelicRecords.class, "newrelic-event-conversion-errors");
-  private static final Counter CONVERSION_SUCCESS = Metrics.counter(FailsafeStringToNewRelicRecords.class, "newrelic-event-conversion-successes");
+  private static final Counter CONVERSION_ERRORS =
+      Metrics.counter(FailsafeStringToNewRelicRecords.class, "newrelic-event-conversion-errors");
+  private static final Counter CONVERSION_SUCCESS =
+      Metrics.counter(FailsafeStringToNewRelicRecords.class, "newrelic-event-conversion-successes");
 
   private TupleTag<NewRelicLogRecord> successfulConversionsTag;
   private TupleTag<FailsafeElement<String, String>> failedConversionsTag;
 
-  private FailsafeStringToNewRelicRecords(TupleTag<NewRelicLogRecord> successfulConversionsTag,
-                                          TupleTag<FailsafeElement<String, String>> failedConversionsTag) {
+  private FailsafeStringToNewRelicRecords(
+      TupleTag<NewRelicLogRecord> successfulConversionsTag,
+      TupleTag<FailsafeElement<String, String>> failedConversionsTag) {
     this.successfulConversionsTag = successfulConversionsTag;
     this.failedConversionsTag = failedConversionsTag;
   }
 
   /**
-   * Returns a {@link FailsafeStringToNewRelicRecords} {@link PTransform} that
-   * consumes {@link FailsafeElement} messages and creates {@link NewRelicLogRecord}
-   * objects. Any conversion errors are wrapped into a {@link FailsafeElement}
-   * with appropriate error information.
+   * Returns a {@link FailsafeStringToNewRelicRecords} {@link PTransform} that consumes {@link
+   * FailsafeElement} messages and creates {@link NewRelicLogRecord} objects. Any conversion errors
+   * are wrapped into a {@link FailsafeElement} with appropriate error information.
    *
    * @param successfulConversionsTag {@link TupleTag} to use for successfully converted messages.
-   * @param failedConversionsTag     {@link TupleTag} to use for messages that failed conversion.
+   * @param failedConversionsTag {@link TupleTag} to use for messages that failed conversion.
    */
-  public static FailsafeStringToNewRelicRecords withOutputTags(TupleTag<NewRelicLogRecord> successfulConversionsTag,
-                                                               TupleTag<FailsafeElement<String, String>> failedConversionsTag) {
+  public static FailsafeStringToNewRelicRecords withOutputTags(
+      TupleTag<NewRelicLogRecord> successfulConversionsTag,
+      TupleTag<FailsafeElement<String, String>> failedConversionsTag) {
     return new FailsafeStringToNewRelicRecords(successfulConversionsTag, failedConversionsTag);
   }
 
   @Override
   public PCollectionTuple expand(PCollection<FailsafeElement<String, String>> input) {
 
-    return input.apply("Convert to NewRelicLogRecord", ParDo.of(new DoFn<FailsafeElement<String, String>, NewRelicLogRecord>() {
+    return input.apply(
+        "Convert to NewRelicLogRecord",
+        ParDo.of(
+                new DoFn<FailsafeElement<String, String>, NewRelicLogRecord>() {
 
-      @ProcessElement
-      public void processElement(
-        @Element FailsafeElement<String, String> inputElement,
-        MultiOutputReceiver outputReceivers
-      ) {
-        final String input = inputElement.getPayload();
+                  @ProcessElement
+                  public void processElement(
+                      @Element FailsafeElement<String, String> inputElement,
+                      MultiOutputReceiver outputReceivers) {
+                    final String input = inputElement.getPayload();
 
-        try {
-          final Long timestamp = extractTimestampEpochMillisFromJson(input);
+                    try {
+                      final Long timestamp = extractTimestampEpochMillisFromJson(input);
 
-          outputReceivers.get(successfulConversionsTag).output(new NewRelicLogRecord(input, timestamp));
-          CONVERSION_SUCCESS.inc();
-        } catch (Exception e) {
-          CONVERSION_ERRORS.inc();
-          outputReceivers.get(failedConversionsTag).output(FailsafeElement.of(input, input).setErrorMessage(e.getMessage())
-            .setStacktrace(Throwables.getStackTraceAsString(e)));
-        }
-      }
-    }).withOutputTags(successfulConversionsTag, TupleTagList.of(failedConversionsTag)));
+                      outputReceivers
+                          .get(successfulConversionsTag)
+                          .output(new NewRelicLogRecord(input, timestamp));
+                      CONVERSION_SUCCESS.inc();
+                    } catch (Exception e) {
+                      CONVERSION_ERRORS.inc();
+                      outputReceivers
+                          .get(failedConversionsTag)
+                          .output(
+                              FailsafeElement.of(input, input)
+                                  .setErrorMessage(e.getMessage())
+                                  .setStacktrace(Throwables.getStackTraceAsString(e)));
+                    }
+                  }
+                })
+            .withOutputTags(successfulConversionsTag, TupleTagList.of(failedConversionsTag)));
   }
 
   /**
-   * Utilitary method to extract the "timestamp" field from a potentially JSON-formatted string as epoch milliseconds.
+   * Utilitary method to extract the "timestamp" field from a potentially JSON-formatted string as
+   * epoch milliseconds.
    *
-   * @param input Potentially JSON-formatted string. If the String is not JSON-formatted, this method returns null
-   * @return The epoch milliseconds, if the input is a JSON-formatted string with a "timestamp" field in ISO8601. Otherwise, null.
+   * @param input Potentially JSON-formatted string. If the String is not JSON-formatted, this
+   *     method returns null
+   * @return The epoch milliseconds, if the input is a JSON-formatted string with a "timestamp"
+   *     field in ISO8601. Otherwise, null.
    */
   private static Long extractTimestampEpochMillisFromJson(final String input) {
-    // We attempt to parse the input to see if it is a valid JSON and if so, whether we can extract some
-    // additional properties that would be present in Stackdriver's LogEntry structure (timestamp) or
+    // We attempt to parse the input to see if it is a valid JSON and if so, whether we can extract
+    // some
+    // additional properties that would be present in Stackdriver's LogEntry structure (timestamp)
+    // or
     // a user-provided _metadata field.
     try {
       final JSONObject json = new JSONObject(input);
@@ -100,9 +133,12 @@ public class FailsafeStringToNewRelicRecords extends PTransform<PCollection<Fail
         }
       }
     } catch (JSONException je) {
-      // input is either not a properly formatted JSONObject or has other exceptions. In this case, we will
-      // simply capture the entire input as a log record and not worry about capturing any specific properties
-      // (for e.g Timestamp etc). We also do not want to LOG this as we might be running a pipeline to
+      // input is either not a properly formatted JSONObject or has other exceptions. In this case,
+      // we will
+      // simply capture the entire input as a log record and not worry about capturing any specific
+      // properties
+      // (for e.g Timestamp etc). We also do not want to LOG this as we might be running a pipeline
+      // to
       // simply log text entries to NewRelic and this is expected behavior.
     }
     return null;

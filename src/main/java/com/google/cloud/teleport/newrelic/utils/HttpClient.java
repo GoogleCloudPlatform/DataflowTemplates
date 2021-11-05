@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.newrelic.utils;
 
 import static com.google.cloud.teleport.templates.PubsubToNewRelic.PLUGIN_VERSION;
@@ -41,17 +56,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * {@link HttpClient} is a utility class that helps write {@link NewRelicLogRecord}s to the NewRelic Logs API endpoint.
+ * {@link HttpClient} is a utility class that helps write {@link NewRelicLogRecord}s to the NewRelic
+ * Logs API endpoint.
  */
 public class HttpClient {
   private static final Logger LOG = LoggerFactory.getLogger(HttpClient.class);
   private static final int DEFAULT_MAX_CONNECTIONS = 1;
-  private static final Set<Integer> RETRYABLE_STATUS_CODES = ImmutableSet.of(408, 429, 500, 502, 503, 504, 599);
+  private static final Set<Integer> RETRYABLE_STATUS_CODES =
+      ImmutableSet.of(408, 429, 500, 502, 503, 504, 599);
   private static final String HTTPS_PROTOCOL_PREFIX = "https";
   private static final Gson GSON = new GsonBuilder().create();
-  private static final Integer MAX_ELAPSED_MILLIS = ExponentialBackOff.DEFAULT_MAX_ELAPSED_TIME_MILLIS;
+  private static final Integer MAX_ELAPSED_MILLIS =
+      ExponentialBackOff.DEFAULT_MAX_ELAPSED_TIME_MILLIS;
 
-  // If a POST request fails, the following response handler will determine whether the request should be reattempted
+  // If a POST request fails, the following response handler will determine whether the request
+  // should be reattempted
   // and will sleep for some time before retrying, by following an exponential backoff mechanism.
   private static final HttpBackOffUnsuccessfulResponseHandler RESPONSE_HANDLER;
   public static final GZipEncoding GZIP_ENCODING = new GZipEncoding();
@@ -62,10 +81,11 @@ public class HttpClient {
   private static final String PLUGIN_SOURCE_VALUE = "gcp-dataflow-" + PLUGIN_VERSION;
 
   static {
-    RESPONSE_HANDLER = new HttpBackOffUnsuccessfulResponseHandler(
-      new ExponentialBackOff.Builder().setMaxElapsedTimeMillis(MAX_ELAPSED_MILLIS).build()
-    );
-    RESPONSE_HANDLER.setBackOffRequired((HttpResponse response) -> RETRYABLE_STATUS_CODES.contains(response.getStatusCode()));
+    RESPONSE_HANDLER =
+        new HttpBackOffUnsuccessfulResponseHandler(
+            new ExponentialBackOff.Builder().setMaxElapsedTimeMillis(MAX_ELAPSED_MILLIS).build());
+    RESPONSE_HANDLER.setBackOffRequired(
+        (HttpResponse response) -> RETRYABLE_STATUS_CODES.contains(response.getStatusCode()));
   }
 
   private final GenericUrl logsApiUrl;
@@ -74,11 +94,12 @@ public class HttpClient {
   private final ApacheHttpTransport transport;
   private final HttpRequestFactory requestFactory;
 
-  private HttpClient(final GenericUrl logsApiUrl,
-                     final String licenseKey,
-                     final Boolean useCompression,
-                     final ApacheHttpTransport transport,
-                     final HttpRequestFactory requestFactory) {
+  private HttpClient(
+      final GenericUrl logsApiUrl,
+      final String licenseKey,
+      final Boolean useCompression,
+      final ApacheHttpTransport transport,
+      final HttpRequestFactory requestFactory) {
     this.logsApiUrl = logsApiUrl;
     this.licenseKey = licenseKey;
     this.useCompression = useCompression;
@@ -92,10 +113,11 @@ public class HttpClient {
    * @return {@link HttpClient}
    */
   public static HttpClient init(
-    final GenericUrl logsApiUrl,
-    final String licenseKey,
-    final Boolean disableCertificateValidation,
-    final Boolean useCompression) throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException {
+      final GenericUrl logsApiUrl,
+      final String licenseKey,
+      final Boolean disableCertificateValidation,
+      final Boolean useCompression)
+      throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException {
 
     checkNotNull(licenseKey, "The New Relic License Key needs to be specified.");
     checkNotNull(logsApiUrl, "The New Relic Logs URL needs to be specified.");
@@ -103,37 +125,40 @@ public class HttpClient {
     LOG.info("Certificate validation disabled: {}", disableCertificateValidation);
     LOG.info("Defaulting max backoff time to: {} milliseconds ", MAX_ELAPSED_MILLIS);
 
-    CloseableHttpClient httpClient = getHttpClient(
-      logsApiUrl.getScheme().equalsIgnoreCase(HTTPS_PROTOCOL_PREFIX),
-      DEFAULT_MAX_CONNECTIONS,
-      disableCertificateValidation);
+    CloseableHttpClient httpClient =
+        getHttpClient(
+            logsApiUrl.getScheme().equalsIgnoreCase(HTTPS_PROTOCOL_PREFIX),
+            DEFAULT_MAX_CONNECTIONS,
+            disableCertificateValidation);
 
     final ApacheHttpTransport transport = new ApacheHttpTransport(httpClient);
 
     return new HttpClient(
-      logsApiUrl,
-      licenseKey,
-      useCompression,
-      transport,
-      transport.createRequestFactory());
+        logsApiUrl, licenseKey, useCompression, transport, transport.createRequestFactory());
   }
 
   /**
-   * Utility method to create a {@link CloseableHttpClient} to make http POST requests against the New Relic API.
+   * Utility method to create a {@link CloseableHttpClient} to make http POST requests against the
+   * New Relic API.
    *
-   * @param useSsl                       use SSL in the established connection
-   * @param maxConnections               max number of parallel connections.
-   * @param disableCertificateValidation should disable certificate validation (only relevant when using SSL).
+   * @param useSsl use SSL in the established connection
+   * @param maxConnections max number of parallel connections.
+   * @param disableCertificateValidation should disable certificate validation (only relevant when
+   *     using SSL).
    */
-  private static CloseableHttpClient getHttpClient(final boolean useSsl, int maxConnections, boolean disableCertificateValidation)
-    throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException {
+  private static CloseableHttpClient getHttpClient(
+      final boolean useSsl, int maxConnections, boolean disableCertificateValidation)
+      throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException {
 
     final HttpClientBuilder builder = ApacheHttpTransport.newDefaultHttpClientBuilder();
 
     if (useSsl) {
       LOG.info("SSL connection requested");
 
-      final HostnameVerifier hostnameVerifier = disableCertificateValidation ? NoopHostnameVerifier.INSTANCE : new DefaultHostnameVerifier();
+      final HostnameVerifier hostnameVerifier =
+          disableCertificateValidation
+              ? NoopHostnameVerifier.INSTANCE
+              : new DefaultHostnameVerifier();
 
       final SSLContextBuilder sslContextBuilder = SSLContextBuilder.create();
       if (disableCertificateValidation) {
@@ -141,12 +166,14 @@ public class HttpClient {
         sslContextBuilder.loadTrustMaterial((TrustStrategy) (chain, authType) -> true);
       }
 
-      final SSLConnectionSocketFactory connectionSocketFactory = new SSLConnectionSocketFactory(sslContextBuilder.build(), hostnameVerifier);
+      final SSLConnectionSocketFactory connectionSocketFactory =
+          new SSLConnectionSocketFactory(sslContextBuilder.build(), hostnameVerifier);
       builder.setSSLSocketFactory(connectionSocketFactory);
     }
 
     builder.setMaxConnTotal(maxConnections);
-    builder.setDefaultRequestConfig(RequestConfig.custom().setCookieSpec(CookieSpecs.STANDARD).build());
+    builder.setDefaultRequestConfig(
+        RequestConfig.custom().setCookieSpec(CookieSpecs.STANDARD).build());
 
     return builder.build();
   }
@@ -172,7 +199,8 @@ public class HttpClient {
   }
 
   /**
-   * Utility method to transform a list of {@link NewRelicLogRecord}s into the body of the HTTP call to New Relic.
+   * Utility method to transform a list of {@link NewRelicLogRecord}s into the body of the HTTP call
+   * to New Relic.
    */
   private String buildBody(List<NewRelicLogRecord> logRecords) {
     final JsonObject common = new JsonObject();
@@ -182,8 +210,8 @@ public class HttpClient {
 
     final JsonObject logsBlock = new JsonObject();
     logsBlock.add("common", common);
-    logsBlock.add("logs", GSON.toJsonTree(logRecords, new TypeToken<List<NewRelicLogRecord>>() {
-    }.getType()));
+    logsBlock.add(
+        "logs", GSON.toJsonTree(logRecords, new TypeToken<List<NewRelicLogRecord>>() {}.getType()));
 
     final JsonArray payload = new JsonArray();
     payload.add(logsBlock);
@@ -191,9 +219,7 @@ public class HttpClient {
     return payload.toString();
   }
 
-  /**
-   * Shuts down the HTTP client.
-   */
+  /** Shuts down the HTTP client. */
   public void close() throws IOException {
     if (transport != null) {
       LOG.info("Closing HTTP client transport.");

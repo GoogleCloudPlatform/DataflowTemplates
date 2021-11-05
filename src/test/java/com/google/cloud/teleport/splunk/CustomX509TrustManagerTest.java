@@ -36,33 +36,37 @@ public final class CustomX509TrustManagerTest {
   private X509Certificate unrecognizedSelfSignedCertificate;
 
   @Before
-  public void setUp() throws NoSuchAlgorithmException,
-      CertificateException, FileNotFoundException, KeyStoreException {
+  public void setUp()
+      throws NoSuchAlgorithmException, CertificateException, FileNotFoundException,
+          KeyStoreException {
     CertificateFactory cf = CertificateFactory.getInstance("X.509");
     ClassLoader classLoader = this.getClass().getClassLoader();
-    FileInputStream recognizedInputStream = new FileInputStream(
-        classLoader.getResource("certificates/RecognizedSelfSignedCertificate.crt").getFile());
-    FileInputStream unrecognizedInputStream = new FileInputStream(
-        classLoader.getResource("certificates/UnrecognizedSelfSignedCertificate.crt").getFile());
-    recognizedSelfSignedCertificate = (X509Certificate)
-        cf.generateCertificate(recognizedInputStream);
-    unrecognizedSelfSignedCertificate = (X509Certificate)
-        cf.generateCertificate(unrecognizedInputStream);
+    FileInputStream recognizedInputStream =
+        new FileInputStream(
+            classLoader.getResource("certificates/RecognizedSelfSignedCertificate.crt").getFile());
+    FileInputStream unrecognizedInputStream =
+        new FileInputStream(
+            classLoader
+                .getResource("certificates/UnrecognizedSelfSignedCertificate.crt")
+                .getFile());
+    recognizedSelfSignedCertificate =
+        (X509Certificate) cf.generateCertificate(recognizedInputStream);
+    unrecognizedSelfSignedCertificate =
+        (X509Certificate) cf.generateCertificate(unrecognizedInputStream);
 
     customTrustManager = new CustomX509TrustManager(recognizedSelfSignedCertificate);
   }
 
   /**
-   * Tests whether a recognized (user provided) self-signed certificate
-   *  is accepted by TrustManager.
-   * */
+   * Tests whether a recognized (user provided) self-signed certificate is accepted by TrustManager.
+   */
   @Test
   public void testCustomX509TrustManagerWithRecognizedCertificate() throws CertificateException {
     customTrustManager.checkServerTrusted(
         new X509Certificate[] {recognizedSelfSignedCertificate}, "RSA");
   }
 
-  /** Tests whether a unrecognized self-signed certificate is rejected by TrustManager.*/
+  /** Tests whether a unrecognized self-signed certificate is rejected by TrustManager. */
   @Test(expected = Exception.class)
   public void testCustomX509TrustManagerWithUnrecognizedCertificate() throws CertificateException {
     customTrustManager.checkServerTrusted(

@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.newrelic.dtos.coders;
 
 import com.google.cloud.teleport.newrelic.dtos.NewRelicLogApiSendError;
@@ -12,18 +27,20 @@ import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.values.TypeDescriptor;
 
 /**
- * A {@link org.apache.beam.sdk.coders.Coder} for {@link NewRelicLogApiSendError} objects. It allows serializing and
- * deserializing {@link NewRelicLogApiSendError} objects, which can then be transmitted through a Beam pipeline using
- * PCollection/PCollectionTuple objects.
+ * A {@link org.apache.beam.sdk.coders.Coder} for {@link NewRelicLogApiSendError} objects. It allows
+ * serializing and deserializing {@link NewRelicLogApiSendError} objects, which can then be
+ * transmitted through a Beam pipeline using PCollection/PCollectionTuple objects.
  */
 public class NewRelicLogApiSendErrorCoder extends AtomicCoder<NewRelicLogApiSendError> {
 
   private static final NewRelicLogApiSendErrorCoder SINGLETON = new NewRelicLogApiSendErrorCoder();
-  private static final TypeDescriptor<NewRelicLogApiSendError> TYPE_DESCRIPTOR = new TypeDescriptor<NewRelicLogApiSendError>() {
-  };
+  private static final TypeDescriptor<NewRelicLogApiSendError> TYPE_DESCRIPTOR =
+      new TypeDescriptor<NewRelicLogApiSendError>() {};
   private static final StringUtf8Coder STRING_UTF_8_CODER = StringUtf8Coder.of();
-  private static final NullableCoder<String> STRING_NULLABLE_CODER = NullableCoder.of(STRING_UTF_8_CODER);
-  private static final NullableCoder<Integer> INTEGER_NULLABLE_CODER = NullableCoder.of(BigEndianIntegerCoder.of());
+  private static final NullableCoder<String> STRING_NULLABLE_CODER =
+      NullableCoder.of(STRING_UTF_8_CODER);
+  private static final NullableCoder<Integer> INTEGER_NULLABLE_CODER =
+      NullableCoder.of(BigEndianIntegerCoder.of());
 
   public static NewRelicLogApiSendErrorCoder getInstance() {
     return SINGLETON;
@@ -53,7 +70,7 @@ public class NewRelicLogApiSendErrorCoder extends AtomicCoder<NewRelicLogApiSend
   @Override
   public void verifyDeterministic() throws Coder.NonDeterministicException {
     throw new Coder.NonDeterministicException(
-      this, "NewRelicLogApiSendError can hold arbitrary instances, which may be non-deterministic.");
+        this,
+        "NewRelicLogApiSendError can hold arbitrary instances, which may be non-deterministic.");
   }
 }
-

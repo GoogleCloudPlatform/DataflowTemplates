@@ -29,44 +29,44 @@ import javax.net.ssl.X509TrustManager;
  */
 public class CustomX509TrustManager implements X509TrustManager {
 
-    X509TrustManager defaultTrustManager;
-    X509Certificate userCertificate;
+  X509TrustManager defaultTrustManager;
+  X509Certificate userCertificate;
 
-    public CustomX509TrustManager(X509Certificate userCertificate)
-        throws KeyStoreException, NoSuchAlgorithmException {
-        this.userCertificate = userCertificate;
-        //Get Default Trust Manager
-        TrustManagerFactory trustMgrFactory = TrustManagerFactory.getInstance(
-            TrustManagerFactory.getDefaultAlgorithm());
-        trustMgrFactory.init((KeyStore) null);
-        for (TrustManager tm : trustMgrFactory.getTrustManagers()) {
-            if (tm instanceof X509TrustManager) {
-                defaultTrustManager = (X509TrustManager) tm;
-                break;
-            }
-        }
+  public CustomX509TrustManager(X509Certificate userCertificate)
+      throws KeyStoreException, NoSuchAlgorithmException {
+    this.userCertificate = userCertificate;
+    // Get Default Trust Manager
+    TrustManagerFactory trustMgrFactory =
+        TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+    trustMgrFactory.init((KeyStore) null);
+    for (TrustManager tm : trustMgrFactory.getTrustManagers()) {
+      if (tm instanceof X509TrustManager) {
+        defaultTrustManager = (X509TrustManager) tm;
+        break;
+      }
     }
+  }
 
-    @Override
-    public void checkClientTrusted(X509Certificate[] chain, String authType)
-        throws CertificateException {
-        defaultTrustManager.checkClientTrusted(chain, authType);
-    }
+  @Override
+  public void checkClientTrusted(X509Certificate[] chain, String authType)
+      throws CertificateException {
+    defaultTrustManager.checkClientTrusted(chain, authType);
+  }
 
-    public void checkServerTrusted(X509Certificate[] chain, String authType)
-            throws CertificateException {
-        try {
-            defaultTrustManager.checkServerTrusted(chain, authType);
-        } catch (CertificateException ce) {
-            /* Handle untrusted certificates */
-            if (chain[0] != userCertificate) {
-                throw ce;
-            }
-        }
+  public void checkServerTrusted(X509Certificate[] chain, String authType)
+      throws CertificateException {
+    try {
+      defaultTrustManager.checkServerTrusted(chain, authType);
+    } catch (CertificateException ce) {
+      /* Handle untrusted certificates */
+      if (chain[0] != userCertificate) {
+        throw ce;
+      }
     }
+  }
 
-    @Override
-    public X509Certificate[] getAcceptedIssuers() {
-        return defaultTrustManager.getAcceptedIssuers();
-    }
+  @Override
+  public X509Certificate[] getAcceptedIssuers() {
+    return defaultTrustManager.getAcceptedIssuers();
+  }
 }
