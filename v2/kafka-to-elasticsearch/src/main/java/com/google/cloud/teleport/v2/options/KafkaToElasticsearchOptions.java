@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.options;
 
+import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
 import com.google.cloud.teleport.v2.elasticsearch.utils.Dataset;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
@@ -25,7 +26,7 @@ import org.apache.beam.sdk.options.Validation;
  * The {@link KafkaToElasticsearchOptions} interface provides the custom execution options passed by the
  * executor at the command-line.
  */
-public interface KafkaToElasticsearchOptions extends PipelineOptions {
+public interface KafkaToElasticsearchOptions extends ElasticsearchWriteOptions {
   @Description(
           "Kafka topic to read from.")
   @Validation.Required
@@ -61,6 +62,16 @@ public interface KafkaToElasticsearchOptions extends PipelineOptions {
 
   void setErrorOutputTopic(String errorOutputTopic);
 
+  @Description("URL to credentials in Vault")
+  String getSecretStoreUrl();
+
+  void setSecretStoreUrl(String secretStoreUrl);
+
+  @Description("Vault token")
+  String getVaultToken();
+
+  void setVaultToken(String vaultToken);
+
   @Description(
           "The type of logs sent via Pub/Sub for which we have out of the box dashboard. "
                   + "Known log types values are audit, vpcflow, and firewall. "
@@ -88,4 +99,10 @@ public interface KafkaToElasticsearchOptions extends PipelineOptions {
   String getElasticsearchPassword();
 
   void setElasticsearchPassword(String elasticsearchPassword);
+
+  @Description("Dataflow template version, should be set by GCP.")
+  @Default.String("1.0.0")
+  String getElasticsearchTemplateVersion();
+
+  void setElasticsearchTemplateVersion(String elasticsearchTemplateVersion);
 }

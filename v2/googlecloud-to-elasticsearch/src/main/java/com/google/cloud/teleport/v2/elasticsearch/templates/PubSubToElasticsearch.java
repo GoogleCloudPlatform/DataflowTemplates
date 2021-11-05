@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.elasticsearch.templates;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.elasticsearch.options.PubSubToElasticsearchOptions;
-import com.google.cloud.teleport.v2.elasticsearch.transforms.FailedPubsubMessageToPubsubTopicFn;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.ProcessEventMetadata;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.PubSubMessageToJsonDocument;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
@@ -32,7 +31,6 @@ import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesCoder;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TypeDescriptors;
@@ -154,16 +152,8 @@ public class PubSubToElasticsearch {
                 .setOptions(options.as(PubSubToElasticsearchOptions.class))
                 .build());
 
-    /*
-     * Step 3b: Write elements that failed processing to error output PubSub topic via {@link PubSubIO}.
-     */
-    convertedPubsubMessages
-            .get(TRANSFORM_ERROROUTPUT_OUT)
-            .apply(ParDo.of(new FailedPubsubMessageToPubsubTopicFn()))
-            .apply(
-                    "writeFailureMessages",
-                    PubsubIO.writeMessages().to(options.getErrorOutputTopic()));
 
+    //TODO: Step 3b: Write elements that failed processing to error output PubSub topic via {@link PubSubIO}.
 
     // Execute the pipeline and return the result.
     return pipeline.run();
