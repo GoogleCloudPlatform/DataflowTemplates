@@ -19,6 +19,7 @@ import com.google.cloud.teleport.templates.common.DatastoreConverters.DatastoreW
 import com.google.cloud.teleport.templates.common.DatastoreConverters.WriteJsonEntities;
 import com.google.cloud.teleport.templates.common.ErrorConverters.ErrorWriteOptions;
 import com.google.cloud.teleport.templates.common.ErrorConverters.LogErrors;
+import com.google.cloud.teleport.templates.common.FirestoreNestedValueProvider;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.TransformTextViaJavascript;
 import com.google.cloud.teleport.templates.common.TextConverters.FilesystemReadOptions;
@@ -26,6 +27,7 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.values.TupleTag;
 
 /**
@@ -34,6 +36,13 @@ import org.apache.beam.sdk.values.TupleTag;
  * https://cloud.google.com/datastore/docs/reference/rest/v1/Entity
  */
 public class TextToDatastore {
+
+  public static final int DEFAULT_NUM_WORKERS = 500;
+
+  public static ValueProvider<String> selectProvidedInput(
+      ValueProvider<String> datastoreInput, ValueProvider<String> firestoreInput) {
+    return new FirestoreNestedValueProvider(datastoreInput, firestoreInput);
+  }
 
   /** TextToDatastore Pipeline Options. */
   public interface TextToDatastoreOptions
@@ -60,6 +69,15 @@ public class TextToDatastore {
 
     Pipeline pipeline = Pipeline.create(options);
 
+    // firestoreHintNumWorkers and datastoreHintNumWorkers have default values of 500.
+    // Either one can be set by the user.
+    // Selecting the input specified by user or 500.
+    int hintNumWorkers = options.getFirestoreHintNumWorkers();
+    if (hintNumWorkers == DEFAULT_NUM_WORKERS
+        && options.getDatastoreHintNumWorkers() != DEFAULT_NUM_WORKERS) {
+      hintNumWorkers = options.getDatastoreHintNumWorkers();
+    }
+
     pipeline
         .apply(TextIO.read().from(options.getTextReadPattern()))
         .apply(
@@ -69,8 +87,10 @@ public class TextToDatastore {
                 .build())
         .apply(
             WriteJsonEntities.newBuilder()
-                .setProjectId(options.getDatastoreWriteProjectId())
-                .setHintNumWorkers(options.getDatastoreHintNumWorkers())
+                .setProjectId(
+                    selectProvidedInput(
+                        options.getDatastoreWriteProjectId(), options.getFirestoreWriteProjectId()))
+                .setHintNumWorkers(hintNumWorkers)
                 .setErrorTag(errorTag)
                 .build())
         .apply(
