@@ -39,6 +39,7 @@ import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.Hidden;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Count;
@@ -59,56 +60,159 @@ public class DatastoreConverters {
 
   /** Options for Reading Datastore Entities. */
   public interface DatastoreReadOptions extends PipelineOptions {
+    /** @deprecated Please use getFirestoreReadGqlQuery() instead. */
     @Description("GQL Query which specifies what entities to grab")
+    @Hidden
+    @Deprecated
     ValueProvider<String> getDatastoreReadGqlQuery();
 
+    /** @deprecated Please use setFirestoreReadGqlQuery(value) instead. */
+    @Hidden
+    @Deprecated
     void setDatastoreReadGqlQuery(ValueProvider<String> datastoreReadGqlQuery);
 
+    /** @deprecated Please use getFirestoreReadProjectId() instead. */
     @Description("GCP Project Id of where the datastore entities live")
+    @Hidden
+    @Deprecated
     ValueProvider<String> getDatastoreReadProjectId();
 
+    /** @deprecated Please use setFirestoreReadProjectId(value) instead. */
+    @Hidden
+    @Deprecated
     void setDatastoreReadProjectId(ValueProvider<String> datastoreReadProjectId);
 
+    /** @deprecated Please use getFirestoreReadNamespace() instead. */
     @Description("Namespace of requested Entties. Set as \"\" for default namespace")
+    @Hidden
+    @Deprecated
     ValueProvider<String> getDatastoreReadNamespace();
 
+    /** @deprecated Please use setFirestoreReadNamespace(value) instead. */
+    @Hidden
+    @Deprecated
     void setDatastoreReadNamespace(ValueProvider<String> datstoreReadNamespace);
+
+    @Description("GQL Query which specifies what entities to grab")
+    ValueProvider<String> getFirestoreReadGqlQuery();
+
+    void setFirestoreReadGqlQuery(ValueProvider<String> firestoreReadGqlQuery);
+
+    @Description("GCP Project Id of where the datastore entities live")
+    ValueProvider<String> getFirestoreReadProjectId();
+
+    void setFirestoreReadProjectId(ValueProvider<String> firestoreReadProjectId);
+
+    @Description("Namespace of requested Entties. Set as \"\" for default namespace")
+    ValueProvider<String> getFirestoreReadNamespace();
+
+    void setFirestoreReadNamespace(ValueProvider<String> firestoreReadNamespace);
   }
 
   /** Options for writing Datastore Entities. */
   public interface DatastoreWriteOptions extends PipelineOptions {
+    /** @deprecated Please use getFirestoreWriteProjectId() instead. */
     @Description("GCP Project Id of where to write the datastore entities")
+    @Hidden
+    @Deprecated
     ValueProvider<String> getDatastoreWriteProjectId();
 
+    /** @deprecated Please use setFirestoreWriteProjectId(value) instead. */
+    @Hidden
+    @Deprecated
     void setDatastoreWriteProjectId(ValueProvider<String> datstoreWriteProjectId);
 
+    /** @deprecated Please use getFirestoreWriteEntityKind() instead. */
     @Description("Kind of the Datastore entity")
+    @Hidden
+    @Deprecated
     ValueProvider<String> getDatastoreWriteEntityKind();
 
+    /** @deprecated Please use setFirestoreWriteEntityKind(value) instead. */
+    @Hidden
+    @Deprecated
     void setDatastoreWriteEntityKind(ValueProvider<String> value);
 
+    /** @deprecated Please use getFirestoreWriteNamespace() instead. */
     @Description("Namespace of the Datastore entity")
+    @Hidden
+    @Deprecated
     ValueProvider<String> getDatastoreWriteNamespace();
 
+    /** @deprecated Please use setFirestoreWriteNamespace(value) instead. */
+    @Hidden
+    @Deprecated
     void setDatastoreWriteNamespace(ValueProvider<String> value);
+
+    /** @deprecated Please use getFirestoreHintNumWorkers() instead. */
+    @Description("Hint for the expected number of workers in the ramp-up throttling step")
+    @Default.Integer(500)
+    @Hidden
+    @Deprecated
+    Integer getDatastoreHintNumWorkers();
+
+    /** @deprecated Please use setFirestoreHintNumWorkers(value) instead. */
+    @Hidden
+    @Deprecated
+    void setDatastoreHintNumWorkers(Integer value);
+
+    @Description("GCP Project Id of where to write the datastore entities")
+    ValueProvider<String> getFirestoreWriteProjectId();
+
+    void setFirestoreWriteProjectId(ValueProvider<String> firestoreWriteProjectId);
+
+    @Description("Kind of the Datastore entity")
+    ValueProvider<String> getFirestoreWriteEntityKind();
+
+    void setFirestoreWriteEntityKind(ValueProvider<String> value);
+
+    @Description("Namespace of the Datastore entity")
+    ValueProvider<String> getFirestoreWriteNamespace();
+
+    void setFirestoreWriteNamespace(ValueProvider<String> value);
 
     @Description("Hint for the expected number of workers in the ramp-up throttling step")
     @Default.Integer(500)
-    Integer getDatastoreHintNumWorkers();
-    void setDatastoreHintNumWorkers(Integer value);
+    Integer getFirestoreHintNumWorkers();
+
+    void setFirestoreHintNumWorkers(Integer value);
   }
 
   /** Options for deleting Datastore Entities. */
   public interface DatastoreDeleteOptions extends PipelineOptions {
+    /** @deprecated Please use getFirestoreDeleteProjectId() instead. */
     @Description("GCP Project Id of where to delete the datastore entities")
+    @Hidden
+    @Deprecated
     ValueProvider<String> getDatastoreDeleteProjectId();
 
+    /** @deprecated Please use setFirestoreDeleteProjectId(value) instead. */
+    @Hidden
+    @Deprecated
     void setDatastoreDeleteProjectId(ValueProvider<String> datastoreDeleteProjectId);
+
+    /** @deprecated Please use getFirestoreHintNumWorkers() instead. */
+    @Description("Hint for the expected number of workers in the ramp-up throttling step")
+    @Default.Integer(500)
+    @Hidden
+    @Deprecated
+    Integer getDatastoreHintNumWorkers();
+
+    /** @deprecated Please use setFirestoreHintNumWorkers(value) instead. */
+    @Hidden
+    @Deprecated
+    void setDatastoreHintNumWorkers(Integer value);
+
+    @Description("GCP Project Id of where to delete the datastore entities")
+    ValueProvider<String> getFirestoreDeleteProjectId();
+
+    void setFirestoreDeleteProjectId(ValueProvider<String> firestoreDeleteProjectId);
 
     @Description("Hint for the expected number of workers in the ramp-up throttling step")
     @Default.Integer(500)
-    Integer getDatastoreHintNumWorkers();
-    void setDatastoreHintNumWorkers(Integer value);
+    Integer getFirestoreHintNumWorkers();
+
+    void setFirestoreHintNumWorkers(Integer value);
   }
 
   /** Options for reading Unique datastore Schemas. */
