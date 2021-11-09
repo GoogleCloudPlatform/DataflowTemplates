@@ -17,6 +17,7 @@ package com.google.cloud.teleport.templates;
 
 import com.google.cloud.teleport.templates.common.DatastoreConverters.DatastoreReadOptions;
 import com.google.cloud.teleport.templates.common.DatastoreConverters.ReadJsonEntities;
+import com.google.cloud.teleport.templates.common.FirestoreNestedValueProvider;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.TransformTextViaJavascript;
 import com.google.cloud.teleport.templates.common.TextConverters.FilesystemWriteOptions;
@@ -24,6 +25,7 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.ValueProvider;
 
 /**
  * Dataflow template which copies Datastore Entities to a Text sink. Text is encoded using JSON
@@ -31,6 +33,11 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
  * https://cloud.google.com/datastore/docs/reference/rest/v1/Entity
  */
 public class DatastoreToText {
+
+  public static ValueProvider<String> selectProvidedInput(
+      ValueProvider<String> datastoreInput, ValueProvider<String> firestoreInput) {
+    return new FirestoreNestedValueProvider(datastoreInput, firestoreInput);
+  }
 
   /** Custom PipelineOptions. */
   public interface DatastoreToTextOptions
@@ -54,9 +61,15 @@ public class DatastoreToText {
     pipeline
         .apply(
             ReadJsonEntities.newBuilder()
-                .setGqlQuery(options.getDatastoreReadGqlQuery())
-                .setProjectId(options.getDatastoreReadProjectId())
-                .setNamespace(options.getDatastoreReadNamespace())
+                .setGqlQuery(
+                    selectProvidedInput(
+                        options.getDatastoreReadGqlQuery(), options.getFirestoreReadGqlQuery()))
+                .setProjectId(
+                    selectProvidedInput(
+                        options.getDatastoreReadProjectId(), options.getFirestoreReadProjectId()))
+                .setNamespace(
+                    selectProvidedInput(
+                        options.getDatastoreReadNamespace(), options.getFirestoreReadNamespace()))
                 .build())
         .apply(
             TransformTextViaJavascript.newBuilder()

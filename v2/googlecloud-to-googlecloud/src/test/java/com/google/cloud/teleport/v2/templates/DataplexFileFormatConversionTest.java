@@ -114,6 +114,26 @@ public class DataplexFileFormatConversionTest {
           .setDataPath(Resources.getResource(RESOURCES_DIR + "/entity2").getPath())
           .setSchema(SCHEMA);
 
+  private static final GoogleCloudDataplexV1Entity entity3 =
+      new GoogleCloudDataplexV1Entity()
+          .setName("projects/p1/locations/l1/lakes/l1/zones/z1/entities/e3")
+          .setId("e3")
+          .setSystem(StorageSystem.CLOUD_STORAGE.name())
+          .setFormat(
+              new GoogleCloudDataplexV1StorageFormat().setFormat(InputFileFormat.AVRO.name()))
+          .setDataPath(Resources.getResource(RESOURCES_DIR + "/entity3").getPath())
+          .setSchema(SCHEMA);
+
+  private static final GoogleCloudDataplexV1Entity entity4 =
+      new GoogleCloudDataplexV1Entity()
+          .setName("projects/p1/locations/l1/lakes/l1/zones/z1/entities/e4")
+          .setId("e4")
+          .setSystem(StorageSystem.CLOUD_STORAGE.name())
+          .setFormat(
+              new GoogleCloudDataplexV1StorageFormat().setFormat(InputFileFormat.PARQUET.name()))
+          .setDataPath(Resources.getResource(RESOURCES_DIR + "/entity4").getPath())
+          .setSchema(SCHEMA);
+
   @Rule public final transient TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   @Rule public final transient TestPipeline mainPipeline = TestPipeline.create();
@@ -190,6 +210,70 @@ public class DataplexFileFormatConversionTest {
             "ReadParquetFile",
             ParquetConverters.ReadParquetFile.newBuilder()
                 .withInputFileSpec(temporaryFolder.getRoot().getAbsolutePath() + "/**/*.parquet")
+                .withSerializedSchema(EXPECT_SERIALIZED_AVRO_SCHEMA)
+                .build());
+
+    PAssert.that(readParquetFile).containsInAnyOrder(EXPECTED_GENERIC_RECORDS);
+
+    readPipeline.run();
+  }
+
+  /** Tests Avro to Parquet conversion for an asset with entity. */
+  @Test
+  @Category(NeedsRunner.class)
+  public void testAssetWithEntityAvroToParquetE2E() throws IOException {
+    DataplexClient dataplex = mock(DataplexClient.class);
+    when(dataplex.getEntities(ImmutableList.of(entity3.getName())))
+        .thenReturn(ImmutableList.of(entity3));
+    when(dataplex.getPartitions(entity3.getName())).thenReturn(ImmutableList.of());
+    when(dataplex.getAsset(outputAsset.getName())).thenReturn(outputAsset);
+
+    FileFormatConversionOptions options =
+        PipelineOptionsFactory.create().as(FileFormatConversionOptions.class);
+    options.setInputAssetOrEntitiesList(entity3.getName());
+    options.setOutputFileFormat(OutputFileFormat.PARQUET);
+    options.setOutputAsset(outputAsset.getName());
+
+    DataplexFileFormatConversion.run(
+        mainPipeline, options, dataplex, DataplexFileFormatConversionTest::outputPathProvider);
+
+    PCollection<GenericRecord> readParquetFile =
+        readPipeline.apply(
+            "ReadParquetFile",
+            ParquetConverters.ReadParquetFile.newBuilder()
+                .withInputFileSpec(temporaryFolder.getRoot().getAbsolutePath() + "/**/*.parquet")
+                .withSerializedSchema(EXPECT_SERIALIZED_AVRO_SCHEMA)
+                .build());
+
+    PAssert.that(readParquetFile).containsInAnyOrder(EXPECTED_GENERIC_RECORDS);
+
+    readPipeline.run();
+  }
+
+  /** Tests Parquet to Avro conversion for an asset with entity. */
+  @Test
+  @Category(NeedsRunner.class)
+  public void testAssetWithEntityParquetToAvroE2E() throws IOException {
+    DataplexClient dataplex = mock(DataplexClient.class);
+    when(dataplex.getEntities(ImmutableList.of(entity4.getName())))
+        .thenReturn(ImmutableList.of(entity4));
+    when(dataplex.getPartitions(entity4.getName())).thenReturn(ImmutableList.of());
+    when(dataplex.getAsset(outputAsset.getName())).thenReturn(outputAsset);
+
+    FileFormatConversionOptions options =
+        PipelineOptionsFactory.create().as(FileFormatConversionOptions.class);
+    options.setInputAssetOrEntitiesList(entity4.getName());
+    options.setOutputFileFormat(OutputFileFormat.AVRO);
+    options.setOutputAsset(outputAsset.getName());
+
+    DataplexFileFormatConversion.run(
+        mainPipeline, options, dataplex, DataplexFileFormatConversionTest::outputPathProvider);
+
+    PCollection<GenericRecord> readParquetFile =
+        readPipeline.apply(
+            "ReadAvroFile",
+            AvroConverters.ReadAvroFile.newBuilder()
+                .withInputFileSpec(temporaryFolder.getRoot().getAbsolutePath() + "/**/*.avro")
                 .withSerializedSchema(EXPECT_SERIALIZED_AVRO_SCHEMA)
                 .build());
 

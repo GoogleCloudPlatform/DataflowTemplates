@@ -22,8 +22,10 @@ import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1StorageFor
 import com.google.cloud.teleport.v2.clients.DataplexClient;
 import com.google.cloud.teleport.v2.clients.DefaultDataplexClient;
 import com.google.cloud.teleport.v2.io.AvroSinkWithJodaDatesConversion;
+import com.google.cloud.teleport.v2.transforms.AvroConverters;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.transforms.JsonConverters;
+import com.google.cloud.teleport.v2.transforms.ParquetConverters;
 import com.google.cloud.teleport.v2.utils.Schemas;
 import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
 import com.google.cloud.teleport.v2.values.DataplexCompression;
@@ -31,6 +33,8 @@ import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Pattern;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
@@ -44,6 +48,7 @@ import org.apache.beam.sdk.io.FileIO.Sink;
 import org.apache.beam.sdk.io.parquet.ParquetIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.ExperimentalOptions;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
@@ -65,7 +70,8 @@ public class DataplexFileFormatConversion {
    * The {@link FileFormatConversionOptions} provides the custom execution options passed by the
    * executor at the command-line.
    */
-  public interface FileFormatConversionOptions extends GcpOptions, PipelineOptions {
+  public interface FileFormatConversionOptions
+      extends GcpOptions, PipelineOptions, ExperimentalOptions {
 
     @Description("Input asset or entities list.")
     String getInputAssetOrEntitiesList();
@@ -96,7 +102,9 @@ public class DataplexFileFormatConversion {
   /** Supported input file formats. */
   public enum InputFileFormat {
     CSV,
-    JSON
+    JSON,
+    PARQUET,
+    AVRO
   }
 
   /** Supported output file formats. */
@@ -123,6 +131,8 @@ public class DataplexFileFormatConversion {
               + "(,projects/[^\\n\\r/]+/locations/[^\\n\\r/]+/lakes/[^\\n\\r/]+/zones/[^\\n\\r/]+"
               + "/entities/[^\\n\\r/]+)*$");
 
+  private static int conversionsCounter = 0;
+
   /**
    * Main entry point for pipeline execution.
    *
@@ -133,6 +143,14 @@ public class DataplexFileFormatConversion {
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()
             .as(FileFormatConversionOptions.class);
+    List<String> experiments = new ArrayList<>();
+    if (options.getExperiments() != null) {
+      experiments.addAll(options.getExperiments());
+    }
+    if (!experiments.contains("upload_graph")) {
+      experiments.add("upload_graph");
+    }
+    options.setExperiments(experiments);
 
     run(
         Pipeline.create(options),
@@ -184,7 +202,7 @@ public class DataplexFileFormatConversion {
           dataplex.getPartitions(entity.getName());
       if (partitions.isEmpty()) {
         pipeline.apply(
-            "Convert entity " + entity.getName(),
+            "Convert " + shortenDataplexName(entity.getName()),
             new ConvertFiles(
                 entity,
                 entityToFileSpec(entity),
@@ -194,7 +212,7 @@ public class DataplexFileFormatConversion {
       } else {
         for (GoogleCloudDataplexV1Partition partition : partitions) {
           pipeline.apply(
-              "Convert partition " + partition.getName(),
+              "Convert " + shortenDataplexName(partition.getName()),
               new ConvertFiles(
                   entity,
                   partitionToFileSpec(partition),
@@ -206,6 +224,11 @@ public class DataplexFileFormatConversion {
     }
 
     return pipeline.run();
+  }
+
+  private static String shortenDataplexName(String name) {
+    // adding a unique number just in case the entities or partition names will repeat
+    return name.substring(name.lastIndexOf('/') + 1) + ' ' + conversionsCounter++;
   }
 
   private static String entityToFileSpec(GoogleCloudDataplexV1Entity entity) {
@@ -274,20 +297,35 @@ public class DataplexFileFormatConversion {
         case CSV:
           records =
               input
-                  .apply("ReadCsvFiles", readCsvTransform(entity, inputFileSpec))
+                  .apply("CSV", readCsvTransform(entity, inputFileSpec))
                   .get(CSV_LINES)
-                  .apply(
-                      "ConvertToGenericRecord",
-                      ParDo.of(csvToGenericRecordFn(entity, serializedSchema)))
+                  .apply("ToGenRec", ParDo.of(csvToGenericRecordFn(entity, serializedSchema)))
                   .setCoder(AvroCoder.of(GenericRecord.class, schema));
           break;
         case JSON:
           records =
               input
-                  .apply("ReadJsonFiles", readJsonTransform(inputFileSpec))
-                  .apply(
-                      "ConvertToGenericRecord", ParDo.of(jsonToGenericRecordFn(serializedSchema)))
+                  .apply("Json", readJsonTransform(inputFileSpec))
+                  .apply("ToGenRec", ParDo.of(jsonToGenericRecordFn(serializedSchema)))
                   .setCoder(AvroCoder.of(GenericRecord.class, schema));
+          break;
+        case PARQUET:
+          records =
+              input.apply(
+                  "Parquet",
+                  ParquetConverters.ReadParquetFile.newBuilder()
+                      .withInputFileSpec(inputFileSpec)
+                      .withSerializedSchema(serializedSchema)
+                      .build());
+          break;
+        case AVRO:
+          records =
+              input.apply(
+                  "Avro",
+                  AvroConverters.ReadAvroFile.newBuilder()
+                      .withInputFileSpec(inputFileSpec)
+                      .withSerializedSchema(serializedSchema)
+                      .build());
           break;
         default:
           throw new IllegalArgumentException(
@@ -311,7 +349,7 @@ public class DataplexFileFormatConversion {
       }
 
       records.apply(
-          "WriteFile(s)",
+          "Write",
           FileIO.<GenericRecord>write()
               .via(sink)
               .to(ensurePathEndsWithSlash(outputPath))
