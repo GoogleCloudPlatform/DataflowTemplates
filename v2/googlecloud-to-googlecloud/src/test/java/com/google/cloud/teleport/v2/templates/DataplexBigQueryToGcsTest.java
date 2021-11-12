@@ -243,21 +243,21 @@ public class DataplexBigQueryToGcsTest {
             .apply(
                 "readP1Files",
                 ParquetIO.read(avroSchema)
-                    .from(outDir.getAbsolutePath() + "/partitioned_table/ts=p1/*.parquet"))
+                    .from(outDir.getAbsolutePath() + "/partitioned_table/ts_pid=p1/*.parquet"))
             .apply("mapP1Files", MapElements.into(TypeDescriptors.strings()).via(Object::toString));
     PCollection<String> actualPartitionedRecords2 =
         testPipeline
             .apply(
                 "readP2Files",
                 ParquetIO.read(avroSchema)
-                    .from(outDir.getAbsolutePath() + "/partitioned_table/ts=p2/*.parquet"))
+                    .from(outDir.getAbsolutePath() + "/partitioned_table/ts_pid=p2/*.parquet"))
             .apply("mapP2Files", MapElements.into(TypeDescriptors.strings()).via(Object::toString));
     PCollection<String> actualPartitionedRecords3 =
         testPipeline
             .apply(
                 "readP3Files",
                 ParquetIO.read(avroSchema)
-                    .from(outDir.getAbsolutePath() + "/partitioned_table/ts=p3/*.parquet"))
+                    .from(outDir.getAbsolutePath() + "/partitioned_table/ts_pid=p3/*.parquet"))
             .apply("mapP3Files", MapElements.into(TypeDescriptors.strings()).via(Object::toString));
 
     PAssert.that(actualUnpartitionedRecords).containsInAnyOrder(defaultExpectedRecords);

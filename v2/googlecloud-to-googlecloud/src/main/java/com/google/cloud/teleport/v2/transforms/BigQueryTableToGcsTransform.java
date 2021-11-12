@@ -136,7 +136,7 @@ public class BigQueryTableToGcsTransform
 
     String targetPath =
         String.format(
-            "%s/%s/%s=%s",
+            "%s/%s/%s_pid=%s",
             targetRootPath,
             table.getTableName(),
             table.getPartitioningColumn(),
