@@ -195,7 +195,6 @@ public class HttpClient {
     if (useCompression) {
       request.setEncoding(GZIP_ENCODING);
     }
-    LOG.debug("Sending:\n{}", request);
     return request.execute();
   }
 

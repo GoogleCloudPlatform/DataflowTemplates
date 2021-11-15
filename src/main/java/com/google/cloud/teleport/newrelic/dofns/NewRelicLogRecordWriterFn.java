@@ -99,7 +99,7 @@ public class NewRelicLogRecordWriterFn
 
   @Setup
   public void setup() {
-    final ValueProvider<String> decryptedLicenseKey = tokenKmsEncryptionKey != null && tokenKmsEncryptionKey.isAccessible()
+    final ValueProvider<String> decryptedLicenseKey = tokenKmsEncryptionKey != null && tokenKmsEncryptionKey.isAccessible() && tokenKmsEncryptionKey.get() != null
       ? decryptLicenseKey(licenseKey, tokenKmsEncryptionKey)
       : licenseKey;
     checkArgument(
