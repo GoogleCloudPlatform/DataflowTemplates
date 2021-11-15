@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.templates;
 
 import com.google.cloud.teleport.newrelic.NewRelicPipeline;
-import com.google.cloud.teleport.newrelic.config.NewRelicConfig;
 import com.google.cloud.teleport.newrelic.config.PubsubToNewRelicPipelineOptions;
 import com.google.cloud.teleport.newrelic.dtos.NewRelicLogRecord;
 import com.google.cloud.teleport.newrelic.ptransforms.NewRelicIO;
@@ -100,14 +99,11 @@ public class PubsubToNewRelic {
   public static PipelineResult run(PubsubToNewRelicPipelineOptions options) {
     final Pipeline pipeline = Pipeline.create(options);
 
-    final NewRelicConfig newRelicConfig = NewRelicConfig.fromPipelineOptions(options);
-    LOG.debug("Using configuration: {}", newRelicConfig);
-
     final NewRelicPipeline nrPipeline =
         new NewRelicPipeline(
             pipeline,
             new ReadMessagesFromPubSub(options.getInputSubscription()),
-            new NewRelicIO(newRelicConfig));
+            new NewRelicIO(options));
 
     return nrPipeline.run();
   }

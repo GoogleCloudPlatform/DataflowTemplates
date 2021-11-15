@@ -15,25 +15,18 @@
  */
 package com.google.cloud.teleport.newrelic.dofns;
 
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
-
 import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.HttpResponseException;
-import com.google.cloud.teleport.newrelic.config.NewRelicConfig;
+import com.google.cloud.teleport.newrelic.config.NewRelicPipelineOptions;
 import com.google.cloud.teleport.newrelic.dtos.NewRelicLogApiSendError;
 import com.google.cloud.teleport.newrelic.dtos.NewRelicLogRecord;
 import com.google.cloud.teleport.newrelic.utils.HttpClient;
+import com.google.cloud.teleport.util.KMSEncryptedNestedValueProvider;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import java.io.IOException;
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.util.List;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -47,9 +40,19 @@ import org.apache.beam.sdk.state.TimerSpecs;
 import org.apache.beam.sdk.state.ValueState;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
+import org.apache.commons.lang.StringUtils;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.util.List;
+
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
 
 /** A {@link DoFn} to write {@link NewRelicLogRecord}s to New Relic's log API endpoint. */
 public class NewRelicLogRecordWriterFn
@@ -89,27 +92,34 @@ public class NewRelicLogRecordWriterFn
   private final ValueProvider<Integer> batchCount;
   private final ValueProvider<Integer> flushDelay;
   private final ValueProvider<Boolean> useCompression;
+  private final ValueProvider<String> tokenKmsEncryptionKey;
 
-  public NewRelicLogRecordWriterFn(final NewRelicConfig newRelicConfig) {
-    this.logsApiUrl = newRelicConfig.getLogsApiUrl();
-    this.licenseKey = newRelicConfig.getLicenseKey();
-    this.disableCertificateValidation = newRelicConfig.getDisableCertificateValidation();
-    this.batchCount = newRelicConfig.getBatchCount();
-    this.flushDelay = newRelicConfig.getFlushDelay();
-    this.useCompression = newRelicConfig.getUseCompression();
+  public NewRelicLogRecordWriterFn(final NewRelicPipelineOptions pipelineOptions) {
+    this.logsApiUrl = pipelineOptions.getLogsApiUrl();
+    this.licenseKey = pipelineOptions.getLicenseKey();
+    this.disableCertificateValidation = pipelineOptions.getDisableCertificateValidation();
+    this.batchCount = pipelineOptions.getBatchCount();
+    this.flushDelay = pipelineOptions.getFlushDelay();
+    this.useCompression = pipelineOptions.getUseCompression();
+    this.tokenKmsEncryptionKey = pipelineOptions.getTokenKMSEncryptionKey();
   }
 
   @Setup
   public void setup() {
+    final ValueProvider<String> decryptedLicenseKey = tokenKmsEncryptionKey != null && tokenKmsEncryptionKey.isAccessible() && tokenKmsEncryptionKey.get() != null
+      ? decryptLicenseKey(licenseKey, tokenKmsEncryptionKey)
+      : licenseKey;
     checkArgument(
-        licenseKey != null && licenseKey.isAccessible() && licenseKey.get() != null,
-        "New Relic License Key is required for writing events.");
+      decryptedLicenseKey != null && decryptedLicenseKey.isAccessible() && decryptedLicenseKey.get() != null,
+      "New Relic License Key is mandatory for sending log records, and it was not provided.");
+
+    logRuntimeConfiguration(decryptedLicenseKey);
 
     try {
       this.httpClient =
           HttpClient.init(
               new GenericUrl(logsApiUrl.get()),
-              licenseKey.get(),
+              decryptedLicenseKey.get(),
               disableCertificateValidation.get(),
               useCompression.get());
       LOG.info("Successfully created HttpClient");
@@ -117,6 +127,19 @@ public class NewRelicLogRecordWriterFn
       LOG.error("Error creating HttpClient", e);
       throw new RuntimeException(e);
     }
+  }
+
+  /**
+   * Utility method to decrypt a NewRelic API token.
+   *
+   * @param encryptedKey The NewRelic API token as a Base64 encoded {@link String} encrypted
+   *     with a Cloud KMS Key.
+   * @param kmsKey The Cloud KMS Encryption Key to decrypt the NewRelic API token.
+   * @return Decrypted NewRelic API token.
+   */
+  private static ValueProvider<String> decryptLicenseKey(
+    ValueProvider<String> encryptedKey, ValueProvider<String> kmsKey) {
+    return new KMSEncryptedNestedValueProvider(encryptedKey, kmsKey);
   }
 
   @ProcessElement
@@ -252,5 +275,14 @@ public class NewRelicLogRecordWriterFn
         LOG.warn("Received exception while closing HttpClient", e);
       }
     }
+  }
+
+  private void logRuntimeConfiguration(final ValueProvider<String> decryptedLicenseKey) {
+    final String licenseKey = decryptedLicenseKey.get();
+    final String obfuscatedLicenseKey = licenseKey.length() < 20
+      ? StringUtils.repeat("*", licenseKey.length())
+      : StringUtils.overlay(licenseKey, StringUtils.repeat("*", licenseKey.length() - 8), 8, licenseKey.length());
+    LOG.info("NewRelicLogRecordWriterFn runtime configuration: logsApiUrl={}, licenseKey={}, disableCertificateValidation={}, batchCount={}, flushDelay={}, useCompression={}",
+      logsApiUrl, obfuscatedLicenseKey, disableCertificateValidation, batchCount, flushDelay, useCompression);
   }
 }
