@@ -19,6 +19,7 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.api.client.json.JsonFactory;
+import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.bigquery.Field;
@@ -51,6 +52,7 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryUtils;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
+import org.apache.beam.sdk.io.gcp.bigquery.SchemaAndRecord;
 import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -77,6 +79,9 @@ import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Supplier;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Suppliers;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Throwables;
 import org.apache.commons.text.StringSubstitutor;
+import org.apache.hadoop.hbase.client.Mutation;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -87,6 +92,49 @@ public class BigQueryConverters {
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryConverters.class);
 
   private static final JsonFactory JSON_FACTORY = Transport.getJsonFactory();
+
+
+  /** Converts from the BigQuery Avro format into Bigtable mutation. */
+  @AutoValue
+  public abstract static class AvroToMutation implements SerializableFunction<SchemaAndRecord, Mutation> {
+
+    public abstract String columnFamily();
+
+    public abstract String rowkey();
+
+    /** Builder for AvroToEntity. */
+    @AutoValue.Builder
+    public abstract static class Builder {
+
+      public abstract Builder setColumnFamily(String value);
+
+      public abstract Builder setRowkey(String rowkey);
+
+      public abstract AvroToMutation build();
+    }
+
+    public static Builder newBuilder() {
+      return new AutoValue_BigQueryConverters_AvroToMutation.Builder();
+    }
+
+    public Mutation apply(SchemaAndRecord record) {
+      GenericRecord row = record.getRecord();
+      String rowkey = row.get(rowkey()).toString();
+      Put put = new Put(Bytes.toBytes(rowkey));
+
+      List<TableFieldSchema> columns = record.getTableSchema().getFields();
+      for (TableFieldSchema column : columns) {
+        String columnName = column.getName();
+        String columnValue = row.get(columnName).toString();
+        // TODO: handle other types and column families
+        put.addColumn(
+            Bytes.toBytes(columnFamily()),
+            Bytes.toBytes(columnName),
+            Bytes.toBytes(columnValue));
+      }
+      return put;
+    }
+  }
 
   /**
    * Converts a JSON string to a {@link TableRow} object. If the data fails to convert, a {@link

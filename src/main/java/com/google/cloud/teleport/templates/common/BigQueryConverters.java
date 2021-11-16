@@ -223,49 +223,6 @@ public class BigQueryConverters {
     }
   }
 
-  /** Converts from the BigQuery Avro format into Bigtable mutation. */
-  @AutoValue
-  public abstract static class AvroToMutation
-      implements SerializableFunction<SchemaAndRecord, Mutation> {
-
-    public abstract ValueProvider<String> columnFamily();
-
-    public abstract ValueProvider<String> rowkey();
-
-    /** Builder for AvroToEntity. */
-    @AutoValue.Builder
-    public abstract static class Builder {
-
-      public abstract Builder setColumnFamily(ValueProvider<String> value);
-
-      public abstract Builder setRowkey(ValueProvider<String> rowkey);
-
-      public abstract AvroToMutation build();
-    }
-
-    public static Builder newBuilder() {
-      return new AutoValue_BigQueryConverters_AvroToMutation.Builder();
-    }
-
-    public Mutation apply(SchemaAndRecord record) {
-      GenericRecord row = record.getRecord();
-      String rowkey = row.get(rowkey().get()).toString();
-      Put put = new Put(Bytes.toBytes(rowkey));
-
-      List<TableFieldSchema> columns = record.getTableSchema().getFields();
-      for (TableFieldSchema column : columns) {
-        String columnName = column.getName();
-        String columnValue = row.get(columnName).toString();
-        // TODO: handle other types and column families
-        put.addColumn(
-            Bytes.toBytes(columnFamily().get()),
-            Bytes.toBytes(columnName),
-            Bytes.toBytes(columnValue));
-      }
-      return put;
-    }
-  }
-
   /** Reads data from BigQuery and converts it to Datastore Entity format. */
   @AutoValue
   public abstract static class BigQueryToEntity extends PTransform<PBegin, PCollectionTuple> {
