@@ -58,9 +58,6 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.commons.text.StringSubstitutor;
-import org.apache.hadoop.hbase.client.Mutation;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.util.Bytes;
 
 /** Common transforms for Teleport BigQueryIO. */
 public class BigQueryConverters {
@@ -84,7 +81,6 @@ public class BigQueryConverters {
 
   /** Options for reading data from BigQuery. */
   public interface BigQueryReadOptions extends PipelineOptions {
-
     @Description("SQL query in standard SQL to pull data from BigQuery")
     ValueProvider<String> getReadQuery();
 
@@ -144,7 +140,6 @@ public class BigQueryConverters {
     /** Builder for {@link FailsafeJsonToTableRow}. */
     @AutoValue.Builder
     public abstract static class Builder<T> {
-
       public abstract Builder<T> setSuccessTag(TupleTag<TableRow> successTag);
 
       public abstract Builder<T> setFailureTag(TupleTag<FailsafeElement<T, String>> failureTag);
@@ -179,50 +174,6 @@ public class BigQueryConverters {
     }
   }
 
-  /** Reads data from BigQuery and converts it to Bigtable mutation. */
-  @AutoValue
-  public abstract static class BigQueryToMutation
-      extends PTransform<PBegin, PCollection<Mutation>> {
-
-    abstract ValueProvider<String> query();
-
-    abstract ValueProvider<String> columnFamily();
-
-    abstract ValueProvider<String> rowkey();
-
-    /** Builder for BigQuery. */
-    @AutoValue.Builder
-    public abstract static class Builder {
-
-      public abstract Builder setQuery(ValueProvider<String> query);
-
-      public abstract Builder setColumnFamily(ValueProvider<String> columnFamily);
-
-      public abstract Builder setRowkey(ValueProvider<String> rowkey);
-
-      public abstract BigQueryToMutation build();
-    }
-
-    public static Builder newBuilder() {
-      return new AutoValue_BigQueryConverters_BigQueryToMutation.Builder();
-    }
-
-    @Override
-    public PCollection<Mutation> expand(PBegin begin) {
-      return begin.apply(
-          "AvroToMutation",
-          BigQueryIO.read(
-                  AvroToMutation.newBuilder()
-                      .setColumnFamily(columnFamily())
-                      .setRowkey(rowkey())
-                      .build())
-              .fromQuery(query())
-              .withoutValidation()
-              .withTemplateCompatibility()
-              .usingStandardSql());
-    }
-  }
-
   /** Reads data from BigQuery and converts it to Datastore Entity format. */
   @AutoValue
   public abstract static class BigQueryToEntity extends PTransform<PBegin, PCollectionTuple> {
@@ -243,7 +194,6 @@ public class BigQueryConverters {
     /** Builder for BigQuery. */
     @AutoValue.Builder
     public abstract static class Builder {
-
       public abstract Builder setQuery(ValueProvider<String> query);
 
       public abstract Builder setEntityKind(ValueProvider<String> entityKind);
@@ -302,7 +252,6 @@ public class BigQueryConverters {
     /** Builder for AvroToEntity. */
     @AutoValue.Builder
     public abstract static class Builder {
-
       public abstract Builder setEntityKind(ValueProvider<String> entityKind);
 
       public abstract Builder setUniqueNameColumn(ValueProvider<String> uniqueNameColumn);

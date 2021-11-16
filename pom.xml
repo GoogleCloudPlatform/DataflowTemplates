@@ -336,11 +336,6 @@
     </dependency>
     <dependency>
       <groupId>com.google.cloud.bigtable</groupId>
-      <artifactId>bigtable-hbase-beam</artifactId>
-      <version>${bigtable.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.cloud.bigtable</groupId>
       <artifactId>bigtable-hbase-1.x-shaded</artifactId>
       <version>${bigtable.version}</version>
       <scope>runtime</scope>
