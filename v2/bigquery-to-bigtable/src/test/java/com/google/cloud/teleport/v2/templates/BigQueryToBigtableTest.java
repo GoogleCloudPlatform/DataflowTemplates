@@ -21,8 +21,6 @@ package com.google.cloud.teleport.v2.templates;
 // import com.google.cloud.bigquery.storage.v1beta1.BigQueryStorageClient;
 // import com.google.cloud.bigquery.storage.v1beta1.ReadOptions.TableReadOptions;
 // import com.google.cloud.bigquery.storage.v1beta1.Storage.ReadSession;
-// import com.google.cloud.teleport.v2.templates.BigQueryToBigtable.ReadSessionFactory;
-// import org.apache.avro.Schema;
 // import org.junit.Test;
 // import org.junit.runner.RunWith;
 // import org.junit.runners.JUnit4;
@@ -30,32 +28,16 @@ package com.google.cloud.teleport.v2.templates;
 // /** Unit tests for {@link BigQueryToBigtable}. */
 // @RunWith(JUnit4.class)
 // public class BigQueryToBigtableTest {
-//
-//   private static final String SCHEMA =
-//       "{\"type\":\"record\",\"name\":\"__root__\",\"fields\":"
-//           + "[{\"name\":\"device_id\",\"type\":[\"null\",\"string\"]},"
-//           + "{\"name\":\"temperature_c\",\"type\":[\"null\",\"double\"]},"
-//           + "{\"name\":\"temperature_f\",\"type\":[\"null\",\"double\"]},"
-//           + "{\"name\":\"sample_time\",\"type\":[\"null\",{\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}]},"
-//           + "{\"name\":\"humidity\",\"type\":[\"null\",\"double\"]}]}";
 //   private static final String TABLE = "fantasmic-999999:great_data.table";
 //   private BigQueryStorageClient client = mock(BigQueryStorageClient.class);
 //
 //   /** Test {@link ReadSessionFactory} throws exception when invalid table reference is provided. */
 //   @Test(expected = IllegalArgumentException.class)
 //   public void testReadSessionFactoryBadTable() {
-//
 //     // Test input
 //     final String badTableRef = "fantasmic-999999;great_data.table";
 //     final TableReadOptions tableReadOptions = TableReadOptions.newBuilder().build();
 //     ReadSessionFactory trsf = new ReadSessionFactory();
 //     ReadSession trs = trsf.create(client, badTableRef, tableReadOptions);
-//   }
-//
-//   /** Test Schema Parser is working as expected. */
-//   @Test
-//   public void testSchemaParse() {
-//     Schema schema = new Schema.Parser().parse(SCHEMA);
-//     assertEquals(schema.toString(), SCHEMA);
 //   }
 // }
