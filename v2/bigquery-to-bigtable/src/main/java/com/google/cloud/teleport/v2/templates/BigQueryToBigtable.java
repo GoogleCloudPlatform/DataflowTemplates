@@ -52,31 +52,31 @@ public class BigQueryToBigtable {
     @Required
     String getBigtableWriteProjectId();
 
-    void setBigtableWriteProjectId(String bigtableWriteProjectId);
+    void setBigtableWriteProjectId(String value);
 
     @Description("Bigtable Instance id")
     @Required
     String getBigtableWriteInstanceId();
 
-    void setBigtableWriteInstanceId(String bigtableWriteInstanceId);
+    void setBigtableWriteInstanceId(String value);
 
     @Description("Bigtable app profile")
     @Default.String("default")
     String getBigtableWriteAppProfile();
 
-    void setBigtableWriteAppProfile(String bigtableWriteAppProfile);
+    void setBigtableWriteAppProfile(String value);
 
     @Description("Bigtable table id")
     @Required
     String getBigtableWriteTableId();
 
-    void setBigtableWriteTableId(String bigtableWriteTableId);
+    void setBigtableWriteTableId(String value);
 
     @Description("Bigtable column family name")
     @Required
     String getBigtableWriteColumnFamily();
 
-    void setBigtableWriteColumnFamily(String bigtableWriteColumnFamily);
+    void setBigtableWriteColumnFamily(String value);
   }
 
   /**

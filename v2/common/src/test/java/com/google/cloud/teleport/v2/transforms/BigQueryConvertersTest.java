@@ -30,7 +30,6 @@ import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonTo
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.SchemaUtils;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.TableRowToGenericRecordFn;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -511,15 +510,15 @@ public class BigQueryConvertersTest {
   @Test
   public void testAvroToMutation() {
     // Arrange
-    String ROWKEY = "rowkey";
-    String COLUMN_FAMILY = "CF";
-    AvroToMutation avroToMutation = AvroToMutation.newBuilder().setColumnFamily(COLUMN_FAMILY)
-        .setRowkey(ROWKEY).build();
+    String rowkey = "rowkey";
+    String columnFamily = "CF";
+    AvroToMutation avroToMutation = AvroToMutation.newBuilder().setColumnFamily(columnFamily)
+        .setRowkey(rowkey).build();
 
     TableSchema bqSchema = new TableSchema()
         .setFields(
             Arrays.asList(
-                new TableFieldSchema().setName(ROWKEY).setType("STRING"),
+                new TableFieldSchema().setName(rowkey).setType("STRING"),
                 new TableFieldSchema().setName(shortStringField).setType("STRING")));
 
     Schema avroSchema =
@@ -528,12 +527,12 @@ public class BigQueryConvertersTest {
                 String.format(
                     AVRO_SCHEMA_TEMPLATE,
                     new StringBuilder()
-                        .append(String.format(avroFieldTemplate, ROWKEY, "string", idFieldDesc))
+                        .append(String.format(avroFieldTemplate, rowkey, "string", idFieldDesc))
                         .append(",")
                         .append(generateShortStringField())
                         .toString()));
     GenericRecordBuilder builder = new GenericRecordBuilder(avroSchema);
-    builder.set(ROWKEY, idFieldValueStr);
+    builder.set(rowkey, idFieldValueStr);
     builder.set(shortStringField, shortStringFieldValue);
     Record record = builder.build();
     SchemaAndRecord inputBqData = new SchemaAndRecord(record, bqSchema);
@@ -545,8 +544,8 @@ public class BigQueryConvertersTest {
     assertThat(Bytes.toString(mutation.getRow())).isEqualTo(idFieldValueStr);
     assertThat(1).isEqualTo(mutation.getFamilyCellMap().size());
 
-    List<Cell> cells = mutation.getFamilyCellMap().get(Bytes.toBytes(COLUMN_FAMILY));
-    assertThat(ROWKEY).isEqualTo(Bytes.toString(CellUtil.cloneQualifier(cells.get(0))));
+    List<Cell> cells = mutation.getFamilyCellMap().get(Bytes.toBytes(columnFamily));
+    assertThat(rowkey).isEqualTo(Bytes.toString(CellUtil.cloneQualifier(cells.get(0))));
     assertThat(idFieldValueStr).isEqualTo(Bytes.toString(CellUtil.cloneValue(cells.get(0))));
     assertThat(shortStringField).isEqualTo(Bytes.toString(CellUtil.cloneQualifier(cells.get(1))));
     assertThat(shortStringFieldValue).isEqualTo(Bytes.toString(CellUtil.cloneValue(cells.get(1))));
