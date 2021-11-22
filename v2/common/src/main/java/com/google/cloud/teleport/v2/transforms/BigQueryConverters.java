@@ -126,7 +126,7 @@ public class BigQueryConverters {
       for (TableFieldSchema column : columns) {
         String columnName = column.getName();
         String columnValue = row.get(columnName).toString();
-        // TODO: handle other types and column families
+        // TODO(billyjacobson): handle other types and column families
         put.addColumn(
             Bytes.toBytes(columnFamily()),
             Bytes.toBytes(columnName),
