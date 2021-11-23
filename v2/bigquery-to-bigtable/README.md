@@ -145,11 +145,21 @@ export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud beta dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=${REGION} \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters readQuery="${READ_QUERY}",readIdColumn=${READ_ID_COLUMN},bigtableWriteProjectId=${BIGTABLE_WRITE_PROJECT_ID},bigtableWriteInstanceId=${BIGTABLE_WRITE_INSTANCE_ID},bigtableWriteTableId=${BIGTABLE_WRITE_TABLE_ID},bigtableWriteColumnFamily=${BIGTABLE_WRITE_COLUMN_FAMILY}
-
-gcloud beta dataflow flex-template run ${JOB_NAME} \
-        --project=${PROJECT} --region=${REGION} \
-        --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters readQuery=^~^"${READ_QUERY}" \
+        --parameters ^~^readQuery="${READ_QUERY}" \
         --parameters readIdColumn=${READ_ID_COLUMN},bigtableWriteProjectId=${BIGTABLE_WRITE_PROJECT_ID},bigtableWriteInstanceId=${BIGTABLE_WRITE_INSTANCE_ID},bigtableWriteTableId=${BIGTABLE_WRITE_TABLE_ID},bigtableWriteColumnFamily=${BIGTABLE_WRITE_COLUMN_FAMILY}
+        
+        --parameters ^~^readQuery="SELECT OrderID as rowkey, SenderCompID FROM bigquery-public-data.cymbal_investments.trade_capture_report LIMIT 100" \
+        --parameters 
+```
+
+Note: The `^~^` prefix on readQuery indicates `~` as a delimiter for the query. If your
+query contains a `~` change the delimiter to a character or set of characters which are
+not in your query.
+
+#### Example query
+
+Here is an example query using a public dataset. It combines a few values into a rowkey with a `#` between each value.
+
+```
+export READ_QUERY="SELECT CONCAT(SenderCompID,'#', OrderID) as rowkey, * FROM bigquery-public-data.cymbal_investments.trade_capture_report LIMIT 100"
 ```

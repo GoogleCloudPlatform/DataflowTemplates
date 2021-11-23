@@ -541,13 +541,15 @@ public class BigQueryConvertersTest {
     Mutation mutation = avroToMutation.apply(inputBqData);
 
     // Assert
+    // Assert: Rowkey is set
     assertThat(Bytes.toString(mutation.getRow())).isEqualTo(idFieldValueStr);
-    assertThat(1).isEqualTo(mutation.getFamilyCellMap().size());
 
+    assertThat(mutation.getFamilyCellMap().size()).isEqualTo(1);
+
+    // Assert: One cell was set with a value
     List<Cell> cells = mutation.getFamilyCellMap().get(Bytes.toBytes(columnFamily));
-    assertThat(rowkey).isEqualTo(Bytes.toString(CellUtil.cloneQualifier(cells.get(0))));
-    assertThat(idFieldValueStr).isEqualTo(Bytes.toString(CellUtil.cloneValue(cells.get(0))));
-    assertThat(shortStringField).isEqualTo(Bytes.toString(CellUtil.cloneQualifier(cells.get(1))));
-    assertThat(shortStringFieldValue).isEqualTo(Bytes.toString(CellUtil.cloneValue(cells.get(1))));
+    assertThat(cells.size()).isEqualTo(1);
+    assertThat(shortStringField).isEqualTo(Bytes.toString(CellUtil.cloneQualifier(cells.get(0))));
+    assertThat(shortStringFieldValue).isEqualTo(Bytes.toString(CellUtil.cloneValue(cells.get(0))));
   }
 }

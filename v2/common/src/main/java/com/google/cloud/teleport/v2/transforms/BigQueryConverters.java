@@ -125,6 +125,10 @@ public class BigQueryConverters {
       List<TableFieldSchema> columns = record.getTableSchema().getFields();
       for (TableFieldSchema column : columns) {
         String columnName = column.getName();
+        if (columnName.equals(rowkey())) {
+          continue;
+        }
+
         String columnValue = row.get(columnName).toString();
         // TODO(billyjacobson): handle other types and column families
         put.addColumn(
