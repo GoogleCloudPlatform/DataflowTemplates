@@ -147,9 +147,6 @@ gcloud beta dataflow flex-template run ${JOB_NAME} \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
         --parameters ^~^readQuery="${READ_QUERY}" \
         --parameters readIdColumn=${READ_ID_COLUMN},bigtableWriteProjectId=${BIGTABLE_WRITE_PROJECT_ID},bigtableWriteInstanceId=${BIGTABLE_WRITE_INSTANCE_ID},bigtableWriteTableId=${BIGTABLE_WRITE_TABLE_ID},bigtableWriteColumnFamily=${BIGTABLE_WRITE_COLUMN_FAMILY}
-        
-        --parameters ^~^readQuery="SELECT OrderID as rowkey, SenderCompID FROM bigquery-public-data.cymbal_investments.trade_capture_report LIMIT 100" \
-        --parameters 
 ```
 
 Note: The `^~^` prefix on readQuery indicates `~` as a delimiter for the query. If your
