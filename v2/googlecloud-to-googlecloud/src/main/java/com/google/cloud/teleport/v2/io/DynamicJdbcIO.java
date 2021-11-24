@@ -250,14 +250,13 @@ public class DynamicJdbcIO {
     @VisibleForTesting
     public DataSource buildDatasource() {
       BasicDataSource basicDataSource = new BasicDataSource();
-      if (getDriverClassName() != null) {
-        if (getDriverClassName() == null) {
+      if (getDriverClassName() == null) {
           throw new RuntimeException("Driver class name is required.");
-        }
+      } else {
         basicDataSource.setDriverClassName(getDriverClassName());
       }
       if (getUrl() != null) {
-        if (getUrl() == null) {
+        if (getUrl().get() == null) {
           throw new RuntimeException("Connection url is required.");
         }
         basicDataSource.setUrl(getUrl().get());
@@ -268,7 +267,7 @@ public class DynamicJdbcIO {
       if (getPassword() != null) {
         basicDataSource.setPassword(getPassword().get());
       }
-      if (getConnectionProperties() != null && getConnectionProperties() != null) {
+      if (getConnectionProperties() != null) {
         basicDataSource.setConnectionProperties(getConnectionProperties());
       }
 

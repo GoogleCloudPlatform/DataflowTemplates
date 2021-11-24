@@ -30,7 +30,6 @@
         <autovalue.service.version>1.0-rc6</autovalue.service.version>
         <checkstyle.version>8.7</checkstyle.version>
         <beam.version>2.32.0</beam.version>
-        <beam-vendor-guava.version>0.1</beam-vendor-guava.version>
         <hamcrest.version>2.1</hamcrest.version>
         <hadoop.version>2.10.1</hadoop.version>
         <guava.version>30.1-jre</guava.version>
@@ -346,9 +345,6 @@
                                 </ignoredUnusedDeclaredDependency>
                                 <ignoredUnusedDeclaredDependency>
                                     joda-time:joda-time
-                                </ignoredUnusedDeclaredDependency>
-                                <ignoredUnusedDeclaredDependency>
-                                    org.apache.beam:beam-vendor-guava-20_0
                                 </ignoredUnusedDeclaredDependency>
                                 <ignoredUnusedDeclaredDependency>
                                     org.apache.beam:beam-sdks-java-io-google-cloud-platform
