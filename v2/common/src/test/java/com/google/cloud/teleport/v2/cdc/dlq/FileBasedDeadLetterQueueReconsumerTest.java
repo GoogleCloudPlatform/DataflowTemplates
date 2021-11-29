@@ -15,16 +15,24 @@
  */
 package com.google.cloud.teleport.v2.cdc.dlq;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertFalse;
 
 import java.io.File;
-import java.io.FileWriter;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.FileIO;
+import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.testing.TestStream;
@@ -44,7 +52,7 @@ public class FileBasedDeadLetterQueueReconsumerTest {
   private static final String[] JSON_FILE_CONTENTS_1 = {
     "{\"message\":{\"datasample1\":\"datasample1\"}, \"error_message\":\"errorsample3\"}",
     "{\"message\":{\"datasample2\":\"datasample2\"}, \"error_message\":\"errorsample3\"}",
-    "{\"message\":{\"datasample3\":\"datasample3\"}, \"error_message\":\"errorsample3\"}"
+    "{\"message\":{\"badcharacters\":\"abc îé def\"}, \"error_message\":\"errorsample3\"}"
   };
 
   private static final String[] JSON_RESULTS_1 = {
@@ -52,7 +60,7 @@ public class FileBasedDeadLetterQueueReconsumerTest {
         + "\"_metadata_retry_count\":1}",
     "{\"datasample2\":\"datasample2\",\"_metadata_error\":\"errorsample3\","
         + "\"_metadata_retry_count\":1}",
-    "{\"datasample3\":\"datasample3\",\"_metadata_error\":\"errorsample3\","
+    "{\"badcharacters\":\"abc îé def\",\"_metadata_error\":\"errorsample3\","
         + "\"_metadata_retry_count\":1}"
   };
 
@@ -64,7 +72,9 @@ public class FileBasedDeadLetterQueueReconsumerTest {
 
   private String createJsonFile(String filename, String[] fileLines) throws IOException {
     File f = folder.newFile(filename);
-    FileWriter w = new FileWriter(f);
+    OutputStream outputStream = new FileOutputStream(f.getAbsolutePath());
+    OutputStreamWriter w = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8);
+
     for (String line : fileLines) {
       w.write(line);
       w.write('\n');
@@ -112,5 +122,19 @@ public class FileBasedDeadLetterQueueReconsumerTest {
                 .collect(Collectors.toList()));
 
     p.run().waitUntilFinish();
+  }
+
+  @Test
+  public void testReadData() throws IOException, FileNotFoundException {
+    String jsonPath = createJsonFile("dlqFile3.json", JSON_FILE_CONTENTS_1);
+    ResourceId resourceId = FileSystems.matchNewResource(jsonPath, false);
+    String expected = Arrays.stream(JSON_FILE_CONTENTS_1).collect(Collectors.joining("\n"));
+
+    String text =
+        FileBasedDeadLetterQueueReconsumer.readFile(resourceId)
+            .lines()
+            .collect(Collectors.joining("\n"));
+
+    assertThat(text).isEqualTo(expected);
   }
 }
