@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.BigQueryToBigtable",
+  "classPath": "/template/bigquery-to-bigtable/*:/template/bigquery-to-bigtable/libs/*:/template/bigquery-to-bigtable/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"bigquery_to_bigtable\"}"
+  }
+}
