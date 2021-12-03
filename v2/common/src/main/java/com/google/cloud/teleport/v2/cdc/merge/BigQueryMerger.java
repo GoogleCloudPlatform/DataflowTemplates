@@ -34,6 +34,7 @@ import org.apache.beam.sdk.transforms.GroupByKey;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.Values;
 import org.apache.beam.sdk.transforms.windowing.AfterProcessingTime;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
@@ -76,6 +77,9 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
             new TriggerPerKeyOnFixedIntervals<String, MergeInfo>(
                 mergeConfiguration.mergeWindowDuration()))
         .apply(Values.create())
+        .apply(
+            Reshuffle.<MergeInfo>viaRandomKey()
+                .withNumBuckets(mergeConfiguration.mergeConcurrency()))
         .apply(ParDo.of(new BigQueryStatementIssuingFn(bigQueryClient, mergeConfiguration)))
         .apply(MapElements.into(TypeDescriptors.voids()).via(whatever -> (Void) null));
   }
