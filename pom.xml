@@ -301,6 +301,10 @@
           <groupId>com.google.code.gson</groupId>
           <artifactId>gson</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>ch.qos.logback</groupId>
+          <artifactId>logback-classic</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
@@ -918,6 +922,24 @@
         </repository>
       </repositories>
     </profile>
+    <profile>
+      <id>missing-artifact-repos</id>
+      <activation>
+          <activeByDefault>true</activeByDefault>
+      </activation>
+      <repositories>
+          <repository>
+              <!-- Required for io.confluent:kafka-avro-serializer artifact -->
+              <id>confluent</id>
+              <url>https://packages.confluent.io/maven/</url>
+          </repository>
+          <repository>
+              <!-- Required for org.pentaho:pentaho-aggdesigner-algorithm artifact -->
+              <id>pentaho</id>
+              <url>https://public.nexus.pentaho.org/repository/proxy-public-3rd-party-release</url>
+          </repository>
+      </repositories>
+        </profile>
   </profiles>
 
 </project>
