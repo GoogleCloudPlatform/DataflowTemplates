@@ -242,13 +242,13 @@ public class PubSubToBigQuery {
       messages =
           pipeline.apply(
               "ReadPubSubSubscription",
-              PubsubIO.readMessagesWithAttributes()
+              PubsubIO.readMessagesWithAttributes().withIdAttribute("bq_id")
                   .fromSubscription(options.getInputSubscription()));
     } else {
       messages =
           pipeline.apply(
               "ReadPubSubTopic",
-              PubsubIO.readMessagesWithAttributes().fromTopic(options.getInputTopic()));
+              PubsubIO.readMessagesWithAttributes().withIdAttribute("bq_id").fromTopic(options.getInputTopic()));
     }
 
     PCollectionTuple convertedTableRows =

@@ -14,9 +14,7 @@
   ~ License for the specific language governing permissions and limitations under
   ~ the License.
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
@@ -91,16 +89,16 @@
   </properties>
 
   <dependencyManagement>
-      <dependencies>
-        <dependency>
-          <groupId>org.apache.beam</groupId>
-          <artifactId>beam-sdks-java-bom</artifactId>
-          <version>${beam.version}</version>
-          <type>pom</type>
-          <scope>import</scope>
-        </dependency>
-      </dependencies>
-    </dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.apache.beam</groupId>
+        <artifactId>beam-sdks-java-bom</artifactId>
+        <version>${beam.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
   <dependencies>
     <!-- Beam -->
@@ -173,7 +171,10 @@
       <artifactId>hadoop-mapreduce-client-core</artifactId>
       <version>${hadoop.version}</version>
       <exclusions>
-        <exclusion><groupId>org.codehaus.jackson</groupId><artifactId>*</artifactId></exclusion>
+        <exclusion>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
@@ -181,8 +182,11 @@
       <artifactId>hadoop-common</artifactId>
       <version>${hadoop.version}</version>
       <exclusions>
-      <exclusion><groupId>org.codehaus.jackson</groupId><artifactId>*</artifactId></exclusion>
-    </exclusions>
+        <exclusion>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.hbase</groupId>
@@ -513,8 +517,7 @@
                   </filter>
                 </filters>
                 <transformers>
-                  <transformer
-                      implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                  <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
                 </transformers>
               </configuration>
             </execution>
@@ -647,17 +650,17 @@
                 <ignoredUsedUndeclaredDependency>
                   org.hamcrest:hamcrest
                 </ignoredUsedUndeclaredDependency>
-             </ignoredUsedUndeclaredDependencies>
-             <ignoredUnusedDeclaredDependencies>
+              </ignoredUsedUndeclaredDependencies>
+              <ignoredUnusedDeclaredDependencies>
                 <ignoredUnusedDeclaredDependency>org.threeten:threetenbp</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>org.json:json</ignoredUnusedDeclaredDependency>
-               <ignoredUnusedDeclaredDependency>org.apache.hadoop:hadoop-mapreduce-client-core</ignoredUnusedDeclaredDependency>
+                <ignoredUnusedDeclaredDependency>org.apache.hadoop:hadoop-mapreduce-client-core</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>org.apache.hadoop:hadoop-common</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>org.codehaus.jackson:jackson-core-asl</ignoredUnusedDeclaredDependency>
-               <ignoredUnusedDeclaredDependency>org.codehaus.jackson:jackson-mapper-asl</ignoredUnusedDeclaredDependency>
-               <ignoredUnusedDeclaredDependency>io.opencensus:opencensus-api</ignoredUnusedDeclaredDependency>
-             </ignoredUnusedDeclaredDependencies>
-           </configuration>
+                <ignoredUnusedDeclaredDependency>org.codehaus.jackson:jackson-mapper-asl</ignoredUnusedDeclaredDependency>
+                <ignoredUnusedDeclaredDependency>io.opencensus:opencensus-api</ignoredUnusedDeclaredDependency>
+              </ignoredUnusedDeclaredDependencies>
+            </configuration>
           </execution>
         </executions>
       </plugin>
@@ -817,9 +820,9 @@
         <artifactId>protobuf-maven-plugin</artifactId>
         <version>0.5.1</version>
         <configuration>
-          <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
+          <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:osx-x86_64</protocArtifact>
           <pluginId>grpc-java</pluginId>
-          <pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}</pluginArtifact>
+          <pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:osx-x86_64</pluginArtifact>
         </configuration>
         <executions>
           <execution>
@@ -880,8 +883,8 @@
                 <include>*.md</include>
                 <include>.gitignore</include>
               </includes>
-              <trimTrailingWhitespace/>
-              <endWithNewline/>
+              <trimTrailingWhitespace />
+              <endWithNewline />
             </format>
           </formats>
           <java>
@@ -925,21 +928,21 @@
     <profile>
       <id>missing-artifact-repos</id>
       <activation>
-          <activeByDefault>true</activeByDefault>
+        <activeByDefault>true</activeByDefault>
       </activation>
       <repositories>
-          <repository>
-              <!-- Required for io.confluent:kafka-avro-serializer artifact -->
-              <id>confluent</id>
-              <url>https://packages.confluent.io/maven/</url>
-          </repository>
-          <repository>
-              <!-- Required for org.pentaho:pentaho-aggdesigner-algorithm artifact -->
-              <id>pentaho</id>
-              <url>https://public.nexus.pentaho.org/repository/proxy-public-3rd-party-release</url>
-          </repository>
+        <repository>
+          <!-- Required for io.confluent:kafka-avro-serializer artifact -->
+          <id>confluent</id>
+          <url>https://packages.confluent.io/maven/</url>
+        </repository>
+        <repository>
+          <!-- Required for org.pentaho:pentaho-aggdesigner-algorithm artifact -->
+          <id>pentaho</id>
+          <url>https://public.nexus.pentaho.org/repository/proxy-public-3rd-party-release</url>
+        </repository>
       </repositories>
-        </profile>
+    </profile>
   </profiles>
 
 </project>
