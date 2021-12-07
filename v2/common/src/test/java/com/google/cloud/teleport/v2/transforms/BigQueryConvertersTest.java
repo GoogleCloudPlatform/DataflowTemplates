@@ -19,10 +19,12 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Field.Mode;
 import com.google.cloud.bigquery.LegacySQLTypeName;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.transforms.BigQueryConverters.AvroToMutation;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.BigQueryTableConfigManager;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.SchemaUtils;
@@ -39,6 +41,7 @@ import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryUtils;
+import org.apache.beam.sdk.io.gcp.bigquery.SchemaAndRecord;
 import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesCoder;
@@ -55,6 +58,10 @@ import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.client.Mutation;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -62,42 +69,64 @@ import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Unit tests for {@link BigQueryConverters}. */
+/**
+ * Unit tests for {@link BigQueryConverters}.
+ */
 @RunWith(JUnit4.class)
 public class BigQueryConvertersTest {
 
   static final TableRow ROW =
       new TableRow().set("id", "007").set("state", "CA").set("price", 26.23);
-  /** The tag for the main output of the json transformation. */
+  /**
+   * The tag for the main output of the json transformation.
+   */
   static final TupleTag<FailsafeElement<TableRow, String>> TRANSFORM_OUT =
-      new TupleTag<FailsafeElement<TableRow, String>>() {};
-  /** The tag for the dead-letter output of the json to table row transform. */
+      new TupleTag<FailsafeElement<TableRow, String>>() {
+      };
+  /**
+   * The tag for the dead-letter output of the json to table row transform.
+   */
   static final TupleTag<FailsafeElement<TableRow, String>> TRANSFORM_DEADLETTER_OUT =
-      new TupleTag<FailsafeElement<TableRow, String>>() {};
-  /** The tag for the main output of the json transformation. */
+      new TupleTag<FailsafeElement<TableRow, String>>() {
+      };
+  /**
+   * The tag for the main output of the json transformation.
+   */
   static final TupleTag<FailsafeElement<TableRow, String>> UDF_OUT =
-      new TupleTag<FailsafeElement<TableRow, String>>() {};
-  /** The tag for the dead-letter output of the json to table row transform. */
+      new TupleTag<FailsafeElement<TableRow, String>>() {
+      };
+  /**
+   * The tag for the dead-letter output of the json to table row transform.
+   */
   static final TupleTag<FailsafeElement<TableRow, String>> UDF_TRANSFORM_DEADLETTER_OUT =
-      new TupleTag<FailsafeElement<TableRow, String>>() {};
-  /** String/String Coder for FailsafeElement. */
+      new TupleTag<FailsafeElement<TableRow, String>>() {
+      };
+  /**
+   * String/String Coder for FailsafeElement.
+   */
   static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
       FailsafeElementCoder.of(
           NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of()));
-  /** TableRow/String Coder for FailsafeElement. */
+  /**
+   * TableRow/String Coder for FailsafeElement.
+   */
   static final FailsafeElementCoder<TableRow, String> FAILSAFE_TABLE_ROW_ELEMENT_CODER =
       FailsafeElementCoder.of(TableRowJsonCoder.of(), NullableCoder.of(StringUtf8Coder.of()));
   // Define the TupleTag's here otherwise the anonymous class will force the test method to
   // be serialized.
-  private static final TupleTag<TableRow> TABLE_ROW_TAG = new TupleTag<TableRow>() {};
+  private static final TupleTag<TableRow> TABLE_ROW_TAG = new TupleTag<TableRow>() {
+  };
   private static final TupleTag<FailsafeElement<PubsubMessage, String>> FAILSAFE_ELM_TAG =
-      new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
+      new TupleTag<FailsafeElement<PubsubMessage, String>>() {
+      };
   private static final String jsonifiedTableRow =
       "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
   private static final String udfOutputRow =
       "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23,\"someProp\":\"someValue\"}";
-  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
-  @Rule public ExpectedException expectedException = ExpectedException.none();
+  @Rule
+  public final transient TestPipeline pipeline = TestPipeline.create();
+  @Rule
+  public ExpectedException expectedException = ExpectedException.none();
   private ValueProvider<String> entityKind = StaticValueProvider.of("TestEntity");
   private ValueProvider<String> uniqueNameColumn = StaticValueProvider.of("id");
   private ValueProvider<String> namespace = StaticValueProvider.of("bq-to-ds-test");
@@ -167,7 +196,9 @@ public class BigQueryConvertersTest {
   private String dateTimeFieldDesc = "Full publication date";
   private String dateTimeFieldValue = "2013-08-19 23:28:20.000567";
 
-  /** Tests the {@link BigQueryConverters.FailsafeJsonToTableRow} transform with good input. */
+  /**
+   * Tests the {@link BigQueryConverters.FailsafeJsonToTableRow} transform with good input.
+   */
   @Test
   @Category(NeedsRunner.class)
   public void testFailsafeJsonToTableRowValidInput() {
@@ -260,7 +291,9 @@ public class BigQueryConvertersTest {
     pipeline.run();
   }
 
-  /** Generates an Avro record with a single field. */
+  /**
+   * Generates an Avro record with a single field.
+   */
   private Record generateSingleFieldAvroRecord(
       String name, String type, String description, Object value) {
     Schema avroSchema =
@@ -276,17 +309,23 @@ public class BigQueryConvertersTest {
     return builder.build();
   }
 
-  /** Generates a short string Avro field. */
+  /**
+   * Generates a short string Avro field.
+   */
   private String generateShortStringField() {
     return String.format(avroFieldTemplate, shortStringField, "string", shortStringFieldDesc);
   }
 
-  /** Generates a long string Avro field. */
+  /**
+   * Generates a long string Avro field.
+   */
   private String generateLongStringField() {
     return String.format(avroFieldTemplate, longStringField, "string", longStringFieldDesc);
   }
 
-  /** Generate a BigQuery TableSchema with nested fields. */
+  /**
+   * Generate a BigQuery TableSchema with nested fields.
+   */
   private TableFieldSchema generateNestedTableFieldSchema() {
     return new TableFieldSchema()
         .setName("address")
@@ -297,7 +336,9 @@ public class BigQueryConvertersTest {
                 new TableFieldSchema().setName("street_name").setType("STRING")));
   }
 
-  /** Generates an Avro record with a record field type. */
+  /**
+   * Generates an Avro record with a record field type.
+   */
   static Record generateNestedAvroRecord() {
     String avroRecordFieldSchema =
         new StringBuilder()
@@ -461,5 +502,54 @@ public class BigQueryConvertersTest {
     assertThat(fields.get(0).getName()).isEqualTo("column");
     assertThat(fields.get(0).getMode()).isEqualTo(Mode.NULLABLE);
     assertThat(fields.get(0).getType()).isEqualTo(LegacySQLTypeName.STRING);
+  }
+
+  /**
+   * Tests that {@link BigQueryConverters.AvroToMutation} creates a Mutation.
+   */
+  @Test
+  public void testAvroToMutation() {
+    // Arrange
+    String rowkey = "rowkey";
+    String columnFamily = "CF";
+    AvroToMutation avroToMutation = AvroToMutation.newBuilder().setColumnFamily(columnFamily)
+        .setRowkey(rowkey).build();
+
+    TableSchema bqSchema = new TableSchema()
+        .setFields(
+            Arrays.asList(
+                new TableFieldSchema().setName(rowkey).setType("STRING"),
+                new TableFieldSchema().setName(shortStringField).setType("STRING")));
+
+    Schema avroSchema =
+        new Schema.Parser()
+            .parse(
+                String.format(
+                    AVRO_SCHEMA_TEMPLATE,
+                    new StringBuilder()
+                        .append(String.format(avroFieldTemplate, rowkey, "string", idFieldDesc))
+                        .append(",")
+                        .append(generateShortStringField())
+                        .toString()));
+    GenericRecordBuilder builder = new GenericRecordBuilder(avroSchema);
+    builder.set(rowkey, idFieldValueStr);
+    builder.set(shortStringField, shortStringFieldValue);
+    Record record = builder.build();
+    SchemaAndRecord inputBqData = new SchemaAndRecord(record, bqSchema);
+
+    // Act
+    Mutation mutation = avroToMutation.apply(inputBqData);
+
+    // Assert
+    // Assert: Rowkey is set
+    assertThat(Bytes.toString(mutation.getRow())).isEqualTo(idFieldValueStr);
+
+    assertThat(mutation.getFamilyCellMap().size()).isEqualTo(1);
+
+    // Assert: One cell was set with a value
+    List<Cell> cells = mutation.getFamilyCellMap().get(Bytes.toBytes(columnFamily));
+    assertThat(cells.size()).isEqualTo(1);
+    assertThat(shortStringField).isEqualTo(Bytes.toString(CellUtil.cloneQualifier(cells.get(0))));
+    assertThat(shortStringFieldValue).isEqualTo(Bytes.toString(CellUtil.cloneValue(cells.get(0))));
   }
 }

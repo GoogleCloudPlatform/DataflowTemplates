@@ -28,6 +28,7 @@
 
     <properties>
         <avro.version>1.8.2</avro.version>
+        <bigtable.version>1.15.0</bigtable.version>
         <bigquery.version>1.128.0</bigquery.version>
         <commons.version>1.8</commons.version>
         <commons-text.version>1.9</commons-text.version>
@@ -90,6 +91,11 @@
                 <artifactId>guava</artifactId>
               </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+          <groupId>com.google.cloud.bigtable</groupId>
+          <artifactId>bigtable-hbase-beam</artifactId>
+          <version>${bigtable.version}</version>
         </dependency>
 
         <!-- Test dependencies -->
