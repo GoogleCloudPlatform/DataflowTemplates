@@ -25,17 +25,7 @@
     <artifactId>bigquery-to-bigtable</artifactId>
     <modelVersion>4.0.0</modelVersion>
 
-    <properties>
-        <avro.version>1.8.2</avro.version>
-    </properties>
-
     <dependencies>
-
-      <dependency>
-        <groupId>com.google.cloud.bigtable</groupId>
-        <artifactId>bigtable-hbase-beam</artifactId>
-        <version>1.15.0</version>
-      </dependency>
       <dependency>
         <groupId>com.google.cloud.teleport.v2</groupId>
         <artifactId>common</artifactId>
