@@ -91,6 +91,12 @@ public class ImportPipeline {
     void setSpannerProjectId(ValueProvider<String> value);
 
     void setWaitUntilFinish(boolean value);
+
+    @Description("DDL creation timeout.")
+    @Default.Integer(30)
+    ValueProvider<Integer> getDDLCreationTimeoutInMinutes();
+
+    void setDDLCreationTimeoutInMinutes(ValueProvider<Integer> value);
   }
 
   public static void main(String[] args) {
@@ -112,7 +118,8 @@ public class ImportPipeline {
             options.getInputDir(),
             options.getWaitForIndexes(),
             options.getWaitForForeignKeys(),
-            options.getEarlyIndexCreateFlag()));
+            options.getEarlyIndexCreateFlag(),
+            options.getDDLCreationTimeoutInMinutes()));
 
     PipelineResult result = p.run();
     if (options.getWaitUntilFinish()
