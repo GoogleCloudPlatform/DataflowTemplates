@@ -121,7 +121,7 @@ import org.slf4j.LoggerFactory;
 public class PubSubToBigQueryHPI {
 
     /** The log to output status messages to. */
-    private static final Logger LOG = LoggerFactory.getLogger(PubSubToBigQuery.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PubSubToBigQueryHPI.class);
 
     /** The tag for the main output for the UDF. */
     public static final TupleTag<FailsafeElement<PubsubMessage, String>> UDF_OUT =
@@ -249,7 +249,9 @@ public class PubSubToBigQueryHPI {
         }
 
         // Overwrite table name
-        messages.apply("OverwriteTableName", ParDo.of(new SetBigQueryTableNameFn(options)));
+        messages =
+                messages.apply("OverwriteTableName", ParDo.of(new SetBigQueryTableNameFn(options)));
+        LOG.debug("Table name: {}", options.getOutputTableSpec());
 
         PCollectionTuple convertedTableRows = messages
                 /*
@@ -260,48 +262,59 @@ public class PubSubToBigQueryHPI {
         /*
          * Step #3: Write the successful records out to BigQuery
          */
-        WriteResult writeResult = convertedTableRows.get(TRANSFORM_OUT)
-                .apply("WriteSuccessfulRecords", BigQueryIO.writeTableRows().withoutValidation()
+        convertedTableRows.get(TRANSFORM_OUT).apply("WriteSuccessfulRecords",
+                BigQueryIO.writeTableRows().withoutValidation()
                         .withCreateDisposition(CreateDisposition.CREATE_NEVER)
                         .withWriteDisposition(WriteDisposition.WRITE_APPEND).withExtendedErrorInfo()
                         .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
-                        .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
                         .to(options.getOutputTableSpec()));
 
-        /*
-         * Step 3 Contd. Elements that failed inserts into BigQuery are extracted and converted to
-         * FailsafeElement
-         */
-        PCollection<FailsafeElement<String, String>> failedInserts =
-                writeResult.getFailedInsertsWithErr()
-                        .apply("WrapInsertionErrors",
-                                MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
-                                        .via((BigQueryInsertError e) -> wrapBigQueryInsertError(e)))
-                        .setCoder(FAILSAFE_ELEMENT_CODER);
+        // /*
+        // * Step #3: Write the successful records out to BigQuery
+        // */
+        // WriteResult writeResult = convertedTableRows.get(TRANSFORM_OUT)
+        // .apply("WriteSuccessfulRecords", BigQueryIO.writeTableRows().withoutValidation()
+        // .withCreateDisposition(CreateDisposition.CREATE_NEVER)
+        // .withWriteDisposition(WriteDisposition.WRITE_APPEND).withExtendedErrorInfo()
+        // .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
+        // .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
+        // .to(options.getOutputTableSpec()));
 
-        /*
-         * Step #4: Write records that failed table row transformation or conversion out to BigQuery
-         * deadletter table.
-         */
-        PCollectionList
-                .of(ImmutableList.of(convertedTableRows.get(UDF_DEADLETTER_OUT),
-                        convertedTableRows.get(TRANSFORM_DEADLETTER_OUT)))
-                .apply("Flatten", Flatten.pCollections())
-                .apply("WriteFailedRecords", ErrorConverters.WritePubsubMessageErrors.newBuilder()
-                        .setErrorRecordsTable(ValueProviderUtils.maybeUseDefaultDeadletterTable(
-                                options.getOutputDeadletterTable(), options.getOutputTableSpec(),
-                                DEFAULT_DEADLETTER_TABLE_SUFFIX))
-                        .setErrorRecordsTableSchema(ResourceUtils.getDeadletterTableSchemaJson())
-                        .build());
+        // /*
+        // * Step 3 Contd. Elements that failed inserts into BigQuery are extracted and converted to
+        // * FailsafeElement
+        // */
+        // PCollection<FailsafeElement<String, String>> failedInserts =
+        // writeResult.getFailedInsertsWithErr()
+        // .apply("WrapInsertionErrors",
+        // MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
+        // .via((BigQueryInsertError e) -> wrapBigQueryInsertError(e)))
+        // .setCoder(FAILSAFE_ELEMENT_CODER);
 
-        // 5) Insert records that failed insert into deadletter table
-        failedInserts.apply("WriteFailedRecords",
-                ErrorConverters.WriteStringMessageErrors.newBuilder()
-                        .setErrorRecordsTable(ValueProviderUtils.maybeUseDefaultDeadletterTable(
-                                options.getOutputDeadletterTable(), options.getOutputTableSpec(),
-                                DEFAULT_DEADLETTER_TABLE_SUFFIX))
-                        .setErrorRecordsTableSchema(ResourceUtils.getDeadletterTableSchemaJson())
-                        .build());
+        // /*
+        // * Step #4: Write records that failed table row transformation or conversion out to
+        // BigQuery
+        // * deadletter table.
+        // */
+        // PCollectionList
+        // .of(ImmutableList.of(convertedTableRows.get(UDF_DEADLETTER_OUT),
+        // convertedTableRows.get(TRANSFORM_DEADLETTER_OUT)))
+        // .apply("Flatten", Flatten.pCollections())
+        // .apply("WriteFailedRecords", ErrorConverters.WritePubsubMessageErrors.newBuilder()
+        // .setErrorRecordsTable(ValueProviderUtils.maybeUseDefaultDeadletterTable(
+        // options.getOutputDeadletterTable(), options.getOutputTableSpec(),
+        // DEFAULT_DEADLETTER_TABLE_SUFFIX))
+        // .setErrorRecordsTableSchema(ResourceUtils.getDeadletterTableSchemaJson())
+        // .build());
+
+        // // 5) Insert records that failed insert into deadletter table
+        // failedInserts.apply("WriteFailedRecords",
+        // ErrorConverters.WriteStringMessageErrors.newBuilder()
+        // .setErrorRecordsTable(ValueProviderUtils.maybeUseDefaultDeadletterTable(
+        // options.getOutputDeadletterTable(), options.getOutputTableSpec(),
+        // DEFAULT_DEADLETTER_TABLE_SUFFIX))
+        // .setErrorRecordsTableSchema(ResourceUtils.getDeadletterTableSchemaJson())
+        // .build());
 
         return pipeline.run();
     }
@@ -403,7 +416,7 @@ public class PubSubToBigQueryHPI {
         }
     }
 
-    static class SetBigQueryTableNameFn extends DoFn<PubsubMessage, String> {
+    static class SetBigQueryTableNameFn extends DoFn<PubsubMessage, PubsubMessage> {
 
         ValueProvider<String> outputTableSpec;
         ValueProvider<String> outputDeadletterTable;
@@ -431,7 +444,7 @@ public class PubSubToBigQueryHPI {
             options.setOutputTableSpec(
                     ValueProvider.StaticValueProvider.of(newOutputDeadletterTable));
 
-            context.output(bqTableName);
+            context.output(message);
         }
     }
 

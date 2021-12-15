@@ -9,18 +9,19 @@ do
     esac
 done
 
+export JOB_NAME=ope_metrics_offline
 export DATASET_ID=ope_metrics
 export MAX_WORKERS=1
 export PROJECT_ID=yin-yang-332008
 export BUCKET_NAME=hpi-dataflow-temp-bucket
-export PIPELINE_FOLDER=gs://${BUCKET_NAME}/dataflow/pipelines/pubsub-to-bigquery
+export PIPELINE_FOLDER=gs://${BUCKET_NAME}/dataflow/pipelines/hpi-pubsub-to-bigquery
 export SERVICE_ACCOUNT_EMAIL=simple-data-stream@yin-yang-332008.iam.gserviceaccount.com
 export USE_SUBSCRIPTION=true
 export RUNNER=DataflowRunner
 
 # Build the template
 mvn compile exec:java \
--Dexec.mainClass=com.google.cloud.teleport.templates.PubSubToBigQuery \
+-Dexec.mainClass=com.google.cloud.teleport.templates.PubSubToBigQueryHPI \
 -Dexec.cleanupDaemonThreads=false \
 -Dexec.args=" \
 --project=${PROJECT_ID} \
@@ -33,7 +34,7 @@ mvn compile exec:java \
 "
 
 # Execute the template
-export JOB_NAME=ps-to-bq-$ENTITY_NAME-`date +"%Y%m%d-%H%M%S%z"`
+export JOB_NAME=ps-to-bq-$JOB_NAME-`date +"%Y%m%d-%H%M%S%z"`
  
 # Execute a pipeline to read from a Subscription.
 gcloud dataflow jobs run ${JOB_NAME} \
@@ -48,5 +49,4 @@ gcloud dataflow jobs run ${JOB_NAME} \
 "inputSubscription=projects/${PROJECT_ID}/subscriptions/${SUBSCRIPTION_NAME},\
 outputTableSpec=${PROJECT_ID}:${DATASET_ID}.${ENTITY_NAME},\
 outputDeadletterTable=${PROJECT_ID}:${DATASET_ID}.${ENTITY_NAME}_error_records,\
-datasetId=${DATASET_ID}, \
 labels={cost_center=operation-metrics}"
