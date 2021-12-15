@@ -48,4 +48,5 @@ gcloud dataflow jobs run ${JOB_NAME} \
 "inputSubscription=projects/${PROJECT_ID}/subscriptions/${SUBSCRIPTION_NAME},\
 outputTableSpec=${PROJECT_ID}:${DATASET_ID}.${ENTITY_NAME},\
 outputDeadletterTable=${PROJECT_ID}:${DATASET_ID}.${ENTITY_NAME}_error_records,\
+datasetId=${DATASET_ID}, \
 labels={cost_center=operation-metrics}"
