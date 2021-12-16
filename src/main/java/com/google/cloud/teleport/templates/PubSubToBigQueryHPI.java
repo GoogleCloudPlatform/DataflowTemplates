@@ -1,24 +1,21 @@
 package com.google.cloud.teleport.templates;
 
 import static com.google.cloud.teleport.templates.TextToBigQueryStreaming.wrapBigQueryInsertError;
-
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.templates.common.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.templates.common.ErrorConverters;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.JavascriptTextTransformerOptions;
-import com.google.cloud.teleport.util.DualInputNestedValueProvider;
-import com.google.cloud.teleport.util.DualInputNestedValueProvider.TranslatorInput;
 import com.google.cloud.teleport.util.ResourceUtils;
 import com.google.cloud.teleport.util.ValueProviderUtils;
 import com.google.cloud.teleport.values.FailsafeElement;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableList;
-import java.nio.charset.StandardCharsets;
-import java.util.Map;
-import java.util.Map.Entry;
-
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -29,26 +26,23 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.TableDestination;
+import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesCoder;
-import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO.Read;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
-import org.apache.beam.sdk.values.PValue;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.ValueInSingleWindow;
 import org.slf4j.Logger;
@@ -154,10 +148,6 @@ public class PubSubToBigQueryHPI {
      * command-line.
      */
     public interface Options extends PipelineOptions, JavascriptTextTransformerOptions {
-        @Description("Table spec to write the output to")
-        ValueProvider<String> getOutputTableSpec();
-
-        void setOutputTableSpec(ValueProvider<String> value);
 
         @Description("Pub/Sub topic to read the input from")
         ValueProvider<String> getInputTopic();
@@ -178,21 +168,29 @@ public class PubSubToBigQueryHPI {
 
         void setUseSubscription(Boolean value);
 
-        @Description("The dead-letter table to output to within BigQuery in <project-id>:<dataset>.<table> "
-                + "format. If it doesn't exist, it will be created during pipeline execution.")
-        ValueProvider<String> getOutputDeadletterTable();
+        @Description("The name of the attribute which will contain the table name to route the message to.")
+        @Required
+        String getTableNameAttr();
 
-        void setOutputDeadletterTable(ValueProvider<String> value);
+        void setTableNameAttr(String value);
 
-        @Description("The project ID")
-        ValueProvider<String> getProjectId();
+        @Description("The project where output table is stored.")
+        @Required
+        String getOutputTableProject();
 
-        void setProjectId(ValueProvider<String> value);
+        void setOutputTableProject(String value);
 
-        @Description("The Dataset ID of BigQuery in <project-id>")
-        ValueProvider<String> getDatasetId();
+        @Description("The dataset where output table is stored.")
+        @Required
+        String getOutputTableDataset();
 
-        void setDatasetId(ValueProvider<String> value);
+        void setOutputTableDataset(String value);
+
+        @Description("The name deadletter table.")
+        @Required
+        String getOutputDeadletterTable();
+
+        void setOutputDeadletterTable(String value);
     }
 
     /**
@@ -225,7 +223,10 @@ public class PubSubToBigQueryHPI {
         CoderRegistry coderRegistry = pipeline.getCoderRegistry();
         coderRegistry.registerCoderForType(CODER.getEncodedTypeDescriptor(), CODER);
 
-
+        // Retrieve non-serializable parameters
+        String tableNameAttr = options.getTableNameAttr();
+        String outputTableProject = options.getOutputTableProject();
+        String outputTableDataset = options.getOutputTableDataset();
 
         /*
          * Steps: 1) Read messages in from Pub/Sub 2) Transform the PubsubMessages into TableRows -
@@ -248,96 +249,44 @@ public class PubSubToBigQueryHPI {
                     .withIdAttribute("bq_id").fromTopic(options.getInputTopic()));
         }
 
-        // Overwrite table name
-        messages =
-                messages.apply("OverwriteTableName", ParDo.of(new SetBigQueryTableNameFn(options)));
-        LOG.debug("Table name: {}", options.getOutputTableSpec());
-
-        PCollectionTuple convertedTableRows = messages
-                /*
-                 * Step #2: Transform the PubsubMessages into TableRows
-                 */
-                .apply("ConvertMessageToTableRow", new PubsubMessageToTableRow(options));
-
         /*
-         * Step #3: Write the successful records out to BigQuery
+         * Step #2: Write the successful records out to BigQuery
          */
-        convertedTableRows.get(TRANSFORM_OUT).apply("WriteSuccessfulRecords",
-                BigQueryIO.writeTableRows().withoutValidation()
+        WriteResult writeResult = messages.apply("WriteSuccessfulRecords",
+                BigQueryIO.<PubsubMessage>write().withoutValidation()
                         .withCreateDisposition(CreateDisposition.CREATE_NEVER)
                         .withWriteDisposition(WriteDisposition.WRITE_APPEND).withExtendedErrorInfo()
                         .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
-                        .to(options.getOutputTableSpec()));
+                        .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
+                        .to(input -> getTableDestination(input, tableNameAttr, outputTableProject,
+                                outputTableDataset))
+                        .withFormatFunction((PubsubMessage msg) -> convertJsonToTableRow(
+                                new String(msg.getPayload(), StandardCharsets.UTF_8))));
 
-        // /*
-        // * Step #3: Write the successful records out to BigQuery
-        // */
-        // WriteResult writeResult = convertedTableRows.get(TRANSFORM_OUT)
-        // .apply("WriteSuccessfulRecords", BigQueryIO.writeTableRows().withoutValidation()
-        // .withCreateDisposition(CreateDisposition.CREATE_NEVER)
-        // .withWriteDisposition(WriteDisposition.WRITE_APPEND).withExtendedErrorInfo()
-        // .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
-        // .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
-        // .to(options.getOutputTableSpec()));
+        /*
+         * Step 2 Contd. Elements that failed inserts into BigQuery are extracted and converted to
+         * FailsafeElement
+         */
+        PCollection<FailsafeElement<String, String>> failedInserts =
+                writeResult.getFailedInsertsWithErr()
+                        .apply("WrapInsertionErrors",
+                                MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
+                                        .via((BigQueryInsertError e) -> wrapBigQueryInsertError(e)))
+                        .setCoder(FAILSAFE_ELEMENT_CODER);
 
-        // /*
-        // * Step 3 Contd. Elements that failed inserts into BigQuery are extracted and converted to
-        // * FailsafeElement
-        // */
-        // PCollection<FailsafeElement<String, String>> failedInserts =
-        // writeResult.getFailedInsertsWithErr()
-        // .apply("WrapInsertionErrors",
-        // MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
-        // .via((BigQueryInsertError e) -> wrapBigQueryInsertError(e)))
-        // .setCoder(FAILSAFE_ELEMENT_CODER);
 
-        // /*
-        // * Step #4: Write records that failed table row transformation or conversion out to
-        // BigQuery
-        // * deadletter table.
-        // */
-        // PCollectionList
-        // .of(ImmutableList.of(convertedTableRows.get(UDF_DEADLETTER_OUT),
-        // convertedTableRows.get(TRANSFORM_DEADLETTER_OUT)))
-        // .apply("Flatten", Flatten.pCollections())
-        // .apply("WriteFailedRecords", ErrorConverters.WritePubsubMessageErrors.newBuilder()
-        // .setErrorRecordsTable(ValueProviderUtils.maybeUseDefaultDeadletterTable(
-        // options.getOutputDeadletterTable(), options.getOutputTableSpec(),
-        // DEFAULT_DEADLETTER_TABLE_SUFFIX))
-        // .setErrorRecordsTableSchema(ResourceUtils.getDeadletterTableSchemaJson())
-        // .build());
 
-        // // 5) Insert records that failed insert into deadletter table
-        // failedInserts.apply("WriteFailedRecords",
-        // ErrorConverters.WriteStringMessageErrors.newBuilder()
-        // .setErrorRecordsTable(ValueProviderUtils.maybeUseDefaultDeadletterTable(
-        // options.getOutputDeadletterTable(), options.getOutputTableSpec(),
-        // DEFAULT_DEADLETTER_TABLE_SUFFIX))
-        // .setErrorRecordsTableSchema(ResourceUtils.getDeadletterTableSchemaJson())
-        // .build());
+        /*
+         * Step #3: Write records that failed table row transformation or conversion out to BigQuery
+         * deadletter table.
+         */
+        failedInserts.apply("WriteFailedRecords", ErrorConverters.WriteStringMessageErrors
+                .newBuilder()
+                .setErrorRecordsTable(
+                        ValueProvider.StaticValueProvider.of(options.getOutputDeadletterTable()))
+                .setErrorRecordsTableSchema(ResourceUtils.getDeadletterTableSchemaJson()).build());
 
         return pipeline.run();
-    }
-
-    /**
-     * If deadletterTable is available, it is returned as is, otherwise outputTableSpec +
-     * defaultDeadLetterTableSuffix is returned instead.
-     */
-    private static ValueProvider<String> maybeUseDefaultDeadletterTable(
-            ValueProvider<String> deadletterTable, ValueProvider<String> outputTableSpec,
-            String defaultDeadLetterTableSuffix) {
-        return DualInputNestedValueProvider.of(deadletterTable, outputTableSpec,
-                new SerializableFunction<TranslatorInput<String, String>, String>() {
-                    @Override
-                    public String apply(TranslatorInput<String, String> input) {
-                        String userProvidedTable = input.getX();
-                        String outputTableSpec = input.getY();
-                        if (userProvidedTable == null) {
-                            return outputTableSpec + defaultDeadLetterTableSuffix;
-                        }
-                        return userProvidedTable;
-                    }
-                });
     }
 
     /**
@@ -416,38 +365,6 @@ public class PubSubToBigQueryHPI {
         }
     }
 
-    static class SetBigQueryTableNameFn extends DoFn<PubsubMessage, PubsubMessage> {
-
-        ValueProvider<String> outputTableSpec;
-        ValueProvider<String> outputDeadletterTable;
-
-        public SetBigQueryTableNameFn(Options options) {
-            this.outputTableSpec = options.getOutputTableSpec();
-            this.outputDeadletterTable = options.getOutputDeadletterTable();
-        }
-
-        @ProcessElement
-        public void processElement(ProcessContext context) {
-            PubsubMessage message = context.element();
-
-            Options options = context.getPipelineOptions().as(Options.class);
-
-            String bqTableName = message.getAttribute("bq_table");
-            if (bqTableName == null || bqTableName.isBlank())
-                return;
-
-            String newOutputTableSpec = String.format(this.outputTableSpec.get(), bqTableName);
-            options.setOutputTableSpec(ValueProvider.StaticValueProvider.of(newOutputTableSpec));
-
-            String newOutputDeadletterTable =
-                    String.format(this.outputDeadletterTable.get(), bqTableName);
-            options.setOutputTableSpec(
-                    ValueProvider.StaticValueProvider.of(newOutputDeadletterTable));
-
-            context.output(message);
-        }
-    }
-
     /**
      * Retrieves the {@link TableDestination} for the {@link PubsubMessage} by extracting and
      * formatting the value of the {@code tableNameAttr} attribute. If the message is null, a
@@ -462,8 +379,7 @@ public class PubSubToBigQueryHPI {
      */
     @VisibleForTesting
     static TableDestination getTableDestination(ValueInSingleWindow<PubsubMessage> input,
-            String tableNameAttr, ValueProvider<String> outputProject,
-            ValueProvider<String> outputDataset) {
+            String tableNameAttr, String outputProject, String outputDataset) {
         PubsubMessage message = input.getValue();
 
         TableDestination destination;
@@ -476,5 +392,28 @@ public class PubSubToBigQueryHPI {
         }
 
         return destination;
+    }
+
+    /**
+     * Converts a JSON string to a {@link TableRow} object. If the data fails to convert, a
+     * {@link RuntimeException} will be thrown.
+     *
+     * @param json The JSON string to parse.
+     * @return The parsed {@link TableRow} object.
+     */
+    @VisibleForTesting
+    static TableRow convertJsonToTableRow(String json) {
+
+        TableRow row;
+
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            StringUtf8Coder.of().encode(json, outputStream);
+            InputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
+            row = TableRowJsonCoder.of().decode(inputStream);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to serialize json to table row: " + json, e);
+        }
+
+        return row;
     }
 }

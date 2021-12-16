@@ -30,7 +30,11 @@ mvn compile exec:java \
 --templateLocation=${PIPELINE_FOLDER}/template \
 --runner=${RUNNER} \
 --useSubscription=${USE_SUBSCRIPTION} \
---region=${REGION}
+--region=${REGION} \
+--tableNameAttr=bq_table \
+--outputDeadletterTable=${PROJECT_ID}:${DATASET_ID}.error_records \
+--outputTableProject=${PROJECT_ID} \
+--outputTableDataset=${DATASET_ID} \
 "
 
 # Execute the template
@@ -46,7 +50,4 @@ gcloud dataflow jobs run ${JOB_NAME} \
 --max-workers=${MAX_WORKERS} \
 --service-account-email=${SERVICE_ACCOUNT_EMAIL} \
 --parameters \
-"inputSubscription=projects/${PROJECT_ID}/subscriptions/${SUBSCRIPTION_NAME},\
-outputTableSpec=${PROJECT_ID}:${DATASET_ID}.${ENTITY_NAME},\
-outputDeadletterTable=${PROJECT_ID}:${DATASET_ID}.${ENTITY_NAME}_error_records,\
-labels={cost_center=operation-metrics}"
+"inputSubscription=projects/${PROJECT_ID}/subscriptions/${SUBSCRIPTION_NAME}"
