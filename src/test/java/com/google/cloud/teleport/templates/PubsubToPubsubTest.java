@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,9 +13,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.templates;
 
+import com.google.cloud.teleport.templates.PubsubToPubsub.ExtractAndFilterEventsFn;
 import com.google.common.collect.ImmutableList;
 import java.util.Collections;
 import java.util.List;
@@ -39,71 +39,13 @@ import org.junit.runners.JUnit4;
 /** Test class for {@link PubsubToPubsub}. */
 @RunWith(JUnit4.class)
 public final class PubsubToPubsubTest {
+  private static final String FILTER_KEY = "team";
+  private static final String FILTER_VALUE = "falcon";
   private static List<PubsubMessage> goodTestMessages;
   private static List<PubsubMessage> badTestMessages;
   private static List<PubsubMessage> allTestMessages;
-  private static final String FILTER_KEY = "team";
-  private static final String FILTER_VALUE = "falcon";
-
-  @Before
-  public void setUp() {
-    goodTestMessages =
-        ImmutableList.of(
-            makePubsubMessage("Lets test!", FILTER_KEY, FILTER_VALUE),
-            makePubsubMessage("One more test!", FILTER_KEY, FILTER_VALUE),
-            makePubsubMessage("And one more!", FILTER_KEY, FILTER_VALUE));
-
-    badTestMessages =
-        ImmutableList.of(
-            makePubsubMessage("This one has no attribute", null, null),
-            makePubsubMessage("This one too", null, null),
-            makePubsubMessage("with unknown attribute", "dummy", "value"));
-
-    allTestMessages =
-        ImmutableList.<PubsubMessage>builder()
-            .addAll(goodTestMessages)
-            .addAll(badTestMessages)
-            .build();
-  }
-
+  private static List<PubsubMessage> partialValueTestMessages;
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
-
-  /** Tests whether all messages flow through when no filter is provided. */
-  @Test
-  @Category(NeedsRunner.class)
-  public void testNoInputFilterProvided() {
-    PubsubToPubsub.Options options =
-        TestPipeline.testingPipelineOptions().as(PubsubToPubsub.Options.class);
-    PCollection<Long> pc =
-        pipeline
-            .apply(Create.of(allTestMessages))
-            .apply(ParDo.of(new PubsubToPubsub.ExtractAndFilterEventsFn()))
-            .apply(Count.globally());
-
-    PAssert.thatSingleton(pc).isEqualTo(Long.valueOf(allTestMessages.size()));
-
-    pipeline.run(options);
-  }
-
-  /** Tests whether only the valid messages flow through when a filter is provided. */
-  @Test
-  @Category(NeedsRunner.class)
-  public void testInputFilterProvided() {
-    PubsubToPubsub.Options options =
-        TestPipeline.testingPipelineOptions().as(PubsubToPubsub.Options.class);
-    PCollection<Long> pc =
-        pipeline
-            .apply(Create.of(allTestMessages))
-            .apply(ParDo.of(new PubsubToPubsub.ExtractAndFilterEventsFn()))
-            .apply(Count.globally());
-
-    PAssert.thatSingleton(pc).isEqualTo(Long.valueOf(goodTestMessages.size()));
-
-    options.setFilterKey(ValueProvider.StaticValueProvider.of(FILTER_KEY));
-    options.setFilterValue(ValueProvider.StaticValueProvider.of(FILTER_VALUE));
-
-    pipeline.run(options);
-  }
 
   /**
    * Utility method to create test PubsubMessages.
@@ -121,5 +63,107 @@ public final class PubsubToPubsubTest {
       attributeMap = Collections.EMPTY_MAP;
     }
     return new PubsubMessage(payloadString.getBytes(), attributeMap);
+  }
+
+  @Before
+  public void setUp() {
+
+    partialValueTestMessages =
+        ImmutableList.of(
+            makePubsubMessage("with partial value", FILTER_KEY, "team " + FILTER_VALUE),
+            makePubsubMessage(
+                "One more with partial value", FILTER_KEY, "team " + FILTER_VALUE + " ftw!"),
+            makePubsubMessage(
+                "And one more with partial value", FILTER_KEY, FILTER_VALUE + " ftw!"));
+
+    goodTestMessages =
+        ImmutableList.of(
+            makePubsubMessage("Lets test!", FILTER_KEY, FILTER_VALUE),
+            makePubsubMessage("One more test!", FILTER_KEY, FILTER_VALUE),
+            makePubsubMessage("And one more!", FILTER_KEY, FILTER_VALUE));
+
+    badTestMessages =
+        ImmutableList.of(
+            makePubsubMessage("This one has no attribute", null, null),
+            makePubsubMessage("This one too", null, null),
+            makePubsubMessage("with unknown attribute", "dummy", "value"));
+
+    allTestMessages =
+        ImmutableList.<PubsubMessage>builder()
+            .addAll(goodTestMessages)
+            .addAll(badTestMessages)
+            .addAll(partialValueTestMessages)
+            .build();
+  }
+
+  /** Tests whether all messages flow through when no filter is provided. */
+  @Test
+  @Category(NeedsRunner.class)
+  public void testNoInputFilterProvided() {
+    PubsubToPubsub.Options options =
+        TestPipeline.testingPipelineOptions().as(PubsubToPubsub.Options.class);
+    PCollection<Long> pc =
+        pipeline
+            .apply(Create.of(allTestMessages))
+            .apply(ParDo.of(ExtractAndFilterEventsFn.newBuilder().build()))
+            .apply(Count.globally());
+
+    PAssert.thatSingleton(pc).isEqualTo(Long.valueOf(allTestMessages.size()));
+
+    pipeline.run(options);
+  }
+
+  /** Tests whether only the valid messages flow through when a filter is provided. */
+  @Test
+  @Category(NeedsRunner.class)
+  public void testInputFilterProvided() {
+    PubsubToPubsub.Options options =
+        TestPipeline.testingPipelineOptions().as(PubsubToPubsub.Options.class);
+    PCollection<Long> pc =
+        pipeline
+            .apply(Create.of(allTestMessages))
+            .apply(
+                ParDo.of(
+                    ExtractAndFilterEventsFn.newBuilder()
+                        .withFilterKey(options.getFilterKey())
+                        .withFilterValue(options.getFilterValue())
+                        .build()))
+            .apply(Count.globally());
+
+    PAssert.thatSingleton(pc).isEqualTo(Long.valueOf(goodTestMessages.size()));
+
+    options.setFilterKey(ValueProvider.StaticValueProvider.of(FILTER_KEY));
+    options.setFilterValue(ValueProvider.StaticValueProvider.of(FILTER_VALUE));
+
+    pipeline.run(options);
+  }
+
+  /** Tests whether only the valid messages flow through when a filter regex is provided. */
+  @Test
+  @Category(NeedsRunner.class)
+  public void testInputFilterRegexProvided() {
+    PubsubToPubsub.Options options =
+        TestPipeline.testingPipelineOptions().as(PubsubToPubsub.Options.class);
+
+    String testRegex = "[a-z\\p{Blank}]*" + FILTER_VALUE + "[a-z\\p{Blank}!]*";
+
+    PCollection<Long> pc =
+        pipeline
+            .apply(Create.of(allTestMessages))
+            .apply(
+                ParDo.of(
+                    ExtractAndFilterEventsFn.newBuilder()
+                        .withFilterKey(options.getFilterKey())
+                        .withFilterValue(options.getFilterValue())
+                        .build()))
+            .apply(Count.globally());
+
+    PAssert.thatSingleton(pc)
+        .isEqualTo(Long.valueOf(goodTestMessages.size() + partialValueTestMessages.size()));
+
+    options.setFilterKey(ValueProvider.StaticValueProvider.of(FILTER_KEY));
+    options.setFilterValue(ValueProvider.StaticValueProvider.of(testRegex));
+
+    pipeline.run(options);
   }
 }

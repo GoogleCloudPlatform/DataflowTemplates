@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dataflow-mysql-cdc-connector-pod
+  labels:
+    app: dataflow-mysql-cdc-connector
+spec:
+  volumes:
+  - name: google-cloud-key
+    secret:
+      secretName: pubsub-key
+  - name: connector-props
+    configMap:
+      name: cdc-connector-props
+  - name: offset-tracker-storage
+    persistentVolumeClaim:
+      claimName: offset-tracker-pvc
+  containers:
+    - name: dataflow-cdc-connector
+      image: ${REPOSITORY}/${GCP_PROJECT}/cdc-embedded-connector
+      volumeMounts:
+        - name: connector-props
+          mountPath: /etc/dataflow-cdc/
+        - name: google-cloud-key
+          mountPath: /var/secrets/google
+        - name: offset-tracker-storage
+          mountPath: /opt/dataflow-cdc/offset/
+      env:
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /var/secrets/google/key.json
+---
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: dataflow-mysql-cdc-connectors
+spec:
+  replicas: 1
+  selector:
+    app: dataflow-mysql-cdc-connector
+  template:
+    metadata:
+      name: dataflow-mysql-cdc-connector-pod
+      labels:
+        app: dataflow-mysql-cdc-connector
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: cdc-embedded-connector
+          image: ${REPOSITORY}/${GCP_PROJECT}/cdc-embedded-connector
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: offset-tracker-pv
+spec:
+  storageClassName: ""
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  gcePersistentDisk:
+    pdName: offset-tracker-pv
+    fsType: ext4
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: offset-tracker-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""
+  resources:
+    requests:
+      storage: 10Gi
+  volumeName: offset-tracker-pv
+---

@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,10 +13,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner;
 
 import static org.apache.avro.Schema.Type.BOOLEAN;
+import static org.apache.avro.Schema.Type.BYTES;
 import static org.apache.avro.Schema.Type.DOUBLE;
 import static org.apache.avro.Schema.Type.FLOAT;
 import static org.apache.avro.Schema.Type.INT;
@@ -26,6 +26,8 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertFalse;
 
 import com.google.cloud.Timestamp;
+import com.google.cloud.teleport.spanner.common.NumericUtils;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -222,6 +224,47 @@ public class AvroRecordConverterTest {
         new GenericRecordBuilder(schema).set("id", 0).set(colName, stringBooleanArray).build();
     result = AvroRecordConverter.readBoolArray(avroRecord, STRING, colName);
     assertArrayEquals(booleanArray.toArray(), result.get().toArray());
+  }
+
+  @Test
+  public void numericArray() {
+    String colName = "arrayofnumeric";
+    Schema schema =
+        SchemaBuilder.record("record")
+            .fields()
+            .requiredBytes("id")
+            .name(colName)
+            .type()
+            .optional()
+            .array()
+            .items()
+            .bytesType()
+            .endRecord();
+
+    // Null field
+    GenericRecord avroRecord = new GenericRecordBuilder(schema).set("id", 0).build();
+    Optional<List<String>> result =
+        AvroRecordConverter.readNumericArray(avroRecord, BYTES, colName);
+    assertFalse(result.isPresent());
+
+    String[] readableNumericValues = {
+      "-123.456000000",
+      "0.000000000",
+      "2387653.235320000",
+      null,
+      "0.000000020",
+      "-99999999999999999999999999999.999999999",
+      null,
+      "100000000000000000000001.000001000"
+    };
+    List<ByteBuffer> avroNumericValues =
+        Stream.of(readableNumericValues)
+            .map(x -> x == null ? null : ByteBuffer.wrap(NumericUtils.stringToBytes(x)))
+            .collect(Collectors.toList());
+    avroRecord =
+        new GenericRecordBuilder(schema).set("id", 0).set(colName, avroNumericValues).build();
+    result = AvroRecordConverter.readNumericArray(avroRecord, BYTES, colName);
+    assertArrayEquals(readableNumericValues, result.get().toArray());
   }
 
   @Test

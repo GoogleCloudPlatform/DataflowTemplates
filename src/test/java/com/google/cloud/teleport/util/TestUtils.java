@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.util;
 
 import com.google.common.io.ByteStreams;
@@ -28,10 +27,7 @@ import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.util.MimeTypes;
 
-/**
- * The {@link TestUtils} class provides common utilities
- * used for executing the unit tests.
- */
+/** The {@link TestUtils} class provides common utilities used for executing the unit tests. */
 public class TestUtils {
 
   /**
@@ -42,8 +38,7 @@ public class TestUtils {
    * @return The file written.
    * @throws IOException If an error occurs while creating or writing the file.
    */
-  public static ResourceId writeToFile(
-      String filePath, List<String> lines) throws IOException {
+  public static ResourceId writeToFile(String filePath, List<String> lines) throws IOException {
 
     return writeToFile(filePath, lines, Compression.UNCOMPRESSED);
   }
@@ -57,15 +52,14 @@ public class TestUtils {
    * @return The file written.
    * @throws IOException If an error occurs while creating or writing the file.
    */
-  public static ResourceId writeToFile(
-      String filePath, List<String> lines, Compression compression) throws IOException {
+  public static ResourceId writeToFile(String filePath, List<String> lines, Compression compression)
+      throws IOException {
 
     String fileContents = String.join(System.lineSeparator(), lines);
 
     ResourceId resourceId = FileSystems.matchNewResource(filePath, false);
 
-    String mimeType =
-        compression == Compression.UNCOMPRESSED ? MimeTypes.TEXT : MimeTypes.BINARY;
+    String mimeType = compression == Compression.UNCOMPRESSED ? MimeTypes.TEXT : MimeTypes.BINARY;
 
     // Write the file contents to the channel and close.
     try (ReadableByteChannel readChannel =

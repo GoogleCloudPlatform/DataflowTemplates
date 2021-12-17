@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.templates;
 
 import com.google.api.services.bigquery.model.TableCell;
@@ -39,6 +38,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -62,14 +63,17 @@ import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.options.ValueProvider.NestedValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.DoFn.Element;
 import org.apache.beam.sdk.transforms.GroupByKey;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.transforms.Watch;
 import org.apache.beam.sdk.transforms.WithKeys;
 import org.apache.beam.sdk.transforms.splittabledofn.OffsetRangeTracker;
+import org.apache.beam.sdk.transforms.splittabledofn.RestrictionTracker;
 import org.apache.beam.sdk.transforms.windowing.AfterProcessingTime;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.Repeatedly;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
@@ -127,6 +131,7 @@ import org.slf4j.LoggerFactory;
  * --zone=us-east1-d \
  * --parameters \
  * "inputFilePattern=gs://<bucketName>/<fileName>.csv, batchSize=15,datasetName=<BQDatasetId>,
+ *  dlpProjectId=<projectId>,
  *  deidentifyTemplateName=projects/{projectId}/deidentifyTemplates/{deIdTemplateId}
  * </pre>
  */
@@ -138,11 +143,11 @@ public class DLPTextToBigQueryStreaming {
   /** Expected only CSV file in GCS bucket. */
   private static final String ALLOWED_FILE_EXTENSION = String.valueOf("csv");
   /** Regular expression that matches valid BQ table IDs. */
-  private static final String TABLE_REGEXP = "[-\\w$@]{1,1024}";
+  private static final Pattern TABLE_REGEXP = Pattern.compile("[-\\w$@]{1,1024}");
   /** Default batch size if value not provided in execution. */
   private static final Integer DEFAULT_BATCH_SIZE = 100;
   /** Regular expression that matches valid BQ column name . */
-  private static final String COLUMN_NAME_REGEXP = "^[A-Za-z_]+[A-Za-z_0-9]*$";
+  private static final Pattern COLUMN_NAME_REGEXP = Pattern.compile("^[A-Za-z_]+[A-Za-z_0-9]*$");
   /** Default window interval to create side inputs for header records. */
   private static final Duration WINDOW_INTERVAL = Duration.standardSeconds(30);
 
@@ -172,7 +177,7 @@ public class DLPTextToBigQueryStreaming {
     Pipeline p = Pipeline.create(options);
     /*
      * Steps:
-     *   1) Read from the text source continuously based on default interval e.g. 300 seconds
+     *   1) Read from the text source continuously based on default interval e.g. 30 seconds
      *       - Setup a window for 30 secs to capture the list of files emited.
      *       - Group by file name as key and ReadableFile as a value.
      *   2) Create a side input for the window containing list of headers par file.
@@ -196,13 +201,15 @@ public class DLPTextToBigQueryStreaming {
                     .filepattern(options.getInputFilePattern())
                     .continuously(DEFAULT_POLL_INTERVAL, Watch.Growth.never()))
             .apply("Find Pattern Match", FileIO.readMatches().withCompression(Compression.AUTO))
-            .apply("Add File Name as Key",WithKeys.of(file -> getFileName(file)))
+            .apply("Add File Name as Key", WithKeys.of(file -> getFileName(file)))
             .setCoder(KvCoder.of(StringUtf8Coder.of(), ReadableFileCoder.of()))
             .apply(
                 "Fixed Window(30 Sec)",
                 Window.<KV<String, ReadableFile>>into(FixedWindows.of(WINDOW_INTERVAL))
                     .triggering(
-                        AfterProcessingTime.pastFirstElementInPane().plusDelayOf(Duration.ZERO))
+                        Repeatedly.forever(
+                            AfterProcessingTime.pastFirstElementInPane()
+                                .plusDelayOf(Duration.ZERO)))
                     .discardingFiredPanes()
                     .withAllowedLateness(Duration.ZERO))
             .apply(GroupByKey.create());
@@ -377,7 +384,8 @@ public class DLPTextToBigQueryStreaming {
     }
 
     @ProcessElement
-    public void processElement(ProcessContext c, OffsetRangeTracker tracker) throws IOException {
+    public void processElement(ProcessContext c, RestrictionTracker<OffsetRange, Long> tracker)
+        throws IOException {
       for (long i = tracker.currentRestriction().getFrom(); tracker.tryClaim(i); ++i) {
         String fileKey = c.element().getKey();
         try (BufferedReader br = getReader(c.element().getValue())) {
@@ -439,7 +447,8 @@ public class DLPTextToBigQueryStreaming {
      * @throws IOException
      */
     @GetInitialRestriction
-    public OffsetRange getInitialRestriction(KV<String, ReadableFile> csvFile) throws IOException {
+    public OffsetRange getInitialRestriction(@Element KV<String, ReadableFile> csvFile)
+        throws IOException {
 
       int rowCount = 0;
       int totalSplit = 0;
@@ -473,7 +482,9 @@ public class DLPTextToBigQueryStreaming {
      */
     @SplitRestriction
     public void splitRestriction(
-        KV<String, ReadableFile> csvFile, OffsetRange range, OutputReceiver<OffsetRange> out) {
+        @Element KV<String, ReadableFile> csvFile,
+        @Restriction OffsetRange range,
+        OutputReceiver<OffsetRange> out) {
       /** split the initial restriction by 1 */
       for (final OffsetRange p : range.split(1, 1)) {
         out.output(p);
@@ -481,7 +492,7 @@ public class DLPTextToBigQueryStreaming {
     }
 
     @NewTracker
-    public OffsetRangeTracker newTracker(OffsetRange range) {
+    public OffsetRangeTracker newTracker(@Restriction OffsetRange range) {
       return new OffsetRangeTracker(new OffsetRange(range.getFrom(), range.getTo()));
     }
 
@@ -610,6 +621,10 @@ public class DLPTextToBigQueryStreaming {
       List<Table.Row> outputRows = tokenizedData.getRowsList();
       if (outputRows.size() > 0) {
         for (Table.Row outputRow : outputRows) {
+          if (outputRow.getValuesCount() != headers.size()) {
+            throw new IllegalArgumentException(
+                "CSV file's header count must exactly match with data element count");
+          }
           c.output(
               KV.of(
                   c.element().getKey(),
@@ -620,18 +635,17 @@ public class DLPTextToBigQueryStreaming {
 
     private static TableRow createBqRow(Table.Row tokenizedValue, String[] headers) {
       TableRow bqRow = new TableRow();
-      String dlpRow =
-          tokenizedValue.getValuesList().stream()
-              .map(value -> value.getStringValue())
-              .collect(Collectors.joining(","));
-      String[] values = dlpRow.split(",");
+      AtomicInteger headerIndex = new AtomicInteger(0);
       List<TableCell> cells = new ArrayList<>();
-      for (int i = 0; i < values.length; i++) {
-        String checkedHeaderName = checkHeaderName(headers[i].toString());
-        bqRow.set(checkedHeaderName, values[i].toString());
-        /** creating a list of Table Cell to be used later to create BQ Table Schema */
-        cells.add(new TableCell().set(checkedHeaderName, values[i].toString()));
-      }
+      tokenizedValue
+          .getValuesList()
+          .forEach(
+              value -> {
+                String checkedHeaderName =
+                    checkHeaderName(headers[headerIndex.getAndIncrement()].toString());
+                bqRow.set(checkedHeaderName, value.getStringValue());
+                cells.add(new TableCell().set(checkedHeaderName, value.getStringValue()));
+              });
       bqRow.setF(cells);
       return bqRow;
     }
@@ -693,7 +707,7 @@ public class DLPTextToBigQueryStreaming {
     /** taking out .csv extension from file name e.g fileName.csv->fileName */
     String[] fileKey = csvFileName.split("\\.", 2);
 
-    if (!fileKey[1].equals(ALLOWED_FILE_EXTENSION) || !fileKey[0].matches(TABLE_REGEXP)) {
+    if (!fileKey[1].equals(ALLOWED_FILE_EXTENSION) || !TABLE_REGEXP.matcher(fileKey[0]).matches()) {
       throw new RuntimeException(
           "[Filename must contain a CSV extension "
               + " BQ table name must contain only letters, numbers, or underscores ["
@@ -720,7 +734,7 @@ public class DLPTextToBigQueryStreaming {
 
     if (channel != null) {
 
-      br = new BufferedReader(Channels.newReader(channel, Charsets.ISO_8859_1.name()));
+      br = new BufferedReader(Channels.newReader(channel, Charsets.UTF_8.name()));
     }
 
     return br;
@@ -746,7 +760,7 @@ public class DLPTextToBigQueryStreaming {
     String checkedHeader = name.replaceAll("\\s", "_");
     checkedHeader = checkedHeader.replaceAll("'", "");
     checkedHeader = checkedHeader.replaceAll("/", "");
-    if (!checkedHeader.matches(COLUMN_NAME_REGEXP)) {
+    if (!COLUMN_NAME_REGEXP.matcher(checkedHeader).matches()) {
       throw new IllegalArgumentException("Column name can't be matched to a valid format " + name);
     }
     return checkedHeader;

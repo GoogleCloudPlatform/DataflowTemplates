@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  ~ Copyright (C) 2017 Google Inc.
+  ~ Copyright (C) 2020 Google Inc.
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License"); you may not
   ~ use this file except in compliance with the License. You may obtain a copy of
@@ -36,13 +36,14 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <apache-http-client-v2>1.39.2</apache-http-client-v2>
     <avro.version>1.8.2</avro.version>
     <checkstyle.version>8.7</checkstyle.version>
-    <beam.version>2.10.0</beam.version>
-    <beam-vendor-guava.version>0.1</beam-vendor-guava.version>
-    <hamcrest.version>1.3</hamcrest.version>
+    <beam.version>2.34.0</beam.version>
+    <extra.enforcer.rules.version>1.3</extra.enforcer.rules.version>
+    <hamcrest.version>2.1</hamcrest.version>
     <java.version>1.8</java.version>
-    <junit.version>4.12</junit.version>
+    <junit.version>4.13</junit.version>
     <junit-dep.version>4.10</junit-dep.version>
     <surefire.version>2.21.0</surefire.version>
     <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
@@ -53,50 +54,78 @@
     <maven-jar-plugin.version>3.0.2</maven-jar-plugin.version>
     <maven-shade-plugin.version>3.0.0</maven-shade-plugin.version>
     <maven-source-plugin.version>3.0.1</maven-source-plugin.version>
-    <mockito-core.version>2.8.9</mockito-core.version>
+    <mockito-core.version>3.0.0</mockito-core.version>
+    <mock-server-netty.version>5.11.1</mock-server-netty.version>
     <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
     <slf4j.version>1.7.25</slf4j.version>
     <joda.version>2.4</joda.version>
     <generated-grpc-beta.version>0.19.0</generated-grpc-beta.version>
     <spanner.version>0.54.0-beta</spanner.version>
+    <open-census.version>0.24.0</open-census.version>
     <bigtable.version>1.5.0</bigtable.version>
     <bigquery.version>v2-rev374-1.22.0</bigquery.version>
     <protobuf-util.version>3.6.1</protobuf-util.version>
-    <protobuf.version>3.6.0</protobuf.version>
+    <protobuf.version>3.11.1</protobuf.version>
     <findbugs.version>3.0.1</findbugs.version>
     <guava.version>20.0</guava.version>
-    <json.version>20160810</json.version>
+    <json.version>20200518</json.version>
+    <junit.jupiter.version>5.5.2</junit.jupiter.version>
+    <re2j.version>1.4</re2j.version>
+    <codehaus-jackson.version>1.9.13</codehaus-jackson.version>
     <gson.version>2.7</gson.version>
     <jackson.version>2.8.8</jackson.version>
-    <commons-csv.version>1.5</commons-csv.version>
+    <commons-csv.version>1.8</commons-csv.version>
+    <commons-text.version>1.9</commons-text.version>
     <google.cloud.core>1.61.0</google.cloud.core>
+    <google-cloud-bigquery.version>1.108.0</google-cloud-bigquery.version>
     <grpc.version>1.13.1</grpc.version>
     <google-storage-api.version>v1-rev20181013-1.27.0</google-storage-api.version>
     <google-storage.version>1.29.0</google-storage.version>
     <mvn-target-dir>${basedir}/target</mvn-target-dir>
-    <derby.version>10.12.1.1</derby.version>
+    <derby.version>10.14.2.0</derby.version>
     <commons-pool2.version>2.4.2</commons-pool2.version>
     <commons-dbcp2.version>2.1.1</commons-dbcp2.version>
+    <commons-codec.version>1.14</commons-codec.version>
+    <commons-io.version>2.4</commons-io.version>
     <kafka.clients.version>1.0.0</kafka.clients.version>
-    <threetenbp.version>1.3.3</threetenbp.version>
-    <spring.version>4.3.18.RELEASE</spring.version>
-    <autovalue.annotations.version>1.6</autovalue.annotations.version>
-    <autovalue.version>1.6.2</autovalue.version>
+    <threetenbp.version>1.4.4</threetenbp.version>
+    <spring.version>5.2.8.RELEASE</spring.version>
+    <autovalue.annotations.version>1.7.4</autovalue.annotations.version>
+    <autovalue.version>1.7.4</autovalue.version>
     <excluded.spanner.tests>com.google.cloud.teleport.spanner.IntegrationTest</excluded.spanner.tests>
-  	<dlp.version>0.79.0-beta</dlp.version>
+    <tensorflow.version>1.15.0</tensorflow.version>
+    <truth.version>1.0.1</truth.version>
+    <dlp.version>2.1.0</dlp.version>
+    <hadoop.version>2.8.5</hadoop.version>
+    <hbase.version>1.4.5</hbase.version>
+    <scassandra.version>1.1.2</scassandra.version>
+    <cassandra.driver.version>3.6.0</cassandra.driver.version>
+    <kms.version>1.40.0</kms.version>
+    <proto-kms.version>0.87.0</proto-kms.version>
+    <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
   </properties>
+
+  <dependencyManagement>
+      <dependencies>
+        <dependency>
+          <groupId>org.apache.beam</groupId>
+          <artifactId>beam-sdks-java-bom</artifactId>
+          <version>${beam.version}</version>
+          <type>pom</type>
+          <scope>import</scope>
+        </dependency>
+      </dependencies>
+    </dependencyManagement>
 
   <dependencies>
     <!-- Beam -->
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-core</artifactId>
-      <version>${beam.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
-      <version>${beam.version}</version>
       <exclusions>
         <exclusion>
           <groupId>junit</groupId>
@@ -112,33 +141,86 @@
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-extensions-google-cloud-platform-core</artifactId>
-      <version>${beam.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-extensions-protobuf</artifactId>
-      <version>${beam.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
-      <version>${beam.version}</version>
     </dependency>
     <dependency>
       <!-- Direct runner included for local development and testing. -->
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-runners-direct-java</artifactId>
-      <version>${beam.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-io-jdbc</artifactId>
-      <version>${beam.version}</version>
     </dependency>
+
+    <!-- Dependencies needed for the Cassandra to CBT pipeline -->
     <dependency>
       <groupId>org.apache.beam</groupId>
-      <artifactId>beam-vendor-guava-20_0</artifactId>
-      <version>${beam-vendor-guava.version}</version>
+      <artifactId>beam-sdks-java-io-cassandra</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>com.github.jnr</groupId>
+          <artifactId>jffi</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>com.datastax.cassandra</groupId>
+      <artifactId>cassandra-driver-core</artifactId>
+      <version>${cassandra.driver.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.github.jnr</groupId>
+          <artifactId>jffi</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-mapreduce-client-core</artifactId>
+      <version>${hadoop.version}</version>
+      <exclusions>
+        <exclusion><groupId>org.codehaus.jackson</groupId><artifactId>*</artifactId></exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-common</artifactId>
+      <version>${hadoop.version}</version>
+      <exclusions>
+      <exclusion><groupId>org.codehaus.jackson</groupId><artifactId>*</artifactId></exclusion>
+    </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hbase</groupId>
+      <artifactId>hbase-common</artifactId>
+      <version>${hbase.version}</version>
+      <scope>provided</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.hadoop</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <!-- Dependencies needed for Splunk -->
+    <dependency>
+      <groupId>com.google.http-client</groupId>
+      <artifactId>google-http-client-apache-v2</artifactId>
+      <version>${apache-http-client-v2}</version>
     </dependency>
 
     <!-- Test -->
@@ -152,12 +234,6 @@
       <groupId>org.hamcrest</groupId>
       <artifactId>hamcrest-library</artifactId>
       <version>${hamcrest.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit-dep</artifactId>
-      <version>${junit-dep.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -184,12 +260,49 @@
       <version>${derby.version}</version>
       <scope>test</scope>
     </dependency>
-
-    <!-- Misc -->
     <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
-      <version>${slf4j.version}</version>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <version>${junit.jupiter.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.truth</groupId>
+      <artifactId>truth</artifactId>
+      <version>${truth.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mock-server</groupId>
+      <artifactId>mockserver-netty</artifactId>
+      <version>${mock-server-netty.version}</version>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-ext</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.mock-server</groupId>
+      <artifactId>mockserver-junit-rule</artifactId>
+      <version>${mock-server-netty.version}</version>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-ext</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.google.cloud</groupId>
@@ -197,9 +310,32 @@
       <version>${google.cloud.core}</version>
     </dependency>
     <dependency>
+      <!-- Used to unit-test Cassandra IO -->
+      <groupId>org.scassandra</groupId>
+      <artifactId>java-client</artifactId>
+      <version>${scassandra.version}</version>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.code.gson</groupId>
+          <artifactId>gson</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>ch.qos.logback</groupId>
+          <artifactId>logback-classic</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
       <groupId>joda-time</groupId>
       <artifactId>joda-time</artifactId>
       <version>${joda.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.scassandra</groupId>
+      <artifactId>cql-antlr</artifactId>
+      <version>${scassandra.version}</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.google.apis</groupId>
@@ -211,6 +347,8 @@
       <artifactId>google-cloud-storage</artifactId>
       <version>${google-storage.version}</version>
     </dependency>
+
+    <!-- Misc -->
     <dependency>
       <groupId>com.google.api.grpc</groupId>
       <artifactId>proto-google-cloud-datastore-v1</artifactId>
@@ -227,9 +365,19 @@
       <version>${generated-grpc-beta.version}</version>
     </dependency>
     <dependency>
+      <groupId>com.google.re2j</groupId>
+      <artifactId>re2j</artifactId>
+      <version>${re2j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-bigquery</artifactId>
+      <version>${google-cloud-bigquery.version}</version>
+    </dependency>
+    <dependency>
       <groupId>com.google.cloud.bigtable</groupId>
       <artifactId>bigtable-beam-import</artifactId>
-      <version>${bigtable.version}</version>
+      <version>${bigtable-beam-import.version}</version>
       <scope>runtime</scope>
     </dependency>
     <dependency>
@@ -311,14 +459,14 @@
       <version>${autovalue.annotations.version}</version>
     </dependency>
     <dependency>
-      <groupId>com.fasterxml.jackson.core</groupId>
-      <artifactId>jackson-core</artifactId>
-      <version>${jackson.version}</version>
+      <groupId>org.codehaus.jackson</groupId>
+      <artifactId>jackson-core-asl</artifactId>
+      <version>${codehaus-jackson.version}</version>
     </dependency>
     <dependency>
-      <groupId>com.fasterxml.jackson.core</groupId>
-      <artifactId>jackson-databind</artifactId>
-      <version>${jackson.version}</version>
+      <groupId>org.codehaus.jackson</groupId>
+      <artifactId>jackson-mapper-asl</artifactId>
+      <version>${codehaus-jackson.version}</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
@@ -330,11 +478,13 @@
       <artifactId>jackson-datatype-jsr310</artifactId>
       <version>2.9.9</version>
     </dependency>
+
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-pool2</artifactId>
       <version>${commons-pool2.version}</version>
     </dependency>
+
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-dbcp2</artifactId>
@@ -342,10 +492,39 @@
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
+      <artifactId>commons-text</artifactId>
+      <version>${commons-text.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
       <artifactId>commons-csv</artifactId>
       <version>${commons-csv.version}</version>
     </dependency>
+    <dependency>
+      <groupId>commons-io</groupId>
+      <artifactId>commons-io</artifactId>
+      <version>${commons-io.version}</version>
+    </dependency>
     <!-- https://mvnrepository.com/artifact/org.apache.avro/avro -->
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-io-parquet</artifactId>
+      <scope>compile</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>jackson-core-asl</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>jackson-mapper-asl</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.httpcomponents</groupId>
+          <artifactId>httpclient</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
     <dependency>
       <groupId>org.apache.avro</groupId>
       <artifactId>avro</artifactId>
@@ -360,6 +539,11 @@
       <groupId>org.springframework</groupId>
       <artifactId>spring-expression</artifactId>
       <version>${spring.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.opencensus</groupId>
+      <artifactId>opencensus-api</artifactId>
+      <version>${open-census.version}</version>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
@@ -377,6 +561,21 @@
           <artifactId>grpc-core</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-kms</artifactId>
+      <version>${kms.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.api.grpc</groupId>
+      <artifactId>proto-google-cloud-kms-v1</artifactId>
+      <version>${proto-kms.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.tensorflow</groupId>
+      <artifactId>proto</artifactId>
+      <version>${tensorflow.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.beam</groupId>
@@ -406,7 +605,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-shade-plugin</artifactId>
-          <version>3.0.0</version>
+          <version>3.2.2</version>
           <executions>
             <execution>
               <id>bundle-and-repackage</id>
@@ -470,13 +669,116 @@
               <failOnWarning>true</failOnWarning>
               <ignoredUsedUndeclaredDependencies>
                 <ignoredUsedUndeclaredDependency>
+                  com.google.guava:guava
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  com.google.api.grpc:proto-google-cloud-datastore-v1
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  com.google.api:gax
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  com.google.code.findbugs:jsr305
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  com.google.code.gson:gson
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  com.google.cloud:google-cloud-spanner
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  joda-time:joda-time
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  org.apache.commons:commons-dbcp2
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  com.fasterxml.jackson.core:jackson-core
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  org.apache.avro:avro
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  com.google.api.grpc:proto-google-cloud-bigtable-v2
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  com.google.protobuf:protobuf-java
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  com.google.api.grpc:proto-google-cloud-spanner-admin-database-v1
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  com.google.protobuf:protobuf-java-util
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  com.fasterxml.jackson.core:jackson-annotations
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  com.fasterxml.jackson.core:jackson-databind
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  org.slf4j:slf4j-api
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  com.google.cloud:google-cloud-core
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  com.google.apis:google-api-services-storage
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  org.apache.commons:commons-pool2
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  com.google.apis:google-api-services-bigquery
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
                   com.google.api.grpc:proto-google-cloud-dlp-v2
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  org.apache.httpcomponents:httpcore
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  org.apache.httpcomponents:httpclient
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  org.mock-server:mockserver-client-java
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  com.vaadin.external.google:android-json
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  org.mock-server:mockserver-core
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  com.google.http-client:google-http-client
                 </ignoredUsedUndeclaredDependency>
                 <ignoredUsedUndeclaredDependency>
                   org.apache.beam:beam-model-pipeline
                 </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  org.apache.beam:beam-vendor-guava-26_0-jre
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  org.apache.beam:beam-vendor-grpc-1_36_0
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>io.grpc:grpc-api</ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  org.apache.derby:derbytools
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  org.hamcrest:hamcrest
+                </ignoredUsedUndeclaredDependency>
              </ignoredUsedUndeclaredDependencies>
-            </configuration>
+             <ignoredUnusedDeclaredDependencies>
+                <ignoredUnusedDeclaredDependency>org.threeten:threetenbp</ignoredUnusedDeclaredDependency>
+                <ignoredUnusedDeclaredDependency>org.json:json</ignoredUnusedDeclaredDependency>
+               <ignoredUnusedDeclaredDependency>org.apache.hadoop:hadoop-mapreduce-client-core</ignoredUnusedDeclaredDependency>
+                <ignoredUnusedDeclaredDependency>org.apache.hadoop:hadoop-common</ignoredUnusedDeclaredDependency>
+                <ignoredUnusedDeclaredDependency>org.codehaus.jackson:jackson-core-asl</ignoredUnusedDeclaredDependency>
+               <ignoredUnusedDeclaredDependency>org.codehaus.jackson:jackson-mapper-asl</ignoredUnusedDeclaredDependency>
+               <ignoredUnusedDeclaredDependency>io.opencensus:opencensus-api</ignoredUnusedDeclaredDependency>
+             </ignoredUnusedDeclaredDependencies>
+           </configuration>
           </execution>
         </executions>
       </plugin>
@@ -488,6 +790,8 @@
         <configuration>
           <source>${java.version}</source>
           <target>${java.version}</target>
+          <parameters>true</parameters>
+          <testCompilerArgument>-parameters</testCompilerArgument>
         </configuration>
       </plugin>
 
@@ -552,8 +856,8 @@
           </dependency>
         </dependencies>
         <configuration>
-          <configLocation>beam/checkstyle.xml</configLocation>
-          <suppressionsLocation>beam/suppressions.xml</suppressionsLocation>
+          <configLocation>${project.basedir}/src/main/resources/checkstyle/checkstyle.xml</configLocation>
+          <suppressionsLocation>${project.basedir}/src/main/resources/checkstyle/suppressions.xml</suppressionsLocation>
           <consoleOutput>true</consoleOutput>
           <failOnViolation>true</failOnViolation>
           <includeResources>false</includeResources>
@@ -630,7 +934,7 @@
           <dependency>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>extra-enforcer-rules</artifactId>
-            <version>1.0-beta-6</version>
+            <version>${extra.enforcer.rules.version}</version>
           </dependency>
         </dependencies>
       </plugin>
@@ -660,6 +964,12 @@
           <!-- Exclude Cloud Spanner integration tests that require a GCP project to run.
           They can be run run manually using
           'mvn -Dexcluded.spanner.tests="" -Dtest=<testname> test' -->
+          <systemProperties>
+            <property>
+              <name>nashorn.args</name>
+              <value>--no-deprecation-warning</value>
+            </property>
+          </systemProperties>
           <excludedGroups>${excluded.spanner.tests}</excludedGroups>
         </configuration>
       </plugin>
@@ -677,6 +987,46 @@
             <configuration>
               <sourceDirectory>${project.basedir}/src/main/resources/schema/avro</sourceDirectory>
             </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- Keep this equivalent with v2/pom.xml. Unfortunately, we need to duplicate the
+      plugin until we can fix errors introduced by adding v2 as a child module of the root
+      teleport module. -->
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+        <version>${spotless-maven-plugin.version}</version>
+        <configuration>
+          <formats>
+            <!-- Avoid trailing whitespace and require ending newline. -->
+            <format>
+              <includes>
+                <include>*.md</include>
+                <include>.gitignore</include>
+              </includes>
+              <trimTrailingWhitespace/>
+              <endWithNewline/>
+            </format>
+          </formats>
+          <java>
+            <toggleOffOn />
+            <googleJavaFormat>
+              <version>1.8</version>
+              <style>GOOGLE</style>
+            </googleJavaFormat>
+            <licenseHeader>
+              <file>JAVA_LICENSE_HEADER</file>
+            </licenseHeader>
+          </java>
+        </configuration>
+        <!-- Bind to verify. -->
+        <executions>
+          <execution>
+            <goals>
+              <goal>check</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>
@@ -698,7 +1048,24 @@
         </repository>
       </repositories>
     </profile>
+    <profile>
+      <id>missing-artifact-repos</id>
+      <activation>
+          <activeByDefault>true</activeByDefault>
+      </activation>
+      <repositories>
+          <repository>
+              <!-- Required for io.confluent:kafka-avro-serializer artifact -->
+              <id>confluent</id>
+              <url>https://packages.confluent.io/maven/</url>
+          </repository>
+          <repository>
+              <!-- Required for org.pentaho:pentaho-aggdesigner-algorithm artifact -->
+              <id>pentaho</id>
+              <url>https://public.nexus.pentaho.org/repository/proxy-public-3rd-party-release</url>
+          </repository>
+      </repositories>
+    </profile>
   </profiles>
 
 </project>
-

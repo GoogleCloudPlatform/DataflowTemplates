@@ -1,0 +1,19 @@
+{
+  "type" : "record",
+  "name" : "test_file_with_union",
+  "namespace" : "com.test.avro",
+  "fields" : [
+    {
+      "name": "id",
+      "type": "string"
+    },
+    {
+      "name": "state",
+      "type": "string"
+    },
+    {
+      "name": "price",
+      "type": ["null","double"]
+    }
+  ]
+}

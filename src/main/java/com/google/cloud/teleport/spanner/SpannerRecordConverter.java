@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,13 +13,15 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner;
 
+import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.teleport.spanner.common.NumericUtils;
 import com.google.common.base.Strings;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.avro.Schema;
@@ -28,6 +30,8 @@ import org.apache.avro.generic.GenericRecordBuilder;
 
 /** Converts {@link Struct} to Avro record of specified {@link Schema}. */
 public class SpannerRecordConverter {
+  private static final Pattern STRING_PATTERN = Pattern.compile("STRING\\((?:MAX|[0-9]+)\\)");
+  private static final Pattern ARRAY_PATTERN = Pattern.compile("ARRAY<STRING\\((?:MAX|[0-9]+)\\)>");
   private final Schema schema;
 
   public SpannerRecordConverter(Schema schema) {
@@ -38,6 +42,10 @@ public class SpannerRecordConverter {
     GenericRecordBuilder builder = new GenericRecordBuilder(schema);
     List<Schema.Field> fields = schema.getFields();
     for (Schema.Field field : fields) {
+      if (field.getProp("generationExpression") != null) {
+        // Generated column values are not exported.
+        continue;
+      }
       String fieldName = field.name();
       Schema type = field.schema();
       // Empty string to avoid null checks.
@@ -61,17 +69,38 @@ public class SpannerRecordConverter {
           builder.set(field, nullValue ? null : row.getBoolean(fieldName));
           break;
         case LONG:
-          builder.set(field, nullValue ? null : row.getLong(fieldName));
+          if (spannerType.equals("TIMESTAMP")) {
+            long microSeconds = 0L;
+            if (!nullValue) {
+              Timestamp ts = row.getTimestamp(fieldName);
+              microSeconds =
+                  TimeUnit.SECONDS.toMicros(ts.getSeconds())
+                      + TimeUnit.NANOSECONDS.toMicros(ts.getNanos());
+            }
+            builder.set(field, nullValue ? null : microSeconds);
+          } else {
+            builder.set(field, nullValue ? null : row.getLong(fieldName));
+          }
           break;
         case DOUBLE:
           builder.set(field, nullValue ? null : row.getDouble(fieldName));
           break;
         case BYTES:
+          if (spannerType.equals("NUMERIC")) {
+            // TODO: uses row.getNumeric() once teleport uses new spanner library.
+            builder.set(
+                field,
+                nullValue
+                    ? null
+                    : ByteBuffer.wrap(NumericUtils.stringToBytes(row.getString(fieldName))));
+            break;
+          }
           builder.set(
               field, nullValue ? null : ByteBuffer.wrap(row.getBytes(fieldName).toByteArray()));
           break;
         case STRING:
-          if (Pattern.matches("STRING\\((?:MAX|[0-9]+)\\)", spannerType)) {
+          if (STRING_PATTERN.matcher(spannerType).matches()
+              || spannerType.equals("JSON")) {
             builder.set(field, nullValue ? null : row.getString(fieldName));
           } else if (spannerType.equals("TIMESTAMP")) {
             builder.set(field, nullValue ? null : row.getTimestamp(fieldName).toString());
@@ -98,7 +127,20 @@ public class SpannerRecordConverter {
                 builder.set(field, nullValue ? null : row.getBooleanList(fieldName));
                 break;
               case LONG:
-                builder.set(field, nullValue ? null : row.getLongList(fieldName));
+                if (spannerType.equals("ARRAY<TIMESTAMP>")) {
+                  List<Long> values =
+                      row.getTimestampList(fieldName).stream()
+                          .map(
+                              timestamp ->
+                                  timestamp == null
+                                      ? null
+                                      : (TimeUnit.SECONDS.toMicros(timestamp.getSeconds())
+                                          + TimeUnit.NANOSECONDS.toMicros(timestamp.getNanos())))
+                          .collect(Collectors.toList());
+                  builder.set(field, nullValue ? null : values);
+                } else {
+                  builder.set(field, nullValue ? null : row.getLongList(fieldName));
+                }
                 break;
               case DOUBLE:
                 {
@@ -107,11 +149,27 @@ public class SpannerRecordConverter {
                 }
               case BYTES:
                 {
+                  if (spannerType.equals("ARRAY<NUMERIC>")) {
+                    if (nullValue) {
+                      builder.set(field, null);
+                      break;
+                    }
+                    List<ByteBuffer> numericValues = null;
+                    numericValues =
+                        row.getStringList(fieldName).stream()
+                            .map(
+                                numeric ->
+                                    numeric == null
+                                        ? null
+                                        : ByteBuffer.wrap(NumericUtils.stringToBytes(numeric)))
+                            .collect(Collectors.toList());
+                    builder.set(field, numericValues);
+                    break;
+                  }
                   List<ByteBuffer> value = null;
                   if (!nullValue) {
                     value =
-                        row.getBytesList(fieldName)
-                            .stream()
+                        row.getBytesList(fieldName).stream()
                             .map(
                                 bytes ->
                                     bytes == null ? null : ByteBuffer.wrap(bytes.toByteArray()))
@@ -122,15 +180,15 @@ public class SpannerRecordConverter {
                 }
               case STRING:
                 {
-                  if (Pattern.matches("ARRAY<STRING\\((?:MAX|[0-9]+)\\)>", spannerType)) {
+                  if (ARRAY_PATTERN.matcher(spannerType).matches()
+                      || spannerType.equals("ARRAY<JSON>")) {
                     builder.set(field, nullValue ? null : row.getStringList(fieldName));
                   } else if (spannerType.equals("ARRAY<TIMESTAMP>")) {
                     if (nullValue) {
                       builder.set(field, null);
                     } else {
                       List<String> values =
-                          row.getTimestampList(fieldName)
-                              .stream()
+                          row.getTimestampList(fieldName).stream()
                               .map(timestamp -> timestamp == null ? null : timestamp.toString())
                               .collect(Collectors.toList());
                       builder.set(field, values);
@@ -140,8 +198,7 @@ public class SpannerRecordConverter {
                       builder.set(field, null);
                     } else {
                       List<String> values =
-                          row.getDateList(fieldName)
-                              .stream()
+                          row.getDateList(fieldName).stream()
                               .map(date -> date == null ? null : date.toString())
                               .collect(Collectors.toList());
                       builder.set(field, values);

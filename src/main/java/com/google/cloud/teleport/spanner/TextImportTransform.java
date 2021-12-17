@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,13 +13,12 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner;
 
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.Type.Code;
 import com.google.cloud.teleport.spanner.TextImportProtos.ImportManifest;
 import com.google.cloud.teleport.spanner.TextImportProtos.ImportManifest.TableManifest;
+import com.google.cloud.teleport.spanner.common.Type.Code;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
@@ -32,6 +31,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.channels.Channels;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -40,15 +40,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.apache.beam.sdk.extensions.gcp.options.GcsOptions;
+import org.apache.beam.sdk.extensions.gcp.util.GcsUtil;
+import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
 import org.apache.beam.sdk.io.BoundedSource;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;
 import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.ResourceId;
+import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerWriteResult;
 import org.apache.beam.sdk.io.gcp.spanner.Transaction;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -61,14 +64,13 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.transforms.Wait;
-import org.apache.beam.sdk.util.GcsUtil;
-import org.apache.beam.sdk.util.gcsfs.GcsPath;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.TypeDescriptor;
+import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,7 +92,7 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
   @Override
   public PDone expand(PBegin begin) {
     PCollectionView<Transaction> tx =
-        begin.apply(SpannerIO.createTransaction().withSpannerConfig(spannerConfig));
+        begin.apply(LocalSpannerIO.createTransaction().withSpannerConfig(spannerConfig));
 
     PCollection<Ddl> ddl =
         begin.apply("Read Information Schema", new ReadInformationSchema(spannerConfig, tx));
@@ -181,7 +183,13 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
           mutations
               .apply("Wait for previous depth " + depth, Wait.on(previousComputation))
               .apply(
-                  "Write mutations " + depth, SpannerIO.write().withSpannerConfig(spannerConfig));
+                  "Write mutations " + depth,
+                  LocalSpannerIO.write()
+                      .withSpannerConfig(spannerConfig)
+                      .withCommitDeadline(Duration.standardMinutes(1))
+                      .withMaxCumulativeBackoff(Duration.standardHours(2))
+                      .withMaxNumMutations(10000)
+                      .withGroupingFactor(100));
       previousComputation = result.getOutput();
     }
 
@@ -273,7 +281,9 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
                           options.getFieldQualifier(),
                           options.getTrailingDelimiter(),
                           options.getEscape(),
-                          options.getNullString()))
+                          options.getNullString(),
+                          options.getDateFormat(),
+                          options.getTimestampFormat()))
                   .withSideInputs(ddlView, tableColumnsView));
     }
   }
@@ -314,10 +324,15 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
     private static ImportManifest readManifest(ResourceId fileResource) {
       ImportManifest.Builder result = ImportManifest.newBuilder();
       try (InputStream stream = Channels.newInputStream(FileSystems.open(fileResource))) {
-        Reader reader = new InputStreamReader(stream);
+        Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
         JsonFormat.parser().merge(reader, result);
       } catch (IOException e) {
-        throw new RuntimeException(e);
+        throw new RuntimeException(
+            "Failed to read manifest. Make sure it is ASCII or UTF-8 encoded and contains a"
+                + " well-formed JSON string. Please refer to"
+                + " https://cloud.google.com/spanner/docs/import-export-csv#create-json-manifest"
+                + " for the required format of the manifest file.",
+            e);
       }
       return result.build();
     }
@@ -329,6 +344,8 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
 
     private final ValueProvider<String> importManifest;
     private final PCollectionView<Ddl> ddlView;
+    private static final Pattern STRING_PATTERN =
+        Pattern.compile("STRING(?:\\((?:MAX|[0-9]+)\\))?");
 
     ResolveDataFiles(ValueProvider<String> importManifest, PCollectionView<Ddl> ddlView) {
       this.importManifest = importManifest;
@@ -389,7 +406,7 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
     }
 
     public static Code parseSpannerDataType(String columnType) {
-      if (columnType.matches("STRING(?:\\((?:MAX|[0-9]+)\\))?")) {
+      if (STRING_PATTERN.matcher(columnType).matches()) {
         return Code.STRING;
       } else if (columnType.equalsIgnoreCase("INT64")) {
         return Code.INT64;
@@ -401,6 +418,12 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
         return Code.DATE;
       } else if (columnType.equalsIgnoreCase("TIMESTAMP")) {
         return Code.TIMESTAMP;
+      } else if (columnType.equalsIgnoreCase("BYTES")) {
+        return Code.BYTES;
+      } else if (columnType.equalsIgnoreCase("NUMERIC")) {
+        return Code.NUMERIC;
+      } else if (columnType.equalsIgnoreCase("JSON")) {
+        return Code.JSON;
       } else {
         throw new IllegalArgumentException(
             "Unrecognized or unsupported column data type: " + columnType);
@@ -416,12 +439,30 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
                 tableManifest.getTableName()));
       }
 
+      List<TableManifest.Column> manifestColumns = tableManifest.getColumnsList();
+      if (manifestColumns == null || manifestColumns.size() == 0) {
+        if (table.columns().stream().anyMatch(x -> x.isGenerated())) {
+          throw new RuntimeException(
+              String.format(
+                  "DB table %s has one or more generated columns. An explict column list that "
+                      + "excludes the generated columns must be provided in the manifest.",
+                  table.name()));
+        }
+      }
+
       for (TableManifest.Column manifiestColumn : tableManifest.getColumnsList()) {
         Column dbColumn = table.column(manifiestColumn.getColumnName());
         if (dbColumn == null) {
           throw new RuntimeException(
               String.format(
                   "Column %s in manifest does not exist in DB table %s.",
+                  manifiestColumn.getColumnName(), table.name()));
+        }
+        if (dbColumn.isGenerated()) {
+          throw new RuntimeException(
+              String.format(
+                  "Column %s in manifest is a generated column in DB table %s. "
+                      + "Generated columns cannot be imported.",
                   manifiestColumn.getColumnName(), table.name()));
         }
         if (parseSpannerDataType(manifiestColumn.getTypeName()) != dbColumn.type().getCode()) {

@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.templates;
 
 import com.google.common.collect.ImmutableList;
@@ -109,7 +108,7 @@ public class BulkCompressor {
   private static final Logger LOG = LoggerFactory.getLogger(BulkCompressor.class);
 
   /** The tag used to identify the main output of the {@link Compressor}. */
-  private static final TupleTag<String> COMPRESOR_MAIN_OUT = new TupleTag<String>() {};
+  private static final TupleTag<String> COMPRESSOR_MAIN_OUT = new TupleTag<String>() {};
 
   /** The tag used to identify the dead-letter output of the {@link Compressor}. */
   private static final TupleTag<KV<String, String>> DEADLETTER_TAG =
@@ -189,7 +188,7 @@ public class BulkCompressor {
             .apply(
                 "Compress File(s)",
                 ParDo.of(new Compressor(options.getOutputDirectory(), options.getCompression()))
-                    .withOutputTags(COMPRESOR_MAIN_OUT, TupleTagList.of(DEADLETTER_TAG)));
+                    .withOutputTags(COMPRESSOR_MAIN_OUT, TupleTagList.of(DEADLETTER_TAG)));
 
     compressOut
         .get(DEADLETTER_TAG)

@@ -14,8 +14,5 @@
  * the License.
  */
 
-
-/**
- * Domain classes used to hold values.
- */
+/** Domain classes used to hold values. */
 package com.google.cloud.teleport.values;

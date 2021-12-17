@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -69,10 +69,10 @@ public class DLPTextToBigQueryStreamingTest {
   private static StringBuilder fileContents = new StringBuilder();
   private static final String HEADER_ROW =
       "CardTypeCode,CardTypeFullName,IssuingBank,CardNumber,CardHoldersName,CVVCVV2,IssueDate,ExpiryDate,"
-          + "BillingDate,CardPIN,CreditLimit";
+          + "BillingDate,CardPIN,CreditLimit,MultibyteCharacters";
   private static final String CONTENTS_ROW =
       "MC,Master Card,Wells Fargo,E5ssxfuqnGfF36Kk,Jeremy O Wilson,"
-          + "NK3,12/2007,12/2008,3,vmFF,19800";
+          + "NK3,12/2007,12/2008,3,vmFF,19800,鈴木一郎";
   private static String tokenizedFilePath;
 
   @BeforeClass
@@ -116,7 +116,7 @@ public class DLPTextToBigQueryStreamingTest {
             collection -> {
               KV<String, Table> tableData = collection.iterator().next();
               assertThat(tableData.getKey(), is(equalTo("tokenization_data")));
-              assertThat(tableData.getValue().getHeadersCount(), is(equalTo(11)));
+              assertThat(tableData.getValue().getHeadersCount(), is(equalTo(12)));
               assertThat(tableData.getValue().getRowsCount(), is(equalTo(1)));
               return null;
             });
@@ -140,6 +140,7 @@ public class DLPTextToBigQueryStreamingTest {
               assertThat(result.getValue().get("BillingDate"), is(equalTo("3")));
               assertThat(result.getValue().get("CardPIN"), is(equalTo("vmFF")));
               assertThat(result.getValue().get("CreditLimit"), is(equalTo("19800")));
+              assertThat(result.getValue().get("MultibyteCharacters"), is(equalTo("鈴木一郎")));
               return null;
             });
     p.run();

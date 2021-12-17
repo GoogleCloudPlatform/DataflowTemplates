@@ -13,9 +13,17 @@ their functionality.
 
 [![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git)
 
+## Note on Default Branch
+
+As of November 18, 2021, our default branch is now named "main". This does not
+affect forks. If you would like your fork and its local clone to reflect these
+changes you can follow [GitHub's branch renaming guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-branches-in-your-repository/renaming-a-branch).
+
 ## Template Pipelines
 
+* [BigQuery to Bigtable](v2/bigquery-to-bigtable/src/main/java/com/google/cloud/teleport/v2/templates/BigQueryToBigtable.java)
 * [BigQuery to Datastore](src/main/java/com/google/cloud/teleport/templates/BigQueryToDatastore.java)
+* [BigQuery to TFRecords](src/main/java/com/google/cloud/teleport/templates/BigQueryToTFRecord.java)
 * [Bigtable to GCS Avro](src/main/java/com/google/cloud/teleport/bigtable/BigtableToAvro.java)
 * [Bulk Compressor](src/main/java/com/google/cloud/teleport/templates/BulkCompressor.java)
 * [Bulk Decompressor](src/main/java/com/google/cloud/teleport/templates/BulkDecompressor.java)
@@ -24,6 +32,7 @@ their functionality.
 * [Datastore to GCS Text](src/main/java/com/google/cloud/teleport/templates/DatastoreToText.java) *
 * [Datastore to Pub/Sub](src/main/java/com/google/cloud/teleport/templates/DatastoreToPubsub.java) *
 * [Datastore Unique Schema Count](src/main/java/com/google/cloud/teleport/templates/DatastoreSchemasCountToText.java)
+* [DLP Text to BigQuery (Streaming)](src/main/java/com/google/cloud/teleport/templates/DLPTextToBigQueryStreaming.java)
 * [GCS Avro to Bigtable](src/main/java/com/google/cloud/teleport/bigtable/AvroToBigtable.java)
 * [GCS Avro to Spanner](src/main/java/com/google/cloud/teleport/spanner/ImportPipeline.java)
 * [GCS Text to Spanner](src/main/java/com/google/cloud/teleport/spanner/TextImportPipeline.java)
@@ -37,6 +46,7 @@ their functionality.
 * [Pub/Sub to GCS Avro](src/main/java/com/google/cloud/teleport/templates/PubsubToAvro.java)
 * [Pub/Sub to GCS Text](src/main/java/com/google/cloud/teleport/templates/PubsubToText.java)
 * [Pub/Sub to Pub/Sub](src/main/java/com/google/cloud/teleport/templates/PubsubToPubsub.java)
+* [Pub/Sub to Splunk](src/main/java/com/google/cloud/teleport/templates/PubSubToSplunk.java) *
 * [Spanner to GCS Avro](src/main/java/com/google/cloud/teleport/spanner/ExportPipeline.java)
 * [Spanner to GCS Text](src/main/java/com/google/cloud/teleport/templates/SpannerToText.java)
 * [Word Count](src/main/java/com/google/cloud/teleport/templates/WordCount.java)
@@ -61,6 +71,37 @@ Build the entire project using the maven compile command.
 ```sh
 mvn clean compile
 ```
+
+### Building/Testing from IntelliJ
+
+IntelliJ, by default, will often skip necessary Maven goals, leading to
+build failures. You can fix these in the Maven view by going to
+**Module_Name > Plugins > Plugin_Name** where Module_Name and Plugin_Name are
+the names of the respective module and plugin with the rule. From there,
+right-click the rule and select "Execute Before Build".
+
+The list of known rules that require this are:
+
+* common > Plugins > protobuf > protobuf:compile
+* common > Plugins > protobuf > protobuf:test-compile
+
+### Formatting Code
+
+From either the root directory or v2/ directory, run:
+
+```sh
+mvn spotless:apply
+```
+
+This will format the code and add a license header. To verify that the code is
+formatted correctly, run:
+
+```sh
+mvn spotless:check
+```
+
+The directory to run the commands from is based on whether the changes are under
+v2/ or not.
 
 ### Creating a Template File
 
@@ -122,6 +163,7 @@ the output.
 | GCS Text to BigQuery  | String         | A single-line within the input file             | String          | A JSON string which matches the destination table's schema                    |
 | Pub/Sub to BigQuery   | String         | A string representation of the incoming payload | String          | A JSON string which matches the destination table's schema                    |
 | Pub/Sub to Datastore  | String         | A string representation of the incoming payload | String          | A JSON string of the entity to write to Datastore                             |
+| Pub/Sub to Splunk  | String         | A string representation of the incoming payload | String          | The event data to be sent to Splunk HEC events endpoint. Must be a string or a stringified JSON object |
 
 
 ### UDF Examples

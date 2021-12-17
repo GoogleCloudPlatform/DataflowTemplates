@@ -14,8 +14,5 @@
  * the License.
  */
 
-
-/**
- * Templates for Google Cloud Teleport.
- */
+/** Templates for Google Cloud Teleport. */
 package com.google.cloud.teleport.templates;
