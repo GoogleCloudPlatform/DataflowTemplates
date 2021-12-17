@@ -11,10 +11,10 @@ import com.google.datastore.v1.Key;
 import com.google.datastore.v1.client.Datastore;
 import com.google.datastore.v1.client.DatastoreFactory;
 import com.google.datastore.v1.client.DatastoreOptions;
-import org.apache.beam.repackaged.beam_sdks_java_core.org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.util.RetryHttpRequestInitializer;
+import org.apache.beam.sdk.extensions.gcp.util.RetryHttpRequestInitializer;
 
 import java.util.ArrayList;
 import java.util.Arrays;

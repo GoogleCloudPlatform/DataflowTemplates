@@ -25,6 +25,19 @@
     <version>5</version>
   </parent>
 
+  <repositories>
+    <repository>
+      <!-- Required for io.confluent:kafka-avro-serializer artifact -->
+      <id>confluent</id>
+      <url>https://packages.confluent.io/maven/</url>
+    </repository>
+    <repository>
+      <!-- Required for org.pentaho:pentaho-aggdesigner-algorithm artifact -->
+      <id>pentaho</id>
+      <url>https://public.nexus.pentaho.org/repository/proxy-public-3rd-party-release</url>
+    </repository>
+  </repositories>
+
   <groupId>com.google.cloud.teleport</groupId>
   <artifactId>google-cloud-teleport-java</artifactId>
   <version>0.1-SNAPSHOT</version>
@@ -62,9 +75,9 @@
     <generated-grpc-beta.version>0.19.0</generated-grpc-beta.version>
     <spanner.version>0.54.0-beta</spanner.version>
     <open-census.version>0.24.0</open-census.version>
-    <bigtable.version>1.5.0</bigtable.version>
+    <bigtable.version>1.15.0</bigtable.version>
+    <bigtable-beam-import.version>1.15.0</bigtable-beam-import.version>
     <bigquery.version>v2-rev374-1.22.0</bigquery.version>
-    <protobuf-util.version>3.6.1</protobuf-util.version>
     <protobuf.version>3.11.1</protobuf.version>
     <findbugs.version>3.0.1</findbugs.version>
     <guava.version>20.0</guava.version>
@@ -111,6 +124,13 @@
           <groupId>org.apache.beam</groupId>
           <artifactId>beam-sdks-java-bom</artifactId>
           <version>${beam.version}</version>
+          <type>pom</type>
+          <scope>import</scope>
+        </dependency>
+        <dependency>
+          <groupId>com.google.cloud</groupId>
+          <artifactId>libraries-bom</artifactId>
+          <version>24.1.0</version>
           <type>pom</type>
           <scope>import</scope>
         </dependency>
@@ -381,6 +401,10 @@
       <scope>runtime</scope>
     </dependency>
     <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-storage</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.google.cloud.bigtable</groupId>
       <artifactId>bigtable-hbase-1.x-shaded</artifactId>
       <version>${bigtable.version}</version>
@@ -490,15 +514,23 @@
       <artifactId>commons-dbcp2</artifactId>
       <version>${commons-dbcp2.version}</version>
     </dependency>
+
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-csv</artifactId>
+      <version>${commons-csv.version}</version>
+    </dependency>
+
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-text</artifactId>
       <version>${commons-text.version}</version>
     </dependency>
+
     <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-csv</artifactId>
-      <version>${commons-csv.version}</version>
+      <groupId>commons-codec</groupId>
+      <artifactId>commons-codec</artifactId>
+      <version>${commons-codec.version}</version>
     </dependency>
     <dependency>
       <groupId>commons-io</groupId>
@@ -576,6 +608,16 @@
       <groupId>org.tensorflow</groupId>
       <artifactId>proto</artifactId>
       <version>${tensorflow.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.datatype</groupId>
+      <artifactId>jackson-datatype-jsr310</artifactId>
+      <version>2.12.3</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-extensions-json-jackson</artifactId>
+      <version>2.10.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.beam</groupId>

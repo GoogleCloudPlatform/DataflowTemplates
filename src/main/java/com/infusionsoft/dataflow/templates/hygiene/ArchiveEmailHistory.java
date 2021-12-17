@@ -22,7 +22,7 @@ import com.infusionsoft.dataflow.utils.JavaTimeUtils;
 import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.util.List;
-import org.apache.beam.repackaged.beam_sdks_java_core.org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.datastore.DatastoreIO;
 import org.apache.beam.sdk.options.Description;
@@ -98,7 +98,7 @@ public class ArchiveEmailHistory {
     @ProcessElement
     public void processElement(ProcessContext context) throws IOException {
       final Entity entity = context.element();
-      final Key key = entity.getKey();
+      final com.google.datastore.v1.Key key = entity.getKey();
       final long id = DatastoreUtils.getId(key);
 
       final Storage storage = CloudStorageUtils.getStorage(projectId);

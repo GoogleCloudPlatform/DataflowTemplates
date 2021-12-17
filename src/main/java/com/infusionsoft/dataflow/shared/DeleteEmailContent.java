@@ -6,7 +6,7 @@ import com.google.cloud.storage.Storage;
 import com.google.datastore.v1.Key;
 import com.infusionsoft.dataflow.utils.CloudStorageUtils;
 import com.infusionsoft.dataflow.utils.DatastoreUtils;
-import org.apache.beam.repackaged.beam_sdks_java_core.org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.beam.sdk.transforms.DoFn;
 
 public class DeleteEmailContent extends DoFn<Key, Key> {
@@ -24,7 +24,7 @@ public class DeleteEmailContent extends DoFn<Key, Key> {
 
   @ProcessElement
   public void processElement(ProcessContext context) {
-    final Key key = context.element();
+    final com.google.datastore.v1.Key key = context.element();
     final long id = DatastoreUtils.getId(key);
 
     final Storage storage = CloudStorageUtils.getStorage(projectId);

@@ -1,8 +1,6 @@
 package com.infusionsoft.dataflow.templates;
 
-import static com.google.cloud.teleport.templates.TextToBigQueryStreaming.wrapBigQueryInsertError;
-
-import com.fasterxml.jackson.core.io.JsonEOFException;
+import com.google.api.client.json.JsonFactory;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.templates.common.BigQueryConverters.FailsafeJsonToTableRow;
@@ -24,6 +22,7 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.extensions.gcp.util.Transport;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
@@ -139,7 +138,7 @@ public class PubsubToBigQuery {
                         element -> {
                           TableRow row = element.getValue();
                           String event = row.get("event").toString();
-                          String projectAndDataset = "is-events-dataflow-prod:crm_prod";
+                          String projectAndDataset = "is-events-dataflow-intg:crm_prod";
                           String table_name = null;
                           if (event.equals("user_login")) {
                             table_name = "user_login";
@@ -217,6 +216,26 @@ public class PubsubToBigQuery {
             .setCoder(FAILSAFE_ELEMENT_CODER);
 
     return pipeline.run();
+  }
+
+  /* From package-private in TextToBigQueryStreaming.java */
+  private static final JsonFactory JSON_FACTORY = Transport.getJsonFactory();
+  static FailsafeElement<String, String> wrapBigQueryInsertError(BigQueryInsertError insertError) {
+
+    FailsafeElement<String, String> failsafeElement;
+    try {
+
+      String rowPayload = JSON_FACTORY.toString(insertError.getRow());
+      String errorMessage = JSON_FACTORY.toString(insertError.getError());
+
+      failsafeElement = FailsafeElement.of(rowPayload, rowPayload);
+      failsafeElement.setErrorMessage(errorMessage);
+
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+
+    return failsafeElement;
   }
 
   public static PTransform<PCollection<Iterable<String>>, PCollection<Iterable<TableRow>>>
