@@ -15,8 +15,8 @@
   ~ the License.
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
@@ -24,19 +24,6 @@
     <artifactId>google</artifactId>
     <version>5</version>
   </parent>
-
-  <repositories>
-    <repository>
-      <!-- Required for io.confluent:kafka-avro-serializer artifact -->
-      <id>confluent</id>
-      <url>https://packages.confluent.io/maven/</url>
-    </repository>
-    <repository>
-      <!-- Required for org.pentaho:pentaho-aggdesigner-algorithm artifact -->
-      <id>pentaho</id>
-      <url>https://public.nexus.pentaho.org/repository/proxy-public-3rd-party-release</url>
-    </repository>
-  </repositories>
 
   <groupId>com.google.cloud.teleport</groupId>
   <artifactId>google-cloud-teleport-java</artifactId>
@@ -57,7 +44,6 @@
     <hamcrest.version>2.1</hamcrest.version>
     <java.version>1.8</java.version>
     <junit.version>4.13</junit.version>
-    <junit-dep.version>4.10</junit-dep.version>
     <surefire.version>2.21.0</surefire.version>
     <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
     <maven-compiler-plugin.version>3.6.2</maven-compiler-plugin.version>
@@ -70,34 +56,20 @@
     <mockito-core.version>3.0.0</mockito-core.version>
     <mock-server-netty.version>5.11.1</mock-server-netty.version>
     <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
-    <slf4j.version>1.7.25</slf4j.version>
-    <joda.version>2.4</joda.version>
-    <generated-grpc-beta.version>0.19.0</generated-grpc-beta.version>
-    <spanner.version>0.54.0-beta</spanner.version>
     <open-census.version>0.24.0</open-census.version>
     <bigtable.version>1.15.0</bigtable.version>
     <bigtable-beam-import.version>1.15.0</bigtable-beam-import.version>
-    <bigquery.version>v2-rev374-1.22.0</bigquery.version>
     <protobuf.version>3.11.1</protobuf.version>
-    <findbugs.version>3.0.1</findbugs.version>
-    <guava.version>20.0</guava.version>
     <json.version>20200518</json.version>
     <junit.jupiter.version>5.5.2</junit.jupiter.version>
     <re2j.version>1.4</re2j.version>
     <codehaus-jackson.version>1.9.13</codehaus-jackson.version>
-    <gson.version>2.7</gson.version>
-    <jackson.version>2.8.8</jackson.version>
     <commons-csv.version>1.8</commons-csv.version>
     <commons-text.version>1.9</commons-text.version>
-    <google.cloud.core>1.61.0</google.cloud.core>
     <google-cloud-bigquery.version>1.108.0</google-cloud-bigquery.version>
     <grpc.version>1.13.1</grpc.version>
-    <google-storage-api.version>v1-rev20181013-1.27.0</google-storage-api.version>
-    <google-storage.version>1.29.0</google-storage.version>
     <mvn-target-dir>${basedir}/target</mvn-target-dir>
     <derby.version>10.14.2.0</derby.version>
-    <commons-pool2.version>2.4.2</commons-pool2.version>
-    <commons-dbcp2.version>2.1.1</commons-dbcp2.version>
     <commons-codec.version>1.14</commons-codec.version>
     <commons-io.version>2.4</commons-io.version>
     <kafka.clients.version>1.0.0</kafka.clients.version>
@@ -119,25 +91,44 @@
   </properties>
 
   <dependencyManagement>
-      <dependencies>
-        <dependency>
-          <groupId>org.apache.beam</groupId>
-          <artifactId>beam-sdks-java-bom</artifactId>
-          <version>${beam.version}</version>
-          <type>pom</type>
-          <scope>import</scope>
-        </dependency>
-        <dependency>
-          <groupId>com.google.cloud</groupId>
-          <artifactId>libraries-bom</artifactId>
-          <version>24.1.0</version>
-          <type>pom</type>
-          <scope>import</scope>
-        </dependency>
-      </dependencies>
-    </dependencyManagement>
+    <dependencies>
+      <!-- Keap Dependencies -->
+      <dependency>
+        <groupId>com.google.cloud</groupId>
+        <artifactId>libraries-bom</artifactId>
+        <version>24.1.0</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <!-- Google Managed -->
+      <dependency>
+        <groupId>org.apache.beam</groupId>
+        <artifactId>beam-sdks-java-bom</artifactId>
+        <version>${beam.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
   <dependencies>
+    <!-- Keap Dependencies -->
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-storage</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.datatype</groupId>
+      <artifactId>jackson-datatype-jsr310</artifactId>
+      <version>2.12.3</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-extensions-json-jackson</artifactId>
+      <version>2.10.0</version>
+    </dependency>
+
     <!-- Beam -->
     <dependency>
       <groupId>org.apache.beam</groupId>
@@ -216,8 +207,8 @@
       <artifactId>hadoop-common</artifactId>
       <version>${hadoop.version}</version>
       <exclusions>
-      <exclusion><groupId>org.codehaus.jackson</groupId><artifactId>*</artifactId></exclusion>
-    </exclusions>
+        <exclusion><groupId>org.codehaus.jackson</groupId><artifactId>*</artifactId></exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.hbase</groupId>
@@ -324,11 +315,7 @@
         </exclusion>
       </exclusions>
     </dependency>
-    <dependency>
-      <groupId>com.google.cloud</groupId>
-      <artifactId>google-cloud-core</artifactId>
-      <version>${google.cloud.core}</version>
-    </dependency>
+
     <dependency>
       <!-- Used to unit-test Cassandra IO -->
       <groupId>org.scassandra</groupId>
@@ -347,43 +334,13 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>joda-time</groupId>
-      <artifactId>joda-time</artifactId>
-      <version>${joda.version}</version>
-    </dependency>
-    <dependency>
       <groupId>org.scassandra</groupId>
       <artifactId>cql-antlr</artifactId>
       <version>${scassandra.version}</version>
       <scope>test</scope>
     </dependency>
-    <dependency>
-      <groupId>com.google.apis</groupId>
-      <artifactId>google-api-services-storage</artifactId>
-      <version>${google-storage-api.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.cloud</groupId>
-      <artifactId>google-cloud-storage</artifactId>
-      <version>${google-storage.version}</version>
-    </dependency>
 
     <!-- Misc -->
-    <dependency>
-      <groupId>com.google.api.grpc</groupId>
-      <artifactId>proto-google-cloud-datastore-v1</artifactId>
-      <version>${generated-grpc-beta.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.cloud</groupId>
-      <artifactId>google-cloud-spanner</artifactId>
-      <version>${spanner.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.api.grpc</groupId>
-      <artifactId>proto-google-cloud-spanner-admin-database-v1</artifactId>
-      <version>${generated-grpc-beta.version}</version>
-    </dependency>
     <dependency>
       <groupId>com.google.re2j</groupId>
       <artifactId>re2j</artifactId>
@@ -401,10 +358,6 @@
       <scope>runtime</scope>
     </dependency>
     <dependency>
-      <groupId>com.google.cloud</groupId>
-      <artifactId>google-cloud-storage</artifactId>
-    </dependency>
-    <dependency>
       <groupId>com.google.cloud.bigtable</groupId>
       <artifactId>bigtable-hbase-1.x-shaded</artifactId>
       <version>${bigtable.version}</version>
@@ -420,56 +373,15 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>com.google.api.grpc</groupId>
-      <artifactId>proto-google-cloud-bigtable-v2</artifactId>
-      <version>${generated-grpc-beta.version}</version>
-    </dependency>
-    <dependency>
       <groupId>com.google.cloud.bigtable</groupId>
       <artifactId>bigtable-client-core</artifactId>
       <version>${bigtable.version}</version>
       <scope>runtime</scope>
     </dependency>
     <dependency>
-      <groupId>com.google.apis</groupId>
-      <artifactId>google-api-services-bigquery</artifactId>
-      <version>${bigquery.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>com.google.guava</groupId>
-          <artifactId>guava-jdk5</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>com.google.protobuf</groupId>
-      <artifactId>protobuf-java</artifactId>
-      <version>${protobuf.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.protobuf</groupId>
-      <artifactId>protobuf-java-util</artifactId>
-      <version>${protobuf-util.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.code.findbugs</groupId>
-      <artifactId>jsr305</artifactId>
-      <version>${findbugs.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.guava</groupId>
-      <artifactId>guava</artifactId>
-      <version>${guava.version}</version>
-    </dependency>
-    <dependency>
       <groupId>org.json</groupId>
       <artifactId>json</artifactId>
       <version>${json.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.code.gson</groupId>
-      <artifactId>gson</artifactId>
-      <version>${gson.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.auto.value</groupId>
@@ -492,29 +404,6 @@
       <artifactId>jackson-mapper-asl</artifactId>
       <version>${codehaus-jackson.version}</version>
     </dependency>
-    <dependency>
-      <groupId>com.fasterxml.jackson.core</groupId>
-      <artifactId>jackson-annotations</artifactId>
-      <version>${jackson.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.fasterxml.jackson.datatype</groupId>
-      <artifactId>jackson-datatype-jsr310</artifactId>
-      <version>2.9.9</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-pool2</artifactId>
-      <version>${commons-pool2.version}</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-dbcp2</artifactId>
-      <version>${commons-dbcp2.version}</version>
-    </dependency>
-
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-csv</artifactId>
@@ -556,11 +445,6 @@
           <artifactId>httpclient</artifactId>
         </exclusion>
       </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.avro</groupId>
-      <artifactId>avro</artifactId>
-      <version>${avro.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.kafka</groupId>
@@ -609,27 +493,6 @@
       <artifactId>proto</artifactId>
       <version>${tensorflow.version}</version>
     </dependency>
-    <dependency>
-      <groupId>com.fasterxml.jackson.datatype</groupId>
-      <artifactId>jackson-datatype-jsr310</artifactId>
-      <version>2.12.3</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.beam</groupId>
-      <artifactId>beam-sdks-java-extensions-json-jackson</artifactId>
-      <version>2.10.0</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.beam</groupId>
-      <artifactId>beam-sdks-java-extensions-json-jackson</artifactId>
-      <version>2.10.0</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.google.cloud</groupId>
-      <artifactId>google-cloud-logging-logback</artifactId>
-      <version>0.105.0-alpha</version>
-    </dependency>
   </dependencies>
 
   <build>
@@ -677,7 +540,7 @@
                 </filters>
                 <transformers>
                   <transformer
-                      implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                          implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                 </transformers>
               </configuration>
             </execution>
@@ -810,17 +673,17 @@
                 <ignoredUsedUndeclaredDependency>
                   org.hamcrest:hamcrest
                 </ignoredUsedUndeclaredDependency>
-             </ignoredUsedUndeclaredDependencies>
-             <ignoredUnusedDeclaredDependencies>
+              </ignoredUsedUndeclaredDependencies>
+              <ignoredUnusedDeclaredDependencies>
                 <ignoredUnusedDeclaredDependency>org.threeten:threetenbp</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>org.json:json</ignoredUnusedDeclaredDependency>
-               <ignoredUnusedDeclaredDependency>org.apache.hadoop:hadoop-mapreduce-client-core</ignoredUnusedDeclaredDependency>
+                <ignoredUnusedDeclaredDependency>org.apache.hadoop:hadoop-mapreduce-client-core</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>org.apache.hadoop:hadoop-common</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>org.codehaus.jackson:jackson-core-asl</ignoredUnusedDeclaredDependency>
-               <ignoredUnusedDeclaredDependency>org.codehaus.jackson:jackson-mapper-asl</ignoredUnusedDeclaredDependency>
-               <ignoredUnusedDeclaredDependency>io.opencensus:opencensus-api</ignoredUnusedDeclaredDependency>
-             </ignoredUnusedDeclaredDependencies>
-           </configuration>
+                <ignoredUnusedDeclaredDependency>org.codehaus.jackson:jackson-mapper-asl</ignoredUnusedDeclaredDependency>
+                <ignoredUnusedDeclaredDependency>io.opencensus:opencensus-api</ignoredUnusedDeclaredDependency>
+              </ignoredUnusedDeclaredDependencies>
+            </configuration>
           </execution>
         </executions>
       </plugin>
@@ -890,11 +753,6 @@
             <groupId>com.puppycrawl.tools</groupId>
             <artifactId>checkstyle</artifactId>
             <version>${checkstyle.version}</version>
-          </dependency>
-          <dependency>
-            <groupId>org.apache.beam</groupId>
-            <artifactId>beam-sdks-java-build-tools</artifactId>
-            <version>${beam.version}</version>
           </dependency>
         </dependencies>
         <configuration>
@@ -1093,19 +951,19 @@
     <profile>
       <id>missing-artifact-repos</id>
       <activation>
-          <activeByDefault>true</activeByDefault>
+        <activeByDefault>true</activeByDefault>
       </activation>
       <repositories>
-          <repository>
-              <!-- Required for io.confluent:kafka-avro-serializer artifact -->
-              <id>confluent</id>
-              <url>https://packages.confluent.io/maven/</url>
-          </repository>
-          <repository>
-              <!-- Required for org.pentaho:pentaho-aggdesigner-algorithm artifact -->
-              <id>pentaho</id>
-              <url>https://public.nexus.pentaho.org/repository/proxy-public-3rd-party-release</url>
-          </repository>
+        <repository>
+          <!-- Required for io.confluent:kafka-avro-serializer artifact -->
+          <id>confluent</id>
+          <url>https://packages.confluent.io/maven/</url>
+        </repository>
+        <repository>
+          <!-- Required for org.pentaho:pentaho-aggdesigner-algorithm artifact -->
+          <id>pentaho</id>
+          <url>https://public.nexus.pentaho.org/repository/proxy-public-3rd-party-release</url>
+        </repository>
       </repositories>
     </profile>
   </profiles>
