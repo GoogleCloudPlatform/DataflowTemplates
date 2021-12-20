@@ -9,7 +9,7 @@ do
     esac
 done
 
-export JOB_NAME=ope_metrics_offline
+export JOB_NAME=ope_metrics
 export DATASET_ID=ope_metrics
 export MAX_WORKERS=1
 export PROJECT_ID=yin-yang-332008
@@ -42,6 +42,7 @@ export JOB_NAME=ps-to-bq-$JOB_NAME-`date +"%Y%m%d-%H%M%S%z"`
  
 # Execute a pipeline to read from a Subscription.
 gcloud dataflow jobs run ${JOB_NAME} \
+--enable-streaming-engine \
 --gcs-location=${PIPELINE_FOLDER}/template \
 --region=${REGION} \
 --worker-zone=${ZONE} \
