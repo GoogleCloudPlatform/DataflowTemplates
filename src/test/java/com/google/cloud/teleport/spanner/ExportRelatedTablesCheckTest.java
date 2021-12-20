@@ -1141,7 +1141,8 @@ public final class ExportRelatedTablesCheckTest {
             timestamp,
             tables,
             exportRelatedTables,
-            exportAsLogicalType));
+            exportAsLogicalType,
+            destination));
     PipelineResult exportResult = exportPipeline.run();
     exportResult.waitUntilFinish();
 

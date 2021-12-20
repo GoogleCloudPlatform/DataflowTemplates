@@ -45,6 +45,11 @@ public class ExportPipeline {
 
     void setOutputDir(ValueProvider<String> value);
 
+    @Description("Temporary Directory to store Avro files.")
+    ValueProvider<String> getAvroTempDirectory();
+
+    void setAvroTempDirectory(ValueProvider<String> value);
+
     @Description("Test dataflow job identifier for Beam Direct Runner")
     @Default.String(value = "")
     ValueProvider<String> getTestJobId();
@@ -132,7 +137,8 @@ public class ExportPipeline {
                 options.getSnapshotTime(),
                 options.getTableNames(),
                 options.getShouldExportRelatedTables(),
-                options.getShouldExportTimestampAsLogicalType()));
+                options.getShouldExportTimestampAsLogicalType(),
+                options.getAvroTempDirectory()));
     PipelineResult result = p.run();
     if (options.getWaitUntilFinish()
         &&
