@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import com.google.cloud.teleport.v2.utils.BigQueryToGcsFileNaming;
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import com.google.cloud.teleport.v2.values.DataplexCompression;
@@ -112,7 +113,13 @@ public class BigQueryTableToGcsTransform
 
     return begin
         .apply(tableNodeName("Read"), getDefaultRead().from(table.toTableReference()))
-        .apply(tableNodeName("Write"), getDefaultWrite().via(sink).to(targetPath))
+        .apply(
+            tableNodeName("Write"),
+            getDefaultWrite()
+                .via(sink)
+                .withNaming(
+                    new BigQueryToGcsFileNaming(outputFileFormat.fileSuffix, table.getTableName()))
+                .to(targetPath))
         .getPerDestinationOutputFilenames()
         .apply(
             tableNodeName("MapFileNames"),
@@ -144,7 +151,16 @@ public class BigQueryTableToGcsTransform
 
     return begin
         .apply(partitionNodeName("Read", partition), getDefaultRead().fromQuery(sql))
-        .apply(partitionNodeName("Write", partition), getDefaultWrite().via(sink).to(targetPath))
+        .apply(
+            partitionNodeName("Write", partition),
+            getDefaultWrite()
+                .via(sink)
+                .withNaming(
+                    new BigQueryToGcsFileNaming(
+                        outputFileFormat.fileSuffix,
+                        table.getTableName(),
+                        partition.getPartitionName()))
+                .to(targetPath))
         .getPerDestinationOutputFilenames()
         .apply(
             partitionNodeName("MapFileNames", partition),
@@ -172,8 +188,7 @@ public class BigQueryTableToGcsTransform
 
   private Write<Void, GenericRecord> getDefaultWrite() {
     return FileIO.<GenericRecord>write()
-        .withNumShards(1) // Must be 1 as we can only have 1 file per partition.
-        .withSuffix(outputFileFormat.fileSuffix);
+        .withNumShards(1); // Must be 1 as we can only have 1 file per partition.
   }
 
   private String tableNodeName(String prefix) {
@@ -200,6 +215,27 @@ public class BigQueryTableToGcsTransform
 
     FileFormat(String fileSuffix) {
       this.fileSuffix = fileSuffix;
+    }
+
+    public String getFileSuffix() {
+      return fileSuffix;
+    }
+  }
+
+  /** Possible write disposition supported by {@link BigQueryTableToGcsTransform}. */
+  public enum WriteDisposition {
+    OVERWRITE("OVERWRITE"),
+    SKIP("SKIP"),
+    FAIL("FAIL");
+
+    private final String writeDisposition;
+
+    WriteDisposition(String writeDisposition) {
+      this.writeDisposition = writeDisposition;
+    }
+
+    public String getWriteDisposition() {
+      return writeDisposition;
     }
   }
 }

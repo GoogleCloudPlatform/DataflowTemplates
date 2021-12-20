@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static java.util.stream.Collectors.toList;
 
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Asset;
 import com.google.cloud.bigquery.BigQuery;
@@ -27,6 +28,7 @@ import com.google.cloud.teleport.v2.clients.DataplexClient;
 import com.google.cloud.teleport.v2.clients.DefaultDataplexClient;
 import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform;
 import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform.FileFormat;
+import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform.WriteDisposition;
 import com.google.cloud.teleport.v2.transforms.DeleteBigQueryDataFn;
 import com.google.cloud.teleport.v2.transforms.DeleteBigQueryDataFn.BigQueryClientFactory;
 import com.google.cloud.teleport.v2.transforms.UpdateDataplexBigQueryToGcsExportMetadataTransform;
@@ -48,6 +50,10 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
+import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;
+import org.apache.beam.sdk.io.fs.MatchResult;
+import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryServices;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
@@ -172,6 +178,14 @@ public class DataplexBigQueryToGcs {
     String getPartitionIdRegExp();
 
     void setPartitionIdRegExp(String partitionIdRegExp);
+
+    @Description(
+        "Specifies the action that occurs if destination file already exists. Format: OVERWRITE,"
+            + " FAIL, SKIP. Default: SKIP.")
+    @Default.Enum("SKIP")
+    WriteDisposition getWriteDisposition();
+
+    void setWriteDisposition(WriteDisposition writeDisposition);
   }
 
   /**
@@ -242,13 +256,15 @@ public class DataplexBigQueryToGcs {
             DataplexAssetResourceSpec.BIGQUERY_DATASET);
 
     String targetRootPath = "gs://" + gcsResource;
+    List<String> existingTargetFiles = getFilesInDirectory(targetRootPath);
     DatasetId datasetId = BigQueryUtils.parseDatasetUrn(bqResource);
     BigQueryMetadataLoader metadataLoader =
         new BigQueryMetadataLoader(bqClient, bqsClient, maxParallelBigQueryRequests);
 
     LOG.info("Loading BigQuery metadata...");
     List<BigQueryTable> tables =
-        metadataLoader.loadDatasetMetadata(datasetId, new MetadataFilter(options));
+        metadataLoader.loadDatasetMetadata(
+            datasetId, new MetadataFilter(options, targetRootPath, existingTargetFiles));
     LOG.info("Loaded {} table(s).", tables.size());
 
     if (!tables.isEmpty()) {
@@ -336,15 +352,40 @@ public class DataplexBigQueryToGcs {
   }
 
   @VisibleForTesting
+  static List<String> getFilesInDirectory(String path) {
+    try {
+      String pattern = String.format("%s/**", path);
+      MatchResult result = FileSystems.match(pattern, EmptyMatchTreatment.ALLOW);
+      List<String> fileNames =
+          result.metadata().stream()
+              .map(MatchResult.Metadata::resourceId)
+              .map(ResourceId::toString)
+              .collect(toList());
+      LOG.info("{} file(s) found in directory {}", fileNames.size(), path);
+      return fileNames;
+    } catch (Exception e) {
+      LOG.error("Exception thrown while getting output files in gcs resource.");
+      throw new RuntimeException(e);
+    }
+  }
+
+  @VisibleForTesting
   static class MetadataFilter implements BigQueryMetadataLoader.Filter {
     private static final Splitter SPLITTER = Splitter.on(',').trimResults().omitEmptyStrings();
 
     private final Instant maxLastModifiedTime;
     private final Set<String> includeTables;
     private final Pattern includePartitions;
+    private final String targetRootPath;
+    private final String writeDisposition;
+    private final String fileSuffix;
+    private final List<String> existingTargetFiles;
 
     @VisibleForTesting
-    MetadataFilter(DataplexBigQueryToGcsOptions options) {
+    MetadataFilter(
+        DataplexBigQueryToGcsOptions options,
+        String targetRootPath,
+        List<String> existingTargetFiles) {
       String dateTime = options.getExportDataModifiedBeforeDateTime();
       if (dateTime != null && !dateTime.isEmpty()) {
         if (dateTime.startsWith("-P") || dateTime.startsWith("-p")) {
@@ -376,6 +417,10 @@ public class DataplexBigQueryToGcs {
       } else {
         this.includePartitions = null;
       }
+      this.targetRootPath = targetRootPath;
+      this.writeDisposition = options.getWriteDisposition().getWriteDisposition();
+      this.fileSuffix = options.getFileFormat().getFileSuffix();
+      this.existingTargetFiles = existingTargetFiles;
     }
 
     private boolean shouldSkipTableName(BigQueryTable.Builder table) {
@@ -383,6 +428,26 @@ public class DataplexBigQueryToGcs {
         return true;
       }
       return false;
+    }
+
+    private boolean shouldSkipFile(String table, String partition) {
+      String identifier = partition == null ? table : table + "$" + partition;
+      switch (writeDisposition) {
+        case "FAIL":
+          throw new RuntimeException(
+              String.format(
+                  "Target File exists for %s. Failing according to  writeDisposition", identifier));
+        case "SKIP":
+          LOG.info("Target File exists for %s. Skipping according to writeDisposition", identifier);
+          return true;
+        case "OVERWRITE":
+          LOG.info(
+              "Target File exists for %s. Overwriting according to writeDisposition", identifier);
+          return false;
+        default:
+          throw new UnsupportedOperationException(
+              writeDisposition + " writeDisposition not implemented");
+      }
     }
 
     @Override
@@ -396,6 +461,14 @@ public class DataplexBigQueryToGcs {
           // BigQuery timestamps are in microseconds so / 1000.
           && maxLastModifiedTime.isBefore(table.getLastModificationTime() / 1000)) {
         return true;
+      }
+      // Check if the target file already exists
+      String expectedTargetPath =
+          String.format(
+              "%s/%s/output-%s%s",
+              targetRootPath, table.getTableName(), table.getTableName(), fileSuffix);
+      if (existingTargetFiles.contains(expectedTargetPath)) {
+        return shouldSkipFile(table.getTableName(), null);
       }
       return false;
     }
@@ -430,6 +503,20 @@ public class DataplexBigQueryToGcs {
             partition.getPartitionName(),
             includePartitions.pattern());
         return true;
+      }
+      // Check if target file already exists
+      String expectedTargetPath =
+          String.format(
+              "%s/%s/%s_pid=%s/output-%s-%s%s",
+              targetRootPath,
+              table.getTableName(),
+              table.getPartitioningColumn(),
+              partition.getPartitionName(),
+              table.getTableName(),
+              partition.getPartitionName(),
+              fileSuffix);
+      if (existingTargetFiles.contains(expectedTargetPath)) {
+        return shouldSkipFile(table.getTableName(), partition.getPartitionName());
       }
       return false;
     }

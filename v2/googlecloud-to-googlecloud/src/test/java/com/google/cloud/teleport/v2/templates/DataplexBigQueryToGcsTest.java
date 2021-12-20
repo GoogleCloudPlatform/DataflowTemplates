@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -235,7 +236,9 @@ public class DataplexBigQueryToGcsTest {
             .apply(
                 "readTableFiles",
                 ParquetIO.read(avroSchema)
-                    .from(outDir.getAbsolutePath() + "/unpartitioned_table/*.parquet"))
+                    .from(
+                        outDir.getAbsolutePath()
+                            + "/unpartitioned_table/output-unpartitioned_table.parquet"))
             .apply(
                 "mapTableFiles", MapElements.into(TypeDescriptors.strings()).via(Object::toString));
     PCollection<String> actualPartitionedRecords1 =
@@ -243,14 +246,18 @@ public class DataplexBigQueryToGcsTest {
             .apply(
                 "readP1Files",
                 ParquetIO.read(avroSchema)
-                    .from(outDir.getAbsolutePath() + "/partitioned_table/ts_pid=p1/*.parquet"))
+                    .from(
+                        outDir.getAbsolutePath()
+                            + "/partitioned_table/ts_pid=p1/output-partitioned_table-p1.parquet"))
             .apply("mapP1Files", MapElements.into(TypeDescriptors.strings()).via(Object::toString));
     PCollection<String> actualPartitionedRecords2 =
         testPipeline
             .apply(
                 "readP2Files",
                 ParquetIO.read(avroSchema)
-                    .from(outDir.getAbsolutePath() + "/partitioned_table/ts_pid=p2/*.parquet"))
+                    .from(
+                        outDir.getAbsolutePath()
+                            + "/partitioned_table/ts_pid=p2/output-partitioned_table-p2.parquet"))
             .apply("mapP2Files", MapElements.into(TypeDescriptors.strings()).via(Object::toString));
     PCollection<String> actualPartitionedRecords3 =
         testPipeline
@@ -314,6 +321,22 @@ public class DataplexBigQueryToGcsTest {
     runTransform("unpartitioned_table", "partitioned_table");
 
     verifyNoMoreInteractions(bqMock);
+  }
+
+  @Test
+  public void testGetFilesInDirectory_withValidPath_returnsPathsOfFilesInDirectory()
+      throws Exception {
+    File outputDir1 = tmpDir.newFolder("out", "unpartitioned_table");
+    File outputFile1 =
+        new File(outputDir1.getAbsolutePath() + "/" + "output-unpartitioned_table.parquet");
+    outputFile1.createNewFile();
+    File outputDir2 = tmpDir.newFolder("out", "partitioned_table", "p2_pid=partition");
+    File outputFile2 =
+        new File(outputDir2.getAbsolutePath() + "/" + "output-partitioned_table-partition.parquet");
+    outputFile2.createNewFile();
+
+    List<String> files = DataplexBigQueryToGcs.getFilesInDirectory(outDir.getAbsolutePath());
+    assertThat(files.size()).isEqualTo(2);
   }
 
   private void insertTableData(String tableName, TableRow... records) throws Exception {
