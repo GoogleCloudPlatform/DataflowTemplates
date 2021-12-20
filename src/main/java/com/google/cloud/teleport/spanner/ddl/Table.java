@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner.ddl;
 
 import com.google.auto.value.AutoValue;
@@ -45,6 +44,10 @@ public abstract class Table implements Serializable {
 
   public abstract ImmutableList<String> indexes();
 
+  public abstract ImmutableList<String> foreignKeys();
+
+  public abstract ImmutableList<String> checkConstraints();
+
   public abstract Builder autoToBuilder();
 
   public Builder toBuilder() {
@@ -59,16 +62,27 @@ public abstract class Table implements Serializable {
   }
 
   public static Builder builder() {
-    return new AutoValue_Table.Builder().indexes(ImmutableList.of()).onDeleteCascade(false);
+    return new AutoValue_Table.Builder()
+        .indexes(ImmutableList.of())
+        .foreignKeys(ImmutableList.of())
+        .checkConstraints(ImmutableList.of())
+        .onDeleteCascade(false);
   }
 
-  public void prettyPrint(Appendable appendable, boolean includeIndexes) throws IOException {
+  public void prettyPrint(Appendable appendable, boolean includeIndexes, boolean includeForeignKeys)
+      throws IOException {
     appendable.append("CREATE TABLE `").append(name()).append("` (");
     for (Column column : columns()) {
       appendable.append("\n\t");
       column.prettyPrint(appendable);
       appendable.append(",");
     }
+    for (String checkConstraint : checkConstraints()) {
+      appendable.append("\n\t");
+      appendable.append(checkConstraint);
+      appendable.append(",");
+    }
+
     if (primaryKeys() != null) {
       appendable.append(
           primaryKeys().stream()
@@ -84,14 +98,18 @@ public abstract class Table implements Serializable {
     }
     if (includeIndexes) {
       appendable.append("\n");
-      appendable.append(indexes().stream().collect(Collectors.joining("\n")));
+      appendable.append(String.join("\n", indexes()));
+    }
+    if (includeForeignKeys) {
+      appendable.append("\n");
+      appendable.append(String.join("\n", foreignKeys()));
     }
   }
 
   public String prettyPrint() {
     StringBuilder sb = new StringBuilder();
     try {
-      prettyPrint(sb, true);
+      prettyPrint(sb, true, true);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -130,6 +148,10 @@ public abstract class Table implements Serializable {
     abstract Builder columns(ImmutableList<Column> columns);
 
     public abstract Builder indexes(ImmutableList<String> indexes);
+
+    public abstract Builder foreignKeys(ImmutableList<String> foreignKeys);
+
+    public abstract Builder checkConstraints(ImmutableList<String> checkConstraints);
 
     abstract ImmutableList<Column> columns();
 

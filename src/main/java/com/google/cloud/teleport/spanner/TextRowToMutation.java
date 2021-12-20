@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,19 +13,22 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner;
 
+import com.google.cloud.ByteArray;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.Type;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.spanner.TextImportProtos.ImportManifest.TableManifest;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.common.base.Strings;
+import com.google.common.primitives.Longs;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -56,6 +59,8 @@ class TextRowToMutation extends DoFn<KV<String, String>, Mutation> {
   private final ValueProvider<Boolean> trailingDelimiter;
   private final ValueProvider<Character> escape;
   private final ValueProvider<String> nullString;
+  private final ValueProvider<String> dateFormat;
+  private final ValueProvider<String> timestampFormat;
 
   private Mutation.WriteBuilder writeBuilder = null;
 
@@ -66,7 +71,9 @@ class TextRowToMutation extends DoFn<KV<String, String>, Mutation> {
       ValueProvider<Character> fieldQualifier,
       ValueProvider<Boolean> trailingDelimiter,
       ValueProvider<Character> escape,
-      ValueProvider<String> nullString) {
+      ValueProvider<String> nullString,
+      ValueProvider<String> dateFormat,
+      ValueProvider<String> timestampFormat) {
     this.ddlView = ddlView;
     this.tableColumnsView = tableColumnsView;
     this.columnDelimiter = columnDelimiter;
@@ -74,6 +81,8 @@ class TextRowToMutation extends DoFn<KV<String, String>, Mutation> {
     this.trailingDelimiter = trailingDelimiter;
     this.escape = escape;
     this.nullString = nullString;
+    this.dateFormat = dateFormat;
+    this.timestampFormat = timestampFormat;
   }
 
   @ProcessElement
@@ -153,7 +162,7 @@ class TextRowToMutation extends DoFn<KV<String, String>, Mutation> {
           manifestColumns != null && manifestColumns.size() > 0
               ? manifestColumns.get(i).getColumnName()
               : table.columns().get(i).name();
-      Type columnType = table.column(columnName).type();
+      com.google.cloud.teleport.spanner.common.Type columnType = table.column(columnName).type();
       String cellValue = row.get(i);
       boolean isNullValue = Strings.isNullOrEmpty(cellValue);
       Value columnValue = null;
@@ -188,23 +197,52 @@ class TextRowToMutation extends DoFn<KV<String, String>, Mutation> {
           columnValue = Value.string(cellValue);
           break;
         case DATE:
-          // This requires date type in format of 'YYYY-[M]M-[D]D'
-          String dt = cellValue.trim();
-          if (dt.endsWith(" 00:00:00")) {
-            dt = dt.substring(0, 10);
+          if (isNullValue) {
+            columnValue = Value.date(null);
+          } else {
+            LocalDate dt =
+                LocalDate.parse(
+                    cellValue.trim(),
+                    DateTimeFormatter.ofPattern(
+                        dateFormat.get() == null
+                            ? "yyyy-M[M]-d[d][' 00:00:00']"
+                            : dateFormat.get()));
+            columnValue =
+                Value.date(
+                    com.google.cloud.Date.fromYearMonthDay(
+                        dt.getYear(), dt.getMonthValue(), dt.getDayOfMonth()));
           }
-          columnValue =
-              isNullValue
-                  ? Value.date(null)
-                  : Value.date(com.google.cloud.Date.parseDate(dt));
           break;
         case TIMESTAMP:
+          if (isNullValue) {
+            columnValue = Value.timestamp(null);
+          } else {
+            // Timestamp is either a long integer representing Unix epoch time or a string, which
+            // will be parsed using the pattern corresponding to the timestampFormat flag.
+            Long microseconds = Longs.tryParse(cellValue);
+            if (microseconds != null) {
+              columnValue =
+                  Value.timestamp(com.google.cloud.Timestamp.ofTimeMicroseconds(microseconds));
+            } else {
+              DateTimeFormatter formatter =
+                  timestampFormat.get() == null
+                      ? DateTimeFormatter.ISO_INSTANT
+                      : DateTimeFormatter.ofPattern(timestampFormat.get());
+              Instant ts = Instant.from(formatter.parse(cellValue.trim()));
+              columnValue =
+                  Value.timestamp(
+                      com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
+                          ts.getEpochSecond(), ts.getNano()));
+            }
+          }
+          break;
+        case NUMERIC:
+        case JSON:
+          columnValue = isNullValue ? Value.string(null) : Value.string(cellValue.trim());
+          break;
+        case BYTES:
           columnValue =
-              isNullValue
-                  ? Value.timestamp(null)
-                  : Value.timestamp(
-                      com.google.cloud.Timestamp.parseTimestamp(
-                          cellValue.replaceAll("\"", "").trim()));
+              isNullValue ? Value.bytes(null) : Value.bytes(ByteArray.fromBase64(cellValue.trim()));
           break;
         default:
           throw new IllegalArgumentException(

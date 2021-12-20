@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,9 +13,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.templates;
 
+import com.google.api.client.json.JsonFactory;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.templates.common.BigQueryConverters.FailsafeJsonToTableRow;
@@ -36,6 +36,7 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.extensions.gcp.util.Transport;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.fs.ResourceId;
@@ -117,11 +118,13 @@ public class TextToBigQueryStreaming {
   private static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
       FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
 
+  private static final JsonFactory JSON_FACTORY = Transport.getJsonFactory();
+
   /**
    * Main entry point for executing the pipeline. This will run the pipeline asynchronously. If
    * blocking execution is required, use the {@link
-   * TextToBigQueryStreaming#run(TextToBigQueryStreamingOptions)} method to start the pipeline
-   * and invoke {@code result.waitUntilFinish()} on the {@link PipelineResult}
+   * TextToBigQueryStreaming#run(TextToBigQueryStreamingOptions)} method to start the pipeline and
+   * invoke {@code result.waitUntilFinish()} on the {@link PipelineResult}
    *
    * @param args The command-line arguments to the pipeline.
    */
@@ -262,16 +265,16 @@ public class TextToBigQueryStreaming {
    * @return FailsafeElement object.
    * @throws IOException
    */
-  public static FailsafeElement<String, String> wrapBigQueryInsertError(
-      BigQueryInsertError insertError) {
+  static FailsafeElement<String, String> wrapBigQueryInsertError(BigQueryInsertError insertError) {
 
     FailsafeElement<String, String> failsafeElement;
     try {
 
-      failsafeElement =
-          FailsafeElement.of(
-              insertError.getRow().toPrettyString(), insertError.getRow().toPrettyString());
-      failsafeElement.setErrorMessage(insertError.getError().toPrettyString());
+      String rowPayload = JSON_FACTORY.toString(insertError.getRow());
+      String errorMessage = JSON_FACTORY.toString(insertError.getError());
+
+      failsafeElement = FailsafeElement.of(rowPayload, rowPayload);
+      failsafeElement.setErrorMessage(errorMessage);
 
     } catch (IOException e) {
       throw new RuntimeException(e);

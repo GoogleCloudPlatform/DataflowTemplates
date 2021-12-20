@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.templates.common;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -25,9 +24,11 @@ import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.values.FailsafeElement;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.annotation.Nullable;
@@ -36,7 +37,10 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -315,6 +319,81 @@ public class ErrorConverters {
       }
 
       context.output(failedRow);
+    }
+  }
+
+  /**
+   * A {@link PTransform} to write {@link FailsafeElement} wrapped errors to a Pub/Sub deadletter
+   * sink.
+   */
+  @AutoValue
+  public abstract static class WriteStringMessageErrorsToPubSub
+      extends PTransform<PCollection<FailsafeElement<String, String>>, PDone> {
+
+    public static Builder newBuilder() {
+      return new AutoValue_ErrorConverters_WriteStringMessageErrorsToPubSub.Builder();
+    }
+
+    public abstract ValueProvider<String> errorRecordsTopic();
+
+    @Override
+    public PDone expand(PCollection<FailsafeElement<String, String>> failedRecords) {
+
+      return failedRecords
+          .apply("FailedRecordToPubSubMessage", ParDo.of(new FailedStringToPubsubMessageFn()))
+          .apply("WriteFailedRecordsToPubSub", PubsubIO.writeMessages().to(errorRecordsTopic()));
+    }
+
+    /** Builder for {@link WriteStringMessageErrorsToPubSub}. */
+    @AutoValue.Builder
+    public abstract static class Builder {
+      public abstract Builder setErrorRecordsTopic(ValueProvider<String> errorRecordsTopic);
+
+      public abstract WriteStringMessageErrorsToPubSub build();
+    }
+  }
+
+  /**
+   * A {@link DoFn} to convert {@link FailsafeElement} wrapped errors into a Pub/Sub message that
+   * can be published to a Pub/Sub deadletter topic.
+   */
+  @VisibleForTesting
+  protected static class FailedStringToPubsubMessageFn
+      extends DoFn<FailsafeElement<String, String>, PubsubMessage> {
+
+    @VisibleForTesting protected static final String ERROR_MESSAGE = "errorMessage";
+    @VisibleForTesting protected static final String TIMESTAMP = "timestamp";
+
+    @VisibleForTesting
+    protected static final DateTimeFormatter TIMESTAMP_FORMATTER =
+        DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
+
+    /** Counter to track total failed messages. */
+    private static final Counter ERROR_MESSAGES_COUNTER =
+        Metrics.counter(FailedStringToPubsubMessageFn.class, "total-failed-messages");
+
+    @ProcessElement
+    public void processElement(ProcessContext context) {
+      FailsafeElement<String, String> failsafeElement = context.element();
+
+      final String message = failsafeElement.getOriginalPayload();
+
+      // Format the timestamp for insertion
+      String timestamp =
+          TIMESTAMP_FORMATTER.print(context.timestamp().toDateTime(DateTimeZone.UTC));
+
+      Map<String, String> attributes = new HashMap<>();
+      attributes.put(TIMESTAMP, timestamp);
+
+      if (failsafeElement.getErrorMessage() != null) {
+        attributes.put(ERROR_MESSAGE, failsafeElement.getErrorMessage());
+      }
+
+      final PubsubMessage pubsubMessage = new PubsubMessage(message.getBytes(), attributes);
+
+      ERROR_MESSAGES_COUNTER.inc();
+
+      context.output(pubsubMessage);
     }
   }
 }

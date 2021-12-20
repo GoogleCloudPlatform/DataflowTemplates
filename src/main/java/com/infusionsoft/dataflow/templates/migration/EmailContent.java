@@ -8,7 +8,7 @@ import com.google.datastore.v1.Value;
 import com.infusionsoft.dataflow.utils.CloudStorageUtils;
 import com.infusionsoft.dataflow.utils.DatastoreUtils;
 import java.util.Map;
-import org.apache.beam.repackaged.beam_sdks_java_core.org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.datastore.DatastoreIO;
 import org.apache.beam.sdk.options.Description;

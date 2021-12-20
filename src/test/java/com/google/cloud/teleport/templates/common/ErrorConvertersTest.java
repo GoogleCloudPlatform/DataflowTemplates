@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,19 +13,19 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.templates.common;
 
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.templates.common.ErrorConverters.ErrorMessage;
 import com.google.cloud.teleport.templates.common.ErrorConverters.FailedPubsubMessageToTableRowFn;
+import com.google.cloud.teleport.templates.common.ErrorConverters.FailedStringToPubsubMessageFn;
 import com.google.cloud.teleport.templates.common.ErrorConverters.FailedStringToTableRowFn;
 import com.google.cloud.teleport.values.FailsafeElement;
 import com.google.common.base.Charsets;
@@ -34,6 +34,7 @@ import com.google.common.io.Files;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashSet;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -232,6 +233,55 @@ public class ErrorConvertersTest implements Serializable {
             });
 
     // Execute pipeline
+    pipeline.run();
+  }
+
+  /**
+   * Test successful conversion of {@link FailsafeElement} records into {@link PubsubMessage} with
+   * attributes.
+   */
+  @Test
+  @Category(NeedsRunner.class)
+  public void testFailedStringToPubsubMessageFn() {
+
+    String testMessage = "original-test-message";
+    FailsafeElement<String, String> element = FailsafeElement.of(testMessage, testMessage);
+
+    Instant expectedTimestamp = Instant.now();
+
+    String errorMessage = "my-error-message";
+    element.setErrorMessage(errorMessage);
+
+    TimestampedValue<FailsafeElement<String, String>> input =
+        TimestampedValue.of(element, expectedTimestamp);
+
+    PCollection<PubsubMessage> pCollection =
+        pipeline
+            .apply(
+                Create.timestamped(input)
+                    .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
+            .apply(ParDo.of(new FailedStringToPubsubMessageFn()));
+
+    String expectedTimestampString =
+        FailedStringToPubsubMessageFn.TIMESTAMP_FORMATTER.print(
+            expectedTimestamp.toDateTime(DateTimeZone.UTC));
+
+    PAssert.that(pCollection)
+        .satisfies(
+            collection -> {
+              PubsubMessage actual = collection.iterator().next();
+              assertThat(
+                  new String(actual.getPayload(), StandardCharsets.UTF_8),
+                  is(equalTo(testMessage)));
+              assertThat(
+                  actual.getAttribute(FailedStringToPubsubMessageFn.ERROR_MESSAGE),
+                  is(equalTo(errorMessage)));
+              assertThat(
+                  actual.getAttribute(FailedStringToPubsubMessageFn.TIMESTAMP),
+                  is(equalTo(expectedTimestampString)));
+              return null;
+            });
+
     pipeline.run();
   }
 }

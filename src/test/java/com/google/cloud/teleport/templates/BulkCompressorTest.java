@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.templates;
 
 import com.google.cloud.teleport.templates.BulkCompressor.Compressor;
@@ -28,6 +27,7 @@ import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.fs.MatchResult.Metadata;
 import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
@@ -81,15 +81,17 @@ public class BulkCompressorTest {
     final ValueProvider<String> outputDirectoryProvider =
         pipeline.newProvider(tempFolderCompressedPath.toString());
 
-    final ValueProvider<Compression> compressionProvider = pipeline.newProvider(compression);
+    final ValueProvider<Compression> compressionProvider = StaticValueProvider.of(compression);
 
     final Metadata metadata = FileSystems.matchSingleFileSpec(textFile.toString());
 
     // Execute the compressor
-    PCollection<String> lines = pipeline
-        .apply("Create File Input", Create.of(metadata))
-        .apply("Compress", ParDo.of(new Compressor(outputDirectoryProvider, compressionProvider)))
-        .apply("Read the Files", TextIO.readAll().withCompression(Compression.AUTO));
+    PCollection<String> lines =
+        pipeline
+            .apply("Create File Input", Create.of(metadata))
+            .apply(
+                "Compress", ParDo.of(new Compressor(outputDirectoryProvider, compressionProvider)))
+            .apply("Read the Files", TextIO.readAll().withCompression(Compression.AUTO));
 
     // Test the result
     PAssert.that(lines).containsInAnyOrder(FILE_CONTENT);

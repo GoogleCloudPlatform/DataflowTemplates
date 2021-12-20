@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.KuduToBigQuery",
+  "classPath": "/template/kudu-to-bigquery/*:/template/kudu-to-bigquery/libs/*:/template/kudu-to-bigquery/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"kudu-to-bigquery\"}"
+  }
+}

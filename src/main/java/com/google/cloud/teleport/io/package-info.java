@@ -14,8 +14,5 @@
  * the License.
  */
 
-
-/**
- * IO Utility classes for templates.
- */
+/** IO Utility classes for templates. */
 package com.google.cloud.teleport.io;

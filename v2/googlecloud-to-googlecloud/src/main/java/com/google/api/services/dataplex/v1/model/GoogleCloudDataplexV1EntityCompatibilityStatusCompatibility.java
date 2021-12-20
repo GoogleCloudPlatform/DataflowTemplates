@@ -1,0 +1,95 @@
+/*
+ * Copyright (C) 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.google.api.services.dataplex.v1.model;
+
+/**
+ * Provides information about compatibility for a specific metadata store.
+ *
+ * <p>This is the Java data model class that specifies how to parse/serialize into the JSON that is
+ * transmitted over HTTP when working with the Cloud Dataplex API. For a detailed explanation see:
+ * <a
+ * href="https://developers.google.com/api-client-library/java/google-http-java-client/json">https://developers.google.com/api-client-library/java/google-http-java-client/json</a>
+ *
+ * @author Google, Inc.
+ */
+@SuppressWarnings("javadoc")
+public final class GoogleCloudDataplexV1EntityCompatibilityStatusCompatibility
+    extends com.google.api.client.json.GenericJson {
+
+  /**
+   * Output only. Whether the entity is compatible and can be represented in the metadata store. The
+   * value may be {@code null}.
+   */
+  @com.google.api.client.util.Key private java.lang.Boolean compatible;
+
+  /**
+   * Output only. Provides additional detail if the entity is incompatible with the metadata store.
+   * The value may be {@code null}.
+   */
+  @com.google.api.client.util.Key private java.lang.String reason;
+
+  /**
+   * Output only. Whether the entity is compatible and can be represented in the metadata store.
+   *
+   * @return value or {@code null} for none
+   */
+  public java.lang.Boolean getCompatible() {
+    return compatible;
+  }
+
+  /**
+   * Output only. Whether the entity is compatible and can be represented in the metadata store.
+   *
+   * @param compatible compatible or {@code null} for none
+   */
+  public GoogleCloudDataplexV1EntityCompatibilityStatusCompatibility setCompatible(
+      java.lang.Boolean compatible) {
+    this.compatible = compatible;
+    return this;
+  }
+
+  /**
+   * Output only. Provides additional detail if the entity is incompatible with the metadata store.
+   *
+   * @return value or {@code null} for none
+   */
+  public java.lang.String getReason() {
+    return reason;
+  }
+
+  /**
+   * Output only. Provides additional detail if the entity is incompatible with the metadata store.
+   *
+   * @param reason reason or {@code null} for none
+   */
+  public GoogleCloudDataplexV1EntityCompatibilityStatusCompatibility setReason(
+      java.lang.String reason) {
+    this.reason = reason;
+    return this;
+  }
+
+  @Override
+  public GoogleCloudDataplexV1EntityCompatibilityStatusCompatibility set(
+      String fieldName, Object value) {
+    return (GoogleCloudDataplexV1EntityCompatibilityStatusCompatibility)
+        super.set(fieldName, value);
+  }
+
+  @Override
+  public GoogleCloudDataplexV1EntityCompatibilityStatusCompatibility clone() {
+    return (GoogleCloudDataplexV1EntityCompatibilityStatusCompatibility) super.clone();
+  }
+}

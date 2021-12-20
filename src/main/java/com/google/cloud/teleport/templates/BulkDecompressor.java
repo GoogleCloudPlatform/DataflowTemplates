@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.templates;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -233,8 +232,7 @@ public class BulkDecompressor {
                                 CSVFormat.DEFAULT
                                     .withEscape('\\')
                                     .withQuoteMode(QuoteMode.NONE)
-                                    .withRecordSeparator('\n')
-                            );
+                                    .withRecordSeparator('\n'));
                         printer.printRecord(kv.getKey(), kv.getValue());
                       } catch (IOException e) {
                         throw new RuntimeException(e);
@@ -307,8 +305,9 @@ public class BulkDecompressor {
       ResourceId outputFile =
           outputDir.resolve(outputFilename, StandardResolveOptions.RESOLVE_FILE);
       ResourceId tempFile =
-          outputDir.resolve(Files.getFileExtension(inputFile.toString())
-              + "-temp-" + outputFilename, StandardResolveOptions.RESOLVE_FILE);
+          outputDir.resolve(
+              Files.getFileExtension(inputFile.toString()) + "-temp-" + outputFilename,
+              StandardResolveOptions.RESOLVE_FILE);
 
       // Resolve the compression
       Compression compression = Compression.detect(inputFile.toString());

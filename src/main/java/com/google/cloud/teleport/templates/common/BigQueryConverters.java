@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.templates.common;
 
 import com.google.api.services.bigquery.model.TableFieldSchema;
@@ -34,7 +33,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import javax.annotation.Nullable;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.Coder.Context;
@@ -55,6 +57,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
+import org.apache.commons.text.StringSubstitutor;
 
 /** Common transforms for Teleport BigQueryIO. */
 public class BigQueryConverters {
@@ -321,7 +324,7 @@ public class BigQueryConverters {
    * @param json The JSON string to parse.
    * @return The parsed {@link TableRow} object.
    */
-  private static TableRow convertJsonToTableRow(String json) {
+  public static TableRow convertJsonToTableRow(String json) {
     TableRow row;
     // Parse the JSON into a {@link TableRow} object.
     try (InputStream inputStream =
@@ -420,5 +423,26 @@ public class BigQueryConverters {
       }
       return valueBuilder.build();
     }
+  }
+
+  /**
+   * Return a formatted String Using Key/Value Style formatting from the TableRow applied to the
+   * Format Template. ie. formatStringTemplate("I am {key}"{"key": "formatted"}) -> "I am formatted"
+   */
+  public static String formatStringTemplate(String formatTemplate, TableRow row) {
+    // Key/Value Map used to replace values in template
+    Map<String, String> values = new HashMap<>();
+
+    // Put all column/value pairs into key/value map
+    Set<String> rowKeys = row.keySet();
+    for (String rowKey : rowKeys) {
+      // Only String types can be used in comparison
+      if (row.get(rowKey) instanceof String) {
+        values.put(rowKey, (String) row.get(rowKey));
+      }
+    }
+    // Substitute any templated values in the template
+    String result = StringSubstitutor.replace(formatTemplate, values, "{", "}");
+    return result;
   }
 }

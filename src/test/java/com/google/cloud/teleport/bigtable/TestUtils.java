@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.bigtable;
 
 import com.google.bigtable.v2.Cell;
@@ -115,6 +114,13 @@ final class TestUtils {
     BigtableCell cell =
         new BigtableCell(family, toByteBuffer(qualifier), timestamp, toByteBuffer(value));
     row.getCells().add(cell);
+  }
+
+  static void addParquetCell(
+      List<BigtableCell> cells, String family, String qualifier, long timestamp, String value) {
+    BigtableCell cell =
+        new BigtableCell(family, toByteBuffer(qualifier), timestamp, toByteBuffer(value));
+    cells.add(cell);
   }
 
   static ByteString toByteString(String string) {

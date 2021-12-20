@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,15 +13,15 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner;
 
+import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.Type;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.spanner.TextImportProtos.ImportManifest.TableManifest;
+import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -53,9 +53,11 @@ public final class TextRowToMutationTest {
 
   private final ValueProvider<Character> columnDelimiter = StaticValueProvider.of(',');
   private final ValueProvider<Character> fieldQualifier = StaticValueProvider.of('"');
-  private final ValueProvider<Boolean> trailingDelimiter = StaticValueProvider.of(true);
-  private final ValueProvider<Character> escape = StaticValueProvider.of('\\');
-  private final ValueProvider<String> nullString = StaticValueProvider.of("\\N");
+  private final ValueProvider<Boolean> trailingDelimiter = StaticValueProvider.of(false);
+  private final ValueProvider<Character> escape = StaticValueProvider.of(null);
+  private final ValueProvider<String> nullString = StaticValueProvider.of(null);
+  private final ValueProvider<String> dateFormat = StaticValueProvider.of(null);
+  private final ValueProvider<String> timestampFormat = StaticValueProvider.of(null);
 
   @Test
   public void parseRowToMutation() {
@@ -78,7 +80,9 @@ public final class TextRowToMutationTest {
             Create.of(
                 KV.of(
                     testTableName,
-                    "123,a string,`another string`,1.23,True,2019-01-01,2018-12-31T23:59:59Z,")));
+                    "123,a string,`another"
+                        + " string`,1.23,True,2019-01-01,2018-12-31T23:59:59Z,1567637083,aGk=,"
+                        + "-439.25335679,`{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}`")));
     PCollection<Mutation> mutations =
         input.apply(
             ParDo.of(
@@ -87,9 +91,11 @@ public final class TextRowToMutationTest {
                         tableColumnsMapView,
                         columnDelimiter,
                         StaticValueProvider.of('`'),
-                        trailingDelimiter,
+                        StaticValueProvider.of(true),
                         escape,
-                        nullString))
+                        nullString,
+                        dateFormat,
+                        timestampFormat))
                 .withSideInputs(ddlView, tableColumnsMapView));
 
     PAssert.that(mutations)
@@ -109,6 +115,78 @@ public final class TextRowToMutationTest {
                 .to(Value.date(Date.parseDate("2019-01-01")))
                 .set("timestamp_col")
                 .to(Value.timestamp(Timestamp.parseTimestamp("2018-12-31T23:59:59Z")))
+                .set("timestamp_col_epoch")
+                .to(Value.timestamp(Timestamp.ofTimeMicroseconds(1567637083)))
+                .set("byte_col")
+                .to(Value.bytes(ByteArray.fromBase64("aGk=")))
+                .set("numeric_col")
+                .to("-439.25335679")
+                .set("json_col")
+                .to("{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}")
+                .build());
+
+    pipeline.run();
+  }
+
+  @Test
+  public void parseRowToMutationDefaultDatetimeExtraParts() {
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("ddl", Create.of(getTestDdl())).apply(View.asSingleton());
+    PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
+        pipeline
+            .apply(
+                "tableColumnsMap",
+                Create.<Map<String, List<TableManifest.Column>>>of(getEmptyTableColumnsMap())
+                    .withCoder(
+                        MapCoder.of(
+                            StringUtf8Coder.of(),
+                            ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
+            .apply("Map as view", View.asSingleton());
+
+    PCollection<KV<String, String>> input =
+        pipeline.apply(
+            "input",
+            Create.of(
+                KV.of(
+                    testTableName,
+                    "1,str,\"str with, commas,\",1.1,False,1910-01-01"
+                        + " 00:00:00,2018-12-31T23:59:59.123Z,1567637083000,aGk=")));
+    PCollection<Mutation> mutations =
+        input.apply(
+            ParDo.of(
+                    new TextRowToMutation(
+                        ddlView,
+                        tableColumnsMapView,
+                        columnDelimiter,
+                        fieldQualifier,
+                        StaticValueProvider.of(true),
+                        escape,
+                        nullString,
+                        dateFormat,
+                        timestampFormat))
+                .withSideInputs(ddlView, tableColumnsMapView));
+
+    PAssert.that(mutations)
+        .containsInAnyOrder(
+            Mutation.newInsertOrUpdateBuilder(testTableName)
+                .set("int_col")
+                .to(1)
+                .set("str_10_col")
+                .to("str")
+                .set("str_max_col")
+                .to("str with, commas,")
+                .set("float_col")
+                .to(1.1)
+                .set("bool_col")
+                .to(false)
+                .set("date_col")
+                .to(Value.date(Date.parseDate("1910-01-01")))
+                .set("timestamp_col")
+                .to(Value.timestamp(Timestamp.parseTimestamp("2018-12-31T23:59:59.123Z")))
+                .set("timestamp_col_epoch")
+                .to(Value.timestamp(Timestamp.ofTimeMicroseconds(1567637083000L)))
+                .set("byte_col")
+                .to(Value.bytes(ByteArray.fromBase64("aGk=")))
                 .build());
 
     pipeline.run();
@@ -131,8 +209,7 @@ public final class TextRowToMutationTest {
 
     PCollection<KV<String, String>> input =
         pipeline.apply(
-            "input",
-            Create.of(KV.of(testTableName, "123|`strin with \"`|`\"yet another one\"+ \"'\"`")));
+            "input", Create.of(KV.of(testTableName, "123|`str1 with |`|`\"str2\"+ \"'\"|`")));
     PCollection<Mutation> mutations =
         input.apply(
             ParDo.of(
@@ -143,7 +220,9 @@ public final class TextRowToMutationTest {
                         StaticValueProvider.of('`'),
                         trailingDelimiter,
                         escape,
-                        nullString))
+                        nullString,
+                        dateFormat,
+                        timestampFormat))
                 .withSideInputs(ddlView, tableColumnsMapView));
 
     PAssert.that(mutations)
@@ -152,9 +231,93 @@ public final class TextRowToMutationTest {
                 .set("int_col")
                 .to(123)
                 .set("str_10_col")
-                .to("strin with \"")
+                .to("str1 with |")
                 .set("str_max_col")
-                .to("\"yet another one\"+ \"'\"")
+                .to("\"str2\"+ \"'\"|")
+                .build());
+
+    pipeline.run();
+  }
+
+  @Test
+  public void parseRowToMutationCustomizedDateFormat() {
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("ddl", Create.of(getTestDdlDateOnly())).apply(View.asSingleton());
+    PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
+        pipeline
+            .apply(
+                "tableColumnsMap",
+                Create.<Map<String, List<TableManifest.Column>>>of(getEmptyTableColumnsMap())
+                    .withCoder(
+                        MapCoder.of(
+                            StringUtf8Coder.of(),
+                            ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
+            .apply("Map as view", View.asSingleton());
+
+    PCollection<KV<String, String>> input =
+        pipeline.apply("input", Create.of(KV.of(testTableName, "1/21/1998")));
+    PCollection<Mutation> mutations =
+        input.apply(
+            ParDo.of(
+                    new TextRowToMutation(
+                        ddlView,
+                        tableColumnsMapView,
+                        columnDelimiter,
+                        fieldQualifier,
+                        trailingDelimiter,
+                        escape,
+                        nullString,
+                        StaticValueProvider.of("M/d/yyyy"),
+                        timestampFormat))
+                .withSideInputs(ddlView, tableColumnsMapView));
+
+    PAssert.that(mutations)
+        .containsInAnyOrder(
+            Mutation.newInsertOrUpdateBuilder(testTableName)
+                .set("date_col")
+                .to(Value.date(Date.parseDate("1998-01-21")))
+                .build());
+
+    pipeline.run();
+  }
+
+  @Test
+  public void parseRowToMutationCustomizedTimestampFormat() {
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("ddl", Create.of(getTestDdlTimestampOnly())).apply(View.asSingleton());
+    PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
+        pipeline
+            .apply(
+                "tableColumnsMap",
+                Create.<Map<String, List<TableManifest.Column>>>of(getEmptyTableColumnsMap())
+                    .withCoder(
+                        MapCoder.of(
+                            StringUtf8Coder.of(),
+                            ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
+            .apply("Map as view", View.asSingleton());
+
+    PCollection<KV<String, String>> input =
+        pipeline.apply("input", Create.of(KV.of(testTableName, "Jan 21 1998 01:02:03.456+08:00")));
+    PCollection<Mutation> mutations =
+        input.apply(
+            ParDo.of(
+                    new TextRowToMutation(
+                        ddlView,
+                        tableColumnsMapView,
+                        columnDelimiter,
+                        fieldQualifier,
+                        trailingDelimiter,
+                        escape,
+                        nullString,
+                        dateFormat,
+                        StaticValueProvider.of("MMM d yyyy HH:mm:ss.SSSVV")))
+                .withSideInputs(ddlView, tableColumnsMapView));
+
+    PAssert.that(mutations)
+        .containsInAnyOrder(
+            Mutation.newInsertOrUpdateBuilder(testTableName)
+                .set("timestamp_col")
+                .to(Value.timestamp(Timestamp.parseTimestamp("1998-01-20T17:02:03.456Z")))
                 .build());
 
     pipeline.run();
@@ -176,7 +339,7 @@ public final class TextRowToMutationTest {
             .apply("Map as view", View.asSingleton());
 
     PCollection<KV<String, String>> input =
-        pipeline.apply("input", Create.of(KV.of(testTableName, "123||\\NA||||")));
+        pipeline.apply("input", Create.of(KV.of(testTableName, "123||\\NA||||||")));
     PCollection<Mutation> mutations =
         input.apply(
             ParDo.of(
@@ -187,7 +350,9 @@ public final class TextRowToMutationTest {
                         fieldQualifier,
                         StaticValueProvider.of(false),
                         StaticValueProvider.of('`'),
-                        StaticValueProvider.of("\\NA")))
+                        StaticValueProvider.of("\\NA"),
+                        dateFormat,
+                        timestampFormat))
                 .withSideInputs(ddlView, tableColumnsMapView));
 
     PAssert.that(mutations)
@@ -207,6 +372,10 @@ public final class TextRowToMutationTest {
                 .to(Value.date(null))
                 .set("timestamp_col")
                 .to(Value.timestamp(null))
+                .set("timestamp_col_epoch")
+                .to(Value.timestamp(null))
+                .set("byte_col")
+                .to(Value.bytes(null))
                 .build());
 
     pipeline.run();
@@ -242,7 +411,9 @@ public final class TextRowToMutationTest {
                         fieldQualifier,
                         trailingDelimiter,
                         escape,
-                        nullString))
+                        nullString,
+                        dateFormat,
+                        timestampFormat))
                 .withSideInputs(ddlView, tableColumnsMapView));
 
     pipeline.run();
@@ -277,9 +448,45 @@ public final class TextRowToMutationTest {
                         StaticValueProvider.of('"'),
                         trailingDelimiter,
                         escape,
-                        nullString))
+                        nullString,
+                        dateFormat,
+                        timestampFormat))
                 .withSideInputs(ddlView, tableColumnsMapView));
 
+    pipeline.run();
+  }
+
+  @Test(expected = PipelineExecutionException.class)
+  public void parseRowWithArrayColumn() throws Exception {
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("ddl", Create.of(getTestDdlWithArray())).apply(View.asSingleton());
+    PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
+        pipeline
+            .apply(
+                "tableColumnsMap",
+                Create.<Map<String, List<TableManifest.Column>>>of(getEmptyTableColumnsMap())
+                    .withCoder(
+                        MapCoder.of(
+                            StringUtf8Coder.of(),
+                            ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
+            .apply("Map as view", View.asSingleton());
+
+    PCollection<KV<String, String>> input =
+        pipeline.apply("input", Create.of(KV.of(testTableName, "str, [a string in an array]")));
+    PCollection<Mutation> mutations =
+        input.apply(
+            ParDo.of(
+                    new TextRowToMutation(
+                        ddlView,
+                        tableColumnsMapView,
+                        columnDelimiter,
+                        StaticValueProvider.of('"'),
+                        trailingDelimiter,
+                        escape,
+                        nullString,
+                        dateFormat,
+                        timestampFormat))
+                .withSideInputs(ddlView, tableColumnsMapView));
     pipeline.run();
   }
 
@@ -311,8 +518,71 @@ public final class TextRowToMutationTest {
             .column("timestamp_col")
             .timestamp()
             .endColumn()
+            .column("timestamp_col_epoch")
+            .timestamp()
+            .endColumn()
+            .column("byte_col")
+            .bytes()
+            .endColumn()
+            .column("numeric_col")
+            .numeric()
+            .endColumn()
+            .column("json_col")
+            .json()
+            .endColumn()
             .primaryKey()
             .asc("int_col")
+            .end()
+            .endTable()
+            .build();
+    return ddl;
+  }
+
+  private static Ddl getTestDdlDateOnly() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(testTableName)
+            .column("date_col")
+            .date()
+            .endColumn()
+            .primaryKey()
+            .asc("date_col")
+            .end()
+            .endTable()
+            .build();
+    return ddl;
+  }
+
+  private static Ddl getTestDdlTimestampOnly() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(testTableName)
+            .column("timestamp_col")
+            .timestamp()
+            .endColumn()
+            .primaryKey()
+            .asc("timestamp_col")
+            .end()
+            .endTable()
+            .build();
+    return ddl;
+  }
+
+  private static Ddl getTestDdlWithArray() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(testTableName)
+            .column("str_col")
+            .string()
+            .max()
+            .notNull()
+            .endColumn()
+            .column("arr_str_col")
+            .type(Type.array(Type.string()))
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("str_col")
             .end()
             .endTable()
             .build();

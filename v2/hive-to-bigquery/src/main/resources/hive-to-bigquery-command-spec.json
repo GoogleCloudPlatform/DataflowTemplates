@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.HiveToBigQuery",
+  "classPath": "/template/hive-to-bigquery/*:/template/hive-to-bigquery/libs/*:/template/hive-to-bigquery/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"hive_to_bigquery\"}"
+  }
+}

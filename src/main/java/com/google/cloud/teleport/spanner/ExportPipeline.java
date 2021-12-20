@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner;
 
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
@@ -63,6 +62,46 @@ public class ExportPipeline {
     boolean getWaitUntilFinish();
 
     void setWaitUntilFinish(boolean value);
+
+    @Description(
+        "If set, specifies the time when the snapshot must be taken."
+            + " String is in the RFC 3339 format. "
+            + " Example - 1990-12-31T23:59:60Z"
+            + " Timestamp must be in the past and Maximum timestamp staleness applies."
+            + " https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness")
+    @Default.String(value = "")
+    ValueProvider<String> getSnapshotTime();
+
+    void setSnapshotTime(ValueProvider<String> value);
+
+    @Description("GCP Project Id of where the Spanner table lives.")
+    ValueProvider<String> getSpannerProjectId();
+
+    void setSpannerProjectId(ValueProvider<String> value);
+
+    @Description(
+        "If true, Timestamps are exported with timestamp-micros logical type."
+            + "By default, Timestamps are exported as ISO8601 strings at nanosecond precision.")
+    @Default.Boolean(false)
+    ValueProvider<Boolean> getShouldExportTimestampAsLogicalType();
+
+    void setShouldExportTimestampAsLogicalType(ValueProvider<Boolean> value);
+
+    @Description(
+        "If provided, these tables (along with any necessary parent or foreign key"
+            + " tables) are exported from Cloud Spanner.")
+    @Default.String(value = "")
+    ValueProvider<String> getTableNames();
+
+    void setTableNames(ValueProvider<String> value);
+
+    @Description(
+        "If true, export not only the specified list of tables, but any related tables necessary"
+            + " for the export, such as interleaved parent tables and foreign keys tables")
+    @Default.Boolean(false)
+    ValueProvider<Boolean> getShouldExportRelatedTables();
+
+    void setShouldExportRelatedTables(ValueProvider<Boolean> value);
   }
 
   /**
@@ -79,15 +118,24 @@ public class ExportPipeline {
 
     SpannerConfig spannerConfig =
         SpannerConfig.create()
+            .withProjectId(options.getSpannerProjectId())
             .withHost(options.getSpannerHost())
             .withInstanceId(options.getInstanceId())
             .withDatabaseId(options.getDatabaseId());
     p.begin()
         .apply(
             "Run Export",
-            new ExportTransform(spannerConfig, options.getOutputDir(), options.getTestJobId()));
+            new ExportTransform(
+                spannerConfig,
+                options.getOutputDir(),
+                options.getTestJobId(),
+                options.getSnapshotTime(),
+                options.getTableNames(),
+                options.getShouldExportRelatedTables(),
+                options.getShouldExportTimestampAsLogicalType()));
     PipelineResult result = p.run();
-    if (options.getWaitUntilFinish() &&
+    if (options.getWaitUntilFinish()
+        &&
         /* Only if template location is null, there is a dataflow job to wait for. Else it's
          * template generation which doesn't start a dataflow job.
          */

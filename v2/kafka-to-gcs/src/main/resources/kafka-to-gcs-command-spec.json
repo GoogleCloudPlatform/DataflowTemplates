@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.KafkaToGCS",
+  "classPath": "/template/kafka-to-gcs/*:/template/kafka-to-gcs/libs/*:/template/kafka-to-gcs/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"kafka_to_gcs\"}"
+  }
+}
