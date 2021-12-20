@@ -54,4 +54,25 @@ public class ValueProviderUtils {
           }
         });
   }
+
+  /**
+   * Gets a {@link ValueProvider} for an optional parameter. If optionalParameter is available, it
+   * is returned as is, otherwise defaultParameter is returned instead.
+   *
+   * @param optionalParameter
+   * @param defaultParameter
+   * @return {@link ValueProvider}
+   */
+  public static <T> ValueProvider<T> eitherOrValueProvider(
+      ValueProvider<T> optionalParameter, ValueProvider<T> defaultParameter) {
+    return DualInputNestedValueProvider.of(
+        optionalParameter,
+        defaultParameter,
+        new SerializableFunction<TranslatorInput<T, T>, T>() {
+          @Override
+          public T apply(TranslatorInput<T, T> input) {
+            return (input.getX() != null) ? input.getX() : input.getY();
+          }
+        });
+  }
 }
