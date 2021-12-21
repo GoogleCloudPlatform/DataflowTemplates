@@ -68,6 +68,7 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.display.DisplayData;
+import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.util.BackOff;
 import org.apache.beam.sdk.util.BackOffUtils;
 import org.apache.beam.sdk.util.FluentBackoff;
@@ -77,6 +78,7 @@ import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.http.ConnectionClosedException;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
@@ -101,6 +103,7 @@ import org.elasticsearch.client.Response;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
 import org.joda.time.Duration;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -239,7 +242,7 @@ public class ElasticsearchIO {
     return mapper.readValue(responseEntity.getContent(), JsonNode.class);
   }
 
-  static String checkForErrors(StringBuilder bulkRequest, HttpEntity responseEntity, @Nullable Set<String> allowedErrorTypes)
+  static List<String> checkForErrors(StringBuilder bulkRequest, HttpEntity responseEntity, @Nullable Set<String> allowedErrorTypes)
           throws IOException {
 
     JsonNode searchResult = parseResponse(responseEntity);
@@ -279,24 +282,26 @@ public class ElasticsearchIO {
         }
       }
       if (numErrors > 0) {
-        String entities = "[" + bulkRequest.toString().replaceAll("\\{ \"create\" : \\{} }\r\n", ",").replaceFirst(",", "") + "]";
+        String bulk = "[" + bulkRequest.toString().
+                replaceAll("\\{\\s+\"create\"\\s+:\\s+\\{\\}\\s+\\}[\r\n]+", ",")
+                .replaceFirst(",", "") + "]";
         TypeFactory typeFactory = mapper.getTypeFactory();
-        List<JsonNode> entitiesList = mapper.readValue(entities, typeFactory.constructCollectionType(List.class, JsonNode.class));
+        List<JsonNode> bulkMessages = mapper.readValue(bulk,
+                typeFactory.constructCollectionType(List.class, JsonNode.class));
+        List<JsonNode> responseMessages = mapper.readValue(searchResult.get("items").toString(),
+                typeFactory.constructCollectionType(List.class, JsonNode.class));
+        List<String> output = new ArrayList<>();
 
-        List<JsonNode> resultEntities = mapper.readValue(searchResult.get("items").toString(), typeFactory.constructCollectionType(List.class, JsonNode.class));
-
-        int errorIndex = -1;
-        for (int i = 0; i <= resultEntities.size() - 1; i++) {
-          if (resultEntities.get(i).path("create").has("error")) {
-            errorIndex = i;
-            break;
+        for (int i = 0; i <= responseMessages.size() - 1; i++) {
+          if (responseMessages.get(i).path("create").has("error")) {
+            ObjectNode node = mapper.createObjectNode();
+            node.put("message", bulkMessages.get(i));
+            node.put("error", responseMessages.get(i));
+            output.add(node.toString());
           }
         }
 
-        ObjectNode response = mapper.createObjectNode();
-        response.put("message", entitiesList.get(errorIndex));
-        response.put("error", resultEntities.get(errorIndex));
-        return response.toString();
+        return output;
       }
     }
 
@@ -1764,7 +1769,6 @@ public class ElasticsearchIO {
         return input.apply(ParDo.of(new BulkIOBundleFn(this)));
       }
 
-      //return PDone.in(input.getPipeline());
     }
 
     static class BulkIOBundleFn extends BulkIOBaseFn<String> {
@@ -1777,12 +1781,14 @@ public class ElasticsearchIO {
       public void processElement(ProcessContext context) throws Exception {
         String bulkApiEntity = context.element();
 
-        String result = addAndMaybeFlush(bulkApiEntity);
+        List<String> result = addAndMaybeFlush(bulkApiEntity);
         if (result != null) {
-          context.output(result);
+          for (String s : result) {
+            if (StringUtils.isNotBlank(s)) {
+              context.output(s);
+            }
+          }
         }
-
-        //addAndMaybeFlush(bulkApiEntity);
       }
     }
 
@@ -1799,12 +1805,14 @@ public class ElasticsearchIO {
       public void processElement(ProcessContext context) throws Exception {
         Iterable<String> bulkApiEntities = context.element().getValue();
         for (String bulkApiEntity : bulkApiEntities) {
-          String errors = addAndMaybeFlush(bulkApiEntity);
-          if (errors != null) {
-            context.output(errors);
+          List<String> result = addAndMaybeFlush(bulkApiEntity);
+          if (result != null) {
+            for (String s : result) {
+              if (StringUtils.isNotBlank(s)) {
+                context.output(s);
+              }
+            }
           }
-          //context.output(addAndMaybeFlush(bulkApiEntity));
-          //addAndMaybeFlush(bulkApiEntity);
         }
       }
     }
@@ -1852,11 +1860,18 @@ public class ElasticsearchIO {
       @FinishBundle
       public void finishBundle(FinishBundleContext context)
               throws IOException, InterruptedException {
-        flushBatch();
-        //throw new RuntimeException();
+
+        List<String> result = flushBatch();
+        if (result != null) {
+          for (String s : result) {
+            if (StringUtils.isNotBlank(s)) {
+              context.output(s, Instant.now(), GlobalWindow.INSTANCE);
+            }
+          }
+        }
       }
 
-      protected String addAndMaybeFlush(String bulkApiEntity)
+      protected List<String> addAndMaybeFlush(String bulkApiEntity)
               throws IOException, InterruptedException {
         batch.add(bulkApiEntity);
         currentBatchSizeBytes += bulkApiEntity.getBytes(StandardCharsets.UTF_8).length;
@@ -1879,7 +1894,7 @@ public class ElasticsearchIO {
                 || t.getCause() instanceof ConnectException;
       }
 
-      private String flushBatch() throws IOException, InterruptedException {
+      private List<String> flushBatch() throws IOException, InterruptedException {
         if (batch.isEmpty()) {
           return null;
         }
