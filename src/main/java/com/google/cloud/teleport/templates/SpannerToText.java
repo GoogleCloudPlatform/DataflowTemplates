@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.templates;
 
+import static com.google.cloud.teleport.util.ValueProviderUtils.eitherOrValueProvider;
+
 import com.google.cloud.teleport.templates.common.SpannerConverters;
 import com.google.cloud.teleport.templates.common.SpannerConverters.CreateTransactionFnWithTimestamp;
 import com.google.cloud.teleport.templates.common.SpannerConverters.SpannerReadOptions;
@@ -22,16 +24,20 @@ import com.google.cloud.teleport.templates.common.TextConverters.FilesystemWrite
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.Transaction;
+import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
@@ -70,9 +76,14 @@ public class SpannerToText {
 
   /** Custom PipelineOptions. */
   public interface SpannerToTextOptions
-      extends PipelineOptions,
-          SpannerReadOptions,
-          FilesystemWriteOptions {}
+      extends PipelineOptions, SpannerReadOptions, FilesystemWriteOptions {
+
+    @Description("Temporary Directory to store Csv files.")
+    ValueProvider<String> getCsvTempDirectory();
+
+    @SuppressWarnings("unused")
+    void setCsvTempDirectory(ValueProvider<String> value);
+  }
 
   /**
    * Runs a pipeline which reads in Records from Spanner, and writes the CSV to TextIO sink.
@@ -135,8 +146,17 @@ public class SpannerToText {
                 MapElements.into(TypeDescriptors.strings())
                     .via(struct -> (new SpannerConverters.StructCsvPrinter()).print(struct)));
 
+    ValueProvider<ResourceId> tempDirectoryResource =
+        ValueProvider.NestedValueProvider.of(
+            eitherOrValueProvider(options.getCsvTempDirectory(), options.getTextWritePrefix()),
+            (SerializableFunction<String, ResourceId>) s -> FileSystems.matchNewResource(s, true));
+
     csv.apply(
-        "Write to storage", TextIO.write().to(options.getTextWritePrefix()).withSuffix(".csv"));
+        "Write to storage",
+        TextIO.write()
+            .to(options.getTextWritePrefix())
+            .withSuffix(".csv")
+            .withTempDirectory(tempDirectoryResource));
 
     pipeline.run();
     LOG.info("Completed pipeline setup");
