@@ -17,6 +17,7 @@ package com.google.cloud.teleport.templates;
 
 import static com.google.cloud.teleport.util.ValueProviderUtils.eitherOrValueProvider;
 
+import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.templates.common.SpannerConverters;
 import com.google.cloud.teleport.templates.common.SpannerConverters.CreateTransactionFnWithTimestamp;
 import com.google.cloud.teleport.templates.common.SpannerConverters.SpannerReadOptions;
@@ -83,6 +84,11 @@ public class SpannerToText {
 
     @SuppressWarnings("unused")
     void setCsvTempDirectory(ValueProvider<String> value);
+
+    @Description("The spanner priority. --spannerPriority must be one of:[HIGH,MEDIUM,LOW]")
+    ValueProvider<RpcPriority> getSpannerPriority();
+
+    void setSpannerPriority(ValueProvider<RpcPriority> value);
   }
 
   /**
@@ -104,7 +110,8 @@ public class SpannerToText {
             .withHost(options.getSpannerHost())
             .withProjectId(options.getSpannerProjectId())
             .withInstanceId(options.getSpannerInstanceId())
-            .withDatabaseId(options.getSpannerDatabaseId());
+            .withDatabaseId(options.getSpannerDatabaseId())
+            .withRpcPriority(options.getSpannerPriority());
 
     PTransform<PBegin, PCollection<ReadOperation>> spannerExport =
         SpannerConverters.ExportTransformFactory.create(
