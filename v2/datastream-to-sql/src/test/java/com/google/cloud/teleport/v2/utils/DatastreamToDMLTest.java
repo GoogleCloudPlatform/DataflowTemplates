@@ -63,19 +63,23 @@ public class DatastreamToDMLTest {
     JsonNode rowObj = this.getRowObj();
 
     String expectedTextContent = "'value'";
-    String testSqlContent = DatastreamToPostgresDML.getValueSql(rowObj, "text_column", null);
+    String testSqlContent =
+        DatastreamToPostgresDML.of(null)
+            .getValueSql(rowObj, "text_column", new HashMap<String, String>());
     assertEquals(expectedTextContent, testSqlContent);
 
     // Single quotes are escaped by 2 single quotes in SQL
     String expectedQuotedTextContent = "'Test Values: ''!@#$%^'";
     String testQuotedSqlContent =
-        DatastreamToPostgresDML.getValueSql(rowObj, "quoted_text_column", null);
+        DatastreamToPostgresDML.of(null)
+            .getValueSql(rowObj, "quoted_text_column", new HashMap<String, String>());
     assertEquals(expectedQuotedTextContent, testQuotedSqlContent);
 
     // Null bytes are escaped with blanks values
     String expectedNullByteTextContent = "'Test Values: Hes made'";
     String testNullByteSqlContent =
-        DatastreamToPostgresDML.getValueSql(rowObj, "null_byte_text_column", null);
+        DatastreamToPostgresDML.of(null)
+            .getValueSql(rowObj, "null_byte_text_column", new HashMap<String, String>());
     assertEquals(expectedNullByteTextContent, testNullByteSqlContent);
   }
 
