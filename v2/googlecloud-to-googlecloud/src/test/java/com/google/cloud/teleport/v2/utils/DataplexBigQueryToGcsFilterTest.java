@@ -13,12 +13,11 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.v2.utils;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.v2.templates.DataplexBigQueryToGcs.DataplexBigQueryToGcsOptions;
-import com.google.cloud.teleport.v2.templates.DataplexBigQueryToGcs.MetadataFilter;
+import com.google.cloud.teleport.v2.options.DataplexBigQueryToGcsOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform.FileFormat;
 import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform.WriteDisposition;
 import com.google.cloud.teleport.v2.utils.BigQueryMetadataLoader.Filter;
@@ -37,7 +36,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Unit tests for {@link DataplexBigQueryToGcs.MetadataFilter}. */
+/** Unit tests for {@link DataplexBigQueryToGcsFilter}. */
 @RunWith(JUnit4.class)
 public class DataplexBigQueryToGcsFilterTest {
   public static final Long TS_MICROS_2021_01_01_15_00_00_UTC = 1609513200000000L;
@@ -57,7 +56,7 @@ public class DataplexBigQueryToGcsFilterTest {
     options.setTableRefs(null);
     options.setExportDataModifiedBeforeDateTime(null);
 
-    Filter f = new MetadataFilter(options, "", new ArrayList<String>());
+    Filter f = new DataplexBigQueryToGcsFilter(options, "", new ArrayList<String>());
 
     assertThat(f.shouldSkipUnpartitionedTable(t)).isFalse();
     assertThat(f.shouldSkipPartitionedTable(t, Collections.singletonList(p))).isFalse();
@@ -74,7 +73,7 @@ public class DataplexBigQueryToGcsFilterTest {
     options.setTableRefs("includedTable1,includedTable2");
     options.setExportDataModifiedBeforeDateTime(null);
 
-    Filter f = new MetadataFilter(options, "", new ArrayList<String>());
+    Filter f = new DataplexBigQueryToGcsFilter(options, "", new ArrayList<String>());
 
     assertThat(f.shouldSkipUnpartitionedTable(includedTable1)).isFalse();
     assertThat(f.shouldSkipUnpartitionedTable(includedTable2)).isFalse();
@@ -93,7 +92,7 @@ public class DataplexBigQueryToGcsFilterTest {
   @Test(expected = IllegalArgumentException.class)
   public void test_whenTableRefsIsInvalid_throwsException() {
     options.setTableRefs(",");
-    new MetadataFilter(options, "", new ArrayList<String>());
+    new DataplexBigQueryToGcsFilter(options, "", new ArrayList<String>());
   }
 
   @Test
@@ -117,7 +116,7 @@ public class DataplexBigQueryToGcsFilterTest {
     options.setTableRefs(null);
     options.setExportDataModifiedBeforeDateTime("2021-01-01T15:00:00Z");
 
-    Filter f = new MetadataFilter(options, "", new ArrayList<String>());
+    Filter f = new DataplexBigQueryToGcsFilter(options, "", new ArrayList<String>());
 
     assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isTrue();
     assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isFalse();
@@ -141,7 +140,7 @@ public class DataplexBigQueryToGcsFilterTest {
 
     {
       options.setExportDataModifiedBeforeDateTime("2021-01-01T15:00:00Z");
-      Filter f = new MetadataFilter(options, "", new ArrayList<String>());
+      Filter f = new DataplexBigQueryToGcsFilter(options, "", new ArrayList<String>());
       assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isTrue();
       assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isFalse();
     }
@@ -149,7 +148,7 @@ public class DataplexBigQueryToGcsFilterTest {
     {
       // Should be the same as 15:00 UTC:
       options.setExportDataModifiedBeforeDateTime("2021-01-01T14:00:00-01:00");
-      Filter f = new MetadataFilter(options, "", new ArrayList<String>());
+      Filter f = new DataplexBigQueryToGcsFilter(options, "", new ArrayList<String>());
       assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isTrue();
       assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isFalse();
     }
@@ -157,7 +156,7 @@ public class DataplexBigQueryToGcsFilterTest {
     {
       // Should be the same as 15:00 UTC:
       options.setExportDataModifiedBeforeDateTime("2021-01-01T17:00:00+02:00");
-      Filter f = new MetadataFilter(options, "", new ArrayList<String>());
+      Filter f = new DataplexBigQueryToGcsFilter(options, "", new ArrayList<String>());
       assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isTrue();
       assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isFalse();
     }
@@ -166,7 +165,7 @@ public class DataplexBigQueryToGcsFilterTest {
       // 14:00 UTC is 1 hour is earlier that both table's last modified time
       // (14:59:59.999 and 15:00:00.001 UTC). Expecting both to be skipped.
       options.setExportDataModifiedBeforeDateTime("2021-01-01T14:00:00Z");
-      Filter f = new MetadataFilter(options, "", new ArrayList<String>());
+      Filter f = new DataplexBigQueryToGcsFilter(options, "", new ArrayList<String>());
       assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isTrue();
       assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isTrue();
     }
@@ -183,7 +182,7 @@ public class DataplexBigQueryToGcsFilterTest {
     options.setTableRefs(null);
     options.setExportDataModifiedBeforeDateTime("2021-02-15");
 
-    Filter f = new MetadataFilter(options, "", new ArrayList<String>());
+    Filter f = new DataplexBigQueryToGcsFilter(options, "", new ArrayList<String>());
     assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isTrue();
     assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isFalse();
   }
@@ -199,7 +198,7 @@ public class DataplexBigQueryToGcsFilterTest {
     options.setTableRefs(null);
     options.setExportDataModifiedBeforeDateTime("-P1D");
 
-    Filter f = new MetadataFilter(options, "", new ArrayList<String>());
+    Filter f = new DataplexBigQueryToGcsFilter(options, "", new ArrayList<String>());
     assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isTrue();
     assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isFalse();
   }
@@ -215,7 +214,7 @@ public class DataplexBigQueryToGcsFilterTest {
     options.setTableRefs(null);
     options.setExportDataModifiedBeforeDateTime("-p1dt3h");
 
-    Filter f = new MetadataFilter(options, "", new ArrayList<String>());
+    Filter f = new DataplexBigQueryToGcsFilter(options, "", new ArrayList<String>());
     assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isTrue();
     assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isFalse();
   }
@@ -225,7 +224,7 @@ public class DataplexBigQueryToGcsFilterTest {
     options.setTableRefs(null);
     options.setExportDataModifiedBeforeDateTime(null);
 
-    Filter f = new MetadataFilter(options, "", new ArrayList<String>());
+    Filter f = new DataplexBigQueryToGcsFilter(options, "", new ArrayList<String>());
 
     assertThat(f.shouldSkipPartitionedTable(table(), Collections.emptyList())).isTrue();
   }
@@ -245,7 +244,7 @@ public class DataplexBigQueryToGcsFilterTest {
     String targetfilePathPartitionedTable =
         String.format("%s/table1/p2_pid=partition1/output-table1-partition1.avro", targetRootPath);
     Filter f =
-        new MetadataFilter(
+        new DataplexBigQueryToGcsFilter(
             options,
             targetRootPath,
             new ArrayList<String>() {
@@ -274,7 +273,7 @@ public class DataplexBigQueryToGcsFilterTest {
     String targetfilePathPartitionedTable =
         String.format("%s/table1/p2_pid=partition1/output-table1-partition1.avro", targetRootPath);
     Filter f =
-        new MetadataFilter(
+        new DataplexBigQueryToGcsFilter(
             options,
             targetRootPath,
             new ArrayList<String>() {
@@ -303,7 +302,7 @@ public class DataplexBigQueryToGcsFilterTest {
     String targetfilePathPartitionedTable =
         String.format("%s/table1/p2_pid=partition1/output-table1-partition1.avro", targetRootPath);
     Filter f =
-        new MetadataFilter(
+        new DataplexBigQueryToGcsFilter(
             options,
             targetRootPath,
             new ArrayList<String>() {

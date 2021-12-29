@@ -26,40 +26,29 @@ import com.google.cloud.bigquery.DatasetId;
 import com.google.cloud.bigquery.storage.v1beta1.BigQueryStorageClient;
 import com.google.cloud.teleport.v2.clients.DataplexClient;
 import com.google.cloud.teleport.v2.clients.DefaultDataplexClient;
+import com.google.cloud.teleport.v2.options.DataplexBigQueryToGcsOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform;
-import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform.FileFormat;
-import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform.WriteDisposition;
 import com.google.cloud.teleport.v2.transforms.DeleteBigQueryDataFn;
 import com.google.cloud.teleport.v2.transforms.DeleteBigQueryDataFn.BigQueryClientFactory;
 import com.google.cloud.teleport.v2.transforms.UpdateDataplexBigQueryToGcsExportMetadataTransform;
 import com.google.cloud.teleport.v2.utils.BigQueryMetadataLoader;
 import com.google.cloud.teleport.v2.utils.BigQueryUtils;
+import com.google.cloud.teleport.v2.utils.DataplexBigQueryToGcsFilter;
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
-import com.google.cloud.teleport.v2.values.DataplexCompression;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Splitter;
-import com.google.re2j.Pattern;
 import java.io.IOException;
-import java.time.Duration;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;
 import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryServices;
-import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
-import org.apache.beam.sdk.options.ExperimentalOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -71,8 +60,6 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.beam.sdk.values.TypeDescriptors;
-import org.joda.time.Instant;
-import org.joda.time.format.ISODateTimeFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,100 +80,6 @@ import org.slf4j.LoggerFactory;
  */
 public class DataplexBigQueryToGcs {
   private static final Logger LOG = LoggerFactory.getLogger(DataplexBigQueryToGcs.class);
-
-  /**
-   * The {@link DataplexBigQueryToGcsOptions} class provides the custom execution options passed by
-   * the executor at the command-line.
-   */
-  public interface DataplexBigQueryToGcsOptions
-      extends GcpOptions,
-          ExperimentalOptions,
-          DeleteBigQueryDataFn.Options,
-          UpdateDataplexBigQueryToGcsExportMetadataTransform.Options {
-
-    @Description(
-        "Dataplex asset name for the the BigQuery dataset to tier data from. Format:"
-            + " projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset"
-            + " name>.")
-    @Required
-    String getSourceBigQueryAssetName();
-
-    void setSourceBigQueryAssetName(String sourceBigQueryAssetName);
-
-    @Description(
-        "A comma-separated list of BigQuery tables to tier. If none specified, all tables will be"
-            + " tiered. Tables should be specified by their name only (no project/dataset prefix)."
-            + " Case-sensitive!")
-    String getTableRefs();
-
-    void setTableRefs(String tableRefs);
-
-    @Description(
-        "Dataplex asset name for the the GCS bucket to tier data to. Format:"
-            + " projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset"
-            + " name>.")
-    @Required
-    String getDestinationGcsBucketAssetName();
-
-    void setDestinationGcsBucketAssetName(String destinationGcsBucketAssetName);
-
-    @Description(
-        "The parameter can either be: 1) unspecified, 2) date (and optional time) 3) Duration.\n"
-            + "1) If not specified move all tables / partitions.\n"
-            + "2) Move data older than this date (and optional time). For partitioned tables, move"
-            + " partitions last modified before this date/time. For non-partitioned tables, move if"
-            + " the table was last modified before this date/time. If not specified, move all"
-            + " tables / partitions. The date/time is parsed in the default time zone by default,"
-            + " but optinal suffixes Z and +HH:mm are supported. Format: YYYY-MM-DD or"
-            + " YYYY-MM-DDTHH:mm:ss or YYYY-MM-DDTHH:mm:ss+03:00.\n"
-            + "3) Similar to the above (2) but the effective date-time is derived from the current"
-            + " time in the default/system timezone shifted by the provided duration in the format"
-            + " based on ISO-8601 +/-PnDTnHnMn.nS "
-            + "(https://docs.oracle.com/javase/8/docs/api/java/time/Duration.html#parse-java.lang.CharSequence-)."
-            + " However only \"minus\" durations are accepted so only past effective date-times are"
-            + " possible.")
-    String getExportDataModifiedBeforeDateTime();
-
-    void setExportDataModifiedBeforeDateTime(String exportDataModifiedBeforeDateTime);
-
-    @Description(
-        "The maximum number of parallel requests that will be sent to BigQuery when loading"
-            + " table/partition metadata. Default: 5.")
-    @Default.Integer(5)
-    @Required
-    Integer getMaxParallelBigQueryMetadataRequests();
-
-    void setMaxParallelBigQueryMetadataRequests(Integer maxParallelBigQueryMetadataRequests);
-
-    @Description("Output file format in GCS. Format: PARQUET, AVRO, or ORC. Default: PARQUET.")
-    @Default.Enum("PARQUET")
-    @Required
-    FileFormat getFileFormat();
-
-    void setFileFormat(FileFormat fileFormat);
-
-    @Description(
-        "Output file compression. Format: UNCOMPRESSED, SNAPPY, GZIP, or BZIP2. Default:"
-            + " SNAPPY. BZIP2 not supported for PARQUET files.")
-    @Default.Enum("SNAPPY")
-    DataplexCompression getFileCompression();
-
-    void setFileCompression(DataplexCompression fileCompression);
-
-    @Description(
-        "Process partitions with partition ID matching this regexp only. Default: process all.")
-    String getPartitionIdRegExp();
-
-    void setPartitionIdRegExp(String partitionIdRegExp);
-
-    @Description(
-        "Specifies the action that occurs if destination file already exists. Format: OVERWRITE,"
-            + " FAIL, SKIP. Default: SKIP.")
-    @Default.Enum("SKIP")
-    WriteDisposition getWriteDisposition();
-
-    void setWriteDisposition(WriteDisposition writeDisposition);
-  }
 
   /**
    * Main entry point for pipeline execution.
@@ -216,27 +109,19 @@ public class DataplexBigQueryToGcs {
     BigQuery bqClient = BigQueryOptions.getDefaultInstance().getService();
     try (BigQueryStorageClient bqsClient = BigQueryStorageClient.create()) {
       LOG.info("Building the pipeline...");
-      pipeline = buildPipeline(options, dataplex, bqClient, bqsClient);
+      pipeline = setUpPipeline(options, dataplex, bqClient, bqsClient);
     }
 
     LOG.info("Running the pipeline.");
     pipeline.run();
   }
 
-  /**
-   * Builds the pipeline with the supplied options.
-   *
-   * @param options The execution parameters to the pipeline.
-   * @return The resulting pipeline.
-   */
-  private static Pipeline buildPipeline(
+  private static Pipeline setUpPipeline(
       DataplexBigQueryToGcsOptions options,
       DataplexClient dataplex,
       BigQuery bqClient,
       BigQueryStorageClient bqsClient)
       throws IOException, ExecutionException, InterruptedException {
-
-    Pipeline pipeline = Pipeline.create(options);
 
     int maxParallelBigQueryRequests = options.getMaxParallelBigQueryMetadataRequests();
     checkArgument(
@@ -249,6 +134,7 @@ public class DataplexBigQueryToGcs {
             dataplex,
             options.getDestinationGcsBucketAssetName(),
             DataplexAssetResourceSpec.STORAGE_BUCKET);
+
     String bqResource =
         resolveAsset(
             dataplex,
@@ -258,13 +144,35 @@ public class DataplexBigQueryToGcs {
     String targetRootPath = "gs://" + gcsResource;
     List<String> existingTargetFiles = getFilesInDirectory(targetRootPath);
     DatasetId datasetId = BigQueryUtils.parseDatasetUrn(bqResource);
+
     BigQueryMetadataLoader metadataLoader =
         new BigQueryMetadataLoader(bqClient, bqsClient, maxParallelBigQueryRequests);
+
+    return buildPipeline(options, metadataLoader, targetRootPath, datasetId);
+  }
+
+  /**
+   * Builds the pipeline with the supplied options.
+   *
+   * @param options The execution parameters to the pipeline.
+   * @return The resulting pipeline.
+   */
+  @VisibleForTesting
+  static Pipeline buildPipeline(
+      DataplexBigQueryToGcsOptions options,
+      BigQueryMetadataLoader metadataLoader,
+      String targetRootPath,
+      DatasetId datasetId)
+      throws ExecutionException, InterruptedException {
+
+    Pipeline pipeline = Pipeline.create(options);
+    List<String> existingTargetFiles = getFilesInDirectory(targetRootPath);
 
     LOG.info("Loading BigQuery metadata...");
     List<BigQueryTable> tables =
         metadataLoader.loadDatasetMetadata(
-            datasetId, new MetadataFilter(options, targetRootPath, existingTargetFiles));
+            datasetId,
+            new DataplexBigQueryToGcsFilter(options, targetRootPath, existingTargetFiles));
     LOG.info("Loaded {} table(s).", tables.size());
 
     if (!tables.isEmpty()) {
@@ -366,159 +274,6 @@ public class DataplexBigQueryToGcs {
     } catch (Exception e) {
       LOG.error("Exception thrown while getting output files in gcs resource.");
       throw new RuntimeException(e);
-    }
-  }
-
-  @VisibleForTesting
-  static class MetadataFilter implements BigQueryMetadataLoader.Filter {
-    private static final Splitter SPLITTER = Splitter.on(',').trimResults().omitEmptyStrings();
-
-    private final Instant maxLastModifiedTime;
-    private final Set<String> includeTables;
-    private final Pattern includePartitions;
-    private final String targetRootPath;
-    private final String writeDisposition;
-    private final String fileSuffix;
-    private final List<String> existingTargetFiles;
-
-    @VisibleForTesting
-    MetadataFilter(
-        DataplexBigQueryToGcsOptions options,
-        String targetRootPath,
-        List<String> existingTargetFiles) {
-      String dateTime = options.getExportDataModifiedBeforeDateTime();
-      if (dateTime != null && !dateTime.isEmpty()) {
-        if (dateTime.startsWith("-P") || dateTime.startsWith("-p")) {
-          this.maxLastModifiedTime = Instant.now().plus(Duration.parse(dateTime).toMillis());
-        } else {
-          this.maxLastModifiedTime =
-              Instant.parse(dateTime, ISODateTimeFormat.dateOptionalTimeParser());
-        }
-      } else {
-        this.maxLastModifiedTime = null;
-      }
-
-      String tableRefs = options.getTableRefs();
-      if (tableRefs != null && !tableRefs.isEmpty()) {
-        List<String> tableRefList = SPLITTER.splitToList(tableRefs);
-        checkArgument(
-            !tableRefList.isEmpty(),
-            "Got an non-empty tableRefs param '%s', but couldn't parse it into a valid table list,"
-                + " please check its format.",
-            tableRefs);
-        this.includeTables = new HashSet<>(tableRefList);
-      } else {
-        this.includeTables = null;
-      }
-
-      String partitionRegExp = options.getPartitionIdRegExp();
-      if (partitionRegExp != null && !partitionRegExp.isEmpty()) {
-        this.includePartitions = Pattern.compile(partitionRegExp);
-      } else {
-        this.includePartitions = null;
-      }
-      this.targetRootPath = targetRootPath;
-      this.writeDisposition = options.getWriteDisposition().getWriteDisposition();
-      this.fileSuffix = options.getFileFormat().getFileSuffix();
-      this.existingTargetFiles = existingTargetFiles;
-    }
-
-    private boolean shouldSkipTableName(BigQueryTable.Builder table) {
-      if (includeTables != null && !includeTables.contains(table.getTableName())) {
-        return true;
-      }
-      return false;
-    }
-
-    private boolean shouldSkipFile(String table, String partition) {
-      String identifier = partition == null ? table : table + "$" + partition;
-      switch (writeDisposition) {
-        case "FAIL":
-          throw new RuntimeException(
-              String.format(
-                  "Target File exists for %s. Failing according to  writeDisposition", identifier));
-        case "SKIP":
-          LOG.info("Target File exists for %s. Skipping according to writeDisposition", identifier);
-          return true;
-        case "OVERWRITE":
-          LOG.info(
-              "Target File exists for %s. Overwriting according to writeDisposition", identifier);
-          return false;
-        default:
-          throw new UnsupportedOperationException(
-              writeDisposition + " writeDisposition not implemented");
-      }
-    }
-
-    @Override
-    public boolean shouldSkipUnpartitionedTable(BigQueryTable.Builder table) {
-      if (shouldSkipTableName(table)) {
-        return true;
-      }
-      // Check the last modified time only for NOT partitioned table.
-      // If a table is partitioned, we check the last modified time on partition level only.
-      if (maxLastModifiedTime != null
-          // BigQuery timestamps are in microseconds so / 1000.
-          && maxLastModifiedTime.isBefore(table.getLastModificationTime() / 1000)) {
-        return true;
-      }
-      // Check if the target file already exists
-      String expectedTargetPath =
-          String.format(
-              "%s/%s/output-%s%s",
-              targetRootPath, table.getTableName(), table.getTableName(), fileSuffix);
-      if (existingTargetFiles.contains(expectedTargetPath)) {
-        return shouldSkipFile(table.getTableName(), null);
-      }
-      return false;
-    }
-
-    @Override
-    public boolean shouldSkipPartitionedTable(
-        BigQueryTable.Builder table, List<BigQueryTablePartition> partitions) {
-      if (shouldSkipTableName(table)) {
-        return true;
-      }
-      if (partitions.isEmpty()) {
-        LOG.info(
-            "Skipping table {}: "
-                + "table is partitioned, but no eligible partitions found => nothing to export.",
-            table.getTableName());
-        return true;
-      }
-      return false;
-    }
-
-    @Override
-    public boolean shouldSkipPartition(
-        BigQueryTable.Builder table, BigQueryTablePartition partition) {
-      if (maxLastModifiedTime != null
-          // BigQuery timestamps are in microseconds so / 1000.
-          && maxLastModifiedTime.isBefore(partition.getLastModificationTime() / 1000)) {
-        return true;
-      }
-      if (includePartitions != null && !includePartitions.matches(partition.getPartitionName())) {
-        LOG.info(
-            "Skipping partition {} not matching regexp: {}",
-            partition.getPartitionName(),
-            includePartitions.pattern());
-        return true;
-      }
-      // Check if target file already exists
-      String expectedTargetPath =
-          String.format(
-              "%s/%s/%s_pid=%s/output-%s-%s%s",
-              targetRootPath,
-              table.getTableName(),
-              table.getPartitioningColumn(),
-              partition.getPartitionName(),
-              table.getTableName(),
-              partition.getPartitionName(),
-              fileSuffix);
-      if (existingTargetFiles.contains(expectedTargetPath)) {
-        return shouldSkipFile(table.getTableName(), partition.getPartitionName());
-      }
-      return false;
     }
   }
 }

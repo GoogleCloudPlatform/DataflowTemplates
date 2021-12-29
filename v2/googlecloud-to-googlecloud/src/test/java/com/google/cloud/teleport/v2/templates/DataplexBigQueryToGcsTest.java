@@ -33,23 +33,33 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.api.services.bigquery.model.TimePartitioning;
 import com.google.cloud.bigquery.BigQuery;
+import com.google.cloud.bigquery.DatasetId;
 import com.google.cloud.bigquery.EmptyTableResult;
+import com.google.cloud.bigquery.FieldValue;
+import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.QueryJobConfiguration;
 import com.google.cloud.bigquery.TableId;
-import com.google.cloud.teleport.v2.templates.DataplexBigQueryToGcs.DataplexBigQueryToGcsOptions;
+import com.google.cloud.bigquery.TableResult;
+import com.google.cloud.bigquery.storage.v1beta1.BigQueryStorageClient;
+import com.google.cloud.teleport.v2.options.DataplexBigQueryToGcsOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform.FileFormat;
+import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform.WriteDisposition;
+import com.google.cloud.teleport.v2.utils.BigQueryMetadataLoader;
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import com.google.cloud.teleport.v2.values.DataplexCompression;
 import com.google.common.collect.ImmutableList;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 import org.apache.avro.Schema;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.KvCoder;
@@ -86,6 +96,7 @@ import org.mockito.junit.MockitoRule;
 public class DataplexBigQueryToGcsTest {
   private static final String PROJECT = "test-project1";
   private static final String DATASET = "test-dataset1";
+  private static final int MAX_PARALLEL_REQUESTS = 5;
 
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
@@ -94,6 +105,9 @@ public class DataplexBigQueryToGcsTest {
   @Rule public final TestPipeline testPipeline = TestPipeline.create();
 
   @Mock private static BigQuery bqMock;
+  @Mock private static BigQueryStorageClient bqsMock;
+  @Mock private static TableResult tableResultMock;
+  private BigQueryMetadataLoader metadataLoader;
   private BigQueryServices bqFakeServices;
   private CustomFakeJobService fakeJobService;
   private FakeDatasetService fakeDatasetService;
@@ -202,14 +216,23 @@ public class DataplexBigQueryToGcsTest {
         new FakeBigQueryServices()
             .withJobService(fakeJobService)
             .withDatasetService(fakeDatasetService);
+    metadataLoader = new BigQueryMetadataLoader(bqMock, bqsMock, MAX_PARALLEL_REQUESTS);
 
-    when(bqMock.query(any())).thenReturn(new EmptyTableResult(null));
+    List<FieldValue> fieldValueList =
+        Arrays.asList(
+            FieldValue.of(FieldValue.Attribute.RECORD, "unpartitioned_table"),
+            FieldValue.of(FieldValue.Attribute.RECORD, "0"),
+            FieldValue.of(FieldValue.Attribute.RECORD, null));
+    when(tableResultMock.iterateAll()).thenReturn(Arrays.asList(FieldValueList.of(fieldValueList)));
+    when(bqMock.query(any())).thenReturn(tableResultMock);
     when(bqMock.delete(any(TableId.class))).thenReturn(true);
   }
 
   @Test
   @Category(NeedsRunner.class)
   public void testE2E_mainPathWithAllStepsEnabled() throws Exception {
+    when(bqMock.query(any())).thenReturn(new EmptyTableResult(null));
+
     insertTableData("unpartitioned_table", defaultRecords);
     insertPartitionData("partitioned_table", "p1", Arrays.copyOfRange(defaultRecords, 0, 2));
     insertPartitionData("partitioned_table", "p2", Arrays.copyOfRange(defaultRecords, 2, 5));
@@ -323,6 +346,39 @@ public class DataplexBigQueryToGcsTest {
     verifyNoMoreInteractions(bqMock);
   }
 
+  @Test(expected = Exception.class)
+  @Category(NeedsRunner.class)
+  public void testE2E_withTargetStrategyFail_throwsException() throws Exception {
+    options.setFileFormat(FileFormat.PARQUET);
+    options.setWriteDisposition(WriteDisposition.FAIL);
+    File outputFile =
+        writeOutputFile("unpartitioned_table", "output-unpartitioned_table.parquet", "Test data");
+
+    Pipeline p =
+        DataplexBigQueryToGcs.buildPipeline(
+            options, metadataLoader, outDir.getAbsolutePath(), DatasetId.of(PROJECT, DATASET));
+    p.run();
+    testPipeline.run();
+  }
+
+  @Test
+  @Category(NeedsRunner.class)
+  public void testE2E_withTargetStrategySkip_skipsTable() throws Exception {
+    options.setFileFormat(FileFormat.PARQUET);
+    options.setWriteDisposition(WriteDisposition.SKIP);
+    File outputFile =
+        writeOutputFile("unpartitioned_table", "output-unpartitioned_table.parquet", "Test data");
+
+    Pipeline p =
+        DataplexBigQueryToGcs.buildPipeline(
+            options, metadataLoader, outDir.getAbsolutePath(), DatasetId.of(PROJECT, DATASET));
+    p.run();
+    testPipeline.run();
+    // Checking to see if the file was skipped and data was not overwritten
+
+    assertThat(readFirstLine(outputFile)).isEqualTo("Test data");
+  }
+
   @Test
   public void testGetFilesInDirectory_withValidPath_returnsPathsOfFilesInDirectory()
       throws Exception {
@@ -337,6 +393,23 @@ public class DataplexBigQueryToGcsTest {
 
     List<String> files = DataplexBigQueryToGcs.getFilesInDirectory(outDir.getAbsolutePath());
     assertThat(files.size()).isEqualTo(2);
+  }
+
+  private String readFirstLine(File outputFile) throws FileNotFoundException {
+    Scanner fileReader = new Scanner(outputFile);
+    String result = fileReader.nextLine();
+    fileReader.close();
+    return result;
+  }
+
+  private File writeOutputFile(String folderName, String filename, String data) throws IOException {
+    File outputDir = tmpDir.newFolder("out", folderName);
+    File outputFile = new File(outputDir.getAbsolutePath() + "/" + filename);
+    outputFile.createNewFile();
+    FileWriter writer = new FileWriter(outputFile);
+    writer.write(data);
+    writer.close();
+    return outputFile;
   }
 
   private void insertTableData(String tableName, TableRow... records) throws Exception {
