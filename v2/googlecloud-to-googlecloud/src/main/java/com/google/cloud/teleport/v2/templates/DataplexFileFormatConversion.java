@@ -32,10 +32,14 @@ import com.google.cloud.teleport.v2.values.DataplexCompression;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.Pipeline;
@@ -45,6 +49,10 @@ import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileIO.Sink;
+import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;
+import org.apache.beam.sdk.io.fs.MatchResult;
+import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.io.parquet.ParquetIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
@@ -97,6 +105,14 @@ public class DataplexFileFormatConversion {
     String getOutputAsset();
 
     void setOutputAsset(String outputAsset);
+
+    @Description(
+        "Specifies the behaviour if output files already exist. Format: OVERWRITE,"
+            + " FAIL, SKIP. Default: OVERWRITE.")
+    @Default.Enum("SKIP")
+    ExistingOutputFilesBehaviour getWriteDisposition();
+
+    void setWriteDisposition(ExistingOutputFilesBehaviour value);
   }
 
   /** Supported input file formats. */
@@ -119,6 +135,16 @@ public class DataplexFileFormatConversion {
       this.fileSuffix = fileSuffix;
     }
   }
+
+  /** The enum that defines how to handle existing output files. */
+  public enum ExistingOutputFilesBehaviour {
+    OVERWRITE,
+    SKIP,
+    FAIL
+  }
+
+  private static final ImmutableSet<String> EXPECTED_INPUT_FILES_EXTENSIONS =
+      ImmutableSet.of(".csv", ".json", ".parquet", ".avro");
 
   private static final Pattern ASSET_PATTERN =
       Pattern.compile(
@@ -191,6 +217,49 @@ public class DataplexFileFormatConversion {
     }
     String outputBucket = outputAsset.getResourceSpec().getName();
 
+    Predicate<String> inputFilesFilter;
+    switch (options.getWriteDisposition()) {
+      case OVERWRITE:
+        inputFilesFilter = inputFilePath -> true;
+        break;
+      case FAIL:
+        Set<String> outputFilePaths =
+            getFilesFromFilePattern(addWildCard(outputBucket))
+                .collect(ImmutableSet.toImmutableSet());
+        inputFilesFilter =
+            inputFilePath -> {
+              if (outputFilePaths.contains(
+                  inputFilePathToOutputFilePath(
+                      outputPathProvider,
+                      inputFilePath,
+                      outputBucket,
+                      options.getOutputFileFormat()))) {
+                throw new RuntimeException(
+                    String.format(
+                        "The file %s already exists in the output asset bucket: %s",
+                        inputFilePath, outputBucket));
+              }
+              return true;
+            };
+        break;
+      case SKIP:
+        outputFilePaths =
+            getFilesFromFilePattern(addWildCard(outputBucket))
+                .collect(ImmutableSet.toImmutableSet());
+        inputFilesFilter =
+            inputFilePath ->
+                !outputFilePaths.contains(
+                    inputFilePathToOutputFilePath(
+                        outputPathProvider,
+                        inputFilePath,
+                        outputBucket,
+                        options.getOutputFileFormat()));
+        break;
+      default:
+        throw new IllegalArgumentException(
+            "Unsupported existing file behaviour: " + options.getWriteDisposition());
+    }
+
     ImmutableList<GoogleCloudDataplexV1Entity> entities =
         isInputAsset
             ? dataplex.getCloudStorageEntities(options.getInputAssetOrEntitiesList())
@@ -201,24 +270,25 @@ public class DataplexFileFormatConversion {
       ImmutableList<GoogleCloudDataplexV1Partition> partitions =
           dataplex.getPartitions(entity.getName());
       if (partitions.isEmpty()) {
-        pipeline.apply(
-            "Convert " + shortenDataplexName(entity.getName()),
-            new ConvertFiles(
-                entity,
-                entityToFileSpec(entity),
-                options.getOutputFileFormat(),
-                options.getOutputFileCompression(),
-                outputPathProvider.outputPathFrom(entity.getDataPath(), outputBucket)));
+        String outputPath = outputPathProvider.outputPathFrom(entity.getDataPath(), outputBucket);
+        getFilesFromFilePattern(entityToFileSpec(entity))
+            .filter(inputFilesFilter)
+            .forEach(
+                inputFilePath ->
+                    pipeline.apply(
+                        "Convert " + shortenDataplexName(entity.getName()),
+                        new ConvertFiles(entity, inputFilePath, options, outputPath)));
       } else {
         for (GoogleCloudDataplexV1Partition partition : partitions) {
-          pipeline.apply(
-              "Convert " + shortenDataplexName(partition.getName()),
-              new ConvertFiles(
-                  entity,
-                  partitionToFileSpec(partition),
-                  options.getOutputFileFormat(),
-                  options.getOutputFileCompression(),
-                  outputPathProvider.outputPathFrom(partition.getLocation(), outputBucket)));
+          String outputPath =
+              outputPathProvider.outputPathFrom(partition.getLocation(), outputBucket);
+          getFilesFromFilePattern(partitionToFileSpec(partition))
+              .filter(inputFilesFilter)
+              .forEach(
+                  inputFilePath ->
+                      pipeline.apply(
+                          "Convert " + shortenDataplexName(partition.getName()),
+                          new ConvertFiles(entity, inputFilePath, options, outputPath)));
         }
       }
     }
@@ -255,6 +325,33 @@ public class DataplexFileFormatConversion {
     return path.endsWith("/") ? path : path + '/';
   }
 
+  /** Example conversion: 1.json => 1.parquet; 1.abc => 1.abc.parquet. */
+  private static String replaceInputExtensionWithOutputExtension(
+      String path, OutputFileFormat outputFileFormat) {
+    String inputFileExtension = path.substring(path.lastIndexOf('.'));
+    if (EXPECTED_INPUT_FILES_EXTENSIONS.contains(inputFileExtension)) {
+      return path.substring(0, path.length() - inputFileExtension.length())
+          + outputFileFormat.fileSuffix;
+    } else {
+      return path + outputFileFormat.fileSuffix;
+    }
+  }
+
+  private static String inputFilePathToOutputFilePath(
+      OutputPathProvider outputPathProvider,
+      String inputFilePath,
+      String outputBucket,
+      OutputFileFormat outputFileFormat) {
+    return replaceInputExtensionWithOutputExtension(
+        outputPathProvider.outputPathFrom(inputFilePath, outputBucket), outputFileFormat);
+  }
+
+  private static Stream<String> getFilesFromFilePattern(String pattern) throws IOException {
+    return FileSystems.match(pattern, EmptyMatchTreatment.ALLOW).metadata().stream()
+        .map(MatchResult.Metadata::resourceId)
+        .map(ResourceId::toString);
+  }
+
   /** Convert the input file path to a new output file path. */
   @FunctionalInterface
   interface OutputPathProvider {
@@ -269,22 +366,21 @@ public class DataplexFileFormatConversion {
     private static final TupleTag<String> CSV_LINES = new TupleTag<String>() {};
 
     private final GoogleCloudDataplexV1Entity entity;
-    private final String inputFileSpec;
+    private final String inputFilePath;
     private final OutputFileFormat outputFileFormat;
     private final DataplexCompression outputFileCompression;
     private final String outputPath;
 
     protected ConvertFiles(
         GoogleCloudDataplexV1Entity entity,
-        String inputFileSpec,
-        OutputFileFormat outputFileFormat,
-        DataplexCompression outputFileCompression,
+        String inputFilePath,
+        FileFormatConversionOptions options,
         String outputPath) {
       super();
       this.entity = entity;
-      this.outputFileFormat = outputFileFormat;
-      this.inputFileSpec = inputFileSpec;
-      this.outputFileCompression = outputFileCompression;
+      this.outputFileFormat = options.getOutputFileFormat();
+      this.inputFilePath = inputFilePath;
+      this.outputFileCompression = options.getOutputFileCompression();
       this.outputPath = outputPath;
     }
 
@@ -297,7 +393,7 @@ public class DataplexFileFormatConversion {
         case CSV:
           records =
               input
-                  .apply("CSV", readCsvTransform(entity, inputFileSpec))
+                  .apply("CSV", readCsvTransform(entity, inputFilePath))
                   .get(CSV_LINES)
                   .apply("ToGenRec", ParDo.of(csvToGenericRecordFn(entity, serializedSchema)))
                   .setCoder(AvroCoder.of(GenericRecord.class, schema));
@@ -305,7 +401,7 @@ public class DataplexFileFormatConversion {
         case JSON:
           records =
               input
-                  .apply("Json", readJsonTransform(inputFileSpec))
+                  .apply("Json", readJsonTransform(inputFilePath))
                   .apply("ToGenRec", ParDo.of(jsonToGenericRecordFn(serializedSchema)))
                   .setCoder(AvroCoder.of(GenericRecord.class, schema));
           break;
@@ -314,7 +410,7 @@ public class DataplexFileFormatConversion {
               input.apply(
                   "Parquet",
                   ParquetConverters.ReadParquetFile.newBuilder()
-                      .withInputFileSpec(inputFileSpec)
+                      .withInputFileSpec(inputFilePath)
                       .withSerializedSchema(serializedSchema)
                       .build());
           break;
@@ -323,7 +419,7 @@ public class DataplexFileFormatConversion {
               input.apply(
                   "Avro",
                   AvroConverters.ReadAvroFile.newBuilder()
-                      .withInputFileSpec(inputFileSpec)
+                      .withInputFileSpec(inputFilePath)
                       .withSerializedSchema(serializedSchema)
                       .build());
           break;
@@ -348,13 +444,16 @@ public class DataplexFileFormatConversion {
               "Output format is not implemented: " + outputFileFormat);
       }
 
+      String outputFileName =
+          replaceInputExtensionWithOutputExtension(
+              inputFilePath.substring(inputFilePath.lastIndexOf('/') + 1), outputFileFormat);
+
       records.apply(
           "Write",
           FileIO.<GenericRecord>write()
               .via(sink)
               .to(ensurePathEndsWithSlash(outputPath))
-              .withPrefix(entityToOutputFilePrefix(entity))
-              .withSuffix(outputFileFormat.fileSuffix)
+              .withNaming((window, pane, numShards, shardIndex, compression) -> outputFileName)
               .withNumShards(1)); // Must be 1 as we can only have 1 file per Dataplex partition.
 
       return PDone.in(input.getPipeline());
@@ -409,10 +508,6 @@ public class DataplexFileFormatConversion {
     private static JsonConverters.StringToGenericRecordFn jsonToGenericRecordFn(
         String serializedSchema) {
       return new JsonConverters.StringToGenericRecordFn(serializedSchema);
-    }
-
-    private static String entityToOutputFilePrefix(GoogleCloudDataplexV1Entity entity) {
-      return entity.getName().substring(entity.getName().lastIndexOf('/') + 1);
     }
   }
 }
