@@ -60,6 +60,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.beam.sdk.values.TypeDescriptors;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -142,7 +143,6 @@ public class DataplexBigQueryToGcs {
             DataplexAssetResourceSpec.BIGQUERY_DATASET);
 
     String targetRootPath = "gs://" + gcsResource;
-    List<String> existingTargetFiles = getFilesInDirectory(targetRootPath);
     DatasetId datasetId = BigQueryUtils.parseDatasetUrn(bqResource);
 
     BigQueryMetadataLoader metadataLoader =
@@ -172,7 +172,7 @@ public class DataplexBigQueryToGcs {
     List<BigQueryTable> tables =
         metadataLoader.loadDatasetMetadata(
             datasetId,
-            new DataplexBigQueryToGcsFilter(options, targetRootPath, existingTargetFiles));
+            new DataplexBigQueryToGcsFilter(options, existingTargetFiles));
     LOG.info("Loaded {} table(s).", tables.size());
 
     if (!tables.isEmpty()) {
@@ -203,7 +203,8 @@ public class DataplexBigQueryToGcs {
                               table,
                               targetRootPath,
                               options.getFileFormat(),
-                              options.getFileCompression())
+                              options.getFileCompression(),
+                              options.getEnforceSamePartitionKey())
                           .withTestServices(testBqServices))
                   .apply(
                       String.format("AttachTableKeys-%s", table.getTableName()),
@@ -262,17 +263,17 @@ public class DataplexBigQueryToGcs {
   @VisibleForTesting
   static List<String> getFilesInDirectory(String path) {
     try {
-      String pattern = String.format("%s/**", path);
-      MatchResult result = FileSystems.match(pattern, EmptyMatchTreatment.ALLOW);
+      String pathPrefix = path + "/";
+      MatchResult result = FileSystems.match(pathPrefix + "**", EmptyMatchTreatment.ALLOW);
       List<String> fileNames =
           result.metadata().stream()
               .map(MatchResult.Metadata::resourceId)
               .map(ResourceId::toString)
+              .map(s -> StringUtils.removeStart(s, pathPrefix))
               .collect(toList());
       LOG.info("{} file(s) found in directory {}", fileNames.size(), path);
       return fileNames;
     } catch (Exception e) {
-      LOG.error("Exception thrown while getting output files in gcs resource.");
       throw new RuntimeException(e);
     }
   }
