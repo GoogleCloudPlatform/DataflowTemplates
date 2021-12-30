@@ -165,6 +165,11 @@ public class TextImportPipeline {
 
     void setWaitUntilFinish(boolean value);
 
+    @Description("GCP Project Id of where the Spanner table lives.")
+    ValueProvider<String> getSpannerProjectId();
+
+    void setSpannerProjectId(ValueProvider<String> value);
+
     @Description("The spanner priority. --spannerPriority must be one of:[HIGH,MEDIUM,LOW]")
     ValueProvider<RpcPriority> getSpannerPriority();
 
@@ -179,6 +184,7 @@ public class TextImportPipeline {
 
     SpannerConfig spannerConfig =
         SpannerConfig.create()
+            .withProjectId(options.getSpannerProjectId())
             .withHost(options.getSpannerHost())
             .withInstanceId(options.getInstanceId())
             .withDatabaseId(options.getDatabaseId())
