@@ -15,7 +15,9 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import com.google.cloud.teleport.v2.utils.BigQueryToGcsDirectoryNaming;
 import com.google.cloud.teleport.v2.utils.BigQueryToGcsFileNaming;
+import com.google.cloud.teleport.v2.utils.Schemas;
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import com.google.cloud.teleport.v2.values.DataplexCompression;
@@ -58,41 +60,63 @@ import org.apache.beam.sdk.values.TypeDescriptors;
 public class BigQueryTableToGcsTransform
     extends PTransform<PBegin, PCollection<KV<BigQueryTablePartition, String>>> {
 
+  private static final String PARTITION_COLUMN_RENAME_SUFFIX = "_pkey";
+
   private final BigQueryTable table;
   private final FileFormat outputFileFormat;
   private final DataplexCompression outputFileCompression;
   private final String targetRootPath;
+  private final boolean enforceSamePartitionKey;
   private transient BigQueryServices testServices;
 
   public BigQueryTableToGcsTransform(
       BigQueryTable table,
       String targetRootPath,
       FileFormat outputFileFormat,
-      DataplexCompression outputFileCompression) {
+      DataplexCompression outputFileCompression,
+      boolean enforceSamePartitionKey) {
     this.table = table;
     this.targetRootPath = targetRootPath;
     this.outputFileFormat = outputFileFormat;
     this.outputFileCompression = outputFileCompression;
+    this.enforceSamePartitionKey = enforceSamePartitionKey;
   }
 
   @Override
   public PCollection<KV<BigQueryTablePartition, String>> expand(PBegin begin) {
-    Schema schema = table.getSchema();
+    Schema targetFileSchema = table.getSchema();
+    if (table.isPartitioned() && enforceSamePartitionKey) {
+      // Apart from renaming the field in the schema we don't need to anything else (e.g. replace
+      // the field in the actual GenericRecord being processed) because writers write fields
+      // to the file based on their numeric position, not their name.
+      targetFileSchema =
+          Schemas.renameAvroField(
+              targetFileSchema,
+              table.getPartitioningColumn(),
+              table.getPartitioningColumn() + PARTITION_COLUMN_RENAME_SUFFIX);
+    }
+
     Sink<GenericRecord> sink;
     switch (outputFileFormat) {
       case PARQUET:
-        sink = ParquetIO.sink(schema).withCompressionCodec(outputFileCompression.getParquetCodec());
+        sink =
+            ParquetIO.sink(targetFileSchema)
+                .withCompressionCodec(outputFileCompression.getParquetCodec());
         break;
       case AVRO:
-        sink = AvroIO.<GenericRecord>sink(schema).withCodec(outputFileCompression.getAvroCodec());
+        sink =
+            AvroIO.<GenericRecord>sink(targetFileSchema)
+                .withCodec(outputFileCompression.getAvroCodec());
         break;
       default:
         throw new UnsupportedOperationException(
             "Output format is not implemented: " + outputFileFormat);
     }
 
+    BigQueryToGcsDirectoryNaming dn = new BigQueryToGcsDirectoryNaming(enforceSamePartitionKey);
+
     if (!table.isPartitioned()) {
-      return transformTable(begin, sink);
+      return transformTable(begin, sink, dn);
     }
     if (table.getPartitions() == null || table.getPartitions().isEmpty()) {
       throw new IllegalStateException(
@@ -102,14 +126,16 @@ public class BigQueryTableToGcsTransform
     }
 
     List<PCollection<KV<BigQueryTablePartition, String>>> collections = new ArrayList<>();
-    table.getPartitions().forEach(p -> collections.add(transformPartition(begin, sink, p)));
+    table.getPartitions().forEach(p -> collections.add(transformPartition(begin, sink, p, dn)));
     return PCollectionList.of(collections)
         .apply(tableNodeName("FlattenPartitionResults"), Flatten.pCollections());
   }
 
   private PCollection<KV<BigQueryTablePartition, String>> transformTable(
-      PBegin begin, Sink<GenericRecord> sink) {
-    String targetPath = String.format("%s/%s", targetRootPath, table.getTableName());
+      PBegin begin, Sink<GenericRecord> sink, BigQueryToGcsDirectoryNaming directoryNaming) {
+    String targetPath =
+        String.format(
+            "%s/%s", targetRootPath, directoryNaming.getTableDirectory(table.getTableName()));
 
     return begin
         .apply(tableNodeName("Read"), getDefaultRead().from(table.toTableReference()))
@@ -132,7 +158,11 @@ public class BigQueryTableToGcsTransform
   }
 
   private PCollection<KV<BigQueryTablePartition, String>> transformPartition(
-      PBegin begin, Sink<GenericRecord> sink, BigQueryTablePartition partition) {
+      PBegin begin,
+      Sink<GenericRecord> sink,
+      BigQueryTablePartition partition,
+      BigQueryToGcsDirectoryNaming directoryNaming) {
+
     String sql =
         String.format(
             "select * from [%s.%s.%s$%s]",
@@ -143,11 +173,10 @@ public class BigQueryTableToGcsTransform
 
     String targetPath =
         String.format(
-            "%s/%s/%s_pid=%s",
+            "%s/%s",
             targetRootPath,
-            table.getTableName(),
-            table.getPartitioningColumn(),
-            partition.getPartitionName());
+            directoryNaming.getPartitionDirectory(
+                table.getTableName(), partition.getPartitionName(), table.getPartitioningColumn()));
 
     return begin
         .apply(partitionNodeName("Read", partition), getDefaultRead().fromQuery(sql))

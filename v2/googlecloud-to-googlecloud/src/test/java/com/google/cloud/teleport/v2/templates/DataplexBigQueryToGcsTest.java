@@ -16,6 +16,9 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.common.truth.Truth.assertThat;
+import static com.google.re2j.Pattern.CASE_INSENSITIVE;
+import static com.google.re2j.Pattern.DOTALL;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -40,20 +43,26 @@ import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.QueryJobConfiguration;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
+import com.google.cloud.bigquery.storage.v1beta1.AvroProto.AvroSchema;
 import com.google.cloud.bigquery.storage.v1beta1.BigQueryStorageClient;
+import com.google.cloud.bigquery.storage.v1beta1.Storage.ReadSession;
 import com.google.cloud.teleport.v2.options.DataplexBigQueryToGcsOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform.FileFormat;
 import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform.WriteDisposition;
 import com.google.cloud.teleport.v2.utils.BigQueryMetadataLoader;
+import com.google.cloud.teleport.v2.utils.DataplexBigQueryToGcsFilter.WriteDispositionException;
+import com.google.cloud.teleport.v2.utils.Schemas;
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import com.google.cloud.teleport.v2.values.DataplexCompression;
 import com.google.common.collect.ImmutableList;
+import com.google.re2j.Pattern;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -66,6 +75,7 @@ import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.ListCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.AvroIO;
+import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryHelpers;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryServices;
 import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
@@ -99,14 +109,16 @@ public class DataplexBigQueryToGcsTest {
   private static final int MAX_PARALLEL_REQUESTS = 5;
 
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
-
   @Rule public final TemporaryFolder tmpDir = new TemporaryFolder();
-
   @Rule public final TestPipeline testPipeline = TestPipeline.create();
 
+  // bqMock has to be static, otherwise it won't be serialized properly when passed to
+  // DeleteBigQueryDataFn#withTestBqClientFactory.
   @Mock private static BigQuery bqMock;
-  @Mock private static BigQueryStorageClient bqsMock;
-  @Mock private static TableResult tableResultMock;
+
+  @Mock private BigQueryStorageClient bqsMock;
+  @Mock private TableResult tableResultMock;
+
   private BigQueryMetadataLoader metadataLoader;
   private BigQueryServices bqFakeServices;
   private CustomFakeJobService fakeJobService;
@@ -124,6 +136,7 @@ public class DataplexBigQueryToGcsTest {
     options = TestPipeline.testingPipelineOptions().as(DataplexBigQueryToGcsOptions.class);
     options.setProject(PROJECT);
     options.setUpdateDataplexMetadata(true);
+    options.setEnforceSamePartitionKey(false);
     // Required when using BigQueryIO.withMethod(EXPORT).
     options.setTempLocation(tmpDir.newFolder("bqTmp").getAbsolutePath());
 
@@ -216,16 +229,18 @@ public class DataplexBigQueryToGcsTest {
         new FakeBigQueryServices()
             .withJobService(fakeJobService)
             .withDatasetService(fakeDatasetService);
-    metadataLoader = new BigQueryMetadataLoader(bqMock, bqsMock, MAX_PARALLEL_REQUESTS);
 
-    List<FieldValue> fieldValueList =
-        Arrays.asList(
-            FieldValue.of(FieldValue.Attribute.RECORD, "unpartitioned_table"),
-            FieldValue.of(FieldValue.Attribute.RECORD, "0"),
-            FieldValue.of(FieldValue.Attribute.RECORD, null));
-    when(tableResultMock.iterateAll()).thenReturn(Arrays.asList(FieldValueList.of(fieldValueList)));
+    when(tableResultMock.iterateAll())
+        .thenReturn(Collections.singleton(fields("unpartitioned_table", "0", null)));
     when(bqMock.query(any())).thenReturn(tableResultMock);
     when(bqMock.delete(any(TableId.class))).thenReturn(true);
+    when(bqsMock.createReadSession(any()))
+        .thenReturn(
+            ReadSession.newBuilder()
+                .setAvroSchema(AvroSchema.newBuilder().setSchema(avroSchema.toString()))
+                .build());
+
+    metadataLoader = new BigQueryMetadataLoader(bqMock, bqsMock, MAX_PARALLEL_REQUESTS);
   }
 
   @Test
@@ -346,19 +361,149 @@ public class DataplexBigQueryToGcsTest {
     verifyNoMoreInteractions(bqMock);
   }
 
-  @Test(expected = Exception.class)
+  @Test
   @Category(NeedsRunner.class)
+  public void testE2E_withEnforceSamePartitionKeyEnabled_producesRenamedColumns() throws Exception {
+    options.setEnforceSamePartitionKey(true);
+    options.setFileFormat(FileFormat.AVRO);
+
+    insertPartitionData("partitioned_table", "p1", Arrays.copyOfRange(defaultRecords, 0, 2));
+    insertPartitionData("partitioned_table", "p2", Arrays.copyOfRange(defaultRecords, 2, 5));
+
+    runTransform("partitioned_table");
+
+    Schema targetFileSchema =
+        Schemas.avroSchemaFromDataFile(
+            outDir.getAbsolutePath() + "/partitioned_table/ts=p1/output-partitioned_table-p1.avro");
+
+    // We extract Avro schema from the target data file and use it below instead of the manually
+    // created avroSchema (used in other tests)) to double-check the schema written to the file
+    // has the renamed ts_pkey column name and not the original "ts" name.
+    // Otherwise, AvroIO will just read the data file using whatever schema we manually provide
+    // and using the field names *we* provide and not those written to the file (it still works
+    // if the number of fields and their order/type match).
+
+    PCollection<String> actualRecords1 =
+        testPipeline
+            .apply(
+                "readP1",
+                AvroIO.readGenericRecords(targetFileSchema)
+                    .from(
+                        outDir.getAbsolutePath()
+                            + "/partitioned_table/ts=p1/output-partitioned_table-p1.avro"))
+            .apply("mapP1", MapElements.into(TypeDescriptors.strings()).via(Object::toString));
+    PCollection<String> actualRecords2 =
+        testPipeline
+            .apply(
+                "readP2",
+                AvroIO.readGenericRecords(targetFileSchema)
+                    .from(
+                        outDir.getAbsolutePath()
+                            + "/partitioned_table/ts=p2/output-partitioned_table-p2.avro"))
+            .apply("mapP2", MapElements.into(TypeDescriptors.strings()).via(Object::toString));
+
+    // Column "ts" should've been renamed to "ts_pkey":
+
+    String[] expectedRecords1 =
+        new String[] {
+          "{\"ts_pkey\": 1, \"s1\": \"1001\", \"i1\": 2001}",
+          "{\"ts_pkey\": 2, \"s1\": \"1002\", \"i1\": 2002}"
+        };
+    String[] expectedRecords2 =
+        new String[] {
+          "{\"ts_pkey\": 3, \"s1\": \"1003\", \"i1\": 2003}",
+          "{\"ts_pkey\": 4, \"s1\": \"1004\", \"i1\": null}",
+          "{\"ts_pkey\": 5, \"s1\": \"1005\", \"i1\": 2005}"
+        };
+
+    PAssert.that(actualRecords1).containsInAnyOrder(expectedRecords1);
+    PAssert.that(actualRecords2).containsInAnyOrder(expectedRecords2);
+
+    // Verify that "_pid "is *not* appended in the *file path* if enforceSamePartitionKey = true,
+    // i.e. the below files should not have been created:
+
+    PCollection<String> actualNonExistingRecords =
+        testPipeline
+            .apply(
+                "readFiles",
+                AvroIO.readGenericRecords(targetFileSchema)
+                    .withEmptyMatchTreatment(EmptyMatchTreatment.ALLOW)
+                    .from(outDir.getAbsolutePath() + "/partitioned_table/ts_pid=p1/*.avro"))
+            .apply("mapFiles", MapElements.into(TypeDescriptors.strings()).via(Object::toString));
+
+    PAssert.that(actualNonExistingRecords).empty();
+
+    testPipeline.run();
+  }
+
+  @Test
   public void testE2E_withTargetStrategyFail_throwsException() throws Exception {
     options.setFileFormat(FileFormat.PARQUET);
     options.setWriteDisposition(WriteDisposition.FAIL);
-    File outputFile =
-        writeOutputFile("unpartitioned_table", "output-unpartitioned_table.parquet", "Test data");
 
-    Pipeline p =
-        DataplexBigQueryToGcs.buildPipeline(
-            options, metadataLoader, outDir.getAbsolutePath(), DatasetId.of(PROJECT, DATASET));
-    p.run();
-    testPipeline.run();
+    writeOutputFile("unpartitioned_table", "output-unpartitioned_table.parquet", "Test data");
+
+    try {
+      DataplexBigQueryToGcs.buildPipeline(
+          options, metadataLoader, outDir.getAbsolutePath(), DatasetId.of(PROJECT, DATASET));
+      fail("Expected a WriteDispositionException");
+    } catch (Exception e) {
+      assertThat(e).hasCauseThat().hasCauseThat().isInstanceOf(WriteDispositionException.class);
+    }
+  }
+
+  private static final Pattern TABLE_QUERY_PATTERN =
+      Pattern.compile(
+          "select.*table_id.*last_modified_time.*partitioning_column", CASE_INSENSITIVE | DOTALL);
+  private static final Pattern PARTITION_QUERY_PATTERN =
+      Pattern.compile("select.*partition_id.*last_modified_time", CASE_INSENSITIVE | DOTALL);
+  /**
+   * Tests that the pipeline throws an exception if {@code writeDisposition = FAIL}, {@code
+   * enforceSamePartitionKey = true}, and one of the target files exist, when processing a
+   * partitioned table.
+   *
+   * <p>This is a special case because depending on the {@code enforceSamePartitionKey} param the
+   * generated file path can be different (for partitioned tables only!), so this verifies that
+   * {@link com.google.cloud.teleport.v2.utils.DataplexBigQueryToGcsFilter
+   * DataplexBigQueryToGcsFilter} can find such files correctly.
+   */
+  @Test
+  public void testE2E_withTargetStrategyFail_andEnforceSamePartitionKeyEnabled_throwsException()
+      throws Exception {
+    options.setFileFormat(FileFormat.PARQUET);
+    options.setWriteDisposition(WriteDisposition.FAIL);
+    options.setEnforceSamePartitionKey(true);
+
+    writeOutputFile("partitioned_table/ts=p2", "output-partitioned_table-p2.parquet", "Test data");
+
+    when(bqMock.query(any()))
+        .then(
+            invocation -> {
+              Iterable<FieldValueList> result = null;
+              QueryJobConfiguration q = (QueryJobConfiguration) invocation.getArguments()[0];
+              if (TABLE_QUERY_PATTERN.matcher(q.getQuery()).find()) {
+                result = Collections.singletonList(fields("partitioned_table", "0", "ts"));
+              } else if (PARTITION_QUERY_PATTERN.matcher(q.getQuery()).find()) {
+                result = Arrays.asList(fields("p1", "0"), fields("p2", "0"));
+              }
+              when(tableResultMock.iterateAll()).thenReturn(result);
+              return tableResultMock;
+            });
+
+    try {
+      DataplexBigQueryToGcs.buildPipeline(
+          options, metadataLoader, outDir.getAbsolutePath(), DatasetId.of(PROJECT, DATASET));
+      fail("Expected a WriteDispositionException");
+    } catch (Exception e) {
+      assertThat(e).hasCauseThat().hasCauseThat().isInstanceOf(WriteDispositionException.class);
+      assertThat(e)
+          .hasCauseThat()
+          .hasCauseThat()
+          .hasMessageThat()
+          .contains(
+              "Target File partitioned_table/ts=p2/output-partitioned_table-p2.parquet exists for"
+                  + " partitioned_table$p2.");
+    }
   }
 
   @Test
@@ -374,8 +519,8 @@ public class DataplexBigQueryToGcsTest {
             options, metadataLoader, outDir.getAbsolutePath(), DatasetId.of(PROJECT, DATASET));
     p.run();
     testPipeline.run();
-    // Checking to see if the file was skipped and data was not overwritten
 
+    // Checking to see if the file was skipped and data was not overwritten
     assertThat(readFirstLine(outputFile)).isEqualTo("Test data");
   }
 
@@ -404,6 +549,7 @@ public class DataplexBigQueryToGcsTest {
 
   private File writeOutputFile(String folderName, String filename, String data) throws IOException {
     File outputDir = tmpDir.newFolder("out", folderName);
+    outputDir.mkdirs();
     File outputFile = new File(outputDir.getAbsolutePath() + "/" + filename);
     outputFile.createNewFile();
     FileWriter writer = new FileWriter(outputFile);
@@ -488,5 +634,13 @@ public class DataplexBigQueryToGcsTest {
       }
       super.startQueryJob(jobRef, query);
     }
+  }
+
+  private static FieldValueList fields(Object... fieldValues) {
+    List<FieldValue> list = new ArrayList<>(fieldValues.length);
+    for (Object fieldValue : fieldValues) {
+      list.add(FieldValue.of(FieldValue.Attribute.RECORD, fieldValue));
+    }
+    return FieldValueList.of(list);
   }
 }

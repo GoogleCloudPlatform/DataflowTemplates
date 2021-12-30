@@ -118,4 +118,15 @@ public interface DataplexBigQueryToGcsOptions
   WriteDisposition getWriteDisposition();
 
   void setWriteDisposition(WriteDisposition writeDisposition);
+
+  @Description(
+      "Due to a BigQuery limitation, it's not possible to have a partitioned external table with"
+          + " the partition key (in the file path) having the same name as one of the columns in"
+          + " the file. If enforceSamePartitionKey is true (the default), the partition key of"
+          + " the target file will be set to the original partition column name and the column in"
+          + " the file will be renamed. If false, it's the partition key that will be renamed.")
+  @Default.Boolean(true)
+  Boolean getEnforceSamePartitionKey();
+
+  void setEnforceSamePartitionKey(Boolean enforceSamePartitionKey);
 }

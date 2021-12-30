@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.options.DataplexBigQueryToGcsOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform.FileFormat;
 import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform.WriteDisposition;
 import com.google.cloud.teleport.v2.utils.BigQueryMetadataLoader.Filter;
+import com.google.cloud.teleport.v2.utils.DataplexBigQueryToGcsFilter.WriteDispositionException;
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import java.io.IOException;
@@ -56,7 +57,7 @@ public class DataplexBigQueryToGcsFilterTest {
     options.setTableRefs(null);
     options.setExportDataModifiedBeforeDateTime(null);
 
-    Filter f = new DataplexBigQueryToGcsFilter(options, "", new ArrayList<String>());
+    Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
 
     assertThat(f.shouldSkipUnpartitionedTable(t)).isFalse();
     assertThat(f.shouldSkipPartitionedTable(t, Collections.singletonList(p))).isFalse();
@@ -73,7 +74,7 @@ public class DataplexBigQueryToGcsFilterTest {
     options.setTableRefs("includedTable1,includedTable2");
     options.setExportDataModifiedBeforeDateTime(null);
 
-    Filter f = new DataplexBigQueryToGcsFilter(options, "", new ArrayList<String>());
+    Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
 
     assertThat(f.shouldSkipUnpartitionedTable(includedTable1)).isFalse();
     assertThat(f.shouldSkipUnpartitionedTable(includedTable2)).isFalse();
@@ -92,7 +93,7 @@ public class DataplexBigQueryToGcsFilterTest {
   @Test(expected = IllegalArgumentException.class)
   public void test_whenTableRefsIsInvalid_throwsException() {
     options.setTableRefs(",");
-    new DataplexBigQueryToGcsFilter(options, "", new ArrayList<String>());
+    new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
   }
 
   @Test
@@ -116,7 +117,7 @@ public class DataplexBigQueryToGcsFilterTest {
     options.setTableRefs(null);
     options.setExportDataModifiedBeforeDateTime("2021-01-01T15:00:00Z");
 
-    Filter f = new DataplexBigQueryToGcsFilter(options, "", new ArrayList<String>());
+    Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
 
     assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isTrue();
     assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isFalse();
@@ -140,7 +141,7 @@ public class DataplexBigQueryToGcsFilterTest {
 
     {
       options.setExportDataModifiedBeforeDateTime("2021-01-01T15:00:00Z");
-      Filter f = new DataplexBigQueryToGcsFilter(options, "", new ArrayList<String>());
+      Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
       assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isTrue();
       assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isFalse();
     }
@@ -148,7 +149,7 @@ public class DataplexBigQueryToGcsFilterTest {
     {
       // Should be the same as 15:00 UTC:
       options.setExportDataModifiedBeforeDateTime("2021-01-01T14:00:00-01:00");
-      Filter f = new DataplexBigQueryToGcsFilter(options, "", new ArrayList<String>());
+      Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
       assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isTrue();
       assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isFalse();
     }
@@ -156,7 +157,7 @@ public class DataplexBigQueryToGcsFilterTest {
     {
       // Should be the same as 15:00 UTC:
       options.setExportDataModifiedBeforeDateTime("2021-01-01T17:00:00+02:00");
-      Filter f = new DataplexBigQueryToGcsFilter(options, "", new ArrayList<String>());
+      Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
       assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isTrue();
       assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isFalse();
     }
@@ -165,7 +166,7 @@ public class DataplexBigQueryToGcsFilterTest {
       // 14:00 UTC is 1 hour is earlier that both table's last modified time
       // (14:59:59.999 and 15:00:00.001 UTC). Expecting both to be skipped.
       options.setExportDataModifiedBeforeDateTime("2021-01-01T14:00:00Z");
-      Filter f = new DataplexBigQueryToGcsFilter(options, "", new ArrayList<String>());
+      Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
       assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isTrue();
       assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isTrue();
     }
@@ -182,7 +183,7 @@ public class DataplexBigQueryToGcsFilterTest {
     options.setTableRefs(null);
     options.setExportDataModifiedBeforeDateTime("2021-02-15");
 
-    Filter f = new DataplexBigQueryToGcsFilter(options, "", new ArrayList<String>());
+    Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
     assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isTrue();
     assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isFalse();
   }
@@ -198,7 +199,7 @@ public class DataplexBigQueryToGcsFilterTest {
     options.setTableRefs(null);
     options.setExportDataModifiedBeforeDateTime("-P1D");
 
-    Filter f = new DataplexBigQueryToGcsFilter(options, "", new ArrayList<String>());
+    Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
     assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isTrue();
     assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isFalse();
   }
@@ -214,7 +215,7 @@ public class DataplexBigQueryToGcsFilterTest {
     options.setTableRefs(null);
     options.setExportDataModifiedBeforeDateTime("-p1dt3h");
 
-    Filter f = new DataplexBigQueryToGcsFilter(options, "", new ArrayList<String>());
+    Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
     assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isTrue();
     assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isFalse();
   }
@@ -224,13 +225,13 @@ public class DataplexBigQueryToGcsFilterTest {
     options.setTableRefs(null);
     options.setExportDataModifiedBeforeDateTime(null);
 
-    Filter f = new DataplexBigQueryToGcsFilter(options, "", new ArrayList<String>());
+    Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
 
     assertThat(f.shouldSkipPartitionedTable(table(), Collections.emptyList())).isTrue();
   }
 
   @Test
-  public void test_whenTargetFileExistsWithWriteDisposionSKIP_filterExcludesTables() {
+  public void test_whenTargetFileExistsWithWriteDispositionSKIP_filterExcludesTables() {
     BigQueryTable.Builder t = table().setTableName("table1").setPartitioningColumn("p2");
     BigQueryTablePartition p = partition().setPartitionName("partition1").build();
 
@@ -238,28 +239,19 @@ public class DataplexBigQueryToGcsFilterTest {
     options.setExportDataModifiedBeforeDateTime(null);
     options.setFileFormat(FileFormat.AVRO);
     options.setWriteDisposition(WriteDisposition.SKIP);
-    String targetRootPath = "gs://root/";
-    String targetfilePathUnpartitionedTable =
-        String.format("%s/table1/output-table1.avro", targetRootPath);
-    String targetfilePathPartitionedTable =
-        String.format("%s/table1/p2_pid=partition1/output-table1-partition1.avro", targetRootPath);
+
     Filter f =
         new DataplexBigQueryToGcsFilter(
             options,
-            targetRootPath,
-            new ArrayList<String>() {
-              {
-                add(targetfilePathUnpartitionedTable);
-                add(targetfilePathPartitionedTable);
-              }
-            });
+            Arrays.asList(
+                "table1/output-table1.avro", "table1/p2=partition1/output-table1-partition1.avro"));
 
     assertThat(f.shouldSkipUnpartitionedTable(t)).isTrue();
     assertThat(f.shouldSkipPartition(t, p)).isTrue();
   }
 
   @Test
-  public void test_whenTargetFileExistsWithWriteDisposionOverwrite_filterAcceptsTables() {
+  public void test_whenTargetFileExistsWithWriteDispositionOverwrite_filterAcceptsTables() {
     BigQueryTable.Builder t = table().setTableName("table1").setPartitioningColumn("p2");
     BigQueryTablePartition p = partition().setPartitionName("partition1").build();
 
@@ -267,28 +259,19 @@ public class DataplexBigQueryToGcsFilterTest {
     options.setExportDataModifiedBeforeDateTime(null);
     options.setFileFormat(FileFormat.AVRO);
     options.setWriteDisposition(WriteDisposition.OVERWRITE);
-    String targetRootPath = "gs://root/";
-    String targetfilePathUnpartitionedTable =
-        String.format("%s/table1/output-table1.avro", targetRootPath);
-    String targetfilePathPartitionedTable =
-        String.format("%s/table1/p2_pid=partition1/output-table1-partition1.avro", targetRootPath);
+
     Filter f =
         new DataplexBigQueryToGcsFilter(
             options,
-            targetRootPath,
-            new ArrayList<String>() {
-              {
-                add(targetfilePathUnpartitionedTable);
-                add(targetfilePathPartitionedTable);
-              }
-            });
+            Arrays.asList(
+                "table1/output-table1.avro", "table1/p2=partition1/output-table1-partition1.avro"));
 
     assertThat(f.shouldSkipUnpartitionedTable(t)).isFalse();
     assertThat(f.shouldSkipPartition(t, p)).isFalse();
   }
 
-  @Test(expected = RuntimeException.class)
-  public void test_whenTargetFileExistsWithWriteDisposionFail_filterAcceptsTables() {
+  @Test(expected = WriteDispositionException.class)
+  public void test_whenTargetFileExistsWithWriteDispositionFail_filterAcceptsTables() {
     BigQueryTable.Builder t = table().setTableName("table1").setPartitioningColumn("p2");
     BigQueryTablePartition p = partition().setPartitionName("partition1").build();
 
@@ -296,21 +279,11 @@ public class DataplexBigQueryToGcsFilterTest {
     options.setExportDataModifiedBeforeDateTime(null);
     options.setFileFormat(FileFormat.AVRO);
     options.setWriteDisposition(WriteDisposition.FAIL);
-    String targetRootPath = "gs://root/";
-    String targetfilePathUnpartitionedTable =
-        String.format("%s/table1/output-table1.avro", targetRootPath);
-    String targetfilePathPartitionedTable =
-        String.format("%s/table1/p2_pid=partition1/output-table1-partition1.avro", targetRootPath);
     Filter f =
-        new DataplexBigQueryToGcsFilter(
+        new com.google.cloud.teleport.v2.utils.DataplexBigQueryToGcsFilter(
             options,
-            targetRootPath,
-            new ArrayList<String>() {
-              {
-                add(targetfilePathUnpartitionedTable);
-                add(targetfilePathPartitionedTable);
-              }
-            });
+            Arrays.asList(
+                "table1/output-table1.avro", "table1/p2=partition1/output-table1-partition1.avro"));
 
     f.shouldSkipUnpartitionedTable(t);
     f.shouldSkipPartition(t, p);
