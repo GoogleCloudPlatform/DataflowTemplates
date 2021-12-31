@@ -58,12 +58,12 @@ public class DataplexBigQueryToGcsFilter implements BigQueryMetadataLoader.Filte
       this.maxLastModifiedTime = null;
     }
 
-    String tableRefs = options.getTableRefs();
+    String tableRefs = options.getTables();
     if (tableRefs != null && !tableRefs.isEmpty()) {
       List<String> tableRefList = SPLITTER.splitToList(tableRefs);
       checkArgument(
           !tableRefList.isEmpty(),
-          "Got an non-empty tableRefs param '%s', but couldn't parse it into a valid table list,"
+          "Got an non-empty tables param '%s', but couldn't parse it into a valid table list,"
               + " please check its format.",
           tableRefs);
       this.includeTables = new HashSet<>(tableRefList);
