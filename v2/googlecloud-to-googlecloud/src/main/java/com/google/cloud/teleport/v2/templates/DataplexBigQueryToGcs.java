@@ -133,16 +133,19 @@ public class DataplexBigQueryToGcs {
     String gcsResource =
         resolveAsset(
             dataplex,
-            options.getDestinationGcsBucketAssetName(),
+            options.getDestinationStorageBucketAssetName(),
             DataplexAssetResourceSpec.STORAGE_BUCKET);
-
-    String bqResource =
-        resolveAsset(
-            dataplex,
-            options.getSourceBigQueryAssetName(),
-            DataplexAssetResourceSpec.BIGQUERY_DATASET);
-
     String targetRootPath = "gs://" + gcsResource;
+
+    String bqResource = options.getSourceBigQueryDataset();
+    // This can be either a BigQuery dataset ID or a Dataplex Asset Name pointing to the dataset.
+    // Possible formats:
+    //   projects/<name>/datasets/<dataset-id>
+    //   projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset-name>
+    // If param contains "/lakes/", assume it's a Dataplex resource and resolve it into BQ ID first:
+    if (bqResource.toLowerCase().contains("/lakes/")) {
+      bqResource = resolveAsset(dataplex, bqResource, DataplexAssetResourceSpec.BIGQUERY_DATASET);
+    }
     DatasetId datasetId = BigQueryUtils.parseDatasetUrn(bqResource);
 
     BigQueryMetadataLoader metadataLoader =

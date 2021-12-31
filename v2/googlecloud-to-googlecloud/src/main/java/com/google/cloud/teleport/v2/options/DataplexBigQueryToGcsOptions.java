@@ -37,30 +37,31 @@ public interface DataplexBigQueryToGcsOptions
         UpdateDataplexBigQueryToGcsExportMetadataTransform.Options {
 
   @Description(
-      "Dataplex asset name for the the BigQuery dataset to tier data from. Format:"
+      "BigQuery dataset to tier data from. Format: "
           + " projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset"
-          + " name>.")
+          + "-name> (Dataplex asset name) or projects/<name>/datasets/<dataset-id> (BigQuery"
+          + " dataset ID).")
   @Required
-  String getSourceBigQueryAssetName();
+  String getSourceBigQueryDataset();
 
-  void setSourceBigQueryAssetName(String sourceBigQueryAssetName);
+  void setSourceBigQueryDataset(String sourceBigQueryDataset);
 
   @Description(
       "A comma-separated list of BigQuery tables to tier. If none specified, all tables will be"
           + " tiered. Tables should be specified by their name only (no project/dataset prefix)."
           + " Case-sensitive!")
-  String getTableRefs();
+  String getTables();
 
-  void setTableRefs(String tableRefs);
+  void setTables(String tables);
 
   @Description(
-      "Dataplex asset name for the the GCS bucket to tier data to. Format:"
+      "Dataplex asset name for the the Cloud Storage bucket to tier data to. Format:"
           + " projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset"
           + " name>.")
   @Required
-  String getDestinationGcsBucketAssetName();
+  String getDestinationStorageBucketAssetName();
 
-  void setDestinationGcsBucketAssetName(String destinationGcsBucketAssetName);
+  void setDestinationStorageBucketAssetName(String destinationStorageBucketAssetName);
 
   @Description(
       "The parameter can either be: 1) unspecified, 2) date (and optional time) 3) Duration.\n"

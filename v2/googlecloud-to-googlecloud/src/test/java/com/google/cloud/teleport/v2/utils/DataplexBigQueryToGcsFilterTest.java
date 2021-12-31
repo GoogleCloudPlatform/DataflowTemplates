@@ -54,7 +54,7 @@ public class DataplexBigQueryToGcsFilterTest {
     BigQueryTable.Builder t = table();
     BigQueryTablePartition p = partition().build();
 
-    options.setTableRefs(null);
+    options.setTables(null);
     options.setExportDataModifiedBeforeDateTime(null);
 
     Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
@@ -65,13 +65,13 @@ public class DataplexBigQueryToGcsFilterTest {
   }
 
   @Test
-  public void test_whenTableRefsSet_filterExcludesTablesByName() {
+  public void test_whenTablesSet_filterExcludesTablesByName() {
     BigQueryTable.Builder includedTable1 = table().setTableName("includedTable1");
     BigQueryTable.Builder includedTable2 = table().setTableName("includedTable2");
     BigQueryTable.Builder excludedTable = table().setTableName("excludedTable");
     BigQueryTablePartition p = partition().build();
 
-    options.setTableRefs("includedTable1,includedTable2");
+    options.setTables("includedTable1,includedTable2");
     options.setExportDataModifiedBeforeDateTime(null);
 
     Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
@@ -91,8 +91,8 @@ public class DataplexBigQueryToGcsFilterTest {
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void test_whenTableRefsIsInvalid_throwsException() {
-    options.setTableRefs(",");
+  public void test_whenTablesIsInvalid_throwsException() {
+    options.setTables(",");
     new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
   }
 
@@ -114,7 +114,7 @@ public class DataplexBigQueryToGcsFilterTest {
             .build();
     List<BigQueryTablePartition> partitions = Arrays.asList(olderPartition, newerPartition);
 
-    options.setTableRefs(null);
+    options.setTables(null);
     options.setExportDataModifiedBeforeDateTime("2021-01-01T15:00:00Z");
 
     Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
@@ -137,7 +137,7 @@ public class DataplexBigQueryToGcsFilterTest {
     BigQueryTable.Builder olderTable =
         table().setLastModificationTime(TS_MICROS_2021_01_01_15_00_00_UTC + 1000L);
 
-    options.setTableRefs(null);
+    options.setTables(null);
 
     {
       options.setExportDataModifiedBeforeDateTime("2021-01-01T15:00:00Z");
@@ -180,7 +180,7 @@ public class DataplexBigQueryToGcsFilterTest {
     BigQueryTable.Builder newerTable = table().setLastModificationTime(micros - 1000L);
     BigQueryTable.Builder olderTable = table().setLastModificationTime(micros + 1000L);
 
-    options.setTableRefs(null);
+    options.setTables(null);
     options.setExportDataModifiedBeforeDateTime("2021-02-15");
 
     Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
@@ -196,7 +196,7 @@ public class DataplexBigQueryToGcsFilterTest {
     BigQueryTable.Builder olderTable = table().setLastModificationTime(micros - 100000L);
     BigQueryTable.Builder newerTable = table().setLastModificationTime(micros + 100000L);
 
-    options.setTableRefs(null);
+    options.setTables(null);
     options.setExportDataModifiedBeforeDateTime("-P1D");
 
     Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
@@ -212,7 +212,7 @@ public class DataplexBigQueryToGcsFilterTest {
     BigQueryTable.Builder olderTable = table().setLastModificationTime(micros - 100000L);
     BigQueryTable.Builder newerTable = table().setLastModificationTime(micros + 100000L);
 
-    options.setTableRefs(null);
+    options.setTables(null);
     options.setExportDataModifiedBeforeDateTime("-p1dt3h");
 
     Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
@@ -222,7 +222,7 @@ public class DataplexBigQueryToGcsFilterTest {
 
   @Test
   public void test_whenPartitionedTableHasNoPartitions_filterExcludesTable() {
-    options.setTableRefs(null);
+    options.setTables(null);
     options.setExportDataModifiedBeforeDateTime(null);
 
     Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
@@ -235,7 +235,7 @@ public class DataplexBigQueryToGcsFilterTest {
     BigQueryTable.Builder t = table().setTableName("table1").setPartitioningColumn("p2");
     BigQueryTablePartition p = partition().setPartitionName("partition1").build();
 
-    options.setTableRefs(null);
+    options.setTables(null);
     options.setExportDataModifiedBeforeDateTime(null);
     options.setFileFormat(FileFormat.AVRO);
     options.setWriteDisposition(WriteDisposition.SKIP);
@@ -255,7 +255,7 @@ public class DataplexBigQueryToGcsFilterTest {
     BigQueryTable.Builder t = table().setTableName("table1").setPartitioningColumn("p2");
     BigQueryTablePartition p = partition().setPartitionName("partition1").build();
 
-    options.setTableRefs(null);
+    options.setTables(null);
     options.setExportDataModifiedBeforeDateTime(null);
     options.setFileFormat(FileFormat.AVRO);
     options.setWriteDisposition(WriteDisposition.OVERWRITE);
@@ -275,7 +275,7 @@ public class DataplexBigQueryToGcsFilterTest {
     BigQueryTable.Builder t = table().setTableName("table1").setPartitioningColumn("p2");
     BigQueryTablePartition p = partition().setPartitionName("partition1").build();
 
-    options.setTableRefs(null);
+    options.setTables(null);
     options.setExportDataModifiedBeforeDateTime(null);
     options.setFileFormat(FileFormat.AVRO);
     options.setWriteDisposition(WriteDisposition.FAIL);
