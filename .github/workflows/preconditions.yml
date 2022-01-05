@@ -14,7 +14,7 @@
 
 # Checks that don't run any template code and only on PRs.
 
-name: Precondition Checks
+name: Preconditions
 
 on:
   pull_request:
