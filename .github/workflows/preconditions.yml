@@ -32,7 +32,7 @@ jobs:
         uses: actions/setup-java@a12e082d834968c1847f782019214fadd20719f6
         with:
           distribution: 'zulu'
-          version: '11' # Spotless won't work on version 8
+          java-version: '11' # Spotless won't work on version 8
           cache: 'maven'
       - name: Run Spotless
         run: |
