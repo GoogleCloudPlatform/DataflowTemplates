@@ -18,21 +18,19 @@ package com.google.cloud.teleport.v2.elasticsearch.utils;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.NoSuchElementException;
 
-/**
- * Miscellaneous util methods for googlecloud-to-elasticsearch.
- */
+/** Miscellaneous util methods for googlecloud-to-elasticsearch. */
 public class ElasticsearchUtils {
 
-    public static String getTimestampFromOriginalPayload(JsonNode node) throws NoSuchElementException {
-        if(node.has("timestamp")) {
-            return node.get("timestamp").asText();
-        } else {
-            if (node.has("protoPayload")
-                    && node.get("protoPayload").has("timestamp")) {
-                return node.get("protoPayload").get("timestamp").asText();
-            }
-        }
-
-        throw new NoSuchElementException("Unable to find \"timestamp\" value");
+  public static String getTimestampFromOriginalPayload(JsonNode node)
+      throws NoSuchElementException {
+    if (node.has("timestamp")) {
+      return node.get("timestamp").asText();
+    } else {
+      if (node.has("protoPayload") && node.get("protoPayload").has("timestamp")) {
+        return node.get("protoPayload").get("timestamp").asText();
+      }
     }
+
+    throw new NoSuchElementException("Unable to find \"timestamp\" value");
+  }
 }

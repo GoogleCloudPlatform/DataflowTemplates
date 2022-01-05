@@ -124,6 +124,7 @@ public final class ExportRelatedTablesCheckTest {
   /* Validates behavior of exporting full db without selecting any tables */
   @Test
   public void exportWithoutTableSelection() throws Exception {
+    // spotless:off
     Ddl ddl = Ddl.builder()
             .createTable("Users")
               .column("first_name").string().max().endColumn()
@@ -158,6 +159,7 @@ public final class ExportRelatedTablesCheckTest {
               .primaryKey().asc("first_name").desc("last_name").asc("id").end()
             .endTable()
             .build();
+    // spotless:on
 
     createAndPopulate(ddl, 100);
 
@@ -176,7 +178,6 @@ public final class ExportRelatedTablesCheckTest {
     compareExpectedTables(
         destDbPrefix + fullExportChkpt, ImmutableList.of(allTypesTable, peopleTable, usersTable));
 
-
     // Check to see selected tables exported with data and and unselected tables did not
     List<String> exportTables = ImmutableList.of(allTypesTable, peopleTable, usersTable);
     List<String> unselectedTables = Collections.emptyList();
@@ -186,6 +187,7 @@ public final class ExportRelatedTablesCheckTest {
   /* Validates behavior of single table database exporting */
   @Test
   public void exportSingleTable() throws Exception {
+    // spotless:off
     Ddl ddl = Ddl.builder()
             .createTable("Users")
               .column("first_name").string().max().endColumn()
@@ -214,6 +216,7 @@ public final class ExportRelatedTablesCheckTest {
               .primaryKey().asc("first_name").desc("last_name").asc("id").end()
             .endTable()
             .build();
+    // spotless:on
 
     createAndPopulate(ddl, 100);
     // Export and import the table 'Users' from the database only
@@ -239,6 +242,7 @@ public final class ExportRelatedTablesCheckTest {
   /* Validates behavior of exporting multiple unrelated tables */
   @Test
   public void exportMultipleTables() throws Exception {
+    // spotless:off
     Ddl ddl = Ddl.builder()
             .createTable("Users")
               .column("first_name").string().max().endColumn()
@@ -273,6 +277,7 @@ public final class ExportRelatedTablesCheckTest {
               .primaryKey().asc("first_name").desc("last_name").asc("id").end()
             .endTable()
             .build();
+    // spotless:on
 
     createAndPopulate(ddl, 100);
 
@@ -300,6 +305,7 @@ public final class ExportRelatedTablesCheckTest {
   /* Validates behavior of exporting a single, empty table from a database */
   @Test
   public void exportSingleEmptyTable() throws Exception {
+    // spotless:off
     Ddl ddl = Ddl.builder()
             .createTable("Users")
               .column("first_name").string().max().endColumn()
@@ -328,18 +334,21 @@ public final class ExportRelatedTablesCheckTest {
               .primaryKey().asc("first_name").desc("last_name").asc("id").end()
             .endTable()
             .build();
+    // spotless:on
 
     createAndPopulate(ddl, 100);
 
     // Add empty table.
+    // spotless:off
     Ddl ddlEmptyTable = Ddl.builder()
         .createTable("empty_table")
           .column("first").string().max().endColumn()
           .column("second").string().size(5).endColumn()
           .column("value").int64().endColumn()
           .primaryKey().asc("first").desc("second").end()
-          .endTable()
+        .endTable()
         .build();
+    // spotless:on
     spannerServer.updateDatabase(sourceDb, ddlEmptyTable.createTableStatements());
 
     // Export an empty table from a database
@@ -367,54 +376,29 @@ public final class ExportRelatedTablesCheckTest {
    * --shouldExportRelatedTables paramters are not filled */
   @Test
   public void exportDbWithoutTableNamesAndFlag_exportsFullDb() throws Exception {
+    // spotless:off
     Ddl ddl =
         Ddl.builder()
             .createTable("table_a")
-            .column("id1")
-            .int64()
-            .endColumn()
-            .column("id2")
-            .int64()
-            .endColumn()
-            .primaryKey()
-            .asc("id1")
-            .asc("id2")
-            .end()
+              .column("id1").int64().endColumn()
+              .column("id2").int64().endColumn()
+              .primaryKey().asc("id1").asc("id2").end()
             .endTable()
             .createTable("table_b")
-            .column("id1")
-            .int64()
-            .endColumn()
-            .column("id2")
-            .int64()
-            .endColumn()
-            .column("id3")
-            .int64()
-            .endColumn()
-            .primaryKey()
-            .asc("id1")
-            .asc("id2")
-            .asc("id3")
-            .end()
+              .column("id1").int64().endColumn()
+              .column("id2").int64().endColumn()
+              .column("id3").int64().endColumn()
+              .primaryKey().asc("id1").asc("id2").asc("id3").end()
             .endTable()
             .createTable("table_c")
-            .column("id1")
-            .int64()
-            .endColumn()
-            .column("id2")
-            .int64()
-            .endColumn()
-            .column("id3")
-            .int64()
-            .endColumn()
-            .primaryKey()
-            .asc("id1")
-            .asc("id2")
-            .asc("id3")
-            .end()
-            .interleaveInParent("table_b")
+              .column("id1").int64().endColumn()
+              .column("id2").int64().endColumn()
+              .column("id3").int64().endColumn()
+              .primaryKey().asc("id1").asc("id2").asc("id3").end()
+              .interleaveInParent("table_b")
             .endTable()
             .build();
+    // spotless:on
 
     // Add to referencedTable field (i.e. `table_c` would have a foreign key constraint
     // referencing `table_a` )
@@ -447,54 +431,29 @@ public final class ExportRelatedTablesCheckTest {
   @Test
   public void exportTableWithoutRelatedTablesAndWithoutFlag_exportsSelectedTable()
       throws Exception {
+    // spotless:off
     Ddl ddl =
         Ddl.builder()
             .createTable("table_a")
-            .column("id1")
-            .int64()
-            .endColumn()
-            .column("id2")
-            .int64()
-            .endColumn()
-            .primaryKey()
-            .asc("id1")
-            .asc("id2")
-            .end()
+              .column("id1").int64().endColumn()
+              .column("id2").int64().endColumn()
+              .primaryKey().asc("id1").asc("id2").end()
             .endTable()
             .createTable("table_b")
-            .column("id1")
-            .int64()
-            .endColumn()
-            .column("id2")
-            .int64()
-            .endColumn()
-            .column("id3")
-            .int64()
-            .endColumn()
-            .primaryKey()
-            .asc("id1")
-            .asc("id2")
-            .asc("id3")
-            .end()
-            .interleaveInParent("table_a")
+              .column("id1").int64().endColumn()
+              .column("id2").int64().endColumn()
+              .column("id3").int64().endColumn()
+              .primaryKey().asc("id1").asc("id2").asc("id3").end()
+              .interleaveInParent("table_a")
             .endTable()
             .createTable("table_c")
-            .column("id1")
-            .int64()
-            .endColumn()
-            .column("id2")
-            .int64()
-            .endColumn()
-            .column("id3")
-            .int64()
-            .endColumn()
-            .primaryKey()
-            .asc("id1")
-            .asc("id2")
-            .asc("id3")
-            .end()
+              .column("id1").int64().endColumn()
+              .column("id2").int64().endColumn()
+              .column("id3").int64().endColumn()
+              .primaryKey().asc("id1").asc("id2").asc("id3").end()
             .endTable()
             .build();
+    // spotless:on
 
     createAndPopulate(ddl, /* numBatches = */ 100);
 
@@ -523,6 +482,7 @@ public final class ExportRelatedTablesCheckTest {
    * need to be exported */
   @Test
   public void exportTableWithRelatedTablesAndWithoutFlag_stopsPipelineExecution() throws Exception {
+    // spotless:off
     Ddl ddl = Ddl.builder()
         .createTable("table_a")
           .column("id1").int64().endColumn()
@@ -608,6 +568,7 @@ public final class ExportRelatedTablesCheckTest {
           .primaryKey().asc("id1").asc("id2").asc("id3").end()
         .endTable()
         .build();
+    // spotless:apply
 
     createAndPopulate(ddl, /* numBatches = */ 100);
 
@@ -641,54 +602,29 @@ public final class ExportRelatedTablesCheckTest {
    * --shouldExportRelatedTables is set to true */
   @Test
   public void exportFullDbWithFlagTrue() throws Exception {
+    // spotless:off
     Ddl ddl =
         Ddl.builder()
             .createTable("table_a")
-            .column("id1")
-            .int64()
-            .endColumn()
-            .column("id2")
-            .int64()
-            .endColumn()
-            .primaryKey()
-            .asc("id1")
-            .asc("id2")
-            .end()
+              .column("id1").int64().endColumn()
+              .column("id2").int64().endColumn()
+              .primaryKey().asc("id1").asc("id2").end()
             .endTable()
             .createTable("table_b")
-            .column("id1")
-            .int64()
-            .endColumn()
-            .column("id2")
-            .int64()
-            .endColumn()
-            .column("id3")
-            .int64()
-            .endColumn()
-            .primaryKey()
-            .asc("id1")
-            .asc("id2")
-            .asc("id3")
-            .end()
+              .column("id1").int64().endColumn()
+              .column("id2").int64().endColumn()
+              .column("id3").int64().endColumn()
+              .primaryKey().asc("id1").asc("id2").asc("id3").end()
             .endTable()
             .createTable("table_c")
-            .column("id1")
-            .int64()
-            .endColumn()
-            .column("id2")
-            .int64()
-            .endColumn()
-            .column("id3")
-            .int64()
-            .endColumn()
-            .primaryKey()
-            .asc("id1")
-            .asc("id2")
-            .asc("id3")
-            .end()
-            .interleaveInParent("table_b")
+              .column("id1").int64().endColumn()
+              .column("id2").int64().endColumn()
+              .column("id3").int64().endColumn()
+              .primaryKey().asc("id1").asc("id2").asc("id3").end()
+              .interleaveInParent("table_b")
             .endTable()
             .build();
+    // spotless:on
 
     // Add to referencedTable field (i.e. `table_c` would have a foreign key constraint
     // referencing `table_a` )
@@ -716,54 +652,29 @@ public final class ExportRelatedTablesCheckTest {
    * --shouldExportRelatedTables is set to false (either intentionally or by default) */
   @Test
   public void exportFullDbWithFlagFalse() throws Exception {
+    // spotless:off
     Ddl ddl =
         Ddl.builder()
             .createTable("table_a")
-            .column("id1")
-            .int64()
-            .endColumn()
-            .column("id2")
-            .int64()
-            .endColumn()
-            .primaryKey()
-            .asc("id1")
-            .asc("id2")
-            .end()
+              .column("id1").int64().endColumn()
+              .column("id2").int64().endColumn()
+              .primaryKey().asc("id1").asc("id2").end()
             .endTable()
             .createTable("table_b")
-            .column("id1")
-            .int64()
-            .endColumn()
-            .column("id2")
-            .int64()
-            .endColumn()
-            .column("id3")
-            .int64()
-            .endColumn()
-            .primaryKey()
-            .asc("id1")
-            .asc("id2")
-            .asc("id3")
-            .end()
+              .column("id1").int64().endColumn()
+              .column("id2").int64().endColumn()
+              .column("id3").int64().endColumn()
+              .primaryKey().asc("id1").asc("id2").asc("id3").end()
             .endTable()
             .createTable("table_c")
-            .column("id1")
-            .int64()
-            .endColumn()
-            .column("id2")
-            .int64()
-            .endColumn()
-            .column("id3")
-            .int64()
-            .endColumn()
-            .primaryKey()
-            .asc("id1")
-            .asc("id2")
-            .asc("id3")
-            .end()
-            .interleaveInParent("table_b")
+              .column("id1").int64().endColumn()
+              .column("id2").int64().endColumn()
+              .column("id3").int64().endColumn()
+              .primaryKey().asc("id1").asc("id2").asc("id3").end()
+              .interleaveInParent("table_b")
             .endTable()
             .build();
+    // spotless:on
 
     // Add to referencedTable field (i.e. `table_c` would have a foreign key constraint
     // referencing `table_a` )
@@ -795,74 +706,39 @@ public final class ExportRelatedTablesCheckTest {
    * --shouldExportRelatedTables is set to true, and additional tables need to be exported */
   @Test
   public void exportSelectedAndNecessaryTables() throws Exception {
+    // spotless:off
     Ddl ddl =
         Ddl.builder()
             .createTable("table_a")
-            .column("id1")
-            .int64()
-            .endColumn()
-            .column("id2")
-            .int64()
-            .endColumn()
-            .primaryKey()
-            .asc("id1")
-            .asc("id2")
-            .end()
+              .column("id1").int64().endColumn()
+              .column("id2").int64().endColumn()
+              .primaryKey().asc("id1").asc("id2").end()
             .endTable()
             .createTable("table_b")
-            .column("id1")
-            .int64()
-            .endColumn()
-            .column("id2")
-            .int64()
-            .endColumn()
-            .column("id3")
-            .int64()
-            .endColumn()
-            .primaryKey()
-            .asc("id1")
-            .asc("id2")
-            .asc("id3")
-            .end()
+              .column("id1").int64().endColumn()
+              .column("id2").int64().endColumn()
+              .column("id3").int64().endColumn()
+              .primaryKey().asc("id1").asc("id2").asc("id3").end()
             .endTable()
             .createTable("table_c")
-            .column("id1")
-            .int64()
-            .endColumn()
-            .column("id2")
-            .int64()
-            .endColumn()
-            .column("id3")
-            .int64()
-            .endColumn()
-            .primaryKey()
-            .asc("id1")
-            .asc("id2")
-            .asc("id3")
-            .end()
-            .interleaveInParent("table_b")
-            .foreignKeys(
+              .column("id1").int64().endColumn()
+              .column("id2").int64().endColumn()
+              .column("id3").int64().endColumn()
+              .primaryKey().asc("id1").asc("id2").asc("id3").end()
+              .interleaveInParent("table_b")
+              .foreignKeys(
                 ImmutableList.of(
                     "ALTER TABLE `table_c` ADD CONSTRAINT `fk1` FOREIGN KEY (`id1`) REFERENCES"
                         + " `table_b` (`id1`)"))
             .endTable()
             .createTable("table_d")
-            .column("id1")
-            .int64()
-            .endColumn()
-            .column("id2")
-            .int64()
-            .endColumn()
-            .column("id3")
-            .int64()
-            .endColumn()
-            .primaryKey()
-            .asc("id1")
-            .asc("id2")
-            .asc("id3")
-            .end()
+              .column("id1").int64().endColumn()
+              .column("id2").int64().endColumn()
+              .column("id3").int64().endColumn()
+              .primaryKey().asc("id1").asc("id2").asc("id3").end()
             .endTable()
             .build();
+    // spotless:on
 
     createAndPopulate(ddl, /* numBatches = */ 100);
 
@@ -948,6 +824,7 @@ public final class ExportRelatedTablesCheckTest {
    * exist in the database */
   @Test
   public void exportNonExistentTable_stopsPipelineExecution() throws Exception {
+    // spotless:off
     Ddl ddl = Ddl.builder()
         .createTable("table_a")
           .column("id1").int64().endColumn()
@@ -968,6 +845,7 @@ public final class ExportRelatedTablesCheckTest {
           .interleaveInParent("table_b")
         .endTable()
         .build();
+    // spotless:on
 
     // Add to referencedTable field (i.e. `table_c` would have a foreign key constraint
     // referencing `table_a`)
@@ -996,6 +874,7 @@ public final class ExportRelatedTablesCheckTest {
    * to be exported. */
   @Test
   public void exportSelectedAndNecessaryTablesInComplexDdl() throws Exception {
+    // spotless:off
     Ddl ddl = Ddl.builder()
         .createTable("table_a")
           .column("id1").int64().endColumn()
@@ -1081,6 +960,7 @@ public final class ExportRelatedTablesCheckTest {
           .primaryKey().asc("id1").asc("id2").asc("id3").end()
         .endTable()
         .build();
+    // spotless:on
 
     createAndPopulate(ddl, /* numBatches = */ 100);
 
