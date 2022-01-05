@@ -174,8 +174,7 @@ public class DataplexBigQueryToGcs {
     LOG.info("Loading BigQuery metadata...");
     List<BigQueryTable> tables =
         metadataLoader.loadDatasetMetadata(
-            datasetId,
-            new DataplexBigQueryToGcsFilter(options, existingTargetFiles));
+            datasetId, new DataplexBigQueryToGcsFilter(options, existingTargetFiles));
     LOG.info("Loaded {} table(s).", tables.size());
 
     if (!tables.isEmpty()) {

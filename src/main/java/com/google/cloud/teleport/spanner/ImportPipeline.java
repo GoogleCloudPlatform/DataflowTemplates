@@ -98,7 +98,7 @@ public class ImportPipeline {
     ValueProvider<Integer> getDDLCreationTimeoutInMinutes();
 
     void setDDLCreationTimeoutInMinutes(ValueProvider<Integer> value);
-    
+
     @Description("The spanner priority. --spannerPriority must be one of:[HIGH,MEDIUM,LOW]")
     ValueProvider<RpcPriority> getSpannerPriority();
 

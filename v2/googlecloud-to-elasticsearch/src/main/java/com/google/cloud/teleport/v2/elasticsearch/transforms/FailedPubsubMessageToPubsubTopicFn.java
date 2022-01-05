@@ -28,53 +28,55 @@ import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 
 /**
- * The {@link FailedPubsubMessageToPubsubTopicFn} converts PubSub message which have failed processing into
- * {@link com.google.api.services.pubsub.model.PubsubMessage} objects which can be output to a PubSub topic.
+ * The {@link FailedPubsubMessageToPubsubTopicFn} converts PubSub message which have failed
+ * processing into {@link com.google.api.services.pubsub.model.PubsubMessage} objects which can be
+ * output to a PubSub topic.
  */
 public class FailedPubsubMessageToPubsubTopicFn
-        extends DoFn<FailsafeElement<PubsubMessage, String>, PubsubMessage> {
+    extends DoFn<FailsafeElement<PubsubMessage, String>, PubsubMessage> {
 
-    private static final String ERROR_MESSAGE = "errorMessage";
-    private static final String ERROR_STACKTRACE = "stackTrace";
-    private static final String ERROR_TIMESTAMP = "timestamp";
-    private static final String ERROR_PAYLOAD_STRING = "payloadString";
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private static final String ERROR_MESSAGE = "errorMessage";
+  private static final String ERROR_STACKTRACE = "stackTrace";
+  private static final String ERROR_TIMESTAMP = "timestamp";
+  private static final String ERROR_PAYLOAD_STRING = "payloadString";
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    /** Counter to track total failed messages. */
-    private static final Counter ERROR_MESSAGES_COUNTER =
-            Metrics.counter(FailedPubsubMessageToPubsubTopicFn.class, "total-failed-messages");
+  /** Counter to track total failed messages. */
+  private static final Counter ERROR_MESSAGES_COUNTER =
+      Metrics.counter(FailedPubsubMessageToPubsubTopicFn.class, "total-failed-messages");
 
-    @ProcessElement
-    public void processElement(ProcessContext context) {
-        FailsafeElement<PubsubMessage, String> failsafeElement = context.element();
-        PubsubMessage pubsubMessage = failsafeElement.getOriginalPayload();
-        String message =
-                pubsubMessage.getPayload().length > 0
-                        ? new String(pubsubMessage.getPayload())
-                        : pubsubMessage.getAttributeMap().toString();
+  @ProcessElement
+  public void processElement(ProcessContext context) {
+    FailsafeElement<PubsubMessage, String> failsafeElement = context.element();
+    PubsubMessage pubsubMessage = failsafeElement.getOriginalPayload();
+    String message =
+        pubsubMessage.getPayload().length > 0
+            ? new String(pubsubMessage.getPayload())
+            : pubsubMessage.getAttributeMap().toString();
 
-        // Format the timestamp for insertion
-        String timestamp;
-        try {
-            timestamp = ElasticsearchUtils.getTimestampFromOriginalPayload(OBJECT_MAPPER.readTree(message));
-        } catch (Exception e) {
-            timestamp = new java.sql.Timestamp(System.currentTimeMillis()).toInstant().toString();
-        }
-
-        // Build the output PubSub message
-        ObjectNode outputMessage = OBJECT_MAPPER.createObjectNode();
-        outputMessage
-                .put(ERROR_TIMESTAMP, timestamp)
-                .put(ERROR_MESSAGE, failsafeElement.getErrorMessage())
-                .put(ERROR_STACKTRACE, failsafeElement.getStacktrace())
-                .put(ERROR_PAYLOAD_STRING, message);
-
-        ERROR_MESSAGES_COUNTER.inc();
-
-        Map<String, String> attributes = new HashMap<>(pubsubMessage.getAttributeMap());
-        attributes.put(ERROR_MESSAGE, failsafeElement.getErrorMessage());
-
-        context.output(new PubsubMessage(outputMessage.toString().getBytes(StandardCharsets.UTF_8), attributes));
+    // Format the timestamp for insertion
+    String timestamp;
+    try {
+      timestamp =
+          ElasticsearchUtils.getTimestampFromOriginalPayload(OBJECT_MAPPER.readTree(message));
+    } catch (Exception e) {
+      timestamp = new java.sql.Timestamp(System.currentTimeMillis()).toInstant().toString();
     }
 
+    // Build the output PubSub message
+    ObjectNode outputMessage = OBJECT_MAPPER.createObjectNode();
+    outputMessage
+        .put(ERROR_TIMESTAMP, timestamp)
+        .put(ERROR_MESSAGE, failsafeElement.getErrorMessage())
+        .put(ERROR_STACKTRACE, failsafeElement.getStacktrace())
+        .put(ERROR_PAYLOAD_STRING, message);
+
+    ERROR_MESSAGES_COUNTER.inc();
+
+    Map<String, String> attributes = new HashMap<>(pubsubMessage.getAttributeMap());
+    attributes.put(ERROR_MESSAGE, failsafeElement.getErrorMessage());
+
+    context.output(
+        new PubsubMessage(outputMessage.toString().getBytes(StandardCharsets.UTF_8), attributes));
+  }
 }

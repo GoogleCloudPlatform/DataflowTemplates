@@ -98,7 +98,8 @@ public class BigQueryToBigtable {
 
     Pipeline pipeline = Pipeline.create(options);
 
-    pipeline.apply(
+    pipeline
+        .apply(
             "AvroToMutation",
             BigQueryIO.read(
                     AvroToMutation.newBuilder()
@@ -109,9 +110,7 @@ public class BigQueryToBigtable {
                 .withoutValidation()
                 .withTemplateCompatibility()
                 .usingStandardSql())
-        .apply(
-            "WriteToTable",
-            CloudBigtableIO.writeToTable(bigtableTableConfig));
+        .apply("WriteToTable", CloudBigtableIO.writeToTable(bigtableTableConfig));
 
     pipeline.run();
   }

@@ -35,8 +35,9 @@ import org.slf4j.LoggerFactory;
  * The {@code CreateDml} class batches data to ensure connection limits and builds the DmlInfo
  * objects.
  */
-public class CreateDml extends PTransform<PCollection<FailsafeElement<String, String>>,
-    PCollection<KV<String, DmlInfo>>> {
+public class CreateDml
+    extends PTransform<
+        PCollection<FailsafeElement<String, String>>, PCollection<KV<String, DmlInfo>>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(CreateDml.class);
   private static final String WINDOW_DURATION = "1s";
@@ -48,8 +49,7 @@ public class CreateDml extends PTransform<PCollection<FailsafeElement<String, St
     this.dataSourceConfiguration = dataSourceConfiguration;
   }
 
-  public static CreateDml of(
-      DataSourceConfiguration dataSourceConfiguration) {
+  public static CreateDml of(DataSourceConfiguration dataSourceConfiguration) {
     return new CreateDml(dataSourceConfiguration);
   }
 
@@ -70,11 +70,10 @@ public class CreateDml extends PTransform<PCollection<FailsafeElement<String, St
         break;
       default:
         throw new IllegalArgumentException(
-          String.format("Database Driver %s is not supported.", driverName));
+            String.format("Database Driver %s is not supported.", driverName));
     }
 
-    return datastreamToDML
-        .withSchemaMap(schemaMap);
+    return datastreamToDML.withSchemaMap(schemaMap);
   }
 
   @Override
@@ -82,9 +81,9 @@ public class CreateDml extends PTransform<PCollection<FailsafeElement<String, St
       PCollection<FailsafeElement<String, String>> input) {
     DatastreamToDML datastreamToDML = getDatastreamToDML();
     return input
-        .apply("Reshuffle Into Buckets",
-          Reshuffle.<FailsafeElement<String, String>>viaRandomKey()
-              .withNumBuckets(NUM_THREADS))
+        .apply(
+            "Reshuffle Into Buckets",
+            Reshuffle.<FailsafeElement<String, String>>viaRandomKey().withNumBuckets(NUM_THREADS))
         .apply("Format to Postgres DML", ParDo.of(datastreamToDML));
   }
 }

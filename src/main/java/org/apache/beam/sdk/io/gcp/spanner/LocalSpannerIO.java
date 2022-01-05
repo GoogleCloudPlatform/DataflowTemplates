@@ -1487,9 +1487,9 @@ public class LocalSpannerIO {
           if (spannerConfig.getRpcPriority() != null
               && spannerConfig.getRpcPriority().get() != null) {
             spannerAccessor
-              .getDatabaseClient()
-              .writeAtLeastOnceWithOptions(
-                  batch, Options.priority(spannerConfig.getRpcPriority().get()));
+                .getDatabaseClient()
+                .writeAtLeastOnceWithOptions(
+                    batch, Options.priority(spannerConfig.getRpcPriority().get()));
           } else {
             spannerAccessor.getDatabaseClient().writeAtLeastOnce(batch);
           }
