@@ -63,7 +63,6 @@
     <json.version>20200518</json.version>
     <junit.jupiter.version>5.5.2</junit.jupiter.version>
     <re2j.version>1.4</re2j.version>
-    <codehaus-jackson.version>1.9.13</codehaus-jackson.version>
     <commons-csv.version>1.8</commons-csv.version>
     <commons-text.version>1.9</commons-text.version>
     <google-cloud-bigquery.version>1.108.0</google-cloud-bigquery.version>
@@ -394,16 +393,7 @@
       <artifactId>auto-value-annotations</artifactId>
       <version>${autovalue.annotations.version}</version>
     </dependency>
-    <dependency>
-      <groupId>org.codehaus.jackson</groupId>
-      <artifactId>jackson-core-asl</artifactId>
-      <version>${codehaus-jackson.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.codehaus.jackson</groupId>
-      <artifactId>jackson-mapper-asl</artifactId>
-      <version>${codehaus-jackson.version}</version>
-    </dependency>
+
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-csv</artifactId>
