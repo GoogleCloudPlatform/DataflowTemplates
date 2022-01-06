@@ -35,17 +35,4 @@ jobs:
           java-version: '11' # Spotless won't work on version 8
           cache: 'maven'
       - name: Run Spotless
-        run: |
-          function get_change_count {
-            echo $(git status | grep -e $1 | wc -l)
-          }
-          if [[ $(get_change_count '[^/]src/') -gt 0 ]]; then
-            mvn spotless:check
-          else
-            echo 'No changes to Classic Templates. Skipping spotless check'
-          fi
-          if [[ $(get_change_count '[^/]v2/') -gt 0 ]]; then
-            mvn spotless:check -f v2/pom.xml
-          else
-            echo 'No changes to Flex Templates. Skipping spotless check.'
-          fi
+        run: ./scripts/workflows/run_spotless_check.sh
