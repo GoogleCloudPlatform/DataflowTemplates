@@ -36,7 +36,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <apache-http-client-v2>1.39.2</apache-http-client-v2>
+    <apache-http-client-v2>1.40.1</apache-http-client-v2>
     <autovalue.service.version>1.0-rc6</autovalue.service.version>
     <avro.version>1.8.2</avro.version>
     <checkstyle.version>8.7</checkstyle.version>
@@ -208,6 +208,11 @@
     </dependency>
 
     <!-- Dependencies needed for Splunk -->
+    <dependency>
+      <groupId>com.google.http-client</groupId>
+      <artifactId>google-http-client</artifactId>
+      <version>${apache-http-client-v2}</version>
+    </dependency>
     <dependency>
       <groupId>com.google.http-client</groupId>
       <artifactId>google-http-client-apache-v2</artifactId>
