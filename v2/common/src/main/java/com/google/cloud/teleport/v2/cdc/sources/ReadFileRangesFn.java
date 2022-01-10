@@ -27,6 +27,8 @@ import org.apache.beam.sdk.io.range.OffsetRange;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Reads each file in the input {@link PCollection} of {@link ReadableFile} using given parameters
@@ -37,10 +39,12 @@ import org.apache.beam.sdk.values.PCollection;
  * FileIO#readMatches()}.
  */
 public class ReadFileRangesFn<T> extends DoFn<ReadableFile, T> implements Serializable {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ReadFileRangesFn.class);
   private final SerializableFunction<String, ? extends FileBasedSource<T>> createSource;
   private final ReadFileRangesFnExceptionHandler exceptionHandler;
   private boolean acquiredPermit = false;
-  private static final Semaphore jvmThreads = new Semaphore(10, true);
+  private static final Semaphore jvmThreads = new Semaphore(5, true);
 
   public ReadFileRangesFn(
       SerializableFunction<String, ? extends FileBasedSource<T>> createSource,
@@ -57,12 +61,14 @@ public class ReadFileRangesFn<T> extends DoFn<ReadableFile, T> implements Serial
       throw e;
     }
     acquiredPermit = true;
+    LOG.info(String.format("StartBundle: %d", jvmThreads.availablePermits()));
   }
 
   @FinishBundle
   public void finishBundle() throws Exception {
     jvmThreads.release();
     acquiredPermit = false;
+    LOG.info(String.format("FinishBundle: %d", jvmThreads.availablePermits()));
   }
 
   @Teardown
@@ -75,18 +81,11 @@ public class ReadFileRangesFn<T> extends DoFn<ReadableFile, T> implements Serial
   @ProcessElement
   public void process(ProcessContext c) throws IOException {
     ReadableFile file = c.element();
-    // ReadableFile file = c.element().getKey();
-    // OffsetRange range = c.element().getValue();
 
     FileBasedSource<T> source =
         CompressedSource.from(createSource.apply(file.getMetadata().resourceId().toString()))
             .withCompression(file.getCompression());
-    try (BoundedSource.BoundedReader<T> reader =
-        source
-            // .createSourceForSubrange(range.getFrom(), range.getTo())
-            // .createForSubrangeOfFile(
-            //     file.getMetadata().resourceId().toString(), range.getFrom(), range.getTo())
-            .createReader(c.getPipelineOptions())) {
+    try (BoundedSource.BoundedReader<T> reader = source.createReader(c.getPipelineOptions())) {
       for (boolean more = reader.start(); more; more = reader.advance()) {
         c.output(reader.getCurrent());
       }
@@ -105,7 +104,9 @@ public class ReadFileRangesFn<T> extends DoFn<ReadableFile, T> implements Serial
      * if the exception should be thrown.
      */
     public boolean apply(ReadableFile file, OffsetRange range, Exception e) {
-      return true;
+      LOG.error("Avro File Read Failure {}", file.getMetadata().resourceId().toString());
+      return false;
+      // return true;
     }
   }
 }

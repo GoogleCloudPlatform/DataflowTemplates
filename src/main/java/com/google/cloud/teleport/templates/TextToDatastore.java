@@ -19,6 +19,7 @@ import com.google.cloud.teleport.templates.common.DatastoreConverters.DatastoreW
 import com.google.cloud.teleport.templates.common.DatastoreConverters.WriteJsonEntities;
 import com.google.cloud.teleport.templates.common.ErrorConverters.ErrorWriteOptions;
 import com.google.cloud.teleport.templates.common.ErrorConverters.LogErrors;
+import com.google.cloud.teleport.templates.common.FirestoreNestedValueProvider;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.TransformTextViaJavascript;
 import com.google.cloud.teleport.templates.common.TextConverters.FilesystemReadOptions;
@@ -26,6 +27,7 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.values.TupleTag;
 
 /**
@@ -34,6 +36,11 @@ import org.apache.beam.sdk.values.TupleTag;
  * https://cloud.google.com/datastore/docs/reference/rest/v1/Entity
  */
 public class TextToDatastore {
+
+  public static <T> ValueProvider<T> selectProvidedInput(
+      ValueProvider<T> datastoreInput, ValueProvider<T> firestoreInput) {
+    return new FirestoreNestedValueProvider(datastoreInput, firestoreInput);
+  }
 
   /** TextToDatastore Pipeline Options. */
   public interface TextToDatastoreOptions
@@ -69,7 +76,12 @@ public class TextToDatastore {
                 .build())
         .apply(
             WriteJsonEntities.newBuilder()
-                .setProjectId(options.getDatastoreWriteProjectId())
+                .setProjectId(
+                    selectProvidedInput(
+                        options.getDatastoreWriteProjectId(), options.getFirestoreWriteProjectId()))
+                .setHintNumWorkers(
+                    selectProvidedInput(
+                        options.getDatastoreHintNumWorkers(), options.getFirestoreHintNumWorkers()))
                 .setErrorTag(errorTag)
                 .build())
         .apply(

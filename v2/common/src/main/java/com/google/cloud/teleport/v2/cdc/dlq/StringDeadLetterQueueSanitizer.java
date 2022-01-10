@@ -36,15 +36,7 @@ public class StringDeadLetterQueueSanitizer
 
   @Override
   public String getJsonMessage(FailsafeElement<String, String> input) {
-    String message;
-    try {
-      message = input.getOriginalPayload();
-    } catch (Exception e) {
-      // Ignore exception and print bad format
-      message = String.format("\"%s\"", message = input.getOriginalPayload());
-    }
-
-    return message;
+    return input.getOriginalPayload();
   }
 
   @Override

@@ -28,14 +28,20 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   void setConnectionUrl(String connectionUrl);
 
-  @Description("Username for Elasticsearch endpoint")
+  @Description(
+      "API key for access without requiring basic authentication. "
+          + "Refer  https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request")
   @Validation.Required
+  String getApiKey();
+
+  void setApiKey(String apiKey);
+
+  @Description("Username for Elasticsearch endpoint. Overrides ApiKey option if specified.")
   String getElasticsearchUsername();
 
   void setElasticsearchUsername(String elasticsearchUsername);
 
-  @Description("Password for Elasticsearch endpoint")
-  @Validation.Required
+  @Description("Password for Elasticsearch endpoint. Overrides ApiKey option if specified.")
   String getElasticsearchPassword();
 
   void setElasticsearchPassword(String elasticsearchPassword);

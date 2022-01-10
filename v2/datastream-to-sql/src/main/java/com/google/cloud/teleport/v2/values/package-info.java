@@ -14,7 +14,5 @@
  * limitations under the License.
  */
 
-/**
- * Values used by the pipelines.
- */
+/** Values used by the pipelines. */
 package com.google.cloud.teleport.v2.values;

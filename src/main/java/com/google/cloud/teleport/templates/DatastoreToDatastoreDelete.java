@@ -19,14 +19,21 @@ import com.google.cloud.teleport.templates.common.DatastoreConverters.DatastoreD
 import com.google.cloud.teleport.templates.common.DatastoreConverters.DatastoreDeleteOptions;
 import com.google.cloud.teleport.templates.common.DatastoreConverters.DatastoreReadOptions;
 import com.google.cloud.teleport.templates.common.DatastoreConverters.ReadJsonEntities;
+import com.google.cloud.teleport.templates.common.FirestoreNestedValueProvider;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.TransformTextViaJavascript;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.ValueProvider;
 
 /** Dataflow template which deletes pulled Datastore Entities. */
 public class DatastoreToDatastoreDelete {
+
+  public static <T> ValueProvider<T> selectProvidedInput(
+      ValueProvider<T> datastoreInput, ValueProvider<T> firestoreInput) {
+    return new FirestoreNestedValueProvider(datastoreInput, firestoreInput);
+  }
 
   /** Custom PipelineOptions. */
   public interface DatastoreToDatastoreDeleteOptions
@@ -55,9 +62,15 @@ public class DatastoreToDatastoreDelete {
     pipeline
         .apply(
             ReadJsonEntities.newBuilder()
-                .setGqlQuery(options.getDatastoreReadGqlQuery())
-                .setProjectId(options.getDatastoreReadProjectId())
-                .setNamespace(options.getDatastoreReadNamespace())
+                .setGqlQuery(
+                    selectProvidedInput(
+                        options.getDatastoreReadGqlQuery(), options.getFirestoreReadGqlQuery()))
+                .setProjectId(
+                    selectProvidedInput(
+                        options.getDatastoreReadProjectId(), options.getFirestoreReadProjectId()))
+                .setNamespace(
+                    selectProvidedInput(
+                        options.getDatastoreReadNamespace(), options.getFirestoreReadNamespace()))
                 .build())
         .apply(
             TransformTextViaJavascript.newBuilder()
@@ -66,7 +79,13 @@ public class DatastoreToDatastoreDelete {
                 .build())
         .apply(
             DatastoreDeleteEntityJson.newBuilder()
-                .setProjectId(options.getDatastoreDeleteProjectId())
+                .setProjectId(
+                    selectProvidedInput(
+                        options.getDatastoreDeleteProjectId(),
+                        options.getFirestoreDeleteProjectId()))
+                .setHintNumWorkers(
+                    selectProvidedInput(
+                        options.getDatastoreHintNumWorkers(), options.getFirestoreHintNumWorkers()))
                 .build());
 
     pipeline.run();

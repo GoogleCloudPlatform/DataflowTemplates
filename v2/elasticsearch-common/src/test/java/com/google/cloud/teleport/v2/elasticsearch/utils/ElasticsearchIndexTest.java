@@ -24,12 +24,13 @@ import org.junit.Test;
 /** Tests for the {@link ElasticsearchIndex} util. */
 public class ElasticsearchIndexTest {
 
-    @Test
-    public void testGetIndex() {
-        Dataset dataset = Dataset.FIREWALL;
-        String namespace = "integration";
-        String testIndex = "logs-gcp.firewall-integration";
+  @Test
+  public void testGetIndex() {
+    Dataset dataset = Dataset.FIREWALL;
+    String namespace = "integration";
+    String testIndex = "logs-gcp.firewall-integration";
 
-        Assert.assertThat(new ElasticsearchIndex(dataset, namespace).getIndex(), is(equalTo(testIndex)));
-    }
+    Assert.assertThat(
+        new ElasticsearchIndex(dataset, namespace).getIndex(), is(equalTo(testIndex)));
+  }
 }

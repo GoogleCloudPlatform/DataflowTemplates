@@ -35,10 +35,8 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
-import org.apache.beam.sdk.extensions.protobuf.DynamicProtoCoder;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.Method;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
@@ -50,14 +48,12 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
-import org.apache.beam.sdk.transforms.SimpleFunction;
-import org.apache.beam.sdk.util.CoderUtils;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.beam.sdk.values.TypeDescriptors;
-import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.ArrayUtils;
 
 /**
  * A template for writing <a href="https://developers.google.com/protocol-buffers">Protobuf</a>
@@ -161,10 +157,9 @@ public final class PubsubProtoToBigQuery {
   /** Returns the {@link PTransform} for reading Pub/Sub messages. */
   private static Read<DynamicMessage> readPubsubMessages(
       PubSubProtoToBigQueryOptions options, Descriptor descriptor) {
-    DynamicProtoCoder coder = DynamicProtoCoder.of(descriptor);
-
-    return PubsubIO.readMessagesWithCoderAndParseFn(coder, parseWithCoder(coder))
-        .fromSubscription(options.getInputSubscription());
+    return PubsubIO.readProtoDynamicMessages(descriptor)
+        .fromSubscription(options.getInputSubscription())
+        .withDeadLetterTopic(options.getOutputTopic());
   }
 
   /**
@@ -188,21 +183,6 @@ public final class PubsubProtoToBigQuery {
     } else {
       return write.withJsonSchema(SchemaUtils.getGcsFileAsString(schemaPath));
     }
-  }
-
-  /** Creates a {@link SimpleFunction} from {@code coder}. */
-  private static SimpleFunction<PubsubMessage, DynamicMessage> parseWithCoder(
-      DynamicProtoCoder coder) {
-    // TODO(zhoufek): Remove this once the reading messages with a descriptor is supported.
-    return SimpleFunction.fromSerializableFunctionWithOutputType(
-        (PubsubMessage message) -> {
-          try {
-            return CoderUtils.decodeFromByteArray(coder, message.getPayload());
-          } catch (CoderException e) {
-            throw new RuntimeException(e);
-          }
-        },
-        TypeDescriptor.of(DynamicMessage.class));
   }
 
   /** {@link PTransform} that handles converting {@link PubsubMessage} values to JSON. */

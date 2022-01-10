@@ -78,6 +78,7 @@ public class BigQueryToDatastore {
         .apply(
             WriteEntities.newBuilder()
                 .setProjectId(options.getDatastoreWriteProjectId())
+                .setHintNumWorkers(options.getDatastoreHintNumWorkers())
                 .setErrorTag(errorTag)
                 .build())
         .apply(

@@ -37,4 +37,6 @@
   <suppress checks=".*" files="common/src/main/java/com/google/api/.*.java" />
   <suppress checks=".*" files="datastream-to-bigquery/src/main/java/temp/.*.java" />
 
+  <!-- suppress checks for Dataplex client which is auto-generated -->
+  <suppress checks=".*" files="googlecloud-to-googlecloud/src/main/java/com/google/api/services/dataplex/.*\.java" />
 </suppressions>

@@ -21,7 +21,8 @@ import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.cdc.mappers.BigQueryDefaultSchemas;
 import com.google.cloud.teleport.v2.cdc.mappers.DataStreamMapper;
-import com.google.cloud.teleport.v2.cdc.merge.DataStreamBigQueryMerger;
+import com.google.cloud.teleport.v2.cdc.mappers.MergeInfoMapper;
+import com.google.cloud.teleport.v2.cdc.merge.BigQueryMerger;
 import com.google.cloud.teleport.v2.cdc.merge.MergeConfiguration;
 import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
@@ -41,6 +42,7 @@ import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.options.Default;
@@ -119,7 +121,8 @@ public class DataStreamToBigQuery {
    *
    * <p>Inherits standard configuration options.
    */
-  public interface Options extends PipelineOptions, StreamingOptions, InputUDFOptions {
+  public interface Options
+      extends PipelineOptions, StreamingOptions, InputUDFOptions, BigQueryOptions {
     @Description("The GCS location of the files you'd like to process")
     String getInputFilePattern();
 
@@ -187,10 +190,11 @@ public class DataStreamToBigQuery {
     void setOutputTableNameTemplate(String value);
 
     @Description(
-        "Fields to ignore in BigQuery (comma separator). Example: _metadata_stream,_metadata_schema")
+        "Fields to ignore in BigQuery (comma separator). eg. _metadata_stream,_metadata_schema")
     @Default.String(
         "_metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_ssn,"
-            + "_metadata_rs_id,_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_error,_metadata_retry_count")
+            + "_metadata_rs_id,_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,"
+            + "_metadata_error,_metadata_retry_count")
     String getIgnoreFields();
 
     void setIgnoreFields(String value);
@@ -218,6 +222,12 @@ public class DataStreamToBigQuery {
     String getDataStreamRootUrl();
 
     void setDataStreamRootUrl(String value);
+
+    @Description("Switch to disable MERGE queries for this job.")
+    @Default.Boolean(true)
+    Boolean getApplyMerge();
+
+    void setApplyMerge(Boolean value);
   }
 
   /**
@@ -231,6 +241,7 @@ public class DataStreamToBigQuery {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
     options.setStreaming(true);
+    options.setEnableStreamingEngine(true);
 
     validateOptions(options);
     run(options);
@@ -276,6 +287,7 @@ public class DataStreamToBigQuery {
     Pipeline pipeline = Pipeline.create(options);
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
 
+    String bigqueryProjectId = getBigQueryProjectId(options);
     String dlqDirectory = dlqManager.getRetryDlqDirectoryWithDateTime();
     String tempDlqDir = dlqManager.getRetryDlqDirectory() + "tmp/";
 
@@ -310,9 +322,9 @@ public class DataStreamToBigQuery {
     // of building pieces of the DLQ.
     PCollection<FailsafeElement<String, String>> dlqJsonRecords =
         pipeline
-            .apply("DLQ Consumer/reader",
-                dlqManager.dlqReconsumer(options.getDlqRetryMinutes()))
-            .apply("DLQ Consumer/cleaner",
+            .apply("DLQ Consumer/reader", dlqManager.dlqReconsumer(options.getDlqRetryMinutes()))
+            .apply(
+                "DLQ Consumer/cleaner",
                 ParDo.of(
                     new DoFn<String, FailsafeElement<String, String>>() {
                       @ProcessElement
@@ -325,7 +337,8 @@ public class DataStreamToBigQuery {
             .setCoder(FAILSAFE_ELEMENT_CODER);
 
     PCollection<FailsafeElement<String, String>> jsonRecords =
-        PCollectionList.of(datastreamJsonRecords).and(dlqJsonRecords)
+        PCollectionList.of(datastreamJsonRecords)
+            .and(dlqJsonRecords)
             .apply("Merge Datastream & DLQ", Flatten.pCollections());
 
     /*
@@ -381,30 +394,33 @@ public class DataStreamToBigQuery {
                     .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
                     .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
 
-    shuffledTableRows
-        .apply(
-            "Map To Replica Tables",
-            new DataStreamMapper(
-                    options.as(GcpOptions.class),
-                    options.getOutputProjectId(),
-                    options.getOutputDatasetTemplate(),
-                    options.getOutputTableNameTemplate())
-                .withDataStreamRootUrl(options.getDataStreamRootUrl())
-                .withDefaultSchema(BigQueryDefaultSchemas.DATASTREAM_METADATA_SCHEMA)
-                .withIgnoreFields(fieldsToIgnore))
-        .apply(
-            "Merge into Replica Tables",
-            new DataStreamBigQueryMerger(
-                    options.as(GcpOptions.class),
-                    options.getOutputProjectId(),
-                    options.getOutputStagingDatasetTemplate(),
-                    options.getOutputStagingTableNameTemplate(),
-                    options.getOutputDatasetTemplate(),
-                    options.getOutputTableNameTemplate(),
-                    Duration.standardMinutes(options.getMergeFrequencyMinutes()),
-                    null,
-                    MergeConfiguration.bigQueryConfiguration())
-                .withDataStreamRootUrl(options.getDataStreamRootUrl()));
+    if (options.getApplyMerge()) {
+      shuffledTableRows
+          .apply(
+              "Map To Replica Tables",
+              new DataStreamMapper(
+                      options.as(GcpOptions.class),
+                      options.getOutputProjectId(),
+                      options.getOutputDatasetTemplate(),
+                      options.getOutputTableNameTemplate())
+                  .withDataStreamRootUrl(options.getDataStreamRootUrl())
+                  .withDefaultSchema(BigQueryDefaultSchemas.DATASTREAM_METADATA_SCHEMA)
+                  .withIgnoreFields(fieldsToIgnore))
+          .apply(
+              "BigQuery Merge/Build MergeInfo",
+              new MergeInfoMapper(
+                  bigqueryProjectId,
+                  options.getOutputStagingDatasetTemplate(),
+                  options.getOutputStagingTableNameTemplate(),
+                  options.getOutputDatasetTemplate(),
+                  options.getOutputTableNameTemplate()))
+          .apply(
+              "BigQuery Merge/Merge into Replica Tables",
+              BigQueryMerger.of(
+                  MergeConfiguration.bigQueryConfiguration()
+                      .withMergeWindowDuration(
+                          Duration.standardMinutes(options.getMergeFrequencyMinutes()))));
+    }
 
     /*
      * Stage 4: Write Failures to GCS Dead Letter Queue
@@ -418,9 +434,7 @@ public class DataStreamToBigQuery {
     PCollection<String> bqWriteDlqJson =
         writeResult
             .getFailedInsertsWithErr()
-            .apply(
-                "BigQuery Failures",
-                MapElements.via(new BigQueryDeadLetterQueueSanitizer()));
+            .apply("BigQuery Failures", MapElements.via(new BigQueryDeadLetterQueueSanitizer()));
 
     PCollectionList.of(udfDlqJson)
         .and(bqWriteDlqJson)
@@ -451,6 +465,12 @@ public class DataStreamToBigQuery {
     }
 
     return cleanTableRow;
+  }
+
+  private static String getBigQueryProjectId(Options options) {
+    return options.getOutputProjectId() == null
+        ? options.as(GcpOptions.class).getProject()
+        : options.getOutputProjectId();
   }
 
   private static DeadLetterQueueManager buildDlqManager(Options options) {

@@ -27,7 +27,6 @@
 
     <properties>
         <avro.version>1.8.2</avro.version>
-        <bigquery.version>v2-rev20210410-1.31.0</bigquery.version>
     </properties>
 
     <dependencies>
@@ -67,21 +66,15 @@
           <artifactId>hadoop-client</artifactId>
           <version>${hadoop.version}</version>
           <exclusions>
-          <exclusion>
-            <groupId>org.codehaus.jackson</groupId>
-            <artifactId>*</artifactId></exclusion>
+            <exclusion>
+              <groupId>org.codehaus.jackson</groupId>
+              <artifactId>*</artifactId>
+            </exclusion>
+            <exclusion>
+              <groupId>org.slf4j</groupId>
+              <artifactId>slf4j-log4j12</artifactId>
+            </exclusion>
           </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>com.google.apis</groupId>
-            <artifactId>google-api-services-bigquery</artifactId>
-            <version>${bigquery.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.google.guava</groupId>
-                    <artifactId>guava-jdk5</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
     </dependencies>
 

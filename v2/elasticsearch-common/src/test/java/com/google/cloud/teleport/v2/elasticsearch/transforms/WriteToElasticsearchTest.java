@@ -30,7 +30,10 @@ public class WriteToElasticsearchTest {
 
   @Rule public ExpectedException exceptionRule = ExpectedException.none();
 
-  /** Tests {@link WriteToElasticsearch} throws an exception if a null ConnectionInformation is provided. */
+  /**
+   * Tests {@link WriteToElasticsearch} throws an exception if a null ConnectionInformation is
+   * provided.
+   */
   @Test
   public void testNullConnectionInformation() {
 
@@ -40,8 +43,7 @@ public class WriteToElasticsearchTest {
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
     options.setConnectionUrl(null);
-    options.setElasticsearchUsername("test");
-    options.setElasticsearchPassword("test");
+    options.setApiKey("key");
 
     pipeline
         .apply("CreateInput", Create.of("test"))
@@ -60,8 +62,7 @@ public class WriteToElasticsearchTest {
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
     options.setConnectionUrl("https://host.domain");
-    options.setElasticsearchUsername("test");
-    options.setElasticsearchPassword("test");
+    options.setApiKey("key");
 
     pipeline
         .apply("CreateInput", Create.of("test"))
@@ -71,8 +72,8 @@ public class WriteToElasticsearchTest {
   }
 
   /**
-   * Tests that {@link WriteToElasticsearch} throws an exception if an invalid ConnectionInformation is
-   * provided.
+   * Tests that {@link WriteToElasticsearch} throws an exception if an invalid ConnectionInformation
+   * is provided.
    */
   @Test
   public void testInvalidConnectionInformation() {
@@ -84,8 +85,7 @@ public class WriteToElasticsearchTest {
 
     options.setConnectionUrl(",");
     options.setIndex("index");
-    options.setElasticsearchUsername("test");
-    options.setElasticsearchPassword("test");
+    options.setApiKey("key");
 
     pipeline
         .apply("CreateInput", Create.of("test"))
@@ -109,8 +109,7 @@ public class WriteToElasticsearchTest {
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
     options.setConnectionUrl("https://host.domain");
-    options.setElasticsearchUsername("test");
-    options.setElasticsearchPassword("test");
+    options.setApiKey("key");
     options.setMaxRetryDuration(500L);
     options.setMaxRetryAttempts(null);
 
@@ -136,8 +135,7 @@ public class WriteToElasticsearchTest {
         PipelineOptionsFactory.create().as(ElasticsearchWriteOptions.class);
 
     options.setConnectionUrl("https://host.domain");
-    options.setElasticsearchUsername("test");
-    options.setElasticsearchPassword("test");
+    options.setApiKey("key");
     options.setMaxRetryDuration(null);
     options.setMaxRetryAttempts(3);
 

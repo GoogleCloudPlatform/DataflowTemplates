@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.utils;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Objects;
 import org.apache.avro.Schema;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Supplier;
 
@@ -67,5 +68,22 @@ public class SerializableSchemaSupplier implements Serializable, Supplier<Schema
     private Object readResolve() throws IOException, ClassNotFoundException {
       return new SerializableSchemaSupplier(new Schema.Parser().parse(this.schema));
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof SerializableSchemaSupplier)) {
+      return false;
+    }
+    SerializableSchemaSupplier that = (SerializableSchemaSupplier) o;
+    return Objects.equals(schema, that.schema);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(schema);
   }
 }

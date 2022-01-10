@@ -1,27 +1,17 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Copyright (C) 1260 Google LLC
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
- * This class was included and changed as a temporary solution to cover Elasticsearch's requirement
- * of op_type for data streams. The required feature will be available with Apache Beam 2.33.0.
- * After migrating to Apache Beam 2.33.0 this class should be removed.
- * Jira ticket: <a href="https://issues.apache.org/jira/browse/BEAM-12601">Support append-only indices in ES output</a>.
- * Github pull request: <a href="https://github.com/apache/beam/pull/15257">[BEAM-12601] Add append-only option</a>.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.elasticsearch.utils;
 
@@ -75,6 +65,8 @@ import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
+import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -86,6 +78,7 @@ import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.entity.BufferedHttpEntity;
 import org.apache.http.entity.ContentType;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.message.BasicHeader;
 import org.apache.http.nio.conn.ssl.SSLIOSessionStrategy;
 import org.apache.http.nio.entity.NStringEntity;
 import org.apache.http.ssl.SSLContexts;
@@ -117,8 +110,8 @@ import org.slf4j.LoggerFactory;
  *
  * }</pre>
  *
- * <p>The connection configuration also accepts optional configuration: {@code withUsername()} and
- * {@code withPassword()}.
+ * <p>The connection configuration also accepts optional configuration: {@code withUsername()},
+ * {@code withPassword()}, {@code withApiKey()} and {@code withBearerToken()}.
  *
  * <p>You can also specify a query on the {@code read()} using {@code withQuery()}.
  *
@@ -249,6 +242,10 @@ public class ElasticsearchIO {
 
     public abstract @Nullable String getPassword();
 
+    public abstract @Nullable String getApiKey();
+
+    public abstract @Nullable String getBearerToken();
+
     public abstract @Nullable String getKeystorePath();
 
     public abstract @Nullable String getKeystorePassword();
@@ -272,6 +269,10 @@ public class ElasticsearchIO {
       abstract Builder setUsername(String username);
 
       abstract Builder setPassword(String password);
+
+      abstract Builder setApiKey(String apiKey);
+
+      abstract Builder setBearerToken(String bearerToken);
 
       abstract Builder setKeystorePath(String keystorePath);
 
@@ -335,6 +336,30 @@ public class ElasticsearchIO {
       checkArgument(password != null, "password can not be null");
       checkArgument(!password.isEmpty(), "password can not be empty");
       return builder().setPassword(password).build();
+    }
+
+    /**
+     * If Elasticsearch authentication is enabled, provide an API key.
+     *
+     * @param apiKey the API key used to authenticate to Elasticsearch
+     * @return a {@link ConnectionConfiguration} describes a connection configuration to
+     *     Elasticsearch.
+     */
+    public ConnectionConfiguration withApiKey(String apiKey) {
+      checkArgument(!Strings.isNullOrEmpty(apiKey), "apiKey can not be null or empty");
+      return builder().setApiKey(apiKey).build();
+    }
+
+    /**
+     * If Elasticsearch authentication is enabled, provide a bearer token.
+     *
+     * @param bearerToken the bearer token used to authenticate to Elasticsearch
+     * @return a {@link ConnectionConfiguration} describes a connection configuration to
+     *     Elasticsearch.
+     */
+    public ConnectionConfiguration withBearerToken(String bearerToken) {
+      checkArgument(!Strings.isNullOrEmpty(bearerToken), "bearerToken can not be null or empty");
+      return builder().setBearerToken(bearerToken).build();
     }
 
     /**
@@ -431,6 +456,14 @@ public class ElasticsearchIO {
         restClientBuilder.setHttpClientConfigCallback(
             httpAsyncClientBuilder ->
                 httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider));
+      }
+      if (getApiKey() != null) {
+        restClientBuilder.setDefaultHeaders(
+            new Header[] {new BasicHeader("Authorization", "ApiKey " + getApiKey())});
+      }
+      if (getBearerToken() != null) {
+        restClientBuilder.setDefaultHeaders(
+            new Header[] {new BasicHeader("Authorization", "Bearer " + getBearerToken())});
       }
       if (getKeystorePath() != null && !getKeystorePath().isEmpty()) {
         try {
@@ -1050,9 +1083,7 @@ public class ElasticsearchIO {
      */
     public interface FieldValueExtractFn extends SerializableFunction<JsonNode, String> {}
 
-    /**
-     * BooleanFieldValueExtractFn class.
-     */
+    /** BooleanFieldValueExtractFn class. */
     public interface BooleanFieldValueExtractFn extends SerializableFunction<JsonNode, Boolean> {}
 
     abstract @Nullable ConnectionConfiguration getConnectionConfiguration();

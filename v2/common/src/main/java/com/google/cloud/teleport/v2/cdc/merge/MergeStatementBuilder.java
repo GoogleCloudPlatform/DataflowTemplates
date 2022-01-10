@@ -134,7 +134,7 @@ public class MergeStatementBuilder implements Serializable {
         buildOrderByFieldsSql(orderByFields),
         buildDeletedFieldSql(deletedFieldName),
         stagingTable,
-        buildRetentionWhereClause());
+        buildRetentionWhereClause(deletedFieldName));
   }
 
   private String buildOrderByFieldsSql(List<String> orderByFields) {
@@ -155,15 +155,33 @@ public class MergeStatementBuilder implements Serializable {
     return String.format(", %s ASC", deletedFieldName);
   }
 
+  // The logic is overly complex to help ensure the BigQuery query plan correctly
+  // uses the _PARTITIONTIME field.
+  // Use of Coalesce retrieves data in the buffer (null time) as now. This does not affect
+  // the query plan.
+  // WHERE (AFTER_YESTERDAY) AND (AFTER_TODAY OR (AFTER_YESTERDAY AND IS_DELETED))
+  // The first block pre-filters all the data we might need ie (IN_BUFFER OR AFTER_YESTERDAY)
+  // The second block re-filters that data for all recent changes or older deletes.
+  // This ensures out of order deletes are not mishandled.
   public static final String RETENTION_WHERE_TEMPLATE =
       String.join(
           "",
-          "WHERE _PARTITIONTIME >= TIMESTAMP(DATE_ADD(CURRENT_DATE(), INTERVAL -%s DAY)) ",
-          "OR _PARTITIONTIME IS NULL");
+          "WHERE ",
+          "COALESCE(_PARTITIONTIME, CURRENT_TIMESTAMP()) >= ",
+          "TIMESTAMP(DATE_ADD(CURRENT_DATE(), INTERVAL -%s DAY)) ",
+          "AND (COALESCE(_PARTITIONTIME, CURRENT_TIMESTAMP()) >= ",
+          "TIMESTAMP(DATE_ADD(CURRENT_DATE(), INTERVAL -%s DAY))",
+          "    OR (_PARTITIONTIME >= TIMESTAMP(DATE_ADD(CURRENT_DATE(), INTERVAL -%s DAY))",
+          "        AND %s))");
 
-  String buildRetentionWhereClause() {
+  String buildRetentionWhereClause(String deletedFieldName) {
     if (configuration.supportPartitionedTables()) {
-      return String.format(RETENTION_WHERE_TEMPLATE, configuration.partitionRetention());
+      return String.format(
+          RETENTION_WHERE_TEMPLATE,
+          configuration.partitionRetention() + 1,
+          configuration.partitionRetention(),
+          configuration.partitionRetention() + 1,
+          deletedFieldName);
     } else {
       return "";
     }

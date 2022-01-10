@@ -1,19 +1,17 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Copyright (C) 2021 Google LLC
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.io;
 
@@ -113,8 +111,8 @@ public class CdcJdbcIO {
 
   /**
    * This is the default {@link Predicate} we use to detect DeadLock. It basically tests if the
-   * {@link SQLException#getSQLState()} equals 40001. 40001 is the SQL State used by most
-   * databases to identify a deadlock.
+   * {@link SQLException#getSQLState()} equals 40001. 40001 is the SQL State used by most databases
+   * to identify a deadlock.
    */
   public static class DefaultRetryStrategy implements RetryStrategy {
     @Override
@@ -224,7 +222,8 @@ public class CdcJdbcIO {
       return withMaxIdleConnections(ValueProvider.StaticValueProvider.of(maxIdleConnections));
     }
 
-    public DataSourceConfiguration withMaxIdleConnections(ValueProvider<Integer> maxIdleConnections) {
+    public DataSourceConfiguration withMaxIdleConnections(
+        ValueProvider<Integer> maxIdleConnections) {
       return builder().setMaxIdleConnections(maxIdleConnections).build();
     }
 
@@ -300,7 +299,7 @@ public class CdcJdbcIO {
           basicDataSource.setConnectionInitSqls(getConnectionInitSqls().get());
         }
         if (getMaxIdleConnections() != null && getMaxIdleConnections().get() != null) {
-          basicDataSource.setMaxIdle(getMaxIdleConnections().get().intValue());  
+          basicDataSource.setMaxIdle(getMaxIdleConnections().get().intValue());
         }
 
         return basicDataSource;
@@ -567,7 +566,7 @@ public class CdcJdbcIO {
       }
 
       private void executeBatchMultiStatementFormatting()
-              throws SQLException, IOException, InterruptedException {
+          throws SQLException, IOException, InterruptedException {
         statement = connection.createStatement();
 
         for (T record : records) {
@@ -581,7 +580,7 @@ public class CdcJdbcIO {
       }
 
       private void executeBatchSingleStatementFormatting()
-              throws SQLException, IOException, InterruptedException {
+          throws SQLException, IOException, InterruptedException {
         statement = connection.createStatement();
 
         for (T record : records) {

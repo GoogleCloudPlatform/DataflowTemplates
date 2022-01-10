@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.transforms;
 
-import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
@@ -25,6 +25,7 @@ import java.util.Optional;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
+import org.apache.commons.lang3.StringUtils;
 import org.joda.time.Duration;
 
 /**
@@ -62,22 +63,32 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
   public abstract ElasticsearchWriteOptions options();
 
   /**
-   * Types have been removed in ES 7.0. Default will be _doc.
-   * See https://www.elastic.co/guide/en/elasticsearch/reference/current/removal-of-types.html"
+   * Types have been removed in ES 7.0. Default will be _doc. See
+   * https://www.elastic.co/guide/en/elasticsearch/reference/current/removal-of-types.html"
    */
-  private static final String DOCUMENT_TYPE="_doc";
+  private static final String DOCUMENT_TYPE = "_doc";
 
   @Override
   public PDone expand(PCollection<String> jsonStrings) {
-    ConnectionInformation connectionInformation = new ConnectionInformation(options().getConnectionUrl());
+    ConnectionInformation connectionInformation =
+        new ConnectionInformation(options().getConnectionUrl());
 
     ElasticsearchIO.ConnectionConfiguration config =
         ElasticsearchIO.ConnectionConfiguration.create(
-            new String[]{connectionInformation.getElasticsearchURL().toString()},
+            new String[] {connectionInformation.getElasticsearchURL().toString()},
             options().getIndex(),
-            DOCUMENT_TYPE)
-            .withUsername(options().getElasticsearchUsername())
-            .withPassword(options().getElasticsearchPassword());
+            DOCUMENT_TYPE);
+
+    // If username and password are not blank, use them instead of ApiKey
+    if (StringUtils.isNotBlank(options().getElasticsearchUsername())
+        && StringUtils.isNotBlank(options().getElasticsearchPassword())) {
+      config =
+          config
+              .withUsername(options().getElasticsearchUsername())
+              .withPassword(options().getElasticsearchPassword());
+    } else {
+      config = config.withApiKey(options().getApiKey());
+    }
 
     ElasticsearchIO.Write elasticsearchWriter =
         ElasticsearchIO.write()
@@ -105,14 +116,9 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
 
     public WriteToElasticsearch build() {
 
-      checkArgument(
-          options().getConnectionUrl() != null, "ConnectionUrl is required.");
+      checkArgument(options().getConnectionUrl() != null, "ConnectionUrl is required.");
 
-      checkArgument(
-              options().getElasticsearchUsername() != null, "Elasticsearch username is required.");
-
-      checkArgument(
-              options().getElasticsearchPassword() != null, "Elasticsearch password is required.");
+      checkArgument(options().getApiKey() != null, "ApiKey is required.");
 
       checkArgument(options().getIndex() != null, "Elasticsearch index should not be null.");
 

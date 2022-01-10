@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.cdc.sources;
 
-import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.MoreObjects.firstNonNull;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.MoreObjects.firstNonNull;
 
 import com.google.api.client.util.DateTime;
 import com.google.api.services.storage.model.Objects;
@@ -61,12 +61,11 @@ import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.TimestampedValue;
 import org.apache.beam.sdk.values.TypeDescriptors;
-import org.apache.beam.vendor.guava.v20_0.com.google.common.collect.Lists;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Lists;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-// import org.apache.beam.sdk.io.range.OffsetRange;
 
 /**
  * Class designed to inspect the directory tree produced by Cloud DataStream.
@@ -195,11 +194,14 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
               .withLowercaseSourceColumns(this.lowercaseSourceColumns);
       datastreamRecords =
           datastreamFiles
-          .apply("ParseAvroRows",
-              ParDo.of(new ReadFileRangesFn<FailsafeElement<String, String>>(
-                           new CreateParseSourceFn(parseFn, coder),
-                           new ReadFileRangesFn.ReadFileRangesFnExceptionHandler())))
-          .setCoder(coder);
+              .apply("ReshuffleFiles", Reshuffle.<ReadableFile>viaRandomKey())
+              .apply(
+                  "ParseAvroRows",
+                  ParDo.of(
+                      new ReadFileRangesFn<FailsafeElement<String, String>>(
+                          new CreateParseSourceFn(parseFn, coder),
+                          new ReadFileRangesFn.ReadFileRangesFnExceptionHandler())))
+              .setCoder(coder);
     }
     return datastreamRecords.apply("Reshuffle", Reshuffle.viaRandomKey());
   }
@@ -221,23 +223,6 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
       return AvroSource.from(input).withParseFn(parseFn, coder);
     }
   }
-
-  /** A class to handle errors which occur during file reads. */
-//   class AvroFileExceptionHandler
-//       extends ReadFileRangesFn.ReadFileRangesFnExceptionHandler {
-
-//     /*
-//      * Applies the desired handler logic to the given exception and returns
-//      * false to avoid throwing exceptions.
-//      */
-//     @Override
-//     public boolean apply(ReadableFile file, OffsetRange range, Exception e) {
-//       LOG.error(
-//           "Avro File Read Failure {}",
-//           file.getMetadata().resourceId().toString());
-//       return false;
-//     }
-//   }
 
   class DataStreamFileIO extends PTransform<PBegin, PCollection<ReadableFile>> {
 

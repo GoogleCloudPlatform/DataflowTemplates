@@ -16,9 +16,17 @@
 package com.google.cloud.teleport.v2.values;
 
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.common.collect.ImmutableList;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import org.apache.commons.text.StringSubstitutor;
 import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.node.ArrayNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The {@link DatastreamRow} class holds the value of a specific Datastream JSON record. The data
@@ -28,8 +36,11 @@ import org.codehaus.jackson.JsonNode;
 // @DefaultCoder(FailsafeElementCoder.class)
 public class DatastreamRow {
 
+  private static final Logger LOG = LoggerFactory.getLogger(DatastreamRow.class);
   private TableRow tableRow;
   private JsonNode jsonRow;
+
+  private static final String DEFAULT_ORACLE_PRIMARY_KEY = "_metadata_row_id";
 
   private DatastreamRow(TableRow tableRow, JsonNode jsonRow) {
     this.tableRow = tableRow;
@@ -82,8 +93,62 @@ public class DatastreamRow {
     }
   }
 
+  private Object getFieldValue(String field) {
+    if (this.jsonRow != null) {
+      return jsonRow.get(field);
+    } else {
+      return tableRow.get(field);
+    }
+  }
+
+  /* Returns the list of primary keys for the given row from the Datastream data. */
+  public List<String> getPrimaryKeys() {
+    List<String> primaryKeys = new ArrayList<String>();
+    if (this.jsonRow != null) {
+      for (JsonNode node : (ArrayNode) jsonRow.get("_metadata_primary_keys")) {
+        primaryKeys.add(node.asText());
+      }
+    } else {
+      if (tableRow.get("_metadata_primary_keys") != null) {
+        primaryKeys = (List<String>) tableRow.get("_metadata_primary_keys");
+      }
+    }
+
+    if (this.getSourceType().equals("oracle") && primaryKeys.isEmpty()) {
+      primaryKeys.add(DEFAULT_ORACLE_PRIMARY_KEY);
+    }
+
+    return primaryKeys;
+  }
+
+  /* Returns the formatted string after applying the data inside the row. */
+  public String formatStringTemplate(String template) {
+    // Key/Value Map used to replace values in template
+    Map<String, String> values = new HashMap<>();
+
+    for (String fieldName : getFieldNames()) {
+      Object value = getFieldValue(fieldName);
+      if (value instanceof String) {
+        values.put(fieldName, (String) value);
+      }
+    }
+
+    // Substitute any templated values in the template
+    String result = StringSubstitutor.replace(template, values, "{", "}");
+    return result;
+  }
+
+  /* Returns the list of field/column names for the given row. */
+  public Iterable<String> getFieldNames() {
+    if (this.jsonRow != null) {
+      return ImmutableList.copyOf(jsonRow.getFieldNames());
+    } else {
+      return tableRow.keySet();
+    }
+  }
+
   public List<String> getSortFields() {
-    if (this.getSourceType() == "mysql") {
+    if (this.getSourceType().equals("mysql")) {
       return Arrays.asList("_metadata_timestamp", "_metadata_log_file", "_metadata_log_position");
     } else {
       // Current default is oracle.

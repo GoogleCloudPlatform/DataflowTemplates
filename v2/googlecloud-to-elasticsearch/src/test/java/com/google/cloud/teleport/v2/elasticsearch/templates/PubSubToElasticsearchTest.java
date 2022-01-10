@@ -136,11 +136,10 @@ public class PubSubToElasticsearchTest {
     PubSubToElasticsearchOptions options =
         TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
-    options.setErrorOutputTable("test:dataset.table");
+    options.setErrorOutputTopic("projects/test/topics/test-error-topic");
     options.setJavascriptTextTransformFunctionName(null);
     options.setJavascriptTextTransformGcsPath(null);
-    options.setElasticsearchUsername("test");
-    options.setElasticsearchPassword("test");
+    options.setApiKey("key");
 
     PCollectionTuple pc =
         pipeline
@@ -180,11 +179,10 @@ public class PubSubToElasticsearchTest {
     PubSubToElasticsearchOptions options =
         TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
-    options.setErrorOutputTable("test:dataset.table");
+    options.setErrorOutputTopic("projects/test/topics/test-error-topic");
     options.setJavascriptTextTransformFunctionName("transform");
     options.setJavascriptTextTransformGcsPath(TRANSFORM_FILE_PATH);
-    options.setElasticsearchUsername("test");
-    options.setElasticsearchPassword("test");
+    options.setApiKey("key");
 
     PCollectionTuple pc =
         pipeline
@@ -224,11 +222,10 @@ public class PubSubToElasticsearchTest {
     PubSubToElasticsearchOptions options =
         TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
-    options.setErrorOutputTable("test:dataset.table");
+    options.setErrorOutputTopic("projects/test/topics/test-error-topic");
     options.setJavascriptTextTransformFunctionName("transformBad");
     options.setJavascriptTextTransformGcsPath(BAD_TRANSFORM_FILE_PATH);
-    options.setElasticsearchUsername("test");
-    options.setElasticsearchPassword("test");
+    options.setApiKey("key");
 
     PCollectionTuple pc =
         pipeline
@@ -240,7 +237,7 @@ public class PubSubToElasticsearchTest {
                     .setJavascriptTextTransformGcsPath(options.getJavascriptTextTransformGcsPath())
                     .build());
 
-    PAssert.that(pc.get(PubSubToElasticsearch.TRANSFORM_DEADLETTER_OUT))
+    PAssert.that(pc.get(PubSubToElasticsearch.TRANSFORM_ERROROUTPUT_OUT))
         .satisfies(
             collection -> {
               FailsafeElement<PubsubMessage, String> element = collection.iterator().next();
@@ -273,9 +270,8 @@ public class PubSubToElasticsearchTest {
     PubSubToElasticsearchOptions options =
         TestPipeline.testingPipelineOptions().as(PubSubToElasticsearchOptions.class);
 
-    options.setErrorOutputTable("test:dataset.table");
-    options.setElasticsearchUsername("test");
-    options.setElasticsearchPassword("test");
+    options.setErrorOutputTopic("projects/test/topics/test-error-topic");
+    options.setApiKey("key");
 
     PCollectionTuple pc =
         pipeline

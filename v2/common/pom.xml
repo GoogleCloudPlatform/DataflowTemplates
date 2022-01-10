@@ -28,40 +28,16 @@
 
     <properties>
         <avro.version>1.8.2</avro.version>
-        <bigquery-api.version>v2-rev20210410-1.31.0</bigquery-api.version>
+        <bigtable.version>1.15.0</bigtable.version>
         <bigquery.version>1.128.0</bigquery.version>
         <commons.version>1.8</commons.version>
         <commons-text.version>1.9</commons-text.version>
-        <gax.version>1.54.0</gax.version>
-        <protobuf.version>3.15.8</protobuf.version>
         <protoc.version>3.15.8</protoc.version>
         <truth.version>1.0.1</truth.version>
         <truth-proto-extension.version>1.0.1</truth-proto-extension.version>
     </properties>
 
     <dependencies>
-        <dependency>
-            <groupId>com.google.api</groupId>
-            <artifactId>gax</artifactId>
-            <version>${gax.version}</version>
-            <exclusions>
-              <exclusion>
-                <groupId>com.google.guava</groupId>
-                <artifactId>guava</artifactId>
-              </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>com.google.apis</groupId>
-            <artifactId>google-api-services-bigquery</artifactId>
-            <version>${bigquery-api.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.google.guava</groupId>
-                    <artifactId>guava-jdk5</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
         <dependency>
             <groupId>org.apache.avro</groupId>
             <artifactId>avro</artifactId>
@@ -72,10 +48,15 @@
           <artifactId>hadoop-client</artifactId>
           <version>${hadoop.version}</version>
           <exclusions>
-          <exclusion>
-            <groupId>org.codehaus.jackson</groupId>
-            <artifactId>*</artifactId></exclusion>
-        </exclusions>
+            <exclusion>
+              <groupId>org.codehaus.jackson</groupId>
+              <artifactId>*</artifactId>
+            </exclusion>
+            <exclusion>
+              <groupId>org.slf4j</groupId>
+              <artifactId>slf4j-log4j12</artifactId>
+            </exclusion>
+          </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>
@@ -105,14 +86,6 @@
             <artifactId>commons-text</artifactId>
             <version>${commons-text.version}</version>
         </dependency>
-
-        <dependency>
-            <groupId>com.google.http-client</groupId>
-            <artifactId>google-http-client-bom</artifactId>
-            <version>1.39.0</version>
-            <type>pom</type>
-        </dependency>
-
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-bigquery</artifactId>
@@ -125,9 +98,15 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>com.google.protobuf</groupId>
-            <artifactId>protobuf-java</artifactId>
-            <version>${protobuf.version}</version>
+          <groupId>com.google.cloud.bigtable</groupId>
+          <artifactId>bigtable-hbase-beam</artifactId>
+          <version>${bigtable.version}</version>
+          <exclusions>
+            <exclusion>
+              <groupId>org.slf4j</groupId>
+              <artifactId>slf4j-log4j12</artifactId>
+            </exclusion>
+          </exclusions>
         </dependency>
 
         <!-- Test dependencies -->
