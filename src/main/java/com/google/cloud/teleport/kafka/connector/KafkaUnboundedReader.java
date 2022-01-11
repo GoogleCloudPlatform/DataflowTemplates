@@ -1,18 +1,17 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF E 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Copyright (C) 2021 Google LLC
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.kafka.connector;
 
@@ -267,8 +266,7 @@ class KafkaUnboundedReader<K, V> extends UnboundedReader<KafkaRecord<K, V>> {
     }
 
     // Return minimum watermark among partitions.
-    return partitionStates
-        .stream()
+    return partitionStates.stream()
         .map(PartitionState::updateAndGetWatermark)
         .min(Comparator.naturalOrder())
         .get();
@@ -278,8 +276,7 @@ class KafkaUnboundedReader<K, V> extends UnboundedReader<KafkaRecord<K, V>> {
   public CheckpointMark getCheckpointMark() {
     reportBacklog();
     return new KafkaCheckpointMark(
-        partitionStates
-            .stream()
+        partitionStates.stream()
             .map(
                 p ->
                     new PartitionMark(
@@ -393,7 +390,7 @@ class KafkaUnboundedReader<K, V> extends UnboundedReader<KafkaRecord<K, V>> {
 
   private static final long UNINITIALIZED_OFFSET = -1;
 
-  //Add SpEL instance to cover the interface difference of Kafka client
+  // Add SpEL instance to cover the interface difference of Kafka client
   private transient ConsumerSpEL consumerSpEL;
 
   /** watermark before any records have been read. */
@@ -603,9 +600,7 @@ class KafkaUnboundedReader<K, V> extends UnboundedReader<KafkaRecord<K, V>> {
     LOG.debug("{}: Committing finalized checkpoint {}", this, checkpointMark);
 
     consumer.commitSync(
-        checkpointMark
-            .getPartitions()
-            .stream()
+        checkpointMark.getPartitions().stream()
             .filter(p -> p.getNextOffset() != UNINITIALIZED_OFFSET)
             .collect(
                 Collectors.toMap(

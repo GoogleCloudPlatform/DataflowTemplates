@@ -1,35 +1,39 @@
 /*
- *     Copyright 2021 Google LLC
+ * Copyright (C) 2021 Google LLC
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.templates.datastream;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import org.json.JSONObject;
+import java.util.regex.Pattern;
+import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 
 /**
- * Utility class with methods which converts text fields in change events represented by
- * JSONObject to Cloud Spanner types.
- * TODO(b/174506187) - Add support for other data types.
+ * Utility class with methods which converts text fields in change events represented by JSONObject
+ * to Cloud Spanner types. TODO(b/174506187) - Add support for other data types.
  */
 public class ChangeEventTypeConvertor {
 
@@ -41,122 +45,91 @@ public class ChangeEventTypeConvertor {
   // TODO: Use formatter from FormatDatastreamRecordToJson
   private static final DateTimeFormatter DATASTREAM_DATE_FORMATTER =
       DateTimeFormatter.ISO_LOCAL_DATE;
+  private static final Pattern NUMERIC_PATTERN = Pattern.compile("-?\\d+(\\.\\d+)?");
 
-  public static Boolean toBoolean(JSONObject changeEvent, String key, boolean requiredField)
+  public static Boolean toBoolean(JsonNode changeEvent, String key, boolean requiredField)
       throws ChangeEventConvertorException {
 
     if (!containsValue(changeEvent, key, requiredField)) {
       return null;
     }
-    /*
-     * JSONObject.getBoolean() converts
-     * 1) From JSON Boolean objects to boolean value.
-     * 2) String representing boolean to boolean value.
-     */
     try {
-      return Boolean.valueOf(changeEvent.getBoolean(key));
+
+      /* Jackson library converts only lowercase "true" to the correct boolean.
+       * Everything else is false. Hence using BooleanUtils to do the necessary conversion.
+       */
+      JsonNode node = changeEvent.get(key);
+      if (node.isTextual()) {
+        return BooleanUtils.toBoolean(node.asText());
+      }
+      return Boolean.valueOf(node.asBoolean());
     } catch (Exception e) {
-      throw new ChangeEventConvertorException(e);
+      throw new ChangeEventConvertorException("Unable to convert field " + key + " to boolean ", e);
     }
   }
 
-  public static Long toLong(JSONObject changeEvent, String key, boolean requiredField)
+  public static Long toLong(JsonNode changeEvent, String key, boolean requiredField)
       throws ChangeEventConvertorException {
 
     if (!containsValue(changeEvent, key, requiredField)) {
       return null;
     }
-    /*
-     * Doing manual conversion as opposed to JSONObject.getLong() because
-     * 1) getLong() loses information when doing double to long conversion.
-     * 2) getLong() value has issues with decimal values encoded as strings
-     *  example - "123.456".
-     */
+
     try {
-      Object field = changeEvent.get(key);
-
-      // Try parsing from Number.
-      if (field instanceof Number) {
-        Number num = (Number) field;
-        return Long.valueOf(num.longValue());
+      JsonNode node = changeEvent.get(key);
+      if (node.isTextual()) {
+        return Double.valueOf(node.asText()).longValue();
       }
-
-      // Try parsing from string
-      if (field instanceof String) {
-        Number num = Double.parseDouble((String) field);
-        return Long.valueOf(num.longValue());
-      }
+      return node.asLong();
 
     } catch (Exception e) {
-      // Exhausted all possibilities converting. Throwing an Exception.
-    }
-    throw new ChangeEventConvertorException("Key " + key + " not a Long");
-  }
-
-  public static Double toDouble(JSONObject changeEvent, String key, boolean requiredField)
-      throws ChangeEventConvertorException {
-
-    if (!containsValue(changeEvent, key, requiredField)) {
-      return null;
-    }
-    /*
-     * JSONObject.getDouble() converts
-     * 1) From JSON numbers to double value.
-     * 2) String  to double value.
-     */
-    try {
-      return Double.valueOf(changeEvent.getDouble(key));
-    } catch (Exception e) {
-      throw new ChangeEventConvertorException(e);
+      throw new ChangeEventConvertorException("Unable to convert field " + key + " to long ", e);
     }
   }
 
-  public static String toString(JSONObject changeEvent, String key, boolean requiredField)
+  public static Double toDouble(JsonNode changeEvent, String key, boolean requiredField)
       throws ChangeEventConvertorException {
 
     if (!containsValue(changeEvent, key, requiredField)) {
       return null;
     }
-    /*
-     * JSONObject.getString() converts JSON strings to strings.
-     * All other types cause exceptions. Hence doing manual conversion.
-     */
     try {
-      Object field = changeEvent.get(key);
-
-      if (field instanceof String) {
-        return (String) field;
+      JsonNode node = changeEvent.get(key);
+      if (node.isTextual()) {
+        return Double.valueOf(node.asText());
       }
+      return Double.valueOf(node.asDouble());
+    } catch (Exception e) {
+      throw new ChangeEventConvertorException("Unable to convert field " + key + " to double ", e);
+    }
+  }
 
-      // Try converting to Boolean.
-      if (field instanceof Boolean) {
-        return Boolean.toString((Boolean) field);
-      }
+  public static String toString(JsonNode changeEvent, String key, boolean requiredField)
+      throws ChangeEventConvertorException {
 
-      // Try converting to Number.
-      if (field instanceof Number) {
-        Number num = (Number) field;
-        return num.toString();
-      }
+    if (!containsValue(changeEvent, key, requiredField)) {
+      return null;
+    }
+    try {
+      return changeEvent.get(key).asText();
     } catch (Exception e) {
       // Throw an exception as all conversion options are exhausted.
+      throw new ChangeEventConvertorException("Unable to convert field " + key + " to string ", e);
     }
-    throw new ChangeEventConvertorException("Unable to convert Key: "
-                                                + key + " Value: "
-                                                + changeEvent.get(key)
-                                                + "; Not a string");
   }
 
-  public static ByteArray toByteArray(JSONObject changeEvent, String key, boolean requiredField)
+  public static ByteArray toByteArray(JsonNode changeEvent, String key, boolean requiredField)
       throws ChangeEventConvertorException {
+
     if (!containsValue(changeEvent, key, requiredField)) {
       return null;
     }
     try {
-      String value = toString(changeEvent, key, requiredField);
+      String value = changeEvent.get(key).asText();
       return ByteArray.copyFrom(value);
     } catch (Exception e) {
-      throw new ChangeEventConvertorException(e);
+      throw new ChangeEventConvertorException(
+          "Unable to convert field " + key + " to ByteArray", e);
     }
   }
 
@@ -165,40 +138,67 @@ public class ChangeEventTypeConvertor {
    * 1) From Timestamp string format
    * 2) From long value as microseconds
    */
-  public static Timestamp toTimestamp(JSONObject changeEvent, String key, boolean requiredField)
+  public static Timestamp toTimestamp(JsonNode changeEvent, String key, boolean requiredField)
       throws ChangeEventConvertorException {
+
     if (!containsValue(changeEvent, key, requiredField)) {
       return null;
     }
     try {
-      return Timestamp.of(parseTimestamp(changeEvent.getString(key)));
+      String timeString = changeEvent.get(key).asText();
+      return Timestamp.of(parseTimestamp(timeString));
     } catch (Exception e) {
-      throw new ChangeEventConvertorException("Unable to convert Key: "
-                                                  + key + " Value: "
-                                                  + changeEvent.get(key)
-                                                  + "; Not a Timestamp");
+      throw new ChangeEventConvertorException(
+          "Unable to convert field " + key + " to Timestamp", e);
     }
-
   }
 
-  public static Date toDate(JSONObject changeEvent, String key, boolean requiredField)
+  public static Date toDate(JsonNode changeEvent, String key, boolean requiredField)
       throws ChangeEventConvertorException {
+
     if (!containsValue(changeEvent, key, requiredField)) {
       return null;
     }
     try {
-      return Date.fromJavaUtilDate(parseLenientDate(changeEvent.getString(key)));
+      String dateString = changeEvent.get(key).asText();
+      return Date.fromJavaUtilDate(parseLenientDate(dateString));
     } catch (Exception e) {
-      throw new ChangeEventConvertorException(e);
+      throw new ChangeEventConvertorException("Unable to convert field " + key + " to Date", e);
     }
+  }
+
+  private static boolean isNumeric(String str) {
+    return NUMERIC_PATTERN.matcher(str).matches(); // match a number with optional '-' and decimal.
+  }
+
+  /*
+   * This function converts the JSON field to string. In addition, this function also checks
+   * if the field is a number.
+   */
+  public static BigDecimal toNumericBigDecimal(
+      JsonNode changeEvent, String key, boolean requiredField)
+      throws ChangeEventConvertorException {
+
+    String value = toString(changeEvent, key, requiredField);
+    if (NumberUtils.isCreatable(value) || NumberUtils.isParsable(value) || isNumeric(value)) {
+      return new BigDecimal(value).setScale(9, RoundingMode.HALF_UP);
+    }
+    throw new ChangeEventConvertorException(
+        "Unable to convert field "
+            + key
+            + " to Numeric. Creatable("
+            + NumberUtils.isCreatable(value)
+            + "), Parsable("
+            + NumberUtils.isParsable(value)
+            + ")");
   }
 
   /* Checks if the change event has the key and a value associated with this. This
    * function also throws an exception if it's a required field.
    */
-  private static boolean containsValue(JSONObject changeEvent, String key, boolean requiredField)
+  private static boolean containsValue(JsonNode changeEvent, String key, boolean requiredField)
       throws ChangeEventConvertorException {
-    boolean containsValue = !changeEvent.isNull(key);
+    boolean containsValue = changeEvent.hasNonNull(key);
     if (requiredField && !containsValue) {
       throw new ChangeEventConvertorException("Required key " + key + " not found in change event");
     }
@@ -213,15 +213,17 @@ public class ChangeEventTypeConvertor {
   private static ZonedDateTime convertToZonedDateTime(String timestamp) {
     ZonedDateTime zonedDateTime;
     try {
-      zonedDateTime = ZonedDateTime.parse(timestamp,
-          DATASTREAM_TIMESTAMP_WITH_TZ_FORMATTER).withZoneSameInstant(ZoneId.of("UTC"));
+      zonedDateTime =
+          ZonedDateTime.parse(timestamp, DATASTREAM_TIMESTAMP_WITH_TZ_FORMATTER)
+              .withZoneSameInstant(ZoneId.of("UTC"));
     } catch (DateTimeParseException e) {
       if (!timestamp.endsWith("Z")) {
 
         // Datastream replication in JSON format does not contain 'Z' at the end of timestamp.
         timestamp = timestamp + "Z";
-        zonedDateTime = ZonedDateTime.parse(timestamp,
-            DATASTREAM_TIMESTAMP_WITH_TZ_FORMATTER).withZoneSameInstant(ZoneId.of("UTC"));
+        zonedDateTime =
+            ZonedDateTime.parse(timestamp, DATASTREAM_TIMESTAMP_WITH_TZ_FORMATTER)
+                .withZoneSameInstant(ZoneId.of("UTC"));
       } else {
         throw e;
       }

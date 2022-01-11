@@ -48,5 +48,10 @@ message MyMessage {
 
   MyImportedProto some_imported_proto = 8;
 
-  // TODO(zhoufek): Get public imports working so that no placeholder is used.
+  map<string, string> some_map_field = 9;
+}
+
+message CircularlyReferencedMessage {
+  string non_circular = 1;
+  CircularlyReferencedMessage circular = 2;
 }

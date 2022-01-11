@@ -1,7 +1,7 @@
 # DataStream to BigQuery Dataflow Template
 
-The [DataStreamToBigQuery](src/main/java/com/google/cloud/teleport/v2/templates/DataStreamToBigQuery.java) pipeline 
-ingests data supplied by DataStream, optionally applies a Javascript or Python UDF if supplied 
+The [DataStreamToBigQuery](src/main/java/com/google/cloud/teleport/v2/templates/DataStreamToBigQuery.java) pipeline
+ingests data supplied by DataStream, optionally applies a Javascript or Python UDF if supplied
 and writes the data to BigQuery staging tables.  A Merge is run against BigQuery to load data into
 the final table.
 

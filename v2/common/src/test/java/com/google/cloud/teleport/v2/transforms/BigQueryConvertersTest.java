@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,17 +13,18 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.v2.transforms;
 
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Field.Mode;
 import com.google.cloud.bigquery.LegacySQLTypeName;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.transforms.BigQueryConverters.AvroToMutation;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.BigQueryTableConfigManager;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.SchemaUtils;
@@ -40,6 +41,7 @@ import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryUtils;
+import org.apache.beam.sdk.io.gcp.bigquery.SchemaAndRecord;
 import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesCoder;
@@ -56,6 +58,10 @@ import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableMap;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.client.Mutation;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -70,34 +76,33 @@ public class BigQueryConvertersTest {
   static final TableRow ROW =
       new TableRow().set("id", "007").set("state", "CA").set("price", 26.23);
   /** The tag for the main output of the json transformation. */
-
   static final TupleTag<FailsafeElement<TableRow, String>> TRANSFORM_OUT =
-          new TupleTag<FailsafeElement<TableRow, String>>() {};
+      new TupleTag<FailsafeElement<TableRow, String>>() {};
   /** The tag for the dead-letter output of the json to table row transform. */
   static final TupleTag<FailsafeElement<TableRow, String>> TRANSFORM_DEADLETTER_OUT =
-          new TupleTag<FailsafeElement<TableRow, String>>() {};
+      new TupleTag<FailsafeElement<TableRow, String>>() {};
   /** The tag for the main output of the json transformation. */
   static final TupleTag<FailsafeElement<TableRow, String>> UDF_OUT =
-          new TupleTag<FailsafeElement<TableRow, String>>() {};
+      new TupleTag<FailsafeElement<TableRow, String>>() {};
   /** The tag for the dead-letter output of the json to table row transform. */
   static final TupleTag<FailsafeElement<TableRow, String>> UDF_TRANSFORM_DEADLETTER_OUT =
-          new TupleTag<FailsafeElement<TableRow, String>>() {};
+      new TupleTag<FailsafeElement<TableRow, String>>() {};
   /** String/String Coder for FailsafeElement. */
   static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
-          FailsafeElementCoder.of(
-                  NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of()));
+      FailsafeElementCoder.of(
+          NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of()));
   /** TableRow/String Coder for FailsafeElement. */
   static final FailsafeElementCoder<TableRow, String> FAILSAFE_TABLE_ROW_ELEMENT_CODER =
-          FailsafeElementCoder.of(TableRowJsonCoder.of(), NullableCoder.of(StringUtf8Coder.of()));
+      FailsafeElementCoder.of(TableRowJsonCoder.of(), NullableCoder.of(StringUtf8Coder.of()));
   // Define the TupleTag's here otherwise the anonymous class will force the test method to
   // be serialized.
   private static final TupleTag<TableRow> TABLE_ROW_TAG = new TupleTag<TableRow>() {};
   private static final TupleTag<FailsafeElement<PubsubMessage, String>> FAILSAFE_ELM_TAG =
       new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
   private static final String jsonifiedTableRow =
-          "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
+      "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
   private static final String udfOutputRow =
-          "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23,\"someProp\":\"someValue\"}";
+      "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23,\"someProp\":\"someValue\"}";
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
   @Rule public ExpectedException expectedException = ExpectedException.none();
   private ValueProvider<String> entityKind = StaticValueProvider.of("TestEntity");
@@ -347,64 +352,69 @@ public class BigQueryConvertersTest {
     pipeline.run();
   }
 
-  /** Tests that {@link BigQueryConverters.TableRowToFailsafeJsonDocument} transform returns the correct element. */
+  /**
+   * Tests that {@link BigQueryConverters.TableRowToFailsafeJsonDocument} transform returns the
+   * correct element.
+   */
   @Test
   public void testTableRowToJsonDocument() {
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
 
     coderRegistry.registerCoderForType(
-            FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(),
-            FAILSAFE_ELEMENT_CODER);
+        FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
 
     coderRegistry.registerCoderForType(
-            FAILSAFE_TABLE_ROW_ELEMENT_CODER.getEncodedTypeDescriptor(),
-            FAILSAFE_TABLE_ROW_ELEMENT_CODER);
+        FAILSAFE_TABLE_ROW_ELEMENT_CODER.getEncodedTypeDescriptor(),
+        FAILSAFE_TABLE_ROW_ELEMENT_CODER);
 
     BigQueryConverters.BigQueryReadOptions options =
-            PipelineOptionsFactory.create().as(BigQueryConverters.BigQueryReadOptions.class);
+        PipelineOptionsFactory.create().as(BigQueryConverters.BigQueryReadOptions.class);
 
     options.setInputTableSpec(null);
     options.setQuery(null);
 
-
     PCollectionTuple testTuple =
-    pipeline
-        .apply("Create Input", Create.<TableRow>of(ROW).withCoder(TableRowJsonCoder.of()))
-        .apply(
-            "TestRowToDocument",
-            BigQueryConverters.TableRowToFailsafeJsonDocument.newBuilder()
-                .setTransformDeadletterOutTag(TRANSFORM_DEADLETTER_OUT)
-                .setTransformOutTag(TRANSFORM_OUT)
-                .setUdfDeadletterOutTag(UDF_TRANSFORM_DEADLETTER_OUT)
-                .setUdfOutTag(UDF_OUT)
-                .setOptions(options.as(JavascriptTextTransformer.JavascriptTextTransformerOptions.class))
-                .build());
+        pipeline
+            .apply("Create Input", Create.<TableRow>of(ROW).withCoder(TableRowJsonCoder.of()))
+            .apply(
+                "TestRowToDocument",
+                BigQueryConverters.TableRowToFailsafeJsonDocument.newBuilder()
+                    .setTransformDeadletterOutTag(TRANSFORM_DEADLETTER_OUT)
+                    .setTransformOutTag(TRANSFORM_OUT)
+                    .setUdfDeadletterOutTag(UDF_TRANSFORM_DEADLETTER_OUT)
+                    .setUdfOutTag(UDF_OUT)
+                    .setOptions(
+                        options.as(
+                            JavascriptTextTransformer.JavascriptTextTransformerOptions.class))
+                    .build());
 
     // Assert
-    PAssert.that(testTuple.get(TRANSFORM_OUT)).satisfies(
+    PAssert.that(testTuple.get(TRANSFORM_OUT))
+        .satisfies(
             collection -> {
               FailsafeElement<TableRow, String> element = collection.iterator().next();
               assertThat(element.getOriginalPayload()).isEqualTo(ROW);
               assertThat(element.getPayload()).isEqualTo(jsonifiedTableRow);
               return null;
-            }
-    );
+            });
 
     // Execute pipeline
     pipeline.run();
   }
 
-  /** Tests that {@link BigQueryConverters.BigQueryTableConfigManager}
-   * returns expected table names when supplying templated values.
+  /**
+   * Tests that {@link BigQueryConverters.BigQueryTableConfigManager} returns expected table names
+   * when supplying templated values.
    */
   @Test
   public void serializableFunctionConvertsTableRowToGenericRecordUsingSchema() {
     GenericRecord expectedRecord = generateNestedAvroRecord();
-    Row testRow = AvroUtils
-        .toBeamRowStrict(expectedRecord, AvroUtils.toBeamSchema(expectedRecord.getSchema()));
+    Row testRow =
+        AvroUtils.toBeamRowStrict(
+            expectedRecord, AvroUtils.toBeamSchema(expectedRecord.getSchema()));
     TableRow inputRow = BigQueryUtils.toTableRow(testRow);
-    TableRowToGenericRecordFn rowToGenericRecordFn = TableRowToGenericRecordFn
-        .of(expectedRecord.getSchema());
+    TableRowToGenericRecordFn rowToGenericRecordFn =
+        TableRowToGenericRecordFn.of(expectedRecord.getSchema());
 
     GenericRecord actualRecord = rowToGenericRecordFn.apply(inputRow);
 
@@ -417,7 +427,7 @@ public class BigQueryConvertersTest {
     String tableTemplateVal = "my_table";
     String outputTableSpec = "";
 
-    BigQueryTableConfigManager mgr = 
+    BigQueryTableConfigManager mgr =
         new BigQueryTableConfigManager(
             projectIdVal, datasetTemplateVal,
             tableTemplateVal, outputTableSpec);
@@ -426,8 +436,9 @@ public class BigQueryConvertersTest {
     assertThat(mgr.getOutputTableSpec()).isEqualTo(outputTableSpecResult);
   }
 
-  /** Tests that {@link BigQueryConverters.BigQueryTableConfigManager}
-   * returns expected table names when supplying full table path.
+  /**
+   * Tests that {@link BigQueryConverters.BigQueryTableConfigManager} returns expected table names
+   * when supplying full table path.
    */
   @Test
   public void testBigQueryTableConfigManagerTableSpec() {
@@ -436,7 +447,7 @@ public class BigQueryConvertersTest {
     String tableTemplateVal = null;
     String outputTableSpec = "my_project:my_dataset.my_table";
 
-    BigQueryTableConfigManager mgr = 
+    BigQueryTableConfigManager mgr =
         new BigQueryTableConfigManager(
             projectIdVal, datasetTemplateVal,
             tableTemplateVal, outputTableSpec);
@@ -445,8 +456,9 @@ public class BigQueryConvertersTest {
     assertThat(mgr.getTableTemplate()).isEqualTo("my_table");
   }
 
-  /** Tests that {@link BigQueryConverters.SchemaUtils} properly
-   * cleans and returns a BigQuery Schema from a JSON string.
+  /**
+   * Tests that {@link BigQueryConverters.SchemaUtils} properly cleans and returns a BigQuery Schema
+   * from a JSON string.
    */
   @Test
   public void testSchemaUtils() {
@@ -456,5 +468,53 @@ public class BigQueryConvertersTest {
     assertThat(fields.get(0).getName()).isEqualTo("column");
     assertThat(fields.get(0).getMode()).isEqualTo(Mode.NULLABLE);
     assertThat(fields.get(0).getType()).isEqualTo(LegacySQLTypeName.STRING);
+  }
+
+  /** Tests that {@link BigQueryConverters.AvroToMutation} creates a Mutation. */
+  @Test
+  public void testAvroToMutation() {
+    // Arrange
+    String rowkey = "rowkey";
+    String columnFamily = "CF";
+    AvroToMutation avroToMutation =
+        AvroToMutation.newBuilder().setColumnFamily(columnFamily).setRowkey(rowkey).build();
+
+    TableSchema bqSchema =
+        new TableSchema()
+            .setFields(
+                Arrays.asList(
+                    new TableFieldSchema().setName(rowkey).setType("STRING"),
+                    new TableFieldSchema().setName(shortStringField).setType("STRING")));
+
+    Schema avroSchema =
+        new Schema.Parser()
+            .parse(
+                String.format(
+                    AVRO_SCHEMA_TEMPLATE,
+                    new StringBuilder()
+                        .append(String.format(avroFieldTemplate, rowkey, "string", idFieldDesc))
+                        .append(",")
+                        .append(generateShortStringField())
+                        .toString()));
+    GenericRecordBuilder builder = new GenericRecordBuilder(avroSchema);
+    builder.set(rowkey, idFieldValueStr);
+    builder.set(shortStringField, shortStringFieldValue);
+    Record record = builder.build();
+    SchemaAndRecord inputBqData = new SchemaAndRecord(record, bqSchema);
+
+    // Act
+    Mutation mutation = avroToMutation.apply(inputBqData);
+
+    // Assert
+    // Assert: Rowkey is set
+    assertThat(Bytes.toString(mutation.getRow())).isEqualTo(idFieldValueStr);
+
+    assertThat(mutation.getFamilyCellMap().size()).isEqualTo(1);
+
+    // Assert: One cell was set with a value
+    List<Cell> cells = mutation.getFamilyCellMap().get(Bytes.toBytes(columnFamily));
+    assertThat(cells.size()).isEqualTo(1);
+    assertThat(shortStringField).isEqualTo(Bytes.toString(CellUtil.cloneQualifier(cells.get(0))));
+    assertThat(shortStringFieldValue).isEqualTo(Bytes.toString(CellUtil.cloneValue(cells.get(0))));
   }
 }

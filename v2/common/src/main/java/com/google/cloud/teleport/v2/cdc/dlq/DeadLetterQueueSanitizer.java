@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -23,17 +23,16 @@ import org.codehaus.jackson.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 // TODO when this is a flex template it could incorporate outputs with configurable dest?
 /**
- * The DeadLetterQueueSanitizer is an abstract handler to clean and prepare pipeline failures
- * to be stored in a GCS Dead Letter Queue.
+ * The DeadLetterQueueSanitizer is an abstract handler to clean and prepare pipeline failures to be
+ * stored in a GCS Dead Letter Queue.
  *
- * Extending the DeadLetterQueueSanitizer requires only to
- * implement getJsonMessage() and getErrorMessageJson().
+ * <p>Extending the DeadLetterQueueSanitizer requires only to implement getJsonMessage() and
+ * getErrorMessageJson().
  *
- * NOTE: The input to a Sanitizer is flexible but the output must be a String
- * unless your override formatMessage()
+ * <p>NOTE: The input to a Sanitizer is flexible but the output must be a String unless your
+ * override formatMessage()
  */
 public class DeadLetterQueueSanitizer<InputT, OutputT> extends SimpleFunction<InputT, OutputT> {
 
@@ -66,13 +65,13 @@ public class DeadLetterQueueSanitizer<InputT, OutputT> extends SimpleFunction<In
     try {
       JsonNode node = mapper.readTree(rawJson);
       resultNode.put("message", node);
-    } catch (IOException e ) {
+    } catch (IOException e) {
       resultNode.put("message", rawJson);
     }
     try {
       JsonNode node = mapper.readTree(errorMessageJson);
       resultNode.put("error_message", node);
-    } catch (IOException e ) {
+    } catch (IOException e) {
       resultNode.put("error_message", errorMessageJson);
     }
     return (OutputT) resultNode.toString();

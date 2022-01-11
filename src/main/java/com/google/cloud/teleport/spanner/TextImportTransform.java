@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner;
 
 import com.google.cloud.spanner.Mutation;
@@ -41,6 +40,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.apache.beam.sdk.extensions.gcp.options.GcsOptions;
 import org.apache.beam.sdk.extensions.gcp.util.GcsUtil;
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
@@ -344,6 +344,8 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
 
     private final ValueProvider<String> importManifest;
     private final PCollectionView<Ddl> ddlView;
+    private static final Pattern STRING_PATTERN =
+        Pattern.compile("STRING(?:\\((?:MAX|[0-9]+)\\))?");
 
     ResolveDataFiles(ValueProvider<String> importManifest, PCollectionView<Ddl> ddlView) {
       this.importManifest = importManifest;
@@ -404,7 +406,7 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
     }
 
     public static Code parseSpannerDataType(String columnType) {
-      if (columnType.matches("STRING(?:\\((?:MAX|[0-9]+)\\))?")) {
+      if (STRING_PATTERN.matcher(columnType).matches()) {
         return Code.STRING;
       } else if (columnType.equalsIgnoreCase("INT64")) {
         return Code.INT64;
@@ -443,7 +445,7 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
           throw new RuntimeException(
               String.format(
                   "DB table %s has one or more generated columns. An explict column list that "
-                  + "excludes the generated columns must be provided in the manifest.",
+                      + "excludes the generated columns must be provided in the manifest.",
                   table.name()));
         }
       }
@@ -460,7 +462,7 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
           throw new RuntimeException(
               String.format(
                   "Column %s in manifest is a generated column in DB table %s. "
-                  + "Generated columns cannot be imported.",
+                      + "Generated columns cannot be imported.",
                   manifiestColumn.getColumnName(), table.name()));
         }
         if (parseSpannerDataType(manifiestColumn.getTypeName()) != dbColumn.type().getCode()) {

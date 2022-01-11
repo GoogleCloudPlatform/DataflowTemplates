@@ -1,19 +1,18 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
-
 package com.google.cloud.teleport.templates.common;
 
 import com.google.api.client.util.DateTime;
@@ -63,9 +62,9 @@ public class SplunkConverters {
   private static final String HEC_SOURCE_TYPE_KEY = "sourcetype";
   private static final String HEC_FIELDS_KEY = "fields";
   private static final String TIMESTAMP_KEY = "timestamp";
-  
+
   private static final Gson GSON = new Gson();
-  
+
   protected static final String PUBSUB_MESSAGE_ATTRIBUTE_FIELD = "attributes";
   protected static final String PUBSUB_MESSAGE_DATA_FIELD = "data";
 
@@ -120,10 +119,11 @@ public class SplunkConverters {
     ValueProvider<Integer> getParallelism();
 
     void setParallelism(ValueProvider<Integer> parallelism);
-  
-    @Description("Determines whether the template forwards a PubsubMessage or just the underlying data.")
+
+    @Description(
+        "Determines whether the template forwards a PubsubMessage or just the underlying data.")
     ValueProvider<Boolean> getIncludePubsubMessage();
-  
+
     void setIncludePubsubMessage(ValueProvider<Boolean> includePubsubMessage);
 
     @Description(
@@ -132,6 +132,11 @@ public class SplunkConverters {
     ValueProvider<String> getTokenKMSEncryptionKey();
 
     void setTokenKMSEncryptionKey(ValueProvider<String> keyName);
+
+    @Description("Path to root CA in GCS, ex: gs://mybucket/somepath/rootCA.crt")
+    ValueProvider<String> getRootCaCertificatePath();
+
+    void setRootCaCertificatePath(ValueProvider<String> rootCaPath);
   }
 
   private static class FailsafeStringToSplunkEvent
@@ -152,7 +157,7 @@ public class SplunkConverters {
       this.splunkEventOutputTag = splunkEventOutputTag;
       this.splunkDeadletterTag = splunkDeadletterTag;
     }
-  
+
     @Override
     public PCollectionTuple expand(PCollection<FailsafeElement<String, String>> input) {
 
@@ -245,7 +250,8 @@ public class SplunkConverters {
                                 builder.withFields(GSON.fromJson(fields, JsonObject.class));
                               } catch (JsonParseException e) {
                                 LOG.warn(
-                                    "Unable to convert 'fields' metadata value:{} into JSON object", fields);
+                                    "Unable to convert 'fields' metadata value:{} into JSON object",
+                                    fields);
                               }
                             }
                             // We remove the _metadata entry from the payload

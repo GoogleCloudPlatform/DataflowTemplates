@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -54,6 +54,7 @@ public class DebeziumToPubSubDataSender implements Runnable {
       new ImmutableMap.Builder<String, String>()
           .put("mysql", "io.debezium.connector.mysql.MySqlConnector")
           .put("postgres", "io.debezium.connector.postgresql.PostgresConnector")
+          .put("sqlserver", "io.debezium.connector.sqlserver.SqlServerConnector")
           .build();
 
   private static final Logger LOG = LoggerFactory.getLogger(DebeziumToPubSubDataSender.class);
@@ -101,14 +102,16 @@ public class DebeziumToPubSubDataSender implements Runnable {
     this.singleTopicMode = singleTopicMode;
     this.whitelistedTables = whitelistedTables;
 
-    Preconditions.checkArgument(RDBMS_TO_CONNECTOR_MAP.containsKey(rdbms),
+    Preconditions.checkArgument(
+        RDBMS_TO_CONNECTOR_MAP.containsKey(rdbms),
         "Unsupported DBMS %s. Only supported DBMS values are %s",
         rdbms,
         String.join(",", RDBMS_TO_CONNECTOR_MAP.keySet()));
 
     // Prepare Debezium's table.whitelist property by removing
     // instance name from each of the whitelisted tables specified.
-    String dbzWhitelistedTables = whitelistedTables.stream()
+    String dbzWhitelistedTables =
+        whitelistedTables.stream()
             .map(s -> s.substring(s.indexOf(".") + 1))
             .collect(Collectors.joining(","));
 
@@ -138,8 +141,10 @@ public class DebeziumToPubSubDataSender implements Runnable {
 
     if (this.inMemoryOffsetStorage) {
       LOG.info("Setting up in memory offset storage.");
-      configBuilder = configBuilder.with(EmbeddedEngine.OFFSET_STORAGE,
-          "org.apache.kafka.connect.storage.MemoryOffsetBackingStore");
+      configBuilder =
+          configBuilder.with(
+              EmbeddedEngine.OFFSET_STORAGE,
+              "org.apache.kafka.connect.storage.MemoryOffsetBackingStore");
     } else {
       LOG.info("Setting up in File-based offset storage in {}.", this.offsetStorageFile);
       configBuilder =
@@ -162,31 +167,36 @@ public class DebeziumToPubSubDataSender implements Runnable {
     }
 
     config = configBuilder.build();
-
   }
 
   @Override
   public void run() {
-    final PubSubChangeConsumer changeConsumer = new PubSubChangeConsumer(
-        whitelistedTables,
-        DataCatalogSchemaUtils.getSchemaManager(gcpProject, gcpPubsubTopicPrefix, singleTopicMode),
-        PubSubChangeConsumer.DEFAULT_PUBLISHER_FACTORY);
+    final PubSubChangeConsumer changeConsumer =
+        new PubSubChangeConsumer(
+            whitelistedTables,
+            DataCatalogSchemaUtils.getSchemaManager(
+                gcpProject, gcpPubsubTopicPrefix, singleTopicMode),
+            PubSubChangeConsumer.DEFAULT_PUBLISHER_FACTORY);
 
-    final EmbeddedEngine engine = EmbeddedEngine.create()
-        .using(config)
-        .using(this.getClass().getClassLoader())
-        .using(Clock.SYSTEM)
-        .notifying(changeConsumer)
-        .build();
+    final EmbeddedEngine engine =
+        EmbeddedEngine.create()
+            .using(config)
+            .using(this.getClass().getClassLoader())
+            .using(Clock.SYSTEM)
+            .notifying(changeConsumer)
+            .build();
 
     LOG.info("Initializing Debezium Embedded Engine");
     ExecutorService executor = Executors.newSingleThreadExecutor();
     Future<?> future = executor.submit(engine);
 
-    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-      LOG.info("Requesting embedded engine to shut down");
-      engine.stop();
-    }));
+    Runtime.getRuntime()
+        .addShutdownHook(
+            new Thread(
+                () -> {
+                  LOG.info("Requesting embedded engine to shut down");
+                  engine.stop();
+                }));
 
     awaitTermination(executor, future, engine);
   }

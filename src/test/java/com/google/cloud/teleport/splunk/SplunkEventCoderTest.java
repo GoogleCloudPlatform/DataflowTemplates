@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.splunk;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -34,8 +33,8 @@ import org.junit.Test;
 public class SplunkEventCoderTest {
 
   /**
-   * Test whether {@link SplunkEventCoder} is able to encode/decode a {@link SplunkEvent}
-   * correctly.
+   * Test whether {@link SplunkEventCoder} is able to encode/decode a {@link SplunkEvent} correctly.
+   *
    * @throws IOException
    */
   @Test
@@ -67,25 +66,22 @@ public class SplunkEventCoderTest {
       }
     }
   }
-  
+
   /**
-   * Test whether {@link SplunkEventCoder} is able to encode/decode a {@link SplunkEvent}
-   * with metadata 'fields'.
+   * Test whether {@link SplunkEventCoder} is able to encode/decode a {@link SplunkEvent} with
+   * metadata 'fields'.
+   *
    * @throws IOException
    */
   @Test
   public void testEncodeDecodeFields() throws IOException {
-    
+
     String event = "test-event";
     JsonObject fields = new JsonObject();
     fields.addProperty("test-key", "test-value");
-    
-    SplunkEvent actualEvent =
-        SplunkEvent.newBuilder()
-            .withEvent(event)
-            .withFields(fields)
-            .build();
-    
+
+    SplunkEvent actualEvent = SplunkEvent.newBuilder().withEvent(event).withFields(fields).build();
+
     SplunkEventCoder coder = SplunkEventCoder.of();
     try (ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
       coder.encode(actualEvent, bos);
@@ -101,8 +97,7 @@ public class SplunkEventCoderTest {
    * the older coder version 1 (commit f0ff6cc).
    */
   @Test
-  public void testBackwardsCompatibility_canDecodeVersion1()
-      throws IOException, DecoderException {
+  public void testBackwardsCompatibility_canDecodeVersion1() throws IOException, DecoderException {
 
     SplunkEvent expectedEvent =
         SplunkEvent.newBuilder()
@@ -123,8 +118,8 @@ public class SplunkEventCoderTest {
   /**
    * Tests whether {@link SplunkEventCoder} is able to decode a {@link SplunkEvent} encoded using
    * the older coder version 1 (commit f0ff6cc) and having an empty "event" field.
-   * <p>
-   * An empty field is encoded as <code>00</code>, which may look like the present/not present
+   *
+   * <p>An empty field is encoded as <code>00</code>, which may look like the present/not present
    * marker for the "fields" field in V2.
    */
   @Test
@@ -150,10 +145,10 @@ public class SplunkEventCoderTest {
   /**
    * Tests whether {@link SplunkEventCoder} is able to decode a {@link SplunkEvent} encoded using
    * the older coder version 1 (commit f0ff6cc) and having the "event" field of length 1.
-   * <p>
-   * This is a special case when "event" is of length 1 and the first character code is 00.
-   * This is encoded as byte sequence 01 00 by V1 coder, which can be treated as an empty "fields"
-   * field by V2 decoder.
+   *
+   * <p>This is a special case when "event" is of length 1 and the first character code is 00. This
+   * is encoded as byte sequence 01 00 by V1 coder, which can be treated as an empty "fields" field
+   * by V2 decoder.
    */
   @Test
   public void testBackwardsCompatibility_canDecodeVersion1withEventLength1()
@@ -161,7 +156,7 @@ public class SplunkEventCoderTest {
 
     SplunkEvent expectedEvent =
         SplunkEvent.newBuilder()
-            .withEvent(new String(new byte[]{0}, StandardCharsets.UTF_8))
+            .withEvent(new String(new byte[] {0}, StandardCharsets.UTF_8))
             .withHost("h")
             .withIndex("i")
             .withSource("s")
@@ -180,8 +175,7 @@ public class SplunkEventCoderTest {
    * the older coder version 2 (commit 5e53040), without the newly added "fields" field.
    */
   @Test
-  public void testBackwardsCompatibility_canDecodeVersion2()
-      throws IOException, DecoderException {
+  public void testBackwardsCompatibility_canDecodeVersion2() throws IOException, DecoderException {
 
     SplunkEvent expectedEvent =
         SplunkEvent.newBuilder()

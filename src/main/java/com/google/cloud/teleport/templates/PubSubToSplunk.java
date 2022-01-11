@@ -1,19 +1,18 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
-
 package com.google.cloud.teleport.templates;
 
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
@@ -151,15 +150,13 @@ public class PubSubToSplunk {
 
   /** Logger for class. */
   private static final Logger LOG = LoggerFactory.getLogger(PubSubToSplunk.class);
-  
+
   private static final Boolean DEFAULT_INCLUDE_PUBSUB_MESSAGE = false;
-  
-  @VisibleForTesting
-  protected static final String PUBSUB_MESSAGE_ATTRIBUTE_FIELD = "attributes";
-  @VisibleForTesting
-  protected static final String PUBSUB_MESSAGE_DATA_FIELD = "data";
+
+  @VisibleForTesting protected static final String PUBSUB_MESSAGE_ATTRIBUTE_FIELD = "attributes";
+  @VisibleForTesting protected static final String PUBSUB_MESSAGE_DATA_FIELD = "data";
   private static final String PUBSUB_MESSAGE_ID_FIELD = "messageId";
-  
+
   /**
    * The main entry-point for pipeline execution. This method will start the pipeline but will not
    * wait for it's execution to finish. If blocking execution is required, use the {@link
@@ -169,7 +166,7 @@ public class PubSubToSplunk {
    * @param args The command-line args passed by the executor.
    */
   public static void main(String[] args) {
-    
+
     PubSubToSplunkOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(PubSubToSplunkOptions.class);
 
@@ -253,6 +250,7 @@ public class PubSubToSplunk {
                     .withBatchCount(options.getBatchCount())
                     .withParallelism(options.getParallelism())
                     .withDisableCertificateValidation(options.getDisableCertificateValidation())
+                    .withRootCaCertificatePath(options.getRootCaCertificatePath())
                     .build());
 
     // 5a) Wrap write failures into a FailsafeElement.
@@ -293,20 +291,20 @@ public class PubSubToSplunk {
             ErrorConverters.WriteStringMessageErrorsToPubSub.newBuilder()
                 .setErrorRecordsTopic(options.getOutputDeadletterTopic())
                 .build());
-  
+
     return pipeline.run();
   }
-  
+
   /**
    * The {@link PubSubToSplunkOptions} class provides the custom options passed by the executor at
    * the command line.
    */
   public interface PubSubToSplunkOptions
       extends SplunkOptions,
-      PubsubReadSubscriptionOptions,
-      PubsubWriteDeadletterTopicOptions,
-      JavascriptTextTransformerOptions {}
-  
+          PubsubReadSubscriptionOptions,
+          PubsubWriteDeadletterTopicOptions,
+          JavascriptTextTransformerOptions {}
+
   /**
    * A {@link PTransform} that reads messages from a Pub/Sub subscription, increments a counter and
    * returns a {@link PCollection} of {@link String} messages.
@@ -315,8 +313,10 @@ public class PubSubToSplunk {
     private final ValueProvider<String> subscriptionName;
     private final ValueProvider<Boolean> inputIncludePubsubMessageFlag;
     private Boolean includePubsubMessage;
-  
-    ReadMessages(ValueProvider<String> subscriptionName, ValueProvider<Boolean> inputIncludePubsubMessageFlag) {
+
+    ReadMessages(
+        ValueProvider<String> subscriptionName,
+        ValueProvider<Boolean> inputIncludePubsubMessageFlag) {
       this.subscriptionName = subscriptionName;
       this.inputIncludePubsubMessageFlag = inputIncludePubsubMessageFlag;
     }
@@ -331,7 +331,7 @@ public class PubSubToSplunk {
               "ExtractMessageIfRequired",
               ParDo.of(
                   new DoFn<PubsubMessage, String>() {
-                    
+
                     @Setup
                     public void setup() {
                       if (inputIncludePubsubMessageFlag != null) {
@@ -365,11 +365,12 @@ public class PubSubToSplunk {
                   }));
     }
   }
-  
+
   /**
    * Utility method to decrypt a Splunk HEC token.
    *
-   * @param unencryptedToken The Splunk HEC token as a Base64 encoded {@link String} encrypted with a Cloud KMS Key.
+   * @param unencryptedToken The Splunk HEC token as a Base64 encoded {@link String} encrypted with
+   *     a Cloud KMS Key.
    * @param kmsKey The Cloud KMS Encryption Key to decrypt the Splunk HEC token.
    * @return Decrypted Splunk HEC token.
    */

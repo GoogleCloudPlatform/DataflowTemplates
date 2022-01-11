@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,11 +13,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.templates;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
 import java.util.regex.Pattern;
@@ -69,10 +68,9 @@ public class PubsubToPubsub {
     Pipeline pipeline = Pipeline.create(options);
 
     /**
-     * Steps:
-     *      1) Read PubSubMessage with attributes from input PubSub subscription.
-     *      2) Apply any filters if an attribute=value pair is provided.
-     *      3) Write each PubSubMessage to output PubSub topic.
+     * Steps: 1) Read PubSubMessage with attributes from input PubSub subscription. 2) Apply any
+     * filters if an attribute=value pair is provided. 3) Write each PubSubMessage to output PubSub
+     * topic.
      */
     pipeline
         .apply(
@@ -144,13 +142,13 @@ public class PubsubToPubsub {
     private static final Logger LOG = LoggerFactory.getLogger(ExtractAndFilterEventsFn.class);
 
     // Counter tracking the number of incoming Pub/Sub messages.
-    private static final Counter INPUT_COUNTER = Metrics
-        .counter(ExtractAndFilterEventsFn.class, "inbound-messages");
+    private static final Counter INPUT_COUNTER =
+        Metrics.counter(ExtractAndFilterEventsFn.class, "inbound-messages");
 
     // Counter tracking the number of output Pub/Sub messages after the user provided filter
     // is applied.
-    private static final Counter OUTPUT_COUNTER = Metrics
-        .counter(ExtractAndFilterEventsFn.class, "filtered-outbound-messages");
+    private static final Counter OUTPUT_COUNTER =
+        Metrics.counter(ExtractAndFilterEventsFn.class, "filtered-outbound-messages");
 
     private Boolean doFilter;
     private String inputFilterKey;
@@ -248,6 +246,7 @@ public class PubsubToPubsub {
 
     /**
      * Write a {@link PubsubMessage} and increment the output counter.
+     *
      * @param context {@link ProcessContext} to write {@link PubsubMessage} to.
      * @param message {@link PubsubMessage} output.
      */

@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2020 Google Inc.
+ * Copyright (C) 2020 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -90,7 +90,8 @@ public final class PubsubAvroToBigQuery {
             .apply(
                 "Read Avro records",
                 PubsubIO.readAvroGenericRecords(schema)
-                    .fromSubscription(options.getInputSubscription()))
+                    .fromSubscription(options.getInputSubscription())
+                    .withDeadLetterTopic(options.getOutputTopic()))
             // Workaround for BEAM-12256. Eagerly convert to rows to avoid
             // the RowToGenericRecord function that doesn't handle all data
             // types.

@@ -1,21 +1,21 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
@@ -57,8 +57,8 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
-import org.apache.beam.vendor.guava.v20_0.com.google.common.base.Splitter;
-import org.apache.beam.vendor.guava.v20_0.com.google.common.base.Throwables;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Splitter;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Throwables;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.slf4j.Logger;
@@ -587,18 +587,32 @@ public class CsvConverters {
    * GenericRecord}.
    */
   public static class StringToGenericRecordFn extends DoFn<String, GenericRecord> {
-    String schemaLocation;
-    String delimiter;
-    Schema schema;
+    private String serializedSchema;
+    private final String delimiter;
+    private Schema schema;
 
     public StringToGenericRecordFn(String schemaLocation, String delimiter) {
-      this.schemaLocation = schemaLocation;
+      withSchemaLocation(schemaLocation);
       this.delimiter = delimiter;
+    }
+
+    public StringToGenericRecordFn(String delimiter) {
+      this.delimiter = delimiter;
+    }
+
+    public StringToGenericRecordFn withSchemaLocation(String schemaLocation) {
+      this.serializedSchema = SchemaUtils.getGcsFileAsString(schemaLocation);
+      return this;
+    }
+
+    public StringToGenericRecordFn withSerializedSchema(String serializedSchema) {
+      this.serializedSchema = serializedSchema;
+      return this;
     }
 
     @Setup
     public void setup() {
-      schema = SchemaUtils.getAvroSchema(schemaLocation);
+      schema = SchemaUtils.parseAvroSchema(serializedSchema);
     }
 
     @ProcessElement

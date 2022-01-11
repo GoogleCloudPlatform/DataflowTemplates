@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2020 Google Inc.
+ * Copyright (C) 2020 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.api.services.bigquery.model.TableRow;
@@ -22,7 +21,8 @@ import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.cdc.mappers.BigQueryDefaultSchemas;
 import com.google.cloud.teleport.v2.cdc.mappers.DataStreamMapper;
-import com.google.cloud.teleport.v2.cdc.merge.DataStreamBigQueryMerger;
+import com.google.cloud.teleport.v2.cdc.mappers.MergeInfoMapper;
+import com.google.cloud.teleport.v2.cdc.merge.BigQueryMerger;
 import com.google.cloud.teleport.v2.cdc.merge.MergeConfiguration;
 import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
@@ -30,9 +30,10 @@ import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFOptions;
 import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFToTableRow;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
-import java.util.Arrays;
+import com.google.common.base.Splitter;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -41,6 +42,7 @@ import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.options.Default;
@@ -69,7 +71,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p>NOTE: Future versiosn will support: Pub/Sub, GCS, or Kafka as per DataStream
  *
- * <p>Example Usage: TODO: FIX EXMAPLE USAGE
+ * <p>Example Usage: TODO: FIX EXAMPLE USAGE
  *
  * <pre>
  * mvn compile exec:java \
@@ -88,13 +90,13 @@ import org.slf4j.LoggerFactory;
  * --outputTableNameTemplate=${BQ_TABLE_NAME_TEMPLATE} \
  * --deadLetterQueueDirectory=${DLQ_GCS_PATH} \
  * --runner=(DirectRunner|DataflowRunner)"
- *
+ * inputFileFormat
  * OPTIONAL Dataflow Params:
  * --inputFileFormat=${GCS_FILE_FORMAT}\
  * --autoscalingAlgorithm=THROUGHPUT_BASED \
- * --numWorkers=2 \
+ * --numWorkers=1 \
  * --maxNumWorkers=10 \
- * --workerMachineType=n1-highcpu-4 \
+ * --workerMachineType=n1-highcpu-16 \
  * </pre>
  */
 public class DataStreamToBigQuery {
@@ -114,26 +116,22 @@ public class DataStreamToBigQuery {
   public static final TupleTag<FailsafeElement<String, String>> TRANSFORM_DEADLETTER_OUT =
       new TupleTag<FailsafeElement<String, String>>() {};
 
-  /** Ignored metadata fields when loading to BigQuery. */
-  public static final Set<String> MAPPER_IGNORE_FIELDS = new HashSet<String>(
-    Arrays.asList(
-      "_metadata_stream", "_metadata_schema", "_metadata_table", "_metadata_source",
-      "_metadata_ssn", "_metadata_rs_id", "_metadata_tx_id",
-      "_metadata_dlq_reconsumed", "_metadata_error", "_metadata_retry_count"));
-
   /**
    * Options supported by the pipeline.
    *
-   * <p>Inherits standard configuration options.</p>
+   * <p>Inherits standard configuration options.
    */
-  public interface Options extends PipelineOptions, StreamingOptions, InputUDFOptions {
-    @Description("The GCS location of the avro files you'd like to process")
+  public interface Options
+      extends PipelineOptions, StreamingOptions, InputUDFOptions, BigQueryOptions {
+    @Description("The GCS location of the files you'd like to process")
     String getInputFilePattern();
+
     void setInputFilePattern(String value);
 
     @Description("The GCS output format avro/json")
     @Default.String("avro")
     String getInputFileFormat();
+
     void setInputFileFormat(String value);
 
     @Description(
@@ -141,84 +139,109 @@ public class DataStreamToBigQuery {
             + "The name should be in the format of "
             + "projects/<project-id>/subscriptions/<subscription-name>.")
     String getGcsPubSubSubscription();
+
     void setGcsPubSubSubscription(String value);
 
     @Description("The DataStream Stream to Reference.")
     String getStreamName();
+
     void setStreamName(String value);
 
     @Description(
-      "The starting DateTime used to fetch from GCS (https://tools.ietf.org/html/rfc3339).")
+        "The starting DateTime used to fetch from GCS (https://tools.ietf.org/html/rfc3339).")
     @Default.String("1970-01-01T00:00:00.00Z")
     String getRfcStartDateTime();
+
     void setRfcStartDateTime(String value);
 
     @Description("The number of concurrent DataStream files to read.")
     @Default.Integer(10)
     Integer getFileReadConcurrency();
+
     void setFileReadConcurrency(Integer value);
 
-    // Project ID for BigQuery Data
     @Description("The BigQuery Project ID. Default is the project for the Dataflow job.")
     String getOutputProjectId();
+
     void setOutputProjectId(String projectId);
 
-    // Staging Table Template Details
     @Description("The Staging BigQuery Dataset Template")
     @Default.String("{_metadata_dataset}")
     String getOutputStagingDatasetTemplate();
+
     void setOutputStagingDatasetTemplate(String value);
 
     @Description("The Staging BigQuery Table Template")
     @Default.String("{_metadata_table}_log")
     String getOutputStagingTableNameTemplate();
+
     void setOutputStagingTableNameTemplate(String value);
 
-    // Final Table Template Details
     @Description("The Replica BigQuery Dataset Template")
     @Default.String("{_metadata_dataset}")
     String getOutputDatasetTemplate();
+
     void setOutputDatasetTemplate(String value);
 
     @Description("The Replica BigQuery Table Template")
     @Default.String("{_metadata_table}")
     String getOutputTableNameTemplate();
+
     void setOutputTableNameTemplate(String value);
+
+    @Description(
+        "Fields to ignore in BigQuery (comma separator). eg. _metadata_stream,_metadata_schema")
+    @Default.String(
+        "_metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_ssn,"
+            + "_metadata_rs_id,_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,"
+            + "_metadata_error,_metadata_retry_count")
+    String getIgnoreFields();
+
+    void setIgnoreFields(String value);
 
     @Description("The number of minutes between merges for a given table")
     @Default.Integer(5)
     Integer getMergeFrequencyMinutes();
+
     void setMergeFrequencyMinutes(Integer value);
 
     @Description("The Dead Letter Queue GCS Prefix to use for errored data")
     @Default.String("")
     String getDeadLetterQueueDirectory();
+
     void setDeadLetterQueueDirectory(String value);
 
     @Description("The number of minutes between DLQ Retries")
     @Default.Integer(10)
     Integer getDlqRetryMinutes();
+
     void setDlqRetryMinutes(Integer value);
 
     @Description("DataStream API Root Url (only used for testing)")
     @Default.String("https://datastream.googleapis.com/")
     String getDataStreamRootUrl();
+
     void setDataStreamRootUrl(String value);
+
+    @Description("Switch to disable MERGE queries for this job.")
+    @Default.Boolean(true)
+    Boolean getApplyMerge();
+
+    void setApplyMerge(Boolean value);
   }
 
   /**
    * Main entry point for executing the pipeline.
-   * @param args  The command-line arguments to the pipeline.
+   *
+   * @param args The command-line arguments to the pipeline.
    */
   public static void main(String[] args) {
     LOG.info("Starting Input Files to BigQuery");
 
-    Options options = PipelineOptionsFactory
-        .fromArgs(args)
-        .withValidation()
-        .as(Options.class);
+    Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
     options.setStreaming(true);
+    options.setEnableStreamingEngine(true);
 
     validateOptions(options);
     run(options);
@@ -237,8 +260,7 @@ public class DataStreamToBigQuery {
     }
 
     String inputFileFormat = options.getInputFileFormat();
-    if (!(inputFileFormat.equals(AVRO_SUFFIX)
-           || inputFileFormat.equals(JSON_SUFFIX))) {
+    if (!(inputFileFormat.equals(AVRO_SUFFIX) || inputFileFormat.equals(JSON_SUFFIX))) {
       throw new IllegalArgumentException(
           "Input file format must be one of: avro, json or left empty - found " + inputFileFormat);
     }
@@ -248,7 +270,7 @@ public class DataStreamToBigQuery {
    * Runs the pipeline with the supplied options.
    *
    * @param options The execution parameters to the pipeline.
-   * @return  The result of the pipeline execution.
+   * @return The result of the pipeline execution.
    */
   public static PipelineResult run(Options options) {
     /*
@@ -265,16 +287,18 @@ public class DataStreamToBigQuery {
     Pipeline pipeline = Pipeline.create(options);
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
 
+    String bigqueryProjectId = getBigQueryProjectId(options);
     String dlqDirectory = dlqManager.getRetryDlqDirectoryWithDateTime();
     String tempDlqDir = dlqManager.getRetryDlqDirectory() + "tmp/";
 
     InputUDFToTableRow<String> failsafeTableRowTransformer =
-        new InputUDFToTableRow<String>(options.getJavascriptTextTransformGcsPath(),
-                                       options.getJavascriptTextTransformFunctionName(),
-                                       options.getPythonTextTransformGcsPath(),
-                                       options.getPythonTextTransformFunctionName(),
-                                       options.getRuntimeRetries(),
-                                       FAILSAFE_ELEMENT_CODER);
+        new InputUDFToTableRow<String>(
+            options.getJavascriptTextTransformGcsPath(),
+            options.getJavascriptTextTransformFunctionName(),
+            options.getPythonTextTransformGcsPath(),
+            options.getPythonTextTransformFunctionName(),
+            options.getRuntimeRetries(),
+            FAILSAFE_ELEMENT_CODER);
 
     /*
      * Stage 1: Ingest and Normalize Data to FailsafeElement with JSON Strings
@@ -283,23 +307,24 @@ public class DataStreamToBigQuery {
      *     (dlqJsonRecords)
      *   c) Flatten DataStream and DLQ Streams (jsonRecords)
      */
-     PCollection<FailsafeElement<String, String>> datastreamJsonRecords = pipeline
-         .apply(
-             new DataStreamIO(
+    PCollection<FailsafeElement<String, String>> datastreamJsonRecords =
+        pipeline.apply(
+            new DataStreamIO(
                     options.getStreamName(),
                     options.getInputFilePattern(),
                     options.getInputFileFormat(),
                     options.getGcsPubSubSubscription(),
                     options.getRfcStartDateTime())
-             .withFileReadConcurrency(options.getFileReadConcurrency()));
+                .withFileReadConcurrency(options.getFileReadConcurrency()));
 
     // Elements sent to the Dead Letter Queue are to be reconsumed.
     // A DLQManager is to be created using PipelineOptions, and it is in charge
     // of building pieces of the DLQ.
     PCollection<FailsafeElement<String, String>> dlqJsonRecords =
         pipeline
-            .apply(dlqManager.dlqReconsumer(options.getDlqRetryMinutes()))
+            .apply("DLQ Consumer/reader", dlqManager.dlqReconsumer(options.getDlqRetryMinutes()))
             .apply(
+                "DLQ Consumer/cleaner",
                 ParDo.of(
                     new DoFn<String, FailsafeElement<String, String>>() {
                       @ProcessElement
@@ -312,8 +337,9 @@ public class DataStreamToBigQuery {
             .setCoder(FAILSAFE_ELEMENT_CODER);
 
     PCollection<FailsafeElement<String, String>> jsonRecords =
-        PCollectionList.of(datastreamJsonRecords).and(dlqJsonRecords)
-            .apply(Flatten.pCollections());
+        PCollectionList.of(datastreamJsonRecords)
+            .and(dlqJsonRecords)
+            .apply("Merge Datastream & DLQ", Flatten.pCollections());
 
     /*
      * Stage 2: Write JSON Strings to TableRow PCollectionTuple
@@ -321,12 +347,13 @@ public class DataStreamToBigQuery {
      *   b) Convert JSON String FailsafeElements to TableRow's (tableRowRecords)
      */
     PCollectionTuple tableRowRecords =
-        jsonRecords.apply("ApplyUdfAndConvertToTableRow", failsafeTableRowTransformer);
+        jsonRecords.apply("UDF to TableRow/udf", failsafeTableRowTransformer);
 
     PCollection<TableRow> shuffledTableRows =
         tableRowRecords
             .get(failsafeTableRowTransformer.transformOut)
-            .apply("ReShuffleToLimitRequestConcurrency",
+            .apply(
+                "UDF to TableRow/ReShuffle",
                 Reshuffle.<TableRow>viaRandomKey().withNumBuckets(100));
 
     /*
@@ -337,10 +364,12 @@ public class DataStreamToBigQuery {
      *   failsafe: writeResult.getFailedInsertsWithErr()
      */
     // TODO(beam 2.23): InsertRetryPolicy should be CDC compliant
+    Set<String> fieldsToIgnore = getFieldsToIgnore(options.getIgnoreFields());
+
     WriteResult writeResult =
         shuffledTableRows
             .apply(
-                "Map Data to Staging Tables",
+                "Map to Staging Tables",
                 new DataStreamMapper(
                         options.as(GcpOptions.class),
                         options.getOutputProjectId(),
@@ -349,13 +378,13 @@ public class DataStreamToBigQuery {
                     .withDataStreamRootUrl(options.getDataStreamRootUrl())
                     .withDefaultSchema(BigQueryDefaultSchemas.DATASTREAM_METADATA_SCHEMA)
                     .withDayPartitioning(true)
-                    .withIgnoreFields(MAPPER_IGNORE_FIELDS))
+                    .withIgnoreFields(fieldsToIgnore))
             .apply(
                 "Write Successful Records",
                 BigQueryIO.<KV<TableId, TableRow>>write()
                     .to(new BigQueryDynamicConverters().bigQueryDynamicDestination())
-                    .withFormatFunction(element ->
-                      removeTableRowFields(element.getValue(), MAPPER_IGNORE_FIELDS))
+                    .withFormatFunction(
+                        element -> removeTableRowFields(element.getValue(), fieldsToIgnore))
                     .withFormatRecordOnFailureFunction(element -> element.getValue())
                     .withoutValidation()
                     .ignoreInsertIds()
@@ -365,30 +394,33 @@ public class DataStreamToBigQuery {
                     .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
                     .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
 
-    shuffledTableRows
-        .apply(
-            "Map Data To Replica Tables",
-            new DataStreamMapper(
-                    options.as(GcpOptions.class),
-                    options.getOutputProjectId(),
-                    options.getOutputDatasetTemplate(),
-                    options.getOutputTableNameTemplate())
-                .withDataStreamRootUrl(options.getDataStreamRootUrl())
-                .withDefaultSchema(BigQueryDefaultSchemas.DATASTREAM_METADATA_SCHEMA)
-                .withIgnoreFields(MAPPER_IGNORE_FIELDS))
-        .apply(
-            "Merge New Records into Replica Tables",
-            new DataStreamBigQueryMerger(
-                options.as(GcpOptions.class),
-                options.getOutputStagingDatasetTemplate(),
-                options.getOutputStagingTableNameTemplate(),
-                options.getOutputDatasetTemplate(),
-                options.getOutputTableNameTemplate(),
-                Duration.standardMinutes(
-                    options.getMergeFrequencyMinutes().intValue()),
-                null,
-                MergeConfiguration.bigQueryConfiguration())
-            .withDataStreamRootUrl(options.getDataStreamRootUrl()));
+    if (options.getApplyMerge()) {
+      shuffledTableRows
+          .apply(
+              "Map To Replica Tables",
+              new DataStreamMapper(
+                      options.as(GcpOptions.class),
+                      options.getOutputProjectId(),
+                      options.getOutputDatasetTemplate(),
+                      options.getOutputTableNameTemplate())
+                  .withDataStreamRootUrl(options.getDataStreamRootUrl())
+                  .withDefaultSchema(BigQueryDefaultSchemas.DATASTREAM_METADATA_SCHEMA)
+                  .withIgnoreFields(fieldsToIgnore))
+          .apply(
+              "BigQuery Merge/Build MergeInfo",
+              new MergeInfoMapper(
+                  bigqueryProjectId,
+                  options.getOutputStagingDatasetTemplate(),
+                  options.getOutputStagingTableNameTemplate(),
+                  options.getOutputDatasetTemplate(),
+                  options.getOutputTableNameTemplate()))
+          .apply(
+              "BigQuery Merge/Merge into Replica Tables",
+              BigQueryMerger.of(
+                  MergeConfiguration.bigQueryConfiguration()
+                      .withMergeWindowDuration(
+                          Duration.standardMinutes(options.getMergeFrequencyMinutes()))));
+    }
 
     /*
      * Stage 4: Write Failures to GCS Dead Letter Queue
@@ -396,23 +428,19 @@ public class DataStreamToBigQuery {
     PCollection<String> udfDlqJson =
         PCollectionList.of(tableRowRecords.get(failsafeTableRowTransformer.udfDeadletterOut))
             .and(tableRowRecords.get(failsafeTableRowTransformer.transformDeadletterOut))
-            // ImmutableList.of(
-            //     tableRowRecords.get(failsafeTableRowTransformer.udfDeadletterOut),
-            //     tableRowRecords.get(failsafeTableRowTransformer.transformDeadletterOut))
-            // )
-            .apply("Flatten", Flatten.pCollections())
-            .apply("Sanitize records", MapElements.via(new StringDeadLetterQueueSanitizer()));
+            .apply("UDF Failures/Flatten", Flatten.pCollections())
+            .apply("UDF Failures/Sanitize", MapElements.via(new StringDeadLetterQueueSanitizer()));
 
     PCollection<String> bqWriteDlqJson =
-        writeResult.getFailedInsertsWithErr()
-            .apply(
-                "DLQ: Write Insert Failures to GCS",
-                MapElements.via(new BigQueryDeadLetterQueueSanitizer()));
+        writeResult
+            .getFailedInsertsWithErr()
+            .apply("BigQuery Failures", MapElements.via(new BigQueryDeadLetterQueueSanitizer()));
 
-    PCollectionList.of(udfDlqJson).and(bqWriteDlqJson)
-        .apply("Flatten", Flatten.pCollections())
+    PCollectionList.of(udfDlqJson)
+        .and(bqWriteDlqJson)
+        .apply("Write To DLQ/Flatten", Flatten.pCollections())
         .apply(
-            "Write To DLQ",
+            "Write To DLQ/Writer",
             DLQWriteTransform.WriteDLQ.newBuilder()
                 .withDlqDirectory(dlqDirectory)
                 .withTmpDirectory(tempDlqDir)
@@ -420,6 +448,10 @@ public class DataStreamToBigQuery {
 
     // Execute the pipeline and return the result.
     return pipeline.run();
+  }
+
+  private static Set<String> getFieldsToIgnore(String fields) {
+    return new HashSet<>(Splitter.on(Pattern.compile("\\s*,\\s*")).splitToList(fields));
   }
 
   private static TableRow removeTableRowFields(TableRow tableRow, Set<String> ignoreFields) {
@@ -433,6 +465,12 @@ public class DataStreamToBigQuery {
     }
 
     return cleanTableRow;
+  }
+
+  private static String getBigQueryProjectId(Options options) {
+    return options.getOutputProjectId() == null
+        ? options.as(GcpOptions.class).getProject()
+        : options.getOutputProjectId();
   }
 
   private static DeadLetterQueueManager buildDlqManager(Options options) {

@@ -1,30 +1,31 @@
 /*
- * Copyright (C) 2020 Google Inc.
+ * Copyright (C) 2020 Google LLC
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.utils;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Objects;
 import org.apache.avro.Schema;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Supplier;
 
 /**
- * A {@link Supplier} for {@link Schema} objects that are needed to process Avro records in
- * Beam pipelines.
- * <p>
- * Avro {@link Schema} is not serializable by default. This {@link Supplier} can be used to
+ * A {@link Supplier} for {@link Schema} objects that are needed to process Avro records in Beam
+ * pipelines.
+ *
+ * <p>Avro {@link Schema} is not serializable by default. This {@link Supplier} can be used to
  * provide a {@link Serializable} version of the schema to be used in pipelines.
  */
 public class SerializableSchemaSupplier implements Serializable, Supplier<Schema> {
@@ -67,5 +68,22 @@ public class SerializableSchemaSupplier implements Serializable, Supplier<Schema
     private Object readResolve() throws IOException, ClassNotFoundException {
       return new SerializableSchemaSupplier(new Schema.Parser().parse(this.schema));
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof SerializableSchemaSupplier)) {
+      return false;
+    }
+    SerializableSchemaSupplier that = (SerializableSchemaSupplier) o;
+    return Objects.equals(schema, that.schema);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(schema);
   }
 }

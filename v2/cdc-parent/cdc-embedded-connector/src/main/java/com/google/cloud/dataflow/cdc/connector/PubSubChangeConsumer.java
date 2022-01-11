@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -45,18 +45,18 @@ public class PubSubChangeConsumer implements EmbeddedEngine.ChangeConsumer {
   private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(PubSubChangeConsumer.class);
 
   public static final BiFunction<String, DataCatalogSchemaManager, Publisher>
-      DEFAULT_PUBLISHER_FACTORY = (tableName, schemaUtils) -> {
-    try {
-      ProjectTopicName projectTopicName = ProjectTopicName.of(
-          schemaUtils.getGcpProject(), schemaUtils.getPubSubTopicForTable(tableName));
-      return Publisher
-          .newBuilder(projectTopicName)
-          .build();
-    } catch (IOException e) {
-      LOG.error("Unable to create a PubSub Publisher", e);
-      return null;
-    }
-  };
+      DEFAULT_PUBLISHER_FACTORY =
+          (tableName, schemaUtils) -> {
+            try {
+              ProjectTopicName projectTopicName =
+                  ProjectTopicName.of(
+                      schemaUtils.getGcpProject(), schemaUtils.getPubSubTopicForTable(tableName));
+              return Publisher.newBuilder(projectTopicName).build();
+            } catch (IOException e) {
+              LOG.error("Unable to create a PubSub Publisher", e);
+              return null;
+            }
+          };
 
   private final Map<String, Publisher> pubsubPublisherMap;
   private final Map<String, RowCoder> rowCoderMap;
@@ -64,7 +64,7 @@ public class PubSubChangeConsumer implements EmbeddedEngine.ChangeConsumer {
   private final Set<String> whitelistedTables;
   private final Set<String> observedTables;
   private final DataCatalogSchemaManager schemaUpdater;
-  private final BiFunction<String, DataCatalogSchemaManager, Publisher>  pubSubPublisherFactory;
+  private final BiFunction<String, DataCatalogSchemaManager, Publisher> pubSubPublisherFactory;
   private final DebeziumSourceRecordToDataflowCdcFormatTranslator translator =
       new DebeziumSourceRecordToDataflowCdcFormatTranslator();
 
@@ -100,8 +100,8 @@ public class PubSubChangeConsumer implements EmbeddedEngine.ChangeConsumer {
   }
 
   @Override
-  public void handleBatch(
-      List<SourceRecord> records, RecordCommitter committer) throws InterruptedException {
+  public void handleBatch(List<SourceRecord> records, RecordCommitter committer)
+      throws InterruptedException {
 
     ImmutableList.Builder<ApiFuture<String>> futureListBuilder = ImmutableList.builder();
 
@@ -121,8 +121,7 @@ public class PubSubChangeConsumer implements EmbeddedEngine.ChangeConsumer {
         }
 
         if (!observedTables.contains(tableName)) {
-          Entry result = schemaUpdater.updateSchemaForTable(
-              tableName, updateRecord.getSchema());
+          Entry result = schemaUpdater.updateSchemaForTable(tableName, updateRecord.getSchema());
           if (result == null) {
             throw new InterruptedException(
                 "A problem occurred when communicating with Cloud Data Catalog");
@@ -147,14 +146,14 @@ public class PubSubChangeConsumer implements EmbeddedEngine.ChangeConsumer {
           recordCoder.encode(updateRecord, outputStream);
 
           ByteString encodedUpdate = ByteString.copyFrom(outputStream.toByteArray());
-          PubsubMessage message = messageBuilder
-              .setData(encodedUpdate)
-              .putAttributes("table", tableName)
-              .build();
+          PubsubMessage message =
+              messageBuilder.setData(encodedUpdate).putAttributes("table", tableName).build();
           futureListBuilder.add(pubSubPublisher.publish(message));
         } catch (IOException e) {
-          LOG.error("Caught exception {} when trying to encode record {}. Stopping processing.",
-              e, updateRecord);
+          LOG.error(
+              "Caught exception {} when trying to encode record {}. Stopping processing.",
+              e,
+              updateRecord);
           return;
         }
       } else {

@@ -1,19 +1,18 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
-
 package com.google.cloud.teleport.splunk;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -23,9 +22,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.annotations.SerializedName;
 import javax.annotation.Nullable;
 
-/**
- * A class for Splunk events.
- */
+/** A class for Splunk events. */
 @AutoValue
 public abstract class SplunkEvent {
 
@@ -45,19 +42,17 @@ public abstract class SplunkEvent {
   @Nullable
   @SerializedName("sourcetype")
   public abstract String sourceType();
-  
+
   @Nullable
   public abstract String index();
-  
+
   @Nullable
   public abstract JsonObject fields();
-  
+
   @Nullable
   public abstract String event();
 
-  /**
-   * A builder class for creating {@link SplunkEvent} objects.
-   */
+  /** A builder class for creating {@link SplunkEvent} objects. */
   @AutoValue.Builder
   public abstract static class Builder {
 
@@ -72,9 +67,9 @@ public abstract class SplunkEvent {
     abstract Builder setIndex(String index);
 
     abstract Builder setEvent(String event);
-  
+
     abstract Builder setFields(JsonObject fields);
-  
+
     abstract String event();
 
     abstract SplunkEvent autoBuild();
@@ -108,10 +103,10 @@ public abstract class SplunkEvent {
 
       return setIndex(index);
     }
-  
+
     public Builder withFields(JsonObject fields) {
       checkNotNull(fields, "withFields(fields) called with null input.");
-    
+
       return setFields(fields);
     }
 
@@ -125,6 +120,5 @@ public abstract class SplunkEvent {
       checkNotNull(event(), "Event information is required.");
       return autoBuild();
     }
-
   }
 }

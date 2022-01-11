@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,12 +13,11 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
-
 package com.google.cloud.teleport.templates;
 
 import com.google.cloud.teleport.avro.AvroPubsubMessageRecord;
 import com.google.cloud.teleport.io.WindowedFilenamePolicy;
+import com.google.cloud.teleport.options.WindowedFilenamePolicyOptions;
 import com.google.cloud.teleport.util.DurationUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -60,7 +59,6 @@ import org.apache.beam.sdk.values.PCollection;
  *      ]
  *   }
  * </pre>
- * </p>
  *
  * <p>Example Usage:
  *
@@ -79,15 +77,15 @@ import org.apache.beam.sdk.values.PCollection;
  *
  * # Build the template
  * mvn compile exec:java \
- -Dexec.mainClass=com.google.cloud.teleport.templates.${PIPELINE_NAME} \
- -Dexec.cleanupDaemonThreads=false \
- -Dexec.args=" \
- --project=${PROJECT_ID} \
- --stagingLocation=${PIPELINE_FOLDER}/staging \
- --tempLocation=${PIPELINE_FOLDER}/temp \
- --templateLocation=${PIPELINE_FOLDER}/template \
- --runner=${RUNNER} \
- --useSubscription=${USE_SUBSCRIPTION}"
+ * -Dexec.mainClass=com.google.cloud.teleport.templates.${PIPELINE_NAME} \
+ * -Dexec.cleanupDaemonThreads=false \
+ * -Dexec.args=" \
+ * --project=${PROJECT_ID} \
+ * --stagingLocation=${PIPELINE_FOLDER}/staging \
+ * --tempLocation=${PIPELINE_FOLDER}/temp \
+ * --templateLocation=${PIPELINE_FOLDER}/template \
+ * --runner=${RUNNER} \
+ * --useSubscription=${USE_SUBSCRIPTION}"
  *
  * # Execute the template
  * JOB_NAME=pubsub-to-bigquery-$USER-`date +"%Y%m%d-%H%M%S%z"`
@@ -118,8 +116,6 @@ import org.apache.beam.sdk.values.PCollection;
  * outputFilenamePrefix=windowed-file,\
  * outputFilenameSuffix=.avro"
  * </pre>
- *
- * </p>
  */
 public class PubsubToAvro {
 
@@ -128,7 +124,8 @@ public class PubsubToAvro {
    *
    * <p>Inherits standard configuration options.
    */
-  public interface Options extends PipelineOptions, StreamingOptions {
+  public interface Options
+      extends PipelineOptions, StreamingOptions, WindowedFilenamePolicyOptions {
     @Description(
         "The Cloud Pub/Sub subscription to consume from. "
             + "The name should be in the format of "
@@ -143,8 +140,7 @@ public class PubsubToAvro {
     void setInputTopic(ValueProvider<String> value);
 
     @Description(
-        "This determines whether the template reads from "
-            + "a pub/sub subscription or a topic")
+        "This determines whether the template reads from " + "a pub/sub subscription or a topic")
     @Default.Boolean(false)
     Boolean getUseSubscription();
 
@@ -168,38 +164,11 @@ public class PubsubToAvro {
 
     void setOutputFilenameSuffix(ValueProvider<String> value);
 
-    @Description(
-        "The shard template of the output file. Specified as repeating sequences "
-            + "of the letters 'S' or 'N' (example: SSS-NNN). These are replaced with the "
-            + "shard number, or number of shards respectively")
-    @Default.String("W-P-SS-of-NN")
-    ValueProvider<String> getOutputShardTemplate();
-
-    void setOutputShardTemplate(ValueProvider<String> value);
-
-    @Description("The maximum number of output shards produced when writing.")
-    @Default.Integer(1)
-    Integer getNumShards();
-
-    void setNumShards(Integer value);
-
-    @Description(
-        "The window duration in which data will be written. Defaults to 5m. "
-            + "Allowed formats are: "
-            + "Ns (for seconds, example: 5s), "
-            + "Nm (for minutes, example: 12m), "
-            + "Nh (for hours, example: 2h).")
-    @Default.String("5m")
-    String getWindowDuration();
-
-    void setWindowDuration(String value);
-
     @Description("The Avro Write Temporary Directory. Must end with /")
     @Required
     ValueProvider<String> getAvroTempDirectory();
 
     void setAvroTempDirectory(ValueProvider<String> value);
-
   }
 
   /**
@@ -235,11 +204,16 @@ public class PubsubToAvro {
      */
 
     if (options.getUseSubscription()) {
-        messages = pipeline.apply("Read PubSub Events", PubsubIO.readMessagesWithAttributes()
-          .fromSubscription(options.getInputSubscription()));
+      messages =
+          pipeline.apply(
+              "Read PubSub Events",
+              PubsubIO.readMessagesWithAttributes()
+                  .fromSubscription(options.getInputSubscription()));
     } else {
-        messages = pipeline.apply("Read PubSub Events", PubsubIO.readMessagesWithAttributes()
-          .fromTopic(options.getInputTopic()));
+      messages =
+          pipeline.apply(
+              "Read PubSub Events",
+              PubsubIO.readMessagesWithAttributes().fromTopic(options.getInputTopic()));
     }
     messages
         .apply("Map to Archive", ParDo.of(new PubsubMessageToArchiveDoFn()))
@@ -253,19 +227,25 @@ public class PubsubToAvro {
             "Write File(s)",
             AvroIO.write(AvroPubsubMessageRecord.class)
                 .to(
-                    new WindowedFilenamePolicy(
-                        options.getOutputDirectory(),
-                        options.getOutputFilenamePrefix(),
-                        options.getOutputShardTemplate(),
-                        options.getOutputFilenameSuffix()))
-                .withTempDirectory(NestedValueProvider.of(
-                    options.getAvroTempDirectory(),
-                    (SerializableFunction<String, ResourceId>) input ->
-                        FileBasedSink.convertToFileResourceIfPossible(input)))
+                    WindowedFilenamePolicy.writeWindowedFiles()
+                        .withOutputDirectory(options.getOutputDirectory())
+                        .withOutputFilenamePrefix(options.getOutputFilenamePrefix())
+                        .withShardTemplate(options.getOutputShardTemplate())
+                        .withSuffix(options.getOutputFilenameSuffix())
+                        .withYearPattern(options.getYearPattern())
+                        .withMonthPattern(options.getMonthPattern())
+                        .withDayPattern(options.getDayPattern())
+                        .withHourPattern(options.getHourPattern())
+                        .withMinutePattern(options.getMinutePattern()))
+                .withTempDirectory(
+                    NestedValueProvider.of(
+                        options.getAvroTempDirectory(),
+                        (SerializableFunction<String, ResourceId>)
+                            input -> FileBasedSink.convertToFileResourceIfPossible(input)))
                 /*.withTempDirectory(FileSystems.matchNewResource(
-                    options.getAvroTempDirectory(),
-                    Boolean.TRUE))
-                    */
+                options.getAvroTempDirectory(),
+                Boolean.TRUE))
+                */
                 .withWindowedWrites()
                 .withNumShards(options.getNumShards()));
 

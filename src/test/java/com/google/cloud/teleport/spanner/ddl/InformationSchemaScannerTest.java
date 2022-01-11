@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner.ddl;
 
 import static org.hamcrest.Matchers.equalTo;
@@ -21,6 +20,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.sameInstance;
 import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingWhiteSpace;
 import static org.junit.Assert.assertThat;
 
@@ -154,6 +154,30 @@ public class InformationSchemaScannerTest {
 
     // Verify pretty print.
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(allTypes));
+  }
+
+  @Test
+  public void simpleView() throws Exception {
+    String tableDef =
+        "CREATE TABLE Users ("
+            + " id INT64 NOT NULL,"
+            + " name STRING(MAX),"
+            + ") PRIMARY KEY (id)";
+    String viewDef = "CREATE VIEW Names SQL SECURITY INVOKER AS SELECT u.name FROM Users u";
+
+    spannerServer.createDatabase(dbId, Arrays.asList(tableDef, viewDef));
+    Ddl ddl = getDatabaseDdl();
+
+    assertThat(ddl.allTables(), hasSize(1));
+    assertThat(ddl.table("Users"), notNullValue());
+    assertThat(ddl.table("uSers"), notNullValue());
+
+    assertThat(ddl.views(), hasSize(1));
+    View view = ddl.view("Names");
+    assertThat(view, notNullValue());
+    assertThat(ddl.view("nAmes"), sameInstance(view));
+
+    assertThat(view.query(), equalTo("SELECT u.name FROM Users u"));
   }
 
   @Test
@@ -303,7 +327,7 @@ public class InformationSchemaScannerTest {
   // TODO: enable this test once generated columns are supported.
   // @Test
   public void generatedColumns() throws Exception {
-        String statement =
+    String statement =
         "CREATE TABLE `T` ("
             + " `id`                                     INT64 NOT NULL,"
             + " `generated`                              INT64 NOT NULL AS (`id`) STORED, "

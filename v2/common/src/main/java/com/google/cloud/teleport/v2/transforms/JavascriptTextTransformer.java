@@ -1,21 +1,21 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -48,13 +48,17 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
-import org.apache.beam.vendor.guava.v20_0.com.google.common.base.Strings;
-import org.apache.beam.vendor.guava.v20_0.com.google.common.base.Throwables;
-import org.apache.beam.vendor.guava.v20_0.com.google.common.io.CharStreams;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Throwables;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.io.CharStreams;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** A Text UDF Transform Function. Note that this class's implementation is not threadsafe */
 @AutoValue
 public abstract class JavascriptTextTransformer {
+
+  private static final Logger LOG = LoggerFactory.getLogger(JavascriptTextTransformer.class);
 
   /** Necessary CLI options for running UDF function. */
   public interface JavascriptTextTransformerOptions extends PipelineOptions {
@@ -66,8 +70,7 @@ public abstract class JavascriptTextTransformer {
     @Description("UDF Javascript Function Name")
     String getJavascriptTextTransformFunctionName();
 
-    void setJavascriptTextTransformFunctionName(
-        String javascriptTextTransformFunctionName);
+    void setJavascriptTextTransformFunctionName(String javascriptTextTransformFunctionName);
   }
 
   /**
@@ -180,9 +183,7 @@ public abstract class JavascriptTextTransformer {
           "Failed to match any files with the pattern: " + path);
 
       List<String> scripts =
-          result
-              .metadata()
-              .stream()
+          result.metadata().stream()
               .filter(metadata -> metadata.resourceId().getFilename().endsWith(".js"))
               .map(Metadata::resourceId)
               .map(
@@ -233,8 +234,7 @@ public abstract class JavascriptTextTransformer {
                 @Setup
                 public void setup() {
                   if (fileSystemPath() != null && functionName() != null) {
-                    javascriptRuntime =
-                        getJavascriptRuntime(fileSystemPath(), functionName());
+                    javascriptRuntime = getJavascriptRuntime(fileSystemPath(), functionName());
                   }
                 }
 
@@ -275,9 +275,11 @@ public abstract class JavascriptTextTransformer {
       return new AutoValue_JavascriptTextTransformer_FailsafeJavascriptUdf.Builder<>();
     }
 
-    private Counter successCounter = Metrics.counter(FailsafeJavascriptUdf.class, "udf-transform-success-count");
+    private Counter successCounter =
+        Metrics.counter(FailsafeJavascriptUdf.class, "udf-transform-success-count");
 
-    private Counter failedCounter = Metrics.counter(FailsafeJavascriptUdf.class, "udf-transform-failed-count");
+    private Counter failedCounter =
+        Metrics.counter(FailsafeJavascriptUdf.class, "udf-transform-failed-count");
 
     /** Builder for {@link FailsafeJavascriptUdf}. */
     @AutoValue.Builder
@@ -298,42 +300,41 @@ public abstract class JavascriptTextTransformer {
       return elements.apply(
           "ProcessUdf",
           ParDo.of(
-              new DoFn<FailsafeElement<T, String>, FailsafeElement<T, String>>() {
-                private JavascriptRuntime javascriptRuntime;
+                  new DoFn<FailsafeElement<T, String>, FailsafeElement<T, String>>() {
+                    private JavascriptRuntime javascriptRuntime;
 
-                @Setup
-                public void setup() {
-                  if (fileSystemPath() != null && functionName() != null) {
-                    javascriptRuntime =
-                        getJavascriptRuntime(fileSystemPath(), functionName());
-                  }
-                }
-
-                @ProcessElement
-                public void processElement(ProcessContext context) {
-                  FailsafeElement<T, String> element = context.element();
-                  String payloadStr = element.getPayload();
-
-                  try {
-                    if (javascriptRuntime != null) {
-                      payloadStr = javascriptRuntime.invoke(payloadStr);
+                    @Setup
+                    public void setup() {
+                      if (fileSystemPath() != null && functionName() != null) {
+                        javascriptRuntime = getJavascriptRuntime(fileSystemPath(), functionName());
+                      }
                     }
 
-                    if (!Strings.isNullOrEmpty(payloadStr)) {
-                      context.output(
-                          FailsafeElement.of(element.getOriginalPayload(), payloadStr));
-                      successCounter.inc();
+                    @ProcessElement
+                    public void processElement(ProcessContext context) {
+                      FailsafeElement<T, String> element = context.element();
+                      String payloadStr = element.getPayload();
+
+                      try {
+                        if (javascriptRuntime != null) {
+                          payloadStr = javascriptRuntime.invoke(payloadStr);
+                        }
+
+                        if (!Strings.isNullOrEmpty(payloadStr)) {
+                          context.output(
+                              FailsafeElement.of(element.getOriginalPayload(), payloadStr));
+                          successCounter.inc();
+                        }
+                      } catch (Exception e) {
+                        context.output(
+                            failureTag(),
+                            FailsafeElement.of(element)
+                                .setErrorMessage(e.getMessage())
+                                .setStacktrace(Throwables.getStackTraceAsString(e)));
+                        failedCounter.inc();
+                      }
                     }
-                  } catch (Exception e) {
-                    context.output(
-                        failureTag(),
-                        FailsafeElement.of(element)
-                            .setErrorMessage(e.getMessage())
-                            .setStacktrace(Throwables.getStackTraceAsString(e)));
-                    failedCounter.inc();
-                  }
-                }
-              })
+                  })
               .withOutputTags(successTag(), TupleTagList.of(failureTag())));
     }
   }

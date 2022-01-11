@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.templates.common;
 
 import com.google.auto.value.AutoValue;
@@ -35,11 +34,15 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import org.apache.beam.sdk.io.gcp.datastore.DatastoreIO;
+import org.apache.beam.sdk.io.gcp.datastore.DatastoreV1;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.Hidden;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.Count;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.GroupByKey;
@@ -58,41 +61,157 @@ public class DatastoreConverters {
 
   /** Options for Reading Datastore Entities. */
   public interface DatastoreReadOptions extends PipelineOptions {
+    /** @deprecated Please use getFirestoreReadGqlQuery() instead. */
     @Description("GQL Query which specifies what entities to grab")
+    @Hidden
+    @Deprecated
     ValueProvider<String> getDatastoreReadGqlQuery();
+
+    /** @deprecated Please use setFirestoreReadGqlQuery(value) instead. */
+    @Hidden
+    @Deprecated
     void setDatastoreReadGqlQuery(ValueProvider<String> datastoreReadGqlQuery);
 
+    /** @deprecated Please use getFirestoreReadProjectId() instead. */
     @Description("GCP Project Id of where the datastore entities live")
+    @Hidden
+    @Deprecated
     ValueProvider<String> getDatastoreReadProjectId();
+
+    /** @deprecated Please use setFirestoreReadProjectId(value) instead. */
+    @Hidden
+    @Deprecated
     void setDatastoreReadProjectId(ValueProvider<String> datastoreReadProjectId);
 
+    /** @deprecated Please use getFirestoreReadNamespace() instead. */
     @Description("Namespace of requested Entties. Set as \"\" for default namespace")
+    @Hidden
+    @Deprecated
     ValueProvider<String> getDatastoreReadNamespace();
+
+    /** @deprecated Please use setFirestoreReadNamespace(value) instead. */
+    @Hidden
+    @Deprecated
     void setDatastoreReadNamespace(ValueProvider<String> datstoreReadNamespace);
+
+    @Description("GQL Query which specifies what entities to grab")
+    ValueProvider<String> getFirestoreReadGqlQuery();
+
+    void setFirestoreReadGqlQuery(ValueProvider<String> firestoreReadGqlQuery);
+
+    @Description("GCP Project Id of where the datastore entities live")
+    ValueProvider<String> getFirestoreReadProjectId();
+
+    void setFirestoreReadProjectId(ValueProvider<String> firestoreReadProjectId);
+
+    @Description("Namespace of requested Entties. Set as \"\" for default namespace")
+    ValueProvider<String> getFirestoreReadNamespace();
+
+    void setFirestoreReadNamespace(ValueProvider<String> firestoreReadNamespace);
   }
 
   /** Options for writing Datastore Entities. */
   public interface DatastoreWriteOptions extends PipelineOptions {
+    /** @deprecated Please use getFirestoreWriteProjectId() instead. */
     @Description("GCP Project Id of where to write the datastore entities")
+    @Hidden
+    @Deprecated
     ValueProvider<String> getDatastoreWriteProjectId();
+
+    /** @deprecated Please use setFirestoreWriteProjectId(value) instead. */
+    @Hidden
+    @Deprecated
     void setDatastoreWriteProjectId(ValueProvider<String> datstoreWriteProjectId);
 
+    /** @deprecated Please use getFirestoreWriteEntityKind() instead. */
     @Description("Kind of the Datastore entity")
+    @Hidden
+    @Deprecated
     ValueProvider<String> getDatastoreWriteEntityKind();
 
+    /** @deprecated Please use setFirestoreWriteEntityKind(value) instead. */
+    @Hidden
+    @Deprecated
     void setDatastoreWriteEntityKind(ValueProvider<String> value);
 
+    /** @deprecated Please use getFirestoreWriteNamespace() instead. */
     @Description("Namespace of the Datastore entity")
+    @Hidden
+    @Deprecated
     ValueProvider<String> getDatastoreWriteNamespace();
 
+    /** @deprecated Please use setFirestoreWriteNamespace(value) instead. */
+    @Hidden
+    @Deprecated
     void setDatastoreWriteNamespace(ValueProvider<String> value);
+
+    /** @deprecated Please use getFirestoreHintNumWorkers() instead. */
+    @Description("Hint for the expected number of workers in the ramp-up throttling step")
+    @Default.Integer(500)
+    @Hidden
+    @Deprecated
+    ValueProvider<Integer> getDatastoreHintNumWorkers();
+
+    /** @deprecated Please use setFirestoreHintNumWorkers(value) instead. */
+    @Hidden
+    @Deprecated
+    void setDatastoreHintNumWorkers(ValueProvider<Integer> value);
+
+    @Description("GCP Project Id of where to write the datastore entities")
+    ValueProvider<String> getFirestoreWriteProjectId();
+
+    void setFirestoreWriteProjectId(ValueProvider<String> firestoreWriteProjectId);
+
+    @Description("Kind of the Datastore entity")
+    ValueProvider<String> getFirestoreWriteEntityKind();
+
+    void setFirestoreWriteEntityKind(ValueProvider<String> value);
+
+    @Description("Namespace of the Datastore entity")
+    ValueProvider<String> getFirestoreWriteNamespace();
+
+    void setFirestoreWriteNamespace(ValueProvider<String> value);
+
+    @Description("Hint for the expected number of workers in the ramp-up throttling step")
+    ValueProvider<Integer> getFirestoreHintNumWorkers();
+
+    void setFirestoreHintNumWorkers(ValueProvider<Integer> value);
   }
 
   /** Options for deleting Datastore Entities. */
   public interface DatastoreDeleteOptions extends PipelineOptions {
+    /** @deprecated Please use getFirestoreDeleteProjectId() instead. */
     @Description("GCP Project Id of where to delete the datastore entities")
+    @Hidden
+    @Deprecated
     ValueProvider<String> getDatastoreDeleteProjectId();
+
+    /** @deprecated Please use setFirestoreDeleteProjectId(value) instead. */
+    @Hidden
+    @Deprecated
     void setDatastoreDeleteProjectId(ValueProvider<String> datastoreDeleteProjectId);
+
+    /** @deprecated Please use getFirestoreHintNumWorkers() instead. */
+    @Description("Hint for the expected number of workers in the ramp-up throttling step")
+    @Default.Integer(500)
+    @Hidden
+    @Deprecated
+    ValueProvider<Integer> getDatastoreHintNumWorkers();
+
+    /** @deprecated Please use setFirestoreHintNumWorkers(value) instead. */
+    @Hidden
+    @Deprecated
+    void setDatastoreHintNumWorkers(ValueProvider<Integer> value);
+
+    @Description("GCP Project Id of where to delete the datastore entities")
+    ValueProvider<String> getFirestoreDeleteProjectId();
+
+    void setFirestoreDeleteProjectId(ValueProvider<String> firestoreDeleteProjectId);
+
+    @Description("Hint for the expected number of workers in the ramp-up throttling step")
+    ValueProvider<Integer> getFirestoreHintNumWorkers();
+
+    void setFirestoreHintNumWorkers(ValueProvider<Integer> value);
   }
 
   /** Options for reading Unique datastore Schemas. */
@@ -100,18 +219,22 @@ public class DatastoreConverters {
 
   /** Reads Entities as JSON from Datastore. */
   @AutoValue
-  public abstract static class ReadJsonEntities
-      extends PTransform<PBegin, PCollection<String>> {
+  public abstract static class ReadJsonEntities extends PTransform<PBegin, PCollection<String>> {
     public abstract ValueProvider<String> gqlQuery();
+
     public abstract ValueProvider<String> projectId();
+
     public abstract ValueProvider<String> namespace();
 
     /** Builder for ReadJsonEntities. */
     @AutoValue.Builder
     public abstract static class Builder {
       public abstract Builder setGqlQuery(ValueProvider<String> gqlQuery);
+
       public abstract Builder setProjectId(ValueProvider<String> projectId);
+
       public abstract Builder setNamespace(ValueProvider<String> namespace);
+
       public abstract ReadJsonEntities build();
     }
 
@@ -121,11 +244,14 @@ public class DatastoreConverters {
 
     @Override
     public PCollection<String> expand(PBegin begin) {
-      return begin.apply("ReadFromDatastore",
-          DatastoreIO.v1().read()
-              .withProjectId(projectId())
-              .withLiteralGqlQuery(gqlQuery())
-              .withNamespace(namespace()))
+      return begin
+          .apply(
+              "ReadFromDatastore",
+              DatastoreIO.v1()
+                  .read()
+                  .withProjectId(projectId())
+                  .withLiteralGqlQuery(gqlQuery())
+                  .withNamespace(namespace()))
           .apply("EntityToJson", ParDo.of(new DatastoreConverters.EntityToJson()));
     }
   }
@@ -135,52 +261,71 @@ public class DatastoreConverters {
   public abstract static class WriteJsonEntities
       extends PTransform<PCollection<String>, PCollectionTuple> {
     public abstract ValueProvider<String> projectId();
+
+    public abstract ValueProvider<Integer> hintNumWorkers();
+
+    public abstract Boolean throttleRampup();
+
     public abstract TupleTag<String> errorTag();
 
     /** Builder for WriteJsonEntities. */
     @AutoValue.Builder
     public abstract static class Builder {
       public abstract Builder setProjectId(ValueProvider<String> projectId);
+
+      public abstract Builder setHintNumWorkers(ValueProvider<Integer> hintNumWorkers);
+
+      public abstract Builder setThrottleRampup(Boolean throttleRampup);
+
       public abstract Builder setErrorTag(TupleTag<String> errorTag);
+
       public abstract WriteJsonEntities build();
     }
 
     public static Builder newBuilder() {
-      return new AutoValue_DatastoreConverters_WriteJsonEntities.Builder();
+      return new AutoValue_DatastoreConverters_WriteJsonEntities.Builder()
+          .setHintNumWorkers(StaticValueProvider.of(500))
+          .setThrottleRampup(true); // defaults
     }
 
     @Override
     public PCollectionTuple expand(PCollection<String> entityJson) {
       TupleTag<Entity> goodTag = new TupleTag<>();
+      DatastoreV1.Write datastoreWrite =
+          DatastoreIO.v1().write().withProjectId(projectId()).withHintNumWorkers(hintNumWorkers());
+      if (!throttleRampup()) {
+        datastoreWrite = datastoreWrite.withRampupThrottlingDisabled();
+      }
 
-      PCollectionTuple entities = entityJson
-          .apply("StringToEntity", ParDo.of(new JsonToEntity()))
-          .apply("CheckSameKey", CheckSameKey.newBuilder()
-              .setErrorTag(errorTag())
-              .setGoodTag(goodTag)
-              .build());
+      PCollectionTuple entities =
+          entityJson
+              .apply("StringToEntity", ParDo.of(new JsonToEntity()))
+              .apply(
+                  "CheckSameKey",
+                  CheckSameKey.newBuilder().setErrorTag(errorTag()).setGoodTag(goodTag).build());
 
-      entities.get(goodTag).apply("WriteToDatastore", DatastoreIO.v1().write()
-          .withProjectId(projectId()));
+      entities.get(goodTag).apply("WriteToDatastore", datastoreWrite);
       return entities;
     }
   }
 
-  /**
-   * Removes any entities that have the same key, and throws exception.
-   */
+  /** Removes any entities that have the same key, and throws exception. */
   @AutoValue
   public abstract static class CheckSameKey
       extends PTransform<PCollection<Entity>, PCollectionTuple> {
     public abstract TupleTag<Entity> goodTag();
+
     public abstract TupleTag<String> errorTag();
+
     private Counter duplicatedKeys = Metrics.counter(CheckSameKey.class, "duplicated-keys");
 
     /** Builder for {@link CheckSameKey}. */
     @AutoValue.Builder
     public abstract static class Builder {
       public abstract Builder setGoodTag(TupleTag<Entity> goodTag);
+
       public abstract Builder setErrorTag(TupleTag<String> errorTag);
+
       public abstract CheckSameKey build();
     }
 
@@ -192,50 +337,57 @@ public class DatastoreConverters {
     @Override
     public PCollectionTuple expand(PCollection<Entity> entities) {
       return entities
-          .apply("ExposeKeys", ParDo.of(new DoFn<Entity, KV<byte[], Entity>>() {
-            @ProcessElement
-            public void processElement(ProcessContext c) throws IOException {
-              Entity e = c.element();
+          .apply(
+              "ExposeKeys",
+              ParDo.of(
+                  new DoFn<Entity, KV<byte[], Entity>>() {
+                    @ProcessElement
+                    public void processElement(ProcessContext c) throws IOException {
+                      Entity e = c.element();
 
-              // Serialize Key deterministically
-              ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
-              CodedOutputStream output = CodedOutputStream.newInstance(byteOutputStream);
-              output.useDeterministicSerialization();
-              c.element().getKey().writeTo(output);
-              output.flush();
+                      // Serialize Key deterministically
+                      ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
+                      CodedOutputStream output = CodedOutputStream.newInstance(byteOutputStream);
+                      output.useDeterministicSerialization();
+                      c.element().getKey().writeTo(output);
+                      output.flush();
 
-              c.output(KV.of(byteOutputStream.toByteArray(), e));
-            }
-          }))
+                      c.output(KV.of(byteOutputStream.toByteArray(), e));
+                    }
+                  }))
           .apply(GroupByKey.create())
-          .apply("ErrorOnDuplicateKeys", ParDo.of(
-              new DoFn<KV<byte[], Iterable<Entity>>, Entity>() {
-                private EntityJsonPrinter entityJsonPrinter;
+          .apply(
+              "ErrorOnDuplicateKeys",
+              ParDo.of(
+                      new DoFn<KV<byte[], Iterable<Entity>>, Entity>() {
+                        private EntityJsonPrinter entityJsonPrinter;
 
-                @Setup
-                public void setup() {
-                  entityJsonPrinter = new EntityJsonPrinter();
-                }
+                        @Setup
+                        public void setup() {
+                          entityJsonPrinter = new EntityJsonPrinter();
+                        }
 
-                @ProcessElement
-                public void processElement(ProcessContext c) throws IOException {
-                  Iterator<Entity> entities = c.element().getValue().iterator();
-                  Entity entity = entities.next();
-                  if (entities.hasNext()) {
-                    do {
-                      duplicatedKeys.inc();
-                      ErrorMessage errorMessage = ErrorMessage.newBuilder()
-                          .setMessage("Duplicate Datastore Key")
-                          .setData(entityJsonPrinter.print(entity))
-                          .build();
-                      c.output(errorTag(), errorMessage.toJson());
-                      entity = entities.hasNext() ? entities.next() : null;
-                    } while (entity != null);
-                  } else {
-                    c.output(entity);
-                  }
-                }
-          }).withOutputTags(goodTag(), TupleTagList.of(errorTag())));
+                        @ProcessElement
+                        public void processElement(ProcessContext c) throws IOException {
+                          Iterator<Entity> entities = c.element().getValue().iterator();
+                          Entity entity = entities.next();
+                          if (entities.hasNext()) {
+                            do {
+                              duplicatedKeys.inc();
+                              ErrorMessage errorMessage =
+                                  ErrorMessage.newBuilder()
+                                      .setMessage("Duplicate Datastore Key")
+                                      .setData(entityJsonPrinter.print(entity))
+                                      .build();
+                              c.output(errorTag(), errorMessage.toJson());
+                              entity = entities.hasNext() ? entities.next() : null;
+                            } while (entity != null);
+                          } else {
+                            c.output(entity);
+                          }
+                        }
+                      })
+                  .withOutputTags(goodTag(), TupleTagList.of(errorTag())));
     }
   }
 
@@ -245,23 +397,41 @@ public class DatastoreConverters {
       extends PTransform<PCollection<String>, PDone> {
     public abstract ValueProvider<String> projectId();
 
+    public abstract ValueProvider<Integer> hintNumWorkers();
+
+    public abstract Boolean throttleRampup();
+
     /** Builder for DatastoreDeleteEntityJson. */
     @AutoValue.Builder
     public abstract static class Builder {
       public abstract Builder setProjectId(ValueProvider<String> projectId);
+
+      public abstract Builder setHintNumWorkers(ValueProvider<Integer> hintNumWorkers);
+
+      public abstract Builder setThrottleRampup(Boolean throttleRampup);
+
       public abstract DatastoreDeleteEntityJson build();
     }
 
     public static Builder newBuilder() {
-      return new AutoValue_DatastoreConverters_DatastoreDeleteEntityJson.Builder();
+      return new AutoValue_DatastoreConverters_DatastoreDeleteEntityJson.Builder()
+          .setHintNumWorkers(StaticValueProvider.of(500))
+          .setThrottleRampup(true); // defaults
     }
 
     @Override
     public PDone expand(PCollection<String> entityJson) {
+      DatastoreV1.DeleteKey datastoreDelete =
+          DatastoreIO.v1()
+              .deleteKey()
+              .withProjectId(projectId())
+              .withHintNumWorkers(hintNumWorkers());
+      if (!throttleRampup()) {
+        datastoreDelete = datastoreDelete.withRampupThrottlingDisabled();
+      }
       return entityJson
           .apply("StringToKey", ParDo.of(new JsonToKey()))
-          .apply("DeleteKeys", DatastoreIO.v1().deleteKey()
-              .withProjectId(projectId()));
+          .apply("DeleteKeys", datastoreDelete);
     }
   }
 
@@ -270,15 +440,20 @@ public class DatastoreConverters {
   public abstract static class DatastoreReadSchemaCount
       extends PTransform<PBegin, PCollection<String>> {
     public abstract ValueProvider<String> projectId();
+
     public abstract ValueProvider<String> gqlQuery();
+
     public abstract ValueProvider<String> namespace();
 
     /** Builder for DatastoreReadSchemaCount. */
     @AutoValue.Builder
     public abstract static class Builder {
       public abstract Builder setGqlQuery(ValueProvider<String> gqlQuery);
+
       public abstract Builder setProjectId(ValueProvider<String> projectId);
+
       public abstract Builder setNamespace(ValueProvider<String> namespace);
+
       public abstract DatastoreReadSchemaCount build();
     }
 
@@ -288,28 +463,33 @@ public class DatastoreConverters {
 
     @Override
     public PCollection<String> expand(PBegin begin) {
-      return begin.apply("ReadFromDatastore",
-          DatastoreIO.v1().read()
-              .withProjectId(projectId())
-              .withLiteralGqlQuery(gqlQuery())
-              .withNamespace(namespace()))
+      return begin
+          .apply(
+              "ReadFromDatastore",
+              DatastoreIO.v1()
+                  .read()
+                  .withProjectId(projectId())
+                  .withLiteralGqlQuery(gqlQuery())
+                  .withNamespace(namespace()))
           .apply("ParseEntitySchema", ParDo.of(new EntityToSchemaJson()))
           .apply("CountUniqueSchemas", Count.<String>perElement())
-          .apply("Jsonify", ParDo.of(new DoFn<KV<String, Long>, String>(){
-            @ProcessElement
-            public void processElement(ProcessContext c) {
-              JsonObject out = new JsonObject();
-              out.addProperty("schema", c.element().getKey());
-              out.addProperty("count", c.element().getValue());
-              c.output(out.toString());
-            }
-          }));
+          .apply(
+              "Jsonify",
+              ParDo.of(
+                  new DoFn<KV<String, Long>, String>() {
+                    @ProcessElement
+                    public void processElement(ProcessContext c) {
+                      JsonObject out = new JsonObject();
+                      out.addProperty("schema", c.element().getKey());
+                      out.addProperty("count", c.element().getValue());
+                      c.output(out.toString());
+                    }
+                  }));
     }
   }
 
   /**
-   * DoFn for converting a Datastore Entity to JSON.
-   * Json in mapped using protov3:
+   * DoFn for converting a Datastore Entity to JSON. Json in mapped using protov3:
    * https://developers.google.com/protocol-buffers/docs/proto3#json
    */
   public static class EntityToJson extends DoFn<Entity, String> {
@@ -320,21 +500,18 @@ public class DatastoreConverters {
       entityJsonPrinter = new EntityJsonPrinter();
     }
 
-    /**
-     * Processes Datstore entity into json.
-     */
+    /** Processes Datstore entity into json. */
     @ProcessElement
-    public void processElement(ProcessContext c) throws  InvalidProtocolBufferException {
+    public void processElement(ProcessContext c) throws InvalidProtocolBufferException {
       Entity entity = c.element();
-      String entityJson =  entityJsonPrinter.print(entity);
+      String entityJson = entityJsonPrinter.print(entity);
       c.output(entityJson);
     }
   }
 
   /**
-   * DoFn for converting a Protov3 JSON Encoded Entity to a Datastore Entity.
-   * JSON in mapped protov3:
-   * https://developers.google.com/protocol-buffers/docs/proto3#json
+   * DoFn for converting a Protov3 JSON Encoded Entity to a Datastore Entity. JSON in mapped
+   * protov3: https://developers.google.com/protocol-buffers/docs/proto3#json
    */
   public static class JsonToEntity extends DoFn<String, Entity> {
     private EntityJsonParser entityJsonParser;
@@ -353,21 +530,22 @@ public class DatastoreConverters {
       // Build entity who's key has an empty project Id.
       // This allows DatastoreIO to handle what project Entities are loaded into
       com.google.datastore.v1.Key k = entityBuilder.build().getKey();
-      entityBuilder.setKey(com.google.datastore.v1.Key.newBuilder()
-          .addAllPath(k.getPathList())
-          .setPartitionId(PartitionId.newBuilder()
-              .setProjectId("")
-              .setNamespaceId(k.getPartitionId().getNamespaceId())));
+      entityBuilder.setKey(
+          com.google.datastore.v1.Key.newBuilder()
+              .addAllPath(k.getPathList())
+              .setPartitionId(
+                  PartitionId.newBuilder()
+                      .setProjectId("")
+                      .setNamespaceId(k.getPartitionId().getNamespaceId())));
 
       c.output(entityBuilder.build());
     }
   }
 
   /**
-   * DoFn for converting a Protov3 Json Encoded Entity and extracting its key.
-   * Expects json in format of:
-   * { key: { "partitionId": {"projectId": "", "namespace": ""}, "path": [
-   *    {"kind": "", "id": "", "name": ""}]}
+   * DoFn for converting a Protov3 Json Encoded Entity and extracting its key. Expects json in
+   * format of: { key: { "partitionId": {"projectId": "", "namespace": ""}, "path": [ {"kind": "",
+   * "id": "", "name": ""}]}
    */
   public static class JsonToKey extends DoFn<String, Key> {
     private EntityJsonParser entityJsonParser;
@@ -390,6 +568,7 @@ public class DatastoreConverters {
 
     /**
      * Grabs the schema for what data is in the Array.
+     *
      * @param arrayValue a populated array
      * @return a schema of what kind of data is in the array
      */
@@ -398,19 +577,21 @@ public class DatastoreConverters {
       Set<String> primitives = new HashSet<>();
       Set<JsonArray> subArrays = new HashSet<>();
 
-      arrayValue.getValuesList().stream().forEach(value -> {
-        switch (value.getValueTypeCase()) {
-          case ENTITY_VALUE:
-            entities.add(entitySchema(value.getEntityValue()));
-            break;
-          case ARRAY_VALUE:
-            subArrays.add(arraySchema(value.getArrayValue()));
-            break;
-          default:
-            primitives.add(value.getValueTypeCase().toString());
-            break;
-        }
-      });
+      arrayValue.getValuesList().stream()
+          .forEach(
+              value -> {
+                switch (value.getValueTypeCase()) {
+                  case ENTITY_VALUE:
+                    entities.add(entitySchema(value.getEntityValue()));
+                    break;
+                  case ARRAY_VALUE:
+                    subArrays.add(arraySchema(value.getArrayValue()));
+                    break;
+                  default:
+                    primitives.add(value.getValueTypeCase().toString());
+                    break;
+                }
+              });
 
       JsonArray jsonArray = new JsonArray();
       entities.stream().forEach(jsonArray::add);
@@ -421,25 +602,28 @@ public class DatastoreConverters {
 
     /**
      * Grabs the schema for what data is in the Entity.
+     *
      * @param entity a populated entity
      * @return a schema of what kind of data is in the entity
      */
     private JsonObject entitySchema(Entity entity) {
       JsonObject jsonObject = new JsonObject();
-      entity.getPropertiesMap().entrySet().stream().forEach(entrySet -> {
-        String key = entrySet.getKey();
-        Value value = entrySet.getValue();
-        switch (value.getValueTypeCase()) {
-          case ENTITY_VALUE:
-            jsonObject.add(key, entitySchema(value.getEntityValue()));
-            break;
-          case ARRAY_VALUE:
-            jsonObject.add(key, arraySchema(value.getArrayValue()));
-            break;
-          default:
-            jsonObject.addProperty(key, value.getValueTypeCase().toString());
-        }
-      });
+      entity.getPropertiesMap().entrySet().stream()
+          .forEach(
+              entrySet -> {
+                String key = entrySet.getKey();
+                Value value = entrySet.getValue();
+                switch (value.getValueTypeCase()) {
+                  case ENTITY_VALUE:
+                    jsonObject.add(key, entitySchema(value.getEntityValue()));
+                    break;
+                  case ARRAY_VALUE:
+                    jsonObject.add(key, arraySchema(value.getArrayValue()));
+                    break;
+                  default:
+                    jsonObject.addProperty(key, value.getValueTypeCase().toString());
+                }
+              });
       return jsonObject;
     }
 
@@ -458,16 +642,14 @@ public class DatastoreConverters {
     private JsonFormat.Printer jsonPrinter;
 
     public EntityJsonPrinter() {
-      TypeRegistry typeRegistry = TypeRegistry.newBuilder()
-          .add(Entity.getDescriptor())
-          .build();
-      jsonPrinter = JsonFormat.printer()
-          .usingTypeRegistry(typeRegistry)
-          .omittingInsignificantWhitespace();
+      TypeRegistry typeRegistry = TypeRegistry.newBuilder().add(Entity.getDescriptor()).build();
+      jsonPrinter =
+          JsonFormat.printer().usingTypeRegistry(typeRegistry).omittingInsignificantWhitespace();
     }
 
     /**
      * Prints an Entity as a JSON String.
+     *
      * @param entity a Datastore Protobuf Entity.
      * @return Datastore Entity encoded as a JSON String.
      * @throws InvalidProtocolBufferException
@@ -484,12 +666,9 @@ public class DatastoreConverters {
     private JsonFormat.Parser jsonParser;
 
     public EntityJsonParser() {
-      TypeRegistry typeRegistry = TypeRegistry.newBuilder()
-          .add(Entity.getDescriptor())
-          .build();
+      TypeRegistry typeRegistry = TypeRegistry.newBuilder().add(Entity.getDescriptor()).build();
 
-      jsonParser = JsonFormat.parser()
-          .usingTypeRegistry(typeRegistry);
+      jsonParser = JsonFormat.parser().usingTypeRegistry(typeRegistry);
     }
 
     public void merge(String json, Entity.Builder entityBuilder)
@@ -502,7 +681,6 @@ public class DatastoreConverters {
       merge(json, entityBuilter);
       return entityBuilter.build();
     }
-
   }
 
   /** Writes Entities to Datastore. */
@@ -511,6 +689,10 @@ public class DatastoreConverters {
       extends PTransform<PCollection<Entity>, PCollectionTuple> {
     public abstract ValueProvider<String> projectId();
 
+    public abstract ValueProvider<Integer> hintNumWorkers();
+
+    public abstract Boolean throttleRampup();
+
     public abstract TupleTag<String> errorTag();
 
     /** Builder for WriteJsonEntities. */
@@ -518,18 +700,29 @@ public class DatastoreConverters {
     public abstract static class Builder {
       public abstract Builder setProjectId(ValueProvider<String> projectId);
 
+      public abstract Builder setHintNumWorkers(ValueProvider<Integer> hintNumWorkers);
+
+      public abstract Builder setThrottleRampup(Boolean throttleRampup);
+
       public abstract Builder setErrorTag(TupleTag<String> errorTag);
 
       public abstract WriteEntities build();
     }
 
     public static Builder newBuilder() {
-      return new AutoValue_DatastoreConverters_WriteEntities.Builder();
+      return new AutoValue_DatastoreConverters_WriteEntities.Builder()
+          .setHintNumWorkers(StaticValueProvider.of(500))
+          .setThrottleRampup(true); // defaults
     }
 
     @Override
     public PCollectionTuple expand(PCollection<Entity> entity) {
       TupleTag<Entity> goodTag = new TupleTag<>();
+      DatastoreV1.Write datastoreWrite =
+          DatastoreIO.v1().write().withProjectId(projectId()).withHintNumWorkers(hintNumWorkers());
+      if (!throttleRampup()) {
+        datastoreWrite = datastoreWrite.withRampupThrottlingDisabled();
+      }
 
       // Due to the fact that DatastoreIO does non-transactional writing to Datastore, writing the
       // same entity more than once in the same commit is not supported (error "A non-transactional
@@ -540,9 +733,7 @@ public class DatastoreConverters {
           entity.apply(
               "CheckSameKey",
               CheckSameKey.newBuilder().setErrorTag(errorTag()).setGoodTag(goodTag).build());
-      entities
-          .get(goodTag)
-          .apply("WriteToDatastore", DatastoreIO.v1().write().withProjectId(projectId()));
+      entities.get(goodTag).apply("WriteToDatastore", datastoreWrite);
       return entities;
     }
   }

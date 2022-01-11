@@ -263,4 +263,3 @@ if __name__ == '__main__':
         event = data
         _handle_result(transform(event))
 ```
-

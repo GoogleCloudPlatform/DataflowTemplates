@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.cdc.merge;
 
+import com.google.cloud.bigquery.TableId;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.beam.sdk.Pipeline;
@@ -98,8 +99,8 @@ public class BigQueryMergeValidatorTemplate {
   public static PipelineResult run(Options options) {
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
-    String replicaTable = options.getReplicaTable();
-    String stagingTable = options.getStagingTable();
+    TableId replicaTable = TableId.of("dataset", options.getReplicaTable());
+    TableId stagingTable = TableId.of("dataset", options.getStagingTable());
 
     pipeline
         .apply(Create.of(1))
@@ -110,6 +111,7 @@ public class BigQueryMergeValidatorTemplate {
                   public void process(ProcessContext c) {
                     MergeInfo mergeInfo =
                         MergeInfo.create(
+                            "project_id",
                             ALL_PK_FIELDS,
                             Arrays.asList("_metadata_timestamp"),
                             "_metadata_deleted",
@@ -119,8 +121,10 @@ public class BigQueryMergeValidatorTemplate {
                     c.output(mergeInfo);
                   }
                 }))
-        .apply(new BigQueryMerger(
-            Duration.standardMinutes(1), null, MergeConfiguration.bigQueryConfiguration()));
+        .apply(
+            BigQueryMerger.of(
+                MergeConfiguration.bigQueryConfiguration()
+                    .withMergeWindowDuration(Duration.standardMinutes(1))));
 
     return pipeline.run();
   }

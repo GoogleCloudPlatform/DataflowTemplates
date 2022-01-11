@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2020 Google Inc.
+ * Copyright (C) 2020 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -16,10 +16,12 @@
 package com.google.cloud.teleport.v2.cdc.dlq;
 
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.channels.Channels;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -53,12 +55,12 @@ import org.slf4j.LoggerFactory;
 /**
  * A DeadLetterQueueReconsumer that works by periodically fetching files from a DLQ directory.
  *
- * This transforms assumes that the DLQ files are stored in JSON Lines format.
+ * <p>This transforms assumes that the DLQ files are stored in JSON Lines format.
  */
 public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PCollection<String>> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(
-      FileBasedDeadLetterQueueReconsumer.class);
+  private static final Logger LOG =
+      LoggerFactory.getLogger(FileBasedDeadLetterQueueReconsumer.class);
 
   public static final Duration DEFAULT_RECHECK_PERIOD = Duration.standardMinutes(5);
 
@@ -91,7 +93,6 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
         .apply("AsFilePattern", MapElements.into(TypeDescriptors.strings()).via(seq -> filePattern))
         .apply("MatchFiles", FileIO.matchAll())
         .apply("ConsumeMatches", moveAndConsumeMatches());
-
   }
 
   /** Build a {@link PTransform} that consumes matched DLQ files. */
@@ -103,16 +104,19 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
         // TODO(pabloem, dhercher): Add a _metadata attribute to track whether a row comes from DLQ.
         TupleTag<String> fileContents = new TupleTag<String>();
         TupleTag<Metadata> fileMetadatas = new TupleTag<Metadata>();
-        PCollectionTuple results = input
-            .apply(ParDo.of(new MoveAndConsumeFn(fileContents, fileMetadatas))
-                       .withOutputTags(fileContents, TupleTagList.of(fileMetadatas)));
+        PCollectionTuple results =
+            input.apply(
+                ParDo.of(new MoveAndConsumeFn(fileContents, fileMetadatas))
+                    .withOutputTags(fileContents, TupleTagList.of(fileMetadatas)));
 
-        results.get(fileMetadatas)
+        results
+            .get(fileMetadatas)
             .setCoder(MetadataCoder.of())
             .apply("ReshuffleFiles", Reshuffle.viaRandomKey())
             .apply(ParDo.of(new RemoveFiles()));
 
-        return results.get(fileContents)
+        return results
+            .get(fileContents)
             .setCoder(StringUtf8Coder.of())
             .apply("ReshuffleContents", Reshuffle.viaRandomKey());
       }
@@ -125,10 +129,8 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
         Metrics.counter(MoveAndConsumeFn.class, "failedDeletions");
 
     @ProcessElement
-    public void process(
-        @Element Metadata dlqFile,
-        MultiOutputReceiver outputs) throws IOException {
-       this.filesToRemove.add(dlqFile.resourceId());
+    public void process(@Element Metadata dlqFile, MultiOutputReceiver outputs) throws IOException {
+      this.filesToRemove.add(dlqFile.resourceId());
     }
 
     @FinishBundle
@@ -136,6 +138,7 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
       for (ResourceId file : filesToRemove) {
         try {
           FileSystems.delete(Collections.singleton(file));
+          LOG.info("Deleted file {}.", file);
         } catch (IOException e) {
           LOG.error("Unable to delete file {}. Exception: {}", file, e);
           failedDeletions.inc();
@@ -172,40 +175,53 @@ public class FileBasedDeadLetterQueueReconsumer extends PTransform<PBegin, PColl
     }
 
     @ProcessElement
-    public void process(
-        @Element Metadata dlqFile,
-        MultiOutputReceiver outputs) throws IOException {
+    public void process(@Element Metadata dlqFile, MultiOutputReceiver outputs) throws IOException {
       LOG.info("Found DLQ File: {}", dlqFile.resourceId().toString());
       if (dlqFile.resourceId().toString().contains("/tmp/.temp")) {
         return;
       }
 
-      InputStream jsonStream = Channels.newInputStream(FileSystems.open(dlqFile.resourceId()));
-      BufferedReader jsonReader = new BufferedReader(new InputStreamReader(jsonStream));
+      BufferedReader jsonReader;
+      try {
+        jsonReader = readFile(dlqFile.resourceId());
+      } catch (FileNotFoundException e) {
+        // If the file does exist, it will be retried on the next trigger.
+        LOG.warn("DLQ File Not Found: {}", dlqFile.resourceId().toString());
+        return;
+      }
 
       // Assuming that files are JSONLines formatted.
       ObjectMapper mapper = new ObjectMapper();
-      jsonReader.lines().forEach(line -> {
-        ObjectNode resultNode;
-        // Each line is expecting this format: {"message": ROW, "error_message": ERROR}
-        try {
-          JsonNode jsonDLQElement = mapper.readTree(line);
-          if (!jsonDLQElement.get("message").isObject()) {
-            throw new IOException("Unable to parse JSON record " + line);
-          }
-          resultNode = (ObjectNode) jsonDLQElement.get("message");
-          resultNode.put("_metadata_error", jsonDLQElement.get("error_message"));
-          // Populate the retried count.
-          long retryErrorCount = getRetryCountForRecord(resultNode);
-          resultNode.put("_metadata_retry_count", retryErrorCount);
-          outputs.get(contentTag).output(resultNode.toString());
-          reconsumedElements.inc();
-        } catch (IOException e) {
-          LOG.error("Issue parsing JSON record {}. Unable to continue.", line, e);
-          throw new RuntimeException(e);
-        }
-      });
+      jsonReader
+          .lines()
+          .forEach(
+              line -> {
+                ObjectNode resultNode;
+                // Each line is expecting this format: {"message": ROW, "error_message": ERROR}
+                try {
+                  JsonNode jsonDLQElement = mapper.readTree(line);
+                  if (!jsonDLQElement.get("message").isObject()) {
+                    throw new IOException("Unable to parse JSON record " + line);
+                  }
+                  resultNode = (ObjectNode) jsonDLQElement.get("message");
+                  resultNode.put("_metadata_error", jsonDLQElement.get("error_message"));
+                  // Populate the retried count.
+                  long retryErrorCount = getRetryCountForRecord(resultNode);
+                  resultNode.put("_metadata_retry_count", retryErrorCount);
+                  outputs.get(contentTag).output(resultNode.toString());
+                  reconsumedElements.inc();
+                } catch (IOException e) {
+                  LOG.error("Issue parsing JSON record {}. Unable to continue.", line, e);
+                  throw new RuntimeException(e);
+                }
+              });
       outputs.get(filesTag).output(dlqFile);
     }
+  }
+
+  public static BufferedReader readFile(ResourceId resourceId)
+      throws IOException, FileNotFoundException {
+    InputStream jsonStream = Channels.newInputStream(FileSystems.open(resourceId));
+    return new BufferedReader(new InputStreamReader(jsonStream, StandardCharsets.UTF_8));
   }
 }

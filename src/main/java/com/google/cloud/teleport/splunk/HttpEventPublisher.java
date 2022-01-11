@@ -1,19 +1,18 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
-
 package com.google.cloud.teleport.splunk;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -35,16 +34,23 @@ import com.google.auto.value.AutoValue;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
 import java.util.List;
 import javax.annotation.Nullable;
 import javax.net.ssl.HostnameVerifier;
-import org.apache.beam.vendor.guava.v20_0.com.google.common.base.Joiner;
-import org.apache.beam.vendor.guava.v20_0.com.google.common.collect.ImmutableList;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Joiner;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
 import org.apache.http.client.config.CookieSpecs;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.conn.ssl.DefaultHostnameVerifier;
@@ -73,8 +79,7 @@ public abstract class HttpEventPublisher {
   private static final Gson GSON =
       new GsonBuilder().setFieldNamingStrategy(f -> f.getName().toLowerCase()).create();
 
-  @VisibleForTesting
-  protected static final String HEC_URL_PATH = "services/collector/event";
+  @VisibleForTesting protected static final String HEC_URL_PATH = "services/collector/event";
 
   private static final HttpMediaType MEDIA_TYPE =
       new HttpMediaType("application/json;profile=urn:splunk:event:1.0;charset=utf-8");
@@ -85,7 +90,7 @@ public abstract class HttpEventPublisher {
   private static final String AUTHORIZATION_SCHEME = "Splunk %s";
 
   private static final String HTTPS_PROTOCOL_PREFIX = "https";
-  
+
   public static Builder newBuilder() {
     return new AutoValue_HttpEventPublisher.Builder();
   }
@@ -97,6 +102,9 @@ public abstract class HttpEventPublisher {
   abstract GenericUrl genericUrl();
 
   abstract String token();
+
+  @Nullable
+  abstract byte[] rootCaCertificate();
 
   @Nullable
   abstract Integer maxElapsedMillis();
@@ -123,7 +131,7 @@ public abstract class HttpEventPublisher {
     HttpIOExceptionHandler ioExceptionHandler =
         new HttpBackOffIOExceptionHandler(getConfiguredBackOff());
     request.setIOExceptionHandler(ioExceptionHandler);
-    
+
     setHeaders(request, token());
 
     return request.execute();
@@ -210,6 +218,10 @@ public abstract class HttpEventPublisher {
 
     abstract Boolean disableCertificateValidation();
 
+    abstract Builder setRootCaCertificate(byte[] certificate);
+
+    abstract byte[] rootCaCertificate();
+
     abstract Builder setMaxElapsedMillis(Integer maxElapsedMillis);
 
     abstract Integer maxElapsedMillis();
@@ -239,6 +251,17 @@ public abstract class HttpEventPublisher {
     }
 
     /**
+     * Method to set the self signed certificate.
+     *
+     * @param certificate User provided self-signed certificate
+     * @return {@link Builder}
+     */
+    public Builder withRootCaCertificate(byte[] certificate) {
+      checkNotNull(certificate, "withRootCa(certificate) called with null input.");
+      return setRootCaCertificate(certificate);
+    }
+
+    /**
      * Method to disable SSL certificate validation. Defaults to {@value
      * DEFAULT_DISABLE_CERTIFICATE_VALIDATION}.
      *
@@ -253,8 +276,8 @@ public abstract class HttpEventPublisher {
     }
 
     /**
-     * Method to max timeout for {@link ExponentialBackOff}. Otherwise uses the default
-     * setting for {@link ExponentialBackOff}.
+     * Method to max timeout for {@link ExponentialBackOff}. Otherwise uses the default setting for
+     * {@link ExponentialBackOff}.
      *
      * @param maxElapsedMillis max elapsed time in milliseconds for timeout.
      * @return {@link Builder}
@@ -271,7 +294,8 @@ public abstract class HttpEventPublisher {
      * @return {@link HttpEventPublisher}
      */
     public HttpEventPublisher build()
-        throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException {
+        throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException,
+            CertificateException, IOException {
 
       checkNotNull(token(), "Authentication token needs to be specified via withToken(token).");
       checkNotNull(genericUrl(), "URL needs to be specified via withUrl(url).");
@@ -289,7 +313,8 @@ public abstract class HttpEventPublisher {
       }
 
       CloseableHttpClient httpClient =
-          getHttpClient(DEFAULT_MAX_CONNECTIONS, disableCertificateValidation());
+          getHttpClient(
+              DEFAULT_MAX_CONNECTIONS, disableCertificateValidation(), rootCaCertificate());
 
       setTransport(new ApacheHttpTransport(httpClient));
       setRequestFactory(transport().createRequestFactory());
@@ -317,8 +342,9 @@ public abstract class HttpEventPublisher {
      * @param disableCertificateValidation should disable certificate validation.
      */
     private CloseableHttpClient getHttpClient(
-        int maxConnections, boolean disableCertificateValidation)
-        throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException {
+        int maxConnections, boolean disableCertificateValidation, byte[] rootCaCertificate)
+        throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException,
+            CertificateException, IOException {
 
       HttpClientBuilder builder = ApacheHttpTransport.newDefaultHttpClientBuilder();
 
@@ -330,14 +356,24 @@ public abstract class HttpEventPublisher {
                 ? NoopHostnameVerifier.INSTANCE
                 : new DefaultHostnameVerifier();
 
-        SSLContextBuilder sslContextBuilder = SSLContextBuilder.create();
+        SSLContext sslContext = SSLContextBuilder.create().build();
         if (disableCertificateValidation) {
           LOG.info("Certificate validation is disabled");
-          sslContextBuilder.loadTrustMaterial((TrustStrategy) (chain, authType) -> true);
+          sslContext =
+              SSLContextBuilder.create()
+                  .loadTrustMaterial((TrustStrategy) (chain, authType) -> true)
+                  .build();
+        } else if (rootCaCertificate != null) {
+          LOG.info("Self-Signed Certificate provided");
+          InputStream inStream = new ByteArrayInputStream(rootCaCertificate);
+          CertificateFactory cf = CertificateFactory.getInstance("X.509");
+          X509Certificate cert = (X509Certificate) cf.generateCertificate(inStream);
+          CustomX509TrustManager customTrustManager = new CustomX509TrustManager(cert);
+          sslContext.init(null, new TrustManager[] {customTrustManager}, null);
         }
 
         SSLConnectionSocketFactory connectionSocketFactory =
-            new SSLConnectionSocketFactory(sslContextBuilder.build(), hostnameVerifier);
+            new SSLConnectionSocketFactory(sslContext, hostnameVerifier);
         builder.setSSLSocketFactory(connectionSocketFactory);
       }
 

@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.templates;
 
 import com.google.cloud.teleport.templates.common.DatastoreConverters.DatastoreWriteOptions;
@@ -27,44 +26,42 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 
 /**
- * Dataflow template which copies Pubsub Messages to Datastore.
- * This expects Pubsub messages to contain JSON text in the
- * v1/Entity rest format:
+ * Dataflow template which copies Pubsub Messages to Datastore. This expects Pubsub messages to
+ * contain JSON text in the v1/Entity rest format:
  * https://cloud.google.com/datastore/docs/reference/rest/v1/Entity
  */
 public class PubsubToDatastore {
   interface PubsubToDatastoreOptions
-      extends
-      PipelineOptions,
-      PubsubReadOptions,
-      JavascriptTextTransformerOptions,
-      DatastoreWriteOptions {}
+      extends PipelineOptions,
+          PubsubReadOptions,
+          JavascriptTextTransformerOptions,
+          DatastoreWriteOptions {}
 
   /**
-   * Runs a pipeline which reads in JSON from Pubsub, feeds the JSON to a Javascript UDF,
-   * and writes the JSON encoded Entities to Datastore.
+   * Runs a pipeline which reads in JSON from Pubsub, feeds the JSON to a Javascript UDF, and writes
+   * the JSON encoded Entities to Datastore.
    *
    * @param args arguments to the pipeline
    */
   public static void main(String[] args) {
-    PubsubToDatastoreOptions options = PipelineOptionsFactory.fromArgs(args)
-        .withValidation()
-        .as(PubsubToDatastoreOptions.class);
+    PubsubToDatastoreOptions options =
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(PubsubToDatastoreOptions.class);
 
     Pipeline pipeline = Pipeline.create(options);
 
     pipeline
-        .apply(PubsubIO.readStrings()
-            .fromTopic(options.getPubsubReadTopic()))
-        .apply(TransformTextViaJavascript.newBuilder()
-            .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
-            .setFunctionName(options.getJavascriptTextTransformFunctionName())
-            .build())
-        .apply(WriteJsonEntities.newBuilder()
-            .setProjectId(options.getDatastoreWriteProjectId())
-            .build());
+        .apply(PubsubIO.readStrings().fromTopic(options.getPubsubReadTopic()))
+        .apply(
+            TransformTextViaJavascript.newBuilder()
+                .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                .build())
+        .apply(
+            WriteJsonEntities.newBuilder()
+                .setProjectId(options.getDatastoreWriteProjectId())
+                .setHintNumWorkers(options.getDatastoreHintNumWorkers())
+                .build());
 
     pipeline.run();
   }
-
 }

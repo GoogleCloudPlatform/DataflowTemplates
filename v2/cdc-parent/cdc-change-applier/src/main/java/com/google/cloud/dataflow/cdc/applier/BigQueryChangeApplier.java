@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -60,15 +60,16 @@ import org.slf4j.LoggerFactory;
  * This transform relies on keeping two separate BigQuery tables: One containing a log of changes,
  * and another being a replica of the source table.
  *
- * The input change data are represented as Beam-encoded {@link Row}s containing these fields:
+ * <p>The input change data are represented as Beam-encoded {@link Row}s containing these fields:
+ *
  * <ul>
- *   <li>{@code operation} of type {@link String}, containing the kind of operation
- *       performed (e.g. INSERT, UPDATE, DELETE).</li>
- *   <li>{@code tableName} of type {@link String}, containing the full table name from the
- *       data source (i.e. {@code ${INSTANCE}.${DATABASE}.${TABLE_NAME}})</li>
- *   <li>{@code primaryKey} of type {@link Row}, containing the row's primary key.</li>
- *   <li>{@code fullRecord} of type {@link Row}, containing the full row after the change.</li>
- *   <li>{@code timestampMs} of type {@link Long}, containing the timestamp of the change.</li>
+ *   <li>{@code operation} of type {@link String}, containing the kind of operation performed (e.g.
+ *       INSERT, UPDATE, DELETE).
+ *   <li>{@code tableName} of type {@link String}, containing the full table name from the data
+ *       source (i.e. {@code ${INSTANCE}.${DATABASE}.${TABLE_NAME}})
+ *   <li>{@code primaryKey} of type {@link Row}, containing the row's primary key.
+ *   <li>{@code fullRecord} of type {@link Row}, containing the full row after the change.
+ *   <li>{@code timestampMs} of type {@link Long}, containing the timestamp of the change.
  * </ul>
  *
  * This PTransform has two main paths: One fast path that contains the change data, where multiple
@@ -90,13 +91,13 @@ public class BigQueryChangeApplier extends PTransform<PCollection<Row>, PDone> {
    * Creates a {@link PTransform} that will apply changes from the input {@link PCollection} into
    * tables stored in the given {@code replicaDataset}.
    *
-   * It uses the {@code changeLogDataset} to keep tables with the logs of changes to be applied
-   * to tables in the {@code replicaDataset}. The {@code changeLogDataset}, and the
-   * {@code replicaDataset} may be the same. Both datasets must reside in the same GCP project,
-   * dictated by {@code gcpProjectId}.
+   * <p>It uses the {@code changeLogDataset} to keep tables with the logs of changes to be applied
+   * to tables in the {@code replicaDataset}. The {@code changeLogDataset}, and the {@code
+   * replicaDataset} may be the same. Both datasets must reside in the same GCP project, dictated by
+   * {@code gcpProjectId}.
    *
-   * The changelog is synchronized to the replica with a frequency of at most
-   * {@code updateFrequencySeconds}.
+   * <p>The changelog is synchronized to the replica with a frequency of at most {@code
+   * updateFrequencySeconds}.
    */
   public static BigQueryChangeApplier of(
       String changeLogDataset,
@@ -125,8 +126,8 @@ public class BigQueryChangeApplier extends PTransform<PCollection<Row>, PDone> {
 
     PCollection<KV<String, KV<Schema, Schema>>> tableSchemaCollection =
         buildTableSchemaCollection(input);
-    PCollectionView<Map<String, KV<Schema, Schema>>> schemaMapView = tableSchemaCollection
-        .apply(View.asMap());
+    PCollectionView<Map<String, KV<Schema, Schema>>> schemaMapView =
+        tableSchemaCollection.apply(View.asMap());
 
     PCollection<TableRow> updatesToWrite = formatIntoTableRows(input);
 
@@ -135,7 +136,9 @@ public class BigQueryChangeApplier extends PTransform<PCollection<Row>, PDone> {
             .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
             .withWriteDisposition(WriteDisposition.WRITE_APPEND)
             .withMethod(Method.STREAMING_INSERTS)
-        .to(new ChangelogTableDynamicDestinations(changeLogDataset, gcpProjectId, schemaMapView)));
+            .to(
+                new ChangelogTableDynamicDestinations(
+                    changeLogDataset, gcpProjectId, schemaMapView)));
 
     String jobPrefix =
         String.format(
@@ -144,54 +147,60 @@ public class BigQueryChangeApplier extends PTransform<PCollection<Row>, PDone> {
     // If the input collection does not have a primary key field, then we do not need to issue
     // periodic merge requests.
     if (inputCollectionSchema.hasField(DataflowCdcRowFormat.PRIMARY_KEY)) {
-      PCollection<KV<String, KV<Schema, Schema>>> heartBeatInput = input
-          .apply("KeyByTable", ParDo.of(new KeySchemasByTableFn(schemaMapView))
-              .withSideInputs(schemaMapView))
-          .apply(
-              Window.<KV<String, KV<Schema, Schema>>>into(new GlobalWindows())
-                  .discardingFiredPanes()
-                  .triggering(
-                      Repeatedly.forever(
-                          AfterProcessingTime.pastFirstElementInPane()
-                              .plusDelayOf(Duration.ZERO)
-                              .alignedTo(
-                                  Duration.standardSeconds(updateFrequencySeconds),
-                                  Instant.now()))))
-          .apply(GroupByKey.create())
-          .apply(
-              ParDo.of(
-                  new DoFn<
-                      KV<String, Iterable<KV<Schema, Schema>>>,
-                      KV<String, KV<Schema, Schema>>>() {
-                    @ProcessElement
-                    public void process(ProcessContext c) {
-                      LOG.debug(
-                          "TS: {} | Element: {} | Pane: {}", c.timestamp(), c.element(), c.pane());
-                      Iterator<KV<Schema, Schema>> it = c.element().getValue().iterator();
-                      if (it.hasNext()) {
-                        c.output(KV.of(c.element().getKey(), it.next()));
-                      }
-                    }
-                  }));
+      PCollection<KV<String, KV<Schema, Schema>>> heartBeatInput =
+          input
+              .apply(
+                  "KeyByTable",
+                  ParDo.of(new KeySchemasByTableFn(schemaMapView)).withSideInputs(schemaMapView))
+              .apply(
+                  Window.<KV<String, KV<Schema, Schema>>>into(new GlobalWindows())
+                      .discardingFiredPanes()
+                      .triggering(
+                          Repeatedly.forever(
+                              AfterProcessingTime.pastFirstElementInPane()
+                                  .plusDelayOf(Duration.ZERO)
+                                  .alignedTo(
+                                      Duration.standardSeconds(updateFrequencySeconds),
+                                      Instant.now()))))
+              .apply(GroupByKey.create())
+              .apply(
+                  ParDo.of(
+                      new DoFn<
+                          KV<String, Iterable<KV<Schema, Schema>>>,
+                          KV<String, KV<Schema, Schema>>>() {
+                        @ProcessElement
+                        public void process(ProcessContext c) {
+                          LOG.debug(
+                              "TS: {} | Element: {} | Pane: {}",
+                              c.timestamp(),
+                              c.element(),
+                              c.pane());
+                          Iterator<KV<Schema, Schema>> it = c.element().getValue().iterator();
+                          if (it.hasNext()) {
+                            c.output(KV.of(c.element().getKey(), it.next()));
+                          }
+                        }
+                      }));
 
       heartBeatInput
-          .apply("BuildMergeStatements",
+          .apply(
+              "BuildMergeStatements",
               ParDo.of(
                   new MergeStatementBuildingFn(changeLogDataset, replicaDataset, gcpProjectId)))
-          .setCoder(SerializableCoder.of(
-              TypeDescriptors.kvs(
-                  TypeDescriptors.strings(),
-                  TypeDescriptor.of(BigQueryAction.class))))
-          .apply("IssueMergeStatements",
-              ParDo.of(new BigQueryStatementIssuingFn(jobPrefix)));
+          .setCoder(
+              SerializableCoder.of(
+                  TypeDescriptors.kvs(
+                      TypeDescriptors.strings(), TypeDescriptor.of(BigQueryAction.class))))
+          .apply("IssueMergeStatements", ParDo.of(new BigQueryStatementIssuingFn(jobPrefix)));
     }
     return PDone.in(p);
   }
 
   static PCollection<TableRow> formatIntoTableRows(PCollection<Row> input) {
-    return input.apply("FormatUpdatesToTableRow",
+    return input.apply(
+        "FormatUpdatesToTableRow",
         MapElements.into(TypeDescriptor.of(TableRow.class))
-        .via(beamRow -> BigQueryUtils.toTableRow(beamRow)));
+            .via(beamRow -> BigQueryUtils.toTableRow(beamRow)));
   }
 
   // TODO(pabloem): What about column-type changes?
@@ -200,24 +209,32 @@ public class BigQueryChangeApplier extends PTransform<PCollection<Row>, PDone> {
     // First we generate the map of tables, primary keys, and schemas
     // tableSchemaPair is a PCollection of KV pairs, where the Key is a table name, and
     // the Value is a pair of schemas: The Primary key schema, and the full Table schema.
-    PCollection<KV<String, KV<Schema, Schema>>> tableSchemaPair = input
-        // First we should filter out all empty records. Empty records will come from
-        // DELETE-typed operations, which have the fullRecord field empty. Since this
-        // PCollection is used to pass the table schema to the MERGE statement, we filter
-        // those out.
-        .apply("FilterEmptyRecords",
-            Filter.by(
-                r -> r.getRow(DataflowCdcRowFormat.FULL_RECORD) != null
-                    && r.getRow(DataflowCdcRowFormat.FULL_RECORD).getSchema() != null))
-        .apply("ExtractSchemas", MapElements.into(
-            TypeDescriptors.kvs(
-                TypeDescriptors.strings(),
-                TypeDescriptors.kvs(
-                    TypeDescriptor.of(Schema.class), TypeDescriptor.of(Schema.class))))
-            .via(r -> KV.of(r.getString(DataflowCdcRowFormat.TABLE_NAME),
-                KV.of(
-                    r.getRow(DataflowCdcRowFormat.PRIMARY_KEY).getSchema(),
-                    r.getRow(DataflowCdcRowFormat.FULL_RECORD).getSchema()))));
+    PCollection<KV<String, KV<Schema, Schema>>> tableSchemaPair =
+        input
+            // First we should filter out all empty records. Empty records will come from
+            // DELETE-typed operations, which have the fullRecord field empty. Since this
+            // PCollection is used to pass the table schema to the MERGE statement, we filter
+            // those out.
+            .apply(
+                "FilterEmptyRecords",
+                Filter.by(
+                    r ->
+                        r.getRow(DataflowCdcRowFormat.FULL_RECORD) != null
+                            && r.getRow(DataflowCdcRowFormat.FULL_RECORD).getSchema() != null))
+            .apply(
+                "ExtractSchemas",
+                MapElements.into(
+                        TypeDescriptors.kvs(
+                            TypeDescriptors.strings(),
+                            TypeDescriptors.kvs(
+                                TypeDescriptor.of(Schema.class), TypeDescriptor.of(Schema.class))))
+                    .via(
+                        r ->
+                            KV.of(
+                                r.getString(DataflowCdcRowFormat.TABLE_NAME),
+                                KV.of(
+                                    r.getRow(DataflowCdcRowFormat.PRIMARY_KEY).getSchema(),
+                                    r.getRow(DataflowCdcRowFormat.FULL_RECORD).getSchema()))));
 
     // The collections of tableSchemaPairs is made into a side input. This side input is used
     // by the side of the pipeline that is in charge of issuing CREATE TABLE and MERGE statements

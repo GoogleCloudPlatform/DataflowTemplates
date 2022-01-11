@@ -1,17 +1,17 @@
 /*
- *     Copyright 2021 Google LLC
+ * Copyright (C) 2021 Google LLC
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.templates.datastream;
 
@@ -20,11 +20,10 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionContext;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.json.JSONObject;
 
 /**
- * Implementation of ChangeEventSequence for MySql database which stores change event
- * sequence information and implements the comparison method.
+ * Implementation of ChangeEventSequence for MySql database which stores change event sequence
+ * information and implements the comparison method.
  */
 class MySqlChangeEventSequence extends ChangeEventSequence {
 
@@ -47,10 +46,9 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
   /*
    * Creates MySqlChangeEventSequence from change event
    */
-  public static MySqlChangeEventSequence createFromChangeEvent(JSONObject changeEvent)
+  public static MySqlChangeEventSequence createFromChangeEvent(ChangeEventContext ctx)
       throws ChangeEventConvertorException, InvalidChangeEventException {
 
-    String changeType = changeEvent.optString(DatastreamConstants.EVENT_CHANGE_TYPE_KEY);
     /* Dump events from MySql only has timestamp metadata filled in. They don't have
      * logfile and logposition metadata.
      * Set logFile, logPosition smaller than any real value so that Dump events
@@ -59,39 +57,43 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
     String logFile;
     Long logPosition;
 
-    logFile = ChangeEventTypeConvertor.toString(changeEvent,
-        DatastreamConstants.MYSQL_LOGFILE_KEY, /*requiredField=*/false);
+    logFile =
+        ChangeEventTypeConvertor.toString(
+            ctx.getChangeEvent(), DatastreamConstants.MYSQL_LOGFILE_KEY, /*requiredField=*/ false);
     if (logFile == null) {
       logFile = "";
     }
 
-    logPosition = ChangeEventTypeConvertor.toLong(changeEvent,
-        DatastreamConstants.MYSQL_LOGPOSITION_KEY, /*requiredField=*/false);
+    logPosition =
+        ChangeEventTypeConvertor.toLong(
+            ctx.getChangeEvent(),
+            DatastreamConstants.MYSQL_LOGPOSITION_KEY,
+            /*requiredField=*/ false);
     if (logPosition == null) {
       logPosition = new Long(-1);
     }
 
     // Create MySqlChangeEventSequence from JSON keys in change event.
     return new MySqlChangeEventSequence(
-        ChangeEventTypeConvertor.toLong(changeEvent,
-            DatastreamConstants.MYSQL_TIMESTAMP_KEY, /*requiredField=*/true),
-        logFile, logPosition);
+        ChangeEventTypeConvertor.toLong(
+            ctx.getChangeEvent(), DatastreamConstants.MYSQL_TIMESTAMP_KEY, /*requiredField=*/ true),
+        logFile,
+        logPosition);
   }
 
   /*
    * Creates a MySqlChangeEventSequence by reading from a shadow table.
    */
   public static MySqlChangeEventSequence createFromShadowTable(
-      final TransactionContext transactionContext,
-      String shadowTable, Key primaryKey)
+      final TransactionContext transactionContext, String shadowTable, Key primaryKey)
       throws ChangeEventSequenceCreationException {
 
     try {
       // Read columns from shadow table
-      List<String> readColumnList = DatastreamConstants.MYSQL_SORT_ORDER.values()
-          .stream()
-          .map(p -> p.getLeft())
-          .collect(Collectors.toList());
+      List<String> readColumnList =
+          DatastreamConstants.MYSQL_SORT_ORDER.values().stream()
+              .map(p -> p.getLeft())
+              .collect(Collectors.toList());
       Struct row = transactionContext.readRow(shadowTable, primaryKey, readColumnList);
 
       // This is the first event for the primary key and hence the latest event.
@@ -124,8 +126,7 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
   public int compareTo(ChangeEventSequence o) {
     if (!(o instanceof MySqlChangeEventSequence)) {
       throw new ChangeEventSequenceComparisonException(
-          "Expected: MySqlChangeEventSequence; Received: "
-              + o.getClass().getSimpleName());
+          "Expected: MySqlChangeEventSequence; Received: " + o.getClass().getSimpleName());
     }
     MySqlChangeEventSequence other = (MySqlChangeEventSequence) o;
 
@@ -137,7 +138,8 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
 
     int logFileComparisonResult = this.logFile.compareTo(other.getLogFile());
 
-    return (logFileComparisonResult != 0) ? logFileComparisonResult
+    return (logFileComparisonResult != 0)
+        ? logFileComparisonResult
         : this.logPosition.compareTo(other.getLogPosition());
   }
 }

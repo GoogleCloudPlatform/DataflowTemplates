@@ -14,7 +14,5 @@
  * the License.
  */
 
-/**
- * Package info for DataStream to Spanner module.
- */
+/** Package info for DataStream to Spanner module. */
 package com.google.cloud.teleport.v2.templates;

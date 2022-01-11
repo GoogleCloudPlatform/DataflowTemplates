@@ -56,7 +56,7 @@ public class DataStreamToMongoDB {
                   "_metadata_dlq_reconsumed", "_metadata_error", "_metadata_retry_count",
                   "_metadata_timestamp", "_metadata_read_timestamp", "_metadata_read_method",
                   "_metadata_source_type", "_metadata_deleted", "_metadata_change_type",
-                  "_metadata_log_file", "_metadata_log_position"));
+                  "_metadata_primary_keys", "_metadata_log_file", "_metadata_log_position"));
 
   /** The tag for the main output of the json transformation. */
   public static final TupleTag<FailsafeElement<String, String>> TRANSFORM_OUT =

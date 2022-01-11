@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.templates;
 
 import com.google.api.client.json.JsonFactory;
@@ -124,8 +123,8 @@ public class TextToBigQueryStreaming {
   /**
    * Main entry point for executing the pipeline. This will run the pipeline asynchronously. If
    * blocking execution is required, use the {@link
-   * TextToBigQueryStreaming#run(TextToBigQueryStreamingOptions)} method to start the pipeline
-   * and invoke {@code result.waitUntilFinish()} on the {@link PipelineResult}
+   * TextToBigQueryStreaming#run(TextToBigQueryStreamingOptions)} method to start the pipeline and
+   * invoke {@code result.waitUntilFinish()} on the {@link PipelineResult}
    *
    * @param args The command-line arguments to the pipeline.
    */
@@ -266,8 +265,7 @@ public class TextToBigQueryStreaming {
    * @return FailsafeElement object.
    * @throws IOException
    */
-  static FailsafeElement<String, String> wrapBigQueryInsertError(
-      BigQueryInsertError insertError) {
+  static FailsafeElement<String, String> wrapBigQueryInsertError(BigQueryInsertError insertError) {
 
     FailsafeElement<String, String> failsafeElement;
     try {

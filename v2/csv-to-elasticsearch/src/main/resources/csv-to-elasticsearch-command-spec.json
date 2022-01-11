@@ -1,8 +1,0 @@
-{
-  "mainClass": "com.google.cloud.teleport.v2.templates.CsvToElasticsearch",
-  "classPath": "/template/csv-to-elasticsearch/*:/template/csv-to-elasticsearch/libs/*:/template/csv-to-elasticsearch/classes",
-  "defaultParameterValues": {
-    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"csv_to_elasticsearch\"}"
-  }
-}
-

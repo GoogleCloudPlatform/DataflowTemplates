@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -21,15 +21,13 @@ import org.apache.beam.sdk.schemas.Schema;
 /**
  * Represents an action against BigQuery to be performed by {@link BigQueryStatementIssuingFn}.
  *
- * Currently there are two types of actions:
- * - Table creation.
- * - Statement execution.
+ * <p>Currently there are two types of actions: - Table creation. - Statement execution.
  *
- * Table creation actions receive a full table name, and a table schema; and create a new table in
- * BigQuery.
+ * <p>Table creation actions receive a full table name, and a table schema; and create a new table
+ * in BigQuery.
  *
- * Statement execution actions provide only a SQL statement, and the statement is sent to BigQuery
- * directly.
+ * <p>Statement execution actions provide only a SQL statement, and the statement is sent to
+ * BigQuery directly.
  */
 public class BigQueryAction implements Serializable {
   public static final String CREATE_TABLE = "CREATE_TABLE";
@@ -64,7 +62,6 @@ public class BigQueryAction implements Serializable {
   }
 
   static BigQueryAction query(String statement) {
-    return new BigQueryAction(
-        BigQueryAction.STATEMENT, statement, null, null, null, null);
+    return new BigQueryAction(BigQueryAction.STATEMENT, statement, null, null, null, null);
   }
 }

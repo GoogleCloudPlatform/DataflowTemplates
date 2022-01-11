@@ -95,20 +95,19 @@
         </dependency>
       </dependencies>
     </profile>
+    <profile>
+      <id>sqlserver</id>
+      <dependencies>
+        <dependency>
+          <groupId>io.debezium</groupId>
+          <artifactId>debezium-connector-sqlserver</artifactId>
+          <version>${debezium.version}</version>
+          <scope>compile</scope>
+        </dependency>
+      </dependencies>
+    </profile>
   </profiles>
   <dependencies>
-    <dependency>
-      <groupId>com.google.guava</groupId>
-      <artifactId>guava</artifactId>
-      <version>${guava.version}</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.beam</groupId>
-      <artifactId>beam-sdks-java-core</artifactId>
-      <version>${beam.version}</version>
-      <scope>compile</scope>
-    </dependency>
     <dependency>
       <groupId>com.google.cloud.dataflow.cdc</groupId>
       <artifactId>cdc-common</artifactId>
@@ -131,29 +130,6 @@
       <groupId>io.debezium</groupId>
       <artifactId>debezium-connector-mysql</artifactId>
       <version>${debezium.version}</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.google.cloud</groupId>
-      <artifactId>google-cloud-pubsub</artifactId>
-      <version>${gcp.version}</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.google.api.grpc</groupId>
-      <artifactId>proto-google-common-protos</artifactId>
-      <version>1.17.0</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.protobuf</groupId>
-      <artifactId>protobuf-java</artifactId>
-      <version>3.10.0</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-log4j12</artifactId>
-      <version>1.7.25</version>
       <scope>compile</scope>
     </dependency>
     <dependency>

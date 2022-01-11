@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2021 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,15 +13,14 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.templates;
 
 import static org.junit.Assert.assertEquals;
 
 import com.google.cloud.teleport.spanner.IntegrationTest;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
-import com.google.cloud.teleport.templates.SpannerToText.CreateTransactionFnWithTimestamp;
 import com.google.cloud.teleport.templates.common.SpannerConverters;
+import com.google.cloud.teleport.templates.common.SpannerConverters.CreateTransactionFnWithTimestamp;
 import com.google.common.collect.Lists;
 import com.google.common.io.Files;
 import java.io.BufferedReader;
@@ -79,8 +78,7 @@ public final class SpannerToTextTest {
   @Rule public final transient TestPipeline exportPipeline1 = TestPipeline.create();
   @Rule public final transient TestPipeline exportPipeline2 = TestPipeline.create();
 
-  @Rule
-  public final SpannerServerResource spannerServer = new SpannerServerResource();
+  @Rule public final SpannerServerResource spannerServer = new SpannerServerResource();
 
   @After
   public void teardown() {
@@ -189,7 +187,8 @@ public final class SpannerToTextTest {
 
     // Export Pipeline code; taken from SpannerToText.java
     PTransform<PBegin, PCollection<ReadOperation>> spannerExport =
-        SpannerConverters.ExportTransformFactory.create(table, sourceConfig, destination);
+        SpannerConverters.ExportTransformFactory.create(
+            table, sourceConfig, destination, timestamp);
 
     PCollection<String> csv =
         exportPipeline

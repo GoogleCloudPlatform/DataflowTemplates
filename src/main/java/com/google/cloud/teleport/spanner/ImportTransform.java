@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner;
 
 import com.google.api.gax.longrunning.OperationFuture;
@@ -102,26 +101,28 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
   private final ValueProvider<Boolean> waitForIndexes;
   private final ValueProvider<Boolean> waitForForeignKeys;
   private final ValueProvider<Boolean> earlyIndexCreateFlag;
+  private final ValueProvider<Integer> ddlCreationTimeoutInMinutes;
 
   public ImportTransform(
       SpannerConfig spannerConfig,
       ValueProvider<String> importDirectory,
       ValueProvider<Boolean> waitForIndexes,
       ValueProvider<Boolean> waitForForeignKeys,
-      ValueProvider<Boolean> earlyIndexCreateFlag) {
+      ValueProvider<Boolean> earlyIndexCreateFlag,
+      ValueProvider<Integer> ddlCreationTimeoutInMinutes) {
     this.spannerConfig = spannerConfig;
     this.importDirectory = importDirectory;
     this.waitForIndexes = waitForIndexes;
     this.waitForForeignKeys = waitForForeignKeys;
     this.earlyIndexCreateFlag = earlyIndexCreateFlag;
+    this.ddlCreationTimeoutInMinutes = ddlCreationTimeoutInMinutes;
   }
 
   @Override
   public PDone expand(PBegin begin) {
     PCollection<Export> manifest =
         begin.apply("Read manifest", new ReadExportManifestFile(importDirectory));
-    PCollectionView<Export> manifestView =
-        manifest.apply("Manifest as view", View.asSingleton());
+    PCollectionView<Export> manifestView = manifest.apply("Manifest as view", View.asSingleton());
 
     PCollection<KV<String, String>> allFiles =
         manifest.apply("Read all manifest files", new ReadManifestFiles(importDirectory));
@@ -161,15 +162,22 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
     final PCollectionTuple createTableOutput =
         begin.apply(
             "Create Cloud Spanner Tables and indexes",
-            new CreateTables(spannerConfig, avroDdlView, informationSchemaView, manifestView,
-                             earlyIndexCreateFlag));
+            new CreateTables(
+                spannerConfig,
+                avroDdlView,
+                informationSchemaView,
+                manifestView,
+                earlyIndexCreateFlag,
+                ddlCreationTimeoutInMinutes));
 
     final PCollection<Ddl> ddl = createTableOutput.get(CreateTables.getDdlObjectTag());
     final PCollectionView<List<String>> pendingIndexes =
-        createTableOutput.get(CreateTables.getPendingIndexesTag())
+        createTableOutput
+            .get(CreateTables.getPendingIndexesTag())
             .apply("As Index view", View.asSingleton());
     final PCollectionView<List<String>> pendingForeignKeys =
-        createTableOutput.get(CreateTables.getPendingForeignKeysTag())
+        createTableOutput
+            .get(CreateTables.getPendingForeignKeysTag())
             .apply("As Foreign keys view", View.asSingleton());
 
     PCollectionView<Ddl> ddlView = ddl.apply("Cloud Spanner DDL as view", View.asSingleton());
@@ -247,10 +255,11 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
       previousComputation = result.getOutput();
     }
     ddl.apply(Wait.on(previousComputation))
-       .apply("Create Indexes", new ApplyDDLTransform(spannerConfig,
-              pendingIndexes, waitForIndexes))
-       .apply("Add Foreign Keys", new ApplyDDLTransform(spannerConfig,
-              pendingForeignKeys, waitForForeignKeys));
+        .apply(
+            "Create Indexes", new ApplyDDLTransform(spannerConfig, pendingIndexes, waitForIndexes))
+        .apply(
+            "Add Foreign Keys",
+            new ApplyDDLTransform(spannerConfig, pendingForeignKeys, waitForForeignKeys));
     return PDone.in(begin.getPipeline());
   }
 
@@ -337,6 +346,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
     private final PCollectionView<Ddl> informationSchemaView;
     private final PCollectionView<Export> manifestView;
     private final ValueProvider<Boolean> earlyIndexCreateFlag;
+    private final ValueProvider<Integer> ddlCreationTimeoutInMinutes;
 
     private transient ExposedSpannerAccessor spannerAccessor;
 
@@ -357,22 +367,24 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
       return pendingForeignKeysTag;
     }
 
-    private static final TupleTag<Ddl> ddlObjectTag = new TupleTag<Ddl>(){};
-    private static final TupleTag<List<String>> pendingIndexesTag = new TupleTag<List<String>>(){};
-    private static final TupleTag<List<String>> pendingForeignKeysTag
-        = new TupleTag<List<String>>(){};
+    private static final TupleTag<Ddl> ddlObjectTag = new TupleTag<Ddl>() {};
+    private static final TupleTag<List<String>> pendingIndexesTag = new TupleTag<List<String>>() {};
+    private static final TupleTag<List<String>> pendingForeignKeysTag =
+        new TupleTag<List<String>>() {};
 
     public CreateTables(
         SpannerConfig spannerConfig,
         PCollectionView<List<KV<String, String>>> avroSchemasView,
         PCollectionView<Ddl> informationSchemaView,
         PCollectionView<Export> manifestView,
-        ValueProvider<Boolean> earlyIndexCreateFlag) {
+        ValueProvider<Boolean> earlyIndexCreateFlag,
+        ValueProvider<Integer> ddlCreationTimeoutInMinutes) {
       this.spannerConfig = spannerConfig;
       this.avroSchemasView = avroSchemasView;
       this.informationSchemaView = informationSchemaView;
       this.manifestView = manifestView;
       this.earlyIndexCreateFlag = earlyIndexCreateFlag;
+      this.ddlCreationTimeoutInMinutes = ddlCreationTimeoutInMinutes;
     }
 
     @Override
@@ -404,10 +416,16 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           }
                           Schema.Parser parser = new Schema.Parser();
                           List<KV<String, Schema>> missingTables = new ArrayList<>();
+                          List<KV<String, Schema>> missingViews = new ArrayList<>();
                           for (KV<String, String> kv : avroSchemas) {
-                            if (informationSchemaDdl.table(kv.getKey()) == null) {
+                            if (informationSchemaDdl.table(kv.getKey()) == null
+                                && informationSchemaDdl.view(kv.getKey()) == null) {
                               Schema schema = parser.parse(kv.getValue());
-                              missingTables.add(KV.of(kv.getKey(), schema));
+                              if (schema.getProp("spannerViewQuery") != null) {
+                                missingViews.add(KV.of(kv.getKey(), schema));
+                              } else {
+                                missingTables.add(KV.of(kv.getKey(), schema));
+                              }
                             }
                           }
                           AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
@@ -426,8 +444,14 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                                 newDdl.setOptionsStatements(spannerConfig.getDatabaseId().get()));
                           }
 
-                          if (!missingTables.isEmpty()) {
+                          if (!missingTables.isEmpty() || !missingViews.isEmpty()) {
                             Ddl.Builder builder = Ddl.builder();
+                            for (KV<String, Schema> kv : missingViews) {
+                              com.google.cloud.teleport.spanner.ddl.View view =
+                                  converter.toView(kv.getKey(), kv.getValue());
+                              builder.addView(view);
+                              mergedDdl.addView(view);
+                            }
                             for (KV<String, Schema> kv : missingTables) {
                               Table table = converter.toTable(kv.getKey(), kv.getValue());
                               builder.addTable(table);
@@ -438,6 +462,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                             }
                             Ddl newDdl = builder.build();
                             ddlStatements.addAll(newDdl.createTableStatements());
+                            ddlStatements.addAll(newDdl.createViewStatements());
                             // If the total DDL statements exceed the threshold, execute the create
                             // index statements when tables are created.
                             // Note that foreign keys can only be created after data load
@@ -467,7 +492,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                                     ddlStatements,
                                     null);
                             try {
-                              op.get(5, TimeUnit.MINUTES);
+                              op.get(ddlCreationTimeoutInMinutes.get(), TimeUnit.MINUTES);
                             } catch (InterruptedException
                                 | ExecutionException
                                 | TimeoutException e) {
@@ -585,15 +610,15 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
 
       PCollection<KV<String, String>> expandedFromManifests =
           manifests.apply(
-              "Validate input files",
-              ParDo.of(new ValidateInputFiles(importDirectory)));
+              "Validate input files", ParDo.of(new ValidateInputFiles(importDirectory)));
 
       return PCollectionList.of(dataFiles).and(expandedFromManifests).apply(Flatten.pCollections());
     }
   }
 
-  /** Find checksums for the input files and validate against checksums in the manifests.
-   *  Returns multi-map of input files for each table.
+  /**
+   * Find checksums for the input files and validate against checksums in the manifests. Returns
+   * multi-map of input files for each table.
    */
   @VisibleForTesting
   static class ValidateInputFiles extends DoFn<KV<String, TableManifest>, KV<String, String>> {
@@ -617,8 +642,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
       }
     }
 
-    private void validateGcsFiles(
-        ProcessContext c, String table, TableManifest manifest) {
+    private void validateGcsFiles(ProcessContext c, String table, TableManifest manifest) {
       org.apache.beam.sdk.extensions.gcp.util.GcsUtil gcsUtil =
           c.getPipelineOptions().as(GcsOptions.class).getGcsUtil();
       // Convert file names to GcsPaths.

@@ -1,19 +1,17 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Copyright (C) 2021 Google LLC
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.utils;
 
@@ -45,19 +43,29 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * A set of Database Migration utilities to convert JSON data to DML.
- */
+/** A set of Database Migration utilities to convert JSON data to DML. */
 public class DatabaseMigrationUtils implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(DatabaseMigrationUtils.class);
 
-  private static Set<String> ignoreFields = new HashSet<String>(
-    Arrays.asList(
-      "_metadata_stream", "_metadata_timestamp", "_metadata_read_timestamp",
-      "_metadata_deleted", "_metadata_schema", "_metadata_table", "_metadata_change_type",
-      "_metadata_scn", "_metadata_ssn", "_metadata_rs_id", "_metadata_tx_id",
-      "_metadata_source", "_metadata_row_id", "_metadata_read_method", "_metadata_source_type"));
+  private static Set<String> ignoreFields =
+      new HashSet<String>(
+          Arrays.asList(
+              "_metadata_stream",
+              "_metadata_timestamp",
+              "_metadata_read_timestamp",
+              "_metadata_deleted",
+              "_metadata_schema",
+              "_metadata_table",
+              "_metadata_change_type",
+              "_metadata_scn",
+              "_metadata_ssn",
+              "_metadata_rs_id",
+              "_metadata_tx_id",
+              "_metadata_source",
+              "_metadata_row_id",
+              "_metadata_read_method",
+              "_metadata_source_type"));
   private static String rowIdColumnName = "rowid";
   private static List<String> defaultPrimaryKeys;
   private DataSourceConfiguration dataSourceConfiguration;
@@ -96,15 +104,14 @@ public class DatabaseMigrationUtils implements Serializable {
 
   private synchronized void setUpTableCache() {
     if (tableCache == null) {
-      tableCache = new JdbcTableCache(this.getDataSource())
-        .withCacheResetTimeUnitValue(1440);
+      tableCache = new JdbcTableCache(this.getDataSource()).withCacheResetTimeUnitValue(1440);
     }
   }
 
   private synchronized void setUpPrimaryKeyCache() {
     if (primaryKeyCache == null) {
-      primaryKeyCache = new JdbcPrimaryKeyCache(this.getDataSource())
-        .withCacheResetTimeUnitValue(1440);
+      primaryKeyCache =
+          new JdbcPrimaryKeyCache(this.getDataSource()).withCacheResetTimeUnitValue(1440);
     }
   }
 
@@ -147,10 +154,16 @@ public class DatabaseMigrationUtils implements Serializable {
       rowObj = mapper.readTree(jsonString);
     } catch (IOException e) {
       LOG.error("IOException: {} :: {}", jsonString, e.toString());
-      DmlInfo dmlInfo = DmlInfo.of(
-          element.getOriginalPayload(), "", "", "",
-          new ArrayList<String>(), new ArrayList<String>(),
-          new ArrayList<String>(), new ArrayList<String>());
+      DmlInfo dmlInfo =
+          DmlInfo.of(
+              element.getOriginalPayload(),
+              "",
+              "",
+              "",
+              new ArrayList<String>(),
+              new ArrayList<String>(),
+              new ArrayList<String>(),
+              new ArrayList<String>());
 
       // TODO(dhercher): how should we handle bad data?
       return KV.of(jsonString, dmlInfo);
@@ -165,15 +178,21 @@ public class DatabaseMigrationUtils implements Serializable {
 
       Map<String, String> tableSchema = this.getTableSchema(schemaName, tableName);
       List<String> primaryKeys = this.getPrimaryKeys(schemaName, tableName, rowObj);
-      List<String> orderByFields = Arrays.asList(
-        "_metadata_timestamp", "_metadata_scn");
+      List<String> orderByFields = Arrays.asList("_metadata_timestamp", "_metadata_scn");
       List<String> primaryKeyValues = getFieldValues(rowObj, primaryKeys);
       List<String> orderByValues = getFieldValues(rowObj, orderByFields);
       if (tableSchema.isEmpty()) {
         // If the table DNE we supply an empty SQL value (NOOP)
-        DmlInfo dmlInfo = DmlInfo.of(
-          element.getOriginalPayload(), "", schemaName, tableName,
-          primaryKeys, orderByFields, primaryKeyValues, orderByValues);
+        DmlInfo dmlInfo =
+            DmlInfo.of(
+                element.getOriginalPayload(),
+                "",
+                schemaName,
+                tableName,
+                primaryKeys,
+                orderByFields,
+                primaryKeyValues,
+                orderByValues);
         return KV.of(jsonString, dmlInfo);
       }
 
@@ -187,23 +206,30 @@ public class DatabaseMigrationUtils implements Serializable {
         dmlSql = convertJsonToUpsertSql(rowObj, tableSchema, schemaName, tableName, primaryKeys);
       }
 
-      DmlInfo dmlInfo = DmlInfo.of(
-        element.getOriginalPayload(),
-        dmlSql,
-        schemaName,
-        tableName,
-        primaryKeys,
-        orderByFields,
-        primaryKeyValues,
-        orderByValues);
+      DmlInfo dmlInfo =
+          DmlInfo.of(
+              element.getOriginalPayload(),
+              dmlSql,
+              schemaName,
+              tableName,
+              primaryKeys,
+              orderByFields,
+              primaryKeyValues,
+              orderByValues);
 
       return KV.of(dmlInfo.getStateWindowKey(), dmlInfo);
     } catch (Exception e) {
       LOG.error("Value Error: {} :: {}", rowObj.toString(), e.toString());
-      DmlInfo dmlInfo = DmlInfo.of(
-          element.getOriginalPayload(), "", "", "",
-          new ArrayList<String>(), new ArrayList<String>(),
-          new ArrayList<String>(), new ArrayList<String>());
+      DmlInfo dmlInfo =
+          DmlInfo.of(
+              element.getOriginalPayload(),
+              "",
+              "",
+              "",
+              new ArrayList<String>(),
+              new ArrayList<String>(),
+              new ArrayList<String>(),
+              new ArrayList<String>());
       // TODO(dhercher): how should we handle bad data?
       return KV.of(jsonString, dmlInfo);
     }
@@ -219,8 +245,8 @@ public class DatabaseMigrationUtils implements Serializable {
     return oracleTableName.toLowerCase();
   }
 
-  public static String getValueSql(JsonNode rowObj, String columnName,
-      Map<String, String> tableSchema) {
+  public static String getValueSql(
+      JsonNode rowObj, String columnName, Map<String, String> tableSchema) {
     String columnValue;
 
     JsonNode columnObj = rowObj.get(columnName);
@@ -239,7 +265,7 @@ public class DatabaseMigrationUtils implements Serializable {
   }
 
   private static String cleanSql(String str) {
-  if (str == null) {
+    if (str == null) {
       return null;
     }
     String cleanedNullBytes = StringUtils.replace(str, "\u0000", "");
@@ -277,7 +303,7 @@ public class DatabaseMigrationUtils implements Serializable {
       // Add column name
       String quotedColumnName = quoteColumn(columnName);
       if (columnsListSql == "") {
-          columnsListSql = quotedColumnName;
+        columnsListSql = quotedColumnName;
       } else {
         columnsListSql = columnsListSql + "," + quotedColumnName;
       }
@@ -297,7 +323,7 @@ public class DatabaseMigrationUtils implements Serializable {
 
       String columnValue = getValueSql(rowObj, columnName, tableSchema);
       if (valuesInsertSql == "") {
-          valuesInsertSql = columnValue;
+        valuesInsertSql = columnValue;
       } else {
         valuesInsertSql = valuesInsertSql + "," + columnValue;
       }
@@ -327,8 +353,8 @@ public class DatabaseMigrationUtils implements Serializable {
     return onUpdateSql;
   }
 
-  public String getPrimaryKeyToValueFilterSql(JsonNode rowObj, List<String> primaryKeys,
-      Map<String, String> tableSchema) {
+  public String getPrimaryKeyToValueFilterSql(
+      JsonNode rowObj, List<String> primaryKeys, Map<String, String> tableSchema) {
     String pkToValueSql = "";
 
     for (String columnName : primaryKeys) {
@@ -348,47 +374,55 @@ public class DatabaseMigrationUtils implements Serializable {
   }
 
   public String convertJsonToInsertSql(
-      JsonNode rowObj, Map<String, String> tableSchema,
-      String schemaName, String tableName) {
-    String dmlInsertTemplate = "INSERT INTO "
-        + "%s.%s (%s) VALUES (%s);";
+      JsonNode rowObj, Map<String, String> tableSchema, String schemaName, String tableName) {
+    String dmlInsertTemplate = "INSERT INTO " + "%s.%s (%s) VALUES (%s);";
 
     String columnsListSql = getColumnsListSql(rowObj);
     String valuesInsertSql = getColumnsValuesSql(rowObj, tableSchema);
 
-    String insertStatement = String.format(
-      dmlInsertTemplate, schemaName, tableName, columnsListSql, valuesInsertSql);
+    String insertStatement =
+        String.format(dmlInsertTemplate, schemaName, tableName, columnsListSql, valuesInsertSql);
 
     return insertStatement;
   }
 
   public String convertJsonToUpsertSql(
-      JsonNode rowObj, Map<String, String> tableSchema,
-      String schemaName, String tableName, List<String> primaryKeys) {
-    String dmlUpsertTemplate = "INSERT INTO "
-        + "%s.%s (%s) VALUES (%s) "
-        + "ON CONFLICT (%s) DO UPDATE "
-        + "SET %s;";
+      JsonNode rowObj,
+      Map<String, String> tableSchema,
+      String schemaName,
+      String tableName,
+      List<String> primaryKeys) {
+    String dmlUpsertTemplate =
+        "INSERT INTO " + "%s.%s (%s) VALUES (%s) " + "ON CONFLICT (%s) DO UPDATE " + "SET %s;";
 
     String columnsListSql = getColumnsListSql(rowObj);
     String valuesInsertSql = getColumnsValuesSql(rowObj, tableSchema);
     String onUpdateSql = getColumnsUpdateSql(rowObj, tableSchema);
     String primaryKeySql = String.join(",", primaryKeys);
 
-    String upsertStatement = String.format(
-      dmlUpsertTemplate, schemaName, tableName, columnsListSql, valuesInsertSql,
-      primaryKeySql, onUpdateSql);
+    String upsertStatement =
+        String.format(
+            dmlUpsertTemplate,
+            schemaName,
+            tableName,
+            columnsListSql,
+            valuesInsertSql,
+            primaryKeySql,
+            onUpdateSql);
 
     return upsertStatement;
   }
 
   public String convertJsonToDeleteSql(
-      JsonNode rowObj, Map<String, String> tableSchema,
-      String schemaName, String tableName, List<String> primaryKeys) {
+      JsonNode rowObj,
+      Map<String, String> tableSchema,
+      String schemaName,
+      String tableName,
+      List<String> primaryKeys) {
     // TODO(dhercher): How should we handle Deletes if PKs are empty?
     if (primaryKeys.size() == 0) {
-      LOG.warn("Primary Keys DNE for Delete: {}.{} --> {}",
-          schemaName, tableName, rowObj.toString());
+      LOG.warn(
+          "Primary Keys DNE for Delete: {}.{} --> {}", schemaName, tableName, rowObj.toString());
     }
     String dmlDeleteTemplate = "DELETE FROM %s.%s WHERE %s;";
 
@@ -407,12 +441,15 @@ public class DatabaseMigrationUtils implements Serializable {
     } catch (SQLException e) {
       if (retriesRemaining > 0) {
         int sleepSecs = (maxRetries - retriesRemaining + 1) * 10;
-        LOG.info("SQLException: Will retry after {} seconds: Connection Error: {}",
-          sleepSecs, e.toString());
+        LOG.info(
+            "SQLException: Will retry after {} seconds: Connection Error: {}",
+            sleepSecs,
+            e.toString());
         try {
           Thread.sleep(sleepSecs * 1000);
           return getConnection(dataSource, retriesRemaining - 1, maxRetries);
-        } catch (InterruptedException i) {}
+        } catch (InterruptedException i) {
+        }
       }
       LOG.error("SQLException: Connection Error: {}", e.toString());
     }
@@ -421,16 +458,15 @@ public class DatabaseMigrationUtils implements Serializable {
   }
 
   /**
-   * The {@link JdbcTableCache} manages safely getting and setting JDBC Table objects from a
-   * local cache for each worker thread.
+   * The {@link JdbcTableCache} manages safely getting and setting JDBC Table objects from a local
+   * cache for each worker thread.
    *
    * <p>The key factors addressed are ensuring expiration of cached tables, consistent update
    * behavior to ensure reliabillity, and easy cache reloads. Open Question: Does the class require
    * thread-safe behaviors? Currently it does not since there is no iteration and get/set are not
    * continuous.
    */
-  public static class JdbcTableCache
-      extends MappedObjectCache<List<String>, Map<String, String>> {
+  public static class JdbcTableCache extends MappedObjectCache<List<String>, Map<String, String>> {
 
     private DataSource dataSource;
     private static final int MAX_RETRIES = 5;
@@ -444,7 +480,8 @@ public class DatabaseMigrationUtils implements Serializable {
       this.dataSource = dataSource;
     }
 
-    private Map<String, String> getTableSchema(String schemaName, String tableName, int retriesRemaining) {
+    private Map<String, String> getTableSchema(
+        String schemaName, String tableName, int retriesRemaining) {
       Map<String, String> tableSchema = new HashMap<String, String>();
 
       try (Connection connection = getConnection(this.dataSource, MAX_RETRIES, MAX_RETRIES)) {
@@ -457,15 +494,23 @@ public class DatabaseMigrationUtils implements Serializable {
       } catch (SQLException e) {
         if (retriesRemaining > 0) {
           int sleepSecs = (MAX_RETRIES - retriesRemaining + 1) * 10;
-          LOG.info("SQLException Occurred, will retry after {} seconds: Failed to Retrieve Schema: {}.{} : {}",
-            sleepSecs, schemaName, tableName, e.toString());
+          LOG.info(
+              "SQLException Occurred, will retry after {} seconds: Failed to Retrieve Schema: {}.{} : {}",
+              sleepSecs,
+              schemaName,
+              tableName,
+              e.toString());
           try {
             Thread.sleep(sleepSecs * 1000);
-            return getTableSchema(schemaName, tableName, retriesRemaining-1);
-          } catch (InterruptedException i) {}
+            return getTableSchema(schemaName, tableName, retriesRemaining - 1);
+          } catch (InterruptedException i) {
+          }
         }
-        LOG.error("SQLException Occurred: Failed to Retrieve Schema: {}.{} : {}",
-          schemaName, tableName, e.toString());
+        LOG.error(
+            "SQLException Occurred: Failed to Retrieve Schema: {}.{} : {}",
+            schemaName,
+            tableName,
+            e.toString());
       }
 
       return tableSchema;
@@ -483,16 +528,15 @@ public class DatabaseMigrationUtils implements Serializable {
   }
 
   /**
-   * The {@link JdbcPrimaryKeyCache} manages safely getting and setting JDBC Table PKs from a
-   * local cache for each worker thread.
+   * The {@link JdbcPrimaryKeyCache} manages safely getting and setting JDBC Table PKs from a local
+   * cache for each worker thread.
    *
    * <p>The key factors addressed are ensuring expiration of cached tables, consistent update
    * behavior to ensure reliabillity, and easy cache reloads. Open Question: Does the class require
    * thread-safe behaviors? Currently it does not since there is no iteration and get/set are not
    * continuous.
    */
-  public static class JdbcPrimaryKeyCache
-      extends MappedObjectCache<List<String>, List<String>> {
+  public static class JdbcPrimaryKeyCache extends MappedObjectCache<List<String>, List<String>> {
 
     private DataSource dataSource;
     private static final int MAX_RETRIES = 5;
@@ -506,7 +550,8 @@ public class DatabaseMigrationUtils implements Serializable {
       this.dataSource = dataSource;
     }
 
-    private List<String> getTablePrimaryKeys(String schemaName, String tableName, int retriesRemaining) {
+    private List<String> getTablePrimaryKeys(
+        String schemaName, String tableName, int retriesRemaining) {
       List<String> primaryKeys = new ArrayList<String>();
       try (Connection connection = getConnection(this.dataSource, MAX_RETRIES, MAX_RETRIES)) {
         DatabaseMetaData metaData = connection.getMetaData();
@@ -519,16 +564,22 @@ public class DatabaseMigrationUtils implements Serializable {
         if (retriesRemaining > 0) {
           int sleepSecs = (MAX_RETRIES - retriesRemaining + 1) * 10;
           LOG.info(
-            "SQLException Occurred, will retry after {} seconds: Failed to Retrieve Primary Keys: {}.{} : {}",
-            sleepSecs, schemaName, tableName, e.toString());
+              "SQLException Occurred, will retry after {} seconds: Failed to Retrieve Primary Keys: {}.{} : {}",
+              sleepSecs,
+              schemaName,
+              tableName,
+              e.toString());
           try {
             Thread.sleep(sleepSecs * 1000);
-            return getTablePrimaryKeys(schemaName, tableName, retriesRemaining-1);
-          } catch (InterruptedException i) {}
+            return getTablePrimaryKeys(schemaName, tableName, retriesRemaining - 1);
+          } catch (InterruptedException i) {
+          }
         }
         LOG.error(
-          "SQLException Occurred: Failed to Retrieve Primary Keys: {}.{} : {}",
-          schemaName, tableName, e.toString());
+            "SQLException Occurred: Failed to Retrieve Primary Keys: {}.{} : {}",
+            schemaName,
+            tableName,
+            e.toString());
       }
 
       return primaryKeys;

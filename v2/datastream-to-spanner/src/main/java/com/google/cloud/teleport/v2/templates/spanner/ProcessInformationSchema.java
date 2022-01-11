@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.v2.templates.spanner;
 
 import com.google.api.gax.longrunning.OperationFuture;
@@ -43,10 +42,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- *  Beam transform which
- *  1) Reads information schema using {@link InformationSchemaScanner}.
- *  2) Create shadow tables in the destination Cloud Spanner database.
- *  3) Outputs the updated information schema.
+ * Beam transform which 1) Reads information schema using {@link InformationSchemaScanner}. 2)
+ * Create shadow tables in the destination Cloud Spanner database. 3) Outputs the updated
+ * information schema.
  */
 public class ProcessInformationSchema extends PTransform<PBegin, PCollection<Ddl>> {
   private static final Logger LOG = LoggerFactory.getLogger(ProcessInformationSchema.class);
@@ -55,8 +53,11 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollection<Ddl
   private final String shadowTablePrefix;
   private final String sourceType;
 
-  public ProcessInformationSchema(SpannerConfig spannerConfig,
-      Boolean shouldCreateShadowTables, String shadowTablePrefix, String sourceType) {
+  public ProcessInformationSchema(
+      SpannerConfig spannerConfig,
+      Boolean shouldCreateShadowTables,
+      String shadowTablePrefix,
+      String sourceType) {
     this.spannerConfig = spannerConfig;
     this.shouldCreateShadowTables = shouldCreateShadowTables;
     this.shadowTablePrefix = shadowTablePrefix;
@@ -85,12 +86,14 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollection<Ddl
     private static final int SCHEMA_UPDATE_WAIT_MIN = 5;
 
     public ProcessInformationSchemaFn(
-        SpannerConfig spannerConfig, Boolean shouldCreateShadowTables,
-        String shadowTablePrefix, String sourceType) {
+        SpannerConfig spannerConfig,
+        Boolean shouldCreateShadowTables,
+        String shadowTablePrefix,
+        String sourceType) {
       this.spannerConfig = spannerConfig;
       this.shouldCreateShadowTables = shouldCreateShadowTables;
-      this.shadowTablePrefix = (shadowTablePrefix.endsWith("_")) ? shadowTablePrefix
-          : shadowTablePrefix + "_";
+      this.shadowTablePrefix =
+          (shadowTablePrefix.endsWith("_")) ? shadowTablePrefix : shadowTablePrefix + "_";
       this.sourceType = sourceType;
     }
 
@@ -125,15 +128,13 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollection<Ddl
           getDataTablesWithNoShadowTables(informationSchema);
 
       Ddl.Builder shadowTableBuilder = Ddl.builder();
-      ShadowTableCreator shadowTableCreator =
-          new ShadowTableCreator(sourceType, shadowTablePrefix);
+      ShadowTableCreator shadowTableCreator = new ShadowTableCreator(sourceType, shadowTablePrefix);
       for (String dataTableName : dataTablesWithoutShadowTables) {
-        Table shadowTable = shadowTableCreator.constructShadowTable(
-            informationSchema, dataTableName);
+        Table shadowTable =
+            shadowTableCreator.constructShadowTable(informationSchema, dataTableName);
         shadowTableBuilder.addTable(shadowTable);
       }
-      List<String> createShadowTableStatements
-          = shadowTableBuilder.build().createTableStatements();
+      List<String> createShadowTableStatements = shadowTableBuilder.build().createTableStatements();
 
       if (createShadowTableStatements.size() == 0) {
         return;
@@ -178,18 +179,17 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollection<Ddl
       Set<String> existingShadowTables = getShadowTablesInDdl(ddl);
 
       List<String> allTables =
-          ddl.allTables()
-          .stream().map(t -> t.name()).collect(Collectors.toList());
+          ddl.allTables().stream().map(t -> t.name()).collect(Collectors.toList());
       /*
        * Filter out the following from the list of all table names to get the list of
        * data tables which do not have corresponding shadow tables:
        * (1) Existing shadow tables
        * (2) Data tables which have corresponding shadow tables.
        */
-       return allTables.stream()
-              .filter(f -> !f.startsWith(shadowTablePrefix))
-              .filter(f -> !existingShadowTables.contains(shadowTablePrefix + f))
-              .collect(Collectors.toList());
+      return allTables.stream()
+          .filter(f -> !f.startsWith(shadowTablePrefix))
+          .filter(f -> !existingShadowTables.contains(shadowTablePrefix + f))
+          .collect(Collectors.toList());
     }
   }
 }

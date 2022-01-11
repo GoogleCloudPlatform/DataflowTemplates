@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -34,6 +34,7 @@ import org.apache.beam.sdk.transforms.GroupByKey;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.Values;
 import org.apache.beam.sdk.transforms.windowing.AfterProcessingTime;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
@@ -47,67 +48,45 @@ import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Class BigQueryMerger.
- */
+/** Class BigQueryMerger. */
 public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollection<Void>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryMerger.class);
 
-  private Duration windowDuration;
-  private BigQuery testBigQueryClient;
+  private BigQuery bigQueryClient;
   private MergeConfiguration mergeConfiguration;
 
-  public BigQueryMerger(
-      Duration windowDuration, BigQuery testBigQueryClient, MergeConfiguration mergeConfiguration) {
-    this.windowDuration = windowDuration;
-    this.testBigQueryClient = testBigQueryClient;
+  public BigQueryMerger(BigQuery bigQueryClient, MergeConfiguration mergeConfiguration) {
+    this.bigQueryClient = bigQueryClient;
     this.mergeConfiguration = mergeConfiguration;
+  }
+
+  public static BigQueryMerger of(MergeConfiguration mergeConfiguration) {
+    return new BigQueryMerger(null, mergeConfiguration);
   }
 
   @Override
   public PCollection<Void> expand(PCollection<MergeInfo> input) {
-    final MergeStatementBuilder mergeBuilder = new MergeStatementBuilder(mergeConfiguration);
-    PCollection<MergeInfo> mergeInfoRecords = input
+    return input
         .apply(
             MapElements.into(
-                TypeDescriptors.kvs(
-                    TypeDescriptors.strings(), TypeDescriptor.of(MergeInfo.class)))
-                .via(mergeInfo -> KV.of(mergeInfo.getReplicaTable(), mergeInfo)))
-        .apply(new TriggerPerKeyOnFixedIntervals<String, MergeInfo>(windowDuration))
-        .apply(Values.create());
-
-    return expandExecuteMerge(mergeInfoRecords, mergeConfiguration, testBigQueryClient);
-  }
-
-  /**
-   * The extended expand function which builds and executes Merge queries.
-   */
-  public static PCollection<Void> expandExecuteMerge(
-        PCollection<MergeInfo> input,
-        MergeConfiguration mergeConfiguration,
-        BigQuery bigQueryClient) {
-    final MergeStatementBuilder mergeBuilder = new MergeStatementBuilder(mergeConfiguration);
-    return input
-        .apply(MapElements.into(TypeDescriptors.strings()).via(mergeInfo -> {
-          return mergeBuilder.buildMergeStatement(
-              mergeInfo.getReplicaTable(),
-              mergeInfo.getStagingTable(),
-              mergeInfo.getAllPkFields(),
-              mergeInfo.getOrderByFields(),
-              mergeInfo.getDeleteField(),
-              mergeInfo.getAllFields());
-        }))
-        .apply(ParDo.of(new BigQueryStatementIssuingFn(bigQueryClient)))
+                    TypeDescriptors.kvs(
+                        TypeDescriptors.strings(), TypeDescriptor.of(MergeInfo.class)))
+                .via(mergeInfo -> KV.of(mergeInfo.getReplicaTableReference(), mergeInfo)))
         .apply(
-            MapElements.into(TypeDescriptors.voids())
-                .via(
-                    whatever ->
-                        (Void) null)); // TODO(pabloem) Remove this line and find a return type
+            new TriggerPerKeyOnFixedIntervals<String, MergeInfo>(
+                mergeConfiguration.mergeWindowDuration()))
+        .apply(Values.create())
+        .apply(
+            Reshuffle.<MergeInfo>viaRandomKey()
+                .withNumBuckets(mergeConfiguration.mergeConcurrency()))
+        .apply(ParDo.of(new BigQueryStatementIssuingFn(bigQueryClient, mergeConfiguration)))
+        .apply(MapElements.into(TypeDescriptors.voids()).via(whatever -> (Void) null));
   }
 
   /**
    * Class {@link TriggerPerKeyOnFixedIntervals}.
+   *
    * @param <K> key.
    * @param <V> value.
    */
@@ -129,8 +108,8 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
                   .triggering(
                       Repeatedly.forever(
                           AfterProcessingTime.pastFirstElementInPane()
-                              .alignedTo(intervalDuration, org.joda.time.Instant.now())
-                              .plusDelayOf(intervalDuration))))
+                              .alignedTo(intervalDuration)
+                              .plusDelayOf(Duration.standardMinutes(5)))))
           .apply(ParDo.of(new FilterPerGroupValues<K, V>()))
           .apply(GroupByKey.create())
           .apply(
@@ -171,22 +150,22 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
       public void cleanKeysProcessed(FinishBundleContext c) {
         keysProcessed.clear();
       }
-
     }
   }
 
-  /**
-   * Class {@link BigQueryStatementIssuingFn}.
-   */
-  public static class BigQueryStatementIssuingFn extends DoFn<String, Void> {
+  /** Class {@link BigQueryStatementIssuingFn}. */
+  public static class BigQueryStatementIssuingFn extends DoFn<MergeInfo, Void> {
 
     public static final String JOB_ID_PREFIX = "bigstream_to_bq";
     private final Counter mergesIssued = Metrics.counter(BigQueryMerger.class, "mergesIssued");
 
     private BigQuery bigQueryClient;
+    private final MergeConfiguration mergeConfiguration;
 
-    public BigQueryStatementIssuingFn(BigQuery bigQueryClient) {
+    public BigQueryStatementIssuingFn(
+        BigQuery bigQueryClient, MergeConfiguration mergeConfiguration) {
       this.bigQueryClient = bigQueryClient;
+      this.mergeConfiguration = mergeConfiguration;
     }
 
     @Setup
@@ -203,14 +182,14 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
 
     @ProcessElement
     public void process(ProcessContext c) throws InterruptedException {
-      String statement = c.element();
+      MergeInfo mergeInfo = c.element();
+      String statement = mergeInfo.buildMergeStatement(mergeConfiguration);
       try {
         TableResult queryResult = issueQueryToBQ(statement);
         mergesIssued.inc();
         LOG.info("Merge job executed: {}", statement);
       } catch (Exception e) {
-        LOG.error("Merge Job Failed: Exception: {} Statement: {}",
-          e.toString(), statement);
+        LOG.error("Merge Job Failed: Exception: {} Statement: {}", e.toString(), statement);
       }
     }
 

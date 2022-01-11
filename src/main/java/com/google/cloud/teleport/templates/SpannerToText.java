@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,32 +13,32 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.templates;
 
-import com.google.cloud.spanner.BatchReadOnlyTransaction;
-import com.google.cloud.spanner.TimestampBound;
-import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.JavascriptTextTransformerOptions;
-import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.TransformTextViaJavascript;
+import static com.google.cloud.teleport.util.ValueProviderUtils.eitherOrValueProvider;
+
+import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.templates.common.SpannerConverters;
+import com.google.cloud.teleport.templates.common.SpannerConverters.CreateTransactionFnWithTimestamp;
 import com.google.cloud.teleport.templates.common.SpannerConverters.SpannerReadOptions;
 import com.google.cloud.teleport.templates.common.TextConverters.FilesystemWriteOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.TextIO;
-import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerAccessor;
+import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.Transaction;
+import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Create;
-import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
@@ -77,80 +77,22 @@ public class SpannerToText {
 
   /** Custom PipelineOptions. */
   public interface SpannerToTextOptions
-      extends PipelineOptions,
-          SpannerReadOptions,
-          JavascriptTextTransformerOptions,
-          FilesystemWriteOptions {}
+      extends PipelineOptions, SpannerReadOptions, FilesystemWriteOptions {
 
-  /* A DoFn that creates a transaction for read that honors
-   * the timestamp valueprovider parameter.
-   * From org.apache.beam.sdk.io.gcp.spanner.CreateTransactionFn
-   */
-  static class CreateTransactionFnWithTimestamp extends DoFn<Object, Transaction> {
-    private final SpannerConfig config;
-    private final ValueProvider<String> spannerSnapshotTime;
+    @Description("Temporary Directory to store Csv files.")
+    ValueProvider<String> getCsvTempDirectory();
 
-    CreateTransactionFnWithTimestamp(
-        SpannerConfig config, ValueProvider<String> spannerSnapshotTime) {
-      this.config = config;
-      this.spannerSnapshotTime = spannerSnapshotTime;
-    }
+    @SuppressWarnings("unused")
+    void setCsvTempDirectory(ValueProvider<String> value);
 
-    private transient ExposedSpannerAccessor spannerAccessor;
+    @Description("The spanner priority. --spannerPriority must be one of:[HIGH,MEDIUM,LOW]")
+    ValueProvider<RpcPriority> getSpannerPriority();
 
-    @DoFn.Setup
-    public void setup() throws Exception {
-      spannerAccessor = ExposedSpannerAccessor.create(config);
-    }
-
-    @Teardown
-    public void teardown() throws Exception {
-      spannerAccessor.close();
-    }
-
-    @ProcessElement
-    public void processElement(ProcessContext c) throws Exception {
-      String timestamp = this.spannerSnapshotTime.get();
-
-      TimestampBound tsbound;
-      if ("".equals(timestamp)) {
-        /* If no timestamp is specified, read latest data */
-        tsbound = TimestampBound.strong();
-      } else {
-        /* Else try to read data in the timestamp specified. */
-        com.google.cloud.Timestamp tsVal;
-        try {
-          tsVal = com.google.cloud.Timestamp.parseTimestamp(timestamp);
-        } catch (Exception e) {
-          throw new IllegalStateException("Invalid timestamp specified " + timestamp);
-        }
-
-        /*
-         * If timestamp specified is in the future, spanner read will wait
-         * till the time has passed. Abort the job and complain early.
-         */
-        if (tsVal.compareTo(com.google.cloud.Timestamp.now()) > 0) {
-          throw new IllegalStateException("Timestamp specified is in future " + timestamp);
-        }
-
-        /*
-         * Export jobs with Timestamps which are older than
-         * maximum staleness time (one hour) fail with the FAILED_PRECONDITION
-         * error - https://cloud.google.com/spanner/docs/timestamp-bounds
-         * Hence we do not handle the case.
-         */
-
-        tsbound = TimestampBound.ofReadTimestamp(tsVal);
-      }
-      BatchReadOnlyTransaction tx =
-          spannerAccessor.getBatchClient().batchReadOnlyTransaction(tsbound);
-      c.output(Transaction.create(tx.getBatchTransactionId()));
-    }
+    void setSpannerPriority(ValueProvider<RpcPriority> value);
   }
 
   /**
-   * Runs a pipeline which reads in Records from Spanner, passes in the CSV records to a Javascript
-   * UDF, and writes the CSV to TextIO sink.
+   * Runs a pipeline which reads in Records from Spanner, and writes the CSV to TextIO sink.
    *
    * @param args arguments to the pipeline
    */
@@ -168,11 +110,15 @@ public class SpannerToText {
             .withHost(options.getSpannerHost())
             .withProjectId(options.getSpannerProjectId())
             .withInstanceId(options.getSpannerInstanceId())
-            .withDatabaseId(options.getSpannerDatabaseId());
+            .withDatabaseId(options.getSpannerDatabaseId())
+            .withRpcPriority(options.getSpannerPriority());
 
     PTransform<PBegin, PCollection<ReadOperation>> spannerExport =
         SpannerConverters.ExportTransformFactory.create(
-            options.getSpannerTable(), spannerConfig, options.getTextWritePrefix());
+            options.getSpannerTable(),
+            spannerConfig,
+            options.getTextWritePrefix(),
+            options.getSpannerSnapshotTime());
 
     /* CreateTransaction and CreateTransactionFn classes in SpannerIO
      * only take a timestamp object for exact staleness which works when
@@ -207,18 +153,17 @@ public class SpannerToText {
                 MapElements.into(TypeDescriptors.strings())
                     .via(struct -> (new SpannerConverters.StructCsvPrinter()).print(struct)));
 
-    if (options.getJavascriptTextTransformGcsPath().isAccessible()) {
-      // The UDF function takes a CSV row as an input and produces a transformed CSV row
-      csv =
-          csv.apply(
-              "JavascriptUDF",
-              TransformTextViaJavascript.newBuilder()
-                  .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
-                  .setFunctionName(options.getJavascriptTextTransformFunctionName())
-                  .build());
-    }
+    ValueProvider<ResourceId> tempDirectoryResource =
+        ValueProvider.NestedValueProvider.of(
+            eitherOrValueProvider(options.getCsvTempDirectory(), options.getTextWritePrefix()),
+            (SerializableFunction<String, ResourceId>) s -> FileSystems.matchNewResource(s, true));
+
     csv.apply(
-        "Write to storage", TextIO.write().to(options.getTextWritePrefix()).withSuffix(".csv"));
+        "Write to storage",
+        TextIO.write()
+            .to(options.getTextWritePrefix())
+            .withSuffix(".csv")
+            .withTempDirectory(tempDirectoryResource));
 
     pipeline.run();
     LOG.info("Completed pipeline setup");

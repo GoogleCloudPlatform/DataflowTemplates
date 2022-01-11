@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner.ddl;
 
 import com.google.cloud.spanner.ReadContext;
@@ -44,6 +43,7 @@ public class InformationSchemaScanner {
     Ddl.Builder builder = Ddl.builder();
     listDatabaseOptions(builder);
     listTables(builder);
+    listViews(builder);
     listColumns(builder);
     listColumnOptions(builder);
     Map<String, NavigableMap<String, Index.Builder>> indexes = Maps.newHashMap();
@@ -69,7 +69,10 @@ public class InformationSchemaScanner {
       ImmutableList.Builder<String> tableForeignKeys = ImmutableList.builder();
       for (Map.Entry<String, ForeignKey.Builder> entry : tableEntry.getValue().entrySet()) {
         ForeignKey.Builder foreignKeyBuilder = entry.getValue();
-        tableForeignKeys.add(foreignKeyBuilder.build().prettyPrint());
+        ForeignKey fkBuilder = foreignKeyBuilder.build();
+        // Add the table and referenced table to the referencedTables TreeMultiMap of the ddl
+        builder.addReferencedTable(fkBuilder.table(), fkBuilder.referencedTable());
+        tableForeignKeys.add(fkBuilder.prettyPrint());
       }
       builder.createTable(tableName).foreignKeys(tableForeignKeys.build()).endTable();
     }
@@ -92,9 +95,9 @@ public class InformationSchemaScanner {
     ResultSet resultSet =
         context.executeQuery(
             Statement.newBuilder(
-                "SELECT t.option_name, t.option_type, t.option_value "
-                + " FROM information_schema.database_options AS t "
-                + " WHERE t.catalog_name = '' AND t.schema_name = ''")
+                    "SELECT t.option_name, t.option_type, t.option_value "
+                        + " FROM information_schema.database_options AS t "
+                        + " WHERE t.catalog_name = '' AND t.schema_name = ''")
                 .build());
 
     ImmutableList.Builder<Export.DatabaseOption> options = ImmutableList.builder();
@@ -109,18 +112,33 @@ public class InformationSchemaScanner {
           Export.DatabaseOption.newBuilder()
               .setOptionName(optionName)
               .setOptionType(optionType)
-              .setOptionValue(optionValue).build());
+              .setOptionValue(optionValue)
+              .build());
     }
     builder.mergeDatabaseOptions(options.build());
   }
 
   private void listTables(Ddl.Builder builder) {
+    Statement.Builder queryBuilder =
+        Statement.newBuilder(
+            "SELECT t.table_name, t.parent_table_name, t.on_delete_action FROM"
+                + " information_schema.tables AS t WHERE t.table_catalog = '' AND"
+                + " t.table_schema = ''");
     ResultSet resultSet =
         context.executeQuery(
             Statement.of(
-                "SELECT t.table_name, t.parent_table_name, t.on_delete_action"
-                    + " FROM information_schema.tables AS t"
-                    + " WHERE t.table_catalog = '' AND t.table_schema = ''"));
+                "SELECT COUNT(1) FROM INFORMATION_SCHEMA.COLUMNS c WHERE c.TABLE_CATALOG = '' AND"
+                    + " c.TABLE_SCHEMA = 'INFORMATION_SCHEMA' AND c.TABLE_NAME = 'TABLES' AND"
+                    + " c.COLUMN_NAME = 'TABLE_TYPE';"));
+    // Returns a single row with a 1 if views are supported and a 0 if not.
+    resultSet.next();
+    if (resultSet.getLong(0) == 0) {
+      LOG.info("INFORMATION_SCHEMA.TABLES.TABLE_TYPE is not present; assuming no views");
+    } else {
+      queryBuilder.append(" AND t.table_type != 'VIEW'");
+    }
+
+    resultSet = context.executeQuery(queryBuilder.build());
     while (resultSet.next()) {
       String tableName = resultSet.getString(0);
       String parentTableName = resultSet.isNull(1) ? null : resultSet.getString(1);
@@ -167,14 +185,18 @@ public class InformationSchemaScanner {
                 .build());
     while (resultSet.next()) {
       String tableName = resultSet.getString(0);
+      if (builder.hasView(tableName)) {
+        // We do not need to collect columns from view definitions, and we will create phantom
+        // tables with names that collide with views if we try.
+        continue;
+      }
       String columnName = resultSet.getString(1);
       String spannerType = resultSet.getString(3);
       boolean nullable = resultSet.getString(4).equalsIgnoreCase("YES");
       boolean isGenerated = resultSet.getString(5).equalsIgnoreCase("ALWAYS");
       String generationExpression = resultSet.isNull(6) ? "" : resultSet.getString(6);
-      boolean isStored = resultSet.isNull(7)
-          ?
-          false : resultSet.getString(7).equalsIgnoreCase("YES");
+      boolean isStored =
+          resultSet.isNull(7) ? false : resultSet.getString(7).equalsIgnoreCase("YES");
       builder
           .createTable(tableName)
           .column(columnName)
@@ -271,10 +293,10 @@ public class InformationSchemaScanner {
     ResultSet resultSet =
         context.executeQuery(
             Statement.newBuilder(
-                "SELECT t.table_name, t.column_name, t.option_name, t.option_type, t.option_value "
-                + " FROM information_schema.column_options AS t "
-                + " WHERE t.table_catalog = '' AND t.table_schema = ''"
-                + " ORDER BY t.table_name, t.column_name")
+                    "SELECT t.table_name, t.column_name, t.option_name, t.option_type, t.option_value "
+                        + " FROM information_schema.column_options AS t "
+                        + " WHERE t.table_catalog = '' AND t.table_schema = ''"
+                        + " ORDER BY t.table_name, t.column_name")
                 .build());
 
     Map<KV<String, String>, ImmutableList.Builder<String>> allOptions = Maps.newHashMap();
@@ -289,7 +311,11 @@ public class InformationSchemaScanner {
       ImmutableList.Builder<String> options =
           allOptions.computeIfAbsent(kv, k -> ImmutableList.builder());
       if (optionType.equalsIgnoreCase("STRING")) {
-        options.add(optionName + "=\"" + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue) + "\"");
+        options.add(
+            optionName
+                + "=\""
+                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
+                + "\"");
       } else {
         options.add(optionName + "=" + optionValue);
       }
@@ -382,5 +408,33 @@ public class InformationSchemaScanner {
           name, k -> CheckConstraint.builder().name(name).expression(expression).build());
     }
     return checkConstraints;
+  }
+
+  private void listViews(Ddl.Builder builder) {
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT COUNT(1) FROM INFORMATION_SCHEMA.TABLES t WHERE t.TABLE_CATALOG = '' AND"
+                    + " t.TABLE_SCHEMA = 'INFORMATION_SCHEMA' AND t.TABLE_NAME = 'VIEWS'"));
+    // Returns a single row with a 1 if views are supported and a 0 if not.
+    resultSet.next();
+    if (resultSet.getLong(0) == 0) {
+      LOG.info("INFORMATION_SCHEMA.VIEWS is not present; assuming no views");
+      return;
+    }
+
+    resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT v.table_name, v.view_definition"
+                    + " FROM information_schema.views AS v"
+                    + " WHERE v.table_catalog = '' AND v.table_schema = ''"));
+
+    while (resultSet.next()) {
+      String viewName = resultSet.getString(0);
+      String viewQuery = resultSet.getString(1);
+      LOG.debug("Schema View {}", viewName);
+      builder.createView(viewName).query(viewQuery).security(View.SqlSecurity.INVOKER).endView();
+    }
   }
 }

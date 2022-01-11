@@ -13,8 +13,15 @@ their functionality.
 
 [![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git)
 
+## Note on Default Branch
+
+As of November 18, 2021, our default branch is now named "main". This does not
+affect forks. If you would like your fork and its local clone to reflect these
+changes you can follow [GitHub's branch renaming guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-branches-in-your-repository/renaming-a-branch).
+
 ## Template Pipelines
 
+* [BigQuery to Bigtable](v2/bigquery-to-bigtable/src/main/java/com/google/cloud/teleport/v2/templates/BigQueryToBigtable.java)
 * [BigQuery to Datastore](src/main/java/com/google/cloud/teleport/templates/BigQueryToDatastore.java)
 * [BigQuery to TFRecords](src/main/java/com/google/cloud/teleport/templates/BigQueryToTFRecord.java)
 * [Bigtable to GCS Avro](src/main/java/com/google/cloud/teleport/bigtable/BigtableToAvro.java)
@@ -77,6 +84,24 @@ The list of known rules that require this are:
 
 * common > Plugins > protobuf > protobuf:compile
 * common > Plugins > protobuf > protobuf:test-compile
+
+### Formatting Code
+
+From either the root directory or v2/ directory, run:
+
+```sh
+mvn spotless:apply
+```
+
+This will format the code and add a license header. To verify that the code is
+formatted correctly, run:
+
+```sh
+mvn spotless:check
+```
+
+The directory to run the commands from is based on whether the changes are under
+v2/ or not.
 
 ### Creating a Template File
 

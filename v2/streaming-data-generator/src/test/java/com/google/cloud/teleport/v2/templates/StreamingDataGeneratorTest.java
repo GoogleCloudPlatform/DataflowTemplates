@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2020 Google Inc.
+ * Copyright (C) 2020 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.v2.templates;
 
 import static org.junit.Assert.assertEquals;
@@ -162,7 +161,7 @@ public class StreamingDataGeneratorTest {
 
   /** Tests generation of fake Json data message with attributes. */
   @Test
-  public void testJsonMessageGenerator_WithAttributes_returnsFakeMessageContaingAttributes()
+  public void testJsonMessageGenerator_WithAttributes_returnsFakeMessageContainingAttributes()
       throws IOException {
     // Arrange
     String schema =
@@ -183,6 +182,69 @@ public class StreamingDataGeneratorTest {
             + "\t\t\"appId\": {{ integer(1, 10) }},\n"
             + "\t\t\"teamavg\": {{get(\"teamavg\")}}\n"
             + "\t}\n"
+            + "}";
+    File file = tempFolder.newFile();
+    writeToFile(file.getAbsolutePath(), schema);
+    StreamingDataGenerator.StreamingDataGeneratorOptions options =
+        getPipelineOptions(
+            new String[] {"--schemaLocation=" + file.getAbsolutePath(), "--topic=test"});
+
+    // Act
+    PCollection<PubsubMessage> results =
+        pipeline
+            .apply("CreateInput", Create.of(0L))
+            .apply(
+                "GenerateMessage",
+                ParDo.of(
+                    new StreamingDataGenerator.MessageGeneratorFn(options.getSchemaLocation())))
+            .apply(
+                "Generate JSON PubSub Messages",
+                ParDo.of(
+                    new StreamingDataGeneratorWriteToPubSub.JsonPubSubMessageFn(
+                        options.getSchemaLocation())));
+
+    // Assert
+    PAssert.that(results)
+        .satisfies(
+            input -> {
+              PubsubMessage message = input.iterator().next();
+
+              assertNotNull(message);
+              assertNotNull(message.getPayload());
+              assertEquals(4, message.getAttributeMap().size());
+
+              return null;
+            });
+
+    pipeline.run();
+  }
+
+  /**
+   * Tests generation of fake Json data message with attributes using schema with space indentation.
+   */
+  @Test
+  public void
+      testJsonMessageGenerator_WithAttributes_WithSpaceIndentation_returnsFakeMessageContainingAttributes()
+          throws IOException {
+    // Arrange
+    String schema =
+        "{\n"
+            + "  \"payload\": {\n"
+            + "    \"eventId\": \"{{put(\"eventId\",uuid())}}\",\n"
+            + "    \"eventTime\": {{put(\"eventTime\", timestamp())}},\n"
+            + "    \"username\": \"{{put(\"username \", username())}}\",\n"
+            + "    \"ipv4\": \"{{ipv4()}}\",\n"
+            + "    \"country\": \"{{country()}}\",\n"
+            + "    \"score\": {{ integer(0, 100) }},\n"
+            + "    \"teamavg\": {{put(\"teamavg\",float(100000, 10000000,\"%.7f\"))}},\n"
+            + "   \"completed\": {{bool()}}\n"
+            + "  },\n"
+            + "  \"attributes\": {\n"
+            + "    \"eventId\": \"{{get(\"eventId\")}}\",\n"
+            + "    \"eventTime\": {{get(\"eventTime\")}},\n"
+            + "    \"appId\": {{ integer(1, 10) }},\n"
+            + "    \"teamavg\": {{get(\"teamavg\")}}\n"
+            + "  }\n"
             + "}";
     File file = tempFolder.newFile();
     writeToFile(file.getAbsolutePath(), schema);

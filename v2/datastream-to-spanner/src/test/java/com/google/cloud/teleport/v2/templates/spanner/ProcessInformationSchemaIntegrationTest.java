@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.v2.templates.spanner;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -39,9 +38,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.TemporaryFolder;
 
-/**
- * An integration test that validates shadow table creation.
- */
+/** An integration test that validates shadow table creation. */
 @Category(IntegrationTest.class)
 public class ProcessInformationSchemaIntegrationTest {
   private final String testDb = "testdb";
@@ -78,16 +75,31 @@ public class ProcessInformationSchemaIntegrationTest {
   private Ddl.Builder getTestDdlBuilder() {
     return Ddl.builder()
         .createTable("Table")
-          .column("ID").int64().endColumn()
-          .column("data").int64().endColumn()
-          .primaryKey().asc("ID").end()
+        .column("ID")
+        .int64()
+        .endColumn()
+        .column("data")
+        .int64()
+        .endColumn()
+        .primaryKey()
+        .asc("ID")
+        .end()
         .endTable()
         .createTable("Table_interleaved")
-          .column("ID").int64().endColumn()
-          .column("ID2").int64().endColumn()
-          .column("data").int64().endColumn()
-          .primaryKey().asc("ID").asc("ID2").end()
-          .interleaveInParent("Table")
+        .column("ID")
+        .int64()
+        .endColumn()
+        .column("ID2")
+        .int64()
+        .endColumn()
+        .column("data")
+        .int64()
+        .endColumn()
+        .primaryKey()
+        .asc("ID")
+        .asc("ID2")
+        .end()
+        .interleaveInParent("Table")
         .endTable();
   }
 
@@ -97,8 +109,10 @@ public class ProcessInformationSchemaIntegrationTest {
     Ddl testDdl = getTestDdlBuilder().build();
     createDb(testDdl);
 
-    testPipeline.apply("Process Information Schema", new ProcessInformationSchema(sourceConfig,
-            /*shouldCreateShadowTables=*/true, "shadow", "oracle"));
+    testPipeline.apply(
+        "Process Information Schema",
+        new ProcessInformationSchema(
+            sourceConfig, /*shouldCreateShadowTables=*/ true, "shadow", "oracle"));
     PipelineResult testResult = testPipeline.run();
     testResult.waitUntilFinish();
     Ddl finalDdl = readDdl(testDb);
@@ -109,14 +123,13 @@ public class ProcessInformationSchemaIntegrationTest {
     assertNotNull(shadowTableInterleaved);
     assertEquals(4, finalDdl.allTables().size());
 
-    assertThat(shadowTable.primaryKeys(),
-        is(testDdl.table("Table").primaryKeys()));
-    assertEquals(shadowTable.columns().size(),
-        testDdl.table("Table").primaryKeys().size() + 2);
+    assertThat(shadowTable.primaryKeys(), is(testDdl.table("Table").primaryKeys()));
+    assertEquals(shadowTable.columns().size(), testDdl.table("Table").primaryKeys().size() + 2);
 
-    assertThat(shadowTableInterleaved.primaryKeys(),
-        is(testDdl.table("Table_interleaved").primaryKeys()));
-    assertEquals(shadowTableInterleaved.columns().size(),
+    assertThat(
+        shadowTableInterleaved.primaryKeys(), is(testDdl.table("Table_interleaved").primaryKeys()));
+    assertEquals(
+        shadowTableInterleaved.columns().size(),
         testDdl.table("Table_interleaved").primaryKeys().size() + 2);
   }
 
@@ -126,8 +139,10 @@ public class ProcessInformationSchemaIntegrationTest {
     Ddl testDdl = getTestDdlBuilder().build();
     createDb(testDdl);
 
-    testPipeline.apply("Read Information Schema", new ProcessInformationSchema(sourceConfig,
-            /*shouldCreateShadowTables=*/false, "shadow", "oracle"));
+    testPipeline.apply(
+        "Read Information Schema",
+        new ProcessInformationSchema(
+            sourceConfig, /*shouldCreateShadowTables=*/ false, "shadow", "oracle"));
     PipelineResult testResult = testPipeline.run();
     testResult.waitUntilFinish();
     Ddl finalDdl = readDdl(testDb);
@@ -142,17 +157,26 @@ public class ProcessInformationSchemaIntegrationTest {
   @Test
   public void canCreateMissingShadowTables() throws Exception {
     SpannerConfig sourceConfig = spannerServer.getSpannerConfig(testDb);
-    Ddl testDdl = getTestDdlBuilder()
-        .createTable("shadow_Table")
-          .column("ID").int64().endColumn()
-          .column("version").int64().endColumn()
-          .primaryKey().asc("ID").end()
-        .endTable()
-        .build();
+    Ddl testDdl =
+        getTestDdlBuilder()
+            .createTable("shadow_Table")
+            .column("ID")
+            .int64()
+            .endColumn()
+            .column("version")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("ID")
+            .end()
+            .endTable()
+            .build();
     createDb(testDdl);
 
-    testPipeline.apply("Process Information Schema", new ProcessInformationSchema(sourceConfig,
-            /*shouldCreateShadowTables=*/true, "shadow", "oracle"));
+    testPipeline.apply(
+        "Process Information Schema",
+        new ProcessInformationSchema(
+            sourceConfig, /*shouldCreateShadowTables=*/ true, "shadow", "oracle"));
     PipelineResult testResult = testPipeline.run();
     testResult.waitUntilFinish();
     Ddl finalDdl = readDdl(testDb);
@@ -163,9 +187,10 @@ public class ProcessInformationSchemaIntegrationTest {
     assertNotNull(shadowTable);
     assertNotNull(shadowTableInterleaved);
 
-    assertThat(shadowTableInterleaved.primaryKeys(),
-        is(testDdl.table("Table_interleaved").primaryKeys()));
-    assertEquals(shadowTableInterleaved.columns().size(),
+    assertThat(
+        shadowTableInterleaved.primaryKeys(), is(testDdl.table("Table_interleaved").primaryKeys()));
+    assertEquals(
+        shadowTableInterleaved.columns().size(),
         testDdl.table("Table_interleaved").primaryKeys().size() + 2);
   }
 }

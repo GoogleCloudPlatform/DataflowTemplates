@@ -14,7 +14,5 @@
  * the License.
  */
 
-/**
- * CDC Merge utilities.
- */
+/** CDC Merge utilities. */
 package com.google.cloud.teleport.v2.cdc.merge;

@@ -1,19 +1,17 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Copyright (C) 2021 Google LLC
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package org.apache.beam.sdk.io.gcp.spanner;
 
@@ -21,6 +19,7 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.ServiceFactory;
+import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerOptions;
 import java.io.Serializable;
@@ -42,6 +41,8 @@ public abstract class SpannerConfig implements Serializable {
   private static final Duration DEFAULT_COMMIT_DEADLINE = Duration.standardSeconds(15);
   // Total allowable backoff time.
   private static final Duration DEFAULT_MAX_CUMULATIVE_BACKOFF = Duration.standardMinutes(15);
+  // A default priority for batch traffic.
+  private static final RpcPriority DEFAULT_RPC_PRIORITY = RpcPriority.MEDIUM;
 
   public abstract @Nullable ValueProvider<String> getProjectId();
 
@@ -57,6 +58,8 @@ public abstract class SpannerConfig implements Serializable {
 
   public abstract @Nullable ValueProvider<Duration> getMaxCumulativeBackoff();
 
+  public abstract @Nullable ValueProvider<RpcPriority> getRpcPriority();
+
   @VisibleForTesting
   abstract @Nullable ServiceFactory<Spanner, SpannerOptions> getServiceFactory();
 
@@ -68,6 +71,7 @@ public abstract class SpannerConfig implements Serializable {
         .setCommitDeadline(ValueProvider.StaticValueProvider.of(DEFAULT_COMMIT_DEADLINE))
         .setMaxCumulativeBackoff(
             ValueProvider.StaticValueProvider.of(DEFAULT_MAX_CUMULATIVE_BACKOFF))
+        .setRpcPriority(ValueProvider.StaticValueProvider.of(DEFAULT_RPC_PRIORITY))
         .build();
   }
 
@@ -116,6 +120,8 @@ public abstract class SpannerConfig implements Serializable {
     abstract Builder setMaxCumulativeBackoff(ValueProvider<Duration> maxCumulativeBackoff);
 
     abstract Builder setServiceFactory(ServiceFactory<Spanner, SpannerOptions> serviceFactory);
+
+    abstract Builder setRpcPriority(ValueProvider<RpcPriority> rpcPriority);
 
     public abstract SpannerConfig build();
   }
@@ -171,5 +177,13 @@ public abstract class SpannerConfig implements Serializable {
   @VisibleForTesting
   SpannerConfig withServiceFactory(ServiceFactory<Spanner, SpannerOptions> serviceFactory) {
     return toBuilder().setServiceFactory(serviceFactory).build();
+  }
+
+  public SpannerConfig withRpcPriority(ValueProvider<RpcPriority> rpcPriority) {
+    return toBuilder().setRpcPriority(rpcPriority).build();
+  }
+
+  public SpannerConfig withRpcPriority(RpcPriority rpcPriority) {
+    return withRpcPriority(ValueProvider.StaticValueProvider.of(rpcPriority));
   }
 }

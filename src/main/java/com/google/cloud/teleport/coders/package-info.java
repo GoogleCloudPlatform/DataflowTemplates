@@ -14,8 +14,5 @@
  * the License.
  */
 
-
-/**
- * Custom coders.
- */
+/** Custom coders. */
 package com.google.cloud.teleport.coders;

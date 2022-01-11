@@ -24,7 +24,8 @@ option java_package = "com.google.cloud.teleport.v2.proto.testing";
 option java_multiple_files = true;
 
 message MyTransitiveImport {
+  reserved 2;
+
   string field1 = 1;
-  repeated MyTransitiveImport children = 2;
   MySharedImport shared = 3;
 }

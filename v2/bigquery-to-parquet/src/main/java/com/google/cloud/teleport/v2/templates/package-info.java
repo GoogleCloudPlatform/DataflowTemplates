@@ -14,7 +14,5 @@
  * the License.
  */
 
-/**
- * BigQuery to GCS template for Google Cloud Teleport.
- */
+/** BigQuery to GCS template for Google Cloud Teleport. */
 package com.google.cloud.teleport.v2.templates;

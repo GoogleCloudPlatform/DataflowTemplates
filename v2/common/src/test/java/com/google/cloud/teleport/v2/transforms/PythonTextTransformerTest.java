@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.v2.transforms;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -76,10 +75,9 @@ public class PythonTextTransformerTest {
   private static final String TRANSFORM_FILE_PATH =
       Resources.getResource(RESOURCES_DIR + "transform.py").getPath();
 
-
   /**
-   * Test {@link PythonRuntime#invoke(String)} returns transformed data when a good python
-   * transform function given. Requires installed python3 on local worker.
+   * Test {@link PythonRuntime#invoke(String)} returns transformed data when a good python transform
+   * function given. Requires installed python3 on local worker.
    */
   @Ignore
   @Test
@@ -97,11 +95,11 @@ public class PythonTextTransformerTest {
     dataWriter.write(sendData);
     dataWriter.flush();
     dataWriter.close();
-    List<String> expectedJson = Arrays.asList("{\"answerToLife\": 42, \"someProp\": \"someValue\"}");
+    List<String> expectedJson =
+        Arrays.asList("{\"answerToLife\": 42, \"someProp\": \"someValue\"}");
     List<String> data = pythonRuntime.invoke(tempFile, 5);
     Assert.assertEquals(expectedJson, data);
   }
-
 
   /** Tests the {@link FailsafePythonUdf} when the input is valid. */
   @Ignore

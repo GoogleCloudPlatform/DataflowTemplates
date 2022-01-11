@@ -1,15 +1,15 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
- * use this file except in compliance with the License. SecondTou may obtain a copy of
+ * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANSecondT KIND, either express or implied. See the
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
  * License for the specific language governing permissions and limitations under
  * the License.
  */
@@ -26,12 +26,11 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 /**
  * {@link KMSEncryptedNestedValueProvider} is a subclass of {@link DualInputNestedValueProvider}
  * that allows for taking two {@link ValueProvider} objects - one as an encrypted string and the
- * other as a KMS encryption key. If no encryption key is passed, the string is returned, else
- * the encryption key is used to decrypt the encrypted string.
+ * other as a KMS encryption key. If no encryption key is passed, the string is returned, else the
+ * encryption key is used to decrypt the encrypted string.
  */
 public class KMSEncryptedNestedValueProvider
     extends DualInputNestedValueProvider<String, String, String> {
@@ -78,8 +77,8 @@ public class KMSEncryptedNestedValueProvider
     }
   }
 
-  /** Creates a {@link KMSEncryptedNestedValueProvider} that wraps
-   *  the key and the encrypted value.
+  /**
+   * Creates a {@link KMSEncryptedNestedValueProvider} that wraps the key and the encrypted value.
    */
   public KMSEncryptedNestedValueProvider(ValueProvider<String> value, ValueProvider<String> key) {
     super(value, key, KmsTranslatorInput.of());
@@ -89,12 +88,13 @@ public class KMSEncryptedNestedValueProvider
     return KEYNAME_PATTERN.matcher(kmsKey).matches();
   }
 
-  /** Uses the GCP KMS client to decrypt an encrypted value using a KMS key of the form
-   *  projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}
-   *  The encrypted value should be a base64 encrypted string which has been encrypted using
-   *  the KMS encrypt API call.
-   *  See <a href="https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt">
-   *  this KMS API Encrypt Link</a>.
+  /**
+   * Uses the GCP KMS client to decrypt an encrypted value using a KMS key of the form
+   * projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name} The
+   * encrypted value should be a base64 encrypted string which has been encrypted using the KMS
+   * encrypt API call. See <a
+   * href="https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt">
+   * this KMS API Encrypt Link</a>.
    */
   private static String decryptWithKMS(String encryptedValue, String kmsKey) throws IOException {
     /*
@@ -103,7 +103,6 @@ public class KMSEncryptedNestedValueProvider
      */
 
     byte[] cipherText = Base64.getDecoder().decode(encryptedValue.getBytes("UTF-8"));
-
 
     try (KeyManagementServiceClient client = KeyManagementServiceClient.create()) {
 

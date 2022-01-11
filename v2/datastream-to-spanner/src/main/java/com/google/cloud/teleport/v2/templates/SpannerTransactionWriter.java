@@ -1,17 +1,17 @@
 /*
- *     Copyright 2019 Google LLC
+ * Copyright (C) 2019 Google LLC
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.templates;
 
@@ -59,8 +59,7 @@ public class SpannerTransactionWriter
       new TupleTag<FailsafeElement<String, String>>() {};
 
   /* The Tag for Successful mutations */
-  public static final TupleTag<Timestamp> SUCCESSFUL_EVENT_TAG =
-      new TupleTag<Timestamp>() {};
+  public static final TupleTag<Timestamp> SUCCESSFUL_EVENT_TAG = new TupleTag<Timestamp>() {};
 
   /* The spanner config specifying the destination Cloud Spanner database to connect to */
   private final SpannerConfig spannerConfig;
@@ -71,25 +70,34 @@ public class SpannerTransactionWriter
   /* The prefix for shadow tables */
   private final String shadowTablePrefix;
 
-  public SpannerTransactionWriter(SpannerConfig spannerConfig,
-      PCollectionView<Ddl> ddlView, String shadowTablePrefix) {
+  /* The datastream source database type. Eg, MySql or Oracle etc. */
+  private final String sourceType;
+
+  public SpannerTransactionWriter(
+      SpannerConfig spannerConfig,
+      PCollectionView<Ddl> ddlView,
+      String shadowTablePrefix,
+      String sourceType) {
     Preconditions.checkNotNull(spannerConfig);
     this.spannerConfig = spannerConfig;
     this.ddlView = ddlView;
     this.shadowTablePrefix = shadowTablePrefix;
+    this.sourceType = sourceType;
   }
 
   @Override
   public SpannerTransactionWriter.Result expand(
-        PCollection<FailsafeElement<String, String>> input) {
+      PCollection<FailsafeElement<String, String>> input) {
     PCollectionTuple spannerWriteResults =
         input.apply(
             "Write Mutations",
-            ParDo.of(new SpannerTransactionWriterDoFn(spannerConfig, ddlView, shadowTablePrefix))
+            ParDo.of(
+                    new SpannerTransactionWriterDoFn(
+                        spannerConfig, ddlView, shadowTablePrefix, sourceType))
                 .withSideInputs(ddlView)
-                .withOutputTags(SUCCESSFUL_EVENT_TAG,
-                    TupleTagList.of(Arrays.asList(PERMANENT_ERROR_TAG,
-                                        RETRYABLE_ERROR_TAG))));
+                .withOutputTags(
+                    SUCCESSFUL_EVENT_TAG,
+                    TupleTagList.of(Arrays.asList(PERMANENT_ERROR_TAG, RETRYABLE_ERROR_TAG))));
 
     return Result.create(
         spannerWriteResults.get(SUCCESSFUL_EVENT_TAG),
@@ -97,51 +105,51 @@ public class SpannerTransactionWriter
         spannerWriteResults.get(RETRYABLE_ERROR_TAG));
   }
 
-    /**
-     * Container class for the results of this transform.
-     *
-     * <p>Use {@link #successfulSpannerWrite()} and {@link #failedSpannerWrite()} to get the two
-     * output streams.
-     */
-    @AutoValue
-    public abstract static class Result implements POutput {
-        private static Result create(
-                PCollection<Timestamp> successfulSpannerWrites,
-                PCollection<FailsafeElement<String, String>> permanentErrors,
-                PCollection<FailsafeElement<String, String>> retryableErrors) {
-            Preconditions.checkNotNull(successfulSpannerWrites);
-            Preconditions.checkNotNull(permanentErrors);
-            Preconditions.checkNotNull(retryableErrors);
-            return new AutoValue_SpannerTransactionWriter_Result(
-                    successfulSpannerWrites, permanentErrors, retryableErrors);
-        }
-
-        public abstract PCollection<Timestamp> successfulSpannerWrites();
-
-        public abstract PCollection<FailsafeElement<String, String>> permanentErrors();
-
-        public abstract PCollection<FailsafeElement<String, String>> retryableErrors();
-
-        @Override
-        public void finishSpecifyingOutput(
-                String transformName, PInput input, PTransform<?, ?> transform) {
-            // required by POutput interface.
-        }
-
-        @Override
-        public Pipeline getPipeline() {
-            return successfulSpannerWrites().getPipeline();
-        }
-
-        @Override
-        public Map<TupleTag<?>, PValue> expand() {
-            return ImmutableMap.of(
-                    SUCCESSFUL_EVENT_TAG,
-                    successfulSpannerWrites(),
-                    PERMANENT_ERROR_TAG,
-                    permanentErrors(),
-                    RETRYABLE_ERROR_TAG,
-                    retryableErrors());
-        }
+  /**
+   * Container class for the results of this transform.
+   *
+   * <p>Use {@link #successfulSpannerWrite()} and {@link #failedSpannerWrite()} to get the two
+   * output streams.
+   */
+  @AutoValue
+  public abstract static class Result implements POutput {
+    private static Result create(
+        PCollection<Timestamp> successfulSpannerWrites,
+        PCollection<FailsafeElement<String, String>> permanentErrors,
+        PCollection<FailsafeElement<String, String>> retryableErrors) {
+      Preconditions.checkNotNull(successfulSpannerWrites);
+      Preconditions.checkNotNull(permanentErrors);
+      Preconditions.checkNotNull(retryableErrors);
+      return new AutoValue_SpannerTransactionWriter_Result(
+          successfulSpannerWrites, permanentErrors, retryableErrors);
     }
+
+    public abstract PCollection<Timestamp> successfulSpannerWrites();
+
+    public abstract PCollection<FailsafeElement<String, String>> permanentErrors();
+
+    public abstract PCollection<FailsafeElement<String, String>> retryableErrors();
+
+    @Override
+    public void finishSpecifyingOutput(
+        String transformName, PInput input, PTransform<?, ?> transform) {
+      // required by POutput interface.
+    }
+
+    @Override
+    public Pipeline getPipeline() {
+      return successfulSpannerWrites().getPipeline();
+    }
+
+    @Override
+    public Map<TupleTag<?>, PValue> expand() {
+      return ImmutableMap.of(
+          SUCCESSFUL_EVENT_TAG,
+          successfulSpannerWrites(),
+          PERMANENT_ERROR_TAG,
+          permanentErrors(),
+          RETRYABLE_ERROR_TAG,
+          retryableErrors());
+    }
+  }
 }

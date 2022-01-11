@@ -27,8 +27,6 @@
 
     <properties>
         <hive.version>2.1.0</hive.version>
-        <hadoop.version>2.8.5</hadoop.version>
-        <jackson.version>2.11.2</jackson.version>
         <truth.version>1.0.1</truth.version>
     </properties>
 
@@ -40,19 +38,19 @@
             <scope>compile</scope>
         </dependency>
         <dependency>
-          <groupId>com.fasterxml.jackson.core</groupId>
-          <artifactId>jackson-databind</artifactId>
-          <version>${jackson.version}</version>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-1.2-api</artifactId>
+            <version>2.17.0</version>
         </dependency>
         <dependency>
-          <groupId>com.fasterxml.jackson.core</groupId>
-          <artifactId>jackson-annotations</artifactId>
-          <version>${jackson.version}</version>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-web</artifactId>
+            <version>2.17.0</version>
         </dependency>
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-core</artifactId>
-            <version>${jackson.version}</version>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j-impl</artifactId>
+            <version>2.17.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.hive</groupId>
@@ -62,6 +60,10 @@
               <exclusion>
                 <groupId>org.codehaus.jackson</groupId>
                 <artifactId>*</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
               </exclusion>
             </exclusions>
         </dependency>
@@ -142,17 +144,19 @@
                 <groupId>org.codehaus.jackson</groupId>
                 <artifactId>*</artifactId>
               </exclusion>
+              <exclusion>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-log4j12</artifactId>
+              </exclusion>
             </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-sdks-java-io-hadoop-file-system</artifactId>
-            <version>${beam.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-sdks-java-io-hcatalog</artifactId>
-            <version>${beam.version}</version>
         </dependency>
       </dependencies>
 

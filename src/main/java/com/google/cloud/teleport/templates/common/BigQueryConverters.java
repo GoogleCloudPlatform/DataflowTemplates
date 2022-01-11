@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.templates.common;
 
 import com.google.api.services.bigquery.model.TableFieldSchema;
@@ -59,7 +58,6 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.commons.text.StringSubstitutor;
-
 
 /** Common transforms for Teleport BigQueryIO. */
 public class BigQueryConverters {
@@ -428,24 +426,23 @@ public class BigQueryConverters {
   }
 
   /**
-   * Return a formatted String Using Key/Value Style formatting
-   * from the TableRow applied to the Format Template.
-   * ie. formatStringTemplate("I am {key}"{"key": "formatted"}) -> "I am formatted"
+   * Return a formatted String Using Key/Value Style formatting from the TableRow applied to the
+   * Format Template. ie. formatStringTemplate("I am {key}"{"key": "formatted"}) -> "I am formatted"
    */
   public static String formatStringTemplate(String formatTemplate, TableRow row) {
-      // Key/Value Map used to replace values in template
-      Map<String, String> values = new HashMap<>();
+    // Key/Value Map used to replace values in template
+    Map<String, String> values = new HashMap<>();
 
-      // Put all column/value pairs into key/value map
-      Set<String> rowKeys = row.keySet();
-      for (String rowKey : rowKeys) {
-        // Only String types can be used in comparison
-        if(row.get(rowKey) instanceof String) {
-          values.put(rowKey, (String) row.get(rowKey));
-        }
+    // Put all column/value pairs into key/value map
+    Set<String> rowKeys = row.keySet();
+    for (String rowKey : rowKeys) {
+      // Only String types can be used in comparison
+      if (row.get(rowKey) instanceof String) {
+        values.put(rowKey, (String) row.get(rowKey));
       }
-      // Substitute any templated values in the template
-      String result = StringSubstitutor.replace(formatTemplate, values, "{", "}");
-      return result;
+    }
+    // Substitute any templated values in the template
+    String result = StringSubstitutor.replace(formatTemplate, values, "{", "}");
+    return result;
   }
 }

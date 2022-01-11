@@ -1,17 +1,17 @@
 /*
- * Copyright (C) 2019 Google Inc.
+ * Copyright (C) 2019 Google LLC
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.utils;
 
@@ -28,13 +28,14 @@ import org.slf4j.LoggerFactory;
 public class DatabaseMigrationUtilsTest {
 
   private static final Logger LOG = LoggerFactory.getLogger(DatabaseMigrationUtilsTest.class);
-  private String jsonString = "{"
-      + "\"text_column\":\"value\","
-      + "\"quoted_text_column\":\"Test Values: '!@#$%^\","
-      + "\"null_byte_text_column\":\"Test Values: He\\u0000s made\","
-      + "\"_metadata_schema\":\"MY_SCHEMA\","
-      + "\"_metadata_table\":\"MY_TABLE$NAME\""
-      + "}";
+  private String jsonString =
+      "{"
+          + "\"text_column\":\"value\","
+          + "\"quoted_text_column\":\"Test Values: '!@#$%^\","
+          + "\"null_byte_text_column\":\"Test Values: He\\u0000s made\","
+          + "\"_metadata_schema\":\"MY_SCHEMA\","
+          + "\"_metadata_table\":\"MY_TABLE$NAME\""
+          + "}";
 
   private JsonNode getRowObj() {
     ObjectMapper mapper = new ObjectMapper();
@@ -49,8 +50,8 @@ public class DatabaseMigrationUtilsTest {
 
   /**
    * Test whether {@link DatabaseMigrationUtils#getValueSql(rowObj, columnName, tableSchema)}
-   * converts data into correct strings.
-   String columnValue = getValueSql(rowObj, columnName, tableSchema);
+   * converts data into correct strings. String columnValue = getValueSql(rowObj, columnName,
+   * tableSchema);
    */
   @Test
   public void testGetValueSql() {
@@ -62,20 +63,20 @@ public class DatabaseMigrationUtilsTest {
 
     // Single quotes are escaped by 2 single quotes in SQL
     String expectedQuotedTextContent = "'Test Values: ''!@#$%^'";
-    String testQuotedSqlContent = DatabaseMigrationUtils.getValueSql(
-        rowObj, "quoted_text_column", null);
+    String testQuotedSqlContent =
+        DatabaseMigrationUtils.getValueSql(rowObj, "quoted_text_column", null);
     assertEquals(expectedQuotedTextContent, testQuotedSqlContent);
 
     // Null bytes are escaped with blanks values
     String expectedNullByteTextContent = "'Test Values: Hes made'";
-    String testNullByteSqlContent = DatabaseMigrationUtils.getValueSql(
-        rowObj, "null_byte_text_column", null);
+    String testNullByteSqlContent =
+        DatabaseMigrationUtils.getValueSql(rowObj, "null_byte_text_column", null);
     assertEquals(expectedNullByteTextContent, testNullByteSqlContent);
   }
 
   /**
-   * Test whether {@link DatabaseMigrationUtils#getPostgresSchemaName(rowObj)}
-   * converts the Oracle schema into the correct Postgres schema.
+   * Test whether {@link DatabaseMigrationUtils#getPostgresSchemaName(rowObj)} converts the Oracle
+   * schema into the correct Postgres schema.
    */
   @Test
   public void testGetPostgresSchemaName() {
@@ -87,8 +88,8 @@ public class DatabaseMigrationUtilsTest {
   }
 
   /**
-   * Test whether {@link DatabaseMigrationUtils#getPostgresTableName(rowObj)}
-   * converts the Oracle table into the correct Postgres table.
+   * Test whether {@link DatabaseMigrationUtils#getPostgresTableName(rowObj)} converts the Oracle
+   * table into the correct Postgres table.
    */
   @Test
   public void testGetPostgresTableName() {

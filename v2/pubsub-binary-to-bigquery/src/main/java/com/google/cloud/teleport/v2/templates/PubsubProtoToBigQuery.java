@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2021 Google Inc.
+ * Copyright (C) 2021 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.v2.templates;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -27,7 +26,6 @@ import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.transforms.FailsafeElementTransforms.ConvertFailsafeElementToPubsubMessage;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
-import com.google.cloud.teleport.v2.utils.SchemaUtils.ProtoDescriptorLocation;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
@@ -37,34 +35,31 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
-import org.apache.beam.sdk.extensions.protobuf.DynamicProtoCoder;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.Method;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO.Read;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
-import org.apache.beam.sdk.transforms.SimpleFunction;
-import org.apache.beam.sdk.util.CoderUtils;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.beam.sdk.values.TypeDescriptors;
-import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.ArrayUtils;
 
 /**
  * A template for writing <a href="https://developers.google.com/protocol-buffers">Protobuf</a>
  * records from Pub/Sub to BigQuery.
  *
- * <p>Persistent failures are written to a Pub/Sub dead-letter topic.
+ * <p>Persistent failures are written to a Pub/Sub unprocessed topic.
  */
 public final class PubsubProtoToBigQuery {
   private static final TupleTag<FailsafeElement<String, String>> UDF_SUCCESS_TAG = new TupleTag<>();
@@ -87,20 +82,19 @@ public final class PubsubProtoToBigQuery {
 
     void setProtoSchemaPath(String value);
 
-    @Description("The name of the .proto file used to generate the schema descriptor file.")
+    @Description("Full message name (i.e. package.name.MessageName) of the target Protobuf type.")
     @Required
-    String getProtoFileName();
+    String getFullMessageName();
 
-    void setProtoFileName(String value);
+    void setFullMessageName(String value);
 
-    @Description("The name of the message that defines the messages in the input Pub/Sub topic.")
-    @Required
-    String getMessageName();
+    @Description("True to preserve proto snake_case. False will convert fields to lowerCamelCase.")
+    @Default.Boolean(false)
+    Boolean getPreserveProtoFieldNames();
 
-    void setMessageName(String value);
+    void setPreserveProtoFieldNames(Boolean value);
 
     @Description("GCS path to JSON file that represents the BigQuery table schema.")
-    @Required
     String getBigQueryTableSchemaPath();
 
     void setBigQueryTableSchemaPath(String value);
@@ -115,23 +109,24 @@ public final class PubsubProtoToBigQuery {
 
     void setJavascriptTextTransformFunctionName(String javascriptTextTransformFunctionName);
 
-    @Description("Dead-letter topic for UDF failures")
-    String getUdfDeadLetterTopic();
+    @Description("Pub/Sub topic for UDF failures")
+    String getUdfOutputTopic();
 
-    void setUdfDeadLetterTopic(String udfDeadLetterTopic);
+    void setUdfOutputTopic(String udfOutputTopic);
   }
 
   /** Runs the pipeline and returns the results. */
   private static PipelineResult run(PubSubProtoToBigQueryOptions options) {
     Pipeline pipeline = Pipeline.create(options);
 
+    Descriptor descriptor = getDescriptor(options);
     PCollection<String> maybeForUdf =
         pipeline
-            .apply("Read From Pubsub", readPubsubMessages(options))
-            .apply("Dynamic Message to TableRow", new ConvertDynamicProtoMessageToJson());
+            .apply("Read From Pubsub", readPubsubMessages(options, descriptor))
+            .apply("Dynamic Message to TableRow", new ConvertDynamicProtoMessageToJson(options));
 
     runUdf(maybeForUdf, options)
-        .apply("Write to BigQuery", writeToBigQuery(options))
+        .apply("Write to BigQuery", writeToBigQuery(options, descriptor))
         .getFailedInsertsWithErr()
         .apply(
             "Create Error Payload",
@@ -144,51 +139,60 @@ public final class PubsubProtoToBigQuery {
     return pipeline.run();
   }
 
+  /** Gets the {@link Descriptor} for the message type in the Pub/Sub topic. */
   @VisibleForTesting
-  static Read<DynamicMessage> readPubsubMessages(PubSubProtoToBigQueryOptions options) {
-    Descriptor descriptor =
-        SchemaUtils.getProtoDescriptor(
-            ProtoDescriptorLocation.builder()
-                .setSchemaPath(options.getProtoSchemaPath())
-                .setProtoFileName(options.getProtoFileName())
-                .setMessageName(options.getMessageName())
-                .build());
+  static Descriptor getDescriptor(PubSubProtoToBigQueryOptions options) {
+    String schemaPath = options.getProtoSchemaPath();
+    String messageName = options.getFullMessageName();
+    Descriptor descriptor = SchemaUtils.getProtoDomain(schemaPath).getDescriptor(messageName);
 
-    DynamicProtoCoder coder = DynamicProtoCoder.of(descriptor);
+    if (descriptor == null) {
+      throw new IllegalArgumentException(
+          messageName + " is not a recognized message in " + schemaPath);
+    }
 
-    return PubsubIO.readMessagesWithCoderAndParseFn(coder, parseWithCoder(coder))
-        .fromSubscription(options.getInputSubscription());
+    return descriptor;
   }
 
-  @VisibleForTesting
-  static Write<String> writeToBigQuery(PubSubProtoToBigQueryOptions options) {
-    // Proto -> Beam schema -> BigQuery can cause errors for certain proto definitions (e.g. any
-    // with a oneof field). For that reason, we need a provided JSON schema for the BigQuery table.
-    String jsonSchema = SchemaUtils.getGcsFileAsString(options.getBigQueryTableSchemaPath());
-    return BigQueryConverters.<String>createWriteTransform(options)
-        .withJsonSchema(jsonSchema)
-        .withFormatFunction(BigQueryConverters::convertJsonToTableRow)
-        .withMethod(Method.STREAMING_INSERTS);
+  /** Returns the {@link PTransform} for reading Pub/Sub messages. */
+  private static Read<DynamicMessage> readPubsubMessages(
+      PubSubProtoToBigQueryOptions options, Descriptor descriptor) {
+    return PubsubIO.readProtoDynamicMessages(descriptor)
+        .fromSubscription(options.getInputSubscription())
+        .withDeadLetterTopic(options.getOutputTopic());
   }
 
-  /** Creates a {@link SimpleFunction} from {@code coder}. */
-  private static SimpleFunction<PubsubMessage, DynamicMessage> parseWithCoder(
-      DynamicProtoCoder coder) {
-    // TODO(zhoufek): Remove this once the reading messages with a descriptor is supported.
-    return SimpleFunction.fromSerializableFunctionWithOutputType(
-        (PubsubMessage message) -> {
-          try {
-            return CoderUtils.decodeFromByteArray(coder, message.getPayload());
-          } catch (CoderException e) {
-            throw new RuntimeException(e);
-          }
-        },
-        TypeDescriptor.of(DynamicMessage.class));
+  /**
+   * Writes messages to BigQuery, creating the table if necessary and allowed in {@code options}.
+   *
+   * <p>The BigQuery schema will be inferred from {@code descriptor} unless a JSON schema path is
+   * specified in {@code options}.
+   */
+  @VisibleForTesting
+  static Write<String> writeToBigQuery(
+      PubSubProtoToBigQueryOptions options, Descriptor descriptor) {
+    Write<String> write =
+        BigQueryConverters.<String>createWriteTransform(options)
+            .withFormatFunction(BigQueryConverters::convertJsonToTableRow)
+            .withMethod(Method.STREAMING_INSERTS);
+
+    String schemaPath = options.getBigQueryTableSchemaPath();
+    if (Strings.isNullOrEmpty(schemaPath)) {
+      return write.withSchema(
+          SchemaUtils.createBigQuerySchema(descriptor, options.getPreserveProtoFieldNames()));
+    } else {
+      return write.withJsonSchema(SchemaUtils.getGcsFileAsString(schemaPath));
+    }
   }
 
   /** {@link PTransform} that handles converting {@link PubsubMessage} values to JSON. */
   private static class ConvertDynamicProtoMessageToJson
       extends PTransform<PCollection<DynamicMessage>, PCollection<String>> {
+    private final boolean preserveProtoName;
+
+    private ConvertDynamicProtoMessageToJson(PubSubProtoToBigQueryOptions options) {
+      this.preserveProtoName = options.getPreserveProtoFieldNames();
+    }
 
     @Override
     public PCollection<String> expand(PCollection<DynamicMessage> input) {
@@ -198,7 +202,10 @@ public final class PubsubProtoToBigQuery {
               .via(
                   message -> {
                     try {
-                      return JsonFormat.printer().print(message);
+                      JsonFormat.Printer printer = JsonFormat.printer();
+                      return preserveProtoName
+                          ? printer.preservingProtoFieldNames().print(message)
+                          : printer.print(message);
                     } catch (InvalidProtocolBufferException e) {
                       throw new RuntimeException(e);
                     }
@@ -211,7 +218,7 @@ public final class PubsubProtoToBigQuery {
    *
    * <p>If {@code options} is configured so as not to run the UDF, then the UDF will not be called.
    *
-   * <p>This may add a branch to the pipeline for outputting failed UDF records to a dead-letter
+   * <p>This may add a branch to the pipeline for outputting failed UDF records to an unprocessed
    * topic.
    *
    * @param jsonCollection {@link PCollection} of JSON strings for use as input to the UDF
@@ -247,7 +254,7 @@ public final class PubsubProtoToBigQuery {
                 .setOriginalPayloadSerializeFn(s -> ArrayUtils.toObject(s.getBytes(UTF_8)))
                 .setErrorMessageAttributeKey("udfErrorMessage")
                 .build())
-        .apply("Write Failed UDF", writeUdfToDeadLetter(options));
+        .apply("Write Failed UDF", writeUdfFailures(options));
 
     return maybeSuccess
         .get(UDF_SUCCESS_TAG)
@@ -288,14 +295,14 @@ public final class PubsubProtoToBigQuery {
   }
 
   /**
-   * Returns a {@link PubsubIO.Write} configured to write UDF failures to the appropriate
-   * dead-letter topic.
+   * Returns a {@link PubsubIO.Write} configured to write UDF failures to the appropriate output
+   * topic.
    */
-  private static PubsubIO.Write<PubsubMessage> writeUdfToDeadLetter(
+  private static PubsubIO.Write<PubsubMessage> writeUdfFailures(
       PubSubProtoToBigQueryOptions options) {
     PubsubIO.Write<PubsubMessage> write = PubsubIO.writeMessages();
-    return Strings.isNullOrEmpty(options.getUdfDeadLetterTopic())
+    return Strings.isNullOrEmpty(options.getUdfOutputTopic())
         ? write.to(options.getOutputTopic())
-        : write.to(options.getUdfDeadLetterTopic());
+        : write.to(options.getUdfOutputTopic());
   }
 }

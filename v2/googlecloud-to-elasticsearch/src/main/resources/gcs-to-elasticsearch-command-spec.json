@@ -1,0 +1,8 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.elasticsearch.templates.GCSToElasticsearch",
+  "classPath": "/template/gcs-to-elasticsearch/*:/template/gcs-to-elasticsearch/libs/*:/template/gcs-to-elasticsearch/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"gcs_to_elasticsearch\"}"
+  }
+}
+

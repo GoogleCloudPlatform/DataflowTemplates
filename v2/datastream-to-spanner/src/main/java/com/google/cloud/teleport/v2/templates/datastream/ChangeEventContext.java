@@ -1,34 +1,38 @@
 /*
- *     Copyright 2021 Google LLC
+ * Copyright (C) 2021 Google LLC
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.templates.datastream;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
 import java.util.Arrays;
-import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * ChangeEventContext class converts change events to Cloud Spanner mutations and
- * stores all intermediatory objects prior to applying them to Cloud Spanner.
+ * ChangeEventContext class converts change events to Cloud Spanner mutations and stores all
+ * intermediatory objects prior to applying them to Cloud Spanner.
  */
 public abstract class ChangeEventContext {
 
-  // The change event from Datastream.
-  protected JSONObject changeEvent;
+  private static final Logger LOG = LoggerFactory.getLogger(ChangeEventContext.class);
+
+  // The JsonNode representation of the change event.
+  protected JsonNode changeEvent;
 
   // Cloud Spanner mutation for the change event.
   protected Mutation dataMutation;
@@ -56,15 +60,12 @@ public abstract class ChangeEventContext {
   protected void convertChangeEventToMutation(Ddl ddl)
       throws ChangeEventConvertorException, InvalidChangeEventException {
     ChangeEventConvertor.convertChangeEventColumnKeysToLowerCase(changeEvent);
-    this.primaryKey =
-        ChangeEventConvertor.changeEventToPrimaryKey(ddl, changeEvent);
-    this.dataMutation =
-        ChangeEventConvertor.changeEventToMutation(ddl, changeEvent);
+    this.primaryKey = ChangeEventConvertor.changeEventToPrimaryKey(ddl, changeEvent);
+    this.dataMutation = ChangeEventConvertor.changeEventToMutation(ddl, changeEvent);
     this.shadowTableMutation = generateShadowTableMutation(ddl);
   }
 
-  // Getter method for change event.
-  public JSONObject getChangeEvent() {
+  public JsonNode getChangeEvent() {
     return changeEvent;
   }
 
@@ -82,9 +83,9 @@ public abstract class ChangeEventContext {
   public Mutation getShadowTableMutation() {
     return shadowTableMutation;
   }
+
   // Getter method for the shadow table.
   public String getShadowTable() {
     return shadowTable;
   }
 }
-

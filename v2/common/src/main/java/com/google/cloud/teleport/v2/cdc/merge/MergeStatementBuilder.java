@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.v2.cdc.merge;
 
 import java.io.Serializable;
@@ -24,9 +23,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.commons.text.StringSubstitutor;
 
-/**
- * Class {@link MergeStatementBuilder}.
- */
+/** Class {@link MergeStatementBuilder}. */
 public class MergeStatementBuilder implements Serializable {
 
   public static final String STAGING_TABLE_NAME = "staging";
@@ -54,24 +51,27 @@ public class MergeStatementBuilder implements Serializable {
     mergeQueryValues.put("deleteColumn", deletedFieldName);
 
     mergeQueryValues.put(
-      "stagingViewSql",
-      buildLatestViewOfStagingTable(
-          stagingTable, allFields, primaryKeyFields,
-          orderByFields, deletedFieldName,
-          configuration.partitionRetention()));
+        "stagingViewSql",
+        buildLatestViewOfStagingTable(
+            stagingTable,
+            allFields,
+            primaryKeyFields,
+            orderByFields,
+            deletedFieldName,
+            configuration.partitionRetention()));
 
-    mergeQueryValues.put("joinCondition",
+    mergeQueryValues.put(
+        "joinCondition",
         buildJoinConditions(primaryKeyFields, REPLICA_TABLE_NAME, STAGING_TABLE_NAME));
-    mergeQueryValues.put("timestampCompareSql",
-        buildTimestampCheck(getPrimarySortField(orderByFields)));
-    mergeQueryValues.put("mergeUpdateSql",
-        buildUpdateStatement(allFields, configuration.quoteCharacter()));
-    mergeQueryValues.put("mergeInsertSql",
-        buildInsertStatement(allFields, configuration.quoteCharacter()));
+    mergeQueryValues.put(
+        "timestampCompareSql", buildTimestampCheck(getPrimarySortField(orderByFields)));
+    mergeQueryValues.put(
+        "mergeUpdateSql", buildUpdateStatement(allFields, configuration.quoteCharacter()));
+    mergeQueryValues.put(
+        "mergeInsertSql", buildInsertStatement(allFields, configuration.quoteCharacter()));
 
-    String mergeStatement = StringSubstitutor.replace(
-        configuration.mergeQueryTemplate(),
-        mergeQueryValues, "{", "}");
+    String mergeStatement =
+        StringSubstitutor.replace(configuration.mergeQueryTemplate(), mergeQueryValues, "{", "}");
     return mergeStatement;
   }
 
@@ -80,18 +80,23 @@ public class MergeStatementBuilder implements Serializable {
   }
 
   static String buildTimestampCheck(String timestampField) {
-    return String.format("%s.%s <= %s.%s",
-        REPLICA_TABLE_NAME, timestampField, STAGING_TABLE_NAME, timestampField);
+    return String.format(
+        "%s.%s <= %s.%s", REPLICA_TABLE_NAME, timestampField, STAGING_TABLE_NAME, timestampField);
   }
 
   public static final String LATEST_FROM_STAGING_TEMPLATE = "SELECT %s FROM (%s) WHERE row_num=1";
 
   private String buildLatestViewOfStagingTable(
-      String stagingTable, List<String> allFields, List<String> primaryKeyFields,
-      List<String> orderByFields, String deletedFieldName, Integer daysOfRetention) {
+      String stagingTable,
+      List<String> allFields,
+      List<String> primaryKeyFields,
+      List<String> orderByFields,
+      String deletedFieldName,
+      Integer daysOfRetention) {
     String commaSeparatedFields = joinStringFields(",", allFields, "`");
 
-    return String.format(LATEST_FROM_STAGING_TEMPLATE,
+    return String.format(
+        LATEST_FROM_STAGING_TEMPLATE,
         commaSeparatedFields,
         buildPartitionedByPKAndSorted(
             stagingTable, allFields, primaryKeyFields, orderByFields, deletedFieldName));
@@ -106,24 +111,30 @@ public class MergeStatementBuilder implements Serializable {
     return String.join(delimiter, quotedFields);
   }
 
-  public static final String PARTITION_BY_PK_AND_SORT_TEMPLATE = String.join("",
-      "SELECT %s, ROW_NUMBER() OVER (",
-      "PARTITION BY %s ",
-      "ORDER BY %s%s) as row_num ",
-      "FROM `%s` %s");
+  public static final String PARTITION_BY_PK_AND_SORT_TEMPLATE =
+      String.join(
+          "",
+          "SELECT %s, ROW_NUMBER() OVER (",
+          "PARTITION BY %s ",
+          "ORDER BY %s%s) as row_num ",
+          "FROM `%s` %s");
 
   private String buildPartitionedByPKAndSorted(
-      String stagingTable, List<String> allFields,
-      List<String> primaryKeyFields, List<String> orderByFields,
+      String stagingTable,
+      List<String> allFields,
+      List<String> primaryKeyFields,
+      List<String> orderByFields,
       String deletedFieldName) {
     String commaSeparatedFields = joinStringFields(",", allFields, configuration.quoteCharacter());
     String commaSeparatedPKFields = String.join(", ", primaryKeyFields);
-    return String.format(PARTITION_BY_PK_AND_SORT_TEMPLATE,
+    return String.format(
+        PARTITION_BY_PK_AND_SORT_TEMPLATE,
         commaSeparatedFields,
         commaSeparatedPKFields,
         buildOrderByFieldsSql(orderByFields),
         buildDeletedFieldSql(deletedFieldName),
-        stagingTable, buildRetentionWhereClause());
+        stagingTable,
+        buildRetentionWhereClause(deletedFieldName));
   }
 
   private String buildOrderByFieldsSql(List<String> orderByFields) {
@@ -144,15 +155,33 @@ public class MergeStatementBuilder implements Serializable {
     return String.format(", %s ASC", deletedFieldName);
   }
 
+  // The logic is overly complex to help ensure the BigQuery query plan correctly
+  // uses the _PARTITIONTIME field.
+  // Use of Coalesce retrieves data in the buffer (null time) as now. This does not affect
+  // the query plan.
+  // WHERE (AFTER_YESTERDAY) AND (AFTER_TODAY OR (AFTER_YESTERDAY AND IS_DELETED))
+  // The first block pre-filters all the data we might need ie (IN_BUFFER OR AFTER_YESTERDAY)
+  // The second block re-filters that data for all recent changes or older deletes.
+  // This ensures out of order deletes are not mishandled.
   public static final String RETENTION_WHERE_TEMPLATE =
       String.join(
           "",
-          "WHERE _PARTITIONTIME >= TIMESTAMP(DATE_ADD(CURRENT_DATE(), INTERVAL -%s DAY)) ",
-          "OR _PARTITIONTIME IS NULL");
+          "WHERE ",
+          "COALESCE(_PARTITIONTIME, CURRENT_TIMESTAMP()) >= ",
+          "TIMESTAMP(DATE_ADD(CURRENT_DATE(), INTERVAL -%s DAY)) ",
+          "AND (COALESCE(_PARTITIONTIME, CURRENT_TIMESTAMP()) >= ",
+          "TIMESTAMP(DATE_ADD(CURRENT_DATE(), INTERVAL -%s DAY))",
+          "    OR (_PARTITIONTIME >= TIMESTAMP(DATE_ADD(CURRENT_DATE(), INTERVAL -%s DAY))",
+          "        AND %s))");
 
-  String buildRetentionWhereClause() {
+  String buildRetentionWhereClause(String deletedFieldName) {
     if (configuration.supportPartitionedTables()) {
-      return String.format(RETENTION_WHERE_TEMPLATE, configuration.partitionRetention());
+      return String.format(
+          RETENTION_WHERE_TEMPLATE,
+          configuration.partitionRetention() + 1,
+          configuration.partitionRetention(),
+          configuration.partitionRetention() + 1,
+          deletedFieldName);
     } else {
       return "";
     }
@@ -160,32 +189,36 @@ public class MergeStatementBuilder implements Serializable {
 
   static String buildJoinConditions(
       List<String> primaryKeyFields, final String leftTableName, final String rightTableName) {
-    List<String> equalityConditions = primaryKeyFields.stream()
-        .map(col -> String.format("%s.%s = %s.%s", leftTableName, col, rightTableName, col))
-        .collect(Collectors.toList());
+    List<String> equalityConditions =
+        primaryKeyFields.stream()
+            .map(col -> String.format("%s.%s = %s.%s", leftTableName, col, rightTableName, col))
+            .collect(Collectors.toList());
     return String.join(" AND ", equalityConditions);
   }
 
   static final String UPDATE_STATEMENT = "UPDATE SET %s";
 
   static String buildUpdateStatement(List<String> allFields, String quoteChar) {
-    List<String> assignmentStatements = allFields.stream()
-        .map(column -> String.format("%s%s%s = %s.%s",
-                 quoteChar, column, quoteChar,
-                 STAGING_TABLE_NAME, column))
-        .collect(Collectors.toList());
+    List<String> assignmentStatements =
+        allFields.stream()
+            .map(
+                column ->
+                    String.format(
+                        "%s%s%s = %s.%s", quoteChar, column, quoteChar, STAGING_TABLE_NAME, column))
+            .collect(Collectors.toList());
 
-    return String.format(UPDATE_STATEMENT,
-        String.join(", ", assignmentStatements));
+    return String.format(UPDATE_STATEMENT, String.join(", ", assignmentStatements));
   }
 
   static final String INSERT_STATEMENT = "INSERT(%s) VALUES (%s)";
 
   static String buildInsertStatement(List<String> allFields, String quoteChar) {
-    List<String> changelogPrefixedFields = allFields.stream()
-        .map(f -> String.format("%s.%s", STAGING_TABLE_NAME, f))
-        .collect(Collectors.toList());
-    return String.format(INSERT_STATEMENT,
+    List<String> changelogPrefixedFields =
+        allFields.stream()
+            .map(f -> String.format("%s.%s", STAGING_TABLE_NAME, f))
+            .collect(Collectors.toList());
+    return String.format(
+        INSERT_STATEMENT,
         String.join(", ", joinStringFields(",", allFields, quoteChar)),
         String.join(", ", changelogPrefixedFields));
   }

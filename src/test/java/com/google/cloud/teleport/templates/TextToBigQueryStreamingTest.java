@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2020 Google Inc.
+ * Copyright (C) 2020 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -24,16 +24,14 @@ import com.google.api.services.bigquery.model.TableReference;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.values.FailsafeElement;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
-import org.apache.beam.vendor.grpc.v1p26p0.com.google.gson.Gson;
+import org.apache.beam.vendor.grpc.v1p36p0.com.google.gson.Gson;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/**
- * Test class for {@link TextToBigQueryStreaming}.
- */
+/** Test class for {@link TextToBigQueryStreaming}. */
 @RunWith(JUnit4.class)
 public class TextToBigQueryStreamingTest {
 
@@ -54,10 +52,7 @@ public class TextToBigQueryStreamingTest {
 
   @Test
   public void wrapBigQueryInsertErrorReturnsValidJSON() {
-    TableRow testRow =
-        new TableRow()
-            .set(NAME_KEY, testPerson.name)
-            .set(AGE_KEY, testPerson.age);
+    TableRow testRow = new TableRow().set(NAME_KEY, testPerson.name).set(AGE_KEY, testPerson.age);
     InsertErrors insertErrors = new TableDataInsertAllResponse.InsertErrors();
     ErrorProto errorProto = new ErrorProto().setMessage(ERROR_MESSAGE);
     insertErrors.setErrors(ImmutableList.of(errorProto));

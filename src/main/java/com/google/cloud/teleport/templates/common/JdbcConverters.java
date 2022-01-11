@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.templates.common;
 
 import com.google.api.services.bigquery.model.TableRow;
@@ -86,10 +85,20 @@ public class JdbcConverters {
     void setBigQueryLoadingTemporaryDirectory(ValueProvider<String> directory);
 
     @Description(
-        "KMS Encryption Key should be in the format projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}")
+        "KMS Encryption Key should be in the format"
+            + " projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}")
     ValueProvider<String> getKMSEncryptionKey();
 
     void setKMSEncryptionKey(ValueProvider<String> keyName);
+
+    @Description(
+        "Comma seperated algorithms to disable. If this value is set to \"none\" then"
+            + " jdk.tls.disabledAlgorithms is set to \"\". Use with care, as the algorithms"
+            + " disabled by default are known to have either vulnerabilities or performance issues."
+            + " for example: SSLv3, RC4.")
+    ValueProvider<String> getDisabledAlgorithms();
+
+    void setDisabledAlgorithms(ValueProvider<String> disabledAlgorithms);
   }
 
   /** Factory method for {@link ResultSetToTableRow}. */
@@ -103,9 +112,10 @@ public class JdbcConverters {
   private static class ResultSetToTableRow implements JdbcIO.RowMapper<TableRow> {
 
     static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
-    static DateTimeFormatter datetimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss.SSSSSS");
-    static SimpleDateFormat timestampFormatter = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss.SSSSSSXXX");
-
+    static DateTimeFormatter datetimeFormatter =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss.SSSSSS");
+    static SimpleDateFormat timestampFormatter =
+        new SimpleDateFormat("yyyy-MM-dd hh:mm:ss.SSSSSSXXX");
 
     @Override
     public TableRow mapRow(ResultSet resultSet) throws Exception {
@@ -129,13 +139,17 @@ public class JdbcConverters {
          */
         switch (metaData.getColumnTypeName(i).toLowerCase()) {
           case "date":
-            outputTableRow.set(metaData.getColumnName(i), dateFormatter.format(resultSet.getObject(i)));
+            outputTableRow.set(
+                metaData.getColumnName(i), dateFormatter.format(resultSet.getObject(i)));
             break;
           case "datetime":
-            outputTableRow.set(metaData.getColumnName(i), datetimeFormatter.format((TemporalAccessor) resultSet.getObject(i)));
+            outputTableRow.set(
+                metaData.getColumnName(i),
+                datetimeFormatter.format((TemporalAccessor) resultSet.getObject(i)));
             break;
           case "timestamp":
-            outputTableRow.set(metaData.getColumnName(i), timestampFormatter.format(resultSet.getObject(i)));
+            outputTableRow.set(
+                metaData.getColumnName(i), timestampFormatter.format(resultSet.getObject(i)));
             break;
           default:
             outputTableRow.set(metaData.getColumnName(i), resultSet.getObject(i));

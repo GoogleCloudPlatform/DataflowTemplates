@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2018 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.google.cloud.teleport.spanner;
 
 import static com.google.cloud.teleport.spanner.AvroUtil.unpackNullable;
@@ -23,6 +22,7 @@ import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.cloud.teleport.spanner.ddl.View;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import java.util.Collection;
@@ -39,7 +39,24 @@ public class AvroSchemaToDdlConverter {
   public Ddl toDdl(Collection<Schema> avroSchemas) {
     Ddl.Builder builder = Ddl.builder();
     for (Schema schema : avroSchemas) {
-      builder.addTable(toTable(null, schema));
+      if (schema.getProp("spannerViewQuery") == null) {
+        builder.addTable(toTable(null, schema));
+      } else {
+        builder.addView(toView(null, schema));
+      }
+    }
+    return builder.build();
+  }
+
+  public View toView(String viewName, Schema schema) {
+    if (viewName == null) {
+      viewName = schema.getName();
+    }
+    LOG.debug("Converting to Ddl viewName {}", viewName);
+
+    View.Builder builder = View.builder().name(viewName).query(schema.getProp("spannerViewQuery"));
+    if (schema.getProp("spannerViewSecurity") != null) {
+      builder.security(View.SqlSecurity.valueOf(schema.getProp("spannerViewSecurity")));
     }
     return builder.build();
   }
