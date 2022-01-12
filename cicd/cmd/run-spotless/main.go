@@ -22,8 +22,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/op"
-	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/repo"
+	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/op"
+	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/repo"
 )
 
 const (
