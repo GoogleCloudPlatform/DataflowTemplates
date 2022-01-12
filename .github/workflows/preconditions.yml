@@ -44,4 +44,6 @@ jobs:
         with:
           separator: ','
       - name: Run Spotless
-        run: go run ./cicd/cmd/run-spotless --changed-files="${{ steps.changed-files.outputs.all_changed_files }}"
+        run: |
+          go build ./cicd/cmd/run-spotless
+          ./run-spotless --changed-files="${{ steps.changed-files.outputs.all_changed_files }}"
