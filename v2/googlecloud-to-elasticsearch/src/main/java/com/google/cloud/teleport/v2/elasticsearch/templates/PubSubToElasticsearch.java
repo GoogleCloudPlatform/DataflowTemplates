@@ -158,12 +158,9 @@ public class PubSubToElasticsearch {
      * Step 3b: Write elements that failed processing to error output PubSub topic via {@link PubSubIO}.
      */
     convertedPubsubMessages
-            .get(TRANSFORM_ERROROUTPUT_OUT)
-            .apply(ParDo.of(new FailedPubsubMessageToPubsubTopicFn()))
-            .apply(
-                    "writeFailureMessages",
-                    PubsubIO.writeMessages().to(options.getErrorOutputTopic()));
-
+        .get(TRANSFORM_ERROROUTPUT_OUT)
+        .apply(ParDo.of(new FailedPubsubMessageToPubsubTopicFn()))
+        .apply("writeFailureMessages", PubsubIO.writeMessages().to(options.getErrorOutputTopic()));
 
     // Execute the pipeline and return the result.
     return pipeline.run();

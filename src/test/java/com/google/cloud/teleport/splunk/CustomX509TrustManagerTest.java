@@ -56,25 +56,24 @@ public final class CustomX509TrustManagerTest {
                 .getResource("PubsubToSplunkTestData/UnrecognizedSelfSignedCertificate.crt")
                 .getFile());
     rootCa = (X509Certificate) cf.generateCertificate(rootCaInputStream);
-    recognizedSelfSignedCertificate = (X509Certificate)
-        cf.generateCertificate(recognizedInputStream);
-    unrecognizedSelfSignedCertificate = (X509Certificate)
-        cf.generateCertificate(unrecognizedInputStream);
+    recognizedSelfSignedCertificate =
+        (X509Certificate) cf.generateCertificate(recognizedInputStream);
+    unrecognizedSelfSignedCertificate =
+        (X509Certificate) cf.generateCertificate(unrecognizedInputStream);
 
     customTrustManager = new CustomX509TrustManager(rootCa);
   }
 
   /**
-   * Tests whether a recognized (user provided) self-signed certificate
-   *  is accepted by TrustManager.
-   * */
+   * Tests whether a recognized (user provided) self-signed certificate is accepted by TrustManager.
+   */
   @Test
   public void testCustomX509TrustManagerWithRecognizedCertificate() throws CertificateException {
     customTrustManager.checkServerTrusted(
         new X509Certificate[] {recognizedSelfSignedCertificate}, "RSA");
   }
 
-  /** Tests whether a unrecognized self-signed certificate is rejected by TrustManager.*/
+  /** Tests whether a unrecognized self-signed certificate is rejected by TrustManager. */
   @Test(expected = Exception.class)
   public void testCustomX509TrustManagerWithUnrecognizedCertificate() throws CertificateException {
     customTrustManager.checkServerTrusted(

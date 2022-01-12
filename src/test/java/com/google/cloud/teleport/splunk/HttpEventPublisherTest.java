@@ -163,8 +163,9 @@ public class HttpEventPublisherTest {
   }
 
   @Test
-  public void configureBackOffDefaultTest() throws NoSuchAlgorithmException,
-      KeyStoreException, KeyManagementException, IOException, CertificateException {
+  public void configureBackOffDefaultTest()
+      throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException, IOException,
+          CertificateException {
 
     HttpEventPublisher publisherDefaultBackOff =
         HttpEventPublisher.newBuilder()
@@ -179,8 +180,9 @@ public class HttpEventPublisherTest {
   }
 
   @Test
-  public void configureBackOffCustomTest() throws NoSuchAlgorithmException,
-      KeyStoreException, KeyManagementException, IOException, CertificateException {
+  public void configureBackOffCustomTest()
+      throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException, IOException,
+          CertificateException {
 
     int timeoutInMillis = 600000; // 10 minutes
     HttpEventPublisher publisherWithBackOff =

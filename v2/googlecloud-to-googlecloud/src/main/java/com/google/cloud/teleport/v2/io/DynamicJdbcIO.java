@@ -326,7 +326,7 @@ public class DynamicJdbcIO {
     public DataSource buildDatasource() {
       BasicDataSource basicDataSource = new BasicDataSource();
       if (getDriverClassName() == null) {
-          throw new RuntimeException("Driver class name is required.");
+        throw new RuntimeException("Driver class name is required.");
       } else {
         basicDataSource.setDriverClassName(getDriverClassName());
       }

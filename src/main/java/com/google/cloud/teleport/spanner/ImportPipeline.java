@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.spanner;
 
+import com.google.cloud.spanner.Options.RpcPriority;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -63,10 +64,10 @@ public class ImportPipeline {
     void setWaitForIndexes(ValueProvider<Boolean> value);
 
     @Description(
-        "By default the import pipeline is not blocked on foreign key creation, and it "
-            + "may complete with foreign keys still being created in the background. In testing, it may "
-            + "be useful to set this option to false so that the pipeline waits until foreign keys are "
-            + "finished.")
+        "By default the import pipeline is not blocked on foreign key creation, and it may complete"
+            + " with foreign keys still being created in the background. In testing, it may be"
+            + " useful to set this option to false so that the pipeline waits until foreign keys"
+            + " are finished.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getWaitForForeignKeys();
 
@@ -97,6 +98,11 @@ public class ImportPipeline {
     ValueProvider<Integer> getDDLCreationTimeoutInMinutes();
 
     void setDDLCreationTimeoutInMinutes(ValueProvider<Integer> value);
+
+    @Description("The spanner priority. --spannerPriority must be one of:[HIGH,MEDIUM,LOW]")
+    ValueProvider<RpcPriority> getSpannerPriority();
+
+    void setSpannerPriority(ValueProvider<RpcPriority> value);
   }
 
   public static void main(String[] args) {
@@ -110,7 +116,8 @@ public class ImportPipeline {
             .withProjectId(options.getSpannerProjectId())
             .withHost(options.getSpannerHost())
             .withInstanceId(options.getInstanceId())
-            .withDatabaseId(options.getDatabaseId());
+            .withDatabaseId(options.getDatabaseId())
+            .withRpcPriority(options.getSpannerPriority());
 
     p.apply(
         new ImportTransform(

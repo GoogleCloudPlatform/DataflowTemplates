@@ -37,6 +37,7 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <apache-http-client-v2>1.39.2</apache-http-client-v2>
+    <autovalue.service.version>1.0-rc6</autovalue.service.version>
     <avro.version>1.8.2</avro.version>
     <checkstyle.version>8.7</checkstyle.version>
     <beam.version>2.34.0</beam.version>
@@ -226,6 +227,11 @@
         </exclusion>
       </exclusions>
     </dependency>
+    <dependency>
+      <groupId>com.google.auto.service</groupId>
+      <artifactId>auto-service</artifactId>
+      <version>${autovalue.service.version}</version>
+    </dependency>
 
     <!-- Dependencies needed for Splunk -->
     <dependency>
@@ -411,6 +417,11 @@
     </dependency>
 
     <dependency>
+      <groupId>com.fasterxml.jackson.datatype</groupId>
+      <artifactId>jackson-datatype-jsr310</artifactId>
+      <version>2.9.9</version>
+    </dependency>
+    <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-text</artifactId>
       <version>${commons-text.version}</version>
@@ -492,6 +503,17 @@
       <groupId>org.tensorflow</groupId>
       <artifactId>proto</artifactId>
       <version>${tensorflow.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.datatype</groupId>
+      <artifactId>jackson-datatype-jsr310</artifactId>
+      <version>2.12.3</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-extensions-json-jackson</artifactId>
+      <version>2.10.0</version>
+      <scope>compile</scope>
     </dependency>
   </dependencies>
 
@@ -823,6 +845,7 @@
                   <excludes>
                     <exclude>com.google.guava:guava-jdk5</exclude>
                     <exclude>com.google.protobuf:protobuf-lite</exclude>
+                    <exclude>org.apache.logging.log4j:*:[2.0,2.14.1]</exclude>
                   </excludes>
                 </bannedDependencies>
               </rules>

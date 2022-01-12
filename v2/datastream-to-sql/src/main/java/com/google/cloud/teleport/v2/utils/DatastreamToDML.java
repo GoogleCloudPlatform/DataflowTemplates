@@ -214,8 +214,8 @@ public abstract class DatastreamToDML
 
       List<String> primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
       List<String> orderByFields = row.getSortFields();
-      List<String> primaryKeyValues = getFieldValues(rowObj, primaryKeys);
-      List<String> orderByValues = getFieldValues(rowObj, orderByFields);
+      List<String> primaryKeyValues = getFieldValues(rowObj, primaryKeys, tableSchema);
+      List<String> orderByValues = getFieldValues(rowObj, orderByFields, tableSchema);
 
       String dmlSqlTemplate = getDmlTemplate(rowObj, primaryKeys);
       Map<String, String> sqlTemplateValues =
@@ -278,8 +278,7 @@ public abstract class DatastreamToDML
     return sqlTemplateValues;
   }
 
-  public static String getValueSql(
-      JsonNode rowObj, String columnName, Map<String, String> tableSchema) {
+  public String getValueSql(JsonNode rowObj, String columnName, Map<String, String> tableSchema) {
     String columnValue;
 
     JsonNode columnObj = rowObj.get(columnName);
@@ -287,14 +286,22 @@ public abstract class DatastreamToDML
       LOG.warn("Missing Required Value: {} in {}", columnName, rowObj.toString());
       return "";
     }
-
     if (columnObj.isTextual()) {
       columnValue = "\'" + cleanSql(columnObj.getTextValue()) + "\'";
     } else {
       columnValue = columnObj.toString();
     }
 
+    return cleanDataTypeValueSql(columnValue, columnName, tableSchema);
+  }
+
+  public String cleanDataTypeValueSql(
+      String columnValue, String columnName, Map<String, String> tableSchema) {
     return columnValue;
+  }
+
+  public String getNullValueSql() {
+    return "NULL";
   }
 
   public static String cleanSql(String str) {
@@ -310,11 +317,12 @@ public abstract class DatastreamToDML
     return StringUtils.replace(str, "'", "''");
   }
 
-  public List<String> getFieldValues(JsonNode rowObj, List<String> fieldNames) {
+  public List<String> getFieldValues(
+      JsonNode rowObj, List<String> fieldNames, Map<String, String> tableSchema) {
     List<String> fieldValues = new ArrayList<String>();
 
     for (String fieldName : fieldNames) {
-      fieldValues.add(getValueSql(rowObj, fieldName, null));
+      fieldValues.add(getValueSql(rowObj, fieldName, tableSchema));
     }
 
     return fieldValues;
@@ -538,7 +546,8 @@ public abstract class DatastreamToDML
         if (retriesRemaining > 0) {
           int sleepSecs = (MAX_RETRIES - retriesRemaining + 1) * 10;
           LOG.info(
-              "SQLException, will retry after {} seconds: Failed to Retrieve Primary Key: {}.{} : {}",
+              "SQLException, will retry after {} seconds: Failed to Retrieve Primary Key: {}.{} :"
+                  + " {}",
               sleepSecs,
               schemaName,
               tableName,

@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.spanner;
 
+import com.google.cloud.spanner.Options.RpcPriority;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -163,6 +164,16 @@ public class TextImportPipeline {
     boolean getWaitUntilFinish();
 
     void setWaitUntilFinish(boolean value);
+
+    @Description("GCP Project Id of where the Spanner table lives.")
+    ValueProvider<String> getSpannerProjectId();
+
+    void setSpannerProjectId(ValueProvider<String> value);
+
+    @Description("The spanner priority. --spannerPriority must be one of:[HIGH,MEDIUM,LOW]")
+    ValueProvider<RpcPriority> getSpannerPriority();
+
+    void setSpannerPriority(ValueProvider<RpcPriority> value);
   }
 
   public static void main(String[] args) {
@@ -173,9 +184,11 @@ public class TextImportPipeline {
 
     SpannerConfig spannerConfig =
         SpannerConfig.create()
+            .withProjectId(options.getSpannerProjectId())
             .withHost(options.getSpannerHost())
             .withInstanceId(options.getInstanceId())
-            .withDatabaseId(options.getDatabaseId());
+            .withDatabaseId(options.getDatabaseId())
+            .withRpcPriority(options.getSpannerPriority());
 
     p.apply(new TextImportTransform(spannerConfig, options.getImportManifest()));
 

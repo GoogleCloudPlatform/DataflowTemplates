@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.utils;
 
 import com.google.cloud.teleport.v2.io.CdcJdbcIO.DataSourceConfiguration;
 import com.google.cloud.teleport.v2.values.DatastreamRow;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,5 +72,22 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
   public String getTargetTableName(DatastreamRow row) {
     String tableName = row.getTableName();
     return cleanTableName(tableName);
+  }
+
+  @Override
+  public String cleanDataTypeValueSql(
+      String columnValue, String columnName, Map<String, String> tableSchema) {
+    String dataType = tableSchema.get(columnName);
+    if (dataType == null) {
+      return columnValue;
+    }
+    switch (dataType.toUpperCase()) {
+      case "DECIMAL":
+        if (columnValue.equals("")) {
+          return getNullValueSql();
+        }
+        break;
+    }
+    return columnValue;
   }
 }

@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.spanner;
 
 import static com.google.cloud.teleport.spanner.SpannerTableFilter.getFilteredTables;
+import static com.google.cloud.teleport.util.ValueProviderUtils.eitherOrValueProvider;
 
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TimestampBound;
@@ -127,6 +128,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
   private final ValueProvider<String> tableNames;
   private final ValueProvider<Boolean> exportRelatedTables;
   private final ValueProvider<Boolean> shouldExportTimestampAsLogicalType;
+  private final ValueProvider<String> avroTempDirectory;
 
   public ExportTransform(
       SpannerConfig spannerConfig,
@@ -139,7 +141,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
         /*snapshotTime=*/ ValueProvider.StaticValueProvider.of(""),
         /*tableNames=*/ ValueProvider.StaticValueProvider.of(""),
         /*exportRelatedTables=*/ ValueProvider.StaticValueProvider.of(false),
-        /*shouldExportTimestampAsLogicalType=*/ ValueProvider.StaticValueProvider.of(false));
+        /*shouldExportTimestampAsLogicalType=*/ ValueProvider.StaticValueProvider.of(false),
+        outputDir);
   }
 
   public ExportTransform(
@@ -149,7 +152,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
       ValueProvider<String> snapshotTime,
       ValueProvider<String> tableNames,
       ValueProvider<Boolean> exportRelatedTables,
-      ValueProvider<Boolean> shouldExportTimestampAsLogicalType) {
+      ValueProvider<Boolean> shouldExportTimestampAsLogicalType,
+      ValueProvider<String> avroTempDirectory) {
     this.spannerConfig = spannerConfig;
     this.outputDir = outputDir;
     this.testJobId = testJobId;
@@ -157,6 +161,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     this.tableNames = tableNames;
     this.exportRelatedTables = exportRelatedTables;
     this.shouldExportTimestampAsLogicalType = shouldExportTimestampAsLogicalType;
+    this.avroTempDirectory = avroTempDirectory;
   }
 
   /**
@@ -347,12 +352,17 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
             outputDir,
             (SerializableFunction<String, ResourceId>) s -> FileSystems.matchNewResource(s, true));
 
+    ValueProvider<ResourceId> tempResource =
+        ValueProvider.NestedValueProvider.of(
+            eitherOrValueProvider(avroTempDirectory, outputDir),
+            (SerializableFunction<String, ResourceId>) s -> FileSystems.matchNewResource(s, true));
+
     WriteFilesResult<String> fileWriteResults =
         rows.apply(
             "Store Avro files",
             AvroIO.<Struct>writeCustomTypeToGenericRecords()
                 .to(new SchemaBasedDynamicDestinations(avroSchemas, outputDirectoryName, resource))
-                .withTempDirectory(resource));
+                .withTempDirectory(tempResource));
 
     // Generate the manifest file.
     PCollection<KV<String, Iterable<String>>> tableFiles =
@@ -494,7 +504,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                 Contextful.of(
                     tableManifestNaming, Requirements.requiresSideInputs(outputDirectoryName)))
             .via(Contextful.fn(KV::getValue), TextIO.sink())
-            .withTempDirectory(outputDir));
+            .withTempDirectory(eitherOrValueProvider(avroTempDirectory, outputDir)));
 
     PCollection<List<Export.Table>> metadataTables =
         tableManifests.apply(
@@ -519,10 +529,9 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
             .by(SerializableFunctions.constant(""))
             .withDestinationCoder(StringUtf8Coder.of())
             .via(TextIO.sink())
-            .withTempDirectory(outputDir)
             .withNaming(
-                Contextful.of(
-                    manifestNaming, Requirements.requiresSideInputs(outputDirectoryName))));
+                Contextful.of(manifestNaming, Requirements.requiresSideInputs(outputDirectoryName)))
+            .withTempDirectory(eitherOrValueProvider(avroTempDirectory, outputDir)));
     return fileWriteResults;
   }
 
