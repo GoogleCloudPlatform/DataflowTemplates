@@ -34,5 +34,11 @@ jobs:
           distribution: 'zulu'
           java-version: '11' # Spotless won't work on version 8
           cache: 'maven'
+      - name: Setup Go
+        uses: actions/setup-go@44e221478fc6847752e5c574fc7a7b3247b00fbf
+      - name: Get Changed Files
+        uses: tj-actions/changed-files@61ee456a9d0f512e7ecfdf28863634c97dae2d16
+        with:
+          separator: ','
       - name: Run Spotless
-        run: ./scripts/workflows/run_spotless_check.sh
+        run: go run ./cicd/cmd/run-spotless.go --changed-files="${{ steps.changed-files.outputs.all_changed_and_modified_files }}"

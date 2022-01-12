@@ -38,6 +38,7 @@ func main() {
 		log.Print("No changed files passed. This is probably an error, but we're assuming it isn't just in case")
 		return
 	}
+	log.Printf("Received changed files: %s", *changed)
 
 	s := strings.Split(*changed, ",")
 	modules := repo.GetModulesForPaths(s)
