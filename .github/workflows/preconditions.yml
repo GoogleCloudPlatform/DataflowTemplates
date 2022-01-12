@@ -26,24 +26,12 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@230611dbd0eb52da1e1f4f7bc8bb0c3a339fc8b7
-      - name: Setup Java
-        uses: actions/setup-java@a12e082d834968c1847f782019214fadd20719f6
+      - name: Setup Environment
+        id: setup-env
+        uses: GoogleCloudPlatform/DataflowTemplates/.github/workflows/env.yml
         with:
-          distribution: 'zulu'
           java-version: '11' # Spotless won't work on version 8
-          cache: 'maven'
-      - name: Setup Go
-        uses: actions/setup-go@44e221478fc6847752e5c574fc7a7b3247b00fbf
-        with:
-          go-version: '1.17'
-      - name: Get Changed Files
-        id: changed-files
-        uses: tj-actions/changed-files@61ee456a9d0f512e7ecfdf28863634c97dae2d16
-        with:
-          separator: ','
       - name: Run Spotless
         run: |
           cd cicd/ && go build ./cmd/run-spotless && cd ..
-          ./cicd/run-spotless --changed-files="${{ steps.changed-files.outputs.all_changed_files }}"
+          ./cicd/run-spotless --changed-files="${{ steps.setup-env.outputs.changed-files }}"
