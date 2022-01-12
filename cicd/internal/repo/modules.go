@@ -134,6 +134,12 @@ func findUniqueFlexModules(paths []string) []string {
 	return ret
 }
 
+// Gets all the unique modules for files whose path from the root directory is in `paths`. Example paths:
+//		pom.xml -> Mapped to Classic root
+//		v2/cdc-parent/pom.xml -> Mapped to cdc-parent under Flex Templates
+// The return value has the following properties:
+//		Key: The path of the root module, equivalent to ClassicRoot, FlexRoot, etc.
+//		Value: List of modules (e.g. cdc-parent, cdc-parent/cdc-common). An empty entry represents the root itself.
 func GetModulesForPaths(paths []string) map[string][]string {
 	if len(paths) == 0 {
 		return make(map[string][]string)
@@ -156,6 +162,7 @@ func GetModulesForPaths(paths []string) map[string][]string {
 
 	if len(flex) > 0 {
 		// Even if nothing is found, we should still account for v2/ as its own module, since
+		// changes made be made to important files, like v2/pom.xml
 		m[FlexRoot] = findUniqueFlexModules(flex)
 	}
 
