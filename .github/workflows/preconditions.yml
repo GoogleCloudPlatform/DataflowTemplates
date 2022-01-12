@@ -28,7 +28,7 @@ jobs:
     steps:
       - name: Setup Environment
         id: setup-env
-        uses: GoogleCloudPlatform/DataflowTemplates/.github/workflows/env.yml
+        uses: ./.github/workflows/env.yml
         with:
           java-version: '11' # Spotless won't work on version 8
       - name: Run Spotless
