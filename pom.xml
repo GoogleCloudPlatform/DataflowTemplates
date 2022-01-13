@@ -865,6 +865,11 @@
         <groupId>org.apache.avro</groupId>
         <artifactId>avro-maven-plugin</artifactId>
         <version>${avro.version}</version>
+        <!-- For compatibility reasons (e.g. IntelliJ), the configuration must be duplicated here
+          and under execution. -->
+        <configuration>
+          <sourceDirectory>${project.basedir}/src/main/resources/schema/avro</sourceDirectory>
+        </configuration>
         <executions>
           <execution>
             <phase>generate-sources</phase>
