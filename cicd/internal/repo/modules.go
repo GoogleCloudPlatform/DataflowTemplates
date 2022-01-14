@@ -19,6 +19,7 @@ package repo
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -28,6 +29,25 @@ const (
 	FlexRoot    = "v2"
 )
 
+// Extracts module name from POM path, with `rootModule` being used as the reference for
+// the uppermost ancestor. The returned value should be usable with the `-pl` flag in relation
+// to the POM file at `rootModule`.
+func getModuleFromPomPath(pomPath string, rootModule string) (string, error) {
+	dir := filepath.Dir(pomPath)
+	allDirs := strings.Split(dir, string(os.PathSeparator))
+
+	i := len(allDirs)
+	for ; i > 0 && allDirs[i-1] != rootModule; i -= 1 {
+		// Empty intentionally
+	}
+
+	if i == 0 {
+		return "", fmt.Errorf("%s is not under %s", pomPath, rootModule)
+	}
+
+	return strings.Join(allDirs[i:], "/"), nil
+}
+
 // Returns a map of roots to their modules. Properties are:
 // 		Key: The root module, equivalent to one of the const values (e.g. ClassicRoot)
 //		Value: All the submodules, sometimes nested under another parent that is also in the slice
@@ -35,37 +55,26 @@ const (
 //		mvn x:y -f {key}/pom.xml -pl {value}
 // An empty value indicates no submodules.
 func GetModuleMapping() map[string][]string {
-	return map[string][]string{
-		ClassicRoot: []string{},
-		FlexRoot: []string{
-			"bigquery-to-bigtable",
-			"bigquery-to-parquet",
-			"cdc-parent/cdc-embedded-connector",
-			"cdc-parent/cdc-common",
-			"cdc-parent",
-			"cdc-parent/cdc-agg",
-			"cdc-parent/cdc-change-applier",
-			"common",
-			"datastream-to-sql",
-			"datastream-to-bigquery",
-			"datastream-to-mongodb",
-			"datastream-to-postgres",
-			"datastream-to-spanner",
-			"elasticsearch-common",
-			"file-format-conversion",
-			"googlecloud-to-googlecloud",
-			"googlecloud-to-elasticsearch",
-			"hive-to-bigquery",
-			"kafka-to-bigquery",
-			"kafka-common",
-			"kafka-to-gcs",
-			"kafka-to-pubsub",
-			"kudu-to-bigquery",
-			"pubsub-binary-to-bigquery",
-			"pubsub-cdc-to-bigquery",
-			"pubsub-to-mongodb",
-		},
+	m := make(map[string][]string)
+	m[ClassicRoot] = make([]string, 0)
+
+	flexPoms, err := GetAllPomFiles(FlexRoot)
+	if err != nil {
+		// Panicking here seems reasonable, since something is deeply wrong with the filesystem
+		// if this fails.
+		panic(err)
 	}
+	flexModules := make([]string, len(flexPoms))
+	for i := range flexPoms {
+		if module, err := getModuleFromPomPath(flexPoms[i], FlexRoot); err != nil {
+			panic(err)
+		} else {
+			flexModules[i] = module
+		}
+	}
+	m[FlexRoot] = flexModules
+
+	return m
 }
 
 type moduleTrieNode struct {
