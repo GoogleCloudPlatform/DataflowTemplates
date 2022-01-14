@@ -27,7 +27,6 @@ import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Objects;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -35,7 +34,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** ProcessValidateJsonFields is used to fix fields which contains only dot in name. */
+/** ProcessValidateJsonFields is used to fix malformed fields, (ex. de-dot). */
 public class ProcessValidateJsonFields extends PTransform<PCollection<String>, PCollection<String>> {
 
   @Override
@@ -53,18 +52,13 @@ public class ProcessValidateJsonFields extends PTransform<PCollection<String>, P
             .mappingProvider(new JacksonMappingProvider())
             .build();
 
-    public boolean checkPort(Object port, String input){
-      return Objects.nonNull(port) && input.contains("healthcheck");
-    }
-
     @ProcessElement
     public void processElement(ProcessContext context) {
       String input = context.element();
       ObjectNode node = null;
-      JsonNode port = null;
       try {
-        port = JsonPath.using(configuration).parse(input).read("$.protoPayload.response.spec.template.spec.containers.livenessProbe.httpGet.port");
-      } catch (Exception e) {}
+        JsonPath.using(configuration).parse(input).read("$.protoPayload.response.spec.template.spec.containers.livenessProbe.httpGet.port");
+      } catch (Exception ignored) {}
 
       JsonNode requestApp = null;
       try {
@@ -74,7 +68,7 @@ public class ProcessValidateJsonFields extends PTransform<PCollection<String>, P
                   JsonPath.using(configuration).parse(input).read("$.protoPayload.request.metadata.labels.app")).jsonString();
           input = JsonPath.using(configuration).parse(input).delete("$.protoPayload.request.metadata.labels.app").jsonString();
         }
-      } catch (Exception e) {}
+      } catch (Exception ignored) {}
 
       JsonNode responseApp = null;
       try {
@@ -85,7 +79,7 @@ public class ProcessValidateJsonFields extends PTransform<PCollection<String>, P
                   JsonPath.using(configuration).parse(input).read("$.protoPayload.response.metadata.labels.app")).jsonString();
           input = JsonPath.using(configuration).parse(input).delete("$.protoPayload.response.metadata.labels.app").jsonString();
         }
-      } catch (Exception ex) {}
+      } catch (Exception ignored) {}
 
       try {
         try {
@@ -99,29 +93,11 @@ public class ProcessValidateJsonFields extends PTransform<PCollection<String>, P
         LOG.warn("Unable to parse Json payload. " + e);
       }
 
-      String status = null;
       try {
-        status = JsonPath.using(configuration).parse(input).read("$.protoPayload.response.status");
+        JsonPath.using(configuration).parse(input).read("$.protoPayload.response.status");
       } catch (Exception e) {
         node = JsonPath.using(configuration).parse(node.toString()).put("$.protoPayload.response", "status", objectMapper.createObjectNode()).json();
       }
-
-      /*try {
-        System.out.println("protoPayload.request.spec.template.metadata.labels:\n"
-                + ((JsonNode)JsonPath.using(configuration).parse(input).read("$.protoPayload.request.spec.template.metadata.labels")).toPrettyString());
-      }catch (Exception e) {}
-
-      try {
-        System.out.println("protoPayload.response.spec.template.metadata.labels:\n"
-                + ((JsonNode)JsonPath.using(configuration).parse(input).read("$.protoPayload.response.spec.template.metadata.labels")).toPrettyString());
-      }catch (Exception e) {}
-
-      context.output(node.toString());
-
-      try {
-        System.out.println("protoPayload.response.spec.template.spec.containers.livenessProbe.httpGet:\n"
-                + ((JsonNode)JsonPath.using(configuration).parse(input).read("$.protoPayload.response.spec.template.spec.containers.livenessProbe.httpGet")).toPrettyString());
-      }catch (Exception e) {}*/
 
       context.output(node.toString());
     }
