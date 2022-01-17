@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
 /**
  * The {@link DecryptUtil} provides helper methods to decrypt the encrypted
  * string using the encryption key.
- *
+ * 
  */
 public class DecryptUtil {
 
@@ -50,45 +50,41 @@ public class DecryptUtil {
 	 * encrypted using the KMS encrypt API call. See <a href=
 	 * "https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt">
 	 * this KMS API Encrypt Link</a>.
-	 *
+	 * 
 	 * @param encryptedValue base64 encrypted string
 	 * @param kmsKey encryption key
 	 * @return decrypted value
 	 * @throws IOException
 	 */
 
-    private String kmsKey;
-    private KeyManagementServiceClient keyManagementServiceClient;
+	private String kmsKey;
+	private KeyManagementServiceClient keyManagementServiceClient;
 
-    public DecryptUtil(String kmsKey) throws IOException {
-        if (!Strings.isNullOrEmpty(kmsKey)) {
-			this.kmsKey = kmsKey;
-			this.keyManagementServiceClient = KeyManagementServiceClient.create();
-        }
-    }
-
+	public DecryptUtil(String kmsKey) throws IOException {
+		if (Strings.isNullOrEmpty(kmsKey)|| !validateKmsKey(kmsKey)){
+			IllegalArgumentException exception = new IllegalArgumentException("Provided KMS Key %s is invalid");
+			throw new RuntimeException(exception);
+		}
+		this.kmsKey = kmsKey;
+		this.keyManagementServiceClient = KeyManagementServiceClient.create();
+	}
 
 	private String decryptWithKMS(String encryptedValue) throws IOException {
 
-		if(Strings.isNullOrEmpty(this.kmsKey)){
-			return encryptedValue;
+		byte[] cipherText = Base64.getDecoder().decode(encryptedValue.getBytes("UTF-8"));
 
-		} else {
-				byte[] cipherText = Base64.getDecoder().decode(encryptedValue.getBytes("UTF-8"));
+		// Decrypt the ciphertext with Cloud KMS.
+		DecryptResponse decryptResponse = this.keyManagementServiceClient.decrypt(this.kmsKey, ByteString.copyFrom(cipherText));
 
-				// Decrypt the ciphertext with Cloud KMS.
-				DecryptResponse decryptResponse = this.keyManagementServiceClient.decrypt(this.kmsKey, ByteString.copyFrom(cipherText));
-
-				// Extract the plaintext from the response.
-				return new String(decryptResponse.getPlaintext().toByteArray());
-		}
+		// Extract the plaintext from the response.
+		return new String(decryptResponse.getPlaintext().toByteArray());
 	}
 
 	/**
 	 * Validates that kms key should be in the following format:
 	 * projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/
 	 * {kms_key_name}.
-	 *
+	 * 
 	 * @param kmsKey the encryption key
 	 * @return true if key matches the pattern above else returns false
 	 */
@@ -96,52 +92,47 @@ public class DecryptUtil {
 		return KEY_NAME_PATTERN.matcher(kmsKey).matches();
 	}
 
-    /**
-     * Checks if pipeline parameter is encrypted. If pipeline parameter is
-     * encrypted, returns the decrypted value using kms encryption key otherwise
-     * returns the raw value as is.
-     *
-     * @param pipelineOption runtime parameter passed to pipeline
-     * @return decrypted value if pipeline parameter is encrypted otherwise returns
-     * the raw value as is.
-     */
-    public ValueProvider<String> decryptIfRequired(ValueProvider<String> pipelineOption) throws IOException {
-        String returnValue = null;
-        if (pipelineOption.isAccessible() && !Strings.isNullOrEmpty(pipelineOption.get())) {
-            String pipelineOptionValue = pipelineOption.get();
-            Matcher match = ENCRYPT_PATTERN.matcher(pipelineOptionValue);
-            if (match.find()) {
-                if (Strings.isNullOrEmpty(this.kmsKey)) {
-					throw new IllegalArgumentException(String.format("KMS Key is required when encrypted values are provided for parameters. KMS key should be in the format: %s", KEY_NAME_PATTERN));
-				}
-				else if(!validateKmsKey(kmsKey)){
-					throw new IllegalArgumentException(String.format("Provided KMS Key %s is invalid. KMS key should be in the format: %s", kmsKey, KEY_NAME_PATTERN));
-                } else {
-                    returnValue = decryptWithKMS(match.group(1));
-                }
-            } else {
-                returnValue = pipelineOptionValue;
-            }
-        }
-        return StaticValueProvider.of(returnValue);
-    }
 	/**
 	 * Checks if pipeline parameter is encrypted. If pipeline parameter is
 	 * encrypted, returns the decrypted value using kms encryption key otherwise
 	 * returns the raw value as is.
-	 *
+	 * 
 	 * @param pipelineOption runtime parameter passed to pipeline
 	 * @return decrypted value if pipeline parameter is encrypted otherwise returns
 	 *         the raw value as is.
 	 */
-	public ValueProvider<String> decryptIfRequired(String pipelineOption) throws IOException {
+	public String decryptIfRequired(ValueProvider pipelineOption) {
+		if (pipelineOption.isAccessible()) {
+			String pipelineOptionValue = (String) pipelineOption.get();
+			if (!Strings.isNullOrEmpty(pipelineOptionValue) && isEncrypted(pipelineOptionValue)) {
+				try {
+					return decryptWithKMS(extractEncryptedValue(pipelineOptionValue));
+				} catch (IOException e) {
+					throw new RuntimeException(e);
+				}
+			}
+			return pipelineOptionValue;
+		}
+		return "";
+	}
+
+	/**
+	 * Checks if pipeline parameter is encrypted. If pipeline parameter is
+	 * encrypted, returns the decrypted value using kms encryption key otherwise
+	 * returns the raw value as is.
+	 * 
+	 * @param pipelineOption runtime parameter passed to pipeline
+	 * @return decrypted value if pipeline parameter is encrypted otherwise returns
+	 *         the raw value as is.
+	 */
+	public String decryptIfRequired(String pipelineOption) {
 		return decryptIfRequired(StaticValueProvider.of(pipelineOption));
 	}
 
 	/**
 	 * Checks whether the argument is encrypted. Encrypted values should be in the
 	 * following format : ${encryptedValue}. The raw values can be passed as is.
-	 *
+	 * 
 	 * @param pipelineParameter to check for encryption.
 	 * @return true if argument is encrypted
 	 */
@@ -151,7 +142,7 @@ public class DecryptUtil {
 
 	/**
 	 * Extracts the encrypted value between the template :${}.
-	 *
+	 * 
 	 * @param pipelineParameter encrypted value of the following format :
 	 *                          ${encryptedValue}
 	 * @return extracted value if the argument is encrypted otherwise return the raw

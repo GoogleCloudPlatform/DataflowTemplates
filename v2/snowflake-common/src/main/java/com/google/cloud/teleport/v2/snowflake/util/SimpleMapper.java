@@ -39,12 +39,7 @@ public class SimpleMapper {
 			return (SnowflakeIO.UserDataMapper<String>) recordLine -> JsonParser.parseString(recordLine).getAsJsonObject().entrySet()
 					.stream().map(entry -> entry.getValue().getAsString()).toArray();
 		}
-		else if("csv".equalsIgnoreCase(sourceFormat)){
-			return (SnowflakeIO.UserDataMapper<String>) recordLine -> recordLine.split(COMMA_SEPARATOR_REGEX, -1);
-		}
-		else{
-			throw new IllegalArgumentException(String.format("Provided sourceFormat '%s' is invalid. sourceFormat should be either json or csv", sourceFormat));
-		}
+		return (SnowflakeIO.UserDataMapper<String>) recordLine -> recordLine.split(COMMA_SEPARATOR_REGEX, -1);
 	}
 
 }
