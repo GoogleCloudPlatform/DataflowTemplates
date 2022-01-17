@@ -24,11 +24,10 @@ This is a flex template which provides a flexibility to use raw or encrypted val
 The supported source data formats are:
 1. CSV
 2. NEWLINE DELIMITED JSON (non-nested only),
-3. AVRO only if AVRO schema is associated with Pub/Sub Topic.
 
 The required setup is below:
 
-Initially generate an RSA Key to use the key pair based credentials. The template uses a connector for snowflake which is part of the Apache Beam (v2.28). Due to this dependency, the stream data load template currently supports only key pair based authentication.
+Initially generate an RSA Key to use the key pair based credentials. The template uses a connector for snowflake which is part of the Apache Beam (v2.32). Due to this dependency, the stream data load template currently supports only key pair based authentication.
 
 All sensitive parameters can be encrypted using KMS (Optional) if desired. To supply encrypted value for any parameter, embed encrypted value in templated format i.e ‘${<encryptedvalue>}’.
 
@@ -72,7 +71,7 @@ export BUCKET_NAME=gs://Bucket Name
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
-export TEMPLATE_MODULE=googlecloud-to-snowflake
+export TEMPLATE_MODULE=pubsub-to-snowflake
 export APP_ROOT=/template/${TEMPLATE_MODULE}
 export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_MODULE}-command-spec.json
 export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/templates/${IMAGE_NAME}-image-spec.json
@@ -89,9 +88,9 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
                   -Dcommand-spec=${COMMAND_SPEC} \
                   -pl ${TEMPLATE_MODULE} -am
 ```
-Create a file with the metadata required for launching the PubSubToSnowflake flex template. Once created, this file should be placed in GCS bucket, next to the template image.
+Create file in Cloud Storage with path to container image in Google Container Repository and the metadata information explaining various parameters.
 
-Note: The image property would point to the ${TARGER_GCR_IMAGE} defined previously.
+Note: The image property would point to the ${TARGET_GCR_IMAGE} defined previously.
 
 ```
 {
@@ -100,102 +99,135 @@ Note: The image property would point to the ${TARGER_GCR_IMAGE} defined previous
     "name": "PubSubSubscriptiontoSnowflake",
     "description": "PubSub to Snowflake",
     "parameters": [
-    {
-     "name": "serverName",
-      "helpText": "Snowflake Server Name",
-      "label": "Enter Snowflake Server Name "
-    },
-    {
-      "name": "tokenKMSEncryptionKey",
-      "helpText": "KMS Encryption Key",
-      "label": "Enter KMS Encryption Key (format: projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name})"
-    },
-    {
-      "name": "username",
-      "helpText": "Snowflake User Name",
-      "label": "Enter Snowflake User Name "
-    },
-    {
-      "name": "rawPrivateKey",
-      "helpText": "Raw private key",
-      "label": "Enter raw private key string"
-    },
-    {
-      "name": "privateKeyPassphrase",
-      "helpText": "Passphrase for the private key",
-      "label": "Enter Passphrase for the private key"
-    },
-    {
-      "name": "storageIntegrationName",
-      "helpText": "Snowflake's storage integration name",
-      "label": "Enter Snowflake's storage integration name "
-    },
-    {
-      "regexes": [
-        "^[^\\n\\r]+$"
-      ],
-      "name": "snowPipe",
-      "helpText": "Snowflake's snowPipe name",
-      "label": "Snowflake's snowPipe name"
-    },
-    {
-      "name": "role",
-      "helpText": "Snowflake role",
-      "label": "Enter Snowflake role "
-    },
-    {
-      "name": "warehouse",
-      "helpText": "Snowflake's warehouse name",
-      "label": "Enter Snowflake's warehouse name "
-    },
-    {
-      "name": "database",
-      "helpText": "Snowflake's database name",
-      "label": "Enter Snowflake's database name "
-    },
-    {
-      "name": "schema",
-      "helpText": "Snowflake's database schema name",
-      "label": "Enter Snowflake's database schema name "
-    },
-    {
-      "name": "table",
-      "helpText": "Snowflake's table name",
-      "label": "Enter Snowflake's table name"
-    },
-    {
-      "name": "inputSubscription",
-      "helpText": "Name of the Pub/Sub Subscription",
-      "label": "Enter name of the pub/sub subscription"
-    },
-    {
-      "name": "stagingBucketName",
-      "helpText": "Staging bucket location starting with (gs://) for data processing micro-batches",
-      "label": "Enter staging bucket location starting with (gs://) for data processing micro-batches"
-    },
-	   {
-      "isOptional": true,
-      "name": "oauthToken",
-      "helpText": "OAuth token",
-      "label": "Enter OAuth token to set OAuth authentication."
-    },
-	   {
-      "isOptional": true,
-      "name": "password",
-      "helpText": "Password",
-      "label": "Enter Password to set username/password authentication."
-    },
-    {
-      "isOptional": true,
-      "name": "gcpTempLocation",
-      "helpText": "Temporary location in GCP",
-      "label": "Enter Temporary location in GCP."
-    },
-    {
-      "name": "sourceFormat",
-      "helpText": "Source format of pubsub data",
-      "label": "Enter source format of pubsub data."
-    }
+          {
+           "name": "serverName",
+            "helpText": "Snowflake Server Name",
+            "label": "Enter Snowflake Server Name ",
+            "paramType": "TEXT",
+            "isOptional": false
+          },
+          {
+            "name": "tokenKMSEncryptionKey",
+            "helpText": "KMS Encryption Key",
+            "label": "Enter KMS Encryption Key (format: projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name})",
+            "paramType": "TEXT",
+            "isOptional": true
+          },
+          {
+            "name": "username",
+            "helpText": "Snowflake User Name",
+            "label": "Enter Snowflake User Name ",
+            "paramType": "TEXT",
+            "isOptional": false
+          },
+          {
+            "name": "rawPrivateKey",
+            "helpText": "Raw private key",
+            "label": "Enter raw private key string",
+            "paramType": "TEXT",
+            "isOptional": false
+          },
+          {
+            "name": "privateKeyPassphrase",
+            "helpText": "Passphrase for the private key",
+            "label": "Enter Passphrase for the private key",
+            "paramType": "TEXT",
+            "isOptional": false
+          },
+          {
+            "name": "storageIntegrationName",
+            "helpText": "Snowflake's storage integration name",
+            "label": "Enter Snowflake's storage integration name",
+            "paramType": "TEXT",
+            "isOptional": false
+          },
+          {
+            "regexes": [
+              "^[^\\n\\r]+$"
+            ],
+            "name": "snowPipe",
+            "helpText": "Snowflake's snowPipe name",
+            "label": "Snowflake's snowPipe name",
+            "paramType": "TEXT",
+            "isOptional": false
+          },
+          {
+            "name": "role",
+            "helpText": "Snowflake role",
+            "label": "Enter Snowflake role",
+            "paramType": "TEXT",
+            "isOptional": false
+          },
+          {
+            "name": "warehouse",
+            "helpText": "Snowflake's warehouse name",
+            "label": "Enter Snowflake's warehouse name",
+            "paramType": "TEXT",
+            "isOptional": false
+          },
+          {
+            "name": "database",
+            "helpText": "Snowflake's database name",
+            "label": "Enter Snowflake's database name",
+            "paramType": "TEXT",
+            "isOptional": false
+          },
+          {
+            "name": "schema",
+            "helpText": "Snowflake's database schema name",
+            "label": "Enter Snowflake's database schema name",
+            "paramType": "TEXT",
+            "isOptional": false
+          },
+          {
+            "name": "table",
+            "helpText": "Snowflake's table name",
+            "label": "Enter Snowflake's table name",
+            "paramType": "TEXT",
+            "isOptional": false
+          },
+          {
+            "name": "inputSubscription",
+            "helpText": "Name of the Pub/Sub Subscription",
+            "label": "Enter name of the pub/sub subscription",
+            "paramType": "PUBSUB_SUBSCRIPTION",
+            "isOptional": false
+          },
+          {
+            "name": "stagingBucketName",
+            "helpText": "Staging bucket location starting with (gs://) for data processing micro-batches",
+            "label": "Enter staging bucket location starting with (gs://) for data processing micro-batches",
+            "paramType": "GCS_READ_FILE",
+            "isOptional": false
+          },
+          {
+            "name": "oauthToken",
+            "helpText": "OAuth token",
+            "label": "Enter OAuth token to set OAuth authentication.",
+            "paramType": "TEXT",
+            "isOptional": true
+          },
+          {
+            "name": "password",
+            "helpText": "Password",
+            "label": "Enter Password to set username/password authentication.",
+            "paramType": "TEXT",
+            "isOptional": true
+          },
+          {
+            "name": "gcpTempLocation",
+            "helpText": "Temporary location in GCP",
+            "label": "Enter Temporary location in GCP.",
+            "paramType": "GCS_READ_FILE",
+            "isOptional": true
+          },
+          {
+            "name": "sourceFormat",
+            "helpText": "Source format of pubsub data",
+            "label": "Enter source format of pubsub data.",
+            "paramType": "TEXT",
+            "isOptional": false
+          }
     ]
   },
   "sdkInfo": {
