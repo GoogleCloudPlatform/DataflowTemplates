@@ -5,70 +5,15 @@ labels: ["bug", "p2", "needs triage"]
 body:
   - type: markdown
     attributes:
-      value: |
-        Thank you so much for taking the time to fill out this bug report! Please note that changing the issue label from p2 to p0/p1 will *NOT* speed up triaging. **Any issue that is currently affecting your production should be directed to Google Cloud customer support.** If you cannot find the template in the dropdown menu below, we probably no longer support the template.
-  - type: dropdown
+      value: >
+        Thank you so much for taking the time to fill out this bug report!
+        
+        **Please note: any issue that is currently affecting your production should be directed to Google Cloud customer support.**
+  - type: input
     id: template
     attributes:
-      label: Related Template
-      options:
-        - Pubsub-to-BigQuery (classic, streaming)
-        - PubsubAvro-to-BigQuery (flex, steaming)
-        - PubsubProto-to-BigQuery (flex, streaming)
-        - Pubsub-to-Pubsub (classic, streaming)
-        - Pubsub-to-Splunk (classic, streaming)
-        - Pubsub-to-Avro (classic, streaming)
-        - Pubsub-to-Text (classic, streaming)
-        - Pubsub-to-MongoDB (flex, streaming)
-        - Pubsub-to-Elasticsearch (flex, streaming)
-        - Datastream-to-Spanner (flex, streaming)
-        - Text-to-BigQuery-stream (classic, streaming)
-        - Text-to-Pubsub-stream (classic, streaming)
-        - DLPText-to-BigQuery-stream (classic, streaming)
-        - CDC (flex, streaming)
-        - Kafka-to-BigQuery (flex, streaming)
-        - Datastream-to-BigQuery (flex, streaming)
-        - Datastream-to-Postgres (flex, streaming)
-        - JDBC-to-Pubsub (flex, streaming)
-        - Pubsub-to-JDBC (flex, streaming) 
-        - BigQuery-to-TFRecord (classic, batch)
-        - BigQuery-to-Parquet (flex, batch)
-        - BigQuery-to-Elasticsearch (flex, batch)
-        - Bigtable-to-Avro (classic, batch)
-        - Bigtable-to-Parquet (classic, batch)
-        - Datastore-to-Text (classic, batch)
-        - Spanner-to-Avro/Spanner-Export (classic, batch)
-        - Spanner-to-Text (classic, batch)
-        - Avro-to-Bigtable (classic, batch)
-        - Avro-to-Spanner/Spanner-Import (classic, batch)
-        - Parquet-to-Bigtable (classic, batch)
-        - TextIO-to-BigQuery (classic, batch)
-        - Text-to-Datastore (classic, batch)
-        - Text-to-Pubsub-batch (classic, batch)
-        - Text-to-Spanner/Spanner-TextImport (classic, batch)
-        - GCS-to-Elasticsearch (flex, batch)
-        - JDBC-to-BigQuery (classic, batch)
-        - Cassandra-to-Bigtable (classic, batch)
-        - File-Format-Conversion (flex, util)
-        - Bulk-Compressor (classic, util)
-        - Bulk-Decompressor (classic, util)
-        - Firestore-Bulk-Delete (classic, util)
-        - Streaming-Data-Generator (flex, util)
-    validations:
-      required: true
-  - type: dropdown
-    id: version
-    attributes:
-      label: Beam Version
-      description: What version of beam are you using?
-      options:
-        - 2.35.0
-        - 2.34.0
-        - 2.33.0
-        - 2.32.0
-        - 2.31.0
-        - 2.30.0
-        - Older than 2.30.0
+      label: Related Template(s)
+      description: "Which template(s) this bug is affecting?"
     validations:
       required: true
   - type: textarea
@@ -79,10 +24,25 @@ body:
       placeholder: Tell us what you see!
     validations:
       required: true
+  - type: dropdown
+    id: version
+    attributes:
+      label: Beam Version
+      description: What version of beam are you using?
+      options:
+        - Newer than 2.35.0
+        - 2.35.0
+        - 2.34.0
+        - 2.33.0
+        - 2.32.0
+        - 2.31.0
+        - 2.30.0
+        - Older than 2.30.0
+    validations:
+      required: true
   - type: textarea
     id: logs
     attributes:
       label: Relevant log output
       description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
       render: shell
-
