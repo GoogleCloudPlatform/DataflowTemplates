@@ -30,26 +30,6 @@ const (
 	RootDirName = "DataflowTemplates"
 )
 
-func getRootDir() (string, error) {
-	_, path, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", errors.New("could not determine a starting path to get to root directory")
-	}
-
-	dir := filepath.Dir(path)
-	allDirs := strings.Split(dir, string(os.PathSeparator))
-	i := len(allDirs)
-	for ; i >= 0 && allDirs[i-1] != RootDirName; i -= 1 {
-		// Empty intentionally
-	}
-
-	if i == 0 {
-		return "", fmt.Errorf("%s is not in the %s project somehow", dir, RootDirName)
-	}
-
-	return strings.Join(allDirs[:i], string(os.PathSeparator)), nil
-}
-
 // Gets all the POM files under `dir`. `dir` is a relative path from the root of the repository.
 // So if the root is located at `$HOME/go/src/github.com/GoogleCloudPlatform/DataflowTemplates`, then
 // passing `v2` represents `$HOME/go/src/github.com/GoogleCloudPlatform/DataflowTemplates/v2`.
@@ -83,4 +63,24 @@ func GetAllPomFiles(dir string) ([]string, error) {
 		return nil, e
 	}
 	return poms, nil
+}
+
+func getRootDir() (string, error) {
+	_, path, _, ok := runtime.Caller(0)
+	if !ok {
+		return "", errors.New("could not determine a starting path to get to root directory")
+	}
+
+	dir := filepath.Dir(path)
+	allDirs := strings.Split(dir, string(os.PathSeparator))
+	i := len(allDirs)
+	for ; i >= 0 && allDirs[i-1] != RootDirName; i -= 1 {
+		// Empty intentionally
+	}
+
+	if i == 0 {
+		return "", fmt.Errorf("%s is not in the %s project somehow", dir, RootDirName)
+	}
+
+	return strings.Join(allDirs[:i], string(os.PathSeparator)), nil
 }

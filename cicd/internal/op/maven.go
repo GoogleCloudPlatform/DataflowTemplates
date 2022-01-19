@@ -20,14 +20,14 @@ import (
 	"fmt"
 )
 
-// Run the given Maven command on a specified POM file. Considering the input, this is equivalent to:
+// Runs the given Maven command on a specified POM file. Considering the input, this is equivalent to:
 //		mvn {cmd} -f {pomDir}/pom.xml {args...}
 func RunMavenOnPom(pomDir string, cmd string, args ...string) error {
 	wa := []string{cmd, "-f", fmt.Sprintf("%s/pom.xml", pomDir)}
 	return RunCmdAndStreamOutput("mvn", append(wa, args...))
 }
 
-// Rung the given Maven command on a specified module. Considering the input, this is equivalent to:
+// Runs the given Maven command on a specified module. Considering the input, this is equivalent to:
 //		mvn {cmd} -f {pomDir}/pom.xml -pl {module} {args...}
 func RunMavenOnModule(pomDir string, cmd string, module string, args ...string) error {
 	fullArgs := []string{"-pl", module}

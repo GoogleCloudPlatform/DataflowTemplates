@@ -29,25 +29,6 @@ const (
 	FlexRoot    = "v2"
 )
 
-// Extracts module name from POM path, with `rootModule` being used as the reference for
-// the uppermost ancestor. The returned value should be usable with the `-pl` flag in relation
-// to the POM file at `rootModule`.
-func getModuleFromPomPath(pomPath string, rootModule string) (string, error) {
-	dir := filepath.Dir(pomPath)
-	allDirs := strings.Split(dir, string(os.PathSeparator))
-
-	i := len(allDirs)
-	for ; i > 0 && allDirs[i-1] != rootModule; i -= 1 {
-		// Empty intentionally
-	}
-
-	if i == 0 {
-		return "", fmt.Errorf("%s is not under %s", pomPath, rootModule)
-	}
-
-	return strings.Join(allDirs[i:], "/"), nil
-}
-
 // Returns a map of roots to their modules. Properties are:
 // 		Key: The root module, equivalent to one of the const values (e.g. ClassicRoot)
 //		Value: All the submodules, sometimes nested under another parent that is also in the slice
@@ -73,6 +54,60 @@ func GetModuleMapping() map[string][]string {
 		}
 	}
 	m[FlexRoot] = flexModules
+
+	return m
+}
+
+// Extracts module name from POM path, with `rootModule` being used as the reference for
+// the uppermost ancestor. The returned value should be usable with the `-pl` flag in relation
+// to the POM file at `rootModule`.
+func getModuleFromPomPath(pomPath string, rootModule string) (string, error) {
+	dir := filepath.Dir(pomPath)
+	allDirs := strings.Split(dir, string(os.PathSeparator))
+
+	i := len(allDirs)
+	for ; i > 0 && allDirs[i-1] != rootModule; i -= 1 {
+		// Empty intentionally
+	}
+
+	if i == 0 {
+		return "", fmt.Errorf("%s is not under %s", pomPath, rootModule)
+	}
+
+	return strings.Join(allDirs[i:], "/"), nil
+}
+
+// Gets all the unique modules for files whose path from the root directory is in `paths`. Example paths:
+//		pom.xml -> Mapped to Classic root
+//		v2/cdc-parent/pom.xml -> Mapped to cdc-parent under Flex Templates
+// The return value has the following properties:
+//		Key: The path of the root module, equivalent to ClassicRoot, FlexRoot, etc.
+//		Value: List of modules (e.g. cdc-parent, cdc-parent/cdc-common). An empty entry represents the root itself.
+func GetModulesForPaths(paths []string) map[string][]string {
+	if len(paths) == 0 {
+		return make(map[string][]string)
+	}
+
+	m := make(map[string][]string)
+	flex := make([]string, 0)
+
+	v2 := fmt.Sprintf("v2%s", string(os.PathSeparator))
+
+	for _, path := range paths {
+		if strings.HasPrefix(path, v2) {
+			flex = append(flex, strings.TrimPrefix(path, v2))
+		} else {
+			// TODO(zhoufek): Make this more granular, especially separating .github and cicd code
+			// into separate "modules"
+			m[ClassicRoot] = make([]string, 0)
+		}
+	}
+
+	if len(flex) > 0 {
+		// Even if nothing is found, we should still account for v2/ as its own module, since
+		// changes might be made to important files, like v2/pom.xml
+		m[FlexRoot] = findUniqueFlexModules(flex)
+	}
 
 	return m
 }
@@ -141,39 +176,4 @@ func findUniqueFlexModules(paths []string) []string {
 	}
 
 	return ret
-}
-
-// Gets all the unique modules for files whose path from the root directory is in `paths`. Example paths:
-//		pom.xml -> Mapped to Classic root
-//		v2/cdc-parent/pom.xml -> Mapped to cdc-parent under Flex Templates
-// The return value has the following properties:
-//		Key: The path of the root module, equivalent to ClassicRoot, FlexRoot, etc.
-//		Value: List of modules (e.g. cdc-parent, cdc-parent/cdc-common). An empty entry represents the root itself.
-func GetModulesForPaths(paths []string) map[string][]string {
-	if len(paths) == 0 {
-		return make(map[string][]string)
-	}
-
-	m := make(map[string][]string)
-	flex := make([]string, 0)
-
-	v2 := fmt.Sprintf("v2%s", string(os.PathSeparator))
-
-	for _, path := range paths {
-		if strings.HasPrefix(path, v2) {
-			flex = append(flex, strings.TrimPrefix(path, v2))
-		} else {
-			// TODO(zhoufek): Make this more granular, especially separating .github and cicd code
-			// into separate "modules"
-			m[ClassicRoot] = make([]string, 0)
-		}
-	}
-
-	if len(flex) > 0 {
-		// Even if nothing is found, we should still account for v2/ as its own module, since
-		// changes made be made to important files, like v2/pom.xml
-		m[FlexRoot] = findUniqueFlexModules(flex)
-	}
-
-	return m
 }
