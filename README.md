@@ -207,3 +207,83 @@ Dataflow template metadatas may be found in `resources/infusionsoft/json`
 
 JavaScript transformers may be found in `resources/infusionsoft/js`
 
+
+## Deployment steps
+
+Clone the [template](https://github.com/infusionsoft/DataflowTemplates/blob/master/src/main/java/com/infusionsoft/dataflow/templates/PubsubToBigQuery.java).
+
+### Integration
+
+Choose the intg project after running the following command:
+
+    gcloud init
+    gcloud config set project is-events-dataflow-intg
+
+#### Update template hard-coded properties
+In PubsubToBigQuery.java change the following line to set the configured project for the template:
+String projectAndDataset = "is-events-dataflow-prod:crm_prod";
+To:
+String projectAndDataset = "is-events-dataflow-intg:crm_prod";
+
+#### Compile template
+    mvn compile exec:java \
+    -Dexec.mainClass=com.infusionsoft.dataflow.templates.PubsubToBigQuery \
+    -Dexec.cleanupDaemonThreads=false \
+    -Dexec.args=" \
+    --project=is-events-dataflow-intg \
+    --region=us-central1 \
+    --workerZone=us-central1-c \
+    --stagingLocation=gs://is-events-dataflow-intg/staging \
+    --tempLocation=gs://is-events-dataflow-intg/temp \
+    --templateLocation=gs://is-events-dataflow-intg/templates/pubsub2BGQ.json \
+    --runner=DataflowRunner \
+    --defaultWorkerLogLevel=ERROR"
+
+#### Running the job
+    gcloud dataflow jobs run pubsub-to-bigquery \
+    --gcs-location=gs://is-events-dataflow-intg/templates/pubsub2BGQ.json \
+    --region=us-central1 \
+    --workerZone=us-central1-c \
+    --service-account-email=is-events-dataflow-intg@is-events-dataflow-intg.iam.gserviceaccount.com \
+    --parameters=inputTopic=projects/is-flagship-events-intg/topics/v1.segment-events-core
+
+### Prod
+
+Choose the prod project after running the following command:
+
+    gcloud init
+    gcloud config set project is-events-dataflow-prod
+
+#### Update template hard-coded properties
+In PubsubToBigQuery.java change the following line to set the configured project for the template:
+String projectAndDataset = "is-events-dataflow-intg:crm_prod";
+To:
+String projectAndDataset = "is-events-dataflow-prod:crm_prod";
+
+
+#### Compile template
+    mvn compile exec:java \
+    -Dexec.mainClass=com.infusionsoft.dataflow.templates.PubsubToBigQuery \
+    -Dexec.cleanupDaemonThreads=false \
+    -Dexec.args=" \
+    --project=is-events-dataflow-prod \
+    --region=us-central1 \
+    --workerZone=us-central1-c \
+    --stagingLocation=gs://is-events-dataflow-prod/staging \
+    --tempLocation=gs://is-events-dataflow-prod/temp \
+    --templateLocation=gs://is-events-dataflow-prod/templates/pubsub2BGQ.json \
+    --runner=DataflowRunner \
+    --defaultWorkerLogLevel=ERROR"
+
+#### Running the job
+
+Execute the following command, replacing {X} with the next version.
+
+    gcloud dataflow jobs run pubsub-to-bigquery-v{X} \
+    --gcs-location=gs://is-events-dataflow-prod/templates/pubsub2BGQ.json \
+    --region=us-central1 \
+    --worker-zone=us-central1-c \
+    --service-account-email=is-events-dataflow-prod@is-events-dataflow-prod.iam.gserviceaccount.com \
+    --parameters=inputTopic=projects/is-flagship-events-prod/topics/v1.segment-events-core
+
+Once the new job is started, cancel the old job and allow it to drain down on the project [Jobs page](https://console.cloud.google.com/dataflow/jobs?authuser=1&project=is-events-dataflow-prod).
