@@ -30,6 +30,7 @@ import com.google.cloud.teleport.v2.options.DataplexBigQueryToGcsOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform;
 import com.google.cloud.teleport.v2.transforms.DeleteBigQueryDataFn;
 import com.google.cloud.teleport.v2.transforms.DeleteBigQueryDataFn.BigQueryClientFactory;
+import com.google.cloud.teleport.v2.transforms.NoopTransform;
 import com.google.cloud.teleport.v2.transforms.UpdateDataplexBigQueryToGcsExportMetadataTransform;
 import com.google.cloud.teleport.v2.utils.BigQueryMetadataLoader;
 import com.google.cloud.teleport.v2.utils.BigQueryUtils;
@@ -179,6 +180,8 @@ public class DataplexBigQueryToGcs {
 
     if (!tables.isEmpty()) {
       transformPipeline(pipeline, tables, options, targetRootPath, null, null);
+    } else {
+      pipeline.apply("Nothing to export", new NoopTransform());
     }
 
     return pipeline;
