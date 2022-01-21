@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.io.AvroSinkWithJodaDatesConversion;
 import com.google.cloud.teleport.v2.transforms.AvroConverters;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.transforms.JsonConverters;
+import com.google.cloud.teleport.v2.transforms.NoopTransform;
 import com.google.cloud.teleport.v2.transforms.ParquetConverters;
 import com.google.cloud.teleport.v2.utils.Schemas;
 import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
@@ -35,6 +36,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -223,9 +225,7 @@ public class DataplexFileFormatConversion {
         inputFilesFilter = inputFilePath -> true;
         break;
       case FAIL:
-        Set<String> outputFilePaths =
-            getFilesFromFilePattern(addWildCard(outputBucket))
-                .collect(ImmutableSet.toImmutableSet());
+        Set<String> outputFilePaths = getAllOutputFilePaths(outputBucket);
         inputFilesFilter =
             inputFilePath -> {
               if (outputFilePaths.contains(
@@ -243,9 +243,7 @@ public class DataplexFileFormatConversion {
             };
         break;
       case SKIP:
-        outputFilePaths =
-            getFilesFromFilePattern(addWildCard(outputBucket))
-                .collect(ImmutableSet.toImmutableSet());
+        outputFilePaths = getAllOutputFilePaths(outputBucket);
         inputFilesFilter =
             inputFilePath ->
                 !outputFilePaths.contains(
@@ -266,31 +264,40 @@ public class DataplexFileFormatConversion {
             : dataplex.getEntities(
                 Splitter.on(',').trimResults().splitToList(options.getInputAssetOrEntitiesList()));
 
+    boolean convertingFiles = false;
     for (GoogleCloudDataplexV1Entity entity : entities) {
       ImmutableList<GoogleCloudDataplexV1Partition> partitions =
           dataplex.getPartitions(entity.getName());
       if (partitions.isEmpty()) {
         String outputPath = outputPathProvider.outputPathFrom(entity.getDataPath(), outputBucket);
-        getFilesFromFilePattern(entityToFileSpec(entity))
-            .filter(inputFilesFilter)
-            .forEach(
-                inputFilePath ->
-                    pipeline.apply(
-                        "Convert " + shortenDataplexName(entity.getName()),
-                        new ConvertFiles(entity, inputFilePath, options, outputPath)));
+        Iterator<String> inputFilePaths =
+            getFilesFromFilePattern(entityToFileSpec(entity)).filter(inputFilesFilter).iterator();
+        convertingFiles = inputFilePaths.hasNext();
+        inputFilePaths.forEachRemaining(
+            inputFilePath ->
+                pipeline.apply(
+                    "Convert " + shortenDataplexName(entity.getName()),
+                    new ConvertFiles(entity, inputFilePath, options, outputPath)));
       } else {
         for (GoogleCloudDataplexV1Partition partition : partitions) {
           String outputPath =
               outputPathProvider.outputPathFrom(partition.getLocation(), outputBucket);
-          getFilesFromFilePattern(partitionToFileSpec(partition))
-              .filter(inputFilesFilter)
-              .forEach(
-                  inputFilePath ->
-                      pipeline.apply(
-                          "Convert " + shortenDataplexName(partition.getName()),
-                          new ConvertFiles(entity, inputFilePath, options, outputPath)));
+          Iterator<String> inputFilePaths =
+              getFilesFromFilePattern(partitionToFileSpec(partition))
+                  .filter(inputFilesFilter)
+                  .iterator();
+          convertingFiles = inputFilePaths.hasNext();
+          inputFilePaths.forEachRemaining(
+              inputFilePath ->
+                  pipeline.apply(
+                      "Convert " + shortenDataplexName(partition.getName()),
+                      new ConvertFiles(entity, inputFilePath, options, outputPath)));
         }
       }
+    }
+
+    if (!convertingFiles) {
+      pipeline.apply("Nothing to convert", new NoopTransform());
     }
 
     return pipeline.run();
@@ -325,6 +332,10 @@ public class DataplexFileFormatConversion {
     return path.endsWith("/") ? path : path + '/';
   }
 
+  private static String ensurePathStartsWithFSPrefix(String path) {
+    return path.startsWith("gs://") || path.startsWith("/") ? path : "gs://" + path;
+  }
+
   /** Example conversion: 1.json => 1.parquet; 1.abc => 1.abc.parquet. */
   private static String replaceInputExtensionWithOutputExtension(
       String path, OutputFileFormat outputFileFormat) {
@@ -350,6 +361,12 @@ public class DataplexFileFormatConversion {
     return FileSystems.match(pattern, EmptyMatchTreatment.ALLOW).metadata().stream()
         .map(MatchResult.Metadata::resourceId)
         .map(ResourceId::toString);
+  }
+
+  private static ImmutableSet<String> getAllOutputFilePaths(String outputBucket)
+      throws IOException {
+    return getFilesFromFilePattern(addWildCard(ensurePathStartsWithFSPrefix(outputBucket)))
+        .collect(ImmutableSet.toImmutableSet());
   }
 
   /** Convert the input file path to a new output file path. */
