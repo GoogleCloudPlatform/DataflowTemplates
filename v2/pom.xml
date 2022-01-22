@@ -49,6 +49,7 @@
         <maven-source-plugin.version>3.0.1</maven-source-plugin.version>
         <mockito-core.version>3.0.0</mockito-core.version>
         <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
+        <re2j.version>1.5</re2j.version>
         <slf4j.version>1.7.25</slf4j.version>
         <mvn-target-dir>${basedir}/target</mvn-target-dir>
         <json.version>20200518</json.version>
@@ -171,6 +172,11 @@
             <groupId>com.google.auto.value</groupId>
             <artifactId>auto-value-annotations</artifactId>
             <version>${autovalue.annotations.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.re2j</groupId>
+            <artifactId>re2j</artifactId>
+            <version>${re2j.version}</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -670,6 +676,7 @@
         <module>streaming-data-generator</module>
         <module>kafka-to-pubsub</module>
         <module>kafka-common</module>
+        <module>testing</module>
     </modules>
 
 </project>
