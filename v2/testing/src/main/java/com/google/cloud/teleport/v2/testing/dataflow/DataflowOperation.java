@@ -1,4 +1,21 @@
+/*
+ * Copyright (C) 2022 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.v2.testing.dataflow;
+
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkState;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.testing.dataflow.FlexTemplateClient.JobState;
@@ -11,49 +28,88 @@ import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Immutabl
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/** Utilities for managing Dataflow jobs. */
 public final class DataflowOperation {
   private static final Logger LOG = LoggerFactory.getLogger(DataflowOperation.class);
 
+  /** The result of running an operation. */
   public enum Result {
     CONDITION_MET,
     JOB_FINISHED,
     TIMEOUT
   }
 
-  public static final ImmutableSet<JobState> DONE_STATES = ImmutableSet.of(
-      JobState.CANCELLED,
-      JobState.DONE,
-      JobState.DRAINED,
-      JobState.FAILED,
-      JobState.STOPPED);
+  public static final ImmutableSet<JobState> DONE_STATES =
+      ImmutableSet.of(
+          JobState.CANCELLED, JobState.DONE, JobState.DRAINED, JobState.FAILED, JobState.STOPPED);
 
-  public static final ImmutableSet<JobState> FINISHING_STATES = ImmutableSet.of(
-      JobState.DRAINING,
-      JobState.CANCELLING);
+  public static final ImmutableSet<JobState> FINISHING_STATES =
+      ImmutableSet.of(JobState.DRAINING, JobState.CANCELLING);
 
   private DataflowOperation() {}
 
+  /**
+   * Waits until the given job is done, timing out it if runs for too long.
+   *
+   * <p>If the job is a batch job, it should complete eventually. If it is a streaming job, this
+   * will time out unless the job is explicitly cancelled or drained.
+   *
+   * @param client the {@link FlexTemplateClient} to use for performing operations
+   * @param config the configuration for performing the operation
+   * @return the result, which will be either {@link Result#JOB_FINISHED} or {@link Result#TIMEOUT}
+   */
   public static Result waitUntilDone(FlexTemplateClient client, Config config) {
-    return finishOrTimeout(config, () -> false, () -> jobIsDone(client, config.project(), config.jobId()));
+    return finishOrTimeout(
+        config,
+        () -> false,
+        () -> jobIsDone(client, config.project(), config.region(), config.jobId()));
   }
 
-  public static Result waitForCondition(FlexTemplateClient client, Config config, Supplier<Boolean> conditionCheck) {
-    return finishOrTimeout(config, conditionCheck, () -> jobIsDoneOrFinishing(client,
-        config.project(), config.jobId()));
+  /**
+   * Waits until a given condition is met OR when the job enters a state that indicates that it is
+   * done or ready to be done.
+   *
+   * @param client the {@link FlexTemplateClient} to use for performing operations
+   * @param config the configuration for performing operations
+   * @param conditionCheck a {@link Supplier} that will be called periodically to check if the
+   *     condition is met
+   * @return the result, which could be any value in {@link Result}
+   */
+  public static Result waitForCondition(
+      FlexTemplateClient client, Config config, Supplier<Boolean> conditionCheck) {
+    return finishOrTimeout(
+        config,
+        conditionCheck,
+        () -> jobIsDoneOrFinishing(client, config.project(), config.region(), config.jobId()));
   }
 
-  public static Result waitForConditionAndFinish(FlexTemplateClient client, Config config, Supplier<Boolean> conditionCheck)
+  /**
+   * Waits until a given condition is met OR when a job enters a state that indicates that it is
+   * done or ready to be done.
+   *
+   * <p>If the condition was met before the job entered a done or finishing state, then this will
+   * cancel the job and wait for the job to enter a done state.
+   *
+   * @param client the {@link FlexTemplateClient} to use for performing operations
+   * @param config the configuration for performing operations
+   * @param conditionCheck a {@link Supplier} that will be called periodically to check if the
+   *     condition is met
+   * @return the result of waiting for the condition, not of waiting for the job to be done
+   * @throws IOException if there is an issue cancelling the job
+   */
+  public static Result waitForConditionAndFinish(
+      FlexTemplateClient client, Config config, Supplier<Boolean> conditionCheck)
       throws IOException {
-    Instant start = Instant.now();
     Result conditionStatus = waitForCondition(client, config, conditionCheck);
     if (conditionStatus != Result.JOB_FINISHED) {
-      client.cancelJob(config.project(), config.jobId());
+      client.cancelJob(config.project(), config.region(), config.jobId());
       waitUntilDone(client, config);
     }
     return conditionStatus;
   }
 
-  private static Result finishOrTimeout(Config config, Supplier<Boolean> conditionCheck, Supplier<Boolean> stopChecking) {
+  private static Result finishOrTimeout(
+      Config config, Supplier<Boolean> conditionCheck, Supplier<Boolean> stopChecking) {
     Instant start = Instant.now();
 
     LOG.info("Making initial finish check.");
@@ -77,16 +133,18 @@ public final class DataflowOperation {
       if (stopChecking.get()) {
         return Result.JOB_FINISHED;
       }
-      LOG.info("Job not finished. Will check again in {} seconds", config.checkAfter().getSeconds());
+      LOG.info(
+          "Job not finished. Will check again in {} seconds", config.checkAfter().getSeconds());
     }
 
     LOG.warn("Neither the condition or job completion were fulfilled on time.");
     return Result.TIMEOUT;
   }
 
-  private static boolean jobIsDone(FlexTemplateClient client, String project, String jobId)  {
+  private static boolean jobIsDone(
+      FlexTemplateClient client, String project, String region, String jobId) {
     try {
-      JobState state = client.getJobStatus(project, jobId);
+      JobState state = client.getJobStatus(project, region, jobId);
       LOG.info("Job is in state {}", state);
       return DONE_STATES.contains(state);
     } catch (IOException e) {
@@ -95,9 +153,10 @@ public final class DataflowOperation {
     }
   }
 
-  private static boolean jobIsDoneOrFinishing(FlexTemplateClient client, String project, String jobId) {
+  private static boolean jobIsDoneOrFinishing(
+      FlexTemplateClient client, String project, String region, String jobId) {
     try {
-      JobState state = client.getJobStatus(project, jobId);
+      JobState state = client.getJobStatus(project, region, jobId);
       LOG.info("Job is in state {}", state);
       return DONE_STATES.contains(state) || FINISHING_STATES.contains(state);
     } catch (IOException e) {
@@ -110,11 +169,17 @@ public final class DataflowOperation {
     return Duration.between(start, Instant.now()).minus(maxWaitTime).isNegative();
   }
 
+  /** Configuration for running an operation. */
   @AutoValue
-  public static abstract class Config {
+  public abstract static class Config {
     public abstract String project();
+
     public abstract String jobId();
+
+    public abstract String region();
+
     public abstract Duration checkAfter();
+
     public abstract Duration timeoutAfter();
     // TODO(zhoufek): Also let users set the maximum number of exceptions.
 
@@ -124,23 +189,26 @@ public final class DataflowOperation {
           .setTimeoutAfter(Duration.ofMinutes(15));
     }
 
+    /** Builder for a {@link Config}. */
     @AutoValue.Builder
-    public static abstract class Builder {
+    public abstract static class Builder {
       public abstract Builder setProject(String value);
+
+      public abstract Builder setRegion(String value);
+
       public abstract Builder setJobId(String value);
+
       public abstract Builder setCheckAfter(Duration value);
+
       public abstract Builder setTimeoutAfter(Duration value);
 
       abstract Config autoBuild();
 
       public Config build() {
         Config config = autoBuild();
-        if (Strings.isNullOrEmpty(config.project())) {
-          throw new IllegalStateException("Project cannot be null or empty");
-        }
-        if (Strings.isNullOrEmpty(config.jobId())) {
-          throw new IllegalStateException("Job ID cannot be null or empty");
-        }
+        checkState(!Strings.isNullOrEmpty(config.project()), "Project must be set");
+        checkState(!Strings.isNullOrEmpty(config.region()), "Region must be set");
+        checkState(!Strings.isNullOrEmpty(config.jobId()), "Job id must be set");
         return config;
       }
     }

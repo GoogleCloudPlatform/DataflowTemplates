@@ -572,6 +572,9 @@
                       <value>--no-deprecation-warning</value>
                     </property>
                   </systemProperties>
+                  <!-- TODO(zhoufek): Try to find an alternative way to avoid writing
+                   sensitive info to disk.-->
+                  <disableXmlReport>true</disableXmlReport>
                   <excludedGroups>${excluded.spanner.tests}</excludedGroups>
                 </configuration>
             </plugin>

@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2022 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.v2.testing.artifacts;
 
 import static com.google.common.truth.Truth.assertThat;
@@ -34,6 +49,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
+/** Unit tests for {@link ArtifactGcsSdkClient}. */
 @RunWith(JUnit4.class)
 public final class ArtifactGcsSdkClientTest {
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
@@ -43,6 +59,7 @@ public final class ArtifactGcsSdkClientTest {
 
   private static final String LOCAL_PATH;
   private static final byte[] TEST_ARTIFACT_CONTENTS;
+
   static {
     LOCAL_PATH = Resources.getResource("test-artifact.txt").getPath();
     try {
@@ -81,8 +98,8 @@ public final class ArtifactGcsSdkClientTest {
   @Test(expected = IOException.class)
   public void testUploadArtifactInvalidLocalPath() throws IOException {
     when(client.create(any(BlobInfo.class), any())).thenReturn(blob);
-    new ArtifactGcsSdkClient(client).uploadArtifact(
-        BUCKET, DIR_PATH, "/some/invalid/path/please/do/not/make/this/file/valid");
+    new ArtifactGcsSdkClient(client)
+        .uploadArtifact(BUCKET, DIR_PATH, "/some/invalid/path/please/do/not/make/this/file/valid");
   }
 
   @Test
@@ -91,8 +108,8 @@ public final class ArtifactGcsSdkClientTest {
     String name1 = DIR_PATH + "/blob1";
     String name2 = DIR_PATH + "/blob2";
     String name3 = DIR_PATH + "/blob3";
-    ImmutableList<Blob> page1 = ImmutableList.of(
-        mock(Blob.class), mock(Blob.class), mock(Blob.class));
+    ImmutableList<Blob> page1 =
+        ImmutableList.of(mock(Blob.class), mock(Blob.class), mock(Blob.class));
     when(page1.get(0).getName()).thenReturn(name1);
     when(page1.get(1).getName()).thenReturn(name2);
     when(page1.get(2).getName()).thenReturn(name3);
@@ -124,8 +141,7 @@ public final class ArtifactGcsSdkClientTest {
     String name1 = DIR_PATH + "/blob1";
     String name2 = DIR_PATH + "/blob2";
     String name3 = DIR_PATH + "/blob3";
-    ImmutableList<Blob> page1 = ImmutableList.of(
-        mock(Blob.class), mock(Blob.class));
+    ImmutableList<Blob> page1 = ImmutableList.of(mock(Blob.class), mock(Blob.class));
     ImmutableList<Blob> page2 = ImmutableList.of(mock(Blob.class));
     when(page1.get(0).getName()).thenReturn(name1);
     when(page1.get(1).getName()).thenReturn(name2);
@@ -170,8 +186,8 @@ public final class ArtifactGcsSdkClientTest {
     BlobId id1 = BlobId.of(BUCKET, DIR_PATH + "/blob1");
     BlobId id2 = BlobId.of(BUCKET, DIR_PATH + "/blob2");
     BlobId id3 = BlobId.of(BUCKET, DIR_PATH + "/blob3");
-    ImmutableList<Blob> page1 = ImmutableList.of(
-        mock(Blob.class), mock(Blob.class), mock(Blob.class));
+    ImmutableList<Blob> page1 =
+        ImmutableList.of(mock(Blob.class), mock(Blob.class), mock(Blob.class));
     when(page1.get(0).getBlobId()).thenReturn(id1);
     when(page1.get(1).getBlobId()).thenReturn(id2);
     when(page1.get(2).getBlobId()).thenReturn(id3);

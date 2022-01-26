@@ -12,16 +12,10 @@
   </parent>
 
   <properties>
-    <dataflow-client.version>2.5.0</dataflow-client.version>
     <truth.version>1.0.1</truth.version>
   </properties>
 
   <dependencies>
-    <dependency>
-      <groupId>com.google.cloud.dataflow</groupId>
-      <artifactId>google-cloud-dataflow-java-sdk-all</artifactId>
-      <version>${dataflow-client.version}</version>
-    </dependency>
     <dependency>
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-storage</artifactId>

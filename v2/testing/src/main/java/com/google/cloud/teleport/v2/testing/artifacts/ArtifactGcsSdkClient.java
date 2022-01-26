@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2022 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.v2.testing.artifacts;
 
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList.toImmutableList;
@@ -30,8 +45,9 @@ public final class ArtifactGcsSdkClient implements ArtifactClient {
     this.client = client;
   }
 
-  public Blob uploadArtifact(String bucket, String gcsPath, String localPath)
-      throws IOException {
+  @Override
+  public Blob uploadArtifact(String bucket, String gcsPath, String localPath) throws IOException {
+    LOG.info("Uploading {} to {} under {}", localPath, gcsPath, bucket);
     BlobId id = BlobId.of(bucket, gcsPath);
     BlobInfo info = BlobInfo.newBuilder(id).build();
 
@@ -40,38 +56,50 @@ public final class ArtifactGcsSdkClient implements ArtifactClient {
     return client.create(info, contents);
   }
 
+  @Override
   public List<Blob> listArtifacts(String bucket, String testDirPath, Pattern regex) {
     List<Blob> result = new ArrayList<>();
-    consumeTestDir(bucket, testDirPath, blobs -> {
-      for (Blob blob : blobs) {
-        if (regex.matches(blob.getName())) {
-          result.add(blob);
-        }
-      }
-    });
+    consumeTestDir(
+        bucket,
+        testDirPath,
+        blobs -> {
+          for (Blob blob : blobs) {
+            if (regex.matches(blob.getName())) {
+              result.add(blob);
+            }
+          }
+        });
     return result;
   }
 
+  @Override
   public void deleteTestDir(String bucket, String testDirPath) {
-    consumeTestDir(bucket, testDirPath, blobs -> {
-      // Go through the Iterable<BlobId> overload, since the other ones make it very difficult to
-      // do thorough testing with Mockito
-      ImmutableList<BlobId> blobIds = StreamSupport.stream(blobs.spliterator(), false)
-          .map(Blob::getBlobId)
-          .collect(toImmutableList());
-      if (blobIds.isEmpty()) {
-        return;
-      }
-      List<Boolean> deleted = client.delete(blobIds);
-      for (int i = 0; i < blobIds.size(); ++i) {
-        if (!deleted.get(i)) {
-          LOG.warn("Blob {} not deleted", blobIds.get(i).getName());
-        }
-      }
-    });
+    LOG.info("Deleting everything in {} under {}", testDirPath, bucket);
+    consumeTestDir(
+        bucket,
+        testDirPath,
+        blobs -> {
+          // Go through the Iterable<BlobId> overload, since the other ones make it very difficult
+          // to
+          // do thorough testing with Mockito
+          ImmutableList<BlobId> blobIds =
+              StreamSupport.stream(blobs.spliterator(), false)
+                  .map(Blob::getBlobId)
+                  .collect(toImmutableList());
+          if (blobIds.isEmpty()) {
+            return;
+          }
+          List<Boolean> deleted = client.delete(blobIds);
+          for (int i = 0; i < blobIds.size(); ++i) {
+            if (!deleted.get(i)) {
+              LOG.warn("Blob {} not deleted", blobIds.get(i).getName());
+            }
+          }
+        });
   }
 
-  private void consumeTestDir(String bucket, String testDirPath, Consumer<Iterable<Blob>> consumeBlobs) {
+  private void consumeTestDir(
+      String bucket, String testDirPath, Consumer<Iterable<Blob>> consumeBlobs) {
     Page<Blob> blobs = getFirstTestDirPage(bucket, testDirPath);
     while (true) {
       consumeBlobs.accept(blobs.getValues());
