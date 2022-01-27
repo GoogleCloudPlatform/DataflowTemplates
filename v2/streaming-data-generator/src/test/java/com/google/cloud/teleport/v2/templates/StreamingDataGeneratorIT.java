@@ -16,22 +16,22 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createGcsClient;
-import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createTestPath;
-import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createTestSuiteDirPath;
+import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.getFullGcsPath;
 import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.storage.Blob;
+import com.google.auth.Credentials;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.teleport.it.TestProperties;
+import com.google.cloud.teleport.it.artifacts.Artifact;
 import com.google.cloud.teleport.it.artifacts.ArtifactClient;
-import com.google.cloud.teleport.it.artifacts.ArtifactGcsSdkClient;
+import com.google.cloud.teleport.it.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.dataflow.DataflowOperator;
 import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
 import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient;
 import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient.JobInfo;
 import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient.LaunchOptions;
+import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient.LaunchConfig;
 import com.google.cloud.teleport.it.dataflow.FlexTemplateClient;
 import com.google.cloud.teleport.v2.templates.StreamingDataGenerator.SinkType;
 import com.google.common.io.Resources;
@@ -47,14 +47,16 @@ import org.junit.runners.JUnit4;
 /** Integration test for {@link StreamingDataGenerator}. */
 @RunWith(JUnit4.class)
 public final class StreamingDataGeneratorIT {
-  private static final TestProperties PROPERTIES = new TestProperties();
+  private static final String ARTIFACT_BUCKET = TestProperties.artifactBucket();
+  private static final Credentials CREDENTIALS = TestProperties.googleCredentials();
+  private static final String PROJECT = TestProperties.project();
+  private static final String REGION = TestProperties.region();
+  private static final String SPEC_PATH = TestProperties.specPath();
 
   private static final String SCHEMA_FILE = "gameevent.json";
   private static final String LOCAL_SCHEMA_PATH = Resources.getResource(SCHEMA_FILE).getPath();
 
   private static final String TEST_ROOT_DIR = "streaming-data-generator";
-  private static final String TEST_DIR = createTestSuiteDirPath(TEST_ROOT_DIR);
-  private static final String SCHEMA_FILE_GCS_PATH = String.format("%s/%s", TEST_DIR, SCHEMA_FILE);
 
   private static final String NUM_SHARDS_KEY = "numShards";
   private static final String OUTPUT_DIRECTORY_KEY = "outputDirectory";
@@ -70,39 +72,38 @@ public final class StreamingDataGeneratorIT {
 
   @BeforeClass
   public static void setUpClass() throws IOException {
-    Storage gcsClient = createGcsClient(PROPERTIES.googleCredentials());
-    artifactClient = new ArtifactGcsSdkClient(gcsClient);
-    artifactClient.uploadArtifact(
-        PROPERTIES.artifactBucket(), SCHEMA_FILE_GCS_PATH, LOCAL_SCHEMA_PATH);
+    Storage gcsClient = createGcsClient(CREDENTIALS);
+    artifactClient = GcsArtifactClient.builder(gcsClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
+    artifactClient.uploadArtifact(SCHEMA_FILE, LOCAL_SCHEMA_PATH);
   }
 
   @AfterClass
   public static void tearDownClass() {
-    artifactClient.deleteTestDir(PROPERTIES.artifactBucket(), TEST_DIR);
+    artifactClient.cleanupRun();
   }
 
   @Test
   public void testFakeMessagesToGcs() throws IOException {
+    // Arrange
     String name = "teleport-flex-streaming-data-generator-gcs";
-    String outputDir = createTestPath(TEST_DIR, name);
     String jobName = createJobName(name);
-    LaunchOptions options =
-        LaunchOptions.builder(jobName, PROPERTIES.specPath())
-            .addParameter(
-                SCHEMA_LOCATION_KEY,
-                String.format("gs://%s/%s", PROPERTIES.artifactBucket(), SCHEMA_FILE_GCS_PATH))
+
+    LaunchConfig options =
+        LaunchConfig.builder(jobName, SPEC_PATH)
+            // TODO(zhoufek): See if it is possible to use the properties interface and generate
+            // the map from the set values.
+            .addParameter(SCHEMA_LOCATION_KEY, getGcsSchemaLocation(SCHEMA_FILE))
             .addParameter(QPS_KEY, DEFAULT_QPS)
             .addParameter(SINK_TYPE_KEY, SinkType.GCS.name())
             .addParameter(WINDOW_DURATION_KEY, DEFAULT_WINDOW_DURATION)
-            .addParameter(
-                OUTPUT_DIRECTORY_KEY,
-                String.format("gs://%s/%s", PROPERTIES.artifactBucket(), outputDir))
+            .addParameter(OUTPUT_DIRECTORY_KEY, getTestMethodDirPath(name))
             .addParameter(NUM_SHARDS_KEY, "1")
             .build();
     DataflowTemplateClient dataflow =
-        FlexTemplateClient.builder().setCredentials(PROPERTIES.googleCredentials()).build();
+        FlexTemplateClient.builder().setCredentials(CREDENTIALS).build();
 
-    JobInfo info = dataflow.launchTemplate(PROPERTIES.project(), PROPERTIES.region(), options);
+    // Act
+    JobInfo info = dataflow.launchTemplate(PROJECT, REGION, options);
     assertThat(info.state()).isIn(JobState.RUNNING_STATES);
 
     Result result =
@@ -110,19 +111,28 @@ public final class StreamingDataGeneratorIT {
             .waitForConditionAndFinish(
                 createConfig(info),
                 () -> {
-                  List<Blob> outputFiles =
-                      artifactClient.listArtifacts(
-                          PROPERTIES.artifactBucket(), outputDir, Pattern.compile(".*output-.*"));
+                  List<Artifact> outputFiles =
+                      artifactClient.listArtifacts(name, Pattern.compile(".*output-.*"));
                   return !outputFiles.isEmpty();
                 });
+
+    // Assert
     assertThat(result).isEqualTo(Result.CONDITION_MET);
+  }
+
+  private static String getTestMethodDirPath(String testMethod) {
+    return getFullGcsPath(ARTIFACT_BUCKET, TEST_ROOT_DIR, artifactClient.runId(), testMethod);
+  }
+
+  private static String getGcsSchemaLocation(String schemaFile) {
+    return getFullGcsPath(ARTIFACT_BUCKET, TEST_ROOT_DIR, artifactClient.runId(), schemaFile);
   }
 
   private static DataflowOperator.Config createConfig(JobInfo info) {
     return DataflowOperator.Config.builder()
         .setJobId(info.jobId())
-        .setProject(PROPERTIES.project())
-        .setRegion(PROPERTIES.region())
+        .setProject(PROJECT)
+        .setRegion(REGION)
         .build();
   }
 }

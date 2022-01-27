@@ -34,6 +34,7 @@ const (
 func GetAllRoots() []string {
 	return []string{
 		ClassicRoot,
+		ItRoot,
 		FlexRoot,
 	}
 }

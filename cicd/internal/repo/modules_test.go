@@ -23,7 +23,7 @@ import (
 
 func TestGetAllRoots(t *testing.T) {
 	actual := GetAllRoots()
-	expected := []string{ClassicRoot, FlexRoot}
+	expected := []string{ClassicRoot, ItRoot, FlexRoot}
 	if !reflect.DeepEqual(actual, expected) {
 		t.Errorf("Not all roots present. Expected: %v. Got: %v", expected, actual)
 	}
