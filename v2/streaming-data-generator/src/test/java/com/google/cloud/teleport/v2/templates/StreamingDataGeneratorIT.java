@@ -15,25 +15,25 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.v2.testing.artifacts.ArtifactUtils.createGcsClient;
-import static com.google.cloud.teleport.v2.testing.artifacts.ArtifactUtils.createTestPath;
-import static com.google.cloud.teleport.v2.testing.artifacts.ArtifactUtils.createTestSuiteDirPath;
-import static com.google.cloud.teleport.v2.testing.dataflow.DataflowUtils.createJobName;
+import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createGcsClient;
+import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createTestPath;
+import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createTestSuiteDirPath;
+import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Storage;
+import com.google.cloud.teleport.it.TestProperties;
+import com.google.cloud.teleport.it.artifacts.ArtifactClient;
+import com.google.cloud.teleport.it.artifacts.ArtifactGcsSdkClient;
+import com.google.cloud.teleport.it.dataflow.DataflowOperator;
+import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
+import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient;
+import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient.JobInfo;
+import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient.JobState;
+import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient.LaunchOptions;
+import com.google.cloud.teleport.it.dataflow.FlexTemplateClient;
 import com.google.cloud.teleport.v2.templates.StreamingDataGenerator.SinkType;
-import com.google.cloud.teleport.v2.testing.TestProperties;
-import com.google.cloud.teleport.v2.testing.artifacts.ArtifactClient;
-import com.google.cloud.teleport.v2.testing.artifacts.ArtifactGcsSdkClient;
-import com.google.cloud.teleport.v2.testing.dataflow.DataflowOperation;
-import com.google.cloud.teleport.v2.testing.dataflow.DataflowOperation.Result;
-import com.google.cloud.teleport.v2.testing.dataflow.FlexTemplateClient;
-import com.google.cloud.teleport.v2.testing.dataflow.FlexTemplateClient.JobInfo;
-import com.google.cloud.teleport.v2.testing.dataflow.FlexTemplateClient.JobState;
-import com.google.cloud.teleport.v2.testing.dataflow.FlexTemplateClient.LaunchOptions;
-import com.google.cloud.teleport.v2.testing.dataflow.FlexTemplateSdkClient;
 import com.google.common.io.Resources;
 import com.google.re2j.Pattern;
 import java.io.IOException;
@@ -99,27 +99,27 @@ public final class StreamingDataGeneratorIT {
                 String.format("gs://%s/%s", PROPERTIES.artifactBucket(), outputDir))
             .addParameter(NUM_SHARDS_KEY, "1")
             .build();
-    FlexTemplateClient dataflow =
-        FlexTemplateSdkClient.builder().setCredentials(PROPERTIES.googleCredentials()).build();
+    DataflowTemplateClient dataflow =
+        FlexTemplateClient.builder().setCredentials(PROPERTIES.googleCredentials()).build();
 
-    JobInfo info = dataflow.launchNewJob(PROPERTIES.project(), PROPERTIES.region(), options);
+    JobInfo info = dataflow.launchTemplate(PROPERTIES.project(), PROPERTIES.region(), options);
     assertThat(info.state()).isIn(JobState.RUNNING_STATES);
 
     Result result =
-        DataflowOperation.waitForConditionAndFinish(
-            dataflow,
-            createConfig(info),
-            () -> {
-              List<Blob> outputFiles =
-                  artifactClient.listArtifacts(
-                      PROPERTIES.artifactBucket(), outputDir, Pattern.compile(".*output-.*"));
-              return !outputFiles.isEmpty();
-            });
+        new DataflowOperator(dataflow)
+            .waitForConditionAndFinish(
+                createConfig(info),
+                () -> {
+                  List<Blob> outputFiles =
+                      artifactClient.listArtifacts(
+                          PROPERTIES.artifactBucket(), outputDir, Pattern.compile(".*output-.*"));
+                  return !outputFiles.isEmpty();
+                });
     assertThat(result).isEqualTo(Result.CONDITION_MET);
   }
 
-  private static DataflowOperation.Config createConfig(JobInfo info) {
-    return DataflowOperation.Config.builder()
+  private static DataflowOperator.Config createConfig(JobInfo info) {
+    return DataflowOperator.Config.builder()
         .setJobId(info.jobId())
         .setProject(PROPERTIES.project())
         .setRegion(PROPERTIES.region())
