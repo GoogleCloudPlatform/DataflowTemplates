@@ -39,8 +39,6 @@ jobs:
     outputs:
       changed-files: ${{ steps.changed-files.outputs.all_changed_files }}
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@230611dbd0eb52da1e1f4f7bc8bb0c3a339fc8b7
       - name: Setup Java
         uses: actions/setup-java@a12e082d834968c1847f782019214fadd20719f6
         with:
