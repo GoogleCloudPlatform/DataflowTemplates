@@ -29,10 +29,11 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@230611dbd0eb52da1e1f4f7bc8bb0c3a339fc8b7
       - name: Setup Environment
+        id: setup-env
         uses: ./.github/workflows/setup-env.yml
         with:
           java-version: '11' # Spotless does not work on Java 8
       - name: Run Spotless
         run: |
           cd cicd/ && go build ./cmd/run-spotless && cd ..
-          ./cicd/run-spotless --changed-files="${{ steps.changed-files.outputs.all_changed_files }}"
+          ./cicd/run-spotless --changed-files="${{ steps.setup-env.outputs.changed-files }}"
