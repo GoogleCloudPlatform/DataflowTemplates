@@ -46,6 +46,7 @@ runs:
   using: 'composite'
   steps:
     - name: Set Shell Options
+      shell: bash
       run: |
         set +o history
     - name: Setup Java
@@ -66,6 +67,7 @@ runs:
     # It shouldn't take too long to build all of this, and it will at least
     # make running the target program easier
     - name: Build CI/CD
+      shell: bash
       run: |
         cd cicd/
         go build ./cmd/...
