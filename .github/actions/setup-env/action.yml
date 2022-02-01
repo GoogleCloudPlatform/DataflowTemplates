@@ -21,7 +21,6 @@
 #   2. Set up Go, which our CI/CD programs are written in
 #   3. Build everything under cicd/cmd
 #   4. Gets all the changed files
-#   5. Configure options (e.g. through the `set` built-in command)
 
 name: 'Setup Environment'
 description: 'Sets up common environment for Dataflow Templates workflows'
@@ -45,10 +44,6 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Set Shell Options
-      shell: bash
-      run: |
-        set +o history
     - name: Setup Java
       uses: actions/setup-java@a12e082d834968c1847f782019214fadd20719f6
       with:
