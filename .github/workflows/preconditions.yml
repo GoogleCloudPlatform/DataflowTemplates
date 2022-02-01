@@ -34,6 +34,4 @@ jobs:
         with:
           java-version: '11' # Spotless won't work on version 8
       - name: Run Spotless
-        run: |
-          cd cicd/ && go build ./cmd/run-spotless && cd ..
-          ./cicd/run-spotless --changed-files="${{ steps.setup-env.outputs.changed-files }}"
+        run: ./cicd/run-spotless --changed-files="${{ steps.setup-env.outputs.changed-files }}"

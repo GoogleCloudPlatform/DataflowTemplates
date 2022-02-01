@@ -19,8 +19,9 @@
 # General steps are:
 #   1. Set up Java, which templates and tests are written in
 #   2. Set up Go, which our CI/CD programs are written in
-#   3. Gets all the changed files
-#   4. Configure options (e.g. through the `set` built-in command)
+#   3. Build everything under cicd/cmd
+#   4. Gets all the changed files
+#   5. Configure options (e.g. through the `set` built-in command)
 
 name: 'Setup Environment'
 description: 'Sets up common environment for Dataflow Templates workflows'
@@ -62,3 +63,10 @@ runs:
       uses: tj-actions/changed-files@61ee456a9d0f512e7ecfdf28863634c97dae2d16
       with:
         separator: ','
+    # It shouldn't take too long to build all of this, and it will at least
+    # make running the target program easier
+    - name: Build CI/CD
+      run: |
+        cd cicd/
+        go build ./cmd/...
+        cd ..
