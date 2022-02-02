@@ -44,19 +44,19 @@ func main() {
 	modules := repo.GetModulesForPaths(s)
 
 	var fullErr error
-	if _, ok := modules[repo.ClassicRoot]; ok {
-		if err := op.RunMavenOnPom(repo.ClassicRoot, SpotlessCommand); err != nil {
-			fullErr = err
-		}
-	}
-	if flex, ok := modules[repo.FlexRoot]; ok {
-		for _, m := range flex {
-			if len(m) > 0 { // Zero length represents the root, which has no Java code
-				if err := op.RunMavenOnModule(repo.FlexRoot, SpotlessCommand, m); err != nil && fullErr != nil {
-					fullErr = err
-				} else if err != nil {
-					fullErr = fmt.Errorf("%w\n%v", fullErr, err)
-				}
+	for _, root := range repo.GetAllRoots() {
+		if children, ok := modules[root]; ok {
+			var err error
+			if len(children) == 0 {
+				err = op.RunMavenOnPom(root, SpotlessCommand)
+			} else {
+				err = op.RunMavenOnModule(root, SpotlessCommand, strings.Join(children, ","))
+			}
+
+			if err != nil && fullErr == nil {
+				fullErr = err
+			} else if err != nil {
+				fullErr = fmt.Errorf("%w\n%v", fullErr, err)
 			}
 		}
 	}

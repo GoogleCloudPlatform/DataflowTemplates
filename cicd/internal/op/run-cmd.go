@@ -36,6 +36,6 @@ func RunCmdAndStreamOutput(cmd string, args []string) error {
 	for scanner.Scan() {
 		fmt.Println(scanner.Text())
 	}
-	
+
 	return op.Wait()
 }

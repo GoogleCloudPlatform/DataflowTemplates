@@ -29,6 +29,14 @@ const (
 	FlexRoot    = "v2"
 )
 
+// Returns all of the known roots modules.
+func GetAllRoots() []string {
+	return []string{
+		ClassicRoot,
+		FlexRoot,
+	}
+}
+
 // Returns a map of roots to their modules. Properties are:
 // 		Key: The root module, equivalent to one of the const values (e.g. ClassicRoot)
 //		Value: All the submodules, sometimes nested under another parent that is also in the slice
@@ -144,7 +152,7 @@ func flexModulesAsTrie() *moduleTrieNode {
 
 func findUniqueFlexModules(paths []string) []string {
 	trie := flexModulesAsTrie()
-	modules := make(map[string]interface{})
+	allModules := make([]string, 0)
 
 	for _, path := range paths {
 		curr := trie
@@ -162,17 +170,19 @@ func findUniqueFlexModules(paths []string) []string {
 		}
 
 		if possible != nil {
-			modules[possible.value] = nil
+			allModules = append(allModules, possible.value)
 		}
 		// We don't error from not finding anything, since it could be a root-level file
 		// that isn't part of any module.
 	}
 
-	ret := make([]string, len(modules))
-	i := 0
-	for k := range modules {
-		ret[i] = k
-		i += 1
+	unique := make(map[string]interface{})
+	ret := make([]string, 0)
+	for _, m := range allModules {
+		if _, ok := unique[m]; !ok {
+			unique[m] = nil
+			ret = append(ret, m)
+		}
 	}
 
 	return ret
