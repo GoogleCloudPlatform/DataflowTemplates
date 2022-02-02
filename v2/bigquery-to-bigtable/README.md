@@ -3,6 +3,10 @@
 The [BigQueryToBigtable](src/main/java/com/google/cloud/teleport/v2/templates/BigQueryToBigtable.java) pipeline exports data
 from BigQuery using a query into a Cloud Bigtable table.
 
+NOTE: This template is currently unreleased. If you wish to use it now, you
+will need to follow the steps outlined below to add it to and run it from
+your own Google Cloud project.
+
 ## Getting Started
 
 ### Requirements
