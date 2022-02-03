@@ -21,7 +21,6 @@ import (
 	"log"
 	"strings"
 
-	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/erroru"
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/flags"
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/op"
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/repo"
@@ -40,7 +39,7 @@ func main() {
 		return
 	}
 
-	var fullErr error
+	errored := false
 	for root, children := range repo.GetModulesForPaths(changed) {
 		var err error
 		if len(children) == 0 {
@@ -50,10 +49,13 @@ func main() {
 		} else {
 			log.Printf("Skipping '%s' because the only files changed were not associated with a module", root)
 		}
-		fullErr = erroru.CombineErrors(fullErr, err)
+		
+		if err != nil {
+			errored = true
+		}
 	}
 
-	if fullErr != nil {
+	if errored {
 		log.Fatal("There were spotless errors. Check the output from the commands.")
 	}
 }
