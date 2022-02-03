@@ -45,8 +45,10 @@ func main() {
 		var err error
 		if len(children) == 0 {
 			err = op.RunMavenOnPom(root, SpotlessCommand)
-		} else {
+		} else if len(children) > 1 || children[0] != "" {
 			err = op.RunMavenOnModule(root, SpotlessCommand, strings.Join(children, ","))
+		} else {
+			log.Printf("Skipping '%s' because the only files changed were not associated with a module", root)
 		}
 		fullErr = erroru.CombineErrors(fullErr, err)
 	}
