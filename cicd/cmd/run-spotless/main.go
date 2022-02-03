@@ -22,6 +22,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/flags"
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/op"
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/repo"
 )
@@ -31,17 +32,15 @@ const (
 )
 
 func main() {
-	changed := flag.String("changed-files", "", "List of changed files as a comma-separated string")
+	flags.RegisterCommonFlags()
 	flag.Parse()
 
-	if len(*changed) == 0 {
-		log.Print("No changed files passed. This is probably an error, but we're assuming it isn't just in case")
+	var modules map[string][]string
+	if changed := flags.ChangedFiles(); len(changed) == 0 {
 		return
+	} else {
+		modules = repo.GetModulesForPaths(changed)
 	}
-	log.Printf("Received changed files: %s", *changed)
-
-	s := strings.Split(*changed, ",")
-	modules := repo.GetModulesForPaths(s)
 
 	var fullErr error
 	for _, root := range repo.GetAllRoots() {
