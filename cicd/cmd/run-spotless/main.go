@@ -18,10 +18,10 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/erroru"
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/flags"
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/op"
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/repo"
@@ -35,29 +35,20 @@ func main() {
 	flags.RegisterCommonFlags()
 	flag.Parse()
 
-	var modules map[string][]string
-	if changed := flags.ChangedFiles(); len(changed) == 0 {
+	changed := flags.ChangedFiles()
+	if len(changed) == 0 {
 		return
-	} else {
-		modules = repo.GetModulesForPaths(changed)
 	}
 
 	var fullErr error
-	for _, root := range repo.GetAllRoots() {
-		if children, ok := modules[root]; ok {
-			var err error
-			if len(children) == 0 {
-				err = op.RunMavenOnPom(root, SpotlessCommand)
-			} else {
-				err = op.RunMavenOnModule(root, SpotlessCommand, strings.Join(children, ","))
-			}
-
-			if err != nil && fullErr == nil {
-				fullErr = err
-			} else if err != nil {
-				fullErr = fmt.Errorf("%w\n%v", fullErr, err)
-			}
+	for root, children := range repo.GetModulesForPaths(changed) {
+		var err error
+		if len(children) == 0 {
+			err = op.RunMavenOnPom(root, SpotlessCommand)
+		} else {
+			err = op.RunMavenOnModule(root, SpotlessCommand, strings.Join(children, ","))
 		}
+		fullErr = erroru.CombineErrors(fullErr, err)
 	}
 
 	if fullErr != nil {

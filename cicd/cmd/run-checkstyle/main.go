@@ -18,10 +18,10 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/erroru"
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/flags"
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/op"
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/repo"
@@ -48,12 +48,7 @@ func main() {
 		} else {
 			err = op.RunMavenOnModule(root, CheckstyleCommand, strings.Join(children, ","))
 		}
-
-		if err != nil && fullErr == nil {
-			fullErr = err
-		} else {
-			fullErr = fmt.Errorf("%w\n%v", fullErr, err)
-		}
+		fullErr = erroru.CombineErrors(fullErr, err)
 	}
 
 	if fullErr != nil {
