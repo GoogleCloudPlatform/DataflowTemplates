@@ -37,3 +37,15 @@ jobs:
           java-version: '11' # Spotless won't work on version 8
       - name: Run Spotless
         run: ./cicd/run-spotless --changed-files="${{ steps.setup-env.outputs.changed-files }}"
+  checkstyle_check:
+    name: Checkstyle
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@230611dbd0eb52da1e1f4f7bc8bb0c3a339fc8b7
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Run Checkstyle
+        run: ./cicd/run-checkstyle --changed-files="${{ steps.setup-env.outputs.changed-files }}"
