@@ -189,6 +189,7 @@ public final class FormatDatastreamJsonToJson
   private long convertTimestampStringToSeconds(String timestamp) {
     ZonedDateTime zonedDateTime;
     try {
+      timestamp = timestamp.replace(" ", "T");
       if (!timestamp.endsWith("Z")) {
         timestamp = timestamp + "Z";
       }

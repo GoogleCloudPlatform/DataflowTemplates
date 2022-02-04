@@ -356,7 +356,7 @@ public abstract class HttpEventPublisher {
                 ? NoopHostnameVerifier.INSTANCE
                 : new DefaultHostnameVerifier();
 
-        SSLContext sslContext =  SSLContextBuilder.create().build();
+        SSLContext sslContext = SSLContextBuilder.create().build();
         if (disableCertificateValidation) {
           LOG.info("Certificate validation is disabled");
           sslContext =
@@ -368,8 +368,7 @@ public abstract class HttpEventPublisher {
           InputStream inStream = new ByteArrayInputStream(rootCaCertificate);
           CertificateFactory cf = CertificateFactory.getInstance("X.509");
           X509Certificate cert = (X509Certificate) cf.generateCertificate(inStream);
-          CustomX509TrustManager customTrustManager =
-              new CustomX509TrustManager(cert);
+          CustomX509TrustManager customTrustManager = new CustomX509TrustManager(cert);
           sslContext.init(null, new TrustManager[] {customTrustManager}, null);
         }
 

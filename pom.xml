@@ -36,7 +36,8 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <apache-http-client-v2>1.39.2</apache-http-client-v2>
+    <apache-http-client-v2>1.40.1</apache-http-client-v2>
+    <autovalue.service.version>1.0-rc6</autovalue.service.version>
     <avro.version>1.8.2</avro.version>
     <checkstyle.version>8.7</checkstyle.version>
     <beam.version>2.34.0</beam.version>
@@ -200,8 +201,18 @@
         </exclusion>
       </exclusions>
     </dependency>
+    <dependency>
+      <groupId>com.google.auto.service</groupId>
+      <artifactId>auto-service</artifactId>
+      <version>${autovalue.service.version}</version>
+    </dependency>
 
     <!-- Dependencies needed for Splunk -->
+    <dependency>
+      <groupId>com.google.http-client</groupId>
+      <artifactId>google-http-client</artifactId>
+      <version>${apache-http-client-v2}</version>
+    </dependency>
     <dependency>
       <groupId>com.google.http-client</groupId>
       <artifactId>google-http-client-apache-v2</artifactId>
@@ -651,11 +662,12 @@
              <ignoredUnusedDeclaredDependencies>
                 <ignoredUnusedDeclaredDependency>org.threeten:threetenbp</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>org.json:json</ignoredUnusedDeclaredDependency>
-               <ignoredUnusedDeclaredDependency>org.apache.hadoop:hadoop-mapreduce-client-core</ignoredUnusedDeclaredDependency>
+                <ignoredUnusedDeclaredDependency>org.apache.hadoop:hadoop-mapreduce-client-core</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>org.apache.hadoop:hadoop-common</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>org.codehaus.jackson:jackson-core-asl</ignoredUnusedDeclaredDependency>
-               <ignoredUnusedDeclaredDependency>org.codehaus.jackson:jackson-mapper-asl</ignoredUnusedDeclaredDependency>
-               <ignoredUnusedDeclaredDependency>io.opencensus:opencensus-api</ignoredUnusedDeclaredDependency>
+                <ignoredUnusedDeclaredDependency>org.codehaus.jackson:jackson-mapper-asl</ignoredUnusedDeclaredDependency>
+                <ignoredUnusedDeclaredDependency>io.opencensus:opencensus-api</ignoredUnusedDeclaredDependency>
+                <ignoredUnusedDeclaredDependency>com.google.auto.service:auto-service</ignoredUnusedDeclaredDependency>
              </ignoredUnusedDeclaredDependencies>
            </configuration>
           </execution>
@@ -797,6 +809,7 @@
                   <excludes>
                     <exclude>com.google.guava:guava-jdk5</exclude>
                     <exclude>com.google.protobuf:protobuf-lite</exclude>
+                    <exclude>org.apache.logging.log4j:*:[2.0,2.14.1]</exclude>
                   </excludes>
                 </bannedDependencies>
               </rules>
@@ -852,6 +865,11 @@
         <groupId>org.apache.avro</groupId>
         <artifactId>avro-maven-plugin</artifactId>
         <version>${avro.version}</version>
+        <!-- For compatibility reasons (e.g. IntelliJ), the configuration must be duplicated here
+          and under execution. -->
+        <configuration>
+          <sourceDirectory>${project.basedir}/src/main/resources/schema/avro</sourceDirectory>
+        </configuration>
         <executions>
           <execution>
             <phase>generate-sources</phase>

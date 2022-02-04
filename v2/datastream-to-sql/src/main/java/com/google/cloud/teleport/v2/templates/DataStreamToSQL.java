@@ -23,6 +23,7 @@ import com.google.cloud.teleport.v2.values.DmlInfo;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Splitter;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -228,6 +229,15 @@ public class DataStreamToSQL {
     }
   }
 
+  /** Parse the SchemaMap config which allows key:value pairs of column naming configs. */
+  public static Map<String, String> parseSchemaMap(String schemaMapString) {
+    if (schemaMapString == null || schemaMapString.equals("")) {
+      return new HashMap<>();
+    }
+
+    return Splitter.on(",").withKeyValueSeparator(":").split(schemaMapString);
+  }
+
   /**
    * Runs the pipeline with the supplied options.
    *
@@ -247,8 +257,7 @@ public class DataStreamToSQL {
 
     CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration = getDataSourceConfiguration(options);
     validateOptions(options, dataSourceConfiguration);
-    Map<String, String> schemaMap =
-        Splitter.on(",").withKeyValueSeparator(":").split(options.getSchemaMap());
+    Map<String, String> schemaMap = parseSchemaMap(options.getSchemaMap());
 
     /*
      * Stage 1: Ingest and Normalize Data to FailsafeElement with JSON Strings

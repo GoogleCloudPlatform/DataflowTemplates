@@ -3,6 +3,10 @@
 The [BigQueryToBigtable](src/main/java/com/google/cloud/teleport/v2/templates/BigQueryToBigtable.java) pipeline exports data
 from BigQuery using a query into a Cloud Bigtable table.
 
+NOTE: This template is currently unreleased. If you wish to use it now, you
+will need to follow the steps outlined below to add it to and run it from
+your own Google Cloud project.
+
 ## Getting Started
 
 ### Requirements
@@ -149,7 +153,7 @@ gcloud beta dataflow flex-template run ${JOB_NAME} \
         --parameters readIdColumn=${READ_ID_COLUMN},bigtableWriteProjectId=${BIGTABLE_WRITE_PROJECT_ID},bigtableWriteInstanceId=${BIGTABLE_WRITE_INSTANCE_ID},bigtableWriteTableId=${BIGTABLE_WRITE_TABLE_ID},bigtableWriteColumnFamily=${BIGTABLE_WRITE_COLUMN_FAMILY}
 ```
 
-Note: The `^~^` prefix on readQuery is used to make `~` a delimiter instead of 
+Note: The `^~^` prefix on readQuery is used to make `~` a delimiter instead of
 commas. This allows commas to be used in the query. Read more about [gcloud topic escaping](https://cloud.google.com/sdk/gcloud/reference/topic/escaping).
 
 #### Example query

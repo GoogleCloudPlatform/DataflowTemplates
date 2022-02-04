@@ -28,6 +28,10 @@
 
     <artifactId>datastream-to-sql</artifactId>
 
+    <properties>
+        <truth.version>1.0.1</truth.version>
+    </properties>
+
     <description>
         Stream CDC Data from DataStream to SQL via GCS
     </description>
@@ -48,6 +52,19 @@
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
             <version>8.0.13</version>
+        </dependency>
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>com.google.truth</groupId>
+            <artifactId>truth</artifactId>
+            <version>${truth.version}</version>
+            <scope>test</scope>
+            <exclusions>
+              <exclusion>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+              </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
 

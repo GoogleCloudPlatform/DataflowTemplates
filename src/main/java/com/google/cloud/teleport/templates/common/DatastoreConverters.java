@@ -173,7 +173,6 @@ public class DatastoreConverters {
     void setFirestoreWriteNamespace(ValueProvider<String> value);
 
     @Description("Hint for the expected number of workers in the ramp-up throttling step")
-    @Default.Integer(500)
     ValueProvider<Integer> getFirestoreHintNumWorkers();
 
     void setFirestoreHintNumWorkers(ValueProvider<Integer> value);
@@ -210,7 +209,6 @@ public class DatastoreConverters {
     void setFirestoreDeleteProjectId(ValueProvider<String> firestoreDeleteProjectId);
 
     @Description("Hint for the expected number of workers in the ramp-up throttling step")
-    @Default.Integer(500)
     ValueProvider<Integer> getFirestoreHintNumWorkers();
 
     void setFirestoreHintNumWorkers(ValueProvider<Integer> value);
@@ -267,6 +265,7 @@ public class DatastoreConverters {
     public abstract ValueProvider<Integer> hintNumWorkers();
 
     public abstract Boolean throttleRampup();
+
     public abstract TupleTag<String> errorTag();
 
     /** Builder for WriteJsonEntities. */
@@ -277,6 +276,7 @@ public class DatastoreConverters {
       public abstract Builder setHintNumWorkers(ValueProvider<Integer> hintNumWorkers);
 
       public abstract Builder setThrottleRampup(Boolean throttleRampup);
+
       public abstract Builder setErrorTag(TupleTag<String> errorTag);
 
       public abstract WriteJsonEntities build();
@@ -291,9 +291,8 @@ public class DatastoreConverters {
     @Override
     public PCollectionTuple expand(PCollection<String> entityJson) {
       TupleTag<Entity> goodTag = new TupleTag<>();
-      DatastoreV1.Write datastoreWrite = DatastoreIO.v1().write()
-              .withProjectId(projectId())
-              .withHintNumWorkers(hintNumWorkers());
+      DatastoreV1.Write datastoreWrite =
+          DatastoreIO.v1().write().withProjectId(projectId()).withHintNumWorkers(hintNumWorkers());
       if (!throttleRampup()) {
         datastoreWrite = datastoreWrite.withRampupThrottlingDisabled();
       }
@@ -305,9 +304,7 @@ public class DatastoreConverters {
                   "CheckSameKey",
                   CheckSameKey.newBuilder().setErrorTag(errorTag()).setGoodTag(goodTag).build());
 
-      entities
-          .get(goodTag)
-          .apply("WriteToDatastore", datastoreWrite);
+      entities.get(goodTag).apply("WriteToDatastore", datastoreWrite);
       return entities;
     }
   }
@@ -412,6 +409,7 @@ public class DatastoreConverters {
       public abstract Builder setHintNumWorkers(ValueProvider<Integer> hintNumWorkers);
 
       public abstract Builder setThrottleRampup(Boolean throttleRampup);
+
       public abstract DatastoreDeleteEntityJson build();
     }
 
@@ -423,7 +421,9 @@ public class DatastoreConverters {
 
     @Override
     public PDone expand(PCollection<String> entityJson) {
-      DatastoreV1.DeleteKey datastoreDelete = DatastoreIO.v1().deleteKey()
+      DatastoreV1.DeleteKey datastoreDelete =
+          DatastoreIO.v1()
+              .deleteKey()
               .withProjectId(projectId())
               .withHintNumWorkers(hintNumWorkers());
       if (!throttleRampup()) {
@@ -718,9 +718,8 @@ public class DatastoreConverters {
     @Override
     public PCollectionTuple expand(PCollection<Entity> entity) {
       TupleTag<Entity> goodTag = new TupleTag<>();
-      DatastoreV1.Write datastoreWrite = DatastoreIO.v1().write()
-              .withProjectId(projectId())
-              .withHintNumWorkers(hintNumWorkers());
+      DatastoreV1.Write datastoreWrite =
+          DatastoreIO.v1().write().withProjectId(projectId()).withHintNumWorkers(hintNumWorkers());
       if (!throttleRampup()) {
         datastoreWrite = datastoreWrite.withRampupThrottlingDisabled();
       }
@@ -734,9 +733,7 @@ public class DatastoreConverters {
           entity.apply(
               "CheckSameKey",
               CheckSameKey.newBuilder().setErrorTag(errorTag()).setGoodTag(goodTag).build());
-      entities
-          .get(goodTag)
-          .apply("WriteToDatastore", datastoreWrite);
+      entities.get(goodTag).apply("WriteToDatastore", datastoreWrite);
       return entities;
     }
   }

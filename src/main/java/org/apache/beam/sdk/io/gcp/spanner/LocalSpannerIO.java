@@ -29,6 +29,7 @@ import com.google.cloud.spanner.ErrorCode;
 import com.google.cloud.spanner.KeySet;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Mutation.Op;
+import com.google.cloud.spanner.Options;
 import com.google.cloud.spanner.PartitionOptions;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerException;
@@ -1483,7 +1484,15 @@ public class LocalSpannerIO {
         throws SpannerException {
       for (int retry = 1; ; retry++) {
         try {
-          spannerAccessor.getDatabaseClient().writeAtLeastOnce(batch);
+          if (spannerConfig.getRpcPriority() != null
+              && spannerConfig.getRpcPriority().get() != null) {
+            spannerAccessor
+                .getDatabaseClient()
+                .writeAtLeastOnceWithOptions(
+                    batch, Options.priority(spannerConfig.getRpcPriority().get()));
+          } else {
+            spannerAccessor.getDatabaseClient().writeAtLeastOnce(batch);
+          }
           return;
         } catch (AbortedException e) {
           if (retry >= ABORTED_RETRY_ATTEMPTS) {

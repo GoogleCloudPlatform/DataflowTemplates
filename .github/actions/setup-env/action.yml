@@ -1,0 +1,69 @@
+# Copyright 2022 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+# Action used to set up the environment. This assumes that we are using
+# a Linux-based VM.
+#
+# General steps are:
+#   1. Set up Java, which templates and tests are written in
+#   2. Set up Go, which our CI/CD programs are written in
+#   3. Build everything under cicd/cmd
+#   4. Gets all the changed files
+
+name: 'Setup Environment'
+description: 'Sets up common environment for Dataflow Templates workflows'
+
+inputs:
+  java-version:
+    type: string
+    description: 'The version of Java to install'
+    required: false
+    default: '8'
+  go-version:
+    type: string
+    description: 'The version of Go to install'
+    required: false
+    default: '1.17'
+outputs:
+  changed-files:
+    description: 'Comma-separated list of files that were changed'
+    value: ${{ steps.changed-files.outputs.all_changed_files }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Java
+      uses: actions/setup-java@a12e082d834968c1847f782019214fadd20719f6
+      with:
+        distribution: 'zulu'
+        java-version: ${{ inputs.java-version }}
+        cache: 'maven'
+    - name: Setup Go
+      uses: actions/setup-go@44e221478fc6847752e5c574fc7a7b3247b00fbf
+      with:
+        go-version: ${{ inputs.go-version }}
+    - name: Get Changed Files
+      id: changed-files
+      uses: tj-actions/changed-files@61ee456a9d0f512e7ecfdf28863634c97dae2d16
+      with:
+        separator: ','
+    # It shouldn't take too long to build all of this, and it will at least
+    # make running the target program easier
+    - name: Build CI/CD
+      shell: bash
+      run: |
+        cd cicd/
+        go build ./cmd/...
+        cd ..

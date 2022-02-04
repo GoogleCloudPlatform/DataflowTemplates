@@ -13,16 +13,19 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.v2.utils;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.teleport.v2.templates.DataplexBigQueryToGcs.DataplexBigQueryToGcsOptions;
-import com.google.cloud.teleport.v2.templates.DataplexBigQueryToGcs.MetadataFilter;
+import com.google.cloud.teleport.v2.options.DataplexBigQueryToGcsOptions;
+import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform.FileFormat;
+import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform.WriteDisposition;
 import com.google.cloud.teleport.v2.utils.BigQueryMetadataLoader.Filter;
+import com.google.cloud.teleport.v2.utils.DataplexBigQueryToGcsFilter.WriteDispositionException;
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -34,7 +37,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Unit tests for {@link DataplexBigQueryToGcs.MetadataFilter}. */
+/** Unit tests for {@link DataplexBigQueryToGcsFilter}. */
 @RunWith(JUnit4.class)
 public class DataplexBigQueryToGcsFilterTest {
   public static final Long TS_MICROS_2021_01_01_15_00_00_UTC = 1609513200000000L;
@@ -51,10 +54,10 @@ public class DataplexBigQueryToGcsFilterTest {
     BigQueryTable.Builder t = table();
     BigQueryTablePartition p = partition().build();
 
-    options.setTableRefs(null);
+    options.setTables(null);
     options.setExportDataModifiedBeforeDateTime(null);
 
-    Filter f = new MetadataFilter(options);
+    Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
 
     assertThat(f.shouldSkipUnpartitionedTable(t)).isFalse();
     assertThat(f.shouldSkipPartitionedTable(t, Collections.singletonList(p))).isFalse();
@@ -62,16 +65,16 @@ public class DataplexBigQueryToGcsFilterTest {
   }
 
   @Test
-  public void test_whenTableRefsSet_filterExcludesTablesByName() {
+  public void test_whenTablesSet_filterExcludesTablesByName() {
     BigQueryTable.Builder includedTable1 = table().setTableName("includedTable1");
     BigQueryTable.Builder includedTable2 = table().setTableName("includedTable2");
     BigQueryTable.Builder excludedTable = table().setTableName("excludedTable");
     BigQueryTablePartition p = partition().build();
 
-    options.setTableRefs("includedTable1,includedTable2");
+    options.setTables("includedTable1,includedTable2");
     options.setExportDataModifiedBeforeDateTime(null);
 
-    Filter f = new MetadataFilter(options);
+    Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
 
     assertThat(f.shouldSkipUnpartitionedTable(includedTable1)).isFalse();
     assertThat(f.shouldSkipUnpartitionedTable(includedTable2)).isFalse();
@@ -88,9 +91,9 @@ public class DataplexBigQueryToGcsFilterTest {
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void test_whenTableRefsIsInvalid_throwsException() {
-    options.setTableRefs(",");
-    new MetadataFilter(options);
+  public void test_whenTablesIsInvalid_throwsException() {
+    options.setTables(",");
+    new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
   }
 
   @Test
@@ -111,10 +114,10 @@ public class DataplexBigQueryToGcsFilterTest {
             .build();
     List<BigQueryTablePartition> partitions = Arrays.asList(olderPartition, newerPartition);
 
-    options.setTableRefs(null);
+    options.setTables(null);
     options.setExportDataModifiedBeforeDateTime("2021-01-01T15:00:00Z");
 
-    Filter f = new MetadataFilter(options);
+    Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
 
     assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isTrue();
     assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isFalse();
@@ -134,11 +137,11 @@ public class DataplexBigQueryToGcsFilterTest {
     BigQueryTable.Builder olderTable =
         table().setLastModificationTime(TS_MICROS_2021_01_01_15_00_00_UTC + 1000L);
 
-    options.setTableRefs(null);
+    options.setTables(null);
 
     {
       options.setExportDataModifiedBeforeDateTime("2021-01-01T15:00:00Z");
-      Filter f = new MetadataFilter(options);
+      Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
       assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isTrue();
       assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isFalse();
     }
@@ -146,7 +149,7 @@ public class DataplexBigQueryToGcsFilterTest {
     {
       // Should be the same as 15:00 UTC:
       options.setExportDataModifiedBeforeDateTime("2021-01-01T14:00:00-01:00");
-      Filter f = new MetadataFilter(options);
+      Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
       assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isTrue();
       assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isFalse();
     }
@@ -154,7 +157,7 @@ public class DataplexBigQueryToGcsFilterTest {
     {
       // Should be the same as 15:00 UTC:
       options.setExportDataModifiedBeforeDateTime("2021-01-01T17:00:00+02:00");
-      Filter f = new MetadataFilter(options);
+      Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
       assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isTrue();
       assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isFalse();
     }
@@ -163,7 +166,7 @@ public class DataplexBigQueryToGcsFilterTest {
       // 14:00 UTC is 1 hour is earlier that both table's last modified time
       // (14:59:59.999 and 15:00:00.001 UTC). Expecting both to be skipped.
       options.setExportDataModifiedBeforeDateTime("2021-01-01T14:00:00Z");
-      Filter f = new MetadataFilter(options);
+      Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
       assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isTrue();
       assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isTrue();
     }
@@ -177,10 +180,10 @@ public class DataplexBigQueryToGcsFilterTest {
     BigQueryTable.Builder newerTable = table().setLastModificationTime(micros - 1000L);
     BigQueryTable.Builder olderTable = table().setLastModificationTime(micros + 1000L);
 
-    options.setTableRefs(null);
+    options.setTables(null);
     options.setExportDataModifiedBeforeDateTime("2021-02-15");
 
-    Filter f = new MetadataFilter(options);
+    Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
     assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isTrue();
     assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isFalse();
   }
@@ -193,10 +196,10 @@ public class DataplexBigQueryToGcsFilterTest {
     BigQueryTable.Builder olderTable = table().setLastModificationTime(micros - 100000L);
     BigQueryTable.Builder newerTable = table().setLastModificationTime(micros + 100000L);
 
-    options.setTableRefs(null);
+    options.setTables(null);
     options.setExportDataModifiedBeforeDateTime("-P1D");
 
-    Filter f = new MetadataFilter(options);
+    Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
     assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isTrue();
     assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isFalse();
   }
@@ -209,22 +212,81 @@ public class DataplexBigQueryToGcsFilterTest {
     BigQueryTable.Builder olderTable = table().setLastModificationTime(micros - 100000L);
     BigQueryTable.Builder newerTable = table().setLastModificationTime(micros + 100000L);
 
-    options.setTableRefs(null);
+    options.setTables(null);
     options.setExportDataModifiedBeforeDateTime("-p1dt3h");
 
-    Filter f = new MetadataFilter(options);
+    Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
     assertThat(f.shouldSkipUnpartitionedTable(newerTable)).isTrue();
     assertThat(f.shouldSkipUnpartitionedTable(olderTable)).isFalse();
   }
 
   @Test
   public void test_whenPartitionedTableHasNoPartitions_filterExcludesTable() {
-    options.setTableRefs(null);
+    options.setTables(null);
     options.setExportDataModifiedBeforeDateTime(null);
 
-    Filter f = new MetadataFilter(options);
+    Filter f = new DataplexBigQueryToGcsFilter(options, new ArrayList<String>());
 
     assertThat(f.shouldSkipPartitionedTable(table(), Collections.emptyList())).isTrue();
+  }
+
+  @Test
+  public void test_whenTargetFileExistsWithWriteDispositionSKIP_filterExcludesTables() {
+    BigQueryTable.Builder t = table().setTableName("table1").setPartitioningColumn("p2");
+    BigQueryTablePartition p = partition().setPartitionName("partition1").build();
+
+    options.setTables(null);
+    options.setExportDataModifiedBeforeDateTime(null);
+    options.setFileFormat(FileFormat.AVRO);
+    options.setWriteDisposition(WriteDisposition.SKIP);
+
+    Filter f =
+        new DataplexBigQueryToGcsFilter(
+            options,
+            Arrays.asList(
+                "table1/output-table1.avro", "table1/p2=partition1/output-table1-partition1.avro"));
+
+    assertThat(f.shouldSkipUnpartitionedTable(t)).isTrue();
+    assertThat(f.shouldSkipPartition(t, p)).isTrue();
+  }
+
+  @Test
+  public void test_whenTargetFileExistsWithWriteDispositionOverwrite_filterAcceptsTables() {
+    BigQueryTable.Builder t = table().setTableName("table1").setPartitioningColumn("p2");
+    BigQueryTablePartition p = partition().setPartitionName("partition1").build();
+
+    options.setTables(null);
+    options.setExportDataModifiedBeforeDateTime(null);
+    options.setFileFormat(FileFormat.AVRO);
+    options.setWriteDisposition(WriteDisposition.OVERWRITE);
+
+    Filter f =
+        new DataplexBigQueryToGcsFilter(
+            options,
+            Arrays.asList(
+                "table1/output-table1.avro", "table1/p2=partition1/output-table1-partition1.avro"));
+
+    assertThat(f.shouldSkipUnpartitionedTable(t)).isFalse();
+    assertThat(f.shouldSkipPartition(t, p)).isFalse();
+  }
+
+  @Test(expected = WriteDispositionException.class)
+  public void test_whenTargetFileExistsWithWriteDispositionFail_filterAcceptsTables() {
+    BigQueryTable.Builder t = table().setTableName("table1").setPartitioningColumn("p2");
+    BigQueryTablePartition p = partition().setPartitionName("partition1").build();
+
+    options.setTables(null);
+    options.setExportDataModifiedBeforeDateTime(null);
+    options.setFileFormat(FileFormat.AVRO);
+    options.setWriteDisposition(WriteDisposition.FAIL);
+    Filter f =
+        new com.google.cloud.teleport.v2.utils.DataplexBigQueryToGcsFilter(
+            options,
+            Arrays.asList(
+                "table1/output-table1.avro", "table1/p2=partition1/output-table1-partition1.avro"));
+
+    f.shouldSkipUnpartitionedTable(t);
+    f.shouldSkipPartition(t, p);
   }
 
   private static BigQueryTable.Builder table() {

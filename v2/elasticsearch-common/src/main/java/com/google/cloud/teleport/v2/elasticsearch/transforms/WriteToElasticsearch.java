@@ -50,92 +50,91 @@ import org.joda.time.Duration;
 @AutoValue
 public abstract class WriteToElasticsearch extends PTransform<PCollection<String>, PCollection<String>> {
 
-    /** Convert provided long to {@link Duration}. */
-    private static Duration getDuration(Long milliseconds) {
-        return new Duration(milliseconds);
-    }
+  /** Convert provided long to {@link Duration}. */
+  private static Duration getDuration(Long milliseconds) {
+    return new Duration(milliseconds);
+  }
 
-    public static Builder newBuilder() {
-        return new AutoValue_WriteToElasticsearch.Builder();
-    }
+  public static Builder newBuilder() {
+    return new AutoValue_WriteToElasticsearch.Builder();
+  }
 
-    public abstract ElasticsearchWriteOptions options();
+  public abstract ElasticsearchWriteOptions options();
 
-    /**
-     * Types have been removed in ES 7.0. Default will be _doc.
-     * See https://www.elastic.co/guide/en/elasticsearch/reference/current/removal-of-types.html"
-     */
-    private static final String DOCUMENT_TYPE="_doc";
+  /**
+   * Types have been removed in ES 7.0. Default will be _doc. See
+   * https://www.elastic.co/guide/en/elasticsearch/reference/current/removal-of-types.html"
+   */
+  private static final String DOCUMENT_TYPE = "_doc";
 
     @Override
     public PCollection<String> expand(PCollection<String> jsonStrings) {
         ConnectionInformation connectionInformation = new ConnectionInformation(options().getConnectionUrl());
 
-        ElasticsearchIO.ConnectionConfiguration config =
-                ElasticsearchIO.ConnectionConfiguration.create(
-                        new String[]{connectionInformation.getElasticsearchURL().toString()},
-                        options().getIndex(),
-                        DOCUMENT_TYPE);
+    ElasticsearchIO.ConnectionConfiguration config =
+        ElasticsearchIO.ConnectionConfiguration.create(
+            new String[] {connectionInformation.getElasticsearchURL().toString()},
+            options().getIndex(),
+            DOCUMENT_TYPE);
 
-        //If username and password are not blank, use them instead of ApiKey
-        if (StringUtils.isNotBlank(options().getElasticsearchUsername())
-                && StringUtils.isNotBlank(options().getElasticsearchPassword())) {
-            config = config
-                    .withUsername(options().getElasticsearchUsername())
-                    .withPassword(options().getElasticsearchPassword());
-        } else {
-            config = config.withApiKey(options().getApiKey());
-        }
-
-        ElasticsearchIO.Write elasticsearchWriter =
-                ElasticsearchIO.write()
-                        .withConnectionConfiguration(config)
-                        .withMaxBatchSize(options().getBatchSize())
-                        .withMaxBatchSizeBytes(options().getBatchSizeBytes());
-
-        if (Optional.ofNullable(options().getMaxRetryAttempts()).isPresent()) {
-            elasticsearchWriter.withRetryConfiguration(
-                    ElasticsearchIO.RetryConfiguration.create(
-                            options().getMaxRetryAttempts(), getDuration(options().getMaxRetryDuration())));
-        }
-
-        return jsonStrings.apply("WriteDocuments", elasticsearchWriter);
+    // If username and password are not blank, use them instead of ApiKey
+    if (StringUtils.isNotBlank(options().getElasticsearchUsername())
+        && StringUtils.isNotBlank(options().getElasticsearchPassword())) {
+      config =
+          config
+              .withUsername(options().getElasticsearchUsername())
+              .withPassword(options().getElasticsearchPassword());
+    } else {
+      config = config.withApiKey(options().getApiKey());
     }
 
-    /** Builder for {@link WriteToElasticsearch}. */
-    @AutoValue.Builder
-    public abstract static class Builder {
-        public abstract Builder setOptions(ElasticsearchWriteOptions options);
+    ElasticsearchIO.Write elasticsearchWriter =
+        ElasticsearchIO.write()
+            .withConnectionConfiguration(config)
+            .withMaxBatchSize(options().getBatchSize())
+            .withMaxBatchSizeBytes(options().getBatchSizeBytes());
 
-        abstract ElasticsearchWriteOptions options();
+    if (Optional.ofNullable(options().getMaxRetryAttempts()).isPresent()) {
+      elasticsearchWriter.withRetryConfiguration(
+          ElasticsearchIO.RetryConfiguration.create(
+              options().getMaxRetryAttempts(), getDuration(options().getMaxRetryDuration())));
+    }
 
-        abstract WriteToElasticsearch autoBuild();
+    return jsonStrings.apply("WriteDocuments", elasticsearchWriter);
+  }
 
-        public WriteToElasticsearch build() {
+  /** Builder for {@link WriteToElasticsearch}. */
+  @AutoValue.Builder
+  public abstract static class Builder {
+    public abstract Builder setOptions(ElasticsearchWriteOptions options);
 
-            checkArgument(
-                    options().getConnectionUrl() != null, "ConnectionUrl is required.");
+    abstract ElasticsearchWriteOptions options();
 
-            checkArgument(
-                    options().getApiKey() != null, "ApiKey is required.");
+    abstract WriteToElasticsearch autoBuild();
 
-            checkArgument(options().getIndex() != null, "Elasticsearch index should not be null.");
+    public WriteToElasticsearch build() {
+
+      checkArgument(options().getConnectionUrl() != null, "ConnectionUrl is required.");
+
+      checkArgument(options().getApiKey() != null, "ApiKey is required.");
+
+      checkArgument(options().getIndex() != null, "Elasticsearch index should not be null.");
 
       checkArgument(
           options().getBatchSize() > 0, "Batch size must be > 0. Got: " + options().getBatchSize());
 
-            checkArgument(
-                    options().getBatchSizeBytes() > 0,
-                    "Batch size bytes must be > 0. Got: " + options().getBatchSizeBytes());
+      checkArgument(
+          options().getBatchSizeBytes() > 0,
+          "Batch size bytes must be > 0. Got: " + options().getBatchSizeBytes());
 
-            /* Check that both {@link RetryConfiguration} parameters are supplied. */
-            if (options().getMaxRetryAttempts() != null || options().getMaxRetryDuration() != null) {
-                checkArgument(
-                        options().getMaxRetryDuration() != null && options().getMaxRetryAttempts() != null,
-                        "Both max retry duration and max attempts must be supplied.");
-            }
+      /* Check that both {@link RetryConfiguration} parameters are supplied. */
+      if (options().getMaxRetryAttempts() != null || options().getMaxRetryDuration() != null) {
+        checkArgument(
+            options().getMaxRetryDuration() != null && options().getMaxRetryAttempts() != null,
+            "Both max retry duration and max attempts must be supplied.");
+      }
 
-            return autoBuild();
-        }
+      return autoBuild();
     }
+  }
 }
