@@ -20,33 +20,45 @@ import static com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform.readF
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
+import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIndex;
 import com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform;
 import com.google.cloud.teleport.v2.options.KafkaToElasticsearchOptions;
+import com.google.cloud.teleport.v2.transforms.FailedElasticsearchMessageToPubsubTopicFn;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
 import com.google.cloud.teleport.v2.transforms.ProcessEventMetadata;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
-import com.google.common.collect.ImmutableMap;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TypeDescriptors;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * The {@link KafKaToElasticsearch} pipeline is a streaming pipeline which ingests data in JSON
+ * format from Kafka, applies a Javascript UDF if provided and writes the resulting records to
+ * Elasticsearch. If the element fails to be processed then it is written to an error output topic
+ * in Pub/Sub.
+ */
 public class KafKaToElasticsearch {
 
     private static final TupleTag<FailsafeElement<KV<String, String>, String>> UDF_OUT =
@@ -71,10 +83,15 @@ public class KafKaToElasticsearch {
     private static final Logger LOG = LoggerFactory.getLogger(KafKaToElasticsearch.class);
 
     public static void main(String[] args) {
-        KafkaToElasticsearchOptions options =
+        KafkaToElasticsearchOptions kafkaToElasticsearchOptions =
                 PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToElasticsearchOptions.class);
 
-        run(options);
+        kafkaToElasticsearchOptions.setIndex(
+                new ElasticsearchIndex(
+                        kafkaToElasticsearchOptions.getDataset(),
+                        kafkaToElasticsearchOptions.getNamespace())
+                        .getIndex());
+        run(kafkaToElasticsearchOptions);
     }
 
     /**
@@ -105,6 +122,21 @@ public class KafKaToElasticsearch {
             throw new IllegalArgumentException("Please Provide --bootstrapServers");
         }
 
+        Map<String, Object> props = new HashMap<>();
+
+        props.put("ssl.endpoint.identification.algorithm",
+                options.getKafkaSslEndpointIdentificationAlgorithm().toLowerCase(Locale.ROOT));
+        props.put("sasl.mechanism", options.getKafkaSaslMechanism());
+        props.put("request.timeout.ms", options.getKafkaRequestTimeout());
+        props.put("retry.backoff.ms", options.getKafkaRetryBackoffDelay());
+        if (StringUtils.isNoneBlank(options.getKafkaUsername(), options.getKafkaPassword()) ) {
+            props.put("sasl.jaas.config",
+                    "org.apache.kafka.common.security.plain.PlainLoginModule " +
+                    "required username=\"" + options.getKafkaUsername() +
+                    "\" password=\"" + options.getKafkaPassword() + "\";");
+        }
+        props.put("security.protocol", options.getKafkaSecurityProtocol());
+
         PCollectionTuple convertedKafkaMessages =
             pipeline
                 /*
@@ -113,10 +145,10 @@ public class KafKaToElasticsearch {
                 .apply(
                     "ReadFromKafka",
                     readFromKafka(
-                        bootstrapServers,
-                        inputTopic,
-                        ImmutableMap.of(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"),
-                        null))
+                            bootstrapServers,
+                            inputTopic,
+                            props,
+                            null))
 
                 /*
                  * Step #2: Transform the Kafka Messages into Json documents
@@ -132,7 +164,7 @@ public class KafKaToElasticsearch {
         /*
          * Step #3a: Write Json documents into Elasticsearch using {@link ElasticsearchTransforms.WriteToElasticsearch}.
          */
-        convertedKafkaMessages
+        PCollection<String> failedMessages = convertedKafkaMessages
             .get(UDF_OUT)
             .apply(
                     "GetJsonDocuments",
@@ -147,12 +179,11 @@ public class KafKaToElasticsearch {
         /*
          * Step 3b: Write elements that failed processing to error output PubSub topic via {@link PubSubIO}.
          */
-        /*convertedKafkaMessages
-            .get(TRANSFORM_ERROROUTPUT_OUT)
-            .apply(ParDo.of(new FailedPubsubMessageToPubsubTopicFn()))
+        failedMessages
+            .apply(ParDo.of(new FailedElasticsearchMessageToPubsubTopicFn()))
             .apply(
                     "writeFailureMessages",
-                    PubsubIO.writeMessages().to(options.getErrorOutputTopic()));*/
+                    PubsubIO.writeMessages().to(options.getErrorOutputTopic()));
 
         return pipeline.run();
     }

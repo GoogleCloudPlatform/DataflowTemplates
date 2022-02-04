@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.transforms;
 
-import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
@@ -24,7 +24,6 @@ import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIO;
 import java.util.Optional;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PDone;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.Duration;
 
@@ -49,7 +48,7 @@ import org.joda.time.Duration;
  * function returns null then the index or type provided as {@link ConnectionInformation}.
  */
 @AutoValue
-public abstract class WriteToElasticsearch extends PTransform<PCollection<String>, PDone> {
+public abstract class WriteToElasticsearch extends PTransform<PCollection<String>, PCollection<String>> {
 
     /** Convert provided long to {@link Duration}. */
     private static Duration getDuration(Long milliseconds) {
@@ -69,7 +68,7 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
     private static final String DOCUMENT_TYPE="_doc";
 
     @Override
-    public PDone expand(PCollection<String> jsonStrings) {
+    public PCollection<String> expand(PCollection<String> jsonStrings) {
         ConnectionInformation connectionInformation = new ConnectionInformation(options().getConnectionUrl());
 
         ElasticsearchIO.ConnectionConfiguration config =

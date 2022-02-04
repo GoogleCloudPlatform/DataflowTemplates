@@ -26,7 +26,7 @@ import org.apache.beam.sdk.options.Validation;
  * The {@link KafkaToElasticsearchOptions} interface provides the custom execution options passed by the
  * executor at the command-line.
  */
-public interface KafkaToElasticsearchOptions extends ElasticsearchWriteOptions {
+public interface KafkaToElasticsearchOptions extends ElasticsearchWriteOptions, PipelineOptions {
   @Description(
           "Kafka topic to read from.")
   @Validation.Required
@@ -66,6 +66,46 @@ public interface KafkaToElasticsearchOptions extends ElasticsearchWriteOptions {
   String getSecretStoreUrl();
 
   void setSecretStoreUrl(String secretStoreUrl);
+
+  @Description("Kafka SSL endpoint identification algorithm, default is HTTPS")
+  @Default.String("https")
+  String getKafkaSslEndpointIdentificationAlgorithm();
+
+  void setKafkaSslEndpointIdentificationAlgorithm(String kafkaSslEndpointIdentificationAlgorithm);
+
+  @Description("Kafka SASL mechanism, default is PLAIN")
+  @Default.String("PLAIN")
+  String getKafkaSaslMechanism();
+
+  void setKafkaSaslMechanism(String kafkaSaslMechanism);
+
+  @Description("Kafka request timeout, default is 20000")
+  @Default.Integer(20000)
+  Integer getKafkaRequestTimeout();
+
+  void setKafkaRequestTimeout(Integer kafkaRequestTimeout);
+
+  @Description("Kafka retry backoff delay, default is 500")
+  @Default.Integer(500)
+  Integer getKafkaRetryBackoffDelay();
+
+  void setKafkaRetryBackoffDelay(Integer kafkaRetryBackoffDelay);
+
+  @Description("Kafka security protocol, default is SASL_SSL")
+  @Default.String("SASL_SSL")
+  String getKafkaSecurityProtocol();
+
+  void setKafkaSecurityProtocol(String kafkaSecurityProtocol);
+
+  @Description("Kafka username")
+  String getKafkaUsername();
+
+  void setKafkaUsername(String kafkaUsername);
+
+  @Description("Kafka password")
+  String getKafkaPassword();
+
+  void setKafkaPassword(String kafkaPassword);
 
   @Description("Vault token")
   String getVaultToken();
