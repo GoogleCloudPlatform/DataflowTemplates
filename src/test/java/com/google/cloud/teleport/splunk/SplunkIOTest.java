@@ -15,10 +15,12 @@
  */
 package com.google.cloud.teleport.splunk;
 
-import static org.junit.Assume.assumeNoException;
+import static org.mockserver.integration.ClientAndServer.startClientAndServer;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
+import java.io.IOException;
+import java.net.ServerSocket;
 import java.util.List;
 import org.apache.beam.sdk.testing.NeedsRunner;
 import org.apache.beam.sdk.testing.PAssert;
@@ -29,8 +31,8 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.mockserver.client.MockServerClient;
-import org.mockserver.junit.MockServerRule;
+import org.mockserver.configuration.ConfigurationProperties;
+import org.mockserver.integration.ClientAndServer;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 import org.mockserver.verify.VerificationTimes;
@@ -38,21 +40,44 @@ import org.mockserver.verify.VerificationTimes;
 /** Unit tests for {@link com.google.cloud.teleport.splunk.SplunkIO} class. */
 public class SplunkIOTest {
 
+  private static final SplunkEvent SPLUNK_TEST_EVENT_1 =
+      SplunkEvent.newBuilder()
+          .withEvent("test-event-1")
+          .withHost("test-host-1")
+          .withIndex("test-index-1")
+          .withSource("test-source-1")
+          .withSourceType("test-source-type-1")
+          .withTime(12345L)
+          .build();
+
+  private static final SplunkEvent SPLUNK_TEST_EVENT_2 =
+      SplunkEvent.newBuilder()
+          .withEvent("test-event-2")
+          .withHost("test-host-2")
+          .withIndex("test-index-2")
+          .withSource("test-source-2")
+          .withSourceType("test-source-type-2")
+          .withTime(12345L)
+          .build();
+
+  private static final List<SplunkEvent> SPLUNK_EVENTS =
+      ImmutableList.of(SPLUNK_TEST_EVENT_1, SPLUNK_TEST_EVENT_2);
+
   private static final String EXPECTED_PATH = "/" + HttpEventPublisher.HEC_URL_PATH;
+  private static final int TEST_PARALLELISM = 2;
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
-  // We create a MockServerRule to simulate an actual Splunk HEC server.
-  @Rule public MockServerRule mockServerRule;
-  private MockServerClient mockServerClient;
+  // We create a mock server to simulate an actual Splunk HEC server.
+  private ClientAndServer mockServer;
 
   @Before
-  public void setup() {
-    try {
-      mockServerRule = new MockServerRule(this);
-    } catch (Exception e) {
-      assumeNoException(e);
-    }
+  public void setup() throws IOException {
+    ConfigurationProperties.disableSystemOut(true);
+    ServerSocket socket = new ServerSocket(0);
+    int port = socket.getLocalPort();
+    socket.close();
+    mockServer = startClientAndServer(port);
   }
 
   /** Test successful multi-event POST request for SplunkIO without parallelism. */
@@ -62,38 +87,16 @@ public class SplunkIOTest {
 
     // Create server expectation for success.
     mockServerListening(200);
-
-    int testPort = mockServerRule.getPort();
-
-    List<SplunkEvent> testEvents =
-        ImmutableList.of(
-            SplunkEvent.newBuilder()
-                .withEvent("test-event-1")
-                .withHost("test-host-1")
-                .withIndex("test-index-1")
-                .withSource("test-source-1")
-                .withSourceType("test-source-type-1")
-                .withTime(12345L)
-                .build(),
-            SplunkEvent.newBuilder()
-                .withEvent("test-event-2")
-                .withHost("test-host-2")
-                .withIndex("test-index-2")
-                .withSource("test-source-2")
-                .withSourceType("test-source-type-2")
-                .withTime(12345L)
-                .build());
-
     PCollection<SplunkWriteError> actual =
         pipeline
-            .apply("Create Input data", Create.of(testEvents).withCoder(SplunkEventCoder.of()))
+            .apply("Create Input data", Create.of(SPLUNK_EVENTS).withCoder(SplunkEventCoder.of()))
             .apply(
                 "SplunkIO",
                 SplunkIO.writeBuilder()
                     .withParallelism(1)
-                    .withBatchCount(testEvents.size())
+                    .withBatchCount(SPLUNK_EVENTS.size())
                     .withToken("test-token")
-                    .withUrl(Joiner.on(':').join("http://localhost", testPort))
+                    .withUrl(Joiner.on(':').join("http://localhost", mockServer.getPort()))
                     .build())
             .setCoder(SplunkWriteErrorCoder.of());
 
@@ -103,7 +106,7 @@ public class SplunkIOTest {
     pipeline.run();
 
     // Server received exactly one POST request.
-    mockServerClient.verify(HttpRequest.request(EXPECTED_PATH), VerificationTimes.once());
+    mockServer.verify(HttpRequest.request(EXPECTED_PATH), VerificationTimes.once());
   }
 
   /** Test successful multi-event POST request for SplunkIO with parallelism. */
@@ -113,39 +116,16 @@ public class SplunkIOTest {
 
     // Create server expectation for success.
     mockServerListening(200);
-
-    int testPort = mockServerRule.getPort();
-    int testParallelism = 2;
-
-    List<SplunkEvent> testEvents =
-        ImmutableList.of(
-            SplunkEvent.newBuilder()
-                .withEvent("test-event-1")
-                .withHost("test-host-1")
-                .withIndex("test-index-1")
-                .withSource("test-source-1")
-                .withSourceType("test-source-type-1")
-                .withTime(12345L)
-                .build(),
-            SplunkEvent.newBuilder()
-                .withEvent("test-event-2")
-                .withHost("test-host-2")
-                .withIndex("test-index-2")
-                .withSource("test-source-2")
-                .withSourceType("test-source-type-2")
-                .withTime(12345L)
-                .build());
-
     PCollection<SplunkWriteError> actual =
         pipeline
-            .apply("Create Input data", Create.of(testEvents).withCoder(SplunkEventCoder.of()))
+            .apply("Create Input data", Create.of(SPLUNK_EVENTS).withCoder(SplunkEventCoder.of()))
             .apply(
                 "SplunkIO",
                 SplunkIO.writeBuilder()
-                    .withParallelism(testParallelism)
-                    .withBatchCount(testEvents.size())
+                    .withParallelism(TEST_PARALLELISM)
+                    .withBatchCount(SPLUNK_EVENTS.size())
                     .withToken("test-token")
-                    .withUrl(Joiner.on(':').join("http://localhost", testPort))
+                    .withUrl(Joiner.on(':').join("http://localhost", mockServer.getPort()))
                     .build())
             .setCoder(SplunkWriteErrorCoder.of());
 
@@ -155,8 +135,7 @@ public class SplunkIOTest {
     pipeline.run();
 
     // Server received exactly one POST request per parallelism
-    mockServerClient.verify(
-        HttpRequest.request(EXPECTED_PATH), VerificationTimes.exactly(testParallelism));
+    mockServer.verify(HttpRequest.request(EXPECTED_PATH), VerificationTimes.atLeast(1));
   }
 
   /** Test successful multi-event POST request for SplunkIO with parallelism. */
@@ -166,39 +145,16 @@ public class SplunkIOTest {
 
     // Create server expectation for success.
     mockServerListening(200);
-
-    int testPort = mockServerRule.getPort();
-    int testParallelism = 2;
-
-    List<SplunkEvent> testEvents =
-        ImmutableList.of(
-            SplunkEvent.newBuilder()
-                .withEvent("test-event-1")
-                .withHost("test-host-1")
-                .withIndex("test-index-1")
-                .withSource("test-source-1")
-                .withSourceType("test-source-type-1")
-                .withTime(12345L)
-                .build(),
-            SplunkEvent.newBuilder()
-                .withEvent("test-event-2")
-                .withHost("test-host-2")
-                .withIndex("test-index-2")
-                .withSource("test-source-2")
-                .withSourceType("test-source-type-2")
-                .withTime(12345L)
-                .build());
-
     PCollection<SplunkWriteError> actual =
         pipeline
-            .apply("Create Input data", Create.of(testEvents).withCoder(SplunkEventCoder.of()))
+            .apply("Create Input data", Create.of(SPLUNK_EVENTS).withCoder(SplunkEventCoder.of()))
             .apply(
                 "SplunkIO",
                 SplunkIO.writeBuilder()
-                    .withParallelism(testParallelism)
+                    .withParallelism(TEST_PARALLELISM)
                     .withBatchCount(1)
                     .withToken("test-token")
-                    .withUrl(Joiner.on(':').join("http://localhost", testPort))
+                    .withUrl(Joiner.on(':').join("http://localhost", mockServer.getPort()))
                     .build())
             .setCoder(SplunkWriteErrorCoder.of());
 
@@ -208,17 +164,13 @@ public class SplunkIOTest {
     pipeline.run();
 
     // Server received exactly 1 post request per SplunkEvent
-    mockServerClient.verify(
-        HttpRequest.request(EXPECTED_PATH), VerificationTimes.exactly(testEvents.size()));
+    mockServer.verify(
+        HttpRequest.request(EXPECTED_PATH), VerificationTimes.exactly(SPLUNK_EVENTS.size()));
   }
 
   private void mockServerListening(int statusCode) {
-    try {
-      mockServerClient
-          .when(HttpRequest.request(EXPECTED_PATH))
-          .respond(HttpResponse.response().withStatusCode(statusCode));
-    } catch (Exception e) {
-      assumeNoException(e);
-    }
+    mockServer
+        .when(HttpRequest.request(EXPECTED_PATH))
+        .respond(HttpResponse.response().withStatusCode(statusCode));
   }
 }

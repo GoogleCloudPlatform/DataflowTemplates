@@ -77,7 +77,7 @@ public final class Schemas {
       TypeBuilder<Schema> fieldTypeBuilder = SchemaBuilder.builder();
       BaseTypeBuilder<Schema> fieldTypeBuilderWithMode;
       switch (dataplexField.getMode()) {
-        case "NULLABLE ":
+        case "NULLABLE":
           fieldTypeBuilderWithMode = fieldTypeBuilder.nullable();
           break;
         case "REQUIRED":

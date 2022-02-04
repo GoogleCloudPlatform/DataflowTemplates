@@ -40,6 +40,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Splitter;
 import com.google.re2j.Pattern;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -119,17 +120,25 @@ public class DataplexBigQueryToGcs {
             + " projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset"
             + " name>.")
     @Required
-    String getDestinationGscBucketAssetName();
+    String getDestinationGcsBucketAssetName();
 
-    void setDestinationGscBucketAssetName(String destinationGscBucketAssetName);
+    void setDestinationGcsBucketAssetName(String destinationGcsBucketAssetName);
 
     @Description(
-        "Move data older than this date (and optional time). For partitioned tables, move"
-            + " partitions last modified before this date/time. For non-partitioned tables,"
-            + " move if the table was last modified before this date/time. If not specified,"
-            + " move all tables / partitions. The date/time is parsed in the default time zone"
-            + " by default, but optinal suffixes Z and +HH:mm are supported. Format:"
-            + " YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss or YYYY-MM-DDTHH:mm:ss+03:00.")
+        "The parameter can either be: 1) unspecified, 2) date (and optional time) 3) Duration.\n"
+            + "1) If not specified move all tables / partitions.\n"
+            + "2) Move data older than this date (and optional time). For partitioned tables, move"
+            + " partitions last modified before this date/time. For non-partitioned tables, move if"
+            + " the table was last modified before this date/time. If not specified, move all"
+            + " tables / partitions. The date/time is parsed in the default time zone by default,"
+            + " but optinal suffixes Z and +HH:mm are supported. Format: YYYY-MM-DD or"
+            + " YYYY-MM-DDTHH:mm:ss or YYYY-MM-DDTHH:mm:ss+03:00.\n"
+            + "3) Similar to the above (2) but the effective date-time is derived from the current"
+            + " time in the default/system timezone shifted by the provided duration in the format"
+            + " based on ISO-8601 +/-PnDTnHnMn.nS "
+            + "(https://docs.oracle.com/javase/8/docs/api/java/time/Duration.html#parse-java.lang.CharSequence-)."
+            + " However only \"minus\" durations are accepted so only past effective date-times are"
+            + " possible.")
     String getExportDataModifiedBeforeDateTime();
 
     void setExportDataModifiedBeforeDateTime(String exportDataModifiedBeforeDateTime);
@@ -224,7 +233,7 @@ public class DataplexBigQueryToGcs {
     String gcsResource =
         resolveAsset(
             dataplex,
-            options.getDestinationGscBucketAssetName(),
+            options.getDestinationGcsBucketAssetName(),
             DataplexAssetResourceSpec.STORAGE_BUCKET);
     String bqResource =
         resolveAsset(
@@ -338,8 +347,12 @@ public class DataplexBigQueryToGcs {
     MetadataFilter(DataplexBigQueryToGcsOptions options) {
       String dateTime = options.getExportDataModifiedBeforeDateTime();
       if (dateTime != null && !dateTime.isEmpty()) {
-        this.maxLastModifiedTime =
-            Instant.parse(dateTime, ISODateTimeFormat.dateOptionalTimeParser());
+        if (dateTime.startsWith("-P") || dateTime.startsWith("-p")) {
+          this.maxLastModifiedTime = Instant.now().plus(Duration.parse(dateTime).toMillis());
+        } else {
+          this.maxLastModifiedTime =
+              Instant.parse(dateTime, ISODateTimeFormat.dateOptionalTimeParser());
+        }
       } else {
         this.maxLastModifiedTime = null;
       }

@@ -16,11 +16,13 @@
 package com.google.cloud.teleport.splunk;
 
 import static com.google.common.truth.Truth.assertThat;
-import static org.junit.Assume.assumeNoException;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockserver.integration.ClientAndServer.startClientAndServer;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
+import java.io.IOException;
+import java.net.ServerSocket;
 import java.util.List;
 import org.apache.beam.sdk.coders.BigEndianIntegerCoder;
 import org.apache.beam.sdk.coders.KvCoder;
@@ -36,8 +38,8 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.mockserver.client.MockServerClient;
-import org.mockserver.junit.MockServerRule;
+import org.mockserver.configuration.ConfigurationProperties;
+import org.mockserver.integration.ClientAndServer;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 import org.mockserver.verify.VerificationTimes;
@@ -50,16 +52,15 @@ public class SplunkEventWriterTest {
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
   // We create a MockServerRule to simulate an actual Splunk HEC server.
-  @Rule public MockServerRule mockServerRule;
-  private MockServerClient mockServerClient;
+  private ClientAndServer mockServer;
 
   @Before
-  public void setup() {
-    try {
-      mockServerRule = new MockServerRule(this);
-    } catch (Exception e) {
-      assumeNoException(e);
-    }
+  public void setup() throws IOException {
+    ConfigurationProperties.disableSystemOut(true);
+    ServerSocket socket = new ServerSocket(0);
+    int port = socket.getLocalPort();
+    socket.close();
+    mockServer = startClientAndServer(port);
   }
 
   /** Test building {@link SplunkEventWriter} with missing URL. */
@@ -165,7 +166,7 @@ public class SplunkEventWriterTest {
     // Create server expectation for success.
     mockServerListening(200);
 
-    int testPort = mockServerRule.getPort();
+    int testPort = mockServer.getPort();
 
     List<KV<Integer, SplunkEvent>> testEvents =
         ImmutableList.of(
@@ -213,7 +214,7 @@ public class SplunkEventWriterTest {
     pipeline.run();
 
     // Server received exactly the expected number of POST requests.
-    mockServerClient.verify(
+    mockServer.verify(
         HttpRequest.request(EXPECTED_PATH), VerificationTimes.exactly(testEvents.size()));
   }
 
@@ -225,7 +226,7 @@ public class SplunkEventWriterTest {
     // Create server expectation for success.
     mockServerListening(200);
 
-    int testPort = mockServerRule.getPort();
+    int testPort = mockServer.getPort();
 
     List<KV<Integer, SplunkEvent>> testEvents =
         ImmutableList.of(
@@ -274,7 +275,7 @@ public class SplunkEventWriterTest {
     pipeline.run();
 
     // Server received exactly one POST request.
-    mockServerClient.verify(HttpRequest.request(EXPECTED_PATH), VerificationTimes.once());
+    mockServer.verify(HttpRequest.request(EXPECTED_PATH), VerificationTimes.once());
   }
 
   /** Test failed POST request. */
@@ -285,7 +286,7 @@ public class SplunkEventWriterTest {
     // Create server expectation for FAILURE.
     mockServerListening(404);
 
-    int testPort = mockServerRule.getPort();
+    int testPort = mockServer.getPort();
 
     List<KV<Integer, SplunkEvent>> testEvents =
         ImmutableList.of(
@@ -333,16 +334,12 @@ public class SplunkEventWriterTest {
     pipeline.run();
 
     // Server received exactly one POST request.
-    mockServerClient.verify(HttpRequest.request(EXPECTED_PATH), VerificationTimes.once());
+    mockServer.verify(HttpRequest.request(EXPECTED_PATH), VerificationTimes.once());
   }
 
   private void mockServerListening(int statusCode) {
-    try {
-      mockServerClient
-          .when(HttpRequest.request(EXPECTED_PATH))
-          .respond(HttpResponse.response().withStatusCode(statusCode));
-    } catch (Exception e) {
-      assumeNoException(e);
-    }
+    mockServer
+        .when(HttpRequest.request(EXPECTED_PATH))
+        .respond(HttpResponse.response().withStatusCode(statusCode));
   }
 }

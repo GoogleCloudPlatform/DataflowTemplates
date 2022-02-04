@@ -39,8 +39,7 @@
     <apache-http-client-v2>1.39.2</apache-http-client-v2>
     <avro.version>1.8.2</avro.version>
     <checkstyle.version>8.7</checkstyle.version>
-    <beam.version>2.32.0</beam.version>
-    <beam-vendor-guava.version>0.1</beam-vendor-guava.version>
+    <beam.version>2.34.0</beam.version>
     <extra.enforcer.rules.version>1.3</extra.enforcer.rules.version>
     <hamcrest.version>2.1</hamcrest.version>
     <java.version>1.8</java.version>
@@ -144,11 +143,6 @@
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-io-jdbc</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.beam</groupId>
-      <artifactId>beam-vendor-guava-20_0</artifactId>
-      <version>${beam-vendor-guava.version}</version>
     </dependency>
 
     <!-- Dependencies needed for the Cassandra to CBT pipeline -->
@@ -306,6 +300,10 @@
         <exclusion>
           <groupId>com.google.code.gson</groupId>
           <artifactId>gson</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>ch.qos.logback</groupId>
+          <artifactId>logback-classic</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -924,6 +922,24 @@
         </repository>
       </repositories>
     </profile>
+    <profile>
+      <id>missing-artifact-repos</id>
+      <activation>
+          <activeByDefault>true</activeByDefault>
+      </activation>
+      <repositories>
+          <repository>
+              <!-- Required for io.confluent:kafka-avro-serializer artifact -->
+              <id>confluent</id>
+              <url>https://packages.confluent.io/maven/</url>
+          </repository>
+          <repository>
+              <!-- Required for org.pentaho:pentaho-aggdesigner-algorithm artifact -->
+              <id>pentaho</id>
+              <url>https://public.nexus.pentaho.org/repository/proxy-public-3rd-party-release</url>
+          </repository>
+      </repositories>
+        </profile>
   </profiles>
 
 </project>

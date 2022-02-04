@@ -30,7 +30,6 @@
         <autovalue.service.version>1.0-rc6</autovalue.service.version>
         <checkstyle.version>8.7</checkstyle.version>
         <beam.version>2.32.0</beam.version>
-        <beam-vendor-guava.version>0.1</beam-vendor-guava.version>
         <hamcrest.version>2.1</hamcrest.version>
         <hadoop.version>2.10.1</hadoop.version>
         <guava.version>30.1-jre</guava.version>
@@ -101,11 +100,6 @@
             <!-- Direct runner included for local development and testing. -->
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-runners-direct-java</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.beam</groupId>
-            <artifactId>beam-vendor-guava-20_0</artifactId>
-            <version>${beam-vendor-guava.version}</version>
         </dependency>
 
         <!-- Test -->
@@ -351,9 +345,6 @@
                                 </ignoredUnusedDeclaredDependency>
                                 <ignoredUnusedDeclaredDependency>
                                     joda-time:joda-time
-                                </ignoredUnusedDeclaredDependency>
-                                <ignoredUnusedDeclaredDependency>
-                                    org.apache.beam:beam-vendor-guava-20_0
                                 </ignoredUnusedDeclaredDependency>
                                 <ignoredUnusedDeclaredDependency>
                                     org.apache.beam:beam-sdks-java-io-google-cloud-platform
@@ -621,18 +612,27 @@
             </repositories>
         </profile>
         <profile>
-            <id>confluent-repo</id>
+            <id>missing-artifact-repos</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
             <repositories>
                 <repository>
                     <!-- Required for io.confluent:kafka-avro-serializer artifact -->
                     <id>confluent</id>
                     <url>https://packages.confluent.io/maven/</url>
                 </repository>
+                <repository>
+                    <!-- Required for org.pentaho:pentaho-aggdesigner-algorithm artifact -->
+                    <id>pentaho</id>
+                    <url>https://public.nexus.pentaho.org/repository/proxy-public-3rd-party-release</url>
+                </repository>
             </repositories>
         </profile>
     </profiles>
 
     <modules>
+        <module>bigquery-to-bigtable</module>
         <module>bigquery-to-parquet</module>
         <module>common</module>
         <module>cdc-parent</module>

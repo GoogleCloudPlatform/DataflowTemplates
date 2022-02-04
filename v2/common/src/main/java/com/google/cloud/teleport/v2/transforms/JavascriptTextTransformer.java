@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -48,13 +48,17 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
-import org.apache.beam.vendor.guava.v20_0.com.google.common.base.Strings;
-import org.apache.beam.vendor.guava.v20_0.com.google.common.base.Throwables;
-import org.apache.beam.vendor.guava.v20_0.com.google.common.io.CharStreams;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Throwables;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.io.CharStreams;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** A Text UDF Transform Function. Note that this class's implementation is not threadsafe */
 @AutoValue
 public abstract class JavascriptTextTransformer {
+
+  private static final Logger LOG = LoggerFactory.getLogger(JavascriptTextTransformer.class);
 
   /** Necessary CLI options for running UDF function. */
   public interface JavascriptTextTransformerOptions extends PipelineOptions {

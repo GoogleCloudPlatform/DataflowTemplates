@@ -121,8 +121,8 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
 
             checkArgument(options().getIndex() != null, "Elasticsearch index should not be null.");
 
-            checkArgument(
-                    options().getBatchSize() > 0, "Batch size must be > 0. Got: " + options().getBatchSize());
+      checkArgument(
+          options().getBatchSize() > 0, "Batch size must be > 0. Got: " + options().getBatchSize());
 
             checkArgument(
                     options().getBatchSizeBytes() > 0,

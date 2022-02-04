@@ -30,3 +30,12 @@ All submissions, including submissions by project members, require review. We
 use GitHub pull requests for this purpose. Consult
 [GitHub Help](https://help.github.com/articles/about-pull-requests/) for more
 information on using pull requests.
+
+
+## IntelliJ & IDE Setup
+
+For v1 templates, just open the project at the root directory and use maven
+from there. 
+
+For v2 templates, open the project at the root directory then find the 
+"Add Maven Project" action and add the v2 directory and let the project rebuild.
