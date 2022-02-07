@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.cloud.teleport.v2.utils.BigQueryToGcsDirectoryNaming;
 import com.google.cloud.teleport.v2.utils.BigQueryToGcsFileNaming;
 import com.google.cloud.teleport.v2.utils.Schemas;
@@ -22,9 +23,11 @@ import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import com.google.cloud.teleport.v2.values.DataplexCompression;
 import com.google.common.annotations.VisibleForTesting;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.io.AvroIO;
@@ -200,7 +203,7 @@ public class BigQueryTableToGcsTransform
 
   private TypedRead<GenericRecord> getDefaultRead() {
     TypedRead<GenericRecord> read =
-        BigQueryIO.read(SchemaAndRecord::getRecord)
+        BigQueryIO.read(this::genericRecordWithFixedDates)
             .withTemplateCompatibility()
             // Performance hit due to validation is too big. When exporting a table with thousands
             // of partitions launching the job takes more than 12 minutes (Flex template timeout).
@@ -213,6 +216,35 @@ public class BigQueryTableToGcsTransform
             .withCoder(AvroCoder.of(table.getSchema()));
 
     return testServices == null ? read : read.withTestServices(testServices);
+  }
+
+  /**
+   * When Beam's BigQueryIO reads from BQ it derives the Avro schema by itself, where it maps BQ's
+   * `DATE` type to Avro's `string` type, so the GenericRecords outputed by the BigQueryIO contain
+   * `string` fields for the `DATE` columns. The Avro schema obtained from the BQ directly -- {@code
+   * table.getSchema()} has the `DATE` columns mapped to type Avro's `int` with logical type `date`.
+   * To fix this mismatch this cmethod converts the `string` dates fields to `int` with logical type
+   * `date` fields.
+   *
+   * <p>Note that for the TIMESTAMP type both Beam's BigQueryIO and BQ API map it to `long` so there
+   * is no mismatch.
+   */
+  private GenericRecord genericRecordWithFixedDates(SchemaAndRecord schemaAndRecord) {
+    GenericRecord input = schemaAndRecord.getRecord();
+    GenericRecord output = new GenericData.Record(table.getSchema());
+    for (TableFieldSchema fieldSchema : schemaAndRecord.getTableSchema().getFields()) {
+      if ("DATE".equals(fieldSchema.getType())) {
+        Object value = input.get(fieldSchema.getName());
+        if (!(value instanceof CharSequence)) {
+          throw new IllegalStateException(
+              "The class of input value of type DATE is " + value.getClass());
+        }
+        output.put(fieldSchema.getName(), (int) LocalDate.parse((CharSequence) value).toEpochDay());
+      } else {
+        output.put(fieldSchema.getName(), input.get(fieldSchema.getName()));
+      }
+    }
+    return output;
   }
 
   private Write<Void, GenericRecord> getDefaultWrite() {
