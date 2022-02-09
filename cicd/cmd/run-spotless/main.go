@@ -18,10 +18,10 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/flags"
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/op"
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/repo"
 )
@@ -31,37 +31,31 @@ const (
 )
 
 func main() {
-	changed := flag.String("changed-files", "", "List of changed files as a comma-separated string")
+	flags.RegisterCommonFlags()
 	flag.Parse()
 
-	if len(*changed) == 0 {
-		log.Print("No changed files passed. This is probably an error, but we're assuming it isn't just in case")
+	changed := flags.ChangedFiles()
+	if len(changed) == 0 {
 		return
 	}
-	log.Printf("Received changed files: %s", *changed)
 
-	s := strings.Split(*changed, ",")
-	modules := repo.GetModulesForPaths(s)
-
-	var fullErr error
-	for _, root := range repo.GetAllRoots() {
-		if children, ok := modules[root]; ok {
-			var err error
-			if len(children) == 0 {
-				err = op.RunMavenOnPom(root, SpotlessCommand)
-			} else {
-				err = op.RunMavenOnModule(root, SpotlessCommand, strings.Join(children, ","))
-			}
-
-			if err != nil && fullErr == nil {
-				fullErr = err
-			} else if err != nil {
-				fullErr = fmt.Errorf("%w\n%v", fullErr, err)
-			}
+	errored := false
+	for root, children := range repo.GetModulesForPaths(changed) {
+		var err error
+		if len(children) == 0 {
+			err = op.RunMavenOnPom(root, SpotlessCommand)
+		} else if len(children) > 1 || children[0] != "" {
+			err = op.RunMavenOnModule(root, SpotlessCommand, strings.Join(children, ","))
+		} else {
+			log.Printf("Skipping '%s' because the only files changed were not associated with a module", root)
+		}
+		
+		if err != nil {
+			errored = true
 		}
 	}
 
-	if fullErr != nil {
+	if errored {
 		log.Fatal("There were spotless errors. Check the output from the commands.")
 	}
 }

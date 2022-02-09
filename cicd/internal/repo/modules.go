@@ -171,9 +171,11 @@ func findUniqueFlexModules(paths []string) []string {
 
 		if possible != nil {
 			allModules = append(allModules, possible.value)
+		} else {
+			// Include the possibility of having no module. The receiver can decide what
+			// to do with it.
+			allModules = append(allModules, "")
 		}
-		// We don't error from not finding anything, since it could be a root-level file
-		// that isn't part of any module.
 	}
 
 	unique := make(map[string]interface{})

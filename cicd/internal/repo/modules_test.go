@@ -51,10 +51,11 @@ func TestGetModulesForPaths(t *testing.T) {
 				"v2/pubsub-binary-to-bigquery/avro",
 				"src/something-else",
 				"v2/pubsub-binary-to-bigquery/proto",
+				"v2/something",
 			},
 			expected: map[string][]string{
 				ClassicRoot: []string{},
-				FlexRoot:    []string{"pubsub-binary-to-bigquery"},
+				FlexRoot:    []string{"pubsub-binary-to-bigquery", ""},
 			},
 		},
 		{
@@ -73,7 +74,7 @@ func TestGetModulesForPaths(t *testing.T) {
 			input: []string{"something", "it/something", "v2/something"},
 			expected: map[string][]string{
 				ClassicRoot: make([]string, 0),
-				FlexRoot:    make([]string, 0),
+				FlexRoot:    []string{""},
 			},
 		},
 		{
