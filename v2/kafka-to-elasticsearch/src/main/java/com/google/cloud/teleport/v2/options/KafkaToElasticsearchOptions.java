@@ -23,12 +23,11 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 
 /**
- * The {@link KafkaToElasticsearchOptions} interface provides the custom execution options passed by the
- * executor at the command-line.
+ * The {@link KafkaToElasticsearchOptions} interface provides the custom execution options passed by
+ * the executor at the command-line.
  */
 public interface KafkaToElasticsearchOptions extends ElasticsearchWriteOptions, PipelineOptions {
-  @Description(
-          "Kafka topic to read from.")
+  @Description("Kafka topic to read from.")
   @Validation.Required
   String getInputTopic();
 
@@ -42,15 +41,14 @@ public interface KafkaToElasticsearchOptions extends ElasticsearchWriteOptions, 
   void setBootstrapServers(String bootstrapServers);
 
   @Description(
-          "API key for access without requiring basic authentication. "
-                  + "Refer  https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request")
+      "API key for access without requiring basic authentication. "
+          + "Refer  https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request")
   @Validation.Required
   String getApiKey();
 
   void setApiKey(String apiKey);
 
-  @Description(
-          "Elasticsearch URL in format http://hostname:[port] or Base64 encoded CloudId")
+  @Description("Elasticsearch URL in format http://hostname:[port] or Base64 encoded CloudId")
   @Validation.Required
   String getConnectionUrl();
 
@@ -113,29 +111,26 @@ public interface KafkaToElasticsearchOptions extends ElasticsearchWriteOptions, 
   void setVaultToken(String vaultToken);
 
   @Description(
-          "The type of logs sent via Pub/Sub for which we have out of the box dashboard. "
-                  + "Known log types values are audit, vpcflow, and firewall. "
-                  + "If no known log type is detected, we default to pubsub")
+      "The type of logs sent via Pub/Sub for which we have out of the box dashboard. "
+          + "Known log types values are audit, vpcflow, and firewall. "
+          + "If no known log type is detected, we default to pubsub")
   @Default.Enum("PUBSUB")
   Dataset getDataset();
 
   void setDataset(Dataset dataset);
 
-  @Description(
-          "The namespace for dataset. Default is default")
+  @Description("The namespace for dataset. Default is default")
   @Default.String("default")
   String getNamespace();
 
   void setNamespace(String namespace);
 
-  @Description(
-          "Username for Elasticsearch endpoint. Overrides ApiKey option if specified.")
+  @Description("Username for Elasticsearch endpoint. Overrides ApiKey option if specified.")
   String getElasticsearchUsername();
 
   void setElasticsearchUsername(String elasticsearchUsername);
 
-  @Description(
-          "Password for Elasticsearch endpoint. Overrides ApiKey option if specified.")
+  @Description("Password for Elasticsearch endpoint. Overrides ApiKey option if specified.")
   String getElasticsearchPassword();
 
   void setElasticsearchPassword(String elasticsearchPassword);

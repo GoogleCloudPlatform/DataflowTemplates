@@ -48,7 +48,8 @@ import org.joda.time.Duration;
  * function returns null then the index or type provided as {@link ConnectionInformation}.
  */
 @AutoValue
-public abstract class WriteToElasticsearch extends PTransform<PCollection<String>, PCollection<String>> {
+public abstract class WriteToElasticsearch
+    extends PTransform<PCollection<String>, PCollection<String>> {
 
   /** Convert provided long to {@link Duration}. */
   private static Duration getDuration(Long milliseconds) {
@@ -67,9 +68,10 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
    */
   private static final String DOCUMENT_TYPE = "_doc";
 
-    @Override
-    public PCollection<String> expand(PCollection<String> jsonStrings) {
-        ConnectionInformation connectionInformation = new ConnectionInformation(options().getConnectionUrl());
+  @Override
+  public PCollection<String> expand(PCollection<String> jsonStrings) {
+    ConnectionInformation connectionInformation =
+        new ConnectionInformation(options().getConnectionUrl());
 
     ElasticsearchIO.ConnectionConfiguration config =
         ElasticsearchIO.ConnectionConfiguration.create(

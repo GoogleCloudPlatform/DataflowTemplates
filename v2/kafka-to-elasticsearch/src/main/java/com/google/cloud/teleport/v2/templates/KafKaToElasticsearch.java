@@ -61,131 +61,130 @@ import org.slf4j.LoggerFactory;
  */
 public class KafKaToElasticsearch {
 
-    private static final TupleTag<FailsafeElement<KV<String, String>, String>> UDF_OUT =
-            new TupleTag<FailsafeElement<KV<String, String>, String>>() {};
+  private static final TupleTag<FailsafeElement<KV<String, String>, String>> UDF_OUT =
+      new TupleTag<FailsafeElement<KV<String, String>, String>>() {};
 
-    /** The tag for the main output of the json transformation. */
-    static final TupleTag<TableRow> TRANSFORM_OUT = new TupleTag<TableRow>() {};
+  /** The tag for the main output of the json transformation. */
+  static final TupleTag<TableRow> TRANSFORM_OUT = new TupleTag<TableRow>() {};
 
-    /** The tag for the dead-letter output of the udf. */
-    static final TupleTag<FailsafeElement<KV<String, String>, String>> UDF_DEADLETTER_OUT =
-            new TupleTag<FailsafeElement<KV<String, String>, String>>() {};
+  /** The tag for the dead-letter output of the udf. */
+  static final TupleTag<FailsafeElement<KV<String, String>, String>> UDF_DEADLETTER_OUT =
+      new TupleTag<FailsafeElement<KV<String, String>, String>>() {};
 
-    /** The tag for the dead-letter output of the json to table row transform. */
-    static final TupleTag<FailsafeElement<KV<String, String>, String>> TRANSFORM_DEADLETTER_OUT =
-            new TupleTag<FailsafeElement<KV<String, String>, String>>() {};
+  /** The tag for the dead-letter output of the json to table row transform. */
+  static final TupleTag<FailsafeElement<KV<String, String>, String>> TRANSFORM_DEADLETTER_OUT =
+      new TupleTag<FailsafeElement<KV<String, String>, String>>() {};
 
-    /** The tag for the error output table of the json to table row transform. */
-    public static final TupleTag<FailsafeElement<PubsubMessage, String>> TRANSFORM_ERROROUTPUT_OUT =
-            new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
+  /** The tag for the error output table of the json to table row transform. */
+  public static final TupleTag<FailsafeElement<PubsubMessage, String>> TRANSFORM_ERROROUTPUT_OUT =
+      new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
 
-    /* Logger for class.*/
-    private static final Logger LOG = LoggerFactory.getLogger(KafKaToElasticsearch.class);
+  /* Logger for class.*/
+  private static final Logger LOG = LoggerFactory.getLogger(KafKaToElasticsearch.class);
 
-    public static void main(String[] args) {
-        KafkaToElasticsearchOptions kafkaToElasticsearchOptions =
-                PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToElasticsearchOptions.class);
+  public static void main(String[] args) {
+    KafkaToElasticsearchOptions kafkaToElasticsearchOptions =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(KafkaToElasticsearchOptions.class);
 
-        kafkaToElasticsearchOptions.setIndex(
-                new ElasticsearchIndex(
-                        kafkaToElasticsearchOptions.getDataset(),
-                        kafkaToElasticsearchOptions.getNamespace())
-                        .getIndex());
-        run(kafkaToElasticsearchOptions);
+    kafkaToElasticsearchOptions.setIndex(
+        new ElasticsearchIndex(
+                kafkaToElasticsearchOptions.getDataset(),
+                kafkaToElasticsearchOptions.getNamespace())
+            .getIndex());
+    run(kafkaToElasticsearchOptions);
+  }
+
+  /**
+   * Runs a pipeline which reads message from Kafka and writes to Pub/Sub.
+   *
+   * @param options arguments to the pipeline
+   */
+  public static PipelineResult run(KafkaToElasticsearchOptions options) {
+    // Create the pipeline
+    Pipeline pipeline = Pipeline.create(options);
+
+    // Register the coder for pipeline
+    FailsafeElementCoder<KV<String, String>, String> coder =
+        FailsafeElementCoder.of(
+            KvCoder.of(
+                NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of())),
+            NullableCoder.of(StringUtf8Coder.of()));
+
+    CoderRegistry coderRegistry = pipeline.getCoderRegistry();
+    coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
+
+    List<String> inputTopic = new ArrayList<>(Collections.singleton(options.getInputTopic()));
+
+    String bootstrapServers;
+    if (options.getBootstrapServers() != null) {
+      bootstrapServers = options.getBootstrapServers();
+    } else {
+      throw new IllegalArgumentException("Please Provide --bootstrapServers");
     }
 
-    /**
-     * Runs a pipeline which reads message from Kafka and writes to Pub/Sub.
-     *
-     * @param options arguments to the pipeline
+    Map<String, Object> props = new HashMap<>();
+
+    props.put(
+        "ssl.endpoint.identification.algorithm",
+        options.getKafkaSslEndpointIdentificationAlgorithm().toLowerCase(Locale.ROOT));
+    props.put("sasl.mechanism", options.getKafkaSaslMechanism());
+    props.put("request.timeout.ms", options.getKafkaRequestTimeout());
+    props.put("retry.backoff.ms", options.getKafkaRetryBackoffDelay());
+    if (StringUtils.isNoneBlank(options.getKafkaUsername(), options.getKafkaPassword())) {
+      props.put(
+          "sasl.jaas.config",
+          "org.apache.kafka.common.security.plain.PlainLoginModule "
+              + "required username=\""
+              + options.getKafkaUsername()
+              + "\" password=\""
+              + options.getKafkaPassword()
+              + "\";");
+    }
+    props.put("security.protocol", options.getKafkaSecurityProtocol());
+
+    PCollectionTuple convertedKafkaMessages =
+        pipeline
+            /*
+             * Step #1: Read messages in from Kafka
+             */
+            .apply("ReadFromKafka", readFromKafka(bootstrapServers, inputTopic, props, null))
+
+            /*
+             * Step #2: Transform the Kafka Messages into Json documents
+             */
+            .apply("MapToRecord", ParDo.of(new KafkaTransform.MessageToFailsafeElementFn()))
+            .apply(
+                "InvokeUDF",
+                JavascriptTextTransformer.FailsafeJavascriptUdf.<KV<String, String>>newBuilder()
+                    .setSuccessTag(UDF_OUT)
+                    .setFailureTag(UDF_DEADLETTER_OUT)
+                    .build());
+
+    /*
+     * Step #3a: Write Json documents into Elasticsearch using {@link ElasticsearchTransforms.WriteToElasticsearch}.
      */
-    public static PipelineResult run(KafkaToElasticsearchOptions options) {
-        // Create the pipeline
-        Pipeline pipeline = Pipeline.create(options);
-
-        // Register the coder for pipeline
-        FailsafeElementCoder<KV<String, String>, String> coder =
-                FailsafeElementCoder.of(
-                        KvCoder.of(
-                                NullableCoder.of(StringUtf8Coder.of()), NullableCoder.of(StringUtf8Coder.of())),
-                        NullableCoder.of(StringUtf8Coder.of()));
-
-        CoderRegistry coderRegistry = pipeline.getCoderRegistry();
-        coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
-
-        List<String> inputTopic = new ArrayList<>(Collections.singleton(options.getInputTopic()));
-
-        String bootstrapServers;
-        if (options.getBootstrapServers() != null) {
-            bootstrapServers = options.getBootstrapServers();
-        } else {
-            throw new IllegalArgumentException("Please Provide --bootstrapServers");
-        }
-
-        Map<String, Object> props = new HashMap<>();
-
-        props.put("ssl.endpoint.identification.algorithm",
-                options.getKafkaSslEndpointIdentificationAlgorithm().toLowerCase(Locale.ROOT));
-        props.put("sasl.mechanism", options.getKafkaSaslMechanism());
-        props.put("request.timeout.ms", options.getKafkaRequestTimeout());
-        props.put("retry.backoff.ms", options.getKafkaRetryBackoffDelay());
-        if (StringUtils.isNoneBlank(options.getKafkaUsername(), options.getKafkaPassword()) ) {
-            props.put("sasl.jaas.config",
-                    "org.apache.kafka.common.security.plain.PlainLoginModule " +
-                    "required username=\"" + options.getKafkaUsername() +
-                    "\" password=\"" + options.getKafkaPassword() + "\";");
-        }
-        props.put("security.protocol", options.getKafkaSecurityProtocol());
-
-        PCollectionTuple convertedKafkaMessages =
-            pipeline
-                /*
-                 * Step #1: Read messages in from Kafka
-                 */
-                .apply(
-                    "ReadFromKafka",
-                    readFromKafka(
-                            bootstrapServers,
-                            inputTopic,
-                            props,
-                            null))
-
-                /*
-                 * Step #2: Transform the Kafka Messages into Json documents
-                 */
-                .apply("MapToRecord", ParDo.of(new KafkaTransform.MessageToFailsafeElementFn()))
-                    .apply(
-                        "InvokeUDF",
-                        JavascriptTextTransformer.FailsafeJavascriptUdf.<KV<String, String>>newBuilder()
-                            .setSuccessTag(UDF_OUT)
-                            .setFailureTag(UDF_DEADLETTER_OUT)
-                            .build());
-
-        /*
-         * Step #3a: Write Json documents into Elasticsearch using {@link ElasticsearchTransforms.WriteToElasticsearch}.
-         */
-        PCollection<String> failedMessages = convertedKafkaMessages
+    PCollection<String> failedMessages =
+        convertedKafkaMessages
             .get(UDF_OUT)
             .apply(
-                    "GetJsonDocuments",
-                    MapElements.into(TypeDescriptors.strings()).via(FailsafeElement::getPayload))
+                "GetJsonDocuments",
+                MapElements.into(TypeDescriptors.strings()).via(FailsafeElement::getPayload))
             .apply("Insert metadata", new ProcessEventMetadata())
             .apply(
-                    "WriteToElasticsearch",
-                    WriteToElasticsearch.newBuilder()
-                            .setOptions(options.as(KafkaToElasticsearchOptions.class))
-                            .build());
+                "WriteToElasticsearch",
+                WriteToElasticsearch.newBuilder()
+                    .setOptions(options.as(KafkaToElasticsearchOptions.class))
+                    .build());
 
-        /*
-         * Step 3b: Write elements that failed processing to error output PubSub topic via {@link PubSubIO}.
-         */
-        failedMessages
-            .apply(ParDo.of(new FailedElasticsearchMessageToPubsubTopicFn()))
-            .apply(
-                    "writeFailureMessages",
-                    PubsubIO.writeMessages().to(options.getErrorOutputTopic()));
+    /*
+     * Step 3b: Write elements that failed processing to error output PubSub topic via {@link PubSubIO}.
+     */
+    failedMessages
+        .apply(ParDo.of(new FailedElasticsearchMessageToPubsubTopicFn()))
+        .apply("writeFailureMessages", PubsubIO.writeMessages().to(options.getErrorOutputTopic()));
 
-        return pipeline.run();
-    }
-
+    return pipeline.run();
+  }
 }
