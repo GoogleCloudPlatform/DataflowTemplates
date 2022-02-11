@@ -25,7 +25,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.google.auto.value.AutoValue;
 import java.io.File;
 import java.io.FileInputStream;
@@ -52,8 +54,6 @@ import java.util.Set;
 import java.util.function.Predicate;
 import javax.annotation.Nonnull;
 import javax.net.ssl.SSLContext;
-
-import com.google.gson.JsonArray;
 import org.apache.beam.sdk.annotations.Experimental;
 import org.apache.beam.sdk.annotations.Experimental.Kind;
 import org.apache.beam.sdk.coders.Coder;
@@ -75,7 +75,6 @@ import org.apache.beam.sdk.util.Sleeper;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
 import org.apache.http.ConnectionClosedException;
@@ -213,7 +212,6 @@ public class ElasticsearchIO {
 
   public static DocToBulk docToBulk() {
     return new AutoValue_ElasticsearchIO_DocToBulk.Builder()
-            .setUsePartialUpdate(false) // default is document upsert
             .build();
   }
 
@@ -281,9 +279,24 @@ public class ElasticsearchIO {
         }
       }
       if (numErrors > 0) {
-        //JsonNode bulkEntities = mapper.readTree(bulkRequest.toString());
-        return searchResult.toString();
-        //throw new IOException(errorMessages.toString());
+        String entities = "[" + bulkRequest.toString().replaceAll("\\{ \"create\" : \\{} }\r\n", ",").replaceFirst(",", "") + "]";
+        TypeFactory typeFactory = mapper.getTypeFactory();
+        List<JsonNode> entitiesList = mapper.readValue(entities, typeFactory.constructCollectionType(List.class, JsonNode.class));
+
+        List<JsonNode> resultEntities = mapper.readValue(searchResult.get("items").toString(), typeFactory.constructCollectionType(List.class, JsonNode.class));
+
+        int errorIndex = -1;
+        for (int i = 0; i <= resultEntities.size() - 1; i++) {
+          if (resultEntities.get(i).path("create").has("error")) {
+            errorIndex = i;
+            break;
+          }
+        }
+
+        ObjectNode response = mapper.createObjectNode();
+        response.put("message", entitiesList.get(errorIndex));
+        response.put("error", resultEntities.get(errorIndex));
+        return response.toString();
       }
     }
 
@@ -1212,24 +1225,6 @@ public class ElasticsearchIO {
 
     abstract @Nullable ConnectionConfiguration getConnectionConfiguration();
 
-    abstract Write.@Nullable FieldValueExtractFn getIdFn();
-
-    abstract Write.@Nullable FieldValueExtractFn getIndexFn();
-
-    abstract Write.@Nullable FieldValueExtractFn getRoutingFn();
-
-    abstract Write.@Nullable FieldValueExtractFn getTypeFn();
-
-    abstract Write.@Nullable FieldValueExtractFn getDocVersionFn();
-
-    abstract @Nullable String getDocVersionType();
-
-    abstract @Nullable String getUpsertScript();
-
-    abstract @Nullable Boolean getUsePartialUpdate();
-
-    abstract Write.@Nullable BooleanFieldValueExtractFn getIsDeleteFn();
-
     abstract @Nullable Integer getBackendVersion();
 
     abstract Builder builder();
@@ -1237,24 +1232,6 @@ public class ElasticsearchIO {
     @AutoValue.Builder
     abstract static class Builder {
       abstract Builder setConnectionConfiguration(ConnectionConfiguration connectionConfiguration);
-
-      abstract Builder setIdFn(Write.FieldValueExtractFn idFunction);
-
-      abstract Builder setIndexFn(Write.FieldValueExtractFn indexFn);
-
-      abstract Builder setRoutingFn(Write.FieldValueExtractFn routingFunction);
-
-      abstract Builder setTypeFn(Write.FieldValueExtractFn typeFn);
-
-      abstract Builder setDocVersionFn(Write.FieldValueExtractFn docVersionFn);
-
-      abstract Builder setDocVersionType(String docVersionType);
-
-      abstract Builder setIsDeleteFn(Write.BooleanFieldValueExtractFn isDeleteFn);
-
-      abstract Builder setUsePartialUpdate(Boolean usePartialUpdate);
-
-      abstract Builder setUpsertScript(String source);
 
       abstract Builder setBackendVersion(Integer assumedBackendVersion);
 
@@ -1271,131 +1248,6 @@ public class ElasticsearchIO {
     public DocToBulk withConnectionConfiguration(ConnectionConfiguration connectionConfiguration) {
       checkArgument(connectionConfiguration != null, "connectionConfiguration can not be null");
       return builder().setConnectionConfiguration(connectionConfiguration).build();
-    }
-
-    /**
-     * Provide a function to extract the id from the document. This id will be used as the document
-     * id in Elasticsearch. Should the function throw an Exception then the batch will fail and the
-     * exception propagated.
-     *
-     * @param idFn to extract the document ID
-     * @return the {@link DocToBulk} with the function set
-     */
-    public DocToBulk withIdFn(Write.FieldValueExtractFn idFn) {
-      checkArgument(idFn != null, "idFn must not be null");
-      return builder().setIdFn(idFn).build();
-    }
-
-    /**
-     * Provide a function to extract the target index from the document allowing for dynamic
-     * document routing. Should the function throw an Exception then the batch will fail and the
-     * exception propagated.
-     *
-     * @param indexFn to extract the destination index from
-     * @return the {@link DocToBulk} with the function set
-     */
-    public DocToBulk withIndexFn(Write.FieldValueExtractFn indexFn) {
-      checkArgument(indexFn != null, "indexFn must not be null");
-      return builder().setIndexFn(indexFn).build();
-    }
-
-    /**
-     * Provide a function to extract the target routing from the document allowing for dynamic
-     * document routing. Should the function throw an Exception then the batch will fail and the
-     * exception propagated.
-     *
-     * @param routingFn to extract the destination index from
-     * @return the {@link DocToBulk} with the function set
-     */
-    public DocToBulk withRoutingFn(Write.FieldValueExtractFn routingFn) {
-      checkArgument(routingFn != null, "routingFn must not be null");
-      return builder().setRoutingFn(routingFn).build();
-    }
-
-    /**
-     * Provide a function to extract the target type from the document allowing for dynamic document
-     * routing. Should the function throw an Exception then the batch will fail and the exception
-     * propagated. Users are encouraged to consider carefully if multipe types are a sensible model
-     * <a
-     * href="https://www.elastic.co/blog/index-type-parent-child-join-now-future-in-elasticsearch">as
-     * discussed in this blog</a>.
-     *
-     * @param typeFn to extract the destination index from
-     * @return the {@link DocToBulk} with the function set
-     */
-    public DocToBulk withTypeFn(Write.FieldValueExtractFn typeFn) {
-      checkArgument(typeFn != null, "typeFn must not be null");
-      return builder().setTypeFn(typeFn).build();
-    }
-
-    /**
-     * Provide an instruction to control whether partial updates or inserts (default) are issued to
-     * Elasticsearch.
-     *
-     * @param usePartialUpdate set to true to issue partial updates
-     * @return the {@link DocToBulk} with the partial update control set
-     */
-    public DocToBulk withUsePartialUpdate(boolean usePartialUpdate) {
-      return builder().setUsePartialUpdate(usePartialUpdate).build();
-    }
-
-    /**
-     * Whether to use scripted updates and what script to use.
-     *
-     * @param source set to the value of the script source, painless lang
-     * @return the {@link DocToBulk} with the scripted updates set
-     */
-    public DocToBulk withUpsertScript(String source) {
-      if (getBackendVersion() == null || getBackendVersion() == 2) {
-        LOG.warn("Painless scripts are not supported on Elasticsearch clusters before version 5.0");
-      }
-      return builder().setUsePartialUpdate(false).setUpsertScript(source).build();
-    }
-
-    /**
-     * Provide a function to extract the doc version from the document. This version number will be
-     * used as the document version in Elasticsearch. Should the function throw an Exception then
-     * the batch will fail and the exception propagated. Incompatible with update operations and
-     * should only be used with withUsePartialUpdate(false)
-     *
-     * @param docVersionFn to extract the document version
-     * @return the {@link DocToBulk} with the function set
-     */
-    public DocToBulk withDocVersionFn(Write.FieldValueExtractFn docVersionFn) {
-      checkArgument(docVersionFn != null, "docVersionFn must not be null");
-      return builder().setDocVersionFn(docVersionFn).build();
-    }
-
-    /**
-     * Provide a function to extract the target operation either upsert or delete from the document
-     * fields allowing dynamic bulk operation decision. While using withIsDeleteFn, it should be
-     * taken care that the document's id extraction is defined using the withIdFn function or else
-     * IllegalArgumentException is thrown. Should the function throw an Exception then the batch
-     * will fail and the exception propagated.
-     *
-     * @param isDeleteFn set to true for deleting the specific document
-     * @return the {@link Write} with the function set
-     */
-    public DocToBulk withIsDeleteFn(Write.BooleanFieldValueExtractFn isDeleteFn) {
-      checkArgument(isDeleteFn != null, "deleteFn is required");
-      return builder().setIsDeleteFn(isDeleteFn).build();
-    }
-
-    /**
-     * Provide a function to extract the doc version from the document. This version number will be
-     * used as the document version in Elasticsearch. Should the function throw an Exception then
-     * the batch will fail and the exception propagated. Incompatible with update operations and
-     * should only be used with withUsePartialUpdate(false)
-     *
-     * @param docVersionType the version type to use, one of {@value VERSION_TYPES}
-     * @return the {@link DocToBulk} with the doc version type set
-     */
-    public DocToBulk withDocVersionType(String docVersionType) {
-      checkArgument(
-              VERSION_TYPES.contains(docVersionType),
-              "docVersionType must be one of " + "%s",
-              String.join(", ", VERSION_TYPES));
-      return builder().setDocVersionType(docVersionType).build();
     }
 
     /**
@@ -1422,14 +1274,9 @@ public class ElasticsearchIO {
     public PCollection<String> expand(PCollection<String> docs) {
       ConnectionConfiguration connectionConfiguration = getConnectionConfiguration();
       Integer backendVersion = getBackendVersion();
-      Write.FieldValueExtractFn idFn = getIdFn();
-      Write.BooleanFieldValueExtractFn isDeleteFn = getIsDeleteFn();
       checkState(
               (backendVersion != null || connectionConfiguration != null),
               "withBackendVersion() or withConnectionConfiguration() is required");
-      checkArgument(
-              isDeleteFn == null || idFn != null,
-              "Id needs to be specified by withIdFn for delete operation");
 
       return docs.apply(ParDo.of(new DocToBulkFn(this)));
     }
@@ -1507,72 +1354,12 @@ public class ElasticsearchIO {
             throws IOException {
       String documentMetadata = "{}";
       boolean isDelete = false;
-      if (spec.getIndexFn() != null
-              || spec.getTypeFn() != null
-              || spec.getIdFn() != null
-              || spec.getRoutingFn() != null) {
-        // parse once and reused for efficiency
-        JsonNode parsedDocument = OBJECT_MAPPER.readTree(document);
-        documentMetadata = getDocumentMetadata(spec, parsedDocument, backendVersion);
-        if (spec.getIsDeleteFn() != null) {
-          isDelete = spec.getIsDeleteFn().apply(parsedDocument);
-        }
-      }
 
-      if (isDelete) {
-        // delete request used for deleting a document
-        return String.format("{ \"delete\" : %s }%n", documentMetadata);
-      } else {
-        // index is an insert/upsert and update is a partial update (or insert if not
-        // existing)
-        if (spec.getUsePartialUpdate()) {
-          return String.format(
-                  "{ \"update\" : %s }%n{ \"doc\" : %s, " + "\"doc_as_upsert\" : true }%n",
-                  documentMetadata, document);
-        } else if (spec.getUpsertScript() != null) {
-          return String.format(
-                  "{ \"update\" : %s }%n{ \"script\" : {\"source\": \"%s\", "
-                          + "\"params\": %s}, \"upsert\" : %s, \"scripted_upsert\": true}%n",
-                  documentMetadata, spec.getUpsertScript(), document, document);
-        } else {
-          return String.format("{ \"create\" : %s }%n%s%n", documentMetadata, document);
-        }
-      }
+      return String.format("{ \"create\" : %s }%n%s%n", documentMetadata, document);
     }
 
     private static String lowerCaseOrNull(String input) {
       return input == null ? null : input.toLowerCase();
-    }
-
-    /**
-     * Extracts the components that comprise the document address from the document using the {@link
-     * Write.FieldValueExtractFn} configured. This allows any or all of the index, type and document
-     * id to be controlled on a per document basis. If none are provided then an empty default of
-     * {@code {}} is returned. Sanitization of the index is performed, automatically lower-casing
-     * the value as required by Elasticsearch.
-     *
-     * @param parsedDocument the json from which the index, type and id may be extracted
-     * @return the document address as JSON or the default
-     * @throws IOException if the document cannot be parsed as JSON
-     */
-    private static String getDocumentMetadata(
-            DocToBulk spec, JsonNode parsedDocument, int backendVersion) throws IOException {
-      DocumentMetadata metadata =
-              new DocumentMetadata(
-                      spec.getIndexFn() != null
-                              ? lowerCaseOrNull(spec.getIndexFn().apply(parsedDocument))
-                              : null,
-                      spec.getTypeFn() != null ? spec.getTypeFn().apply(parsedDocument) : null,
-                      spec.getIdFn() != null ? spec.getIdFn().apply(parsedDocument) : null,
-                      (spec.getUsePartialUpdate()
-                              || (spec.getUpsertScript() != null && !spec.getUpsertScript().isEmpty()))
-                              ? DEFAULT_RETRY_ON_CONFLICT
-                              : null,
-                      spec.getRoutingFn() != null ? spec.getRoutingFn().apply(parsedDocument) : null,
-                      backendVersion,
-                      spec.getDocVersionFn() != null ? spec.getDocVersionFn().apply(parsedDocument) : null,
-                      spec.getDocVersionType());
-      return OBJECT_MAPPER.writeValueAsString(metadata);
     }
 
     /** {@link DoFn} to for the {@link DocToBulk} transform. */
@@ -1616,7 +1403,6 @@ public class ElasticsearchIO {
 
     private DocToBulk docToBulk =
             new AutoValue_ElasticsearchIO_DocToBulk.Builder()
-                    .setUsePartialUpdate(false) // default is document upsert
                     .build();
 
     private BulkIO bulkIO =
@@ -1637,67 +1423,11 @@ public class ElasticsearchIO {
       return bulkIO;
     }
 
-    // For building Doc2Bulk
-    /** Refer to {@link DocToBulk#withIdFn}. */
-    public Write withIdFn(FieldValueExtractFn idFn) {
-      docToBulk = docToBulk.withIdFn(idFn);
-      return this;
-    }
-
-    /** Refer to {@link DocToBulk#withIndexFn}. */
-    public Write withIndexFn(FieldValueExtractFn indexFn) {
-      docToBulk = docToBulk.withIndexFn(indexFn);
-      return this;
-    }
-
-    /** Refer to {@link DocToBulk#withRoutingFn}. */
-    public Write withRoutingFn(FieldValueExtractFn routingFn) {
-      docToBulk = docToBulk.withRoutingFn(routingFn);
-      return this;
-    }
-
-    /** Refer to {@link DocToBulk#withTypeFn}. */
-    public Write withTypeFn(FieldValueExtractFn typeFn) {
-      docToBulk = docToBulk.withTypeFn(typeFn);
-      return this;
-    }
-
-    /** Refer to {@link DocToBulk#withDocVersionFn}. */
-    public Write withDocVersionFn(FieldValueExtractFn docVersionFn) {
-      docToBulk = docToBulk.withDocVersionFn(docVersionFn);
-      return this;
-    }
-
-    /** Refer to {@link DocToBulk#withDocVersionType}. */
-    public Write withDocVersionType(String docVersionType) {
-      docToBulk = docToBulk.withDocVersionType(docVersionType);
-      return this;
-    }
-
-    /** Refer to {@link DocToBulk#withUsePartialUpdate}. */
-    public Write withUsePartialUpdate(boolean usePartialUpdate) {
-      docToBulk = docToBulk.withUsePartialUpdate(usePartialUpdate);
-      return this;
-    }
-
-    /** Refer to {@link DocToBulk#withUpsertScript}. */
-    public Write withUpsertScript(String source) {
-      docToBulk = docToBulk.withUpsertScript(source);
-      return this;
-    }
-
     /** Refer to {@link DocToBulk#withBackendVersion}. */
     public Write withBackendVersion(int backendVersion) {
       docToBulk = docToBulk.withBackendVersion(backendVersion);
       return this;
     }
-
-    /** Refer to {@link DocToBulk#withIsDeleteFn}. */
-    public Write withIsDeleteFn(Write.BooleanFieldValueExtractFn isDeleteFn) {
-      docToBulk = docToBulk.withIsDeleteFn(isDeleteFn);
-      return this;
-    }
-    // End building Doc2Bulk
 
     /** Refer to {@link BulkIO#withConnectionConfiguration}. */
     public Write withConnectionConfiguration(ConnectionConfiguration connectionConfiguration) {
