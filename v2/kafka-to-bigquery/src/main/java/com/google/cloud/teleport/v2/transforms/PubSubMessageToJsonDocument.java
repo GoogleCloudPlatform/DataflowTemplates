@@ -17,14 +17,13 @@ package com.google.cloud.teleport.v2.transforms;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTagList;
-
-import javax.annotation.Nullable;
 
 /**
  * The {@link PubSubMessageToJsonDocument} class is a {@link PTransform} which transforms incoming
