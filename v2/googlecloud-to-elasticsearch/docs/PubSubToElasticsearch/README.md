@@ -19,6 +19,10 @@ To enable the out of the box integration:
 1. Install the Google Cloud [Logs integration](https://www.elastic.co/integrations?solution=observability&category=google-cloud) from Kibana UI
 2. [Export logs](https://cloud.google.com/logging/docs/export) from above data source to a separate Pub/Sub subscription. You can then use the Dataflow template's `dataset` parameter to specify the data source name and their corresponding `inputSubscription`.
 
+## Data validation
+
+Invalid input fields in messages will be fixed in runtime to not slowdown the pipeline and to prevent throwing exceptions.
+
 ### Requirements for this pipeline
 * Java 8
 * Maven
