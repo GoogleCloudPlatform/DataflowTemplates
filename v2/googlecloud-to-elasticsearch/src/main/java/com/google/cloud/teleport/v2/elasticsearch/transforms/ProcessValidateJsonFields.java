@@ -52,6 +52,15 @@ public class ProcessValidateJsonFields extends PTransform<PCollection<String>, P
             .mappingProvider(new JacksonMappingProvider())
             .build();
 
+    /**
+     * "Having a field name with just dot will cause Elasticsearch to throw
+     * exception Index -1 out of bounds for length 0. This is because field like ".": {} is not valid.
+     * The error is thrown on this line because subfields has a length of 0 and hence it is trying to access index -1,
+     * which is not allowed. The method that splits the field names into paths called splitAndValidatePath
+     * and what it does is to split field names when it encounters . (i.e. a dot).
+     * This field is easily found in k8s logs"
+     * @param context
+     */
     @ProcessElement
     public void processElement(ProcessContext context) {
       String input = context.element();

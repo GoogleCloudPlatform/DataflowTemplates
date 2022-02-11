@@ -1,0 +1,132 @@
+{
+  "insertId": "09489d66-5017-4726-9920-8403db18c499",
+  "labels": {
+    "authorization.k8s.io/decision": "allow",
+    "authorization.k8s.io/reason": "RBAC: allowed by ClusterRoleBinding \"system:managed-certificate-controller\" of ClusterRole \"system:managed-certificate-controller\" to User \"system:managed-certificate-controller\""
+  },
+  "logName": "projects/elastic-sa/logs/cloudaudit.googleapis.com%2Factivity",
+  "operation": {
+    "first": true,
+    "id": "09489d66-5017-4726-9920-8403db18c499",
+    "last": true,
+    "producer": "k8s.io"
+  },
+  "protoPayload": {
+    "@type": "type.googleapis.com/google.cloud.audit.AuditLog",
+    "authenticationInfo": {
+      "principalEmail": "system:managed-certificate-controller"
+    },
+    "authorizationInfo": [
+      {
+        "granted": true,
+        "permission": "io.k8s.core.v1.endpoints.update",
+        "resource": "core/v1/namespaces/kube-system/endpoints/managed-certificate-controller"
+      }
+    ],
+    "methodName": "io.k8s.core.v1.endpoints.update",
+    "request": {
+      "@type": "core.k8s.io/v1.Endpoints",
+      "apiVersion": "v1",
+      "kind": "Endpoints",
+      "metadata": {
+        "annotations": {
+          "control-plane.alpha.kubernetes.io/leader": "{\"holderIdentity\":\"gke-7812297a2547498a8e1d-1d63-aa58-vm\",\"leaseDurationSeconds\":15,\"acquireTime\":\"2021-11-10T04:32:40Z\",\"renewTime\":\"2021-11-11T18:48:32Z\",\"leaderTransitions\":12}"
+        },
+        "creationTimestamp": "2021-06-15T14:05:31Z",
+        "managedFields": [
+          {
+            "apiVersion": "v1",
+            "fieldsType": "FieldsV1",
+            "fieldsV1": {
+              "f:metadata": {
+                "f:annotations": {
+                  ".": {},
+                  "f:control-plane.alpha.kubernetes.io/leader": {}
+                }
+              }
+            },
+            "manager": "managed-certificate-controller",
+            "operation": "Update",
+            "time": "2021-06-15T14:05:31Z"
+          }
+        ],
+        "name": "managed-certificate-controller",
+        "namespace": "kube-system",
+        "resourceVersion": "74733013",
+        "uid": "952ffd12-9104-46c9-b2c0-fdc4a74e0929"
+      }
+    },
+    "requestMetadata": {
+      "callerIp": "::1",
+      "callerSuppliedUserAgent": "managed-certificate-controller/v0.0.0 (linux/amd64) kubernetes/$Format"
+    },
+    "resourceName": "core/v1/namespaces/kube-system/endpoints/managed-certificate-controller",
+    "response": {
+      "@type": "core.k8s.io/v1.Endpoints",
+      "apiVersion": "v1",
+      "kind": "Endpoints",
+      "metadata": {
+        "annotations": {
+          "control-plane.alpha.kubernetes.io/leader": "{\"holderIdentity\":\"gke-7812297a2547498a8e1d-1d63-aa58-vm\",\"leaseDurationSeconds\":15,\"acquireTime\":\"2021-11-10T04:32:40Z\",\"renewTime\":\"2021-11-11T18:48:32Z\",\"leaderTransitions\":12}"
+        },
+        "creationTimestamp": "2021-06-15T14:05:31Z",
+        "managedFields": [
+          {
+            "apiVersion": "v1",
+            "fieldsType": "FieldsV1",
+            "fieldsV1": {
+              "f:metadata": {
+                "f:annotations": {
+                  ".": {},
+                  "f:control-plane.alpha.kubernetes.io/leader": {}
+                }
+              }
+            },
+            "manager": "managed-certificate-controller",
+            "operation": "Update",
+            "time": "2021-06-15T14:05:31Z"
+          }
+        ],
+        "name": "managed-certificate-controller",
+        "namespace": "kube-system",
+        "resourceVersion": "74733023",
+        "uid": "952ffd12-9104-46c9-b2c0-fdc4a74e0929"
+      }
+    },
+    "serviceName": "k8s.io",
+    "status": {}
+  },
+  "receiveTimestamp": "2021-11-11T18:48:35.305404026Z",
+  "resource": {
+    "labels": {
+      "cluster_name": "cluster-1-demoamy",
+      "location": "us-central1-c",
+      "project_id": "elastic-sa"
+    },
+    "type": "k8s_cluster"
+  },
+  "logging.googleapis.com/timestamp": "2021-11-11T18:48:32.827087Z",
+  "@timestamp": "2021-11-11T18:48:32.827087Z",
+  "agent": {
+    "type": "dataflow",
+    "name": "",
+    "version": "1.0.0",
+    "id": ""
+  },
+  "data_stream": {
+    "type": "logs",
+    "dataset": "gcp.audit",
+    "namespace": "default"
+  },
+  "ecs": {
+    "version": "1.10.0"
+  },
+  "message": "{\"insertId\":\"09489d66-5017-4726-9920-8403db18c499\",\"labels\":{\"authorization.k8s.io/decision\":\"allow\",\"authorization.k8s.io/reason\":\"RBAC: allowed by ClusterRoleBinding \\\"system:managed-certificate-controller\\\" of ClusterRole \\\"system:managed-certificate-controller\\\" to User \\\"system:managed-certificate-controller\\\"\"},\"logName\":\"projects/elastic-sa/logs/cloudaudit.googleapis.com%2Factivity\",\"operation\":{\"first\":true,\"id\":\"09489d66-5017-4726-9920-8403db18c499\",\"last\":true,\"producer\":\"k8s.io\"},\"protoPayload\":{\"@type\":\"type.googleapis.com/google.cloud.audit.AuditLog\",\"authenticationInfo\":{\"principalEmail\":\"system:managed-certificate-controller\"},\"authorizationInfo\":[{\"granted\":true,\"permission\":\"io.k8s.core.v1.endpoints.update\",\"resource\":\"core/v1/namespaces/kube-system/endpoints/managed-certificate-controller\"}],\"methodName\":\"io.k8s.core.v1.endpoints.update\",\"request\":{\"@type\":\"core.k8s.io/v1.Endpoints\",\"apiVersion\":\"v1\",\"kind\":\"Endpoints\",\"metadata\":{\"annotations\":{\"control-plane.alpha.kubernetes.io/leader\":\"{\\\"holderIdentity\\\":\\\"gke-7812297a2547498a8e1d-1d63-aa58-vm\\\",\\\"leaseDurationSeconds\\\":15,\\\"acquireTime\\\":\\\"2021-11-10T04:32:40Z\\\",\\\"renewTime\\\":\\\"2021-11-11T18:48:32Z\\\",\\\"leaderTransitions\\\":12}\"},\"creationTimestamp\":\"2021-06-15T14:05:31Z\",\"managedFields\":[{\"apiVersion\":\"v1\",\"fieldsType\":\"FieldsV1\",\"fieldsV1\":{\"f:metadata\":{\"f:annotations\":{\".\":{},\"f:control-plane.alpha.kubernetes.io/leader\":{}}}},\"manager\":\"managed-certificate-controller\",\"operation\":\"Update\",\"time\":\"2021-06-15T14:05:31Z\"}],\"name\":\"managed-certificate-controller\",\"namespace\":\"kube-system\",\"resourceVersion\":\"74733013\",\"uid\":\"952ffd12-9104-46c9-b2c0-fdc4a74e0929\"}},\"requestMetadata\":{\"callerIp\":\"::1\",\"callerSuppliedUserAgent\":\"managed-certificate-controller/v0.0.0 (linux/amd64) kubernetes/$Format\"},\"resourceName\":\"core/v1/namespaces/kube-system/endpoints/managed-certificate-controller\",\"response\":{\"@type\":\"core.k8s.io/v1.Endpoints\",\"apiVersion\":\"v1\",\"kind\":\"Endpoints\",\"metadata\":{\"annotations\":{\"control-plane.alpha.kubernetes.io/leader\":\"{\\\"holderIdentity\\\":\\\"gke-7812297a2547498a8e1d-1d63-aa58-vm\\\",\\\"leaseDurationSeconds\\\":15,\\\"acquireTime\\\":\\\"2021-11-10T04:32:40Z\\\",\\\"renewTime\\\":\\\"2021-11-11T18:48:32Z\\\",\\\"leaderTransitions\\\":12}\"},\"creationTimestamp\":\"2021-06-15T14:05:31Z\",\"managedFields\":[{\"apiVersion\":\"v1\",\"fieldsType\":\"FieldsV1\",\"fieldsV1\":{\"f:metadata\":{\"f:annotations\":{\".\":{},\"f:control-plane.alpha.kubernetes.io/leader\":{}}}},\"manager\":\"managed-certificate-controller\",\"operation\":\"Update\",\"time\":\"2021-06-15T14:05:31Z\"}],\"name\":\"managed-certificate-controller\",\"namespace\":\"kube-system\",\"resourceVersion\":\"74733023\",\"uid\":\"952ffd12-9104-46c9-b2c0-fdc4a74e0929\"}},\"serviceName\":\"k8s.io\",\"status\":{}},\"receiveTimestamp\":\"2021-11-11T18:48:35.305404026Z\",\"resource\":{\"labels\":{\"cluster_name\":\"cluster-1-demoamy\",\"location\":\"us-central1-c\",\"project_id\":\"elastic-sa\"},\"type\":\"k8s_cluster\"},\"timestamp\":\"2021-11-11T18:48:32.827087Z\",\"logging.googleapis.com/timestamp\":\"2021-11-11T18:48:32.827087Z\"}",
+  "service": {
+    "type": "gcp.audit"
+  },
+  "event": {
+    "module": "gcp",
+    "dataset": "gcp.audit"
+  }
+}
