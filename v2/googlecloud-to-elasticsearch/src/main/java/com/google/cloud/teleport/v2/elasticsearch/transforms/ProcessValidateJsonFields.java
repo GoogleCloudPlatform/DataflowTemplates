@@ -35,7 +35,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** ProcessValidateJsonFields is used to fix malformed fields, (ex. de-dot). */
-public class ProcessValidateJsonFields extends PTransform<PCollection<String>, PCollection<String>> {
+public class ProcessValidateJsonFields
+    extends PTransform<PCollection<String>, PCollection<String>> {
 
   @Override
   public PCollection<String> expand(PCollection<String> input) {
@@ -47,18 +48,20 @@ public class ProcessValidateJsonFields extends PTransform<PCollection<String>, P
     private static final Logger LOG = LoggerFactory.getLogger(ValidateJsonFieldsFn.class);
     ObjectMapper objectMapper = new ObjectMapper();
 
-    private static final Configuration configuration = Configuration.builder()
+    private static final Configuration configuration =
+        Configuration.builder()
             .jsonProvider(new JacksonJsonNodeJsonProvider())
             .mappingProvider(new JacksonMappingProvider())
             .build();
 
     /**
-     * "Having a field name with just dot will cause Elasticsearch to throw
-     * exception Index -1 out of bounds for length 0. This is because field like ".": {} is not valid.
-     * The error is thrown on this line because subfields has a length of 0 and hence it is trying to access index -1,
-     * which is not allowed. The method that splits the field names into paths called splitAndValidatePath
-     * and what it does is to split field names when it encounters . (i.e. a dot).
-     * This field is easily found in k8s logs"
+     * "Having a field name with just dot will cause Elasticsearch to throw exception Index -1 out
+     * of bounds for length 0. This is because field like ".": {} is not valid. The error is thrown
+     * on this line because subfields has a length of 0 and hence it is trying to access index -1,
+     * which is not allowed. The method that splits the field names into paths called
+     * splitAndValidatePath and what it does is to split field names when it encounters . (i.e. a
+     * dot). This field is easily found in k8s logs"
+     *
      * @param context
      */
     @ProcessElement
@@ -66,36 +69,76 @@ public class ProcessValidateJsonFields extends PTransform<PCollection<String>, P
       String input = context.element();
       ObjectNode node = null;
       try {
-        JsonPath.using(configuration).parse(input).read("$.protoPayload.response.spec.template.spec.containers.livenessProbe.httpGet.port");
-      } catch (Exception ignored) {}
+        JsonPath.using(configuration)
+            .parse(input)
+            .read(
+                "$.protoPayload.response.spec.template.spec.containers.livenessProbe.httpGet.port");
+      } catch (Exception ignored) {
+      }
 
       JsonNode requestApp = null;
       try {
-        requestApp = JsonPath.using(configuration).parse(input).read("$.protoPayload.request.metadata.labels.app");
+        requestApp =
+            JsonPath.using(configuration)
+                .parse(input)
+                .read("$.protoPayload.request.metadata.labels.app");
         if (requestApp != null) {
-          input = JsonPath.using(configuration).parse(input).put("$.protoPayload.request.metadata.labels", "app.kubernetes.io/name",
-                  JsonPath.using(configuration).parse(input).read("$.protoPayload.request.metadata.labels.app")).jsonString();
-          input = JsonPath.using(configuration).parse(input).delete("$.protoPayload.request.metadata.labels.app").jsonString();
+          input =
+              JsonPath.using(configuration)
+                  .parse(input)
+                  .put(
+                      "$.protoPayload.request.metadata.labels",
+                      "app.kubernetes.io/name",
+                      JsonPath.using(configuration)
+                          .parse(input)
+                          .read("$.protoPayload.request.metadata.labels.app"))
+                  .jsonString();
+          input =
+              JsonPath.using(configuration)
+                  .parse(input)
+                  .delete("$.protoPayload.request.metadata.labels.app")
+                  .jsonString();
         }
-      } catch (Exception ignored) {}
+      } catch (Exception ignored) {
+      }
 
       JsonNode responseApp = null;
       try {
-        responseApp = JsonPath.using(configuration).parse(input).read("$.protoPayload.response.metadata.labels.app");
+        responseApp =
+            JsonPath.using(configuration)
+                .parse(input)
+                .read("$.protoPayload.response.metadata.labels.app");
 
         if (responseApp != null) {
-          input = JsonPath.using(configuration).parse(input).put("$.protoPayload.response.metadata.labels", "app.kubernetes.io/name",
-                  JsonPath.using(configuration).parse(input).read("$.protoPayload.response.metadata.labels.app")).jsonString();
-          input = JsonPath.using(configuration).parse(input).delete("$.protoPayload.response.metadata.labels.app").jsonString();
+          input =
+              JsonPath.using(configuration)
+                  .parse(input)
+                  .put(
+                      "$.protoPayload.response.metadata.labels",
+                      "app.kubernetes.io/name",
+                      JsonPath.using(configuration)
+                          .parse(input)
+                          .read("$.protoPayload.response.metadata.labels.app"))
+                  .jsonString();
+          input =
+              JsonPath.using(configuration)
+                  .parse(input)
+                  .delete("$.protoPayload.response.metadata.labels.app")
+                  .jsonString();
         }
-      } catch (Exception ignored) {}
+      } catch (Exception ignored) {
+      }
 
       try {
         try {
-          JsonNode response = node.get("protoPayload")
-                  .get("response");
-          input = JsonPath.using(configuration).parse(input).put("$.protoPayload.response", "status", objectMapper.createObjectNode()).jsonString();
-        } catch (NullPointerException ex) {}
+          JsonNode response = node.get("protoPayload").get("response");
+          input =
+              JsonPath.using(configuration)
+                  .parse(input)
+                  .put("$.protoPayload.response", "status", objectMapper.createObjectNode())
+                  .jsonString();
+        } catch (NullPointerException ex) {
+        }
 
         node = removeEmptyFields((ObjectNode) objectMapper.readTree(input));
       } catch (JsonProcessingException e) {
@@ -105,7 +148,11 @@ public class ProcessValidateJsonFields extends PTransform<PCollection<String>, P
       try {
         JsonPath.using(configuration).parse(input).read("$.protoPayload.response.status");
       } catch (Exception e) {
-        node = JsonPath.using(configuration).parse(node.toString()).put("$.protoPayload.response", "status", objectMapper.createObjectNode()).json();
+        node =
+            JsonPath.using(configuration)
+                .parse(node.toString())
+                .put("$.protoPayload.response", "status", objectMapper.createObjectNode())
+                .json();
       }
 
       context.output(node.toString());
@@ -127,13 +174,11 @@ public class ProcessValidateJsonFields extends PTransform<PCollection<String>, P
 
         if (value instanceof ObjectNode) {
           Map<String, ObjectNode> map = new HashMap<>();
-          map.put(key, removeEmptyFields((ObjectNode)value));
+          map.put(key, removeEmptyFields((ObjectNode) value));
           ret.setAll(map);
-        }
-        else if (value instanceof ArrayNode) {
-          ret.set(key, removeEmptyFields((ArrayNode)value));
-        }
-        else if (value.asText() != null) {
+        } else if (value instanceof ArrayNode) {
+          ret.set(key, removeEmptyFields((ArrayNode) value));
+        } else if (value.asText() != null) {
           ret.set(key, value);
         }
       }
@@ -149,12 +194,10 @@ public class ProcessValidateJsonFields extends PTransform<PCollection<String>, P
         JsonNode value = iter.next();
 
         if (value instanceof ArrayNode) {
-          ret.add(removeEmptyFields((ArrayNode)(value)));
-        }
-        else if (value instanceof ObjectNode) {
-          ret.add(removeEmptyFields((ObjectNode)(value)));
-        }
-        else if (value != null){
+          ret.add(removeEmptyFields((ArrayNode) (value)));
+        } else if (value instanceof ObjectNode) {
+          ret.add(removeEmptyFields((ObjectNode) (value)));
+        } else if (value != null) {
           ret.add(value);
         }
       }

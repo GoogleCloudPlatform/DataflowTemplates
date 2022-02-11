@@ -18,42 +18,40 @@ package com.google.cloud.teleport.v2.elasticsearch.transforms;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchUtils;
 import java.nio.charset.StandardCharsets;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 
-
 /**
- * The {@link FailedElasticsearchMessageToPubsubTopicFn} converts PubSub message which have failed processing into
- * {@link com.google.api.services.pubsub.model.PubsubMessage} objects which can be output to a PubSub topic.
+ * The {@link FailedElasticsearchMessageToPubsubTopicFn} converts PubSub message which have failed
+ * processing into {@link com.google.api.services.pubsub.model.PubsubMessage} objects which can be
+ * output to a PubSub topic.
  */
-public class FailedElasticsearchMessageToPubsubTopicFn
-        extends DoFn<String, PubsubMessage> {
+public class FailedElasticsearchMessageToPubsubTopicFn extends DoFn<String, PubsubMessage> {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    /** Counter to track total failed messages. */
-    private static final Counter ERROR_MESSAGES_COUNTER =
-            Metrics.counter(FailedElasticsearchMessageToPubsubTopicFn.class, "total-failed-messages");
+  /** Counter to track total failed messages. */
+  private static final Counter ERROR_MESSAGES_COUNTER =
+      Metrics.counter(FailedElasticsearchMessageToPubsubTopicFn.class, "total-failed-messages");
 
-    @ProcessElement
-    public void processElement(ProcessContext context) {
-        String input = context.element();
+  @ProcessElement
+  public void processElement(ProcessContext context) {
+    String input = context.element();
 
-        // Build the output PubSub message
-        JsonNode outputMessage = null;
-        try {
-            outputMessage = OBJECT_MAPPER.readTree(input);
-        } catch (JsonProcessingException e) {
-            e.printStackTrace();
-        }
-
-        ERROR_MESSAGES_COUNTER.inc();
-
-        context.output(new PubsubMessage(outputMessage.toString().getBytes(StandardCharsets.UTF_8), null));
+    // Build the output PubSub message
+    JsonNode outputMessage = null;
+    try {
+      outputMessage = OBJECT_MAPPER.readTree(input);
+    } catch (JsonProcessingException e) {
+      e.printStackTrace();
     }
 
+    ERROR_MESSAGES_COUNTER.inc();
+
+    context.output(
+        new PubsubMessage(outputMessage.toString().getBytes(StandardCharsets.UTF_8), null));
+  }
 }
