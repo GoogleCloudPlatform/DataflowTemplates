@@ -30,15 +30,18 @@ const (
 	RootDirName = "DataflowTemplates"
 )
 
-// Gets all the POM files under `dir`. `dir` is a relative path from the root of the repository.
-// So if the root is located at `$HOME/go/src/github.com/GoogleCloudPlatform/DataflowTemplates`, then
-// passing `v2` represents `$HOME/go/src/github.com/GoogleCloudPlatform/DataflowTemplates/v2`.
+// Gets all the POM files under `dir`, where `dir` is a relative path from the root of the repository.
 func GetAllPomFiles(dir string) ([]string, error) {
-	root, e := getRootDir()
-	if e != nil {
-		return nil, e
+	return getAllFilesEqualTo(dir, "pom.xml")
+}
+
+// Handles walking through the filesystem from `dir` to get all files equal to `filename`.
+func getAllFilesEqualTo(dir string, filename string) ([]string, error) {
+	root, err := getRootDir()
+	if err != nil {
+		return nil, err
 	}
-	poms := make([]string, 0)
+	files := make([]string, 0)
 
 	var start string
 	if strings.HasPrefix(dir, RootDirName) {
@@ -47,22 +50,22 @@ func GetAllPomFiles(dir string) ([]string, error) {
 		start = filepath.Join(root, dir)
 	}
 
-	e = filepath.Walk(start, func(path string, info fs.FileInfo, err error) error {
-		if err != nil {
-			return err
+	err = filepath.Walk(start, func(path string, info fs.FileInfo, e error) error {
+		if e != nil {
+			return e
 		}
-		if info.IsDir() || info.Name() != "pom.xml" {
+		if info.IsDir() || info.Name() != filename {
 			return nil
 		}
 
-		poms = append(poms, path)
+		files = append(files, path)
 		return nil
 	})
 
-	if e != nil {
-		return nil, e
+	if err != nil {
+		return nil, err
 	}
-	return poms, nil
+	return files, nil
 }
 
 func getRootDir() (string, error) {
