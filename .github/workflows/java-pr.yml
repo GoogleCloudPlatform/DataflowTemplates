@@ -12,13 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Checks that don't run any template code and only on PRs.
+# Checks that are intended to run on PRs containing Java code.
 
-name: Preconditions
+name: Java PR
 
 on:
   pull_request:
-    branches: ['main']
+    branches:
+      - 'main'
+    paths:
+      - '**.java'
+      - '**pom.xml'
 
 permissions: read-all
 
@@ -37,3 +41,15 @@ jobs:
           java-version: '11' # Spotless won't work on version 8
       - name: Run Spotless
         run: ./cicd/run-spotless --changed-files="${{ steps.setup-env.outputs.changed-files }}"
+  java_build:
+    name: Build
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@230611dbd0eb52da1e1f4f7bc8bb0c3a339fc8b7
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Run Build
+        run: ./cicd/run-build --changed-files="${{ steps.setup-env.outputs.changed-files }}"
