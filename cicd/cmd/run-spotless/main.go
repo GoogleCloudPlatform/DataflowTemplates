@@ -27,6 +27,7 @@ import (
 )
 
 const (
+	FileRegex       = "\\.(md|java)$"
 	SpotlessCommand = "spotless:check"
 )
 
@@ -34,7 +35,7 @@ func main() {
 	flags.RegisterCommonFlags()
 	flag.Parse()
 
-	changed := flags.ChangedFiles()
+	changed := flags.ChangedFiles(FileRegex)
 	if len(changed) == 0 {
 		return
 	}
