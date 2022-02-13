@@ -26,7 +26,7 @@ import (
 	"sync"
 )
 
-var(
+var (
 	printMu sync.Mutex
 )
 

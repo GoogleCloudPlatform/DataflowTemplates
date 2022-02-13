@@ -27,6 +27,7 @@ import (
 )
 
 const (
+	FileRegex       = "\\.(md|java)$"
 	SpotlessCommand = "spotless:check"
 )
 
@@ -34,7 +35,7 @@ func main() {
 	flags.RegisterCommonFlags()
 	flag.Parse()
 
-	changed := flags.ChangedFiles()
+	changed := flags.ChangedFiles(FileRegex)
 	if len(changed) == 0 {
 		return
 	}
@@ -49,7 +50,7 @@ func main() {
 		} else {
 			log.Printf("Skipping '%s' because the only files changed were not associated with a module", root)
 		}
-		
+
 		if err != nil {
 			errored = true
 		}

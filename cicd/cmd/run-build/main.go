@@ -20,7 +20,7 @@ import (
 	"flag"
 	"log"
 	"strings"
-	
+
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/flags"
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/op"
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/repo"
@@ -28,16 +28,21 @@ import (
 
 const (
 	BuildCommand = "clean install"
-	FlexPom = "v2/pom.xml"
+	FlexPom      = "v2/pom.xml"
 )
 
 var (
 	args = []string{
-		"-am",  // Include anything this depends on for more reliable builds
-		"-amd", // Include anything that depends on this to guarantee no breaking changes
-		"-Dmaven.test.skip", // Skip tests for verifying this builds
-		"-Dmdep.analyze.skip", // Skip analyzing for dependency failings
-		"-Djib.skip", // Skip Jib, because don't care about images
+		"-am",                 // Include anything this depends on for more reliable builds
+		"-amd",                // Include anything that depends on this to guarantee no breaking changes
+		"-Dmaven.test.skip",   // Skip tests for verifying this builds
+		"-Dmdep.analyze.skip", // TODO(zhoufek): Fix our dependencies then remove this flag
+		"-Djib.skip",          // Skip Jib, because don't care about images
+	}
+
+	regexes = []string{
+		"\\.java$",
+		"pom\\.xml$",
 	}
 )
 
@@ -45,7 +50,7 @@ func main() {
 	flags.RegisterCommonFlags()
 	flag.Parse()
 
-	changed := flags.ChangedFiles()
+	changed := flags.ChangedFiles(regexes...)
 	if len(changed) == 0 {
 		return
 	}
@@ -101,6 +106,6 @@ func removeRoot(flexModules []string) []string {
 
 	// Order doesn't matter when passing the modules
 	l := len(flexModules)
-	flexModules[i] = flexModules[l - 1]
-	return flexModules[:l - 1]
+	flexModules[i] = flexModules[l-1]
+	return flexModules[:l-1]
 }

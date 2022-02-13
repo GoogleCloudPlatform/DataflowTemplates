@@ -27,7 +27,7 @@ func RunMavenOnPom(pomDir string, cmd string, args ...string) error {
 	fullArgs := strings.Split(cmd, " ")
 	fullArgs = append(fullArgs, "-f", filepath.Join(pomDir, "pom.xml"))
 	fullArgs = append(fullArgs, args...)
-	
+
 	return RunCmdAndStreamOutput("mvn", fullArgs)
 }
 
