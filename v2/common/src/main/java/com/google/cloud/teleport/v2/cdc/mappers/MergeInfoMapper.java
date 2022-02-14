@@ -16,19 +16,9 @@
 package com.google.cloud.teleport.v2.cdc.mappers;
 
 import com.google.api.services.bigquery.model.TableRow;
-import com.google.cloud.bigquery.BigQuery;
-import com.google.cloud.bigquery.BigQueryOptions;
-import com.google.cloud.bigquery.Field;
-import com.google.cloud.bigquery.FieldList;
-import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.v2.cdc.merge.MergeInfo;
-import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
-import com.google.cloud.teleport.v2.utils.BigQueryTableCache;
-import com.google.cloud.teleport.v2.utils.DataStreamClient;
-import com.google.cloud.teleport.v2.utils.DataStreamPkCache;
-import com.google.common.collect.ImmutableList;
-import java.util.ArrayList;
+import com.google.cloud.teleport.v2.values.DatastreamRow;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.beam.sdk.metrics.Counter;
@@ -38,7 +28,7 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.TypeDescriptor;
-import org.apache.beam.vendor.guava.v20_0.com.google.common.collect.Lists;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,19 +44,15 @@ public class MergeInfoMapper
   public static final String METADATA_REPLICA_TABLE = "_metadata_table";
 
   private static final Logger LOG = LoggerFactory.getLogger(MergeInfoMapper.class);
-  private DataStreamClient dataStreamClient;
   private String projectId;
   private String stagingDataset;
   private String stagingTable;
   private String replicaDataset;
   private String replicaTable;
-  private static BigQueryTableCache tableCache;
-  private static DataStreamPkCache pkCache;
 
   private final Counter foregoneMerges = Metrics.counter(MergeInfoMapper.class, "mergesForegone");
 
   public MergeInfoMapper(
-      DataStreamClient dataStreamClient,
       String projectId,
       String stagingDataset,
       String stagingTable,
@@ -78,45 +64,6 @@ public class MergeInfoMapper
 
     this.replicaDataset = replicaDataset;
     this.replicaTable = replicaTable;
-
-    this.dataStreamClient = dataStreamClient;
-  }
-
-  public MergeInfoMapper withDataStreamRootUrl(String url) {
-    if (this.dataStreamClient != null) {
-      this.dataStreamClient.setRootUrl(url);
-    }
-
-    return this;
-  }
-
-  private synchronized void setUpTableCache() {
-    if (tableCache == null) {
-      BigQuery bigquery = BigQueryOptions.newBuilder().setProjectId(projectId).build().getService();
-      tableCache = new BigQueryTableCache(bigquery);
-    }
-  }
-
-  private synchronized void setUpPkCache() {
-    if (pkCache == null) {
-      pkCache = new DataStreamPkCache(this.dataStreamClient);
-    }
-  }
-
-  public BigQueryTableCache getTableCache() {
-    if (this.tableCache == null) {
-      setUpTableCache();
-    }
-
-    return this.tableCache;
-  }
-
-  public DataStreamPkCache getPkCache() {
-    if (this.pkCache == null) {
-      setUpPkCache();
-    }
-
-    return this.pkCache;
   }
 
   @Override
@@ -127,16 +74,14 @@ public class MergeInfoMapper
                 element -> {
                   try {
                     TableId tableId = element.getKey();
-                    TableRow row = element.getValue();
+                    DatastreamRow row = DatastreamRow.of(element.getValue());
 
-                    String streamName = (String) row.get("_metadata_stream");
-                    String schemaName = (String) row.get("_metadata_schema");
-                    String tableName = (String) row.get("_metadata_table");
+                    String streamName = row.getStreamName();
+                    String schemaName = row.getSchemaName();
+                    String tableName = row.getTableName();
 
-                    List<String> mergeFields = getMergeFields(tableId, row);
-                    List<String> allPkFields =
-                        getPrimaryKeys(streamName, schemaName, tableName, mergeFields);
-                    List<String> allSortFields = getSortFields(row);
+                    List<String> allPkFields = row.getPrimaryKeys();
+                    List<String> allSortFields = row.getSortFields();
 
                     if (allPkFields.size() == 0) {
                       LOG.warn(
@@ -159,22 +104,18 @@ public class MergeInfoMapper
 
                     MergeInfo mergeInfo =
                         MergeInfo.create(
+                            projectId,
                             allPkFields,
                             allSortFields,
                             METADATA_DELETED,
-                            String.format(
-                                    "%s.%s.%s", // Staging Table
-                                    projectId,
-                                    BigQueryConverters.formatStringTemplate(stagingDataset, row),
-                                    BigQueryConverters.formatStringTemplate(stagingTable, row))
-                                .replaceAll("\\$", "_"),
-                            String.format(
-                                    "%s.%s.%s", // Replica Table
-                                    projectId,
-                                    BigQueryConverters.formatStringTemplate(replicaDataset, row),
-                                    BigQueryConverters.formatStringTemplate(replicaTable, row))
-                                .replaceAll("\\$", "_"),
-                            mergeFields);
+                            TableId.of(
+                                projectId,
+                                getFormattedBigQueryString(row, stagingDataset),
+                                getFormattedBigQueryString(row, stagingTable)),
+                            TableId.of(
+                                projectId,
+                                getFormattedBigQueryString(row, replicaDataset),
+                                getFormattedBigQueryString(row, replicaTable)));
 
                     return Lists.newArrayList(mergeInfo);
                   } catch (Exception e) {
@@ -187,43 +128,7 @@ public class MergeInfoMapper
                 }));
   }
 
-  public List<String> getSortFields(TableRow row) {
-    String sourceType = (String) row.get("_metadata_source_type");
-    if (sourceType.equals("mysql")) {
-      return MYSQL_ORDER_BY_FIELDS;
-    } else {
-      return ORACLE_ORDER_BY_FIELDS;
-    }
-  }
-
-  public List<String> getPrimaryKeys(
-      String streamName, String schemaName, String tableName, List<String> mergeFields) {
-    List<String> searchKey = ImmutableList.of(streamName, schemaName, tableName);
-    List<String> primaryKeys = getPkCache().get(searchKey);
-
-    if (primaryKeys == null) {
-      // An error occurred and was logged upstream
-      return new ArrayList<String>();
-    }
-
-    if (primaryKeys.size() == 0 && mergeFields.contains("_metadata_row_id")) {
-      // TODO when DataStream releases new outputs, change logic here.
-      // Possibly move upstream to DataStream Client
-      primaryKeys.add("_metadata_row_id");
-    }
-
-    return primaryKeys;
-  }
-
-  public List<String> getMergeFields(TableId tableId, TableRow row) {
-    List<String> mergeFields = new ArrayList<String>();
-    Table table = getTableCache().get(tableId);
-    FieldList tableFields = table.getDefinition().getSchema().getFields();
-
-    for (Field field : tableFields) {
-      mergeFields.add(field.getName());
-    }
-
-    return mergeFields;
+  private static String getFormattedBigQueryString(DatastreamRow row, String object) {
+    return row.formatStringTemplate(object).replaceAll("\\$", "_");
   }
 }

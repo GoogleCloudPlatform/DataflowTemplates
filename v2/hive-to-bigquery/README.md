@@ -39,11 +39,25 @@ Execute the following command from the directory containing the parent pom.xml (
 ```sh
 export PROJECT=my-project
 export IMAGE_NAME=hive-to-bigquery
+export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export APP_ROOT=/template/${IMAGE_NAME}
-export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_MODULE}-command-spec.json
+export COMMAND_SPEC=${APP_ROOT}/resources/${IMAGE_NAME}-command-spec.json
+export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${IMAGE_NAME}-image-spec.json
+
+gcloud config set project ${PROJECT}
+```
+* Build and push image to Google Container Repository
+```sh
+mvn clean package \
+    -Dimage=${TARGET_GCR_IMAGE} \
+    -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
+    -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
+    -Dapp-root=${APP_ROOT} \
+    -Dcommand-spec=${COMMAND_SPEC} \
+    -am -pl ${IMAGE_NAME}
 ```
 
 #### Creating Image Spec
@@ -52,9 +66,9 @@ be placed in GCS.
 
 __Note:__ The ```image``` property would point to the ```${TARGER_GCR_IMAGE}``` defined previously.
 
-```json
-{
-  "image": "gcr.io/project-id/image-name",
+```sh
+echo '{
+  "image": "'${TARGET_GCR_IMAGE}'",
   "metadata": {
     "name": "Replicates from a Hive table into BigQuery",
     "description": "Hive to BigQuery",
@@ -159,7 +173,9 @@ __Note:__ The ```image``` property would point to the ```${TARGER_GCR_IMAGE}``` 
   "sdkInfo": {
     "language": "JAVA"
   }
-}
+}' > image_spec.json
+gsutil cp image_spec.json ${TEMPLATE_IMAGE_SPEC}
+rm image_spec.json
 ```
 
 ### Executing Template
@@ -181,11 +197,8 @@ Template can be executed using the ```gcloud``` sdk.
 __**Note:**__ To use the gcloud command-line tool to run Flex templates, you must have [Cloud SDK](https://cloud.google.com/sdk/downloads) version 284.0.0 or higher.
 
 ```sh
-gcloud beta dataflow flex-template run my-job-name \
-        --template-file-gcs-location=gs://path-to-image-spec-file \
-        --parameters="\
-        metastoreUri=thrift://my-ip-address:9083,\
-        hiveDatabaseName=myhivedbname,\
-        hiveTableName=myhivetable,\
-        outputTableSpec=my-project:my_dataset.my_table"
+export JOB_NAME="${IMAGE_NAME}-`date +%Y%m%d-%H%M%S-%N`"
+gcloud dataflow flex-template run ${JOB_NAME} \
+        --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
+        --parameters="metastoreUri=thrift://my-ip-address:9083,hiveDatabaseName=myhivedbname,hiveTableName=myhivetable,outputTableSpec=my-project:my_dataset.my_table"
 ```

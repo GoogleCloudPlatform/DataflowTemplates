@@ -101,18 +101,21 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
   private final ValueProvider<Boolean> waitForIndexes;
   private final ValueProvider<Boolean> waitForForeignKeys;
   private final ValueProvider<Boolean> earlyIndexCreateFlag;
+  private final ValueProvider<Integer> ddlCreationTimeoutInMinutes;
 
   public ImportTransform(
       SpannerConfig spannerConfig,
       ValueProvider<String> importDirectory,
       ValueProvider<Boolean> waitForIndexes,
       ValueProvider<Boolean> waitForForeignKeys,
-      ValueProvider<Boolean> earlyIndexCreateFlag) {
+      ValueProvider<Boolean> earlyIndexCreateFlag,
+      ValueProvider<Integer> ddlCreationTimeoutInMinutes) {
     this.spannerConfig = spannerConfig;
     this.importDirectory = importDirectory;
     this.waitForIndexes = waitForIndexes;
     this.waitForForeignKeys = waitForForeignKeys;
     this.earlyIndexCreateFlag = earlyIndexCreateFlag;
+    this.ddlCreationTimeoutInMinutes = ddlCreationTimeoutInMinutes;
   }
 
   @Override
@@ -164,7 +167,8 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                 avroDdlView,
                 informationSchemaView,
                 manifestView,
-                earlyIndexCreateFlag));
+                earlyIndexCreateFlag,
+                ddlCreationTimeoutInMinutes));
 
     final PCollection<Ddl> ddl = createTableOutput.get(CreateTables.getDdlObjectTag());
     final PCollectionView<List<String>> pendingIndexes =
@@ -342,6 +346,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
     private final PCollectionView<Ddl> informationSchemaView;
     private final PCollectionView<Export> manifestView;
     private final ValueProvider<Boolean> earlyIndexCreateFlag;
+    private final ValueProvider<Integer> ddlCreationTimeoutInMinutes;
 
     private transient ExposedSpannerAccessor spannerAccessor;
 
@@ -372,12 +377,14 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
         PCollectionView<List<KV<String, String>>> avroSchemasView,
         PCollectionView<Ddl> informationSchemaView,
         PCollectionView<Export> manifestView,
-        ValueProvider<Boolean> earlyIndexCreateFlag) {
+        ValueProvider<Boolean> earlyIndexCreateFlag,
+        ValueProvider<Integer> ddlCreationTimeoutInMinutes) {
       this.spannerConfig = spannerConfig;
       this.avroSchemasView = avroSchemasView;
       this.informationSchemaView = informationSchemaView;
       this.manifestView = manifestView;
       this.earlyIndexCreateFlag = earlyIndexCreateFlag;
+      this.ddlCreationTimeoutInMinutes = ddlCreationTimeoutInMinutes;
     }
 
     @Override
@@ -485,7 +492,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                                     ddlStatements,
                                     null);
                             try {
-                              op.get(5, TimeUnit.MINUTES);
+                              op.get(ddlCreationTimeoutInMinutes.get(), TimeUnit.MINUTES);
                             } catch (InterruptedException
                                 | ExecutionException
                                 | TimeoutException e) {

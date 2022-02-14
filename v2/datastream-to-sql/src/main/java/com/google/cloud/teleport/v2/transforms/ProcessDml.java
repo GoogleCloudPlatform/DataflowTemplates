@@ -1,19 +1,17 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Copyright (C) 2021 Google LLC
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.transforms;
 
@@ -39,8 +37,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@code ProcessDml} class statefully processes and filters data
- * based on the supplied primary keys and sort keys in DmlInfo.
+ * The {@code ProcessDml} class statefully processes and filters data based on the supplied primary
+ * keys and sort keys in DmlInfo.
  */
 public class ProcessDml {
 
@@ -54,9 +52,7 @@ public class ProcessDml {
     return new StatefulProcessDml();
   }
 
-  /**
-   * This class is used as the default return value of {@link ProcessDml#statefulOrderByPK()}.
-   */
+  /** This class is used as the default return value of {@link ProcessDml#statefulOrderByPK()}. */
   public static class StatefulProcessDml
       extends PTransform<PCollection<KV<String, DmlInfo>>, PCollection<DmlInfo>> {
 
@@ -67,42 +63,38 @@ public class ProcessDml {
       return input
           .apply(ParDo.of(new StatefulProcessDmlFn()))
           .apply(
-            "Creating " + WINDOW_DURATION + " Window",
-            Window.into(
-                FixedWindows.of(DurationUtils.parseDuration(WINDOW_DURATION))))
+              "Creating " + WINDOW_DURATION + " Window",
+              Window.into(FixedWindows.of(DurationUtils.parseDuration(WINDOW_DURATION))))
           .apply(Reshuffle.of())
           .apply(Values.create());
     }
   }
 
   /**
-   * The {@code StatefulProcessDmlFn} class statefully processes and filters data
-   * based on the supplied primary keys and sort keys in DmlInfo.
+   * The {@code StatefulProcessDmlFn} class statefully processes and filters data based on the
+   * supplied primary keys and sort keys in DmlInfo.
    */
   public static class StatefulProcessDmlFn extends DoFn<KV<String, DmlInfo>, KV<String, DmlInfo>> {
 
     private static final String PK_STATE_ID = "pk-state-id";
     private final Distribution distribution =
-      Metrics.distribution(StatefulProcessDmlFn.class, "replicationDistribution");
-
+        Metrics.distribution(StatefulProcessDmlFn.class, "replicationDistribution");
 
     @StateId(PK_STATE_ID)
     private final StateSpec<ValueState<String>> myStateSpec =
-      StateSpecs.value(StringUtf8Coder.of());
+        StateSpecs.value(StringUtf8Coder.of());
 
     public StatefulProcessDmlFn() {}
 
     @ProcessElement
     public void processElement(
-        ProcessContext context,
-        @StateId(PK_STATE_ID) ValueState<String> myState) {
+        ProcessContext context, @StateId(PK_STATE_ID) ValueState<String> myState) {
       String stateKey = context.element().getKey();
       DmlInfo dmlInfo = context.element().getValue();
       // Empty SQL suggests the table DNE and should be skipped
       if (dmlInfo.getDmlSql().equals("")) {
         return;
       }
-      LOG.info("DML: {}", dmlInfo.getDmlSql());
 
       // TODO(dhercher): More complex compare w/o String.join
       String lastSortKey = myState.read();

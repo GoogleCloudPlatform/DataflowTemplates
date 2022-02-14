@@ -85,10 +85,20 @@ public class JdbcConverters {
     void setBigQueryLoadingTemporaryDirectory(ValueProvider<String> directory);
 
     @Description(
-        "KMS Encryption Key should be in the format projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}")
+        "KMS Encryption Key should be in the format"
+            + " projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}")
     ValueProvider<String> getKMSEncryptionKey();
 
     void setKMSEncryptionKey(ValueProvider<String> keyName);
+
+    @Description(
+        "Comma seperated algorithms to disable. If this value is set to \"none\" then"
+            + " jdk.tls.disabledAlgorithms is set to \"\". Use with care, as the algorithms"
+            + " disabled by default are known to have either vulnerabilities or performance issues."
+            + " for example: SSLv3, RC4.")
+    ValueProvider<String> getDisabledAlgorithms();
+
+    void setDisabledAlgorithms(ValueProvider<String> disabledAlgorithms);
   }
 
   /** Factory method for {@link ResultSetToTableRow}. */

@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.splunk;
 
-import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkArgument;
-import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkNotNull;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.auto.value.AutoValue;
 import java.util.concurrent.ThreadLocalRandom;
@@ -31,7 +31,7 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.vendor.guava.v20_0.com.google.common.base.MoreObjects;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.MoreObjects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,6 +75,9 @@ public class SplunkIO {
     @Nullable
     abstract ValueProvider<Boolean> disableCertificateValidation();
 
+    @Nullable
+    abstract ValueProvider<String> rootCaCertificatePath();
+
     @Override
     public PCollection<SplunkWriteError> expand(PCollection<SplunkEvent> input) {
 
@@ -84,7 +87,8 @@ public class SplunkIO {
               .withUrl(url())
               .withInputBatchCount(batchCount())
               .withDisableCertificateValidation(disableCertificateValidation())
-              .withToken((token()));
+              .withToken((token()))
+              .withRootCaCertificatePath(rootCaCertificatePath());
 
       SplunkEventWriter writer = builder.build();
       LOG.info("SplunkEventWriter configured");
@@ -114,6 +118,8 @@ public class SplunkIO {
 
       abstract Builder setDisableCertificateValidation(
           ValueProvider<Boolean> disableCertificateValidation);
+
+      abstract Builder setRootCaCertificatePath(ValueProvider<String> rootCaCertificatePath);
 
       abstract Write autoBuild();
 
@@ -217,7 +223,8 @@ public class SplunkIO {
           ValueProvider<Boolean> disableCertificateValidation) {
         checkArgument(
             disableCertificateValidation != null,
-            "withDisableCertificateValidation(disableCertificateValidation) called with null input.");
+            "withDisableCertificateValidation(disableCertificateValidation) called with null"
+                + " input.");
         return setDisableCertificateValidation(disableCertificateValidation);
       }
 
@@ -231,9 +238,34 @@ public class SplunkIO {
       public Builder withDisableCertificateValidation(Boolean disableCertificateValidation) {
         checkArgument(
             disableCertificateValidation != null,
-            "withDisableCertificateValidation(disableCertificateValidation) called with null input.");
+            "withDisableCertificateValidation(disableCertificateValidation) called with null"
+                + " input.");
         return setDisableCertificateValidation(
             ValueProvider.StaticValueProvider.of((disableCertificateValidation)));
+      }
+
+      /**
+       * Method to set the self signed certificate path.
+       *
+       * @param rootCaCertificatePath Path to self-signed certificate
+       * @return {@link Builder}
+       */
+      public Builder withRootCaCertificatePath(ValueProvider<String> rootCaCertificatePath) {
+        return setRootCaCertificatePath(rootCaCertificatePath);
+      }
+
+      /**
+       * Same as {@link Builder#withRootCaPath(ValueProvider)} but without a {@link ValueProvider}.
+       *
+       * @param rootCaCertificatePath Path to self-signed certificate
+       * @return {@link Builder}
+       */
+      public Builder withRootCaCertificatePath(String rootCaCertificatePath) {
+        checkArgument(
+            rootCaCertificatePath != null,
+            "withRootCaCertificatePath(rootCaCertificatePath) called with null input.");
+        return setRootCaCertificatePath(
+            ValueProvider.StaticValueProvider.of(rootCaCertificatePath));
       }
 
       public Write build() {

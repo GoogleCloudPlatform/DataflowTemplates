@@ -63,10 +63,8 @@ import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.options.ValueProvider.NestedValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.DoFn.Element;
 import org.apache.beam.sdk.transforms.GroupByKey;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.transforms.Watch;
 import org.apache.beam.sdk.transforms.WithKeys;
 import org.apache.beam.sdk.transforms.splittabledofn.OffsetRangeTracker;
@@ -180,12 +178,11 @@ public class DLPTextToBigQueryStreaming {
      *   1) Read from the text source continuously based on default interval e.g. 30 seconds
      *       - Setup a window for 30 secs to capture the list of files emited.
      *       - Group by file name as key and ReadableFile as a value.
-     *   2) Create a side input for the window containing list of headers par file.
-     *   3) Output each readable file for content processing.
-     *   4) Split file contents based on batch size for parallel processing.
-     *   5) Process each split as a DLP table content request to invoke API.
-     *   6) Convert DLP Table Rows to BQ Table Row.
-     *   7) Create dynamic table and insert successfully converted records into BQ.
+     *   2) Output each readable file for content processing.
+     *   3) Split file contents based on batch size for parallel processing.
+     *   4) Process each split as a DLP table content request to invoke API.
+     *   5) Convert DLP Table Rows to BQ Table Row.
+     *   6) Create dynamic table and insert successfully converted records into BQ.
      */
 
     PCollection<KV<String, Iterable<ReadableFile>>> csvFiles =
@@ -214,42 +211,10 @@ public class DLPTextToBigQueryStreaming {
                     .withAllowedLateness(Duration.ZERO))
             .apply(GroupByKey.create());
 
-    /*
-     * Side input for the window to capture list of headers for each file emited so that it can be
-     * used in the next transform.
-     */
-    final PCollectionView<List<KV<String, List<String>>>> headerMap =
-        csvFiles
-
-            // 2) Create a side input for the window containing list of headers par file.
-            .apply(
-                "Create Header Map",
-                ParDo.of(
-                    new DoFn<KV<String, Iterable<ReadableFile>>, KV<String, List<String>>>() {
-
-                      @ProcessElement
-                      public void processElement(ProcessContext c) {
-                        String fileKey = c.element().getKey();
-                        c.element()
-                            .getValue()
-                            .forEach(
-                                file -> {
-                                  try (BufferedReader br = getReader(file)) {
-                                    c.output(KV.of(fileKey, getFileHeaders(br)));
-
-                                  } catch (IOException e) {
-                                    LOG.error("Failed to Read File {}", e.getMessage());
-                                    throw new RuntimeException(e);
-                                  }
-                                });
-                      }
-                    }))
-            .apply("View As List", View.asList());
-
     PCollection<KV<String, TableRow>> bqDataMap =
         csvFiles
 
-            // 3) Output each readable file for content processing.
+            // 2) Output each readable file for content processing.
             .apply(
                 "File Handler",
                 ParDo.of(
@@ -266,24 +231,22 @@ public class DLPTextToBigQueryStreaming {
                       }
                     }))
 
-            // 4) Split file contents based on batch size for parallel processing.
+            // 3) Split file contents based on batch size for parallel processing.
             .apply(
                 "Process File Contents",
                 ParDo.of(
-                        new CSVReader(
-                            NestedValueProvider.of(
-                                options.getBatchSize(),
-                                batchSize -> {
-                                  if (batchSize != null) {
-                                    return batchSize;
-                                  } else {
-                                    return DEFAULT_BATCH_SIZE;
-                                  }
-                                }),
-                            headerMap))
-                    .withSideInputs(headerMap))
+                    new CSVReader(
+                        NestedValueProvider.of(
+                            options.getBatchSize(),
+                            batchSize -> {
+                              if (batchSize != null) {
+                                return batchSize;
+                              } else {
+                                return DEFAULT_BATCH_SIZE;
+                              }
+                            }))))
 
-            // 5) Create a DLP Table content request and invoke DLP API for each processsing
+            // 4) Create a DLP Table content request and invoke DLP API for each processsing
             .apply(
                 "DLP-Tokenization",
                 ParDo.of(
@@ -292,10 +255,10 @@ public class DLPTextToBigQueryStreaming {
                         options.getDeidentifyTemplateName(),
                         options.getInspectTemplateName())))
 
-            // 6) Convert DLP Table Rows to BQ Table Row
+            // 5) Convert DLP Table Rows to BQ Table Row
             .apply("Process Tokenized Data", ParDo.of(new TableRowProcessorDoFn()));
 
-    // 7) Create dynamic table and insert successfully converted records into BQ.
+    // 6) Create dynamic table and insert successfully converted records into BQ.
     bqDataMap.apply(
         "Write To BQ",
         BigQueryIO.<KV<String, TableRow>>write()
@@ -372,15 +335,9 @@ public class DLPTextToBigQueryStreaming {
     /** This counter is used to track number of lines processed against batch size. */
     private Integer lineCount;
 
-    List<String> csvHeaders;
-
-    public CSVReader(
-        ValueProvider<Integer> batchSize,
-        PCollectionView<List<KV<String, List<String>>>> headerMap) {
+    public CSVReader(ValueProvider<Integer> batchSize) {
       lineCount = 1;
       this.batchSize = batchSize;
-      this.headerMap = headerMap;
-      this.csvHeaders = new ArrayList<>();
     }
 
     @ProcessElement
@@ -389,53 +346,55 @@ public class DLPTextToBigQueryStreaming {
       for (long i = tracker.currentRestriction().getFrom(); tracker.tryClaim(i); ++i) {
         String fileKey = c.element().getKey();
         try (BufferedReader br = getReader(c.element().getValue())) {
+          List<Table.Row> rows = new ArrayList<>();
+          Table dlpTable = null;
+          /** finding out EOL for this restriction so that we know the SOL */
+          int endOfLine = (int) (i * batchSize.get().intValue());
+          int startOfLine = (endOfLine - batchSize.get().intValue());
 
-          csvHeaders = getHeaders(c.sideInput(headerMap), fileKey);
-          if (csvHeaders != null) {
-            List<FieldId> dlpTableHeaders =
-                csvHeaders.stream()
-                    .map(header -> FieldId.newBuilder().setName(header).build())
-                    .collect(Collectors.toList());
-            List<Table.Row> rows = new ArrayList<>();
-            Table dlpTable = null;
-            /** finding out EOL for this restriction so that we know the SOL */
-            int endOfLine = (int) (i * batchSize.get().intValue());
-            int startOfLine = (endOfLine - batchSize.get().intValue());
-            /** skipping all the rows that's not part of this restriction */
-            br.readLine();
-            Iterator<CSVRecord> csvRows =
-                CSVFormat.DEFAULT.withSkipHeaderRecord().parse(br).iterator();
-            for (int line = 0; line < startOfLine; line++) {
-              if (csvRows.hasNext()) {
-                csvRows.next();
-              }
-            }
-            /** looping through buffered reader and creating DLP Table Rows equals to batch */
-            while (csvRows.hasNext() && lineCount <= batchSize.get()) {
-
-              CSVRecord csvRow = csvRows.next();
-              rows.add(convertCsvRowToTableRow(csvRow));
-              lineCount += 1;
-            }
-            /** creating DLP table and output for next transformation */
-            dlpTable = Table.newBuilder().addAllHeaders(dlpTableHeaders).addAllRows(rows).build();
-            c.output(KV.of(fileKey, dlpTable));
-
-            LOG.debug(
-                "Current Restriction From: {}, Current Restriction To: {},"
-                    + " StartofLine: {}, End Of Line {}, BatchData {}",
-                tracker.currentRestriction().getFrom(),
-                tracker.currentRestriction().getTo(),
-                startOfLine,
-                endOfLine,
-                dlpTable.getRowsCount());
-
-          } else {
-
-            throw new RuntimeException("Header Values Can't be found For file Key " + fileKey);
+          // getting the DLP table headers
+          Iterator<CSVRecord> csvRows = CSVFormat.DEFAULT.parse(br).iterator();
+          if (!csvRows.hasNext()) {
+            LOG.info("File `" + c.element().getKey() + "` is empty");
+            continue;
           }
+          List<FieldId> dlpTableHeaders = toDlpTableHeaders(csvRows.next());
+
+          /** skipping all the rows that's not part of this restriction */
+          for (int line = 0; line < startOfLine; line++) {
+            if (csvRows.hasNext()) {
+              csvRows.next();
+            }
+          }
+          /** looping through buffered reader and creating DLP Table Rows equals to batch */
+          while (csvRows.hasNext() && lineCount <= batchSize.get()) {
+
+            CSVRecord csvRow = csvRows.next();
+            rows.add(convertCsvRowToTableRow(csvRow));
+            lineCount += 1;
+          }
+          /** creating DLP table and output for next transformation */
+          dlpTable = Table.newBuilder().addAllHeaders(dlpTableHeaders).addAllRows(rows).build();
+          c.output(KV.of(fileKey, dlpTable));
+
+          LOG.debug(
+              "Current Restriction From: {}, Current Restriction To: {},"
+                  + " StartofLine: {}, End Of Line {}, BatchData {}",
+              tracker.currentRestriction().getFrom(),
+              tracker.currentRestriction().getTo(),
+              startOfLine,
+              endOfLine,
+              dlpTable.getRowsCount());
         }
       }
+    }
+
+    private static List<FieldId> toDlpTableHeaders(CSVRecord headerRow) {
+      List<FieldId> result = new ArrayList<>();
+      for (String header : headerRow) {
+        result.add(FieldId.newBuilder().setName(header).build());
+      }
+      return result;
     }
 
     /**
@@ -738,21 +697,6 @@ public class DLPTextToBigQueryStreaming {
     }
 
     return br;
-  }
-
-  private static List<String> getFileHeaders(BufferedReader reader) {
-    List<String> headers = new ArrayList<>();
-    try {
-      CSVRecord csvHeader = CSVFormat.DEFAULT.parse(reader).getRecords().get(0);
-      csvHeader.forEach(
-          headerValue -> {
-            headers.add(headerValue);
-          });
-    } catch (IOException e) {
-      LOG.error("Failed to get csv header values}", e.getMessage());
-      throw new RuntimeException(e);
-    }
-    return headers;
   }
 
   private static String checkHeaderName(String name) {

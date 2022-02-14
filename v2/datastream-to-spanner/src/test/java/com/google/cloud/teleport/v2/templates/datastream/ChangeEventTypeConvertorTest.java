@@ -71,52 +71,68 @@ public final class ChangeEventTypeConvertorTest {
 
     JsonNode ce = getJsonNode(changeEvent.toString());
 
-    assertEquals(ChangeEventTypeConvertor.toBoolean(ce, "bool_field1",
-                     /*requiredField=*/true), new Boolean(true));
-    assertEquals(ChangeEventTypeConvertor.toBoolean(ce, "bool_field2",
-                     /*requiredField=*/true), new Boolean(true));
-    assertEquals(ChangeEventTypeConvertor.toBoolean(ce, "bool_field3",
-                     /*requiredField=*/true), new Boolean(true));
-    assertEquals(ChangeEventTypeConvertor.toBoolean(ce, "bool_field4",
-                     /*requiredField=*/true), new Boolean(true));
-    assertEquals(ChangeEventTypeConvertor.toBoolean(ce, "bool_field5",
-                     /*requiredField=*/true), new Boolean(true));
-    assertEquals(ChangeEventTypeConvertor.toBoolean(ce, "bool_field6",
-                     /*requiredField=*/true), new Boolean(false));
-    assertEquals(ChangeEventTypeConvertor.toBoolean(ce, "bool_field7",
-                     /*requiredField=*/true), new Boolean(false));
-    assertEquals(ChangeEventTypeConvertor.toBoolean(ce, "bool_field8",
-                     /*requiredField=*/true), new Boolean(false));
-    assertEquals(ChangeEventTypeConvertor.toBoolean(ce, "bool_field9",
-                     /*requiredField=*/true), new Boolean(false));
-    assertEquals(ChangeEventTypeConvertor.toBoolean(ce, "bool_field10",
-                     /*requiredField=*/true), new Boolean(false));
-    assertEquals(ChangeEventTypeConvertor.toBoolean(ce, "bool_field11",
-                     /*requiredField=*/true), new Boolean(true));
-    assertEquals(ChangeEventTypeConvertor.toBoolean(ce, "bool_field12",
-                     /*requiredField=*/true), new Boolean(false));
-    assertEquals(ChangeEventTypeConvertor.toBoolean(ce, "bool_field13",
-                     /*requiredField=*/true), new Boolean(true));
-    assertEquals(ChangeEventTypeConvertor.toBoolean(ce, "bool_field14",
-                     /*requiredField=*/true), new Boolean(false));
-    assertEquals(ChangeEventTypeConvertor.toBoolean(ce, "bool_field15",
-                     /*requiredField=*/true), new Boolean(false));
-    assertEquals(ChangeEventTypeConvertor.toBoolean(ce, "bool_field16",
-                     /*requiredField=*/false), new Boolean(false));
-    assertEquals(ChangeEventTypeConvertor.toBoolean(ce, "bool_field17",
-                     /*requiredField=*/false), new Boolean(false));
-    assertNull(ChangeEventTypeConvertor.toBoolean(ce, "bool_field18",
-                   /*requiredField=*/false));
-    assertNull(ChangeEventTypeConvertor.toBoolean(ce, "non_existent",
-                   /*requiredField=*/false));
+    assertEquals(
+        ChangeEventTypeConvertor.toBoolean(ce, "bool_field1", /*requiredField=*/ true),
+        new Boolean(true));
+    assertEquals(
+        ChangeEventTypeConvertor.toBoolean(ce, "bool_field2", /*requiredField=*/ true),
+        new Boolean(true));
+    assertEquals(
+        ChangeEventTypeConvertor.toBoolean(ce, "bool_field3", /*requiredField=*/ true),
+        new Boolean(true));
+    assertEquals(
+        ChangeEventTypeConvertor.toBoolean(ce, "bool_field4", /*requiredField=*/ true),
+        new Boolean(true));
+    assertEquals(
+        ChangeEventTypeConvertor.toBoolean(ce, "bool_field5", /*requiredField=*/ true),
+        new Boolean(true));
+    assertEquals(
+        ChangeEventTypeConvertor.toBoolean(ce, "bool_field6", /*requiredField=*/ true),
+        new Boolean(false));
+    assertEquals(
+        ChangeEventTypeConvertor.toBoolean(ce, "bool_field7", /*requiredField=*/ true),
+        new Boolean(false));
+    assertEquals(
+        ChangeEventTypeConvertor.toBoolean(ce, "bool_field8", /*requiredField=*/ true),
+        new Boolean(false));
+    assertEquals(
+        ChangeEventTypeConvertor.toBoolean(ce, "bool_field9", /*requiredField=*/ true),
+        new Boolean(false));
+    assertEquals(
+        ChangeEventTypeConvertor.toBoolean(ce, "bool_field10", /*requiredField=*/ true),
+        new Boolean(false));
+    assertEquals(
+        ChangeEventTypeConvertor.toBoolean(ce, "bool_field11", /*requiredField=*/ true),
+        new Boolean(true));
+    assertEquals(
+        ChangeEventTypeConvertor.toBoolean(ce, "bool_field12", /*requiredField=*/ true),
+        new Boolean(false));
+    assertEquals(
+        ChangeEventTypeConvertor.toBoolean(ce, "bool_field13", /*requiredField=*/ true),
+        new Boolean(true));
+    assertEquals(
+        ChangeEventTypeConvertor.toBoolean(ce, "bool_field14", /*requiredField=*/ true),
+        new Boolean(false));
+    assertEquals(
+        ChangeEventTypeConvertor.toBoolean(ce, "bool_field15", /*requiredField=*/ true),
+        new Boolean(false));
+    assertEquals(
+        ChangeEventTypeConvertor.toBoolean(ce, "bool_field16", /*requiredField=*/ false),
+        new Boolean(false));
+    assertEquals(
+        ChangeEventTypeConvertor.toBoolean(ce, "bool_field17", /*requiredField=*/ false),
+        new Boolean(false));
+    assertNull(ChangeEventTypeConvertor.toBoolean(ce, "bool_field18", /*requiredField=*/ false));
+    assertNull(ChangeEventTypeConvertor.toBoolean(ce, "non_existent", /*requiredField=*/ false));
   }
 
   @Test(expected = ChangeEventConvertorException.class)
   public void cannotConvertNonExistentRequiredField() throws Exception {
     JSONObject changeEvent = new JSONObject();
     JsonNode ce = getJsonNode(changeEvent.toString());
-    assertEquals(ChangeEventTypeConvertor.toBoolean(ce, "bool_field1",
-                     /*requiredField=*/true), new Boolean(false));
+    assertEquals(
+        ChangeEventTypeConvertor.toBoolean(ce, "bool_field1", /*requiredField=*/ true),
+        new Boolean(false));
   }
 
   /*
@@ -141,27 +157,31 @@ public final class ChangeEventTypeConvertorTest {
 
     JsonNode ce = getJsonNode(changeEvent.toString());
 
-    assertEquals(ChangeEventTypeConvertor.toLong(ce, "field1", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toLong(ce, "field1", /*requiredField=*/ true),
         new Long(123456789));
-    assertEquals(ChangeEventTypeConvertor.toLong(ce, "field2", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toLong(ce, "field2", /*requiredField=*/ true),
         new Long(-123456789));
-    assertEquals(ChangeEventTypeConvertor.toLong(ce, "field3", /*requiredField=*/true),
-        new Long(123456));
-    assertEquals(ChangeEventTypeConvertor.toLong(ce, "field4", /*requiredField=*/true),
-        new Long(-123456));
-    assertEquals(ChangeEventTypeConvertor.toLong(ce, "field5", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toLong(ce, "field3", /*requiredField=*/ true), new Long(123456));
+    assertEquals(
+        ChangeEventTypeConvertor.toLong(ce, "field4", /*requiredField=*/ true), new Long(-123456));
+    assertEquals(
+        ChangeEventTypeConvertor.toLong(ce, "field5", /*requiredField=*/ true),
         new Long(123456789));
-    assertEquals(ChangeEventTypeConvertor.toLong(ce, "field6", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toLong(ce, "field6", /*requiredField=*/ true),
         new Long(-123456789));
-    assertEquals(ChangeEventTypeConvertor.toLong(ce, "field7", /*requiredField=*/true),
-        new Long(123456));
-    assertEquals(ChangeEventTypeConvertor.toLong(ce, "field8", /*requiredField=*/true),
-        new Long(-123456));
-    assertEquals(ChangeEventTypeConvertor.toLong(ce, "field9", /*requiredField=*/true),
-        new Long(1));
-    assertEquals(ChangeEventTypeConvertor.toLong(ce, "field10", /*requiredField=*/true),
-        new Long(0));
-    assertNull(ChangeEventTypeConvertor.toLong(ce, "field11", /*requiredField=*/false));
+    assertEquals(
+        ChangeEventTypeConvertor.toLong(ce, "field7", /*requiredField=*/ true), new Long(123456));
+    assertEquals(
+        ChangeEventTypeConvertor.toLong(ce, "field8", /*requiredField=*/ true), new Long(-123456));
+    assertEquals(
+        ChangeEventTypeConvertor.toLong(ce, "field9", /*requiredField=*/ true), new Long(1));
+    assertEquals(
+        ChangeEventTypeConvertor.toLong(ce, "field10", /*requiredField=*/ true), new Long(0));
+    assertNull(ChangeEventTypeConvertor.toLong(ce, "field11", /*requiredField=*/ false));
   }
 
   @Test(expected = ChangeEventConvertorException.class)
@@ -169,8 +189,8 @@ public final class ChangeEventTypeConvertorTest {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", "asd123456.789");
     JsonNode ce = getJsonNode(changeEvent.toString());
-    assertEquals(ChangeEventTypeConvertor.toLong(ce, "field1", /*requiredField=*/true),
-        new Long(123457));
+    assertEquals(
+        ChangeEventTypeConvertor.toLong(ce, "field1", /*requiredField=*/ true), new Long(123457));
   }
 
   /*
@@ -195,29 +215,38 @@ public final class ChangeEventTypeConvertorTest {
     changeEvent.put("field12", JSONObject.NULL);
     JsonNode ce = getJsonNode(changeEvent.toString());
 
-    assertEquals(ChangeEventTypeConvertor.toDouble(ce, "field1", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toDouble(ce, "field1", /*requiredField=*/ true),
         new Double(123456789));
-    assertEquals(ChangeEventTypeConvertor.toDouble(ce, "field2", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toDouble(ce, "field2", /*requiredField=*/ true),
         new Double(-123456789));
-    assertEquals(ChangeEventTypeConvertor.toDouble(ce, "field3", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toDouble(ce, "field3", /*requiredField=*/ true),
         new Double(123456.789));
-    assertEquals(ChangeEventTypeConvertor.toDouble(ce, "field4", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toDouble(ce, "field4", /*requiredField=*/ true),
         new Double(-123456.789));
-    assertEquals(ChangeEventTypeConvertor.toDouble(ce, "field5", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toDouble(ce, "field5", /*requiredField=*/ true),
         new Double(123456789));
-    assertEquals(ChangeEventTypeConvertor.toDouble(ce, "field6", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toDouble(ce, "field6", /*requiredField=*/ true),
         new Double(-123456789));
-    assertEquals(ChangeEventTypeConvertor.toDouble(ce, "field7", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toDouble(ce, "field7", /*requiredField=*/ true),
         new Double(123456.789));
-    assertEquals(ChangeEventTypeConvertor.toDouble(ce, "field8", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toDouble(ce, "field8", /*requiredField=*/ true),
         new Double(-123456.789));
-    assertEquals(ChangeEventTypeConvertor.toDouble(ce, "field9", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toDouble(ce, "field9", /*requiredField=*/ true),
         new Double(123456789.012345678912));
-    assertEquals(ChangeEventTypeConvertor.toDouble(ce, "field10", /*requiredField=*/true),
-        new Double(1));
-    assertEquals(ChangeEventTypeConvertor.toDouble(ce, "field11", /*requiredField=*/true),
-        new Double(0));
-    assertNull(ChangeEventTypeConvertor.toDouble(ce, "field12", /*requiredField=*/false));
+    assertEquals(
+        ChangeEventTypeConvertor.toDouble(ce, "field10", /*requiredField=*/ true), new Double(1));
+    assertEquals(
+        ChangeEventTypeConvertor.toDouble(ce, "field11", /*requiredField=*/ true), new Double(0));
+    assertNull(ChangeEventTypeConvertor.toDouble(ce, "field12", /*requiredField=*/ false));
   }
 
   @Test(expected = ChangeEventConvertorException.class)
@@ -225,8 +254,8 @@ public final class ChangeEventTypeConvertorTest {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", "asd123456.789");
     JsonNode ce = getJsonNode(changeEvent.toString());
-    assertEquals(ChangeEventTypeConvertor.toDouble(ce, "field1", /*requiredField=*/true),
-        new Long(123457));
+    assertEquals(
+        ChangeEventTypeConvertor.toDouble(ce, "field1", /*requiredField=*/ true), new Long(123457));
   }
 
   /*
@@ -235,31 +264,38 @@ public final class ChangeEventTypeConvertorTest {
    */
   @Test
   public void canConvertToString() throws Exception {
-    String jsonChangeEvent = "{ "
-        + "\"field1\" : \";asidjf987asd\","
-        + "\"field2\" : \"\","
-        + "\"field3\" : 123456789012345678901234567890.0123456789,"
-        + "\"field4\" : \"123456789012345678901234567890.0123456789\","
-        + "\"field5\" : 123456789012345678901234567890123456789012345678901234567890,"
-        + "\"field6\" : \"123456789012345678901234567890123456789012345678901234567890\","
-        + "\"field7\" : true"
-        + " }";
+    String jsonChangeEvent =
+        "{ "
+            + "\"field1\" : \";asidjf987asd\","
+            + "\"field2\" : \"\","
+            + "\"field3\" : 123456789012345678901234567890.0123456789,"
+            + "\"field4\" : \"123456789012345678901234567890.0123456789\","
+            + "\"field5\" : 123456789012345678901234567890123456789012345678901234567890,"
+            + "\"field6\" : \"123456789012345678901234567890123456789012345678901234567890\","
+            + "\"field7\" : true"
+            + " }";
 
     JsonNode ce = getJsonNode(jsonChangeEvent);
 
-    assertEquals(ChangeEventTypeConvertor.toString(ce, "field1", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toString(ce, "field1", /*requiredField=*/ true),
         new String(";asidjf987asd"));
-    assertEquals(ChangeEventTypeConvertor.toString(ce, "field2", /*requiredField=*/true),
-        new String(""));
-    assertEquals(ChangeEventTypeConvertor.toString(ce, "field3", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toString(ce, "field2", /*requiredField=*/ true), new String(""));
+    assertEquals(
+        ChangeEventTypeConvertor.toString(ce, "field3", /*requiredField=*/ true),
         new String("123456789012345678901234567890.0123456789"));
-    assertEquals(ChangeEventTypeConvertor.toString(ce, "field4", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toString(ce, "field4", /*requiredField=*/ true),
         new String("123456789012345678901234567890.0123456789"));
-    assertEquals(ChangeEventTypeConvertor.toString(ce, "field5", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toString(ce, "field5", /*requiredField=*/ true),
         new String("123456789012345678901234567890123456789012345678901234567890"));
-    assertEquals(ChangeEventTypeConvertor.toString(ce, "field6", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toString(ce, "field6", /*requiredField=*/ true),
         new String("123456789012345678901234567890123456789012345678901234567890"));
-    assertEquals(ChangeEventTypeConvertor.toString(ce, "field7", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toString(ce, "field7", /*requiredField=*/ true),
         new String("true"));
   }
 
@@ -269,68 +305,71 @@ public final class ChangeEventTypeConvertorTest {
    */
   @Test
   public void canConvertToNumericBigDecimal() throws Exception {
-    String jsonChangeEvent = "{ "
-        + "\"field1\" : 123456789.0123456789,"
-        + "\"field2\" : -123456789.0123456789,"
-        + "\"field3\" : \"-123456789.0123456789\","
-        + "\"field4\" : 9223372036854775807,"
-        + "\"field5\" : \"9223372036854775807\","
-        + "\"field6\" : \"123345678903456545422346373223.903495832\","
-        + "\"field7\" : 123345678903456545422346373223.903495832,"
-        + "\"field8\" : 1233456789034565454223463732234502384848374579495483732758539938558,"
-        + "\"field9\" : \"1233456789034565454223463732234502384848374579495483732758539938558\","
-        + "\"field10\" : \"1.2334567890345654542E10\","
-        + "\"field11\" : 123345.678903456545422346373223903495832,"
-        + "\"field12\" : \"123345.678903456545422346373223903495832\""
-        + " }";
+    String jsonChangeEvent =
+        "{ "
+            + "\"field1\" : 123456789.0123456789,"
+            + "\"field2\" : -123456789.0123456789,"
+            + "\"field3\" : \"-123456789.0123456789\","
+            + "\"field4\" : 9223372036854775807,"
+            + "\"field5\" : \"9223372036854775807\","
+            + "\"field6\" : \"123345678903456545422346373223.903495832\","
+            + "\"field7\" : 123345678903456545422346373223.903495832,"
+            + "\"field8\" : 1233456789034565454223463732234502384848374579495483732758539938558,"
+            + "\"field9\" : \"1233456789034565454223463732234502384848374579495483732758539938558\","
+            + "\"field10\" : \"1.2334567890345654542E10\","
+            + "\"field11\" : 123345.678903456545422346373223903495832,"
+            + "\"field12\" : \"123345.678903456545422346373223903495832\""
+            + " }";
     JsonNode ce = getJsonNode(jsonChangeEvent);
 
     assertEquals(
-        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field1", /*requiredField=*/true)
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field1", /*requiredField=*/ true)
             .toString(),
         new String("123456789.012345679"));
     assertEquals(
-        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field2", /*requiredField=*/true)
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field2", /*requiredField=*/ true)
             .toString(),
         new String("-123456789.012345679"));
     assertEquals(
-        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field3", /*requiredField=*/true)
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field3", /*requiredField=*/ true)
             .toString(),
         new String("-123456789.012345679"));
     assertEquals(
-        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field4", /*requiredField=*/true)
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field4", /*requiredField=*/ true)
             .toString(),
         new String("9223372036854775807.000000000"));
     assertEquals(
-        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field5", /*requiredField=*/true)
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field5", /*requiredField=*/ true)
             .toString(),
         new String("9223372036854775807.000000000"));
     assertEquals(
-        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field6", /*requiredField=*/true)
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field6", /*requiredField=*/ true)
             .toString(),
         new String("123345678903456545422346373223.903495832"));
     assertEquals(
-        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field7", /*requiredField=*/true)
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field7", /*requiredField=*/ true)
             .toString(),
         new String("123345678903456545422346373223.903495832"));
     assertEquals(
-        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field8", /*requiredField=*/true)
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field8", /*requiredField=*/ true)
             .toString(),
-        new String("1233456789034565454223463732234502384848374579495483732758539938558.000000000"));
+        new String(
+            "1233456789034565454223463732234502384848374579495483732758539938558.000000000"));
     assertEquals(
-        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field9", /*requiredField=*/true)
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field9", /*requiredField=*/ true)
             .toString(),
-        new String("1233456789034565454223463732234502384848374579495483732758539938558.000000000"));
+        new String(
+            "1233456789034565454223463732234502384848374579495483732758539938558.000000000"));
     assertEquals(
-        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field10", /*requiredField=*/true)
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field10", /*requiredField=*/ true)
             .toString(),
         new String("12334567890.345654542"));
     assertEquals(
-        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field11", /*requiredField=*/true)
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field11", /*requiredField=*/ true)
             .toString(),
         new String("123345.678903457"));
     assertEquals(
-        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field12", /*requiredField=*/true)
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field12", /*requiredField=*/ true)
             .toString(),
         new String("123345.678903457"));
   }
@@ -340,8 +379,9 @@ public final class ChangeEventTypeConvertorTest {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", "asd123456.789");
     JsonNode ce = getJsonNode(changeEvent.toString());
-    assertEquals(ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field1", /*requiredField=*/true)
-                     .toString(),
+    assertEquals(
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field1", /*requiredField=*/ true)
+            .toString(),
         new Long(123457));
   }
 
@@ -350,8 +390,9 @@ public final class ChangeEventTypeConvertorTest {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", true);
     JsonNode ce = getJsonNode(changeEvent.toString());
-    assertEquals(ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field1", /*requiredField=*/true)
-                     .toString(),
+    assertEquals(
+        ChangeEventTypeConvertor.toNumericBigDecimal(ce, "field1", /*requiredField=*/ true)
+            .toString(),
         new Long(123457));
   }
 
@@ -368,16 +409,19 @@ public final class ChangeEventTypeConvertorTest {
     changeEvent.put("field5", JSONObject.NULL);
     JsonNode ce = getJsonNode(changeEvent.toString());
 
-    assertEquals(ChangeEventTypeConvertor.toByteArray(ce, "field1",
-                     /*requiredField=*/true), ByteArray.copyFrom("asidjf987asd"));
-    assertEquals(ChangeEventTypeConvertor.toByteArray(ce, "field2",
-                     /*requiredField=*/true), ByteArray.copyFrom(""));
-    assertEquals(ChangeEventTypeConvertor.toByteArray(ce, "field3",
-                     /*requiredField=*/true), ByteArray.copyFrom("123456789"));
-    assertEquals(ChangeEventTypeConvertor.toByteArray(ce, "field4",
-                     /*requiredField=*/true), ByteArray.copyFrom("true"));
-    assertNull(ChangeEventTypeConvertor.toByteArray(ce, "field5",
-                   /*requiredField=*/false));
+    assertEquals(
+        ChangeEventTypeConvertor.toByteArray(ce, "field1", /*requiredField=*/ true),
+        ByteArray.copyFrom("asidjf987asd"));
+    assertEquals(
+        ChangeEventTypeConvertor.toByteArray(ce, "field2", /*requiredField=*/ true),
+        ByteArray.copyFrom(""));
+    assertEquals(
+        ChangeEventTypeConvertor.toByteArray(ce, "field3", /*requiredField=*/ true),
+        ByteArray.copyFrom("123456789"));
+    assertEquals(
+        ChangeEventTypeConvertor.toByteArray(ce, "field4", /*requiredField=*/ true),
+        ByteArray.copyFrom("true"));
+    assertNull(ChangeEventTypeConvertor.toByteArray(ce, "field5", /*requiredField=*/ false));
   }
 
   /*
@@ -396,20 +440,25 @@ public final class ChangeEventTypeConvertorTest {
     changeEvent.put("field7", JSONObject.NULL);
     JsonNode ce = getJsonNode(changeEvent.toString());
 
-    assertEquals(ChangeEventTypeConvertor.toTimestamp(ce, "field1",
-                     /*requiredField=*/true), Timestamp.parseTimestamp("2020-12-30T12:12:12Z"));
-    assertEquals(ChangeEventTypeConvertor.toTimestamp(ce, "field2",
-                     /*requiredField=*/true), Timestamp.parseTimestamp("2020-12-30T12:12:12.1Z"));
-    assertEquals(ChangeEventTypeConvertor.toTimestamp(ce, "field3",
-                     /*requiredField=*/true), Timestamp.parseTimestamp("2020-12-30T12:12:12.123Z"));
-    assertEquals(ChangeEventTypeConvertor.toTimestamp(ce, "field4",
-                     /*requiredField=*/true), Timestamp.parseTimestamp("2020-12-30T12:12:12Z"));
-    assertEquals(ChangeEventTypeConvertor.toTimestamp(ce, "field5",
-                     /*requiredField=*/true), Timestamp.parseTimestamp("2020-12-30T12:12:12.1Z"));
-    assertEquals(ChangeEventTypeConvertor.toTimestamp(ce, "field6",
-                     /*requiredField=*/true), Timestamp.parseTimestamp("2020-12-30T12:12:12.123Z"));
-    assertNull(ChangeEventTypeConvertor.toTimestamp(ce, "field7",
-                   /*requiredField=*/false));
+    assertEquals(
+        ChangeEventTypeConvertor.toTimestamp(ce, "field1", /*requiredField=*/ true),
+        Timestamp.parseTimestamp("2020-12-30T12:12:12Z"));
+    assertEquals(
+        ChangeEventTypeConvertor.toTimestamp(ce, "field2", /*requiredField=*/ true),
+        Timestamp.parseTimestamp("2020-12-30T12:12:12.1Z"));
+    assertEquals(
+        ChangeEventTypeConvertor.toTimestamp(ce, "field3", /*requiredField=*/ true),
+        Timestamp.parseTimestamp("2020-12-30T12:12:12.123Z"));
+    assertEquals(
+        ChangeEventTypeConvertor.toTimestamp(ce, "field4", /*requiredField=*/ true),
+        Timestamp.parseTimestamp("2020-12-30T12:12:12Z"));
+    assertEquals(
+        ChangeEventTypeConvertor.toTimestamp(ce, "field5", /*requiredField=*/ true),
+        Timestamp.parseTimestamp("2020-12-30T12:12:12.1Z"));
+    assertEquals(
+        ChangeEventTypeConvertor.toTimestamp(ce, "field6", /*requiredField=*/ true),
+        Timestamp.parseTimestamp("2020-12-30T12:12:12.123Z"));
+    assertNull(ChangeEventTypeConvertor.toTimestamp(ce, "field7", /*requiredField=*/ false));
   }
 
   @Test(expected = ChangeEventConvertorException.class)
@@ -417,8 +466,9 @@ public final class ChangeEventTypeConvertorTest {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", "2020-12-30");
     JsonNode ce = getJsonNode(changeEvent.toString());
-    assertEquals(ChangeEventTypeConvertor.toTimestamp(ce, "field1",
-                     /*requiredField=*/true), Timestamp.parseTimestamp("2020-12-30T00:00:00Z"));
+    assertEquals(
+        ChangeEventTypeConvertor.toTimestamp(ce, "field1", /*requiredField=*/ true),
+        Timestamp.parseTimestamp("2020-12-30T00:00:00Z"));
   }
 
   @Test(expected = ChangeEventConvertorException.class)
@@ -426,8 +476,9 @@ public final class ChangeEventTypeConvertorTest {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", "asd123456.789");
     JsonNode ce = getJsonNode(changeEvent.toString());
-    assertEquals(ChangeEventTypeConvertor.toTimestamp(ce, "field1",
-                     /*requiredField=*/true), Timestamp.parseTimestamp("2020-12-30T12:12:12Z"));
+    assertEquals(
+        ChangeEventTypeConvertor.toTimestamp(ce, "field1", /*requiredField=*/ true),
+        Timestamp.parseTimestamp("2020-12-30T12:12:12Z"));
   }
 
   @Test(expected = ChangeEventConvertorException.class)
@@ -435,8 +486,9 @@ public final class ChangeEventTypeConvertorTest {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", 1234523342);
     JsonNode ce = getJsonNode(changeEvent.toString());
-    assertEquals(ChangeEventTypeConvertor.toTimestamp(ce, "field1",
-                     /*requiredField=*/true), Timestamp.parseTimestamp("2020-12-30T12:12:12Z"));
+    assertEquals(
+        ChangeEventTypeConvertor.toTimestamp(ce, "field1", /*requiredField=*/ true),
+        Timestamp.parseTimestamp("2020-12-30T12:12:12Z"));
   }
 
   @Test(expected = ChangeEventConvertorException.class)
@@ -444,8 +496,9 @@ public final class ChangeEventTypeConvertorTest {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", true);
     JsonNode ce = getJsonNode(changeEvent.toString());
-    assertEquals(ChangeEventTypeConvertor.toTimestamp(ce, "field1",
-                     /*requiredField=*/true), Timestamp.parseTimestamp("2020-12-30T12:12:12Z"));
+    assertEquals(
+        ChangeEventTypeConvertor.toTimestamp(ce, "field1", /*requiredField=*/ true),
+        Timestamp.parseTimestamp("2020-12-30T12:12:12Z"));
   }
 
   /*
@@ -462,17 +515,22 @@ public final class ChangeEventTypeConvertorTest {
     changeEvent.put("field6", JSONObject.NULL);
     JsonNode ce = getJsonNode(changeEvent.toString());
 
-    assertEquals(ChangeEventTypeConvertor.toDate(ce, "field1", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toDate(ce, "field1", /*requiredField=*/ true),
         Date.parseDate("2020-12-30"));
-    assertEquals(ChangeEventTypeConvertor.toDate(ce, "field2", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toDate(ce, "field2", /*requiredField=*/ true),
         Date.parseDate("2020-12-30"));
-    assertEquals(ChangeEventTypeConvertor.toDate(ce, "field3", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toDate(ce, "field3", /*requiredField=*/ true),
         Date.parseDate("2020-12-30"));
-    assertEquals(ChangeEventTypeConvertor.toDate(ce, "field4", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toDate(ce, "field4", /*requiredField=*/ true),
         Date.parseDate("2020-12-30"));
-    assertEquals(ChangeEventTypeConvertor.toDate(ce, "field5", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toDate(ce, "field5", /*requiredField=*/ true),
         Date.parseDate("2020-12-30"));
-    assertNull(ChangeEventTypeConvertor.toDate(ce, "field6", /*requiredField=*/false));
+    assertNull(ChangeEventTypeConvertor.toDate(ce, "field6", /*requiredField=*/ false));
   }
 
   @Test(expected = ChangeEventConvertorException.class)
@@ -480,7 +538,8 @@ public final class ChangeEventTypeConvertorTest {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", "asd123456.789");
     JsonNode ce = getJsonNode(changeEvent.toString());
-    assertEquals(ChangeEventTypeConvertor.toDate(ce, "field1", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toDate(ce, "field1", /*requiredField=*/ true),
         Timestamp.parseTimestamp("2020-12-30T12:12:12Z"));
   }
 
@@ -489,7 +548,8 @@ public final class ChangeEventTypeConvertorTest {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", 123456789);
     JsonNode ce = getJsonNode(changeEvent.toString());
-    assertEquals(ChangeEventTypeConvertor.toDate(ce, "field1", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toDate(ce, "field1", /*requiredField=*/ true),
         Timestamp.parseTimestamp("2020-12-30T12:12:12Z"));
   }
 
@@ -498,7 +558,8 @@ public final class ChangeEventTypeConvertorTest {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("field1", true);
     JsonNode ce = getJsonNode(changeEvent.toString());
-    assertEquals(ChangeEventTypeConvertor.toDate(ce, "field1", /*requiredField=*/true),
+    assertEquals(
+        ChangeEventTypeConvertor.toDate(ce, "field1", /*requiredField=*/ true),
         Timestamp.parseTimestamp("2020-12-30T12:12:12Z"));
   }
 }

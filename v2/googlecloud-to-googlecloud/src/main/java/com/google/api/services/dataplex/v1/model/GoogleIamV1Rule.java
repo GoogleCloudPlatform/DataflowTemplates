@@ -54,8 +54,8 @@ public final class GoogleIamV1Rule extends com.google.api.client.json.GenericJso
   @com.google.api.client.util.Key private java.util.List<java.lang.String> in;
 
   /**
-   * The config returned to callers of tech.iam.IAM.CheckPolicy for any entries that match the LOG
-   * action. The value may be {@code null}.
+   * The config returned to callers of CheckPolicy for any entries that match the LOG action. The
+   * value may be {@code null}.
    */
   @com.google.api.client.util.Key private java.util.List<GoogleIamV1LogConfig> logConfig;
 
@@ -160,8 +160,7 @@ public final class GoogleIamV1Rule extends com.google.api.client.json.GenericJso
   }
 
   /**
-   * The config returned to callers of tech.iam.IAM.CheckPolicy for any entries that match the LOG
-   * action.
+   * The config returned to callers of CheckPolicy for any entries that match the LOG action.
    *
    * @return value or {@code null} for none
    */
@@ -170,8 +169,7 @@ public final class GoogleIamV1Rule extends com.google.api.client.json.GenericJso
   }
 
   /**
-   * The config returned to callers of tech.iam.IAM.CheckPolicy for any entries that match the LOG
-   * action.
+   * The config returned to callers of CheckPolicy for any entries that match the LOG action.
    *
    * @param logConfig logConfig or {@code null} for none
    */

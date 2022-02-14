@@ -15,18 +15,30 @@
  */
 package com.google.cloud.teleport.v2.values;
 
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkState;
+
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Partition;
 import com.google.auto.value.AutoValue;
 import com.google.common.collect.ImmutableList;
+import java.io.Serializable;
 
-/** Partition metadata for Dataplex. */
+/**
+ * Partition metadata for Dataplex.
+ *
+ * <p>All values are necessary.
+ */
 @AutoValue
-public abstract class PartitionMetadata {
+public abstract class PartitionMetadata implements Serializable {
   public abstract String location();
 
   public abstract ImmutableList<String> values();
 
   public static Builder builder() {
     return new AutoValue_PartitionMetadata.Builder();
+  }
+
+  public GoogleCloudDataplexV1Partition toDataplexPartition() {
+    return new GoogleCloudDataplexV1Partition().setLocation(location()).setValues(values());
   }
 
   /** Builder for {@link PartitionMetadata}. */
@@ -36,6 +48,16 @@ public abstract class PartitionMetadata {
 
     public abstract Builder setValues(ImmutableList<String> value);
 
-    public abstract PartitionMetadata build();
+    abstract PartitionMetadata autoBuild();
+
+    public PartitionMetadata build() {
+      PartitionMetadata metadata = autoBuild();
+      checkState(!metadata.location().isEmpty(), "Location cannot be empty");
+
+      ImmutableList<String> values = metadata.values();
+      checkState(!values.isEmpty(), "Values cannot be empty");
+
+      return metadata;
+    }
   }
 }

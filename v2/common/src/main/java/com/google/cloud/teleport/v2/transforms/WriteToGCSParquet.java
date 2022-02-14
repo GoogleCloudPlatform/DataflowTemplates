@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkArgument;
-import static org.apache.beam.vendor.guava.v20_0.com.google.common.base.Preconditions.checkNotNull;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.utils.WriteToGCSUtility;
@@ -32,7 +32,7 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.vendor.guava.v20_0.com.google.common.annotations.VisibleForTesting;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -102,7 +102,8 @@ public abstract class WriteToGCSParquet
     void setOutputFilenamePrefix(String outputFilenamePrefix);
 
     @Description(
-        "The maximum number of output shards produced when writing. Default number is runner defined. ")
+        "The maximum number of output shards produced when writing. Default number is runner"
+            + " defined. ")
     @Default.Integer(0)
     Integer getNumShards();
 

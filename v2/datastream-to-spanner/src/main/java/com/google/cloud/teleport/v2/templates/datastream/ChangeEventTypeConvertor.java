@@ -64,8 +64,7 @@ public class ChangeEventTypeConvertor {
       }
       return Boolean.valueOf(node.asBoolean());
     } catch (Exception e) {
-      throw new ChangeEventConvertorException("Unable to convert field " + key + " to boolean ",
-          e);
+      throw new ChangeEventConvertorException("Unable to convert field " + key + " to boolean ", e);
     }
   }
 
@@ -84,8 +83,7 @@ public class ChangeEventTypeConvertor {
       return node.asLong();
 
     } catch (Exception e) {
-      throw new ChangeEventConvertorException("Unable to convert field " + key + " to long ",
-          e);
+      throw new ChangeEventConvertorException("Unable to convert field " + key + " to long ", e);
     }
   }
 
@@ -102,8 +100,7 @@ public class ChangeEventTypeConvertor {
       }
       return Double.valueOf(node.asDouble());
     } catch (Exception e) {
-      throw new ChangeEventConvertorException("Unable to convert field " + key + " to double ",
-          e);
+      throw new ChangeEventConvertorException("Unable to convert field " + key + " to double ", e);
     }
   }
 
@@ -117,8 +114,7 @@ public class ChangeEventTypeConvertor {
       return changeEvent.get(key).asText();
     } catch (Exception e) {
       // Throw an exception as all conversion options are exhausted.
-      throw new ChangeEventConvertorException("Unable to convert field " + key + " to string ",
-          e);
+      throw new ChangeEventConvertorException("Unable to convert field " + key + " to string ", e);
     }
   }
 
@@ -132,8 +128,8 @@ public class ChangeEventTypeConvertor {
       String value = changeEvent.get(key).asText();
       return ByteArray.copyFrom(value);
     } catch (Exception e) {
-      throw new ChangeEventConvertorException("Unable to convert field " + key + " to ByteArray",
-          e);
+      throw new ChangeEventConvertorException(
+          "Unable to convert field " + key + " to ByteArray", e);
     }
   }
 
@@ -152,8 +148,8 @@ public class ChangeEventTypeConvertor {
       String timeString = changeEvent.get(key).asText();
       return Timestamp.of(parseTimestamp(timeString));
     } catch (Exception e) {
-      throw new ChangeEventConvertorException("Unable to convert field " + key + " to Timestamp",
-          e);
+      throw new ChangeEventConvertorException(
+          "Unable to convert field " + key + " to Timestamp", e);
     }
   }
 
@@ -167,32 +163,34 @@ public class ChangeEventTypeConvertor {
       String dateString = changeEvent.get(key).asText();
       return Date.fromJavaUtilDate(parseLenientDate(dateString));
     } catch (Exception e) {
-      throw new ChangeEventConvertorException("Unable to convert field " + key + " to Date",
-          e);
+      throw new ChangeEventConvertorException("Unable to convert field " + key + " to Date", e);
     }
   }
 
   private static boolean isNumeric(String str) {
-    return NUMERIC_PATTERN.matcher(str).matches();  //match a number with optional '-' and decimal.
+    return NUMERIC_PATTERN.matcher(str).matches(); // match a number with optional '-' and decimal.
   }
 
   /*
    * This function converts the JSON field to string. In addition, this function also checks
    * if the field is a number.
    */
-  public static BigDecimal toNumericBigDecimal(JsonNode changeEvent, String key,
-      boolean requiredField)
+  public static BigDecimal toNumericBigDecimal(
+      JsonNode changeEvent, String key, boolean requiredField)
       throws ChangeEventConvertorException {
 
     String value = toString(changeEvent, key, requiredField);
     if (NumberUtils.isCreatable(value) || NumberUtils.isParsable(value) || isNumeric(value)) {
       return new BigDecimal(value).setScale(9, RoundingMode.HALF_UP);
     }
-    throw new ChangeEventConvertorException("Unable to convert field " + key
-                                                + " to Numeric. Creatable("
-                                                + NumberUtils.isCreatable(value)
-                                                + "), Parsable("
-                                                + NumberUtils.isParsable(value) + ")");
+    throw new ChangeEventConvertorException(
+        "Unable to convert field "
+            + key
+            + " to Numeric. Creatable("
+            + NumberUtils.isCreatable(value)
+            + "), Parsable("
+            + NumberUtils.isParsable(value)
+            + ")");
   }
 
   /* Checks if the change event has the key and a value associated with this. This

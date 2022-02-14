@@ -59,8 +59,11 @@ public final class OracleChangeEventContextTest {
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.ORACLE_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        ChangeEventContextFactory.createChangeEventContext(getJsonNode(changeEvent.toString()),
-            ddl, "shadow_", DatastreamConstants.ORACLE_SOURCE_TYPE);
+        ChangeEventContextFactory.createChangeEventContext(
+            getJsonNode(changeEvent.toString()),
+            ddl,
+            "shadow_",
+            DatastreamConstants.ORACLE_SOURCE_TYPE);
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
 
@@ -92,8 +95,11 @@ public final class OracleChangeEventContextTest {
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.ORACLE_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        ChangeEventContextFactory.createChangeEventContext(getJsonNode(changeEvent.toString()),
-            ddl, "shadow_", DatastreamConstants.ORACLE_SOURCE_TYPE);
+        ChangeEventContextFactory.createChangeEventContext(
+            getJsonNode(changeEvent.toString()),
+            ddl,
+            "shadow_",
+            DatastreamConstants.ORACLE_SOURCE_TYPE);
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
 
@@ -124,8 +130,11 @@ public final class OracleChangeEventContextTest {
         DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.ORACLE_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
-        ChangeEventContextFactory.createChangeEventContext(getJsonNode(changeEvent.toString()),
-            ddl, "shadow_", DatastreamConstants.ORACLE_SOURCE_TYPE);
+        ChangeEventContextFactory.createChangeEventContext(
+            getJsonNode(changeEvent.toString()),
+            ddl,
+            "shadow_",
+            DatastreamConstants.ORACLE_SOURCE_TYPE);
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
     Map<String, Value> actual = shadowMutation.asMap();
 

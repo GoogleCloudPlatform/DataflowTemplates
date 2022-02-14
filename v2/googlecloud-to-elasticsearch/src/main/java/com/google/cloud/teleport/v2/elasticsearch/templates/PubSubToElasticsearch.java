@@ -17,12 +17,11 @@ package com.google.cloud.teleport.v2.elasticsearch.templates;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.elasticsearch.options.PubSubToElasticsearchOptions;
+import com.google.cloud.teleport.v2.elasticsearch.transforms.FailedPubsubMessageToPubsubTopicFn;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.ProcessEventMetadata;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.PubSubMessageToJsonDocument;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
 import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIndex;
-import com.google.cloud.teleport.v2.transforms.ErrorConverters;
-import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -33,6 +32,7 @@ import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesCoder;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TypeDescriptors;
@@ -42,8 +42,8 @@ import org.slf4j.LoggerFactory;
 /**
  * The {@link PubSubToElasticsearch} pipeline is a streaming pipeline which ingests data in JSON
  * format from PubSub, applies a Javascript UDF if provided and writes the resulting records to
- * Elasticsearch. If the element fails to be processed then it is written to an error output table in
- * BigQuery.
+ * Elasticsearch. If the element fails to be processed then it is written to an error output table
+ * in BigQuery.
  *
  * <p>Please refer to <b><a href=
  * "https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/master/v2/googlecloud-to-elasticsearch/docs/PubSubToElasticsearch/README.md">
@@ -56,7 +56,7 @@ public class PubSubToElasticsearch {
       new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
 
   /** The tag for the error output table of the json to table row transform. */
-  public static final TupleTag<FailsafeElement<PubsubMessage, String>> TRANSFORM_DEADLETTER_OUT =
+  public static final TupleTag<FailsafeElement<PubsubMessage, String>> TRANSFORM_ERROROUTPUT_OUT =
       new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
 
   /** Pubsub message/string coder for pipeline. */
@@ -84,8 +84,10 @@ public class PubSubToElasticsearch {
             .as(PubSubToElasticsearchOptions.class);
 
     pubSubToElasticsearchOptions.setIndex(
-            new ElasticsearchIndex(pubSubToElasticsearchOptions.getDataset(),
-            pubSubToElasticsearchOptions.getNamespace()).getIndex());
+        new ElasticsearchIndex(
+                pubSubToElasticsearchOptions.getDataset(),
+                pubSubToElasticsearchOptions.getNamespace())
+            .getIndex());
 
     run(pubSubToElasticsearchOptions);
   }
@@ -153,19 +155,14 @@ public class PubSubToElasticsearch {
                 .build());
 
     /*
-     * Step 3b: Write elements that failed processing to error output table via {@link BigQueryIO}.
+     * Step 3b: Write elements that failed processing to error output PubSub topic via {@link PubSubIO}.
      */
     convertedPubsubMessages
-        .get(TRANSFORM_DEADLETTER_OUT)
-        .apply(
-            "WriteTransformFailuresToBigQuery",
-            ErrorConverters.WritePubsubMessageErrors.newBuilder()
-                .setErrorRecordsTable(options.getErrorOutputTable())
-                .setErrorRecordsTableSchema(SchemaUtils.DEADLETTER_SCHEMA)
-                .build());
+        .get(TRANSFORM_ERROROUTPUT_OUT)
+        .apply(ParDo.of(new FailedPubsubMessageToPubsubTopicFn()))
+        .apply("writeFailureMessages", PubsubIO.writeMessages().to(options.getErrorOutputTopic()));
 
     // Execute the pipeline and return the result.
     return pipeline.run();
   }
-
 }

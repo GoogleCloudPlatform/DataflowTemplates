@@ -39,8 +39,10 @@ import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.Hidden;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.Count;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.GroupByKey;
@@ -59,66 +61,157 @@ public class DatastoreConverters {
 
   /** Options for Reading Datastore Entities. */
   public interface DatastoreReadOptions extends PipelineOptions {
+    /** @deprecated Please use getFirestoreReadGqlQuery() instead. */
     @Description("GQL Query which specifies what entities to grab")
+    @Hidden
+    @Deprecated
     ValueProvider<String> getDatastoreReadGqlQuery();
 
+    /** @deprecated Please use setFirestoreReadGqlQuery(value) instead. */
+    @Hidden
+    @Deprecated
     void setDatastoreReadGqlQuery(ValueProvider<String> datastoreReadGqlQuery);
 
+    /** @deprecated Please use getFirestoreReadProjectId() instead. */
     @Description("GCP Project Id of where the datastore entities live")
+    @Hidden
+    @Deprecated
     ValueProvider<String> getDatastoreReadProjectId();
 
+    /** @deprecated Please use setFirestoreReadProjectId(value) instead. */
+    @Hidden
+    @Deprecated
     void setDatastoreReadProjectId(ValueProvider<String> datastoreReadProjectId);
 
+    /** @deprecated Please use getFirestoreReadNamespace() instead. */
     @Description("Namespace of requested Entties. Set as \"\" for default namespace")
+    @Hidden
+    @Deprecated
     ValueProvider<String> getDatastoreReadNamespace();
 
+    /** @deprecated Please use setFirestoreReadNamespace(value) instead. */
+    @Hidden
+    @Deprecated
     void setDatastoreReadNamespace(ValueProvider<String> datstoreReadNamespace);
+
+    @Description("GQL Query which specifies what entities to grab")
+    ValueProvider<String> getFirestoreReadGqlQuery();
+
+    void setFirestoreReadGqlQuery(ValueProvider<String> firestoreReadGqlQuery);
+
+    @Description("GCP Project Id of where the datastore entities live")
+    ValueProvider<String> getFirestoreReadProjectId();
+
+    void setFirestoreReadProjectId(ValueProvider<String> firestoreReadProjectId);
+
+    @Description("Namespace of requested Entties. Set as \"\" for default namespace")
+    ValueProvider<String> getFirestoreReadNamespace();
+
+    void setFirestoreReadNamespace(ValueProvider<String> firestoreReadNamespace);
   }
 
   /** Options for writing Datastore Entities. */
   public interface DatastoreWriteOptions extends PipelineOptions {
+    /** @deprecated Please use getFirestoreWriteProjectId() instead. */
     @Description("GCP Project Id of where to write the datastore entities")
+    @Hidden
+    @Deprecated
     ValueProvider<String> getDatastoreWriteProjectId();
 
+    /** @deprecated Please use setFirestoreWriteProjectId(value) instead. */
+    @Hidden
+    @Deprecated
     void setDatastoreWriteProjectId(ValueProvider<String> datstoreWriteProjectId);
 
+    /** @deprecated Please use getFirestoreWriteEntityKind() instead. */
     @Description("Kind of the Datastore entity")
+    @Hidden
+    @Deprecated
     ValueProvider<String> getDatastoreWriteEntityKind();
 
+    /** @deprecated Please use setFirestoreWriteEntityKind(value) instead. */
+    @Hidden
+    @Deprecated
     void setDatastoreWriteEntityKind(ValueProvider<String> value);
 
+    /** @deprecated Please use getFirestoreWriteNamespace() instead. */
     @Description("Namespace of the Datastore entity")
+    @Hidden
+    @Deprecated
     ValueProvider<String> getDatastoreWriteNamespace();
 
+    /** @deprecated Please use setFirestoreWriteNamespace(value) instead. */
+    @Hidden
+    @Deprecated
     void setDatastoreWriteNamespace(ValueProvider<String> value);
 
+    /** @deprecated Please use getFirestoreHintNumWorkers() instead. */
     @Description("Hint for the expected number of workers in the ramp-up throttling step")
     @Default.Integer(500)
-    Integer getDatastoreHintNumWorkers();
-    void setDatastoreHintNumWorkers(Integer value);
+    @Hidden
+    @Deprecated
+    ValueProvider<Integer> getDatastoreHintNumWorkers();
 
-    @Description("Whether to throttle during ramp-up")
-    @Default.Boolean(true)
-    Boolean getDatastoreThrottleRampup();
-    void setDatastoreThrottleRampup(Boolean value);
+    /** @deprecated Please use setFirestoreHintNumWorkers(value) instead. */
+    @Hidden
+    @Deprecated
+    void setDatastoreHintNumWorkers(ValueProvider<Integer> value);
+
+    @Description("GCP Project Id of where to write the datastore entities")
+    ValueProvider<String> getFirestoreWriteProjectId();
+
+    void setFirestoreWriteProjectId(ValueProvider<String> firestoreWriteProjectId);
+
+    @Description("Kind of the Datastore entity")
+    ValueProvider<String> getFirestoreWriteEntityKind();
+
+    void setFirestoreWriteEntityKind(ValueProvider<String> value);
+
+    @Description("Namespace of the Datastore entity")
+    ValueProvider<String> getFirestoreWriteNamespace();
+
+    void setFirestoreWriteNamespace(ValueProvider<String> value);
+
+    @Description("Hint for the expected number of workers in the ramp-up throttling step")
+    ValueProvider<Integer> getFirestoreHintNumWorkers();
+
+    void setFirestoreHintNumWorkers(ValueProvider<Integer> value);
   }
 
   /** Options for deleting Datastore Entities. */
   public interface DatastoreDeleteOptions extends PipelineOptions {
+    /** @deprecated Please use getFirestoreDeleteProjectId() instead. */
     @Description("GCP Project Id of where to delete the datastore entities")
+    @Hidden
+    @Deprecated
     ValueProvider<String> getDatastoreDeleteProjectId();
 
+    /** @deprecated Please use setFirestoreDeleteProjectId(value) instead. */
+    @Hidden
+    @Deprecated
     void setDatastoreDeleteProjectId(ValueProvider<String> datastoreDeleteProjectId);
 
+    /** @deprecated Please use getFirestoreHintNumWorkers() instead. */
     @Description("Hint for the expected number of workers in the ramp-up throttling step")
     @Default.Integer(500)
-    Integer getDatastoreHintNumWorkers();
-    void setDatastoreHintNumWorkers(Integer value);
+    @Hidden
+    @Deprecated
+    ValueProvider<Integer> getDatastoreHintNumWorkers();
 
-    @Description("Whether to throttle during ramp-up")
-    @Default.Boolean(true)
-    Boolean getDatastoreThrottleRampup();
-    void setDatastoreThrottleRampup(Boolean value);
+    /** @deprecated Please use setFirestoreHintNumWorkers(value) instead. */
+    @Hidden
+    @Deprecated
+    void setDatastoreHintNumWorkers(ValueProvider<Integer> value);
+
+    @Description("GCP Project Id of where to delete the datastore entities")
+    ValueProvider<String> getFirestoreDeleteProjectId();
+
+    void setFirestoreDeleteProjectId(ValueProvider<String> firestoreDeleteProjectId);
+
+    @Description("Hint for the expected number of workers in the ramp-up throttling step")
+    ValueProvider<Integer> getFirestoreHintNumWorkers();
+
+    void setFirestoreHintNumWorkers(ValueProvider<Integer> value);
   }
 
   /** Options for reading Unique datastore Schemas. */
@@ -168,16 +261,22 @@ public class DatastoreConverters {
   public abstract static class WriteJsonEntities
       extends PTransform<PCollection<String>, PCollectionTuple> {
     public abstract ValueProvider<String> projectId();
-    public abstract Integer hintNumWorkers();
+
+    public abstract ValueProvider<Integer> hintNumWorkers();
+
     public abstract Boolean throttleRampup();
+
     public abstract TupleTag<String> errorTag();
 
     /** Builder for WriteJsonEntities. */
     @AutoValue.Builder
     public abstract static class Builder {
       public abstract Builder setProjectId(ValueProvider<String> projectId);
-      public abstract Builder setHintNumWorkers(Integer hintNumWorkers);
+
+      public abstract Builder setHintNumWorkers(ValueProvider<Integer> hintNumWorkers);
+
       public abstract Builder setThrottleRampup(Boolean throttleRampup);
+
       public abstract Builder setErrorTag(TupleTag<String> errorTag);
 
       public abstract WriteJsonEntities build();
@@ -185,16 +284,15 @@ public class DatastoreConverters {
 
     public static Builder newBuilder() {
       return new AutoValue_DatastoreConverters_WriteJsonEntities.Builder()
-          .setHintNumWorkers(500)
+          .setHintNumWorkers(StaticValueProvider.of(500))
           .setThrottleRampup(true); // defaults
     }
 
     @Override
     public PCollectionTuple expand(PCollection<String> entityJson) {
       TupleTag<Entity> goodTag = new TupleTag<>();
-      DatastoreV1.Write datastoreWrite = DatastoreIO.v1().write()
-              .withProjectId(projectId())
-              .withHintNumWorkers(hintNumWorkers());
+      DatastoreV1.Write datastoreWrite =
+          DatastoreIO.v1().write().withProjectId(projectId()).withHintNumWorkers(hintNumWorkers());
       if (!throttleRampup()) {
         datastoreWrite = datastoreWrite.withRampupThrottlingDisabled();
       }
@@ -206,9 +304,7 @@ public class DatastoreConverters {
                   "CheckSameKey",
                   CheckSameKey.newBuilder().setErrorTag(errorTag()).setGoodTag(goodTag).build());
 
-      entities
-          .get(goodTag)
-          .apply("WriteToDatastore", datastoreWrite);
+      entities.get(goodTag).apply("WriteToDatastore", datastoreWrite);
       return entities;
     }
   }
@@ -300,27 +396,34 @@ public class DatastoreConverters {
   public abstract static class DatastoreDeleteEntityJson
       extends PTransform<PCollection<String>, PDone> {
     public abstract ValueProvider<String> projectId();
-    public abstract Integer hintNumWorkers();
+
+    public abstract ValueProvider<Integer> hintNumWorkers();
+
     public abstract Boolean throttleRampup();
 
     /** Builder for DatastoreDeleteEntityJson. */
     @AutoValue.Builder
     public abstract static class Builder {
       public abstract Builder setProjectId(ValueProvider<String> projectId);
-      public abstract Builder setHintNumWorkers(Integer hintNumWorkers);
+
+      public abstract Builder setHintNumWorkers(ValueProvider<Integer> hintNumWorkers);
+
       public abstract Builder setThrottleRampup(Boolean throttleRampup);
+
       public abstract DatastoreDeleteEntityJson build();
     }
 
     public static Builder newBuilder() {
       return new AutoValue_DatastoreConverters_DatastoreDeleteEntityJson.Builder()
-          .setHintNumWorkers(500)
+          .setHintNumWorkers(StaticValueProvider.of(500))
           .setThrottleRampup(true); // defaults
     }
 
     @Override
     public PDone expand(PCollection<String> entityJson) {
-      DatastoreV1.DeleteKey datastoreDelete = DatastoreIO.v1().deleteKey()
+      DatastoreV1.DeleteKey datastoreDelete =
+          DatastoreIO.v1()
+              .deleteKey()
               .withProjectId(projectId())
               .withHintNumWorkers(hintNumWorkers());
       if (!throttleRampup()) {
@@ -585,7 +688,9 @@ public class DatastoreConverters {
   public abstract static class WriteEntities
       extends PTransform<PCollection<Entity>, PCollectionTuple> {
     public abstract ValueProvider<String> projectId();
-    public abstract Integer hintNumWorkers();
+
+    public abstract ValueProvider<Integer> hintNumWorkers();
+
     public abstract Boolean throttleRampup();
 
     public abstract TupleTag<String> errorTag();
@@ -594,7 +699,9 @@ public class DatastoreConverters {
     @AutoValue.Builder
     public abstract static class Builder {
       public abstract Builder setProjectId(ValueProvider<String> projectId);
-      public abstract Builder setHintNumWorkers(Integer hintNumWorkers);
+
+      public abstract Builder setHintNumWorkers(ValueProvider<Integer> hintNumWorkers);
+
       public abstract Builder setThrottleRampup(Boolean throttleRampup);
 
       public abstract Builder setErrorTag(TupleTag<String> errorTag);
@@ -604,16 +711,15 @@ public class DatastoreConverters {
 
     public static Builder newBuilder() {
       return new AutoValue_DatastoreConverters_WriteEntities.Builder()
-          .setHintNumWorkers(500)
+          .setHintNumWorkers(StaticValueProvider.of(500))
           .setThrottleRampup(true); // defaults
     }
 
     @Override
     public PCollectionTuple expand(PCollection<Entity> entity) {
       TupleTag<Entity> goodTag = new TupleTag<>();
-      DatastoreV1.Write datastoreWrite = DatastoreIO.v1().write()
-              .withProjectId(projectId())
-              .withHintNumWorkers(hintNumWorkers());
+      DatastoreV1.Write datastoreWrite =
+          DatastoreIO.v1().write().withProjectId(projectId()).withHintNumWorkers(hintNumWorkers());
       if (!throttleRampup()) {
         datastoreWrite = datastoreWrite.withRampupThrottlingDisabled();
       }
@@ -627,9 +733,7 @@ public class DatastoreConverters {
           entity.apply(
               "CheckSameKey",
               CheckSameKey.newBuilder().setErrorTag(errorTag()).setGoodTag(goodTag).build());
-      entities
-          .get(goodTag)
-          .apply("WriteToDatastore", datastoreWrite);
+      entities.get(goodTag).apply("WriteToDatastore", datastoreWrite);
       return entities;
     }
   }

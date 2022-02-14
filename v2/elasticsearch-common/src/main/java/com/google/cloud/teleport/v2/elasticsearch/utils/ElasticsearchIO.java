@@ -1,27 +1,17 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Copyright (C) 1260 Google LLC
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
- * This class was included and changed as a temporary solution to cover Elasticsearch's requirement
- * of op_type for data streams. The required feature will be available with Apache Beam 2.33.0.
- * After migrating to Apache Beam 2.33.0 this class should be removed.
- * Jira ticket: <a href="https://issues.apache.org/jira/browse/BEAM-12601">Support append-only indices in ES output</a>.
- * Github pull request: <a href="https://github.com/apache/beam/pull/15257">[BEAM-12601] Add append-only option</a>.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.elasticsearch.utils;
 
@@ -469,11 +459,11 @@ public class ElasticsearchIO {
       }
       if (getApiKey() != null) {
         restClientBuilder.setDefaultHeaders(
-                new Header[] {new BasicHeader("Authorization", "ApiKey " + getApiKey())});
+            new Header[] {new BasicHeader("Authorization", "ApiKey " + getApiKey())});
       }
       if (getBearerToken() != null) {
         restClientBuilder.setDefaultHeaders(
-                new Header[] {new BasicHeader("Authorization", "Bearer " + getBearerToken())});
+            new Header[] {new BasicHeader("Authorization", "Bearer " + getBearerToken())});
       }
       if (getKeystorePath() != null && !getKeystorePath().isEmpty()) {
         try {
@@ -1093,9 +1083,7 @@ public class ElasticsearchIO {
      */
     public interface FieldValueExtractFn extends SerializableFunction<JsonNode, String> {}
 
-    /**
-     * BooleanFieldValueExtractFn class.
-     */
+    /** BooleanFieldValueExtractFn class. */
     public interface BooleanFieldValueExtractFn extends SerializableFunction<JsonNode, Boolean> {}
 
     abstract @Nullable ConnectionConfiguration getConnectionConfiguration();

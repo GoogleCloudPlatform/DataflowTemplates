@@ -17,6 +17,8 @@ package org.apache.beam.sdk.io.gcp.spanner;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.BatchReadOnlyTransaction;
+import com.google.cloud.spanner.Options;
+import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.spanner.Partition;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Struct;
@@ -110,6 +112,14 @@ abstract class LocalBatchSpannerRead
     }
 
     private List<Partition> execute(ReadOperation op, BatchReadOnlyTransaction tx) {
+      if (config.getRpcPriority() != null && config.getRpcPriority().get() != null) {
+        return executeWithPriority(op, tx, config.getRpcPriority().get());
+      } else {
+        return executeWithoutPriority(op, tx);
+      }
+    }
+
+    private List<Partition> executeWithoutPriority(ReadOperation op, BatchReadOnlyTransaction tx) {
       // Query was selected.
       if (op.getQuery() != null) {
         return tx.partitionQuery(op.getPartitionOptions(), op.getQuery());
@@ -126,6 +136,32 @@ abstract class LocalBatchSpannerRead
       // Read from table was selected.
       return tx.partitionRead(
           op.getPartitionOptions(), op.getTable(), op.getKeySet(), op.getColumns());
+    }
+
+    private List<Partition> executeWithPriority(
+        ReadOperation op, BatchReadOnlyTransaction tx, RpcPriority rpcPriority) {
+      // Query was selected.
+      if (op.getQuery() != null) {
+        return tx.partitionQuery(
+            op.getPartitionOptions(), op.getQuery(), Options.priority(rpcPriority));
+      }
+      // Read with index was selected.
+      if (op.getIndex() != null) {
+        return tx.partitionReadUsingIndex(
+            op.getPartitionOptions(),
+            op.getTable(),
+            op.getIndex(),
+            op.getKeySet(),
+            op.getColumns(),
+            Options.priority(rpcPriority));
+      }
+      // Read from table was selected.
+      return tx.partitionRead(
+          op.getPartitionOptions(),
+          op.getTable(),
+          op.getKeySet(),
+          op.getColumns(),
+          Options.priority(rpcPriority));
     }
   }
 
