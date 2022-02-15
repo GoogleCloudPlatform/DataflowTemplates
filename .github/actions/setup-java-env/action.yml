@@ -17,33 +17,48 @@
 # without the key. Otherwise, today's date and yetserday's date (both in UTC) will be
 # tried before going to the first match without any date.
 
-name: 'Setup Java Cache'
-description: 'Sets up the Java dependency cache.'
+name: 'Setup Java Environment'
+description: 'Sets up the full Java environment.'
 
 inputs:
-  key:
+  cache-key:
     type: string
     description: 'Key to use for the cache entry'
     required: false
     default: ''
+  java-version:
+    type: string
+    description: 'The version of Java to install'
+    required: false
+    default: '8'
+outputs:
+  cache-hit:
+    description: 'Whether or not there was a cache hit'
+    value: ${{ steps.setup-cache.outputs.cache-hit }}
 
 runs:
   using: 'composite'
   steps:
+    - name: Setup Java
+      uses: actions/setup-java@a12e082d834968c1847f782019214fadd20719f6
+      with:
+        distribution: 'zulu'
+        java-version: ${{ inputs.java-version }}
     - name: Prepare Key
       shell: bash
       env:
-        KEY: ${{ inputs.key }}
+        KEY: ${{ inputs.cache-key }}
       run: |
-        if [[ "$KEY" == "" ]]; then
+        if [[ "$KEY" == "" || "$KEY" == "''" ]]; then
           echo "TODAY=$(date -u +%Y%m%d)" >> $GITHUB_ENV
           echo "YESTERDAY=$(date -u --date='1 day ago' +%Y%m%d)" >> $GITHUB_ENV
         else
-          echo "TODAY=${{ inputs.key }}" >> $GITHUB_ENV
-          echo "YESTERDAY=${{ inputs.key }}" >> $GITHUB_ENV
+          echo "TODAY=$KEY" >> $GITHUB_ENV
+          echo "YESTERDAY=$KEY" >> $GITHUB_ENV
         fi
     - name: Setup Cache
       uses: actions/cache@72d1e4fdff0ff7b1b6e86b415f2d4f5941e5c006
+      id: setup-cache
       with:
         path: |
           ~/.m2

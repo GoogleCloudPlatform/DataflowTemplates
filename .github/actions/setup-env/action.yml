@@ -44,11 +44,6 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Setup Java
-      uses: actions/setup-java@a12e082d834968c1847f782019214fadd20719f6
-      with:
-        distribution: 'zulu'
-        java-version: ${{ inputs.java-version }}
     - name: Setup Go
       uses: actions/setup-go@44e221478fc6847752e5c574fc7a7b3247b00fbf
       with:
@@ -68,5 +63,7 @@ runs:
           go build ./cmd/$CMD
         done
         cd ..
-    - name: Setup Java Cache
-      uses: ./.github/actions/setup-java-cache
+    - name: Setup Java
+      uses: ./.github/actions/setup-java-env
+      with:
+        java-version: ${{ inputs.java-version }}
