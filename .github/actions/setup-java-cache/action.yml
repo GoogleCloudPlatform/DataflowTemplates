@@ -32,8 +32,10 @@ runs:
   steps:
     - name: Prepare Key
       shell: bash
+      env:
+        KEY: ${{ inputs.key }}
       run: |
-        if [[ "${{ inputs.key }}" == "" ]]; then
+        if [[ "$KEY" == "" ]]; then
           echo "TODAY=$(date -u +%Y%m%d)" >> $GITHUB_ENV
           echo "YESTERDAY=$(date -u --date='1 day ago' +%Y%m%d)" >> $GITHUB_ENV
         else
