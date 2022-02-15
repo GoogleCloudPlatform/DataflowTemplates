@@ -49,7 +49,6 @@ runs:
       with:
         distribution: 'zulu'
         java-version: ${{ inputs.java-version }}
-        cache: 'maven'
     - name: Setup Go
       uses: actions/setup-go@44e221478fc6847752e5c574fc7a7b3247b00fbf
       with:
@@ -69,3 +68,9 @@ runs:
           go build ./cmd/$CMD
         done
         cd ..
+    - name: Setup Maven Cache
+      uses: actions/cache@72d1e4fdff0ff7b1b6e86b415f2d4f5941e5c006
+      with:
+        path: |
+          ~/.m2
+        key: java-${{ inputs.java-version }}-maven-cache
