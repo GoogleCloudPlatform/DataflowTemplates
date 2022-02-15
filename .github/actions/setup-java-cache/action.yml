@@ -1,0 +1,53 @@
+# Copyright 2022 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Sets up the cache for Java dependencies. If a specific key is given, then the
+# key is used to resolve or else resolving the first entry that matches the prefix
+# without the key. Otherwise, today's date and yetserday's date (both in UTC) will be
+# tried before going to the first match without any date.
+
+name: 'Setup Java Cache'
+description: 'Sets up the Java dependency cache.'
+
+inputs:
+  key:
+    type: string
+    description: 'Key to use for the cache entry'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Prepare Key
+      shell: bash
+      env:
+        KEY: ${{ inputs.key }}
+      run: |
+        if [[ "$KEY" == "" ]]; then
+          echo "TODAY=$(date -u +%Y%m%d)" >> $GITHUB_ENV
+          echo "YESTERDAY=$(date -u --date='1 day ago' +%Y%m%d)" >> $GITHUB_ENV
+        else
+          echo "TODAY=${{ inputs.key }}" >> $GITHUB_ENV
+          echo "YESTERDAY=${{ inputs.key }}" >> $GITHUB_ENV
+        fi
+    - name: Setup Cache
+      uses: actions/cache@72d1e4fdff0ff7b1b6e86b415f2d4f5941e5c006
+      with:
+        path: |
+          ~/.m2
+        key: java-maven-cache-${{ env.TODAY }}
+        restore-keys: |
+          java-maven-cache-${{ env.YESTERDAY }}
+          java-maven-cache
