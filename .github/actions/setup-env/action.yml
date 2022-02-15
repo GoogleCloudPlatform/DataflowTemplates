@@ -68,17 +68,5 @@ runs:
           go build ./cmd/$CMD
         done
         cd ..
-    - name: Get Dates
-      shell: bash
-      run: |
-        echo "TODAY=$(date -u +%Y%m%d)" >> $GITHUB_ENV
-        echo "YESTERDAY=$(date -u --date='1 day ago' +%Y%m%d)" >> $GITHUB_ENV
-    - name: Setup Maven Cache
-      uses: actions/cache@72d1e4fdff0ff7b1b6e86b415f2d4f5941e5c006
-      with:
-        path: |
-          ~/.m2
-        key: java-${{ inputs.java-version }}-maven-cache-${{ env.TODAY }}
-        restore-keys: |
-          java-${{ inputs.java-version }}-maven-cache-${{ env.YESTERDAY }}
-          java-${{ inputs.java-version }}-maven-cache
+    - name: Setup Java Cache
+      uses: ./.github/actions/setup-java-cache
