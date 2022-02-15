@@ -1,0 +1,77 @@
+# Copyright 2022 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Prepares the Java cache either daily on demand. Since GitHub's cache action doesn't
+# allow overwriting an existing entry, this is necessary to try to keep the cached dependencies
+# as up-to-date as possible, hopefully minimizing the time it takes for PR checks to
+# complete.
+
+name: Prepare Java Cache
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  # A way to try to force the cache forward should something cause it to get stuck.
+  workflow_dispatch:
+    inputs:
+      cache-key:
+        type: string
+        description: 'Key to use for the cache entry'
+        required: true
+        default: ''
+
+permissions: read-all
+
+jobs:
+  cache_dependencies:
+    name: Cache Java Dependencies
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set Manual Key
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          KEY: ${{ inputs.key }}
+        run: |
+          if [[ $KEY == "" || $($KEY | grep -E "20\d{6}") != "" ]]; then
+            echo "CACHE_KEY=$KEY" >> $GITHUB_ENV
+          else
+            echo "$KEY is invalid. It must be a date formatted as YYYYMMDD"
+            exit 1
+          fi
+      - name: Set Scheduled Key
+        if: ${{ github.event_name == 'schedule' }}
+        run: |
+          echo "CACHE_KEY=''" >> $GITHUB_ENV
+      - name: Checkout Code
+        uses: actions/checkout@230611dbd0eb52da1e1f4f7bc8bb0c3a339fc8b7
+        ref: main
+      - name: Setup Java
+        uses: actions/setup-java@a12e082d834968c1847f782019214fadd20719f6
+        with:
+          distribution: 'zulu'
+          java-version: '8'
+      - name: Setup Java Cache
+        uses: ./.github/actions/setup-java-cache
+        with:
+          key: ${{ env.CACHE_KEY }}
+      - name: Resolve Dependencies
+        run: |
+          for DIR in $(find . -maxdepth 1 -type d); do
+            POMF="$DIR/pom.xml"
+            if [[ -f "$POMF" ]]; then
+              mvn dependency:resolve -f "$POMF"
+              mvn dependency:resolve-plugins -f "$POMF"
+            fi
+          done
