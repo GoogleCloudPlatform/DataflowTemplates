@@ -47,11 +47,11 @@ import com.google.cloud.bigquery.storage.v1beta1.AvroProto.AvroSchema;
 import com.google.cloud.bigquery.storage.v1beta1.BigQueryStorageClient;
 import com.google.cloud.bigquery.storage.v1beta1.Storage.ReadSession;
 import com.google.cloud.teleport.v2.options.DataplexBigQueryToGcsOptions;
-import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform.FileFormat;
-import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform.WriteDisposition;
 import com.google.cloud.teleport.v2.utils.BigQueryMetadataLoader;
-import com.google.cloud.teleport.v2.utils.DataplexBigQueryToGcsFilter.WriteDispositionException;
+import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
 import com.google.cloud.teleport.v2.utils.Schemas;
+import com.google.cloud.teleport.v2.utils.WriteDisposition.WriteDispositionException;
+import com.google.cloud.teleport.v2.utils.WriteDisposition.WriteDispositionOptions;
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import com.google.cloud.teleport.v2.values.DataplexCompression;
@@ -322,7 +322,7 @@ public class DataplexBigQueryToGcsTest {
   @Category(NeedsRunner.class)
   public void testE2E_withAvroFileFormatAndGzipCompression_producesAvroFiles() throws Exception {
     insertTableData("unpartitioned_table", defaultRecords);
-    options.setFileFormat(FileFormat.AVRO);
+    options.setFileFormat(FileFormatOptions.AVRO);
     options.setFileCompression(DataplexCompression.GZIP);
 
     runTransform("unpartitioned_table");
@@ -367,7 +367,7 @@ public class DataplexBigQueryToGcsTest {
   @Category(NeedsRunner.class)
   public void testE2E_withEnforceSamePartitionKeyEnabled_producesRenamedColumns() throws Exception {
     options.setEnforceSamePartitionKey(true);
-    options.setFileFormat(FileFormat.AVRO);
+    options.setFileFormat(FileFormatOptions.AVRO);
 
     insertPartitionData("partitioned_table", "p1", Arrays.copyOfRange(defaultRecords, 0, 2));
     insertPartitionData("partitioned_table", "p2", Arrays.copyOfRange(defaultRecords, 2, 5));
@@ -440,8 +440,8 @@ public class DataplexBigQueryToGcsTest {
 
   @Test
   public void testE2E_withTargetStrategyFail_throwsException() throws Exception {
-    options.setFileFormat(FileFormat.PARQUET);
-    options.setWriteDisposition(WriteDisposition.FAIL);
+    options.setFileFormat(FileFormatOptions.PARQUET);
+    options.setWriteDisposition(WriteDispositionOptions.FAIL);
 
     writeOutputFile("unpartitioned_table", "output-unpartitioned_table.parquet", "Test data");
 
@@ -472,8 +472,8 @@ public class DataplexBigQueryToGcsTest {
   @Test
   public void testE2E_withTargetStrategyFail_andEnforceSamePartitionKeyEnabled_throwsException()
       throws Exception {
-    options.setFileFormat(FileFormat.PARQUET);
-    options.setWriteDisposition(WriteDisposition.FAIL);
+    options.setFileFormat(FileFormatOptions.PARQUET);
+    options.setWriteDisposition(WriteDispositionOptions.FAIL);
     options.setEnforceSamePartitionKey(true);
 
     writeOutputFile("partitioned_table/ts=p2", "output-partitioned_table-p2.parquet", "Test data");
@@ -511,8 +511,8 @@ public class DataplexBigQueryToGcsTest {
   @Test
   @Category(NeedsRunner.class)
   public void testE2E_withTargetStrategySkip_skipsTable() throws Exception {
-    options.setFileFormat(FileFormat.PARQUET);
-    options.setWriteDisposition(WriteDisposition.SKIP);
+    options.setFileFormat(FileFormatOptions.PARQUET);
+    options.setWriteDisposition(WriteDispositionOptions.SKIP);
     File outputFile =
         writeOutputFile("unpartitioned_table", "output-unpartitioned_table.parquet", "Test data");
 
@@ -524,22 +524,6 @@ public class DataplexBigQueryToGcsTest {
 
     // Checking to see if the file was skipped and data was not overwritten
     assertThat(readFirstLine(outputFile)).isEqualTo("Test data");
-  }
-
-  @Test
-  public void testGetFilesInDirectory_withValidPath_returnsPathsOfFilesInDirectory()
-      throws Exception {
-    File outputDir1 = tmpDir.newFolder("out", "unpartitioned_table");
-    File outputFile1 =
-        new File(outputDir1.getAbsolutePath() + "/" + "output-unpartitioned_table.parquet");
-    outputFile1.createNewFile();
-    File outputDir2 = tmpDir.newFolder("out", "partitioned_table", "p2_pid=partition");
-    File outputFile2 =
-        new File(outputDir2.getAbsolutePath() + "/" + "output-partitioned_table-partition.parquet");
-    outputFile2.createNewFile();
-
-    List<String> files = DataplexBigQueryToGcs.getFilesInDirectory(outDir.getAbsolutePath());
-    assertThat(files.size()).isEqualTo(2);
   }
 
   private String readFirstLine(File outputFile) throws FileNotFoundException {

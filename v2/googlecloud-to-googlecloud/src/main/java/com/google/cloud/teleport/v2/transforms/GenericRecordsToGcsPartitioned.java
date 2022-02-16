@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.transforms;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 
 import com.google.cloud.teleport.v2.io.AvroSinkWithJodaDatesConversion;
+import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.PartitionMetadata;
 import com.google.common.collect.ImmutableList;
@@ -112,14 +113,14 @@ public class GenericRecordsToGcsPartitioned
 
   @Nullable private final PartitioningSchema partitioningSchema;
 
-  private final OutputFileFormat outputFileFormat;
+  private final FileFormatOptions outputFileFormat;
 
   public GenericRecordsToGcsPartitioned(
       String gcsPath,
       String serializedAvroSchema,
       @Nullable String partitionColumnName,
       @Nullable PartitioningSchema partitioningSchema,
-      OutputFileFormat outputFileFormat) {
+      FileFormatOptions outputFileFormat) {
     this.gcsPath = gcsPath;
     this.serializedAvroSchema = serializedAvroSchema;
     this.partitionColumnName = partitionColumnName;
@@ -151,7 +152,7 @@ public class GenericRecordsToGcsPartitioned
           .apply(
               "Write to Storage with No Partition",
               FileIO.<GenericRecord>write()
-                  .withSuffix(outputFileFormat.fileSuffix)
+                  .withSuffix(outputFileFormat.getFileSuffix())
                   .via(sink)
                   .to(gcsPath))
           // Dummy conversion to Dataplex partition metadata
@@ -287,22 +288,5 @@ public class GenericRecordsToGcsPartitioned
 
   private static String withoutFileName(String gcsPath) {
     return gcsPath.substring(0, gcsPath.lastIndexOf('/'));
-  }
-
-  /** Supported output file formats. */
-  public enum OutputFileFormat {
-    PARQUET(".parquet"),
-    AVRO(".avro"),
-    ORC(".orc");
-
-    private final String fileSuffix;
-
-    OutputFileFormat(String fileSuffix) {
-      this.fileSuffix = fileSuffix;
-    }
-
-    public String getFileSuffix() {
-      return fileSuffix;
-    }
   }
 }

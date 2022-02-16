@@ -27,7 +27,10 @@ import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.transforms.JsonConverters;
 import com.google.cloud.teleport.v2.transforms.NoopTransform;
 import com.google.cloud.teleport.v2.transforms.ParquetConverters;
+import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
 import com.google.cloud.teleport.v2.utils.Schemas;
+import com.google.cloud.teleport.v2.utils.WriteDisposition.WriteDispositionException;
+import com.google.cloud.teleport.v2.utils.WriteDisposition.WriteDispositionOptions;
 import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
 import com.google.cloud.teleport.v2.values.DataplexCompression;
 import com.google.common.base.Splitter;
@@ -90,9 +93,9 @@ public class DataplexFileFormatConversion {
 
     @Description("Output file format. Format: PARQUET, AVRO, or ORC. Default: none.")
     @Required
-    OutputFileFormat getOutputFileFormat();
+    FileFormatOptions getOutputFileFormat();
 
-    void setOutputFileFormat(OutputFileFormat outputFileFormat);
+    void setOutputFileFormat(FileFormatOptions outputFileFormat);
 
     @Description(
         "Output file compression. Format: UNCOMPRESSED, SNAPPY, GZIP, or BZIP2. Default:"
@@ -112,9 +115,9 @@ public class DataplexFileFormatConversion {
         "Specifies the behaviour if output files already exist. Format: OVERWRITE,"
             + " FAIL, SKIP. Default: OVERWRITE.")
     @Default.Enum("SKIP")
-    ExistingOutputFilesBehaviour getWriteDisposition();
+    WriteDispositionOptions getWriteDisposition();
 
-    void setWriteDisposition(ExistingOutputFilesBehaviour value);
+    void setWriteDisposition(WriteDispositionOptions value);
   }
 
   /** Supported input file formats. */
@@ -123,26 +126,6 @@ public class DataplexFileFormatConversion {
     JSON,
     PARQUET,
     AVRO
-  }
-
-  /** Supported output file formats. */
-  public enum OutputFileFormat {
-    PARQUET(".parquet"),
-    AVRO(".avro"),
-    ORC(".orc");
-
-    private final String fileSuffix;
-
-    OutputFileFormat(String fileSuffix) {
-      this.fileSuffix = fileSuffix;
-    }
-  }
-
-  /** The enum that defines how to handle existing output files. */
-  public enum ExistingOutputFilesBehaviour {
-    OVERWRITE,
-    SKIP,
-    FAIL
   }
 
   private static final ImmutableSet<String> EXPECTED_INPUT_FILES_EXTENSIONS =
@@ -234,7 +217,7 @@ public class DataplexFileFormatConversion {
                       inputFilePath,
                       outputBucket,
                       options.getOutputFileFormat()))) {
-                throw new RuntimeException(
+                throw new WriteDispositionException(
                     String.format(
                         "The file %s already exists in the output asset bucket: %s",
                         inputFilePath, outputBucket));
@@ -254,7 +237,7 @@ public class DataplexFileFormatConversion {
                         options.getOutputFileFormat()));
         break;
       default:
-        throw new IllegalArgumentException(
+        throw new UnsupportedOperationException(
             "Unsupported existing file behaviour: " + options.getWriteDisposition());
     }
 
@@ -338,13 +321,13 @@ public class DataplexFileFormatConversion {
 
   /** Example conversion: 1.json => 1.parquet; 1.abc => 1.abc.parquet. */
   private static String replaceInputExtensionWithOutputExtension(
-      String path, OutputFileFormat outputFileFormat) {
+      String path, FileFormatOptions outputFileFormat) {
     String inputFileExtension = path.substring(path.lastIndexOf('.'));
     if (EXPECTED_INPUT_FILES_EXTENSIONS.contains(inputFileExtension)) {
       return path.substring(0, path.length() - inputFileExtension.length())
-          + outputFileFormat.fileSuffix;
+          + outputFileFormat.getFileSuffix();
     } else {
-      return path + outputFileFormat.fileSuffix;
+      return path + outputFileFormat.getFileSuffix();
     }
   }
 
@@ -352,7 +335,7 @@ public class DataplexFileFormatConversion {
       OutputPathProvider outputPathProvider,
       String inputFilePath,
       String outputBucket,
-      OutputFileFormat outputFileFormat) {
+      FileFormatOptions outputFileFormat) {
     return replaceInputExtensionWithOutputExtension(
         outputPathProvider.outputPathFrom(inputFilePath, outputBucket), outputFileFormat);
   }
@@ -384,7 +367,7 @@ public class DataplexFileFormatConversion {
 
     private final GoogleCloudDataplexV1Entity entity;
     private final String inputFilePath;
-    private final OutputFileFormat outputFileFormat;
+    private final FileFormatOptions outputFileFormat;
     private final DataplexCompression outputFileCompression;
     private final String outputPath;
 

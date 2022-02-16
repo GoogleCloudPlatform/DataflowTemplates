@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.templates;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
-import static java.util.stream.Collectors.toList;
 
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Asset;
 import com.google.cloud.bigquery.BigQuery;
@@ -35,6 +34,7 @@ import com.google.cloud.teleport.v2.transforms.UpdateDataplexBigQueryToGcsExport
 import com.google.cloud.teleport.v2.utils.BigQueryMetadataLoader;
 import com.google.cloud.teleport.v2.utils.BigQueryUtils;
 import com.google.cloud.teleport.v2.utils.DataplexBigQueryToGcsFilter;
+import com.google.cloud.teleport.v2.utils.StorageUtils;
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
@@ -44,10 +44,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.io.FileSystems;
-import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;
-import org.apache.beam.sdk.io.fs.MatchResult;
-import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryServices;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Flatten;
@@ -61,7 +57,6 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.beam.sdk.values.TypeDescriptors;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -170,7 +165,7 @@ public class DataplexBigQueryToGcs {
       throws ExecutionException, InterruptedException {
 
     Pipeline pipeline = Pipeline.create(options);
-    List<String> existingTargetFiles = getFilesInDirectory(targetRootPath);
+    List<String> existingTargetFiles = StorageUtils.getFilesInDirectory(targetRootPath);
 
     LOG.info("Loading BigQuery metadata...");
     List<BigQueryTable> tables =
@@ -263,23 +258,5 @@ public class DataplexBigQueryToGcs {
     checkNotNull(resourceName, "Asset has no resource name.");
     LOG.info("Resolved resource name: {}", resourceName);
     return resourceName;
-  }
-
-  @VisibleForTesting
-  static List<String> getFilesInDirectory(String path) {
-    try {
-      String pathPrefix = path + "/";
-      MatchResult result = FileSystems.match(pathPrefix + "**", EmptyMatchTreatment.ALLOW);
-      List<String> fileNames =
-          result.metadata().stream()
-              .map(MatchResult.Metadata::resourceId)
-              .map(ResourceId::toString)
-              .map(s -> StringUtils.removeStart(s, pathPrefix))
-              .collect(toList());
-      LOG.info("{} file(s) found in directory {}", fileNames.size(), path);
-      return fileNames;
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
   }
 }

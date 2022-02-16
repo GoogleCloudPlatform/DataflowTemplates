@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.transforms;
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.cloud.teleport.v2.utils.BigQueryToGcsDirectoryNaming;
 import com.google.cloud.teleport.v2.utils.BigQueryToGcsFileNaming;
+import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
 import com.google.cloud.teleport.v2.utils.Schemas;
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
@@ -58,7 +59,7 @@ import org.apache.beam.sdk.values.TypeDescriptors;
  *
  * <p>If the table is not partitioned, the partition key in the output will be @{@code null}.
  *
- * <p>See {@link FileFormat} for the list of supported output formats.
+ * <p>See {@link FileFormatOptions} for the list of supported output formats.
  */
 public class BigQueryTableToGcsTransform
     extends PTransform<PBegin, PCollection<KV<BigQueryTablePartition, String>>> {
@@ -66,7 +67,7 @@ public class BigQueryTableToGcsTransform
   private static final String PARTITION_COLUMN_RENAME_SUFFIX = "_pkey";
 
   private final BigQueryTable table;
-  private final FileFormat outputFileFormat;
+  private final FileFormatOptions outputFileFormat;
   private final DataplexCompression outputFileCompression;
   private final String targetRootPath;
   private final boolean enforceSamePartitionKey;
@@ -75,7 +76,7 @@ public class BigQueryTableToGcsTransform
   public BigQueryTableToGcsTransform(
       BigQueryTable table,
       String targetRootPath,
-      FileFormat outputFileFormat,
+      FileFormatOptions outputFileFormat,
       DataplexCompression outputFileCompression,
       boolean enforceSamePartitionKey) {
     this.table = table;
@@ -147,7 +148,8 @@ public class BigQueryTableToGcsTransform
             getDefaultWrite()
                 .via(sink)
                 .withNaming(
-                    new BigQueryToGcsFileNaming(outputFileFormat.fileSuffix, table.getTableName()))
+                    new BigQueryToGcsFileNaming(
+                        outputFileFormat.getFileSuffix(), table.getTableName()))
                 .to(targetPath))
         .getPerDestinationOutputFilenames()
         .apply(
@@ -189,7 +191,7 @@ public class BigQueryTableToGcsTransform
                 .via(sink)
                 .withNaming(
                     new BigQueryToGcsFileNaming(
-                        outputFileFormat.fileSuffix,
+                        outputFileFormat.getFileSuffix(),
                         table.getTableName(),
                         partition.getPartitionName()))
                 .to(targetPath))
@@ -264,39 +266,5 @@ public class BigQueryTableToGcsTransform
   public BigQueryTableToGcsTransform withTestServices(BigQueryServices services) {
     this.testServices = services;
     return this;
-  }
-
-  /** Possible output file formats supported by {@link BigQueryTableToGcsTransform}. */
-  public enum FileFormat {
-    PARQUET(".parquet"),
-    AVRO(".avro"),
-    ORC(".orc");
-
-    private final String fileSuffix;
-
-    FileFormat(String fileSuffix) {
-      this.fileSuffix = fileSuffix;
-    }
-
-    public String getFileSuffix() {
-      return fileSuffix;
-    }
-  }
-
-  /** Possible write disposition supported by {@link BigQueryTableToGcsTransform}. */
-  public enum WriteDisposition {
-    OVERWRITE("OVERWRITE"),
-    SKIP("SKIP"),
-    FAIL("FAIL");
-
-    private final String writeDisposition;
-
-    WriteDisposition(String writeDisposition) {
-      this.writeDisposition = writeDisposition;
-    }
-
-    public String getWriteDisposition() {
-      return writeDisposition;
-    }
   }
 }

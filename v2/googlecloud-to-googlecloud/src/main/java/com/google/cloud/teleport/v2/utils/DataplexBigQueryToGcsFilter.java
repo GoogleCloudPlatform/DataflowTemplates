@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.utils;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import com.google.cloud.teleport.v2.options.DataplexBigQueryToGcsOptions;
+import com.google.cloud.teleport.v2.utils.WriteDisposition.WriteDispositionException;
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import com.google.common.base.Splitter;
@@ -78,7 +79,7 @@ public class DataplexBigQueryToGcsFilter implements BigQueryMetadataLoader.Filte
       this.includePartitions = null;
     }
 
-    this.writeDisposition = options.getWriteDisposition().getWriteDisposition();
+    this.writeDisposition = options.getWriteDisposition().getWriteDispositionOption();
     this.fileSuffix = options.getFileFormat().getFileSuffix();
     this.existingTargetFiles = existingTargetFiles;
     this.directoryNaming = new BigQueryToGcsDirectoryNaming(options.getEnforceSamePartitionKey());
@@ -195,16 +196,5 @@ public class DataplexBigQueryToGcsFilter implements BigQueryMetadataLoader.Filte
         new BigQueryToGcsFileNaming(fileSuffix, table.getTableName(), partition.getPartitionName())
             .getFilename(null, null, 0, 0, null);
     return dirName + "/" + fileName;
-  }
-
-  /**
-   * Thrown if {@link
-   * com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform.WriteDisposition
-   * WriteDisposition} is set to {@code FAIL} and a target file exists.
-   */
-  public static class WriteDispositionException extends RuntimeException {
-    public WriteDispositionException(String message) {
-      super(message);
-    }
   }
 }
