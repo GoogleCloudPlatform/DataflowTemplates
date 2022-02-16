@@ -49,7 +49,7 @@ func main() {
 		} else {
 			log.Printf("Skipping '%s' because the only files changed were not associated with a module", root)
 		}
-		
+
 		if err != nil {
 			errored = true
 		}
