@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.cloud.teleport.v2.utils.BigQueryToGcsDirectoryNaming;
 import com.google.cloud.teleport.v2.utils.BigQueryToGcsFileNaming;
 import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
@@ -27,7 +26,9 @@ import com.google.common.annotations.VisibleForTesting;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
+import org.apache.avro.Schema.Field;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.AvroCoder;
@@ -234,16 +235,18 @@ public class BigQueryTableToGcsTransform
   private GenericRecord genericRecordWithFixedDates(SchemaAndRecord schemaAndRecord) {
     GenericRecord input = schemaAndRecord.getRecord();
     GenericRecord output = new GenericData.Record(table.getSchema());
-    for (TableFieldSchema fieldSchema : schemaAndRecord.getTableSchema().getFields()) {
-      if ("DATE".equals(fieldSchema.getType())) {
-        Object value = input.get(fieldSchema.getName());
+    List<Field> fields = table.getSchema().getFields();
+    for (int i = 0; i < fields.size(); i++) {
+      if (Schemas.isSchemaOfTypeOrNullableType(
+          fields.get(i).schema(), Schema.Type.INT, LogicalTypes.date())) {
+        Object value = input.get(i);
         if (!(value instanceof CharSequence)) {
           throw new IllegalStateException(
               "The class of input value of type DATE is " + value.getClass());
         }
-        output.put(fieldSchema.getName(), (int) LocalDate.parse((CharSequence) value).toEpochDay());
+        output.put(i, (int) LocalDate.parse((CharSequence) value).toEpochDay());
       } else {
-        output.put(fieldSchema.getName(), input.get(fieldSchema.getName()));
+        output.put(i, input.get(i));
       }
     }
     return output;
