@@ -39,6 +39,7 @@ on:
     paths:
       - '.github/workflows/prepare-java-chace.yml'
       - '.github/actions/setup-java-env/*'
+      - '.github/actions/cleanup-java-env/*'
 
 permissions: read-all
 
@@ -72,3 +73,5 @@ jobs:
               mvn -B clean install -f "$POMF" -am -amd -Dmaven.test.skip -Dcheckstyle.skip -Djib.skip -Dmdep.analyze.skip
             fi
           done
+      - name: Cleanup Java Environment
+        uses: ./.github/actions/cleanup-java-env
