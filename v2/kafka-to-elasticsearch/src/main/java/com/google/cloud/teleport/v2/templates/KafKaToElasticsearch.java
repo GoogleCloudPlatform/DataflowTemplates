@@ -19,13 +19,12 @@ import static com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform.readF
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
-import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
 import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIndex;
 import com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform;
 import com.google.cloud.teleport.v2.options.KafkaToElasticsearchOptions;
-import com.google.cloud.teleport.v2.transforms.FailedElasticsearchMessageToPubsubTopicFn;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
 import com.google.cloud.teleport.v2.transforms.ProcessEventMetadata;
+import com.google.cloud.teleport.v2.transforms.WriteToElasticsearch;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,13 +38,11 @@ import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
-import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
-import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TypeDescriptors;
@@ -165,25 +162,17 @@ public class KafKaToElasticsearch {
     /*
      * Step #3a: Write Json documents into Elasticsearch using {@link ElasticsearchTransforms.WriteToElasticsearch}.
      */
-    PCollection<String> failedMessages =
-        convertedKafkaMessages
-            .get(UDF_OUT)
-            .apply(
-                "GetJsonDocuments",
-                MapElements.into(TypeDescriptors.strings()).via(FailsafeElement::getPayload))
-            .apply("Insert metadata", new ProcessEventMetadata())
-            .apply(
-                "WriteToElasticsearch",
-                WriteToElasticsearch.newBuilder()
-                    .setOptions(options.as(KafkaToElasticsearchOptions.class))
-                    .build());
-
-    /*
-     * Step 3b: Write elements that failed processing to error output PubSub topic via {@link PubSubIO}.
-     */
-    failedMessages
-        .apply(ParDo.of(new FailedElasticsearchMessageToPubsubTopicFn()))
-        .apply("writeFailureMessages", PubsubIO.writeMessages().to(options.getErrorOutputTopic()));
+    convertedKafkaMessages
+        .get(UDF_OUT)
+        .apply(
+            "GetJsonDocuments",
+            MapElements.into(TypeDescriptors.strings()).via(FailsafeElement::getPayload))
+        .apply("Insert metadata", new ProcessEventMetadata())
+        .apply(
+            "WriteToElasticsearch",
+            WriteToElasticsearch.newBuilder()
+                .setOptions(options.as(KafkaToElasticsearchOptions.class))
+                .build());
 
     return pipeline.run();
   }
