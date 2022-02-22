@@ -40,13 +40,17 @@ import java.io.IOException;
 import java.util.List;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration test for {@link StreamingDataGenerator}. */
 @RunWith(JUnit4.class)
 public final class StreamingDataGeneratorIT {
+  @Rule public final TestName testName = new TestName();
+
   private static final String ARTIFACT_BUCKET = TestProperties.artifactBucket();
   private static final Credentials CREDENTIALS = TestProperties.googleCredentials();
   private static final String PROJECT = TestProperties.project();
@@ -56,7 +60,7 @@ public final class StreamingDataGeneratorIT {
   private static final String SCHEMA_FILE = "gameevent.json";
   private static final String LOCAL_SCHEMA_PATH = Resources.getResource(SCHEMA_FILE).getPath();
 
-  private static final String TEST_ROOT_DIR = "streaming-data-generator";
+  private static final String TEST_ROOT_DIR = StreamingDataGeneratorIT.class.getSimpleName();
 
   private static final String NUM_SHARDS_KEY = "numShards";
   private static final String OUTPUT_DIRECTORY_KEY = "outputDirectory";
@@ -85,7 +89,7 @@ public final class StreamingDataGeneratorIT {
   @Test
   public void testFakeMessagesToGcs() throws IOException {
     // Arrange
-    String name = "teleport-flex-streaming-data-generator-gcs";
+    String name = testName.getMethodName();
     String jobName = createJobName(name);
 
     LaunchConfig options =
@@ -104,7 +108,7 @@ public final class StreamingDataGeneratorIT {
 
     // Act
     JobInfo info = dataflow.launchTemplate(PROJECT, REGION, options);
-    assertThat(info.state()).isIn(JobState.RUNNING_STATES);
+    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
 
     Result result =
         new DataflowOperator(dataflow)
