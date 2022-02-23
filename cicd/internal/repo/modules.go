@@ -144,6 +144,7 @@ func flexModulesAsTrie() *moduleTrieNode {
 func getModuleMapping() map[string][]string {
 	m := make(map[string][]string)
 	m[ClassicRoot] = make([]string, 0)
+	m[ItRoot] = make([]string, 0)
 
 	flexPoms, err := GetAllPomFiles(FlexRoot)
 	if err != nil {

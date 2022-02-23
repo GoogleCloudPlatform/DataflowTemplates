@@ -17,24 +17,24 @@
 package op
 
 import (
-	"path/filepath"
 	"strings"
 )
 
 // Runs the given Maven command on a specified POM file. Considering the input, this is equivalent to:
-//		mvn {cmd} -f {pomDir}/pom.xml {args...}
-func RunMavenOnPom(pomDir string, cmd string, args ...string) error {
-	fullArgs := strings.Split(cmd, " ")
-	fullArgs = append(fullArgs, "-f", filepath.Join(pomDir, "pom.xml"))
+//		mvn -B {cmd} -f {pom} {args...}
+func RunMavenOnPom(pom string, cmd string, args ...string) error {
+	fullArgs := []string{"-B"}
+	fullArgs = append(fullArgs, strings.Split(cmd, " ")...)
+	fullArgs = append(fullArgs, "-f", pom)
 	fullArgs = append(fullArgs, args...)
 
 	return RunCmdAndStreamOutput("mvn", fullArgs)
 }
 
 // Runs the given Maven command on a specified module. Considering the input, this is equivalent to:
-//		mvn {cmd} -f {pomDir}/pom.xml -pl {module} {args...}
-func RunMavenOnModule(pomDir string, cmd string, module string, args ...string) error {
+//		mvn -B {cmd} -f {pom} -pl {module} {args...}
+func RunMavenOnModule(pom string, cmd string, module string, args ...string) error {
 	fullArgs := []string{"-pl", module}
 	fullArgs = append(fullArgs, args...)
-	return RunMavenOnPom(pomDir, cmd, fullArgs...)
+	return RunMavenOnPom(pom, cmd, fullArgs...)
 }

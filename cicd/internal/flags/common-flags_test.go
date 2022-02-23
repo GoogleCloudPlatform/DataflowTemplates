@@ -74,6 +74,11 @@ func TestChangedFilesRegexes(t *testing.T) {
 			regexes:  []string{"\\d"},
 			expected: []string{"file1", "file2"},
 		},
+		{
+			files:    "foo.c,bar.cc",
+			regexes:  []string{"\\.c$"},
+			expected: []string{"foo.c"},
+		},
 	}
 
 	for _, test := range tests {
