@@ -21,6 +21,7 @@ import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.AvroCoder;
+import org.apache.beam.sdk.io.Compression;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
 import org.apache.beam.sdk.io.parquet.ParquetIO;
@@ -87,7 +88,8 @@ public class BigtableToParquetLastVerOnly extends BigtableToParquet {
                                 .via(ParquetIO.sink(BigtableRow.getClassSchema()))
                                 .to(options.getOutputDirectory())
                                 .withPrefix(options.getFilenamePrefix())
-                                .withSuffix(".parquet")
+                                .withSuffix(".parquet.gz")
+                                .withCompression(Compression.GZIP)
                                 .withNumShards(options.getNumShards()));
 
         return pipeline.run();
