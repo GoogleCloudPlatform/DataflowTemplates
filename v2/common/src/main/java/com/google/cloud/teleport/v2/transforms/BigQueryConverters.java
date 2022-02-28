@@ -129,10 +129,10 @@ public class BigQueryConverters {
           continue;
         }
 
-        String columnValue = row.get(columnName).toString();
+        Object columnObj = row.get(columnName);
+        byte[] columnValue = columnObj == null ? null : Bytes.toBytes(columnObj.toString());
         // TODO(billyjacobson): handle other types and column families
-        put.addColumn(
-            Bytes.toBytes(columnFamily()), Bytes.toBytes(columnName), Bytes.toBytes(columnValue));
+        put.addColumn(Bytes.toBytes(columnFamily()), Bytes.toBytes(columnName), columnValue);
       }
       return put;
     }

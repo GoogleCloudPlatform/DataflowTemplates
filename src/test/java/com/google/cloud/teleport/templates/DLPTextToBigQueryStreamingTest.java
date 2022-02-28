@@ -107,9 +107,7 @@ public class DLPTextToBigQueryStreamingTest {
             .apply("Read File", FileIO.readMatches().withCompression(Compression.AUTO))
             .apply("Add Keys", WithKeys.of(key -> "tokenization_data"))
             .setCoder(KvCoder.of(StringUtf8Coder.of(), ReadableFileCoder.of()))
-            .apply(
-                "Create DLP Table",
-                ParDo.of(new CSVReader(batchSize, headerMap)).withSideInputs(headerMap));
+            .apply("Create DLP Table", ParDo.of(new CSVReader(batchSize)));
 
     PAssert.that(dlpTable)
         .satisfies(

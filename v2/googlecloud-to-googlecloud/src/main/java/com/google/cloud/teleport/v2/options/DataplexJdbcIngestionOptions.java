@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.v2.options;
 
-import com.google.cloud.teleport.v2.transforms.GenericRecordsToGcsPartitioned.OutputFileFormat;
 import com.google.cloud.teleport.v2.transforms.GenericRecordsToGcsPartitioned.PartitioningSchema;
+import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.options.Default;
@@ -134,7 +134,7 @@ public interface DataplexJdbcIngestionOptions extends GcpOptions, PipelineOption
 
   @Description("Output file format in GCS. Format: PARQUET, AVRO, or ORC. Default: PARQUET.")
   @Default.Enum("PARQUET")
-  OutputFileFormat getFileFormat();
+  FileFormatOptions getFileFormat();
 
-  void setFileFormat(OutputFileFormat fileFormat);
+  void setFileFormat(FileFormatOptions fileFormat);
 }

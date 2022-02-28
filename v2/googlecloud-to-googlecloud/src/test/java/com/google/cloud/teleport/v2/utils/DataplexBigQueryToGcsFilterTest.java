@@ -18,10 +18,10 @@ package com.google.cloud.teleport.v2.utils;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.v2.options.DataplexBigQueryToGcsOptions;
-import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform.FileFormat;
-import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform.WriteDisposition;
 import com.google.cloud.teleport.v2.utils.BigQueryMetadataLoader.Filter;
-import com.google.cloud.teleport.v2.utils.DataplexBigQueryToGcsFilter.WriteDispositionException;
+import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
+import com.google.cloud.teleport.v2.utils.WriteDisposition.WriteDispositionException;
+import com.google.cloud.teleport.v2.utils.WriteDisposition.WriteDispositionOptions;
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import java.io.IOException;
@@ -237,8 +237,8 @@ public class DataplexBigQueryToGcsFilterTest {
 
     options.setTables(null);
     options.setExportDataModifiedBeforeDateTime(null);
-    options.setFileFormat(FileFormat.AVRO);
-    options.setWriteDisposition(WriteDisposition.SKIP);
+    options.setFileFormat(FileFormatOptions.AVRO);
+    options.setWriteDisposition(WriteDispositionOptions.SKIP);
 
     Filter f =
         new DataplexBigQueryToGcsFilter(
@@ -257,8 +257,8 @@ public class DataplexBigQueryToGcsFilterTest {
 
     options.setTables(null);
     options.setExportDataModifiedBeforeDateTime(null);
-    options.setFileFormat(FileFormat.AVRO);
-    options.setWriteDisposition(WriteDisposition.OVERWRITE);
+    options.setFileFormat(FileFormatOptions.AVRO);
+    options.setWriteDisposition(WriteDispositionOptions.OVERWRITE);
 
     Filter f =
         new DataplexBigQueryToGcsFilter(
@@ -277,8 +277,8 @@ public class DataplexBigQueryToGcsFilterTest {
 
     options.setTables(null);
     options.setExportDataModifiedBeforeDateTime(null);
-    options.setFileFormat(FileFormat.AVRO);
-    options.setWriteDisposition(WriteDisposition.FAIL);
+    options.setFileFormat(FileFormatOptions.AVRO);
+    options.setWriteDisposition(WriteDispositionOptions.FAIL);
     Filter f =
         new com.google.cloud.teleport.v2.utils.DataplexBigQueryToGcsFilter(
             options,

@@ -517,4 +517,57 @@ public class BigQueryConvertersTest {
     assertThat(shortStringField).isEqualTo(Bytes.toString(CellUtil.cloneQualifier(cells.get(0))));
     assertThat(shortStringFieldValue).isEqualTo(Bytes.toString(CellUtil.cloneValue(cells.get(0))));
   }
+
+  @Test
+  public void testAvroToMutationNullColumnValue() {
+    // Arrange
+    String rowkey = "rowkey";
+    String columnFamily = "CF";
+    AvroToMutation avroToMutation =
+        AvroToMutation.newBuilder().setColumnFamily(columnFamily).setRowkey(rowkey).build();
+
+    TableSchema bqSchema =
+        new TableSchema()
+            .setFields(
+                Arrays.asList(
+                    new TableFieldSchema().setName(rowkey).setType("STRING"),
+                    new TableFieldSchema().setName(shortStringField).setType("STRING")));
+
+    String nullableStringField =
+        "{"
+            + String.format(" \"name\" : \"%s\",", shortStringField)
+            + " \"type\" : [\"null\", \"string\"],"
+            + String.format(" \"doc\"  : \"%s\"", shortStringFieldDesc)
+            + "}";
+    Schema avroSchema =
+        new Schema.Parser()
+            .parse(
+                String.format(
+                    AVRO_SCHEMA_TEMPLATE,
+                    new StringBuilder()
+                        .append(String.format(avroFieldTemplate, rowkey, "string", idFieldDesc))
+                        .append(",")
+                        .append(nullableStringField)
+                        .toString()));
+    GenericRecordBuilder builder = new GenericRecordBuilder(avroSchema);
+    builder.set(rowkey, idFieldValueStr);
+    builder.set(shortStringField, null);
+    Record record = builder.build();
+    SchemaAndRecord inputBqData = new SchemaAndRecord(record, bqSchema);
+
+    // Act
+    Mutation mutation = avroToMutation.apply(inputBqData);
+
+    // Assert
+    // Assert: Rowkey is set
+    assertThat(Bytes.toString(mutation.getRow())).isEqualTo(idFieldValueStr);
+
+    assertThat(mutation.getFamilyCellMap().size()).isEqualTo(1);
+
+    // Assert: One cell was set with a value
+    List<Cell> cells = mutation.getFamilyCellMap().get(Bytes.toBytes(columnFamily));
+    assertThat(cells.size()).isEqualTo(1);
+    assertThat(shortStringField).isEqualTo(Bytes.toString(CellUtil.cloneQualifier(cells.get(0))));
+    assertThat(CellUtil.cloneValue(cells.get(0))).isEmpty();
+  }
 }
