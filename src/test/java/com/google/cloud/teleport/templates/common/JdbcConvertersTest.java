@@ -86,13 +86,15 @@ public class JdbcConvertersTest {
     LocalDateTime datetimeObj = LocalDateTime.parse(TIMESTAMP.split("Z")[0]);
     Date dateObj = Date.valueOf(TIMESTAMP.split("T")[0]);
     Timestamp timestampObj = Timestamp.from(Instant.parse(TIMESTAMP));
+    Timestamp timestampObjAsDatetime = Timestamp.valueOf(TIMESTAMP.split("Z")[0].replace("T", " "));
 
     Mockito.when(resultSet.getObject(1)).thenReturn(datetimeObj);
     Mockito.when(resultSet.getObject(2)).thenReturn(dateObj);
     Mockito.when(resultSet.getObject(3)).thenReturn(timestampObj);
+    Mockito.when(resultSet.getObject(4)).thenReturn(timestampObjAsDatetime);
     Mockito.when(resultSet.getMetaData()).thenReturn(resultSetMetaData);
 
-    Mockito.when(resultSetMetaData.getColumnCount()).thenReturn(3);
+    Mockito.when(resultSetMetaData.getColumnCount()).thenReturn(4);
 
     Mockito.when(resultSetMetaData.getColumnName(1)).thenReturn("datetime_column");
     Mockito.when(resultSetMetaData.getColumnTypeName(1)).thenReturn("datetime");
@@ -103,10 +105,14 @@ public class JdbcConvertersTest {
     Mockito.when(resultSetMetaData.getColumnName(3)).thenReturn("timestamp_column");
     Mockito.when(resultSetMetaData.getColumnTypeName(3)).thenReturn("timestamp");
 
+    Mockito.when(resultSetMetaData.getColumnName(4)).thenReturn("timestamp_datetime_column");
+    Mockito.when(resultSetMetaData.getColumnTypeName(4)).thenReturn("datetime");
+
     expectedTableRow = new TableRow();
     expectedTableRow.set("datetime_column", datetimeFormatter.format(datetimeObj));
     expectedTableRow.set("date_column", dateFormatter.format(dateObj));
     expectedTableRow.set("timestamp_column", timestampFormatter.format(timestampObj));
+    expectedTableRow.set("timestamp_datetime_column", timestampFormatter.format(timestampObjAsDatetime));
 
     JdbcIO.RowMapper<TableRow> resultSetConverters = JdbcConverters.getResultSetToTableRow();
     TableRow actualTableRow = resultSetConverters.mapRow(resultSet);

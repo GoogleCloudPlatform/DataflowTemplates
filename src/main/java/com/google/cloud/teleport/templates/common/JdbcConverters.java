@@ -18,6 +18,7 @@ package com.google.cloud.teleport.templates.common;
 import com.google.api.services.bigquery.model.TableRow;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
@@ -143,9 +144,15 @@ public class JdbcConverters {
                 metaData.getColumnName(i), dateFormatter.format(resultSet.getObject(i)));
             break;
           case "datetime":
+            Object item = resultSet.getObject(i);
+            String datetime;
+            if(item instanceof Timestamp){
+              datetime = timestampFormatter.format(item);
+            }else {
+              datetime = datetimeFormatter.format((TemporalAccessor) item);
+            }
             outputTableRow.set(
-                metaData.getColumnName(i),
-                datetimeFormatter.format((TemporalAccessor) resultSet.getObject(i)));
+                metaData.getColumnName(i),datetime);
             break;
           case "timestamp":
             outputTableRow.set(
