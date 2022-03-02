@@ -137,6 +137,13 @@ public class SplunkConverters {
     ValueProvider<String> getRootCaCertificatePath();
 
     void setRootCaCertificatePath(ValueProvider<String> rootCaPath);
+
+    @Description(
+        "Parameter which specifies if logs should be enabled for batches written to Splunk."
+            + " Default: true.")
+    ValueProvider<Boolean> getEnableBatchLogs();
+
+    void setEnableBatchLogs(ValueProvider<Boolean> enableBatchLogs);
   }
 
   private static class FailsafeStringToSplunkEvent

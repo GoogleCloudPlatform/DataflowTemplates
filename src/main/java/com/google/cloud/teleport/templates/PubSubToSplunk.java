@@ -251,6 +251,7 @@ public class PubSubToSplunk {
                     .withParallelism(options.getParallelism())
                     .withDisableCertificateValidation(options.getDisableCertificateValidation())
                     .withRootCaCertificatePath(options.getRootCaCertificatePath())
+                    .withEnableBatchLogs(options.getEnableBatchLogs())
                     .build());
 
     // 5a) Wrap write failures into a FailsafeElement.

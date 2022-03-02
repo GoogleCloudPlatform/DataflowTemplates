@@ -78,6 +78,9 @@ public class SplunkIO {
     @Nullable
     abstract ValueProvider<String> rootCaCertificatePath();
 
+    @Nullable
+    abstract ValueProvider<Boolean> enableBatchLogs();
+
     @Override
     public PCollection<SplunkWriteError> expand(PCollection<SplunkEvent> input) {
 
@@ -88,7 +91,8 @@ public class SplunkIO {
               .withInputBatchCount(batchCount())
               .withDisableCertificateValidation(disableCertificateValidation())
               .withToken((token()))
-              .withRootCaCertificatePath(rootCaCertificatePath());
+              .withRootCaCertificatePath(rootCaCertificatePath())
+              .withEnableBatchLogs(enableBatchLogs());
 
       SplunkEventWriter writer = builder.build();
       LOG.info("SplunkEventWriter configured");
@@ -120,6 +124,8 @@ public class SplunkIO {
           ValueProvider<Boolean> disableCertificateValidation);
 
       abstract Builder setRootCaCertificatePath(ValueProvider<String> rootCaCertificatePath);
+
+      abstract Builder setEnableBatchLogs(ValueProvider<Boolean> enableBatchLogs);
 
       abstract Write autoBuild();
 
@@ -266,6 +272,27 @@ public class SplunkIO {
             "withRootCaCertificatePath(rootCaCertificatePath) called with null input.");
         return setRootCaCertificatePath(
             ValueProvider.StaticValueProvider.of(rootCaCertificatePath));
+      }
+
+      /**
+       * Method to enable batch logs.
+       *
+       * @param enableBatchLogs for enabling batch logs.
+       * @return {@link Builder}
+       */
+      public Builder withEnableBatchLogs(ValueProvider<Boolean> enableBatchLogs) {
+        return setEnableBatchLogs(enableBatchLogs);
+      }
+
+      /**
+       * Same as {@link Builder#withEnableBatchLogs(ValueProvider)} but without a {@link
+       * ValueProvider}.
+       *
+       * @param enableBatchLogs for enabling batch logs.
+       * @return {@link Builder}
+       */
+      public Builder withEnableBatchLogs(Boolean enableBatchLogs) {
+        return setEnableBatchLogs(ValueProvider.StaticValueProvider.of((enableBatchLogs)));
       }
 
       public Write build() {
