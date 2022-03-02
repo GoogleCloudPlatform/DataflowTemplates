@@ -138,11 +138,10 @@ public class BigtableToParquet {
     void setDiskSize(ValueProvider<Integer> sizeGB);
 
     @Description("Worker disk type")
-    @Default.String("compute.googleapis.com/projects//zones//diskTypes/pd-standard")
-    ValueProvider<String> getWorkerDiskType();
+    String getWorkerDiskType();
 
     @SuppressWarnings("unused")
-    void setWorkerDiskType(ValueProvider<String> type);
+    void setWorkerDiskType(String type);
   }
 
   /**
@@ -169,9 +168,12 @@ public class BigtableToParquet {
    */
   public static PipelineResult run(Options options, RowFilter filter) {
     DataflowPipelineOptions dataflowOpts = options.as(DataflowPipelineOptions.class);
-    dataflowOpts.setDiskSizeGb(options.getDiskSize().get());
-    dataflowOpts.setWorkerDiskType(options.getWorkerDiskType().get());
-
+    if (options.getDiskSize().isAccessible()) {
+      dataflowOpts.setDiskSizeGb(options.getDiskSize().get());
+    }
+    if (options.getWorkerDiskType() != null) {
+      dataflowOpts.setWorkerDiskType(options.getWorkerDiskType());
+    }
     Pipeline pipeline = Pipeline.create(PipelineUtils.tweakPipelineOptions(options));
     BigtableIO.Read read =
         BigtableIO.read()
