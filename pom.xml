@@ -89,6 +89,7 @@
     <kms.version>1.40.0</kms.version>
     <proto-kms.version>0.87.0</proto-kms.version>
     <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
+    <cloud-libraries-bom.version>24.2.0</cloud-libraries-bom.version>
   </properties>
 
   <dependencyManagement>
@@ -100,8 +101,15 @@
           <type>pom</type>
           <scope>import</scope>
         </dependency>
+        <dependency>
+          <groupId>com.google.cloud</groupId>
+          <artifactId>libraries-bom</artifactId>
+          <version>${cloud-libraries-bom.version}</version>
+          <type>pom</type>
+          <scope>import</scope>
+      </dependency>
       </dependencies>
-    </dependencyManagement>
+  </dependencyManagement>
 
   <dependencies>
     <!-- Beam -->
@@ -478,6 +486,10 @@
       <artifactId>proto</artifactId>
       <version>${tensorflow.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-secretmanager</artifactId>
+    </dependency>
   </dependencies>
 
   <build>
@@ -660,6 +672,9 @@
                 </ignoredUsedUndeclaredDependency>
                 <ignoredUsedUndeclaredDependency>
                   org.apache.beam:beam-vendor-grpc-1_43_2
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  com.google.api.grpc:proto-google-cloud-secretmanager-v1
                 </ignoredUsedUndeclaredDependency>
              </ignoredUsedUndeclaredDependencies>
              <ignoredUnusedDeclaredDependencies>
