@@ -20,7 +20,7 @@ import com.google.cloud.spanner.BatchReadOnlyTransaction;
 import com.google.cloud.spanner.BatchTransactionId;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.InformationSchemaScanner;
-import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerAccessor;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.Transaction;
 import org.apache.beam.sdk.transforms.Create;
@@ -52,7 +52,7 @@ public class ReadInformationSchema extends PTransform<PBegin, PCollection<Ddl>> 
 
   private static class ReadInformationSchemaFn extends DoFn<Void, Ddl> {
     private final SpannerConfig spannerConfig;
-    private transient ExposedSpannerAccessor spannerAccessor;
+    private transient SpannerAccessor spannerAccessor;
     private final PCollectionView<Transaction> tx;
 
     public ReadInformationSchemaFn(SpannerConfig spannerConfig, PCollectionView<Transaction> tx) {
@@ -62,7 +62,7 @@ public class ReadInformationSchema extends PTransform<PBegin, PCollection<Ddl>> 
 
     @Setup
     public void setup() throws Exception {
-      spannerAccessor = ExposedSpannerAccessor.create(spannerConfig);
+      spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
     }
 
     @Teardown
