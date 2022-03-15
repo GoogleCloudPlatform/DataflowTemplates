@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.transforms;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
-import java.util.HashMap;
+import com.google.common.collect.ImmutableMap;
 import java.util.Map;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.testing.PAssert;
@@ -45,11 +45,16 @@ public class FormatDatastreamJsonToJsonTest {
   private static final String EXAMPLE_DATASTREAM_RECORD =
       "{\"_metadata_stream\":\"my-stream\",\"_metadata_timestamp\":1640410924,\"_metadata_read_timestamp\":1640410924,\"_metadata_read_method\":\"oracle-backfill\",\"_metadata_source_type\":\"oracle\",\"_metadata_deleted\":false,\"_metadata_table\":\"JOBS\",\"_metadata_change_type\":\"INSERT\",\"_metadata_primary_keys\":[\"JOB_ID\"],\"_metadata_schema\":\"HR\",\"_metadata_row_id\":\"AAAEARAAEAAAAC9AAS\",\"_metadata_scn\":1706664,\"_metadata_ssn\":0,\"_metadata_rs_id\":\"\",\"_metadata_tx_id\":null,\"JOB_ID\":\"PR_REP\",\"JOB_TITLE\":\"Public"
           + " Relations"
-          + " Representative\",\"MIN_SALARY\":4500,\"MAX_SALARY\":10500,\"_metadata_source\":{\"schema\":\"HR\",\"table\":\"JOBS\",\"database\":\"XE\",\"row_id\":\"AAAEARAAEAAAAC9AAS\",\"scn\":1706664,\"is_deleted\":false,\"change_type\":\"INSERT\",\"ssn\":0,\"rs_id\":\"\",\"tx_id\":null,\"log_file\":\"\",\"primary_keys\":[\"JOB_ID\"]}}";
+          + " Representative\",\"MIN_SALARY\":4500,\"MAX_SALARY\":10500,\"rowid\":\"AAAEARAAEAAAAC9AAS\",\"_metadata_source\":{\"schema\":\"HR\",\"table\":\"JOBS\",\"database\":\"XE\",\"row_id\":\"AAAEARAAEAAAAC9AAS\",\"scn\":1706664,\"is_deleted\":false,\"change_type\":\"INSERT\",\"ssn\":0,\"rs_id\":\"\",\"tx_id\":null,\"log_file\":\"\",\"primary_keys\":[\"JOB_ID\"]}}";
+
+  private static final String EXAMPLE_DATASTREAM_RECORD_WITH_HASH_ROWID =
+      "{\"_metadata_stream\":\"my-stream\",\"_metadata_timestamp\":1640410924,\"_metadata_read_timestamp\":1640410924,\"_metadata_read_method\":\"oracle-backfill\",\"_metadata_source_type\":\"oracle\",\"_metadata_deleted\":false,\"_metadata_table\":\"JOBS\",\"_metadata_change_type\":\"INSERT\",\"_metadata_primary_keys\":[\"JOB_ID\"],\"_metadata_schema\":\"HR\",\"_metadata_row_id\":1019670290924988842,\"_metadata_scn\":1706664,\"_metadata_ssn\":0,\"_metadata_rs_id\":\"\",\"_metadata_tx_id\":null,\"JOB_ID\":\"PR_REP\",\"JOB_TITLE\":\"Public"
+          + " Relations"
+          + " Representative\",\"MIN_SALARY\":4500,\"MAX_SALARY\":10500,\"rowid\":1019670290924988842,\"_metadata_source\":{\"schema\":\"HR\",\"table\":\"JOBS\",\"database\":\"XE\",\"row_id\":\"AAAEARAAEAAAAC9AAS\",\"scn\":1706664,\"is_deleted\":false,\"change_type\":\"INSERT\",\"ssn\":0,\"rs_id\":\"\",\"tx_id\":null,\"log_file\":\"\",\"primary_keys\":[\"JOB_ID\"]}}";
 
   @Test
   public void testProcessElement_validJson() {
-    Map<String, String> hashedColumns = new HashMap<String, String>();
+    Map<String, String> renameColumns = ImmutableMap.of("_metadata_row_id", "rowid");
 
     FailsafeElement<String, String> expectedElement =
         FailsafeElement.of(EXAMPLE_DATASTREAM_RECORD, EXAMPLE_DATASTREAM_RECORD);
@@ -60,10 +65,38 @@ public class FormatDatastreamJsonToJsonTest {
             .apply(
                 "FormatDatastreamJsonToJson",
                 ParDo.of(
-                    FormatDatastreamJsonToJson.create()
-                        .withStreamName("my-stream")
-                        .withHashColumnValues(hashedColumns)
-                        .withLowercaseSourceColumns(false)))
+                    (FormatDatastreamJsonToJson)
+                        FormatDatastreamJsonToJson.create()
+                            .withStreamName("my-stream")
+                            .withRenameColumnValues(renameColumns)
+                            .withLowercaseSourceColumns(false)))
+            .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+
+    PAssert.that(pCollection).containsInAnyOrder(expectedElement);
+
+    pipeline.run();
+  }
+
+  @Test
+  public void testProcessElement_hashRowId() {
+    Map<String, String> renameColumns = ImmutableMap.of("_metadata_row_id", "rowid");
+
+    FailsafeElement<String, String> expectedElement =
+        FailsafeElement.of(
+            EXAMPLE_DATASTREAM_RECORD_WITH_HASH_ROWID, EXAMPLE_DATASTREAM_RECORD_WITH_HASH_ROWID);
+
+    PCollection<FailsafeElement<String, String>> pCollection =
+        pipeline
+            .apply("CreateInput", Create.of(EXAMPLE_DATASTREAM_JSON))
+            .apply(
+                "FormatDatastreamJsonToJson",
+                ParDo.of(
+                    (FormatDatastreamJsonToJson)
+                        FormatDatastreamJsonToJson.create()
+                            .withStreamName("my-stream")
+                            .withRenameColumnValues(renameColumns)
+                            .withHashRowId(true)
+                            .withLowercaseSourceColumns(false)))
             .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
 
     PAssert.that(pCollection).containsInAnyOrder(expectedElement);

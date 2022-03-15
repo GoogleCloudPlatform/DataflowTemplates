@@ -34,31 +34,18 @@ import org.junit.runners.JUnit4;
 public class FormatDatastreamRecordToJsonTest {
 
   private static final String EXPECTED_FIRST_RECORD =
-      "{\"LOCATION_ID\":1000.0,"
-          + "\"STREET_ADDRESS\":\"1297 Via Cola di Rie\","
-          + "\"POSTAL_CODE\":\"00989\","
-          + "\"CITY\":\"Roma\","
-          + "\"STATE_PROVINCE\":null,"
+      "{\"LOCATION_ID\":1000.0,\"STREET_ADDRESS\":\"1297 Via Cola di Rie\","
+          + "\"POSTAL_CODE\":\"00989\",\"CITY\":\"Roma\",\"STATE_PROVINCE\":null,"
           + "\"COUNTRY_ID\":\"IT\","
           + "\"_metadata_stream\":\"projects/596161805475/locations/us-central1/streams/dylan-stream-20200810test2\","
-          + "\"_metadata_timestamp\":1597101230,"
-          + "\"_metadata_read_timestamp\":1597101230,"
-          + "\"_metadata_read_method\":\"oracle_dump\","
-          + "\"_metadata_source_type\":\"oracle_dump\","
-          + "\"_metadata_deleted\":false,"
-          + "\"_metadata_table\":\"LOCATIONS\","
-          + "\"_metadata_change_type\":null,"
-          + "\"_metadata_primary_keys\":null,"
-          + "\"_metadata_schema\":\"HR\","
-          + "\"_metadata_row_id\":\"AAAEALAAEAAAACdAAB\","
-          + "\"_metadata_scn\":null,"
-          + "\"_metadata_ssn\":null,"
-          + "\"_metadata_rs_id\":null,"
-          + "\"_metadata_tx_id\":null,"
-          + "\"_metadata_source\":{\"schema\":\"HR\","
-          + "\"table\":\"LOCATIONS\","
-          + "\"database\":\"XE\","
-          + "\"row_id\":\"AAAEALAAEAAAACdAAB\"}}";
+          + "\"_metadata_timestamp\":1597101230,\"_metadata_read_timestamp\":1597101230,"
+          + "\"_metadata_read_method\":\"oracle_dump\",\"_metadata_source_type\":\"oracle_dump\","
+          + "\"_metadata_deleted\":false,\"_metadata_table\":\"LOCATIONS\","
+          + "\"_metadata_change_type\":null,\"_metadata_primary_keys\":null,"
+          + "\"_metadata_schema\":\"HR\",\"_metadata_scn\":null,\"_metadata_ssn\":null,"
+          + "\"_metadata_rs_id\":null,\"_metadata_tx_id\":null,"
+          + "\"_metadata_row_id\":\"AAAEALAAEAAAACdAAB\",\"_metadata_source\":{\"schema\":\"HR\","
+          + "\"table\":\"LOCATIONS\",\"database\":\"XE\",\"row_id\":\"AAAEALAAEAAAACdAAB\"}}";
 
   private static final String EXPECTED_NUMERIC_RECORD =
       "{\"id\":2,\"bitty\":0,\"booly\":0,\"tiny\":-1,\"small\":-1,\"medium\":-1,"
@@ -162,5 +149,19 @@ public class FormatDatastreamRecordToJsonTest {
     GenericRecord record = dataFileReader.next();
     String jsonData = FormatDatastreamRecordToJson.create().apply(record).getOriginalPayload();
     assertEquals(EXPECTED_NUMERIC_RECORD, jsonData);
+  }
+
+  @Test
+  public void testHashRowId_valid() {
+    assertEquals(0L, FormatDatastreamRecord.hashRowIdToInt("AAAAAAAA++++++++++"));
+    assertEquals(1L, FormatDatastreamRecord.hashRowIdToInt("AAAAAAAA/+++++++++"));
+    assertEquals(2L, FormatDatastreamRecord.hashRowIdToInt("ABCDE1230+++++++++"));
+    assertEquals(1152921504606846975L, FormatDatastreamRecord.hashRowIdToInt("AAAAAAAAZZZZZZZZZZ"));
+  }
+
+  @Test
+  public void testHashRowId_invalid() {
+    assertEquals(-1L, FormatDatastreamRecord.hashRowIdToInt(""));
+    assertEquals(-1L, FormatDatastreamRecord.hashRowIdToInt("ABCD"));
   }
 }
