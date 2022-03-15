@@ -88,7 +88,7 @@ public class BigtableToParquetLastVerOnly extends BigtableToParquet {
                                 .to(options.getOutputDirectory())
                                 .withPrefix(options.getFilenamePrefix())
                                 .withSuffix(".parquet")
-                                .withNumShards(options.getNumShards()));
+                );
 
         return pipeline.run();
     }
