@@ -281,7 +281,8 @@ public class DataStreamToSQL {
                     options.getGcsPubSubSubscription(),
                     options.getRfcStartDateTime())
                 .withLowercaseSourceColumns()
-                .withHashColumnValue("_metadata_row_id", "rowid"));
+                .withRenameColumnValue("_metadata_row_id", "rowid")
+                .withHashRowId());
 
     /*
      * Stage 2: Write JSON Strings to SQL Insert Strings
@@ -303,6 +304,7 @@ public class DataStreamToSQL {
             .withStatementFormatter(
                 new CdcJdbcIO.StatementFormatter<DmlInfo>() {
                   public String formatStatement(DmlInfo element) {
+                    LOG.debug("Executing SQL: {}", element.getDmlSql());
                     return element.getDmlSql();
                   }
                 }));

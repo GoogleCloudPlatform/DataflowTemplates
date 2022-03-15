@@ -32,9 +32,9 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import org.apache.beam.sdk.io.TextIO;
-import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.Transaction;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.TestPipeline;
@@ -195,7 +195,7 @@ public final class SpannerToTextTest {
             .apply("Create export", spannerExport)
             .apply(
                 "Read all records",
-                LocalSpannerIO.readAll().withTransaction(tx).withSpannerConfig(sourceConfig))
+                SpannerIO.readAll().withTransaction(tx).withSpannerConfig(sourceConfig))
             .apply(
                 "Struct To Csv",
                 MapElements.into(TypeDescriptors.strings())
