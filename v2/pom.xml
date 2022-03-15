@@ -653,7 +653,6 @@
         <module>common</module>
         <module>cdc-parent</module>
         <module>datastream-to-bigquery</module>
-        <module>datastream-to-postgres</module>
         <module>datastream-to-spanner</module>
         <module>datastream-to-sql</module>
         <module>elasticsearch-common</module>
