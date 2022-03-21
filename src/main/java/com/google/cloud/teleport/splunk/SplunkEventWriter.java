@@ -34,7 +34,6 @@ import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
-import java.time.Instant;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -272,7 +271,7 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
         // Important to close this response to avoid connection leak.
         response = publisher.execute(events);
         if (!response.isSuccessStatusCode()) {
-          UNSUCCESSFUL_WRITE_LATENCY_MS.update(System.nanoTime() - startTime);
+          UNSUCCESSFUL_WRITE_LATENCY_MS.update(nanosToMillis(System.nanoTime() - startTime));
           FAILED_WRITES.inc(countState.read());
           int statusCode = response.getStatusCode();
           if (statusCode >= 400 && statusCode < 500) {
@@ -290,7 +289,7 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
               events, response.getStatusMessage(), response.getStatusCode(), receiver);
 
         } else {
-          SUCCESSFUL_WRITE_LATENCY_MS.update(Instant.now().toEpochMilli() - startTime);
+          SUCCESSFUL_WRITE_LATENCY_MS.update(nanosToMillis(System.nanoTime() - startTime));
           SUCCESS_WRITES.inc(countState.read());
           VALID_REQUESTS.inc();
           SUCCESSFUL_WRITE_BATCH_SIZE.update(countState.read());
@@ -301,7 +300,7 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
         }
 
       } catch (HttpResponseException e) {
-        UNSUCCESSFUL_WRITE_LATENCY_MS.update(System.nanoTime() - startTime);
+        UNSUCCESSFUL_WRITE_LATENCY_MS.update(nanosToMillis(System.nanoTime() - startTime));
         FAILED_WRITES.inc(countState.read());
         int statusCode = e.getStatusCode();
         if (statusCode >= 400 && statusCode < 500) {
@@ -314,7 +313,7 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
         flushWriteFailures(events, e.getStatusMessage(), e.getStatusCode(), receiver);
 
       } catch (IOException ioe) {
-        UNSUCCESSFUL_WRITE_LATENCY_MS.update(System.nanoTime() - startTime);
+        UNSUCCESSFUL_WRITE_LATENCY_MS.update(nanosToMillis(System.nanoTime() - startTime));
         FAILED_WRITES.inc(countState.read());
         INVALID_REQUESTS.inc();
 
@@ -412,6 +411,16 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
       return InetAddresses.isInetAddress(host) || InternetDomainName.isValid(host);
     }
     return false;
+  }
+
+  /**
+   * Converts Nanoseconds to Milliseconds.
+   *
+   * @param ns time in nanoseconds
+   * @return time in milliseconds
+   */
+  private static long nanosToMillis(long ns) {
+    return Math.round(((double) ns) / 1e6);
   }
 
   @AutoValue.Builder
