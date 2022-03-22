@@ -1528,10 +1528,11 @@ public class ElasticsearchIO {
           (backendVersion == 2
               || backendVersion == 5
               || backendVersion == 6
-              || backendVersion == 7),
+              || backendVersion == 7,
+              || backendVersion == 8),
           "The Elasticsearch version to connect to is %s.x. "
               + "This version of the ElasticsearchIO is only compatible with "
-              + "Elasticsearch v7.x, v6.x, v5.x and v2.x",
+              + "Elasticsearch v8.x, v7.x, v6.x, v5.x and v2.x",
           backendVersion);
       return backendVersion;
 
