@@ -1528,7 +1528,7 @@ public class ElasticsearchIO {
           (backendVersion == 2
               || backendVersion == 5
               || backendVersion == 6
-              || backendVersion == 7,
+              || backendVersion == 7
               || backendVersion == 8),
           "The Elasticsearch version to connect to is %s.x. "
               + "This version of the ElasticsearchIO is only compatible with "
