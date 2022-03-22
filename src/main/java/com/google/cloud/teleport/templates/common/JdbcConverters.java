@@ -143,6 +143,7 @@ public class JdbcConverters {
             outputTableRow.set(
                 metaData.getColumnName(i), dateFormatter.format(resultSet.getObject(i)));
             break;
+          case "datetime2":
           case "datetime":
             Object item = resultSet.getObject(i);
             String datetime;
