@@ -17,14 +17,19 @@ package com.google.cloud.teleport.v2.transforms;
 
 import com.google.cloud.teleport.v2.utils.BigQueryToGcsDirectoryNaming;
 import com.google.cloud.teleport.v2.utils.BigQueryToGcsFileNaming;
+import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
 import com.google.cloud.teleport.v2.utils.Schemas;
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import com.google.cloud.teleport.v2.values.DataplexCompression;
 import com.google.common.annotations.VisibleForTesting;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
+import org.apache.avro.Schema.Field;
+import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.io.AvroIO;
@@ -55,7 +60,7 @@ import org.apache.beam.sdk.values.TypeDescriptors;
  *
  * <p>If the table is not partitioned, the partition key in the output will be @{@code null}.
  *
- * <p>See {@link FileFormat} for the list of supported output formats.
+ * <p>See {@link FileFormatOptions} for the list of supported output formats.
  */
 public class BigQueryTableToGcsTransform
     extends PTransform<PBegin, PCollection<KV<BigQueryTablePartition, String>>> {
@@ -63,7 +68,7 @@ public class BigQueryTableToGcsTransform
   private static final String PARTITION_COLUMN_RENAME_SUFFIX = "_pkey";
 
   private final BigQueryTable table;
-  private final FileFormat outputFileFormat;
+  private final FileFormatOptions outputFileFormat;
   private final DataplexCompression outputFileCompression;
   private final String targetRootPath;
   private final boolean enforceSamePartitionKey;
@@ -72,7 +77,7 @@ public class BigQueryTableToGcsTransform
   public BigQueryTableToGcsTransform(
       BigQueryTable table,
       String targetRootPath,
-      FileFormat outputFileFormat,
+      FileFormatOptions outputFileFormat,
       DataplexCompression outputFileCompression,
       boolean enforceSamePartitionKey) {
     this.table = table;
@@ -144,7 +149,8 @@ public class BigQueryTableToGcsTransform
             getDefaultWrite()
                 .via(sink)
                 .withNaming(
-                    new BigQueryToGcsFileNaming(outputFileFormat.fileSuffix, table.getTableName()))
+                    new BigQueryToGcsFileNaming(
+                        outputFileFormat.getFileSuffix(), table.getTableName()))
                 .to(targetPath))
         .getPerDestinationOutputFilenames()
         .apply(
@@ -186,7 +192,7 @@ public class BigQueryTableToGcsTransform
                 .via(sink)
                 .withNaming(
                     new BigQueryToGcsFileNaming(
-                        outputFileFormat.fileSuffix,
+                        outputFileFormat.getFileSuffix(),
                         table.getTableName(),
                         partition.getPartitionName()))
                 .to(targetPath))
@@ -200,7 +206,7 @@ public class BigQueryTableToGcsTransform
 
   private TypedRead<GenericRecord> getDefaultRead() {
     TypedRead<GenericRecord> read =
-        BigQueryIO.read(SchemaAndRecord::getRecord)
+        BigQueryIO.read(this::genericRecordWithFixedDates)
             .withTemplateCompatibility()
             // Performance hit due to validation is too big. When exporting a table with thousands
             // of partitions launching the job takes more than 12 minutes (Flex template timeout).
@@ -213,6 +219,37 @@ public class BigQueryTableToGcsTransform
             .withCoder(AvroCoder.of(table.getSchema()));
 
     return testServices == null ? read : read.withTestServices(testServices);
+  }
+
+  /**
+   * When Beam's BigQueryIO reads from BQ it derives the Avro schema by itself, where it maps BQ's
+   * `DATE` type to Avro's `string` type, so the GenericRecords outputed by the BigQueryIO contain
+   * `string` fields for the `DATE` columns. The Avro schema obtained from the BQ directly -- {@code
+   * table.getSchema()} has the `DATE` columns mapped to type Avro's `int` with logical type `date`.
+   * To fix this mismatch this cmethod converts the `string` dates fields to `int` with logical type
+   * `date` fields.
+   *
+   * <p>Note that for the TIMESTAMP type both Beam's BigQueryIO and BQ API map it to `long` so there
+   * is no mismatch.
+   */
+  private GenericRecord genericRecordWithFixedDates(SchemaAndRecord schemaAndRecord) {
+    GenericRecord input = schemaAndRecord.getRecord();
+    GenericRecord output = new GenericData.Record(table.getSchema());
+    List<Field> fields = table.getSchema().getFields();
+    for (int i = 0; i < fields.size(); i++) {
+      if (Schemas.isSchemaOfTypeOrNullableType(
+          fields.get(i).schema(), Schema.Type.INT, LogicalTypes.date())) {
+        Object value = input.get(i);
+        if (!(value instanceof CharSequence)) {
+          throw new IllegalStateException(
+              "The class of input value of type DATE is " + value.getClass());
+        }
+        output.put(i, (int) LocalDate.parse((CharSequence) value).toEpochDay());
+      } else {
+        output.put(i, input.get(i));
+      }
+    }
+    return output;
   }
 
   private Write<Void, GenericRecord> getDefaultWrite() {
@@ -232,39 +269,5 @@ public class BigQueryTableToGcsTransform
   public BigQueryTableToGcsTransform withTestServices(BigQueryServices services) {
     this.testServices = services;
     return this;
-  }
-
-  /** Possible output file formats supported by {@link BigQueryTableToGcsTransform}. */
-  public enum FileFormat {
-    PARQUET(".parquet"),
-    AVRO(".avro"),
-    ORC(".orc");
-
-    private final String fileSuffix;
-
-    FileFormat(String fileSuffix) {
-      this.fileSuffix = fileSuffix;
-    }
-
-    public String getFileSuffix() {
-      return fileSuffix;
-    }
-  }
-
-  /** Possible write disposition supported by {@link BigQueryTableToGcsTransform}. */
-  public enum WriteDisposition {
-    OVERWRITE("OVERWRITE"),
-    SKIP("SKIP"),
-    FAIL("FAIL");
-
-    private final String writeDisposition;
-
-    WriteDisposition(String writeDisposition) {
-      this.writeDisposition = writeDisposition;
-    }
-
-    public String getWriteDisposition() {
-      return writeDisposition;
-    }
   }
 }

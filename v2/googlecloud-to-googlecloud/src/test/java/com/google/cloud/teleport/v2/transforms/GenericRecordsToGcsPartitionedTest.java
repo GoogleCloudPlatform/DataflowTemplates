@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import com.google.cloud.teleport.v2.transforms.GenericRecordsToGcsPartitioned.OutputFileFormat;
 import com.google.cloud.teleport.v2.transforms.GenericRecordsToGcsPartitioned.PartitioningSchema;
+import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
 import com.google.cloud.teleport.v2.values.PartitionMetadata;
 import com.google.common.collect.ImmutableList;
 import java.time.ZoneOffset;
@@ -81,7 +81,7 @@ public class GenericRecordsToGcsPartitionedTest {
                     SERIALIZED_SCHEMA,
                     "date",
                     PartitioningSchema.MONTHLY,
-                    OutputFileFormat.AVRO));
+                    FileFormatOptions.AVRO));
 
     PAssert.that(result)
         .containsInAnyOrder(
@@ -129,7 +129,7 @@ public class GenericRecordsToGcsPartitionedTest {
                     SERIALIZED_SCHEMA,
                     "date",
                     PartitioningSchema.DAILY,
-                    OutputFileFormat.AVRO));
+                    FileFormatOptions.AVRO));
 
     PAssert.that(result)
         .containsInAnyOrder(
@@ -182,7 +182,7 @@ public class GenericRecordsToGcsPartitionedTest {
                     SERIALIZED_SCHEMA,
                     "date",
                     PartitioningSchema.HOURLY,
-                    OutputFileFormat.AVRO));
+                    FileFormatOptions.AVRO));
 
     PAssert.that(result)
         .containsInAnyOrder(
@@ -226,7 +226,7 @@ public class GenericRecordsToGcsPartitionedTest {
                 SERIALIZED_SCHEMA,
                 "date",
                 PartitioningSchema.MONTHLY,
-                OutputFileFormat.PARQUET));
+                FileFormatOptions.PARQUET));
 
     mainPipeline.run();
 
@@ -262,7 +262,7 @@ public class GenericRecordsToGcsPartitionedTest {
         .apply(
             "GenericRecordsToGCS",
             new GenericRecordsToGcsPartitioned(
-                tmpRootPath, SERIALIZED_SCHEMA, null, null, OutputFileFormat.AVRO));
+                tmpRootPath, SERIALIZED_SCHEMA, null, null, FileFormatOptions.AVRO));
 
     mainPipeline.run();
 

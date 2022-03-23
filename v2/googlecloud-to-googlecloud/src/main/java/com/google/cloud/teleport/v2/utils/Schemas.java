@@ -25,7 +25,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import javax.sql.DataSource;
+import org.apache.avro.LogicalType;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Field;
 import org.apache.avro.SchemaBuilder;
@@ -72,6 +74,19 @@ public final class Schemas {
     } catch (SQLException e) {
       throw new SchemaConversionException("Failed to infer Beam schema for query: " + query, e);
     }
+  }
+
+  public static boolean isSchemaOfType(Schema schema, Schema.Type type, LogicalType logicalType) {
+    return Objects.equals(type, schema.getType())
+        && Objects.equals(logicalType, schema.getLogicalType());
+  }
+
+  public static boolean isSchemaOfTypeOrNullableType(
+      Schema schema, Schema.Type type, LogicalType logicalType) {
+    return isSchemaOfType(schema, type, logicalType)
+        || Objects.equals(Schema.Type.UNION, schema.getType())
+            && schema.getTypes().stream()
+                .anyMatch(t -> isSchemaOfTypeOrNullableType(t, type, logicalType));
   }
 
   private static Schema dataplexFieldsToAvro(

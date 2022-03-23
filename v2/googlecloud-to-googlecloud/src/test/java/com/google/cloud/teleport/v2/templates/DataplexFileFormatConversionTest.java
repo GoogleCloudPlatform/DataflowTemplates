@@ -26,12 +26,12 @@ import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Schema;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1SchemaSchemaField;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1StorageFormat;
 import com.google.cloud.teleport.v2.clients.DataplexClient;
-import com.google.cloud.teleport.v2.templates.DataplexFileFormatConversion.ExistingOutputFilesBehaviour;
 import com.google.cloud.teleport.v2.templates.DataplexFileFormatConversion.FileFormatConversionOptions;
 import com.google.cloud.teleport.v2.templates.DataplexFileFormatConversion.InputFileFormat;
-import com.google.cloud.teleport.v2.templates.DataplexFileFormatConversion.OutputFileFormat;
 import com.google.cloud.teleport.v2.transforms.AvroConverters;
 import com.google.cloud.teleport.v2.transforms.ParquetConverters;
+import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
+import com.google.cloud.teleport.v2.utils.WriteDisposition.WriteDispositionOptions;
 import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
 import com.google.cloud.teleport.v2.values.DataplexCompression;
 import com.google.cloud.teleport.v2.values.EntityMetadata.StorageSystem;
@@ -174,7 +174,7 @@ public class DataplexFileFormatConversionTest {
     FileFormatConversionOptions options =
         PipelineOptionsFactory.create().as(FileFormatConversionOptions.class);
     options.setInputAssetOrEntitiesList(entity1.getName());
-    options.setOutputFileFormat(OutputFileFormat.AVRO);
+    options.setOutputFileFormat(FileFormatOptions.AVRO);
     options.setOutputAsset(outputAsset.getName());
 
     DataplexFileFormatConversion.run(
@@ -205,7 +205,7 @@ public class DataplexFileFormatConversionTest {
     FileFormatConversionOptions options =
         PipelineOptionsFactory.create().as(FileFormatConversionOptions.class);
     options.setInputAssetOrEntitiesList(asset2.getName());
-    options.setOutputFileFormat(OutputFileFormat.PARQUET);
+    options.setOutputFileFormat(FileFormatOptions.PARQUET);
     options.setOutputAsset(outputAsset.getName());
     options.setOutputFileCompression(DataplexCompression.GZIP);
 
@@ -238,7 +238,7 @@ public class DataplexFileFormatConversionTest {
     FileFormatConversionOptions options =
         PipelineOptionsFactory.create().as(FileFormatConversionOptions.class);
     options.setInputAssetOrEntitiesList(entity3.getName());
-    options.setOutputFileFormat(OutputFileFormat.PARQUET);
+    options.setOutputFileFormat(FileFormatOptions.PARQUET);
     options.setOutputAsset(outputAsset.getName());
 
     DataplexFileFormatConversion.run(
@@ -270,7 +270,7 @@ public class DataplexFileFormatConversionTest {
     FileFormatConversionOptions options =
         PipelineOptionsFactory.create().as(FileFormatConversionOptions.class);
     options.setInputAssetOrEntitiesList(entity4.getName());
-    options.setOutputFileFormat(OutputFileFormat.AVRO);
+    options.setOutputFileFormat(FileFormatOptions.AVRO);
     options.setOutputAsset(outputAsset.getName());
 
     DataplexFileFormatConversion.run(
@@ -306,9 +306,9 @@ public class DataplexFileFormatConversionTest {
     FileFormatConversionOptions options =
         PipelineOptionsFactory.create().as(FileFormatConversionOptions.class);
     options.setInputAssetOrEntitiesList(asset2.getName());
-    options.setOutputFileFormat(OutputFileFormat.PARQUET);
+    options.setOutputFileFormat(FileFormatOptions.PARQUET);
     options.setOutputAsset(outputAsset.getName());
-    options.setWriteDisposition(ExistingOutputFilesBehaviour.SKIP);
+    options.setWriteDisposition(WriteDispositionOptions.SKIP);
 
     // simulate the file 1.json -> 1.parquet already
     copyFileToOutputBucket("entity2.existing/1.parquet", "entity2/1.parquet");
@@ -363,9 +363,9 @@ public class DataplexFileFormatConversionTest {
     FileFormatConversionOptions options =
         PipelineOptionsFactory.create().as(FileFormatConversionOptions.class);
     options.setInputAssetOrEntitiesList(asset2.getName());
-    options.setOutputFileFormat(OutputFileFormat.PARQUET);
+    options.setOutputFileFormat(FileFormatOptions.PARQUET);
     options.setOutputAsset(outputAsset.getName());
-    options.setWriteDisposition(ExistingOutputFilesBehaviour.FAIL);
+    options.setWriteDisposition(WriteDispositionOptions.FAIL);
 
     // simulate the file 1.json -> 1.parquet already
     copyFileToOutputBucket("entity2.existing/1.parquet", "entity2/1.parquet");

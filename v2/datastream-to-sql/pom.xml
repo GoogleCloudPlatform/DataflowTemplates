@@ -37,6 +37,7 @@
     </description>
 
     <dependencies>
+        <!-- Exluding com.google.protobuf transitive dependencies to avoid version conflicts -->
         <dependency>
             <groupId>com.google.cloud.teleport.v2</groupId>
             <artifactId>common</artifactId>
@@ -52,6 +53,12 @@
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
             <version>8.0.13</version>
+            <exclusions>
+              <exclusion>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>*</artifactId>
+              </exclusion>
+            </exclusions>
         </dependency>
         <!-- Test dependencies -->
         <dependency>

@@ -38,6 +38,7 @@
     </properties>
 
     <dependencies>
+        <!-- Exluding com.google.protobuf transitive dependencies to avoid version conflicts -->
         <dependency>
             <groupId>org.apache.avro</groupId>
             <artifactId>avro</artifactId>
@@ -95,6 +96,10 @@
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
               </exclusion>
+              <exclusion>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>*</artifactId>
+              </exclusion>
             </exclusions>
         </dependency>
         <dependency>
@@ -131,6 +136,10 @@
               <exclusion>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>*</artifactId>
               </exclusion>
             </exclusions>
         </dependency>

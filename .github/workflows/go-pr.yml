@@ -1,0 +1,65 @@
+# Copyright 2022 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Checks to run whenever there is a Go PR. Currently, we only write Go code
+# for CI/CD purposes, so the jobs tend to lighter-weight than Java PRs
+# are.
+
+name: Go PR
+
+on:
+  pull_request:
+    branches:
+      - 'main'
+    paths:
+      - 'cicd/**'
+      - '.github/workflows/go-pr.yml'
+
+permissions: read-all
+
+jobs:
+  check_formatting:
+    name: Go FMT
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@230611dbd0eb52da1e1f4f7bc8bb0c3a339fc8b7
+      - name: Setup Go
+        uses: actions/setup-go@44e221478fc6847752e5c574fc7a7b3247b00fbf
+        with:
+          go-version: '1.17'
+      - name: Run Fmt
+        run: |
+          cd cicd
+          if [[ $(go fmt ./...) != "" ]]; then
+            echo 'There were formatting violations'
+            exit 1
+          fi
+  build_and_tests:
+    name: Build and Test
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@230611dbd0eb52da1e1f4f7bc8bb0c3a339fc8b7
+      - name: Setup Go
+        uses: actions/setup-go@44e221478fc6847752e5c574fc7a7b3247b00fbf
+        with:
+          go-version: '1.17'
+      # By nature, this also makes sure that everything builds
+      - name: Run Tests
+        run: |
+          cd cicd
+          go test ./...

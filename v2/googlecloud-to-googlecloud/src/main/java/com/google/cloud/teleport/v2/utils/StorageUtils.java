@@ -15,11 +15,22 @@
  */
 package com.google.cloud.teleport.v2.utils;
 
+import static java.util.stream.Collectors.toList;
+
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;
+import org.apache.beam.sdk.io.fs.MatchResult;
+import org.apache.beam.sdk.io.fs.ResourceId;
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** A set of helper functions and classes for Cloud Storage. */
 public class StorageUtils {
+  private static final Logger LOG = LoggerFactory.getLogger(StorageUtils.class);
   private static final Pattern BUCKET_URN_SPEC = Pattern.compile("^projects/.*/buckets/(.+)$");
 
   /**
@@ -38,5 +49,28 @@ public class StorageUtils {
               bucketUrn));
     }
     return match.group(1);
+  }
+
+  /**
+   * Returns a list of all the files in a particular path.
+   *
+   * @param path input path
+   * @return list of all the files in the path
+   */
+  public static List<String> getFilesInDirectory(String path) {
+    try {
+      String pathPrefix = path + "/";
+      MatchResult result = FileSystems.match(pathPrefix + "**", EmptyMatchTreatment.ALLOW);
+      List<String> fileNames =
+          result.metadata().stream()
+              .map(MatchResult.Metadata::resourceId)
+              .map(ResourceId::toString)
+              .map(s -> StringUtils.removeStart(s, pathPrefix))
+              .collect(toList());
+      LOG.info("{} file(s) found in directory {}", fileNames.size(), path);
+      return fileNames;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 }

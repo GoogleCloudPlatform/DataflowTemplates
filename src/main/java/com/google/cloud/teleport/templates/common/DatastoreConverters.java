@@ -173,7 +173,6 @@ public class DatastoreConverters {
     void setFirestoreWriteNamespace(ValueProvider<String> value);
 
     @Description("Hint for the expected number of workers in the ramp-up throttling step")
-    @Default.Integer(500)
     ValueProvider<Integer> getFirestoreHintNumWorkers();
 
     void setFirestoreHintNumWorkers(ValueProvider<Integer> value);
@@ -210,7 +209,6 @@ public class DatastoreConverters {
     void setFirestoreDeleteProjectId(ValueProvider<String> firestoreDeleteProjectId);
 
     @Description("Hint for the expected number of workers in the ramp-up throttling step")
-    @Default.Integer(500)
     ValueProvider<Integer> getFirestoreHintNumWorkers();
 
     void setFirestoreHintNumWorkers(ValueProvider<Integer> value);

@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2018 Google Inc.
+ * Copyright (C) 2021 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -14,5 +14,16 @@
  * the License.
  */
 
-/** Exposed Beam API classes. */
-package org.apache.beam.sdk.io.gcp.spanner;
+package com.google.cloud.teleport.templates.common;
+
+/** Supported sources for a Splunk Token. */
+public enum SplunkTokenSource {
+  /** Token is passed as plaintext. */
+  PLAINTEXT,
+
+  /** Token to be decrypted using KMS. */
+  KMS,
+
+  /** Token is stored in Secret Manager. */
+  SECRET_MANAGER
+}
