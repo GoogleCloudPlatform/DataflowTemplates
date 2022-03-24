@@ -207,12 +207,16 @@ public class ElasticsearchIO {
         if (partialUpdate) {
           errorRootName = "update";
         } else {
-          if (backendVersion == 2) {
-            errorRootName = "create";
-          } else if (backendVersion >= 5) {
-            errorRootName = "index";
+          // look for error object key dynamically
+          for (String name : new String[] {"create", "index"}) {
+            JsonNode root = item.path(name);
+            if (root != null && !root.isMissingNode()) {
+              errorRootName = name;
+              break;
+            }
           }
         }
+
         JsonNode errorRoot = item.path(errorRootName);
         JsonNode error = errorRoot.get("error");
         if (error != null) {
@@ -752,10 +756,16 @@ public class ElasticsearchIO {
         return estimatedByteSize;
       }
 
-      String endPoint =
-          String.format(
-              "/%s/%s/_count",
-              connectionConfiguration.getIndex(), connectionConfiguration.getType());
+      String endPoint;
+      if (backendVersion < 6) {
+        endPoint =
+                String.format(
+                        "/%s/%s/_count",
+                        connectionConfiguration.getIndex(), connectionConfiguration.getType());
+      } else {
+        endPoint = String.format("/%s/_count", connectionConfiguration.getIndex());
+      }
+
       try (RestClient restClient = connectionConfiguration.createClient()) {
         long count = queryCount(restClient, endPoint, query);
         LOG.debug("estimate source byte size: query document count " + count);
@@ -862,11 +872,17 @@ public class ElasticsearchIO {
             String.format("\"slice\": {\"id\": %s,\"max\": %s}", source.sliceId, source.numSlices);
         query = query.replaceFirst("\\{", "{" + sliceQuery + ",");
       }
-      String endPoint =
+      String endPoint;
+      if (source.backendVersion < 6) {
+        endPoint =
           String.format(
-              "/%s/%s/_search",
-              source.spec.getConnectionConfiguration().getIndex(),
-              source.spec.getConnectionConfiguration().getType());
+            "/%s/%s/_search",
+            source.spec.getConnectionConfiguration().getIndex(),
+            source.spec.getConnectionConfiguration().getType());
+      } else {
+        endPoint = String.format("/%s/_search", source.spec.getConnectionConfiguration().getIndex());
+      }
+
       Map<String, String> params = new HashMap<>();
       params.put("scroll", source.spec.getScrollKeepalive());
       if (source.backendVersion == 2) {
@@ -1342,7 +1358,7 @@ public class ElasticsearchIO {
         // configure a custom serializer for metadata to be able to change serialization based
         // on ES version
         SimpleModule module = new SimpleModule();
-        module.addSerializer(DocumentMetadata.class, new DocumentMetadataSerializer());
+        module.addSerializer(DocumentMetadata.class, new DocumentMetadataSerializer((backendVersion >= 7)));
         OBJECT_MAPPER.registerModule(module);
       }
 
@@ -1353,9 +1369,11 @@ public class ElasticsearchIO {
       }
 
       private class DocumentMetadataSerializer extends StdSerializer<DocumentMetadata> {
+        private boolean excludeType = false;
 
-        private DocumentMetadataSerializer() {
+        private DocumentMetadataSerializer(boolean excludeType) {
           super(DocumentMetadata.class);
+          this.excludeType = excludeType;
         }
 
         @Override
@@ -1366,7 +1384,7 @@ public class ElasticsearchIO {
           if (value.index != null) {
             gen.writeStringField("_index", value.index);
           }
-          if (value.type != null) {
+          if (value.type != null && !this.excludeType) {
             gen.writeStringField("_type", value.type);
           }
           if (value.id != null) {
@@ -1464,11 +1482,16 @@ public class ElasticsearchIO {
         // Elasticsearch will default to the index/type provided here if none are set in the
         // document meta (i.e. using ElasticsearchIO$Write#withIndexFn and
         // ElasticsearchIO$Write#withTypeFn options)
-        String endPoint =
+        String endPoint;
+        if (backendVersion < 6) {
+          endPoint =
             String.format(
-                "/%s/%s/_bulk",
-                spec.getConnectionConfiguration().getIndex(),
-                spec.getConnectionConfiguration().getType());
+              "/%s/%s/_bulk",
+              spec.getConnectionConfiguration().getIndex(),
+              spec.getConnectionConfiguration().getType());
+        } else {
+          endPoint = String.format("/%s/_bulk", spec.getConnectionConfiguration().getIndex());
+        }
         HttpEntity requestBody =
             new NStringEntity(bulkRequest.toString(), ContentType.APPLICATION_JSON);
         Request request = new Request("POST", endPoint);
