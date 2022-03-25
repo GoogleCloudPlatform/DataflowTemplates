@@ -54,6 +54,7 @@
 
   <modules>
     <module>.</module>
+    <module>it</module>
     <module>v2</module>
   </modules>
 </project>

@@ -27,12 +27,14 @@ const (
 	// Roots in relation to the root directory of the repository.
 	ClassicRoot = "."
 	FlexRoot    = "v2"
+	ItRoot      = "it"
 )
 
 // Returns all of the known roots modules.
 func GetAllRoots() []string {
 	return []string{
 		ClassicRoot,
+		ItRoot,
 		FlexRoot,
 	}
 }
@@ -46,6 +48,7 @@ func GetAllRoots() []string {
 func GetModuleMapping() map[string][]string {
 	m := make(map[string][]string)
 	m[ClassicRoot] = make([]string, 0)
+	m[ItRoot] = make([]string, 0)
 
 	flexPoms, err := GetAllPomFiles(FlexRoot)
 	if err != nil {
@@ -99,11 +102,14 @@ func GetModulesForPaths(paths []string) map[string][]string {
 	m := make(map[string][]string)
 	flex := make([]string, 0)
 
+	it := fmt.Sprintf("it%s", string(os.PathSeparator))
 	v2 := fmt.Sprintf("v2%s", string(os.PathSeparator))
 
 	for _, path := range paths {
 		if strings.HasPrefix(path, v2) {
 			flex = append(flex, strings.TrimPrefix(path, v2))
+		} else if strings.HasPrefix(path, it) {
+			m[ItRoot] = make([]string, 0)
 		} else {
 			// TODO(zhoufek): Make this more granular, especially separating .github and cicd code
 			// into separate "modules"

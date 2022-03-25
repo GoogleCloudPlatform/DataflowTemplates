@@ -23,7 +23,7 @@ import (
 
 func TestGetAllRoots(t *testing.T) {
 	actual := GetAllRoots()
-	expected := []string{ClassicRoot, FlexRoot}
+	expected := []string{ClassicRoot, ItRoot, FlexRoot}
 	if !reflect.DeepEqual(actual, expected) {
 		t.Errorf("Not all roots present. Expected: %v. Got: %v", expected, actual)
 	}
@@ -33,6 +33,9 @@ func TestModuleMappingHasAllRoots(t *testing.T) {
 	m := GetModuleMapping()
 	if _, ok := m[ClassicRoot]; !ok {
 		t.Error("Missing Classic root")
+	}
+	if _, ok := m[ItRoot]; !ok {
+		t.Error("Missing integration test root")
 	}
 	if _, ok := m[FlexRoot]; !ok {
 		t.Error("Missing Flex root")
@@ -55,6 +58,7 @@ func TestGetModulesForPaths(t *testing.T) {
 			},
 			expected: map[string][]string{
 				ClassicRoot: []string{},
+				ItRoot:      []string{},
 				FlexRoot:    []string{"pubsub-binary-to-bigquery", ""},
 			},
 		},
@@ -74,6 +78,7 @@ func TestGetModulesForPaths(t *testing.T) {
 			input: []string{"something", "it/something", "v2/something"},
 			expected: map[string][]string{
 				ClassicRoot: make([]string, 0),
+				ItRoot:      make([]string, 0),
 				FlexRoot:    []string{""},
 			},
 		},
