@@ -156,6 +156,12 @@ public class DataStreamToSQL {
     String getSchemaMap();
 
     void setSchemaMap(String value);
+
+    @Description("[Optional] Custom connection string")
+    @Default.String("")
+    String getCustomConnectionString();
+
+    void setCustomConnectionString(String value);
   }
 
   /**
@@ -164,7 +170,7 @@ public class DataStreamToSQL {
    * @param args The command-line arguments to the pipeline.
    */
   public static void main(String[] args) {
-    LOG.info("Starting Avro Python to BigQuery");
+    LOG.info("Starting Datastream to SQL");
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
@@ -200,6 +206,9 @@ public class DataStreamToSQL {
       default:
         throw new IllegalArgumentException(
             String.format("Database Type %s is not supported.", options.getDatabaseType()));
+    }
+    if (!options.getCustomConnectionString().isEmpty()) {
+      jdbcDriverConnectionString = options.getCustomConnectionString();
     }
 
     CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration =
@@ -272,7 +281,8 @@ public class DataStreamToSQL {
                     options.getGcsPubSubSubscription(),
                     options.getRfcStartDateTime())
                 .withLowercaseSourceColumns()
-                .withHashColumnValue("_metadata_row_id", "rowid"));
+                .withRenameColumnValue("_metadata_row_id", "rowid")
+                .withHashRowId());
 
     /*
      * Stage 2: Write JSON Strings to SQL Insert Strings
@@ -294,6 +304,7 @@ public class DataStreamToSQL {
             .withStatementFormatter(
                 new CdcJdbcIO.StatementFormatter<DmlInfo>() {
                   public String formatStatement(DmlInfo element) {
+                    LOG.debug("Executing SQL: {}", element.getDmlSql());
                     return element.getDmlSql();
                   }
                 }));

@@ -15,10 +15,10 @@
  */
 package com.google.cloud.teleport.v2.options;
 
-import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform.FileFormat;
-import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform.WriteDisposition;
 import com.google.cloud.teleport.v2.transforms.DeleteBigQueryDataFn;
 import com.google.cloud.teleport.v2.transforms.UpdateDataplexBigQueryToGcsExportMetadataTransform;
+import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
+import com.google.cloud.teleport.v2.utils.WriteDisposition.WriteDispositionOptions;
 import com.google.cloud.teleport.v2.values.DataplexCompression;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.options.Default;
@@ -94,9 +94,9 @@ public interface DataplexBigQueryToGcsOptions
   @Description("Output file format in GCS. Format: PARQUET, AVRO, or ORC. Default: PARQUET.")
   @Default.Enum("PARQUET")
   @Required
-  FileFormat getFileFormat();
+  FileFormatOptions getFileFormat();
 
-  void setFileFormat(FileFormat fileFormat);
+  void setFileFormat(FileFormatOptions fileFormat);
 
   @Description(
       "Output file compression. Format: UNCOMPRESSED, SNAPPY, GZIP, or BZIP2. Default:"
@@ -116,9 +116,9 @@ public interface DataplexBigQueryToGcsOptions
       "Specifies the action that occurs if destination file already exists. Format: OVERWRITE,"
           + " FAIL, SKIP. Default: SKIP.")
   @Default.Enum("SKIP")
-  WriteDisposition getWriteDisposition();
+  WriteDispositionOptions getWriteDisposition();
 
-  void setWriteDisposition(WriteDisposition writeDisposition);
+  void setWriteDisposition(WriteDispositionOptions writeDisposition);
 
   @Description(
       "Due to a BigQuery limitation, it's not possible to have a partitioned external table with"

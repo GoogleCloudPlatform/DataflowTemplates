@@ -1,0 +1,22 @@
+name: Feature Request
+description: File a feature request issue
+title: "[Feature Request]: <Please Replace This with a Summary of Your Request>"
+labels: ["addition", "p2", "needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you so much for taking the time to fill out this feature request!
+  - type: input
+    id: template
+    attributes:
+      label: Related Template(s)
+      description: "Please let us know which templates are you submitting this feature request for. Or if you are requesting a new template."
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What feature(s) are you requesting?
+    validations:
+      required: true

@@ -23,9 +23,9 @@ import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.common.collect.Lists;
 import java.util.ArrayList;
 import java.util.Base64;
-import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.Transaction;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Count;
@@ -104,7 +104,7 @@ public class CompareDatabases extends PTransform<PBegin, PCollection<Long>> {
     @Override
     public PCollection<KV<String, Struct>> expand(PBegin begin) {
       PCollectionView<Transaction> tx =
-          begin.apply(LocalSpannerIO.createTransaction().withSpannerConfig(spanConfig));
+          begin.apply(SpannerIO.createTransaction().withSpannerConfig(spanConfig));
 
       PCollection<Ddl> sourceDdl =
           begin.apply("Read Information Schema", new ReadInformationSchema(spanConfig, tx));
@@ -118,7 +118,7 @@ public class CompareDatabases extends PTransform<PBegin, PCollection<Long>> {
       PCollection<Struct> rows =
           tables.apply(
               "Read rows from tables",
-              LocalSpannerIO.readAll().withTransaction(tx).withSpannerConfig(spanConfig));
+              SpannerIO.readAll().withTransaction(tx).withSpannerConfig(spanConfig));
 
       return rows.apply(
           ParDo.of(

@@ -133,10 +133,29 @@ public class SplunkConverters {
 
     void setTokenKMSEncryptionKey(ValueProvider<String> keyName);
 
+    @Description(
+        "Secret Manager Secret ID for the token. Should be in the format "
+            + "projects/{project}/secrets/{secret}/versions/{secret_version}")
+    ValueProvider<String> getTokenSecretId();
+
+    void setTokenSecretId(ValueProvider<String> secretId);
+
+    @Description("Source of the token. One of PLAINTEXT, KMS or SECRET_MANAGER.")
+    ValueProvider<String> getTokenSource();
+
+    void setTokenSource(ValueProvider<String> tokenSource);
+
     @Description("Path to root CA in GCS, ex: gs://mybucket/somepath/rootCA.crt")
     ValueProvider<String> getRootCaCertificatePath();
 
     void setRootCaCertificatePath(ValueProvider<String> rootCaPath);
+
+    @Description(
+        "Parameter which specifies if logs should be enabled for batches written to Splunk."
+            + " Default: true.")
+    ValueProvider<Boolean> getEnableBatchLogs();
+
+    void setEnableBatchLogs(ValueProvider<Boolean> enableBatchLogs);
   }
 
   private static class FailsafeStringToSplunkEvent
