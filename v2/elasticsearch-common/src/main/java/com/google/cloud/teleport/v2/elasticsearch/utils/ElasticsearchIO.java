@@ -759,9 +759,9 @@ public class ElasticsearchIO {
       String endPoint;
       if (backendVersion < 6) {
         endPoint =
-                String.format(
-                        "/%s/%s/_count",
-                        connectionConfiguration.getIndex(), connectionConfiguration.getType());
+            String.format(
+                "/%s/%s/_count",
+                connectionConfiguration.getIndex(), connectionConfiguration.getType());
       } else {
         endPoint = String.format("/%s/_count", connectionConfiguration.getIndex());
       }
@@ -875,12 +875,13 @@ public class ElasticsearchIO {
       String endPoint;
       if (source.backendVersion < 6) {
         endPoint =
-          String.format(
-            "/%s/%s/_search",
-            source.spec.getConnectionConfiguration().getIndex(),
-            source.spec.getConnectionConfiguration().getType());
+            String.format(
+                "/%s/%s/_search",
+                source.spec.getConnectionConfiguration().getIndex(),
+                source.spec.getConnectionConfiguration().getType());
       } else {
-        endPoint = String.format("/%s/_search", source.spec.getConnectionConfiguration().getIndex());
+        endPoint =
+            String.format("/%s/_search", source.spec.getConnectionConfiguration().getIndex());
       }
 
       Map<String, String> params = new HashMap<>();
@@ -1358,7 +1359,8 @@ public class ElasticsearchIO {
         // configure a custom serializer for metadata to be able to change serialization based
         // on ES version
         SimpleModule module = new SimpleModule();
-        module.addSerializer(DocumentMetadata.class, new DocumentMetadataSerializer((backendVersion >= 7)));
+        module.addSerializer(
+            DocumentMetadata.class, new DocumentMetadataSerializer((backendVersion >= 7)));
         OBJECT_MAPPER.registerModule(module);
       }
 
@@ -1485,10 +1487,10 @@ public class ElasticsearchIO {
         String endPoint;
         if (backendVersion < 6) {
           endPoint =
-            String.format(
-              "/%s/%s/_bulk",
-              spec.getConnectionConfiguration().getIndex(),
-              spec.getConnectionConfiguration().getType());
+              String.format(
+                  "/%s/%s/_bulk",
+                  spec.getConnectionConfiguration().getIndex(),
+                  spec.getConnectionConfiguration().getType());
         } else {
           endPoint = String.format("/%s/_bulk", spec.getConnectionConfiguration().getIndex());
         }

@@ -21,16 +21,15 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Throwables;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * The {@link ProcessFailsafePubSubFn} class processes a {@link FailsafeElement} containing an
@@ -91,7 +90,9 @@ public class ProcessFailsafePubSubFn
 
     try {
       if (pubsubMessage.getPayload().length > 0) {
-        messageObject = patchJsonFields(gson.fromJson(new String(pubsubMessage.getPayload()), JsonObject.class));
+        messageObject =
+            patchJsonFields(
+                gson.fromJson(new String(pubsubMessage.getPayload()), JsonObject.class));
       }
 
       // If message attributes are present they will be serialized along with the message payload
