@@ -757,7 +757,7 @@ public class ElasticsearchIO {
       }
 
       String endPoint;
-      if (backendVersion < 6) {
+      if (backendVersion < 7) {
         endPoint =
             String.format(
                 "/%s/%s/_count",
@@ -873,7 +873,7 @@ public class ElasticsearchIO {
         query = query.replaceFirst("\\{", "{" + sliceQuery + ",");
       }
       String endPoint;
-      if (source.backendVersion < 6) {
+      if (source.backendVersion < 7) {
         endPoint =
             String.format(
                 "/%s/%s/_search",
@@ -1485,7 +1485,7 @@ public class ElasticsearchIO {
         // document meta (i.e. using ElasticsearchIO$Write#withIndexFn and
         // ElasticsearchIO$Write#withTypeFn options)
         String endPoint;
-        if (backendVersion < 6) {
+        if (backendVersion < 7) {
           endPoint =
               String.format(
                   "/%s/%s/_bulk",
