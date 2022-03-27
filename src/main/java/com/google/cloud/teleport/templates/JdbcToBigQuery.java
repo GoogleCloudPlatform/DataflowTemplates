@@ -165,31 +165,6 @@ public class JdbcToBigQuery {
           outputTableRow.set(metaData.getColumnName(i), resultSet.getObject(i));
           continue;
         }
-
-        /*
-         * DATE:      EPOCH MILLISECONDS -> yyyy-MM-dd
-         * DATETIME:  EPOCH MILLISECONDS -> yyyy-MM-dd hh:mm:ss.SSSSSS
-         * TIMESTAMP: EPOCH MILLISECONDS -> yyyy-MM-dd hh:mm:ss.SSSSSSXXX
-         *
-         * MySQL drivers have ColumnTypeName in all caps and postgres in small case
-         */
-        switch (metaData.getColumnTypeName(i).toLowerCase()) {
-          case "date":
-            outputTableRow.set(
-                metaData.getColumnName(i), dateFormatter.format(resultSet.getObject(i)));
-            break;
-          case "datetime":
-            outputTableRow.set(
-                metaData.getColumnName(i),
-                datetimeFormatter.format((TemporalAccessor) resultSet.getObject(i)));
-            break;
-          case "timestamp":
-            outputTableRow.set(
-                metaData.getColumnName(i), timestampFormatter.format(resultSet.getObject(i)));
-            break;
-          default:
-            outputTableRow.set(metaData.getColumnName(i), resultSet.getObject(i));
-        }
       }
 
       return outputTableRow;
