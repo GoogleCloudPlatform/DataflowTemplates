@@ -104,7 +104,7 @@ public class TextIOToBigQuery {
             BigQueryIO.writeTableRows()
                 .withSchema(
                     NestedValueProvider.of(
-                        options.getSchema(),
+                        options.getJSONPath(),
                         new SerializableFunction<String, TableSchema>() {
 
                           @Override
