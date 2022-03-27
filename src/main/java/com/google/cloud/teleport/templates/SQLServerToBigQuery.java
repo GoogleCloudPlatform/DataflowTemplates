@@ -18,6 +18,7 @@ package com.google.cloud.teleport.templates;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.service.AutoService;
 import com.google.cloud.teleport.io.DynamicJdbcIO;
+import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import com.google.cloud.teleport.templates.common.JdbcConverters;
 import com.google.cloud.teleport.util.KMSEncryptedNestedValueProvider;
 import java.security.Security;
@@ -30,6 +31,9 @@ import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
+import com.google.api.services.bigquery.model.TableSchema;
+import com.google.api.services.bigquery.model.TableFieldSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -111,7 +115,7 @@ public class JdbcToBigQuery {
          *         via {@link org.apache.beam.sdk.io.jdbc.JdbcIO.RowMapper}
          */
         .apply(
-            "Read from JdbcIO",
+            "Read from SQL Server",
             DynamicJdbcIO.<TableRow>read()
                 .withDataSourceConfiguration(
                     DynamicJdbcIO.DynamicDataSourceConfiguration.create(
@@ -133,9 +137,44 @@ public class JdbcToBigQuery {
             "Write to BigQuery",
             BigQueryIO.writeTableRows()
                 .withoutValidation()
-                .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER)
-                .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
+                .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_IF_NEEDED)
+                .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_TRUNCATE)
                 .withCustomGcsTempLocation(options.getBigQueryLoadingTemporaryDirectory())
+                .withSchema(
+                    NestedValueProvider.of(
+                        options.getSchema(),
+                        new SerializableFunction<String, TableSchema>() {
+
+                          @Override
+                          public TableSchema apply(String jsonPath) {
+
+                            TableSchema tableSchema = new TableSchema();
+                            List<TableFieldSchema> fields = new ArrayList<>();
+                            SchemaParser schemaParser = new SchemaParser();
+
+                            try {
+                              JSONArray bqSchemaJsonArray = schemaParser.parseSchema(jsonPath);
+                              for (int i = 0; i < bqSchemaJsonArray.length(); i++) {
+                                JSONObject inputField = bqSchemaJsonArray.getJSONObject(i);
+                                TableFieldSchema field =
+                                    new TableFieldSchema()
+                                        .setName(inputField.getString(NAME))
+                                        .setType(inputField.getString(TYPE));
+
+                                if (inputField.has(MODE)) {
+                                  field.setMode(inputField.getString(MODE));
+                                }
+
+                                fields.add(field);
+                              }
+                              tableSchema.setFields(fields);
+
+                            } catch (Exception e) {
+                              throw new RuntimeException(e);
+                            }
+                            return tableSchema;
+                          }
+                        }))
                 .to(options.getOutputTable()));
 
     // Execute the pipeline and return the result.
@@ -148,10 +187,7 @@ public class JdbcToBigQuery {
   private static class ResultSetToTableRow implements JdbcIO.RowMapper<TableRow> {
 
     static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
-    static DateTimeFormatter datetimeFormatter =
-        DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss.SSSSSS");
-    static SimpleDateFormat timestampFormatter =
-        new SimpleDateFormat("yyyy-MM-dd hh:mm:ss.SSSSSSXXX");
+    static SimpleDateFormat jstTimestampFormatter = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss.SSS");
 
     @Override
     public TableRow mapRow(ResultSet resultSet) throws Exception {
@@ -166,26 +202,18 @@ public class JdbcToBigQuery {
           continue;
         }
 
-        /*
-         * DATE:      EPOCH MILLISECONDS -> yyyy-MM-dd
-         * DATETIME:  EPOCH MILLISECONDS -> yyyy-MM-dd hh:mm:ss.SSSSSS
-         * TIMESTAMP: EPOCH MILLISECONDS -> yyyy-MM-dd hh:mm:ss.SSSSSSXXX
-         *
-         * MySQL drivers have ColumnTypeName in all caps and postgres in small case
-         */
         switch (metaData.getColumnTypeName(i).toLowerCase()) {
           case "date":
             outputTableRow.set(
                 metaData.getColumnName(i), dateFormatter.format(resultSet.getObject(i)));
             break;
+          case "smalldatetime":
+            outputTableRow.set(
+              metaData.getColumnName(i),new Timestamp(jstTimestampFormatter.parse(resultSet.getObject(i).toString()).getTime()).toString());
+            break;
           case "datetime":
             outputTableRow.set(
-                metaData.getColumnName(i),
-                datetimeFormatter.format((TemporalAccessor) resultSet.getObject(i)));
-            break;
-          case "timestamp":
-            outputTableRow.set(
-                metaData.getColumnName(i), timestampFormatter.format(resultSet.getObject(i)));
+              metaData.getColumnName(i),new Timestamp(jstTimestampFormatter.parse(resultSet.getObject(i).toString()).getTime()).toString());
             break;
           default:
             outputTableRow.set(metaData.getColumnName(i), resultSet.getObject(i));
@@ -195,5 +223,4 @@ public class JdbcToBigQuery {
       return outputTableRow;
     }
   }
-
 }

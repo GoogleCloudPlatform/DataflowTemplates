@@ -99,64 +99,11 @@ public class JdbcConverters {
     ValueProvider<String> getDisabledAlgorithms();
 
     void setDisabledAlgorithms(ValueProvider<String> disabledAlgorithms);
-  }
 
-  /** Factory method for {@link ResultSetToTableRow}. */
-  public static JdbcIO.RowMapper<TableRow> getResultSetToTableRow() {
-    return new ResultSetToTableRow();
-  }
+    @Description("schmea")
 
-  /**
-   * {@link JdbcIO.RowMapper} implementation to convert Jdbc ResultSet rows to UTF-8 encoded JSONs.
-   */
-  private static class ResultSetToTableRow implements JdbcIO.RowMapper<TableRow> {
+    ValueProvider<String> getSchema();
 
-    static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
-    static DateTimeFormatter datetimeFormatter =
-        DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss.SSSSSS");
-    static SimpleDateFormat timestampFormatter =
-        new SimpleDateFormat("yyyy-MM-dd hh:mm:ss.SSSSSSXXX");
-
-    @Override
-    public TableRow mapRow(ResultSet resultSet) throws Exception {
-
-      ResultSetMetaData metaData = resultSet.getMetaData();
-
-      TableRow outputTableRow = new TableRow();
-
-      for (int i = 1; i <= metaData.getColumnCount(); i++) {
-        if (resultSet.getObject(i) == null) {
-          outputTableRow.set(metaData.getColumnName(i), resultSet.getObject(i));
-          continue;
-        }
-
-        /*
-         * DATE:      EPOCH MILLISECONDS -> yyyy-MM-dd
-         * DATETIME:  EPOCH MILLISECONDS -> yyyy-MM-dd hh:mm:ss.SSSSSS
-         * TIMESTAMP: EPOCH MILLISECONDS -> yyyy-MM-dd hh:mm:ss.SSSSSSXXX
-         *
-         * MySQL drivers have ColumnTypeName in all caps and postgres in small case
-         */
-        switch (metaData.getColumnTypeName(i).toLowerCase()) {
-          case "date":
-            outputTableRow.set(
-                metaData.getColumnName(i), dateFormatter.format(resultSet.getObject(i)));
-            break;
-          case "datetime":
-            outputTableRow.set(
-                metaData.getColumnName(i),
-                datetimeFormatter.format((TemporalAccessor) resultSet.getObject(i)));
-            break;
-          case "timestamp":
-            outputTableRow.set(
-                metaData.getColumnName(i), timestampFormatter.format(resultSet.getObject(i)));
-            break;
-          default:
-            outputTableRow.set(metaData.getColumnName(i), resultSet.getObject(i));
-        }
-      }
-
-      return outputTableRow;
-    }
+    void setSchema(ValueProvider<String> value);
   }
 }

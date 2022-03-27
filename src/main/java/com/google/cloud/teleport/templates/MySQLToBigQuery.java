@@ -111,7 +111,7 @@ public class JdbcToBigQuery {
          *         via {@link org.apache.beam.sdk.io.jdbc.JdbcIO.RowMapper}
          */
         .apply(
-            "Read from JdbcIO",
+            "Read from MySQL",
             DynamicJdbcIO.<TableRow>read()
                 .withDataSourceConfiguration(
                     DynamicJdbcIO.DynamicDataSourceConfiguration.create(
@@ -133,9 +133,44 @@ public class JdbcToBigQuery {
             "Write to BigQuery",
             BigQueryIO.writeTableRows()
                 .withoutValidation()
-                .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER)
-                .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
+                .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_IF_NEEDED)
+                .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_TRUNCATE)
                 .withCustomGcsTempLocation(options.getBigQueryLoadingTemporaryDirectory())
+                .withSchema(
+                    NestedValueProvider.of(
+                        options.getSchema(),
+                        new SerializableFunction<String, TableSchema>() {
+
+                          @Override
+                          public TableSchema apply(String jsonPath) {
+
+                            TableSchema tableSchema = new TableSchema();
+                            List<TableFieldSchema> fields = new ArrayList<>();
+                            SchemaParser schemaParser = new SchemaParser();
+
+                            try {
+                              JSONArray bqSchemaJsonArray = schemaParser.parseSchema(jsonPath);
+                              for (int i = 0; i < bqSchemaJsonArray.length(); i++) {
+                                JSONObject inputField = bqSchemaJsonArray.getJSONObject(i);
+                                TableFieldSchema field =
+                                    new TableFieldSchema()
+                                        .setName(inputField.getString(NAME))
+                                        .setType(inputField.getString(TYPE));
+
+                                if (inputField.has(MODE)) {
+                                  field.setMode(inputField.getString(MODE));
+                                }
+
+                                fields.add(field);
+                              }
+                              tableSchema.setFields(fields);
+
+                            } catch (Exception e) {
+                              throw new RuntimeException(e);
+                            }
+                            return tableSchema;
+                          }
+                        }))
                 .to(options.getOutputTable()));
 
     // Execute the pipeline and return the result.

@@ -104,7 +104,7 @@ public class TextIOToBigQuery {
             BigQueryIO.writeTableRows()
                 .withSchema(
                     NestedValueProvider.of(
-                        options.getJSONPath(),
+                        options.getSchema(),
                         new SerializableFunction<String, TableSchema>() {
 
                           @Override
@@ -113,15 +113,9 @@ public class TextIOToBigQuery {
                             TableSchema tableSchema = new TableSchema();
                             List<TableFieldSchema> fields = new ArrayList<>();
                             SchemaParser schemaParser = new SchemaParser();
-                            JSONObject jsonSchema;
 
                             try {
-
-                              jsonSchema = schemaParser.parseSchema(jsonPath);
-
-                              JSONArray bqSchemaJsonArray =
-                                  jsonSchema.getJSONArray(BIGQUERY_SCHEMA);
-
+                              JSONArray bqSchemaJsonArray = schemaParser.parseSchema(jsonPath);
                               for (int i = 0; i < bqSchemaJsonArray.length(); i++) {
                                 JSONObject inputField = bqSchemaJsonArray.getJSONObject(i);
                                 TableFieldSchema field =
