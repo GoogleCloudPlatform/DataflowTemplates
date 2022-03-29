@@ -18,7 +18,9 @@ package flags
 
 import (
 	"flag"
+	"fmt"
 	"log"
+	"regexp"
 	"strings"
 )
 
@@ -27,15 +29,42 @@ var (
 	changedFiles string
 )
 
+// Registers all common flags. Must be called before flag.Parse().
 func RegisterCommonFlags() {
 	flag.StringVar(&changedFiles, "changed-files", "", "List of changed files as a comma-separated string")
 }
 
-func ChangedFiles() []string {
+// Returns all changed files with regexes. If no regexes are passed, all files are returned. If even one
+// is passed, then only file paths with a match anywhere in the file will be returned. If multiple are
+// passed, it is equivalent to (regex1|regex2|...|regexN)
+func ChangedFiles(regexes ...string) []string {
 	if len(changedFiles) == 0 {
 		log.Println("WARNING: No changed files were passed. This could indicate an error.")
 		return make([]string, 0)
 	}
 
-	return strings.Split(changedFiles, ",")
+	files := strings.Split(changedFiles, ",")
+	if len(regexes) == 0 {
+		return files
+	}
+
+	var fullRegex string
+	if len(regexes) == 1 {
+		fullRegex = regexes[0]
+	} else {
+		fullRegex = fmt.Sprintf("(%s)", strings.Join(regexes, "|"))
+	}
+	re := regexp.MustCompile(fullRegex)
+
+	results := make([]string, 0)
+	for _, f := range files {
+		if re.MatchString(f) {
+			results = append(results, f)
+		}
+	}
+
+	if len(results) == 0 {
+		log.Println("INFO: All changed files got filtered out.")
+	}
+	return results
 }

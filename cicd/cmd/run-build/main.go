@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Google LLC
+ * Copyright (C) 2022 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -17,13 +17,21 @@
 package main
 
 import (
-	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/workflows"
 	"log"
+
+	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/workflows"
 )
 
 func main() {
-	if err := workflows.SpotlessCheck().Run(); err != nil {
-		log.Fatalf("Error running spotless check: %v", err)
+	mvnFlags := workflows.NewMavenFlags()
+	err := workflows.MvnCleanInstall().Run(
+		mvnFlags.IncludeDependencies(),
+		mvnFlags.IncludeDependents(),
+		mvnFlags.SkipDependencyAnalysis(), // TODO(zhoufek): Fix our dependencies then remove this flag
+		mvnFlags.SkipJib(),
+		mvnFlags.SkipTests())
+	if err != nil {
+		log.Fatalf("%v\n", err)
 	}
-	log.Println("Spotless check completed successfully!")
+	log.Println("Build Successful!")
 }

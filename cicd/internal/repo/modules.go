@@ -30,64 +30,6 @@ const (
 	ItRoot      = "it"
 )
 
-// Returns all of the known roots modules.
-func GetAllRoots() []string {
-	return []string{
-		ClassicRoot,
-		ItRoot,
-		FlexRoot,
-	}
-}
-
-// Returns a map of roots to their modules. Properties are:
-// 		Key: The root module, equivalent to one of the const values (e.g. ClassicRoot)
-//		Value: All the submodules, sometimes nested under another parent that is also in the slice
-// This could be used in the equivalent command:
-//		mvn x:y -f {key}/pom.xml -pl {value}
-// An empty value indicates no submodules.
-func GetModuleMapping() map[string][]string {
-	m := make(map[string][]string)
-	m[ClassicRoot] = make([]string, 0)
-	m[ItRoot] = make([]string, 0)
-
-	flexPoms, err := GetAllPomFiles(FlexRoot)
-	if err != nil {
-		// Panicking here seems reasonable, since something is deeply wrong with the filesystem
-		// if this fails.
-		panic(err)
-	}
-	flexModules := make([]string, len(flexPoms))
-	for i := range flexPoms {
-		if module, err := getModuleFromPomPath(flexPoms[i], FlexRoot); err != nil {
-			panic(err)
-		} else {
-			flexModules[i] = module
-		}
-	}
-	m[FlexRoot] = flexModules
-
-	return m
-}
-
-// Extracts module name from POM path, with `rootModule` being used as the reference for
-// the uppermost ancestor. The returned value should be usable with the `-pl` flag in relation
-// to the POM file at `rootModule`.
-func getModuleFromPomPath(pomPath string, rootModule string) (string, error) {
-	dir := filepath.Dir(pomPath)
-	allDirs := strings.Split(dir, string(os.PathSeparator))
-
-	i := len(allDirs)
-	for ; i > 0 && allDirs[i-1] != rootModule; i -= 1 {
-		// Empty intentionally
-	}
-
-	if i == 0 {
-		return "", fmt.Errorf("%s is not under %s", pomPath, rootModule)
-	}
-
-	return strings.Join(allDirs[i:], "/"), nil
-}
-
 // Gets all the unique modules for files whose path from the root directory is in `paths`. Example paths:
 //		pom.xml -> Mapped to Classic root
 //		v2/cdc-parent/pom.xml -> Mapped to cdc-parent under Flex Templates
@@ -124,36 +66,6 @@ func GetModulesForPaths(paths []string) map[string][]string {
 	}
 
 	return m
-}
-
-type moduleTrieNode struct {
-	value    string
-	children map[rune]*moduleTrieNode
-}
-
-func flexModulesAsTrie() *moduleTrieNode {
-	root := &moduleTrieNode{
-		value:    "",
-		children: make(map[rune]*moduleTrieNode),
-	}
-
-	for _, m := range GetModuleMapping()[FlexRoot] {
-		curr := root
-		for _, r := range m {
-			if _, ok := curr.children[r]; ok {
-				curr = curr.children[r]
-			} else {
-				curr.children[r] = &moduleTrieNode{
-					value:    "",
-					children: make(map[rune]*moduleTrieNode),
-				}
-				curr = curr.children[r]
-			}
-		}
-		curr.value = m
-	}
-
-	return root
 }
 
 func findUniqueFlexModules(paths []string) []string {
@@ -194,4 +106,80 @@ func findUniqueFlexModules(paths []string) []string {
 	}
 
 	return ret
+}
+
+type moduleTrieNode struct {
+	value    string
+	children map[rune]*moduleTrieNode
+}
+
+func flexModulesAsTrie() *moduleTrieNode {
+	root := &moduleTrieNode{
+		value:    "",
+		children: make(map[rune]*moduleTrieNode),
+	}
+
+	for _, m := range getModuleMapping()[FlexRoot] {
+		curr := root
+		for _, r := range m {
+			if _, ok := curr.children[r]; ok {
+				curr = curr.children[r]
+			} else {
+				curr.children[r] = &moduleTrieNode{
+					value:    "",
+					children: make(map[rune]*moduleTrieNode),
+				}
+				curr = curr.children[r]
+			}
+		}
+		curr.value = m
+	}
+
+	return root
+}
+
+// Returns a map of roots to their modules. Properties are:
+// 		Key: The root module, equivalent to one of the const values (e.g. ClassicRoot)
+//		Value: All the submodules, sometimes nested under another parent that is also in the slice
+func getModuleMapping() map[string][]string {
+	m := make(map[string][]string)
+	m[ClassicRoot] = make([]string, 0)
+	m[ItRoot] = make([]string, 0)
+
+	flexPoms, err := GetAllPomFiles(FlexRoot)
+	if err != nil {
+		// Panicking here seems reasonable, since something is deeply wrong with the filesystem
+		// if this fails.
+		panic(err)
+	}
+	flexModules := make([]string, len(flexPoms))
+	for i := range flexPoms {
+		if module, err := getModuleFromPomPath(flexPoms[i], FlexRoot); err != nil {
+			panic(err)
+		} else {
+			flexModules[i] = module
+		}
+	}
+	m[FlexRoot] = flexModules
+
+	return m
+}
+
+// Extracts module name from POM path, with `rootModule` being used as the reference for
+// the uppermost ancestor. The returned value should be usable with the `-pl` flag in relation
+// to the POM file at `rootModule`.
+func getModuleFromPomPath(pomPath string, rootModule string) (string, error) {
+	dir := filepath.Dir(pomPath)
+	allDirs := strings.Split(dir, string(os.PathSeparator))
+
+	i := len(allDirs)
+	for ; i > 0 && allDirs[i-1] != rootModule; i -= 1 {
+		// Empty intentionally
+	}
+
+	if i == 0 {
+		return "", fmt.Errorf("%s is not under %s", pomPath, rootModule)
+	}
+
+	return strings.Join(allDirs[i:], "/"), nil
 }
