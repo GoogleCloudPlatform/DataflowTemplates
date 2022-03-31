@@ -211,8 +211,7 @@ public abstract class DatastreamToDML
 
       Map<String, String> tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
       if (tableSchema.isEmpty()) {
-        // If the table DNE we return null (NOOP)
-        LOG.debug("Table Not Found: {}.{}.{}", catalogName, schemaName, tableName);
+        // If the table DNE we return null (NOOP).
         return null;
       }
 
@@ -496,6 +495,13 @@ public abstract class DatastreamToDML
             e.toString());
       }
 
+      if (tableSchema.isEmpty()) {
+        LOG.info(
+            "Table Not Found: Catalog: {}, Schema: {}, Table: {}",
+            catalogName,
+            schemaName,
+            tableName);
+      }
       return tableSchema;
     }
 
