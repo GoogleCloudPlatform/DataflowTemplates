@@ -140,7 +140,7 @@ public class JdbcConverters {
         switch (metaData.getColumnTypeName(i).toLowerCase()) {
           case "date":
             outputTableRow.set(
-                metaData.getColumnName(i), dateFormatter.format(resultSet.getObject(i)));
+                metaData.getColumnName(i), dateFormatter.format(resultSet.getDate(i)));
             break;
           case "datetime":
             outputTableRow.set(
@@ -149,7 +149,7 @@ public class JdbcConverters {
             break;
           case "timestamp":
             outputTableRow.set(
-                metaData.getColumnName(i), timestampFormatter.format(resultSet.getObject(i)));
+                metaData.getColumnName(i), timestampFormatter.format(resultSet.getTimestamp(i)));
             break;
           default:
             outputTableRow.set(metaData.getColumnName(i), resultSet.getObject(i));
