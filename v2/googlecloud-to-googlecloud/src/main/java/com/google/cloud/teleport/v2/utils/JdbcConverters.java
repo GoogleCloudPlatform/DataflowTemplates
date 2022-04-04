@@ -26,7 +26,7 @@ import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Common code for Teleport DataplexJdbcIngestion. */
+/** Common code for Jdbc templates. */
 public class JdbcConverters {
 
   private static final Logger LOG = LoggerFactory.getLogger(JdbcConverters.class);
