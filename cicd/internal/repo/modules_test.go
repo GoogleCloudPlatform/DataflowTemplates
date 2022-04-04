@@ -21,16 +21,8 @@ import (
 	"testing"
 )
 
-func TestGetAllRoots(t *testing.T) {
-	actual := GetAllRoots()
-	expected := []string{ClassicRoot, ItRoot, FlexRoot}
-	if !reflect.DeepEqual(actual, expected) {
-		t.Errorf("Not all roots present. Expected: %v. Got: %v", expected, actual)
-	}
-}
-
 func TestModuleMappingHasAllRoots(t *testing.T) {
-	m := GetModuleMapping()
+	m := getModuleMapping()
 	if _, ok := m[ClassicRoot]; !ok {
 		t.Error("Missing Classic root")
 	}

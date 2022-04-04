@@ -589,7 +589,10 @@ public class CdcJdbcIO {
             statement.executeUpdate(formattedStatement);
             connection.commit();
           } catch (SQLException exception) {
-            LOG.error("SQLException Occurred: {}", exception.toString());
+            LOG.error(
+                "SQLException Occurred: {} while executing statement: {}",
+                exception.toString(),
+                formattedStatement);
             connection.rollback();
           }
         }

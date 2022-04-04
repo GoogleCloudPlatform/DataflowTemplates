@@ -106,7 +106,10 @@ public abstract class DatastreamToDML
 
       // Null rows suggest no DML is required.
       if (dmlInfo != null) {
+        LOG.debug("Output Data: {}", jsonString);
         context.output(KV.of(dmlInfo.getStateWindowKey(), dmlInfo));
+      } else {
+        LOG.debug("Skipping Null DmlInfo: {}", jsonString);
       }
     } catch (IOException e) {
       // TODO(dhercher): Push failure to DLQ collection
@@ -208,7 +211,7 @@ public abstract class DatastreamToDML
 
       Map<String, String> tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
       if (tableSchema.isEmpty()) {
-        // If the table DNE we return null (NOOP)
+        // If the table DNE we return null (NOOP).
         return null;
       }
 
@@ -492,6 +495,13 @@ public abstract class DatastreamToDML
             e.toString());
       }
 
+      if (tableSchema.isEmpty()) {
+        LOG.info(
+            "Table Not Found: Catalog: {}, Schema: {}, Table: {}",
+            catalogName,
+            schemaName,
+            tableName);
+      }
       return tableSchema;
     }
 

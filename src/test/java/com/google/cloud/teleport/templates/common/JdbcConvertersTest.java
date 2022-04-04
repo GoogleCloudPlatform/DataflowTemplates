@@ -89,7 +89,9 @@ public class JdbcConvertersTest {
 
     Mockito.when(resultSet.getObject(1)).thenReturn(datetimeObj);
     Mockito.when(resultSet.getObject(2)).thenReturn(dateObj);
+    Mockito.when(resultSet.getDate(2)).thenReturn(dateObj);
     Mockito.when(resultSet.getObject(3)).thenReturn(timestampObj);
+    Mockito.when(resultSet.getTimestamp(3)).thenReturn(timestampObj);
     Mockito.when(resultSet.getMetaData()).thenReturn(resultSetMetaData);
 
     Mockito.when(resultSetMetaData.getColumnCount()).thenReturn(3);

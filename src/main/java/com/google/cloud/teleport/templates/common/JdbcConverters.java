@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.templates.common;
 
 import com.google.api.services.bigquery.model.TableRow;
+import java.sql.Clob;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.text.SimpleDateFormat;
@@ -25,9 +26,13 @@ import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Common code for Teleport JdbcToBigQuery. */
 public class JdbcConverters {
+
+  private static final Logger LOG = LoggerFactory.getLogger(JdbcConverters.class);
 
   /** Interface used by the JdbcToBigQuery pipeline to accept user input. */
   public interface JdbcToBigQueryOptions extends PipelineOptions {
@@ -109,7 +114,5 @@ public class JdbcConverters {
     @Description("schmea")
 
     ValueProvider<String> getSchema();
-
-    void setSchema(ValueProvider<String> value);
   }
 }
