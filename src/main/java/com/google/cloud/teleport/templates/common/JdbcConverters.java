@@ -113,9 +113,9 @@ public class JdbcConverters {
 
     static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
     static DateTimeFormatter datetimeFormatter =
-        DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss.SSSSSS");
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
     static SimpleDateFormat timestampFormatter =
-        new SimpleDateFormat("yyyy-MM-dd hh:mm:ss.SSSSSSXXX");
+        new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSSSSXXX");
 
     @Override
     public TableRow mapRow(ResultSet resultSet) throws Exception {
