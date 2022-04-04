@@ -147,12 +147,6 @@ public class JdbcToBigQuery {
    */
   private static class ResultSetToTableRow implements JdbcIO.RowMapper<TableRow> {
 
-    static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
-    static DateTimeFormatter datetimeFormatter =
-        DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss.SSSSSS");
-    static SimpleDateFormat timestampFormatter =
-        new SimpleDateFormat("yyyy-MM-dd hh:mm:ss.SSSSSSXXX");
-
     @Override
     public TableRow mapRow(ResultSet resultSet) throws Exception {
 
