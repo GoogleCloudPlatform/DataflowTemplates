@@ -16,15 +16,20 @@
 package com.google.cloud.teleport.v2.utils;
 
 import com.google.api.services.bigquery.model.TableRow;
+import java.sql.Clob;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Common code for Teleport DataplexJdbcIngestion. */
 public class JdbcConverters {
+
+  private static final Logger LOG = LoggerFactory.getLogger(JdbcConverters.class);
 
   /** Factory method for {@link ResultSetToTableRow}. */
   public static JdbcIO.RowMapper<TableRow> getResultSetToTableRow() {
@@ -65,7 +70,7 @@ public class JdbcConverters {
         switch (metaData.getColumnTypeName(i).toLowerCase()) {
           case "date":
             outputTableRow.set(
-                metaData.getColumnName(i), dateFormatter.format(resultSet.getObject(i)));
+                metaData.getColumnName(i), dateFormatter.format(resultSet.getDate(i)));
             break;
           case "datetime":
             outputTableRow.set(
@@ -74,7 +79,18 @@ public class JdbcConverters {
             break;
           case "timestamp":
             outputTableRow.set(
-                metaData.getColumnName(i), timestampFormatter.format(resultSet.getObject(i)));
+                metaData.getColumnName(i), timestampFormatter.format(resultSet.getTimestamp(i)));
+            break;
+          case "clob":
+            Clob clobObject = resultSet.getClob(i);
+            if (clobObject.length() > Integer.MAX_VALUE) {
+              LOG.warn(
+                  "The Clob value size {} in column {} exceeds 2GB and will be truncated.",
+                  clobObject.length(),
+                  metaData.getColumnName(i));
+            }
+            outputTableRow.set(
+                metaData.getColumnName(i), clobObject.getSubString(1, (int) clobObject.length()));
             break;
           default:
             outputTableRow.set(metaData.getColumnName(i), resultSet.getObject(i));

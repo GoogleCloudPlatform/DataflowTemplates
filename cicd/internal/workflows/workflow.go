@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Google LLC
+ * Copyright (C) 2022 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -14,16 +14,9 @@
  * the License.
  */
 
-package main
+package workflows
 
-import (
-	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/workflows"
-	"log"
-)
-
-func main() {
-	if err := workflows.SpotlessCheck().Run(); err != nil {
-		log.Fatalf("Error running spotless check: %v", err)
-	}
-	log.Println("Spotless check completed successfully!")
+type Workflow interface {
+	// Runs a workflow. This should handle registering and parsing all flags.
+	Run(args ...string) error
 }
