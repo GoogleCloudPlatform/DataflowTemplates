@@ -125,7 +125,7 @@ public class JdbcToBigQuery {
                         .withConnectionProperties(options.getConnectionProperties()))
                 .withQuery(options.getQuery())
                 .withCoder(TableRowJsonCoder.of())
-                .withRowMapper(new ResultSetToTableRow()))
+                .withRowMapper(new ResultSetToTableRow(options.getTimezone())))
         /*
          * Step 2: Append TableRow to an existing BigQuery table
          */
@@ -182,17 +182,22 @@ public class JdbcToBigQuery {
    */
   private static class ResultSetToTableRow implements JdbcIO.RowMapper<TableRow> {
 
-    static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
-    static DateTimeFormatter datetimeFormatter =
-        DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss.SSSSSS");
-    static SimpleDateFormat timestampFormatter =
-        new SimpleDateFormat("yyyy-MM-dd hh:mm:ss.SSSSSSXXX");
+    private final String timezone;
+
+    ResultSetToTableRow(ValueProvider<String> timezone) {
+      this.timezone = timezone.get();
+    }
 
     @Override
     public TableRow mapRow(ResultSet resultSet) throws Exception {
 
       ResultSetMetaData metaData = resultSet.getMetaData();
+      SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
+      // ref: https://docs.oracle.com/javase/jp/8/docs/api/java/time/format/DateTimeFormatter.html
+      DateTimeFormatter datetimeFormatter =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
 
+      Logger LOG = LoggerFactory.getLogger(SQLServerToBigQuery.class);
       TableRow outputTableRow = new TableRow();
 
       for (int i = 1; i <= metaData.getColumnCount(); i++) {
@@ -201,13 +206,6 @@ public class JdbcToBigQuery {
           continue;
         }
 
-        /*
-         * DATE:      EPOCH MILLISECONDS -> yyyy-MM-dd
-         * DATETIME:  EPOCH MILLISECONDS -> yyyy-MM-dd hh:mm:ss.SSSSSS
-         * TIMESTAMP: EPOCH MILLISECONDS -> yyyy-MM-dd hh:mm:ss.SSSSSSXXX
-         *
-         * MySQL drivers have ColumnTypeName in all caps and postgres in small case
-         */
         switch (metaData.getColumnTypeName(i).toLowerCase()) {
           case "date":
             outputTableRow.set(
@@ -215,20 +213,14 @@ public class JdbcToBigQuery {
             break;
           case "datetime":
             outputTableRow.set(
-                metaData.getColumnName(i),
-                datetimeFormatter.format((TemporalAccessor) resultSet.getObject(i)));
-            break;
-          case "timestamp":
-            outputTableRow.set(
-                metaData.getColumnName(i), timestampFormatter.format(resultSet.getObject(i)));
+              metaData.getColumnName(i),
+              datetimeFormatter.format((TemporalAccessor) resultSet.getObject(i)));
             break;
           default:
             outputTableRow.set(metaData.getColumnName(i), resultSet.getObject(i));
         }
       }
-
       return outputTableRow;
     }
   }
-
 }

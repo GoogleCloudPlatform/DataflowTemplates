@@ -100,6 +100,12 @@ public class JdbcConverters {
 
     void setDisabledAlgorithms(ValueProvider<String> disabledAlgorithms);
 
+    @Description("timezone")
+
+    ValueProvider<String> getTimezone();
+
+    void setTimezone(ValueProvider<String> value);
+
     @Description("schmea")
 
     ValueProvider<String> getSchema();

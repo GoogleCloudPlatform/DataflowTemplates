@@ -129,7 +129,7 @@ public class JdbcToBigQuery {
                         .withConnectionProperties(options.getConnectionProperties()))
                 .withQuery(options.getQuery())
                 .withCoder(TableRowJsonCoder.of())
-                .withRowMapper(new ResultSetToTableRow()))
+                .withRowMapper(new ResultSetToTableRow(options.getTimezone())))
         /*
          * Step 2: Append TableRow to an existing BigQuery table
          */
@@ -186,14 +186,23 @@ public class JdbcToBigQuery {
    */
   private static class ResultSetToTableRow implements JdbcIO.RowMapper<TableRow> {
 
-    static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
-    static SimpleDateFormat jstTimestampFormatter = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss.SSS");
+    private final String timezone;
+
+    ResultSetToTableRow(ValueProvider<String> timezone) {
+      this.timezone = timezone.get();
+    }
 
     @Override
     public TableRow mapRow(ResultSet resultSet) throws Exception {
 
       ResultSetMetaData metaData = resultSet.getMetaData();
 
+      // set time zone and out put embulk same results.
+      SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
+      SimpleDateFormat TimestampFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+      // timezone
+      TimestampFormatter.setTimeZone(TimeZone.getTimeZone(timezone));
+      Logger LOG = LoggerFactory.getLogger(SQLServerToBigQuery.class);
       TableRow outputTableRow = new TableRow();
 
       for (int i = 1; i <= metaData.getColumnCount(); i++) {
@@ -201,7 +210,6 @@ public class JdbcToBigQuery {
           outputTableRow.set(metaData.getColumnName(i), resultSet.getObject(i));
           continue;
         }
-
         switch (metaData.getColumnTypeName(i).toLowerCase()) {
           case "date":
             outputTableRow.set(
@@ -209,17 +217,16 @@ public class JdbcToBigQuery {
             break;
           case "smalldatetime":
             outputTableRow.set(
-              metaData.getColumnName(i),new Timestamp(jstTimestampFormatter.parse(resultSet.getObject(i).toString()).getTime()).toString());
+              metaData.getColumnName(i),new Timestamp(TimestampFormatter.parse(resultSet.getObject(i).toString()).getTime()).toString());
             break;
           case "datetime":
             outputTableRow.set(
-              metaData.getColumnName(i),new Timestamp(jstTimestampFormatter.parse(resultSet.getObject(i).toString()).getTime()).toString());
+              metaData.getColumnName(i),new Timestamp(TimestampFormatter.parse(resultSet.getObject(i).toString()).getTime()).toString());
             break;
           default:
             outputTableRow.set(metaData.getColumnName(i), resultSet.getObject(i));
         }
       }
-
       return outputTableRow;
     }
   }
