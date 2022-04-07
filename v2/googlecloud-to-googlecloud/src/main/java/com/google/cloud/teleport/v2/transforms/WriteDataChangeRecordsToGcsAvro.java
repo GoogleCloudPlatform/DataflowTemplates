@@ -103,7 +103,7 @@ public abstract class WriteDataChangeRecordsToGcsAvro
     @Description(
         "The maximum number of output shards produced when writing. Default number is runner"
             + " defined.")
-    @Default.Integer(1)
+    @Default.Integer(20)
     Integer getNumShards();
 
     void setNumShards(Integer numShards);
