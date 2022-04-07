@@ -24,6 +24,8 @@ import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import com.google.cloud.teleport.v2.values.DataplexCompression;
 import com.google.common.annotations.VisibleForTesting;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.temporal.ChronoField;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.avro.LogicalTypes;
@@ -229,24 +231,34 @@ public class BigQueryTableToGcsTransform
    * To fix this mismatch this cmethod converts the `string` dates fields to `int` with logical type
    * `date` fields.
    *
-   * <p>Note that for the TIMESTAMP type both Beam's BigQueryIO and BQ API map it to `long` so there
-   * is no mismatch.
+   * <p>Note that for the TIMESTAMP type both Beam's BigQueryIO and BQ API map it to `long`,and for
+   * the DATETIME both map it to `string` so there is no mismatch for those types.
    */
   private GenericRecord genericRecordWithFixedDates(SchemaAndRecord schemaAndRecord) {
-    GenericRecord input = schemaAndRecord.getRecord();
+    return genericRecordWithFixedDates(schemaAndRecord.getRecord());
+  }
+
+  private GenericRecord genericRecordWithFixedDates(GenericRecord input) {
     GenericRecord output = new GenericData.Record(table.getSchema());
     List<Field> fields = table.getSchema().getFields();
     for (int i = 0; i < fields.size(); i++) {
-      if (Schemas.isSchemaOfTypeOrNullableType(
-          fields.get(i).schema(), Schema.Type.INT, LogicalTypes.date())) {
-        Object value = input.get(i);
-        if (!(value instanceof CharSequence)) {
-          throw new IllegalStateException(
-              "The class of input value of type DATE is " + value.getClass());
-        }
+      Object value = input.get(i);
+      Schema fieldSchema = fields.get(i).schema();
+      if (value == null) {
+        output.put(i, null);
+      } else if (Schemas.isSchemaOfTypeOrNullableType(fieldSchema, Schema.Type.RECORD)
+          && value instanceof GenericRecord) {
+        output.put(i, genericRecordWithFixedDates((GenericRecord) value));
+      } else if (Schemas.isSchemaOfTypeOrNullableType(
+              fields.get(i).schema(), Schema.Type.INT, LogicalTypes.date())
+          && value instanceof CharSequence) {
         output.put(i, (int) LocalDate.parse((CharSequence) value).toEpochDay());
+      } else if (Schemas.isSchemaOfTypeOrNullableType(
+              fields.get(i).schema(), Schema.Type.LONG, LogicalTypes.timeMicros())
+          && value instanceof CharSequence) {
+        output.put(i, LocalTime.parse((CharSequence) value).getLong(ChronoField.MICRO_OF_DAY));
       } else {
-        output.put(i, input.get(i));
+        output.put(i, value);
       }
     }
     return output;
