@@ -36,11 +36,12 @@ import org.slf4j.LoggerFactory;
 // @DefaultCoder(FailsafeElementCoder.class)
 public class DatastreamRow {
 
+  public static final String DEFAULT_ORACLE_PRIMARY_KEY = "_metadata_row_id";
+  public static final String ORACLE_TRANSACTION_ID_KEY = "_metadata_tx_id";
+
   private static final Logger LOG = LoggerFactory.getLogger(DatastreamRow.class);
   private TableRow tableRow;
   private JsonNode jsonRow;
-
-  private static final String DEFAULT_ORACLE_PRIMARY_KEY = "_metadata_row_id";
 
   private DatastreamRow(TableRow tableRow, JsonNode jsonRow) {
     this.tableRow = tableRow;
@@ -163,5 +164,9 @@ public class DatastreamRow {
     } else {
       return this.tableRow.toString();
     }
+  }
+
+  public String getOracleRowId() {
+    return this.getStringValue(DEFAULT_ORACLE_PRIMARY_KEY);
   }
 }
