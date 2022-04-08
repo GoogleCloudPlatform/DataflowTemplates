@@ -52,6 +52,7 @@ public abstract class MergeConfiguration implements Serializable {
   private static final Boolean DEFAULT_SUPPORT_PARTITIONED_TABLES = true;
   private static final Integer DEFAULT_PARTITION_RETENTION_DAYS = 1;
   private static final Duration DEFAULT_MERGE_WINDOW_DURATION = Duration.standardMinutes(30);
+  private static final int DEFAULT_MERGE_CONCURRENCY = 30;
 
   // BigQuery-specific properties
   public static final String BIGQUERY_QUOTE_CHARACTER = "`";
@@ -66,6 +67,8 @@ public abstract class MergeConfiguration implements Serializable {
 
   public abstract Duration mergeWindowDuration();
 
+  public abstract int mergeConcurrency();
+
   public static MergeConfiguration bigQueryConfiguration() {
     return MergeConfiguration.builder().setQuoteCharacter(BIGQUERY_QUOTE_CHARACTER).build();
   }
@@ -78,6 +81,10 @@ public abstract class MergeConfiguration implements Serializable {
     return this.toBuilder().setMergeWindowDuration(duration).build();
   }
 
+  public MergeConfiguration withMergeConcurrency(int mergeConcurrency) {
+    return this.toBuilder().setMergeConcurrency(mergeConcurrency).build();
+  }
+
   public abstract Builder toBuilder();
 
   static Builder builder() {
@@ -86,7 +93,8 @@ public abstract class MergeConfiguration implements Serializable {
         .setSupportPartitionedTables(DEFAULT_SUPPORT_PARTITIONED_TABLES)
         .setPartitionRetention(DEFAULT_PARTITION_RETENTION_DAYS)
         .setSupportPartitionedTables(true)
-        .setMergeWindowDuration(DEFAULT_MERGE_WINDOW_DURATION);
+        .setMergeWindowDuration(DEFAULT_MERGE_WINDOW_DURATION)
+        .setMergeConcurrency(DEFAULT_MERGE_CONCURRENCY);
   }
 
   @AutoValue.Builder
@@ -100,6 +108,8 @@ public abstract class MergeConfiguration implements Serializable {
     abstract Builder setPartitionRetention(Integer partitionRetention);
 
     abstract Builder setMergeWindowDuration(Duration mergeWindowDuration);
+
+    abstract Builder setMergeConcurrency(int mergeConcurrency);
 
     abstract MergeConfiguration build();
   }

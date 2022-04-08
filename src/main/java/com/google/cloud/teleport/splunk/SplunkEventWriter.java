@@ -39,6 +39,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.state.BagState;
@@ -62,6 +63,7 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
 
   private static final Integer DEFAULT_BATCH_COUNT = 1;
   private static final Boolean DEFAULT_DISABLE_CERTIFICATE_VALIDATION = false;
+  private static final Boolean DEFAULT_ENABLE_BATCH_LOGS = true;
   private static final Logger LOG = LoggerFactory.getLogger(SplunkEventWriter.class);
   private static final long DEFAULT_FLUSH_DELAY = 2;
   private static final Counter INPUT_COUNTER =
@@ -70,6 +72,18 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
       Metrics.counter(SplunkEventWriter.class, "outbound-successful-events");
   private static final Counter FAILED_WRITES =
       Metrics.counter(SplunkEventWriter.class, "outbound-failed-events");
+  private static final Counter INVALID_REQUESTS =
+      Metrics.counter(SplunkEventWriter.class, "http-invalid-requests");
+  private static final Counter SERVER_ERROR_REQUESTS =
+      Metrics.counter(SplunkEventWriter.class, "http-server-error-requests");
+  private static final Counter VALID_REQUESTS =
+      Metrics.counter(SplunkEventWriter.class, "http-valid-requests");
+  private static final Distribution SUCCESSFUL_WRITE_LATENCY_MS =
+      Metrics.distribution(SplunkEventWriter.class, "successful_write_to_splunk_latency_ms");
+  private static final Distribution UNSUCCESSFUL_WRITE_LATENCY_MS =
+      Metrics.distribution(SplunkEventWriter.class, "unsuccessful_write_to_splunk_latency_ms");
+  private static final Distribution SUCCESSFUL_WRITE_BATCH_SIZE =
+      Metrics.distribution(SplunkEventWriter.class, "write_to_splunk_batch");
   private static final String BUFFER_STATE_NAME = "buffer";
   private static final String COUNT_STATE_NAME = "count";
   private static final String TIME_ID_NAME = "expiry";
@@ -91,6 +105,7 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
 
   private Integer batchCount;
   private Boolean disableValidation;
+  private Boolean enableBatchLogs;
   private HttpEventPublisher publisher;
 
   private static final Gson GSON =
@@ -113,6 +128,9 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
   abstract ValueProvider<String> rootCaCertificatePath();
 
   @Nullable
+  abstract ValueProvider<Boolean> enableBatchLogs();
+
+  @Nullable
   abstract ValueProvider<Integer> inputBatchCount();
 
   @Setup
@@ -131,6 +149,16 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
 
       batchCount = MoreObjects.firstNonNull(batchCount, DEFAULT_BATCH_COUNT);
       LOG.info("Batch count set to: {}", batchCount);
+    }
+
+    if (enableBatchLogs == null) {
+
+      if (enableBatchLogs() != null) {
+        enableBatchLogs = enableBatchLogs().get();
+      }
+
+      enableBatchLogs = MoreObjects.firstNonNull(enableBatchLogs, DEFAULT_ENABLE_BATCH_LOGS);
+      LOG.info("Enable Batch logs set to: {}", enableBatchLogs);
     }
 
     // Either user supplied or default disableValidation.
@@ -188,8 +216,9 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
     timer.offset(Duration.standardSeconds(DEFAULT_FLUSH_DELAY)).setRelative();
 
     if (count >= batchCount) {
-
-      LOG.info("Flushing batch of {} events", count);
+      if (enableBatchLogs) {
+        LOG.info("Flushing batch of {} events", count);
+      }
       flush(receiver, bufferState, countState);
     }
   }
@@ -202,7 +231,9 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
       throws IOException {
 
     if (MoreObjects.<Long>firstNonNull(countState.read(), 0L) > 0) {
-      LOG.info("Flushing window with {} events", countState.read());
+      if (enableBatchLogs) {
+        LOG.info("Flushing window with {} events", countState.read());
+      }
       flush(receiver, bufferState, countState);
     }
   }
@@ -221,7 +252,7 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
   }
 
   /**
-   * Utility method to flush a batch of requests via {@link HttpEventPublisher}.
+   * Utility method to flush a batch of events via {@link HttpEventPublisher}.
    *
    * @param receiver Receiver to write {@link SplunkWriteError}s to
    */
@@ -235,34 +266,58 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
 
       HttpResponse response = null;
       List<SplunkEvent> events = Lists.newArrayList(bufferState.read());
+      long startTime = System.nanoTime();
       try {
         // Important to close this response to avoid connection leak.
         response = publisher.execute(events);
-
         if (!response.isSuccessStatusCode()) {
+          UNSUCCESSFUL_WRITE_LATENCY_MS.update(nanosToMillis(System.nanoTime() - startTime));
+          FAILED_WRITES.inc(countState.read());
+          int statusCode = response.getStatusCode();
+          if (statusCode >= 400 && statusCode < 500) {
+            INVALID_REQUESTS.inc();
+          } else if (statusCode >= 500 && statusCode < 600) {
+            SERVER_ERROR_REQUESTS.inc();
+          }
+
+          logWriteFailures(
+              countState,
+              response.getStatusCode(),
+              response.parseAsString(),
+              response.getStatusMessage());
           flushWriteFailures(
               events, response.getStatusMessage(), response.getStatusCode(), receiver);
-          logWriteFailures(countState);
 
         } else {
-          LOG.info("Successfully wrote {} events", countState.read());
+          SUCCESSFUL_WRITE_LATENCY_MS.update(nanosToMillis(System.nanoTime() - startTime));
           SUCCESS_WRITES.inc(countState.read());
+          VALID_REQUESTS.inc();
+          SUCCESSFUL_WRITE_BATCH_SIZE.update(countState.read());
+
+          if (enableBatchLogs) {
+            LOG.info("Successfully wrote {} events", countState.read());
+          }
         }
 
       } catch (HttpResponseException e) {
-        LOG.error(
-            "Error writing to Splunk. StatusCode: {}, content: {}, StatusMessage: {}",
-            e.getStatusCode(),
-            e.getContent(),
-            e.getStatusMessage());
-        logWriteFailures(countState);
+        UNSUCCESSFUL_WRITE_LATENCY_MS.update(nanosToMillis(System.nanoTime() - startTime));
+        FAILED_WRITES.inc(countState.read());
+        int statusCode = e.getStatusCode();
+        if (statusCode >= 400 && statusCode < 500) {
+          INVALID_REQUESTS.inc();
+        } else if (statusCode >= 500 && statusCode < 600) {
+          SERVER_ERROR_REQUESTS.inc();
+        }
 
+        logWriteFailures(countState, e.getStatusCode(), e.getContent(), e.getStatusMessage());
         flushWriteFailures(events, e.getStatusMessage(), e.getStatusCode(), receiver);
 
       } catch (IOException ioe) {
-        LOG.error("Error writing to Splunk: {}", ioe.getMessage());
-        logWriteFailures(countState);
+        UNSUCCESSFUL_WRITE_LATENCY_MS.update(nanosToMillis(System.nanoTime() - startTime));
+        FAILED_WRITES.inc(countState.read());
+        INVALID_REQUESTS.inc();
 
+        logWriteFailures(countState, 0, ioe.getMessage(), null);
         flushWriteFailures(events, ioe.getMessage(), null, receiver);
 
       } finally {
@@ -293,10 +348,20 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
     }
   }
 
-  /** Utility method to log write failures and handle metrics. */
-  private void logWriteFailures(@StateId(COUNT_STATE_NAME) ValueState<Long> countState) {
-    LOG.error("Failed to write {} events", countState.read());
-    FAILED_WRITES.inc(countState.read());
+  /** Utility method to log write failures. */
+  private void logWriteFailures(
+      @StateId(COUNT_STATE_NAME) ValueState<Long> countState,
+      int statusCode,
+      String content,
+      String statusMessage) {
+    if (enableBatchLogs) {
+      LOG.error("Failed to write {} events", countState.read());
+    }
+    LOG.error(
+        "Error writing to Splunk. StatusCode: {}, content: {}, StatusMessage: {}",
+        statusCode,
+        content,
+        statusMessage);
   }
 
   /**
@@ -348,6 +413,16 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
     return false;
   }
 
+  /**
+   * Converts Nanoseconds to Milliseconds.
+   *
+   * @param ns time in nanoseconds
+   * @return time in milliseconds
+   */
+  private static long nanosToMillis(long ns) {
+    return Math.round(((double) ns) / 1e6);
+  }
+
   @AutoValue.Builder
   abstract static class Builder {
 
@@ -363,6 +438,8 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
         ValueProvider<Boolean> disableCertificateValidation);
 
     abstract Builder setRootCaCertificatePath(ValueProvider<String> rootCaCertificatePath);
+
+    abstract Builder setEnableBatchLogs(ValueProvider<Boolean> enableBatchLogs);
 
     abstract Builder setInputBatchCount(ValueProvider<Integer> inputBatchCount);
 
@@ -445,6 +522,16 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
      */
     public Builder withRootCaCertificatePath(ValueProvider<String> rootCaCertificatePath) {
       return setRootCaCertificatePath(rootCaCertificatePath);
+    }
+
+    /**
+     * Method to enable batch logs.
+     *
+     * @param enableBatchLogs for enabling batch logs.
+     * @return {@link Builder}
+     */
+    public Builder withEnableBatchLogs(ValueProvider<Boolean> enableBatchLogs) {
+      return setEnableBatchLogs(enableBatchLogs);
     }
 
     /** Build a new {@link SplunkEventWriter} objects based on the configuration. */

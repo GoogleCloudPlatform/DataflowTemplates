@@ -23,7 +23,8 @@ import org.apache.beam.sdk.schemas.Schema;
  * This class is used to expose the package level method {@link SchemaUtil#toBeamSchema} to the
  * Teleport project.
  *
- * This util class is temporary until {@link SchemaUtil#toBeamSchema} is made public in Apache Beam.
+ * <p>This util class is temporary until {@link SchemaUtil#toBeamSchema} is made public in Apache
+ * Beam.
  */
 public final class BeamSchemaUtil {
 

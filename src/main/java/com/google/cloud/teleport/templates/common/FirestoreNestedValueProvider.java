@@ -24,11 +24,10 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
  * Creates a DualInputNestedValue Provider from two Value Providers. Used to select input from
  * firestore parameters over datastore parameters.
  */
-public class FirestoreNestedValueProvider
-    extends DualInputNestedValueProvider<String, String, String> {
+public class FirestoreNestedValueProvider<T> extends DualInputNestedValueProvider<T, T, T> {
 
-  private static class FirestoreTranslatorInput
-      implements SerializableFunction<TranslatorInput<String, String>, String> {
+  private static class FirestoreTranslatorInput<T2>
+      implements SerializableFunction<TranslatorInput<T2, T2>, T2> {
     private FirestoreTranslatorInput() {}
 
     public static FirestoreTranslatorInput of() {
@@ -36,9 +35,9 @@ public class FirestoreNestedValueProvider
     }
 
     @Override
-    public String apply(TranslatorInput<String, String> input) {
-      String datastoreInput = input.getX();
-      String firestoreInput = input.getY();
+    public T2 apply(TranslatorInput<T2, T2> input) {
+      T2 datastoreInput = input.getX();
+      T2 firestoreInput = input.getY();
       if (firestoreInput != null) {
         return firestoreInput;
       }
@@ -47,7 +46,7 @@ public class FirestoreNestedValueProvider
   }
 
   public FirestoreNestedValueProvider(
-      ValueProvider<String> datastoreInput, ValueProvider<String> firestoreInput) {
+      ValueProvider<T> datastoreInput, ValueProvider<T> firestoreInput) {
     super(datastoreInput, firestoreInput, FirestoreTranslatorInput.of());
   }
 }

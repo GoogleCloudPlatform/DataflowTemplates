@@ -42,12 +42,14 @@ public class DLQWriteTransform {
   public abstract static class WriteDLQ extends PTransform<PCollection<String>, PDone> {
 
     public static Builder newBuilder() {
-      return new AutoValue_DLQWriteTransform_WriteDLQ.Builder();
+      return new AutoValue_DLQWriteTransform_WriteDLQ.Builder().setIncludePaneInfo(false);
     }
 
     public abstract String dlqDirectory();
 
     public abstract String tmpDirectory();
+
+    public abstract boolean includePaneInfo();
 
     @Override
     public PDone expand(PCollection<String> input) {
@@ -77,9 +79,14 @@ public class DLQWriteTransform {
                   .withNumShards(20)
                   .to(
                       new WindowedFilenamePolicy(
-                          dlqDirectory(), "error", "-SSSSS-of-NNNNN", ".json"))
+                          dlqDirectory(), "error", getShardTemplate(), ".json"))
                   .withTempDirectory(
                       FileBasedSink.convertToFileResourceIfPossible(tmpDirectory())));
+    }
+
+    private String getShardTemplate() {
+      String paneStr = includePaneInfo() ? "-P" : "";
+      return paneStr + "-SSSSS-of-NNNNN";
     }
 
     /** Builder for {@link WriteDLQ}. */
@@ -100,6 +107,10 @@ public class DLQWriteTransform {
       public Builder withTmpDirectory(String tmpDirectory) {
         return setTmpDirectory(tmpDirectory);
       }
+
+      public abstract Builder setIncludePaneInfo(boolean value);
+
+      public abstract boolean includePaneInfo();
 
       public abstract WriteDLQ build();
     }

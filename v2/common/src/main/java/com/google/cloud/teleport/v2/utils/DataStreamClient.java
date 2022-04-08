@@ -386,7 +386,7 @@ public class DataStreamClient implements Serializable {
       case "LONG_RAW":
         return StandardSQLTypeName.BYTES;
       case "DATE":
-        return StandardSQLTypeName.TIMESTAMP;
+        return StandardSQLTypeName.DATE;
       default:
     }
 

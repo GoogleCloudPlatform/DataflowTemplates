@@ -444,6 +444,7 @@ public class DataStreamToBigQuery {
             DLQWriteTransform.WriteDLQ.newBuilder()
                 .withDlqDirectory(dlqDirectory)
                 .withTmpDirectory(tempDlqDir)
+                .setIncludePaneInfo(true)
                 .build());
 
     // Execute the pipeline and return the result.

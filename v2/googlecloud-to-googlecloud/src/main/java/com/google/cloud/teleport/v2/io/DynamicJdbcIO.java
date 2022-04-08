@@ -19,8 +19,10 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.utils.KMSEncryptedNestedValue;
+import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Splitter;
+import com.google.common.base.Throwables;
 import com.google.common.io.ByteStreams;
 import com.google.common.io.Files;
 import java.io.File;
@@ -90,6 +92,10 @@ public class DynamicJdbcIO {
 
   public static <T> DynamicRead<T> read() {
     return new AutoValue_DynamicJdbcIO_DynamicRead.Builder<T>().build();
+  }
+
+  public static <T> DynamicWrite<T> write() {
+    return new AutoValue_DynamicJdbcIO_DynamicWrite.Builder<T>().build();
   }
 
   /** Implementation of {@link #read()}. */
@@ -163,6 +169,75 @@ public class DynamicJdbcIO {
       builder.add(DisplayData.item("query", getQuery()));
       builder.add(DisplayData.item("rowMapper", getRowMapper().getClass().getName()));
       builder.add(DisplayData.item("coder", getCoder().getClass().getName()));
+    }
+  }
+
+  /** Implementation of {@link #write()}. */
+  @AutoValue
+  public abstract static class DynamicWrite<T>
+      extends PTransform<PCollection<T>, PCollection<FailsafeElement<T, T>>> {
+    @Nullable
+    abstract DynamicDataSourceConfiguration getDynamicDataSourceConfiguration();
+
+    @Nullable
+    abstract String getStatement();
+
+    @Nullable
+    abstract JdbcIO.PreparedStatementSetter<T> getPreparedStatementSetter();
+
+    abstract Builder<T> toBuilder();
+
+    @AutoValue.Builder
+    abstract static class Builder<T> {
+      abstract Builder<T> setDynamicDataSourceConfiguration(DynamicDataSourceConfiguration config);
+
+      abstract Builder<T> setStatement(String statement);
+
+      abstract Builder<T> setPreparedStatementSetter(
+          JdbcIO.PreparedStatementSetter<T> preparedStatementSetter);
+
+      abstract DynamicWrite<T> build();
+    }
+
+    public DynamicWrite<T> withDataSourceConfiguration(
+        DynamicDataSourceConfiguration configuration) {
+      checkArgument(
+          configuration != null,
+          "withDataSourceConfiguration(configuration) called with null configuration");
+      return toBuilder().setDynamicDataSourceConfiguration(configuration).build();
+    }
+
+    public DynamicWrite<T> withStatement(String statement) {
+      checkArgument(statement != null, "withStatement(statement) called with null statement");
+      return toBuilder().setStatement(statement).build();
+    }
+
+    public DynamicWrite<T> withPreparedStatementSetter(
+        JdbcIO.PreparedStatementSetter<T> preparedStatementSetter) {
+      checkArgument(
+          preparedStatementSetter != null,
+          "withPreparedStatementSetter(preparedStatementSetter) called with null"
+              + " preparedStatementSetter");
+      return toBuilder().setPreparedStatementSetter(preparedStatementSetter).build();
+    }
+
+    @Override
+    public PCollection<FailsafeElement<T, T>> expand(PCollection<T> input) {
+      return input.apply(
+          ParDo.of(
+              new DynamicWriteFn<>(
+                  getDynamicDataSourceConfiguration(),
+                  getStatement(),
+                  getPreparedStatementSetter())));
+    }
+
+    @Override
+    public void populateDisplayData(DisplayData.Builder builder) {
+      super.populateDisplayData(builder);
+      builder.add(DisplayData.item("statement", getStatement()));
+      builder.add(
+          DisplayData.item(
+              "preparedStatementSetter", getPreparedStatementSetter().getClass().getName()));
     }
   }
 
@@ -250,14 +325,13 @@ public class DynamicJdbcIO {
     @VisibleForTesting
     public DataSource buildDatasource() {
       BasicDataSource basicDataSource = new BasicDataSource();
-      if (getDriverClassName() != null) {
-        if (getDriverClassName() == null) {
-          throw new RuntimeException("Driver class name is required.");
-        }
+      if (getDriverClassName() == null) {
+        throw new RuntimeException("Driver class name is required.");
+      } else {
         basicDataSource.setDriverClassName(getDriverClassName());
       }
       if (getUrl() != null) {
-        if (getUrl() == null) {
+        if (getUrl().get() == null) {
           throw new RuntimeException("Connection url is required.");
         }
         basicDataSource.setUrl(getUrl().get());
@@ -268,7 +342,7 @@ public class DynamicJdbcIO {
       if (getPassword() != null) {
         basicDataSource.setPassword(getPassword().get());
       }
-      if (getConnectionProperties() != null && getConnectionProperties() != null) {
+      if (getConnectionProperties() != null) {
         basicDataSource.setConnectionProperties(getConnectionProperties());
       }
 
@@ -377,6 +451,59 @@ public class DynamicJdbcIO {
             context.output(rowMapper.mapRow(resultSet));
           }
         }
+      }
+    }
+
+    @Teardown
+    public void teardown() throws Exception {
+      connection.close();
+      if (dataSource instanceof AutoCloseable) {
+        ((AutoCloseable) dataSource).close();
+      }
+    }
+  }
+
+  /** A {@link DoFn} executing the SQL query to write to the database. */
+  private static class DynamicWriteFn<T> extends DoFn<T, FailsafeElement<T, T>> {
+
+    private final DynamicDataSourceConfiguration dataSourceConfiguration;
+    private final String statement;
+    private final JdbcIO.PreparedStatementSetter<T> preparedStatementSetter;
+
+    private DataSource dataSource;
+    private Connection connection;
+    private PreparedStatement preparedStatement;
+
+    private DynamicWriteFn(
+        DynamicDataSourceConfiguration dataSourceConfiguration,
+        String statement,
+        JdbcIO.PreparedStatementSetter<T> preparedStatementSetter) {
+      this.dataSourceConfiguration = dataSourceConfiguration;
+      this.statement = statement;
+      this.preparedStatementSetter = preparedStatementSetter;
+    }
+
+    @Setup
+    public void setup() throws Exception {
+      dataSource = dataSourceConfiguration.buildDatasource();
+      connection = dataSource.getConnection();
+      connection.setAutoCommit(false);
+      preparedStatement = connection.prepareStatement(statement);
+    }
+
+    @ProcessElement
+    public void processElement(ProcessContext context) throws Exception {
+      try {
+        preparedStatement.clearParameters();
+        preparedStatementSetter.setParameters(context.element(), preparedStatement);
+        preparedStatement.execute();
+        connection.commit();
+      } catch (Exception e) {
+        LOG.error("Error while executing statement: {}", e.getMessage());
+        context.output(
+            FailsafeElement.of(context.element(), context.element())
+                .setErrorMessage(e.getMessage())
+                .setStacktrace(Throwables.getStackTraceAsString(e)));
       }
     }
 

@@ -42,6 +42,7 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.Hidden;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.Count;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.GroupByKey;
@@ -149,12 +150,12 @@ public class DatastoreConverters {
     @Default.Integer(500)
     @Hidden
     @Deprecated
-    Integer getDatastoreHintNumWorkers();
+    ValueProvider<Integer> getDatastoreHintNumWorkers();
 
     /** @deprecated Please use setFirestoreHintNumWorkers(value) instead. */
     @Hidden
     @Deprecated
-    void setDatastoreHintNumWorkers(Integer value);
+    void setDatastoreHintNumWorkers(ValueProvider<Integer> value);
 
     @Description("GCP Project Id of where to write the datastore entities")
     ValueProvider<String> getFirestoreWriteProjectId();
@@ -172,10 +173,9 @@ public class DatastoreConverters {
     void setFirestoreWriteNamespace(ValueProvider<String> value);
 
     @Description("Hint for the expected number of workers in the ramp-up throttling step")
-    @Default.Integer(500)
-    Integer getFirestoreHintNumWorkers();
+    ValueProvider<Integer> getFirestoreHintNumWorkers();
 
-    void setFirestoreHintNumWorkers(Integer value);
+    void setFirestoreHintNumWorkers(ValueProvider<Integer> value);
   }
 
   /** Options for deleting Datastore Entities. */
@@ -196,12 +196,12 @@ public class DatastoreConverters {
     @Default.Integer(500)
     @Hidden
     @Deprecated
-    Integer getDatastoreHintNumWorkers();
+    ValueProvider<Integer> getDatastoreHintNumWorkers();
 
     /** @deprecated Please use setFirestoreHintNumWorkers(value) instead. */
     @Hidden
     @Deprecated
-    void setDatastoreHintNumWorkers(Integer value);
+    void setDatastoreHintNumWorkers(ValueProvider<Integer> value);
 
     @Description("GCP Project Id of where to delete the datastore entities")
     ValueProvider<String> getFirestoreDeleteProjectId();
@@ -209,10 +209,9 @@ public class DatastoreConverters {
     void setFirestoreDeleteProjectId(ValueProvider<String> firestoreDeleteProjectId);
 
     @Description("Hint for the expected number of workers in the ramp-up throttling step")
-    @Default.Integer(500)
-    Integer getFirestoreHintNumWorkers();
+    ValueProvider<Integer> getFirestoreHintNumWorkers();
 
-    void setFirestoreHintNumWorkers(Integer value);
+    void setFirestoreHintNumWorkers(ValueProvider<Integer> value);
   }
 
   /** Options for reading Unique datastore Schemas. */
@@ -262,16 +261,22 @@ public class DatastoreConverters {
   public abstract static class WriteJsonEntities
       extends PTransform<PCollection<String>, PCollectionTuple> {
     public abstract ValueProvider<String> projectId();
-    public abstract Integer hintNumWorkers();
+
+    public abstract ValueProvider<Integer> hintNumWorkers();
+
     public abstract Boolean throttleRampup();
+
     public abstract TupleTag<String> errorTag();
 
     /** Builder for WriteJsonEntities. */
     @AutoValue.Builder
     public abstract static class Builder {
       public abstract Builder setProjectId(ValueProvider<String> projectId);
-      public abstract Builder setHintNumWorkers(Integer hintNumWorkers);
+
+      public abstract Builder setHintNumWorkers(ValueProvider<Integer> hintNumWorkers);
+
       public abstract Builder setThrottleRampup(Boolean throttleRampup);
+
       public abstract Builder setErrorTag(TupleTag<String> errorTag);
 
       public abstract WriteJsonEntities build();
@@ -279,16 +284,15 @@ public class DatastoreConverters {
 
     public static Builder newBuilder() {
       return new AutoValue_DatastoreConverters_WriteJsonEntities.Builder()
-          .setHintNumWorkers(500)
+          .setHintNumWorkers(StaticValueProvider.of(500))
           .setThrottleRampup(true); // defaults
     }
 
     @Override
     public PCollectionTuple expand(PCollection<String> entityJson) {
       TupleTag<Entity> goodTag = new TupleTag<>();
-      DatastoreV1.Write datastoreWrite = DatastoreIO.v1().write()
-              .withProjectId(projectId())
-              .withHintNumWorkers(hintNumWorkers());
+      DatastoreV1.Write datastoreWrite =
+          DatastoreIO.v1().write().withProjectId(projectId()).withHintNumWorkers(hintNumWorkers());
       if (!throttleRampup()) {
         datastoreWrite = datastoreWrite.withRampupThrottlingDisabled();
       }
@@ -300,9 +304,7 @@ public class DatastoreConverters {
                   "CheckSameKey",
                   CheckSameKey.newBuilder().setErrorTag(errorTag()).setGoodTag(goodTag).build());
 
-      entities
-          .get(goodTag)
-          .apply("WriteToDatastore", datastoreWrite);
+      entities.get(goodTag).apply("WriteToDatastore", datastoreWrite);
       return entities;
     }
   }
@@ -394,27 +396,34 @@ public class DatastoreConverters {
   public abstract static class DatastoreDeleteEntityJson
       extends PTransform<PCollection<String>, PDone> {
     public abstract ValueProvider<String> projectId();
-    public abstract Integer hintNumWorkers();
+
+    public abstract ValueProvider<Integer> hintNumWorkers();
+
     public abstract Boolean throttleRampup();
 
     /** Builder for DatastoreDeleteEntityJson. */
     @AutoValue.Builder
     public abstract static class Builder {
       public abstract Builder setProjectId(ValueProvider<String> projectId);
-      public abstract Builder setHintNumWorkers(Integer hintNumWorkers);
+
+      public abstract Builder setHintNumWorkers(ValueProvider<Integer> hintNumWorkers);
+
       public abstract Builder setThrottleRampup(Boolean throttleRampup);
+
       public abstract DatastoreDeleteEntityJson build();
     }
 
     public static Builder newBuilder() {
       return new AutoValue_DatastoreConverters_DatastoreDeleteEntityJson.Builder()
-          .setHintNumWorkers(500)
+          .setHintNumWorkers(StaticValueProvider.of(500))
           .setThrottleRampup(true); // defaults
     }
 
     @Override
     public PDone expand(PCollection<String> entityJson) {
-      DatastoreV1.DeleteKey datastoreDelete = DatastoreIO.v1().deleteKey()
+      DatastoreV1.DeleteKey datastoreDelete =
+          DatastoreIO.v1()
+              .deleteKey()
               .withProjectId(projectId())
               .withHintNumWorkers(hintNumWorkers());
       if (!throttleRampup()) {
@@ -679,7 +688,9 @@ public class DatastoreConverters {
   public abstract static class WriteEntities
       extends PTransform<PCollection<Entity>, PCollectionTuple> {
     public abstract ValueProvider<String> projectId();
-    public abstract Integer hintNumWorkers();
+
+    public abstract ValueProvider<Integer> hintNumWorkers();
+
     public abstract Boolean throttleRampup();
 
     public abstract TupleTag<String> errorTag();
@@ -688,7 +699,9 @@ public class DatastoreConverters {
     @AutoValue.Builder
     public abstract static class Builder {
       public abstract Builder setProjectId(ValueProvider<String> projectId);
-      public abstract Builder setHintNumWorkers(Integer hintNumWorkers);
+
+      public abstract Builder setHintNumWorkers(ValueProvider<Integer> hintNumWorkers);
+
       public abstract Builder setThrottleRampup(Boolean throttleRampup);
 
       public abstract Builder setErrorTag(TupleTag<String> errorTag);
@@ -698,16 +711,15 @@ public class DatastoreConverters {
 
     public static Builder newBuilder() {
       return new AutoValue_DatastoreConverters_WriteEntities.Builder()
-          .setHintNumWorkers(500)
+          .setHintNumWorkers(StaticValueProvider.of(500))
           .setThrottleRampup(true); // defaults
     }
 
     @Override
     public PCollectionTuple expand(PCollection<Entity> entity) {
       TupleTag<Entity> goodTag = new TupleTag<>();
-      DatastoreV1.Write datastoreWrite = DatastoreIO.v1().write()
-              .withProjectId(projectId())
-              .withHintNumWorkers(hintNumWorkers());
+      DatastoreV1.Write datastoreWrite =
+          DatastoreIO.v1().write().withProjectId(projectId()).withHintNumWorkers(hintNumWorkers());
       if (!throttleRampup()) {
         datastoreWrite = datastoreWrite.withRampupThrottlingDisabled();
       }
@@ -721,9 +733,7 @@ public class DatastoreConverters {
           entity.apply(
               "CheckSameKey",
               CheckSameKey.newBuilder().setErrorTag(errorTag()).setGoodTag(goodTag).build());
-      entities
-          .get(goodTag)
-          .apply("WriteToDatastore", datastoreWrite);
+      entities.get(goodTag).apply("WriteToDatastore", datastoreWrite);
       return entities;
     }
   }

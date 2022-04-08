@@ -16,6 +16,7 @@
 package org.apache.beam.sdk.io.gcp.spanner;
 
 import com.google.cloud.ServiceFactory;
+import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerOptions;
 import javax.annotation.Nullable;
@@ -46,6 +47,8 @@ public class ExposedSpannerConfig extends SpannerConfig {
 
   private final ValueProvider<Duration> maxCumulativeBackoff;
 
+  private final ValueProvider<RpcPriority> rpcPriority;
+
   private final ServiceFactory<Spanner, SpannerOptions> serviceFactory;
 
   private ExposedSpannerConfig(
@@ -56,6 +59,7 @@ public class ExposedSpannerConfig extends SpannerConfig {
       @Nullable ValueProvider<String> emulatorHost,
       @Nullable ValueProvider<Duration> commitDeadline,
       @Nullable ValueProvider<Duration> maxCumulativeBackoff,
+      @Nullable ValueProvider<RpcPriority> rpcPriority,
       @Nullable ServiceFactory<Spanner, SpannerOptions> serviceFactory) {
     this.projectId = projectId;
     this.instanceId = instanceId;
@@ -64,6 +68,7 @@ public class ExposedSpannerConfig extends SpannerConfig {
     this.emulatorHost = emulatorHost;
     this.commitDeadline = commitDeadline;
     this.maxCumulativeBackoff = maxCumulativeBackoff;
+    this.rpcPriority = rpcPriority;
     this.serviceFactory = serviceFactory;
   }
 
@@ -107,6 +112,12 @@ public class ExposedSpannerConfig extends SpannerConfig {
   @Override
   public ValueProvider<Duration> getMaxCumulativeBackoff() {
     return maxCumulativeBackoff;
+  }
+
+  @Nullable
+  @Override
+  public ValueProvider<RpcPriority> getRpcPriority() {
+    return rpcPriority;
   }
 
   @Nullable
@@ -226,6 +237,7 @@ public class ExposedSpannerConfig extends SpannerConfig {
     private ValueProvider<String> emulatorHost;
     private ValueProvider<Duration> commitDeadline;
     private ValueProvider<Duration> maxCumulativeBackoff;
+    private ValueProvider<RpcPriority> rpcPriority;
     private ServiceFactory<Spanner, SpannerOptions> serviceFactory;
 
     Builder() {}
@@ -238,6 +250,7 @@ public class ExposedSpannerConfig extends SpannerConfig {
       this.emulatorHost = source.getEmulatorHost();
       this.commitDeadline = source.getCommitDeadline();
       this.maxCumulativeBackoff = source.getMaxCumulativeBackoff();
+      this.rpcPriority = source.getRpcPriority();
       this.serviceFactory = source.getServiceFactory();
     }
 
@@ -284,6 +297,12 @@ public class ExposedSpannerConfig extends SpannerConfig {
     }
 
     @Override
+    SpannerConfig.Builder setRpcPriority(ValueProvider<RpcPriority> rpcPriority) {
+      this.rpcPriority = rpcPriority;
+      return this;
+    }
+
+    @Override
     ExposedSpannerConfig.Builder setServiceFactory(
         ServiceFactory<Spanner, SpannerOptions> serviceFactory) {
       this.serviceFactory = serviceFactory;
@@ -300,6 +319,7 @@ public class ExposedSpannerConfig extends SpannerConfig {
           this.emulatorHost,
           this.commitDeadline,
           this.maxCumulativeBackoff,
+          this.rpcPriority,
           this.serviceFactory);
     }
   }

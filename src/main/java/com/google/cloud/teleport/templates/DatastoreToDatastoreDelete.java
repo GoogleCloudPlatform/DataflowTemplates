@@ -30,10 +30,8 @@ import org.apache.beam.sdk.options.ValueProvider;
 /** Dataflow template which deletes pulled Datastore Entities. */
 public class DatastoreToDatastoreDelete {
 
-  public static final int DEFAULT_NUM_WORKERS = 500;
-
-  public static ValueProvider<String> selectProvidedInput(
-      ValueProvider<String> datastoreInput, ValueProvider<String> firestoreInput) {
+  public static <T> ValueProvider<T> selectProvidedInput(
+      ValueProvider<T> datastoreInput, ValueProvider<T> firestoreInput) {
     return new FirestoreNestedValueProvider(datastoreInput, firestoreInput);
   }
 
@@ -61,15 +59,6 @@ public class DatastoreToDatastoreDelete {
 
     Pipeline pipeline = Pipeline.create(options);
 
-    // firestoreHintNumWorkers and datastoreHintNumWorkers have default values of 500.
-    // Either one can be set by the user.
-    // Selecting the input specified by user or 500.
-    int hintNumWorkers = options.getFirestoreHintNumWorkers();
-    if (hintNumWorkers == DEFAULT_NUM_WORKERS
-        && options.getDatastoreHintNumWorkers() != DEFAULT_NUM_WORKERS) {
-      hintNumWorkers = options.getDatastoreHintNumWorkers();
-    }
-
     pipeline
         .apply(
             ReadJsonEntities.newBuilder()
@@ -94,7 +83,9 @@ public class DatastoreToDatastoreDelete {
                     selectProvidedInput(
                         options.getDatastoreDeleteProjectId(),
                         options.getFirestoreDeleteProjectId()))
-                .setHintNumWorkers(hintNumWorkers)
+                .setHintNumWorkers(
+                    selectProvidedInput(
+                        options.getDatastoreHintNumWorkers(), options.getFirestoreHintNumWorkers()))
                 .build());
 
     pipeline.run();

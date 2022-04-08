@@ -23,6 +23,7 @@ import com.google.cloud.teleport.v2.values.DmlInfo;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Splitter;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.Map;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -155,6 +156,12 @@ public class DataStreamToSQL {
     String getSchemaMap();
 
     void setSchemaMap(String value);
+
+    @Description("[Optional] Custom connection string")
+    @Default.String("")
+    String getCustomConnectionString();
+
+    void setCustomConnectionString(String value);
   }
 
   /**
@@ -163,7 +170,7 @@ public class DataStreamToSQL {
    * @param args The command-line arguments to the pipeline.
    */
   public static void main(String[] args) {
-    LOG.info("Starting Avro Python to BigQuery");
+    LOG.info("Starting Datastream to SQL");
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
@@ -200,6 +207,9 @@ public class DataStreamToSQL {
         throw new IllegalArgumentException(
             String.format("Database Type %s is not supported.", options.getDatabaseType()));
     }
+    if (!options.getCustomConnectionString().isEmpty()) {
+      jdbcDriverConnectionString = options.getCustomConnectionString();
+    }
 
     CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration =
         CdcJdbcIO.DataSourceConfiguration.create(jdbcDriverName, jdbcDriverConnectionString)
@@ -228,6 +238,15 @@ public class DataStreamToSQL {
     }
   }
 
+  /** Parse the SchemaMap config which allows key:value pairs of column naming configs. */
+  public static Map<String, String> parseSchemaMap(String schemaMapString) {
+    if (schemaMapString == null || schemaMapString.equals("")) {
+      return new HashMap<>();
+    }
+
+    return Splitter.on(",").withKeyValueSeparator(":").split(schemaMapString);
+  }
+
   /**
    * Runs the pipeline with the supplied options.
    *
@@ -247,8 +266,7 @@ public class DataStreamToSQL {
 
     CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration = getDataSourceConfiguration(options);
     validateOptions(options, dataSourceConfiguration);
-    Map<String, String> schemaMap =
-        Splitter.on(",").withKeyValueSeparator(":").split(options.getSchemaMap());
+    Map<String, String> schemaMap = parseSchemaMap(options.getSchemaMap());
 
     /*
      * Stage 1: Ingest and Normalize Data to FailsafeElement with JSON Strings
@@ -263,7 +281,8 @@ public class DataStreamToSQL {
                     options.getGcsPubSubSubscription(),
                     options.getRfcStartDateTime())
                 .withLowercaseSourceColumns()
-                .withHashColumnValue("_metadata_row_id", "rowid"));
+                .withRenameColumnValue("_metadata_row_id", "rowid")
+                .withHashRowId());
 
     /*
      * Stage 2: Write JSON Strings to SQL Insert Strings
@@ -285,6 +304,7 @@ public class DataStreamToSQL {
             .withStatementFormatter(
                 new CdcJdbcIO.StatementFormatter<DmlInfo>() {
                   public String formatStatement(DmlInfo element) {
+                    LOG.debug("Executing SQL: {}", element.getDmlSql());
                     return element.getDmlSql();
                   }
                 }));

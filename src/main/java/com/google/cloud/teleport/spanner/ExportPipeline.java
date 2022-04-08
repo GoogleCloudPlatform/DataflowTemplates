@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.spanner;
 
+import com.google.cloud.spanner.Options.RpcPriority;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -44,6 +45,11 @@ public class ExportPipeline {
     ValueProvider<String> getOutputDir();
 
     void setOutputDir(ValueProvider<String> value);
+
+    @Description("Temporary Directory to store Avro files.")
+    ValueProvider<String> getAvroTempDirectory();
+
+    void setAvroTempDirectory(ValueProvider<String> value);
 
     @Description("Test dataflow job identifier for Beam Direct Runner")
     @Default.String(value = "")
@@ -102,6 +108,11 @@ public class ExportPipeline {
     ValueProvider<Boolean> getShouldExportRelatedTables();
 
     void setShouldExportRelatedTables(ValueProvider<Boolean> value);
+
+    @Description("The spanner priority. --spannerPriority must be one of:[HIGH,MEDIUM,LOW]")
+    ValueProvider<RpcPriority> getSpannerPriority();
+
+    void setSpannerPriority(ValueProvider<RpcPriority> value);
   }
 
   /**
@@ -121,7 +132,8 @@ public class ExportPipeline {
             .withProjectId(options.getSpannerProjectId())
             .withHost(options.getSpannerHost())
             .withInstanceId(options.getInstanceId())
-            .withDatabaseId(options.getDatabaseId());
+            .withDatabaseId(options.getDatabaseId())
+            .withRpcPriority(options.getSpannerPriority());
     p.begin()
         .apply(
             "Run Export",
@@ -132,7 +144,8 @@ public class ExportPipeline {
                 options.getSnapshotTime(),
                 options.getTableNames(),
                 options.getShouldExportRelatedTables(),
-                options.getShouldExportTimestampAsLogicalType()));
+                options.getShouldExportTimestampAsLogicalType(),
+                options.getAvroTempDirectory()));
     PipelineResult result = p.run();
     if (options.getWaitUntilFinish()
         &&

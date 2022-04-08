@@ -55,9 +55,9 @@ import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;
 import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.ResourceId;
-import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerAccessor;
-import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerIO;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerWriteResult;
 import org.apache.beam.sdk.io.gcp.spanner.Transaction;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -101,18 +101,21 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
   private final ValueProvider<Boolean> waitForIndexes;
   private final ValueProvider<Boolean> waitForForeignKeys;
   private final ValueProvider<Boolean> earlyIndexCreateFlag;
+  private final ValueProvider<Integer> ddlCreationTimeoutInMinutes;
 
   public ImportTransform(
       SpannerConfig spannerConfig,
       ValueProvider<String> importDirectory,
       ValueProvider<Boolean> waitForIndexes,
       ValueProvider<Boolean> waitForForeignKeys,
-      ValueProvider<Boolean> earlyIndexCreateFlag) {
+      ValueProvider<Boolean> earlyIndexCreateFlag,
+      ValueProvider<Integer> ddlCreationTimeoutInMinutes) {
     this.spannerConfig = spannerConfig;
     this.importDirectory = importDirectory;
     this.waitForIndexes = waitForIndexes;
     this.waitForForeignKeys = waitForForeignKeys;
     this.earlyIndexCreateFlag = earlyIndexCreateFlag;
+    this.ddlCreationTimeoutInMinutes = ddlCreationTimeoutInMinutes;
   }
 
   @Override
@@ -147,7 +150,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
         schemas.apply("Build avro DDL", Combine.globally(AsList.fn()));
 
     PCollectionView<Transaction> tx =
-        begin.apply(LocalSpannerIO.createTransaction().withSpannerConfig(spannerConfig));
+        begin.apply(SpannerIO.createTransaction().withSpannerConfig(spannerConfig));
 
     PCollection<Ddl> informationSchemaDdl =
         begin.apply("Read Information Schema", new ReadInformationSchema(spannerConfig, tx));
@@ -164,7 +167,8 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                 avroDdlView,
                 informationSchemaView,
                 manifestView,
-                earlyIndexCreateFlag));
+                earlyIndexCreateFlag,
+                ddlCreationTimeoutInMinutes));
 
     final PCollection<Ddl> ddl = createTableOutput.get(CreateTables.getDdlObjectTag());
     final PCollectionView<List<String>> pendingIndexes =
@@ -241,7 +245,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
       SpannerWriteResult result =
           mutations.apply(
               "Write mutations " + depth,
-              LocalSpannerIO.write()
+              SpannerIO.write()
                   .withSchemaReadySignal(ddl)
                   .withSpannerConfig(spannerConfig)
                   .withCommitDeadline(Duration.standardMinutes(1))
@@ -342,8 +346,9 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
     private final PCollectionView<Ddl> informationSchemaView;
     private final PCollectionView<Export> manifestView;
     private final ValueProvider<Boolean> earlyIndexCreateFlag;
+    private final ValueProvider<Integer> ddlCreationTimeoutInMinutes;
 
-    private transient ExposedSpannerAccessor spannerAccessor;
+    private transient SpannerAccessor spannerAccessor;
 
     /* If the schema has a lot of DDL changes after dataload, its preferable to create
      * them before dataload. This provides the threshold for the early creation.
@@ -372,12 +377,14 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
         PCollectionView<List<KV<String, String>>> avroSchemasView,
         PCollectionView<Ddl> informationSchemaView,
         PCollectionView<Export> manifestView,
-        ValueProvider<Boolean> earlyIndexCreateFlag) {
+        ValueProvider<Boolean> earlyIndexCreateFlag,
+        ValueProvider<Integer> ddlCreationTimeoutInMinutes) {
       this.spannerConfig = spannerConfig;
       this.avroSchemasView = avroSchemasView;
       this.informationSchemaView = informationSchemaView;
       this.manifestView = manifestView;
       this.earlyIndexCreateFlag = earlyIndexCreateFlag;
+      this.ddlCreationTimeoutInMinutes = ddlCreationTimeoutInMinutes;
     }
 
     @Override
@@ -390,7 +397,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
 
                         @Setup
                         public void setup() {
-                          spannerAccessor = ExposedSpannerAccessor.create(spannerConfig);
+                          spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
                         }
 
                         @Teardown
@@ -485,8 +492,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                                     ddlStatements,
                                     null);
                             try {
-                              // TODO: Wait till operation is complete.
-                              op.get(30, TimeUnit.MINUTES);
+                              op.get(ddlCreationTimeoutInMinutes.get(), TimeUnit.MINUTES);
                             } catch (InterruptedException
                                 | ExecutionException
                                 | TimeoutException e) {

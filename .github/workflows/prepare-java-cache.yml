@@ -1,0 +1,77 @@
+# Copyright 2022 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Prepares the Java cache either daily on demand. Since GitHub's cache action doesn't
+# allow overwriting an existing entry, this is necessary to try to keep the cached dependencies
+# as up-to-date as possible, hopefully minimizing the time it takes for PR checks to
+# complete.
+
+name: Prepare Java Cache
+
+on:
+  # At the start of each day, refresh the cache.
+  schedule:
+    - cron: '0 0 * * *'
+  # A way to try to force the cache forward should something cause it to get stuck.
+  workflow_dispatch:
+    inputs:
+      days:
+        type: choice
+        description: 'The cache entry N days ahead to claim.'
+        required: true
+        default: '1'
+        options: ['1', '2', '3', '4', '5', '6']
+  # Run on PRs that change this workflow or our local actions just to make sure nothing breaks.
+  pull_request:
+    branches:
+      - 'main'
+    paths:
+      - '.github/workflows/prepare-java-cache.yml'
+      - '.github/actions/setup-java-env/*'
+      - '.github/actions/cleanup-java-env/*'
+
+permissions: read-all
+
+jobs:
+  cache_dependencies:
+    name: Cache Java Dependencies
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set Manual Key
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          echo "$(date -u --date='${{ inputs.days }} days' +%Y%m%d)" >> $GITHUB_ENV
+      - name: Set Empty Key
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        run: |
+          echo "CACHE_KEY=''" >> $GITHUB_ENV
+      - name: Checkout Code
+        uses: actions/checkout@230611dbd0eb52da1e1f4f7bc8bb0c3a339fc8b7
+      - name: Setup Java
+        id: setup-java
+        uses: ./.github/actions/setup-java-env
+        with:
+          cache-key: ${{ env.CACHE_KEY }}
+      - name: Resolve Dependencies
+        if: ${{ steps.setup-java.outputs.cache-hit != 'true' || github.event_name == 'pull_request' }}
+        run: |
+          mvn -B clean install -f unified-templates.xml \
+            -Dmaven.test.skip \
+            -Dcheckstyle.skip \
+            -Djib.skip \
+            -Dmdep.analyze.skip \
+            -Dspotless.check.skip
+      - name: Cleanup Java Environment
+        uses: ./.github/actions/cleanup-java-env

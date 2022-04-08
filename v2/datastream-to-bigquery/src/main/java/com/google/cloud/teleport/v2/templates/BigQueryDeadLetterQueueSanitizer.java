@@ -24,8 +24,6 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// TODO: Jackson2 is adding \n chars into the JSON which is not desired
-
 /**
  * The BigQueryDeadLetterQueueSanitizer cleans and prepares failed BigQuery inserts to be stored in
  * a GCS Dead Letter Queue. NOTE: The input to a Sanitizer is flexible but the output must be a
@@ -36,8 +34,6 @@ public class BigQueryDeadLetterQueueSanitizer
 
   private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryDeadLetterQueueSanitizer.class);
-
-  // public BigQueryDeadLetterQueueSanitizer() {}
 
   @Override
   public String getJsonMessage(BigQueryInsertError input) {

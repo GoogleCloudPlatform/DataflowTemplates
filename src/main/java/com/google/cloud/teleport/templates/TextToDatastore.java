@@ -37,10 +37,8 @@ import org.apache.beam.sdk.values.TupleTag;
  */
 public class TextToDatastore {
 
-  public static final int DEFAULT_NUM_WORKERS = 500;
-
-  public static ValueProvider<String> selectProvidedInput(
-      ValueProvider<String> datastoreInput, ValueProvider<String> firestoreInput) {
+  public static <T> ValueProvider<T> selectProvidedInput(
+      ValueProvider<T> datastoreInput, ValueProvider<T> firestoreInput) {
     return new FirestoreNestedValueProvider(datastoreInput, firestoreInput);
   }
 
@@ -69,15 +67,6 @@ public class TextToDatastore {
 
     Pipeline pipeline = Pipeline.create(options);
 
-    // firestoreHintNumWorkers and datastoreHintNumWorkers have default values of 500.
-    // Either one can be set by the user.
-    // Selecting the input specified by user or 500.
-    int hintNumWorkers = options.getFirestoreHintNumWorkers();
-    if (hintNumWorkers == DEFAULT_NUM_WORKERS
-        && options.getDatastoreHintNumWorkers() != DEFAULT_NUM_WORKERS) {
-      hintNumWorkers = options.getDatastoreHintNumWorkers();
-    }
-
     pipeline
         .apply(TextIO.read().from(options.getTextReadPattern()))
         .apply(
@@ -90,7 +79,9 @@ public class TextToDatastore {
                 .setProjectId(
                     selectProvidedInput(
                         options.getDatastoreWriteProjectId(), options.getFirestoreWriteProjectId()))
-                .setHintNumWorkers(hintNumWorkers)
+                .setHintNumWorkers(
+                    selectProvidedInput(
+                        options.getDatastoreHintNumWorkers(), options.getFirestoreHintNumWorkers()))
                 .setErrorTag(errorTag)
                 .build())
         .apply(

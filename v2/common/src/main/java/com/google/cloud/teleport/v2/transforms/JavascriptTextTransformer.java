@@ -51,10 +51,14 @@ import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Throwables;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.io.CharStreams;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** A Text UDF Transform Function. Note that this class's implementation is not threadsafe */
 @AutoValue
 public abstract class JavascriptTextTransformer {
+
+  private static final Logger LOG = LoggerFactory.getLogger(JavascriptTextTransformer.class);
 
   /** Necessary CLI options for running UDF function. */
   public interface JavascriptTextTransformerOptions extends PipelineOptions {

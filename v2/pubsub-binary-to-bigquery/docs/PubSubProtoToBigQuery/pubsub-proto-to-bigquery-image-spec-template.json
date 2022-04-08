@@ -59,7 +59,7 @@
           "^projects\\/[^\\n\\r\\/]+\\/topics\\/[^\\n\\r\\/]+$"
         ],
         "is_optional": false,
-        "param_type": PUBSUB_TOPIC
+        "param_type": "PUBSUB_TOPIC"
       },
       {
         "name": "javascriptTextTransformGcsPath",
@@ -69,7 +69,7 @@
           "^gs:\\/\\/[^\\n\\r]+$"
         ],
         "param_type": "GCS_READ_FILE",
-        "is_optional": true,
+        "is_optional": true
       },
       {
         "name": "javascriptTextTransformFunctionName",
@@ -124,6 +124,6 @@
     ]
   },
   "sdk_info": {
-    language: JAVA
+    "language": "JAVA"
   }
 }

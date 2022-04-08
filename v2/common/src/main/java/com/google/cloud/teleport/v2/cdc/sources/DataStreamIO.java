@@ -110,7 +110,8 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
   private String rfcStartDateTime;
   private Integer fileReadConcurrency = 30;
   private Boolean lowercaseSourceColumns = false;
-  private Map<String, String> hashedColumns = new HashMap<String, String>();
+  private Map<String, String> renameColumns = new HashMap<String, String>();
+  private Boolean hashRowId = false;
   PCollection<String> directories = null;
 
   public DataStreamIO() {}
@@ -144,14 +145,20 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
   }
 
   /**
-   * Add the supplied columnName to the map of column values to be hashed. A new column with a
-   * hashed value of the first will be created.
+   * Add the supplied columnName to the map of column values to be renamed. A new column with a
+   * renamed value of the first will be created.
    *
    * @param columnName The column name to look for in the data.
-   * @param newColumnName The name of the new column created with hashed data.
+   * @param newColumnName The name of the new column created.
    */
-  public DataStreamIO withHashColumnValue(String columnName, String newColumnName) {
-    this.hashedColumns.put(columnName, newColumnName);
+  public DataStreamIO withRenameColumnValue(String columnName, String newColumnName) {
+    this.renameColumns.put(columnName, newColumnName);
+    return this;
+  }
+
+  /** Set the reader to hash Oracle ROWID values into int. */
+  public DataStreamIO withHashRowId() {
+    this.hashRowId = true;
     return this;
   }
 
@@ -181,16 +188,19 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
               .apply(
                   "ParseJsonRecords",
                   ParDo.of(
-                      FormatDatastreamJsonToJson.create()
-                          .withStreamName(this.streamName)
-                          .withHashColumnValues(this.hashedColumns)
-                          .withLowercaseSourceColumns(this.lowercaseSourceColumns)))
+                      (FormatDatastreamJsonToJson)
+                          FormatDatastreamJsonToJson.create()
+                              .withStreamName(this.streamName)
+                              .withRenameColumnValues(this.renameColumns)
+                              .withHashRowId(this.hashRowId)
+                              .withLowercaseSourceColumns(this.lowercaseSourceColumns)))
               .setCoder(coder);
     } else {
       SerializableFunction<GenericRecord, FailsafeElement<String, String>> parseFn =
           FormatDatastreamRecordToJson.create()
               .withStreamName(this.streamName)
-              .withHashColumnValues(this.hashedColumns)
+              .withRenameColumnValues(this.renameColumns)
+              .withHashRowId(this.hashRowId)
               .withLowercaseSourceColumns(this.lowercaseSourceColumns);
       datastreamRecords =
           datastreamFiles
