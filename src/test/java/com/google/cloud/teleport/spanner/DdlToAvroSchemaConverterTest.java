@@ -28,6 +28,7 @@ import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.View;
 import com.google.common.collect.ImmutableList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
@@ -403,6 +404,56 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(1).name(), equalTo("timestamp_field"));
     assertThat(fields.get(1).schema(), equalTo(nullableTimestampUnion()));
     assertThat(fields.get(1).getProp("sqlType"), equalTo("TIMESTAMP"));
+  }
+
+  @Test
+  public void changeStreams() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", true);
+    Ddl ddl =
+        Ddl.builder()
+            .createChangeStream("ChangeStreamAll")
+            .forClause("FOR ALL")
+            .options(
+                ImmutableList.of(
+                    "retention_period=\"7d\"", "value_capture_type=\"OLD_AND_NEW_VALUES\""))
+            .endChangeStream()
+            .createChangeStream("ChangeStreamEmpty")
+            .endChangeStream()
+            .createChangeStream("ChangeStreamTableColumns")
+            .forClause("FOR `T1`, `T2`(`c1`, `c2`), `T3`()")
+            .endChangeStream()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(3));
+    for (Schema s : result) {
+      assertThat(s.getNamespace(), equalTo("spannertest"));
+      assertThat(s.getProp("googleFormatVersion"), equalTo("booleans"));
+      assertThat(s.getProp("googleStorage"), equalTo("CloudSpanner"));
+      assertThat(s.getFields(), empty());
+    }
+
+    Iterator<Schema> it = result.iterator();
+    Schema avroSchema1 = it.next();
+    assertThat(avroSchema1.getName(), equalTo("ChangeStreamAll"));
+    assertThat(avroSchema1.getProp("spannerChangeStreamForClause"), equalTo("FOR ALL"));
+    assertThat(avroSchema1.getProp("spannerOption_0"), equalTo("retention_period=\"7d\""));
+    assertThat(
+        avroSchema1.getProp("spannerOption_1"),
+        equalTo("value_capture_type=\"OLD_AND_NEW_VALUES\""));
+
+    Schema avroSchema2 = it.next();
+    assertThat(avroSchema2.getName(), equalTo("ChangeStreamEmpty"));
+    assertThat(avroSchema2.getProp("spannerChangeStreamForClause"), equalTo(""));
+    assertThat(avroSchema2.getProp("spannerOption_0"), nullValue());
+
+    Schema avroSchema3 = it.next();
+    assertThat(avroSchema3.getName(), equalTo("ChangeStreamTableColumns"));
+    assertThat(
+        avroSchema3.getProp("spannerChangeStreamForClause"),
+        equalTo("FOR `T1`, `T2`(`c1`, `c2`), `T3`()"));
+    assertThat(avroSchema3.getProp("spannerOption_0"), nullValue());
   }
 
   private Schema nullableUnion(Schema.Type s) {
