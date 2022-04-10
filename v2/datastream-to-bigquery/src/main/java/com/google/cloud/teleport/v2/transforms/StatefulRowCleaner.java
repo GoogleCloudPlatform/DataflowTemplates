@@ -82,13 +82,17 @@ public class StatefulRowCleaner extends PTransform<PCollection<TableRow>, PColle
       TableRow tableRow = context.element();
       DatastreamRow row = DatastreamRow.of(tableRow);
       if (row.getSourceType().equals("oracle")) {
-        context.output(KV.of(row.getOracleRowId(), tableRow));
+        context.output(KV.of(getOracleRowKey(row), tableRow));
       } else {
         String generatedString =
             RandomStringUtils.random(
                 /* length */ 10, /* useLetters */ true, /* useNumbers */ false);
         context.output(KV.of(generatedString, tableRow));
       }
+    }
+
+    private String getOracleRowKey(DatastreamRow row) {
+      return row.getOracleTxnId() + "#" + row.getOracleRowId();
     }
   }
 

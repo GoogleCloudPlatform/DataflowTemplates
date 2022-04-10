@@ -169,4 +169,8 @@ public class DatastreamRow {
   public String getOracleRowId() {
     return this.getStringValue(DEFAULT_ORACLE_PRIMARY_KEY);
   }
+
+  public String getOracleTxnId() {
+    return this.getStringValue(ORACLE_TRANSACTION_ID_KEY);
+  }
 }
