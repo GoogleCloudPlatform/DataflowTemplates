@@ -97,7 +97,7 @@ public class JdbcConverters {
     void setKMSEncryptionKey(ValueProvider<String> keyName);
 
     @Description(
-        "Comma seperated algorithms to disable. If this value is set to \"none\" then"
+        "Comma separated algorithms to disable. If this value is set to \"none\" then"
             + " jdk.tls.disabledAlgorithms is set to \"\". Use with care, as the algorithms"
             + " disabled by default are known to have either vulnerabilities or performance issues."
             + " for example: SSLv3, RC4.")
