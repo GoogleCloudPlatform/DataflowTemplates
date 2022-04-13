@@ -52,6 +52,7 @@ public final class BigQueryDefaultSchemas {
 
           // Oracle specific metadata
           put("_metadata_row_id", StandardSQLTypeName.STRING);
+          put("_metadata_rs_id", StandardSQLTypeName.STRING);
 
           // MySQL Specific Metadata
           put("_metadata_log_file", StandardSQLTypeName.STRING);

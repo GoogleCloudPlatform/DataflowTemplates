@@ -176,4 +176,31 @@ public class DdlTest {
         optionStatements.get(0),
         is("ALTER DATABASE `database_id` SET OPTIONS ( version_retention_period = 4d )"));
   }
+
+  @Test
+  public void changeStreams() {
+    Ddl ddl =
+        Ddl.builder()
+            .createChangeStream("ChangeStreamAll")
+            .forClause("FOR ALL")
+            .options(
+                ImmutableList.of(
+                    "retention_period=\"7d\"", "value_capture_type=\"OLD_AND_NEW_VALUES\""))
+            .endChangeStream()
+            .createChangeStream("ChangeStreamEmpty")
+            .endChangeStream()
+            .createChangeStream("ChangeStreamTableColumns")
+            .forClause("FOR `T1`, `T2`(`c1`, `c2`), `T3`()")
+            .endChangeStream()
+            .build();
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE CHANGE STREAM `ChangeStreamAll`"
+                + " FOR ALL"
+                + " OPTIONS (retention_period=\"7d\", value_capture_type=\"OLD_AND_NEW_VALUES\")"
+                + " CREATE CHANGE STREAM `ChangeStreamEmpty`"
+                + " CREATE CHANGE STREAM `ChangeStreamTableColumns`"
+                + " FOR `T1`, `T2`(`c1`, `c2`), `T3`()"));
+  }
 }

@@ -360,4 +360,31 @@ public class InformationSchemaScannerTest {
     statements.set(0, alterStatement.replace(dbId, "%db_name%"));
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
   }
+
+  @Test
+  public void changeStreams() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "CREATE TABLE `Account` ("
+                + " `id`                                    INT64 NOT NULL,"
+                + " `balanceId`                             INT64 NOT NULL,"
+                + " `balance`                               FLOAT64 NOT NULL,"
+                + " ) PRIMARY KEY (`id` ASC)",
+            " CREATE TABLE `Users` ("
+                + " `id`                                    INT64 NOT NULL,"
+                + " `first_name`                            STRING(10),"
+                + " `last_name`                             STRING(MAX),"
+                + " `age`                                   INT64,"
+                + " ) PRIMARY KEY (`id` ASC)",
+            " CREATE CHANGE STREAM `ChangeStreamAll` FOR ALL"
+                + " OPTIONS (retention_period=\"7d\", value_capture_type=\"OLD_AND_NEW_VALUES\")",
+            " CREATE CHANGE STREAM `ChangeStreamEmpty`" + " OPTIONS (retention_period=\"24h\")",
+            " CREATE CHANGE STREAM `ChangeStreamKeyColumns` FOR `Account`(), `Users`()",
+            " CREATE CHANGE STREAM `ChangeStreamTableColumns`"
+                + " FOR `Account`, `Users`(`first_name`, `last_name`)");
+
+    spannerServer.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
 }

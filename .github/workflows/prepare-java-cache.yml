@@ -37,7 +37,7 @@ on:
     branches:
       - 'main'
     paths:
-      - '.github/workflows/prepare-java-chace.yml'
+      - '.github/workflows/prepare-java-cache.yml'
       - '.github/actions/setup-java-env/*'
       - '.github/actions/cleanup-java-env/*'
 
@@ -67,11 +67,11 @@ jobs:
       - name: Resolve Dependencies
         if: ${{ steps.setup-java.outputs.cache-hit != 'true' || github.event_name == 'pull_request' }}
         run: |
-          for DIR in $(find . -maxdepth 1 -type d); do
-            POMF="$DIR/pom.xml"
-            if [[ -f "$POMF" ]]; then
-              mvn -B clean install -f "$POMF" -am -amd -Dmaven.test.skip -Dcheckstyle.skip -Djib.skip -Dmdep.analyze.skip
-            fi
-          done
+          mvn -B clean install -f unified-templates.xml \
+            -Dmaven.test.skip \
+            -Dcheckstyle.skip \
+            -Djib.skip \
+            -Dmdep.analyze.skip \
+            -Dspotless.check.skip
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env

@@ -21,6 +21,8 @@ import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingW
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.teleport.spanner.ddl.Ddl;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import org.apache.avro.Schema;
 import org.junit.Test;
@@ -209,5 +211,62 @@ public class AvroSchemaToDdlConverterTest {
                 + " `first_name`                             STRING(10) "
                 + " OPTIONS (allow_commit_timestamp=TRUE,my_random_opt=\"1\"),"
                 + " ) PRIMARY KEY (`id` ASC)"));
+  }
+
+  @Test
+  public void changeStreams() {
+    String avroString1 =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"ChangeStreamAll\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerChangeStreamForClause\" : \"FOR ALL\","
+            + "  \"spannerOption_0\" : \"retention_period=\\\"7d\\\"\","
+            + "  \"spannerOption_1\" : \"value_capture_type=\\\"OLD_AND_NEW_VALUES\\\"\""
+            + "}";
+    String avroString2 =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"ChangeStreamEmpty\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerChangeStreamForClause\" : \"\""
+            + "}";
+    String avroString3 =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"ChangeStreamTableColumns\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerChangeStreamForClause\" : \"FOR `T1`, `T2`(`c1`, `c2`), `T3`()\","
+            + "  \"spannerOption_0\" : \"retention_period=\\\"24h\\\"\""
+            + "}";
+
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(avroString1));
+    schemas.add(parser.parse(avroString2));
+    schemas.add(parser.parse(avroString3));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(schemas);
+    assertThat(ddl.changeStreams(), hasSize(3));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE CHANGE STREAM `ChangeStreamAll`"
+                + " FOR ALL"
+                + " OPTIONS (retention_period=\"7d\", value_capture_type=\"OLD_AND_NEW_VALUES\")"
+                + " CREATE CHANGE STREAM `ChangeStreamEmpty`"
+                + " CREATE CHANGE STREAM `ChangeStreamTableColumns`"
+                + " FOR `T1`, `T2`(`c1`, `c2`), `T3`()"
+                + " OPTIONS (retention_period=\"24h\")"));
   }
 }

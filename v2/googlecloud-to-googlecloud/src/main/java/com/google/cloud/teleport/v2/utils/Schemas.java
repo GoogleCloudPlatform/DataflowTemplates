@@ -89,6 +89,12 @@ public final class Schemas {
                 .anyMatch(t -> isSchemaOfTypeOrNullableType(t, type, logicalType));
   }
 
+  public static boolean isSchemaOfTypeOrNullableType(Schema schema, Schema.Type type) {
+    return Objects.equals(type, schema.getType())
+        || Objects.equals(Schema.Type.UNION, schema.getType())
+            && schema.getTypes().stream().anyMatch(s -> isSchemaOfTypeOrNullableType(s, type));
+  }
+
   private static Schema dataplexFieldsToAvro(
       List<GoogleCloudDataplexV1SchemaSchemaField> dataplexFields,
       RecordBuilder<Schema> avroRecordBuilder)

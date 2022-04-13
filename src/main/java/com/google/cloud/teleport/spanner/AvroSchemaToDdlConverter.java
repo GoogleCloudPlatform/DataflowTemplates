@@ -19,6 +19,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.unpackNullable;
 
 import com.google.cloud.teleport.spanner.common.NumericUtils;
 import com.google.cloud.teleport.spanner.common.Type;
+import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
@@ -39,10 +40,12 @@ public class AvroSchemaToDdlConverter {
   public Ddl toDdl(Collection<Schema> avroSchemas) {
     Ddl.Builder builder = Ddl.builder();
     for (Schema schema : avroSchemas) {
-      if (schema.getProp("spannerViewQuery") == null) {
-        builder.addTable(toTable(null, schema));
-      } else {
+      if (schema.getProp("spannerViewQuery") != null) {
         builder.addView(toView(null, schema));
+      } else if (schema.getProp("spannerChangeStreamForClause") != null) {
+        builder.addChangeStream(toChangeStream(null, schema));
+      } else {
+        builder.addTable(toTable(null, schema));
       }
     }
     return builder.build();
@@ -58,6 +61,30 @@ public class AvroSchemaToDdlConverter {
     if (schema.getProp("spannerViewSecurity") != null) {
       builder.security(View.SqlSecurity.valueOf(schema.getProp("spannerViewSecurity")));
     }
+    return builder.build();
+  }
+
+  public ChangeStream toChangeStream(String changeStreamName, Schema schema) {
+    if (changeStreamName == null) {
+      changeStreamName = schema.getName();
+    }
+    LOG.debug("Converting to Ddl changeStreamName {}", changeStreamName);
+
+    ChangeStream.Builder builder =
+        ChangeStream.builder()
+            .name(changeStreamName)
+            .forClause(schema.getProp("spannerChangeStreamForClause"));
+
+    ImmutableList.Builder<String> changeStreamOptions = ImmutableList.builder();
+    for (int i = 0; ; i++) {
+      String spannerOption = schema.getProp("spannerOption_" + i);
+      if (spannerOption == null) {
+        break;
+      }
+      changeStreamOptions.add(spannerOption);
+    }
+    builder.options(changeStreamOptions.build());
+
     return builder.build();
   }
 

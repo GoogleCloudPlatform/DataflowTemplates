@@ -64,8 +64,8 @@ public final class FormatDatastreamJsonToJson
         }
       }
     } catch (IOException e) {
-      LOG.error("Issue parsing JSON record. Unable to continue.", e);
-      throw new RuntimeException(e);
+      LOG.error("Skipping Malformed JSON record: {} -> {}", c.element(), e.getMessage());
+      return;
     }
 
     ObjectMapper mapper = new ObjectMapper();
