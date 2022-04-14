@@ -53,6 +53,8 @@ public class BigQueryTableRowCleaner {
       cleanTableRowFieldStrings(row, tableFields, rowKey);
     } else if (fieldType == LegacySQLTypeName.DATE) {
       cleanTableRowFieldDates(row, tableFields, rowKey);
+    } else if (fieldType == LegacySQLTypeName.DATETIME) {
+      cleanTableRowFieldDateTime(row, tableFields, rowKey);
     }
   }
 
@@ -80,8 +82,8 @@ public class BigQueryTableRowCleaner {
   }
 
   /**
-   * Cleans the TableRow data for a given rowKey based on the requirements of a BigQuery String
-   * column type.
+   * Cleans the TableRow data for a given rowKey based on the requirements of a BigQuery DATE column
+   * type.
    *
    * @param row a TableRow object to clean.
    * @param tableFields a FieldList of Bigquery columns.
@@ -96,6 +98,26 @@ public class BigQueryTableRowCleaner {
         row.put(rowKey, dateString.replace("T00:00:00Z", ""));
       } else if (dateString.contains("T00:00:00.000")) {
         row.put(rowKey, dateString.replace("T00:00:00.000", ""));
+      }
+    }
+  }
+
+  /**
+   * Cleans the TableRow data for a given rowKey based on the requirements of a BigQuery DATETIME
+   * column type.
+   *
+   * @param row a TableRow object to clean.
+   * @param tableFields a FieldList of Bigquery columns.
+   * @param rowKey a String with the name of the field to clean.
+   */
+  public static void cleanTableRowFieldDateTime(
+      TableRow row, FieldList tableFields, String rowKey) {
+    Object rowObject = row.get(rowKey);
+    if (rowObject instanceof String) {
+      String dateTimeString = (String) rowObject;
+      // Datetime types do not allow Z which resprents UTC timezone info
+      if (dateTimeString.endsWith("Z")) {
+        row.put(rowKey, dateTimeString.substring(0, dateTimeString.length() - 1));
       }
     }
   }

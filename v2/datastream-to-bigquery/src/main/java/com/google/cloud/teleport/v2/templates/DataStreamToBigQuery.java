@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.transforms.StatefulRowCleaner.RowCleanerDeadLetterQueueSanitizer;
+
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
@@ -27,6 +29,7 @@ import com.google.cloud.teleport.v2.cdc.merge.MergeConfiguration;
 import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
+import com.google.cloud.teleport.v2.transforms.StatefulRowCleaner;
 import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFOptions;
 import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFToTableRow;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -193,7 +196,7 @@ public class DataStreamToBigQuery {
         "Fields to ignore in BigQuery (comma separator). eg. _metadata_stream,_metadata_schema")
     @Default.String(
         "_metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_ssn,"
-            + "_metadata_rs_id,_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,"
+            + "_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,"
             + "_metadata_error,_metadata_retry_count")
     String getIgnoreFields();
 
@@ -300,6 +303,8 @@ public class DataStreamToBigQuery {
             options.getRuntimeRetries(),
             FAILSAFE_ELEMENT_CODER);
 
+    StatefulRowCleaner statefulCleaner = StatefulRowCleaner.of();
+
     /*
      * Stage 1: Ingest and Normalize Data to FailsafeElement with JSON Strings
      *   a) Read DataStream data from GCS into JSON String FailsafeElements (datastreamJsonRecords)
@@ -349,9 +354,14 @@ public class DataStreamToBigQuery {
     PCollectionTuple tableRowRecords =
         jsonRecords.apply("UDF to TableRow/udf", failsafeTableRowTransformer);
 
-    PCollection<TableRow> shuffledTableRows =
+    PCollectionTuple cleanedRows =
         tableRowRecords
             .get(failsafeTableRowTransformer.transformOut)
+            .apply("UDF to TableRow/Oracle Cleaner", statefulCleaner);
+
+    PCollection<TableRow> shuffledTableRows =
+        cleanedRows
+            .get(statefulCleaner.successTag)
             .apply(
                 "UDF to TableRow/ReShuffle",
                 Reshuffle.<TableRow>viaRandomKey().withNumBuckets(100));
@@ -428,8 +438,17 @@ public class DataStreamToBigQuery {
     PCollection<String> udfDlqJson =
         PCollectionList.of(tableRowRecords.get(failsafeTableRowTransformer.udfDeadletterOut))
             .and(tableRowRecords.get(failsafeTableRowTransformer.transformDeadletterOut))
-            .apply("UDF Failures/Flatten", Flatten.pCollections())
-            .apply("UDF Failures/Sanitize", MapElements.via(new StringDeadLetterQueueSanitizer()));
+            .apply("Transform Failures/Flatten", Flatten.pCollections())
+            .apply(
+                "Transform Failures/Sanitize",
+                MapElements.via(new StringDeadLetterQueueSanitizer()));
+
+    PCollection<String> rowCleanerJson =
+        cleanedRows
+            .get(statefulCleaner.failureTag)
+            .apply(
+                "Transform Failures/Oracle Cleaner Failures",
+                MapElements.via(new RowCleanerDeadLetterQueueSanitizer()));
 
     PCollection<String> bqWriteDlqJson =
         writeResult
@@ -437,6 +456,7 @@ public class DataStreamToBigQuery {
             .apply("BigQuery Failures", MapElements.via(new BigQueryDeadLetterQueueSanitizer()));
 
     PCollectionList.of(udfDlqJson)
+        .and(rowCleanerJson)
         .and(bqWriteDlqJson)
         .apply("Write To DLQ/Flatten", Flatten.pCollections())
         .apply(
@@ -444,6 +464,7 @@ public class DataStreamToBigQuery {
             DLQWriteTransform.WriteDLQ.newBuilder()
                 .withDlqDirectory(dlqDirectory)
                 .withTmpDirectory(tempDlqDir)
+                .setIncludePaneInfo(true)
                 .build());
 
     // Execute the pipeline and return the result.

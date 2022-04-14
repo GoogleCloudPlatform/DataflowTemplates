@@ -17,45 +17,13 @@
 package main
 
 import (
-	"flag"
+	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/workflows"
 	"log"
-	"strings"
-
-	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/flags"
-	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/op"
-	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/repo"
-)
-
-const (
-	SpotlessCommand = "spotless:check"
 )
 
 func main() {
-	flags.RegisterCommonFlags()
-	flag.Parse()
-
-	changed := flags.ChangedFiles()
-	if len(changed) == 0 {
-		return
+	if err := workflows.SpotlessCheck().Run(); err != nil {
+		log.Fatalf("Error running spotless check: %v", err)
 	}
-
-	errored := false
-	for root, children := range repo.GetModulesForPaths(changed) {
-		var err error
-		if len(children) == 0 {
-			err = op.RunMavenOnPom(root, SpotlessCommand)
-		} else if len(children) > 1 || children[0] != "" {
-			err = op.RunMavenOnModule(root, SpotlessCommand, strings.Join(children, ","))
-		} else {
-			log.Printf("Skipping '%s' because the only files changed were not associated with a module", root)
-		}
-
-		if err != nil {
-			errored = true
-		}
-	}
-
-	if errored {
-		log.Fatal("There were spotless errors. Check the output from the commands.")
-	}
+	log.Println("Spotless check completed successfully!")
 }

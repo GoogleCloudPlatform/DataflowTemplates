@@ -15,10 +15,10 @@
  */
 package com.google.cloud.teleport.v2.options;
 
-import com.google.cloud.teleport.v2.transforms.GenericRecordsToGcsPartitioned.PartitioningSchema;
+import com.google.cloud.teleport.v2.utils.DataplexJdbcPartitionUtils.PartitioningSchema;
 import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
+import com.google.cloud.teleport.v2.utils.JdbcIngestionWriteDisposition.WriteDispositionOptions;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -122,15 +122,13 @@ public interface DataplexJdbcIngestionOptions extends GcpOptions, PipelineOption
   void setParitionColumn(String partitionColumn);
 
   @Description(
-      "If the table exists - should it overwrite / append or fail the load. "
-          + "Default: WRITE_APPEND. "
-          + "This currently only supports writing to BigQuery."
-          + "Allowed formats are: "
-          + "WRITE_APPEND / WRITE_TRUNCATE / WRITE_EMPTY")
-  @Default.Enum("WRITE_APPEND")
-  WriteDisposition getWriteDisposition();
+      "Strategy to employ if the target file/table exists. For BigQuery, allowed formats are:"
+          + " WRITE_APPEND / WRITE_TRUNCATE / WRITE_EMPTY. For GCS, allowed"
+          + " formats are: SKIP / WRITE_TRUNCATE / WRITE_EMPTY. Default: WRITE_EMPTY. ")
+  @Default.Enum("WRITE_EMPTY")
+  WriteDispositionOptions getWriteDisposition();
 
-  void setWriteDisposition(WriteDisposition writeDisposition);
+  void setWriteDisposition(WriteDispositionOptions writeDisposition);
 
   @Description("Output file format in GCS. Format: PARQUET, AVRO, or ORC. Default: PARQUET.")
   @Default.Enum("PARQUET")

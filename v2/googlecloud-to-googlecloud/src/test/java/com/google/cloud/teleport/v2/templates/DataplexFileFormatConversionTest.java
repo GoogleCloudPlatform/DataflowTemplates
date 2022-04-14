@@ -310,7 +310,7 @@ public class DataplexFileFormatConversionTest {
     options.setOutputAsset(outputAsset.getName());
     options.setWriteDisposition(WriteDispositionOptions.SKIP);
 
-    // simulate the file 1.json -> 1.parquet already
+    // simulate the 1.json -> 1.parquet conversion already happened
     copyFileToOutputBucket("entity2.existing/1.parquet", "entity2/1.parquet");
 
     // run the pipeline, only  2.json -> 2.parquet conversion should happen
@@ -359,7 +359,7 @@ public class DataplexFileFormatConversionTest {
     when(dataplex.getPartitions(entity2.getName())).thenReturn(ImmutableList.of());
     when(dataplex.getAsset(outputAsset.getName())).thenReturn(outputAsset);
 
-    // setup options to skip existing files
+    // setup options to fail on existing files
     FileFormatConversionOptions options =
         PipelineOptionsFactory.create().as(FileFormatConversionOptions.class);
     options.setInputAssetOrEntitiesList(asset2.getName());
@@ -367,10 +367,12 @@ public class DataplexFileFormatConversionTest {
     options.setOutputAsset(outputAsset.getName());
     options.setWriteDisposition(WriteDispositionOptions.FAIL);
 
-    // simulate the file 1.json -> 1.parquet already
+    // simulate the 1.json -> 1.parquet conversion already happened
     copyFileToOutputBucket("entity2.existing/1.parquet", "entity2/1.parquet");
+    // simulate the 2.json -> 2.parquet conversion already happened
+    copyFileToOutputBucket("entity2.existing/1.parquet", "entity2/2.parquet");
 
-    // run the pipeline, only  2.json -> 2.parquet conversion should happen
+    // run the pipeline, the job should fail because 1.parquet already exists
     DataplexFileFormatConversion.run(
             mainPipeline, options, dataplex, DataplexFileFormatConversionTest::outputPathProvider)
         .waitUntilFinish();
