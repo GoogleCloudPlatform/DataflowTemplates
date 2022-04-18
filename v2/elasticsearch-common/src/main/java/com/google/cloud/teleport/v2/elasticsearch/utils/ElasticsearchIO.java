@@ -69,6 +69,7 @@ import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHost;
+import org.apache.http.impl.nio.reactor.IOReactorConfig;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
@@ -457,6 +458,12 @@ public class ElasticsearchIO {
             httpAsyncClientBuilder ->
                 httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider));
       }
+      // restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder
+      //           .setDefaultIOReactorConfig(IOReactorConfig.custom()
+      //                   .setSoKeepAlive(true)
+      //                   .build()
+      //                   )
+      //                   );
       if (getApiKey() != null) {
         restClientBuilder.setDefaultHeaders(
             new Header[] {new BasicHeader("Authorization", "ApiKey " + getApiKey())});
@@ -498,6 +505,10 @@ public class ElasticsearchIO {
               return requestConfigBuilder;
             }
           });
+
+      restClientBuilder.setHttpClientConfigCallback(
+        httpAsyncClientBuilder ->
+          httpAsyncClientBuilder.setKeepAliveStrategy((response, context) -> 3600000));
       return restClientBuilder.build();
     }
   }

@@ -79,6 +79,7 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
             options().getIndex(),
             DOCUMENT_TYPE);
 
+    config = config.withSocketTimeout(65000);
     // If username and password are not blank, use them instead of ApiKey
     if (StringUtils.isNotBlank(options().getElasticsearchUsername())
         && StringUtils.isNotBlank(options().getElasticsearchPassword())) {
