@@ -53,7 +53,9 @@ public interface GoogleAdsOptions extends PipelineOptions {
 
   void setGoogleAdsRefreshToken(String refreshToken);
 
-  @Description("")
+  @Description(
+      "A list of principals to impersonate starting from the application default credentials. "
+          + "Every principal must be permissioned to impersonate the principal immediately following it.")
   @Default.InstanceFactory(EmptyStringListFactory.class)
   List<String> getGoogleAdsCredentialImpersonationChain();
 
