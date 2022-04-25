@@ -37,7 +37,7 @@
         <jib.maven.version>2.6.0</jib.maven.version>
         <junit.version>4.13</junit.version>
         <junit-dep.version>4.10</junit-dep.version>
-        <opensensus.version>0.24.0</opensensus.version>
+        <opensensus.version>0.31.0</opensensus.version>
         <surefire.version>2.21.0</surefire.version>
         <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
         <maven-compiler-plugin.version>3.6.2</maven-compiler-plugin.version>
