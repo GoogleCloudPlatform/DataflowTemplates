@@ -18,13 +18,8 @@ package com.google.cloud.teleport.v2.elasticsearch.transforms;
 import com.google.cloud.teleport.v2.elasticsearch.templates.PubSubToElasticsearch;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.gson.Gson;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -51,37 +46,6 @@ public class ProcessFailsafePubSubFn
   private static final Counter failedCounter =
       Metrics.counter(PubSubMessageToJsonDocument.class, "failed-messages-processed");
 
-  // Elasticsearch cannot accept fields containing only dots
-  public static JsonObject patchJsonFields(JsonObject jsonObject) {
-    Set<Map.Entry<String, JsonElement>> entrySet = jsonObject.entrySet();
-    List<String> keysToFix = new ArrayList<>();
-    for (Map.Entry<String, JsonElement> entry : entrySet) {
-      String key = entry.getKey();
-      if (key.equals(".") || key.equals("..")) {
-        keysToFix.add(key);
-      }
-      if (entry.getValue().isJsonObject()) {
-        patchJsonFields(entry.getValue().getAsJsonObject());
-      }
-      if (entry.getValue().isJsonArray()) {
-        for (JsonElement ae : entry.getValue().getAsJsonArray()) {
-          if (ae.isJsonObject()) {
-            patchJsonFields(ae.getAsJsonObject());
-          }
-        }
-      }
-    }
-    for (String key : keysToFix) {
-      if (key.equals(".")) {
-        jsonObject.add("@", jsonObject.get(key));
-      } else if (key.equals("..")) {
-        jsonObject.add("@@", jsonObject.get(key));
-      }
-      jsonObject.remove(key);
-    }
-    return jsonObject;
-  }
-
   @ProcessElement
   public void processElement(ProcessContext context) {
     PubsubMessage pubsubMessage = context.element().getOriginalPayload();
@@ -90,9 +54,7 @@ public class ProcessFailsafePubSubFn
 
     try {
       if (pubsubMessage.getPayload().length > 0) {
-        messageObject =
-            patchJsonFields(
-                gson.fromJson(new String(pubsubMessage.getPayload()), JsonObject.class));
+        messageObject = gson.fromJson(new String(pubsubMessage.getPayload()), JsonObject.class);
       }
 
       // If message attributes are present they will be serialized along with the message payload
