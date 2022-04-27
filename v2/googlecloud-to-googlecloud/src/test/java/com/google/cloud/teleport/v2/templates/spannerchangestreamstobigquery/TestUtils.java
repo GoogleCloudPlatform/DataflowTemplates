@@ -21,6 +21,7 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.SpannerServerResource;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -110,18 +111,40 @@ class TestUtils {
           Timestamp.ofTimeSecondsAndNanos(1646637853L, 572000000),
           Timestamp.ofTimeSecondsAndNanos(1646657853L, 772000000));
 
-  static final Value BOOLEAN_ARRAY_VAL = Value.boolArray(BOOLEAN_ARRAY_RAW_VAL);
-  static final Value BYTES_ARRAY_VAL =
+  static final List<Boolean> BOOLEAN_NULLABLE_ARRAY_RAW_VAL = addNull(BOOLEAN_ARRAY_RAW_VAL);
+  static final List<String> BYTES_NULLABLE_ARRAY_RAW_VAL = addNull(BYTES_ARRAY_RAW_VAL);
+  static final List<Date> DATE_NULLABLE_ARRAY_RAW_VAL = addNull(DATE_ARRAY_RAW_VAL);
+  static final List<Double> FLOAT64_NULLABLE_ARRAY_RAW_VAL = addNull(FLOAT64_ARRAY_RAW_VAL);
+  static final List<Long> INT64_NULLABLE_ARRAY_RAW_VAL = addNull(INT64_ARRAY_RAW_VAL);
+  static final List<String> JSON_NULLABLE_ARRAY_RAW_VAL = addNull(JSON_ARRAY_RAW_VAL);
+  static final List<BigDecimal> NUMERIC_NULLABLE_ARRAY_RAW_VAL = addNull(NUMERIC_ARRAY_RAW_VAL);
+  static final List<String> STRING_NULLABLE_ARRAY_RAW_VAL = addNull(STRING_ARRAY_RAW_VAL);
+  static final List<Timestamp> TIMESTAMP_NULLABLE_ARRAY_RAW_VAL = addNull(TIMESTAMP_ARRAY_RAW_VAL);
+
+  static final Value BOOLEAN_NULLABLE_ARRAY_VAL = Value.boolArray(BOOLEAN_ARRAY_RAW_VAL);
+  static final Value BYTES_NULLABLE_ARRAY_VAL =
       Value.bytesArray(
           Arrays.asList(
-              ByteArray.copyFrom("123"), ByteArray.copyFrom("456"), ByteArray.copyFrom("789")));
-  static final Value DATE_ARRAY_VAL = Value.dateArray(DATE_ARRAY_RAW_VAL);
-  static final Value FLOAT64_ARRAY_VAL = Value.float64Array(FLOAT64_ARRAY_RAW_VAL);
-  static final Value INT64_ARRAY_VAL = Value.int64Array(INT64_ARRAY_RAW_VAL);
-  static final Value JSON_ARRAY_VAL = Value.jsonArray(JSON_ARRAY_RAW_VAL);
-  static final Value NUMERIC_ARRAY_VAL = Value.numericArray(NUMERIC_ARRAY_RAW_VAL);
-  static final Value STRING_ARRAY_VAL = Value.stringArray(STRING_ARRAY_RAW_VAL);
-  static final Value TIMESTAMP_ARRAY_VAL = Value.timestampArray(TIMESTAMP_ARRAY_RAW_VAL);
+              ByteArray.copyFrom("123"),
+              ByteArray.copyFrom("456"),
+              ByteArray.copyFrom("789"),
+              null));
+  static final Value DATE_NULLABLE_ARRAY_VAL = Value.dateArray(DATE_NULLABLE_ARRAY_RAW_VAL);
+  static final Value FLOAT64_NULLABLE_ARRAY_VAL =
+      Value.float64Array(FLOAT64_NULLABLE_ARRAY_RAW_VAL);
+  static final Value INT64_NULLABLE_ARRAY_VAL = Value.int64Array(INT64_NULLABLE_ARRAY_RAW_VAL);
+  static final Value JSON_NULLABLE_ARRAY_VAL = Value.jsonArray(JSON_NULLABLE_ARRAY_RAW_VAL);
+  static final Value NUMERIC_NULLABLE_ARRAY_VAL =
+      Value.numericArray(NUMERIC_NULLABLE_ARRAY_RAW_VAL);
+  static final Value STRING_NULLABLE_ARRAY_VAL = Value.stringArray(STRING_NULLABLE_ARRAY_RAW_VAL);
+  static final Value TIMESTAMP_NULLABLE_ARRAY_VAL =
+      Value.timestampArray(TIMESTAMP_NULLABLE_ARRAY_RAW_VAL);
+
+  private static <T> List<T> addNull(List<T> list) {
+    List<T> result = new ArrayList<>(list);
+    result.add(null);
+    return result;
+  }
 
   private static String generateSpannerDatabaseName() {
     return TEST_SPANNER_DATABASE_PREFIX

@@ -17,9 +17,6 @@ package com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.sc
 
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
-import com.google.cloud.ByteArray;
-import com.google.cloud.Date;
-import com.google.cloud.Timestamp;
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.spanner.ResultSet;
@@ -27,6 +24,8 @@ import com.google.cloud.spanner.Type;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerColumn;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -143,37 +142,32 @@ public class SpannerToBigQueryUtils {
       return null;
     }
 
+    // All the NULL columns in the array are filtered out since BigQuery doesn't allow NULL in the
+    // array.
     if (columnType.equals(Type.array(Type.bool()))) {
-      return resultSet.getBooleanList(columnName);
+      return removeNulls(resultSet.getBooleanList(columnName));
     } else if (columnType.equals(Type.array(Type.bytes()))) {
-      List<ByteArray> bytesList = resultSet.getBytesList(columnName);
-      List<String> result = new ArrayList<>();
-      for (ByteArray bytes : bytesList) {
-        result.add(bytes.toBase64());
-      }
-      return result;
+      return removeNulls(resultSet.getBytesList(columnName)).stream()
+          .map(e -> e.toBase64())
+          .collect(Collectors.toList());
     } else if (columnType.equals(Type.array(Type.date()))) {
-      List<String> result = new ArrayList<>();
-      for (Date date : resultSet.getDateList(columnName)) {
-        result.add(date.toString());
-      }
-      return result;
+      return removeNulls(resultSet.getDateList(columnName)).stream()
+          .map(e -> e.toString())
+          .collect(Collectors.toList());
     } else if (columnType.equals(Type.array(Type.float64()))) {
-      return resultSet.getDoubleList(columnName);
+      return removeNulls(resultSet.getDoubleList(columnName));
     } else if (columnType.equals(Type.array(Type.int64()))) {
-      return resultSet.getLongList(columnName);
+      return removeNulls(resultSet.getLongList(columnName));
     } else if (columnType.equals(Type.array(Type.json()))) {
-      return resultSet.getJsonList(columnName);
+      return removeNulls(resultSet.getJsonList(columnName));
     } else if (columnType.equals(Type.array(Type.numeric()))) {
-      return resultSet.getBigDecimalList(columnName);
+      return removeNulls(resultSet.getBigDecimalList(columnName));
     } else if (columnType.equals(Type.array(Type.string()))) {
-      return resultSet.getStringList(columnName);
+      return removeNulls(resultSet.getStringList(columnName));
     } else if (columnType.equals(Type.array(Type.timestamp()))) {
-      List<String> result = new ArrayList<>();
-      for (Timestamp timestamp : resultSet.getTimestampList(columnName)) {
-        result.add(timestamp.toString());
-      }
-      return result;
+      return removeNulls(resultSet.getTimestampList(columnName)).stream()
+          .map(e -> e.toString())
+          .collect(Collectors.toList());
     } else {
       Type.Code columnTypeCode = columnType.getCode();
       switch (columnTypeCode) {
@@ -202,6 +196,10 @@ public class SpannerToBigQueryUtils {
     }
   }
 
+  private static <T> List<T> removeNulls(List<T> list) {
+    return list.stream().filter(Objects::nonNull).collect(Collectors.toList());
+  }
+
   public static void addSpannerNonPkColumnsToTableRow(
       String newValuesJson, List<TrackedSpannerColumn> spannerNonPkColumns, TableRow tableRow) {
     JSONObject newValuesJsonObject = new JSONObject(newValuesJson);
@@ -223,8 +221,11 @@ public class SpannerToBigQueryUtils {
           || columnType.equals(Type.array(Type.timestamp()))) {
         JSONArray jsonArray = newValuesJsonObject.getJSONArray(columnName);
         List<Object> objects = new ArrayList<>(jsonArray.length());
-        for (Object o : jsonArray) {
-          objects.add(o);
+        for (int i = 0; i < jsonArray.length(); i++) {
+          // BigQuery array doesn't allow NULL values.
+          if (!jsonArray.isNull(i)) {
+            objects.add(jsonArray.get(i));
+          }
         }
         tableRow.set(columnName, objects);
       } else {
