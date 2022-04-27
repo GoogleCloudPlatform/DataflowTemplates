@@ -355,6 +355,7 @@ public final class FailsafeModJsonToTableRowTransformerTest {
             .setSpannerConfig(SPANNER_SERVER.getSpannerConfig(spannerDatabaseName))
             .setSpannerChangeStream(TEST_SPANNER_CHANGE_STREAM)
             .setCoder(SpannerChangeStreamsToBigQuery.FAILSAFE_ELEMENT_CODER)
+            .setIgnoreFields("")
             .build();
     return new FailsafeModJsonToTableRowTransformer.FailsafeModJsonToTableRow(
         failsafeModJsonToTableRowOptions);

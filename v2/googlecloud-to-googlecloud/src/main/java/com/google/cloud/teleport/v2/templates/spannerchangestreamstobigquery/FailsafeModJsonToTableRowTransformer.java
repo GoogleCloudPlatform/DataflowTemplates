@@ -31,8 +31,10 @@ import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.sch
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.Serializable;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -83,6 +85,7 @@ public final class FailsafeModJsonToTableRowTransformer {
                       new FailsafeModJsonToTableRowFn(
                           failsafeModJsonToTableRowOptions.getSpannerConfig(),
                           failsafeModJsonToTableRowOptions.getSpannerChangeStream(),
+                          failsafeModJsonToTableRowOptions.getIgnoreFields(),
                           transformOut,
                           transformDeadLetterOut))
                   .withOutputTags(transformOut, TupleTagList.of(transformDeadLetterOut)));
@@ -100,19 +103,25 @@ public final class FailsafeModJsonToTableRowTransformer {
       private transient SpannerAccessor spannerAccessor;
       private final SpannerConfig spannerConfig;
       private final String spannerChangeStream;
-      private Map<String, TrackedSpannerTable> spannerTableByName = null;
+      private Map<String, TrackedSpannerTable> spannerTableByName;
+      private final Set<String> ignoreFields;
       public TupleTag<TableRow> transformOut;
       public TupleTag<FailsafeElement<String, String>> transformDeadLetterOut;
 
       public FailsafeModJsonToTableRowFn(
           SpannerConfig spannerConfig,
           String spannerChangeStream,
+          String ignoreFieldsStr,
           TupleTag<TableRow> transformOut,
           TupleTag<FailsafeElement<String, String>> transformDeadLetterOut) {
         this.spannerConfig = spannerConfig;
         this.spannerChangeStream = spannerChangeStream;
         this.transformOut = transformOut;
         this.transformDeadLetterOut = transformDeadLetterOut;
+        this.ignoreFields = new HashSet<>();
+        for (String ignoreField : ignoreFieldsStr.split(",")) {
+          ignoreFields.add(ignoreField);
+        }
       }
 
       @Setup
@@ -134,6 +143,11 @@ public final class FailsafeModJsonToTableRowTransformer {
 
         try {
           TableRow tableRow = modJsonStringToTableRow(failsafeModJsonString.getPayload());
+          for (String ignoreField : ignoreFields) {
+            if (tableRow.containsKey(ignoreField)) {
+              tableRow.remove(ignoreField);
+            }
+          }
           context.output(tableRow);
         } catch (Exception e) {
           context.output(
@@ -249,6 +263,8 @@ public final class FailsafeModJsonToTableRowTransformer {
 
     public abstract String getSpannerChangeStream();
 
+    public abstract String getIgnoreFields();
+
     public abstract FailsafeElementCoder<String, String> getCoder();
 
     static Builder builder() {
@@ -261,6 +277,8 @@ public final class FailsafeModJsonToTableRowTransformer {
       abstract Builder setSpannerConfig(SpannerConfig spannerSpannerConfig);
 
       abstract Builder setSpannerChangeStream(String spannerChangeStream);
+
+      abstract Builder setIgnoreFields(String ignoreFields);
 
       abstract Builder setCoder(FailsafeElementCoder<String, String> coder);
 

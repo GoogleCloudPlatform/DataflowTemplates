@@ -218,6 +218,7 @@ public final class SpannerChangeStreamsToBigQuery {
             FailsafeModJsonToTableRowTransformer.FailsafeModJsonToTableRowOptions.builder()
                 .setSpannerConfig(spannerConfig)
                 .setSpannerChangeStream(options.getSpannerChangeStream())
+                .setIgnoreFields(options.getIgnoreFields())
                 .setCoder(FAILSAFE_ELEMENT_CODER)
                 .build();
     FailsafeModJsonToTableRowTransformer.FailsafeModJsonToTableRow failsafeModJsonToTableRow =
@@ -298,7 +299,6 @@ public final class SpannerChangeStreamsToBigQuery {
         options.as(DataflowPipelineOptions.class).getTempLocation().endsWith("/")
             ? options.as(DataflowPipelineOptions.class).getTempLocation()
             : options.as(DataflowPipelineOptions.class).getTempLocation() + "/";
-
     String dlqDirectory =
         options.getDlqDirectory().isEmpty() ? tempLocation + "dlq/" : options.getDlqDirectory();
 

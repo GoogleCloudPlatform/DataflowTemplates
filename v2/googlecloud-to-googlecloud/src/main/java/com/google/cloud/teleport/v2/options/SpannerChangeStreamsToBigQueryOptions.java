@@ -118,10 +118,17 @@ public interface SpannerChangeStreamsToBigQueryOptions extends DataflowPipelineO
 
   void setDlqRetryMinutes(Integer value);
 
-  // TODO(haikuo-google): Implement this functionality.
-  @Description("Comma Separated list of metadata fields to be ignored")
+  @Description(
+      "Comma separated list of fields to be ignored, these could be fields of tracked tables, or"
+          + " metadata fields which are _metadata_spanner_mod_type, _metadata_spanner_table_name,"
+          + " _metadata_spanner_commit_timestamp, _metadata_spanner_server_transaction_id,"
+          + " _metadata_spanner_record_sequence,"
+          + " _metadata_spanner_is_last_record_in_transaction_in_partition,"
+          + " _metadata_spanner_number_of_records_in_transaction,"
+          + " _metadata_spanner_number_of_partitions_in_transaction,"
+          + " _metadata_big_query_commit_timestamp")
   @Default.String("")
-  String getIgnoreMetadataFields();
+  String getIgnoreFields();
 
-  void setIgnoreMetadataFields(String value);
+  void setIgnoreFields(String value);
 }
