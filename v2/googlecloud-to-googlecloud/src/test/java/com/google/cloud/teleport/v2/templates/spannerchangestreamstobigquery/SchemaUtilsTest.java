@@ -15,13 +15,46 @@
  */
 package com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery;
 
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.BOOLEAN_ARRAY_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.BOOLEAN_ARRAY_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.BOOLEAN_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.BOOLEAN_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.BYTES_ARRAY_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.BYTES_ARRAY_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.BYTES_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.BYTES_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.DATE_ARRAY_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.DATE_ARRAY_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.DATE_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.DATE_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.FLOAT64_ARRAY_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.FLOAT64_ARRAY_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.FLOAT64_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.FLOAT64_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.INT64_ARRAY_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.INT64_ARRAY_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.INT64_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.INT64_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.JSON_ARRAY_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.JSON_ARRAY_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.JSON_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.JSON_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.NUMERIC_ARRAY_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.NUMERIC_ARRAY_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.NUMERIC_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.NUMERIC_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.STRING_ARRAY_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.STRING_ARRAY_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.STRING_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.STRING_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.TIMESTAMP_ARRAY_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.TIMESTAMP_ARRAY_VAL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.TIMESTAMP_COL;
+import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.TIMESTAMP_VAL;
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.when;
 
 import com.google.api.services.bigquery.model.TableRow;
-import com.google.cloud.ByteArray;
-import com.google.cloud.Date;
-import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.ReadContext;
@@ -36,9 +69,7 @@ import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.mod
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerToBigQueryUtils;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerUtils;
 import com.google.common.collect.ImmutableList;
-import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -64,24 +95,24 @@ public class SchemaUtilsTest {
     when(mockDatabaseClient.singleUse()).thenReturn(mockReadContext);
     spannerColumnsOfAllTypes =
         ImmutableList.of(
-            TrackedSpannerColumn.create("BoolCol", Type.bool(), 1),
-            TrackedSpannerColumn.create("BytesCol", Type.bytes(), 2),
-            TrackedSpannerColumn.create("DateCol", Type.date(), 3),
-            TrackedSpannerColumn.create("Float64Col", Type.float64(), 4),
-            TrackedSpannerColumn.create("Int64Col", Type.int64(), 5),
-            TrackedSpannerColumn.create("JsonCol", Type.json(), 6),
-            TrackedSpannerColumn.create("NumericCol", Type.numeric(), 7),
-            TrackedSpannerColumn.create("StringCol", Type.string(), 8),
-            TrackedSpannerColumn.create("TimestampCol", Type.timestamp(), 9),
-            TrackedSpannerColumn.create("BoolArrayCol", Type.array(Type.bool()), 10),
-            TrackedSpannerColumn.create("BytesArrayCol", Type.array(Type.bytes()), 11),
-            TrackedSpannerColumn.create("DateArrayCol", Type.array(Type.date()), 12),
-            TrackedSpannerColumn.create("Float64ArrayCol", Type.array(Type.float64()), 13),
-            TrackedSpannerColumn.create("Int64ArrayCol", Type.array(Type.int64()), 14),
-            TrackedSpannerColumn.create("JsonArrayCol", Type.array(Type.json()), 15),
-            TrackedSpannerColumn.create("NumericArrayCol", Type.array(Type.numeric()), 16),
-            TrackedSpannerColumn.create("StringArrayCol", Type.array(Type.string()), 17),
-            TrackedSpannerColumn.create("TimestampArrayCol", Type.array(Type.timestamp()), 18));
+            TrackedSpannerColumn.create(BOOLEAN_COL, Type.bool(), 1),
+            TrackedSpannerColumn.create(BYTES_COL, Type.bytes(), 2),
+            TrackedSpannerColumn.create(DATE_COL, Type.date(), 3),
+            TrackedSpannerColumn.create(FLOAT64_COL, Type.float64(), 4),
+            TrackedSpannerColumn.create(INT64_COL, Type.int64(), 5),
+            TrackedSpannerColumn.create(JSON_COL, Type.json(), 6),
+            TrackedSpannerColumn.create(NUMERIC_COL, Type.numeric(), 7),
+            TrackedSpannerColumn.create(STRING_COL, Type.string(), 8),
+            TrackedSpannerColumn.create(TIMESTAMP_COL, Type.timestamp(), 9),
+            TrackedSpannerColumn.create(BOOLEAN_ARRAY_COL, Type.array(Type.bool()), 10),
+            TrackedSpannerColumn.create(BYTES_ARRAY_COL, Type.array(Type.bytes()), 11),
+            TrackedSpannerColumn.create(DATE_ARRAY_COL, Type.array(Type.date()), 12),
+            TrackedSpannerColumn.create(FLOAT64_ARRAY_COL, Type.array(Type.float64()), 13),
+            TrackedSpannerColumn.create(INT64_ARRAY_COL, Type.array(Type.int64()), 14),
+            TrackedSpannerColumn.create(JSON_ARRAY_COL, Type.array(Type.json()), 15),
+            TrackedSpannerColumn.create(NUMERIC_ARRAY_COL, Type.array(Type.numeric()), 16),
+            TrackedSpannerColumn.create(STRING_ARRAY_COL, Type.array(Type.string()), 17),
+            TrackedSpannerColumn.create(TIMESTAMP_ARRAY_COL, Type.array(Type.timestamp()), 18));
   }
 
   @Test
@@ -159,6 +190,7 @@ public class SchemaUtilsTest {
     String sql =
         "SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.CHANGE_STREAM_COLUMNS "
             + "WHERE CHANGE_STREAM_NAME = @changeStreamName";
+    // spotless:off
     when(mockReadContext.executeQuery(
             Statement.newBuilder(sql).bind("changeStreamName").to(changeStreamName).build()))
         .thenReturn(
@@ -179,6 +211,7 @@ public class SchemaUtilsTest {
                         .set("COLUMN_NAME")
                         .to(Value.string("FirstName"))
                         .build())));
+        // spotless:on
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
         new SpannerUtils(mockDatabaseClient, changeStreamName).getSpannerTableByName();
@@ -196,27 +229,6 @@ public class SchemaUtilsTest {
   @Test
   public void testSpannerSnapshotRowToBigQueryTableRow() {
     TableRow tableRow = new TableRow();
-    Boolean[] booleanArray = {true, false, true};
-    ByteArray[] bytesArray = {
-      ByteArray.copyFrom("123"), ByteArray.copyFrom("456"), ByteArray.copyFrom("789")
-    };
-    Date[] dateArray = {Date.fromYearMonthDay(2022, 1, 22), Date.fromYearMonthDay(2022, 3, 11)};
-    double[] float64Array = {Double.MIN_VALUE, Double.MAX_VALUE, 0, 1, -1, 1.2341};
-    long[] int64Array = {Long.MAX_VALUE, Long.MIN_VALUE, 0, 1, -1};
-    String[] jsonArray = {"{}", "{\"color\":\"red\",\"value\":\"#f00\"}", "[]"};
-    BigDecimal[] numericArray = {
-      BigDecimal.valueOf(1, Integer.MAX_VALUE),
-      BigDecimal.valueOf(1, Integer.MIN_VALUE),
-      BigDecimal.ZERO,
-      BigDecimal.TEN,
-      BigDecimal.valueOf(3141592, 6)
-    };
-    String[] stringArray = {"abc", "def", "ghi"};
-    Timestamp[] timestampArray = {
-      Timestamp.ofTimeSecondsAndNanos(1646617853L, 972000000),
-      Timestamp.ofTimeSecondsAndNanos(1646637853L, 572000000),
-      Timestamp.ofTimeSecondsAndNanos(1646657853L, 772000000)
-    };
     List<Type.StructField> structFields = new ArrayList<>(spannerColumnsOfAllTypes.size());
     for (TrackedSpannerColumn spannerColumn : spannerColumnsOfAllTypes) {
       structFields.add(Type.StructField.of(spannerColumn.getName(), spannerColumn.getType()));
@@ -227,25 +239,24 @@ public class SchemaUtilsTest {
             Type.struct(structFields),
             Collections.singletonList(
                 Struct.newBuilder()
-                    .set("BoolCol").to(Value.bool(true))
-                    .set("BytesCol").to(Value.bytes(ByteArray.copyFrom("123")))
-                    .set("DateCol").to(Date.fromYearMonthDay(2022, 1, 22))
-                    .set("Float64Col").to(Value.float64(1.2))
-                    .set("Int64Col").to(Value.int64(20))
-                    .set("JsonCol").to(Value.json("{\"color\":\"red\",\"value\":\"#f00\"}"))
-                    .set("NumericCol").to(Value.numeric(BigDecimal.valueOf(123, 2)))
-                    .set("StringCol").to(Value.string("abc"))
-                    .set("TimestampCol").to(Timestamp.ofTimeSecondsAndNanos(1646617853L, 972000000))
-                    .set("BoolArrayCol").to(Value.boolArray(Arrays.asList(booleanArray)))
-                    .set("BytesArrayCol").to(Value.bytesArray(Arrays.asList(bytesArray)))
-                    .set("DateArrayCol").to(Value.dateArray(Arrays.asList(dateArray)))
-                    .set("Float64ArrayCol").to(Value.float64Array(float64Array))
-                    .set("Int64ArrayCol").to(Value.int64Array(int64Array))
-                    .set("JsonArrayCol").to(Value.jsonArray(Arrays.asList(jsonArray)))
-                    .set("NumericArrayCol").to(Value.numericArray(Arrays.asList(numericArray)))
-                    .set("StringArrayCol").to(Value.stringArray(Arrays.asList(stringArray)))
-                    .set("TimestampArrayCol")
-                    .to(Value.timestampArray(Arrays.asList(timestampArray)))
+                    .set(BOOLEAN_COL).to(BOOLEAN_VAL)
+                    .set(BYTES_COL).to(BYTES_VAL)
+                    .set(DATE_COL).to(DATE_VAL)
+                    .set(FLOAT64_COL).to(FLOAT64_VAL)
+                    .set(INT64_COL).to(INT64_VAL)
+                    .set(JSON_COL).to(JSON_VAL)
+                    .set(NUMERIC_COL).to(NUMERIC_VAL)
+                    .set(STRING_COL).to(STRING_VAL)
+                    .set(TIMESTAMP_COL).to(TIMESTAMP_VAL)
+                    .set(BOOLEAN_ARRAY_COL).to(BOOLEAN_ARRAY_VAL)
+                    .set(BYTES_ARRAY_COL).to(BYTES_ARRAY_VAL)
+                    .set(DATE_ARRAY_COL).to(DATE_ARRAY_VAL)
+                    .set(FLOAT64_ARRAY_COL).to(FLOAT64_ARRAY_VAL)
+                    .set(INT64_ARRAY_COL).to(INT64_ARRAY_VAL)
+                    .set(JSON_ARRAY_COL).to(JSON_ARRAY_VAL)
+                    .set(NUMERIC_ARRAY_COL).to(NUMERIC_ARRAY_VAL)
+                    .set(STRING_ARRAY_COL).to(STRING_ARRAY_VAL)
+                    .set(TIMESTAMP_ARRAY_COL).to(TIMESTAMP_ARRAY_VAL)
                     .build()));
     // spotless:on
     SpannerToBigQueryUtils.spannerSnapshotRowToBigQueryTableRow(
@@ -253,16 +264,15 @@ public class SchemaUtilsTest {
 
     assertThat(tableRow.toString())
         .isEqualTo(
-            "GenericData{classInfo=[f], {BoolCol=true, BytesCol=MTIz, DateCol=2022-01-22,"
-                + " Float64Col=1.2, Int64Col=20, JsonCol={\"color\":\"red\",\"value\":\"#f00\"},"
-                + " NumericCol=1.23, StringCol=abc, TimestampCol=2022-03-07T01:50:53.972000000Z,"
-                + " BoolArrayCol=[true, false, true], BytesArrayCol=[MTIz, NDU2, Nzg5],"
+            "GenericData{classInfo=[f], {BooleanCol=true, BytesCol=NDU2, DateCol=2022-03-11,"
+                + " Float64Col=2.5, Int64Col=10, JsonCol={\"color\":\"red\"}, NumericCol=10,"
+                + " StringCol=abc, TimestampCol=2022-03-07T01:50:53.972000000Z,"
+                + " BooleanArrayCol=[true, false, true], BytesArrayCol=[MTIz, NDU2, Nzg5],"
                 + " DateArrayCol=[2022-01-22, 2022-03-11], Float64ArrayCol=[4.9E-324,"
                 + " 1.7976931348623157E308, 0.0, 1.0, -1.0, 1.2341],"
                 + " Int64ArrayCol=[9223372036854775807, -9223372036854775808, 0, 1, -1],"
                 + " JsonArrayCol=[{}, {\"color\":\"red\",\"value\":\"#f00\"}, []],"
-                + " NumericArrayCol=[1E-2147483647, 1E+2147483648, 0, 10, 3.141592],"
-                + " StringArrayCol=[abc, def, ghi],"
+                + " NumericArrayCol=[0, 10, 3.141592], StringArrayCol=[abc, def, ghi],"
                 + " TimestampArrayCol=[2022-03-07T01:50:53.972000000Z,"
                 + " 2022-03-07T07:24:13.572000000Z, 2022-03-07T12:57:33.772000000Z]}}");
   }
@@ -270,14 +280,14 @@ public class SchemaUtilsTest {
   @Test
   public void testAppendToSpannerKey() {
     JSONObject keysJsonObject = new JSONObject();
-    keysJsonObject.put("BoolCol", true);
-    keysJsonObject.put("BytesCol", ByteArray.copyFrom("123").toBase64());
-    keysJsonObject.put("DateCol", "2022-01-22");
-    keysJsonObject.put("Float64Col", 1.2);
-    keysJsonObject.put("Int64Col", 20);
-    keysJsonObject.put("NumericCol", new BigDecimal(3.141592));
-    keysJsonObject.put("StringCol", "abc");
-    keysJsonObject.put("TimestampCol", "2022-03-07T01:50:53.972000000Z");
+    keysJsonObject.put(BOOLEAN_COL, BOOLEAN_VAL.getBool());
+    keysJsonObject.put(BYTES_COL, BYTES_VAL.getBytes().toBase64());
+    keysJsonObject.put(DATE_COL, DATE_VAL.getDate().toString());
+    keysJsonObject.put(FLOAT64_COL, FLOAT64_VAL.getFloat64());
+    keysJsonObject.put(INT64_COL, INT64_VAL.getInt64());
+    keysJsonObject.put(NUMERIC_COL, NUMERIC_VAL.getNumeric());
+    keysJsonObject.put(STRING_COL, STRING_VAL.getString());
+    keysJsonObject.put(TIMESTAMP_COL, TIMESTAMP_VAL.toString());
     Key.Builder keyBuilder = com.google.cloud.spanner.Key.newBuilder();
     for (TrackedSpannerColumn spannerColumn : spannerColumnsOfAllTypes) {
       String typeName = spannerColumn.getType().getCode().name();
@@ -289,10 +299,7 @@ public class SchemaUtilsTest {
     }
 
     assertThat(keyBuilder.build().toString())
-        .isEqualTo(
-            "[true,MTIz,2022-01-22,1.2,20,"
-                + "3.14159200000000016217427400988526642322540283203125,abc,"
-                + "2022-03-07T01:50:53.972000000Z]");
+        .isEqualTo("[true,NDU2,2022-03-11,2.5,10,10,abc,2022-03-07T01:50:53.972000000Z]");
   }
 
   @Test
@@ -310,7 +317,7 @@ public class SchemaUtilsTest {
 
     assertThat(bigQueryIOFieldsStr)
         .isEqualTo(
-            "[{{mode=NULLABLE, name=BoolCol, type=BOOL}}, "
+            "[{{mode=NULLABLE, name=BooleanCol, type=BOOL}}, "
                 + "{{mode=NULLABLE, name=BytesCol, type=BYTES}}, "
                 + "{{mode=NULLABLE, name=DateCol, type=DATE}}, "
                 + "{{mode=NULLABLE, name=Float64Col, type=FLOAT64}}, "
@@ -319,7 +326,7 @@ public class SchemaUtilsTest {
                 + "{{mode=NULLABLE, name=NumericCol, type=NUMERIC}}, "
                 + "{{mode=NULLABLE, name=StringCol, type=STRING}}, "
                 + "{{mode=NULLABLE, name=TimestampCol, type=TIMESTAMP}}, "
-                + "{{mode=REPEATED, name=BoolArrayCol, type=BOOL}}, "
+                + "{{mode=REPEATED, name=BooleanArrayCol, type=BOOL}}, "
                 + "{{mode=REPEATED, name=BytesArrayCol, type=BYTES}}, "
                 + "{{mode=REPEATED, name=DateArrayCol, type=DATE}}, "
                 + "{{mode=REPEATED, name=Float64ArrayCol, type=FLOAT64}}, "
@@ -331,7 +338,7 @@ public class SchemaUtilsTest {
   }
 
   @Test
-  public void testAddSpannerNonPkColumnsToTableRow() {
+  public void testAddSpannerNonPkColumnsToTableRow() throws Exception {
     String newValuesJson =
         "{\"BoolCol\":true,\"BytesCol\":\"ZmZm\",\"DateCol\":\"2020-12-12\",\"Float64Col\":1.3,"
             + "\"Int64Col\":\"5\","
@@ -352,16 +359,14 @@ public class SchemaUtilsTest {
 
     assertThat(tableRow.toString())
         .isEqualTo(
-            "GenericData{classInfo=[f], "
-                + "{BoolCol=true, BytesCol=ZmZm, DateCol=2020-12-12, Float64Col=1.3, Int64Col=5, "
-                + "JsonCol={\"color\":\"red\",\"value\":\"#f00\"}, NumericCol=4.4, StringCol=abc, "
-                + "TimestampCol=2022-03-19T18:51:33.963910279Z, BoolArrayCol=[true, false], "
-                + "BytesArrayCol=[YWJj, YmNk], DateArrayCol=[2021-01-22, 2022-01-01], "
-                + "Float64ArrayCol=[1.2, 4.4], Int64ArrayCol=[1, 2], "
-                + "JsonArrayCol=[{}, {\"color\":\"red\",\"value\":\"#f00\"}, []], "
-                + "NumericArrayCol=[2.2, 3.3], StringArrayCol=[a, b], "
-                + "TimestampArrayCol=[2022-03-19T18:51:33.963910279Z, "
-                + "2022-03-19T18:51:33.963910279Z]}}");
+            "GenericData{classInfo=[f], {BytesCol=ZmZm, DateCol=2020-12-12, Float64Col=1.3,"
+                + " Int64Col=5, JsonCol={\"color\":\"red\",\"value\":\"#f00\"}, NumericCol=4.4,"
+                + " StringCol=abc, TimestampCol=2022-03-19T18:51:33.963910279Z,"
+                + " BytesArrayCol=[YWJj, YmNk], DateArrayCol=[2021-01-22, 2022-01-01],"
+                + " Float64ArrayCol=[1.2, 4.4], Int64ArrayCol=[1, 2], JsonArrayCol=[{},"
+                + " {\"color\":\"red\",\"value\":\"#f00\"}, []], NumericArrayCol=[2.2, 3.3],"
+                + " StringArrayCol=[a, b], TimestampArrayCol=[2022-03-19T18:51:33.963910279Z,"
+                + " 2022-03-19T18:51:33.963910279Z]}}");
   }
 
   private void mockInformationSchemaChangeStreamsQuery(boolean isTrackingAll) {
