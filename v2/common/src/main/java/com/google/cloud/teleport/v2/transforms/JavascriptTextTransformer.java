@@ -24,12 +24,14 @@ import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import javax.script.Invocable;
 import javax.script.ScriptEngine;
+import javax.script.ScriptEngineFactory;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import jdk.nashorn.api.scripting.ScriptObjectMirror;
@@ -135,6 +137,15 @@ public abstract class JavascriptTextTransformer {
     private static Invocable newInvocable(Collection<String> scripts) throws ScriptException {
       ScriptEngineManager manager = new ScriptEngineManager();
       ScriptEngine engine = manager.getEngineByName("JavaScript");
+
+      if (engine == null) {
+        List<String> availableEngines = new ArrayList<>();
+        for (ScriptEngineFactory factory : manager.getEngineFactories()) {
+          availableEngines.add(factory.getEngineName() + " " + factory.getEngineVersion());
+        }
+        throw new RuntimeException(
+            String.format("JavaScript engine not available. Found engines: %s.", availableEngines));
+      }
 
       for (String script : scripts) {
         engine.eval(script);
