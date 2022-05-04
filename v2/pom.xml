@@ -29,7 +29,7 @@
         <autovalue.annotations.version>1.7.4</autovalue.annotations.version>
         <autovalue.service.version>1.0-rc6</autovalue.service.version>
         <checkstyle.version>8.7</checkstyle.version>
-        <beam.version>2.37.0</beam.version>
+        <beam.version>2.38.0</beam.version>
         <hamcrest.version>2.1</hamcrest.version>
         <hadoop.version>2.10.1</hadoop.version>
         <guava.version>30.1-jre</guava.version>
@@ -97,6 +97,18 @@
                 <exclusion>
                     <groupId>junit</groupId>
                     <artifactId>junit</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>grpc-netty-shaded</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>grpc-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>grpc-api</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
