@@ -14,5 +14,5 @@
  * the License.
  */
 
-/** GCS to Splunk template for Google Cloud Teleport. */
+/** Package info for GCS to Splunk template. */
 package com.google.cloud.teleport.v2.templates;
