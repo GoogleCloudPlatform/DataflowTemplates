@@ -121,8 +121,8 @@
             <artifactId>beam-sdks-java-extensions-google-cloud-platform-core</artifactId>
             <exclusions>
                 <exclusion>
-                    <groupId>com.google.cloud.bigdataoss</groupId>
-                    <artifactId>gcsio</artifactId>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>grpc-core</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
