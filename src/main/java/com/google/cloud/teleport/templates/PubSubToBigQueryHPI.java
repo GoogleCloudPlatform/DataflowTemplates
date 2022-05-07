@@ -393,17 +393,18 @@ public class PubSubToBigQueryHPI {
         TableDestination destination;
         if (message != null) {
 
-            String bqDataset = null;
+            String bqDataset = outputDataset;
             try {
                 bqDataset = message.getAttributeMap().get(datasetNameAttr);
             } catch (ClassCastException | NullPointerException ignored) {
+                bqDataset = null;
             }
-            if (bqDataset != null && !bqDataset.isEmpty()) {
-                outputDataset = bqDataset;
+            if (bqDataset == null || bqDataset.isEmpty()) {
+                bqDataset = outputDataset;
             }
 
-            destination = new TableDestination(String.format("%s:%s.%s", outputProject,
-                    outputDataset, message.getAttributeMap().get(tableNameAttr)), null);
+            destination = new TableDestination(String.format("%s:%s.%s", outputProject, bqDataset,
+                    message.getAttributeMap().get(tableNameAttr)), null);
         } else {
             throw new RuntimeException(
                     "Cannot retrieve the dynamic table destination of an null message!");

@@ -61,8 +61,8 @@ public class PubsubToBigQueryTest {
     public void testPubsubToBigQueryE2E() throws Exception {
         // Test input
         final String payload = "{\"ticker\": \"GOOGL\", \"price\": 1006.94}";
-        final PubsubMessage message = new PubsubMessage(payload.getBytes(),
-                ImmutableMap.of("id", "123", "type", "custom_event", "bq_table", "test"));
+        final PubsubMessage message = new PubsubMessage(payload.getBytes(), ImmutableMap.of("id",
+                "123", "type", "custom_event", "bq_table", "test", "bq_data_set", "abc"));
 
         final Instant timestamp =
                 new DateTime(2022, 2, 22, 22, 22, 22, 222, DateTimeZone.UTC).toInstant();
@@ -76,16 +76,12 @@ public class PubsubToBigQueryTest {
         // Parameters
         ValueProvider<String> transformPath = pipeline.newProvider(TRANSFORM_FILE_PATH);
         ValueProvider<String> transformFunction = pipeline.newProvider("transform");
-        ValueProvider<String> outputTableSpec =
-                pipeline.newProvider("yin-yang-332008:ope_metrics.%s");
-        ValueProvider<String> outputDeadletterTable =
-                pipeline.newProvider("yin-yang-332008:ope_metrics.%s_error_records");
 
         PubSubToBigQueryHPI.Options options =
                 PipelineOptionsFactory.create().as(PubSubToBigQueryHPI.Options.class);
 
-        options.setOutputTableSpec(outputTableSpec);
-        options.setOutputDeadletterTable(outputDeadletterTable);
+        options.setDatasetNameAttr("bq_data_set");
+        options.setOutputDeadletterTable("yin-yang-332008:ope_metrics.%s_error_records");
         options.setJavascriptTextTransformGcsPath(transformPath);
         options.setJavascriptTextTransformFunctionName(transformFunction);
 
@@ -93,8 +89,6 @@ public class PubsubToBigQueryTest {
         PCollection<PubsubMessage> messages = pipeline.apply("CreateInput",
                 Create.timestamped(TimestampedValue.of(message, timestamp))
                         .withCoder(PubsubMessageWithAttributesCoder.of()));
-
-        messages.apply("SetTableName", ParDo.of(new SetBigQueryTableNameFn(options)));
 
         PCollectionTuple transformOut =
                 messages.apply("ConvertMessageToTableRow", new PubsubMessageToTableRow(options));
