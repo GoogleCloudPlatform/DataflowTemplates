@@ -32,6 +32,7 @@ mvn compile exec:java \
 --useSubscription=${USE_SUBSCRIPTION} \
 --region=${REGION} \
 --tableNameAttr=bq_table \
+--datasetNameAttr=bq_data_set \
 --outputDeadletterTable=${PROJECT_ID}:${DATASET_ID}.error_records \
 --outputTableProject=${PROJECT_ID} \
 --outputTableDataset=${DATASET_ID} \

@@ -13,7 +13,6 @@ import com.google.cloud.teleport.templates.common.ErrorConverters;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.util.ResourceUtils;
-import com.google.cloud.teleport.util.ValueProviderUtils;
 import com.google.cloud.teleport.values.FailsafeElement;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.sdk.Pipeline;
@@ -174,6 +173,12 @@ public class PubSubToBigQueryHPI {
 
         void setTableNameAttr(String value);
 
+        @Description("The name of the attribute which will contain the dataset name to route the message to.")
+        @Required
+        String getDatasetNameAttr();
+
+        void setDatasetNameAttr(String value);
+
         @Description("The project where output table is stored.")
         @Required
         String getOutputTableProject();
@@ -225,6 +230,8 @@ public class PubSubToBigQueryHPI {
 
         // Retrieve non-serializable parameters
         String tableNameAttr = options.getTableNameAttr();
+        String datasetNameAttr = options.getDatasetNameAttr();
+
         String outputTableProject = options.getOutputTableProject();
         String outputTableDataset = options.getOutputTableDataset();
 
@@ -258,8 +265,8 @@ public class PubSubToBigQueryHPI {
                         .withWriteDisposition(WriteDisposition.WRITE_APPEND).withExtendedErrorInfo()
                         .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
                         .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
-                        .to(input -> getTableDestination(input, tableNameAttr, outputTableProject,
-                                outputTableDataset))
+                        .to(input -> getTableDestination(input, datasetNameAttr, tableNameAttr,
+                                outputTableProject, outputTableDataset))
                         .withFormatFunction((PubsubMessage msg) -> convertJsonToTableRow(
                                 new String(msg.getPayload(), StandardCharsets.UTF_8))));
 
@@ -379,16 +386,18 @@ public class PubSubToBigQueryHPI {
      */
     @VisibleForTesting
     static TableDestination getTableDestination(ValueInSingleWindow<PubsubMessage> input,
-            String tableNameAttr, String outputProject, String outputDataset) {
+            String datasetNameAttr, String tableNameAttr, String outputProject,
+            String outputDataset) {
 
         PubsubMessage message = input.getValue();
         TableDestination destination;
         if (message != null) {
             String bq_data_set = null;
-            try{
-                bq_data_set = message.getAttributeMap().get("bq_data_set");
-            }catch (ClassCastException | NullPointerException ignored){}
-            if(bq_data_set != null && !bq_data_set.isEmpty()){
+            try {
+                bq_data_set = message.getAttributeMap().get(datasetNameAttr);
+            } catch (ClassCastException | NullPointerException ignored) {
+            }
+            if (bq_data_set != null && !bq_data_set.isEmpty()) {
                 outputDataset = bq_data_set;
             }
             destination = new TableDestination(String.format("%s:%s.%s", outputProject,
