@@ -10,7 +10,7 @@ do
 done
 
 export JOB_NAME=ope_metrics
-export DATASET_ID=ope_metrics
+export DEFAULT_DATASET_ID=ope_metrics
 export MAX_WORKERS=1
 export PROJECT_ID=yin-yang-332008
 export BUCKET_NAME=hpi-dataflow-temp-bucket
@@ -33,9 +33,9 @@ mvn compile exec:java \
 --region=${REGION} \
 --tableNameAttr=bq_table \
 --datasetNameAttr=bq_data_set \
---outputDeadletterTable=${PROJECT_ID}:${DATASET_ID}.error_records \
+--outputDeadletterTable=${PROJECT_ID}:${DEFAULT_DATASET_ID}.error_records \
 --outputTableProject=${PROJECT_ID} \
---outputTableDataset=${DATASET_ID} \
+--outputTableDataset=${DEFAULT_DATASET_ID} \
 "
 
 # Execute the template

@@ -392,14 +392,16 @@ public class PubSubToBigQueryHPI {
         PubsubMessage message = input.getValue();
         TableDestination destination;
         if (message != null) {
-            String bq_data_set = null;
+
+            String bqDataset = null;
             try {
-                bq_data_set = message.getAttributeMap().get(datasetNameAttr);
+                bqDataset = message.getAttributeMap().get(datasetNameAttr);
             } catch (ClassCastException | NullPointerException ignored) {
             }
-            if (bq_data_set != null && !bq_data_set.isEmpty()) {
-                outputDataset = bq_data_set;
+            if (bqDataset != null && !bqDataset.isEmpty()) {
+                outputDataset = bqDataset;
             }
+
             destination = new TableDestination(String.format("%s:%s.%s", outputProject,
                     outputDataset, message.getAttributeMap().get(tableNameAttr)), null);
         } else {
