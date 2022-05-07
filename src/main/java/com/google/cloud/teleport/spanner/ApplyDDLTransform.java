@@ -21,7 +21,7 @@ import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.spanner.admin.database.v1.UpdateDatabaseDdlMetadata;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerAccessor;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -63,11 +63,11 @@ class ApplyDDLTransform extends PTransform<PCollection<Ddl>, PCollection<Ddl>> {
         ParDo.of(
                 new DoFn<Ddl, Ddl>() {
 
-                  private transient ExposedSpannerAccessor spannerAccessor;
+                  private transient SpannerAccessor spannerAccessor;
 
                   @Setup
                   public void setup() {
-                    spannerAccessor = ExposedSpannerAccessor.create(spannerConfig);
+                    spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
                   }
 
                   @Teardown

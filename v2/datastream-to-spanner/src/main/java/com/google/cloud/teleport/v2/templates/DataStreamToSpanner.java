@@ -356,6 +356,7 @@ public class DataStreamToSpanner {
             DLQWriteTransform.WriteDLQ.newBuilder()
                 .withDlqDirectory(dlqManager.getRetryDlqDirectoryWithDateTime())
                 .withTmpDirectory(dlqManager.getRetryDlqDirectory() + "tmp/")
+                .setIncludePaneInfo(true)
                 .build());
 
     PCollection<FailsafeElement<String, String>> dlqErrorRecords =
@@ -379,6 +380,7 @@ public class DataStreamToSpanner {
             DLQWriteTransform.WriteDLQ.newBuilder()
                 .withDlqDirectory(dlqManager.getSevereDlqDirectoryWithDateTime())
                 .withTmpDirectory(dlqManager.getSevereDlqDirectory() + "tmp/")
+                .setIncludePaneInfo(true)
                 .build());
 
     // Execute the pipeline and return the result.

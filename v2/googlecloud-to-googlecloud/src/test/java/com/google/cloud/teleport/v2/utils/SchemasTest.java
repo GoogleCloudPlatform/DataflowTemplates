@@ -180,4 +180,25 @@ public class SchemasTest {
 
     assertEquals(expectedSchema, schema);
   }
+
+  @Test
+  public void testRenameAvroField() {
+    Schema originalSchema =
+        new Schema.Parser()
+            .parse(
+                "{\"type\":\"record\",\"name\":\"__root__\",\"fields\":"
+                    + "[{\"name\":\"ts\",\"type\":[\"null\",{\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}]},"
+                    + "{\"name\":\"___old___\",\"type\":[\"null\",\"string\"]},"
+                    + "{\"name\":\"i1\",\"type\":[\"null\",\"long\"]}]}");
+
+    Schema actualSchema = Schemas.renameAvroField(originalSchema, "___old___", "___new___");
+
+    String expectedSchemaString =
+        "{\"type\":\"record\",\"name\":\"__root__\",\"fields\":"
+            + "[{\"name\":\"ts\",\"type\":[\"null\",{\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}]},"
+            + "{\"name\":\"___new___\",\"type\":[\"null\",\"string\"],\"aliases\":[\"___old___\"]},"
+            + "{\"name\":\"i1\",\"type\":[\"null\",\"long\"]}]}";
+
+    assertEquals(expectedSchemaString, actualSchema.toString());
+  }
 }

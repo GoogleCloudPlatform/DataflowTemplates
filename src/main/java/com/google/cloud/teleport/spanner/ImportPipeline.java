@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.spanner;
 
+import com.google.cloud.spanner.Options.RpcPriority;
+import com.google.cloud.spanner.SpannerOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -24,6 +26,8 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.options.ValueProvider.NestedValueProvider;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 
 /** Avro to Cloud Spanner Import pipeline. */
 public class ImportPipeline {
@@ -63,10 +67,10 @@ public class ImportPipeline {
     void setWaitForIndexes(ValueProvider<Boolean> value);
 
     @Description(
-        "By default the import pipeline is not blocked on foreign key creation, and it "
-            + "may complete with foreign keys still being created in the background. In testing, it may "
-            + "be useful to set this option to false so that the pipeline waits until foreign keys are "
-            + "finished.")
+        "By default the import pipeline is not blocked on foreign key creation, and it may complete"
+            + " with foreign keys still being created in the background. In testing, it may be"
+            + " useful to set this option to false so that the pipeline waits until foreign keys"
+            + " are finished.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getWaitForForeignKeys();
 
@@ -91,6 +95,17 @@ public class ImportPipeline {
     void setSpannerProjectId(ValueProvider<String> value);
 
     void setWaitUntilFinish(boolean value);
+
+    @Description("DDL creation timeout.")
+    @Default.Integer(30)
+    ValueProvider<Integer> getDDLCreationTimeoutInMinutes();
+
+    void setDDLCreationTimeoutInMinutes(ValueProvider<Integer> value);
+
+    @Description("The spanner priority. --spannerPriority must be one of:[HIGH,MEDIUM,LOW]")
+    ValueProvider<RpcPriority> getSpannerPriority();
+
+    void setSpannerPriority(ValueProvider<RpcPriority> value);
   }
 
   public static void main(String[] args) {
@@ -101,10 +116,19 @@ public class ImportPipeline {
 
     SpannerConfig spannerConfig =
         SpannerConfig.create()
-            .withProjectId(options.getSpannerProjectId())
+            // Temporary fix explicitly setting SpannerConfig.projectId to the default project
+            // if spannerProjectId is not provided as a parameter. Required as of Beam 2.38,
+            // which no longer accepts null label values on metrics, and SpannerIO#setup() has
+            // a bug resulting in the label value being set to the original parameter value,
+            // with no fallback to the default project.
+            // TODO: remove NestedValueProvider when this is fixed in Beam.
+            .withProjectId(NestedValueProvider.of(options.getSpannerProjectId(),
+                (SerializableFunction<String, String>) input ->
+                    input != null ? input : SpannerOptions.getDefaultProjectId()))
             .withHost(options.getSpannerHost())
             .withInstanceId(options.getInstanceId())
-            .withDatabaseId(options.getDatabaseId());
+            .withDatabaseId(options.getDatabaseId())
+            .withRpcPriority(options.getSpannerPriority());
 
     p.apply(
         new ImportTransform(
@@ -112,7 +136,8 @@ public class ImportPipeline {
             options.getInputDir(),
             options.getWaitForIndexes(),
             options.getWaitForForeignKeys(),
-            options.getEarlyIndexCreateFlag()));
+            options.getEarlyIndexCreateFlag(),
+            options.getDDLCreationTimeoutInMinutes()));
 
     PipelineResult result = p.run();
     if (options.getWaitUntilFinish()

@@ -16,20 +16,56 @@
 package com.google.cloud.teleport.templates;
 
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.auto.service.AutoService;
 import com.google.cloud.teleport.io.DynamicJdbcIO;
 import com.google.cloud.teleport.templates.common.JdbcConverters;
 import com.google.cloud.teleport.util.KMSEncryptedNestedValueProvider;
+import java.security.Security;
+import javax.net.ssl.SSLServerSocketFactory;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.harness.JvmInitializer;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
+import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A template that copies data from a relational database using JDBC to an existing BigQuery table.
  */
 public class JdbcToBigQuery {
+
+  private static final Logger LOG = LoggerFactory.getLogger(JdbcToBigQuery.class);
+
+  /**
+   * Custom JvmInitializer to override jdk.tls.disabledAlgorithms through the template parameters.
+   */
+  @AutoService(JvmInitializer.class)
+  public static class CustomJvmInitializer implements JvmInitializer {
+    @Override
+    public void onStartup() {}
+
+    @Override
+    public void beforeProcessing(PipelineOptions options) {
+      JdbcConverters.JdbcToBigQueryOptions pipelineOptions =
+          options.as(JdbcConverters.JdbcToBigQueryOptions.class);
+      if (pipelineOptions.getDisabledAlgorithms() != null
+          && pipelineOptions.getDisabledAlgorithms().get() != null) {
+        String value = pipelineOptions.getDisabledAlgorithms().get();
+        // if the user sets disabledAlgorithms to "none" then set "jdk.tls.disabledAlgorithms" to ""
+        if (value.equals("none")) {
+          value = "";
+        }
+        LOG.info("disabledAlgorithms is set to {}.", value);
+        Security.setProperty("jdk.tls.disabledAlgorithms", value);
+        SSLServerSocketFactory fact = (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();
+        LOG.info("Supported Ciper Suites: " + String.join("\n", fact.getSupportedCipherSuites()));
+      }
+    }
+  }
 
   private static ValueProvider<String> maybeDecrypt(
       ValueProvider<String> unencryptedValue, ValueProvider<String> kmsKey) {

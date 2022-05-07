@@ -93,10 +93,10 @@ public class BigQueryConverters {
 
   private static final JsonFactory JSON_FACTORY = Transport.getJsonFactory();
 
-
   /** Converts from the BigQuery Avro format into Bigtable mutation. */
   @AutoValue
-  public abstract static class AvroToMutation implements SerializableFunction<SchemaAndRecord, Mutation> {
+  public abstract static class AvroToMutation
+      implements SerializableFunction<SchemaAndRecord, Mutation> {
 
     public abstract String columnFamily();
 
@@ -129,12 +129,10 @@ public class BigQueryConverters {
           continue;
         }
 
-        String columnValue = row.get(columnName).toString();
+        Object columnObj = row.get(columnName);
+        byte[] columnValue = columnObj == null ? null : Bytes.toBytes(columnObj.toString());
         // TODO(billyjacobson): handle other types and column families
-        put.addColumn(
-            Bytes.toBytes(columnFamily()),
-            Bytes.toBytes(columnName),
-            Bytes.toBytes(columnValue));
+        put.addColumn(Bytes.toBytes(columnFamily()), Bytes.toBytes(columnName), columnValue);
       }
       return put;
     }

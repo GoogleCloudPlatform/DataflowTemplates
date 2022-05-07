@@ -278,6 +278,7 @@ public class ExportTimestampTest {
     ValueProvider.StaticValueProvider<Boolean> exportAsLogicalType =
         ValueProvider.StaticValueProvider.of(false);
     SpannerConfig sourceConfig = spannerServer.getSpannerConfig(sourceDb);
+    ValueProvider.StaticValueProvider<String> tempDir = ValueProvider.StaticValueProvider.of(null);
     exportPipeline.apply(
         "Export",
         new ExportTransform(
@@ -287,7 +288,8 @@ public class ExportTimestampTest {
             timestamp,
             tables,
             exportRelatedTables,
-            exportAsLogicalType));
+            exportAsLogicalType,
+            tempDir));
     PipelineResult exportResult = exportPipeline.run();
     exportResult.waitUntilFinish();
 
@@ -299,7 +301,8 @@ public class ExportTimestampTest {
             source,
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
-            ValueProvider.StaticValueProvider.of(true)));
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(30)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();
   }

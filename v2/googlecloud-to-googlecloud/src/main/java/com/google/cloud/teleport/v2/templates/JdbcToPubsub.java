@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.cloud.teleport.v2.io.DynamicJdbcIO;
 import com.google.cloud.teleport.v2.options.JdbcToPubsubOptions;
 import com.google.cloud.teleport.v2.utils.KMSEncryptedNestedValue;
+import java.sql.Clob;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import org.apache.beam.sdk.Pipeline;
@@ -32,7 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link JdbcToPubsub} streaming pipeline reads data from JdbcIO and publishes to Google Cloud
+ * The {@link JdbcToPubsub} batch pipeline reads data from JdbcIO and publishes to Google Cloud
  * PubSub. <br>
  */
 public class JdbcToPubsub {
@@ -56,10 +57,29 @@ public class JdbcToPubsub {
 
       for (int i = 1; i <= metaData.getColumnCount(); i++) {
         Object value = resultSet.getObject(i);
-        // JSONObject.put() does not support null values. The exception is JSONObject.NULL
-        json.put(metaData.getColumnLabel(i), value == null ? JSONObject.NULL : value);
-      }
 
+        // JSONObject.put() does not support null values. The exception is JSONObject.NULL
+        if (value == null) {
+          json.put(metaData.getColumnLabel(i), JSONObject.NULL);
+          continue;
+        }
+
+        switch (metaData.getColumnTypeName(i).toLowerCase()) {
+          case "clob":
+            Clob clobObject = resultSet.getClob(i);
+            if (clobObject.length() > Integer.MAX_VALUE) {
+              LOG.warn(
+                  "The Clob value size {} in column {} exceeds 2GB and will be truncated.",
+                  clobObject.length(),
+                  metaData.getColumnLabel(i));
+            }
+            json.put(
+                metaData.getColumnLabel(i), clobObject.getSubString(1, (int) clobObject.length()));
+            break;
+          default:
+            json.put(metaData.getColumnLabel(i), value);
+        }
+      }
       return json.toString();
     }
   }

@@ -21,10 +21,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
-import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -37,62 +34,16 @@ import org.slf4j.LoggerFactory;
  * will use downstream.
  */
 public final class FormatDatastreamJsonToJson
-    extends DoFn<String, FailsafeElement<String, String>> {
+    extends FormatDatastreamRecord<String, FailsafeElement<String, String>> {
 
   static final Logger LOG = LoggerFactory.getLogger(FormatDatastreamJsonToJson.class);
   static final DateTimeFormatter DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER =
       DateTimeFormatter.ISO_OFFSET_DATE_TIME;
-  private String rowIdColumnName;
-  private Map<String, String> hashedColumns = new HashMap<String, String>();
-  private boolean lowercaseSourceColumns = false;
-  private String streamName;
 
   private FormatDatastreamJsonToJson() {}
 
   public static FormatDatastreamJsonToJson create() {
     return new FormatDatastreamJsonToJson();
-  }
-
-  public FormatDatastreamJsonToJson withStreamName(String streamName) {
-    this.streamName = streamName;
-    return this;
-  }
-
-  public FormatDatastreamJsonToJson withLowercaseSourceColumns(Boolean lowercaseSourceColumns) {
-    this.lowercaseSourceColumns = lowercaseSourceColumns;
-    return this;
-  }
-
-  /**
-   * Add the supplied columnName to the list of column values to be hashed.
-   *
-   * @param columnName The column name to look for in the data to hash.
-   */
-  public FormatDatastreamJsonToJson withHashColumnValue(String columnName) {
-    this.hashedColumns.put(columnName, columnName);
-    return this;
-  }
-
-  /**
-   * Add the supplied columnName to the map of column values to be hashed. A new column with a
-   * hashed value of the first will be created.
-   *
-   * @param columnName The column name to look for in the data.
-   * @param newColumnName The name of the new column created with hashed data.
-   */
-  public FormatDatastreamJsonToJson withHashColumnValue(String columnName, String newColumnName) {
-    this.hashedColumns.put(columnName, newColumnName);
-    return this;
-  }
-
-  /**
-   * Set the map of columns values to hash.
-   *
-   * @param hashedColumns The map of columns to new columns to hash.
-   */
-  public FormatDatastreamJsonToJson withHashColumnValues(Map<String, String> hashedColumns) {
-    this.hashedColumns = hashedColumns;
-    return this;
   }
 
   @ProcessElement
@@ -113,8 +64,8 @@ public final class FormatDatastreamJsonToJson
         }
       }
     } catch (IOException e) {
-      LOG.error("Issue parsing JSON record. Unable to continue.", e);
-      throw new RuntimeException(e);
+      LOG.error("Skipping Malformed JSON record: {} -> {}", c.element(), e.getMessage());
+      return;
     }
 
     ObjectMapper mapper = new ObjectMapper();
@@ -143,7 +94,7 @@ public final class FormatDatastreamJsonToJson
     } else {
       // Oracle Specific Metadata
       outputObject.put("_metadata_schema", getSourceMetadata(record, "schema"));
-      outputObject.put("_metadata_row_id", getSourceMetadata(record, "row_id"));
+      setOracleRowIdValue(outputObject, getSourceMetadata(record, "row_id"));
       outputObject.put("_metadata_scn", getSourceMetadataAsLong(record, "scn"));
       outputObject.put("_metadata_ssn", getSourceMetadataAsLong(record, "ssn"));
       outputObject.put("_metadata_rs_id", getSourceMetadata(record, "rs_id"));
@@ -163,9 +114,10 @@ public final class FormatDatastreamJsonToJson
           outputObject.put(key, payload.get(key));
         }
       }
-      // Hash columns supplied to be hashed
-      applyHashToColumns(payload, outputObject);
     }
+
+    // Rename/Copy columns supplied (including _metadata_* columns)
+    applyRenameColumns(outputObject);
 
     // All Raw Metadata
     outputObject.put("_metadata_source", getSourceMetadata(record));
@@ -189,6 +141,7 @@ public final class FormatDatastreamJsonToJson
   private long convertTimestampStringToSeconds(String timestamp) {
     ZonedDateTime zonedDateTime;
     try {
+      timestamp = timestamp.replace(" ", "T");
       if (!timestamp.endsWith("Z")) {
         timestamp = timestamp + "Z";
       }
@@ -281,16 +234,5 @@ public final class FormatDatastreamJsonToJson
     }
 
     return value.getBooleanValue();
-  }
-
-  private void applyHashToColumns(JsonNode record, ObjectNode outputObject) {
-    for (String columnName : this.hashedColumns.keySet()) {
-      if (record.get(columnName) != null) {
-        // TODO: discuss hash algorithm to use
-        String newColumnName = this.hashedColumns.get(columnName);
-        int hashedValue = record.get(columnName).getTextValue().hashCode();
-        outputObject.put(newColumnName, hashedValue);
-      }
-    }
   }
 }

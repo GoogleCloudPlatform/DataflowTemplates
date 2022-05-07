@@ -15,12 +15,16 @@
  */
 package org.apache.beam.sdk.io.gcp.spanner;
 
+import com.google.api.gax.retrying.RetrySettings;
+import com.google.api.gax.rpc.StatusCode.Code;
 import com.google.cloud.ServiceFactory;
+import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerOptions;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableSet;
 import org.joda.time.Duration;
 
 /** Exposed spanner config. */
@@ -42,9 +46,19 @@ public class ExposedSpannerConfig extends SpannerConfig {
 
   private final ValueProvider<String> emulatorHost;
 
+  private final ValueProvider<Boolean> isLocalChannelProvider;
+
   private final ValueProvider<Duration> commitDeadline;
 
   private final ValueProvider<Duration> maxCumulativeBackoff;
+
+  private final RetrySettings executeStreamingSqlRetrySettings;
+
+  private final RetrySettings commitRetrySettings;
+
+  private final ImmutableSet<Code> retryableCodes;
+
+  private final ValueProvider<RpcPriority> rpcPriority;
 
   private final ServiceFactory<Spanner, SpannerOptions> serviceFactory;
 
@@ -54,16 +68,26 @@ public class ExposedSpannerConfig extends SpannerConfig {
       @Nullable ValueProvider<String> databaseId,
       @Nullable ValueProvider<String> host,
       @Nullable ValueProvider<String> emulatorHost,
+      @Nullable ValueProvider<Boolean> isLocalChannelProvider,
       @Nullable ValueProvider<Duration> commitDeadline,
       @Nullable ValueProvider<Duration> maxCumulativeBackoff,
+      @Nullable RetrySettings executeStreamingSqlRetrySettings,
+      @Nullable RetrySettings commitRetrySettings,
+      @Nullable ImmutableSet<Code> retryableCodes,
+      @Nullable ValueProvider<RpcPriority> rpcPriority,
       @Nullable ServiceFactory<Spanner, SpannerOptions> serviceFactory) {
     this.projectId = projectId;
     this.instanceId = instanceId;
     this.databaseId = databaseId;
     this.host = host;
     this.emulatorHost = emulatorHost;
+    this.isLocalChannelProvider = isLocalChannelProvider;
     this.commitDeadline = commitDeadline;
     this.maxCumulativeBackoff = maxCumulativeBackoff;
+    this.executeStreamingSqlRetrySettings = executeStreamingSqlRetrySettings;
+    this.commitRetrySettings = commitRetrySettings;
+    this.retryableCodes = retryableCodes;
+    this.rpcPriority = rpcPriority;
     this.serviceFactory = serviceFactory;
   }
 
@@ -99,6 +123,12 @@ public class ExposedSpannerConfig extends SpannerConfig {
 
   @Nullable
   @Override
+  public ValueProvider<Boolean> getIsLocalChannelProvider() {
+    return isLocalChannelProvider;
+  }
+
+  @Nullable
+  @Override
   public ValueProvider<Duration> getCommitDeadline() {
     return commitDeadline;
   }
@@ -107,6 +137,30 @@ public class ExposedSpannerConfig extends SpannerConfig {
   @Override
   public ValueProvider<Duration> getMaxCumulativeBackoff() {
     return maxCumulativeBackoff;
+  }
+
+  @Nullable
+  @Override
+  public RetrySettings getExecuteStreamingSqlRetrySettings() {
+    return executeStreamingSqlRetrySettings;
+  }
+
+  @Nullable
+  @Override
+  public RetrySettings getCommitRetrySettings() {
+    return commitRetrySettings;
+  }
+
+  @Nullable
+  @Override
+  public ImmutableSet<Code> getRetryableCodes() {
+    return retryableCodes;
+  }
+
+  @Nullable
+  @Override
+  public ValueProvider<RpcPriority> getRpcPriority() {
+    return rpcPriority;
   }
 
   @Nullable
@@ -224,8 +278,13 @@ public class ExposedSpannerConfig extends SpannerConfig {
     private ValueProvider<String> databaseId;
     private ValueProvider<String> host;
     private ValueProvider<String> emulatorHost;
+    private ValueProvider<Boolean> isLocalChannelProvider;
     private ValueProvider<Duration> commitDeadline;
     private ValueProvider<Duration> maxCumulativeBackoff;
+    private RetrySettings executeStreamingSqlRetrySettings;
+    private RetrySettings commitRetrySettings;
+    private ImmutableSet<Code> retryableCodes;
+    private ValueProvider<RpcPriority> rpcPriority;
     private ServiceFactory<Spanner, SpannerOptions> serviceFactory;
 
     Builder() {}
@@ -236,8 +295,13 @@ public class ExposedSpannerConfig extends SpannerConfig {
       this.databaseId = source.getDatabaseId();
       this.host = source.getHost();
       this.emulatorHost = source.getEmulatorHost();
+      this.isLocalChannelProvider = source.getIsLocalChannelProvider();
       this.commitDeadline = source.getCommitDeadline();
       this.maxCumulativeBackoff = source.getMaxCumulativeBackoff();
+      this.executeStreamingSqlRetrySettings = source.getExecuteStreamingSqlRetrySettings();
+      this.commitRetrySettings = source.getCommitRetrySettings();
+      this.retryableCodes = source.getRetryableCodes();
+      this.rpcPriority = source.getRpcPriority();
       this.serviceFactory = source.getServiceFactory();
     }
 
@@ -266,6 +330,13 @@ public class ExposedSpannerConfig extends SpannerConfig {
     }
 
     @Override
+    ExposedSpannerConfig.Builder setIsLocalChannelProvider(
+        ValueProvider<Boolean> isLocalChannelProvider) {
+      this.isLocalChannelProvider = isLocalChannelProvider;
+      return this;
+    }
+
+    @Override
     ExposedSpannerConfig.Builder setEmulatorHost(ValueProvider<String> emulatorHost) {
       this.emulatorHost = emulatorHost;
       return this;
@@ -284,6 +355,31 @@ public class ExposedSpannerConfig extends SpannerConfig {
     }
 
     @Override
+    SpannerConfig.Builder setExecuteStreamingSqlRetrySettings(
+        RetrySettings executeStreamingSqlRetrySettings) {
+      this.executeStreamingSqlRetrySettings = executeStreamingSqlRetrySettings;
+      return this;
+    }
+
+    @Override
+    SpannerConfig.Builder setCommitRetrySettings(RetrySettings commitRetrySettings) {
+      this.commitRetrySettings = commitRetrySettings;
+      return this;
+    }
+
+    @Override
+    SpannerConfig.Builder setRetryableCodes(ImmutableSet<Code> retryableCodes) {
+      this.retryableCodes = retryableCodes;
+      return this;
+    }
+
+    @Override
+    SpannerConfig.Builder setRpcPriority(ValueProvider<RpcPriority> rpcPriority) {
+      this.rpcPriority = rpcPriority;
+      return this;
+    }
+
+    @Override
     ExposedSpannerConfig.Builder setServiceFactory(
         ServiceFactory<Spanner, SpannerOptions> serviceFactory) {
       this.serviceFactory = serviceFactory;
@@ -298,8 +394,13 @@ public class ExposedSpannerConfig extends SpannerConfig {
           this.databaseId,
           this.host,
           this.emulatorHost,
+          this.isLocalChannelProvider,
           this.commitDeadline,
           this.maxCumulativeBackoff,
+          this.executeStreamingSqlRetrySettings,
+          this.commitRetrySettings,
+          this.retryableCodes,
+          this.rpcPriority,
           this.serviceFactory);
     }
   }

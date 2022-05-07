@@ -35,7 +35,7 @@ information on using pull requests.
 ## IntelliJ & IDE Setup
 
 For v1 templates, just open the project at the root directory and use maven
-from there. 
+from there.
 
-For v2 templates, open the project at the root directory then find the 
+For v2 templates, open the project at the root directory then find the
 "Add Maven Project" action and add the v2 directory and let the project rebuild.

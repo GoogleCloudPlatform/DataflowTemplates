@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.spanner;
 
+import com.google.cloud.spanner.Options.RpcPriority;
+import com.google.cloud.spanner.SpannerOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -24,6 +26,8 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.options.ValueProvider.NestedValueProvider;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 
 /** Dataflow template that exports a Cloud Spanner database to Avro files in GCS. */
 public class ExportPipeline {
@@ -44,6 +48,11 @@ public class ExportPipeline {
     ValueProvider<String> getOutputDir();
 
     void setOutputDir(ValueProvider<String> value);
+
+    @Description("Temporary Directory to store Avro files.")
+    ValueProvider<String> getAvroTempDirectory();
+
+    void setAvroTempDirectory(ValueProvider<String> value);
 
     @Description("Test dataflow job identifier for Beam Direct Runner")
     @Default.String(value = "")
@@ -102,6 +111,11 @@ public class ExportPipeline {
     ValueProvider<Boolean> getShouldExportRelatedTables();
 
     void setShouldExportRelatedTables(ValueProvider<Boolean> value);
+
+    @Description("The spanner priority. --spannerPriority must be one of:[HIGH,MEDIUM,LOW]")
+    ValueProvider<RpcPriority> getSpannerPriority();
+
+    void setSpannerPriority(ValueProvider<RpcPriority> value);
   }
 
   /**
@@ -118,10 +132,19 @@ public class ExportPipeline {
 
     SpannerConfig spannerConfig =
         SpannerConfig.create()
-            .withProjectId(options.getSpannerProjectId())
+            // Temporary fix explicitly setting SpannerConfig.projectId to the default project
+            // if spannerProjectId is not provided as a parameter. Required as of Beam 2.38,
+            // which no longer accepts null label values on metrics, and SpannerIO#setup() has
+            // a bug resulting in the label value being set to the original parameter value,
+            // with no fallback to the default project.
+            // TODO: remove NestedValueProvider when this is fixed in Beam.
+            .withProjectId(NestedValueProvider.of(options.getSpannerProjectId(),
+                (SerializableFunction<String, String>) input ->
+                    input != null ? input : SpannerOptions.getDefaultProjectId()))
             .withHost(options.getSpannerHost())
             .withInstanceId(options.getInstanceId())
-            .withDatabaseId(options.getDatabaseId());
+            .withDatabaseId(options.getDatabaseId())
+            .withRpcPriority(options.getSpannerPriority());
     p.begin()
         .apply(
             "Run Export",
@@ -132,7 +155,8 @@ public class ExportPipeline {
                 options.getSnapshotTime(),
                 options.getTableNames(),
                 options.getShouldExportRelatedTables(),
-                options.getShouldExportTimestampAsLogicalType()));
+                options.getShouldExportTimestampAsLogicalType(),
+                options.getAvroTempDirectory()));
     PipelineResult result = p.run();
     if (options.getWaitUntilFinish()
         &&

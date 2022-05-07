@@ -28,9 +28,10 @@ import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1StorageFor
 import com.google.cloud.teleport.v2.clients.DataplexClient;
 import com.google.cloud.teleport.v2.templates.DataplexFileFormatConversion.FileFormatConversionOptions;
 import com.google.cloud.teleport.v2.templates.DataplexFileFormatConversion.InputFileFormat;
-import com.google.cloud.teleport.v2.templates.DataplexFileFormatConversion.OutputFileFormat;
 import com.google.cloud.teleport.v2.transforms.AvroConverters;
 import com.google.cloud.teleport.v2.transforms.ParquetConverters;
+import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
+import com.google.cloud.teleport.v2.utils.WriteDisposition.WriteDispositionOptions;
 import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
 import com.google.cloud.teleport.v2.values.DataplexCompression;
 import com.google.cloud.teleport.v2.values.EntityMetadata.StorageSystem;
@@ -38,6 +39,10 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Parser;
 import org.apache.avro.generic.GenericData.Record;
@@ -86,19 +91,20 @@ public class DataplexFileFormatConversionTest {
 
   private static final GoogleCloudDataplexV1Entity entity1 =
       new GoogleCloudDataplexV1Entity()
-          .setName("projects/p1/locations/l1/lakes/l1}/zones/z1/entities/e1")
+          .setName("projects/p1/locations/l1/lakes/l1/zones/z1/entities/e1")
+          .setId("e1")
           .setSystem(StorageSystem.CLOUD_STORAGE.name())
           .setFormat(new GoogleCloudDataplexV1StorageFormat().setFormat(InputFileFormat.CSV.name()))
           .setSchema(SCHEMA);
 
   private static final GoogleCloudDataplexV1Partition partition11 =
       new GoogleCloudDataplexV1Partition()
-          .setName("projects/p1/locations/l1/lakes/l1}/zones/z1/entities/e1/partitions/p11")
+          .setName("projects/p1/locations/l1/lakes/l1/zones/z1/entities/e1/partitions/p11")
           .setLocation(Resources.getResource(RESOURCES_DIR + "/entity1/partition11").getPath());
 
   private static final GoogleCloudDataplexV1Partition partition12 =
       new GoogleCloudDataplexV1Partition()
-          .setName("projects/p1/locations/l1/lakes/l1}/zones/z1/entities/e1/partitions/p12")
+          .setName("projects/p1/locations/l1/lakes/l1/zones/z1/entities/e1/partitions/p12")
           .setLocation(Resources.getResource(RESOURCES_DIR + "/entity1/partition12").getPath());
 
   private static final GoogleCloudDataplexV1Asset asset2 =
@@ -106,7 +112,8 @@ public class DataplexFileFormatConversionTest {
           .setName("projects/p1/locations/l1/lakes/l1/zones/z1/assets/a2");
   private static final GoogleCloudDataplexV1Entity entity2 =
       new GoogleCloudDataplexV1Entity()
-          .setName("projects/p1/locations/l1/lakes/l1}/zones/z1/entities/e2")
+          .setName("projects/p1/locations/l1/lakes/l1/zones/z1/entities/e2")
+          .setId("e2")
           .setAsset(asset2.getName())
           .setSystem(StorageSystem.CLOUD_STORAGE.name())
           .setFormat(
@@ -167,7 +174,7 @@ public class DataplexFileFormatConversionTest {
     FileFormatConversionOptions options =
         PipelineOptionsFactory.create().as(FileFormatConversionOptions.class);
     options.setInputAssetOrEntitiesList(entity1.getName());
-    options.setOutputFileFormat(OutputFileFormat.AVRO);
+    options.setOutputFileFormat(FileFormatOptions.AVRO);
     options.setOutputAsset(outputAsset.getName());
 
     DataplexFileFormatConversion.run(
@@ -198,7 +205,7 @@ public class DataplexFileFormatConversionTest {
     FileFormatConversionOptions options =
         PipelineOptionsFactory.create().as(FileFormatConversionOptions.class);
     options.setInputAssetOrEntitiesList(asset2.getName());
-    options.setOutputFileFormat(OutputFileFormat.PARQUET);
+    options.setOutputFileFormat(FileFormatOptions.PARQUET);
     options.setOutputAsset(outputAsset.getName());
     options.setOutputFileCompression(DataplexCompression.GZIP);
 
@@ -231,7 +238,7 @@ public class DataplexFileFormatConversionTest {
     FileFormatConversionOptions options =
         PipelineOptionsFactory.create().as(FileFormatConversionOptions.class);
     options.setInputAssetOrEntitiesList(entity3.getName());
-    options.setOutputFileFormat(OutputFileFormat.PARQUET);
+    options.setOutputFileFormat(FileFormatOptions.PARQUET);
     options.setOutputAsset(outputAsset.getName());
 
     DataplexFileFormatConversion.run(
@@ -263,7 +270,7 @@ public class DataplexFileFormatConversionTest {
     FileFormatConversionOptions options =
         PipelineOptionsFactory.create().as(FileFormatConversionOptions.class);
     options.setInputAssetOrEntitiesList(entity4.getName());
-    options.setOutputFileFormat(OutputFileFormat.AVRO);
+    options.setOutputFileFormat(FileFormatOptions.AVRO);
     options.setOutputAsset(outputAsset.getName());
 
     DataplexFileFormatConversion.run(
@@ -280,6 +287,105 @@ public class DataplexFileFormatConversionTest {
     PAssert.that(readParquetFile).containsInAnyOrder(EXPECTED_GENERIC_RECORDS);
 
     readPipeline.run();
+  }
+
+  /**
+   * Tests JSON to Parquet conversion for an asset with entity when one of the files already exists
+   * and the existing file behaviour is SKIP.
+   */
+  @Test
+  @Category(NeedsRunner.class)
+  public void testAssetWithEntityJsonToParquetSkipExistingFilesE2E() throws IOException {
+    // setup Dataplex client to return entity 2
+    DataplexClient dataplex = mock(DataplexClient.class);
+    when(dataplex.getCloudStorageEntities(asset2.getName())).thenReturn(ImmutableList.of(entity2));
+    when(dataplex.getPartitions(entity2.getName())).thenReturn(ImmutableList.of());
+    when(dataplex.getAsset(outputAsset.getName())).thenReturn(outputAsset);
+
+    // setup options to skip existing files
+    FileFormatConversionOptions options =
+        PipelineOptionsFactory.create().as(FileFormatConversionOptions.class);
+    options.setInputAssetOrEntitiesList(asset2.getName());
+    options.setOutputFileFormat(FileFormatOptions.PARQUET);
+    options.setOutputAsset(outputAsset.getName());
+    options.setWriteDisposition(WriteDispositionOptions.SKIP);
+
+    // simulate the 1.json -> 1.parquet conversion already happened
+    copyFileToOutputBucket("entity2.existing/1.parquet", "entity2/1.parquet");
+
+    // run the pipeline, only  2.json -> 2.parquet conversion should happen
+    DataplexFileFormatConversion.run(
+        mainPipeline, options, dataplex, DataplexFileFormatConversionTest::outputPathProvider);
+
+    // read the conversion results
+    PCollection<GenericRecord> readParquetFile =
+        readPipeline.apply(
+            "ReadParquetFile",
+            ParquetConverters.ReadParquetFile.newBuilder()
+                .withInputFileSpec(temporaryFolder.getRoot().getAbsolutePath() + "/**/*.parquet")
+                .withSerializedSchema(EXPECT_SERIALIZED_AVRO_SCHEMA)
+                .build());
+
+    // expect old 1.parquet (from entity2.existing) and newly converted 2.parquet (from entity2)
+    ImmutableList.Builder<GenericRecord> expected = ImmutableList.builder();
+    Record record = new Record(EXPECTED_AVRO_SCHEMA);
+    record.put("Word", "abc.existing");
+    record.put("Number", 1);
+    expected.add(record);
+    record = new Record(EXPECTED_AVRO_SCHEMA);
+    record.put("Word", "def");
+    record.put("Number", 2);
+    expected.add(record);
+    record = new Record(EXPECTED_AVRO_SCHEMA);
+    record.put("Word", "ghi");
+    record.put("Number", 3);
+    expected.add(record);
+
+    PAssert.that(readParquetFile).containsInAnyOrder(expected.build());
+
+    readPipeline.run();
+  }
+
+  /**
+   * Tests JSON to Parquet conversion for an asset with entity when one of the files already exists
+   * and the existing file behaviour is FAIL.
+   */
+  @Test(expected = RuntimeException.class)
+  @Category(NeedsRunner.class)
+  public void testAssetWithEntityJsonToParquetFailOnExistingFilesE2E() throws IOException {
+    // setup Dataplex client to return entity 2
+    DataplexClient dataplex = mock(DataplexClient.class);
+    when(dataplex.getCloudStorageEntities(asset2.getName())).thenReturn(ImmutableList.of(entity2));
+    when(dataplex.getPartitions(entity2.getName())).thenReturn(ImmutableList.of());
+    when(dataplex.getAsset(outputAsset.getName())).thenReturn(outputAsset);
+
+    // setup options to fail on existing files
+    FileFormatConversionOptions options =
+        PipelineOptionsFactory.create().as(FileFormatConversionOptions.class);
+    options.setInputAssetOrEntitiesList(asset2.getName());
+    options.setOutputFileFormat(FileFormatOptions.PARQUET);
+    options.setOutputAsset(outputAsset.getName());
+    options.setWriteDisposition(WriteDispositionOptions.FAIL);
+
+    // simulate the 1.json -> 1.parquet conversion already happened
+    copyFileToOutputBucket("entity2.existing/1.parquet", "entity2/1.parquet");
+    // simulate the 2.json -> 2.parquet conversion already happened
+    copyFileToOutputBucket("entity2.existing/1.parquet", "entity2/2.parquet");
+
+    // run the pipeline, the job should fail because 1.parquet already exists
+    DataplexFileFormatConversion.run(
+            mainPipeline, options, dataplex, DataplexFileFormatConversionTest::outputPathProvider)
+        .waitUntilFinish();
+  }
+
+  private void copyFileToOutputBucket(String sourceRelativePath, String destinationRelativePath)
+      throws IOException {
+    Path source =
+        Paths.get(Resources.getResource(RESOURCES_DIR + '/' + sourceRelativePath).getPath());
+    Path destination =
+        Paths.get(temporaryFolder.getRoot().getAbsolutePath() + '/' + destinationRelativePath);
+    Files.createDirectories(destination.getParent());
+    Files.copy(source, destination);
   }
 
   private static ImmutableList<GenericRecord> expectedGenericRecords() {
@@ -300,8 +406,16 @@ public class DataplexFileFormatConversionTest {
   }
 
   private static String outputPathProvider(String inputPath, String outputBucket) {
-    String relativeInputPath =
-        new File(RESOURCES_DIR).toURI().relativize(new File(inputPath).toURI()).getPath();
+    String relativeInputPath;
+    try {
+      relativeInputPath =
+          Resources.getResource(RESOURCES_DIR)
+              .toURI()
+              .relativize(new File(inputPath).toURI())
+              .getPath();
+    } catch (URISyntaxException e) {
+      throw new RuntimeException(e);
+    }
     return outputBucket + '/' + relativeInputPath;
   }
 }

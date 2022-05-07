@@ -140,7 +140,8 @@ public class DataStreamClient implements Serializable {
     } catch (IOException e) {
       if (e.toString()
           .contains(
-              "Quota exceeded for quota metric 'API requests' and limit 'API requests per minute' of service")) {
+              "Quota exceeded for quota metric 'API requests' and limit 'API requests per minute'"
+                  + " of service")) {
         try {
           Thread.sleep(60 * 1000);
           return this.getPrimaryKeys(streamName, schemaName, tableName);
@@ -386,7 +387,7 @@ public class DataStreamClient implements Serializable {
       case "LONG_RAW":
         return StandardSQLTypeName.BYTES;
       case "DATE":
-        return StandardSQLTypeName.TIMESTAMP;
+        return StandardSQLTypeName.DATETIME;
       default:
     }
 

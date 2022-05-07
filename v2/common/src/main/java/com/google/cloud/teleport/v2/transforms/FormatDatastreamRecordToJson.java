@@ -64,7 +64,8 @@ public class FormatDatastreamRecordToJson
   private String streamName;
   private boolean lowercaseSourceColumns = false;
   private String rowIdColumnName;
-  private Map<String, String> hashedColumns = new HashMap<String, String>();
+  private Map<String, String> renameColumns = new HashMap<String, String>();
+  private boolean hashRowId = false;
 
   private FormatDatastreamRecordToJson() {}
 
@@ -83,34 +84,18 @@ public class FormatDatastreamRecordToJson
   }
 
   /**
-   * Add the supplied columnName to the list of column values to be hashed.
+   * Set the map of columns values to rename/copy.
    *
-   * @param columnName The column name to look for in the data to hash.
+   * @param renameColumns The map of columns to new columns to rename/copy.
    */
-  public FormatDatastreamRecordToJson withHashColumnValue(String columnName) {
-    this.hashedColumns.put(columnName, columnName);
+  public FormatDatastreamRecordToJson withRenameColumnValues(Map<String, String> renameColumns) {
+    this.renameColumns = renameColumns;
     return this;
   }
 
-  /**
-   * Add the supplied columnName to the map of column values to be hashed. A new column with a
-   * hashed value of the first will be created.
-   *
-   * @param columnName The column name to look for in the data.
-   * @param newColumnName The name of the new column created with hashed data.
-   */
-  public FormatDatastreamRecordToJson withHashColumnValue(String columnName, String newColumnName) {
-    this.hashedColumns.put(columnName, newColumnName);
-    return this;
-  }
-
-  /**
-   * Set the map of columns values to hash.
-   *
-   * @param hashedColumns The map of columns to new columns to hash.
-   */
-  public FormatDatastreamRecordToJson withHashColumnValues(Map<String, String> hashedColumns) {
-    this.hashedColumns = hashedColumns;
+  /** Set the reader to hash Oracle ROWID values into int. */
+  public FormatDatastreamRecordToJson withHashRowId(Boolean hashRowId) {
+    this.hashRowId = hashRowId;
     return this;
   }
 
@@ -146,14 +131,16 @@ public class FormatDatastreamRecordToJson
     } else {
       // Oracle Specific Metadata
       outputObject.put("_metadata_schema", getMetadataSchema(record));
-      outputObject.put("_metadata_row_id", getOracleRowId(record));
       outputObject.put("_metadata_scn", getOracleScn(record));
       outputObject.put("_metadata_ssn", getOracleSsn(record));
       outputObject.put("_metadata_rs_id", getOracleRsId(record));
       outputObject.put("_metadata_tx_id", getOracleTxId(record));
+
+      FormatDatastreamRecord.setOracleRowIdValue(
+          outputObject, getOracleRowId(record), this.hashRowId);
     }
-    // Hash columns supplied to be hashed
-    applyHashToColumns(outputObject);
+    // Rename columns supplied
+    FormatDatastreamRecord.applyRenameColumns(outputObject, this.renameColumns);
 
     // All Raw Metadata
     outputObject.put("_metadata_source", getSourceMetadataJson(record));
@@ -269,17 +256,6 @@ public class FormatDatastreamRecordToJson
     }
 
     return null;
-  }
-
-  private void applyHashToColumns(ObjectNode outputObject) {
-    for (String columnName : this.hashedColumns.keySet()) {
-      if (outputObject.get(columnName) != null) {
-        // TODO: discuss hash algorithm to use
-        String newColumnName = this.hashedColumns.get(columnName);
-        int hashedValue = outputObject.get(columnName).toString().hashCode();
-        outputObject.put(newColumnName, hashedValue);
-      }
-    }
   }
 
   private Long getOracleScn(GenericRecord record) {

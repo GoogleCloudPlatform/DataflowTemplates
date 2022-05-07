@@ -32,6 +32,7 @@
   <properties>
     <json-data-generator.version>1.10</json-data-generator.version>
     <snakeyaml.version>1.23</snakeyaml.version>
+    <truth.version>1.0.1</truth.version>
    </properties>
 
   <dependencies>
@@ -63,6 +64,13 @@
       <version>${snakeyaml.version}</version>
     </dependency>
 
+    <!-- Testing -->
+    <dependency>
+      <groupId>com.google.truth</groupId>
+      <artifactId>truth</artifactId>
+      <version>${truth.version}</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>

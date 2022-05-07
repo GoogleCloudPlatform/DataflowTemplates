@@ -22,8 +22,10 @@ import com.google.cloud.teleport.spanner.ExportProtos.Export;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
+import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.stream.Collectors;
 import org.apache.beam.sdk.values.KV;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +48,8 @@ public class InformationSchemaScanner {
     listViews(builder);
     listColumns(builder);
     listColumnOptions(builder);
+    listChangeStreams(builder);
+    listChangeStreamOptions(builder);
     Map<String, NavigableMap<String, Index.Builder>> indexes = Maps.newHashMap();
     listIndexes(indexes);
     listIndexColumns(builder, indexes);
@@ -293,7 +297,8 @@ public class InformationSchemaScanner {
     ResultSet resultSet =
         context.executeQuery(
             Statement.newBuilder(
-                    "SELECT t.table_name, t.column_name, t.option_name, t.option_type, t.option_value "
+                    "SELECT t.table_name, t.column_name,"
+                        + " t.option_name, t.option_type, t.option_value "
                         + " FROM information_schema.column_options AS t "
                         + " WHERE t.table_catalog = '' AND t.table_schema = ''"
                         + " ORDER BY t.table_name, t.column_name")
@@ -435,6 +440,109 @@ public class InformationSchemaScanner {
       String viewQuery = resultSet.getString(1);
       LOG.debug("Schema View {}", viewName);
       builder.createView(viewName).query(viewQuery).security(View.SqlSecurity.INVOKER).endView();
+    }
+  }
+
+  private void listChangeStreams(Ddl.Builder builder) {
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT cs.change_stream_name,"
+                    + " cs.all,"
+                    + " cst.table_name,"
+                    + " cst.all_columns,"
+                    + " ARRAY_AGG(csc.column_name IGNORE NULLS) AS column_name_list"
+                    + " FROM information_schema.change_streams AS cs"
+                    + " LEFT JOIN information_schema.change_stream_tables AS cst"
+                    + " ON cs.change_stream_catalog = cst.change_stream_catalog"
+                    + " AND cs.change_stream_schema = cst.change_stream_schema"
+                    + " AND cs.change_stream_name = cst.change_stream_name"
+                    + " LEFT JOIN information_schema.change_stream_columns AS csc"
+                    + " ON cst.change_stream_catalog = csc.change_stream_catalog"
+                    + " AND cst.change_stream_schema = csc.change_stream_schema"
+                    + " AND cst.change_stream_name = csc.change_stream_name"
+                    + " AND cst.table_catalog = csc.table_catalog"
+                    + " AND cst.table_schema = csc.table_schema"
+                    + " AND cst.table_name = csc.table_name"
+                    + " WHERE cs.change_stream_catalog = ''"
+                    + " AND cs.change_stream_schema=''"
+                    + " GROUP BY cs.change_stream_name, cs.all, cst.table_name, cst.all_columns"
+                    + " ORDER BY cs.change_stream_name, cs.all, cst.table_name"));
+
+    Map<String, StringBuilder> allChangeStreams = Maps.newHashMap();
+    while (resultSet.next()) {
+      String changeStreamName = resultSet.getString(0);
+      boolean all = resultSet.getBoolean(1);
+      String tableName = resultSet.isNull(2) ? null : resultSet.getString(2);
+      Boolean allColumns = resultSet.isNull(3) ? null : resultSet.getBoolean(3);
+      List<String> columnNameList = resultSet.isNull(4) ? null : resultSet.getStringList(4);
+
+      StringBuilder forClause =
+          allChangeStreams.computeIfAbsent(changeStreamName, k -> new StringBuilder());
+      if (all) {
+        forClause.append("FOR ALL");
+        continue;
+      } else if (tableName == null) {
+        // The change stream does not track any table/column, i.e., it does not have a for-clause.
+        continue;
+      }
+
+      forClause.append(forClause.length() == 0 ? "FOR " : ", ");
+      forClause.append("`").append(tableName).append("`");
+      if (allColumns) {
+        continue;
+      } else if (columnNameList == null) {
+        forClause.append("()");
+      } else {
+        String sortedColumns =
+            columnNameList.stream().sorted().collect(Collectors.joining("`, `", "(`", "`)"));
+        forClause.append(sortedColumns);
+      }
+    }
+
+    for (Map.Entry<String, StringBuilder> entry : allChangeStreams.entrySet()) {
+      String changeStreamName = entry.getKey();
+      StringBuilder forClause = entry.getValue();
+      builder
+          .createChangeStream(changeStreamName)
+          .forClause(forClause.toString())
+          .endChangeStream();
+    }
+  }
+
+  private void listChangeStreamOptions(Ddl.Builder builder) {
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT t.change_stream_name, t.option_name, t.option_type, t.option_value"
+                    + " FROM information_schema.change_stream_options AS t"
+                    + " WHERE t.change_stream_catalog = '' AND t.change_stream_schema = ''"
+                    + " ORDER BY t.change_stream_name, t.option_name"));
+
+    Map<String, ImmutableList.Builder<String>> allOptions = Maps.newHashMap();
+    while (resultSet.next()) {
+      String changeStreamName = resultSet.getString(0);
+      String optionName = resultSet.getString(1);
+      String optionType = resultSet.getString(2);
+      String optionValue = resultSet.getString(3);
+
+      ImmutableList.Builder<String> options =
+          allOptions.computeIfAbsent(changeStreamName, k -> ImmutableList.builder());
+      if (optionType.equalsIgnoreCase("STRING")) {
+        options.add(
+            optionName
+                + "=\""
+                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
+                + "\"");
+      } else {
+        options.add(optionName + "=" + optionValue);
+      }
+    }
+
+    for (Map.Entry<String, ImmutableList.Builder<String>> entry : allOptions.entrySet()) {
+      String changeStreamName = entry.getKey();
+      ImmutableList<String> options = entry.getValue().build();
+      builder.createChangeStream(changeStreamName).options(options).endChangeStream();
     }
   }
 }
