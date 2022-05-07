@@ -665,11 +665,6 @@
                     <id>confluent</id>
                     <url>https://packages.confluent.io/maven/</url>
                 </repository>
-                <repository>
-                    <!-- Required for org.pentaho:pentaho-aggdesigner-algorithm artifact -->
-                    <id>pentaho</id>
-                    <url>https://public.nexus.pentaho.org/repository/proxy-public-3rd-party-release</url>
-                </repository>
             </repositories>
         </profile>
     </profiles>
@@ -696,6 +691,8 @@
         <module>streaming-data-generator</module>
         <module>kafka-to-pubsub</module>
         <module>kafka-common</module>
+        <module>mongodb-to-bigquery</module>
+        <module>bigquery-to-mongodb</module>
     </modules>
 
 </project>
