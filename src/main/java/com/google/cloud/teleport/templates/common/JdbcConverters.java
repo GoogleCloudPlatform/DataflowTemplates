@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.templates.common;
 
 import com.google.api.services.bigquery.model.TableRow;
+import java.sql.Clob;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.text.SimpleDateFormat;
@@ -25,9 +26,13 @@ import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Common code for Teleport JdbcToBigQuery. */
 public class JdbcConverters {
+
+  private static final Logger LOG = LoggerFactory.getLogger(JdbcConverters.class);
 
   /** Interface used by the JdbcToBigQuery pipeline to accept user input. */
   public interface JdbcToBigQueryOptions extends PipelineOptions {
@@ -85,10 +90,20 @@ public class JdbcConverters {
     void setBigQueryLoadingTemporaryDirectory(ValueProvider<String> directory);
 
     @Description(
-        "KMS Encryption Key should be in the format projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}")
+        "KMS Encryption Key should be in the format"
+            + " projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}")
     ValueProvider<String> getKMSEncryptionKey();
 
     void setKMSEncryptionKey(ValueProvider<String> keyName);
+
+    @Description(
+        "Comma separated algorithms to disable. If this value is set to \"none\" then"
+            + " jdk.tls.disabledAlgorithms is set to \"\". Use with care, as the algorithms"
+            + " disabled by default are known to have either vulnerabilities or performance issues."
+            + " for example: SSLv3, RC4.")
+    ValueProvider<String> getDisabledAlgorithms();
+
+    void setDisabledAlgorithms(ValueProvider<String> disabledAlgorithms);
   }
 
   /** Factory method for {@link ResultSetToTableRow}. */
@@ -130,7 +145,7 @@ public class JdbcConverters {
         switch (metaData.getColumnTypeName(i).toLowerCase()) {
           case "date":
             outputTableRow.set(
-                metaData.getColumnName(i), dateFormatter.format(resultSet.getObject(i)));
+                metaData.getColumnName(i), dateFormatter.format(resultSet.getDate(i)));
             break;
           case "datetime":
             outputTableRow.set(
@@ -139,7 +154,18 @@ public class JdbcConverters {
             break;
           case "timestamp":
             outputTableRow.set(
-                metaData.getColumnName(i), timestampFormatter.format(resultSet.getObject(i)));
+                metaData.getColumnName(i), timestampFormatter.format(resultSet.getTimestamp(i)));
+            break;
+          case "clob":
+            Clob clobObject = resultSet.getClob(i);
+            if (clobObject.length() > Integer.MAX_VALUE) {
+              LOG.warn(
+                  "The Clob value size {} in column {} exceeds 2GB and will be truncated.",
+                  clobObject.length(),
+                  metaData.getColumnName(i));
+            }
+            outputTableRow.set(
+                metaData.getColumnName(i), clobObject.getSubString(1, (int) clobObject.length()));
             break;
           default:
             outputTableRow.set(metaData.getColumnName(i), resultSet.getObject(i));

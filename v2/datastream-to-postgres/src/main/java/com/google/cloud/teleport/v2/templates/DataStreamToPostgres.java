@@ -224,7 +224,8 @@ public class DataStreamToPostgres {
                     options.getGcsPubSubSubscription(),
                     options.getRfcStartDateTime())
                 .withLowercaseSourceColumns()
-                .withHashColumnValue("_metadata_row_id", "rowid"));
+                .withRenameColumnValue("_metadata_row_id", "rowid")
+                .withHashRowId());
 
     /*
      * Stage 2: Write JSON Strings to Postgres Insert Strings

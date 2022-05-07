@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.spanner;
 
 import com.google.cloud.teleport.spanner.common.NumericUtils;
+import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.IndexColumn;
@@ -107,6 +108,22 @@ public class DdlToAvroSchemaConverter {
       recordBuilder.prop("spannerViewQuery", view.query());
       if (view.security() != null) {
         recordBuilder.prop("spannerViewSecurity", view.security().toString());
+      }
+      schemas.add(recordBuilder.fields().endRecord());
+    }
+
+    for (ChangeStream changeStream : ddl.changeStreams()) {
+      SchemaBuilder.RecordBuilder<Schema> recordBuilder =
+          SchemaBuilder.record(changeStream.name()).namespace(this.namespace);
+      recordBuilder.prop("googleFormatVersion", version);
+      recordBuilder.prop("googleStorage", "CloudSpanner");
+      recordBuilder.prop(
+          "spannerChangeStreamForClause",
+          changeStream.forClause() == null ? "" : changeStream.forClause());
+      if (changeStream.options() != null) {
+        for (int i = 0; i < changeStream.options().size(); i++) {
+          recordBuilder.prop("spannerOption_" + i, changeStream.options().get(i));
+        }
       }
       schemas.add(recordBuilder.fields().endRecord());
     }

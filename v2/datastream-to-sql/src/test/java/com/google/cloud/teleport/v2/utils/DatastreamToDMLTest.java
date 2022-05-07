@@ -15,10 +15,14 @@
  */
 package com.google.cloud.teleport.v2.utils;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 
+import com.google.cloud.teleport.v2.templates.DataStreamToSQL;
 import com.google.cloud.teleport.v2.values.DatastreamRow;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.junit.Test;
@@ -59,19 +63,23 @@ public class DatastreamToDMLTest {
     JsonNode rowObj = this.getRowObj();
 
     String expectedTextContent = "'value'";
-    String testSqlContent = DatastreamToPostgresDML.getValueSql(rowObj, "text_column", null);
+    String testSqlContent =
+        DatastreamToPostgresDML.of(null)
+            .getValueSql(rowObj, "text_column", new HashMap<String, String>());
     assertEquals(expectedTextContent, testSqlContent);
 
     // Single quotes are escaped by 2 single quotes in SQL
     String expectedQuotedTextContent = "'Test Values: ''!@#$%^'";
     String testQuotedSqlContent =
-        DatastreamToPostgresDML.getValueSql(rowObj, "quoted_text_column", null);
+        DatastreamToPostgresDML.of(null)
+            .getValueSql(rowObj, "quoted_text_column", new HashMap<String, String>());
     assertEquals(expectedQuotedTextContent, testQuotedSqlContent);
 
     // Null bytes are escaped with blanks values
     String expectedNullByteTextContent = "'Test Values: Hes made'";
     String testNullByteSqlContent =
-        DatastreamToPostgresDML.getValueSql(rowObj, "null_byte_text_column", null);
+        DatastreamToPostgresDML.of(null)
+            .getValueSql(rowObj, "null_byte_text_column", new HashMap<String, String>());
     assertEquals(expectedNullByteTextContent, testNullByteSqlContent);
   }
 
@@ -103,5 +111,27 @@ public class DatastreamToDMLTest {
     String expectedTableName = "my_table$name";
     String tableName = datastreamToDML.getTargetTableName(row);
     assertEquals(expectedTableName, tableName);
+  }
+
+  /** Test cleaning schema map. */
+  @Test
+  public void testParseSchemaMap() {
+    Map<String, String> singleItemExpected =
+        new HashMap<String, String>() {
+          {
+            put("a", "b");
+          }
+        };
+    Map<String, String> doubleItemExpected =
+        new HashMap<String, String>() {
+          {
+            put("a", "b");
+            put("c", "d");
+          }
+        };
+
+    assertThat(DataStreamToSQL.parseSchemaMap("")).isEmpty();
+    assertThat(DataStreamToSQL.parseSchemaMap("a:b")).isEqualTo(singleItemExpected);
+    assertThat(DataStreamToSQL.parseSchemaMap("a:b,c:d")).isEqualTo(doubleItemExpected);
   }
 }

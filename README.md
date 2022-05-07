@@ -21,36 +21,35 @@ changes you can follow [GitHub's branch renaming guide](https://docs.github.com/
 
 ## Template Pipelines
 
-* [BigQuery to Bigtable](v2/bigquery-to-bigtable/src/main/java/com/google/cloud/teleport/v2/templates/BigQueryToBigtable.java)
-* [BigQuery to Datastore](src/main/java/com/google/cloud/teleport/templates/BigQueryToDatastore.java)
-* [BigQuery to TFRecords](src/main/java/com/google/cloud/teleport/templates/BigQueryToTFRecord.java)
-* [Bigtable to GCS Avro](src/main/java/com/google/cloud/teleport/bigtable/BigtableToAvro.java)
-* [Bulk Compressor](src/main/java/com/google/cloud/teleport/templates/BulkCompressor.java)
-* [Bulk Decompressor](src/main/java/com/google/cloud/teleport/templates/BulkDecompressor.java)
-* [Datastore Bulk Delete](src/main/java/com/google/cloud/teleport/templates/DatastoreToDatastoreDelete.java) *
-* [Datastore to BigQuery](src/main/java/com/google/cloud/teleport/templates/DatastoreToBigQuery.java)
-* [Datastore to GCS Text](src/main/java/com/google/cloud/teleport/templates/DatastoreToText.java) *
-* [Datastore to Pub/Sub](src/main/java/com/google/cloud/teleport/templates/DatastoreToPubsub.java) *
-* [Datastore Unique Schema Count](src/main/java/com/google/cloud/teleport/templates/DatastoreSchemasCountToText.java)
-* [DLP Text to BigQuery (Streaming)](src/main/java/com/google/cloud/teleport/templates/DLPTextToBigQueryStreaming.java)
-* [GCS Avro to Bigtable](src/main/java/com/google/cloud/teleport/bigtable/AvroToBigtable.java)
-* [GCS Avro to Spanner](src/main/java/com/google/cloud/teleport/spanner/ImportPipeline.java)
-* [GCS Text to Spanner](src/main/java/com/google/cloud/teleport/spanner/TextImportPipeline.java)
-* [GCS Text to BigQuery](src/main/java/com/google/cloud/teleport/templates/TextIOToBigQuery.java) *
-* [GCS Text to Datastore](src/main/java/com/google/cloud/teleport/templates/TextToDatastore.java)
-* [GCS Text to Pub/Sub (Batch)](src/main/java/com/google/cloud/teleport/templates/TextToPubsub.java)
-* [GCS Text to Pub/Sub (Streaming)](src/main/java/com/google/cloud/teleport/templates/TextToPubsubStream.java)
-* [Jdbc to BigQuery](src/main/java/com/google/cloud/teleport/templates/JdbcToBigQuery.java)
-* [Pub/Sub to BigQuery](src/main/java/com/google/cloud/teleport/templates/PubSubToBigQuery.java) *
-* [Pub/Sub to Datastore](src/main/java/com/google/cloud/teleport/templates/PubsubToDatastore.java) *
-* [Pub/Sub to GCS Avro](src/main/java/com/google/cloud/teleport/templates/PubsubToAvro.java)
-* [Pub/Sub to GCS Text](src/main/java/com/google/cloud/teleport/templates/PubsubToText.java)
-* [Pub/Sub to Pub/Sub](src/main/java/com/google/cloud/teleport/templates/PubsubToPubsub.java)
-* [Pub/Sub to Splunk](src/main/java/com/google/cloud/teleport/templates/PubSubToSplunk.java) *
-* [Spanner to GCS Avro](src/main/java/com/google/cloud/teleport/spanner/ExportPipeline.java)
-* [Spanner to GCS Text](src/main/java/com/google/cloud/teleport/templates/SpannerToText.java)
-* [Word Count](src/main/java/com/google/cloud/teleport/templates/WordCount.java)
-
+- [BigQuery to Bigtable](v2/bigquery-to-bigtable/src/main/java/com/google/cloud/teleport/v2/templates/BigQueryToBigtable.java)
+- [BigQuery to Datastore](src/main/java/com/google/cloud/teleport/templates/BigQueryToDatastore.java)
+- [BigQuery to TFRecords](src/main/java/com/google/cloud/teleport/templates/BigQueryToTFRecord.java)
+- [Bigtable to GCS Avro](src/main/java/com/google/cloud/teleport/bigtable/BigtableToAvro.java)
+- [Bulk Compressor](src/main/java/com/google/cloud/teleport/templates/BulkCompressor.java)
+- [Bulk Decompressor](src/main/java/com/google/cloud/teleport/templates/BulkDecompressor.java)
+- [Datastore Bulk Delete](src/main/java/com/google/cloud/teleport/templates/DatastoreToDatastoreDelete.java) \*
+- [Datastore to BigQuery](src/main/java/com/google/cloud/teleport/templates/DatastoreToBigQuery.java)
+- [Datastore to GCS Text](src/main/java/com/google/cloud/teleport/templates/DatastoreToText.java) \*
+- [Datastore to Pub/Sub](src/main/java/com/google/cloud/teleport/templates/DatastoreToPubsub.java) \*
+- [Datastore Unique Schema Count](src/main/java/com/google/cloud/teleport/templates/DatastoreSchemasCountToText.java)
+- [DLP Text to BigQuery (Streaming)](src/main/java/com/google/cloud/teleport/templates/DLPTextToBigQueryStreaming.java)
+- [GCS Avro to Bigtable](src/main/java/com/google/cloud/teleport/bigtable/AvroToBigtable.java)
+- [GCS Avro to Spanner](src/main/java/com/google/cloud/teleport/spanner/ImportPipeline.java)
+- [GCS Text to Spanner](src/main/java/com/google/cloud/teleport/spanner/TextImportPipeline.java)
+- [GCS Text to BigQuery](src/main/java/com/google/cloud/teleport/templates/TextIOToBigQuery.java) \*
+- [GCS Text to Datastore](src/main/java/com/google/cloud/teleport/templates/TextToDatastore.java)
+- [GCS Text to Pub/Sub (Batch)](src/main/java/com/google/cloud/teleport/templates/TextToPubsub.java)
+- [GCS Text to Pub/Sub (Streaming)](src/main/java/com/google/cloud/teleport/templates/TextToPubsubStream.java)
+- [Jdbc to BigQuery](src/main/java/com/google/cloud/teleport/templates/JdbcToBigQuery.java)
+- [Pub/Sub to BigQuery](src/main/java/com/google/cloud/teleport/templates/PubSubToBigQuery.java) \*
+- [Pub/Sub to Datastore](src/main/java/com/google/cloud/teleport/templates/PubsubToDatastore.java) \*
+- [Pub/Sub to GCS Avro](src/main/java/com/google/cloud/teleport/templates/PubsubToAvro.java)
+- [Pub/Sub to GCS Text](src/main/java/com/google/cloud/teleport/templates/PubsubToText.java)
+- [Pub/Sub to Pub/Sub](src/main/java/com/google/cloud/teleport/templates/PubsubToPubsub.java)
+- [Pub/Sub to Splunk](src/main/java/com/google/cloud/teleport/templates/PubSubToSplunk.java) \*
+- [Spanner to GCS Avro](src/main/java/com/google/cloud/teleport/spanner/ExportPipeline.java)
+- [Spanner to GCS Text](src/main/java/com/google/cloud/teleport/templates/SpannerToText.java)
+- [Word Count](src/main/java/com/google/cloud/teleport/templates/WordCount.java)
 
 \* Supports user-defined functions (UDFs).
 
@@ -61,8 +60,8 @@ the official [docs](https://cloud.google.com/dataflow/docs/templates/provided-te
 
 ### Requirements
 
-* Java 8
-* Maven 3
+- Java 8
+- Maven 3
 
 ### Building the Project
 
@@ -82,8 +81,8 @@ right-click the rule and select "Execute Before Build".
 
 The list of known rules that require this are:
 
-* common > Plugins > protobuf > protobuf:compile
-* common > Plugins > protobuf > protobuf:test-compile
+- common > Plugins > protobuf > protobuf:compile
+- common > Plugins > protobuf > protobuf:test-compile
 
 ### Formatting Code
 
@@ -122,7 +121,6 @@ mvn compile exec:java \
 --runner=DataflowRunner"
 ```
 
-
 ### Executing a Template File
 
 Once the template is staged on Google Cloud Storage, it can then be
@@ -138,6 +136,11 @@ gcloud dataflow jobs run <job-name> \
 --parameters <parameters>
 ```
 
+### HPI Installer
+
+```sh
+bash install.sh -s ops_metrics_pos_order_sub -r us-central1 -z us-central1-a -m e2-medium
+```
 
 ## Using UDFs
 
@@ -155,20 +158,21 @@ function returns undefined, the incoming record will be filtered from
 the output.
 
 ### UDF Function Specification
-| Template              | UDF Input Type | Input Description                               | UDF Output Type | Output Description                                                            |
-|-----------------------|----------------|-------------------------------------------------|-----------------|-------------------------------------------------------------------------------|
-| Datastore Bulk Delete | String         | A JSON string of the entity                     | String          | A JSON string of the entity to delete; filter entities by returning undefined |
-| Datastore to Pub/Sub  | String         | A JSON string of the entity                     | String          | The payload to publish to Pub/Sub                                             |
-| Datastore to GCS Text | String         | A JSON string of the entity                     | String          | A single-line within the output file                                          |
-| GCS Text to BigQuery  | String         | A single-line within the input file             | String          | A JSON string which matches the destination table's schema                    |
-| Pub/Sub to BigQuery   | String         | A string representation of the incoming payload | String          | A JSON string which matches the destination table's schema                    |
-| Pub/Sub to Datastore  | String         | A string representation of the incoming payload | String          | A JSON string of the entity to write to Datastore                             |
-| Pub/Sub to Splunk  | String         | A string representation of the incoming payload | String          | The event data to be sent to Splunk HEC events endpoint. Must be a string or a stringified JSON object |
 
+| Template              | UDF Input Type | Input Description                               | UDF Output Type | Output Description                                                                                     |
+| --------------------- | -------------- | ----------------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------ |
+| Datastore Bulk Delete | String         | A JSON string of the entity                     | String          | A JSON string of the entity to delete; filter entities by returning undefined                          |
+| Datastore to Pub/Sub  | String         | A JSON string of the entity                     | String          | The payload to publish to Pub/Sub                                                                      |
+| Datastore to GCS Text | String         | A JSON string of the entity                     | String          | A single-line within the output file                                                                   |
+| GCS Text to BigQuery  | String         | A single-line within the input file             | String          | A JSON string which matches the destination table's schema                                             |
+| Pub/Sub to BigQuery   | String         | A string representation of the incoming payload | String          | A JSON string which matches the destination table's schema                                             |
+| Pub/Sub to Datastore  | String         | A string representation of the incoming payload | String          | A JSON string of the entity to write to Datastore                                                      |
+| Pub/Sub to Splunk     | String         | A string representation of the incoming payload | String          | The event data to be sent to Splunk HEC events endpoint. Must be a string or a stringified JSON object |
 
 ### UDF Examples
 
 #### Adding fields
+
 ```js
 /**
  * A transform which adds a field to the incoming data.
@@ -184,6 +188,7 @@ function transform(inJson) {
 ```
 
 #### Filtering records
+
 ```js
 /**
  * A transform function which only accepts 42 as the answer to life.
@@ -193,7 +198,7 @@ function transform(inJson) {
 function transform(inJson) {
   var obj = JSON.parse(inJson);
   // only output objects which have an answer to life of 42.
-  if (obj.hasOwnProperty('answerToLife') && obj.answerToLife === 42) {
+  if (obj.hasOwnProperty("answerToLife") && obj.answerToLife === 42) {
     return JSON.stringify(obj);
   }
 }

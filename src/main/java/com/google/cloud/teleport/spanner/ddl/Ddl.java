@@ -45,6 +45,7 @@ public class Ddl implements Serializable {
 
   private ImmutableSortedMap<String, Table> tables;
   private ImmutableSortedMap<String, View> views;
+  private ImmutableSortedMap<String, ChangeStream> changeStreams;
   private TreeMultimap<String, String> parents;
   // This is only populated by InformationSchemaScanner and not while reading from AVRO files.
   private TreeMultimap<String, String> referencedTables;
@@ -53,11 +54,13 @@ public class Ddl implements Serializable {
   private Ddl(
       ImmutableSortedMap<String, Table> tables,
       ImmutableSortedMap<String, View> views,
+      ImmutableSortedMap<String, ChangeStream> changeStreams,
       TreeMultimap<String, String> parents,
       TreeMultimap<String, String> referencedTables,
       ImmutableList<Export.DatabaseOption> databaseOptions) {
     this.tables = tables;
     this.views = views;
+    this.changeStreams = changeStreams;
     this.parents = parents;
     this.referencedTables = referencedTables;
     this.databaseOptions = databaseOptions;
@@ -121,6 +124,14 @@ public class Ddl implements Serializable {
     return views.get(viewName.toLowerCase());
   }
 
+  public Collection<ChangeStream> changeStreams() {
+    return changeStreams.values();
+  }
+
+  public ChangeStream changeStream(String changeStreamName) {
+    return changeStreams.get(changeStreamName.toLowerCase());
+  }
+
   public ImmutableList<Export.DatabaseOption> databaseOptions() {
     return databaseOptions;
   }
@@ -161,6 +172,11 @@ public class Ddl implements Serializable {
       appendable.append("\n");
       view.prettyPrint(appendable);
     }
+
+    for (ChangeStream changeStream : changeStreams()) {
+      appendable.append("\n");
+      changeStream.prettyPrint(appendable);
+    }
   }
 
   public List<String> statements() {
@@ -169,6 +185,7 @@ public class Ddl implements Serializable {
         .addAll(createIndexStatements())
         .addAll(addForeignKeyStatements())
         .addAll(createViewStatements())
+        .addAll(createChangeStreamStatements())
         .addAll(setOptionsStatements("%db_name%"))
         .build();
   }
@@ -223,6 +240,14 @@ public class Ddl implements Serializable {
     List<String> result = new ArrayList<>(views.size());
     for (View view : views.values()) {
       result.add(view.prettyPrint());
+    }
+    return result;
+  }
+
+  public List<String> createChangeStreamStatements() {
+    List<String> result = new ArrayList<>(changeStreams.size());
+    for (ChangeStream changeStream : changeStreams()) {
+      result.add(changeStream.prettyPrint());
     }
     return result;
   }
@@ -289,6 +314,7 @@ public class Ddl implements Serializable {
 
     private Map<String, Table> tables = Maps.newLinkedHashMap();
     private Map<String, View> views = Maps.newLinkedHashMap();
+    private Map<String, ChangeStream> changeStreams = Maps.newLinkedHashMap();
     private TreeMultimap<String, String> parents = TreeMultimap.create();
     private TreeMultimap<String, String> referencedTables = TreeMultimap.create();
     private ImmutableList<Export.DatabaseOption> databaseOptions = ImmutableList.of();
@@ -333,6 +359,22 @@ public class Ddl implements Serializable {
       return views.containsKey(name.toLowerCase());
     }
 
+    public ChangeStream.Builder createChangeStream(String name) {
+      ChangeStream changeStream = changeStreams.get(name.toLowerCase());
+      if (changeStream == null) {
+        return ChangeStream.builder().name(name).ddlBuilder(this);
+      }
+      return changeStream.toBuilder().ddlBuilder(this);
+    }
+
+    public void addChangeStream(ChangeStream changeStream) {
+      changeStreams.put(changeStream.name().toLowerCase(), changeStream);
+    }
+
+    public boolean hasChangeStream(String name) {
+      return changeStreams.containsKey(name.toLowerCase());
+    }
+
     public void mergeDatabaseOptions(List<Export.DatabaseOption> databaseOptions) {
       List<Export.DatabaseOption> allowedDatabaseOptions = new ArrayList<>();
       List<String> existingOptionNames = new ArrayList<>();
@@ -356,6 +398,7 @@ public class Ddl implements Serializable {
       return new Ddl(
           ImmutableSortedMap.copyOf(tables),
           ImmutableSortedMap.copyOf(views),
+          ImmutableSortedMap.copyOf(changeStreams),
           parents,
           referencedTables,
           databaseOptions);
@@ -366,6 +409,7 @@ public class Ddl implements Serializable {
     Builder builder = new Builder();
     builder.tables.putAll(tables);
     builder.views.putAll(views);
+    builder.changeStreams.putAll(changeStreams);
     builder.parents.putAll(parents);
     builder.referencedTables.putAll(referencedTables);
     builder.databaseOptions = databaseOptions;
@@ -397,6 +441,11 @@ public class Ddl implements Serializable {
     if (views != null ? !views.equals(ddl.views) : ddl.views != null) {
       return false;
     }
+    if (changeStreams != null
+        ? !changeStreams.equals(ddl.changeStreams)
+        : ddl.changeStreams != null) {
+      return false;
+    }
     return databaseOptions.equals(ddl.databaseOptions);
   }
 
@@ -406,6 +455,7 @@ public class Ddl implements Serializable {
     result = 31 * result + (parents != null ? parents.hashCode() : 0);
     result = 31 * result + (referencedTables != null ? referencedTables.hashCode() : 0);
     result = 31 * result + (views != null ? views.hashCode() : 0);
+    result = 31 * result + (changeStreams != null ? changeStreams.hashCode() : 0);
     result = 31 * result + (databaseOptions != null ? databaseOptions.hashCode() : 0);
     return result;
   }

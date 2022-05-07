@@ -78,6 +78,12 @@ public class SplunkIO {
     @Nullable
     abstract ValueProvider<String> rootCaCertificatePath();
 
+    @Nullable
+    abstract ValueProvider<Boolean> enableBatchLogs();
+
+    @Nullable
+    abstract ValueProvider<Boolean> enableGzipHttpCompression();
+
     @Override
     public PCollection<SplunkWriteError> expand(PCollection<SplunkEvent> input) {
 
@@ -88,7 +94,9 @@ public class SplunkIO {
               .withInputBatchCount(batchCount())
               .withDisableCertificateValidation(disableCertificateValidation())
               .withToken((token()))
-              .withRootCaCertificatePath(rootCaCertificatePath());
+              .withRootCaCertificatePath(rootCaCertificatePath())
+              .withEnableBatchLogs(enableBatchLogs())
+              .withEnableGzipHttpCompression(enableGzipHttpCompression());
 
       SplunkEventWriter writer = builder.build();
       LOG.info("SplunkEventWriter configured");
@@ -120,6 +128,11 @@ public class SplunkIO {
           ValueProvider<Boolean> disableCertificateValidation);
 
       abstract Builder setRootCaCertificatePath(ValueProvider<String> rootCaCertificatePath);
+
+      abstract Builder setEnableBatchLogs(ValueProvider<Boolean> enableBatchLogs);
+
+      abstract Builder setEnableGzipHttpCompression(
+          ValueProvider<Boolean> enableGzipHttpCompression);
 
       abstract Write autoBuild();
 
@@ -266,6 +279,50 @@ public class SplunkIO {
             "withRootCaCertificatePath(rootCaCertificatePath) called with null input.");
         return setRootCaCertificatePath(
             ValueProvider.StaticValueProvider.of(rootCaCertificatePath));
+      }
+
+      /**
+       * Method to enable batch logs.
+       *
+       * @param enableBatchLogs for enabling batch logs.
+       * @return {@link Builder}
+       */
+      public Builder withEnableBatchLogs(ValueProvider<Boolean> enableBatchLogs) {
+        return setEnableBatchLogs(enableBatchLogs);
+      }
+
+      /**
+       * Same as {@link Builder#withEnableBatchLogs(ValueProvider)} but without a {@link
+       * ValueProvider}.
+       *
+       * @param enableBatchLogs for enabling batch logs.
+       * @return {@link Builder}
+       */
+      public Builder withEnableBatchLogs(Boolean enableBatchLogs) {
+        return setEnableBatchLogs(ValueProvider.StaticValueProvider.of((enableBatchLogs)));
+      }
+
+      /**
+       * Method to specify if HTTP requests sent to Splunk should be GZIP encoded.
+       *
+       * @param enableGzipHttpCompression whether to enable Gzip encoding.
+       * @return {@link Builder}
+       */
+      public Builder withEnableGzipHttpCompression(
+          ValueProvider<Boolean> enableGzipHttpCompression) {
+        return setEnableGzipHttpCompression(enableGzipHttpCompression);
+      }
+
+      /**
+       * Same as {@link Builder#withEnableGzipHttpCompression(ValueProvider)} but without a {@link
+       * ValueProvider}.
+       *
+       * @param enableGzipHttpCompression whether to enable Gzip encoding.
+       * @return {@link Builder}
+       */
+      public Builder withEnableGzipHttpCompression(Boolean enableGzipHttpCompression) {
+        return setEnableGzipHttpCompression(
+            ValueProvider.StaticValueProvider.of(enableGzipHttpCompression));
       }
 
       public Write build() {

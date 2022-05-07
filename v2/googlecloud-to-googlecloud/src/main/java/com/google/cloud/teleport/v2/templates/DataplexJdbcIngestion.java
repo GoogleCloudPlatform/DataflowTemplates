@@ -26,13 +26,19 @@ import com.google.cloud.teleport.v2.io.DynamicJdbcIO.DynamicDataSourceConfigurat
 import com.google.cloud.teleport.v2.options.DataplexJdbcIngestionOptions;
 import com.google.cloud.teleport.v2.transforms.BeamRowToGenericRecordFn;
 import com.google.cloud.teleport.v2.transforms.GenericRecordsToGcsPartitioned;
+import com.google.cloud.teleport.v2.utils.DataplexJdbcIngestionFilter;
+import com.google.cloud.teleport.v2.utils.DataplexJdbcIngestionNaming;
 import com.google.cloud.teleport.v2.utils.JdbcConverters;
+import com.google.cloud.teleport.v2.utils.JdbcIngestionWriteDisposition.MapWriteDisposition;
+import com.google.cloud.teleport.v2.utils.JdbcIngestionWriteDisposition.WriteDispositionException;
 import com.google.cloud.teleport.v2.utils.KMSEncryptedNestedValue;
 import com.google.cloud.teleport.v2.utils.Schemas;
+import com.google.cloud.teleport.v2.utils.StorageUtils;
 import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
 import com.google.cloud.teleport.v2.values.PartitionMetadata;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
+import java.util.List;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.AvroCoder;
@@ -43,9 +49,14 @@ import org.apache.beam.sdk.io.jdbc.BeamSchemaUtil;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.utils.AvroUtils;
+import org.apache.beam.sdk.transforms.Distinct;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.Row;
+import org.apache.beam.sdk.values.TupleTag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,6 +73,13 @@ public class DataplexJdbcIngestion {
 
   /* Logger for class.*/
   private static final Logger LOG = LoggerFactory.getLogger(DataplexJdbcIngestion.class);
+
+  /** The tag for filtered records. */
+  private static final TupleTag<GenericRecord> FILTERED_RECORDS_OUT =
+      new TupleTag<GenericRecord>() {};
+
+  /** The tag for existing target file names. */
+  private static final TupleTag<String> EXISTING_TARGET_FILES_OUT = new TupleTag<String>() {};
 
   private static KMSEncryptedNestedValue maybeDecrypt(String unencryptedValue, String kmsKey) {
     return new KMSEncryptedNestedValue(unencryptedValue, kmsKey);
@@ -133,13 +151,96 @@ public class DataplexJdbcIngestion {
     return asset;
   }
 
+  private static boolean shouldSkipUnpartitionedTable(
+      DataplexJdbcIngestionOptions options, String targetRootPath, List<String> existingFiles) {
+    String expectedFilePath =
+        new DataplexJdbcIngestionNaming(options.getFileFormat().getFileSuffix())
+            .getSingleFilename();
+    if (existingFiles.contains(expectedFilePath)) {
+      // Target file exists, performing writeDispositionGcs strategy
+      switch (options.getWriteDisposition()) {
+        case WRITE_EMPTY:
+          throw new WriteDispositionException(
+              String.format(
+                  "Target File %s already exists in the output asset bucket %s. Failing"
+                      + " according to writeDisposition.",
+                  expectedFilePath, targetRootPath));
+        case SKIP:
+          LOG.info(
+              "Target File {} already exists in the output asset bucket {}. Skipping"
+                  + " according to writeDisposition.",
+              expectedFilePath,
+              targetRootPath);
+          return true;
+        case WRITE_TRUNCATE:
+          LOG.info(
+              "Target File {} already exists in the output asset bucket {}. Overwriting"
+                  + " according to writeDisposition.",
+              expectedFilePath,
+              targetRootPath);
+          return false;
+        default:
+          throw new UnsupportedOperationException(
+              options.getWriteDisposition()
+                  + " writeDisposition not implemented for writing to GCS.");
+      }
+    }
+    return false;
+  }
+
+  private static PCollection<GenericRecord> applyPartitionedWriteDispositionFilter(
+      PCollection<GenericRecord> genericRecords,
+      DataplexJdbcIngestionOptions options,
+      String targetRootPath,
+      org.apache.avro.Schema avroSchema,
+      List<String> existingFiles) {
+    PCollectionTuple filteredRecordsTuple =
+        genericRecords.apply(
+            "Filter pre-existing records",
+            new DataplexJdbcIngestionFilter(
+                targetRootPath,
+                Schemas.serialize(avroSchema),
+                options.getParitionColumn(),
+                options.getPartitioningScheme(),
+                options.getFileFormat().getFileSuffix(),
+                options.getWriteDisposition(),
+                existingFiles,
+                FILTERED_RECORDS_OUT,
+                EXISTING_TARGET_FILES_OUT));
+
+    filteredRecordsTuple
+        .get(EXISTING_TARGET_FILES_OUT)
+        // Getting unique filenames
+        .apply(Distinct.create())
+        .apply(
+            "Log existing target file names",
+            ParDo.of(
+                // This transform logs the distinct existing target files. Logging is done in
+                // a separate transform to prevent redundant logs.
+                // OutputT is String here since DoFn will not accept void. The resulting
+                // PCollection will be empty.
+                new DoFn<String, String>() {
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    String filename = c.element();
+                    LOG.info(
+                        "Target File {} already exists in the output asset bucket {}. Performing "
+                            + " {} writeDisposition strategy.",
+                        filename,
+                        targetRootPath,
+                        options.getWriteDisposition());
+                  }
+                }));
+    return filteredRecordsTuple.get(FILTERED_RECORDS_OUT);
+  }
+
   @VisibleForTesting
   static void buildGcsPipeline(
       Pipeline pipeline,
       DataplexJdbcIngestionOptions options,
       DynamicDataSourceConfiguration dataSourceConfig,
       String targetRootPath) {
-
+    List<String> existingFiles = StorageUtils.getFilesInDirectory(targetRootPath);
     // Auto inferring beam schema
     Schema beamSchema =
         Schemas.jdbcSchemaToBeamSchema(dataSourceConfig.buildDatasource(), options.getQuery());
@@ -160,6 +261,19 @@ public class DataplexJdbcIngestion {
         resultRows
             .apply("convert to GenericRecord", ParDo.of(new BeamRowToGenericRecordFn(avroSchema)))
             .setCoder(AvroCoder.of(avroSchema));
+
+    // If targetRootPath is changed in the following lines, please also change the root path for
+    // existingFiles
+    if (options.getParitionColumn() == null || options.getPartitioningScheme() == null) {
+      if (shouldSkipUnpartitionedTable(options, targetRootPath, existingFiles)) {
+        return;
+      }
+    } else {
+      genericRecords =
+          applyPartitionedWriteDispositionFilter(
+              genericRecords, options, targetRootPath, avroSchema, existingFiles);
+    }
+
     // Write to GCS bucket
     PCollection<PartitionMetadata> metadata =
         genericRecords.apply(
@@ -190,7 +304,10 @@ public class DataplexJdbcIngestion {
             BigQueryIO.writeTableRows()
                 .withoutValidation()
                 .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER)
-                .withWriteDisposition(options.getWriteDisposition())
+                // Mapping DataplexJdbcIngestionWriteDisposition.WriteDispositionOptions to
+                // BigqueryIO.Write.WriteDisposition
+                .withWriteDisposition(
+                    MapWriteDisposition.mapWriteDispostion(options.getWriteDisposition()))
                 .to(options.getOutputTable()));
   }
 
