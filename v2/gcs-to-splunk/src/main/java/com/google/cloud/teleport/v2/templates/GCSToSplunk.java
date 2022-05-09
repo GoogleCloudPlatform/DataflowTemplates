@@ -1,32 +1,40 @@
+/*
+ * Copyright (C) 2022 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.v2.templates;
 
-import org.apache.beam.sdk.io.splunk.SplunkIO;
-import org.apache.beam.sdk.io.splunk.SplunkWriteError;
+import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.coders.SplunkEventCoder;
-import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
+import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.transforms.SplunkConverters;
 import com.google.cloud.teleport.v2.transforms.SplunkConverters.SplunkOptions;
-import com.google.cloud.teleport.v2.transforms.CsvConverters;
+import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.cloud.teleport.v2.values.SplunkEvent;
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.io.splunk.SplunkIO;
+import org.apache.beam.sdk.io.splunk.SplunkWriteError;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.Validation;
-import com.google.cloud.teleport.v2.values.SplunkEvent;
-import org.apache.beam.sdk.options.ValueProvider;
-import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
-import com.google.cloud.teleport.v2.values.FailsafeElement;
-import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-
 
 public class GCSToSplunk {
 
@@ -62,8 +70,7 @@ public class GCSToSplunk {
    * The {@link GCSToSplunkOptions} class provides the custom execution options passed by the
    * executor at the command-line.
    */
-  public interface GCSToSplunkOptions
-      extends CsvConverters.CsvPipelineOptions, SplunkOptions {
+  public interface GCSToSplunkOptions extends CsvConverters.CsvPipelineOptions, SplunkOptions {
 
     @Description("Input format, default is CSV")
     @Default.String("csv")
@@ -79,7 +86,8 @@ public class GCSToSplunk {
    * @param args Arguments passed in from the command-line.
    */
   public static void main(String[] args) {
-    GCSToSplunkOptions options = PipelineOptionsFactory.fromArgs(args).withValidation().as(GCSToSplunkOptions.class);
+    GCSToSplunkOptions options =
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(GCSToSplunkOptions.class);
 
     run(options);
   }
@@ -93,7 +101,7 @@ public class GCSToSplunk {
    * @param options The execution options.
    * @return The pipeline result.
    */
-  public static void run(GCSToSplunkOptions options){
+  public static void run(GCSToSplunkOptions options) {
     Pipeline pipeline = Pipeline.create(options);
 
     CoderRegistry registry = pipeline.getCoderRegistry();
@@ -119,16 +127,16 @@ public class GCSToSplunk {
              * Step 1: Read CSV file(s) from Cloud Storage using {@link CsvConverters.ReadCsv}.
              */
             .apply(
-                "ReadCsv",
-                CsvConverters.ReadCsv.newBuilder()
-                    .setCsvFormat(options.getCsvFormat())
-                    .setDelimiter(options.getDelimiter())
-                    .setHasHeaders(options.getContainsHeaders())
-                    .setInputFileSpec(options.getInputFileSpec())
-                    .setHeaderTag(CSV_HEADERS)
-                    .setLineTag(CSV_LINES)
-                    .setFileEncoding(options.getCsvFileEncoding())
-                    .build());
+            "ReadCsv",
+            CsvConverters.ReadCsv.newBuilder()
+                .setCsvFormat(options.getCsvFormat())
+                .setDelimiter(options.getDelimiter())
+                .setHasHeaders(options.getContainsHeaders())
+                .setInputFileSpec(options.getInputFileSpec())
+                .setHeaderTag(CSV_HEADERS)
+                .setLineTag(CSV_LINES)
+                .setFileEncoding(options.getCsvFileEncoding())
+                .build());
     //
     // // 2) Convert message to FailsafeElement for processing.
     //         .apply(
@@ -159,11 +167,9 @@ public class GCSToSplunk {
     PCollection<SplunkWriteError> writeErrors =
         convertToEventTuple
             .get(SPLUNK_EVENT_OUT)
-            .apply(
-                "WriteToSplunk",
-                SplunkIO.write(options.getUrl(), options.getToken()));
-                    // .withBatchCount(options.getBatchCount())
-                    // .withParallelism(options.getParallelism())
-                    // .withDisableCertificateValidation(options.getDisableCertificateValidation()));
+            .apply("WriteToSplunk", SplunkIO.write(options.getUrl(), options.getToken()));
+    // .withBatchCount(options.getBatchCount())
+    // .withParallelism(options.getParallelism())
+    // .withDisableCertificateValidation(options.getDisableCertificateValidation()));
   }
 }
