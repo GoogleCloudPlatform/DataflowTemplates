@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.coders.SplunkEventCoder;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
+import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.v2.transforms.SplunkConverters;
 import com.google.cloud.teleport.v2.transforms.SplunkConverters.SplunkOptions;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -31,6 +32,7 @@ import org.apache.beam.sdk.io.splunk.SplunkWriteError;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
@@ -137,23 +139,24 @@ public class GCSToSplunk {
                 .setHeaderTag(CSV_HEADERS)
                 .setLineTag(CSV_LINES)
                 .setFileEncoding(options.getCsvFileEncoding())
-                .build());
-    //
-    // // 2) Convert message to FailsafeElement for processing.
-    //         .apply(
-    //             "ConvertToFailsafeElement",
-    //             MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
-    //                 .via(input -> FailsafeElement.of(input, input)));
-    //
-    //         // 3) Apply user provided UDF (if any) on the input strings.
-    //         .apply(
-    //             "ApplyUDFTransformation",
-    //             FailsafeJavascriptUdf.<String>newBuilder()
-    //                 .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
-    //                 .setFunctionName(options.getJavascriptTextTransformFunctionName())
-    //                 .setSuccessTag(UDF_OUT)
-    //                 .setFailureTag(UDF_DEADLETTER_OUT)
-    //                 .build());
+                .build())
+
+    // 2) Convert message to FailsafeElement for processing.
+            .get(CSV_LINES)
+            .apply(
+                "ConvertToFailsafeElement",
+                MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
+                    .via(input -> FailsafeElement.of(input, input)))
+
+            // 3) Apply user provided UDF (if any) on the input strings.
+            .apply(
+                "ApplyUDFTransformation",
+                FailsafeJavascriptUdf.<String>newBuilder()
+                    .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                    .setFunctionName(options.getJavascriptTextTransformFunctionName())
+                    .setSuccessTag(UDF_OUT)
+                    .setFailureTag(UDF_DEADLETTER_OUT)
+                    .build());
 
     // 4) Convert successfully transformed messages into SplunkEvent objects
     PCollectionTuple convertToEventTuple =
