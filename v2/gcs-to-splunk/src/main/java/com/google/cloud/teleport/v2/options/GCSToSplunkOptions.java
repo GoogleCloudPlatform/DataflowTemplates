@@ -15,23 +15,23 @@
  */
 
 package com.google.cloud.teleport.v2.options;
-
-import com.google.cloud.teleport.v2.transforms.CsvConverters;
-import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
-import org.apache.beam.sdk.options.Validation;
-
-
-/**
- * The {@link GCSToSplunkOptions} class provides the custom execution options passed by the
- * executor at the command-line.
- */
-public interface GCSToSplunkOptions
-    extends CsvConverters.CsvPipelineOptions {
-
-  @Description("Input format, default is CSV")
-  @Default.String("csv")
-  String getInputFormat();
-
-  void setInputFormat(String inputFormat);
-}
+//
+// import com.google.cloud.teleport.v2.transforms.CsvConverters;
+// import org.apache.beam.sdk.options.Default;
+// import org.apache.beam.sdk.options.Description;
+// import org.apache.beam.sdk.options.Validation;
+//
+//
+// /**
+//  * The {@link GCSToSplunkOptions} class provides the custom execution options passed by the
+//  * executor at the command-line.
+//  */
+// public interface GCSToSplunkOptions
+//     extends CsvConverters.CsvPipelineOptions {
+//
+//   @Description("Input format, default is CSV")
+//   @Default.String("csv")
+//   String getInputFormat();
+//
+//   void setInputFormat(String inputFormat);
+// }

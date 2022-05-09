@@ -15,4 +15,4 @@
  */
 
 /** Package info for GCS to Splunk template. */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.v2.options;
