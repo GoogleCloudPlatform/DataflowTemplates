@@ -23,6 +23,7 @@ import com.google.cloud.teleport.v2.transforms.SplunkConverters.SplunkOptions;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.cloud.teleport.v2.values.SplunkEvent;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.splunk.SplunkIO;
@@ -101,7 +102,7 @@ public class GCSToSplunk {
    * @param options The execution options.
    * @return The pipeline result.
    */
-  public static void run(GCSToSplunkOptions options) {
+  public static PipelineResult run(GCSToSplunkOptions options) {
     Pipeline pipeline = Pipeline.create(options);
 
     CoderRegistry registry = pipeline.getCoderRegistry();
@@ -171,5 +172,7 @@ public class GCSToSplunk {
     // .withBatchCount(options.getBatchCount())
     // .withParallelism(options.getParallelism())
     // .withDisableCertificateValidation(options.getDisableCertificateValidation()));
+
+    return pipeline.run();
   }
 }
