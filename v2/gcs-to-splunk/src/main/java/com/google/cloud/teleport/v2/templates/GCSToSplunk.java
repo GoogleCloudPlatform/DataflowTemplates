@@ -134,7 +134,7 @@ public class GCSToSplunk {
     //         .apply(
     //             "ConvertToFailsafeElement",
     //             MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
-    //                 .via(input -> FailsafeElement.of(input, input)))
+    //                 .via(input -> FailsafeElement.of(input, input)));
     //
     //         // 3) Apply user provided UDF (if any) on the input strings.
     //         .apply(
@@ -155,12 +155,15 @@ public class GCSToSplunk {
                 SplunkConverters.failsafeStringToSplunkEvent(
                     SPLUNK_EVENT_OUT, SPLUNK_EVENT_DEADLETTER_OUT));
 
+    // 5) Write SplunkEvents to Splunk's HEC end point.
     PCollection<SplunkWriteError> writeErrors =
         convertToEventTuple
             .get(SPLUNK_EVENT_OUT)
             .apply(
                 "WriteToSplunk",
-                SplunkIO.writeBuilder()
-                    .build());
+                SplunkIO.write(options.getUrl(), options.getToken()));
+                    // .withBatchCount(options.getBatchCount())
+                    // .withParallelism(options.getParallelism())
+                    // .withDisableCertificateValidation(options.getDisableCertificateValidation()));
   }
 }
