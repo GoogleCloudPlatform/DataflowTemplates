@@ -149,6 +149,7 @@ public final class SpannerChangeStreamsToBigQuery {
      */
     Pipeline pipeline = Pipeline.create(options);
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
+    String spannerProjectId = getSpannerProjectId(options);
 
     String dlqDirectory = dlqManager.getRetryDlqDirectoryWithDateTime();
     String tempDlqDirectory = dlqManager.getRetryDlqDirectory() + "tmp/";
@@ -166,7 +167,7 @@ public final class SpannerChangeStreamsToBigQuery {
     SpannerConfig spannerConfig =
         SpannerConfig.create()
             .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
-            .withProjectId(options.getProject())
+            .withProjectId(spannerProjectId)
             .withInstanceId(options.getSpannerInstanceId())
             .withDatabaseId(options.getSpannerDatabaseId())
             .withRpcPriority(options.getSpannerRpcPriority());
@@ -176,10 +177,15 @@ public final class SpannerChangeStreamsToBigQuery {
             .withSpannerConfig(spannerConfig)
             .withMetadataInstance(options.getSpannerMetadataInstanceId())
             .withMetadataDatabase(options.getSpannerMetadataDatabaseId())
-            .withChangeStreamName(options.getSpannerChangeStream())
+            .withChangeStreamName(options.getSpannerChangeStreamName())
             .withInclusiveStartAt(startTimestamp)
             .withInclusiveEndAt(endTimestamp)
             .withRpcPriority(options.getSpannerRpcPriority());
+
+    String spannerMetadataTableName = options.getSpannerMetadataTableName();
+    if (spannerMetadataTableName != null) {
+      readChangeStream = readChangeStream.withMetadataTable(spannerMetadataTableName);
+    }
 
     PCollection<DataChangeRecord> dataChangeRecord =
         pipeline
@@ -217,7 +223,7 @@ public final class SpannerChangeStreamsToBigQuery {
         failsafeModJsonToTableRowOptions =
             FailsafeModJsonToTableRowTransformer.FailsafeModJsonToTableRowOptions.builder()
                 .setSpannerConfig(spannerConfig)
-                .setSpannerChangeStream(options.getSpannerChangeStream())
+                .setSpannerChangeStream(options.getSpannerChangeStreamName())
                 .setIgnoreFields(options.getIgnoreFields())
                 .setCoder(FAILSAFE_ELEMENT_CODER)
                 .build();
@@ -232,8 +238,8 @@ public final class SpannerChangeStreamsToBigQuery {
         bigQueryDynamicDestinationsOptions =
             BigQueryDynamicDestinations.BigQueryDynamicDestinationsOptions.builder()
                 .setSpannerConfig(spannerConfig)
-                .setChangeStreamName(options.getSpannerChangeStream())
-                .setBigQueryProject(getBigQueryProject(options))
+                .setChangeStreamName(options.getSpannerChangeStreamName())
+                .setBigQueryProject(getBigQueryProjectId(options))
                 .setBigQueryDataset(options.getBigQueryDataset())
                 .setBigQueryTableTemplate(options.getBigQueryChangelogTableNameTemplate())
                 .build();
@@ -274,6 +280,7 @@ public final class SpannerChangeStreamsToBigQuery {
             DLQWriteTransform.WriteDLQ.newBuilder()
                 .withDlqDirectory(dlqDirectory)
                 .withTmpDirectory(tempDlqDirectory)
+                .setIncludePaneInfo(true)
                 .build());
 
     PCollection<FailsafeElement<String, String>> nonRetryableDlqModJsonFailsafe =
@@ -288,6 +295,7 @@ public final class SpannerChangeStreamsToBigQuery {
             DLQWriteTransform.WriteDLQ.newBuilder()
                 .withDlqDirectory(dlqManager.getSevereDlqDirectoryWithDateTime())
                 .withTmpDirectory(dlqManager.getSevereDlqDirectory() + "tmp/")
+                .setIncludePaneInfo(true)
                 .build());
 
     return pipeline.run();
@@ -306,7 +314,13 @@ public final class SpannerChangeStreamsToBigQuery {
     return DeadLetterQueueManager.create(dlqDirectory, DLQ_MAX_RETRIES);
   }
 
-  private static String getBigQueryProject(SpannerChangeStreamsToBigQueryOptions options) {
+  private static String getSpannerProjectId(SpannerChangeStreamsToBigQueryOptions options) {
+    return options.getSpannerProjectId().isEmpty()
+        ? options.getProject()
+        : options.getSpannerProjectId();
+  }
+
+  private static String getBigQueryProjectId(SpannerChangeStreamsToBigQueryOptions options) {
     return options.getBigQueryProjectId().isEmpty()
         ? options.getProject()
         : options.getBigQueryProjectId();

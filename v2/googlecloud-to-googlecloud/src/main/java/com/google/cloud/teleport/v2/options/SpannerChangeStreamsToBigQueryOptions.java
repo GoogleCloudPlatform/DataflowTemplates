@@ -27,6 +27,14 @@ import org.apache.beam.sdk.options.Validation;
  */
 public interface SpannerChangeStreamsToBigQueryOptions extends DataflowPipelineOptions {
 
+  @Description(
+      "Project to read change streams from. The default for this parameter is the project where the"
+          + " Dataflow pipeline is running.")
+  @Default.String("")
+  String getSpannerProjectId();
+
+  void setSpannerProjectId(String projectId);
+
   @Description("The Spanner instance ID that contains the Change Stream.")
   @Validation.Required
   String getSpannerInstanceId();
@@ -51,11 +59,19 @@ public interface SpannerChangeStreamsToBigQueryOptions extends DataflowPipelineO
 
   void setSpannerMetadataDatabaseId(String value);
 
+  @Description(
+      "The Cloud Spanner change streams Connector metadata table name to use. If not provided, a"
+          + " Cloud Spanner change streams Connector metadata table will automatically be created"
+          + " during the pipeline flow.")
+  String getSpannerMetadataTableName();
+
+  void setSpannerMetadataTableName(String value);
+
   @Description("The name of the Spanner Change Stream.")
   @Validation.Required
-  String getSpannerChangeStream();
+  String getSpannerChangeStreamName();
 
-  void setSpannerChangeStream(String value);
+  void setSpannerChangeStreamName(String value);
 
   @Description(
       "Priority for Spanner RPC invocations. Defaults to HIGH. Allowed priorites are LOW, MEDIUM,"
