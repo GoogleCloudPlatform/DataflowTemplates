@@ -19,9 +19,15 @@ package op
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"os/exec"
 	"strings"
+	"sync"
+)
+
+var (
+	printMu sync.Mutex
 )
 
 // Runs a command and streams the output rather than waiting for it to complete.
@@ -30,12 +36,25 @@ func RunCmdAndStreamOutput(cmd string, args []string) error {
 	op := exec.Command(cmd, args...)
 
 	stdout, _ := op.StdoutPipe()
+	stderr, _ := op.StderrPipe()
 	op.Start()
 
-	scanner := bufio.NewScanner(stdout)
-	for scanner.Scan() {
-		fmt.Println(scanner.Text())
-	}
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go processPipe(stdout, &wg)
+	go processPipe(stderr, &wg)
+	wg.Wait()
 
 	return op.Wait()
+}
+
+func processPipe(pipe io.ReadCloser, wg *sync.WaitGroup) {
+	scanner := bufio.NewScanner(pipe)
+	for scanner.Scan() {
+		printMu.Lock()
+		fmt.Println(scanner.Text())
+		printMu.Unlock()
+	}
+
+	wg.Done()
 }

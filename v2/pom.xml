@@ -29,7 +29,7 @@
         <autovalue.annotations.version>1.7.4</autovalue.annotations.version>
         <autovalue.service.version>1.0-rc6</autovalue.service.version>
         <checkstyle.version>8.7</checkstyle.version>
-        <beam.version>2.36.0</beam.version>
+        <beam.version>2.38.0</beam.version>
         <hamcrest.version>2.1</hamcrest.version>
         <hadoop.version>2.10.1</hadoop.version>
         <guava.version>30.1-jre</guava.version>
@@ -37,7 +37,7 @@
         <jib.maven.version>2.6.0</jib.maven.version>
         <junit.version>4.13</junit.version>
         <junit-dep.version>4.10</junit-dep.version>
-        <opensensus.version>0.24.0</opensensus.version>
+        <opensensus.version>0.31.0</opensensus.version>
         <surefire.version>2.21.0</surefire.version>
         <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
         <maven-compiler-plugin.version>3.6.2</maven-compiler-plugin.version>
@@ -49,6 +49,7 @@
         <maven-source-plugin.version>3.0.1</maven-source-plugin.version>
         <mockito-core.version>3.0.0</mockito-core.version>
         <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
+        <re2j.version>1.5</re2j.version>
         <slf4j.version>1.7.25</slf4j.version>
         <mvn-target-dir>${basedir}/target</mvn-target-dir>
         <json.version>20200518</json.version>
@@ -96,6 +97,18 @@
                 <exclusion>
                     <groupId>junit</groupId>
                     <artifactId>junit</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>grpc-netty-shaded</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>grpc-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>grpc-api</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -148,6 +161,12 @@
             <version>${mockito-core.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>integration-testing-lib</artifactId>
+            <version>1.0-SNAPSHOT</version>
+            <scope>test</scope>
+        </dependency>
 
 
         <!-- Misc -->
@@ -171,6 +190,11 @@
             <groupId>com.google.auto.value</groupId>
             <artifactId>auto-value-annotations</artifactId>
             <version>${autovalue.annotations.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.re2j</groupId>
+            <artifactId>re2j</artifactId>
+            <version>${re2j.version}</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -566,6 +590,9 @@
                       <value>--no-deprecation-warning</value>
                     </property>
                   </systemProperties>
+                  <!-- TODO(zhoufek): Try to find an alternative way to avoid writing
+                   sensitive info to disk.-->
+                  <disableXmlReport>true</disableXmlReport>
                   <excludedGroups>${excluded.spanner.tests}</excludedGroups>
                 </configuration>
             </plugin>
@@ -638,11 +665,6 @@
                     <id>confluent</id>
                     <url>https://packages.confluent.io/maven/</url>
                 </repository>
-                <repository>
-                    <!-- Required for org.pentaho:pentaho-aggdesigner-algorithm artifact -->
-                    <id>pentaho</id>
-                    <url>https://public.nexus.pentaho.org/repository/proxy-public-3rd-party-release</url>
-                </repository>
             </repositories>
         </profile>
     </profiles>
@@ -653,7 +675,6 @@
         <module>common</module>
         <module>cdc-parent</module>
         <module>datastream-to-bigquery</module>
-        <module>datastream-to-postgres</module>
         <module>datastream-to-spanner</module>
         <module>datastream-to-sql</module>
         <module>elasticsearch-common</module>

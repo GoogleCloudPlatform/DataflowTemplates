@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import com.google.cloud.teleport.v2.transforms.GenericRecordsToGcsPartitioned.PartitioningSchema;
+import com.google.cloud.teleport.v2.utils.DataplexJdbcPartitionUtils.PartitioningSchema;
 import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
 import com.google.cloud.teleport.v2.values.PartitionMetadata;
 import com.google.common.collect.ImmutableList;

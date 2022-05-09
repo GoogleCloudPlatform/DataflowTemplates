@@ -149,6 +149,8 @@ public class DataplexBigQueryToGcsTest {
                     new TableFieldSchema().setName("ts").setType("TIMESTAMP"),
                     new TableFieldSchema().setName("s1").setType("STRING"),
                     new TableFieldSchema().setName("d1").setType("DATE"),
+                    new TableFieldSchema().setName("t1").setType("TIME").setMode("REQUIRED"),
+                    new TableFieldSchema().setName("dt").setType("DATETIME"),
                     new TableFieldSchema().setName("i1").setType("INTEGER")));
 
     avroSchema =
@@ -158,6 +160,8 @@ public class DataplexBigQueryToGcsTest {
                     + "[{\"name\":\"ts\",\"type\":[\"null\",{\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}]},"
                     + "{\"name\":\"s1\",\"type\":[\"null\",\"string\"]},"
                     + "{\"name\":\"d1\",\"type\":[\"null\",{\"type\":\"int\",\"logicalType\":\"date\"}]},"
+                    + "{\"name\":\"t1\",\"type\":{\"type\":\"long\",\"logicalType\":\"time-micros\"}},"
+                    + "{\"name\":\"dt\",\"type\":[\"null\",{\"type\":\"string\",\"logicalType\":\"datetime\"}]},"
                     + "{\"name\":\"i1\",\"type\":[\"null\",\"long\"]}]}");
 
     long modTime = System.currentTimeMillis() * 1000;
@@ -199,20 +203,55 @@ public class DataplexBigQueryToGcsTest {
 
     defaultRecords =
         new TableRow[] {
-          new TableRow().set("ts", 1L).set("s1", "1001").set("d1", "1970-01-01").set("i1", 2001L),
-          new TableRow().set("ts", 2L).set("s1", "1002").set("d1", "1970-01-02").set("i1", 2002L),
-          new TableRow().set("ts", 3L).set("s1", "1003").set("d1", "1970-01-03").set("i1", 2003L),
-          new TableRow().set("ts", 4L).set("s1", "1004").set("d1", "1970-01-04").set("i1", null),
-          new TableRow().set("ts", 5L).set("s1", "1005").set("d1", "1970-01-05").set("i1", 2005L)
+          new TableRow()
+              .set("ts", 1L)
+              .set("s1", "1001")
+              .set("d1", "1970-01-01")
+              .set("t1", "00:00:00.000001")
+              .set("dt", "2020-01-01T00:42:00.123")
+              .set("i1", 2001L),
+          new TableRow()
+              .set("ts", 2L)
+              .set("s1", "1002")
+              .set("d1", "1970-01-02")
+              .set("t1", "00:00:00.000002")
+              .set("dt", "2020-01-02T00:42:00.123")
+              .set("i1", 2002L),
+          new TableRow()
+              .set("ts", 3L)
+              .set("s1", "1003")
+              .set("d1", "1970-01-03")
+              .set("t1", "00:00:00.000003")
+              .set("dt", "2020-01-03T00:42:00.123")
+              .set("i1", 2003L),
+          new TableRow()
+              .set("ts", 4L)
+              .set("s1", "1004")
+              .set("d1", "1970-01-04")
+              .set("t1", "00:00:00.000004")
+              .set("dt", "2020-01-04T00:42:00.123")
+              .set("i1", null),
+          new TableRow()
+              .set("ts", 5L)
+              .set("s1", "1005")
+              .set("d1", "1970-01-05")
+              .set("t1", "00:00:00.000005")
+              .set("dt", "2020-01-05T00:42:00.123")
+              .set("i1", 2005L)
         };
 
     defaultExpectedRecords =
         new String[] {
-          "{\"ts\": 1, \"s1\": \"1001\", \"d1\": 0, \"i1\": 2001}",
-          "{\"ts\": 2, \"s1\": \"1002\", \"d1\": 1, \"i1\": 2002}",
-          "{\"ts\": 3, \"s1\": \"1003\", \"d1\": 2, \"i1\": 2003}",
-          "{\"ts\": 4, \"s1\": \"1004\", \"d1\": 3, \"i1\": null}",
-          "{\"ts\": 5, \"s1\": \"1005\", \"d1\": 4, \"i1\": 2005}"
+          "{\"ts\": 1, \"s1\": \"1001\", \"d1\": 0, \"t1\": 1, \"dt\": \"2020-01-01T00:42:00.123\","
+              + " \"i1\": 2001}",
+          "{\"ts\": 2, \"s1\": \"1002\", \"d1\": 1, \"t1\": 2, \"dt\": \"2020-01-02T00:42:00.123\","
+              + " \"i1\": 2002}",
+          "{\"ts\": 3, \"s1\": \"1003\", \"d1\": 2, \"t1\": 3, \"dt\": \"2020-01-03T00:42:00.123\","
+              + " \"i1\": 2003}",
+          "{\"ts\": 4, \"s1\": \"1004\", \"d1\": 3, \"t1\": 4, \"dt\": \"2020-01-04T00:42:00.123\","
+              + " \"i1\": null}",
+          "{\"ts\": 5, \"s1\": \"1005\", \"d1\": 4, \"t1\": 5, \"dt\": \"2020-01-05T00:42:00.123\","
+              + " \"i1\": 2005}"
         };
 
     FakeDatasetService.setUp();
@@ -408,14 +447,19 @@ public class DataplexBigQueryToGcsTest {
 
     String[] expectedRecords1 =
         new String[] {
-          "{\"ts_pkey\": 1, \"s1\": \"1001\", \"d1\": 0, \"i1\": 2001}",
-          "{\"ts_pkey\": 2, \"s1\": \"1002\", \"d1\": 1, \"i1\": 2002}"
+          "{\"ts_pkey\": 1, \"s1\": \"1001\", \"d1\": 0, \"t1\": 1, \"dt\":"
+              + " \"2020-01-01T00:42:00.123\", \"i1\": 2001}",
+          "{\"ts_pkey\": 2, \"s1\": \"1002\", \"d1\": 1, \"t1\": 2, \"dt\":"
+              + " \"2020-01-02T00:42:00.123\", \"i1\": 2002}"
         };
     String[] expectedRecords2 =
         new String[] {
-          "{\"ts_pkey\": 3, \"s1\": \"1003\", \"d1\": 2, \"i1\": 2003}",
-          "{\"ts_pkey\": 4, \"s1\": \"1004\", \"d1\": 3, \"i1\": null}",
-          "{\"ts_pkey\": 5, \"s1\": \"1005\", \"d1\": 4, \"i1\": 2005}"
+          "{\"ts_pkey\": 3, \"s1\": \"1003\", \"d1\": 2, \"t1\": 3, \"dt\":"
+              + " \"2020-01-03T00:42:00.123\", \"i1\": 2003}",
+          "{\"ts_pkey\": 4, \"s1\": \"1004\", \"d1\": 3, \"t1\": 4, \"dt\":"
+              + " \"2020-01-04T00:42:00.123\", \"i1\": null}",
+          "{\"ts_pkey\": 5, \"s1\": \"1005\", \"d1\": 4, \"t1\": 5, \"dt\":"
+              + " \"2020-01-05T00:42:00.123\", \"i1\": 2005}"
         };
 
     PAssert.that(actualRecords1).containsInAnyOrder(expectedRecords1);

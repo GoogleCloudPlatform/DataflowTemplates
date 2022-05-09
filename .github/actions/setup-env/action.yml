@@ -26,11 +26,16 @@ name: 'Setup Environment'
 description: 'Sets up common environment for Dataflow Templates workflows'
 
 inputs:
+  java-cache-key:
+    type: string
+    description: 'Key to use for the cache entry'
+    required: false
+    default: ''
   java-version:
     type: string
     description: 'The version of Java to install'
     required: false
-    default: '8'
+    default: '11'
   go-version:
     type: string
     description: 'The version of Go to install'
@@ -66,4 +71,5 @@ runs:
     - name: Setup Java
       uses: ./.github/actions/setup-java-env
       with:
+        cache-key: ${{ inputs.java-cache-key }}
         java-version: ${{ inputs.java-version }}
