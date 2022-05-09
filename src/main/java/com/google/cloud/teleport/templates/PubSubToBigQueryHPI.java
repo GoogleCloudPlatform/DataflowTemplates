@@ -6,6 +6,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.templates.common.BigQueryConverters.FailsafeJsonToTableRow;
@@ -394,17 +395,15 @@ public class PubSubToBigQueryHPI {
         if (message != null) {
 
             String bqDataset = outputDataset;
-            try {
-                bqDataset = message.getAttributeMap().get(datasetNameAttr);
-            } catch (ClassCastException | NullPointerException ignored) {
-                bqDataset = null;
-            }
-            if (bqDataset == null || bqDataset.isEmpty()) {
-                bqDataset = outputDataset;
+
+            Map<String, String> msgAttr = message.getAttributeMap();
+            if (msgAttr.containsKey(datasetNameAttr)) {
+                bqDataset = msgAttr.get(datasetNameAttr);
             }
 
-            destination = new TableDestination(String.format("%s:%s.%s", outputProject, bqDataset,
-                    message.getAttributeMap().get(tableNameAttr)), null);
+            destination = new TableDestination(
+                    String.format("%s:%s.%s", outputProject, bqDataset, msgAttr.get(tableNameAttr)),
+                    null);
         } else {
             throw new RuntimeException(
                     "Cannot retrieve the dynamic table destination of an null message!");
