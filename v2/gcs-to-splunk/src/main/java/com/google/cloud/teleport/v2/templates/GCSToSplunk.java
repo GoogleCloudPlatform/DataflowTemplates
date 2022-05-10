@@ -30,7 +30,6 @@ import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.splunk.SplunkEvent;
 import org.apache.beam.sdk.io.splunk.SplunkIO;
 import org.apache.beam.sdk.io.splunk.SplunkWriteError;
-import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -98,12 +97,6 @@ public class GCSToSplunk {
    * executor at the command-line.
    */
   public interface GCSToSplunkOptions extends CsvConverters.CsvPipelineOptions, SplunkOptions {
-
-    @Description("Input format, default is CSV")
-    @Default.String("csv")
-    String getInputFormat();
-
-    void setInputFormat(String inputFormat);
 
     @Description("Pattern of where to write errors, ex: gs://mybucket/somepath/errors.txt")
     String getInvalidOutputPath();
