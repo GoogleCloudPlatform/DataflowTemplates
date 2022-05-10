@@ -19,6 +19,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingWhiteSpace;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.teleport.spanner.ExportProtos.Export;
@@ -34,6 +35,14 @@ public class DdlTest {
   @Test
   public void emptyDb() {
     Ddl empty = Ddl.builder().build();
+    assertThat(empty.allTables(), empty());
+    assertThat(empty.prettyPrint(), equalTo(""));
+  }
+
+  @Test
+  public void pgEmptyDb() {
+    Ddl empty = Ddl.builder(Dialect.POSTGRESQL).build();
+    assertEquals(empty.dialect(), Dialect.POSTGRESQL);
     assertThat(empty.allTables(), empty());
     assertThat(empty.prettyPrint(), equalTo(""));
   }
@@ -98,6 +107,68 @@ public class DdlTest {
   }
 
   @Test
+  public void pgSimple() {
+    Ddl.Builder builder = Ddl.builder(Dialect.POSTGRESQL);
+    builder
+        .createTable("Users")
+        .column("id")
+        .int64()
+        .notNull()
+        .endColumn()
+        .column("first_name")
+        .string()
+        .size(10)
+        .endColumn()
+        .column("last_name")
+        .type(Type.string())
+        .max()
+        .endColumn()
+        .column("full_name")
+        .type(Type.string())
+        .max()
+        .generatedAs("CONCAT(first_name, ' ', last_name)")
+        .stored()
+        .endColumn()
+        .primaryKey()
+        .asc("id")
+        .end()
+        .indexes(
+            ImmutableList.of("CREATE INDEX \"UsersByFirstName\" ON \"Users\" (\"first_name\")"))
+        .foreignKeys(
+            ImmutableList.of(
+                "ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"
+                    + " REFERENCES \"AllowedNames\" (\"first_name\")"))
+        .checkConstraints(
+            ImmutableList.of("CONSTRAINT \"ck\" CHECK (\"first_name\" != \"last_name\")"))
+        .endTable();
+    Export export =
+        Export.newBuilder()
+            .addDatabaseOptions(
+                Export.DatabaseOption.newBuilder()
+                    .setOptionName("version_retention_period")
+                    .setOptionValue("4d")
+                    .build())
+            .build();
+    builder.mergeDatabaseOptions(export.getDatabaseOptionsList());
+    Ddl ddl = builder.build();
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "ALTER DATABASE `%db_name%` SET OPTIONS ( version_retention_period = 4d )"
+                + " CREATE TABLE \"Users\" ("
+                + " `id` INT64 NOT NULL,"
+                + " `first_name` STRING(10),"
+                + " `last_name` STRING(MAX),"
+                + " `full_name` STRING(MAX) AS (CONCAT(first_name, ' ', last_name)) STORED,"
+                + " CONSTRAINT \"ck\" CHECK (\"first_name\" != \"last_name\"),"
+                + " PRIMARY KEY (\"id\")"
+                + " ) "
+                + " CREATE INDEX \"UsersByFirstName\" ON \"Users\" (\"first_name\")"
+                + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"
+                + " REFERENCES \"AllowedNames\" (\"first_name\")"));
+  }
+
+  @Test
   public void interleaves() {
     Ddl ddl =
         Ddl.builder()
@@ -155,8 +226,90 @@ public class DdlTest {
   }
 
   @Test
+  public void pgInterleaves() {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("Users")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("first_name")
+            .string()
+            .size(10)
+            .endColumn()
+            .column("last_name")
+            .type(Type.string())
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .createTable("Account")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("balanceId")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("balance")
+            .float64()
+            .notNull()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .interleaveInParent("Users")
+            .onDeleteCascade()
+            .endTable()
+            .build();
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE \"Users\" ("
+                + " `id`                                    INT64 NOT NULL,"
+                + " `first_name`                            STRING(10),"
+                + " `last_name`                             STRING(MAX),"
+                + " PRIMARY KEY (\"id\")"
+                + " ) "
+                + " CREATE TABLE \"Account\" ("
+                + " `id`                                    INT64 NOT NULL,"
+                + " `balanceId`                             INT64 NOT NULL,"
+                + " `balance`                               FLOAT64 NOT NULL,"
+                + " PRIMARY KEY (\"id\")"
+                + " ) "
+                + " INTERLEAVE IN PARENT \"Users\" ON DELETE CASCADE"));
+  }
+
+  @Test
   public void testDatabaseOptions() {
     Ddl.Builder builder = Ddl.builder();
+    List<Export.DatabaseOption> dbOptionList = new ArrayList<>();
+    dbOptionList.add(
+        Export.DatabaseOption.newBuilder()
+            .setOptionName("version_retention_period")
+            .setOptionValue("4d")
+            .build());
+    dbOptionList.add(
+        Export.DatabaseOption.newBuilder()
+            .setOptionName("optimizer_version")
+            .setOptionValue("2")
+            .build());
+    builder.mergeDatabaseOptions(dbOptionList);
+    Ddl ddl = builder.build();
+    List<String> optionStatements = ddl.setOptionsStatements("database_id");
+    assertThat(optionStatements.size(), is(1));
+    assertThat(
+        optionStatements.get(0),
+        is("ALTER DATABASE `database_id` SET OPTIONS ( version_retention_period = 4d )"));
+  }
+
+  @Test
+  public void pgTestDatabaseOptions() {
+    Ddl.Builder builder = Ddl.builder(Dialect.POSTGRESQL);
     List<Export.DatabaseOption> dbOptionList = new ArrayList<>();
     dbOptionList.add(
         Export.DatabaseOption.newBuilder()

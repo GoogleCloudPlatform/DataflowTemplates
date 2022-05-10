@@ -33,4 +33,17 @@ class DdlUtilityComponents {
           .addEscape('\r', "\\r")
           .addEscape('\n', "\\n")
           .build();
+  static final String POSTGRESQL_IDENTIFIER_QUOTE = "\"";
+  static final String GSQL_IDENTIFIER_QUOTE = "`";
+
+  static String identifierQuote(Dialect dialect) {
+    switch (dialect) {
+      case POSTGRESQL:
+        return POSTGRESQL_IDENTIFIER_QUOTE;
+      case GOOGLE_STANDARD_SQL:
+        return GSQL_IDENTIFIER_QUOTE;
+      default:
+        throw new IllegalArgumentException(String.format("Unrecognized dialect: %s", dialect));
+    }
+  }
 }

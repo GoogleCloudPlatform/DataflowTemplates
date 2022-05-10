@@ -30,6 +30,8 @@ public abstract class Index implements Serializable {
 
   abstract String name();
 
+  abstract Dialect dialect();
+
   abstract String table();
 
   abstract ImmutableList<IndexColumn> indexColumns();
@@ -41,8 +43,12 @@ public abstract class Index implements Serializable {
   @Nullable
   abstract String interleaveIn();
 
+  public static Builder builder(Dialect dialect) {
+    return new AutoValue_Index.Builder().dialect(dialect).nullFiltered(false).unique(false);
+  }
+
   public static Builder builder() {
-    return new AutoValue_Index.Builder().nullFiltered(false).unique(false);
+    return builder(Dialect.GOOGLE_STANDARD_SQL);
   }
 
   public void prettyPrint(Appendable appendable) throws IOException {
@@ -81,7 +87,7 @@ public abstract class Index implements Serializable {
   public Builder toBuilder() {
     Builder builder = autoToBuilder();
     for (IndexColumn column : indexColumns()) {
-      builder.columnsBuilder.set(column);
+      builder.columnsBuilder().set(column);
     }
     return builder;
   }
@@ -105,17 +111,20 @@ public abstract class Index implements Serializable {
   @AutoValue.Builder
   public abstract static class Builder {
 
-    private IndexColumn.IndexColumnsBuilder<Builder> columnsBuilder =
-        new IndexColumn.IndexColumnsBuilder<>(this);
+    private IndexColumn.IndexColumnsBuilder<Builder> columnsBuilder;
 
     public abstract Builder name(String name);
 
     public abstract Builder table(String name);
 
+    abstract Builder dialect(Dialect dialect);
+
+    public abstract Dialect dialect();
+
     abstract Builder indexColumns(ImmutableList<IndexColumn> columns);
 
     public IndexColumn.IndexColumnsBuilder<Builder> columns() {
-      return columnsBuilder;
+      return columnsBuilder();
     }
 
     public abstract Builder unique(boolean unique);
@@ -135,7 +144,14 @@ public abstract class Index implements Serializable {
     abstract Index autoBuild();
 
     public Index build() {
-      return this.indexColumns(columnsBuilder.build()).autoBuild();
+      return this.indexColumns(columnsBuilder().build()).autoBuild();
+    }
+
+    private IndexColumn.IndexColumnsBuilder<Builder> columnsBuilder() {
+      if (columnsBuilder == null) {
+        columnsBuilder = new IndexColumn.IndexColumnsBuilder<>(this, dialect());
+      }
+      return columnsBuilder;
     }
   }
 }

@@ -30,8 +30,14 @@ public abstract class IndexColumn implements Serializable {
 
   public abstract Order order();
 
+  public abstract Dialect dialect();
+
+  public static IndexColumn create(String name, Order order, Dialect dialect) {
+    return new AutoValue_IndexColumn(name, order, dialect);
+  }
+
   public static IndexColumn create(String name, Order order) {
-    return new AutoValue_IndexColumn(name, order);
+    return new AutoValue_IndexColumn(name, order, Dialect.GOOGLE_STANDARD_SQL);
   }
 
   /** Ordering of column in the index. */
@@ -76,12 +82,15 @@ public abstract class IndexColumn implements Serializable {
 
     private T callback;
 
-    public IndexColumnsBuilder(T callback) {
+    private Dialect dialect;
+
+    public IndexColumnsBuilder(T callback, Dialect dialect) {
       this.callback = callback;
+      this.dialect = dialect;
     }
 
     public IndexColumnsBuilder<T> asc(String name) {
-      IndexColumn indexColumn = IndexColumn.create(name, Order.ASC);
+      IndexColumn indexColumn = IndexColumn.create(name, Order.ASC, dialect);
       return set(indexColumn);
     }
 
@@ -91,11 +100,11 @@ public abstract class IndexColumn implements Serializable {
     }
 
     public IndexColumnsBuilder<T> desc(String name) {
-      return set(IndexColumn.create(name, Order.DESC));
+      return set(IndexColumn.create(name, Order.DESC, dialect));
     }
 
     public IndexColumnsBuilder<T> storing(String name) {
-      return set(IndexColumn.create(name, Order.STORING));
+      return set(IndexColumn.create(name, Order.STORING, dialect));
     }
 
     public ImmutableList<IndexColumn> build() {

@@ -45,13 +45,20 @@ public abstract class Column implements Serializable {
 
   public abstract boolean isStored();
 
-  public static Builder builder() {
+  public abstract Dialect dialect();
+
+  public static Builder builder(Dialect dialect) {
     return new AutoValue_Column.Builder()
+        .dialect(dialect)
         .columnOptions(ImmutableList.of())
         .notNull(false)
         .isGenerated(false)
         .generationExpression("")
         .isStored(false);
+  }
+
+  public static Builder builder() {
+    return builder(Dialect.GOOGLE_STANDARD_SQL);
   }
 
   public void prettyPrint(Appendable appendable) throws IOException {
@@ -141,6 +148,8 @@ public abstract class Column implements Serializable {
     public abstract Builder size(Integer size);
 
     public abstract Builder notNull(boolean nullable);
+
+    abstract Builder dialect(Dialect dialect);
 
     public Builder notNull() {
       return notNull(true);
