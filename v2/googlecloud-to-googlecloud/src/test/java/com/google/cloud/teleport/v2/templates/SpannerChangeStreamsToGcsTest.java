@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.templates.SpannerChangeStreamsToGcs.run;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Mutation;
@@ -34,7 +35,6 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.AvroIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
-import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.DataChangeRecord;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
@@ -88,17 +88,29 @@ public final class SpannerChangeStreamsToGcsTest {
 
   @SuppressWarnings("DefaultAnnotationParam")
   private static class VerifyDataChangeRecordAvro
-      implements SerializableFunction<Iterable<DataChangeRecord>, Void> {
+      implements SerializableFunction<
+          Iterable<com.google.cloud.teleport.v2.DataChangeRecord>, Void> {
     @Override
-    public Void apply(Iterable<DataChangeRecord> actualIter) {
+    public Void apply(Iterable<com.google.cloud.teleport.v2.DataChangeRecord> actualIter) {
       // Make sure actual is the right length, and is a
       // subset of expected.
-      List<DataChangeRecord> actual = new ArrayList<>();
-      for (DataChangeRecord s : actualIter) {
+      List<com.google.cloud.teleport.v2.DataChangeRecord> actual = new ArrayList<>();
+      for (com.google.cloud.teleport.v2.DataChangeRecord s : actualIter) {
         actual.add(s);
         assertEquals(TEST_TABLE, s.getTableName());
+        assertTrue(s.getCommitTimestamp() > 0);
+        assertTrue(s.getPartitionToken() != null && s.getPartitionToken().length() > 0);
+        assertTrue(s.getServerTransactionId() != null && s.getServerTransactionId().length() > 0);
+        assertTrue(s.getRecordSequence() != null && s.getRecordSequence().length() > 0);
+        assertTrue(!s.getRowType().isEmpty());
+        assertTrue(
+            s.getRowType().get(0).getType()
+                != com.google.cloud.teleport.v2.TypeCode.TYPE_CODE_UNSPECIFIED);
+        assertTrue(!s.getMods().isEmpty());
+        assertTrue(s.getNumberOfRecordsInTransaction() > 0);
+        assertTrue(s.getNumberOfPartitionsInTransaction() > 0);
+        assertTrue(s.getMetadata() != null);
       }
-      assertEquals(actual.size(), 1);
       return null;
     }
   }
@@ -123,7 +135,7 @@ public final class SpannerChangeStreamsToGcsTest {
     SpannerChangeStreamsToGcsOptions options =
         PipelineOptionsFactory.create().as(SpannerChangeStreamsToGcsOptions.class);
     options.setOutputFileFormat(FileFormat.PARQUET);
-    options.setOutputDirectory(fakeDir);
+    options.setGcsOutputDirectory(fakeDir);
     options.setOutputFilenamePrefix(FILENAME_PREFIX);
     options.setNumShards(NUM_SHARDS);
     options.setTempLocation(fakeTempLocation);
@@ -165,7 +177,7 @@ public final class SpannerChangeStreamsToGcsTest {
     SpannerChangeStreamsToGcsOptions options =
         PipelineOptionsFactory.create().as(SpannerChangeStreamsToGcsOptions.class);
     options.setOutputFileFormat(FileFormat.AVRO);
-    options.setOutputDirectory(fakeDir);
+    options.setGcsOutputDirectory(fakeDir);
     options.setOutputFilenamePrefix(FILENAME_PREFIX);
     options.setNumShards(NUM_SHARDS);
     options.setTempLocation(fakeTempLocation);
@@ -258,7 +270,7 @@ public final class SpannerChangeStreamsToGcsTest {
     options.setExperiments(experiments);
 
     options.setOutputFileFormat(FileFormat.AVRO);
-    options.setOutputDirectory(fakeDir);
+    options.setGcsOutputDirectory(fakeDir);
     options.setOutputFilenamePrefix(AVRO_FILENAME_PREFIX);
     options.setNumShards(NUM_SHARDS);
     options.setTempLocation(fakeTempLocation);
@@ -268,10 +280,11 @@ public final class SpannerChangeStreamsToGcsTest {
     result.waitUntilFinish();
 
     // Read from the output Avro file to assert that 1 data change record has been generated.
-    PCollection<DataChangeRecord> dataChangeRecords =
+    PCollection<com.google.cloud.teleport.v2.DataChangeRecord> dataChangeRecords =
         pipeline.apply(
             "readRecords",
-            AvroIO.read(DataChangeRecord.class).from(fakeDir + "/avro-output-*.avro"));
+            AvroIO.read(com.google.cloud.teleport.v2.DataChangeRecord.class)
+                .from(fakeDir + "/avro-output-*.avro"));
     PAssert.that(dataChangeRecords).satisfies(new VerifyDataChangeRecordAvro());
     pipeline.run();
 
