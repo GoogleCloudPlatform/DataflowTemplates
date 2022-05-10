@@ -15,15 +15,11 @@
  */
 package com.google.cloud.teleport.spanner.common;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
-import com.google.cloud.teleport.spanner.TypeCode;
+import com.google.cloud.teleport.spanner.ddl.Dialect;
 import com.google.common.base.Preconditions;
-import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -58,6 +54,26 @@ public final class Type implements Serializable {
   private static final Type TYPE_ARRAY_BYTES = new Type(Code.ARRAY, TYPE_BYTES, null);
   private static final Type TYPE_ARRAY_TIMESTAMP = new Type(Code.ARRAY, TYPE_TIMESTAMP, null);
   private static final Type TYPE_ARRAY_DATE = new Type(Code.ARRAY, TYPE_DATE, null);
+
+  private static final Type TYPE_PG_BOOL = new Type(Code.PG_BOOL, null, null);
+  private static final Type TYPE_PG_INT8 = new Type(Code.PG_INT8, null, null);
+  private static final Type TYPE_PG_FLOAT8 = new Type(Code.PG_FLOAT8, null, null);
+  private static final Type TYPE_PG_VARCHAR = new Type(Code.PG_VARCHAR, null, null);
+  private static final Type TYPE_PG_TEXT = new Type(Code.PG_TEXT, null, null);
+  private static final Type TYPE_PG_NUMERIC = new Type(Code.PG_NUMERIC, null, null);
+  private static final Type TYPE_PG_BYTEA = new Type(Code.PG_BYTEA, null, null);
+  private static final Type TYPE_PG_TIMESTAMPTZ = new Type(Code.PG_TIMESTAMPTZ, null, null);
+  private static final Type TYPE_PG_DATE = new Type(Code.PG_DATE, null, null);
+  private static final Type TYPE_PG_ARRAY_BOOL = new Type(Code.PG_ARRAY, TYPE_PG_BOOL, null);
+  private static final Type TYPE_PG_ARRAY_INT8 = new Type(Code.PG_ARRAY, TYPE_PG_INT8, null);
+  private static final Type TYPE_PG_ARRAY_FLOAT8 = new Type(Code.PG_ARRAY, TYPE_PG_FLOAT8, null);
+  private static final Type TYPE_PG_ARRAY_VARCHAR = new Type(Code.PG_ARRAY, TYPE_PG_VARCHAR, null);
+  private static final Type TYPE_PG_ARRAY_TEXT = new Type(Code.PG_ARRAY, TYPE_PG_TEXT, null);
+  private static final Type TYPE_PG_ARRAY_NUMERIC = new Type(Code.PG_ARRAY, TYPE_PG_NUMERIC, null);
+  private static final Type TYPE_PG_ARRAY_BYTEA = new Type(Code.PG_ARRAY, TYPE_PG_BYTEA, null);
+  private static final Type TYPE_PG_ARRAY_TIMESTAMPTZ =
+      new Type(Code.PG_ARRAY, TYPE_PG_TIMESTAMPTZ, null);
+  private static final Type TYPE_PG_ARRAY_DATE = new Type(Code.PG_ARRAY, TYPE_PG_DATE, null);
 
   private static final int AMBIGUOUS_FIELD = -1;
   private static final long serialVersionUID = -3076152125004114582L;
@@ -121,6 +137,42 @@ public final class Type implements Serializable {
     return TYPE_DATE;
   }
 
+  public static Type pgBool() {
+    return TYPE_PG_BOOL;
+  }
+
+  public static Type pgInt8() {
+    return TYPE_PG_INT8;
+  }
+
+  public static Type pgFloat8() {
+    return TYPE_PG_FLOAT8;
+  }
+
+  public static Type pgText() {
+    return TYPE_PG_TEXT;
+  }
+
+  public static Type pgVarchar() {
+    return TYPE_PG_VARCHAR;
+  }
+
+  public static Type pgNumeric() {
+    return TYPE_PG_NUMERIC;
+  }
+
+  public static Type pgBytea() {
+    return TYPE_PG_BYTEA;
+  }
+
+  public static Type pgTimestamptz() {
+    return TYPE_PG_TIMESTAMPTZ;
+  }
+
+  public static Type pgDate() {
+    return TYPE_PG_DATE;
+  }
+
   /** Returns a descriptor for an array of {@code elementType}. */
   public static Type array(Type elementType) {
     Preconditions.checkNotNull(elementType);
@@ -145,6 +197,33 @@ public final class Type implements Serializable {
         return TYPE_ARRAY_DATE;
       default:
         return new Type(Code.ARRAY, elementType, null);
+    }
+  }
+
+  /** Returns a descriptor for an array of PG {@code elementType}. */
+  public static Type pgArray(Type elementType) {
+    Preconditions.checkNotNull(elementType);
+    switch (elementType.getCode()) {
+      case PG_BOOL:
+        return TYPE_PG_ARRAY_BOOL;
+      case PG_INT8:
+        return TYPE_PG_ARRAY_INT8;
+      case PG_FLOAT8:
+        return TYPE_PG_ARRAY_FLOAT8;
+      case PG_NUMERIC:
+        return TYPE_PG_ARRAY_NUMERIC;
+      case PG_VARCHAR:
+        return TYPE_PG_ARRAY_VARCHAR;
+      case PG_TEXT:
+        return TYPE_PG_ARRAY_TEXT;
+      case PG_BYTEA:
+        return TYPE_PG_ARRAY_BYTEA;
+      case PG_TIMESTAMPTZ:
+        return TYPE_PG_ARRAY_TIMESTAMPTZ;
+      case PG_DATE:
+        return TYPE_PG_ARRAY_DATE;
+      default:
+        return new Type(Code.PG_ARRAY, elementType, null);
     }
   }
 
@@ -185,42 +264,42 @@ public final class Type implements Serializable {
 
   /** Enumerates the categories of types. */
   public enum Code {
-    BOOL(TypeCode.BOOL),
-    INT64(TypeCode.INT64),
-    NUMERIC(TypeCode.NUMERIC),
-    FLOAT64(TypeCode.FLOAT64),
-    STRING(TypeCode.STRING),
-    JSON(TypeCode.JSON),
-    BYTES(TypeCode.BYTES),
-    TIMESTAMP(TypeCode.TIMESTAMP),
-    DATE(TypeCode.DATE),
-    ARRAY(TypeCode.ARRAY),
-    STRUCT(TypeCode.STRUCT);
+    BOOL("BOOL", Dialect.GOOGLE_STANDARD_SQL),
+    INT64("INT64", Dialect.GOOGLE_STANDARD_SQL),
+    NUMERIC("NUMERIC", Dialect.GOOGLE_STANDARD_SQL),
+    FLOAT64("FLOAT64", Dialect.GOOGLE_STANDARD_SQL),
+    STRING("STRING", Dialect.GOOGLE_STANDARD_SQL),
+    JSON("JSON", Dialect.GOOGLE_STANDARD_SQL),
+    BYTES("BYTES", Dialect.GOOGLE_STANDARD_SQL),
+    TIMESTAMP("TIMESTAMP", Dialect.GOOGLE_STANDARD_SQL),
+    DATE("DATE", Dialect.GOOGLE_STANDARD_SQL),
+    ARRAY("ARRAY", Dialect.GOOGLE_STANDARD_SQL),
+    STRUCT("STRUCT", Dialect.GOOGLE_STANDARD_SQL),
+    PG_BOOL("boolean", Dialect.POSTGRESQL),
+    PG_INT8("bigint", Dialect.POSTGRESQL),
+    PG_FLOAT8("double precision", Dialect.POSTGRESQL),
+    PG_TEXT("text", Dialect.POSTGRESQL),
+    PG_VARCHAR("character varying", Dialect.POSTGRESQL),
+    PG_NUMERIC("numeric", Dialect.POSTGRESQL),
+    PG_BYTEA("bytea", Dialect.POSTGRESQL),
+    PG_TIMESTAMPTZ("timestamp with time zone", Dialect.POSTGRESQL),
+    PG_DATE("date", Dialect.POSTGRESQL),
+    PG_ARRAY("array", Dialect.POSTGRESQL);
 
-    private static final Map<TypeCode, Code> protoToCode;
+    private final String name;
+    private final Dialect dialect;
 
-    static {
-      ImmutableMap.Builder<TypeCode, Code> builder = ImmutableMap.builder();
-      for (Code code : Code.values()) {
-        builder.put(code.protoCode(), code);
-      }
-      protoToCode = builder.build();
+    Code(String name, Dialect dialect) {
+      this.name = name;
+      this.dialect = dialect;
     }
 
-    private final TypeCode protoCode;
-
-    Code(TypeCode protoCode) {
-      this.protoCode = protoCode;
+    public String getName() {
+      return name;
     }
 
-    TypeCode protoCode() {
-      return protoCode;
-    }
-
-    static Code fromProtoCode(TypeCode protoCode) {
-      Code code = protoToCode.get(protoCode);
-      checkArgument(code != null, "Invalid code: %s", protoCode);
-      return code;
+    public Dialect getDialect() {
+      return dialect;
     }
   }
 
@@ -277,7 +356,8 @@ public final class Type implements Serializable {
    * @throws IllegalStateException if {@code code() != Code.ARRAY}
    */
   public Type getArrayElementType() {
-    Preconditions.checkState(code == Code.ARRAY, "Illegal call for non-ARRAY type");
+    Preconditions.checkState(
+        code == Code.ARRAY || code == Code.PG_ARRAY, "Illegal call for non-ARRAY type");
     return arrayElementType;
   }
 
@@ -334,6 +414,9 @@ public final class Type implements Serializable {
       b.append("ARRAY<");
       arrayElementType.toString(b);
       b.append('>');
+    } else if (code == Code.PG_ARRAY) {
+      arrayElementType.toString(b);
+      b.append("[]");
     } else if (code == Code.STRUCT) {
       b.append("STRUCT<");
       for (int i = 0; i < structFields.size(); ++i) {
@@ -374,74 +457,5 @@ public final class Type implements Serializable {
   @Override
   public int hashCode() {
     return Objects.hash(code, arrayElementType, structFields);
-  }
-
-  com.google.cloud.teleport.spanner.Type toProto() {
-    com.google.cloud.teleport.spanner.Type.Builder proto =
-        com.google.cloud.teleport.spanner.Type.newBuilder();
-    proto.setCode(code.protoCode());
-    if (code == Code.ARRAY) {
-      proto.setArrayElementType(arrayElementType.toProto());
-    } else if (code == Code.STRUCT) {
-      com.google.cloud.teleport.spanner.StructType.Builder fields = proto.getStructTypeBuilder();
-      for (StructField field : structFields) {
-        fields.addFieldsBuilder().setName(field.getName()).setType(field.getType().toProto());
-      }
-    }
-    return proto.build();
-  }
-
-  static com.google.cloud.teleport.spanner.common.Type fromProto(
-      com.google.cloud.teleport.spanner.Type proto) {
-    Code type = Code.fromProtoCode(proto.getCode());
-    switch (type) {
-      case BOOL:
-        return bool();
-      case INT64:
-        return int64();
-      case FLOAT64:
-        return float64();
-      case NUMERIC:
-        return numeric();
-      case STRING:
-        return string();
-      case JSON:
-        return json();
-      case BYTES:
-        return bytes();
-      case TIMESTAMP:
-        return timestamp();
-      case DATE:
-        return date();
-      case ARRAY:
-        checkArgument(
-            proto.hasArrayElementType(),
-            "Missing expected 'array_element_type' field in 'Type' message: %s",
-            proto);
-        Type elementType;
-        try {
-          elementType = fromProto(proto.getArrayElementType());
-        } catch (IllegalArgumentException e) {
-          throw new IllegalArgumentException(
-              "Could not parse 'array_element_type' attribute in 'Type' message: " + proto, e);
-        }
-        return array(elementType);
-      case STRUCT:
-        checkArgument(
-            proto.hasStructType(),
-            "Missing expected 'struct_type' field in 'Type' message: %s",
-            proto);
-        List<StructField> fields = new ArrayList<>(proto.getStructType().getFieldsCount());
-        for (com.google.cloud.teleport.spanner.StructType.Field field :
-            proto.getStructType().getFieldsList()) {
-          checkArgument(field.hasType(), "Missing expected 'type' attribute in 'Field': %s", proto);
-          // Names may be empty; for example, the name of the column returned by "SELECT 1".
-          String name = Strings.nullToEmpty(field.getName());
-          fields.add(StructField.of(name, fromProto(field.getType())));
-        }
-        return struct(fields);
-      default:
-        throw new AssertionError("Unimplemented case: " + type);
-    }
   }
 }

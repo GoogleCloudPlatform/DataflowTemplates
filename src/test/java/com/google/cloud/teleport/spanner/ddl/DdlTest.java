@@ -112,19 +112,21 @@ public class DdlTest {
     builder
         .createTable("Users")
         .column("id")
-        .int64()
+        .pgInt8()
         .notNull()
         .endColumn()
         .column("first_name")
-        .string()
+        .pgVarchar()
         .size(10)
+        .defaultExpression("John")
         .endColumn()
         .column("last_name")
-        .type(Type.string())
+        .type(Type.pgVarchar())
         .max()
+        .defaultExpression("Lennon")
         .endColumn()
         .column("full_name")
-        .type(Type.string())
+        .type(Type.pgVarchar())
         .max()
         .generatedAs("CONCAT(first_name, ' ', last_name)")
         .stored()
@@ -156,10 +158,11 @@ public class DdlTest {
         equalToCompressingWhiteSpace(
             "ALTER DATABASE `%db_name%` SET OPTIONS ( version_retention_period = 4d )"
                 + " CREATE TABLE \"Users\" ("
-                + " `id` INT64 NOT NULL,"
-                + " `first_name` STRING(10),"
-                + " `last_name` STRING(MAX),"
-                + " `full_name` STRING(MAX) AS (CONCAT(first_name, ' ', last_name)) STORED,"
+                + " \"id\" bigint NOT NULL,"
+                + " \"first_name\" character varying(10) DEFAULT John,"
+                + " \"last_name\" character varying DEFAULT Lennon,"
+                + " \"full_name\" character varying GENERATED ALWAYS AS"
+                + " (CONCAT(first_name, ' ', last_name)) STORED,"
                 + " CONSTRAINT \"ck\" CHECK (\"first_name\" != \"last_name\"),"
                 + " PRIMARY KEY (\"id\")"
                 + " ) "
@@ -231,15 +234,15 @@ public class DdlTest {
         Ddl.builder(Dialect.POSTGRESQL)
             .createTable("Users")
             .column("id")
-            .int64()
+            .pgInt8()
             .notNull()
             .endColumn()
             .column("first_name")
-            .string()
+            .pgVarchar()
             .size(10)
             .endColumn()
             .column("last_name")
-            .type(Type.string())
+            .type(Type.pgVarchar())
             .max()
             .endColumn()
             .primaryKey()
@@ -248,15 +251,15 @@ public class DdlTest {
             .endTable()
             .createTable("Account")
             .column("id")
-            .int64()
+            .pgInt8()
             .notNull()
             .endColumn()
             .column("balanceId")
-            .int64()
+            .pgInt8()
             .notNull()
             .endColumn()
             .column("balance")
-            .float64()
+            .pgFloat8()
             .notNull()
             .endColumn()
             .primaryKey()
@@ -270,15 +273,15 @@ public class DdlTest {
         ddl.prettyPrint(),
         equalToCompressingWhiteSpace(
             "CREATE TABLE \"Users\" ("
-                + " `id`                                    INT64 NOT NULL,"
-                + " `first_name`                            STRING(10),"
-                + " `last_name`                             STRING(MAX),"
+                + " \"id\"                                    bigint NOT NULL,"
+                + " \"first_name\"                            character varying(10),"
+                + " \"last_name\"                             character varying,"
                 + " PRIMARY KEY (\"id\")"
                 + " ) "
                 + " CREATE TABLE \"Account\" ("
-                + " `id`                                    INT64 NOT NULL,"
-                + " `balanceId`                             INT64 NOT NULL,"
-                + " `balance`                               FLOAT64 NOT NULL,"
+                + " \"id\"                                    bigint NOT NULL,"
+                + " \"balanceId\"                             bigint NOT NULL,"
+                + " \"balance\"                               double precision NOT NULL,"
                 + " PRIMARY KEY (\"id\")"
                 + " ) "
                 + " INTERLEAVE IN PARENT \"Users\" ON DELETE CASCADE"));
