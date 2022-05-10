@@ -145,7 +145,7 @@ public class Ddl implements Serializable {
 
   public void prettyPrint(Appendable appendable) throws IOException {
     for (Export.DatabaseOption databaseOption : databaseOptions()) {
-      appendable.append(getDatabaseOptionsStatements(databaseOption, "%db_name%"));
+      appendable.append(getDatabaseOptionsStatements(databaseOption, "%db_name%", dialect));
       appendable.append("\n");
     }
 
@@ -262,24 +262,37 @@ public class Ddl implements Serializable {
   public List<String> setOptionsStatements(String databaseId) {
     List<String> result = new ArrayList<>();
     for (Export.DatabaseOption databaseOption : databaseOptions()) {
-      result.add(getDatabaseOptionsStatements(databaseOption, databaseId));
+      result.add(getDatabaseOptionsStatements(databaseOption, databaseId, dialect));
     }
     return result;
   }
 
   private static String getDatabaseOptionsStatements(
-      Export.DatabaseOption databaseOption, String databaseId) {
+      Export.DatabaseOption databaseOption, String databaseId, Dialect dialect) {
+    String literalQuote = DdlUtilityComponents.literalQuote(dialect);
     String formattedValue =
         databaseOption.getOptionType().equalsIgnoreCase("STRING")
-            ? "\""
+            ? literalQuote
                 + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(databaseOption.getOptionValue())
-                + "\""
+                + literalQuote
             : databaseOption.getOptionValue();
-
-    String statement =
-        String.format(
-            "ALTER DATABASE `%s` SET OPTIONS ( %s = %s )",
-            databaseId, databaseOption.getOptionName(), formattedValue);
+    String statement;
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        statement =
+            String.format(
+                "ALTER DATABASE `%s` SET OPTIONS ( %s = %s )",
+                databaseId, databaseOption.getOptionName(), formattedValue);
+        break;
+      case POSTGRESQL:
+        statement =
+            String.format(
+                "ALTER DATABASE \"%s\" SET spanner.%s = %s",
+                databaseId, databaseOption.getOptionName(), formattedValue);
+        break;
+      default:
+        throw new IllegalArgumentException(String.format("Unrecognized Dialect: %s", dialect));
+    }
     return statement;
   }
 
@@ -362,7 +375,7 @@ public class Ddl implements Serializable {
     public View.Builder createView(String name) {
       View view = views.get(name.toLowerCase());
       if (view == null) {
-        return View.builder().name(name).ddlBuilder(this);
+        return View.builder(dialect).name(name).ddlBuilder(this);
       }
       return view.toBuilder().ddlBuilder(this);
     }

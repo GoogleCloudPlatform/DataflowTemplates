@@ -36,25 +36,36 @@ public abstract class ForeignKey implements Serializable {
 
   abstract ImmutableList<String> referencedColumns();
 
+  abstract Dialect dialect();
+
+  public static Builder builder(Dialect dialect) {
+    return new AutoValue_ForeignKey.Builder().dialect(dialect);
+  }
+
   public static Builder builder() {
-    return new AutoValue_ForeignKey.Builder();
+    return builder(Dialect.GOOGLE_STANDARD_SQL);
   }
 
   private void prettyPrint(Appendable appendable) throws IOException {
+    String identifierQuote = DdlUtilityComponents.identifierQuote(dialect());
     String columnsString =
-        columns().stream().map(c -> "`" + c + "`").collect(Collectors.joining(", "));
+        columns().stream()
+            .map(c -> identifierQuote + c + identifierQuote)
+            .collect(Collectors.joining(", "));
     String referencedColumnsString =
-        referencedColumns().stream().map(c -> "`" + c + "`").collect(Collectors.joining(", "));
+        referencedColumns().stream()
+            .map(c -> identifierQuote + c + identifierQuote)
+            .collect(Collectors.joining(", "));
     appendable
-        .append("ALTER TABLE `")
+        .append("ALTER TABLE " + identifierQuote)
         .append(table())
-        .append("` ADD CONSTRAINT `")
+        .append(identifierQuote + " ADD CONSTRAINT " + identifierQuote)
         .append(name())
-        .append("` FOREIGN KEY (")
+        .append(identifierQuote + " FOREIGN KEY (")
         .append(columnsString)
-        .append(") REFERENCES `")
+        .append(") REFERENCES " + identifierQuote)
         .append(referencedTable())
-        .append(("` ("))
+        .append((identifierQuote + " ("))
         .append(referencedColumnsString)
         .append(")");
   }
@@ -83,6 +94,8 @@ public abstract class ForeignKey implements Serializable {
     public abstract Builder table(String name);
 
     public abstract Builder referencedTable(String name);
+
+    abstract Builder dialect(Dialect dialect);
 
     public abstract ImmutableList.Builder<String> columnsBuilder();
 

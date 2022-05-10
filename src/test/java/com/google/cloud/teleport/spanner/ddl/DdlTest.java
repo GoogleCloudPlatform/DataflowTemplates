@@ -149,6 +149,7 @@ public class DdlTest {
                 Export.DatabaseOption.newBuilder()
                     .setOptionName("version_retention_period")
                     .setOptionValue("4d")
+                    .setOptionType("STRING")
                     .build())
             .build();
     builder.mergeDatabaseOptions(export.getDatabaseOptionsList());
@@ -156,7 +157,7 @@ public class DdlTest {
     assertThat(
         ddl.prettyPrint(),
         equalToCompressingWhiteSpace(
-            "ALTER DATABASE `%db_name%` SET OPTIONS ( version_retention_period = 4d )"
+            "ALTER DATABASE \"%db_name%\" SET spanner.version_retention_period = '4d'"
                 + " CREATE TABLE \"Users\" ("
                 + " \"id\" bigint NOT NULL,"
                 + " \"first_name\" character varying(10) DEFAULT John,"
@@ -318,6 +319,8 @@ public class DdlTest {
         Export.DatabaseOption.newBuilder()
             .setOptionName("version_retention_period")
             .setOptionValue("4d")
+            .setOptionValue("4d")
+            .setOptionType("STRING")
             .build());
     dbOptionList.add(
         Export.DatabaseOption.newBuilder()
@@ -330,7 +333,7 @@ public class DdlTest {
     assertThat(optionStatements.size(), is(1));
     assertThat(
         optionStatements.get(0),
-        is("ALTER DATABASE `database_id` SET OPTIONS ( version_retention_period = 4d )"));
+        is("ALTER DATABASE \"database_id\" SET spanner.version_retention_period = '4d'"));
   }
 
   @Test
@@ -403,6 +406,51 @@ public class DdlTest {
             "CREATE UNIQUE INDEX \"user_index\" ON \"User\"(\"first_name\" ASC NULLS FIRST,"
                 + " \"last_name\" DESC NULLS LAST, \"first_nick_name\" ASC NULLS LAST,"
                 + " \"last_nick_name\" DESC NULLS FIRST) INCLUDE (\"full_name\")"));
+  }
+
+  @Test
+  public void pgTestCheckConstraint() {
+    CheckConstraint checkConstraint =
+        CheckConstraint.builder(Dialect.POSTGRESQL)
+            .name("name_check")
+            .expression("\"first_name\" != \"last_name\"")
+            .build();
+    assertThat(
+        checkConstraint.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CONSTRAINT \"name_check\" CHECK (\"first_name\" != \"last_name\")"));
+  }
+
+  @Test
+  public void pgTestForeignKey() {
+    ForeignKey.Builder builder =
+        ForeignKey.builder(Dialect.POSTGRESQL)
+            .name("account_to_user")
+            .table("Account")
+            .referencedTable("User");
+    builder.columnsBuilder().add("account_id", "owner_name");
+    builder.referencedColumnsBuilder().add("user_id", "full_name");
+    ForeignKey foreignKey = builder.build();
+    assertThat(
+        foreignKey.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "ALTER TABLE \"Account\" ADD CONSTRAINT \"account_to_user\" FOREIGN KEY"
+                + " (\"account_id\", \"owner_name\") REFERENCES \"User\" (\"user_id\","
+                + " \"full_name\")"));
+  }
+
+  @Test
+  public void pgTestView() {
+    View view =
+        View.builder(Dialect.POSTGRESQL)
+            .name("user_view")
+            .query("SELECT * FROM \"User\"")
+            .security(View.SqlSecurity.INVOKER)
+            .build();
+    assertThat(
+        view.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE VIEW \"user_view\" SQL SECURITY INVOKER AS SELECT * FROM \"User\""));
   }
 
   @Test
