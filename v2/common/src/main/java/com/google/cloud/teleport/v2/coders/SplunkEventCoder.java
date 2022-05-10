@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.coders;
 
-import com.google.cloud.teleport.v2.values.SplunkEvent;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import java.io.ByteArrayInputStream;
@@ -28,6 +27,7 @@ import org.apache.beam.sdk.coders.BigEndianLongCoder;
 import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.io.splunk.SplunkEvent;
 import org.apache.beam.sdk.values.TypeDescriptor;
 import org.apache.commons.io.IOUtils;
 
@@ -63,8 +63,8 @@ public class SplunkEventCoder extends AtomicCoder<SplunkEvent> {
     STRING_NULLABLE_CODER.encode(value.source(), out);
     STRING_NULLABLE_CODER.encode(value.sourceType(), out);
     STRING_NULLABLE_CODER.encode(value.index(), out);
-    String fields = value.fields() == null ? null : value.fields().toString();
-    STRING_NULLABLE_CODER.encode(fields, out);
+    // String fields = value.fields() == null ? null : value.fields().toString();
+    // STRING_NULLABLE_CODER.encode(fields, out);
     STRING_UTF_8_CODER.encode(value.event(), out);
   }
 
@@ -93,7 +93,7 @@ public class SplunkEventCoder extends AtomicCoder<SplunkEvent> {
       decodeVersion1or2(streamCopy, builder);
     }
 
-    return builder.build();
+    return builder.create();
   }
 
   private void decodeWithVersion(int version, InputStream in, SplunkEvent.Builder builder)
@@ -103,9 +103,9 @@ public class SplunkEventCoder extends AtomicCoder<SplunkEvent> {
 
     if (version >= VERSION_3) {
       String fields = STRING_NULLABLE_CODER.decode(in);
-      if (fields != null) {
-        builder.withFields(GSON.fromJson(fields, JsonObject.class));
-      }
+      // if (fields != null) {
+      //   builder.withFields(GSON.fromJson(fields, JsonObject.class));
+      // }
 
       String event = STRING_UTF_8_CODER.decode(in);
       builder.withEvent(event);
@@ -153,9 +153,9 @@ public class SplunkEventCoder extends AtomicCoder<SplunkEvent> {
       event = STRING_UTF_8_CODER.decode(in);
     }
 
-    if (fields != null) {
-      builder.withFields(fields);
-    }
+    // if (fields != null) {
+    //   builder.withFields(fields);
+    // }
     builder.withEvent(event);
   }
 

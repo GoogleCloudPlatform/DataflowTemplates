@@ -18,27 +18,42 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.coders.SplunkEventCoder;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
+import com.google.cloud.teleport.v2.transforms.ErrorConverters.LogErrors;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.v2.transforms.SplunkConverters;
 import com.google.cloud.teleport.v2.transforms.SplunkConverters.SplunkOptions;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
-import com.google.cloud.teleport.v2.values.SplunkEvent;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.io.splunk.SplunkEvent;
 import org.apache.beam.sdk.io.splunk.SplunkIO;
 import org.apache.beam.sdk.io.splunk.SplunkWriteError;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * The {@link com.google.cloud.teleport.v2.templates.PubSubToSplunk} pipeline is a streaming pipeline which ingests data from Cloud
+ * Pub/Sub, executes a UDF, converts the output to {@link org.apache.beam.sdk.io.splunk.SplunkEvent}s and writes those records
+ * into Splunk's HEC endpoint. Any errors which occur in the execution of the UDF, conversion to
+ * {@link org.apache.beam.sdk.io.splunk.SplunkEvent} or writing to HEC will be streamed into a Pub/Sub topic.
+ *
+ * <p>NOTE: This is a work in progress, do not attempt to run this pipeline
+ */
 public class GCSToSplunk {
 
   /** The tag for the headers of the CSV if required. */
@@ -66,6 +81,13 @@ public class GCSToSplunk {
   private static final TupleTag<FailsafeElement<String, String>> SPLUNK_EVENT_DEADLETTER_OUT =
       new TupleTag<FailsafeElement<String, String>>() {};
 
+  /** The tag for all of the elements that failed. */
+  private static final TupleTag<FailsafeElement<String, String>> COMBINED_ERRORS =
+      new TupleTag<FailsafeElement<String, String>>() {};
+
+  /** The tag for the output all of the elements that failed. */
+  private static final TupleTag<String> COMBINED_ERRORS_OUT = new TupleTag<String>() {};
+
   /** Logger for class. */
   private static final Logger LOG = LoggerFactory.getLogger(GCSToSplunk.class);
 
@@ -80,6 +102,11 @@ public class GCSToSplunk {
     String getInputFormat();
 
     void setInputFormat(String inputFormat);
+
+    @Description("Pattern of where to write errors, ex: gs://mybucket/somepath/errors.txt")
+    String getInvalidOutputPath();
+
+    void setInvalidOutputPath(ValueProvider<String> value);
   }
 
   /**
@@ -121,7 +148,7 @@ public class GCSToSplunk {
      *  5) Write SplunkEvents to Splunk's HEC end point.
      *  5a) Wrap write failures into a FailsafeElement.
      *  6) Collect errors from UDF transform (#3), SplunkEvent transform (#4)
-     *     and writing to Splunk HEC (#5) and stream into a Pub/Sub deadletter topic.
+     *     and writing to Splunk HEC (#5) and place into a GCS folder.
      */
 
     PCollectionTuple convertedCsvLines =
@@ -130,18 +157,18 @@ public class GCSToSplunk {
              * Step 1: Read CSV file(s) from Cloud Storage using {@link CsvConverters.ReadCsv}.
              */
             .apply(
-            "ReadCsv",
-            CsvConverters.ReadCsv.newBuilder()
-                .setCsvFormat(options.getCsvFormat())
-                .setDelimiter(options.getDelimiter())
-                .setHasHeaders(options.getContainsHeaders())
-                .setInputFileSpec(options.getInputFileSpec())
-                .setHeaderTag(CSV_HEADERS)
-                .setLineTag(CSV_LINES)
-                .setFileEncoding(options.getCsvFileEncoding())
-                .build())
+                "ReadCsv",
+                CsvConverters.ReadCsv.newBuilder()
+                    .setCsvFormat(options.getCsvFormat())
+                    .setDelimiter(options.getDelimiter())
+                    .setHasHeaders(options.getContainsHeaders())
+                    .setInputFileSpec(options.getInputFileSpec())
+                    .setHeaderTag(CSV_HEADERS)
+                    .setLineTag(CSV_LINES)
+                    .setFileEncoding(options.getCsvFileEncoding())
+                    .build())
 
-    // 2) Convert message to FailsafeElement for processing.
+            // 2) Convert message to FailsafeElement for processing.
             .get(CSV_LINES)
             .apply(
                 "ConvertToFailsafeElement",
@@ -171,10 +198,53 @@ public class GCSToSplunk {
     PCollection<SplunkWriteError> writeErrors =
         convertToEventTuple
             .get(SPLUNK_EVENT_OUT)
-            .apply("WriteToSplunk", SplunkIO.write(options.getUrl(), options.getToken()));
-    // .withBatchCount(options.getBatchCount())
-    // .withParallelism(options.getParallelism())
-    // .withDisableCertificateValidation(options.getDisableCertificateValidation()));
+            .apply(
+                "WriteToSplunk",
+                SplunkIO.write(options.getUrl(), options.getToken())
+                    .withBatchCount(options.getBatchCount())
+                    .withParallelism(options.getParallelism())
+                    .withDisableCertificateValidation(options.getDisableCertificateValidation()));
+
+    // 5a) Wrap write failures into a FailsafeElement.
+    PCollection<FailsafeElement<String, String>> wrappedSplunkWriteErrors =
+        writeErrors.apply(
+            "WrapSplunkWriteErrors",
+            ParDo.of(
+                new DoFn<SplunkWriteError, FailsafeElement<String, String>>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext context) {
+                    SplunkWriteError error = context.element();
+                    FailsafeElement<String, String> failsafeElement =
+                        FailsafeElement.of(error.payload(), error.payload());
+
+                    if (error.statusMessage() != null) {
+                      failsafeElement.setErrorMessage(error.statusMessage());
+                    }
+
+                    if (error.statusCode() != null) {
+                      failsafeElement.setErrorMessage(
+                          String.format("Splunk write status code: %d", error.statusCode()));
+                    }
+                    context.output(failsafeElement);
+                  }
+                }));
+
+    // 6) Collect errors from UDF transform (#3), SplunkEvent transform (#4)
+    //     and writing to Splunk HEC (#5) and place into a GCS folder.
+    PCollectionTuple.of(
+            COMBINED_ERRORS,
+            PCollectionList.of(
+                    ImmutableList.of(
+                        convertToEventTuple.get(SPLUNK_EVENT_DEADLETTER_OUT),
+                        wrappedSplunkWriteErrors,
+                        convertedCsvLines.get(UDF_DEADLETTER_OUT)))
+                .apply("FlattenErrors", Flatten.pCollections()))
+        .apply(
+            LogErrors.newBuilder()
+                .setErrorWritePath(options.getInvalidOutputPath())
+                .setErrorTag(COMBINED_ERRORS_OUT)
+                .build());
 
     return pipeline.run();
   }

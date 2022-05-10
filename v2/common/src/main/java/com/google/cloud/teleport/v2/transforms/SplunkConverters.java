@@ -17,11 +17,9 @@ package com.google.cloud.teleport.v2.transforms;
 
 import com.google.api.client.util.DateTime;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
-import com.google.cloud.teleport.v2.values.SplunkEvent;
 import com.google.common.base.Throwables;
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
+import org.apache.beam.sdk.io.splunk.SplunkEvent;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.Description;
@@ -256,16 +254,17 @@ public class SplunkConverters {
                               builder.withEvent(event);
                             }
 
-                            String fields = metadata.optString(HEC_FIELDS_KEY);
-                            if (!fields.isEmpty()) {
-                              try {
-                                builder.withFields(GSON.fromJson(fields, JsonObject.class));
-                              } catch (JsonParseException e) {
-                                LOG.warn(
-                                    "Unable to convert 'fields' metadata value:{} into JSON object",
-                                    fields);
-                              }
-                            }
+                            // String fields = metadata.optString(HEC_FIELDS_KEY);
+                            // if (!fields.isEmpty()) {
+                            //   try {
+                            //     builder.withFields(GSON.fromJson(fields, JsonObject.class));
+                            //   } catch (JsonParseException e) {
+                            //     LOG.warn(
+                            //         "Unable to convert 'fields' metadata value:{} into JSON
+                            // object",
+                            //         fields);
+                            //   }
+                            // }
                             // We remove the _metadata entry from the payload
                             // to avoid duplicates in Splunk. The relevant entries
                             // have been parsed and populated in the SplunkEvent metadata.
@@ -288,7 +287,7 @@ public class SplunkConverters {
                           // this is expected behavior.
                         }
 
-                        context.output(splunkEventOutputTag, builder.build());
+                        context.output(splunkEventOutputTag, builder.create());
                         CONVERSION_SUCCESS.inc();
 
                       } catch (Exception e) {
