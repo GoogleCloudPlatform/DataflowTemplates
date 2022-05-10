@@ -319,6 +319,45 @@ public class CopyDbTest {
   }
 
   @Test
+  public void changeStreams() throws Exception {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("T1")
+            .endTable()
+            .createTable("T2")
+            .column("key")
+            .int64()
+            .endColumn()
+            .column("c1")
+            .int64()
+            .endColumn()
+            .column("c2")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("key")
+            .end()
+            .endTable()
+            .createTable("T3")
+            .endTable()
+            .createChangeStream("ChangeStreamAll")
+            .forClause("FOR ALL")
+            .options(
+                ImmutableList.of(
+                    "retention_period=\"7d\"", "value_capture_type=\"OLD_AND_NEW_VALUES\""))
+            .endChangeStream()
+            .createChangeStream("ChangeStreamEmpty")
+            .endChangeStream()
+            .createChangeStream("ChangeStreamTableColumns")
+            .forClause("FOR `T1`, `T2`(`c1`, `c2`), `T3`()")
+            .endChangeStream()
+            .build();
+    createAndPopulate(ddl, 0);
+    runTest();
+  }
+
+  @Test
   public void randomSchema() throws Exception {
     Ddl ddl = RandomDdlGenerator.builder().build().generate();
     createAndPopulate(ddl, 100);
@@ -351,6 +390,7 @@ public class CopyDbTest {
         new ImportTransform(
             destConfig,
             source,
+            ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),

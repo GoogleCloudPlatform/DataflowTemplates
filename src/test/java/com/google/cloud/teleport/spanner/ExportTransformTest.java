@@ -100,7 +100,13 @@ public class ExportTransformTest {
   @Test
   public void buildDatabaseManifestFile() throws InvalidProtocolBufferException {
     Map<String, String> tablesAndManifests =
-        ImmutableMap.of("table1", "table1 manifest", "table2", "table2 manifest");
+        ImmutableMap.of(
+            "table1",
+            "table1 manifest",
+            "table2",
+            "table2 manifest",
+            "changeStream",
+            "changeStream manifest");
 
     PCollection<List<Export.Table>> metadataTables =
         pipeline
@@ -115,6 +121,7 @@ public class ExportTransformTest {
                 .build());
     Ddl.Builder ddlBuilder = Ddl.builder();
     ddlBuilder.mergeDatabaseOptions(databaseOptions);
+    ddlBuilder.createChangeStream("changeStream").endChangeStream();
     Ddl ddl = ddlBuilder.build();
     PCollectionView<Ddl> ddlView = pipeline.apply(Create.of(ddl)).apply(View.asSingleton());
     PCollection<String> databaseManifest =
@@ -148,6 +155,12 @@ public class ExportTransformTest {
                   String optionValue = dbOptions.getOptionValue();
                   assertThat(optionName, is("version_retention_period"));
                   assertThat(optionValue, is("5d"));
+
+                  assertThat(manifestProto.getChangeStreamsCount(), is(1));
+                  assertThat(manifestProto.getChangeStreams(0).getName(), is("changeStream"));
+                  assertThat(
+                      manifestProto.getChangeStreams(0).getManifestFile(),
+                      is("changeStream-manifest.json"));
                   return null;
                 });
 

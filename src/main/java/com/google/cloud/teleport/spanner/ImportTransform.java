@@ -20,6 +20,7 @@ import com.google.cloud.spanner.DatabaseAdminClient;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.spanner.ExportProtos.Export;
 import com.google.cloud.teleport.spanner.ExportProtos.TableManifest;
+import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.common.annotations.VisibleForTesting;
@@ -100,6 +101,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
   // are finished, respectively.
   private final ValueProvider<Boolean> waitForIndexes;
   private final ValueProvider<Boolean> waitForForeignKeys;
+  private final ValueProvider<Boolean> waitForChangeStreams;
   private final ValueProvider<Boolean> earlyIndexCreateFlag;
   private final ValueProvider<Integer> ddlCreationTimeoutInMinutes;
 
@@ -108,12 +110,14 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
       ValueProvider<String> importDirectory,
       ValueProvider<Boolean> waitForIndexes,
       ValueProvider<Boolean> waitForForeignKeys,
+      ValueProvider<Boolean> waitForChangeStreams,
       ValueProvider<Boolean> earlyIndexCreateFlag,
       ValueProvider<Integer> ddlCreationTimeoutInMinutes) {
     this.spannerConfig = spannerConfig;
     this.importDirectory = importDirectory;
     this.waitForIndexes = waitForIndexes;
     this.waitForForeignKeys = waitForForeignKeys;
+    this.waitForChangeStreams = waitForChangeStreams;
     this.earlyIndexCreateFlag = earlyIndexCreateFlag;
     this.ddlCreationTimeoutInMinutes = ddlCreationTimeoutInMinutes;
   }
@@ -132,7 +136,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
     PCollection<KV<String, String>> schemas =
         tableFiles
             .apply(
-                "File per table",
+                "File per table, view or change stream",
                 ParDo.of(
                     new DoFn<KV<String, List<String>>, KV<String, String>>() {
 
@@ -179,6 +183,10 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
         createTableOutput
             .get(CreateTables.getPendingForeignKeysTag())
             .apply("As Foreign keys view", View.asSingleton());
+    final PCollectionView<List<String>> pendingChangeStreams =
+        createTableOutput
+            .get(CreateTables.getPendingChangeStreamsTag())
+            .apply("As change streams view", View.asSingleton());
 
     PCollectionView<Ddl> ddlView = ddl.apply("Cloud Spanner DDL as view", View.asSingleton());
 
@@ -259,7 +267,10 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
             "Create Indexes", new ApplyDDLTransform(spannerConfig, pendingIndexes, waitForIndexes))
         .apply(
             "Add Foreign Keys",
-            new ApplyDDLTransform(spannerConfig, pendingForeignKeys, waitForForeignKeys));
+            new ApplyDDLTransform(spannerConfig, pendingForeignKeys, waitForForeignKeys))
+        .apply(
+            "Create Change Streams",
+            new ApplyDDLTransform(spannerConfig, pendingChangeStreams, waitForChangeStreams));
     return PDone.in(begin.getPipeline());
   }
 
@@ -367,9 +378,15 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
       return pendingForeignKeysTag;
     }
 
+    public static TupleTag<List<String>> getPendingChangeStreamsTag() {
+      return pendingChangeStreamsTag;
+    }
+
     private static final TupleTag<Ddl> ddlObjectTag = new TupleTag<Ddl>() {};
     private static final TupleTag<List<String>> pendingIndexesTag = new TupleTag<List<String>>() {};
     private static final TupleTag<List<String>> pendingForeignKeysTag =
+        new TupleTag<List<String>>() {};
+    private static final TupleTag<List<String>> pendingChangeStreamsTag =
         new TupleTag<List<String>>() {};
 
     public CreateTables(
@@ -417,11 +434,15 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           Schema.Parser parser = new Schema.Parser();
                           List<KV<String, Schema>> missingTables = new ArrayList<>();
                           List<KV<String, Schema>> missingViews = new ArrayList<>();
+                          List<KV<String, Schema>> missingChangeStreams = new ArrayList<>();
                           for (KV<String, String> kv : avroSchemas) {
                             if (informationSchemaDdl.table(kv.getKey()) == null
-                                && informationSchemaDdl.view(kv.getKey()) == null) {
+                                && informationSchemaDdl.view(kv.getKey()) == null
+                                && informationSchemaDdl.changeStream(kv.getKey()) == null) {
                               Schema schema = parser.parse(kv.getValue());
-                              if (schema.getProp("spannerViewQuery") != null) {
+                              if (schema.getProp(AvroUtil.CHANGE_STREAM_FOR_CLAUSE) != null) {
+                                missingChangeStreams.add(KV.of(kv.getKey(), schema));
+                              } else if (schema.getProp("spannerViewQuery") != null) {
                                 missingViews.add(KV.of(kv.getKey(), schema));
                               } else {
                                 missingTables.add(KV.of(kv.getKey(), schema));
@@ -431,6 +452,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
                           List<String> createIndexStatements = new ArrayList<>();
                           List<String> createForeignKeyStatements = new ArrayList<>();
+                          List<String> createChangeStreamStatements = new ArrayList<>();
 
                           Ddl.Builder mergedDdl = informationSchemaDdl.toBuilder();
                           List<String> ddlStatements = new ArrayList<>();
@@ -482,6 +504,19 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                             c.output(pendingForeignKeysTag, createForeignKeyStatements);
                           }
 
+                          if (!missingChangeStreams.isEmpty()) {
+                            Ddl.Builder builder = Ddl.builder();
+                            for (KV<String, Schema> kv : missingChangeStreams) {
+                              ChangeStream changeStream =
+                                  converter.toChangeStream(kv.getKey(), kv.getValue());
+                              builder.addChangeStream(changeStream);
+                            }
+                            Ddl newDdl = builder.build();
+                            createChangeStreamStatements.addAll(
+                                newDdl.createChangeStreamStatements());
+                          }
+                          c.output(pendingChangeStreamsTag, createChangeStreamStatements);
+
                           if (!ddlStatements.isEmpty()) {
                             DatabaseAdminClient databaseAdminClient =
                                 spannerAccessor.getDatabaseAdminClient();
@@ -511,7 +546,10 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                       })
                   .withSideInputs(avroSchemasView, informationSchemaView, manifestView)
                   .withOutputTags(
-                      ddlObjectTag, TupleTagList.of(pendingIndexesTag).and(pendingForeignKeysTag)));
+                      ddlObjectTag,
+                      TupleTagList.of(pendingIndexesTag)
+                          .and(pendingForeignKeysTag)
+                          .and(pendingChangeStreamsTag)));
     }
   }
 
@@ -584,6 +622,12 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           c.output(KV.of(table.getName(), fullPath));
                         }
                       }
+                      for (Export.Table changeStream : proto.getChangeStreamsList()) {
+                        for (String f : changeStream.getDataFilesList()) {
+                          String fullPath = GcsUtil.joinPath(importDirectory.get(), f);
+                          c.output(KV.of(changeStream.getName(), fullPath));
+                        }
+                      }
                     }
                   }));
 
@@ -599,6 +643,11 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                       for (Export.Table table : proto.getTablesList()) {
                         if (!Strings.isNullOrEmpty(table.getManifestFile())) {
                           c.output(KV.of(table.getName(), table.getManifestFile()));
+                        }
+                      }
+                      for (Export.Table changeStream : proto.getChangeStreamsList()) {
+                        if (!Strings.isNullOrEmpty(changeStream.getManifestFile())) {
+                          c.output(KV.of(changeStream.getName(), changeStream.getManifestFile()));
                         }
                       }
                     }

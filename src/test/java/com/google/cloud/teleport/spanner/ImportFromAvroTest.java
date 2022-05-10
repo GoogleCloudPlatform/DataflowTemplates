@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.spanner;
 
+import static org.hamcrest.Matchers.equalToCompressingWhiteSpace;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 
@@ -27,6 +28,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
@@ -422,6 +426,114 @@ public class ImportFromAvroTest {
                 .build()));
   }
 
+  @Test
+  public void changeStreams() throws Exception {
+    Map<String, Schema> avroFiles = new HashMap<>();
+    avroFiles.put(
+        "ChangeStreamAll.avro",
+        SchemaBuilder.record("ChangeStreamAll")
+            .prop("spannerChangeStreamForClause", "FOR ALL")
+            .prop("spannerOption_0", "retention_period=\"7d\"")
+            .prop("spannerOption_1", "value_capture_type=\"OLD_AND_NEW_VALUES\"")
+            .fields()
+            .endRecord());
+    avroFiles.put(
+        "ChangeStreamEmpty.avro",
+        SchemaBuilder.record("ChangeStreamEmpty")
+            .prop("spannerChangeStreamForClause", "")
+            .fields()
+            .endRecord());
+    avroFiles.put(
+        "ChangeStreamTable.avro",
+        SchemaBuilder.record("ChangeStreamTable")
+            .prop("spannerChangeStreamForClause", "FOR T")
+            .fields()
+            .endRecord());
+    avroFiles.put(
+        "ChangeStreamColumns.avro",
+        SchemaBuilder.record("ChangeStreamColumns")
+            .prop("spannerChangeStreamForClause", "FOR T(c1, c2)")
+            .fields()
+            .endRecord());
+    avroFiles.put(
+        "ChangeStreamKeyOnly.avro",
+        SchemaBuilder.record("ChangeStreamKeyOnly")
+            .prop("spannerChangeStreamForClause", "FOR T()")
+            .fields()
+            .endRecord());
+
+    ExportProtos.Export.Builder exportProtoBuilder = ExportProtos.Export.newBuilder();
+    for (Entry<String, Schema> entry : avroFiles.entrySet()) {
+      String fileName = entry.getKey();
+      Schema schema = entry.getValue();
+      exportProtoBuilder.addChangeStreams(
+          ExportProtos.Export.Table.newBuilder()
+              .setName(schema.getName())
+              .addDataFiles(fileName)
+              .build());
+      // Create the Avro files to be imported.
+      File avroFile = tmpDir.newFile(fileName);
+      try (DataFileWriter<GenericRecord> fileWriter =
+          new DataFileWriter<>(new GenericDatumWriter<>(schema))) {
+        fileWriter.create(schema, avroFile);
+      }
+    }
+
+    // Create the database manifest file.
+    ExportProtos.Export exportProto = exportProtoBuilder.build();
+    File manifestFile = tmpDir.newFile("spanner-export.json");
+    String manifestFileLocation = manifestFile.getParent();
+    Files.write(
+        manifestFile.toPath(),
+        JsonFormat.printer().print(exportProto).getBytes(StandardCharsets.UTF_8));
+
+    // Create the target database.
+    String spannerSchema =
+        "CREATE TABLE `T` ("
+            + "`id` INT64 NOT NULL,"
+            + "`c1` BOOL,"
+            + "`c2` INT64,"
+            + ") PRIMARY KEY (`id`)";
+    spannerServer.createDatabase(dbName, Collections.singleton(spannerSchema));
+
+    // Run the import pipeline.
+    importPipeline.apply(
+        "Import",
+        new ImportTransform(
+            spannerServer.getSpannerConfig(dbName),
+            ValueProvider.StaticValueProvider.of(manifestFileLocation),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(30)));
+    PipelineResult importResult = importPipeline.run();
+    importResult.waitUntilFinish();
+
+    Ddl ddl;
+    try (ReadOnlyTransaction ctx = spannerServer.getDbClient(dbName).readOnlyTransaction()) {
+      ddl = new InformationSchemaScanner(ctx).scan();
+    }
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE `T` ("
+                + " `id`                                    INT64 NOT NULL,"
+                + " `c1`                                    BOOL,"
+                + " `c2`                                    INT64,"
+                + " ) PRIMARY KEY (`id` ASC)"
+                + " CREATE CHANGE STREAM `ChangeStreamAll`"
+                + " FOR ALL"
+                + " OPTIONS (retention_period=\"7d\", value_capture_type=\"OLD_AND_NEW_VALUES\")"
+                + " CREATE CHANGE STREAM `ChangeStreamColumns`"
+                + " FOR `T`(`c1`, `c2`)"
+                + " CREATE CHANGE STREAM `ChangeStreamEmpty`"
+                + " CREATE CHANGE STREAM `ChangeStreamKeyOnly`"
+                + " FOR `T`()"
+                + " CREATE CHANGE STREAM `ChangeStreamTable`"
+                + " FOR `T`"));
+  }
+
   private void runTest(Schema avroSchema, String spannerSchema, Iterable<GenericRecord> records)
       throws Exception {
     // Create the Avro file to be imported.
@@ -465,6 +577,7 @@ public class ImportFromAvroTest {
         new ImportTransform(
             spannerServer.getSpannerConfig(dbName),
             ValueProvider.StaticValueProvider.of(manifestFileLocation),
+            ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),

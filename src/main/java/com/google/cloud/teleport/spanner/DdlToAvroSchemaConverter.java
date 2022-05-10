@@ -118,7 +118,7 @@ public class DdlToAvroSchemaConverter {
       recordBuilder.prop("googleFormatVersion", version);
       recordBuilder.prop("googleStorage", "CloudSpanner");
       recordBuilder.prop(
-          "spannerChangeStreamForClause",
+          AvroUtil.CHANGE_STREAM_FOR_CLAUSE,
           changeStream.forClause() == null ? "" : changeStream.forClause());
       if (changeStream.options() != null) {
         for (int i = 0; i < changeStream.options().size(); i++) {

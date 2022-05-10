@@ -22,6 +22,7 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.spanner.ExportProtos.Export;
 import com.google.cloud.teleport.spanner.ExportProtos.TableManifest;
+import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.templates.common.SpannerConverters.CreateTransactionFnWithTimestamp;
@@ -290,6 +291,21 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   }
                 }));
 
+    PCollection<String> allChangeStreamNames =
+        ddl.apply(
+            "List all change stream names",
+            ParDo.of(
+                new DoFn<Ddl, String>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    Ddl ddl = c.element();
+                    for (ChangeStream changeStream : ddl.changeStreams()) {
+                      c.output(changeStream.name());
+                    }
+                  }
+                }));
+
     // Generate a unique output directory name.
     final PCollectionView<String> outputDirectoryName =
         p.apply(Create.of(1))
@@ -400,8 +416,33 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   }
                 }));
 
-    emptyTablesAndViews =
-        emptyTablesAndViews.apply(
+    PCollection<KV<String, Iterable<String>>> changeStreams =
+        allChangeStreamNames.apply(
+            "Export change streams",
+            ParDo.of(
+                new DoFn<String, KV<String, Iterable<String>>>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    String changeStreamName = c.element();
+                    LOG.info("Exporting change stream: " + changeStreamName);
+                    // This file will contain the schema definition for the change stream.
+                    c.output(
+                        KV.of(
+                            changeStreamName,
+                            Collections.singleton(changeStreamName + ".avro-00000-of-00001")));
+                  }
+                }));
+
+    // Empty tables, views and change streams are handled together, because we export them as empty
+    // Avro files that only contain the Avro schemas.
+    PCollection<KV<String, Iterable<String>>> emptySchemaFiles =
+        PCollectionList.of(emptyTablesAndViews)
+            .and(changeStreams)
+            .apply("Combine all empty schema files", Flatten.pCollections());
+
+    emptySchemaFiles =
+        emptySchemaFiles.apply(
             "Save empty schema files",
             ParDo.of(
                     new DoFn<KV<String, Iterable<String>>, KV<String, Iterable<String>>>() {
@@ -411,10 +452,11 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                         Map<String, SerializableSchemaSupplier> schemaMap =
                             c.sideInput(avroSchemas);
                         KV<String, Iterable<String>> kv = c.element();
-                        String tableName = kv.getKey();
+                        String objectName = kv.getKey();
                         String fileName = kv.getValue().iterator().next();
 
-                        Schema schema = schemaMap.get(tableName).get();
+                        Schema schema = schemaMap.get(objectName).get();
+
                         DatumWriter<GenericRecord> datumWriter = new GenericDatumWriter<>(schema);
 
                         Path fullPath =
@@ -427,7 +469,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                         } catch (IOException e) {
                           throw new RuntimeException(e);
                         }
-                        c.output(KV.of(tableName, Collections.singleton(fullPath.toString())));
+                        c.output(KV.of(objectName, Collections.singleton(fullPath.toString())));
                       }
 
                       /**
@@ -473,6 +515,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                           return Channels.newOutputStream(gcsChannel);
                         } else {
                           // Avro file is created on local filesystem (for testing).
+                          Files.createDirectories(outputPath.getParent());
                           return Files.newOutputStream(outputPath);
                         }
                       }
@@ -481,7 +524,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
     PCollection<KV<String, Iterable<String>>> allFiles =
         PCollectionList.of(tableFiles)
-            .and(emptyTablesAndViews)
+            .and(emptySchemaFiles)
             .apply("Combine all files", Flatten.pCollections());
 
     PCollection<KV<String, String>> tableManifests =
@@ -704,10 +747,16 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
     @ProcessElement
     public void processElement(
-        @Element List<Export.Table> metadataTables, OutputReceiver<String> out, ProcessContext c) {
+        @Element List<Export.Table> exportMetadata, OutputReceiver<String> out, ProcessContext c) {
       Ddl ddl = c.sideInput(ddlView);
       ExportProtos.Export.Builder exportManifest = ExportProtos.Export.newBuilder();
-      exportManifest.addAllTables(metadataTables);
+      for (Export.Table obj : exportMetadata) {
+        if (ddl.changeStream(obj.getName()) != null) {
+          exportManifest.addChangeStreams(obj);
+        } else {
+          exportManifest.addTables(obj);
+        }
+      }
       exportManifest.addAllDatabaseOptions(ddl.databaseOptions());
       try {
         out.output(JsonFormat.printer().print(exportManifest.build()));

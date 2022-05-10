@@ -42,7 +42,7 @@ public class AvroSchemaToDdlConverter {
     for (Schema schema : avroSchemas) {
       if (schema.getProp("spannerViewQuery") != null) {
         builder.addView(toView(null, schema));
-      } else if (schema.getProp("spannerChangeStreamForClause") != null) {
+      } else if (schema.getProp(AvroUtil.CHANGE_STREAM_FOR_CLAUSE) != null) {
         builder.addChangeStream(toChangeStream(null, schema));
       } else {
         builder.addTable(toTable(null, schema));
@@ -73,7 +73,7 @@ public class AvroSchemaToDdlConverter {
     ChangeStream.Builder builder =
         ChangeStream.builder()
             .name(changeStreamName)
-            .forClause(schema.getProp("spannerChangeStreamForClause"));
+            .forClause(schema.getProp(AvroUtil.CHANGE_STREAM_FOR_CLAUSE));
 
     ImmutableList.Builder<String> changeStreamOptions = ImmutableList.builder();
     for (int i = 0; ; i++) {
