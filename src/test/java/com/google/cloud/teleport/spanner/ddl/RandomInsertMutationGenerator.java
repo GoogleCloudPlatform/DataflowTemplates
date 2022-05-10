@@ -22,16 +22,19 @@ import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
@@ -143,10 +146,20 @@ public class RandomInsertMutationGenerator {
     public TableSupplier(Table table) {
       this.table = checkNotNull(table);
       RandomValueGenerator randomValueGenerator = RandomValueGenerator.defaultInstance();
-
+      Dialect dialect = table.dialect();
+      Set<String> primaryKeyNameSet = new HashSet<>();
+      if (dialect == Dialect.POSTGRESQL) {
+        for (IndexColumn primaryKey : table.primaryKeys()) {
+          primaryKeyNameSet.add(primaryKey.name());
+        }
+      }
       for (Column column : table.columns()) {
         if (!column.isGenerated()) {
-          valueGenerators.put(column.name(), randomValueGenerator.valueStream(column).iterator());
+          valueGenerators.put(
+              column.name(),
+              randomValueGenerator
+                  .valueStream(column, primaryKeyNameSet.contains(column.name()))
+                  .iterator());
         }
       }
     }
@@ -181,6 +194,7 @@ public class RandomInsertMutationGenerator {
             ByteArray bytes = value.isNull() ? null : value.getBytes();
             builder.set(columnName).to(bytes);
             break;
+          case PG_NUMERIC:
           case STRING:
             String string = value.isNull() ? null : value.getString();
             builder.set(columnName).to(string);
@@ -192,6 +206,10 @@ public class RandomInsertMutationGenerator {
           case DATE:
             Date date = value.isNull() ? null : value.getDate();
             builder.set(columnName).to(date);
+            break;
+          case NUMERIC:
+            BigDecimal numeric = value.isNull() ? null : value.getNumeric();
+            builder.set(columnName).to(numeric);
             break;
           case ARRAY:
             switch (value.getType().getArrayElementType().getCode()) {
@@ -222,6 +240,10 @@ public class RandomInsertMutationGenerator {
               case DATE:
                 List<Date> dates = value.isNull() ? null : value.getDateArray();
                 builder.set(columnName).toDateArray(dates);
+                break;
+              case NUMERIC:
+                List<BigDecimal> numerics = value.isNull() ? null : value.getNumericArray();
+                builder.set(columnName).toNumericArray(numerics);
                 break;
             }
             break;

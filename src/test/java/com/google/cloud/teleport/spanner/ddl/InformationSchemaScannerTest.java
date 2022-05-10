@@ -71,11 +71,26 @@ public class InformationSchemaScannerTest {
     return scanner.scan();
   }
 
+  private Ddl getPgDatabaseDdl() {
+    BatchClient batchClient = spannerServer.getBatchClient(dbId);
+    BatchReadOnlyTransaction batchTx =
+        batchClient.batchReadOnlyTransaction(TimestampBound.strong());
+    InformationSchemaScanner scanner = new InformationSchemaScanner(batchTx, Dialect.POSTGRESQL);
+    return scanner.scan();
+  }
+
   @Test
   public void emptyDatabase() throws Exception {
     spannerServer.createDatabase(dbId, Collections.emptyList());
     Ddl ddl = getDatabaseDdl();
     assertThat(ddl, equalTo(Ddl.builder().build()));
+  }
+
+  @Test
+  public void pgEmptyDatabase() throws Exception {
+    spannerServer.createPgDatabase(dbId, Collections.emptyList());
+    Ddl ddl = getPgDatabaseDdl();
+    assertThat(ddl, equalTo(Ddl.builder(Dialect.POSTGRESQL).build()));
   }
 
   @Test
@@ -157,6 +172,85 @@ public class InformationSchemaScannerTest {
   }
 
   @Test
+  public void tableWithAllPgTypes() throws Exception {
+    String allTypes =
+        "CREATE TABLE \"alltypes\" ("
+            + " \"first_name\"                            character varying NOT NULL,"
+            + " \"last_name\"                             character varying(5) NOT NULL,"
+            + " \"id\"                                    bigint NOT NULL,"
+            + " \"bool_field\"                            boolean,"
+            + " \"int64_field\"                           bigint,"
+            + " \"float64_field\"                         double precision,"
+            + " \"string_field\"                          character varying(76),"
+            + " \"bytes_field\"                           bytea,"
+            + " \"numeric_field\"                         numeric,"
+            + " \"timestamp_field\"                       timestamp with time zone,"
+            + " \"date_field\"                            date,"
+            + " \"arr_bool_field\"                        boolean[],"
+            + " \"arr_int64_field\"                       bigint[],"
+            + " \"arr_float64_field\"                     double precision[],"
+            + " \"arr_string_field\"                      character varying(15)[],"
+            + " \"arr_bytes_field\"                       bytea[],"
+            + " \"arr_timestamp_field\"                   timestamp with time zone[],"
+            + " \"arr_date_field\"                        date[],"
+            + " \"arr_numeric_field\"                     numeric[],"
+            + " PRIMARY KEY (\"first_name\", \"last_name\", \"id\")"
+            + " )";
+
+    spannerServer.createPgDatabase(dbId, Collections.singleton(allTypes));
+    Ddl ddl = getPgDatabaseDdl();
+
+    assertThat(ddl.allTables(), hasSize(1));
+    assertThat(ddl.table("alltypes"), notNullValue());
+    assertThat(ddl.table("aLlTYPeS"), notNullValue());
+
+    Table table = ddl.table("alltypes");
+    assertThat(table.columns(), hasSize(19));
+
+    // Check case sensitiveness.
+    assertThat(table.column("first_name"), notNullValue());
+    assertThat(table.column("fIrst_NaME"), notNullValue());
+    assertThat(table.column("last_name"), notNullValue());
+    assertThat(table.column("LAST_name"), notNullValue());
+
+    // Check types/sizes.
+    assertThat(table.column("bool_field").type(), equalTo(Type.pgBool()));
+    assertThat(table.column("int64_field").type(), equalTo(Type.pgInt8()));
+    assertThat(table.column("float64_field").type(), equalTo(Type.pgFloat8()));
+    assertThat(table.column("string_field").type(), equalTo(Type.pgVarchar()));
+    assertThat(table.column("string_field").size(), equalTo(76));
+    assertThat(table.column("bytes_field").type(), equalTo(Type.pgBytea()));
+    assertThat(table.column("timestamp_field").type(), equalTo(Type.pgTimestamptz()));
+    assertThat(table.column("numeric_field").type(), equalTo(Type.pgNumeric()));
+    assertThat(table.column("date_field").type(), equalTo(Type.pgDate()));
+    assertThat(table.column("arr_bool_field").type(), equalTo(Type.pgArray(Type.pgBool())));
+    assertThat(table.column("arr_int64_field").type(), equalTo(Type.pgArray(Type.pgInt8())));
+    assertThat(table.column("arr_float64_field").type(), equalTo(Type.pgArray(Type.pgFloat8())));
+    assertThat(table.column("arr_string_field").type(), equalTo(Type.pgArray(Type.pgVarchar())));
+    assertThat(table.column("arr_string_field").size(), equalTo(15));
+    assertThat(table.column("arr_bytes_field").type(), equalTo(Type.pgArray(Type.pgBytea())));
+    assertThat(
+        table.column("arr_timestamp_field").type(), equalTo(Type.pgArray(Type.pgTimestamptz())));
+    assertThat(table.column("arr_date_field").type(), equalTo(Type.pgArray(Type.pgDate())));
+    assertThat(table.column("arr_numeric_field").type(), equalTo(Type.pgArray(Type.pgNumeric())));
+
+    // Check not-null. Primary keys are implictly forced to be not-null.
+    assertThat(table.column("first_name").notNull(), is(true));
+    assertThat(table.column("last_name").notNull(), is(true));
+    assertThat(table.column("id").notNull(), is(true));
+
+    // Check primary key.
+    assertThat(table.primaryKeys(), hasSize(3));
+    List<IndexColumn> pk = table.primaryKeys();
+    assertThat(pk.get(0).name(), equalTo("first_name"));
+    assertThat(pk.get(1).name(), equalTo("last_name"));
+    assertThat(pk.get(2).name(), equalTo("id"));
+
+    // Verify pretty print.
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(allTypes));
+  }
+
+  @Test
   public void simpleView() throws Exception {
     String tableDef =
         "CREATE TABLE Users ("
@@ -230,6 +324,58 @@ public class InformationSchemaScannerTest {
   }
 
   @Test
+  public void pgInterleavedIn() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            " CREATE TABLE level0 ("
+                + " id0                                   bigint NOT NULL,"
+                + " val0                                  character varying,"
+                + " PRIMARY KEY (id0)"
+                + " )",
+            " CREATE TABLE level1 ("
+                + " id0                                   bigint NOT NULL,"
+                + " id1                                   bigint NOT NULL,"
+                + " val1                                  character varying,"
+                + " PRIMARY KEY (id0, id1)"
+                + " ) INTERLEAVE IN PARENT level0",
+            " CREATE TABLE level2 ("
+                + " id0                                   bigint NOT NULL,"
+                + " id1                                   bigint NOT NULL,"
+                + " id2                                   bigint NOT NULL,"
+                + " val2                                  character varying,"
+                + " PRIMARY KEY (id0, id1, id2)"
+                + " ) INTERLEAVE IN PARENT level1",
+            " CREATE TABLE level2_1 ("
+                + " id0                                   bigint NOT NULL,"
+                + " id1                                   bigint NOT NULL,"
+                + " id2_1                                 bigint NOT NULL,"
+                + " val2                                  character varying,"
+                + " PRIMARY KEY (id0, id1, id2_1)"
+                + " ) INTERLEAVE IN PARENT level1 ON DELETE CASCADE");
+
+    spannerServer.createPgDatabase(dbId, statements);
+    Ddl ddl = getPgDatabaseDdl();
+
+    assertThat(ddl.allTables(), hasSize(4));
+    HashMultimap<Integer, String> levels = ddl.perLevelView();
+    assertThat(levels.get(0), hasSize(1));
+    assertThat(levels.get(1), hasSize(1));
+    assertThat(levels.get(2), hasSize(2));
+    assertThat(levels.get(3), hasSize(0));
+    assertThat(levels.get(4), hasSize(0));
+    assertThat(levels.get(5), hasSize(0));
+    assertThat(levels.get(6), hasSize(0));
+    assertThat(levels.get(7), hasSize(0));
+
+    assertThat(ddl.table("lEVEl0").interleaveInParent(), nullValue());
+    assertThat(ddl.table("level1").interleaveInParent(), equalTo("level0"));
+    assertThat(ddl.table("level2").interleaveInParent(), equalTo("level1"));
+    assertThat(ddl.table("level2").onDeleteCascade(), is(false));
+    assertThat(ddl.table("level2_1").interleaveInParent(), equalTo("level1"));
+    assertThat(ddl.table("level2_1").onDeleteCascade(), is(true));
+  }
+
+  @Test
   public void reserved() throws Exception {
     String statement =
         "CREATE TABLE `where` ("
@@ -248,6 +394,30 @@ public class InformationSchemaScannerTest {
     assertThat(table.column("join"), notNullValue());
     assertThat(table.column("table"), notNullValue());
     assertThat(table.column("null"), notNullValue());
+
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
+  }
+
+  @Test
+  public void pgReserved() throws Exception {
+    String statement =
+        "CREATE TABLE \"where\" ("
+            + " \"JOIN\"                                  character varying NOT NULL,"
+            + " \"TABLE\"                                 bigint,"
+            + " \"NULL\"                                  bigint NOT NULL,"
+            + " PRIMARY KEY (\"NULL\")"
+            + " )";
+
+    spannerServer.createPgDatabase(dbId, Collections.singleton(statement));
+    Ddl ddl = getPgDatabaseDdl();
+
+    assertThat(ddl.allTables(), hasSize(1));
+
+    assertThat(ddl.table("where"), notNullValue());
+    Table table = ddl.table("where");
+    assertThat(table.column("JOIN"), notNullValue());
+    assertThat(table.column("Table"), notNullValue());
+    assertThat(table.column("NULL"), notNullValue());
 
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
   }
@@ -274,6 +444,31 @@ public class InformationSchemaScannerTest {
   }
 
   @Test
+  public void pgIndexes() throws Exception {
+    // Prefix indexes to ensure ordering.
+    // Unique index is implicitly null-filtered.
+    List<String> statements =
+        Arrays.asList(
+            "CREATE TABLE \"Users\" ("
+                + " \"id\"                                    bigint NOT NULL,"
+                + " \"first_name\"                            character varying(10),"
+                + " \"last_name\"                             character varying,"
+                + " \"AGE\"                                   bigint,"
+                + " PRIMARY KEY (\"id\")"
+                + " )",
+            " CREATE UNIQUE INDEX \"a_last_name_idx\" ON  \"Users\"(\"last_name\" ASC) INCLUDE"
+                + " (\"first_name\") WHERE first_name IS NOT NULL AND last_name IS NOT"
+                + " NULL",
+            " CREATE INDEX \"b_age_idx\" ON \"Users\"(\"AGE\" DESC) WHERE \"AGE\" IS NOT NULL",
+            " CREATE UNIQUE INDEX \"c_first_name_idx\" ON \"Users\"(\"first_name\" ASC) WHERE"
+                + " first_name IS NOT NULL");
+
+    spannerServer.createPgDatabase(dbId, statements);
+    Ddl ddl = getPgDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
+  @Test
   public void foreignKeys() throws Exception {
     List<String> statements =
         Arrays.asList(
@@ -294,6 +489,29 @@ public class InformationSchemaScannerTest {
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
   }
 
+  @Test
+  public void pgForeignKeys() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "CREATE TABLE \"Ref\" ("
+                + " \"id1\"                               bigint NOT NULL,"
+                + " \"id2\"                               bigint NOT NULL,"
+                + " PRIMARY KEY (\"id1\", \"id2\")"
+                + " )",
+            " CREATE TABLE \"Tab\" ("
+                + " \"key\"                               bigint NOT NULL,"
+                + " \"id1\"                               bigint NOT NULL,"
+                + " \"id2\"                               bigint NOT NULL,"
+                + " PRIMARY KEY (\"key\")"
+                + " )",
+            " ALTER TABLE \"Tab\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"id1\", \"id2\")"
+                + " REFERENCES \"Ref\" (\"id2\", \"id1\")");
+
+    spannerServer.createPgDatabase(dbId, statements);
+    Ddl ddl = getPgDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
   // TODO: enable this test once CHECK constraints are enabled
   // @Test
   public void checkConstraints() throws Exception {
@@ -307,6 +525,22 @@ public class InformationSchemaScannerTest {
 
     spannerServer.createDatabase(dbId, statements);
     Ddl ddl = getDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
+  @Test
+  public void pgCheckConstraints() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "CREATE TABLE \"T\" ("
+                + " \"id\"     bigint NOT NULL,"
+                + " \"A\"      bigint NOT NULL,"
+                + " CONSTRAINT \"ck\" CHECK ((\"A\" > '0'::bigint)),"
+                + " PRIMARY KEY (\"id\")"
+                + " )");
+
+    spannerServer.createPgDatabase(dbId, statements);
+    Ddl ddl = getPgDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
   }
 
@@ -339,6 +573,31 @@ public class InformationSchemaScannerTest {
   }
 
   @Test
+  public void pgGeneratedColumns() throws Exception {
+    String statement =
+        "CREATE TABLE \"T\" ( \"id\"                       bigint NOT NULL,"
+            + " \"generated\"                              bigint NOT NULL GENERATED ALWAYS AS"
+            + " (\"id\"/1) STORED,"
+            + " PRIMARY KEY (\"id\"))";
+
+    spannerServer.createPgDatabase(dbId, Collections.singleton(statement));
+    Ddl ddl = getPgDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
+  }
+
+  @Test
+  public void pgDefaultColumns() throws Exception {
+    String statement =
+        "CREATE TABLE \"T\" ( \"id\"                       bigint NOT NULL,"
+            + " \"generated\"                              bigint NOT NULL DEFAULT '10'::bigint,"
+            + " PRIMARY KEY (\"id\") )";
+
+    spannerServer.createPgDatabase(dbId, Collections.singleton(statement));
+    Ddl ddl = getPgDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
+  }
+
+  @Test
   public void databaseOptions() throws Exception {
     List<String> statements =
         Arrays.asList(
@@ -361,6 +620,30 @@ public class InformationSchemaScannerTest {
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
   }
 
+  @Test
+  public void pgDatabaseOptions() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "ALTER DATABASE \"" + dbId + "\" SET spanner.version_retention_period = '5d'\n",
+            "CREATE TABLE \"Users\" ("
+                + " \"id\"                                    bigint NOT NULL,"
+                + " \"first_name\"                            character varying(10),"
+                + " \"last_name\"                             character varying,"
+                + " \"age\"                                   bigint,"
+                + " PRIMARY KEY (\"id\")"
+                + " ) ",
+            " CREATE INDEX \"a_last_name_idx\" ON "
+                + " \"Users\"(\"last_name\" ASC) INCLUDE (\"first_name\")",
+            " CREATE INDEX \"b_age_idx\" ON \"Users\"(\"age\" DESC)",
+            " CREATE INDEX \"c_first_name_idx\" ON \"Users\"(\"first_name\" ASC)");
+
+    spannerServer.createPgDatabase(dbId, statements);
+    Ddl ddl = getPgDatabaseDdl();
+    String alterStatement = statements.get(0);
+    statements.set(0, alterStatement.replace(dbId, "%db_name%"));
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+  
   @Test
   public void changeStreams() throws Exception {
     List<String> statements =
