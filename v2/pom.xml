@@ -691,6 +691,8 @@
         <module>streaming-data-generator</module>
         <module>kafka-to-pubsub</module>
         <module>kafka-common</module>
+        <module>mongodb-to-bigquery</module>
+        <module>bigquery-to-mongodb</module>
     </modules>
 
 </project>
