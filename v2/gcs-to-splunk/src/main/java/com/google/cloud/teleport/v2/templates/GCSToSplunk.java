@@ -47,10 +47,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link com.google.cloud.teleport.v2.templates.PubSubToSplunk} pipeline is a streaming pipeline which ingests data from Cloud
- * Pub/Sub, executes a UDF, converts the output to {@link org.apache.beam.sdk.io.splunk.SplunkEvent}s and writes those records
- * into Splunk's HEC endpoint. Any errors which occur in the execution of the UDF, conversion to
- * {@link org.apache.beam.sdk.io.splunk.SplunkEvent} or writing to HEC will be streamed into a Pub/Sub topic.
+ * The {@link com.google.cloud.teleport.v2.templates.PubSubToSplunk} pipeline is a streaming
+ * pipeline which ingests data from Cloud Pub/Sub, executes a UDF, converts the output to {@link
+ * org.apache.beam.sdk.io.splunk.SplunkEvent}s and writes those records into Splunk's HEC endpoint.
+ * Any errors which occur in the execution of the UDF, conversion to {@link
+ * org.apache.beam.sdk.io.splunk.SplunkEvent} or writing to HEC will be streamed into a Pub/Sub
+ * topic.
  *
  * <p>NOTE: This is a work in progress, do not attempt to run this pipeline
  */

@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.transforms;
 import com.google.api.client.util.DateTime;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Throwables;
-import com.google.gson.Gson;
 import org.apache.beam.sdk.io.splunk.SplunkEvent;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -39,7 +38,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Collection of utility {@link PTransform}s, {@link DoFn} and {@link PipelineOptions} used by
- * pipelines that process and sink data using {@link com.google.cloud.teleport.splunk.SplunkIO}.
+ * pipelines that process and sink data using {@link org.apache.beam.sdk.io.splunk.SplunkIO}.
  */
 public class SplunkConverters {
 
@@ -58,10 +57,7 @@ public class SplunkConverters {
   private static final String HEC_TIME_KEY = "time";
   private static final String HEC_SOURCE_KEY = "source";
   private static final String HEC_SOURCE_TYPE_KEY = "sourcetype";
-  private static final String HEC_FIELDS_KEY = "fields";
   private static final String TIMESTAMP_KEY = "timestamp";
-
-  private static final Gson GSON = new Gson();
 
   /**
    * Returns a {@link FailsafeStringToSplunkEvent} {@link PTransform} that consumes {@link
@@ -254,17 +250,6 @@ public class SplunkConverters {
                               builder.withEvent(event);
                             }
 
-                            // String fields = metadata.optString(HEC_FIELDS_KEY);
-                            // if (!fields.isEmpty()) {
-                            //   try {
-                            //     builder.withFields(GSON.fromJson(fields, JsonObject.class));
-                            //   } catch (JsonParseException e) {
-                            //     LOG.warn(
-                            //         "Unable to convert 'fields' metadata value:{} into JSON
-                            // object",
-                            //         fields);
-                            //   }
-                            // }
                             // We remove the _metadata entry from the payload
                             // to avoid duplicates in Splunk. The relevant entries
                             // have been parsed and populated in the SplunkEvent metadata.

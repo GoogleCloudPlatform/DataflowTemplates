@@ -63,8 +63,6 @@ public class SplunkEventCoder extends AtomicCoder<SplunkEvent> {
     STRING_NULLABLE_CODER.encode(value.source(), out);
     STRING_NULLABLE_CODER.encode(value.sourceType(), out);
     STRING_NULLABLE_CODER.encode(value.index(), out);
-    // String fields = value.fields() == null ? null : value.fields().toString();
-    // STRING_NULLABLE_CODER.encode(fields, out);
     STRING_UTF_8_CODER.encode(value.event(), out);
   }
 
@@ -102,11 +100,6 @@ public class SplunkEventCoder extends AtomicCoder<SplunkEvent> {
     decodeCommonFields(in, builder);
 
     if (version >= VERSION_3) {
-      String fields = STRING_NULLABLE_CODER.decode(in);
-      // if (fields != null) {
-      //   builder.withFields(GSON.fromJson(fields, JsonObject.class));
-      // }
-
       String event = STRING_UTF_8_CODER.decode(in);
       builder.withEvent(event);
     }
@@ -152,10 +145,6 @@ public class SplunkEventCoder extends AtomicCoder<SplunkEvent> {
       in.reset();
       event = STRING_UTF_8_CODER.decode(in);
     }
-
-    // if (fields != null) {
-    //   builder.withFields(fields);
-    // }
     builder.withEvent(event);
   }
 
