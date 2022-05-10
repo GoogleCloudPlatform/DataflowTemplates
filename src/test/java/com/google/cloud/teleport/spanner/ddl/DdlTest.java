@@ -334,6 +334,78 @@ public class DdlTest {
   }
 
   @Test
+  public void pgTestIndex() {
+    Index.Builder builder =
+        Index.builder(Dialect.POSTGRESQL)
+            .name("user_index")
+            .table("User")
+            .unique()
+            .filter("\"first_name\" IS NOT NULL AND \"last_name\" IS NOT NULL");
+    builder
+        .columns()
+        .create()
+        .name("first_name")
+        .asc()
+        .endIndexColumn()
+        .create()
+        .name("last_name")
+        .desc()
+        .endIndexColumn()
+        .create()
+        .name("full_name")
+        .storing()
+        .endIndexColumn()
+        .end();
+    Index index = builder.build();
+    assertThat(
+        index.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE UNIQUE INDEX \"user_index\" ON \"User\"(\"first_name\" ASC,"
+                + " \"last_name\" DESC) INCLUDE (\"full_name\") WHERE \"first_name\" IS"
+                + " NOT NULL AND \"last_name\" IS NOT NULL"));
+  }
+
+  @Test
+  public void pgTestIndexNullsOrder() {
+    Index.Builder builder =
+        Index.builder(Dialect.POSTGRESQL).name("user_index").table("User").unique();
+    builder
+        .columns()
+        .create()
+        .name("first_name")
+        .asc()
+        .nullsFirst()
+        .endIndexColumn()
+        .create()
+        .name("last_name")
+        .desc()
+        .nullsLast()
+        .endIndexColumn()
+        .create()
+        .name("first_nick_name")
+        .asc()
+        .nullsLast()
+        .endIndexColumn()
+        .create()
+        .name("last_nick_name")
+        .desc()
+        .nullsFirst()
+        .endIndexColumn()
+        .create()
+        .name("full_name")
+        .storing()
+        .endIndexColumn()
+        .end();
+    Index index = builder.build();
+    assertThat(
+        index.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE UNIQUE INDEX \"user_index\" ON \"User\"(\"first_name\" ASC NULLS FIRST,"
+                + " \"last_name\" DESC NULLS LAST, \"first_nick_name\" ASC NULLS LAST,"
+                + " \"last_nick_name\" DESC NULLS FIRST) INCLUDE (\"full_name\")"));
+  }
+
+  @Test
   public void changeStreams() {
     Ddl ddl =
         Ddl.builder()

@@ -38,13 +38,21 @@ public abstract class Index implements Serializable {
 
   abstract boolean unique();
 
+  // restricted for gsql
   abstract boolean nullFiltered();
+
+  // restricted for pg
+  @Nullable
+  abstract String filter();
 
   @Nullable
   abstract String interleaveIn();
 
   public static Builder builder(Dialect dialect) {
-    return new AutoValue_Index.Builder().dialect(dialect).nullFiltered(false).unique(false);
+    return new AutoValue_Index.Builder()
+        .dialect(dialect)
+        .nullFiltered(false)
+        .unique(false);
   }
 
   public static Builder builder() {
@@ -52,6 +60,52 @@ public abstract class Index implements Serializable {
   }
 
   public void prettyPrint(Appendable appendable) throws IOException {
+    switch (dialect()) {
+      case GOOGLE_STANDARD_SQL:
+        prettyPrintGsql(appendable);
+        break;
+      case POSTGRESQL:
+        prettyPrintPg(appendable);
+        break;
+      default:
+        throw new IllegalArgumentException(String.format("Unrecognized dialect: ", dialect()));
+    }
+  }
+
+  private void prettyPrintPg(Appendable appendable) throws IOException {
+    appendable.append("CREATE");
+    if (unique()) {
+      appendable.append(" UNIQUE");
+    }
+    appendable.append(" INDEX \"").append(name()).append("\" ON \"").append(table()).append("\"");
+
+    String indexColumnsString =
+        indexColumns().stream()
+            .filter(c -> c.order() != IndexColumn.Order.STORING)
+            .map(c -> c.prettyPrint())
+            .collect(Collectors.joining(", "));
+    appendable.append("(").append(indexColumnsString).append(")");
+
+    String storingString =
+        indexColumns().stream()
+            .filter(c -> c.order() == IndexColumn.Order.STORING)
+            .map(c -> "\"" + c.name() + "\"")
+            .collect(Collectors.joining(", "));
+
+    if (!storingString.isEmpty()) {
+      appendable.append(" INCLUDE (").append(storingString).append(")");
+    }
+
+    if (interleaveIn() != null) {
+      appendable.append(" INTERLEAVE IN \"").append(interleaveIn()).append("\"");
+    }
+
+    if (filter() != null && !filter().isEmpty()) {
+      appendable.append(" WHERE ").append(filter());
+    }
+  }
+
+  private void prettyPrintGsql(Appendable appendable) throws IOException {
     appendable.append("CREATE");
     if (unique()) {
       appendable.append(" UNIQUE");
@@ -77,6 +131,7 @@ public abstract class Index implements Serializable {
     if (!storingString.isEmpty()) {
       appendable.append(" STORING (").append(storingString).append(")");
     }
+
     if (interleaveIn() != null) {
       appendable.append(", INTERLEAVE IN ").append(interleaveIn());
     }
@@ -138,6 +193,8 @@ public abstract class Index implements Serializable {
     public Builder nullFiltered() {
       return nullFiltered(true);
     }
+
+    public abstract Builder filter(String filter);
 
     public abstract Builder interleaveIn(String interleaveIn);
 
