@@ -19,6 +19,14 @@ As of November 18, 2021, our default branch is now named "main". This does not
 affect forks. If you would like your fork and its local clone to reflect these
 changes you can follow [GitHub's branch renaming guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-branches-in-your-repository/renaming-a-branch).
 
+## Building
+
+Maven commands should be run on the `unified-templates.xml` aggregator POM. An example would be:
+
+```
+mvn clean install -f unified-templates.xml -pl v2/pubsub-binary-to-bigquery -am
+```
+
 ## Template Pipelines
 
 * [BigQuery to Bigtable](v2/bigquery-to-bigtable/src/main/java/com/google/cloud/teleport/v2/templates/BigQueryToBigtable.java)
