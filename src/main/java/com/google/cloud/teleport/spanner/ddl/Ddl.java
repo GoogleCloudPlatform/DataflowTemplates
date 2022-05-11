@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.ExportProtos.Export;
 import com.google.common.base.Function;
 import com.google.common.collect.Collections2;

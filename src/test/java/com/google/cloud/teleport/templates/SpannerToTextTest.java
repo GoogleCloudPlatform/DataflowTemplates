@@ -17,9 +17,11 @@ package com.google.cloud.teleport.templates;
 
 import static org.junit.Assert.assertEquals;
 
+import com.google.cloud.spanner.Dialect;
+import com.google.cloud.spanner.ResultSet;
+import com.google.cloud.spanner.Statement;
 import com.google.cloud.teleport.spanner.IntegrationTest;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
-import com.google.cloud.teleport.spanner.ddl.Dialect;
 import com.google.cloud.teleport.templates.common.SpannerConverters;
 import com.google.cloud.teleport.templates.common.SpannerConverters.CreateTransactionFnWithTimestamp;
 import com.google.common.collect.Lists;
@@ -29,7 +31,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.sql.Timestamp;
-import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import org.apache.beam.sdk.io.TextIO;
@@ -108,9 +109,28 @@ public final class SpannerToTextTest {
     spannerServer.populateRandomData(db, ddl, numBatches);
   }
 
-  String getCurrentTimestamp() {
-    Instant instant = Instant.now();
-    return instant.toString();
+  String getCurrentTimestamp(Dialect dialect) {
+    String sql;
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        sql = "SELECT CURRENT_TIMESTAMP();";
+        break;
+      case POSTGRESQL:
+        sql = "SELECT now();";
+        break;
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
+    String timestamp;
+    try (ResultSet resultSet =
+        spannerServer
+            .getDbClient(sourceDb)
+            .singleUseReadOnlyTransaction()
+            .executeQuery(Statement.of(sql))) {
+      resultSet.next();
+      timestamp = resultSet.getTimestamp(0).toString();
+    }
+    return timestamp;
   }
 
   /* Validates behavior of database export without specifying timestamp
@@ -147,10 +167,7 @@ public final class SpannerToTextTest {
     exportDbAtTime(sourceDb, destDbPrefix + chkpt1, chkpt1, "", exportPipeline1, tmpDir);
 
     // Save the timestamp directly after the export
-    String chkPt1Ts = getCurrentTimestamp();
-
-    // Sleep for some time before adding more to the table
-    Thread.sleep(10000);
+    String chkPt1Ts = getCurrentTimestamp(Dialect.GOOGLE_STANDARD_SQL);
 
     // Add more records to the table, export the database and note the timestamp ts3
     spannerServer.populateRandomData(sourceDb, ddl, 100);
@@ -205,10 +222,8 @@ public final class SpannerToTextTest {
     exportDbAtTime(sourceDb, destDbPrefix + chkpt1, chkpt1, "", exportPipeline1, tmpDir);
 
     // Save the timestamp directly after the export
-    String chkPt1Ts = getCurrentTimestamp();
+    String chkPt1Ts = getCurrentTimestamp(Dialect.POSTGRESQL);
 
-    // Sleep for some time before adding more to the table
-    Thread.sleep(10000);
     // Add more records to the table, export the database and note the timestamp ts3
     spannerServer.populateRandomData(sourceDb, ddl, 100);
 

@@ -19,6 +19,7 @@ import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.spanner.common.NumericUtils;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Table;
@@ -113,7 +114,9 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
           builder.set(column.name()).to(readNumeric(record, avroType, fieldName).orElse(null));
           break;
         case PG_NUMERIC:
-          builder.set(column.name()).to(readPgNumeric(record, avroType, fieldName).orElse(null));
+          builder
+              .set(column.name())
+              .to(Value.pgNumeric(readPgNumeric(record, avroType, fieldName).orElse(null)));
           break;
         case ARRAY:
         case PG_ARRAY:

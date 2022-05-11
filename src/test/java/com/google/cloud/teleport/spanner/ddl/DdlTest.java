@@ -22,6 +22,7 @@ import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingW
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.ExportProtos.Export;
 import com.google.cloud.teleport.spanner.common.Type;
 import com.google.common.collect.ImmutableList;

@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.common.escape.Escaper;
 import com.google.common.escape.Escapers;
 

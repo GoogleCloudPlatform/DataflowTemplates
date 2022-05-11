@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.spanner.ddl;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.common.Type;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;

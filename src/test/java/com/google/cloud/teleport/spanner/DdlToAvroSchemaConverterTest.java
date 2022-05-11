@@ -22,10 +22,10 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.common.NumericUtils;
 import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
-import com.google.cloud.teleport.spanner.ddl.Dialect;
 import com.google.cloud.teleport.spanner.ddl.View;
 import com.google.common.collect.ImmutableList;
 import java.util.Collection;

@@ -16,9 +16,9 @@
 package com.google.cloud.teleport.spanner;
 
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.spanner.common.NumericUtils;
-import com.google.cloud.teleport.spanner.ddl.Dialect;
 import com.google.common.base.Strings;
 import java.nio.ByteBuffer;
 import java.util.List;

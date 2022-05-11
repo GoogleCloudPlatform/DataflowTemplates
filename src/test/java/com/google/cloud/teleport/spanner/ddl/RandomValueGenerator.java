@@ -52,13 +52,13 @@ public class RandomValueGenerator {
             threshold = -1;
           }
           if (random.nextInt(100) < threshold) {
-            return generateNullValue(column.type());
+            return generateNullOrNaNValue(column.type());
           }
           return generate(column);
         });
   }
 
-  private Value generateNullValue(Type type) {
+  private Value generateNullOrNaNValue(Type type) {
     switch (type.getCode()) {
       case BOOL:
       case PG_BOOL:
@@ -68,6 +68,9 @@ public class RandomValueGenerator {
         return Value.int64(null);
       case FLOAT64:
       case PG_FLOAT8:
+        if (random.nextBoolean()) {
+          return Value.float64(Double.NaN);
+        }
         return Value.float64(null);
       case BYTES:
       case PG_BYTEA:
@@ -85,6 +88,9 @@ public class RandomValueGenerator {
       case NUMERIC:
         return Value.numeric(null);
       case PG_NUMERIC:
+        if (random.nextBoolean()) {
+          return Value.pgNumeric("NaN");
+        }
         return Value.pgNumeric(null);
       case ARRAY:
       case PG_ARRAY:

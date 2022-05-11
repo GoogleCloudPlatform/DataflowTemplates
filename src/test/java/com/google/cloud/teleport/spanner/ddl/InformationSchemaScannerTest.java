@@ -26,6 +26,7 @@ import static org.junit.Assert.assertThat;
 
 import com.google.cloud.spanner.BatchClient;
 import com.google.cloud.spanner.BatchReadOnlyTransaction;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.spanner.IntegrationTest;
 import com.google.cloud.teleport.spanner.SpannerServerResource;
@@ -272,6 +273,30 @@ public class InformationSchemaScannerTest {
     assertThat(ddl.view("nAmes"), sameInstance(view));
 
     assertThat(view.query(), equalTo("SELECT u.name FROM Users u"));
+  }
+
+  @Test
+  public void pgSimpleView() throws Exception {
+    String tableDef =
+        "CREATE TABLE \"Users\" ("
+            + " id bigint NOT NULL,"
+            + " name character varying,"
+            + " PRIMARY KEY (id)) ";
+    String viewDef = "CREATE VIEW \"Names\" SQL SECURITY INVOKER AS SELECT u.name FROM \"Users\" u";
+
+    spannerServer.createPgDatabase(dbId, Arrays.asList(tableDef, viewDef));
+    Ddl ddl = getPgDatabaseDdl();
+
+    assertThat(ddl.allTables(), hasSize(1));
+    assertThat(ddl.table("Users"), notNullValue());
+    assertThat(ddl.table("uSers"), notNullValue());
+
+    assertThat(ddl.views(), hasSize(1));
+    View view = ddl.view("Names");
+    assertThat(view, notNullValue());
+    assertThat(ddl.view("nAmes"), sameInstance(view));
+
+    assertThat(view.query(), equalTo("SELECT u.name FROM \"Users\" u"));
   }
 
   @Test

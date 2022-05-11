@@ -19,10 +19,10 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertThrows;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.TextImportTransform.ReadImportManifest;
 import com.google.cloud.teleport.spanner.TextImportTransform.ResolveDataFiles;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
-import com.google.cloud.teleport.spanner.ddl.Dialect;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.Charset;

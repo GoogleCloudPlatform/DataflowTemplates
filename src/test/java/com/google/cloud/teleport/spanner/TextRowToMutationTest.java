@@ -15,15 +15,17 @@
  */
 package com.google.cloud.teleport.spanner;
 
+import static org.junit.Assert.assertThrows;
+
 import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.spanner.TextImportProtos.ImportManifest.TableManifest;
 import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
-import com.google.cloud.teleport.spanner.ddl.Dialect;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -491,7 +493,7 @@ public final class TextRowToMutationTest {
     pipeline.run();
   }
 
-  @Test(expected = PipelineExecutionException.class)
+  @Test
   public void parseRowWithPgArrayColumn() throws Exception {
     PCollectionView<Ddl> ddlView =
         pipeline.apply("ddl", Create.of(getTestPgDdlWithArray())).apply(View.asSingleton());
@@ -522,7 +524,7 @@ public final class TextRowToMutationTest {
                         dateFormat,
                         timestampFormat))
                 .withSideInputs(ddlView, tableColumnsMapView));
-    pipeline.run();
+    assertThrows(PipelineExecutionException.class, () -> pipeline.run());
   }
 
   @Test
@@ -584,7 +586,7 @@ public final class TextRowToMutationTest {
                 .set("byte_col")
                 .to(Value.bytes(ByteArray.fromBase64("aGk=")))
                 .set("numeric_col")
-                .to("-439.25335679")
+                .to(Value.pgNumeric("-439.25335679"))
                 .set("date_col")
                 .to(Value.date(Date.parseDate("1910-01-01")))
                 .build());

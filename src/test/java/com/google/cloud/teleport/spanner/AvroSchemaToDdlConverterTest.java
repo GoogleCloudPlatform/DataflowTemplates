@@ -21,8 +21,8 @@ import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingW
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
-import com.google.cloud.teleport.spanner.ddl.Dialect;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;

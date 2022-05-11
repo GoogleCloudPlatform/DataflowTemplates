@@ -26,6 +26,7 @@ import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.DatabaseClient;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.PartitionOptions;
 import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.spanner.ResultSet;
@@ -60,8 +61,8 @@ public class SpannerConverterTest implements Serializable {
 
   private static final String TABLE = "table";
   private static final String COLUMN_NAME = "id";
-  private static final String POSTGRESQL = "POSTGRESQL";
-  private static final String GOOGLE_STANDARD_SQL = "GOOGLE_STANDARD_SQL";
+  private static final Dialect POSTGRESQL = Dialect.POSTGRESQL;
+  private static final Dialect GOOGLE_STANDARD_SQL = Dialect.GOOGLE_STANDARD_SQL;
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
   private SpannerConverters.StructCsvPrinter structCsvPrinter =
@@ -95,8 +96,9 @@ public class SpannerConverterTest implements Serializable {
     when(readOnlyTransaction.executeQuery(any(Statement.class))).thenReturn(resultSet);
     when(resultSet.next()).thenReturn(true).thenReturn(true).thenReturn(false);
     when(resultSet.getCurrentRowAsStruct()).thenReturn(struct);
-    when(struct.getString(0)).thenReturn(GOOGLE_STANDARD_SQL).thenReturn(COLUMN_NAME);
+    when(struct.getString(0)).thenReturn(COLUMN_NAME);
     when(struct.getString(1)).thenReturn("INT64");
+    when(databaseClient.getDialect()).thenReturn(GOOGLE_STANDARD_SQL);
 
     String schemaPath = "/tmp/" + UUID.randomUUID().toString();
     ValueProvider<String> textWritePrefix = ValueProvider.StaticValueProvider.of(schemaPath);
@@ -147,8 +149,9 @@ public class SpannerConverterTest implements Serializable {
     when(readOnlyTransaction.executeQuery(any(Statement.class))).thenReturn(resultSet);
     when(resultSet.next()).thenReturn(true).thenReturn(true).thenReturn(false);
     when(resultSet.getCurrentRowAsStruct()).thenReturn(struct);
-    when(struct.getString(0)).thenReturn(POSTGRESQL).thenReturn(COLUMN_NAME);
+    when(struct.getString(0)).thenReturn(COLUMN_NAME);
     when(struct.getString(1)).thenReturn("bigint");
+    when(databaseClient.getDialect()).thenReturn(POSTGRESQL);
 
     String schemaPath = "/tmp/" + UUID.randomUUID().toString();
     ValueProvider<String> textWritePrefix = ValueProvider.StaticValueProvider.of(schemaPath);
@@ -256,6 +259,17 @@ public class SpannerConverterTest implements Serializable {
   }
 
   @Test
+  public void testPgNumeric() {
+    assertEquals(
+        "\"-25398514232141142.0014578090\"",
+        structCsvPrinter.print(
+            Struct.newBuilder()
+                .set("col")
+                .to(Value.pgNumeric("-25398514232141142.0014578090"))
+                .build()));
+  }
+
+  @Test
   public void testBooleanArray() {
     assertEquals(
         "\"[true]\"",
@@ -351,6 +365,19 @@ public class SpannerConverterTest implements Serializable {
             Struct.newBuilder()
                 .set("col")
                 .to(Value.bytesArray(Collections.singletonList(ByteArray.copyFrom("test"))))
+                .build()));
+  }
+
+  @Test
+  public void testPgNumericArray() {
+    assertEquals(
+        "\"[\"\"-25398514232141142.0014578090\"\"]\"",
+        structCsvPrinter.print(
+            Struct.newBuilder()
+                .set("col")
+                .to(
+                    Value.pgNumericArray(
+                        Collections.singletonList("-25398514232141142.0014578090")))
                 .build()));
   }
 }

@@ -15,13 +15,13 @@
  */
 package com.google.cloud.teleport.spanner;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.spanner.TextImportProtos.ImportManifest;
 import com.google.cloud.teleport.spanner.TextImportProtos.ImportManifest.TableManifest;
 import com.google.cloud.teleport.spanner.common.Type.Code;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
-import com.google.cloud.teleport.spanner.ddl.Dialect;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.HashMultimap;
@@ -446,7 +446,7 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
         return Code.PG_TEXT;
       } else if (columnType.equalsIgnoreCase("date") && dialect == Dialect.POSTGRESQL) {
         return Code.PG_DATE;
-      }else {
+      } else {
         throw new IllegalArgumentException(
             "Unrecognized or unsupported column data type: " + columnType);
       }

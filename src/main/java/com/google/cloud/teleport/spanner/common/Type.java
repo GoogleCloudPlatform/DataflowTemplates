@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.spanner.common;
 
-import com.google.cloud.teleport.spanner.ddl.Dialect;
+import com.google.cloud.spanner.Dialect;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -223,7 +223,7 @@ public final class Type implements Serializable {
       case PG_DATE:
         return TYPE_PG_ARRAY_DATE;
       default:
-        return new Type(Code.PG_ARRAY, elementType, null);
+        throw new IllegalArgumentException("Unknown Array type: Array of " + elementType);
     }
   }
 

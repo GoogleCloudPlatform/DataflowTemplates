@@ -245,8 +245,10 @@ class TextRowToMutation extends DoFn<KV<String, String>, Mutation> {
           break;
         case NUMERIC:
         case JSON:
-        case PG_NUMERIC:
           columnValue = isNullValue ? Value.string(null) : Value.string(cellValue.trim());
+          break;
+        case PG_NUMERIC:
+          columnValue = isNullValue ? Value.pgNumeric(null) : Value.pgNumeric(cellValue.trim());
           break;
         case BYTES:
         case PG_BYTEA:
