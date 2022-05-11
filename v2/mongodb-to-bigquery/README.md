@@ -1,7 +1,7 @@
 # MongoDB to BigQuery Dataflow Template
 
 The [MongoDbToBigQuery](src/main/java/com/google/cloud/teleport/v2/templates/MongoDbToBigQuery.java) pipeline
-Reads the data from MongoDb collection, Writes the data to BigQuery.
+Reads the data from MongoDb collection with fixed schema, Writes the data to BigQuery.
 
 ## Getting Started
 
