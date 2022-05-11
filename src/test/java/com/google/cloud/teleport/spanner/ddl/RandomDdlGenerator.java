@@ -365,6 +365,13 @@ public abstract class RandomDdlGenerator {
         }
         // skip the primary key column if it is randomed to storing
         if (val < 2 || (val < 3 && !pks.contains(columnName))) {
+          if (getDialect() == Dialect.POSTGRESQL) {
+            if (rnd.nextBoolean()) {
+              columns.nullsFirst();
+            } else {
+              columns.nullsLast();
+            }
+          }
           columns.endIndexColumn();
           if (rnd.nextBoolean()) {
               filters.add("\"" + columnName + "\" IS NOT NULL");

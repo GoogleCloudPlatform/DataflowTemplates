@@ -18,9 +18,11 @@ package com.google.cloud.teleport.spanner;
 import static com.google.cloud.teleport.spanner.SpannerTableFilter.getFilteredTables;
 import static com.google.cloud.teleport.util.ValueProviderUtils.eitherOrValueProvider;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.spanner.ExportProtos.Export;
+import com.google.cloud.teleport.spanner.ExportProtos.ProtoDialect;
 import com.google.cloud.teleport.spanner.ExportProtos.TableManifest;
 import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
@@ -187,10 +189,15 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
             .apply(
                 "Create transaction",
                 ParDo.of(new CreateTransactionFnWithTimestamp(spannerConfig, snapshotTime)))
-            .apply("As PCollectionView", View.asSingleton());
+            .apply("Tx As PCollectionView", View.asSingleton());
+
+    PCollectionView<Dialect> dialectView =
+        p.apply("Read Dialect", new ReadDialect(spannerConfig))
+            .apply("Dialect As PCollectionView", View.asSingleton());
 
     PCollection<Ddl> ddl =
-        p.apply("Read Information Schema", new ReadInformationSchema(spannerConfig, tx));
+        p.apply(
+            "Read Information Schema", new ReadInformationSchema(spannerConfig, tx, dialectView));
 
     PCollection<Ddl> exportState =
         ddl.apply(
@@ -377,7 +384,9 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
         rows.apply(
             "Store Avro files",
             AvroIO.<Struct>writeCustomTypeToGenericRecords()
-                .to(new SchemaBasedDynamicDestinations(avroSchemas, outputDirectoryName, resource))
+                .to(
+                    new SchemaBasedDynamicDestinations(
+                        avroSchemas, outputDirectoryName, dialectView, resource))
                 .withTempDirectory(tempResource));
 
     // Generate the manifest file.
@@ -558,7 +567,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     PCollection<String> metadataContent =
         metadataTables.apply(
             "Create database manifest",
-            ParDo.of(new CreateDatabaseManifest(ddlView)).withSideInputs(ddlView));
+            ParDo.of(new CreateDatabaseManifest(ddlView, dialectView))
+                .withSideInputs(ddlView, dialectView));
 
     Contextful.Fn<String, FileIO.Write.FileNaming> manifestNaming =
         (element, c) ->
@@ -584,14 +594,17 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
     private final PCollectionView<Map<String, SerializableSchemaSupplier>> avroSchemas;
     private final PCollectionView<String> uniqueIdView;
+    private final PCollectionView<Dialect> dialectView;
     private final ValueProvider<ResourceId> baseDir;
 
     private SchemaBasedDynamicDestinations(
         PCollectionView<Map<String, SerializableSchemaSupplier>> avroSchemas,
         PCollectionView<String> uniqueIdView,
+        PCollectionView<Dialect> dialectView,
         ValueProvider<ResourceId> baseDir) {
       this.avroSchemas = avroSchemas;
       this.uniqueIdView = uniqueIdView;
+      this.dialectView = dialectView;
       this.baseDir = baseDir;
     }
 
@@ -638,14 +651,15 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
     @Override
     public List<PCollectionView<?>> getSideInputs() {
-      return Arrays.asList(avroSchemas, uniqueIdView);
+      return Arrays.asList(avroSchemas, uniqueIdView, dialectView);
     }
 
     @Override
     public GenericRecord formatRecord(Struct record) {
       String table = record.getString(0);
       Schema schema = sideInput(avroSchemas).get(table).get();
-      return new SpannerRecordConverter(schema).convert(record);
+      Dialect dialect = sideInput(dialectView);
+      return new SpannerRecordConverter(schema, dialect).convert(record);
     }
   }
 
@@ -740,15 +754,19 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
   static class CreateDatabaseManifest extends DoFn<List<Export.Table>, String> {
 
     private final PCollectionView<Ddl> ddlView;
+    private final PCollectionView<Dialect> dialectView;
 
-    public CreateDatabaseManifest(PCollectionView<Ddl> ddlView) {
+    public CreateDatabaseManifest(
+        PCollectionView<Ddl> ddlView, PCollectionView<Dialect> dialectView) {
       this.ddlView = ddlView;
+      this.dialectView = dialectView;
     }
 
     @ProcessElement
     public void processElement(
         @Element List<Export.Table> exportMetadata, OutputReceiver<String> out, ProcessContext c) {
       Ddl ddl = c.sideInput(ddlView);
+      Dialect dialect = c.sideInput(dialectView);
       ExportProtos.Export.Builder exportManifest = ExportProtos.Export.newBuilder();
       for (Export.Table obj : exportMetadata) {
         if (ddl.changeStream(obj.getName()) != null) {
@@ -758,6 +776,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
         }
       }
       exportManifest.addAllDatabaseOptions(ddl.databaseOptions());
+      exportManifest.setDialect(ProtoDialect.valueOf(dialect.name()));
       try {
         out.output(JsonFormat.printer().print(exportManifest.build()));
       } catch (InvalidProtocolBufferException e) {

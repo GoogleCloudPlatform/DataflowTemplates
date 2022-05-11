@@ -311,7 +311,7 @@ public class TextImportTransformTest {
           e.getMessage(),
           equalTo(
               "java.lang.RuntimeException: DB table table3 has one or more generated columns. An"
-                  + " explict column list that excludes the generated columns must be provided in"
+                  + " explicit column list that excludes the generated columns must be provided in"
                   + " the manifest."));
     }
   }

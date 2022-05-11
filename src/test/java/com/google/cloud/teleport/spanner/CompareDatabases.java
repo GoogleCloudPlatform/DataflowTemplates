@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.spanner;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.Type;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
@@ -106,8 +107,14 @@ public class CompareDatabases extends PTransform<PBegin, PCollection<Long>> {
       PCollectionView<Transaction> tx =
           begin.apply(SpannerIO.createTransaction().withSpannerConfig(spanConfig));
 
+      PCollectionView<Dialect> dialectView =
+          begin
+              .apply("Read Dialect", new ReadDialect(spanConfig))
+              .apply("As PCollectionView", View.asSingleton());
+
       PCollection<Ddl> sourceDdl =
-          begin.apply("Read Information Schema", new ReadInformationSchema(spanConfig, tx));
+          begin.apply(
+              "Read Information Schema", new ReadInformationSchema(spanConfig, tx, dialectView));
 
       final PCollectionView<Ddl> ddlView = sourceDdl.apply(View.asSingleton());
 
@@ -146,6 +153,7 @@ public class CompareDatabases extends PTransform<PBegin, PCollection<Long>> {
                             key += struct.getLong(pk.name());
                             break;
                           case STRING:
+                          case PG_NUMERIC:
                             key += struct.getString(pk.name());
                             break;
                           case BYTES:
@@ -161,6 +169,9 @@ public class CompareDatabases extends PTransform<PBegin, PCollection<Long>> {
                             break;
                           case DATE:
                             key += struct.getDate(pk.name());
+                            break;
+                          case NUMERIC:
+                            key += struct.getBigDecimal(pk.name());
                             break;
                           default:
                             throw new IllegalArgumentException("Unsupported PK type " + columnType);

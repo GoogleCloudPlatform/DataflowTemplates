@@ -22,9 +22,11 @@ import static org.junit.Assert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.spanner.ExportProtos.Export;
 import com.google.cloud.teleport.spanner.ExportProtos.Export.Builder;
+import com.google.cloud.teleport.spanner.ExportProtos.ProtoDialect;
 import com.google.cloud.teleport.spanner.ExportProtos.TableManifest;
 import com.google.cloud.teleport.spanner.ExportTransform.BuildTableManifests;
 import com.google.cloud.teleport.spanner.ExportTransform.CombineTableMetadata;
@@ -124,10 +126,15 @@ public class ExportTransformTest {
     ddlBuilder.createChangeStream("changeStream").endChangeStream();
     Ddl ddl = ddlBuilder.build();
     PCollectionView<Ddl> ddlView = pipeline.apply(Create.of(ddl)).apply(View.asSingleton());
+    PCollectionView<Dialect> dialectView =
+        pipeline
+            .apply("CreateSingleton", Create.of(Dialect.GOOGLE_STANDARD_SQL))
+            .apply("As PCollectionView", View.asSingleton());
     PCollection<String> databaseManifest =
         metadataTables.apply(
             "Test adding database option to manifest",
-            ParDo.of(new CreateDatabaseManifest(ddlView)).withSideInputs(ddlView));
+            ParDo.of(new CreateDatabaseManifest(ddlView, dialectView))
+                .withSideInputs(ddlView, dialectView));
 
     // The output JSON may contain the tables in any order, so a string comparison is not
     // sufficient. Have to convert the manifest string to a protobuf. Also for the checker function
@@ -144,6 +151,7 @@ public class ExportTransformTest {
                   }
                   Export manifestProto = builder1.build();
                   assertThat(manifestProto.getTablesCount(), is(2));
+                  assertThat(manifestProto.getDialect(), is(ProtoDialect.GOOGLE_STANDARD_SQL));
                   String table1Name = manifestProto.getTables(0).getName();
                   assertThat(table1Name, startsWith("table"));
                   assertThat(

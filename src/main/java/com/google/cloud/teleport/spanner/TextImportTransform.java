@@ -17,6 +17,7 @@ package com.google.cloud.teleport.spanner;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.teleport.spanner.ExportProtos.ProtoDialect;
 import com.google.cloud.teleport.spanner.TextImportProtos.ImportManifest;
 import com.google.cloud.teleport.spanner.TextImportProtos.ImportManifest.TableManifest;
 import com.google.cloud.teleport.spanner.common.Type.Code;
@@ -57,6 +58,7 @@ import org.apache.beam.sdk.io.gcp.spanner.SpannerWriteResult;
 import org.apache.beam.sdk.io.gcp.spanner.Transaction;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Combine;
+import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Keys;
 import org.apache.beam.sdk.transforms.MapElements;
@@ -95,13 +97,19 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
     PCollectionView<Transaction> tx =
         begin.apply(SpannerIO.createTransaction().withSpannerConfig(spannerConfig));
 
+    PCollectionView<Dialect> dialectView =
+        begin
+            .apply("Read Dialect", new ReadDialect(spannerConfig))
+            .apply("Dialect As PCollectionView", View.asSingleton());
+
     PCollection<Ddl> ddl =
-        begin.apply("Read Information Schema", new ReadInformationSchema(spannerConfig, tx));
+        begin.apply(
+            "Read Information Schema", new ReadInformationSchema(spannerConfig, tx, dialectView));
 
     PCollectionView<Ddl> ddlView = ddl.apply("Cloud Spanner DDL as view", View.asSingleton());
 
     PCollection<ImportManifest> manifest =
-        begin.apply("Read manifest file", new ReadImportManifest(importManifest));
+        begin.apply("Read manifest file", new ReadImportManifest(importManifest, dialectView));
 
     PCollection<KV<String, String>> allFiles =
         manifest.apply("Resolve data files", new ResolveDataFiles(importManifest, ddlView));
@@ -190,7 +198,8 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
                       .withCommitDeadline(Duration.standardMinutes(1))
                       .withMaxCumulativeBackoff(Duration.standardHours(2))
                       .withMaxNumMutations(10000)
-                      .withGroupingFactor(100));
+                      .withGroupingFactor(100)
+                      .withDialectView(dialectView));
       previousComputation = result.getOutput();
     }
 
@@ -303,23 +312,60 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
   static class ReadImportManifest extends PTransform<PBegin, PCollection<ImportManifest>> {
 
     private final ValueProvider<String> importManifest;
+    private PCollectionView<Dialect> dialectView;
+
+    ReadImportManifest(ValueProvider<String> importManifest, PCollectionView<Dialect> dialectView) {
+      this.importManifest = importManifest;
+      this.dialectView = dialectView;
+    }
 
     ReadImportManifest(ValueProvider<String> importManifest) {
       this.importManifest = importManifest;
+      this.dialectView = null;
     }
 
     @Override
     public PCollection<ImportManifest> expand(PBegin input) {
-      return input
-          .apply("Read manifest", FileIO.match().filepattern(importManifest))
-          .apply(
-              "Resource id",
-              MapElements.into(TypeDescriptor.of(ResourceId.class))
-                  .via((MatchResult.Metadata::resourceId)))
-          .apply(
-              "Read manifest json",
-              MapElements.into(TypeDescriptor.of(ImportManifest.class))
-                  .via(ReadImportManifest::readManifest));
+      if (dialectView == null) {
+        dialectView =
+            input
+                .getPipeline()
+                .apply("CreateSingleton", Create.of(Dialect.GOOGLE_STANDARD_SQL))
+                .apply("Default Dialect As PCollectionView", View.asSingleton());
+      }
+      PCollection<ImportManifest> manifest =
+          input
+              .apply("Read manifest", FileIO.match().filepattern(importManifest))
+              .apply(
+                  "Resource id",
+                  MapElements.into(TypeDescriptor.of(ResourceId.class))
+                      .via((MatchResult.Metadata::resourceId)))
+              .apply(
+                  "Read manifest json",
+                  MapElements.into(TypeDescriptor.of(ImportManifest.class))
+                      .via(ReadImportManifest::readManifest));
+      manifest.apply(
+          "Check dialect",
+          ParDo.of(
+                  new DoFn<ImportManifest, Dialect>() {
+
+                    @ProcessElement
+                    public void processElement(ProcessContext c) {
+                      ImportManifest proto = c.element();
+                      Dialect dialect = c.sideInput(dialectView);
+                      ProtoDialect protoDialect = proto.getDialect();
+                      if (!protoDialect.name().equals(dialect.name())) {
+                        throw new RuntimeException(
+                            String.format(
+                                "Dialect mismatches: Dialect of the database (%s) is different from"
+                                    + " the one in exported manifest (%s).",
+                                dialect, protoDialect));
+                      }
+                      c.output(dialect);
+                    }
+                  })
+              .withSideInputs(dialectView));
+      return manifest;
     }
 
     private static ImportManifest readManifest(ResourceId fileResource) {
@@ -466,7 +512,7 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
         if (table.columns().stream().anyMatch(x -> x.isGenerated())) {
           throw new RuntimeException(
               String.format(
-                  "DB table %s has one or more generated columns. An explict column list that "
+                  "DB table %s has one or more generated columns. An explicit column list that "
                       + "excludes the generated columns must be provided in the manifest.",
                   table.name()));
         }

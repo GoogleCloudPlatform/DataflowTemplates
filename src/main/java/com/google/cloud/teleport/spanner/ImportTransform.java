@@ -17,8 +17,10 @@ package com.google.cloud.teleport.spanner;
 
 import com.google.api.gax.longrunning.OperationFuture;
 import com.google.cloud.spanner.DatabaseAdminClient;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.spanner.ExportProtos.Export;
+import com.google.cloud.teleport.spanner.ExportProtos.ProtoDialect;
 import com.google.cloud.teleport.spanner.ExportProtos.TableManifest;
 import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
@@ -124,8 +126,14 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
 
   @Override
   public PDone expand(PBegin begin) {
+    PCollectionView<Dialect> dialectView =
+        begin
+            .apply("Read Dialect", new ReadDialect(spannerConfig))
+            .apply("Dialect As PCollectionView", View.asSingleton());
+
     PCollection<Export> manifest =
-        begin.apply("Read manifest", new ReadExportManifestFile(importDirectory));
+        begin.apply("Read manifest", new ReadExportManifestFile(importDirectory, dialectView));
+
     PCollectionView<Export> manifestView = manifest.apply("Manifest as view", View.asSingleton());
 
     PCollection<KV<String, String>> allFiles =
@@ -157,7 +165,8 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
         begin.apply(SpannerIO.createTransaction().withSpannerConfig(spannerConfig));
 
     PCollection<Ddl> informationSchemaDdl =
-        begin.apply("Read Information Schema", new ReadInformationSchema(spannerConfig, tx));
+        begin.apply(
+            "Read Information Schema", new ReadInformationSchema(spannerConfig, tx, dialectView));
 
     final PCollectionView<List<KV<String, String>>> avroDdlView =
         avroSchemas.apply("Avro ddl view", View.asSingleton());
@@ -259,7 +268,8 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                   .withCommitDeadline(Duration.standardMinutes(1))
                   .withMaxCumulativeBackoff(Duration.standardHours(2))
                   .withMaxNumMutations(10000)
-                  .withGroupingFactor(100));
+                  .withGroupingFactor(100)
+                  .withDialectView(dialectView));
       previousComputation = result.getOutput();
     }
     ddl.apply(Wait.on(previousComputation))
@@ -278,25 +288,51 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
   private static class ReadExportManifestFile extends PTransform<PBegin, PCollection<Export>> {
 
     private final ValueProvider<String> importDirectory;
+    private final PCollectionView<Dialect> dialectView;
 
-    private ReadExportManifestFile(ValueProvider<String> importDirectory) {
+    private ReadExportManifestFile(
+        ValueProvider<String> importDirectory, PCollectionView<Dialect> dialectView) {
       this.importDirectory = importDirectory;
+      this.dialectView = dialectView;
     }
 
     @Override
     public PCollection<Export> expand(PBegin input) {
       NestedValueProvider<String, String> manifestFile =
           NestedValueProvider.of(importDirectory, s -> GcsUtil.joinPath(s, "spanner-export.json"));
-      return input
-          .apply("Read manifest", FileIO.match().filepattern(manifestFile))
-          .apply(
-              "Resource id",
-              MapElements.into(TypeDescriptor.of(ResourceId.class))
-                  .via((MatchResult.Metadata::resourceId)))
-          .apply(
-              "Read manifest json",
-              MapElements.into(TypeDescriptor.of(Export.class))
-                  .via(ReadExportManifestFile::readManifest));
+      PCollection<Export> manifest =
+          input
+              .apply("Read manifest", FileIO.match().filepattern(manifestFile))
+              .apply(
+                  "Resource id",
+                  MapElements.into(TypeDescriptor.of(ResourceId.class))
+                      .via((MatchResult.Metadata::resourceId)))
+              .apply(
+                  "Read manifest json",
+                  MapElements.into(TypeDescriptor.of(Export.class))
+                      .via(ReadExportManifestFile::readManifest));
+      manifest.apply(
+          "Check dialect",
+          ParDo.of(
+                  new DoFn<Export, Dialect>() {
+
+                    @ProcessElement
+                    public void processElement(ProcessContext c) {
+                      Export proto = c.element();
+                      Dialect dialect = c.sideInput(dialectView);
+                      ProtoDialect protoDialect = proto.getDialect();
+                      if (!protoDialect.name().equals(dialect.name())) {
+                        throw new RuntimeException(
+                            String.format(
+                                "Dialect mismatches: Dialect of the database (%s) is different from"
+                                    + " the one in exported manifest (%s).",
+                                dialect, protoDialect));
+                      }
+                      c.output(dialect);
+                    }
+                  })
+              .withSideInputs(dialectView));
+      return manifest;
     }
 
     private static Export readManifest(ResourceId fileResource) {
@@ -426,6 +462,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                         public void processElement(ProcessContext c) {
                           List<KV<String, String>> avroSchemas = c.sideInput(avroSchemasView);
                           Ddl informationSchemaDdl = c.sideInput(informationSchemaView);
+                          Dialect dialect = informationSchemaDdl.dialect();
                           Export manifest = c.sideInput(manifestView);
 
                           if (LOG.isDebugEnabled()) {
@@ -449,7 +486,8 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                               }
                             }
                           }
-                          AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+                          AvroSchemaToDdlConverter converter =
+                              new AvroSchemaToDdlConverter(dialect);
                           List<String> createIndexStatements = new ArrayList<>();
                           List<String> createForeignKeyStatements = new ArrayList<>();
                           List<String> createChangeStreamStatements = new ArrayList<>();
@@ -458,7 +496,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           List<String> ddlStatements = new ArrayList<>();
 
                           if (!manifest.getDatabaseOptionsList().isEmpty()) {
-                            Ddl.Builder builder = Ddl.builder();
+                            Ddl.Builder builder = Ddl.builder(dialect);
                             builder.mergeDatabaseOptions(manifest.getDatabaseOptionsList());
                             mergedDdl.mergeDatabaseOptions(manifest.getDatabaseOptionsList());
                             Ddl newDdl = builder.build();
@@ -467,7 +505,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           }
 
                           if (!missingTables.isEmpty() || !missingViews.isEmpty()) {
-                            Ddl.Builder builder = Ddl.builder();
+                            Ddl.Builder builder = Ddl.builder(dialect);
                             for (KV<String, Schema> kv : missingViews) {
                               com.google.cloud.teleport.spanner.ddl.View view =
                                   converter.toView(kv.getKey(), kv.getValue());

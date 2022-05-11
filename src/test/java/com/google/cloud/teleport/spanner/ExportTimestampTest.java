@@ -19,9 +19,8 @@ import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingW
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.ReadOnlyTransaction;
-import com.google.cloud.spanner.Spanner;
-import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.InformationSchemaScanner;
@@ -37,6 +36,7 @@ import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.values.PCollection;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -50,7 +50,7 @@ import org.junit.experimental.categories.Category;
 @Category(IntegrationTest.class)
 public class ExportTimestampTest {
 
-  static String tmpDir = Files.createTempDir().getAbsolutePath();
+  private final String tmpDir = Files.createTempDir().getAbsolutePath();
 
   private final Timestamp timestamp = new Timestamp(System.currentTimeMillis());
   private final long numericTime = timestamp.getTime();
@@ -80,6 +80,17 @@ public class ExportTimestampTest {
 
   @Rule public final SpannerServerResource spannerServer = new SpannerServerResource();
 
+  @Before
+  public void setup() {
+    spannerServer.dropDatabase(sourceDb);
+    spannerServer.dropDatabase(destDbPrefix + chkpt1);
+    spannerServer.dropDatabase(destDbPrefix + chkpt2);
+    spannerServer.dropDatabase(destDbPrefix + chkpt3);
+    spannerServer.dropDatabase(destDbPrefix + chkPt1WithTs);
+    spannerServer.dropDatabase(destDbPrefix + chkPt2WithTs);
+    spannerServer.dropDatabase(destDbPrefix + chkPt3WithTs);
+  }
+
   @After
   public void teardown() {
     spannerServer.dropDatabase(sourceDb);
@@ -92,7 +103,16 @@ public class ExportTimestampTest {
   }
 
   private void createAndPopulate(String db, Ddl ddl, int numBatches) throws Exception {
-    spannerServer.createDatabase(db, ddl.statements());
+    switch (ddl.dialect()) {
+      case GOOGLE_STANDARD_SQL:
+        spannerServer.createDatabase(db, ddl.statements());
+        break;
+      case POSTGRESQL:
+        spannerServer.createPgDatabase(db, ddl.statements());
+        break;
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + ddl.dialect());
+    }
     spannerServer.populateRandomData(db, ddl, numBatches);
   }
 
@@ -258,6 +278,142 @@ public class ExportTimestampTest {
     compareDbs(destDbPrefix + chkpt3, destDbPrefix + chkPt3WithTs, comparePipeline3);
   }
 
+  @Test
+  public void runPgExportWithTsTest() throws Exception {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("Users")
+            .column("first_name")
+            .pgVarchar()
+            .max()
+            .endColumn()
+            .column("last_name")
+            .pgVarchar()
+            .size(5)
+            .endColumn()
+            .column("age")
+            .pgInt8()
+            .endColumn()
+            .primaryKey()
+            .asc("first_name")
+            .asc("last_name")
+            .end()
+            .endTable()
+            .createTable("AllTYPES")
+            .column("first_name")
+            .pgVarchar()
+            .max()
+            .endColumn()
+            .column("last_name")
+            .pgVarchar()
+            .size(5)
+            .endColumn()
+            .column("id")
+            .pgInt8()
+            .notNull()
+            .endColumn()
+            .column("bool_field")
+            .pgBool()
+            .endColumn()
+            .column("int_field")
+            .pgInt8()
+            .endColumn()
+            .column("float_field")
+            .pgFloat8()
+            .endColumn()
+            .column("string_field")
+            .pgText()
+            .endColumn()
+            .column("bytes_field")
+            .pgBytea()
+            .endColumn()
+            .column("timestamp_field")
+            .pgTimestamptz()
+            .endColumn()
+            .column("numeric_field")
+            .pgNumeric()
+            .endColumn()
+            .column("date_field")
+            .pgDate()
+            .endColumn()
+            .primaryKey()
+            .asc("first_name")
+            .asc("last_name")
+            .asc("id")
+            .end()
+            .interleaveInParent("Users")
+            .onDeleteCascade()
+            .endTable()
+            .build();
+
+    // Create initial table and populate
+    createAndPopulate(sourceDb, ddl, 100);
+
+    // Export the database and note the timestamp ts1
+    spannerServer.createPgDatabase(destDbPrefix + chkpt1, Collections.emptyList());
+    exportAndImportDbAtTime(
+        sourceDb,
+        destDbPrefix + chkpt1,
+        chkpt1,
+        "", /* ts = "" */
+        exportPipeline1,
+        importPipeline1);
+    String chkPt1Ts = getCurrentTimestamp();
+
+    Thread.sleep(2000);
+
+    // Sleep for a couple of seconds and note the timestamp ts2
+    String chkPt2Ts = getCurrentTimestamp();
+
+    Thread.sleep(2000);
+
+    // Add more records to the table, export the database and note the timestamp ts3
+    spannerServer.populateRandomData(sourceDb, ddl, 100);
+    spannerServer.createPgDatabase(destDbPrefix + chkpt3, Collections.emptyList());
+    exportAndImportDbAtTime(
+        sourceDb,
+        destDbPrefix + chkpt3,
+        chkpt3,
+        "", /* ts = "" */
+        exportPipeline2,
+        importPipeline2);
+    String chkPt3Ts = getCurrentTimestamp();
+
+    // Export timestamp with timestamp ts1
+    spannerServer.createPgDatabase(destDbPrefix + chkPt1WithTs, Collections.emptyList());
+    exportAndImportDbAtTime(
+        sourceDb, destDbPrefix + chkPt1WithTs,
+        chkPt1WithTs, chkPt1Ts,
+        exportPipeline3, importPipeline3);
+
+    // Export timestamp with timestamp ts2
+    spannerServer.createPgDatabase(destDbPrefix + chkPt2WithTs, Collections.emptyList());
+    exportAndImportDbAtTime(
+        sourceDb, destDbPrefix + chkPt2WithTs,
+        chkPt2WithTs, chkPt2Ts,
+        exportPipeline4, importPipeline4);
+
+    // Export timestamp with timestamp ts3
+    spannerServer.createPgDatabase(destDbPrefix + chkPt3WithTs, Collections.emptyList());
+    exportAndImportDbAtTime(
+        sourceDb,
+        destDbPrefix + chkPt3WithTs,
+        chkPt3WithTs,
+        chkPt3Ts,
+        exportPipeline5,
+        importPipeline5);
+
+    // Compare databases exported at ts1 and exported later specifying timestamp ts1
+    compareDbs(
+        destDbPrefix + chkpt1, destDbPrefix + chkPt1WithTs, comparePipeline1, Dialect.POSTGRESQL);
+    // Compare databases exported at ts1 and exported later specifying timestamp ts2
+    compareDbs(
+        destDbPrefix + chkpt1, destDbPrefix + chkPt2WithTs, comparePipeline2, Dialect.POSTGRESQL);
+    // Compare databases exported at ts3 and exported later specifying timestamp ts3
+    compareDbs(
+        destDbPrefix + chkpt3, destDbPrefix + chkPt3WithTs, comparePipeline3, Dialect.POSTGRESQL);
+  }
+
   private void exportAndImportDbAtTime(
       String sourceDb,
       String destDb,
@@ -309,6 +465,11 @@ public class ExportTimestampTest {
   }
 
   private void compareDbs(String sourceDb, String destDb, TestPipeline comparePipeline) {
+    compareDbs(sourceDb, destDb, comparePipeline, Dialect.GOOGLE_STANDARD_SQL);
+  }
+
+  private void compareDbs(
+      String sourceDb, String destDb, TestPipeline comparePipeline, Dialect dialect) {
     SpannerConfig sourceConfig = spannerServer.getSpannerConfig(sourceDb);
     SpannerConfig copyConfig = spannerServer.getSpannerConfig(destDb);
     PCollection<Long> mismatchCount =
@@ -322,18 +483,16 @@ public class ExportTimestampTest {
     PipelineResult compareResult = comparePipeline.run();
     compareResult.waitUntilFinish();
 
-    Ddl sourceDdl = readDdl(sourceDb);
-    Ddl destinationDdl = readDdl(destDb);
+    Ddl sourceDdl = readDdl(sourceDb, dialect);
+    Ddl destinationDdl = readDdl(destDb, dialect);
 
     assertThat(sourceDdl.prettyPrint(), equalToCompressingWhiteSpace(destinationDdl.prettyPrint()));
   }
 
-  private Ddl readDdl(String db) {
-    SpannerOptions spannerOptions = SpannerOptions.newBuilder().build();
-    Spanner client = spannerOptions.getService();
+  private Ddl readDdl(String db, Dialect dialect) {
     Ddl ddl;
     try (ReadOnlyTransaction ctx = spannerServer.getDbClient(db).readOnlyTransaction()) {
-      ddl = new InformationSchemaScanner(ctx).scan();
+      ddl = new InformationSchemaScanner(ctx, dialect).scan();
     }
     return ddl;
   }

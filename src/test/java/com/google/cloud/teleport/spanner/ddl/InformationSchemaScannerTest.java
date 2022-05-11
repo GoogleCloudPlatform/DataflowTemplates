@@ -235,7 +235,7 @@ public class InformationSchemaScannerTest {
     assertThat(table.column("arr_date_field").type(), equalTo(Type.pgArray(Type.pgDate())));
     assertThat(table.column("arr_numeric_field").type(), equalTo(Type.pgArray(Type.pgNumeric())));
 
-    // Check not-null. Primary keys are implictly forced to be not-null.
+    // Check not-null. Primary keys are implicitly forced to be not-null.
     assertThat(table.column("first_name").notNull(), is(true));
     assertThat(table.column("last_name").notNull(), is(true));
     assertThat(table.column("id").notNull(), is(true));
@@ -282,7 +282,7 @@ public class InformationSchemaScannerTest {
             + " id bigint NOT NULL,"
             + " name character varying,"
             + " PRIMARY KEY (id)) ";
-    String viewDef = "CREATE VIEW \"Names\" SQL SECURITY INVOKER AS SELECT u.name FROM \"Users\" u";
+    String viewDef = "CREATE VIEW \"Names\" SQL SECURITY INVOKER AS SELECT name FROM \"Users\"";
 
     spannerServer.createPgDatabase(dbId, Arrays.asList(tableDef, viewDef));
     Ddl ddl = getPgDatabaseDdl();
@@ -296,7 +296,7 @@ public class InformationSchemaScannerTest {
     assertThat(view, notNullValue());
     assertThat(ddl.view("nAmes"), sameInstance(view));
 
-    assertThat(view.query(), equalTo("SELECT u.name FROM \"Users\" u"));
+    assertThat(view.query(), equalTo("SELECT name FROM \"Users\""));
   }
 
   @Test
@@ -484,9 +484,12 @@ public class InformationSchemaScannerTest {
             " CREATE UNIQUE INDEX \"a_last_name_idx\" ON  \"Users\"(\"last_name\" ASC) INCLUDE"
                 + " (\"first_name\") WHERE first_name IS NOT NULL AND last_name IS NOT"
                 + " NULL",
-            " CREATE INDEX \"b_age_idx\" ON \"Users\"(\"AGE\" DESC) WHERE \"AGE\" IS NOT NULL",
+            " CREATE INDEX \"b_age_idx\" ON \"Users\"(\"id\" ASC, \"AGE\" DESC) INTERLEAVE IN"
+                + " \"Users\" WHERE \"AGE\" IS NOT NULL",
             " CREATE UNIQUE INDEX \"c_first_name_idx\" ON \"Users\"(\"first_name\" ASC) WHERE"
-                + " first_name IS NOT NULL");
+                + " first_name IS NOT NULL",
+            " CREATE INDEX \"null_ordering_idx\" ON \"Users\"(\"id\" ASC NULLS FIRST,"
+                + " \"first_name\" ASC, \"last_name\" DESC, \"AGE\" DESC NULLS LAST)");
 
     spannerServer.createPgDatabase(dbId, statements);
     Ddl ddl = getPgDatabaseDdl();
@@ -600,10 +603,9 @@ public class InformationSchemaScannerTest {
   @Test
   public void pgGeneratedColumns() throws Exception {
     String statement =
-        "CREATE TABLE \"T\" ( \"id\"                       bigint NOT NULL,"
-            + " \"generated\"                              bigint NOT NULL GENERATED ALWAYS AS"
-            + " (\"id\"/1) STORED,"
-            + " PRIMARY KEY (\"id\"))";
+        "CREATE TABLE \"T\" ( \"id\"                     bigint NOT NULL,"
+            + " \"generated\" bigint NOT NULL GENERATED ALWAYS AS ((id / '1'::bigint)) STORED, "
+            + " PRIMARY KEY (\"id\") )";
 
     spannerServer.createPgDatabase(dbId, Collections.singleton(statement));
     Ddl ddl = getPgDatabaseDdl();

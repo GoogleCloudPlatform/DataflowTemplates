@@ -69,6 +69,7 @@ import org.slf4j.LoggerFactory;
 
 /** Transforms & DoFns & Options for SpannerIO. */
 public class SpannerConverters {
+  private static final Logger LOG = LoggerFactory.getLogger(SpannerConverters.class);
 
   private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().create();
 

@@ -5,6 +5,11 @@ package com.google.cloud.teleport.spanner;
 option java_package = "com.google.cloud.teleport.spanner";
 option java_outer_classname = "ExportProtos";
 
+enum ProtoDialect {
+    GOOGLE_STANDARD_SQL = 0;
+    POSTGRESQL = 1;
+}
+
 // Protobuf schema for the content of the exported table manifest file.
 message TableManifest {
   message File {
@@ -47,4 +52,6 @@ message Export {
   repeated DatabaseOption database_options = 2;
   // The set of change streams that were exported.
   repeated Table change_streams = 3;
+  // The dialect of the database.
+  ProtoDialect dialect = 4;
 }

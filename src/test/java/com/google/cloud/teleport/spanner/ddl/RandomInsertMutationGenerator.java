@@ -246,6 +246,10 @@ public class RandomInsertMutationGenerator {
                 List<BigDecimal> numerics = value.isNull() ? null : value.getNumericArray();
                 builder.set(columnName).toNumericArray(numerics);
                 break;
+              case PG_NUMERIC:
+                List<String> pgNumerics = value.isNull() ? null : value.getStringArray();
+                builder.set(columnName).toPgNumericArray(pgNumerics);
+                break;
             }
             break;
           default:
