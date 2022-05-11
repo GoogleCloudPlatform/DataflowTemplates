@@ -19,12 +19,12 @@ This is a Flex Template meaning that the pipeline code will be containerized and
 Set the pipeline vars
 ```sh
 export PROJECT=<project-id>
-export IMAGE_NAME="mongodb-to-bigquery"
+export IMAGE_NAME="bigquery-to-mongodb"
 export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
-export TEMPLATE_MODULE=mongodb-to-bigquery
+export TEMPLATE_MODULE="bigquery-to-mongodb"
 export APP_ROOT=/template/${TEMPLATE_MODULE}
 export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_MODULE}-command-spec.json
 export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
@@ -33,28 +33,9 @@ export SUBSCRIPTION=<my-subscription>
 export MONGODB_HOSTNAME="mongodb+srv://<username>:<password>@<server-connection-string>"
 export MONGODB_DATABASE_NAME=<database name>
 export MONGODB_COLLECTION_NAME=<Collection name>
-
-export DEADLETTER_TABLE=<my-project:my-dataset.my-deadletter-table>
+export INPUT_TABLE_SPEC=<input table spec>
 ```
-```sh
-export PROJECT="gsidemo-246315"
-export IMAGE_NAME="bigquery-to-mongodb"
-export BUCKET_NAME='gs://vshanbh'
-export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
-export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
-export BASE_CONTAINER_IMAGE_VERSION=latest
-export TEMPLATE_MODULE='bigquery-to-mongodb'
-export APP_ROOT=/template/${TEMPLATE_MODULE}
-export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_MODULE}-command-spec.json
-export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
 
-export SUBSCRIPTION=<my-subscription>
-export MONGODB_HOSTNAME="mongodb+srv://<username>:<password>@<server-connection-string>"
-export MONGODB_DATABASE_NAME=<database name>
-export MONGODB_COLLECTION_NAME=<Collection name>
-export INPUT_SPEC_TABLE=<table spec>
-
-```
 * Build and push image to Google Container Repository
 ```sh
 mvn clean package -Dimage=${TARGET_GCR_IMAGE} \

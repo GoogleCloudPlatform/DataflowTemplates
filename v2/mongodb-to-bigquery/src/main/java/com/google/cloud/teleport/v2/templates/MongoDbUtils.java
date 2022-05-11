@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import org.bson.Document;
 
+
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
@@ -64,7 +65,9 @@ public class MongoDbUtils implements Serializable{
         String getCollection();
         void setCollection(String collection);
 
-
+        @Description("MongoDb collection to read the data from")
+        String getUserOption();
+        void setUserOption(String userOption);
     }
 
     public interface  BigQueryWriteOptions extends PipelineOptions, DataflowPipelineOptions {
@@ -73,91 +76,63 @@ public class MongoDbUtils implements Serializable{
         @Default.String("bqtable")
         String getOutputTableSpec();
         void setOutputTableSpec(String outputTableSpec);
-
-        @Description("BigQuery Table name to write to")
-        String getBigQueryLoadingTemporaryDirectory();
-        void setBigQueryLoadingTemporaryDirectory(String bigQueryLoadingTemporaryDirectory);
     }
 
-    public interface  BigQueryReadOptions extends PipelineOptions, DataflowPipelineOptions {
-
-        @Description("BigQuery Table name to write to")
-        @Default.String("bqtable")
-        String getInputTableSpec();
-        void setInputTableSpec(String inputTableSpec);
-
-        @Description("BigQuery Table name to write to")
-        String getBigQueryLoadingTemporaryDirectory();
-        void setBigQueryLoadingTemporaryDirectory(String bigQueryLoadingTemporaryDirectory);
-    }
-
-    /** Version 2 */
-    public static TableSchema getTableFieldSchema(String uri, String database, String collection){
-        Document document = getMongoDbDocument(uri, database, collection);
+    /** Returns the Table schema for Bigquery table based on user input
+     * The tabble schema can be a 3 column table with _id, document as a Json string and timestamp by default
+     * Or the Table schema can be flattened version of the document with each field as a column
+     * for userOption "FLATTEN"*/
+    public static TableSchema getTableFieldSchema(String uri, String database, String collection, String userOption){
         List<TableFieldSchema> bigquerySchemaFields = new ArrayList<>();
-        document.forEach((key, value) ->
-        {
-            bigquerySchemaFields.add(new TableFieldSchema().setName(key).setType(getTableSchemaDataType(value.getClass().getName())));
-
-        });
+        if(userOption != "FLATTEN"){
+            bigquerySchemaFields.add(new TableFieldSchema().setName("id").setType("STRING"));
+            bigquerySchemaFields.add(new TableFieldSchema().setName("source_data").setType("STRING"));
+            bigquerySchemaFields.add(new TableFieldSchema().setName("timestamp").setType("TIMESTAMP"));
+        }
+        else{
+            Document document = getMongoDbDocument(uri, database, collection);
+            document.forEach((key, value) ->
+            {
+                bigquerySchemaFields.add(new TableFieldSchema().setName(key).setType(getTableSchemaDataType(value.getClass().getName())));
+            });
+        }
         TableSchema bigquerySchema = new TableSchema().setFields(bigquerySchemaFields);
         return bigquerySchema;
     }
 
-    /** Version 1:
-    public static TableSchema getTableFieldSchema(){
-         List<TableFieldSchema> bigquerySchemaFields = new ArrayList<>();
-         bigquerySchemaFields.add(new TableFieldSchema().setName("id").setType("STRING"));
-         bigquerySchemaFields.add(new TableFieldSchema().setName("source_data").setType("STRING"));
-         bigquerySchemaFields.add(new TableFieldSchema().setName("timestamp").setType("TIMESTAMP"));
-         TableSchema bigquerySchema = new TableSchema().setFields(bigquerySchemaFields);
-
-        return bigquerySchema;
-    }
-     */
-
-    public static TableRow generateTableRow(Document document){
+    /** Generates and returns the tablerow for the mongodb document based on user input
+     * The table row will have a column with whole document as a json string by default
+     * If user passes "FLATTEN" to userOption, The document will be flattnered for first leven and stored into BigQuery
+     * */
+    public static TableRow generateTableRow(Document document, String userOption){
         TableRow row = new TableRow();
-        document.forEach((key, value) ->
-        {
-            String valueClass = value.getClass().getName();
-            switch(valueClass){
-                case "org.bson.types.ObjectId": row.set(key,value.toString());
-                case "org.bson.Document":  row.set(key,value.toString());
-                case "java.lang.Double":  row.set(key,value);
-                case "java.util.Integer":  row.set(key,value);
-                case "java.util.ArrayList":  row.set(key,value.toString());
-                default:row.set(key,value.toString());
-            }
-        });
+        if(userOption != "FLATTEN"){
+            String source_data = document.toJson();
+            DateTimeFormatter time_format = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
+            LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
+
+            row
+                    .set("id",document.getObjectId("_id").toString())
+                    .set("source_data",source_data)
+                    .set("timestamp", localdate.format(time_format));
+        }else{
+            document.forEach((key, value) ->
+            {
+                String valueClass = value.getClass().getName();
+                switch(valueClass){
+                    case "org.bson.types.ObjectId": row.set(key,value.toString());
+                    case "org.bson.Document":  row.set(key,value.toString());
+                    case "java.lang.Double":  row.set(key,value);
+                    case "java.util.Integer":  row.set(key,value);
+                    case "java.util.ArrayList":  row.set(key,value.toString());
+                    default:row.set(key,value.toString());
+                }
+            });
+        }
         return row;
     }
 
-    /** Version 1:
-    public static TableRow generateTableRow(Document document){
-        TableRow row = new TableRow();
-        String source_data = document.toJson();
-        DateTimeFormatter time_format = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
-        LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
-
-        TableRow row = new TableRow()
-            .set("id",document.getObjectId("_id").toString())
-            .set("source_data",source_data)
-            .set("timestamp", localdate.format(time_format));
-        return row;
-    }
-    */
-
-//    public static String translateJDBCUrl(String jdbcUrlSecretName) {
-//        try (SecretManagerServiceClient client = SecretManagerServiceClient.create()) {
-//            AccessSecretVersionResponse response = client.accessSecretVersion(jdbcUrlSecretName);
-//            String resp = response.getPayload().getData().toStringUtf8();
-//            return resp;
-//        } catch (IOException e) {
-//            throw new RuntimeException("Unable to read JDBC URL secret");
-//        }
-//    }
-
+    /** Maps and Returns the Datatype form MongoDb To BigQuery */
     public static String getTableSchemaDataType(String s){
         switch(s){
             case "java.lang.Integer": return "INTEGER";
@@ -170,6 +145,7 @@ public class MongoDbUtils implements Serializable{
         return "STRING";
     }
 
+    /** Get a Document from MongoDB to generate the schema for Bigquery */
     public static Document getMongoDbDocument(String uri, String dbName, String collName){
         MongoClient mongoClient = MongoClients.create(uri);
         MongoDatabase database = mongoClient.getDatabase(dbName);
@@ -177,31 +153,5 @@ public class MongoDbUtils implements Serializable{
         Document doc = collection.find().first();
         return doc;
     }
-
-//    public static List<String>  listSecrets(String projectId) throws IOException {
-//        List<String> list=new ArrayList<String>();
-//        try (SecretManagerServiceClient client = SecretManagerServiceClient.create()) {
-//            ProjectName projectName = ProjectName.of(projectId);
-//            ListSecretsPagedResponse pagedResponse = client.listSecrets(projectName);
-//            pagedResponse.iterateAll().forEach(
-//                    secret -> {
-//                        list.add(secret.getName());
-//                    });
-//        }
-//        String[] prefixList = list.get(0).split("/");
-//
-//
-//        String uriSecret = prefixList[0]+"/"+prefixList[1]+"/"+prefixList[2]+"/uri/versions/1";
-//        String dbSecret = prefixList[0]+"/"+prefixList[1]+"/"+prefixList[2]+"/database/versions/1";
-//        String collectionSecret = prefixList[0]+"/"+prefixList[1]+"/"+prefixList[2]+"/collection/versions/1";
-//
-//        List<String> secretList = new ArrayList<String>();
-//        secretList.add(uriSecret);
-//        secretList.add(dbSecret);
-//        secretList.add(collectionSecret);
-//
-//
-//        return secretList;
-//    }
 
 }

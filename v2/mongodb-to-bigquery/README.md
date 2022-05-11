@@ -33,6 +33,7 @@ export MONGODB_HOSTNAME="mongodb+srv://<username>:<password>@<server-connection-
 export MONGODB_DATABASE_NAME=<database name>
 export MONGODB_COLLECTION_NAME=<Collection name>
 export OUTPUT_TABLE_SPEC=<output tabel spec>
+export USER_OPTION = <user option>
 
 ```
 
@@ -82,6 +83,13 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
         "label": "outputTableSpec",
         "helpText": "BigQuery destination table spec. e.g bigquery-project:dataset.output_table",
         "paramType": "TEXT"
+      },
+      {
+        "name": "userOption",
+        "label": "User option",
+        "helpText": " ",
+        "is_optional": true,
+        "paramType": "TEXT"
       }
     ]
   },
@@ -89,6 +97,7 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
     "language": "JAVA"
   }
 }
+
 
 ```
 
@@ -105,18 +114,10 @@ The template requires the following parameters:
 * mongoDBUri: List of MongoDB node to connect to, ex: my-node1:port
 * database: The database in mongoDB where the collection exists, ex: my-db
 * collection: The collection in mongoDB database to put the documents to, ex: my-collection
-* deadletterTable: Deadletter table for failed inserts in form: project-id:dataset.table
+* outputTableSpec: The BQ table where we want to write the data read from MongoDb collection to.
 
 The template has the following optional parameters:
-* batchSize: Batch size in number of documents. Default: 1024
-* batchSizeBytes: Batch size in number of bytes. Default: 5242880 (5mb)
-* javascriptTextTransformGcsPath: Gcs path to javascript udf source. Udf will be preferred option for transformation if supplied. Default: null
-* javascriptTextTransformFunctionName: UDF Javascript Function Name. Default: null
-* maxConnectionIdleTime:  Maximum Connection idle time e.g 10000. Default: 60000
-* sslEnabled: Specify if SSL is enabled. Default:false
-* ignoreSSLCertificate: Specify whether to ignore SSL certificate. Default: false
-* withOrdered: Enable ordered nulk insertions. Default: true
-* withSSLInvalidHostnameAllowed: Enable InvalidHostnameAllowed for SSL Connection. Default:false
+* userOption: The user option to Flatten the document or store it as a jsonString. To Flatten the document pass the parameter as "FLATTEN".
 
 Template can be executed using the following gcloud command.
 ```sh

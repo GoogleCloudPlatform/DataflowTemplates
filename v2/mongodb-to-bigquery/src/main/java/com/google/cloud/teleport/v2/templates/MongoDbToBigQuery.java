@@ -108,7 +108,13 @@ public class MongoDbToBigQuery {
     Pipeline pipeline = Pipeline.create(options);
 
 
-    TableSchema bigquerySchema = MongoDbUtils.getTableFieldSchema(options.getMongoDbUri(), options.getDatabase(), options.getCollection());
+    TableSchema bigquerySchema = MongoDbUtils.getTableFieldSchema(
+            options.getMongoDbUri(),
+            options.getDatabase(),
+            options.getCollection(),
+            options.getUserOption()
+    );
+    String userOption = options.getUserOption();
 
     pipeline
             .apply(
@@ -123,7 +129,7 @@ public class MongoDbToBigQuery {
                             new SimpleFunction<Document, TableRow>() {
                               @Override
                               public TableRow apply(Document document) {
-                                return MongoDbUtils.generateTableRow(document);
+                                return MongoDbUtils.generateTableRow(document, userOption);
                               }
                             }
                     )
