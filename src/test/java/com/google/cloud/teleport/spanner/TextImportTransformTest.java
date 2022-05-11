@@ -17,10 +17,12 @@ package com.google.cloud.teleport.spanner;
 
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.teleport.spanner.TextImportTransform.ReadImportManifest;
 import com.google.cloud.teleport.spanner.TextImportTransform.ResolveDataFiles;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
+import com.google.cloud.teleport.spanner.ddl.Dialect;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -308,9 +310,9 @@ public class TextImportTransformTest {
       assertThat(
           e.getMessage(),
           equalTo(
-              "java.lang.RuntimeException: DB table table3 has one or more generated columns. An "
-                  + "explict column list that excludes the generated columns must be provided in the "
-                  + "manifest."));
+              "java.lang.RuntimeException: DB table table3 has one or more generated columns. An"
+                  + " explict column list that excludes the generated columns must be provided in"
+                  + " the manifest."));
     }
   }
 
@@ -351,6 +353,76 @@ public class TextImportTransformTest {
               "java.lang.RuntimeException: Column gen_col in manifest is a generated column "
                   + "in DB table table3. Generated columns cannot be imported."));
     }
+  }
+
+  @Test
+  public void readPgImportManifestTypeMustMatch() throws Exception {
+    Path f11 = Files.createTempFile("table1-file", "1");
+    Path manifestFile = Files.createTempFile("import-manifest", ".json");
+    Charset charset = Charset.forName("UTF-8");
+    try (BufferedWriter writer = Files.newBufferedWriter(manifestFile, charset)) {
+      String jsonString =
+          String.format(
+              "{\"tables\": [{\"table_name\": \"table1\",\"file_patterns\": [\"%s\"],\"columns\":"
+                  + " [{\"column_name\": \"int_col\", \"type_name\": \"bigint\"},"
+                  + " {\"column_name\":\"str_10_col\", \"type_name\": \"character varying(10)\"},"
+                  + " {\"column_name\":\"float_col\", \"type_name\": \"double precision\"},"
+                  + " {\"column_name\":\"bool_col\", \"type_name\": \"boolean\"},"
+                  + " {\"column_name\": \"byte_col\", \"type_name\": \"bytea\"},"
+                  + " {\"column_name\": \"timestamp_col\","
+                  + " \"type_name\":\"timestamp with time zone\"},"
+                  + " {\"column_name\": \"numeric_col\", \"type_name\": \"numeric\"},"
+                  + " {\"column_name\": \"date_col\", \"type_name\": \"date\"}]}]}",
+              f11.toString());
+      writer.write(jsonString, 0, jsonString.length());
+    }
+
+    ValueProvider<String> importManifest =
+        ValueProvider.StaticValueProvider.of(manifestFile.toString());
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("ddl", Create.of(getPgTestDdl())).apply(View.asSingleton());
+
+    PCollection<KV<String, String>> tableAndFiles =
+        pipeline
+            .apply("Read manifest file", new ReadImportManifest(importManifest))
+            .apply("Resolve data files", new ResolveDataFiles(importManifest, ddlView));
+    pipeline.run();
+  }
+
+  @Test
+  public void readPgImportManifestTypeMismatch() throws Exception {
+    Path f11 = Files.createTempFile("table1-file", "1");
+    Path manifestFile = Files.createTempFile("import-manifest", ".json");
+    Charset charset = Charset.forName("UTF-8");
+    try (BufferedWriter writer = Files.newBufferedWriter(manifestFile, charset)) {
+      String jsonString =
+          String.format(
+              "{\"tables\": ["
+                  + "{\"table_name\": \"table1\","
+                  + "\"file_patterns\": [\"%s\"],"
+                  + "\"columns\": [{\"column_name\": \"int_col\", \"type_name\": \"text\"}]}"
+                  + "]}",
+              f11.toString());
+      writer.write(jsonString, 0, jsonString.length());
+    }
+
+    ValueProvider<String> importManifest =
+        ValueProvider.StaticValueProvider.of(manifestFile.toString());
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("ddl", Create.of(getPgTestDdl())).apply(View.asSingleton());
+
+    PCollection<KV<String, String>> tableAndFiles =
+        pipeline
+            .apply("Read manifest file", new ReadImportManifest(importManifest))
+            .apply("Resolve data files", new ResolveDataFiles(importManifest, ddlView));
+
+    PipelineExecutionException thrown =
+        assertThrows(PipelineExecutionException.class, () -> pipeline.run());
+    assertThat(
+        thrown.getMessage(),
+        equalTo(
+            "java.lang.RuntimeException: Mismatching type: Table table1 Column int_col [PG_INT8"
+                + " from DB and text from manifest]"));
   }
 
   private static Ddl getTestDdl() {
@@ -411,6 +483,44 @@ public class TextImportTransformTest {
             .query("SELECT int_col FROM table1")
             .security(com.google.cloud.teleport.spanner.ddl.View.SqlSecurity.INVOKER)
             .endView()
+            .build();
+    return ddl;
+  }
+
+  private static Ddl getPgTestDdl() {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("table1")
+            .column("int_col")
+            .pgInt8()
+            .notNull()
+            .endColumn()
+            .column("str_10_col")
+            .pgVarchar()
+            .size(10)
+            .endColumn()
+            .column("float_col")
+            .pgFloat8()
+            .endColumn()
+            .column("bool_col")
+            .pgBool()
+            .endColumn()
+            .column("byte_col")
+            .pgBytea()
+            .endColumn()
+            .column("timestamp_col")
+            .pgTimestamptz()
+            .endColumn()
+            .column("numeric_col")
+            .pgNumeric()
+            .endColumn()
+            .column("date_col")
+            .pgDate()
+            .endColumn()
+            .primaryKey()
+            .asc("int_col")
+            .end()
+            .endTable()
             .build();
     return ddl;
   }

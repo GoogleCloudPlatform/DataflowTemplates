@@ -21,6 +21,7 @@ import com.google.cloud.teleport.spanner.TextImportProtos.ImportManifest.TableMa
 import com.google.cloud.teleport.spanner.common.Type.Code;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
+import com.google.cloud.teleport.spanner.ddl.Dialect;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.HashMultimap;
@@ -405,26 +406,47 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
               .withSideInputs(ddlView));
     }
 
-    public static Code parseSpannerDataType(String columnType) {
-      if (STRING_PATTERN.matcher(columnType).matches()) {
+    public static Code parseSpannerDataType(String columnType, Dialect dialect) {
+      if (STRING_PATTERN.matcher(columnType).matches() && dialect == Dialect.GOOGLE_STANDARD_SQL) {
         return Code.STRING;
-      } else if (columnType.equalsIgnoreCase("INT64")) {
+      } else if (columnType.equalsIgnoreCase("INT64") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
         return Code.INT64;
-      } else if (columnType.equalsIgnoreCase("FLOAT64")) {
+      } else if (columnType.equalsIgnoreCase("FLOAT64") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
         return Code.FLOAT64;
-      } else if (columnType.equalsIgnoreCase("BOOL")) {
+      } else if (columnType.equalsIgnoreCase("BOOL") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
         return Code.BOOL;
-      } else if (columnType.equalsIgnoreCase("DATE")) {
+      } else if (columnType.equalsIgnoreCase("DATE") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
         return Code.DATE;
-      } else if (columnType.equalsIgnoreCase("TIMESTAMP")) {
+      } else if (columnType.equalsIgnoreCase("TIMESTAMP")
+          && dialect == Dialect.GOOGLE_STANDARD_SQL) {
         return Code.TIMESTAMP;
-      } else if (columnType.equalsIgnoreCase("BYTES")) {
+      } else if (columnType.equalsIgnoreCase("BYTES") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
         return Code.BYTES;
-      } else if (columnType.equalsIgnoreCase("NUMERIC")) {
+      } else if (columnType.equalsIgnoreCase("NUMERIC") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
         return Code.NUMERIC;
-      } else if (columnType.equalsIgnoreCase("JSON")) {
+      } else if (columnType.equalsIgnoreCase("JSON") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
         return Code.JSON;
-      } else {
+      } else if (columnType.equalsIgnoreCase("bigint") && dialect == Dialect.POSTGRESQL) {
+        return Code.PG_INT8;
+      } else if (columnType.equalsIgnoreCase("double precision") && dialect == Dialect.POSTGRESQL) {
+        return Code.PG_FLOAT8;
+      } else if (columnType.equalsIgnoreCase("boolean") && dialect == Dialect.POSTGRESQL) {
+        return Code.PG_BOOL;
+      } else if (columnType.equalsIgnoreCase("timestamp with time zone")
+          && dialect == Dialect.POSTGRESQL) {
+        return Code.PG_TIMESTAMPTZ;
+      } else if (columnType.equalsIgnoreCase("bytea") && dialect == Dialect.POSTGRESQL) {
+        return Code.PG_BYTEA;
+      } else if (columnType.equalsIgnoreCase("numeric") && dialect == Dialect.POSTGRESQL) {
+        return Code.PG_NUMERIC;
+      } else if (columnType.toLowerCase().startsWith("character varying")
+          && dialect == Dialect.POSTGRESQL) {
+        return Code.PG_VARCHAR;
+      } else if (columnType.equalsIgnoreCase("text") && dialect == Dialect.POSTGRESQL) {
+        return Code.PG_TEXT;
+      } else if (columnType.equalsIgnoreCase("date") && dialect == Dialect.POSTGRESQL) {
+        return Code.PG_DATE;
+      }else {
         throw new IllegalArgumentException(
             "Unrecognized or unsupported column data type: " + columnType);
       }
@@ -465,7 +487,8 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
                       + "Generated columns cannot be imported.",
                   manifiestColumn.getColumnName(), table.name()));
         }
-        if (parseSpannerDataType(manifiestColumn.getTypeName()) != dbColumn.type().getCode()) {
+        if (parseSpannerDataType(manifiestColumn.getTypeName(), ddl.dialect())
+            != dbColumn.type().getCode()) {
           throw new RuntimeException(
               String.format(
                   "Mismatching type: Table %s Column %s [%s from DB and %s from manifest]",

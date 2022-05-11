@@ -78,7 +78,7 @@ public class SpannerToText {
   /** Custom PipelineOptions. */
   public interface SpannerToTextOptions
       extends PipelineOptions, SpannerReadOptions, FilesystemWriteOptions {
-
+    
     @Description("Temporary Directory to store Csv files.")
     ValueProvider<String> getCsvTempDirectory();
 
