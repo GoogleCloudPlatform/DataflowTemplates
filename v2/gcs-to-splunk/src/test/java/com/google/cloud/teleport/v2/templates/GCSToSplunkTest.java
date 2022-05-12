@@ -77,32 +77,7 @@ public class GCSToSplunkTest {
     options.setContainsHeaders(false);
     options.setInputFileSpec(NO_HEADER_CSV_FILE_PATH);
 
-    PCollectionTuple readCsvOut =
-        pipeline
-            .apply(
-                "ReadCsv",
-                ReadCsv.newBuilder()
-                    .setCsvFormat(options.getCsvFormat())
-                    .setDelimiter(options.getDelimiter())
-                    .setHasHeaders(options.getContainsHeaders())
-                    .setInputFileSpec(options.getInputFileSpec())
-                    .setHeaderTag(CSV_HEADERS)
-                    .setLineTag(CSV_LINES)
-                    .setFileEncoding(options.getCsvFileEncoding())
-                    .build())
-            .apply(
-                "ConvertLine",
-                com.google.cloud.teleport.v2.transforms.CsvConverters.LineToFailsafeJson
-                    .newBuilder()
-                    .setDelimiter(options.getDelimiter())
-                    .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
-                    .setUdfFunctionName(options.getJavascriptTextTransformFunctionName())
-                    .setJsonSchemaPath(options.getJsonSchemaPath())
-                    .setHeaderTag(CSV_HEADERS)
-                    .setLineTag(CSV_LINES)
-                    .setUdfOutputTag(UDF_OUT)
-                    .setUdfDeadletterTag(UDF_DEADLETTER_OUT)
-                    .build());
+    PCollectionTuple readCsvOut = readFromCsvAndTransform(options);
 
     PAssert.that(readCsvOut.get(UDF_OUT))
         .satisfies(
@@ -113,14 +88,8 @@ public class GCSToSplunkTest {
               return null;
             });
 
-    PCollectionTuple convertToSplunkEventOut =
-        readCsvOut
-            .get(UDF_OUT)
-            .apply(
-                "ConvertToSplunkEvent",
-                SplunkConverters.failsafeStringToSplunkEvent(
-                    SPLUNK_EVENT_OUT, SPLUNK_EVENT_DEADLETTER_OUT));
-    ;
+    PCollectionTuple convertToSplunkEventOut = convertToSplunkEvent(readCsvOut);
+
 
     // Assert
     PAssert.that(convertToSplunkEventOut.get(SPLUNK_EVENT_OUT))
@@ -133,7 +102,7 @@ public class GCSToSplunkTest {
   /** Tests the {@link GCSToSplunk} pipeline with the headers of the Csv. */
   @Test
   public void testGCSToSplunkHeadersE2E() {
-    final String stringifiedJsonRecord = "{\"id\":\"007\",\"state\":\"CA\",\"price\":\"26.23\"}";
+    final String stringifiedJsonRecord = "{\"id\":\"008\",\"state\":\"CA\",\"price\":\"26.23\"}";
     SplunkEvent expectedSplunkEvent =
         SplunkEvent.newBuilder().withEvent(stringifiedJsonRecord).create();
 
@@ -147,32 +116,7 @@ public class GCSToSplunkTest {
     options.setContainsHeaders(true);
     options.setInputFileSpec(HEADER_CSV_FILE_PATH);
 
-    PCollectionTuple readCsvOut =
-        pipeline
-            .apply(
-                "ReadCsv",
-                ReadCsv.newBuilder()
-                    .setCsvFormat(options.getCsvFormat())
-                    .setDelimiter(options.getDelimiter())
-                    .setHasHeaders(options.getContainsHeaders())
-                    .setInputFileSpec(options.getInputFileSpec())
-                    .setHeaderTag(CSV_HEADERS)
-                    .setLineTag(CSV_LINES)
-                    .setFileEncoding(options.getCsvFileEncoding())
-                    .build())
-            .apply(
-                "ConvertLine",
-                com.google.cloud.teleport.v2.transforms.CsvConverters.LineToFailsafeJson
-                    .newBuilder()
-                    .setDelimiter(options.getDelimiter())
-                    .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
-                    .setUdfFunctionName(options.getJavascriptTextTransformFunctionName())
-                    .setJsonSchemaPath(options.getJsonSchemaPath())
-                    .setHeaderTag(CSV_HEADERS)
-                    .setLineTag(CSV_LINES)
-                    .setUdfOutputTag(UDF_OUT)
-                    .setUdfDeadletterTag(UDF_DEADLETTER_OUT)
-                    .build());
+    PCollectionTuple readCsvOut = readFromCsvAndTransform(options);
 
     PAssert.that(readCsvOut.get(UDF_OUT))
         .satisfies(
@@ -183,14 +127,8 @@ public class GCSToSplunkTest {
               return null;
             });
 
-    PCollectionTuple convertToSplunkEventOut =
-        readCsvOut
-            .get(UDF_OUT)
-            .apply(
-                "ConvertToSplunkEvent",
-                SplunkConverters.failsafeStringToSplunkEvent(
-                    SPLUNK_EVENT_OUT, SPLUNK_EVENT_DEADLETTER_OUT));
-    ;
+    PCollectionTuple convertToSplunkEventOut = convertToSplunkEvent(readCsvOut);
+
 
     // Assert
     PAssert.that(convertToSplunkEventOut.get(SPLUNK_EVENT_OUT))
@@ -198,5 +136,83 @@ public class GCSToSplunkTest {
 
     //  Execute pipeline
     pipeline.run();
+  }
+
+  /** Tests the {@link GCSToSplunk} pipeline using a JSON schema to parse the Csv. */
+  @Test
+  public void testGCSToSplunkJsonSchemaE2E() {
+    final String stringifiedJsonRecord = "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
+    SplunkEvent expectedSplunkEvent =
+        SplunkEvent.newBuilder().withEvent(stringifiedJsonRecord).create();
+
+    CoderRegistry coderRegistry = pipeline.getCoderRegistry();
+    coderRegistry.registerCoderForClass(SplunkEvent.class, SplunkEventCoder.of());
+    coderRegistry.registerCoderForType(
+        FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
+
+    GCSToSplunkOptions options = PipelineOptionsFactory.create().as(GCSToSplunkOptions.class);
+
+    options.setJsonSchemaPath(JSON_SCHEMA_FILE_PATH);
+    options.setContainsHeaders(false);
+    options.setInputFileSpec(NO_HEADER_CSV_FILE_PATH);
+
+    PCollectionTuple readCsvOut = readFromCsvAndTransform(options);
+
+    PAssert.that(readCsvOut.get(UDF_OUT))
+        .satisfies(
+            collection -> {
+              FailsafeElement element = collection.iterator().next();
+              System.out.println(element);
+              assertThat(element.getPayload(), is(equalTo(stringifiedJsonRecord)));
+              return null;
+            });
+
+    PCollectionTuple convertToSplunkEventOut = convertToSplunkEvent(readCsvOut);
+
+
+    // Assert
+    PAssert.that(convertToSplunkEventOut.get(SPLUNK_EVENT_OUT))
+        .containsInAnyOrder(expectedSplunkEvent);
+
+    //  Execute pipeline
+    pipeline.run();
+  }
+
+  private PCollectionTuple readFromCsvAndTransform(GCSToSplunkOptions options){
+
+    return pipeline
+        .apply(
+            "ReadCsv",
+            ReadCsv.newBuilder()
+                .setCsvFormat(options.getCsvFormat())
+                .setDelimiter(options.getDelimiter())
+                .setHasHeaders(options.getContainsHeaders())
+                .setInputFileSpec(options.getInputFileSpec())
+                .setHeaderTag(CSV_HEADERS)
+                .setLineTag(CSV_LINES)
+                .setFileEncoding(options.getCsvFileEncoding())
+                .build())
+        .apply(
+            "ConvertLine",
+            com.google.cloud.teleport.v2.transforms.CsvConverters.LineToFailsafeJson
+                .newBuilder()
+                .setDelimiter(options.getDelimiter())
+                .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                .setUdfFunctionName(options.getJavascriptTextTransformFunctionName())
+                .setJsonSchemaPath(options.getJsonSchemaPath())
+                .setHeaderTag(CSV_HEADERS)
+                .setLineTag(CSV_LINES)
+                .setUdfOutputTag(UDF_OUT)
+                .setUdfDeadletterTag(UDF_DEADLETTER_OUT)
+                .build());
+  }
+
+  private PCollectionTuple convertToSplunkEvent (PCollectionTuple readCsvOut){
+    return readCsvOut
+        .get(UDF_OUT)
+        .apply(
+            "ConvertToSplunkEvent",
+            SplunkConverters.failsafeStringToSplunkEvent(
+                SPLUNK_EVENT_OUT, SPLUNK_EVENT_DEADLETTER_OUT));
   }
 }
