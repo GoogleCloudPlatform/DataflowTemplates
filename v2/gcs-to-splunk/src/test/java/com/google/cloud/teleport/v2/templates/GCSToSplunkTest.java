@@ -26,9 +26,11 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.coders.SplunkEventCoder;
 import com.google.cloud.teleport.v2.templates.GCSToSplunk.GCSToSplunkOptions;
 import com.google.cloud.teleport.v2.transforms.CsvConverters.ReadCsv;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
+import com.google.cloud.teleport.v2.transforms.SplunkConverters;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.io.Resources;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -71,6 +73,7 @@ public class GCSToSplunkTest {
         FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
 
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
+    coderRegistry.registerCoderForClass(SplunkEvent.class, SplunkEventCoder.of());
     coderRegistry.registerCoderForType(coder.getEncodedTypeDescriptor(), coder);
 
     GCSToSplunkOptions options = PipelineOptionsFactory.create().as(GCSToSplunkOptions.class);
@@ -121,25 +124,13 @@ public class GCSToSplunkTest {
             .get(UDF_OUT)
             .apply(
                 "ConvertToSplunkEvent",
-                com.google.cloud.teleport.v2.transforms.SplunkConverters
-                    .failsafeStringToSplunkEvent(SPLUNK_EVENT_OUT, SPLUNK_EVENT_DEADLETTER_OUT));
+                SplunkConverters.failsafeStringToSplunkEvent(
+                    SPLUNK_EVENT_OUT, SPLUNK_EVENT_DEADLETTER_OUT));
     ;
 
     // Assert
-    // PAssert.that(convertToSplunkEventOut.get(SPLUNK_EVENT_OUT)).empty();
-    // PAssert.that(convertToSplunkEventOut.get(SPLUNK_EVENT_OUT))
-    //     .containsInAnyOrder(expectedSplunkEvent);
     PAssert.that(convertToSplunkEventOut.get(SPLUNK_EVENT_OUT))
-        .satisfies(
-            collection -> {
-              SplunkEvent element = collection.iterator().next();
-              System.out.println("ELEMENT IS");
-              System.out.println(element);
-              assertThat(1, is(equalTo(1)));
-              // assertThat(element, is(equalTo(expectedSplunkEvent)));
-              return null;
-            });
-
+        .containsInAnyOrder(expectedSplunkEvent);
 
     //  Execute pipeline
     pipeline.run();
