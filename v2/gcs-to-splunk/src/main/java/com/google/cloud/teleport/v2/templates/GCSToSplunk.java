@@ -19,7 +19,6 @@ import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.coders.SplunkEventCoder;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters.LogErrors;
-import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.v2.transforms.SplunkConverters;
 import com.google.cloud.teleport.v2.transforms.SplunkConverters.SplunkOptions;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -35,7 +34,6 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
-import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
@@ -137,12 +135,11 @@ public class GCSToSplunk {
     /*
      * Steps:
      *  1) Step 1: Read CSV file(s) from Cloud Storage using {@link CsvConverters.ReadCsv}.
-     *  2) Convert message to FailsafeElement for processing.
-     *  3) Apply user provided UDF (if any) on the input strings.
-     *  4) Convert successfully transformed messages into SplunkEvent objects
-     *  5) Write SplunkEvents to Splunk's HEC end point.
-     *  5a) Wrap write failures into a FailsafeElement.
-     *  6) Collect errors from UDF transform (#3), SplunkEvent transform (#4)
+     *  2) Apply user provided UDF (if any) on the input strings.
+     *  3) Convert successfully transformed messages into SplunkEvent objects
+     *  4) Write SplunkEvents to Splunk's HEC end point.
+     *  4a) Wrap write failures into a FailsafeElement.
+     *  5) Collect errors from UDF transform (#3), SplunkEvent transform (#4)
      *     and writing to Splunk HEC (#5) and place into a GCS folder.
      */
 
@@ -163,31 +160,29 @@ public class GCSToSplunk {
                     .setFileEncoding(options.getCsvFileEncoding())
                     .build())
 
-            // 2) Convert message to FailsafeElement for processing.
-            .get(CSV_LINES)
+            // 2) Apply user provided UDF (if any) on the input strings.
             .apply(
-                "ConvertToFailsafeElement",
-                MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
-                    .via(input -> FailsafeElement.of(input, input)))
-
-            // 3) Apply user provided UDF (if any) on the input strings.
-            .apply(
-                "ApplyUDFTransformation",
-                FailsafeJavascriptUdf.<String>newBuilder()
-                    .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
-                    .setFunctionName(options.getJavascriptTextTransformFunctionName())
-                    .setSuccessTag(UDF_OUT)
-                    .setFailureTag(UDF_DEADLETTER_OUT)
+                "ConvertLine",
+                com.google.cloud.teleport.v2.transforms.CsvConverters.LineToFailsafeJson
+                    .newBuilder()
+                    .setDelimiter(options.getDelimiter())
+                    .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
+                    .setUdfFunctionName(options.getJavascriptTextTransformFunctionName())
+                    .setJsonSchemaPath(options.getJsonSchemaPath())
+                    .setHeaderTag(CSV_HEADERS)
+                    .setLineTag(CSV_LINES)
+                    .setUdfOutputTag(UDF_OUT)
+                    .setUdfDeadletterTag(UDF_DEADLETTER_OUT)
                     .build())
 
-            // 4) Convert successfully transformed messages into SplunkEvent objects
+            // 3) Convert successfully transformed messages into SplunkEvent objects
             .get(UDF_OUT)
             .apply(
                 "ConvertToSplunkEvent",
                 SplunkConverters.failsafeStringToSplunkEvent(
                     SPLUNK_EVENT_OUT, SPLUNK_EVENT_DEADLETTER_OUT));
 
-    // 5) Write SplunkEvents to Splunk's HEC end point.
+    // 4) Write SplunkEvents to Splunk's HEC end point.
     PCollection<SplunkWriteError> writeErrors =
         convertToEventTuple
             .get(SPLUNK_EVENT_OUT)
@@ -198,7 +193,7 @@ public class GCSToSplunk {
                     .withParallelism(options.getParallelism())
                     .withDisableCertificateValidation(options.getDisableCertificateValidation()));
 
-    // 5a) Wrap write failures into a FailsafeElement.
+    // 4a) Wrap write failures into a FailsafeElement.
     PCollection<FailsafeElement<String, String>> wrappedSplunkWriteErrors =
         writeErrors.apply(
             "WrapSplunkWriteErrors",
@@ -223,8 +218,8 @@ public class GCSToSplunk {
                   }
                 }));
 
-    // 6) Collect errors from UDF transform (#3), SplunkEvent transform (#4)
-    //     and writing to Splunk HEC (#5) and place into a GCS folder.
+    // 5) Collect errors from UDF transform (#2), SplunkEvent transform (#3)
+    //     and writing to Splunk HEC (#4) and place into a GCS folder.
     PCollectionTuple.of(
             COMBINED_ERRORS,
             PCollectionList.of(
