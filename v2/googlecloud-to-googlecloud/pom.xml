@@ -77,7 +77,6 @@
         </plugin>
     </plugins>
   </build>
-
   <dependencies>
     <dependency>
       <groupId>org.apache.beam</groupId>
