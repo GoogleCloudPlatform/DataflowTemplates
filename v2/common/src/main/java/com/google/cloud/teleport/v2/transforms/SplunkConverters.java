@@ -181,11 +181,15 @@ public class SplunkConverters {
                     public void processElement(ProcessContext context) {
 
                       String input = context.element().getPayload();
+                      System.out.println("PAYLOAD IS");
+                      System.out.println(input);
 
                       try {
 
                         // Start building a SplunkEvent with the payload as the event.
                         SplunkEvent.Builder builder = SplunkEvent.newBuilder().withEvent(input);
+
+                        System.out.println("EVENT IS");
 
                         // We will attempt to parse the input to see
                         // if it is a valid JSON and if so, whether we can
@@ -196,6 +200,8 @@ public class SplunkConverters {
 
                           JSONObject json = new JSONObject(input);
 
+                          System.out.println("JSON IS");
+                          System.out.println(json);
                           // Check if metadata is provided via a nested _metadata
                           // JSON object
                           JSONObject metadata = json.optJSONObject(METADATA_KEY);
@@ -262,6 +268,8 @@ public class SplunkConverters {
                           }
 
                         } catch (JSONException je) {
+                          System.out.println("WE COULD NOT PARSE JSON");
+                          System.out.println(je);
                           // input is either not a properly formatted JSONObject
                           // or has other exceptions. In this case, we will
                           // simply capture the entire input as an 'event' and
@@ -272,10 +280,16 @@ public class SplunkConverters {
                           // this is expected behavior.
                         }
 
+                        SplunkEvent toReturn = builder.create();
+                        System.out.println(toReturn);
+                        SplunkEvent toReturn2 = builder.create();
+                        System.out.println(toReturn2);
                         context.output(splunkEventOutputTag, builder.create());
                         CONVERSION_SUCCESS.inc();
 
                       } catch (Exception e) {
+                        System.out.println("AN ERROR OCCURRED");
+                        System.out.println(e);
                         CONVERSION_ERRORS.inc();
                         context.output(
                             splunkDeadletterTag,

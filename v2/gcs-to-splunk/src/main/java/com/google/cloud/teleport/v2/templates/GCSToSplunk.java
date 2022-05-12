@@ -57,40 +57,40 @@ import org.slf4j.LoggerFactory;
  */
 public class GCSToSplunk {
 
+  /** String/String Coder for FailsafeElement. */
+  private static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
+      FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
+
   /** The tag for the headers of the CSV if required. */
   static final TupleTag<String> CSV_HEADERS = new TupleTag<String>() {};
 
   /** The tag for the lines of the CSV. */
   static final TupleTag<String> CSV_LINES = new TupleTag<String>() {};
 
-  /** String/String Coder for FailsafeElement. */
-  public static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
-      FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
-
   /** The tag for the main output for the UDF. */
-  private static final TupleTag<FailsafeElement<String, String>> UDF_OUT =
+  static final TupleTag<FailsafeElement<String, String>> UDF_OUT =
       new TupleTag<FailsafeElement<String, String>>() {};
 
   /** The tag for the dead-letter output of the udf. */
-  private static final TupleTag<FailsafeElement<String, String>> UDF_DEADLETTER_OUT =
+  static final TupleTag<FailsafeElement<String, String>> UDF_DEADLETTER_OUT =
       new TupleTag<FailsafeElement<String, String>>() {};
 
   /** The tag for successful {@link SplunkEvent} conversion. */
-  private static final TupleTag<SplunkEvent> SPLUNK_EVENT_OUT = new TupleTag<SplunkEvent>() {};
+  static final TupleTag<SplunkEvent> SPLUNK_EVENT_OUT = new TupleTag<SplunkEvent>() {};
 
   /** The tag for failed {@link SplunkEvent} conversion. */
-  private static final TupleTag<FailsafeElement<String, String>> SPLUNK_EVENT_DEADLETTER_OUT =
+  static final TupleTag<FailsafeElement<String, String>> SPLUNK_EVENT_DEADLETTER_OUT =
       new TupleTag<FailsafeElement<String, String>>() {};
 
   /** The tag for all of the elements that failed. */
-  private static final TupleTag<FailsafeElement<String, String>> COMBINED_ERRORS =
+  static final TupleTag<FailsafeElement<String, String>> COMBINED_ERRORS =
       new TupleTag<FailsafeElement<String, String>>() {};
 
   /** The tag for the output all of the elements that failed. */
-  private static final TupleTag<String> COMBINED_ERRORS_OUT = new TupleTag<String>() {};
+  static final TupleTag<String> COMBINED_ERRORS_OUT = new TupleTag<String>() {};
 
   /** Logger for class. */
-  private static final Logger LOG = LoggerFactory.getLogger(GCSToSplunk.class);
+  static final Logger LOG = LoggerFactory.getLogger(GCSToSplunk.class);
 
   /**
    * The {@link GCSToSplunkOptions} class provides the custom execution options passed by the
@@ -99,7 +99,7 @@ public class GCSToSplunk {
   public interface GCSToSplunkOptions extends CsvConverters.CsvPipelineOptions, SplunkOptions {
 
     @Description("Pattern of where to write errors, ex: gs://mybucket/somepath/errors.txt")
-    String getInvalidOutputPath();
+    ValueProvider<String> getInvalidOutputPath();
 
     void setInvalidOutputPath(ValueProvider<String> value);
   }
@@ -146,7 +146,7 @@ public class GCSToSplunk {
      *     and writing to Splunk HEC (#5) and place into a GCS folder.
      */
 
-    PCollectionTuple convertedCsvLines =
+    PCollectionTuple convertToEventTuple =
         pipeline
             /*
              * Step 1: Read CSV file(s) from Cloud Storage using {@link CsvConverters.ReadCsv}.
@@ -178,11 +178,9 @@ public class GCSToSplunk {
                     .setFunctionName(options.getJavascriptTextTransformFunctionName())
                     .setSuccessTag(UDF_OUT)
                     .setFailureTag(UDF_DEADLETTER_OUT)
-                    .build());
+                    .build())
 
-    // 4) Convert successfully transformed messages into SplunkEvent objects
-    PCollectionTuple convertToEventTuple =
-        convertedCsvLines
+            // 4) Convert successfully transformed messages into SplunkEvent objects
             .get(UDF_OUT)
             .apply(
                 "ConvertToSplunkEvent",
@@ -233,11 +231,11 @@ public class GCSToSplunk {
                     ImmutableList.of(
                         convertToEventTuple.get(SPLUNK_EVENT_DEADLETTER_OUT),
                         wrappedSplunkWriteErrors,
-                        convertedCsvLines.get(UDF_DEADLETTER_OUT)))
+                        convertToEventTuple.get(UDF_DEADLETTER_OUT)))
                 .apply("FlattenErrors", Flatten.pCollections()))
         .apply(
             LogErrors.newBuilder()
-                .setErrorWritePath(options.getInvalidOutputPath())
+                .setErrorWritePath(options.getInvalidOutputPath().get())
                 .setErrorTag(COMBINED_ERRORS_OUT)
                 .build());
 
