@@ -102,7 +102,7 @@ public class MongoDbUtils implements Serializable{
 
     /** Generates and returns the tablerow for the mongodb document based on user input
      * The table row will have a column with whole document as a json string by default
-     * If user passes "FLATTEN" to userOption, The document will be flattned for first level and stored into BigQuery
+     * If user passes "FLATTEN" to userOption, The document will be flattnered for first leven and stored into BigQuery
      * */
     public static TableRow generateTableRow(Document document, String userOption){
         TableRow row = new TableRow();
