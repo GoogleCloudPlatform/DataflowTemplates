@@ -88,7 +88,7 @@
     <proto-kms.version>0.87.0</proto-kms.version>
     <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
     <cloud-libraries-bom.version>24.4.0</cloud-libraries-bom.version>
-    <os.detected.classifier>osx-x86_64</os.detected.classifier>
+    <!-- <os.detected.classifier>osx-x86_64</os.detected.classifier> -->
   </properties>
 
   <dependencyManagement>
