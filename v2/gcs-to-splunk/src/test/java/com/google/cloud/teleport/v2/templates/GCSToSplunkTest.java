@@ -27,6 +27,7 @@ import static org.junit.Assert.assertThat;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.coders.SplunkEventCoder;
+import com.google.cloud.teleport.v2.coders.SplunkWriteErrorCoder;
 import com.google.cloud.teleport.v2.templates.GCSToSplunk.GCSToSplunkOptions;
 import com.google.cloud.teleport.v2.transforms.CsvConverters.ReadCsv;
 import com.google.cloud.teleport.v2.transforms.SplunkConverters;
@@ -35,9 +36,12 @@ import com.google.common.io.Resources;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.splunk.SplunkEvent;
+import org.apache.beam.sdk.io.splunk.SplunkWriteError;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.junit.Rule;
 import org.junit.Test;
@@ -90,7 +94,6 @@ public class GCSToSplunkTest {
 
     PCollectionTuple convertToSplunkEventOut = convertToSplunkEvent(readCsvOut);
 
-
     // Assert
     PAssert.that(convertToSplunkEventOut.get(SPLUNK_EVENT_OUT))
         .containsInAnyOrder(expectedSplunkEvent);
@@ -128,7 +131,6 @@ public class GCSToSplunkTest {
             });
 
     PCollectionTuple convertToSplunkEventOut = convertToSplunkEvent(readCsvOut);
-
 
     // Assert
     PAssert.that(convertToSplunkEventOut.get(SPLUNK_EVENT_OUT))
@@ -169,7 +171,6 @@ public class GCSToSplunkTest {
 
     PCollectionTuple convertToSplunkEventOut = convertToSplunkEvent(readCsvOut);
 
-
     // Assert
     PAssert.that(convertToSplunkEventOut.get(SPLUNK_EVENT_OUT))
         .containsInAnyOrder(expectedSplunkEvent);
@@ -178,7 +179,39 @@ public class GCSToSplunkTest {
     pipeline.run();
   }
 
-  private PCollectionTuple readFromCsvAndTransform(GCSToSplunkOptions options){
+  /** Tests the {@link GCSToSplunk} pipeline when there are write errors. */
+  @Test
+  public void testGCSToSplunkWriteErrors() {
+    // CoderRegistry coderRegistry = pipeline.getCoderRegistry();
+    // coderRegistry.registerCoderForClass(SplunkEvent.class, SplunkEventCoder.of());
+    // coderRegistry.registerCoderForClass(SplunkWriteError.class, SplunkWriteErrorCoder.of());
+    // coderRegistry.registerCoderForType(
+    //     FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
+
+    String payload = "test-payload";
+    String message = "test-message";
+    Integer statusCode = 123;
+
+    SplunkWriteError splunkWriteError =
+        SplunkWriteError.newBuilder()
+            .withPayload(payload)
+            .withStatusCode(statusCode)
+            .withStatusMessage(message)
+            .create();
+
+    System.out.println("SPLUNK WRITE ERROR");
+    System.out.println(splunkWriteError);
+
+    PCollection<SplunkWriteError> splunkErrorCollection =
+        pipeline.apply(
+            "Create Input data", Create.of(splunkWriteError).withCoder(SplunkWriteErrorCoder.of()));
+
+    PAssert.that(splunkErrorCollection).empty();
+    //  Execute pipeline
+    pipeline.run();
+  }
+
+  private PCollectionTuple readFromCsvAndTransform(GCSToSplunkOptions options) {
 
     return pipeline
         .apply(
@@ -194,8 +227,7 @@ public class GCSToSplunkTest {
                 .build())
         .apply(
             "ConvertLine",
-            com.google.cloud.teleport.v2.transforms.CsvConverters.LineToFailsafeJson
-                .newBuilder()
+            com.google.cloud.teleport.v2.transforms.CsvConverters.LineToFailsafeJson.newBuilder()
                 .setDelimiter(options.getDelimiter())
                 .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
                 .setUdfFunctionName(options.getJavascriptTextTransformFunctionName())
@@ -207,7 +239,7 @@ public class GCSToSplunkTest {
                 .build());
   }
 
-  private PCollectionTuple convertToSplunkEvent (PCollectionTuple readCsvOut){
+  private PCollectionTuple convertToSplunkEvent(PCollectionTuple readCsvOut) {
     return readCsvOut
         .get(UDF_OUT)
         .apply(
