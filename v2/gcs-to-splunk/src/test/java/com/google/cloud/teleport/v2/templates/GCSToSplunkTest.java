@@ -41,6 +41,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.junit.Rule;
@@ -182,11 +183,10 @@ public class GCSToSplunkTest {
   /** Tests the {@link GCSToSplunk} pipeline when there are write errors. */
   @Test
   public void testGCSToSplunkWriteErrors() {
-    // CoderRegistry coderRegistry = pipeline.getCoderRegistry();
-    // coderRegistry.registerCoderForClass(SplunkEvent.class, SplunkEventCoder.of());
+    CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     // coderRegistry.registerCoderForClass(SplunkWriteError.class, SplunkWriteErrorCoder.of());
-    // coderRegistry.registerCoderForType(
-    //     FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
+    coderRegistry.registerCoderForType(
+        FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
 
     String payload = "test-payload";
     String message = "test-message";
@@ -206,7 +206,23 @@ public class GCSToSplunkTest {
         pipeline.apply(
             "Create Input data", Create.of(splunkWriteError).withCoder(SplunkWriteErrorCoder.of()));
 
-    PAssert.that(splunkErrorCollection).empty();
+    PAssert.that(splunkErrorCollection).containsInAnyOrder(splunkWriteError);
+
+    // PCollection<FailsafeElement<String, String>> wrappedSplunkWriteErrors =
+    // wrapFailuresToFailsafe(splunkErrorCollection);
+
+    PCollection<FailsafeElement<String, String>> wrappedSplunkWriteErrors =
+        splunkErrorCollection.apply(ParDo.of(new SplunkWriteErrorToFailsafeElementDoFn()));
+    PAssert.that(wrappedSplunkWriteErrors).empty();
+    // PAssert.that(wrappedSplunkWriteErrors)
+    //     .satisfies(
+    //         collection -> {
+    //           FailsafeElement element = collection.iterator().next();
+    //           System.out.println(element);
+    //           // assertThat(element.getPayload(), is(equalTo(splunkWriteError)));
+    //           return null;
+    //         });
+
     //  Execute pipeline
     pipeline.run();
   }

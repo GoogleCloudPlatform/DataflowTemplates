@@ -196,27 +196,7 @@ public class GCSToSplunk {
     // 4a) Wrap write failures into a FailsafeElement.
     PCollection<FailsafeElement<String, String>> wrappedSplunkWriteErrors =
         writeErrors.apply(
-            "WrapSplunkWriteErrors",
-            ParDo.of(
-                new DoFn<SplunkWriteError, FailsafeElement<String, String>>() {
-
-                  @ProcessElement
-                  public void processElement(ProcessContext context) {
-                    SplunkWriteError error = context.element();
-                    FailsafeElement<String, String> failsafeElement =
-                        FailsafeElement.of(error.payload(), error.payload());
-
-                    if (error.statusMessage() != null) {
-                      failsafeElement.setErrorMessage(error.statusMessage());
-                    }
-
-                    if (error.statusCode() != null) {
-                      failsafeElement.setErrorMessage(
-                          String.format("Splunk write status code: %d", error.statusCode()));
-                    }
-                    context.output(failsafeElement);
-                  }
-                }));
+            "WrapSplunkWriteErrors", ParDo.of(new SplunkWriteErrorToFailsafeElementDoFn()));
 
     // 5) Collect errors from UDF transform (#2), SplunkEvent transform (#3)
     //     and writing to Splunk HEC (#4) and place into a GCS folder.
@@ -235,5 +215,28 @@ public class GCSToSplunk {
                 .build());
 
     return pipeline.run();
+  }
+}
+
+class SplunkWriteErrorToFailsafeElementDoFn
+    extends DoFn<SplunkWriteError, FailsafeElement<String, String>> {
+  @ProcessElement
+  public void processElement(ProcessContext context) {
+    System.out.println("IN HERE");
+    SplunkWriteError error = context.element();
+    FailsafeElement<String, String> failsafeElement =
+        FailsafeElement.of(error.payload(), error.payload());
+
+    if (error.statusMessage() != null) {
+      failsafeElement.setErrorMessage(error.statusMessage());
+    }
+
+    if (error.statusCode() != null) {
+      failsafeElement.setErrorMessage(
+          String.format("Splunk write status code: %d", error.statusCode()));
+    }
+    System.out.println("FAILSAFE ELEMENT");
+    System.out.println(failsafeElement);
+    context.output(failsafeElement);
   }
 }
