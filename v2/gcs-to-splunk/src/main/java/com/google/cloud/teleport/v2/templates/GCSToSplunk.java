@@ -227,13 +227,15 @@ class SplunkWriteErrorToFailsafeElementDoFn
     FailsafeElement<String, String> failsafeElement =
         FailsafeElement.of(error.payload(), error.payload());
 
+    String statusMessage = "";
     if (error.statusMessage() != null) {
       failsafeElement.setErrorMessage(error.statusMessage());
+      statusMessage = failsafeElement.getErrorMessage();
     }
 
     if (error.statusCode() != null) {
       failsafeElement.setErrorMessage(
-          String.format("Splunk write status code: %d", error.statusCode()));
+          statusMessage + ". Splunk write status code: " + error.statusCode());
     }
     System.out.println("FAILSAFE ELEMENT");
     System.out.println(failsafeElement);

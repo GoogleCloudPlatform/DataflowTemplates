@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.templates.GCSToSplunk.COMBINED_ERRORS;
 import static com.google.cloud.teleport.v2.templates.GCSToSplunk.CSV_HEADERS;
 import static com.google.cloud.teleport.v2.templates.GCSToSplunk.CSV_LINES;
 import static com.google.cloud.teleport.v2.templates.GCSToSplunk.SPLUNK_EVENT_DEADLETTER_OUT;
@@ -41,9 +42,12 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -65,7 +69,7 @@ public class GCSToSplunkTest {
 
   /** Tests the {@link GCSToSplunk} pipeline using a Udf to parse the Csv. */
   @Test
-  public void testGCSToSplunkUdfE2E() {
+  public void testGCSToSplunkUdf() {
     final String stringifiedJsonRecord = "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
     SplunkEvent expectedSplunkEvent =
         SplunkEvent.newBuilder().withEvent(stringifiedJsonRecord).create();
@@ -105,7 +109,7 @@ public class GCSToSplunkTest {
 
   /** Tests the {@link GCSToSplunk} pipeline with the headers of the Csv. */
   @Test
-  public void testGCSToSplunkHeadersE2E() {
+  public void testGCSToSplunkHeaders() {
     final String stringifiedJsonRecord = "{\"id\":\"008\",\"state\":\"CA\",\"price\":\"26.23\"}";
     SplunkEvent expectedSplunkEvent =
         SplunkEvent.newBuilder().withEvent(stringifiedJsonRecord).create();
@@ -143,7 +147,7 @@ public class GCSToSplunkTest {
 
   /** Tests the {@link GCSToSplunk} pipeline using a JSON schema to parse the Csv. */
   @Test
-  public void testGCSToSplunkJsonSchemaE2E() {
+  public void testGCSToSplunkJsonSchema() {
     final String stringifiedJsonRecord = "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
     SplunkEvent expectedSplunkEvent =
         SplunkEvent.newBuilder().withEvent(stringifiedJsonRecord).create();
@@ -208,20 +212,41 @@ public class GCSToSplunkTest {
 
     PAssert.that(splunkErrorCollection).containsInAnyOrder(splunkWriteError);
 
-    // PCollection<FailsafeElement<String, String>> wrappedSplunkWriteErrors =
-    // wrapFailuresToFailsafe(splunkErrorCollection);
 
     PCollection<FailsafeElement<String, String>> wrappedSplunkWriteErrors =
-        splunkErrorCollection.apply(ParDo.of(new SplunkWriteErrorToFailsafeElementDoFn()));
-    PAssert.that(wrappedSplunkWriteErrors).empty();
-    // PAssert.that(wrappedSplunkWriteErrors)
-    //     .satisfies(
-    //         collection -> {
-    //           FailsafeElement element = collection.iterator().next();
-    //           System.out.println(element);
-    //           // assertThat(element.getPayload(), is(equalTo(splunkWriteError)));
-    //           return null;
-    //         });
+        splunkErrorCollection.apply(ParDo.of(new com.google.cloud.teleport.v2.templates.SplunkWriteErrorToFailsafeElementDoFn()));
+
+    PAssert.that(wrappedSplunkWriteErrors)
+        .satisfies(
+            collection -> {
+              FailsafeElement element = collection.iterator().next();
+              System.out.println(element);
+              assertThat(element.getPayload(), is(equalTo(payload)));
+              assertThat(
+                  element.getErrorMessage(),
+                  is(equalTo(message + ". Splunk write status code: " + statusCode)));
+              return null;
+            });
+
+
+    PCollectionTuple flattenedErrors = PCollectionTuple.of(
+        COMBINED_ERRORS,
+        PCollectionList.of(
+                ImmutableList.of(wrappedSplunkWriteErrors)
+            )
+            .apply("FlattenErrors", Flatten.pCollections()));
+
+    PAssert.that(flattenedErrors.get(COMBINED_ERRORS))
+        .satisfies(
+            collection -> {
+              FailsafeElement element = collection.iterator().next();
+              System.out.println(element);
+              assertThat(element.getPayload(), is(equalTo(payload)));
+              assertThat(
+                  element.getErrorMessage(),
+                  is(equalTo(message + ". Splunk write status code: " + statusCode)));
+              return null;
+            });
 
     //  Execute pipeline
     pipeline.run();
