@@ -10,6 +10,7 @@ MongoDb changestream pushes the changes to pubsub queue, The MongoDbToBigQueryCd
 * Maven
 * MongoDB host exists and is operational
 * Bigquery dataset exists
+* Changestream running that pushes the changes from mongoDb to PubSub topic.
 
 ### Building Template
 This is a Flex Template meaning that the pipeline code will be containerized and the container will be used to launch the Dataflow pipeline.

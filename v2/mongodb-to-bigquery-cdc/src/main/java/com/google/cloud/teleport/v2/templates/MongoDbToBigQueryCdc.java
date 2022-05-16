@@ -84,7 +84,7 @@ public class MongoDbToBigQueryCdc {
                             readStrings().
                             fromTopic(inputOption))
             .apply(
-                    "Read and transform Movies data",
+                    "Read and transform data",
                     MapElements.via(
                             new SimpleFunction<String, TableRow>() {
                                 @Override
