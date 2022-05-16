@@ -168,7 +168,6 @@
             <scope>test</scope>
         </dependency>
 
-
         <!-- Misc -->
         <dependency>
             <groupId>io.opencensus</groupId>
@@ -693,6 +692,7 @@
         <module>kafka-common</module>
         <module>mongodb-to-bigquery</module>
         <module>bigquery-to-mongodb</module>
+        <module>mongodb-to-bigquery-cdc</module>
     </modules>
 
 </project>
