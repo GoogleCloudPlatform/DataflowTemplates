@@ -110,44 +110,6 @@ public class SplunkConverters {
     ValueProvider<Integer> getParallelism();
 
     void setParallelism(ValueProvider<Integer> parallelism);
-
-    @Description(
-        "KMS Encryption Key for the token. The Key should be in the format "
-            + "projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}")
-    ValueProvider<String> getTokenKMSEncryptionKey();
-
-    void setTokenKMSEncryptionKey(ValueProvider<String> keyName);
-
-    @Description(
-        "Secret Manager Secret ID for the token. Should be in the format "
-            + "projects/{project}/secrets/{secret}/versions/{secret_version}")
-    ValueProvider<String> getTokenSecretId();
-
-    void setTokenSecretId(ValueProvider<String> secretId);
-
-    @Description("Source of the token. One of PLAINTEXT, KMS or SECRET_MANAGER.")
-    ValueProvider<String> getTokenSource();
-
-    void setTokenSource(ValueProvider<String> tokenSource);
-
-    @Description("Path to root CA in GCS, ex: gs://mybucket/somepath/rootCA.crt")
-    ValueProvider<String> getRootCaCertificatePath();
-
-    void setRootCaCertificatePath(ValueProvider<String> rootCaPath);
-
-    @Description(
-        "Parameter which specifies if logs should be enabled for batches written to Splunk."
-            + " Default: true.")
-    ValueProvider<Boolean> getEnableBatchLogs();
-
-    void setEnableBatchLogs(ValueProvider<Boolean> enableBatchLogs);
-
-    @Description(
-        "Parameter which specifies if HTTP requests sent to Splunk should be GZIP encoded."
-            + " Default: true.")
-    ValueProvider<Boolean> getEnableGzipHttpCompression();
-
-    void setEnableGzipHttpCompression(ValueProvider<Boolean> enableGzipHttpCompression);
   }
 
   private static class FailsafeStringToSplunkEvent
