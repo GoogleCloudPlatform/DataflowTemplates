@@ -80,12 +80,8 @@ public class GCSToSplunk {
   static final TupleTag<FailsafeElement<String, String>> SPLUNK_EVENT_DEADLETTER_OUT =
       new TupleTag<FailsafeElement<String, String>>() {};
 
-  /** The tag for all of the elements that failed. */
-  static final TupleTag<FailsafeElement<String, String>> COMBINED_ERRORS =
-      new TupleTag<FailsafeElement<String, String>>() {};
-
-  /** The tag for the output all of the elements that failed. */
-  static final TupleTag<String> COMBINED_ERRORS_OUT = new TupleTag<String>() {};
+  /** The tag for all the elements that failed. */
+  static final TupleTag<String> COMBINED_ERRORS = new TupleTag<String>() {};
 
   /** Logger for class. */
   static final Logger LOG = LoggerFactory.getLogger(GCSToSplunk.class);
@@ -145,9 +141,7 @@ public class GCSToSplunk {
 
     PCollectionTuple convertToEventTuple =
         pipeline
-            /*
-             * Step 1: Read CSV file(s) from Cloud Storage using {@link CsvConverters.ReadCsv}.
-             */
+            // 1) Read CSV file(s) from Cloud Storage using {@link CsvConverters.ReadCsv}.
             .apply(
                 "ReadCsv",
                 CsvConverters.ReadCsv.newBuilder()
@@ -207,11 +201,12 @@ public class GCSToSplunk {
                         convertToEventTuple.get(SPLUNK_EVENT_DEADLETTER_OUT),
                         wrappedSplunkWriteErrors,
                         convertToEventTuple.get(UDF_DEADLETTER_OUT)))
-                .apply("FlattenErrors", Flatten.pCollections()))
+                .apply("FlattenErrors", Flatten.pCollections())
+                .apply("ConvertErrorsToString", ParDo.of(new FailsafeElementToStringDoFn())))
         .apply(
             LogErrors.newBuilder()
                 .setErrorWritePath(options.getInvalidOutputPath().get())
-                .setErrorTag(COMBINED_ERRORS_OUT)
+                .setErrorTag(COMBINED_ERRORS)
                 .build());
 
     return pipeline.run();
@@ -222,7 +217,6 @@ class SplunkWriteErrorToFailsafeElementDoFn
     extends DoFn<SplunkWriteError, FailsafeElement<String, String>> {
   @ProcessElement
   public void processElement(ProcessContext context) {
-    System.out.println("IN HERE");
     SplunkWriteError error = context.element();
     FailsafeElement<String, String> failsafeElement =
         FailsafeElement.of(error.payload(), error.payload());
@@ -237,8 +231,23 @@ class SplunkWriteErrorToFailsafeElementDoFn
       failsafeElement.setErrorMessage(
           statusMessage + ". Splunk write status code: " + error.statusCode());
     }
-    System.out.println("FAILSAFE ELEMENT");
-    System.out.println(failsafeElement);
     context.output(failsafeElement);
+  }
+}
+
+class FailsafeElementToStringDoFn extends DoFn<FailsafeElement<String, String>, String> {
+  @ProcessElement
+  public void processElement(ProcessContext context) {
+    FailsafeElement<String, String> error = context.element();
+    String errorString = "";
+
+    if (error.getPayload() != null) {
+      errorString += "Payload: " + error.getPayload() + ". ";
+    }
+
+    if (error.getErrorMessage() != null) {
+      errorString += "Error Message: " + error.getErrorMessage() + ".";
+    }
+    context.output(errorString);
   }
 }

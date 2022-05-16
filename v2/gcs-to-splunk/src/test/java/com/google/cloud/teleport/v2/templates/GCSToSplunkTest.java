@@ -70,6 +70,7 @@ public class GCSToSplunkTest {
   /** Tests the {@link GCSToSplunk} pipeline using a Udf to parse the Csv. */
   @Test
   public void testGCSToSplunkUdf() {
+    // Arrange
     final String stringifiedJsonRecord = "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
     SplunkEvent expectedSplunkEvent =
         SplunkEvent.newBuilder().withEvent(stringifiedJsonRecord).create();
@@ -86,17 +87,19 @@ public class GCSToSplunkTest {
     options.setContainsHeaders(false);
     options.setInputFileSpec(NO_HEADER_CSV_FILE_PATH);
 
+    // Act
     PCollectionTuple readCsvOut = readFromCsvAndTransform(options);
 
+    // Assert
     PAssert.that(readCsvOut.get(UDF_OUT))
         .satisfies(
             collection -> {
               FailsafeElement element = collection.iterator().next();
-              System.out.println(element);
               assertThat(element.getPayload(), is(equalTo(stringifiedJsonRecord)));
               return null;
             });
 
+    // Act
     PCollectionTuple convertToSplunkEventOut = convertToSplunkEvent(readCsvOut);
 
     // Assert
@@ -110,6 +113,7 @@ public class GCSToSplunkTest {
   /** Tests the {@link GCSToSplunk} pipeline with the headers of the Csv. */
   @Test
   public void testGCSToSplunkHeaders() {
+    // Arrange
     final String stringifiedJsonRecord = "{\"id\":\"008\",\"state\":\"CA\",\"price\":\"26.23\"}";
     SplunkEvent expectedSplunkEvent =
         SplunkEvent.newBuilder().withEvent(stringifiedJsonRecord).create();
@@ -124,17 +128,19 @@ public class GCSToSplunkTest {
     options.setContainsHeaders(true);
     options.setInputFileSpec(HEADER_CSV_FILE_PATH);
 
+    // Act
     PCollectionTuple readCsvOut = readFromCsvAndTransform(options);
 
+    // Assert
     PAssert.that(readCsvOut.get(UDF_OUT))
         .satisfies(
             collection -> {
               FailsafeElement element = collection.iterator().next();
-              System.out.println(element);
               assertThat(element.getPayload(), is(equalTo(stringifiedJsonRecord)));
               return null;
             });
 
+    // Act
     PCollectionTuple convertToSplunkEventOut = convertToSplunkEvent(readCsvOut);
 
     // Assert
@@ -148,6 +154,7 @@ public class GCSToSplunkTest {
   /** Tests the {@link GCSToSplunk} pipeline using a JSON schema to parse the Csv. */
   @Test
   public void testGCSToSplunkJsonSchema() {
+    // Arrange
     final String stringifiedJsonRecord = "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
     SplunkEvent expectedSplunkEvent =
         SplunkEvent.newBuilder().withEvent(stringifiedJsonRecord).create();
@@ -163,17 +170,19 @@ public class GCSToSplunkTest {
     options.setContainsHeaders(false);
     options.setInputFileSpec(NO_HEADER_CSV_FILE_PATH);
 
+    // Act
     PCollectionTuple readCsvOut = readFromCsvAndTransform(options);
 
+    // Assert
     PAssert.that(readCsvOut.get(UDF_OUT))
         .satisfies(
             collection -> {
               FailsafeElement element = collection.iterator().next();
-              System.out.println(element);
               assertThat(element.getPayload(), is(equalTo(stringifiedJsonRecord)));
               return null;
             });
 
+    // Act
     PCollectionTuple convertToSplunkEventOut = convertToSplunkEvent(readCsvOut);
 
     // Assert
@@ -187,8 +196,10 @@ public class GCSToSplunkTest {
   /** Tests the {@link GCSToSplunk} pipeline when there are write errors. */
   @Test
   public void testGCSToSplunkWriteErrors() {
+    // Arrange
+    final String stringifiedError =
+        "Payload: test-payload. Error Message: test-message. Splunk write status code: 123.";
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
-    // coderRegistry.registerCoderForClass(SplunkWriteError.class, SplunkWriteErrorCoder.of());
     coderRegistry.registerCoderForType(
         FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
 
@@ -203,24 +214,23 @@ public class GCSToSplunkTest {
             .withStatusMessage(message)
             .create();
 
-    System.out.println("SPLUNK WRITE ERROR");
-    System.out.println(splunkWriteError);
-
+    // Act
     PCollection<SplunkWriteError> splunkErrorCollection =
         pipeline.apply(
             "Create Input data", Create.of(splunkWriteError).withCoder(SplunkWriteErrorCoder.of()));
 
+    // Assert
     PAssert.that(splunkErrorCollection).containsInAnyOrder(splunkWriteError);
 
-
+    // Act
     PCollection<FailsafeElement<String, String>> wrappedSplunkWriteErrors =
-        splunkErrorCollection.apply(ParDo.of(new com.google.cloud.teleport.v2.templates.SplunkWriteErrorToFailsafeElementDoFn()));
+        wrapSplunkErrorsToFailsafe(splunkErrorCollection);
 
+    // Assert
     PAssert.that(wrappedSplunkWriteErrors)
         .satisfies(
             collection -> {
               FailsafeElement element = collection.iterator().next();
-              System.out.println(element);
               assertThat(element.getPayload(), is(equalTo(payload)));
               assertThat(
                   element.getErrorMessage(),
@@ -228,25 +238,11 @@ public class GCSToSplunkTest {
               return null;
             });
 
+    // Act
+    PCollectionTuple flattenedErrors = getStringifiedFailsafeErrors(wrappedSplunkWriteErrors);
 
-    PCollectionTuple flattenedErrors = PCollectionTuple.of(
-        COMBINED_ERRORS,
-        PCollectionList.of(
-                ImmutableList.of(wrappedSplunkWriteErrors)
-            )
-            .apply("FlattenErrors", Flatten.pCollections()));
-
-    PAssert.that(flattenedErrors.get(COMBINED_ERRORS))
-        .satisfies(
-            collection -> {
-              FailsafeElement element = collection.iterator().next();
-              System.out.println(element);
-              assertThat(element.getPayload(), is(equalTo(payload)));
-              assertThat(
-                  element.getErrorMessage(),
-                  is(equalTo(message + ". Splunk write status code: " + statusCode)));
-              return null;
-            });
+    // Assert
+    PAssert.that(flattenedErrors.get(COMBINED_ERRORS)).containsInAnyOrder(stringifiedError);
 
     //  Execute pipeline
     pipeline.run();
@@ -255,6 +251,7 @@ public class GCSToSplunkTest {
   private PCollectionTuple readFromCsvAndTransform(GCSToSplunkOptions options) {
 
     return pipeline
+        // 1) Read CSV file(s) from Cloud Storage using {@link CsvConverters.ReadCsv}.
         .apply(
             "ReadCsv",
             ReadCsv.newBuilder()
@@ -267,6 +264,7 @@ public class GCSToSplunkTest {
                 .setFileEncoding(options.getCsvFileEncoding())
                 .build())
         .apply(
+            // 2) Apply user provided UDF (if any) on the input strings.
             "ConvertLine",
             com.google.cloud.teleport.v2.transforms.CsvConverters.LineToFailsafeJson.newBuilder()
                 .setDelimiter(options.getDelimiter())
@@ -283,9 +281,31 @@ public class GCSToSplunkTest {
   private PCollectionTuple convertToSplunkEvent(PCollectionTuple readCsvOut) {
     return readCsvOut
         .get(UDF_OUT)
+        // 3) Convert successfully transformed messages into SplunkEvent objects
         .apply(
             "ConvertToSplunkEvent",
             SplunkConverters.failsafeStringToSplunkEvent(
                 SPLUNK_EVENT_OUT, SPLUNK_EVENT_DEADLETTER_OUT));
+  }
+
+  private PCollection<FailsafeElement<String, String>> wrapSplunkErrorsToFailsafe(
+      PCollection<SplunkWriteError> splunkWriteErrors) {
+    return splunkWriteErrors.apply(
+        // 4a) Wrap write failures into a FailsafeElement.
+        ParDo.of(
+            new com.google.cloud.teleport.v2.templates.SplunkWriteErrorToFailsafeElementDoFn()));
+  }
+
+  private PCollectionTuple getStringifiedFailsafeErrors(
+      PCollection<FailsafeElement<String, String>> wrappedSplunkWriteErrors) {
+    return PCollectionTuple.of(
+        // 5) Collect errors.
+        COMBINED_ERRORS,
+        PCollectionList.of(ImmutableList.of(wrappedSplunkWriteErrors))
+            .apply("FlattenErrors", Flatten.pCollections())
+            .apply(
+                "ConvertErrorsToString",
+                ParDo.of(
+                    new com.google.cloud.teleport.v2.templates.FailsafeElementToStringDoFn())));
   }
 }
