@@ -16,9 +16,6 @@
 package com.google.cloud.teleport.v2.coders;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -29,7 +26,6 @@ import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.splunk.SplunkEvent;
 import org.apache.beam.sdk.values.TypeDescriptor;
-import org.apache.commons.io.IOUtils;
 
 /** A {@link org.apache.beam.sdk.coders.Coder} for {@link SplunkEvent} objects. */
 public class SplunkEventCoder extends AtomicCoder<SplunkEvent> {
@@ -46,8 +42,7 @@ public class SplunkEventCoder extends AtomicCoder<SplunkEvent> {
 
   private static final Gson GSON = new Gson();
 
-  // Version markers must be >= 2.
-  private static final int VERSION_3 = 3;
+  private static final int VERSION = 1;
 
   public static SplunkEventCoder of() {
     return SPLUNK_EVENT_CODER;
@@ -55,7 +50,7 @@ public class SplunkEventCoder extends AtomicCoder<SplunkEvent> {
 
   @Override
   public void encode(SplunkEvent value, OutputStream out) throws CoderException, IOException {
-    out.write(VERSION_3);
+    out.write(VERSION);
 
     LONG_NULLABLE_CODER.encode(value.time(), out);
     STRING_NULLABLE_CODER.encode(value.host(), out);
@@ -71,80 +66,9 @@ public class SplunkEventCoder extends AtomicCoder<SplunkEvent> {
 
     int v = in.read();
 
-    // Versions 1 and 2 of this coder had no version marker field, but 1st byte in the serialized
-    // data was always 0 or 1 (present/not present indicator for a nullable field).
-    // So here we assume if the first byte is >= 2 then it's the version marker.
-
-    if (v >= 2) {
-      decodeWithVersion(v, in, builder);
-    } else {
-      // It's impossible to distinguish between V1 and V2 without re-reading portions of the input
-      // stream twice (and without the version marker), so we must have a ByteArrayInputStream copy,
-      // which is guaranteed to support mark()/reset().
-
-      ByteArrayOutputStream os = new ByteArrayOutputStream();
-      os.write(v);
-      IOUtils.copy(in, os);
-      ByteArrayInputStream streamCopy = new ByteArrayInputStream(os.toByteArray());
-
-      decodeVersion1or2(streamCopy, builder);
-    }
+    decodeCommonFields(in, builder);
 
     return builder.create();
-  }
-
-  private void decodeWithVersion(int version, InputStream in, SplunkEvent.Builder builder)
-      throws IOException {
-
-    decodeCommonFields(in, builder);
-
-    if (version >= VERSION_3) {
-      String event = STRING_UTF_8_CODER.decode(in);
-      builder.withEvent(event);
-    }
-  }
-
-  private void decodeVersion1or2(ByteArrayInputStream in, SplunkEvent.Builder builder)
-      throws IOException {
-
-    decodeCommonFields(in, builder);
-
-    in.mark(Integer.MAX_VALUE);
-
-    // The following fields may be different between V1 and V2.
-
-    // V1 format: <... common fields...> <event length> <event string>
-    // V2 format: <... common fields...> <fields present indicator byte 0/1>
-    //                <fields length, if present> <fields string> <event length> <event string>
-
-    // We try to read this as V2 first. If any exception, fall back to V1.
-
-    // Note: it's impossible to incorrectly parse V1 data with V2 decoder (potentially causing
-    // corrupted fields in the message). If we try that and the 1st byte is:
-    //   - 2 or more: decoding fails because V2 expects it to be either 0 or 1 (present indicator).
-    //   - 1: this means the "event" string length is 1, so we have only 1 more byte in the stream.
-    //        V2 decoding fails with EOF assuming 1 is the "fields" string length and reading
-    //        at least 1 more byte.
-    //   - 0: this means the "event" string is empty, so we have no more bytes in the stream.
-    //        V2 decoding fails with EOF assuming 0 is the "fields" string length and reading
-    //        the next "event" field.
-
-    JsonObject fields = null;
-    String event;
-
-    try {
-      // Assume V2 first.
-      String fieldsString = STRING_NULLABLE_CODER.decode(in);
-      if (fieldsString != null) {
-        fields = GSON.fromJson(fieldsString, JsonObject.class);
-      }
-      event = STRING_UTF_8_CODER.decode(in);
-    } catch (CoderException e) {
-      // If failed, reset the stream and parse as V1.
-      in.reset();
-      event = STRING_UTF_8_CODER.decode(in);
-    }
-    builder.withEvent(event);
   }
 
   private void decodeCommonFields(InputStream in, SplunkEvent.Builder builder) throws IOException {
@@ -171,6 +95,11 @@ public class SplunkEventCoder extends AtomicCoder<SplunkEvent> {
     String index = STRING_NULLABLE_CODER.decode(in);
     if (index != null) {
       builder.withIndex(index);
+    }
+
+    String event = STRING_UTF_8_CODER.decode(in);
+    if (event != null) {
+      builder.withEvent(event);
     }
   }
 
