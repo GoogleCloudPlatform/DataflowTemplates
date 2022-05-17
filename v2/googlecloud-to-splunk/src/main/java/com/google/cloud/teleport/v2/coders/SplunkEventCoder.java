@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package common.src.main.java.com.google.cloud.teleport.v2.coders;
+package com.google.cloud.teleport.v2.coders;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -34,8 +34,7 @@ import org.apache.commons.io.IOUtils;
 /** A {@link org.apache.beam.sdk.coders.Coder} for {@link SplunkEvent} objects. */
 public class SplunkEventCoder extends AtomicCoder<SplunkEvent> {
 
-  private static final SplunkEventCoder SPLUNK_EVENT_CODER =
-      new SplunkEventCoder();
+  private static final SplunkEventCoder SPLUNK_EVENT_CODER = new SplunkEventCoder();
 
   private static final TypeDescriptor<SplunkEvent> TYPE_DESCRIPTOR =
       new TypeDescriptor<SplunkEvent>() {};

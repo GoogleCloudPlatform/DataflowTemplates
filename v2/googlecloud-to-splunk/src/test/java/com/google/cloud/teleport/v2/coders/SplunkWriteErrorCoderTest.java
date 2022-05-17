@@ -25,7 +25,7 @@ import java.io.IOException;
 import org.apache.beam.sdk.io.splunk.SplunkWriteError;
 import org.junit.Test;
 
-/** Unit tests for {@link com.google.cloud.teleport.v2.coders.SplunkWriteErrorCoder} class. */
+/** Unit tests for {@link SplunkWriteErrorCoder} class. */
 public class SplunkWriteErrorCoderTest {
 
   /**

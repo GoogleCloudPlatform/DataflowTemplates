@@ -32,7 +32,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-/** Unit tests for {@link com.google.cloud.teleport.v2.transforms.SplunkConverters} class. */
+/** Unit tests for {@link SplunkConverters} class. */
 public class SplunkConvertersTest {
 
   private static final TupleTag<SplunkEvent> SPLUNK_EVENT_OUT = new TupleTag<SplunkEvent>() {};

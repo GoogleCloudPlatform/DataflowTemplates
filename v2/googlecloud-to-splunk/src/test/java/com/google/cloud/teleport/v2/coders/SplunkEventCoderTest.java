@@ -29,7 +29,7 @@ import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.junit.Test;
 
-/** Unit tests for {@link com.google.cloud.teleport.v2.coders.SplunkEventCoder} class. */
+/** Unit tests for {@link SplunkEventCoder} class. */
 public class SplunkEventCoderTest {
 
   /**
