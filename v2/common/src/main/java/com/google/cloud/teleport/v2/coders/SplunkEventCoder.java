@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.coders;
+package common.src.main.java.com.google.cloud.teleport.v2.coders;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -34,8 +34,8 @@ import org.apache.commons.io.IOUtils;
 /** A {@link org.apache.beam.sdk.coders.Coder} for {@link SplunkEvent} objects. */
 public class SplunkEventCoder extends AtomicCoder<SplunkEvent> {
 
-  private static final com.google.cloud.teleport.v2.coders.SplunkEventCoder SPLUNK_EVENT_CODER =
-      new com.google.cloud.teleport.v2.coders.SplunkEventCoder();
+  private static final SplunkEventCoder SPLUNK_EVENT_CODER =
+      new SplunkEventCoder();
 
   private static final TypeDescriptor<SplunkEvent> TYPE_DESCRIPTOR =
       new TypeDescriptor<SplunkEvent>() {};
@@ -50,7 +50,7 @@ public class SplunkEventCoder extends AtomicCoder<SplunkEvent> {
   // Version markers must be >= 2.
   private static final int VERSION_3 = 3;
 
-  public static com.google.cloud.teleport.v2.coders.SplunkEventCoder of() {
+  public static SplunkEventCoder of() {
     return SPLUNK_EVENT_CODER;
   }
 
@@ -178,11 +178,5 @@ public class SplunkEventCoder extends AtomicCoder<SplunkEvent> {
   @Override
   public TypeDescriptor<SplunkEvent> getEncodedTypeDescriptor() {
     return TYPE_DESCRIPTOR;
-  }
-
-  @Override
-  public void verifyDeterministic() throws NonDeterministicException {
-    throw new NonDeterministicException(
-        this, "SplunkEvent can hold arbitrary instances, which may be non-deterministic.");
   }
 }
