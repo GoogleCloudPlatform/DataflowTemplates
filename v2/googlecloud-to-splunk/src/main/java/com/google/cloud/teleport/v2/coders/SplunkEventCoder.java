@@ -21,7 +21,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import org.apache.beam.sdk.coders.AtomicCoder;
 import org.apache.beam.sdk.coders.BigEndianLongCoder;
-import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.splunk.SplunkEvent;
@@ -49,7 +48,7 @@ public class SplunkEventCoder extends AtomicCoder<SplunkEvent> {
   }
 
   @Override
-  public void encode(SplunkEvent value, OutputStream out) throws CoderException, IOException {
+  public void encode(SplunkEvent value, OutputStream out) throws IOException {
     out.write(VERSION);
 
     LONG_NULLABLE_CODER.encode(value.time(), out);
@@ -61,7 +60,7 @@ public class SplunkEventCoder extends AtomicCoder<SplunkEvent> {
   }
 
   @Override
-  public SplunkEvent decode(InputStream in) throws CoderException, IOException {
+  public SplunkEvent decode(InputStream in) throws IOException {
     SplunkEvent.Builder builder = SplunkEvent.newBuilder();
 
     int v = in.read();
