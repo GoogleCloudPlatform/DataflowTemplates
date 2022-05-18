@@ -15,9 +15,7 @@
  */
 package com.google.cloud.teleport.v2.coders;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
+import static com.google.common.truth.Truth.assertThat;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -46,7 +44,7 @@ public final class SplunkWriteErrorCoderTest {
       coder.encode(actualError, bos);
       try (ByteArrayInputStream bin = new ByteArrayInputStream(bos.toByteArray())) {
         SplunkWriteError decodedWriteError = coder.decode(bin);
-        assertThat(decodedWriteError, is(equalTo(actualError)));
+        assertThat(decodedWriteError).isEqualTo(actualError);
       }
     }
   }
