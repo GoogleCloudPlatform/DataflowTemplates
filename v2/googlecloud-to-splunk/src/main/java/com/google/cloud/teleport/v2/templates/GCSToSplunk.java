@@ -124,16 +124,6 @@ public final class GCSToSplunk {
     registry.registerCoderForType(
         FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
 
-    /*
-     * Steps:
-     *  1) Step 1: Read CSV file(s) from Cloud Storage using {@link CsvConverters.ReadCsv}.
-     *  2) Apply user provided UDF (if any) on the input strings.
-     *  3) Convert successfully transformed messages into SplunkEvent objects
-     *  4) Write SplunkEvents to Splunk's HEC end point.
-     *  4a) Wrap write failures into a FailsafeElement.
-     *  5) Collect errors from UDF transform (#3), SplunkEvent transform (#4)
-     *     and writing to Splunk HEC (#5) and place into a GCS folder.
-     */
 
     PCollectionTuple readCsvTuple = pipeline.apply("Read CSV", readFromCsv(options));
 
