@@ -27,7 +27,7 @@ import org.apache.beam.sdk.io.splunk.SplunkEvent;
 import org.apache.beam.sdk.values.TypeDescriptor;
 
 /** A {@link org.apache.beam.sdk.coders.Coder} for {@link SplunkEvent} objects. */
-public class SplunkEventCoder extends AtomicCoder<SplunkEvent> {
+public final class SplunkEventCoder extends AtomicCoder<SplunkEvent> {
 
   private static final SplunkEventCoder SPLUNK_EVENT_CODER = new SplunkEventCoder();
 

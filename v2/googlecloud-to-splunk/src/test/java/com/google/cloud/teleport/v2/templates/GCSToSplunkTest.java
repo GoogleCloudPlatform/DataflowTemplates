@@ -52,7 +52,7 @@ import org.junit.Rule;
 import org.junit.Test;
 
 /** Test cases for the {@link GCSToSplunk} class. */
-public class GCSToSplunkTest {
+public final class GCSToSplunkTest {
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
   private static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =

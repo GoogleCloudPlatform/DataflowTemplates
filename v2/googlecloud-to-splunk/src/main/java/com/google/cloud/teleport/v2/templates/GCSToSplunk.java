@@ -31,7 +31,6 @@ import org.apache.beam.sdk.io.splunk.SplunkIO;
 import org.apache.beam.sdk.io.splunk.SplunkWriteError;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -53,7 +52,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p>NOTE: This is a work in progress, do not attempt to run this pipeline
  */
-public class GCSToSplunk {
+public final class GCSToSplunk {
 
   /** String/String Coder for FailsafeElement. */
   private static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
@@ -93,9 +92,9 @@ public class GCSToSplunk {
   public interface GCSToSplunkOptions extends CsvConverters.CsvPipelineOptions, SplunkOptions {
 
     @Description("Pattern of where to write errors, ex: gs://mybucket/somepath/errors.txt")
-    ValueProvider<String> getInvalidOutputPath();
+    String getInvalidOutputPath();
 
-    void setInvalidOutputPath(ValueProvider<String> value);
+    void setInvalidOutputPath(String value);
   }
 
   /**
@@ -205,7 +204,7 @@ public class GCSToSplunk {
                 .apply("ConvertErrorsToString", ParDo.of(new FailsafeElementToStringDoFn())))
         .apply(
             LogErrors.newBuilder()
-                .setErrorWritePath(options.getInvalidOutputPath().get())
+                .setErrorWritePath(options.getInvalidOutputPath())
                 .setErrorTag(COMBINED_ERRORS)
                 .build());
 

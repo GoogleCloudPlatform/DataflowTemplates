@@ -26,7 +26,7 @@ import org.apache.beam.sdk.io.splunk.SplunkEvent;
 import org.junit.Test;
 
 /** Unit tests for {@link SplunkEventCoder} class. */
-public class SplunkEventCoderTest {
+public final class SplunkEventCoderTest {
 
   /**
    * Test whether {@link SplunkEventCoder} is able to encode/decode a {@link SplunkEvent} correctly.

@@ -27,7 +27,6 @@ import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -42,7 +41,7 @@ import org.slf4j.LoggerFactory;
  * Collection of utility {@link PTransform}s, {@link DoFn} and {@link PipelineOptions} used by
  * pipelines that process and sink data using {@link org.apache.beam.sdk.io.splunk.SplunkIO}.
  */
-public class SplunkConverters {
+public final class SplunkConverters {
 
   private static final Logger LOG = LoggerFactory.getLogger(SplunkConverters.class);
 
@@ -86,37 +85,37 @@ public class SplunkConverters {
   public interface SplunkOptions extends PipelineOptions {
 
     @Description("Splunk Http Event Collector (HEC) authentication token.")
-    ValueProvider<String> getToken();
+    String getToken();
 
-    void setToken(ValueProvider<String> token);
+    void setToken(String token);
 
     @Description(
         "Splunk Http Event Collector (HEC) url. "
             + "This should be routable from the VPC in which the Dataflow pipeline runs. "
             + "e.g. http://splunk-hec-host:8088")
-    ValueProvider<String> getUrl();
+    String getUrl();
 
-    void setUrl(ValueProvider<String> url);
+    void setUrl(String url);
 
     @Description(
         "Batch count for sending multiple events to "
             + "Splunk's Http Event Collector in a single POST.")
-    ValueProvider<Integer> getBatchCount();
+    Integer getBatchCount();
 
-    void setBatchCount(ValueProvider<Integer> batchCount);
+    void setBatchCount(Integer batchCount);
 
     @Description("Disable SSL certificate validation.")
-    ValueProvider<Boolean> getDisableCertificateValidation();
+    Boolean getDisableCertificateValidation();
 
-    void setDisableCertificateValidation(ValueProvider<Boolean> disableCertificateValidation);
+    void setDisableCertificateValidation(Boolean disableCertificateValidation);
 
     @Description("Maximum number of parallel requests.")
-    ValueProvider<Integer> getParallelism();
+    Integer getParallelism();
 
-    void setParallelism(ValueProvider<Integer> parallelism);
+    void setParallelism(Integer parallelism);
   }
 
-  private static class FailsafeStringToSplunkEvent
+  private static final class FailsafeStringToSplunkEvent
       extends PTransform<PCollection<FailsafeElement<String, String>>, PCollectionTuple> {
 
     private static final Counter CONVERSION_ERRORS =
@@ -126,13 +125,13 @@ public class SplunkConverters {
         Metrics.counter(FailsafeStringToSplunkEvent.class, "splunk-event-conversion-successes");
 
     private TupleTag<SplunkEvent> splunkEventOutputTag;
-    private TupleTag<FailsafeElement<String, String>> splunkDeadletterTag;
+    private TupleTag<FailsafeElement<String, String>> splunkEventErrorTag;
 
     FailsafeStringToSplunkEvent(
         TupleTag<SplunkEvent> splunkEventOutputTag,
-        TupleTag<FailsafeElement<String, String>> splunkDeadletterTag) {
+        TupleTag<FailsafeElement<String, String>> splunkEventErrorTag) {
       this.splunkEventOutputTag = splunkEventOutputTag;
-      this.splunkDeadletterTag = splunkDeadletterTag;
+      this.splunkEventErrorTag = splunkEventErrorTag;
     }
 
     @Override
@@ -247,14 +246,14 @@ public class SplunkConverters {
                       } catch (Exception e) {
                         CONVERSION_ERRORS.inc();
                         context.output(
-                            splunkDeadletterTag,
+                            splunkEventErrorTag,
                             FailsafeElement.of(input, input)
                                 .setErrorMessage(e.getMessage())
                                 .setStacktrace(Throwables.getStackTraceAsString(e)));
                       }
                     }
                   })
-              .withOutputTags(splunkEventOutputTag, TupleTagList.of(splunkDeadletterTag)));
+              .withOutputTags(splunkEventOutputTag, TupleTagList.of(splunkEventErrorTag)));
     }
   }
 }

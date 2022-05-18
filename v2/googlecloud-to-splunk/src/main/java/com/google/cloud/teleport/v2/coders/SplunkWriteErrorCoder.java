@@ -27,7 +27,7 @@ import org.apache.beam.sdk.io.splunk.SplunkWriteError;
 import org.apache.beam.sdk.values.TypeDescriptor;
 
 /** A {@link org.apache.beam.sdk.coders.Coder} for {@link SplunkWriteError} objects. */
-public class SplunkWriteErrorCoder extends AtomicCoder<SplunkWriteError> {
+public final class SplunkWriteErrorCoder extends AtomicCoder<SplunkWriteError> {
 
   private static final SplunkWriteErrorCoder SPLUNK_WRITE_ERROR_CODER = new SplunkWriteErrorCoder();
 

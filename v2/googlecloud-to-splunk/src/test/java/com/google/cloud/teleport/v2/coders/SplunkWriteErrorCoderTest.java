@@ -26,7 +26,7 @@ import org.apache.beam.sdk.io.splunk.SplunkWriteError;
 import org.junit.Test;
 
 /** Unit tests for {@link SplunkWriteErrorCoder} class. */
-public class SplunkWriteErrorCoderTest {
+public final class SplunkWriteErrorCoderTest {
 
   /**
    * Test whether {@link SplunkWriteErrorCoder} is able to encode/decode a {@link SplunkWriteError}
