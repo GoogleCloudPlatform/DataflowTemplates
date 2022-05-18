@@ -159,7 +159,6 @@ public final class SplunkConverters {
                         // a user provided _metadata field.
                         try {
 
-
                           JsonObject json = jsonParser.parse(input).getAsJsonObject();
 
                           // Check if metadata is provided via a nested _metadata
@@ -172,11 +171,11 @@ public final class SplunkConverters {
                           // we proceed without setting this metadata field.
                           String parsedTimestamp = "";
                           if (metadataAvailable) {
-                            if(metadata.get(HEC_TIME_KEY) != null){
+                            if (metadata.get(HEC_TIME_KEY) != null) {
                               parsedTimestamp = metadata.get(HEC_TIME_KEY).getAsString();
                             }
                           } else if (json.get(TIMESTAMP_KEY) != null) {
-                              parsedTimestamp = json.get(TIMESTAMP_KEY).getAsString();
+                            parsedTimestamp = json.get(TIMESTAMP_KEY).getAsString();
                           }
 
                           if (!parsedTimestamp.isEmpty()) {
@@ -238,7 +237,8 @@ public final class SplunkConverters {
                           // We also do not want to LOG this as we might be running
                           // a pipeline to simply log text entries to Splunk and
                           // this is expected behavior.
-                        } catch (JsonSyntaxException jse) {}
+                        } catch (JsonSyntaxException jse) {
+                        }
 
                         context.output(splunkEventOutputTag, builder.create());
                         CONVERSION_SUCCESS.inc();
