@@ -28,14 +28,8 @@ import org.junit.Test;
 /** Unit tests for {@link SplunkEventCoder} class. */
 public final class SplunkEventCoderTest {
 
-  /**
-   * Test whether {@link SplunkEventCoder} is able to encode/decode a {@link SplunkEvent} correctly.
-   *
-   * @throws IOException
-   */
   @Test
   public void testEncodeDecode() throws IOException {
-
     String event = "test-event";
     String host = "test-host";
     String index = "test-index";

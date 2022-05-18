@@ -28,15 +28,8 @@ import org.junit.Test;
 /** Unit tests for {@link SplunkWriteErrorCoder} class. */
 public final class SplunkWriteErrorCoderTest {
 
-  /**
-   * Test whether {@link SplunkWriteErrorCoder} is able to encode/decode a {@link SplunkWriteError}
-   * correctly.
-   *
-   * @throws IOException
-   */
   @Test
   public void testEncodeDecode() throws IOException {
-
     String payload = "test-payload";
     String message = "test-message";
     Integer statusCode = 123;

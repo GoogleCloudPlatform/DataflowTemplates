@@ -36,17 +36,15 @@ import org.junit.experimental.categories.Category;
 public final class SplunkConvertersTest {
 
   private static final TupleTag<SplunkEvent> SPLUNK_EVENT_OUT = new TupleTag<SplunkEvent>() {};
-  private static final TupleTag<FailsafeElement<String, String>> SPLUNK_EVENT_DEADLETTER_OUT =
+  private static final TupleTag<FailsafeElement<String, String>> SPLUNK_EVENT_ERROR_OUT =
       new TupleTag<FailsafeElement<String, String>>() {};
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
   private static final Gson GSON = new Gson();
 
-  /** Test successful conversion of simple String payloads. */
   @Test
   @Category(NeedsRunner.class)
   public void testFailsafeStringToSplunkEventSimpleStrings() {
-
     FailsafeElement<String, String> hello = FailsafeElement.of("hello", "hello");
     FailsafeElement<String, String> world = FailsafeElement.of("world", "world");
 
@@ -59,9 +57,9 @@ public final class SplunkConvertersTest {
                     .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
             .apply(
                 SplunkConverters.failsafeStringToSplunkEvent(
-                    SPLUNK_EVENT_OUT, SPLUNK_EVENT_DEADLETTER_OUT));
+                    SPLUNK_EVENT_OUT, SPLUNK_EVENT_ERROR_OUT));
 
-    PAssert.that(tuple.get(SPLUNK_EVENT_DEADLETTER_OUT)).empty();
+    PAssert.that(tuple.get(SPLUNK_EVENT_ERROR_OUT)).empty();
     PAssert.that(tuple.get(SPLUNK_EVENT_OUT))
         .containsInAnyOrder(
             SplunkEvent.newBuilder().withEvent("hello").create(),
@@ -70,11 +68,9 @@ public final class SplunkConvertersTest {
     pipeline.run();
   }
 
-  /** Test successful conversion of invalid JSON messages. */
   @Test
   @Category(NeedsRunner.class)
   public void testFailsafeStringToSplunkEventInvalidJSON() {
-
     FailsafeElement<String, String> input =
         FailsafeElement.of(
             "" + "\t\"name\": \"Jim\",\n" + "}", "{\n" + "\t\"name\": \"Jim\",\n" + "}");
@@ -85,11 +81,9 @@ public final class SplunkConvertersTest {
     matchesSplunkEvent(input, expectedSplunkEvent);
   }
 
-  /** Test successful conversion of JSON messages. */
   @Test
   @Category(NeedsRunner.class)
   public void testFailsafeStringToSplunkEventValidJSON() {
-
     FailsafeElement<String, String> input =
         FailsafeElement.of(
             "" + "\t\"name\": \"Jim\",\n" + "}", "{\n" + "\t\"name\": \"Jim\"\n" + "}");
@@ -100,11 +94,9 @@ public final class SplunkConvertersTest {
     matchesSplunkEvent(input, expectedSplunkEvent);
   }
 
-  /** Test successful conversion of JSON messages with a valid timestamp. */
   @Test
   @Category(NeedsRunner.class)
   public void testFailsafeStringToSplunkEventValidTimestamp() {
-
     FailsafeElement<String, String> input =
         FailsafeElement.of(
             "",
@@ -128,11 +120,9 @@ public final class SplunkConvertersTest {
     matchesSplunkEvent(input, expectedSplunkEvent);
   }
 
-  /** Test successful conversion of JSON messages with an invalid timestamp. */
   @Test
   @Category(NeedsRunner.class)
   public void testFailsafeStringToSplunkEventInValidTimestamp() {
-
     FailsafeElement<String, String> input =
         FailsafeElement.of(
             "",
@@ -155,11 +145,9 @@ public final class SplunkConvertersTest {
     matchesSplunkEvent(input, expectedSplunkEvent);
   }
 
-  /** Test successful conversion of JSON messages with a user provided _metadata. */
   @Test
   @Category(NeedsRunner.class)
   public void testFailsafeStringToSplunkEventValidSource() {
-
     FailsafeElement<String, String> input =
         FailsafeElement.of(
             "",
@@ -177,11 +165,9 @@ public final class SplunkConvertersTest {
     matchesSplunkEvent(input, expectedSplunkEvent);
   }
 
-  /** Test successful conversion of JSON messages with a user provided host. */
   @Test
   @Category(NeedsRunner.class)
   public void testFailsafeStringToSplunkEventValidHost() {
-
     FailsafeElement<String, String> input =
         FailsafeElement.of(
             "",
@@ -196,11 +182,9 @@ public final class SplunkConvertersTest {
     matchesSplunkEvent(input, expectedSplunkEvent);
   }
 
-  /** Test successful conversion of JSON messages with a user provided index. */
   @Test
   @Category(NeedsRunner.class)
   public void testFailsafeStringToSplunkEventValidIndex() {
-
     FailsafeElement<String, String> input =
         FailsafeElement.of(
             "",
@@ -220,11 +204,9 @@ public final class SplunkConvertersTest {
     matchesSplunkEvent(input, expectedSplunkEvent);
   }
 
-  /** Test successful conversion of JSON messages with provided overrides for time and source. */
   @Test
   @Category(NeedsRunner.class)
   public void testFailsafeStringToSplunkEventValidTimeOverride() {
-
     FailsafeElement<String, String> input =
         FailsafeElement.of(
             "",
@@ -244,7 +226,6 @@ public final class SplunkConvertersTest {
     matchesSplunkEvent(input, expectedSplunkEvent);
   }
 
-  @Category(NeedsRunner.class)
   private void matchesSplunkEvent(
       FailsafeElement<String, String> input, SplunkEvent expectedSplunkEvent) {
     pipeline.getCoderRegistry().registerCoderForClass(SplunkEvent.class, SplunkEventCoder.of());
@@ -256,9 +237,9 @@ public final class SplunkConvertersTest {
                     .withCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
             .apply(
                 SplunkConverters.failsafeStringToSplunkEvent(
-                    SPLUNK_EVENT_OUT, SPLUNK_EVENT_DEADLETTER_OUT));
+                    SPLUNK_EVENT_OUT, SPLUNK_EVENT_ERROR_OUT));
 
-    PAssert.that(tuple.get(SPLUNK_EVENT_DEADLETTER_OUT)).empty();
+    PAssert.that(tuple.get(SPLUNK_EVENT_ERROR_OUT)).empty();
     PAssert.that(tuple.get(SPLUNK_EVENT_OUT)).containsInAnyOrder(expectedSplunkEvent);
 
     pipeline.run();
