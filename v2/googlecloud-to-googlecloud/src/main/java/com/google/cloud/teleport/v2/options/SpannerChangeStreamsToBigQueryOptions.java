@@ -35,29 +35,29 @@ public interface SpannerChangeStreamsToBigQueryOptions extends DataflowPipelineO
 
   void setSpannerProjectId(String projectId);
 
-  @Description("The Spanner instance ID that contains the Change Stream.")
+  @Description("The Spanner instance ID that contains the change stream.")
   @Validation.Required
   String getSpannerInstanceId();
 
   void setSpannerInstanceId(String value);
 
-  @Description("The Spanner database ID that contains the Change Stream.")
+  @Description("The Spanner database that contains the change stream.")
   @Validation.Required
-  String getSpannerDatabaseId();
+  String getSpannerDatabase();
 
-  void setSpannerDatabaseId(String value);
+  void setSpannerDatabase(String value);
 
-  @Description("The Spanner metadata instance ID that's used by the Change Stream connector.")
+  @Description("The Spanner metadata instance ID that's used by the change stream connector.")
   @Validation.Required
   String getSpannerMetadataInstanceId();
 
   void setSpannerMetadataInstanceId(String value);
 
-  @Description("The Spanner metadata database ID that's used by the Change Stream connector.")
+  @Description("The Spanner metadata database that's used by the change stream connector.")
   @Validation.Required
-  String getSpannerMetadataDatabaseId();
+  String getSpannerMetadataDatabase();
 
-  void setSpannerMetadataDatabaseId(String value);
+  void setSpannerMetadataDatabase(String value);
 
   @Description(
       "The Cloud Spanner change streams Connector metadata table name to use. If not provided, a"
@@ -67,7 +67,7 @@ public interface SpannerChangeStreamsToBigQueryOptions extends DataflowPipelineO
 
   void setSpannerMetadataTableName(String value);
 
-  @Description("The name of the Spanner Change Stream.")
+  @Description("The name of the Spanner change stream.")
   @Validation.Required
   String getSpannerChangeStreamName();
 
@@ -88,7 +88,7 @@ public interface SpannerChangeStreamsToBigQueryOptions extends DataflowPipelineO
   void setSpannerHost(String value);
 
   @Description(
-      "The starting DateTime to use for reading Change Streams"
+      "The starting DateTime to use for reading change streams"
           + " (https://tools.ietf.org/html/rfc3339). Defaults to pipeline start time.")
   @Default.String("")
   String getStartTimestamp();
@@ -96,7 +96,7 @@ public interface SpannerChangeStreamsToBigQueryOptions extends DataflowPipelineO
   void setStartTimestamp(String startTimestamp);
 
   @Description(
-      "The ending DateTime to use for reading Change Streams"
+      "The ending DateTime to use for reading change streams"
           + " (https://tools.ietf.org/html/rfc3339). The default value is \"max\", which represents"
           + " an infinite time in the future.")
   @Default.String("")

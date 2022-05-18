@@ -169,14 +169,14 @@ public final class SpannerChangeStreamsToBigQuery {
             .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
             .withProjectId(spannerProjectId)
             .withInstanceId(options.getSpannerInstanceId())
-            .withDatabaseId(options.getSpannerDatabaseId())
+            .withDatabaseId(options.getSpannerDatabase())
             .withRpcPriority(options.getSpannerRpcPriority());
 
     SpannerIO.ReadChangeStream readChangeStream =
         SpannerIO.readChangeStream()
             .withSpannerConfig(spannerConfig)
             .withMetadataInstance(options.getSpannerMetadataInstanceId())
-            .withMetadataDatabase(options.getSpannerMetadataDatabaseId())
+            .withMetadataDatabase(options.getSpannerMetadataDatabase())
             .withChangeStreamName(options.getSpannerChangeStreamName())
             .withInclusiveStartAt(startTimestamp)
             .withInclusiveEndAt(endTimestamp)
