@@ -137,15 +137,18 @@ public final class GCSToSplunk {
 
     PCollectionTuple readCsvTuple = pipeline.apply("Read CSV", readFromCsv(options));
 
-    PCollectionTuple maybeTransformedLines =
+    PCollectionTuple failsafeTransformedLines =
         convertToFailsafeAndMaybeApplyUdf(readCsvTuple, options);
 
-    PCollectionTuple splunkEventTuple = convertToSplunkEvent(maybeTransformedLines.get(UDF_OUT));
+    PCollectionTuple splunkEventTuple = convertToSplunkEvent(failsafeTransformedLines.get(UDF_OUT));
 
     PCollection<SplunkWriteError> wrappedSplunkWriteErrors =
         writeToSplunk(splunkEventTuple.get(SPLUNK_EVENT_OUT), options);
 
-    flattenErrorsAndConvertToString(readCsvTuple, wrappedSplunkWriteErrors)
+    flattenErrorsAndConvertToString(
+            failsafeTransformedLines.get(UDF_ERROR_OUT),
+            splunkEventTuple.get(SPLUNK_EVENT_ERROR_OUT),
+            wrappedSplunkWriteErrors)
         .apply("Output Errors To GCS", writeErrorsToGCS(options));
 
     return pipeline.run();
@@ -166,11 +169,16 @@ public final class GCSToSplunk {
   static PCollectionTuple convertToFailsafeAndMaybeApplyUdf(
       PCollectionTuple csvLines, GCSToSplunkOptions options) {
 
+    String transformStepName = "Convert To Failsafe Element";
+
     // In order to avoid generating a graph that makes it look like a UDF was called when none was
     // intended, simply convert the input to FailsafeElements.
     if (Strings.isNullOrEmpty(options.getJavascriptTextTransformGcsPath())) {
+      if (!Strings.isNullOrEmpty(options.getJsonSchemaPath())) {
+        transformStepName = "Apply JSON Schema";
+      }
       return csvLines.apply(
-          "Convert To Failsafe Element",
+          transformStepName,
           CsvConverters.LineToFailsafeJson.newBuilder()
               .setDelimiter(options.getDelimiter())
               .setJsonSchemaPath(options.getJsonSchemaPath())
@@ -188,9 +196,10 @@ public final class GCSToSplunk {
       throw new IllegalArgumentException(
           "JavaScript function name cannot be null or empty if file is set");
     }
+    transformStepName = "Apply UDF";
 
     return csvLines.apply(
-        "Apply UDF",
+        transformStepName,
         CsvConverters.LineToFailsafeJson.newBuilder()
             .setDelimiter(options.getDelimiter())
             .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
@@ -221,7 +230,9 @@ public final class GCSToSplunk {
   }
 
   static PCollectionTuple flattenErrorsAndConvertToString(
-      PCollectionTuple readCsvTuple, PCollection<SplunkWriteError> splunkWriteErrors) {
+      PCollection<FailsafeElement<String, String>> failsafeFailedTransformedLines,
+      PCollection<FailsafeElement<String, String>> splunkEventFailedTransformedLines,
+      PCollection<SplunkWriteError> splunkWriteErrors) {
     PCollection<FailsafeElement<String, String>> wrappedSplunkWriteErrors =
         splunkWriteErrors.apply(
             "Wrap Splunk Write Errors", ParDo.of(new SplunkWriteErrorToFailsafeElementDoFn()));
@@ -230,9 +241,9 @@ public final class GCSToSplunk {
         COMBINED_ERRORS,
         PCollectionList.of(
                 ImmutableList.of(
-                    readCsvTuple.get(SPLUNK_EVENT_ERROR_OUT),
+                    failsafeFailedTransformedLines,
                     wrappedSplunkWriteErrors,
-                    readCsvTuple.get(UDF_ERROR_OUT)))
+                    splunkEventFailedTransformedLines))
             .apply("Flatten Errors", Flatten.pCollections())
             .apply("Convert Errors To String", ParDo.of(new FailsafeElementToStringDoFn())));
   }
