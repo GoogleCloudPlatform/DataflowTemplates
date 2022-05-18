@@ -77,10 +77,4 @@ public class SplunkWriteErrorCoder extends AtomicCoder<SplunkWriteError> {
   public TypeDescriptor<SplunkWriteError> getEncodedTypeDescriptor() {
     return TYPE_DESCRIPTOR;
   }
-
-  @Override
-  public void verifyDeterministic() throws NonDeterministicException {
-    throw new NonDeterministicException(
-        this, "SplunkWriteError can hold arbitrary instances, which may be non-deterministic.");
-  }
 }

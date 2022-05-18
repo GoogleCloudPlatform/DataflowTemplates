@@ -18,6 +18,10 @@ package com.google.cloud.teleport.v2.transforms;
 import com.google.api.client.util.DateTime;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Throwables;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonSyntaxException;
 import org.apache.beam.sdk.io.splunk.SplunkEvent;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -31,8 +35,6 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
-import org.json.JSONException;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,6 +45,8 @@ import org.slf4j.LoggerFactory;
 public class SplunkConverters {
 
   private static final Logger LOG = LoggerFactory.getLogger(SplunkConverters.class);
+
+  private static final JsonParser jsonParser = new JsonParser();
 
   // Key for grouping metadata fields.
   private static final String METADATA_KEY = "_metadata";
@@ -156,21 +160,24 @@ public class SplunkConverters {
                         // a user provided _metadata field.
                         try {
 
-                          JSONObject json = new JSONObject(input);
+
+                          JsonObject json = jsonParser.parse(input).getAsJsonObject();
 
                           // Check if metadata is provided via a nested _metadata
                           // JSON object
-                          JSONObject metadata = json.optJSONObject(METADATA_KEY);
+                          JsonObject metadata = json.getAsJsonObject(METADATA_KEY);
                           boolean metadataAvailable = (metadata != null);
 
                           // We attempt to extract the timestamp from metadata (if available)
                           // followed by TIMESTAMP_KEY. If neither (optional) keys are available
                           // we proceed without setting this metadata field.
-                          String parsedTimestamp;
+                          String parsedTimestamp = "";
                           if (metadataAvailable) {
-                            parsedTimestamp = metadata.optString(HEC_TIME_KEY);
-                          } else {
-                            parsedTimestamp = json.optString(TIMESTAMP_KEY);
+                            if(metadata.get(HEC_TIME_KEY) != null){
+                              parsedTimestamp = metadata.get(HEC_TIME_KEY).getAsString();
+                            }
+                          } else if (json.get(TIMESTAMP_KEY) != null) {
+                              parsedTimestamp = json.get(TIMESTAMP_KEY).getAsString();
                           }
 
                           if (!parsedTimestamp.isEmpty()) {
@@ -187,29 +194,29 @@ public class SplunkConverters {
                           // For the other metadata fields, we only look at the _metadata
                           // object if present.
                           if (metadataAvailable) {
-                            String source = metadata.optString(HEC_SOURCE_KEY);
-                            if (!source.isEmpty()) {
-                              builder.withSource(source);
+                            JsonElement source = metadata.get(HEC_SOURCE_KEY);
+                            if (source != null) {
+                              builder.withSource(source.getAsString());
                             }
 
-                            String sourceType = metadata.optString(HEC_SOURCE_TYPE_KEY);
-                            if (!sourceType.isEmpty()) {
-                              builder.withSourceType(sourceType);
+                            JsonElement sourceType = metadata.get(HEC_SOURCE_TYPE_KEY);
+                            if (sourceType != null) {
+                              builder.withSourceType(sourceType.getAsString());
                             }
 
-                            String host = metadata.optString(HEC_HOST_KEY);
-                            if (!host.isEmpty()) {
-                              builder.withHost(host);
+                            JsonElement host = metadata.get(HEC_HOST_KEY);
+                            if (host != null) {
+                              builder.withHost(host.getAsString());
                             }
 
-                            String index = metadata.optString(HEC_INDEX_KEY);
-                            if (!index.isEmpty()) {
-                              builder.withIndex(index);
+                            JsonElement index = metadata.get(HEC_INDEX_KEY);
+                            if (index != null) {
+                              builder.withIndex(index.getAsString());
                             }
 
-                            String event = metadata.optString(HEC_EVENT_KEY);
-                            if (!event.isEmpty()) {
-                              builder.withEvent(event);
+                            JsonElement event = metadata.get(HEC_EVENT_KEY);
+                            if (event != null) {
+                              builder.withEvent(event.getAsString());
                             }
 
                             // We remove the _metadata entry from the payload
@@ -218,12 +225,12 @@ public class SplunkConverters {
                             json.remove(METADATA_KEY);
                             // If the event was not overridden in metadata above, use
                             // the received JSON as event.
-                            if (event.isEmpty()) {
+                            if (event == null) {
                               builder.withEvent(json.toString());
                             }
                           }
 
-                        } catch (JSONException je) {
+                        } catch (IllegalStateException illegalStateException) {
                           // input is either not a properly formatted JSONObject
                           // or has other exceptions. In this case, we will
                           // simply capture the entire input as an 'event' and
@@ -232,7 +239,7 @@ public class SplunkConverters {
                           // We also do not want to LOG this as we might be running
                           // a pipeline to simply log text entries to Splunk and
                           // this is expected behavior.
-                        }
+                        } catch (JsonSyntaxException jse) {}
 
                         context.output(splunkEventOutputTag, builder.create());
                         CONVERSION_SUCCESS.inc();
