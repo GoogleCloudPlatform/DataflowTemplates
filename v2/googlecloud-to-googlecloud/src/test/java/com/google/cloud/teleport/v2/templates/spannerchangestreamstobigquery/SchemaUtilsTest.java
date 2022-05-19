@@ -54,7 +54,9 @@ import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigqu
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.when;
 
+import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.cloud.bigquery.Field;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.ReadContext;
@@ -304,37 +306,83 @@ public class SchemaUtilsTest {
 
   @Test
   public void testSpannerColumnsToBigQueryIOFields() {
-    String bigQueryIOFieldsStr =
-        SpannerToBigQueryUtils.spannerColumnsToBigQueryIOFields(spannerColumnsOfAllTypes)
-            .toString();
-    // Remove redundant information.
-    bigQueryIOFieldsStr =
-        bigQueryIOFieldsStr.replace(
-            "classInfo=[categories, collationSpec, description, fields, maxLength, mode, name,"
-                + " policyTags, precision, scale, type], ",
-            "");
-    bigQueryIOFieldsStr = bigQueryIOFieldsStr.replace("GenericData", "");
+    List<TableFieldSchema> tableFields =
+        ImmutableList.of(
+            new TableFieldSchema()
+                .setName(BOOLEAN_COL)
+                .setMode(Field.Mode.NULLABLE.name())
+                .setType("BOOL"),
+            new TableFieldSchema()
+                .setName(BYTES_COL)
+                .setMode(Field.Mode.NULLABLE.name())
+                .setType("BYTES"),
+            new TableFieldSchema()
+                .setName(DATE_COL)
+                .setMode(Field.Mode.NULLABLE.name())
+                .setType("DATE"),
+            new TableFieldSchema()
+                .setName(FLOAT64_COL)
+                .setMode(Field.Mode.NULLABLE.name())
+                .setType("FLOAT64"),
+            new TableFieldSchema()
+                .setName(INT64_COL)
+                .setMode(Field.Mode.NULLABLE.name())
+                .setType("INT64"),
+            new TableFieldSchema()
+                .setName(JSON_COL)
+                .setMode(Field.Mode.NULLABLE.name())
+                .setType("JSON"),
+            new TableFieldSchema()
+                .setName(NUMERIC_COL)
+                .setMode(Field.Mode.NULLABLE.name())
+                .setType("NUMERIC"),
+            new TableFieldSchema()
+                .setName(STRING_COL)
+                .setMode(Field.Mode.NULLABLE.name())
+                .setType("STRING"),
+            new TableFieldSchema()
+                .setName(TIMESTAMP_COL)
+                .setMode(Field.Mode.NULLABLE.name())
+                .setType("TIMESTAMP"),
+            new TableFieldSchema()
+                .setName(BOOLEAN_ARRAY_COL)
+                .setMode(Field.Mode.REPEATED.name())
+                .setType("BOOL"),
+            new TableFieldSchema()
+                .setName(BYTES_ARRAY_COL)
+                .setMode(Field.Mode.REPEATED.name())
+                .setType("BYTES"),
+            new TableFieldSchema()
+                .setName(DATE_ARRAY_COL)
+                .setMode(Field.Mode.REPEATED.name())
+                .setType("DATE"),
+            new TableFieldSchema()
+                .setName(FLOAT64_ARRAY_COL)
+                .setMode(Field.Mode.REPEATED.name())
+                .setType("FLOAT64"),
+            new TableFieldSchema()
+                .setName(INT64_ARRAY_COL)
+                .setMode(Field.Mode.REPEATED.name())
+                .setType("INT64"),
+            new TableFieldSchema()
+                .setName(JSON_ARRAY_COL)
+                .setMode(Field.Mode.REPEATED.name())
+                .setType("JSON"),
+            new TableFieldSchema()
+                .setName(NUMERIC_ARRAY_COL)
+                .setMode(Field.Mode.REPEATED.name())
+                .setType("NUMERIC"),
+            new TableFieldSchema()
+                .setName(STRING_ARRAY_COL)
+                .setMode(Field.Mode.REPEATED.name())
+                .setType("STRING"),
+            new TableFieldSchema()
+                .setName(TIMESTAMP_ARRAY_COL)
+                .setMode(Field.Mode.REPEATED.name())
+                .setType("TIMESTAMP"));
 
-    assertThat(bigQueryIOFieldsStr)
-        .isEqualTo(
-            "[{{mode=NULLABLE, name=BooleanCol, type=BOOL}}, "
-                + "{{mode=NULLABLE, name=BytesCol, type=BYTES}}, "
-                + "{{mode=NULLABLE, name=DateCol, type=DATE}}, "
-                + "{{mode=NULLABLE, name=Float64Col, type=FLOAT64}}, "
-                + "{{mode=NULLABLE, name=Int64Col, type=INT64}}, "
-                + "{{mode=NULLABLE, name=JsonCol, type=STRING}}, "
-                + "{{mode=NULLABLE, name=NumericCol, type=NUMERIC}}, "
-                + "{{mode=NULLABLE, name=StringCol, type=STRING}}, "
-                + "{{mode=NULLABLE, name=TimestampCol, type=TIMESTAMP}}, "
-                + "{{mode=REPEATED, name=BooleanArrayCol, type=BOOL}}, "
-                + "{{mode=REPEATED, name=BytesArrayCol, type=BYTES}}, "
-                + "{{mode=REPEATED, name=DateArrayCol, type=DATE}}, "
-                + "{{mode=REPEATED, name=Float64ArrayCol, type=FLOAT64}}, "
-                + "{{mode=REPEATED, name=Int64ArrayCol, type=INT64}}, "
-                + "{{mode=REPEATED, name=JsonArrayCol, type=STRING}}, "
-                + "{{mode=REPEATED, name=NumericArrayCol, type=NUMERIC}}, "
-                + "{{mode=REPEATED, name=StringArrayCol, type=STRING}}, "
-                + "{{mode=REPEATED, name=TimestampArrayCol, type=TIMESTAMP}}]");
+    assertThat(SpannerToBigQueryUtils.spannerColumnsToBigQueryIOFields(spannerColumnsOfAllTypes))
+        .isEqualTo(tableFields);
   }
 
   @Test
