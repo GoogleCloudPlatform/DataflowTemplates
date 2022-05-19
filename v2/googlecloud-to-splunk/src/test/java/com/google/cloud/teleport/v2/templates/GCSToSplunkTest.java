@@ -276,9 +276,11 @@ public final class GCSToSplunkTest {
 
     PCollection<String> stringifiedErrorCollection =
         pipeline.apply(
-            "Add Stringified Errors", Create.of(stringifiedSplunkError).withCoder(StringUtf8Coder.of()));
+            "Add Stringified Errors",
+            Create.of(stringifiedSplunkError).withCoder(StringUtf8Coder.of()));
 
-    PCollectionTuple stringifiedErrorTuple = PCollectionTuple.of(COMBINED_ERRORS, stringifiedErrorCollection);
+    PCollectionTuple stringifiedErrorTuple =
+        PCollectionTuple.of(COMBINED_ERRORS, stringifiedErrorCollection);
 
     TemporaryFolder tmpFolder = new TemporaryFolder();
     tmpFolder.create();
@@ -289,7 +291,6 @@ public final class GCSToSplunkTest {
 
     // Act
     stringifiedErrorTuple.apply("Output Errors To GCS", writeErrorsToGCS(options));
-
 
     //  Execute pipeline
     pipeline.run();
