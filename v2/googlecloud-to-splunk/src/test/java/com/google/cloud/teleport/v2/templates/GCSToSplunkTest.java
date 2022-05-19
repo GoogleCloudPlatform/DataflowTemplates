@@ -24,6 +24,7 @@ import static com.google.cloud.teleport.v2.templates.GCSToSplunk.convertToFailsa
 import static com.google.cloud.teleport.v2.templates.GCSToSplunk.convertToSplunkEvent;
 import static com.google.cloud.teleport.v2.templates.GCSToSplunk.flattenErrorsAndConvertToString;
 import static com.google.cloud.teleport.v2.templates.GCSToSplunk.readFromCsv;
+import static com.google.cloud.teleport.v2.templates.GCSToSplunk.writeErrorsToGCS;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
@@ -32,7 +33,11 @@ import com.google.cloud.teleport.v2.coders.SplunkEventCoder;
 import com.google.cloud.teleport.v2.coders.SplunkWriteErrorCoder;
 import com.google.cloud.teleport.v2.templates.GCSToSplunk.GCSToSplunkOptions;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.base.Charsets;
+import com.google.common.io.Files;
 import com.google.common.io.Resources;
+import java.io.File;
+import java.io.IOException;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.splunk.SplunkEvent;
@@ -45,6 +50,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 /** Test cases for the {@link GCSToSplunk} class. */
 public final class GCSToSplunkTest {
@@ -62,7 +68,7 @@ public final class GCSToSplunkTest {
       Resources.getResource("testSchema.json").getPath();
 
   @Test
-  public void testGCSToSplunkUdf() {
+  public void testGCSToSplunkReadUdf() {
     // Arrange
     final String stringifiedJsonRecord = "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
     SplunkEvent expectedSplunkEvent =
@@ -133,7 +139,7 @@ public final class GCSToSplunkTest {
   }
 
   @Test
-  public void testGCSToSplunkHeaders() {
+  public void testGCSToSplunkReadHeaders() {
     // Arrange
     final String stringifiedJsonRecord = "{\"id\":\"008\",\"state\":\"CA\",\"price\":\"26.23\"}";
     SplunkEvent expectedSplunkEvent =
@@ -171,7 +177,7 @@ public final class GCSToSplunkTest {
   }
 
   @Test
-  public void testGCSToSplunkJsonSchema() {
+  public void testGCSToSplunkReadJsonSchema() {
     // Arrange
     final String stringifiedJsonRecord = "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
     SplunkEvent expectedSplunkEvent =
@@ -210,7 +216,7 @@ public final class GCSToSplunkTest {
   }
 
   @Test
-  public void testGCSToSplunkWriteErrors() {
+  public void testGCSToSplunkConvertWriteErrors() {
     // Arrange
     final String stringifiedSplunkError =
         "Payload: test-payload. Error Message: test-message. Splunk write status code: 123.";
@@ -260,5 +266,38 @@ public final class GCSToSplunkTest {
 
     //  Execute pipeline
     pipeline.run();
+  }
+
+  @Test
+  public void testGCSToSplunkWriteErrorsToFolder() throws IOException {
+    // Arrange
+    final String stringifiedSplunkError =
+        "Payload: test-payload. Error Message: test-message. Splunk write status code: 123.";
+
+    PCollection<String> stringifiedErrorCollection =
+        pipeline.apply(
+            "Add Stringified Errors", Create.of(stringifiedSplunkError).withCoder(StringUtf8Coder.of()));
+
+    PCollectionTuple stringifiedErrorTuple = PCollectionTuple.of(COMBINED_ERRORS, stringifiedErrorCollection);
+
+    TemporaryFolder tmpFolder = new TemporaryFolder();
+    tmpFolder.create();
+
+    GCSToSplunkOptions options = PipelineOptionsFactory.create().as(GCSToSplunkOptions.class);
+
+    options.setInvalidOutputPath(tmpFolder.getRoot().getAbsolutePath() + "errors.txt");
+
+    // Act
+    stringifiedErrorTuple.apply("Output Errors To GCS", writeErrorsToGCS(options));
+
+
+    //  Execute pipeline
+    pipeline.run();
+
+    // Assert
+    File file = new File(tmpFolder.getRoot().getAbsolutePath() + "errors.txt-00000-of-00001");
+    String fileContents = Files.toString(file, Charsets.UTF_8);
+    assertThat(fileContents).contains(stringifiedSplunkError);
+    tmpFolder.delete();
   }
 }
