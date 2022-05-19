@@ -15,25 +15,33 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.templates.GCSToSplunk.COMBINED_ERRORS;
+import static com.google.cloud.teleport.v2.templates.GCSToSplunk.SPLUNK_EVENT_ERROR_OUT;
 import static com.google.cloud.teleport.v2.templates.GCSToSplunk.SPLUNK_EVENT_OUT;
+import static com.google.cloud.teleport.v2.templates.GCSToSplunk.UDF_ERROR_OUT;
 import static com.google.cloud.teleport.v2.templates.GCSToSplunk.UDF_OUT;
 import static com.google.cloud.teleport.v2.templates.GCSToSplunk.convertToFailsafeAndMaybeApplyUdf;
 import static com.google.cloud.teleport.v2.templates.GCSToSplunk.convertToSplunkEvent;
+import static com.google.cloud.teleport.v2.templates.GCSToSplunk.flattenErrorsAndConvertToString;
 import static com.google.cloud.teleport.v2.templates.GCSToSplunk.readFromCsv;
 import static com.google.common.truth.Truth.assertThat;
-import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.coders.SplunkEventCoder;
+import com.google.cloud.teleport.v2.coders.SplunkWriteErrorCoder;
 import com.google.cloud.teleport.v2.templates.GCSToSplunk.GCSToSplunkOptions;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.io.Resources;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.splunk.SplunkEvent;
+import org.apache.beam.sdk.io.splunk.SplunkWriteError;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.junit.Rule;
 import org.junit.Test;
@@ -85,7 +93,37 @@ public final class GCSToSplunkTest {
               assertThat(element.getPayload()).isEqualTo(stringifiedJsonRecord);
               return null;
             });
+    PAssert.that(transformedLines.get(UDF_ERROR_OUT)).empty();
     PAssert.that(splunkEventTuple.get(SPLUNK_EVENT_OUT)).containsInAnyOrder(expectedSplunkEvent);
+    PAssert.that(splunkEventTuple.get(SPLUNK_EVENT_ERROR_OUT)).empty();
+
+    //  Execute pipeline
+    pipeline.run();
+  }
+
+  @Test
+  public void testGCSToSplunkUdfNoFunctionNameThrows() {
+    // Arrange
+    CoderRegistry coderRegistry = pipeline.getCoderRegistry();
+    coderRegistry.registerCoderForClass(SplunkEvent.class, SplunkEventCoder.of());
+    coderRegistry.registerCoderForType(
+        FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
+
+    GCSToSplunkOptions options = PipelineOptionsFactory.create().as(GCSToSplunkOptions.class);
+
+    options.setJavascriptTextTransformGcsPath(TRANSFORM_FILE_PATH);
+    options.setContainsHeaders(false);
+    options.setInputFileSpec(NO_HEADER_CSV_FILE_PATH);
+
+    // Act
+    PCollectionTuple readCsvOut = pipeline.apply("Read CSV", readFromCsv(options));
+
+    IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class, () -> convertToFailsafeAndMaybeApplyUdf(readCsvOut, options));
+
+    // Assert
+    assertThat(thrown).hasMessageThat().contains("JavaScript function name cannot be null or empty if file is set");
 
     //  Execute pipeline
     pipeline.run();
@@ -121,7 +159,9 @@ public final class GCSToSplunkTest {
               assertThat(element.getPayload()).isEqualTo(stringifiedJsonRecord);
               return null;
             });
+    PAssert.that(transformedLines.get(UDF_ERROR_OUT)).empty();
     PAssert.that(splunkEventTuple.get(SPLUNK_EVENT_OUT)).containsInAnyOrder(expectedSplunkEvent);
+    PAssert.that(splunkEventTuple.get(SPLUNK_EVENT_ERROR_OUT)).empty();
 
     //  Execute pipeline
     pipeline.run();
@@ -158,64 +198,58 @@ public final class GCSToSplunkTest {
               assertThat(element.getPayload()).isEqualTo(stringifiedJsonRecord);
               return null;
             });
+    PAssert.that(transformedLines.get(UDF_ERROR_OUT)).empty();
     PAssert.that(splunkEventTuple.get(SPLUNK_EVENT_OUT)).containsInAnyOrder(expectedSplunkEvent);
+    PAssert.that(splunkEventTuple.get(SPLUNK_EVENT_ERROR_OUT)).empty();
 
     //  Execute pipeline
     pipeline.run();
   }
 
-  // @Test
-  // public void testGCSToSplunkWriteErrors() {
-  //   // Arrange
-  //   final String stringifiedError =
-  //       "Payload: test-payload. Error Message: test-message. Splunk write status code: 123.";
-  //   CoderRegistry coderRegistry = pipeline.getCoderRegistry();
-  //   coderRegistry.registerCoderForType(
-  //       FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
-  //
-  //   String payload = "test-payload";
-  //   String message = "test-message";
-  //   Integer statusCode = 123;
-  //
-  //   SplunkWriteError splunkWriteError =
-  //       SplunkWriteError.newBuilder()
-  //           .withPayload(payload)
-  //           .withStatusCode(statusCode)
-  //           .withStatusMessage(message)
-  //           .create();
-  //
-  //   // Act
-  //   PCollection<SplunkWriteError> splunkErrorCollection =
-  //       pipeline.apply(
-  //           "Create Input data",
-  // Create.of(splunkWriteError).withCoder(SplunkWriteErrorCoder.of()));
-  //
-  //   // Assert
-  //   PAssert.that(splunkErrorCollection).containsInAnyOrder(splunkWriteError);
-  //
-  //   // Act
-  //   PCollection<FailsafeElement<String, String>> wrappedSplunkWriteErrors =
-  //       wrapSplunkErrorsToFailsafe(splunkErrorCollection);
-  //
-  //   // Assert
-  //   PAssert.that(wrappedSplunkWriteErrors)
-  //       .satisfies(
-  //           collection -> {
-  //             FailsafeElement element = collection.iterator().next();
-  //             assertThat(element.getPayload(), is(equalTo(payload)));
-  //             assertThat(
-  //                 element.getErrorMessage(),
-  //                 is(equalTo(message + ". Splunk write status code: " + statusCode)));
-  //             return null;
-  //           });
-  //
-  //   // Act
-  //   PCollectionTuple flattenedErrors = getStringifiedFailsafeErrors(wrappedSplunkWriteErrors);
-  //
-  //   // Assert
-  //   PAssert.that(flattenedErrors.get(COMBINED_ERRORS)).containsInAnyOrder(stringifiedError);
-  //
-  //   //  Execute pipeline
-  //   pipeline.run();
-  // }
+  @Test
+  public void testGCSToSplunkWriteErrors() {
+    // Arrange
+    final String stringifiedSplunkError =
+        "Payload: test-payload. Error Message: test-message. Splunk write status code: 123.";
+    final String firstStringifiedFailsafeError = "Payload: world. Error Message: failed!.";
+    final String secondStringifiedFailsafeError = "Payload: one. Error Message: error!.";
+
+    CoderRegistry coderRegistry = pipeline.getCoderRegistry();
+    coderRegistry.registerCoderForType(
+        FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
+
+    SplunkWriteError splunkWriteError =
+        SplunkWriteError.newBuilder()
+            .withPayload("test-payload")
+            .withStatusCode(123)
+            .withStatusMessage("test-message")
+            .create();
+    PCollection<SplunkWriteError> splunkErrorCollection =
+        pipeline.apply("Add Splunk Errors",
+            Create.of(splunkWriteError).withCoder(SplunkWriteErrorCoder.of()));
+
+    FailsafeElement<String, String> firstFailsafeElement =
+        FailsafeElement.of("hello", "world").setErrorMessage("failed!");
+
+    PCollection<FailsafeElement<String, String>> firstFailsafeElementCollection =
+        pipeline.apply("Add FailsafeElements to First",
+          Create.of(firstFailsafeElement).withCoder(FAILSAFE_ELEMENT_CODER));
+
+    FailsafeElement<String, String> secondFailsafeElement =
+        FailsafeElement.of("another", "one").setErrorMessage("error!");
+
+    PCollection<FailsafeElement<String, String>> secondFailsafeElementCollection =
+        pipeline.apply("Add FailsafeElements to Second",
+            Create.of(secondFailsafeElement).withCoder(FAILSAFE_ELEMENT_CODER));
+
+
+    // Act
+    PCollectionTuple stringifiedErrors = flattenErrorsAndConvertToString(firstFailsafeElementCollection, secondFailsafeElementCollection, splunkErrorCollection);
+
+    // Assert
+    PAssert.that(stringifiedErrors.get(COMBINED_ERRORS)).containsInAnyOrder(stringifiedSplunkError, firstStringifiedFailsafeError, secondStringifiedFailsafeError);
+
+    //  Execute pipeline
+    pipeline.run();
+  }
 }

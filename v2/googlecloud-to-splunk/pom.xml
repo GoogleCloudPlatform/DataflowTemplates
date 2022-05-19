@@ -27,6 +27,7 @@
 
   <properties>
     <beam-splunk.version>2.38.0</beam-splunk.version>
+    <junit.version>4.13.1</junit.version>
     <truth.version>1.0.1</truth.version>
   </properties>
 
@@ -54,6 +55,12 @@
           <artifactId>guava</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 
