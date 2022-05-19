@@ -23,6 +23,7 @@ import com.google.cloud.teleport.v2.transforms.ErrorConverters.LogErrors;
 import com.google.cloud.teleport.v2.transforms.SplunkConverters;
 import com.google.cloud.teleport.v2.transforms.SplunkConverters.SplunkOptions;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -58,28 +59,32 @@ public final class GCSToSplunk {
       FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
 
   /** The tag for the headers of the CSV if required. */
-  static final TupleTag<String> CSV_HEADERS = new TupleTag<String>() {};
+  private static final TupleTag<String> CSV_HEADERS = new TupleTag<String>() {};
 
   /** The tag for the lines of the CSV. */
-  static final TupleTag<String> CSV_LINES = new TupleTag<String>() {};
+  private static final TupleTag<String> CSV_LINES = new TupleTag<String>() {};
 
   /** The tag for the main output for the UDF. */
+  @VisibleForTesting
   static final TupleTag<FailsafeElement<String, String>> UDF_OUT =
       new TupleTag<FailsafeElement<String, String>>() {};
 
   /** The tag for the error output of the udf. */
+  @VisibleForTesting
   static final TupleTag<FailsafeElement<String, String>> UDF_ERROR_OUT =
       new TupleTag<FailsafeElement<String, String>>() {};
 
   /** The tag for successful {@link SplunkEvent} conversion. */
+  @VisibleForTesting
   static final TupleTag<SplunkEvent> SPLUNK_EVENT_OUT = new TupleTag<SplunkEvent>() {};
 
   /** The tag for failed {@link SplunkEvent} conversion. */
+  @VisibleForTesting
   static final TupleTag<FailsafeElement<String, String>> SPLUNK_EVENT_ERROR_OUT =
       new TupleTag<FailsafeElement<String, String>>() {};
 
   /** The tag for all the elements that failed. */
-  static final TupleTag<String> COMBINED_ERRORS = new TupleTag<String>() {};
+  @VisibleForTesting static final TupleTag<String> COMBINED_ERRORS = new TupleTag<String>() {};
 
   /** Logger for class. */
   static final Logger LOG = LoggerFactory.getLogger(GCSToSplunk.class);

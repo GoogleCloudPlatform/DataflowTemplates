@@ -120,10 +120,13 @@ public final class GCSToSplunkTest {
 
     IllegalArgumentException thrown =
         assertThrows(
-            IllegalArgumentException.class, () -> convertToFailsafeAndMaybeApplyUdf(readCsvOut, options));
+            IllegalArgumentException.class,
+            () -> convertToFailsafeAndMaybeApplyUdf(readCsvOut, options));
 
     // Assert
-    assertThat(thrown).hasMessageThat().contains("JavaScript function name cannot be null or empty if file is set");
+    assertThat(thrown)
+        .hasMessageThat()
+        .contains("JavaScript function name cannot be null or empty if file is set");
 
     //  Execute pipeline
     pipeline.run();
@@ -224,30 +227,36 @@ public final class GCSToSplunkTest {
             .withStatusCode(123)
             .withStatusMessage("test-message")
             .create();
+
     PCollection<SplunkWriteError> splunkErrorCollection =
-        pipeline.apply("Add Splunk Errors",
-            Create.of(splunkWriteError).withCoder(SplunkWriteErrorCoder.of()));
+        pipeline.apply(
+            "Add Splunk Errors", Create.of(splunkWriteError).withCoder(SplunkWriteErrorCoder.of()));
 
     FailsafeElement<String, String> firstFailsafeElement =
         FailsafeElement.of("hello", "world").setErrorMessage("failed!");
 
     PCollection<FailsafeElement<String, String>> firstFailsafeElementCollection =
-        pipeline.apply("Add FailsafeElements to First",
-          Create.of(firstFailsafeElement).withCoder(FAILSAFE_ELEMENT_CODER));
+        pipeline.apply(
+            "Add FailsafeElements to First",
+            Create.of(firstFailsafeElement).withCoder(FAILSAFE_ELEMENT_CODER));
 
     FailsafeElement<String, String> secondFailsafeElement =
         FailsafeElement.of("another", "one").setErrorMessage("error!");
 
     PCollection<FailsafeElement<String, String>> secondFailsafeElementCollection =
-        pipeline.apply("Add FailsafeElements to Second",
+        pipeline.apply(
+            "Add FailsafeElements to Second",
             Create.of(secondFailsafeElement).withCoder(FAILSAFE_ELEMENT_CODER));
 
-
     // Act
-    PCollectionTuple stringifiedErrors = flattenErrorsAndConvertToString(firstFailsafeElementCollection, secondFailsafeElementCollection, splunkErrorCollection);
+    PCollectionTuple stringifiedErrors =
+        flattenErrorsAndConvertToString(
+            firstFailsafeElementCollection, secondFailsafeElementCollection, splunkErrorCollection);
 
     // Assert
-    PAssert.that(stringifiedErrors.get(COMBINED_ERRORS)).containsInAnyOrder(stringifiedSplunkError, firstStringifiedFailsafeError, secondStringifiedFailsafeError);
+    PAssert.that(stringifiedErrors.get(COMBINED_ERRORS))
+        .containsInAnyOrder(
+            stringifiedSplunkError, firstStringifiedFailsafeError, secondStringifiedFailsafeError);
 
     //  Execute pipeline
     pipeline.run();
