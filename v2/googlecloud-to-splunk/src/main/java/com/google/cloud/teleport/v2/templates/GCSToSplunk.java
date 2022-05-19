@@ -124,7 +124,6 @@ public final class GCSToSplunk {
     registry.registerCoderForType(
         FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
 
-
     PCollectionTuple readCsvTuple = pipeline.apply("Read CSV", readFromCsv(options));
 
     PCollectionTuple failsafeTransformedLines =
