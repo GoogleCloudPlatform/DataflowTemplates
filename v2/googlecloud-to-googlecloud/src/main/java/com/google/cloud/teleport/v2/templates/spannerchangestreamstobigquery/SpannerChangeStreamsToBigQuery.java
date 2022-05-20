@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.mod
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.BigQueryUtils;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.collect.ImmutableSet;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -219,12 +220,17 @@ public final class SpannerChangeStreamsToBigQuery {
             .and(retryableDlqFailsafeModJson)
             .apply("Merge Source And DLQ Mod JSON", Flatten.pCollections());
 
+    ImmutableSet.Builder<String> ignoreFieldsBuilder = ImmutableSet.builder();
+    for (String ignoreField : options.getIgnoreFields().split(",")) {
+      ignoreFieldsBuilder.add(ignoreField);
+    }
+    ImmutableSet<String> ignoreFields = ignoreFieldsBuilder.build();
     FailsafeModJsonToTableRowTransformer.FailsafeModJsonToTableRowOptions
         failsafeModJsonToTableRowOptions =
             FailsafeModJsonToTableRowTransformer.FailsafeModJsonToTableRowOptions.builder()
                 .setSpannerConfig(spannerConfig)
                 .setSpannerChangeStream(options.getSpannerChangeStreamName())
-                .setIgnoreFields(options.getIgnoreFields())
+                .setIgnoreFields(ignoreFields)
                 .setCoder(FAILSAFE_ELEMENT_CODER)
                 .build();
     FailsafeModJsonToTableRowTransformer.FailsafeModJsonToTableRow failsafeModJsonToTableRow =
@@ -239,6 +245,7 @@ public final class SpannerChangeStreamsToBigQuery {
             BigQueryDynamicDestinations.BigQueryDynamicDestinationsOptions.builder()
                 .setSpannerConfig(spannerConfig)
                 .setChangeStreamName(options.getSpannerChangeStreamName())
+                .setIgnoreFields(ignoreFields)
                 .setBigQueryProject(getBigQueryProjectId(options))
                 .setBigQueryDataset(options.getBigQueryDataset())
                 .setBigQueryTableTemplate(options.getBigQueryChangelogTableNameTemplate())

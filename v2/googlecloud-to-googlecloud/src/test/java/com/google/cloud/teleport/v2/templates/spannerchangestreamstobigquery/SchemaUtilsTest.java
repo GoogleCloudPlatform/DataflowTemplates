@@ -184,7 +184,7 @@ public class SchemaUtilsTest {
   }
 
   @Test
-  public void testChangeStreamTrackTwoColumns() {
+  public void testChangeStreamTrackOneColumn() {
     mockInformationSchemaChangeStreamsQuery(false);
     mockInformationSchemaChangeStreamTablesQuery();
     mockInformationSchemaColumnsQuery();

@@ -34,16 +34,15 @@ import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.sch
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerToBigQueryUtils;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.collect.ImmutableSet;
 import io.grpc.CallOptions;
 import io.grpc.Context;
 import io.grpc.MethodDescriptor;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.Serializable;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
@@ -119,7 +118,7 @@ public final class FailsafeModJsonToTableRowTransformer {
       private final SpannerConfig spannerConfig;
       private final String spannerChangeStream;
       private Map<String, TrackedSpannerTable> spannerTableByName;
-      private final Set<String> ignoreFields;
+      private final ImmutableSet<String> ignoreFields;
       public TupleTag<TableRow> transformOut;
       public TupleTag<FailsafeElement<String, String>> transformDeadLetterOut;
       private transient CallContextConfigurator callContextConfigurator;
@@ -127,17 +126,14 @@ public final class FailsafeModJsonToTableRowTransformer {
       public FailsafeModJsonToTableRowFn(
           SpannerConfig spannerConfig,
           String spannerChangeStream,
-          String ignoreFieldsStr,
+          ImmutableSet<String> ignoreFields,
           TupleTag<TableRow> transformOut,
           TupleTag<FailsafeElement<String, String>> transformDeadLetterOut) {
         this.spannerConfig = spannerConfig;
         this.spannerChangeStream = spannerChangeStream;
         this.transformOut = transformOut;
         this.transformDeadLetterOut = transformDeadLetterOut;
-        this.ignoreFields = new HashSet<>();
-        for (String ignoreField : ignoreFieldsStr.split(",")) {
-          ignoreFields.add(ignoreField);
-        }
+        this.ignoreFields = ignoreFields;
       }
 
       private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
@@ -342,7 +338,7 @@ public final class FailsafeModJsonToTableRowTransformer {
 
     public abstract String getSpannerChangeStream();
 
-    public abstract String getIgnoreFields();
+    public abstract ImmutableSet<String> getIgnoreFields();
 
     public abstract FailsafeElementCoder<String, String> getCoder();
 
@@ -357,7 +353,7 @@ public final class FailsafeModJsonToTableRowTransformer {
 
       abstract Builder setSpannerChangeStream(String spannerChangeStream);
 
-      abstract Builder setIgnoreFields(String ignoreFields);
+      abstract Builder setIgnoreFields(ImmutableSet<String> ignoreFields);
 
       abstract Builder setCoder(FailsafeElementCoder<String, String> coder);
 
