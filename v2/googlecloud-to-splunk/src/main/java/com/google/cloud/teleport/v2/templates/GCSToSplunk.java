@@ -18,9 +18,11 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.coders.SplunkEventCoder;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
+import com.google.cloud.teleport.v2.transforms.CsvConverters.LineToFailsafeJson;
 import com.google.cloud.teleport.v2.transforms.CsvConverters.ReadCsv;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters.LogErrors;
 import com.google.cloud.teleport.v2.transforms.SplunkConverters;
+import com.google.cloud.teleport.v2.transforms.SplunkConverters.FailsafeStringToSplunkEvent;
 import com.google.cloud.teleport.v2.transforms.SplunkConverters.SplunkOptions;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.annotations.VisibleForTesting;
@@ -130,12 +132,15 @@ public final class GCSToSplunk {
     PCollectionTuple readCsvTuple = pipeline.apply("Read CSV", readFromCsv(options));
 
     PCollectionTuple failsafeTransformedLines =
-        convertToFailsafeAndMaybeApplyUdf(readCsvTuple, options);
+        readCsvTuple.apply("Convert To JSON", convertToFailsafeAndMaybeApplyUdf(options));
 
-    PCollectionTuple splunkEventTuple = convertToSplunkEvent(failsafeTransformedLines.get(UDF_OUT));
+    PCollectionTuple splunkEventTuple =
+        failsafeTransformedLines
+            .get(UDF_OUT)
+            .apply("Convert to Splunk Event", convertToSplunkEvent());
 
     PCollection<SplunkWriteError> wrappedSplunkWriteErrors =
-        writeToSplunk(splunkEventTuple.get(SPLUNK_EVENT_OUT), options);
+        splunkEventTuple.get(SPLUNK_EVENT_OUT).apply("Write to Splunk", writeToSplunk(options));
 
     flattenErrorsAndConvertToString(
             failsafeTransformedLines.get(UDF_ERROR_OUT),
@@ -158,38 +163,29 @@ public final class GCSToSplunk {
         .build();
   }
 
-  static PCollectionTuple convertToFailsafeAndMaybeApplyUdf(
-      PCollectionTuple csvLines, GCSToSplunkOptions options) {
+  static LineToFailsafeJson convertToFailsafeAndMaybeApplyUdf(GCSToSplunkOptions options) {
 
-    return csvLines.apply(
-        "Convert To JSON",
-        CsvConverters.LineToFailsafeJson.newBuilder()
-            .setDelimiter(options.getDelimiter())
-            .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
-            .setUdfFunctionName(options.getJavascriptTextTransformFunctionName())
-            .setJsonSchemaPath(options.getJsonSchemaPath())
-            .setHeaderTag(CSV_HEADERS)
-            .setLineTag(CSV_LINES)
-            .setUdfOutputTag(UDF_OUT)
-            .setUdfDeadletterTag(UDF_ERROR_OUT)
-            .build());
+    return CsvConverters.LineToFailsafeJson.newBuilder()
+        .setDelimiter(options.getDelimiter())
+        .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
+        .setUdfFunctionName(options.getJavascriptTextTransformFunctionName())
+        .setJsonSchemaPath(options.getJsonSchemaPath())
+        .setHeaderTag(CSV_HEADERS)
+        .setLineTag(CSV_LINES)
+        .setUdfOutputTag(UDF_OUT)
+        .setUdfDeadletterTag(UDF_ERROR_OUT)
+        .build();
   }
 
-  static PCollectionTuple convertToSplunkEvent(
-      PCollection<FailsafeElement<String, String>> transformedLines) {
-    return transformedLines.apply(
-        "Convert To Splunk Event",
-        SplunkConverters.failsafeStringToSplunkEvent(SPLUNK_EVENT_OUT, SPLUNK_EVENT_ERROR_OUT));
+  static FailsafeStringToSplunkEvent convertToSplunkEvent() {
+    return SplunkConverters.failsafeStringToSplunkEvent(SPLUNK_EVENT_OUT, SPLUNK_EVENT_ERROR_OUT);
   }
 
-  static PCollection<SplunkWriteError> writeToSplunk(
-      PCollection<SplunkEvent> splunkEvents, GCSToSplunkOptions options) {
-    return splunkEvents.apply(
-        "Write To Splunk",
-        SplunkIO.write(options.getUrl(), options.getToken())
-            .withBatchCount(options.getBatchCount())
-            .withParallelism(options.getParallelism())
-            .withDisableCertificateValidation(options.getDisableCertificateValidation()));
+  static SplunkIO.Write writeToSplunk(GCSToSplunkOptions options) {
+    return SplunkIO.write(options.getUrl(), options.getToken())
+        .withBatchCount(options.getBatchCount())
+        .withParallelism(options.getParallelism())
+        .withDisableCertificateValidation(options.getDisableCertificateValidation());
   }
 
   static PCollectionTuple flattenErrorsAndConvertToString(

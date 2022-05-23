@@ -115,7 +115,7 @@ public final class SplunkConverters {
     void setParallelism(Integer parallelism);
   }
 
-  private static final class FailsafeStringToSplunkEvent
+  public static final class FailsafeStringToSplunkEvent
       extends PTransform<PCollection<FailsafeElement<String, String>>, PCollectionTuple> {
 
     private static final Counter CONVERSION_ERRORS =
@@ -164,8 +164,6 @@ public final class SplunkConverters {
                           // Check if metadata is provided via a nested _metadata
                           // JSON object
                           JsonObject metadata = json.getAsJsonObject(METADATA_KEY);
-
-
 
                           // We attempt to extract the timestamp from TIMESTAMP_KEY (if available)
                           // only if metadata does not exist.
@@ -237,7 +235,6 @@ public final class SplunkConverters {
                           // a pipeline to simply log text entries to Splunk and
                           // this is expected behavior.
                         }
-
 
                         context.output(splunkEventOutputTag, builder.create());
                         CONVERSION_SUCCESS.inc();
