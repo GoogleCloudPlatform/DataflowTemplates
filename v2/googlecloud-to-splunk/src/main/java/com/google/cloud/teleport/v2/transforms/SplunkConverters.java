@@ -115,6 +115,17 @@ public final class SplunkConverters {
     void setParallelism(Integer parallelism);
   }
 
+  /**
+   * The {@link FailsafeStringToSplunkEvent} class is a {@link PTransform} that returns a {@link
+   * PCollectionTuple} consisting of the following {@link PCollection}:
+   *
+   * <ul>
+   *   <li>{@link FailsafeStringToSplunkEvent#splunkEventOutputTag()} - Contains {@link SplunkEvent}
+   *       objects converted from input.
+   *   <li>{@link FailsafeStringToSplunkEvent#splunkEventErrorTag()} - Contains {@link
+   *       FailsafeElement} objects of conversion failures.
+   * </ul>
+   */
   public static final class FailsafeStringToSplunkEvent
       extends PTransform<PCollection<FailsafeElement<String, String>>, PCollectionTuple> {
 

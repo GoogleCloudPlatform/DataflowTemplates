@@ -89,8 +89,10 @@ public final class GCSToSplunkTest {
 
     // Act
     PCollectionTuple readCsvOut = pipeline.apply("Read CSV", readFromCsv(options));
-    PCollectionTuple transformedLines = convertToFailsafeAndMaybeApplyUdf(readCsvOut, options);
-    PCollectionTuple splunkEventTuple = convertToSplunkEvent(transformedLines.get(UDF_OUT));
+    PCollectionTuple transformedLines =
+        readCsvOut.apply("Convert to JSON", convertToFailsafeAndMaybeApplyUdf(options));
+    PCollectionTuple splunkEventTuple =
+        transformedLines.get(UDF_OUT).apply("Convert to Splunk Event", convertToSplunkEvent());
 
     // Assert
     PAssert.that(transformedLines.get(UDF_OUT))
@@ -127,8 +129,10 @@ public final class GCSToSplunkTest {
 
     // Act
     PCollectionTuple readCsvOut = pipeline.apply("Read CSV", readFromCsv(options));
-    PCollectionTuple transformedLines = convertToFailsafeAndMaybeApplyUdf(readCsvOut, options);
-    PCollectionTuple splunkEventTuple = convertToSplunkEvent(transformedLines.get(UDF_OUT));
+    PCollectionTuple transformedLines =
+        readCsvOut.apply("Convert to JSON", convertToFailsafeAndMaybeApplyUdf(options));
+    PCollectionTuple splunkEventTuple =
+        transformedLines.get(UDF_OUT).apply("Convert to Splunk Event", convertToSplunkEvent());
 
     // Assert
     PAssert.that(transformedLines.get(UDF_OUT))
@@ -166,8 +170,10 @@ public final class GCSToSplunkTest {
 
     // Act
     PCollectionTuple readCsvOut = pipeline.apply("Read CSV", readFromCsv(options));
-    PCollectionTuple transformedLines = convertToFailsafeAndMaybeApplyUdf(readCsvOut, options);
-    PCollectionTuple splunkEventTuple = convertToSplunkEvent(transformedLines.get(UDF_OUT));
+    PCollectionTuple transformedLines =
+        readCsvOut.apply("Convert to JSON", convertToFailsafeAndMaybeApplyUdf(options));
+    PCollectionTuple splunkEventTuple =
+        transformedLines.get(UDF_OUT).apply("Convert to Splunk Event", convertToSplunkEvent());
 
     // Assert
     PAssert.that(transformedLines.get(UDF_OUT))
@@ -251,7 +257,6 @@ public final class GCSToSplunkTest {
 
     PCollectionTuple stringifiedErrorTuple =
         PCollectionTuple.of(COMBINED_ERRORS, stringifiedErrorCollection);
-
 
     GCSToSplunkOptions options = PipelineOptionsFactory.create().as(GCSToSplunkOptions.class);
 
