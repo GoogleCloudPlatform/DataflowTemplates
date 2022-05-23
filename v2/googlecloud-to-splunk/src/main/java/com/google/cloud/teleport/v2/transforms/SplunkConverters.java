@@ -70,12 +70,12 @@ public final class SplunkConverters {
    * information.
    *
    * @param splunkEventOutputTag {@link TupleTag} to use for successfully converted messages.
-   * @param splunkDeadletterTag {@link TupleTag} to use for messages that failed conversion.
+   * @param splunkErrorTag {@link TupleTag} to use for messages that failed conversion.
    */
   public static FailsafeStringToSplunkEvent failsafeStringToSplunkEvent(
       TupleTag<SplunkEvent> splunkEventOutputTag,
-      TupleTag<FailsafeElement<String, String>> splunkDeadletterTag) {
-    return new FailsafeStringToSplunkEvent(splunkEventOutputTag, splunkDeadletterTag);
+      TupleTag<FailsafeElement<String, String>> splunkErrorTag) {
+    return new FailsafeStringToSplunkEvent(splunkEventOutputTag, splunkErrorTag);
   }
 
   /**
@@ -228,7 +228,7 @@ public final class SplunkConverters {
                             }
                           }
 
-                        } catch (IllegalStateException illegalStateException) {
+                        } catch (IllegalStateException | JsonSyntaxException e) {
                           // input is either not a properly formatted JSONObject
                           // or has other exceptions. In this case, we will
                           // simply capture the entire input as an 'event' and
@@ -237,7 +237,6 @@ public final class SplunkConverters {
                           // We also do not want to LOG this as we might be running
                           // a pipeline to simply log text entries to Splunk and
                           // this is expected behavior.
-                        } catch (JsonSyntaxException jse) {
                         }
 
                         context.output(splunkEventOutputTag, builder.create());

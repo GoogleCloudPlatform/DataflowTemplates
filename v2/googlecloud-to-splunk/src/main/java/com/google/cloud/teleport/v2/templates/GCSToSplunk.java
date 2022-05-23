@@ -24,7 +24,6 @@ import com.google.cloud.teleport.v2.transforms.SplunkConverters;
 import com.google.cloud.teleport.v2.transforms.SplunkConverters.SplunkOptions;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Strings;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
@@ -46,8 +45,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link com.google.cloud.teleport.v2.templates.GCSToSplunk} pipeline is a streaming pipeline
- * which ingests data from GCS, executes a UDF, converts the output to {@link
+ * The {@link com.google.cloud.teleport.v2.templates.GCSToSplunk} pipeline is a batch pipeline which
+ * ingests data from GCS, optionally executes a UDF, converts the output to {@link
  * org.apache.beam.sdk.io.splunk.SplunkEvent}s and writes those records into Splunk's HEC endpoint.
  * Any errors which occur in the execution of the UDF, conversion to {@link
  * org.apache.beam.sdk.io.splunk.SplunkEvent} or writing to HEC will be outputted to a GCS link.
@@ -115,8 +114,7 @@ public final class GCSToSplunk {
   }
 
   /**
-   * Runs the pipeline to completion with the specified options. This method does not wait until the
-   * pipeline is finished before returning.
+   * Runs the pipeline to completion with the specified options.
    *
    * @param options The execution options.
    * @return The pipeline result.
@@ -163,37 +161,8 @@ public final class GCSToSplunk {
   static PCollectionTuple convertToFailsafeAndMaybeApplyUdf(
       PCollectionTuple csvLines, GCSToSplunkOptions options) {
 
-    String transformStepName = "Convert To Failsafe Element";
-
-    // In order to avoid generating a graph that makes it look like a UDF was called when none was
-    // intended, simply convert the input to FailsafeElements.
-    if (Strings.isNullOrEmpty(options.getJavascriptTextTransformGcsPath())) {
-      if (!Strings.isNullOrEmpty(options.getJsonSchemaPath())) {
-        transformStepName = "Apply JSON Schema";
-      }
-      return csvLines.apply(
-          transformStepName,
-          CsvConverters.LineToFailsafeJson.newBuilder()
-              .setDelimiter(options.getDelimiter())
-              .setJsonSchemaPath(options.getJsonSchemaPath())
-              .setHeaderTag(CSV_HEADERS)
-              .setLineTag(CSV_LINES)
-              .setUdfOutputTag(UDF_OUT)
-              .setUdfDeadletterTag(UDF_ERROR_OUT)
-              .build());
-    }
-
-    // For testing purposes, we need to do this check before creating the PTransform. Otherwise, we
-    // get a NullPointerException due to the PTransform not returning
-    // a value.
-    if (Strings.isNullOrEmpty(options.getJavascriptTextTransformFunctionName())) {
-      throw new IllegalArgumentException(
-          "JavaScript function name cannot be null or empty if file is set");
-    }
-    transformStepName = "Apply UDF";
-
     return csvLines.apply(
-        transformStepName,
+        "Convert To JSON",
         CsvConverters.LineToFailsafeJson.newBuilder()
             .setDelimiter(options.getDelimiter())
             .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())

@@ -26,7 +26,6 @@ import static com.google.cloud.teleport.v2.templates.GCSToSplunk.flattenErrorsAn
 import static com.google.cloud.teleport.v2.templates.GCSToSplunk.readFromCsv;
 import static com.google.cloud.teleport.v2.templates.GCSToSplunk.writeErrorsToGCS;
 import static com.google.common.truth.Truth.assertThat;
-import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.coders.SplunkEventCoder;
@@ -102,37 +101,6 @@ public final class GCSToSplunkTest {
     PAssert.that(transformedLines.get(UDF_ERROR_OUT)).empty();
     PAssert.that(splunkEventTuple.get(SPLUNK_EVENT_OUT)).containsInAnyOrder(expectedSplunkEvent);
     PAssert.that(splunkEventTuple.get(SPLUNK_EVENT_ERROR_OUT)).empty();
-
-    //  Execute pipeline
-    pipeline.run();
-  }
-
-  @Test
-  public void testGCSToSplunkUdfNoFunctionNameThrows() {
-    // Arrange
-    CoderRegistry coderRegistry = pipeline.getCoderRegistry();
-    coderRegistry.registerCoderForClass(SplunkEvent.class, SplunkEventCoder.of());
-    coderRegistry.registerCoderForType(
-        FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
-
-    GCSToSplunkOptions options = PipelineOptionsFactory.create().as(GCSToSplunkOptions.class);
-
-    options.setJavascriptTextTransformGcsPath(TRANSFORM_FILE_PATH);
-    options.setContainsHeaders(false);
-    options.setInputFileSpec(NO_HEADER_CSV_FILE_PATH);
-
-    // Act
-    PCollectionTuple readCsvOut = pipeline.apply("Read CSV", readFromCsv(options));
-
-    IllegalArgumentException thrown =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> convertToFailsafeAndMaybeApplyUdf(readCsvOut, options));
-
-    // Assert
-    assertThat(thrown)
-        .hasMessageThat()
-        .contains("JavaScript function name cannot be null or empty if file is set");
 
     //  Execute pipeline
     pipeline.run();
