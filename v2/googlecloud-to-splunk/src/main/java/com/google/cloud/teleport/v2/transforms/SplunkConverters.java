@@ -164,34 +164,23 @@ public final class SplunkConverters {
                           // Check if metadata is provided via a nested _metadata
                           // JSON object
                           JsonObject metadata = json.getAsJsonObject(METADATA_KEY);
-                          boolean metadataAvailable = (metadata != null);
 
-                          // We attempt to extract the timestamp from metadata (if available)
-                          // followed by TIMESTAMP_KEY. If neither (optional) keys are available
-                          // we proceed without setting this metadata field.
+
+
+                          // We attempt to extract the timestamp from TIMESTAMP_KEY (if available)
+                          // only if metadata does not exist.
                           String parsedTimestamp = "";
-                          if (metadataAvailable) {
-                            if (metadata.get(HEC_TIME_KEY) != null) {
-                              parsedTimestamp = metadata.get(HEC_TIME_KEY).getAsString();
-                            }
-                          } else if (json.get(TIMESTAMP_KEY) != null) {
+                          if (metadata == null && json.get(TIMESTAMP_KEY) != null) {
                             parsedTimestamp = json.get(TIMESTAMP_KEY).getAsString();
                           }
 
-                          if (!parsedTimestamp.isEmpty()) {
-                            try {
-                              builder.withTime(DateTime.parseRfc3339(parsedTimestamp).getValue());
-                            } catch (NumberFormatException n) {
-                              // We log this exception but don't want to fail the entire record.
-                              LOG.warn(
-                                  "Unable to parse non-rfc3339 formatted timestamp: {}",
-                                  parsedTimestamp);
-                            }
-                          }
-
-                          // For the other metadata fields, we only look at the _metadata
+                          // For the metadata fields, we only look at the _metadata
                           // object if present.
-                          if (metadataAvailable) {
+                          if (metadata != null) {
+                            if (metadata.get(HEC_TIME_KEY) != null) {
+                              parsedTimestamp = metadata.get(HEC_TIME_KEY).getAsString();
+                            }
+
                             JsonElement source = metadata.get(HEC_SOURCE_KEY);
                             if (source != null) {
                               builder.withSource(source.getAsString());
@@ -228,6 +217,16 @@ public final class SplunkConverters {
                             }
                           }
 
+                          if (!parsedTimestamp.isEmpty()) {
+                            try {
+                              builder.withTime(DateTime.parseRfc3339(parsedTimestamp).getValue());
+                            } catch (NumberFormatException n) {
+                              // We log this exception but don't want to fail the entire record.
+                              LOG.warn(
+                                  "Unable to parse non-rfc3339 formatted timestamp: {}",
+                                  parsedTimestamp);
+                            }
+                          }
                         } catch (IllegalStateException | JsonSyntaxException e) {
                           // input is either not a properly formatted JSONObject
                           // or has other exceptions. In this case, we will
@@ -238,6 +237,7 @@ public final class SplunkConverters {
                           // a pipeline to simply log text entries to Splunk and
                           // this is expected behavior.
                         }
+
 
                         context.output(splunkEventOutputTag, builder.create());
                         CONVERSION_SUCCESS.inc();
