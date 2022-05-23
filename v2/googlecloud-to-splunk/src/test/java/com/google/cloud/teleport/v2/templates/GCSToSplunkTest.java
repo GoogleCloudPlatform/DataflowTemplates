@@ -53,7 +53,9 @@ import org.junit.rules.TemporaryFolder;
 
 /** Test cases for the {@link GCSToSplunk} class. */
 public final class GCSToSplunkTest {
-  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
+  @Rule public final TestPipeline pipeline = TestPipeline.create();
+
+  @Rule public TemporaryFolder tmpFolder = new TemporaryFolder();
 
   private static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
       FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
@@ -69,7 +71,7 @@ public final class GCSToSplunkTest {
   @Test
   public void testGCSToSplunkReadUdf() {
     // Arrange
-    final String stringifiedJsonRecord = "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
+    String stringifiedJsonRecord = "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
     SplunkEvent expectedSplunkEvent =
         SplunkEvent.newBuilder().withEvent(stringifiedJsonRecord).create();
 
@@ -109,7 +111,7 @@ public final class GCSToSplunkTest {
   @Test
   public void testGCSToSplunkReadHeaders() {
     // Arrange
-    final String stringifiedJsonRecord = "{\"id\":\"008\",\"state\":\"CA\",\"price\":\"26.23\"}";
+    String stringifiedJsonRecord = "{\"id\":\"008\",\"state\":\"CA\",\"price\":\"26.23\"}";
     SplunkEvent expectedSplunkEvent =
         SplunkEvent.newBuilder().withEvent(stringifiedJsonRecord).create();
 
@@ -147,7 +149,7 @@ public final class GCSToSplunkTest {
   @Test
   public void testGCSToSplunkReadJsonSchema() {
     // Arrange
-    final String stringifiedJsonRecord = "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
+    String stringifiedJsonRecord = "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
     SplunkEvent expectedSplunkEvent =
         SplunkEvent.newBuilder().withEvent(stringifiedJsonRecord).create();
 
@@ -186,10 +188,10 @@ public final class GCSToSplunkTest {
   @Test
   public void testGCSToSplunkConvertWriteErrors() {
     // Arrange
-    final String stringifiedSplunkError =
+    String stringifiedSplunkError =
         "Payload: test-payload. Error Message: test-message. Splunk write status code: 123.";
-    final String firstStringifiedFailsafeError = "Payload: world. Error Message: failed!.";
-    final String secondStringifiedFailsafeError = "Payload: one. Error Message: error!.";
+    String firstStringifiedFailsafeError = "Payload: world. Error Message: failed!.";
+    String secondStringifiedFailsafeError = "Payload: one. Error Message: error!.";
 
     CoderRegistry coderRegistry = pipeline.getCoderRegistry();
     coderRegistry.registerCoderForType(
@@ -239,7 +241,7 @@ public final class GCSToSplunkTest {
   @Test
   public void testGCSToSplunkWriteErrorsToFolder() throws IOException {
     // Arrange
-    final String stringifiedSplunkError =
+    String stringifiedSplunkError =
         "Payload: test-payload. Error Message: test-message. Splunk write status code: 123.";
 
     PCollection<String> stringifiedErrorCollection =
@@ -250,8 +252,6 @@ public final class GCSToSplunkTest {
     PCollectionTuple stringifiedErrorTuple =
         PCollectionTuple.of(COMBINED_ERRORS, stringifiedErrorCollection);
 
-    TemporaryFolder tmpFolder = new TemporaryFolder();
-    tmpFolder.create();
 
     GCSToSplunkOptions options = PipelineOptionsFactory.create().as(GCSToSplunkOptions.class);
 
@@ -267,6 +267,5 @@ public final class GCSToSplunkTest {
     File file = new File(tmpFolder.getRoot().getAbsolutePath() + "errors.txt-00000-of-00001");
     String fileContents = Files.toString(file, Charsets.UTF_8);
     assertThat(fileContents).contains(stringifiedSplunkError);
-    tmpFolder.delete();
   }
 }
