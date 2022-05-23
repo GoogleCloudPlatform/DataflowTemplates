@@ -164,7 +164,6 @@ public final class GCSToSplunk {
   }
 
   static LineToFailsafeJson convertToFailsafeAndMaybeApplyUdf(GCSToSplunkOptions options) {
-
     return CsvConverters.LineToFailsafeJson.newBuilder()
         .setDelimiter(options.getDelimiter())
         .setUdfFileSystemPath(options.getJavascriptTextTransformGcsPath())
