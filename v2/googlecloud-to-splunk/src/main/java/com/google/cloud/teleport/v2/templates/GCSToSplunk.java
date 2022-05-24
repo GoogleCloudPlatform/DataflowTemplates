@@ -88,7 +88,7 @@ public final class GCSToSplunk {
   @VisibleForTesting static final TupleTag<String> COMBINED_ERRORS = new TupleTag<String>() {};
 
   /** Logger for class. */
-  static final Logger LOG = LoggerFactory.getLogger(GCSToSplunk.class);
+  private static final Logger LOG = LoggerFactory.getLogger(GCSToSplunk.class);
 
   /**
    * The {@link GCSToSplunkOptions} class provides the custom execution options passed by the

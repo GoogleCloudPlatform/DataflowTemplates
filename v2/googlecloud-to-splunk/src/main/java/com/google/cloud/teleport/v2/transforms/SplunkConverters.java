@@ -149,7 +149,7 @@ public final class SplunkConverters {
     public PCollectionTuple expand(PCollection<FailsafeElement<String, String>> input) {
 
       return input.apply(
-          "ConvertToSplunkEvent",
+          "Convert To Splunk Event",
           ParDo.of(
                   new DoFn<FailsafeElement<String, String>, SplunkEvent>() {
 
