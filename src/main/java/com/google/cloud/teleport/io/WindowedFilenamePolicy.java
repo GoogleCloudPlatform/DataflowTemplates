@@ -428,7 +428,7 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
 
       String userYearPattern = getUserPattern(yearPattern(), /* defaultValue= */ "YYYY");
       String userMonthPattern = getUserPattern(monthPattern(), /* defaultValue= */ "MM");
-      String userDayPattern = getUserPattern(dayPattern(), /* defaultValue= */ "DD");
+      String userDayPattern = getUserPattern(dayPattern(), /* defaultValue= */ "dd");
       String userHourPattern = getUserPattern(hourPattern(), /* defaultValue= */ "HH");
       String userMinutePattern = getUserPattern(minutePattern(), /* defaultValue= */ "mm");
       LOG.debug(
