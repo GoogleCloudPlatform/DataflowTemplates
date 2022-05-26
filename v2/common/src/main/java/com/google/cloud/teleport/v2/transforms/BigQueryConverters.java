@@ -186,6 +186,15 @@ public class BigQueryConverters {
         .withExtendedErrorInfo();
   }
 
+  public static Write<TableRow> createTableRowWriteTransform(WriteOptions options) {
+    return BigQueryIO.writeTableRows()
+        .to(options.getOutputTableSpec())
+        .withWriteDisposition(WriteDisposition.valueOf(options.getWriteDisposition()))
+        .withCreateDisposition(CreateDisposition.valueOf(options.getCreateDisposition()))
+        .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
+        .withExtendedErrorInfo();
+  }
+ 
   /**
    * The {@link TableRowToJsonFn} class converts a tableRow to Json using {@link
    * #tableRowToJson(TableRow)}.

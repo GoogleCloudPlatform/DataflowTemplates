@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.options.BigQueryCommonOptions.WriteOptions;
 import com.google.cloud.teleport.v2.options.PubsubCommonOptions.ReadSubscriptionOptions;
@@ -123,9 +124,10 @@ public final class PubsubProtoToBigQuery {
     PCollection<String> maybeForUdf =
         pipeline
             .apply("Read From Pubsub", readPubsubMessages(options, descriptor))
-            .apply("Dynamic Message to TableRow", new ConvertDynamicProtoMessageToJson(options));
+            .apply("Dynamic Message to JSON", new ConvertDynamicProtoMessageToJson(options));
 
     runUdf(maybeForUdf, options)
+        .apply("JSON to TableRow", new ConvertJsonToTableRow())
         .apply("Write to BigQuery", writeToBigQuery(options, descriptor))
         .getFailedInsertsWithErr()
         .apply(
@@ -169,11 +171,10 @@ public final class PubsubProtoToBigQuery {
    * specified in {@code options}.
    */
   @VisibleForTesting
-  static Write<String> writeToBigQuery(
+  static Write<TableRow> writeToBigQuery(
       PubSubProtoToBigQueryOptions options, Descriptor descriptor) {
-    Write<String> write =
-        BigQueryConverters.<String>createWriteTransform(options)
-            .withFormatFunction(BigQueryConverters::convertJsonToTableRow)
+    Write<TableRow> write =
+        BigQueryConverters.createTableRowWriteTransform(options)
             .withMethod(Method.STREAMING_INSERTS);
 
     String schemaPath = options.getBigQueryTableSchemaPath();
@@ -211,6 +212,19 @@ public final class PubsubProtoToBigQuery {
                     }
                   }));
     }
+  }
+
+  private static class ConvertJsonToTableRow
+      extends PTransform<PCollection<String>, PCollection<TableRow>> {
+
+      @Override
+      public PCollection<TableRow> expand(PCollection<String> input) {
+        return input.apply(
+            "Map to TableRow",
+            MapElements.into(TypeDescriptor.of(TableRow.class))
+              .via((String message) -> BigQueryConverters.convertJsonToTableRow(message))
+        );
+      }
   }
 
   /**
