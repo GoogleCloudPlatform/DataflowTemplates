@@ -53,6 +53,7 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryUtils;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.SchemaAndRecord;
+import org.apache.beam.sdk.io.gcp.bigquery.TableDestination;
 import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -73,6 +74,7 @@ import org.apache.beam.sdk.values.POutput;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
+import org.apache.beam.sdk.values.ValueInSingleWindow;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.CharMatcher;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Splitter;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Supplier;
@@ -186,13 +188,32 @@ public class BigQueryConverters {
         .withExtendedErrorInfo();
   }
 
+
   public static Write<TableRow> createTableRowWriteTransform(WriteOptions options) {
     return BigQueryIO.writeTableRows()
-        .to(options.getOutputTableSpec())
+        .to(new DynamicOutputTable(options.getOutputTableSpec()))
         .withWriteDisposition(WriteDisposition.valueOf(options.getWriteDisposition()))
         .withCreateDisposition(CreateDisposition.valueOf(options.getCreateDisposition()))
         .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
         .withExtendedErrorInfo();
+  }
+
+
+  private static class DynamicOutputTable
+      implements SerializableFunction<ValueInSingleWindow<TableRow>, TableDestination> {
+
+      private String outputTableSpec;
+
+      private DynamicOutputTable(String outputTableSpec) {
+        this.outputTableSpec = outputTableSpec;
+      }
+      
+      @Override
+      public TableDestination apply(ValueInSingleWindow<TableRow> element) {
+          TableRow row = element.getValue();
+          String dest = formatStringTemplate(outputTableSpec, row);
+          return new TableDestination(dest, dest);
+      }
   }
  
   /**
@@ -556,7 +577,7 @@ public class BigQueryConverters {
    * Returns {@code String} using Key/Value style formatting.
    *
    * <p>Extracts TableRow fields and applies values to the formatTemplate. ie.
-   * formatStringTemplate("I am {key}"{"key": "formatted"}) -> "I am formatted"
+   * formatStringTemplate("I am {key}", {"key": "formatted"}) -> "I am formatted"
    *
    * @param formatTemplate a String with bracketed keys to apply "I am a {key}"
    * @param row is a TableRow object which is used to supply key:values to the template
