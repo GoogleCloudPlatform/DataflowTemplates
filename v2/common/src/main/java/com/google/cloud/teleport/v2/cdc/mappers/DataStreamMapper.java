@@ -60,11 +60,18 @@ public class DataStreamMapper extends BigQueryMapper<TableRow, KV<TableId, Table
     return this;
   }
 
+  /* Sanitzing a schema or table name, by replacing invalid BigQuery characters ($ or .) into a
+   * single underscore.
+  */
+  private String sanitizeBigQueryChars(String name) {
+    return name.replaceAll("\\$", "_").replaceAll("\\.", "_");
+  }
+
   @Override
   public TableId getTableId(TableRow input) {
-    String datasetName = BigQueryConverters.formatStringTemplate(datasetNameTemplate, input);
+    String datasetName = sanitizeBigQueryChars(BigQueryConverters.formatStringTemplate(datasetNameTemplate, input));
     String tableName =
-        BigQueryConverters.formatStringTemplate(tableNameTemplate, input).replaceAll("\\$", "_");
+        sanitizeBigQueryChars(BigQueryConverters.formatStringTemplate(tableNameTemplate, input));
 
     return TableId.of(getProjectId(), datasetName, tableName);
   }
