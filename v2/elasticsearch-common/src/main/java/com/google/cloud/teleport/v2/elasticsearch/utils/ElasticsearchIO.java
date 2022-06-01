@@ -1490,6 +1490,7 @@ public class ElasticsearchIO {
         }
 
         currentBatchSizeBytes += docSizeBytes;
+
         if (batch.size() >= spec.getMaxBatchSize()
             || currentBatchSizeBytes >= spec.getMaxBatchSizeBytes()) {
           flushBatch();
