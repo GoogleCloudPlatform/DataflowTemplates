@@ -111,7 +111,7 @@ public class JdbcToBigQuery {
          *         via {@link org.apache.beam.sdk.io.jdbc.JdbcIO.RowMapper}
          */
         .apply(
-            "Read from JdbcIO",
+            "Read from MySQL",
             DynamicJdbcIO.<TableRow>read()
                 .withDataSourceConfiguration(
                     DynamicJdbcIO.DynamicDataSourceConfiguration.create(
@@ -125,7 +125,7 @@ public class JdbcToBigQuery {
                         .withConnectionProperties(options.getConnectionProperties()))
                 .withQuery(options.getQuery())
                 .withCoder(TableRowJsonCoder.of())
-                .withRowMapper(new ResultSetToTableRow()))
+                .withRowMapper(new ResultSetToTableRow(options.getTimezone())))
         /*
          * Step 2: Append TableRow to an existing BigQuery table
          */
@@ -133,9 +133,44 @@ public class JdbcToBigQuery {
             "Write to BigQuery",
             BigQueryIO.writeTableRows()
                 .withoutValidation()
-                .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER)
-                .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
+                .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_IF_NEEDED)
+                .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_TRUNCATE)
                 .withCustomGcsTempLocation(options.getBigQueryLoadingTemporaryDirectory())
+                .withSchema(
+                    NestedValueProvider.of(
+                        options.getSchema(),
+                        new SerializableFunction<String, TableSchema>() {
+
+                          @Override
+                          public TableSchema apply(String jsonPath) {
+
+                            TableSchema tableSchema = new TableSchema();
+                            List<TableFieldSchema> fields = new ArrayList<>();
+                            SchemaParser schemaParser = new SchemaParser();
+
+                            try {
+                              JSONArray bqSchemaJsonArray = schemaParser.parseSchema(jsonPath);
+                              for (int i = 0; i < bqSchemaJsonArray.length(); i++) {
+                                JSONObject inputField = bqSchemaJsonArray.getJSONObject(i);
+                                TableFieldSchema field =
+                                    new TableFieldSchema()
+                                        .setName(inputField.getString(NAME))
+                                        .setType(inputField.getString(TYPE));
+
+                                if (inputField.has(MODE)) {
+                                  field.setMode(inputField.getString(MODE));
+                                }
+
+                                fields.add(field);
+                              }
+                              tableSchema.setFields(fields);
+
+                            } catch (Exception e) {
+                              throw new RuntimeException(e);
+                            }
+                            return tableSchema;
+                          }
+                        }))
                 .to(options.getOutputTable()));
 
     // Execute the pipeline and return the result.
@@ -147,11 +182,22 @@ public class JdbcToBigQuery {
    */
   private static class ResultSetToTableRow implements JdbcIO.RowMapper<TableRow> {
 
+    private final String timezone;
+
+    ResultSetToTableRow(ValueProvider<String> timezone) {
+      this.timezone = timezone.get();
+    }
+
     @Override
     public TableRow mapRow(ResultSet resultSet) throws Exception {
 
       ResultSetMetaData metaData = resultSet.getMetaData();
+      SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
+      // ref: https://docs.oracle.com/javase/jp/8/docs/api/java/time/format/DateTimeFormatter.html
+      DateTimeFormatter datetimeFormatter =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
 
+      Logger LOG = LoggerFactory.getLogger(SQLServerToBigQuery.class);
       TableRow outputTableRow = new TableRow();
 
       for (int i = 1; i <= metaData.getColumnCount(); i++) {
@@ -159,10 +205,22 @@ public class JdbcToBigQuery {
           outputTableRow.set(metaData.getColumnName(i), resultSet.getObject(i));
           continue;
         }
-      }
 
+        switch (metaData.getColumnTypeName(i).toLowerCase()) {
+          case "date":
+            outputTableRow.set(
+                metaData.getColumnName(i), dateFormatter.format(resultSet.getObject(i)));
+            break;
+          case "datetime":
+            outputTableRow.set(
+              metaData.getColumnName(i),
+              datetimeFormatter.format((TemporalAccessor) resultSet.getObject(i)));
+            break;
+          default:
+            outputTableRow.set(metaData.getColumnName(i), resultSet.getObject(i));
+        }
+      }
       return outputTableRow;
     }
   }
-
 }

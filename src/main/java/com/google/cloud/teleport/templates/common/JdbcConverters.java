@@ -104,75 +104,15 @@ public class JdbcConverters {
     ValueProvider<String> getDisabledAlgorithms();
 
     void setDisabledAlgorithms(ValueProvider<String> disabledAlgorithms);
-  }
 
-  /** Factory method for {@link ResultSetToTableRow}. */
-  public static JdbcIO.RowMapper<TableRow> getResultSetToTableRow() {
-    return new ResultSetToTableRow();
-  }
+    @Description("timezone")
 
-  /**
-   * {@link JdbcIO.RowMapper} implementation to convert Jdbc ResultSet rows to UTF-8 encoded JSONs.
-   */
-  private static class ResultSetToTableRow implements JdbcIO.RowMapper<TableRow> {
+    ValueProvider<String> getTimezone();
 
-    static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
-    static DateTimeFormatter datetimeFormatter =
-        DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss.SSSSSS");
-    static SimpleDateFormat timestampFormatter =
-        new SimpleDateFormat("yyyy-MM-dd hh:mm:ss.SSSSSSXXX");
+    void setTimezone(ValueProvider<String> value);
 
-    @Override
-    public TableRow mapRow(ResultSet resultSet) throws Exception {
+    @Description("schmea")
 
-      ResultSetMetaData metaData = resultSet.getMetaData();
-
-      TableRow outputTableRow = new TableRow();
-
-      for (int i = 1; i <= metaData.getColumnCount(); i++) {
-        if (resultSet.getObject(i) == null) {
-          outputTableRow.set(metaData.getColumnName(i), resultSet.getObject(i));
-          continue;
-        }
-
-        /*
-         * DATE:      EPOCH MILLISECONDS -> yyyy-MM-dd
-         * DATETIME:  EPOCH MILLISECONDS -> yyyy-MM-dd hh:mm:ss.SSSSSS
-         * TIMESTAMP: EPOCH MILLISECONDS -> yyyy-MM-dd hh:mm:ss.SSSSSSXXX
-         *
-         * MySQL drivers have ColumnTypeName in all caps and postgres in small case
-         */
-        switch (metaData.getColumnTypeName(i).toLowerCase()) {
-          case "date":
-            outputTableRow.set(
-                metaData.getColumnName(i), dateFormatter.format(resultSet.getDate(i)));
-            break;
-          case "datetime":
-            outputTableRow.set(
-                metaData.getColumnName(i),
-                datetimeFormatter.format((TemporalAccessor) resultSet.getObject(i)));
-            break;
-          case "timestamp":
-            outputTableRow.set(
-                metaData.getColumnName(i), timestampFormatter.format(resultSet.getTimestamp(i)));
-            break;
-          case "clob":
-            Clob clobObject = resultSet.getClob(i);
-            if (clobObject.length() > Integer.MAX_VALUE) {
-              LOG.warn(
-                  "The Clob value size {} in column {} exceeds 2GB and will be truncated.",
-                  clobObject.length(),
-                  metaData.getColumnName(i));
-            }
-            outputTableRow.set(
-                metaData.getColumnName(i), clobObject.getSubString(1, (int) clobObject.length()));
-            break;
-          default:
-            outputTableRow.set(metaData.getColumnName(i), resultSet.getObject(i));
-        }
-      }
-
-      return outputTableRow;
-    }
+    ValueProvider<String> getSchema();
   }
 }
