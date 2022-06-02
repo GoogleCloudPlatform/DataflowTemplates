@@ -1452,7 +1452,8 @@ public class ElasticsearchIO {
                     "{ \"update\" : %s }%n{ \"doc\" : %s, \"doc_as_upsert\" : true }%n",
                     documentMetadata, document));
           } else {
-            batch.add(String.format("{ \"create\" : %s }%n%s%n", documentMetadata, document));
+            // switch from create to index to allow upsert (beneficial in case of duplication due to timeout/retry)
+            batch.add(String.format("{ \"index\" : %s }%n%s%n", documentMetadata, document));
           }
         }
 

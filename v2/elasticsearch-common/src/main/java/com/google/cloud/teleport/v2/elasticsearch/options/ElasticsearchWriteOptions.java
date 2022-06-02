@@ -73,4 +73,44 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
   Long getMaxRetryDuration();
 
   void setMaxRetryDuration(Long maxRetryDuration);
+
+  @Description("Gcs path to javascript udf source for index extraction function")
+  String getJavascriptIndexFnGcsPath();
+
+  void setJavascriptIndexFnGcsPath(String javascriptTextTransformGcsPath);
+
+  @Description("UDF Javascript Function Name for index extraction")
+  String getJavascriptIndexFnName();
+
+  void setJavascriptIndexFnName(String javascriptTextTransformFunctionName);
+
+  @Description("Gcs path to javascript udf source for id extraction function")
+  String getJavascriptIdFnGcsPath();
+
+  void setJavascriptIdFnGcsPath(String javascriptTextTransformGcsPath);
+
+  @Description("UDF Javascript Function Name for id extraction")
+  String getJavascriptIdFnName();
+
+  void setJavascriptIdFnName(String javascriptTextTransformFunctionName);
+
+  @Description("Gcs path to javascript udf source for type extraction function")
+  String getJavascriptTypeFnGcsPath();
+
+  void setJavascriptTypeFnGcsPath(String javascriptTextTransformGcsPath);
+
+  @Description("UDF Javascript Function Name for type extraction")
+  String getJavascriptTypeFnName();
+
+  void setJavascriptTypeFnName(String javascriptTextTransformFunctionName);
+
+  @Description("Gcs path to javascript udf source for deletion determination")
+  String getJavascriptIsDeleteFnGcsPath();
+
+  void setJavascriptIsDeleteFnGcsPath(String javascriptTextTransformGcsPath);
+
+  @Description("UDF Javascript Function Name for deletion determination")
+  String getJavascriptIsDeleteFnName();
+
+  void setJavascriptIsDeleteFnName(String javascriptTextTransformFunctionName);
 }

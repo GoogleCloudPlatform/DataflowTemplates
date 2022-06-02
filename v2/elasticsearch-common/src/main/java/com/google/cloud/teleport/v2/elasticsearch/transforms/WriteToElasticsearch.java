@@ -19,6 +19,7 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
+import com.google.cloud.teleport.v2.elasticsearch.transforms.ValueExtractorTransform.ValueExtractorFn;
 import com.google.cloud.teleport.v2.elasticsearch.utils.ConnectionInformation;
 import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIO;
 import java.util.Optional;
@@ -95,6 +96,42 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
             .withConnectionConfiguration(config)
             .withMaxBatchSize(options().getBatchSize())
             .withMaxBatchSizeBytes(options().getBatchSizeBytes());
+    
+    if (options().getJavascriptIdFnGcsPath() != null && options().getJavascriptIdFnName() != null){
+      ValueExtractorFn idFn = ValueExtractorFn.newBuilder()
+      .setFileSystemPath(options().getJavascriptIdFnGcsPath())
+      .setFunctionName(options().getJavascriptIdFnName())
+      .build();
+
+      elasticsearchWriter.withIdFn(idFn);
+    }
+
+    if (options().getJavascriptIndexFnGcsPath() != null && options().getJavascriptIndexFnName() != null){
+      ValueExtractorFn indexFn = ValueExtractorFn.newBuilder()
+      .setFileSystemPath(options().getJavascriptIndexFnGcsPath())
+      .setFunctionName(options().getJavascriptIndexFnName())
+      .build();
+
+      elasticsearchWriter.withIndexFn(indexFn);
+    }
+
+    if (options().getJavascriptTypeFnGcsPath() != null && options().getJavascriptTypeFnName() != null){
+      ValueExtractorFn typeFn = ValueExtractorFn.newBuilder()
+      .setFileSystemPath(options().getJavascriptTypeFnGcsPath())
+      .setFunctionName(options().getJavascriptTypeFnName())
+      .build();
+
+      elasticsearchWriter.withTypeFn(typeFn);
+    }
+
+    if (options().getJavascriptIsDeleteFnGcsPath() != null && options().getJavascriptIsDeleteFnName() != null){
+      ValueExtractorFn isDeleteFn = ValueExtractorFn.newBuilder()
+        .setFileSystemPath(options().getJavascriptIsDeleteFnGcsPath())
+        .setFunctionName(options().getJavascriptIsDeleteFnName())
+        .build();
+
+      elasticsearchWriter.withIsDeleteFn(isDeleteFn);
+    }
 
     if (Optional.ofNullable(options().getMaxRetryAttempts()).isPresent()) {
       elasticsearchWriter.withRetryConfiguration(
