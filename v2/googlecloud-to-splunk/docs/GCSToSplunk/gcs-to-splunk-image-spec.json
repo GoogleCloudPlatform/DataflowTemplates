@@ -6,7 +6,7 @@
     "name": "GCS to Splunk",
     "parameters": [
       {
-        "helpText": "GCS files to read the input. Example: gs://mybucket/test-*.csv",
+        "helpText": "Pattern of where the CSV file(s) are located in GCS, ex: gs://mybucket/somepath/*.csv",
         "isOptional": false,
         "label": "GCS file pattern to search for CSV files",
         "name": "inputFileSpec",
@@ -16,38 +16,38 @@
         ]
       },
       {
-        "helpText": "True if CSVs include headers or False if they do not.",
+        "helpText": "Set to 'true' if CSV file contains headers, or 'false' otherwise. An error is thrown if all files read from `inputFileSpec` do not follow the same header format. If set to 'false', a JSON schema or Javascript UDF will need to be supplied. Default: null",
         "isOptional": false,
         "label": "GCS file pattern to search for CSV files",
         "name": "containsHeaders",
         "paramType": "TEXT",
         "regexes": [
-          "^true|^false"
+          "^(true|false)$"
         ]
       },
       {
-        "helpText": "The delimiter that the CSV uses. Example: ,",
+        "helpText": "Delimiting character in CSV file(s). Default: use delimiter found in `csvFormat`. Example: ,",
         "isOptional": true,
         "label": "CSV delimiter",
         "name": "delimiter",
         "paramType": "TEXT"
       },
       {
-        "helpText": "Csv format according to [Apache Commons CSV format](https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html). Default is: Default.<br><b>NOTE:</b> Must match format names exactly found [here](http://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html#Default)",
+        "helpText": "CSV format according to Apache Commons CSV format. See: https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html. Default: DEFAULT",
         "isOptional": true,
         "label": "CSV delimiter",
         "name": "csvFormat",
         "paramType": "TEXT"
       },
       {
-        "helpText": "Path to JSON schema, ex gs://path/to/schema. Default: null.",
+        "helpText": "Path to JSON schema. Example: gs://path/to/schema. Default: null.",
         "isOptional": true,
         "label": "Path to JSON schema",
         "name": "jsonSchemaPath",
         "paramType": "TEXT"
       },
       {
-        "helpText": "The full URL of your .js file. Example: gs://your-bucket/your-function.js",
+        "helpText": "GCS path to Javascript UDF source. UDF will be preferred option for transformation if supplied. If this parameter is supplied, a `javascriptTextTransformFunctionName` parameter will also be required. Otherwise, the UDF will not execute. Default: null",
         "isOptional": true,
         "label": "GCS location of your JavaScript UDF",
         "name": "javascriptTextTransformGcsPath",
@@ -57,7 +57,7 @@
         ]
       },
       {
-        "helpText": "The function name should only contain letters, digits and underscores. Example: 'transform' or 'transform_udf1'.",
+        "helpText": "UDF Javascript Function Name. The function name should only contain letters, digits and underscores. Example: 'transform' or 'transform_udf1'. If a `javascriptTextTransformGcsPath` parameter is supplied, this parameter is required. Otherwise, the UDF will not execute. Default: null",
         "isOptional": true,
         "label": "The name of the JavaScript function you wish to call as your UDF",
         "name": "javascriptTextTransformFunctionName",
@@ -67,7 +67,7 @@
         ]
       },
       {
-        "helpText": "Google Cloud Storage path where to write objects that could not be converted to Splunk objects or pushed to Splunk. Ex: gs://your-bucket/your-path",
+        "helpText": "Google Cloud Storage path where to write objects that could not be pushed to Splunk. Ex: gs://your-bucket/your-path",
         "isOptional": false,
         "label": "Invalid events output path",
         "name": "invalidOutputPath",
@@ -111,13 +111,13 @@
         ]
       },
       {
-        "helpText": "Disable SSL certificate validation (true/false). Default: false (validation enabled). If true, the certificates are not validated (all certificates are trusted) and  `rootCaCertificatePath` parameter is ignored.",
+        "helpText": "Disable SSL certificate validation (true/false). Default: false (validation enabled). If true, the certificates are not validated (all certificates are trusted).",
         "isOptional": false,
         "label": "Disable SSL certificate validation.",
         "name": "disableCertificateValidation",
         "paramType": "TEXT",
         "regexes": [
-          "^true|^false"
+          "^(true|false)$"
         ]
       }
     ]

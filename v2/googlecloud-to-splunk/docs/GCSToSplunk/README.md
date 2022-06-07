@@ -6,9 +6,10 @@ and writes those records into Splunk's HEC endpoint.
 
 The template creates the Splunk payload as a JSON element using one of the following:
 
-1. Javascript UDF (if provided)
-2. JSON schema (if provided)
-3. CSV headers* (used only if none of the above were provided)
+1. CSV headers (default)
+2. JSON schema
+3. Javascript UDF
+
 
 If a Javascript UDF and JSON schema are both inputted as parameters, 
 only the Javascript UDF will be executed.
@@ -28,9 +29,7 @@ only the Javascript UDF will be executed.
 This is a Flex Template meaning that the pipeline code will be containerized, and the container will be
 run on Dataflow.
 
-#### Building Container Image
-
-* Set environment variables that will be used in the build process.
+#### Set Environment Variables
 
 ```sh
 export PROJECT=<my-project>
@@ -42,11 +41,9 @@ export BASE_CONTAINER_IMAGE_VERSION=latest
 export TEMPLATE_MODULE=googlecloud-to-splunk
 export APP_ROOT=/template/gcs-to-splunk 
 export COMMAND_SPEC=${APP_ROOT}/resources/gcs-to-splunk-command-spec.json
-
-gcloud config set project ${PROJECT}
 ```
 
-* Build and push image to Google Container Repository
+#### Build and Push Image to Google Container Repository
 
 ```sh
 mvn clean package -f unified-templates.xml -pl v2/googlecloud-to-splunk -am \
@@ -57,7 +54,7 @@ mvn clean package -f unified-templates.xml -pl v2/googlecloud-to-splunk -am \
     -Dcommand-spec=${COMMAND_SPEC}
 ```
 
-#### Creating Image Spec
+#### Create Image Spec
 
 Create a file with the metadata required for launching the Flex template. Once
 created, this file should be placed in GCS.
@@ -69,9 +66,10 @@ the value of `${TARGET_GCR_IMAGE}` defined earlier.
 ### Executing Template
 
 The template requires the following parameters:
+
 * inputFileSpec: Pattern of where the CSV file(s) are located in GCS, ex: gs://mybucket/somepath/*.csv
-* containsHeaders: Set to "true" if CSV file contains headers, or "false" otherwise. An error is thrown if all files do not follow the same header format. Default: null
-* invalidOutputPath: Pattern of where to output failures, ex: gs://mybucket/errorpath
+* containsHeaders: Set to "true" if CSV file contains headers, or "false" otherwise. An error is thrown if all files read from `inputFileSpec` do not follow the same header format. If set to "false", a JSON schema or Javascript UDF will need to be supplied. Default: null
+* invalidOutputPath: Google Cloud Storage path where to write objects that could not be pushed to Splunk. Ex: gs://mybucket/somepath
 * token: Splunk Http Event Collector (HEC) authentication token.
 * url: Splunk Http Event Collector (HEC) url. This should be routable from the VPC in which the pipeline runs. e.g. https://splunk-hec-host:8088
 * batchCount: Batch size for sending multiple events to Splunk HEC. Default: 1 (no batching).
@@ -79,8 +77,8 @@ The template requires the following parameters:
 * disableCertificateValidation: Disable SSL certificate validation (true/false). Default: false (validation enabled). If true, the certificates are not validated (all certificates are trusted).
 
 The template has the following optional parameters:
-* delimiter: Delimiting character in CSV file(s). Default: use delimiter found in `csvFormat`
-* csvFormat: Csv format according to [Apache Commons CSV format](https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html). Default is: DEFAULT
+* delimiter: Delimiting character in CSV file(s). Default: use delimiter found in `csvFormat` Example: ,
+* csvFormat: CSV format according to [Apache Commons CSV format](https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html). Default is: DEFAULT
 * jsonSchemaPath: Path to JSON schema, ex gs://path/to/schema. Default: null.
 * javascriptTextTransformGcsPath: GCS path to Javascript UDF source. UDF will be preferred option for transformation if supplied. If this parameter is supplied, a `javascriptTextTransformFunctionName` parameter will also be required. Otherwise, the UDF will not execute. Default: null
 * javascriptTextTransformFunctionName: UDF Javascript Function Name. If a `javascriptTextTransformGcsPath` parameter is supplied, this parameter is required. Otherwise, the UDF will not execute. Default: null
