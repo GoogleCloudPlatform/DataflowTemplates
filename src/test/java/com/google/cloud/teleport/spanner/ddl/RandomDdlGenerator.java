@@ -25,6 +25,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /** Generates a random {@link Ddl}. */
 @AutoValue
@@ -119,6 +120,8 @@ public abstract class RandomDdlGenerator {
 
   public abstract int getMaxViews();
 
+  public abstract int getMaxChangeStreams();
+
   public static Builder builder() {
     return builder(Dialect.GOOGLE_STANDARD_SQL);
   }
@@ -138,7 +141,9 @@ public abstract class RandomDdlGenerator {
         .setEnableCheckConstraints(true)
         .setMaxColumns(8)
         .setMaxIdLength(11)
-        .setEnableGeneratedColumns(true);
+        .setEnableGeneratedColumns(true)
+        // Change stream is only supported in GoogleSQL, not in PostgreSQL.
+        .setMaxChangeStreams(dialect == Dialect.GOOGLE_STANDARD_SQL ? 2 : 0);
   }
 
   /** A builder for {@link RandomDdlGenerator}. */
@@ -170,6 +175,8 @@ public abstract class RandomDdlGenerator {
     public abstract Builder setEnableCheckConstraints(boolean checkConstraints);
 
     public abstract Builder setMaxViews(int maxViews);
+
+    public abstract Builder setMaxChangeStreams(int maxChangeStreams);
   }
 
   public abstract Builder toBuilder();
@@ -185,6 +192,10 @@ public abstract class RandomDdlGenerator {
     int numViews = getRandom().nextInt(getMaxViews() + 1);
     for (int i = 0; i < numViews; i++) {
       generateView(builder);
+    }
+    int numChangeStreams = getRandom().nextInt(getMaxChangeStreams() + 1);
+    for (int i = 0; i < numChangeStreams; i++) {
+      generateChangeStream(builder);
     }
 
     return builder.build();
@@ -230,6 +241,63 @@ public abstract class RandomDdlGenerator {
     }
 
     viewBuilder.endView();
+  }
+
+  private void generateChangeStream(Ddl.Builder builder) {
+    if (getDialect() == Dialect.POSTGRESQL) {
+      throw new IllegalArgumentException("Change stream is not supported in PostgreSQL dialect.");
+    }
+
+    String name = generateIdentifier(getMaxIdLength());
+    ChangeStream.Builder changeStreamBuilder = builder.createChangeStream(name);
+
+    generateChangeStreamForClause(builder, changeStreamBuilder);
+
+    ImmutableList.Builder<String> options = ImmutableList.builder();
+    if (getRandom().nextBoolean()) {
+      options.add("retention_period=\"7d\"");
+    }
+    if (getRandom().nextBoolean()) {
+      options.add("value_capture_type=\"OLD_AND_NEW_VALUES\"");
+    }
+    changeStreamBuilder.options(options.build());
+
+    changeStreamBuilder.endChangeStream();
+  }
+
+  private void generateChangeStreamForClause(
+      Ddl.Builder builder, ChangeStream.Builder changeStreamBuilder) {
+    boolean forAll = getRandom().nextBoolean();
+    if (forAll) {
+      changeStreamBuilder.forClause("FOR ALL");
+      return;
+    }
+
+    Table table = selectRandomTable(builder);
+    if (table == null) {
+      return;
+    }
+
+    StringBuilder forClause = new StringBuilder("FOR `").append(table.name()).append("`");
+    boolean allColumns = getRandom().nextBoolean();
+    if (allColumns) {
+      changeStreamBuilder.forClause(forClause.toString());
+      return;
+    }
+
+    // Select a random set of watched columns, excluding primary keys and generated columns.
+    Set<String> watchedColumns = Sets.newHashSet();
+    Set<String> primaryKeys =
+        table.primaryKeys().stream().map(pk -> pk.name()).collect(Collectors.toSet());
+    for (Column column : table.columns()) {
+      if (getRandom().nextBoolean()
+          && !primaryKeys.contains(column.name())
+          && !column.isGenerated()) {
+        watchedColumns.add("`" + column.name() + "`");
+      }
+    }
+    forClause.append("(").append(String.join(", ", watchedColumns)).append(")");
+    changeStreamBuilder.forClause(forClause.toString());
   }
 
   private void generateTable(Ddl.Builder builder, Table parent, int level) {
@@ -374,7 +442,7 @@ public abstract class RandomDdlGenerator {
           }
           columns.endIndexColumn();
           if (rnd.nextBoolean()) {
-              filters.add("\"" + columnName + "\" IS NOT NULL");
+            filters.add("\"" + columnName + "\" IS NOT NULL");
           }
         }
       }
