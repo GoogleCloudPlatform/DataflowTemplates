@@ -81,6 +81,9 @@ public class SplunkIO {
     @Nullable
     abstract ValueProvider<Boolean> enableBatchLogs();
 
+    @Nullable
+    abstract ValueProvider<Boolean> enableGzipHttpCompression();
+
     @Override
     public PCollection<SplunkWriteError> expand(PCollection<SplunkEvent> input) {
 
@@ -92,7 +95,8 @@ public class SplunkIO {
               .withDisableCertificateValidation(disableCertificateValidation())
               .withToken((token()))
               .withRootCaCertificatePath(rootCaCertificatePath())
-              .withEnableBatchLogs(enableBatchLogs());
+              .withEnableBatchLogs(enableBatchLogs())
+              .withEnableGzipHttpCompression(enableGzipHttpCompression());
 
       SplunkEventWriter writer = builder.build();
       LOG.info("SplunkEventWriter configured");
@@ -126,6 +130,9 @@ public class SplunkIO {
       abstract Builder setRootCaCertificatePath(ValueProvider<String> rootCaCertificatePath);
 
       abstract Builder setEnableBatchLogs(ValueProvider<Boolean> enableBatchLogs);
+
+      abstract Builder setEnableGzipHttpCompression(
+          ValueProvider<Boolean> enableGzipHttpCompression);
 
       abstract Write autoBuild();
 
@@ -293,6 +300,29 @@ public class SplunkIO {
        */
       public Builder withEnableBatchLogs(Boolean enableBatchLogs) {
         return setEnableBatchLogs(ValueProvider.StaticValueProvider.of((enableBatchLogs)));
+      }
+
+      /**
+       * Method to specify if HTTP requests sent to Splunk should be GZIP encoded.
+       *
+       * @param enableGzipHttpCompression whether to enable Gzip encoding.
+       * @return {@link Builder}
+       */
+      public Builder withEnableGzipHttpCompression(
+          ValueProvider<Boolean> enableGzipHttpCompression) {
+        return setEnableGzipHttpCompression(enableGzipHttpCompression);
+      }
+
+      /**
+       * Same as {@link Builder#withEnableGzipHttpCompression(ValueProvider)} but without a {@link
+       * ValueProvider}.
+       *
+       * @param enableGzipHttpCompression whether to enable Gzip encoding.
+       * @return {@link Builder}
+       */
+      public Builder withEnableGzipHttpCompression(Boolean enableGzipHttpCompression) {
+        return setEnableGzipHttpCompression(
+            ValueProvider.StaticValueProvider.of(enableGzipHttpCompression));
       }
 
       public Write build() {

@@ -33,7 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link JdbcToPubsub} streaming pipeline reads data from JdbcIO and publishes to Google Cloud
+ * The {@link JdbcToPubsub} batch pipeline reads data from JdbcIO and publishes to Google Cloud
  * PubSub. <br>
  */
 public class JdbcToPubsub {

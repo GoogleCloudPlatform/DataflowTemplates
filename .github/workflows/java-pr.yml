@@ -41,8 +41,6 @@ jobs:
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
-        with:
-          java-version: '11' # Spotless won't work on version 8
       - name: Run Spotless
         run: ./cicd/run-spotless --changed-files="${{ steps.setup-env.outputs.changed-files }}"
   java_build:

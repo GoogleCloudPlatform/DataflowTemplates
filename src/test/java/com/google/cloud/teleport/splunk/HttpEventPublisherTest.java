@@ -104,6 +104,7 @@ public class HttpEventPublisherTest {
             .withUrl("http://example.com")
             .withToken("test-token")
             .withDisableCertificateValidation(false)
+            .withEnableGzipHttpCompression(true)
             .build();
 
     String actual = publisher.getStringPayload(SPLUNK_EVENTS);
@@ -129,6 +130,7 @@ public class HttpEventPublisherTest {
             .withUrl("http://example.com")
             .withToken("test-token")
             .withDisableCertificateValidation(false)
+            .withEnableGzipHttpCompression(true)
             .build();
 
     String expectedString =
@@ -155,7 +157,8 @@ public class HttpEventPublisherTest {
         HttpEventPublisher.newBuilder()
             .withUrl(baseURL)
             .withToken("test-token")
-            .withDisableCertificateValidation(false);
+            .withDisableCertificateValidation(false)
+            .withEnableGzipHttpCompression(true);
 
     assertThat(
         builder.genericUrl(),
@@ -172,6 +175,7 @@ public class HttpEventPublisherTest {
             .withUrl("http://example.com")
             .withToken("test-token")
             .withDisableCertificateValidation(false)
+            .withEnableGzipHttpCompression(true)
             .build();
 
     assertThat(
@@ -191,6 +195,7 @@ public class HttpEventPublisherTest {
             .withToken("test-token")
             .withDisableCertificateValidation(false)
             .withMaxElapsedMillis(timeoutInMillis)
+            .withEnableGzipHttpCompression(true)
             .build();
 
     assertThat(
@@ -206,6 +211,7 @@ public class HttpEventPublisherTest {
             .withToken("test-token")
             .withDisableCertificateValidation(false)
             .withRootCaCertificate("invalid_ca".getBytes())
+            .withEnableGzipHttpCompression(true)
             .build();
   }
 
@@ -221,6 +227,7 @@ public class HttpEventPublisherTest {
             .withToken("test-token")
             .withDisableCertificateValidation(false)
             .withRootCaCertificate(rootCa)
+            .withEnableGzipHttpCompression(true)
             .build();
     publisher.execute(SPLUNK_EVENTS);
 
@@ -244,6 +251,7 @@ public class HttpEventPublisherTest {
             .withToken("test-token")
             .withDisableCertificateValidation(false)
             .withRootCaCertificate(rootCa)
+            .withEnableGzipHttpCompression(true)
             .build();
     publisher.execute(SPLUNK_EVENTS);
   }

@@ -29,7 +29,7 @@
     <properties>
         <avro.version>1.8.2</avro.version>
         <bigtable.version>1.15.0</bigtable.version>
-        <bigquery.version>1.128.0</bigquery.version>
+        <bigquery.version>2.9.0</bigquery.version>
         <commons.version>1.8</commons.version>
         <commons-text.version>1.9</commons-text.version>
         <protoc.version>3.15.8</protoc.version>
@@ -99,6 +99,10 @@
               <exclusion>
                 <groupId>com.google.protobuf</groupId>
                 <artifactId>*</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>com.google.apis</groupId>
+                <artifactId>google-api-services-bigquery</artifactId>
               </exclusion>
             </exclusions>
         </dependency>

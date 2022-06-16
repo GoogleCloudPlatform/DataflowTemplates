@@ -29,7 +29,7 @@
         <autovalue.annotations.version>1.7.4</autovalue.annotations.version>
         <autovalue.service.version>1.0-rc6</autovalue.service.version>
         <checkstyle.version>8.7</checkstyle.version>
-        <beam.version>2.37.0</beam.version>
+        <beam.version>2.38.0</beam.version>
         <hamcrest.version>2.1</hamcrest.version>
         <hadoop.version>2.10.1</hadoop.version>
         <guava.version>30.1-jre</guava.version>
@@ -37,7 +37,7 @@
         <jib.maven.version>2.6.0</jib.maven.version>
         <junit.version>4.13</junit.version>
         <junit-dep.version>4.10</junit-dep.version>
-        <opensensus.version>0.24.0</opensensus.version>
+        <opensensus.version>0.31.0</opensensus.version>
         <surefire.version>2.21.0</surefire.version>
         <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
         <maven-compiler-plugin.version>3.6.2</maven-compiler-plugin.version>
@@ -97,6 +97,18 @@
                 <exclusion>
                     <groupId>junit</groupId>
                     <artifactId>junit</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>grpc-netty-shaded</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>grpc-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>grpc-api</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -653,11 +665,6 @@
                     <id>confluent</id>
                     <url>https://packages.confluent.io/maven/</url>
                 </repository>
-                <repository>
-                    <!-- Required for org.pentaho:pentaho-aggdesigner-algorithm artifact -->
-                    <id>pentaho</id>
-                    <url>https://public.nexus.pentaho.org/repository/proxy-public-3rd-party-release</url>
-                </repository>
             </repositories>
         </profile>
     </profiles>
@@ -674,7 +681,7 @@
         <module>file-format-conversion</module>
         <module>googlecloud-to-elasticsearch</module>
         <module>googlecloud-to-googlecloud</module>
-        <module>hive-to-bigquery</module>
+        <module>googlecloud-to-splunk</module>
         <module>kafka-to-bigquery</module>
         <module>kafka-to-gcs</module>
         <module>kudu-to-bigquery</module>

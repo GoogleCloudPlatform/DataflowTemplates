@@ -28,7 +28,6 @@ import org.apache.beam.sdk.transforms.DoFn.StateId;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
-import org.apache.beam.sdk.transforms.Values;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
@@ -54,19 +53,18 @@ public class ProcessDml {
 
   /** This class is used as the default return value of {@link ProcessDml#statefulOrderByPK()}. */
   public static class StatefulProcessDml
-      extends PTransform<PCollection<KV<String, DmlInfo>>, PCollection<DmlInfo>> {
+      extends PTransform<PCollection<KV<String, DmlInfo>>, PCollection<KV<String, DmlInfo>>> {
 
     public StatefulProcessDml() {}
 
     @Override
-    public PCollection<DmlInfo> expand(PCollection<KV<String, DmlInfo>> input) {
+    public PCollection<KV<String, DmlInfo>> expand(PCollection<KV<String, DmlInfo>> input) {
       return input
           .apply(ParDo.of(new StatefulProcessDmlFn()))
           .apply(
               "Creating " + WINDOW_DURATION + " Window",
               Window.into(FixedWindows.of(DurationUtils.parseDuration(WINDOW_DURATION))))
-          .apply(Reshuffle.of())
-          .apply(Values.create());
+          .apply(Reshuffle.of());
     }
   }
 
