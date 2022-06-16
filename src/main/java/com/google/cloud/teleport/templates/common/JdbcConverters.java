@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.templates.common;
 
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.cloud.teleport.options.CommonTemplateOptions;
 import java.sql.Clob;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -24,7 +25,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.options.Description;
-import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +35,7 @@ public class JdbcConverters {
   private static final Logger LOG = LoggerFactory.getLogger(JdbcConverters.class);
 
   /** Interface used by the JdbcToBigQuery pipeline to accept user input. */
-  public interface JdbcToBigQueryOptions extends PipelineOptions {
+  public interface JdbcToBigQueryOptions extends CommonTemplateOptions {
 
     @Description(
         "Comma separate list of driver class/dependency jar file GCS paths "
@@ -95,15 +95,6 @@ public class JdbcConverters {
     ValueProvider<String> getKMSEncryptionKey();
 
     void setKMSEncryptionKey(ValueProvider<String> keyName);
-
-    @Description(
-        "Comma separated algorithms to disable. If this value is set to \"none\" then"
-            + " jdk.tls.disabledAlgorithms is set to \"\". Use with care, as the algorithms"
-            + " disabled by default are known to have either vulnerabilities or performance issues."
-            + " for example: SSLv3, RC4.")
-    ValueProvider<String> getDisabledAlgorithms();
-
-    void setDisabledAlgorithms(ValueProvider<String> disabledAlgorithms);
   }
 
   /** Factory method for {@link ResultSetToTableRow}. */

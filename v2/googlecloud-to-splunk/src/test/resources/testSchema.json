@@ -1,0 +1,14 @@
+[
+  {
+    "name": "id",
+    "type": "text"
+  },
+  {
+    "name": "state",
+    "type": "text"
+  },
+  {
+    "name": "price",
+    "type": "double"
+  }
+]

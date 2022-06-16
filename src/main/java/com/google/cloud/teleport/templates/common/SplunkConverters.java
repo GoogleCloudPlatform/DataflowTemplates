@@ -156,6 +156,13 @@ public class SplunkConverters {
     ValueProvider<Boolean> getEnableBatchLogs();
 
     void setEnableBatchLogs(ValueProvider<Boolean> enableBatchLogs);
+
+    @Description(
+        "Parameter which specifies if HTTP requests sent to Splunk should be GZIP encoded."
+            + " Default: true.")
+    ValueProvider<Boolean> getEnableGzipHttpCompression();
+
+    void setEnableGzipHttpCompression(ValueProvider<Boolean> enableGzipHttpCompression);
   }
 
   private static class FailsafeStringToSplunkEvent

@@ -18,6 +18,7 @@ package com.google.cloud.teleport.splunk;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.api.client.http.ByteArrayContent;
+import com.google.api.client.http.GZipEncoding;
 import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.HttpBackOffIOExceptionHandler;
 import com.google.api.client.http.HttpBackOffUnsuccessfulResponseHandler;
@@ -111,6 +112,8 @@ public abstract class HttpEventPublisher {
 
   abstract Boolean disableCertificateValidation();
 
+  abstract Boolean enableGzipHttpCompression();
+
   /**
    * Executes a POST for the list of {@link SplunkEvent} objects into Splunk's Http Event Collector
    * endpoint.
@@ -122,6 +125,10 @@ public abstract class HttpEventPublisher {
 
     HttpContent content = getContent(events);
     HttpRequest request = requestFactory().buildPostRequest(genericUrl(), content);
+
+    if (enableGzipHttpCompression()) {
+      request.setEncoding(new GZipEncoding());
+    }
 
     HttpBackOffUnsuccessfulResponseHandler responseHandler =
         new HttpBackOffUnsuccessfulResponseHandler(getConfiguredBackOff());
@@ -173,6 +180,10 @@ public abstract class HttpEventPublisher {
    */
   private void setHeaders(HttpRequest request, String token) {
     request.getHeaders().setAuthorization(String.format(AUTHORIZATION_SCHEME, token));
+
+    if (enableGzipHttpCompression()) {
+      request.getHeaders().setContentEncoding("gzip");
+    }
   }
 
   /**
@@ -217,6 +228,8 @@ public abstract class HttpEventPublisher {
     abstract Builder setDisableCertificateValidation(Boolean disableCertificateValidation);
 
     abstract Boolean disableCertificateValidation();
+
+    abstract Builder setEnableGzipHttpCompression(Boolean enableGzipHttpCompression);
 
     abstract Builder setRootCaCertificate(byte[] certificate);
 
@@ -273,6 +286,19 @@ public abstract class HttpEventPublisher {
           disableCertificateValidation,
           "withDisableCertificateValidation(disableCertificateValidation) called with null input.");
       return setDisableCertificateValidation(disableCertificateValidation);
+    }
+
+    /**
+     * Method to specify if HTTP requests sent to Splunk HEC should be GZIP encoded.
+     *
+     * @param enableGzipHttpCompression whether to enable Gzip encoding.
+     * @return {@link Builder}
+     */
+    public Builder withEnableGzipHttpCompression(Boolean enableGzipHttpCompression) {
+      checkNotNull(
+          enableGzipHttpCompression,
+          "withEnableGzipHttpCompression(enableGzipHttpCompression) called with null input.");
+      return setEnableGzipHttpCompression(enableGzipHttpCompression);
     }
 
     /**

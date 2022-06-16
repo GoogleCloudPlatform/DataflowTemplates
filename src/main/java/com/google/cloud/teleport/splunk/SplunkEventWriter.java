@@ -64,6 +64,7 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
   private static final Integer DEFAULT_BATCH_COUNT = 1;
   private static final Boolean DEFAULT_DISABLE_CERTIFICATE_VALIDATION = false;
   private static final Boolean DEFAULT_ENABLE_BATCH_LOGS = true;
+  private static final Boolean DEFAULT_ENABLE_GZIP_HTTP_COMPRESSION = true;
   private static final Logger LOG = LoggerFactory.getLogger(SplunkEventWriter.class);
   private static final long DEFAULT_FLUSH_DELAY = 2;
   private static final Counter INPUT_COUNTER =
@@ -106,6 +107,7 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
   private Integer batchCount;
   private Boolean disableValidation;
   private Boolean enableBatchLogs;
+  private Boolean enableGzipHttpCompression;
   private HttpEventPublisher publisher;
 
   private static final Gson GSON =
@@ -129,6 +131,9 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
 
   @Nullable
   abstract ValueProvider<Boolean> enableBatchLogs();
+
+  @Nullable
+  abstract ValueProvider<Boolean> enableGzipHttpCompression();
 
   @Nullable
   abstract ValueProvider<Integer> inputBatchCount();
@@ -161,6 +166,17 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
       LOG.info("Enable Batch logs set to: {}", enableBatchLogs);
     }
 
+    if (enableGzipHttpCompression == null) {
+
+      if (enableGzipHttpCompression() != null) {
+        enableGzipHttpCompression = enableGzipHttpCompression().get();
+      }
+
+      enableGzipHttpCompression =
+          MoreObjects.firstNonNull(enableGzipHttpCompression, DEFAULT_ENABLE_GZIP_HTTP_COMPRESSION);
+      LOG.info("Enable gzip http compression set to: {}", enableGzipHttpCompression);
+    }
+
     // Either user supplied or default disableValidation.
     if (disableValidation == null) {
 
@@ -178,7 +194,8 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
           HttpEventPublisher.newBuilder()
               .withUrl(url().get())
               .withToken(token().get())
-              .withDisableCertificateValidation(disableValidation);
+              .withDisableCertificateValidation(disableValidation)
+              .withEnableGzipHttpCompression(enableGzipHttpCompression);
 
       if (rootCaCertificatePath() != null && rootCaCertificatePath().get() != null) {
         builder.withRootCaCertificate(GCSUtils.getGcsFileAsBytes(rootCaCertificatePath().get()));
@@ -441,6 +458,8 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
 
     abstract Builder setEnableBatchLogs(ValueProvider<Boolean> enableBatchLogs);
 
+    abstract Builder setEnableGzipHttpCompression(ValueProvider<Boolean> enableGzipHttpCompression);
+
     abstract Builder setInputBatchCount(ValueProvider<Integer> inputBatchCount);
 
     abstract SplunkEventWriter autoBuild();
@@ -532,6 +551,16 @@ public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, S
      */
     public Builder withEnableBatchLogs(ValueProvider<Boolean> enableBatchLogs) {
       return setEnableBatchLogs(enableBatchLogs);
+    }
+
+    /**
+     * Method to specify if HTTP requests sent to Splunk should be GZIP encoded.
+     *
+     * @param enableGzipHttpCompression whether to enable Gzip encoding.
+     * @return {@link Builder}
+     */
+    public Builder withEnableGzipHttpCompression(ValueProvider<Boolean> enableGzipHttpCompression) {
+      return setEnableGzipHttpCompression(enableGzipHttpCompression);
     }
 
     /** Build a new {@link SplunkEventWriter} objects based on the configuration. */

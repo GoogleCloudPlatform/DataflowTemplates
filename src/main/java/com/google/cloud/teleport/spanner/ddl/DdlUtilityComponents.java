@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.common.escape.Escaper;
 import com.google.common.escape.Escapers;
 
@@ -33,4 +34,30 @@ class DdlUtilityComponents {
           .addEscape('\r', "\\r")
           .addEscape('\n', "\\n")
           .build();
+  static final String POSTGRESQL_IDENTIFIER_QUOTE = "\"";
+  static final String GSQL_IDENTIFIER_QUOTE = "`";
+  static final String POSTGRESQL_LITERAL_QUOTE = "'";
+  static final String GSQL_LITERAL_QUOTE = "\"";
+
+  static String identifierQuote(Dialect dialect) {
+    switch (dialect) {
+      case POSTGRESQL:
+        return POSTGRESQL_IDENTIFIER_QUOTE;
+      case GOOGLE_STANDARD_SQL:
+        return GSQL_IDENTIFIER_QUOTE;
+      default:
+        throw new IllegalArgumentException(String.format("Unrecognized dialect: %s", dialect));
+    }
+  }
+
+  static String literalQuote(Dialect dialect) {
+    switch (dialect) {
+      case POSTGRESQL:
+        return POSTGRESQL_LITERAL_QUOTE;
+      case GOOGLE_STANDARD_SQL:
+        return GSQL_LITERAL_QUOTE;
+      default:
+        throw new IllegalArgumentException(String.format("Unrecognized dialect: %s", dialect));
+    }
+  }
 }

@@ -21,6 +21,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.spanner.DatabaseClient;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.teleport.spanner.ExportProtos.Export;
 import com.google.cloud.teleport.spanner.common.Type;
@@ -72,8 +73,18 @@ public class CopyDbTest {
   }
 
   private void createAndPopulate(Ddl ddl, int numBatches) throws Exception {
-    spannerServer.createDatabase(sourceDb, ddl.statements());
-    spannerServer.createDatabase(destinationDb, Collections.emptyList());
+    switch (ddl.dialect()) {
+      case GOOGLE_STANDARD_SQL:
+        spannerServer.createDatabase(sourceDb, ddl.statements());
+        spannerServer.createDatabase(destinationDb, Collections.emptyList());
+        break;
+      case POSTGRESQL:
+        spannerServer.createPgDatabase(sourceDb, ddl.statements());
+        spannerServer.createPgDatabase(destinationDb, Collections.emptyList());
+        break;
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + ddl.dialect());
+    }
     spannerServer.populateRandomData(sourceDb, ddl, numBatches);
   }
 
@@ -113,6 +124,106 @@ public class CopyDbTest {
     // spotless:on
     createAndPopulate(ddl, 100);
     runTest();
+  }
+
+  @Test
+  public void allPgTypesSchema() throws Exception {
+    // spotless:off
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("Users")
+            .column("first_name")
+            .pgVarchar()
+            .max()
+            .endColumn()
+            .column("last_name")
+            .pgVarchar()
+            .size(5)
+            .endColumn()
+            .column("age")
+            .pgInt8()
+            .endColumn()
+            .primaryKey()
+            .asc("first_name")
+            .asc("last_name")
+            .end()
+            .endTable()
+            .createTable("AllTYPES")
+            .column("id")
+            .pgInt8()
+            .notNull()
+            .endColumn()
+            .column("first_name")
+            .pgVarchar()
+            .max()
+            .endColumn()
+            .column("last_name")
+            .pgVarchar()
+            .size(5)
+            .endColumn()
+            .column("bool_field")
+            .pgBool()
+            .endColumn()
+            .column("int_field")
+            .pgInt8()
+            .endColumn()
+            .column("float_field")
+            .pgFloat8()
+            .endColumn()
+            .column("string_field")
+            .pgText()
+            .endColumn()
+            .column("bytes_field")
+            .pgBytea()
+            .endColumn()
+            .column("timestamp_field")
+            .pgTimestamptz()
+            .endColumn()
+            .column("numeric_field")
+            .pgNumeric()
+            .endColumn()
+            .column("date_field")
+            .pgDate()
+            .endColumn()
+            .column("arr_bool_field")
+            .type(Type.pgArray(Type.pgBool()))
+            .endColumn()
+            .column("arr_int_field")
+            .type(Type.pgArray(Type.pgInt8()))
+            .endColumn()
+            .column("arr_float_field")
+            .type(Type.pgArray(Type.pgFloat8()))
+            .endColumn()
+            .column("arr_string_field")
+            .type(Type.pgArray(Type.pgVarchar()))
+            .max()
+            .endColumn()
+            .column("arr_bytes_field")
+            .type(Type.pgArray(Type.pgBytea()))
+            .max()
+            .endColumn()
+            .column("arr_timestamp_field")
+            .type(Type.pgArray(Type.pgTimestamptz()))
+            .endColumn()
+            .column("arr_date_field")
+            .type(Type.pgArray(Type.pgDate()))
+            .endColumn()
+            .column("arr_numeric_field")
+            .type(Type.pgArray(Type.pgNumeric()))
+            .endColumn()
+            .primaryKey()
+            .asc("first_name")
+            .asc("last_name")
+            .asc("id")
+            .asc("float_field")
+            .end()
+            .interleaveInParent("Users")
+            .onDeleteCascade()
+            .endTable()
+            .build();
+    // spotless:on
+    createAndPopulate(ddl, 100);
+    runTest(Dialect.POSTGRESQL);
   }
 
   @Test
@@ -171,6 +282,106 @@ public class CopyDbTest {
   }
 
   @Test
+  public void emptyPgTables() throws Exception {
+    // spotless:off
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("Users")
+            .column("first_name")
+            .pgVarchar()
+            .max()
+            .endColumn()
+            .column("last_name").pgVarchar().size(5).endColumn()
+            .column("age")
+            .pgInt8()
+            .endColumn()
+            .primaryKey()
+            .asc("first_name")
+            .asc("last_name")
+            .end()
+            .endTable()
+            .createTable("AllTYPES")
+            .column("first_name")
+            .pgVarchar()
+            .max()
+            .endColumn()
+            .column("last_name").pgVarchar().size(5).endColumn()
+            .column("id")
+            .pgInt8()
+            .notNull()
+            .endColumn()
+            .column("bool_field")
+            .pgBool()
+            .endColumn()
+            .column("int_field")
+            .pgInt8()
+            .endColumn()
+            .column("float_field")
+            .pgFloat8()
+            .endColumn()
+            .column("string_field")
+            .pgText()
+            .endColumn()
+            .column("bytes_field")
+            .pgBytea()
+            .endColumn()
+            .column("timestamp_field")
+            .pgTimestamptz()
+            .endColumn()
+            .column("numeric_field")
+            .pgNumeric()
+            .endColumn()
+            .primaryKey()
+            .asc("first_name")
+            .asc("last_name")
+            .asc("id")
+            .end()
+            .interleaveInParent("Users")
+            .onDeleteCascade()
+            .endTable()
+            .build();
+    createAndPopulate(ddl, 10);
+
+    // Add empty tables.
+    Ddl emptyTables =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("empty_one")
+            .column("first")
+            .pgVarchar()
+            .max()
+            .endColumn()
+            .column("second").pgVarchar().size(5).endColumn()
+            .column("value")
+            .pgInt8()
+            .endColumn()
+            .primaryKey()
+            .asc("first")
+            .asc("second")
+            .end()
+            .endTable()
+            .createTable("empty_two")
+            .column("first")
+            .pgVarchar()
+            .max()
+            .endColumn()
+            .column("second").pgVarchar().size(5).endColumn()
+            .column("value")
+            .pgInt8()
+            .endColumn()
+            .column("another_value")
+            .pgInt8()
+            .endColumn()
+            .primaryKey()
+            .asc("first")
+            .end()
+            .endTable()
+            .build();
+    // spotless:on
+    spannerServer.updateDatabase(sourceDb, emptyTables.createTableStatements());
+    runTest(Dialect.POSTGRESQL);
+  }
+
+  @Test
   public void allEmptyTables() throws Exception {
     // spotless:off
         Ddl ddl = Ddl.builder()
@@ -205,6 +416,76 @@ public class CopyDbTest {
     // spotless:on
     createAndPopulate(ddl, 0);
     runTest();
+  }
+
+  @Test
+  public void allEmptyPgTables() throws Exception {
+    // spotless:off
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("Users")
+            .column("first_name")
+            .pgVarchar()
+            .max()
+            .endColumn()
+            .column("last_name")
+            .pgVarchar()
+            .size(5)
+            .endColumn()
+            .column("age")
+            .pgInt8()
+            .endColumn()
+            .primaryKey()
+            .asc("first_name")
+            .asc("last_name")
+            .end()
+            .endTable()
+            .createTable("AllTYPES")
+            .column("first_name")
+            .pgVarchar()
+            .max()
+            .endColumn()
+            .column("last_name")
+            .pgVarchar()
+            .size(5)
+            .endColumn()
+            .column("id")
+            .pgInt8()
+            .notNull()
+            .endColumn()
+            .column("bool_field")
+            .pgBool()
+            .endColumn()
+            .column("int_field")
+            .pgInt8()
+            .endColumn()
+            .column("float_field")
+            .pgFloat8()
+            .endColumn()
+            .column("string_field")
+            .pgText()
+            .endColumn()
+            .column("bytes_field")
+            .pgBytea()
+            .endColumn()
+            .column("timestamp_field")
+            .pgTimestamptz()
+            .endColumn()
+            .column("numeric_field")
+            .pgNumeric()
+            .endColumn()
+            .primaryKey()
+            .asc("first_name")
+            .asc("last_name")
+            .asc("id")
+            .end()
+            .interleaveInParent("Users")
+            .onDeleteCascade()
+            .endTable()
+            .build();
+    // spotless:on
+    createAndPopulate(ddl, 0);
+    runTest(Dialect.POSTGRESQL);
   }
 
   @Test
@@ -252,7 +533,7 @@ public class CopyDbTest {
     Ddl ddl = ddlBuilder.build();
     createAndPopulate(ddl, 100);
     runTest();
-    Ddl destinationDdl = readDdl(destinationDb);
+    Ddl destinationDdl = readDdl(destinationDb, Dialect.GOOGLE_STANDARD_SQL);
     List<String> destDbOptions = destinationDdl.setOptionsStatements(destinationDb);
     assertThat(destDbOptions.size(), is(1));
     assertThat(
@@ -264,10 +545,94 @@ public class CopyDbTest {
   }
 
   @Test
+  public void pgDatabaseOptions() throws Exception {
+    Ddl.Builder ddlBuilder = Ddl.builder(Dialect.POSTGRESQL);
+    // Table Content
+    // spotless:off
+    ddlBuilder
+        .createTable("Users")
+        .column("first_name")
+        .pgVarchar()
+        .max()
+        .endColumn()
+        .column("last_name").pgVarchar().size(5).endColumn()
+        .column("age")
+        .pgInt8()
+        .endColumn()
+        .primaryKey()
+        .asc("first_name")
+        .asc("last_name")
+        .end()
+        .endTable()
+        .createTable("EmploymentData")
+        .column("first_name")
+        .pgVarchar()
+        .max()
+        .endColumn()
+        .column("last_name").pgVarchar().size(5).endColumn()
+        .column("id")
+        .pgInt8()
+        .notNull()
+        .endColumn()
+        .column("age")
+        .pgInt8()
+        .endColumn()
+        .column("address")
+        .pgVarchar()
+        .max()
+        .endColumn()
+        .primaryKey()
+        .asc("first_name")
+        .asc("last_name")
+        .asc("id")
+        .end()
+        .interleaveInParent("Users")
+        .onDeleteCascade()
+        .endTable();
+    // spotless:on
+    // Allowed and well-formed database option
+    List<Export.DatabaseOption> dbOptionList = new ArrayList<>();
+    dbOptionList.add(
+        Export.DatabaseOption.newBuilder()
+            .setOptionName("version_retention_period")
+            .setOptionValue("'6d'")
+            .build());
+    // Disallowed database option
+    dbOptionList.add(
+        Export.DatabaseOption.newBuilder()
+            .setOptionName("optimizer_version")
+            .setOptionValue("1")
+            .build());
+    // Misformed database option
+    dbOptionList.add(
+        Export.DatabaseOption.newBuilder()
+            .setOptionName("123version")
+            .setOptionValue("xyz")
+            .build());
+    ddlBuilder.mergeDatabaseOptions(dbOptionList);
+    Ddl ddl = ddlBuilder.build();
+    createAndPopulate(ddl, 100);
+    runTest(Dialect.POSTGRESQL);
+    Ddl destinationDdl = readDdl(destinationDb, Dialect.POSTGRESQL);
+    List<String> destDbOptions = destinationDdl.setOptionsStatements(destinationDb);
+    assertThat(destDbOptions.size(), is(1));
+    assertThat(
+        destDbOptions.get(0),
+        is("ALTER DATABASE \"" + destinationDb + "\" SET spanner.version_retention_period = '6d'"));
+  }
+
+  @Test
   public void emptyDb() throws Exception {
     Ddl ddl = Ddl.builder().build();
     createAndPopulate(ddl, 0);
     runTest();
+  }
+
+  @Test
+  public void emptyPgDb() throws Exception {
+    Ddl ddl = Ddl.builder(Dialect.POSTGRESQL).build();
+    createAndPopulate(ddl, 0);
+    runTest(Dialect.POSTGRESQL);
   }
 
   @Test
@@ -300,6 +665,58 @@ public class CopyDbTest {
     runTest();
   }
 
+  @Test
+  public void pgForeignKeys() throws Exception {
+    // spotless:off
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("Ref")
+            .column("id1")
+            .pgInt8()
+            .endColumn()
+            .column("id2")
+            .pgInt8()
+            .endColumn()
+            .primaryKey()
+            .asc("id1")
+            .asc("id2")
+            .end()
+            .endTable()
+            .createTable("Child")
+            .column("id1")
+            .pgInt8()
+            .endColumn()
+            .column("id2")
+            .pgInt8()
+            .endColumn()
+            .column("id3")
+            .pgInt8()
+            .endColumn()
+            .primaryKey()
+            .asc("id1")
+            .asc("id2")
+            .asc("id3")
+            .end()
+            .interleaveInParent("Ref")
+            // Add some foreign keys that are guaranteed to be satisfied due to interleaving
+            .foreignKeys(
+                ImmutableList.of(
+                    "ALTER TABLE \"Child\" ADD CONSTRAINT \"fk1\" FOREIGN KEY (\"id1\") REFERENCES"
+                        + " \"Ref\" (\"id1\")",
+                    "ALTER TABLE \"Child\" ADD CONSTRAINT \"fk2\" FOREIGN KEY (\"id2\") REFERENCES"
+                        + " \"Ref\" (\"id2\")",
+                    "ALTER TABLE \"Child\" ADD CONSTRAINT \"fk3\" FOREIGN KEY (\"id2\") REFERENCES"
+                        + " \"Ref\" (\"id2\")",
+                    "ALTER TABLE \"Child\" ADD CONSTRAINT \"fk4\" FOREIGN KEY (\"id2\", \"id1\") "
+                        + "REFERENCES \"Ref\" (\"id2\", \"id1\")"))
+            .endTable()
+            .build();
+    // spotless:on
+
+    createAndPopulate(ddl, 100);
+    runTest(Dialect.POSTGRESQL);
+  }
+
   // TODO: enable this test once CHECK constraints are enabled
   // @Test
   public void checkConstraints() throws Exception {
@@ -319,10 +736,83 @@ public class CopyDbTest {
   }
 
   @Test
+  public void pgCheckConstraints() throws Exception {
+    // spotless:off
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("T")
+            .column("id")
+            .pgInt8()
+            .endColumn()
+            .column("A")
+            .pgInt8()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .checkConstraints(
+                ImmutableList.of(
+                    "CONSTRAINT \"ck\" CHECK(LENGTH(CAST(\"A\" AS VARCHAR)) >= '0'::bigint)"))
+            .endTable()
+            .build();
+    // spotless:on
+
+    createAndPopulate(ddl, 100);
+    runTest(Dialect.POSTGRESQL);
+  }
+  
+  @Test
+  public void changeStreams() throws Exception {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("T1")
+            .endTable()
+            .createTable("T2")
+            .column("key")
+            .int64()
+            .endColumn()
+            .column("c1")
+            .int64()
+            .endColumn()
+            .column("c2")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("key")
+            .end()
+            .endTable()
+            .createTable("T3")
+            .endTable()
+            .createChangeStream("ChangeStreamAll")
+            .forClause("FOR ALL")
+            .options(
+                ImmutableList.of(
+                    "retention_period=\"7d\"", "value_capture_type=\"OLD_AND_NEW_VALUES\""))
+            .endChangeStream()
+            .createChangeStream("ChangeStreamEmpty")
+            .endChangeStream()
+            .createChangeStream("ChangeStreamTableColumns")
+            .forClause("FOR `T1`, `T2`(`c1`, `c2`), `T3`()")
+            .endChangeStream()
+            .build();
+    createAndPopulate(ddl, 0);
+    runTest();
+  }
+
+  @Test
   public void randomSchema() throws Exception {
     Ddl ddl = RandomDdlGenerator.builder().build().generate();
     createAndPopulate(ddl, 100);
     runTest();
+  }
+
+  @Test
+  public void randomPgSchema() throws Exception {
+    Ddl ddl = RandomDdlGenerator.builder(Dialect.POSTGRESQL).setMaxViews(2).build().generate();
+    System.out.println(ddl.prettyPrint());
+    createAndPopulate(ddl, 100);
+    runTest(Dialect.POSTGRESQL);
   }
 
   @Test
@@ -332,7 +822,18 @@ public class CopyDbTest {
     runTest();
   }
 
+  @Test
+  public void randomPgSchemaNoData() throws Exception {
+    Ddl ddl = RandomDdlGenerator.builder(Dialect.POSTGRESQL).setMaxViews(2).build().generate();
+    createAndPopulate(ddl, 0);
+    runTest(Dialect.POSTGRESQL);
+  }
+
   private void runTest() {
+    runTest(Dialect.GOOGLE_STANDARD_SQL);
+  }
+
+  private void runTest(Dialect dialect) {
     String tmpDirPath = tmpDir.getRoot().getAbsolutePath();
     ValueProvider.StaticValueProvider<String> destination =
         ValueProvider.StaticValueProvider.of(tmpDirPath);
@@ -354,6 +855,7 @@ public class CopyDbTest {
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(30)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();
@@ -369,18 +871,18 @@ public class CopyDbTest {
     PipelineResult compareResult = comparePipeline.run();
     compareResult.waitUntilFinish();
 
-    Ddl sourceDdl = readDdl(sourceDb);
-    Ddl destinationDdl = readDdl(destinationDb);
+    Ddl sourceDdl = readDdl(sourceDb, dialect);
+    Ddl destinationDdl = readDdl(destinationDb, dialect);
 
     assertThat(sourceDdl.prettyPrint(), equalToCompressingWhiteSpace(destinationDdl.prettyPrint()));
   }
 
   /* Returns the Ddl representing a Spanner database for given a String for the database name */
-  private Ddl readDdl(String db) {
+  private Ddl readDdl(String db, Dialect dialect) {
     DatabaseClient dbClient = spannerServer.getDbClient(db);
     Ddl ddl;
     try (ReadOnlyTransaction ctx = dbClient.readOnlyTransaction()) {
-      ddl = new InformationSchemaScanner(ctx).scan();
+      ddl = new InformationSchemaScanner(ctx, dialect).scan();
     }
     return ddl;
   }

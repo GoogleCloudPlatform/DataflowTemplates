@@ -32,6 +32,7 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -289,7 +290,7 @@ public class DataStreamToSQL {
      *   a) Convert JSON String FailsafeElements to TableRow's (tableRowRecords)
      * Stage 3) Filter stale rows using stateful PK transform
      */
-    PCollection<DmlInfo> dmlStatements =
+    PCollection<KV<String, DmlInfo>> dmlStatements =
         datastreamJsonRecords
             .apply("Format to DML", CreateDml.of(dataSourceConfiguration).withSchemaMap(schemaMap))
             .apply("DML Stateful Processing", ProcessDml.statefulOrderByPK());
@@ -299,13 +300,13 @@ public class DataStreamToSQL {
      */
     dmlStatements.apply(
         "Write to SQL",
-        CdcJdbcIO.<DmlInfo>write()
+        CdcJdbcIO.<KV<String, DmlInfo>>write()
             .withDataSourceConfiguration(dataSourceConfiguration)
             .withStatementFormatter(
-                new CdcJdbcIO.StatementFormatter<DmlInfo>() {
-                  public String formatStatement(DmlInfo element) {
-                    LOG.debug("Executing SQL: {}", element.getDmlSql());
-                    return element.getDmlSql();
+                new CdcJdbcIO.StatementFormatter<KV<String, DmlInfo>>() {
+                  public String formatStatement(KV<String, DmlInfo> element) {
+                    LOG.debug("Executing SQL: {}", element.getValue().getDmlSql());
+                    return element.getValue().getDmlSql();
                   }
                 }));
 

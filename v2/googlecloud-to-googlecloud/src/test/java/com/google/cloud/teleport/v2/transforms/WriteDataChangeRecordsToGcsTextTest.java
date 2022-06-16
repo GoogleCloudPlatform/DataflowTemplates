@@ -75,7 +75,7 @@ public class WriteDataChangeRecordsToGcsTextTest {
         .apply(
             "WriteTextFile(s)",
             WriteDataChangeRecordsToGcsText.newBuilder()
-                .withOutputDirectory(fakeDir)
+                .withGcsOutputDirectory(fakeDir)
                 .withOutputFilenamePrefix(TEXT_FILENAME_PREFIX)
                 .setNumShards(NUM_SHARDS)
                 .withTempLocation(fakeTempLocation)
@@ -99,14 +99,14 @@ public class WriteDataChangeRecordsToGcsTextTest {
   @Test
   public void testWriteWithoutOutputDirectory() {
     expectedException.expect(IllegalArgumentException.class);
-    expectedException.expectMessage("withOutputDirectory(outputDirectory) called with null input.");
+    expectedException.expectMessage("withGcsOutputDirectory(gcsOutputDirectory) called with null input.");
     final DataChangeRecord dataChangeRecord = createTestDataChangeRecord();
     pipeline
         .apply("CreateInput", Create.of(dataChangeRecord))
         .apply(
             "WriteTextFile(s)",
             WriteDataChangeRecordsToGcsText.newBuilder()
-                .withOutputDirectory(null)
+                .withGcsOutputDirectory(null)
                 .withOutputFilenamePrefix(TEXT_FILENAME_PREFIX)
                 .setNumShards(NUM_SHARDS)
                 .withTempLocation(fakeTempLocation)
@@ -127,7 +127,7 @@ public class WriteDataChangeRecordsToGcsTextTest {
         .apply(
             "WriteTextFile(s)",
             WriteDataChangeRecordsToGcsText.newBuilder()
-                .withOutputDirectory(fakeDir)
+                .withGcsOutputDirectory(fakeDir)
                 .withOutputFilenamePrefix(TEXT_FILENAME_PREFIX)
                 .setNumShards(NUM_SHARDS)
                 .withTempLocation(null)

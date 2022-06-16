@@ -20,6 +20,7 @@ import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.BatchReadOnlyTransaction;
 import com.google.cloud.spanner.DatabaseClient;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.PartitionOptions;
 import com.google.cloud.spanner.ReadContext;
 import com.google.cloud.spanner.ReadOnlyTransaction;
@@ -68,6 +69,7 @@ import org.slf4j.LoggerFactory;
 
 /** Transforms & DoFns & Options for SpannerIO. */
 public class SpannerConverters {
+  private static final Logger LOG = LoggerFactory.getLogger(SpannerConverters.class);
 
   private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().create();
 
@@ -222,15 +224,18 @@ public class SpannerConverters {
         // Save schema to GCS so it can be saved along with the exported file.
         LOG.info("Creating database client for schema read");
 
+        Dialect dialect;
         LinkedHashMap<String, String> columns;
         try {
           DatabaseClient databaseClient = getDatabaseClient(spannerConfig());
           String timestampString = this.timestamp.get();
           TimestampBound tsbound = getTimestampBound(timestampString);
+          LOG.info("Reading dialect information");
+          dialect = databaseClient.getDialect();
 
           try (ReadOnlyTransaction context = databaseClient.readOnlyTransaction(tsbound)) {
             LOG.info("Reading schema information");
-            columns = getAllColumns(context, table().get());
+            columns = getAllColumns(context, table().get(), dialect);
             String columnJson = SpannerConverters.GSON.toJson(columns);
             LOG.info("Saving schema information");
             saveSchema(columnJson, textWritePrefix().get() + SCHEMA_SUFFIX);
@@ -244,16 +249,34 @@ public class SpannerConverters {
 
         String columnsListAsString =
             columns.entrySet().stream()
-                .map(x -> createColumnExpression(x.getKey(), x.getValue()))
+                .map(x -> createColumnExpression(x.getKey(), x.getValue(), dialect))
                 .collect(Collectors.joining(","));
-        ReadOperation read =
-            ReadOperation.create()
-                .withQuery(String.format("SELECT %s FROM `%s`", columnsListAsString, table().get()))
-                .withPartitionOptions(partitionOptions);
+        ReadOperation read;
+        switch (dialect) {
+          case GOOGLE_STANDARD_SQL:
+            read =
+                ReadOperation.create()
+                    .withQuery(
+                        String.format("SELECT %s FROM `%s`", columnsListAsString, table().get()))
+                    .withPartitionOptions(partitionOptions);
+            break;
+          case POSTGRESQL:
+            read =
+                ReadOperation.create()
+                    .withQuery(
+                        String.format("SELECT %s FROM \"%s\";", columnsListAsString, table().get()))
+                    .withPartitionOptions(partitionOptions);
+            break;
+          default:
+            throw new IllegalArgumentException(String.format("Unrecognized dialect: %s", dialect));
+        }
         processContext.output(read);
       }
 
-      private String createColumnExpression(String columnName, String columnType) {
+      private String createColumnExpression(String columnName, String columnType, Dialect dialect) {
+        if (dialect == Dialect.POSTGRESQL) {
+          return "\"" + columnName + "\"";
+        }
         if (columnType.equals("NUMERIC")) {
           return "CAST(`" + columnName + "` AS STRING) AS " + columnName;
         }
@@ -292,18 +315,34 @@ public class SpannerConverters {
     }
 
     /** Function to get all column names from the table. */
-    private LinkedHashMap<String, String> getAllColumns(ReadContext context, String tableName) {
+    private LinkedHashMap<String, String> getAllColumns(
+        ReadContext context, String tableName, Dialect dialect) {
       LinkedHashMap<String, String> columns = Maps.newLinkedHashMap();
-      ResultSet resultSet =
-          context.executeQuery(
-              Statement.newBuilder(
-                      "SELECT COLUMN_NAME, SPANNER_TYPE FROM INFORMATION_SCHEMA.COLUMNS "
-                          + "WHERE TABLE_NAME=@table_name AND TABLE_CATALOG='' AND TABLE_SCHEMA='' "
-                          + "AND IS_GENERATED = 'NEVER' "
-                          + "ORDER BY ORDINAL_POSITION")
-                  .bind("table_name")
-                  .to(tableName)
-                  .build());
+      String statement;
+      ResultSet resultSet;
+      switch (dialect) {
+        case GOOGLE_STANDARD_SQL:
+          statement =
+              "SELECT COLUMN_NAME, SPANNER_TYPE FROM INFORMATION_SCHEMA.COLUMNS "
+                  + "WHERE TABLE_NAME=@table_name AND TABLE_CATALOG='' AND TABLE_SCHEMA='' "
+                  + "AND IS_GENERATED = 'NEVER' "
+                  + "ORDER BY ORDINAL_POSITION";
+          resultSet =
+              context.executeQuery(
+                  Statement.newBuilder(statement).bind("table_name").to(tableName).build());
+          break;
+        case POSTGRESQL:
+          statement =
+              "SELECT COLUMN_NAME, SPANNER_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME=$1"
+                  + " AND TABLE_SCHEMA NOT IN ('information_schema', 'spanner_sys', 'pg_catalog')"
+                  + " AND IS_GENERATED = 'NEVER' ORDER BY ORDINAL_POSITION;";
+          resultSet =
+              context.executeQuery(
+                  Statement.newBuilder(statement).bind("p1").to(tableName).build());
+          break;
+        default:
+          throw new IllegalArgumentException(String.format("Unrecognized dialect: %s", dialect));
+      }
       LOG.info("Got schema information. Reading columns.");
       while (resultSet.next()) {
         Struct currentRow = resultSet.getCurrentRowAsStruct();
@@ -400,6 +439,7 @@ public class SpannerConverters {
         return nullSafeColumnParser(
             ((currentRow, columnName) -> Double.toString(currentRow.getDouble(columnName))));
       case STRING:
+      case PG_NUMERIC:
         return nullSafeColumnParser(Struct::getString);
       case BYTES:
         return nullSafeColumnParser(
@@ -433,6 +473,7 @@ public class SpannerConverters {
       case FLOAT64:
         return GSON.toJson(currentRow.getDoubleArray(columnName));
       case STRING:
+      case PG_NUMERIC:
         return GSON.toJson(currentRow.getStringList(columnName));
       case BYTES:
         return GSON.toJson(
