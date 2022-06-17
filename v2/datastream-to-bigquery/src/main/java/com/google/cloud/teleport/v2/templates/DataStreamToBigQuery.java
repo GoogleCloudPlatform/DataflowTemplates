@@ -169,7 +169,7 @@ public class DataStreamToBigQuery {
     void setOutputProjectId(String projectId);
 
     @Description("The Staging BigQuery Dataset Template")
-    @Default.String("{_metadata_dataset}")
+    @Default.String("{_metadata_schema}")
     String getOutputStagingDatasetTemplate();
 
     void setOutputStagingDatasetTemplate(String value);
@@ -181,7 +181,7 @@ public class DataStreamToBigQuery {
     void setOutputStagingTableNameTemplate(String value);
 
     @Description("The Replica BigQuery Dataset Template")
-    @Default.String("{_metadata_dataset}")
+    @Default.String("{_metadata_schema}")
     String getOutputDatasetTemplate();
 
     void setOutputDatasetTemplate(String value);
