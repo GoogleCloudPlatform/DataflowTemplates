@@ -35,6 +35,7 @@
         <protoc.version>3.15.8</protoc.version>
         <truth.version>1.0.1</truth.version>
         <truth-proto-extension.version>1.0.1</truth-proto-extension.version>
+        <secretmanager.version>2.1.2</secretmanager.version>
     </properties>
 
     <dependencies>
@@ -114,6 +115,17 @@
             <exclusion>
               <groupId>org.slf4j</groupId>
               <artifactId>slf4j-log4j12</artifactId>
+            </exclusion>
+          </exclusions>
+        </dependency>
+        <dependency>
+          <groupId>com.google.cloud</groupId>
+          <artifactId>google-cloud-secretmanager</artifactId>
+          <version>${secretmanager.version}</version>
+          <exclusions>
+            <exclusion>
+              <groupId>io.grpc</groupId>
+              <artifactId>*</artifactId>
             </exclusion>
           </exclusions>
         </dependency>

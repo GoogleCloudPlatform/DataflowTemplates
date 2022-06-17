@@ -20,6 +20,7 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
+import com.google.cloud.teleport.v2.utils.GCSUtils;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.gson.JsonArray;
@@ -307,9 +308,7 @@ public class CsvConverters {
       // If no udf then use json schema
       if (jsonSchemaPath() != null || jsonSchema() != null) {
         String schema =
-            jsonSchemaPath() != null
-                ? SchemaUtils.getGcsFileAsString(jsonSchemaPath())
-                : jsonSchema();
+            jsonSchemaPath() != null ? GCSUtils.getGcsFileAsString(jsonSchemaPath()) : jsonSchema();
 
         return lineFailsafeElements.apply(
             "LineToDocumentUsingSchema",
@@ -601,7 +600,7 @@ public class CsvConverters {
     }
 
     public StringToGenericRecordFn withSchemaLocation(String schemaLocation) {
-      this.serializedSchema = SchemaUtils.getGcsFileAsString(schemaLocation);
+      this.serializedSchema = GCSUtils.getGcsFileAsString(schemaLocation);
       return this;
     }
 

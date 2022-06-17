@@ -21,6 +21,7 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.io.WindowedFilenamePolicy;
 import com.google.cloud.teleport.v2.templates.StreamingDataGenerator;
+import com.google.cloud.teleport.v2.utils.GCSUtils;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.gson.JsonParser;
 import java.io.IOException;
@@ -188,8 +189,7 @@ public abstract class StreamingDataGeneratorWriteToGcs
             String.format(
                 "Missing required value for --avroSchemaLocation for %s output type",
                 getPipelineOptions().getOutputType()));
-        String schema =
-            SchemaUtils.getGcsFileAsString(getPipelineOptions().getAvroSchemaLocation());
+        String schema = GCSUtils.getGcsFileAsString(getPipelineOptions().getAvroSchemaLocation());
         Schema avroSchema = SchemaUtils.parseAvroSchema(schema);
         PCollection<GenericRecord> genericRecords =
             fakeMessages

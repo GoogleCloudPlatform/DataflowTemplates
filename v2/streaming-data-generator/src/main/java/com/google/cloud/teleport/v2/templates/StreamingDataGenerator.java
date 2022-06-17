@@ -25,7 +25,7 @@ import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToBigQ
 import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToGcs;
 import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToPubSub;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
-import com.google.cloud.teleport.v2.utils.SchemaUtils;
+import com.google.cloud.teleport.v2.utils.GCSUtils;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import javax.annotation.Nonnull;
@@ -332,7 +332,7 @@ public class StreamingDataGenerator {
     @Setup
     public void setup() throws IOException {
       dataGenerator = new JsonDataGeneratorImpl();
-      schema = SchemaUtils.getGcsFileAsString(schemaLocation);
+      schema = GCSUtils.getGcsFileAsString(schemaLocation);
     }
 
     @ProcessElement
