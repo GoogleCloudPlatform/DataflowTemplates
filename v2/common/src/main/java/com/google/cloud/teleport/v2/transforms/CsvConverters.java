@@ -231,6 +231,15 @@ public class CsvConverters {
     String getCsvFileEncoding();
 
     void setCsvFileEncoding(String csvFileEncoding);
+
+    @Description(
+        "Set to true to enable detailed error logging when CSV parsing fails. Note that this may"
+            + " expose sensitive data in the logs (e.g. if the CSV file contains passwords)."
+            + " Default: false.")
+    @Default.Boolean(false)
+    Boolean getLogDetailedCsvConversionErrors();
+
+    void setLogDetailedCsvConversionErrors(Boolean logDetailedCsvConversionErrors);
   }
 
   /**
@@ -589,6 +598,7 @@ public class CsvConverters {
     private String serializedSchema;
     private final String delimiter;
     private Schema schema;
+    private boolean logDetailedCsvConversionErrors = false;
 
     public StringToGenericRecordFn(String schemaLocation, String delimiter) {
       withSchemaLocation(schemaLocation);
@@ -606,6 +616,12 @@ public class CsvConverters {
 
     public StringToGenericRecordFn withSerializedSchema(String serializedSchema) {
       this.serializedSchema = serializedSchema;
+      return this;
+    }
+
+    public StringToGenericRecordFn withLogDetailedCsvConversionErrors(
+        boolean logDetailedCsvConversionErrors) {
+      this.logDetailedCsvConversionErrors = logDetailedCsvConversionErrors;
       return this;
     }
 
@@ -679,12 +695,22 @@ public class CsvConverters {
             genericRecord.put(fieldName, Boolean.valueOf(data));
             break;
           default:
-            LOG.error(fieldType + " field type is not supported.");
+            LOG.error("{} field type is not supported.", fieldType);
             throw new IllegalArgumentException(fieldType + " field type is not supported.");
         }
       } catch (Exception e) {
-        LOG.error("Failed to convert Strings to Generic Record.");
-        throw new RuntimeException("Failed to convert Strings to Generic Record.");
+        if (logDetailedCsvConversionErrors) {
+          String msg =
+              String.format(
+                  "Failed to convert string '%s' to %s (field name = %s).",
+                  data, fieldType, fieldName);
+          LOG.error(msg, e);
+          throw new RuntimeException(msg, e);
+        } else {
+          String msg = String.format("Failed to convert field '%s'.", fieldName);
+          LOG.error(msg);
+          throw new RuntimeException(msg);
+        }
       }
     }
   }
