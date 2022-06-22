@@ -29,6 +29,7 @@ import org.apache.avro.specific.SpecificData;
 import org.apache.beam.sdk.io.AvroIO;
 import org.apache.beam.sdk.io.AvroIO.Sink;
 import org.apache.beam.sdk.io.FileIO;
+import org.apache.beam.sdk.schemas.utils.AvroUtils;
 import org.joda.time.ReadableInstant;
 
 /**
@@ -49,6 +50,11 @@ public class AvroSinkWithJodaDatesConversion<ElementT extends IndexedRecord>
     implements FileIO.Sink<ElementT> {
 
   static {
+    // Call any AvroUtils method to force AvroUtils initialization to ensure that AvroUtils static
+    // init runs before this static init deterministically.
+    AvroUtils.schemaCoder(Object.class);
+
+    // override type conversion that was done by AvroUtils
     SpecificData.get().addLogicalTypeConversion(JodaDateTimeOrLongConversion.INSTANCE);
     GenericData.get().addLogicalTypeConversion(JodaDateTimeOrLongConversion.INSTANCE);
     ReflectData.get().addLogicalTypeConversion(JodaDateTimeOrLongConversion.INSTANCE);

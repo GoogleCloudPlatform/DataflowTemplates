@@ -96,6 +96,7 @@ import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.mod
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.BigQueryUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.sdk.Pipeline;
@@ -355,7 +356,7 @@ public final class FailsafeModJsonToTableRowTransformerTest {
             .setSpannerConfig(SPANNER_SERVER.getSpannerConfig(spannerDatabaseName))
             .setSpannerChangeStream(TEST_SPANNER_CHANGE_STREAM)
             .setCoder(SpannerChangeStreamsToBigQuery.FAILSAFE_ELEMENT_CODER)
-            .setIgnoreFields("")
+            .setIgnoreFields(ImmutableSet.of())
             .build();
     return new FailsafeModJsonToTableRowTransformer.FailsafeModJsonToTableRow(
         failsafeModJsonToTableRowOptions);

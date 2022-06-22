@@ -38,40 +38,6 @@
             <artifactId>common</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
-        <dependency>
-            <groupId>org.apache.avro</groupId>
-            <artifactId>avro</artifactId>
-            <version>${avro.version}</version>
-            <exclusions>
-             <exclusion>
-              <groupId>org.xerial.snappy</groupId>
-              <artifactId>snappy-java</artifactId>
-             </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.beam</groupId>
-            <artifactId>beam-sdks-java-io-parquet</artifactId>
-            <exclusions>
-              <exclusion>
-                <groupId>org.codehaus.jackson</groupId>
-                <artifactId>jackson-core-asl</artifactId>
-              </exclusion>
-              <exclusion>
-                <groupId>org.codehaus.jackson</groupId>
-                <artifactId>jackson-mapper-asl</artifactId>
-              </exclusion>
-              <exclusion>
-                <groupId>org.apache.httpcomponents</groupId>
-                <artifactId>httpclient</artifactId>
-              </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-csv</artifactId>
-            <version>${commons-csv.version}</version>
-        </dependency>
     </dependencies>
 
     <build>

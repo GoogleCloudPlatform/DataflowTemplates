@@ -43,9 +43,9 @@ public abstract class MergeConfiguration implements Serializable {
           "MERGE `{replicaTable}` AS {replicaAlias} ",
           "USING ({stagingViewSql}) AS {stagingAlias} ",
           "ON {joinCondition} ",
-          "WHEN MATCHED AND {timestampCompareSql} AND {stagingAlias}.{deleteColumn}=True THEN"
+          "WHEN MATCHED AND {sortFieldsCompareSql} AND {stagingAlias}.{deleteColumn}=True THEN"
               + " DELETE ", // TODO entire block should be configurably removed
-          "WHEN MATCHED AND {timestampCompareSql} THEN {mergeUpdateSql} ",
+          "WHEN MATCHED AND {sortFieldsCompareSql} THEN {mergeUpdateSql} ",
           "WHEN NOT MATCHED BY TARGET AND {stagingAlias}.{deleteColumn}!=True ",
           "THEN {mergeInsertSql}");
 

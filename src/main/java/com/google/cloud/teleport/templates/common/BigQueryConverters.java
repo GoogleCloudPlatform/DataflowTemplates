@@ -157,17 +157,20 @@ public class BigQueryConverters {
                     public void processElement(ProcessContext context) {
                       FailsafeElement<T, String> element = context.element();
                       String json = element.getPayload();
-
+                      TableRow row;
                       try {
-                        TableRow row = convertJsonToTableRow(json);
-                        context.output(row);
+                        row = convertJsonToTableRow(json);
                       } catch (Exception e) {
                         context.output(
                             failureTag(),
                             FailsafeElement.of(element)
                                 .setErrorMessage(e.getMessage())
                                 .setStacktrace(Throwables.getStackTraceAsString(e)));
+                        return;
                       }
+                      // The call to ouput should be outside of the try/catch block to prevent
+                      // catching errors from downstream transforms.
+                      context.output(row);
                     }
                   })
               .withOutputTags(successTag(), TupleTagList.of(failureTag())));

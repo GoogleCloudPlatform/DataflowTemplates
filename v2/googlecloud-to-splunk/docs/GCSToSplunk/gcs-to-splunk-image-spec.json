@@ -1,0 +1,128 @@
+{
+  "defaultEnvironment": {},
+  "image": "gcr.io/project-id/image-name",
+  "metadata": {
+    "description": "A pipeline that reads from a GCS bucket and writes to Splunk's HTTP Event Collector (HEC).",
+    "name": "GCS to Splunk",
+    "parameters": [
+      {
+        "helpText": "Pattern of where the CSV file(s) are located in GCS, ex: gs://mybucket/somepath/*.csv",
+        "isOptional": false,
+        "label": "GCS file pattern to search for CSV files",
+        "name": "inputFileSpec",
+        "paramType": "TEXT",
+        "regexes": [
+          "^gs:\\/\\/[^\\n\\r]+$"
+        ]
+      },
+      {
+        "helpText": "Set to 'true' if CSV file contains headers, or 'false' otherwise. An error is thrown if all files read from `inputFileSpec` do not follow the same header format. If set to 'false', a JSON schema or Javascript UDF will need to be supplied. Default: null",
+        "isOptional": false,
+        "label": "GCS file pattern to search for CSV files",
+        "name": "containsHeaders",
+        "paramType": "TEXT",
+        "regexes": [
+          "^(true|false)$"
+        ]
+      },
+      {
+        "helpText": "Delimiting character in CSV file(s). Default: use delimiter found in `csvFormat`. Example: ,",
+        "isOptional": true,
+        "label": "CSV delimiter",
+        "name": "delimiter",
+        "paramType": "TEXT"
+      },
+      {
+        "helpText": "CSV format according to Apache Commons CSV format. See: https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html. Default: DEFAULT",
+        "isOptional": true,
+        "label": "CSV delimiter",
+        "name": "csvFormat",
+        "paramType": "TEXT"
+      },
+      {
+        "helpText": "Path to JSON schema. Example: gs://path/to/schema. Default: null.",
+        "isOptional": true,
+        "label": "Path to JSON schema",
+        "name": "jsonSchemaPath",
+        "paramType": "TEXT"
+      },
+      {
+        "helpText": "GCS path to Javascript UDF source. UDF will be preferred option for transformation if supplied. If this parameter is supplied, a `javascriptTextTransformFunctionName` parameter will also be required. Otherwise, the UDF will not execute. Default: null",
+        "isOptional": true,
+        "label": "GCS location of your JavaScript UDF",
+        "name": "javascriptTextTransformGcsPath",
+        "paramType": "TEXT",
+        "regexes": [
+          "^gs:\\/\\/[^\\n\\r]+$"
+        ]
+      },
+      {
+        "helpText": "UDF Javascript Function Name. The function name should only contain letters, digits and underscores. Example: 'transform' or 'transform_udf1'. If a `javascriptTextTransformGcsPath` parameter is supplied, this parameter is required. Otherwise, the UDF will not execute. Default: null",
+        "isOptional": true,
+        "label": "The name of the JavaScript function you wish to call as your UDF",
+        "name": "javascriptTextTransformFunctionName",
+        "paramType": "TEXT",
+        "regexes": [
+          "[a-zA-Z0-9_]+"
+        ]
+      },
+      {
+        "helpText": "Google Cloud Storage path where to write objects that could not be pushed to Splunk. Ex: gs://your-bucket/your-path",
+        "isOptional": false,
+        "label": "Invalid events output path",
+        "name": "invalidOutputPath",
+        "paramType": "GCS_WRITE_FOLDER",
+        "regexes": [
+          "^gs:\\/\\/[^\\n\\r]+$"
+        ]
+      },
+      {
+        "helpText": "Splunk Http Event Collector (HEC) authentication token.",
+        "isOptional": false,
+        "label": "HEC Authentication token.",
+        "name": "token",
+        "paramType": "TEXT"
+      },
+      {
+        "helpText": "Splunk Http Event Collector (HEC) url. This should be routable from the VPC in which the pipeline runs. e.g. https://splunk-hec-host:8088",
+        "isOptional": false,
+        "label": "Splunk HEC URL.",
+        "name": "url",
+        "paramType": "TEXT"
+      },
+      {
+        "helpText": "Batch size for sending multiple events to Splunk HEC. Default: 1 (no batching).",
+        "isOptional": false,
+        "label": "Batch size for sending multiple events to Splunk HEC.",
+        "name": "batchCount",
+        "paramType": "TEXT",
+        "regexes": [
+          "[0-9]+"
+        ]
+      },
+      {
+        "helpText": "Maximum number of parallel requests. Default: 1 (no parallelism).",
+        "isOptional": false,
+        "label": "Maximum number of parallel requests.",
+        "name": "parallelism",
+        "paramType": "TEXT",
+        "regexes": [
+          "[0-9]+"
+        ]
+      },
+      {
+        "helpText": "Disable SSL certificate validation (true/false). Default: false (validation enabled). If true, the certificates are not validated (all certificates are trusted).",
+        "isOptional": false,
+        "label": "Disable SSL certificate validation.",
+        "name": "disableCertificateValidation",
+        "paramType": "TEXT",
+        "regexes": [
+          "^(true|false)$"
+        ]
+      }
+    ]
+  },
+  "sdkInfo": {
+    "language": "JAVA"
+  }
+}

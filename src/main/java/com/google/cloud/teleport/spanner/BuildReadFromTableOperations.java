@@ -80,13 +80,30 @@ class BuildReadFromTableOperations
 
                   // Also have to export table name to be able to identify which row belongs to
                   // which table.
-                  ReadOperation read =
-                      ReadOperation.create()
-                          .withQuery(
-                              String.format(
-                                  "SELECT \"%s\" AS _spanner_table, %s FROM `%s` AS t",
-                                  table.name(), columnsListAsString, table.name()))
-                          .withPartitionOptions(partitionOptions);
+                  ReadOperation read;
+                  switch (ddl.dialect()) {
+                    case GOOGLE_STANDARD_SQL:
+                      read =
+                          ReadOperation.create()
+                              .withQuery(
+                                  String.format(
+                                      "SELECT \"%s\" AS _spanner_table, %s FROM `%s` AS t",
+                                      table.name(), columnsListAsString, table.name()))
+                              .withPartitionOptions(partitionOptions);
+                      break;
+                    case POSTGRESQL:
+                      read =
+                          ReadOperation.create()
+                              .withQuery(
+                                  String.format(
+                                      "SELECT '%s' AS _spanner_table, %s FROM \"%s\" AS t",
+                                      table.name(), columnsListAsString, table.name()))
+                              .withPartitionOptions(partitionOptions);
+                      break;
+                    default:
+                      throw new IllegalArgumentException(
+                          String.format("Unrecognized dialect: %s", ddl.dialect()));
+                  }
                   c.output(read);
                 }
               }
@@ -94,28 +111,36 @@ class BuildReadFromTableOperations
   }
 
   private String createColumnExpression(Column col) {
-    if (col.typeString().equals("NUMERIC")) {
-      return "CAST(" + "t.`" + col.name() + "`" + " AS STRING) AS " + col.name();
+    switch (col.dialect()) {
+      case GOOGLE_STANDARD_SQL:
+        if (col.typeString().equals("NUMERIC")) {
+          return "CAST(" + "t.`" + col.name() + "`" + " AS STRING) AS " + col.name();
+        }
+        if (col.typeString().equals("JSON")) {
+          return "TO_JSON_STRING(" + "t.`" + col.name() + "`" + ") AS " + col.name();
+        }
+        if (col.typeString().equals("ARRAY<NUMERIC>")) {
+          return "(SELECT ARRAY_AGG(CAST(num AS STRING)) FROM UNNEST("
+              + "t.`"
+              + col.name()
+              + "`"
+              + ") AS num) AS "
+              + col.name();
+        }
+        if (col.typeString().equals("ARRAY<JSON>")) {
+          return "(SELECT ARRAY_AGG(TO_JSON_STRING(element)) FROM UNNEST("
+              + "t.`"
+              + col.name()
+              + "`"
+              + ") AS element) AS "
+              + col.name();
+        }
+        return "t.`" + col.name() + "`";
+      case POSTGRESQL:
+        return "t.\"" + col.name() + "\"";
+      default:
+        throw new IllegalArgumentException(
+            String.format("Unrecognized dialect: %s", col.dialect()));
     }
-    if (col.typeString().equals("JSON")) {
-      return "TO_JSON_STRING(" + "t.`" + col.name() + "`" + ") AS " + col.name();
-    }
-    if (col.typeString().equals("ARRAY<NUMERIC>")) {
-      return "(SELECT ARRAY_AGG(CAST(num AS STRING)) FROM UNNEST("
-          + "t.`"
-          + col.name()
-          + "`"
-          + ") AS num) AS "
-          + col.name();
-    }
-    if (col.typeString().equals("ARRAY<JSON>")) {
-      return "(SELECT ARRAY_AGG(TO_JSON_STRING(element)) FROM UNNEST("
-          + "t.`"
-          + col.name()
-          + "`"
-          + ") AS element) AS "
-          + col.name();
-    }
-    return "t.`" + col.name() + "`";
   }
 }

@@ -50,6 +50,8 @@ public class StatefulRowCleaner extends PTransform<PCollection<TableRow>, PColle
 
   private static final Logger LOG = LoggerFactory.getLogger(StatefulRowCleaner.class);
   private static final String WINDOW_DURATION = "1s";
+  private static final String FAILURE_MESSAGE =
+      "Failed stateful clean requires manual attention for ROWID";
 
   public TupleTag<TableRow> successTag = new TupleTag<TableRow>() {};
   public TupleTag<TableRow> failureTag = new TupleTag<TableRow>() {};
@@ -145,9 +147,12 @@ public class StatefulRowCleaner extends PTransform<PCollection<TableRow>, PColle
 
       TableRow previousTableRow = myState.read();
       if (previousTableRow == null) {
-        LOG.warn(
-            "Failed stateful clean requires manual attention for ROWID: {}",
-            tableRow.get(DatastreamRow.DEFAULT_ORACLE_PRIMARY_KEY));
+        if (rowStatefulRetriesExceeded(tableRow)) {
+          LOG.warn(
+              "Ignoring ROWID due to non-attributed transaction: {}",
+              tableRow.get(DatastreamRow.DEFAULT_ORACLE_PRIMARY_KEY));
+          return;
+        }
         context.output(failureTag, tableRow);
         return;
       }
@@ -178,6 +183,21 @@ public class StatefulRowCleaner extends PTransform<PCollection<TableRow>, PColle
 
       return true;
     }
+
+    private boolean rowStatefulRetriesExceeded(TableRow tableRow) {
+      int retries =
+          tableRow.get("_metadata_retry_count") == null
+              ? 0
+              : (int) tableRow.get("_metadata_retry_count");
+      String errorMessage =
+          tableRow.get("_metadata_error") == null ? "" : (String) tableRow.get("_metadata_error");
+
+      if (retries > 15 && errorMessage.contains(FAILURE_MESSAGE)) {
+        return true;
+      }
+
+      return false;
+    }
   }
 
   /**
@@ -206,7 +226,7 @@ public class StatefulRowCleaner extends PTransform<PCollection<TableRow>, PColle
 
     @Override
     public String getErrorMessageJson(TableRow row) {
-      return "Failed stateful clean requires manual attention for ROWID";
+      return FAILURE_MESSAGE;
     }
   }
 }

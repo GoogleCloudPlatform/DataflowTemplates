@@ -1,0 +1,88 @@
+{
+  "type": "record",
+  "name": "DataChangeRecord",
+  "namespace": "com.google.cloud.teleport.v2",
+  "fields" : [
+    { "name" : "partitionToken", "type" : "string"},
+    { "name" : "commitTimestamp", "type" : "long", "logicalType" : "timestamp-micros"},
+    { "name" : "serverTransactionId", "type" : "string"},
+    { "name" : "isLastRecordInTransactionInPartition", "type" : "boolean"},
+    { "name" : "recordSequence", "type" : "string"},
+    { "name" : "tableName", "type" : "string"},
+    { "name" : "rowType",
+      "type" : {
+        "type" : "array",
+        "items": {
+          "name": "ColumnType",
+          "type": "record",
+          "fields": [
+            { "name" : "name", "type" : "string"},
+            { "name" : "Type",
+              "type" : {
+                "name": "TypeCode",
+                "type": "enum",
+                "symbols": ["TYPE_CODE_UNSPECIFIED", "BOOL", "INT64", "FLOAT64",
+                  "TIMESTAMP", "DATE", "STRING", "BYTES", "ARRAY", "STRUCT",
+                  "NUMERIC", "JSON"]
+              }
+            },
+            { "name" : "isPrimaryKey", "type" : "boolean"},
+            { "name" : "ordinalPosition", "type" : "long"}
+          ]
+        },
+        "java-class":"java.util.List"
+      }
+    },
+    { "name" : "mods",
+      "type" : {
+        "type" : "array",
+        "items": {
+          "name": "Mod",
+          "type": "record",
+          "fields": [
+            { "name" : "keysJson", "type" : "string"},
+            { "name" : "oldValuesJson", "type" : ["null", "string"], "default" : null},
+            { "name" : "newValuesJson", "type": ["null", "string"], "default" : null}
+          ]
+        },
+        "java-class":"java.util.List"
+      }
+    },
+    { "name" : "modType",
+      "type" : {
+        "name": "ModType",
+        "type": "enum",
+        "symbols": ["INSERT", "UPDATE", "DELETE"]
+      }
+    },
+
+    { "name" : "valueCaptureType",
+      "type" : {
+        "name": "ValueCaptureType",
+        "type": "enum",
+        "symbols": ["OLD_AND_NEW_VALUES"]
+      }
+    },
+    { "name" : "numberOfRecordsInTransaction", "type" : "long"},
+    { "name" : "numberOfPartitionsInTransaction", "type" : "long"},
+    { "name" : "metadata",
+      "type" : ["null",  {"type" : "record",
+        "name" : "ChangeStreamRecordMetadata",
+        "fields" : [
+          { "name" : "partitionToken", "type" : "string"},
+          { "name" : "recordTimestamp", "type" : "long", "logicalType" : "timestamp-micros"},
+          { "name" : "partitionStartTimestamp", "type" : "long", "logicalType" : "timestamp-micros"},
+          { "name" : "partitionEndTimestamp", "type" : "long", "logicalType" : "timestamp-micros"},
+          { "name" : "partitionCreatedAt", "type" : "long", "logicalType" : "timestamp-micros"},
+          { "name" : "partitionScheduledAt", "type" : "long", "logicalType" : "timestamp-micros"},
+          { "name" : "partitionRunningAt", "type" : "long", "logicalType" : "timestamp-micros"},
+          { "name" : "queryStartedAt", "type" : "long", "logicalType" : "timestamp-micros"},
+          { "name" : "recordStreamStartedAt", "type" : "long", "logicalType" : "timestamp-micros"},
+          { "name" : "recordStreamEndedAt", "type" : "long", "logicalType" : "timestamp-micros"},
+          { "name" : "recordReadAt","type" : "long", "logicalType" : "timestamp-micros"},
+          { "name" : "totalStreamTimeMillis", "type":"long"},
+          { "name" : "numberOfRecordsRead","type":"long"}
+        ]
+        }],"default":null}
+    ]
+    }
