@@ -26,6 +26,7 @@ import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.DatabaseClient;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.PartitionOptions;
 import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.spanner.ResultSet;
@@ -60,6 +61,8 @@ public class SpannerConverterTest implements Serializable {
 
   private static final String TABLE = "table";
   private static final String COLUMN_NAME = "id";
+  private static final Dialect POSTGRESQL = Dialect.POSTGRESQL;
+  private static final Dialect GOOGLE_STANDARD_SQL = Dialect.GOOGLE_STANDARD_SQL;
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
   private SpannerConverters.StructCsvPrinter structCsvPrinter =
@@ -91,10 +94,11 @@ public class SpannerConverterTest implements Serializable {
 
     when(databaseClient.readOnlyTransaction(tsbound)).thenReturn(readOnlyTransaction);
     when(readOnlyTransaction.executeQuery(any(Statement.class))).thenReturn(resultSet);
-    when(resultSet.next()).thenReturn(true).thenReturn(false);
+    when(resultSet.next()).thenReturn(true).thenReturn(true).thenReturn(false);
     when(resultSet.getCurrentRowAsStruct()).thenReturn(struct);
     when(struct.getString(0)).thenReturn(COLUMN_NAME);
     when(struct.getString(1)).thenReturn("INT64");
+    when(databaseClient.getDialect()).thenReturn(GOOGLE_STANDARD_SQL);
 
     String schemaPath = "/tmp/" + UUID.randomUUID().toString();
     ValueProvider<String> textWritePrefix = ValueProvider.StaticValueProvider.of(schemaPath);
@@ -116,6 +120,59 @@ public class SpannerConverterTest implements Serializable {
                 schemaPath + SpannerConverters.ExportTransform.ExportFn.SCHEMA_SUFFIX, false));
     java.util.Scanner scanner = new java.util.Scanner(channel).useDelimiter("\\A");
     assertEquals("{\"id\":\"INT64\"}", scanner.next());
+  }
+
+  @Test
+  @Category(NeedsRunner.class)
+  public void testPgSchemaSave() throws IOException {
+
+    ValueProvider<String> table = ValueProvider.StaticValueProvider.of(TABLE);
+    SpannerConfig spannerConfig = SpannerConfig.create().withDatabaseId("test-db");
+    DatabaseClient databaseClient = mock(DatabaseClient.class, withSettings().serializable());
+    ReadOnlyTransaction readOnlyTransaction =
+        mock(ReadOnlyTransaction.class, withSettings().serializable());
+    ResultSet resultSet = mock(ResultSet.class, withSettings().serializable());
+    Struct struct = mock(Struct.class, withSettings().serializable());
+
+    /*
+     * Get a second earlier than current time to avoid tests failing due to time mismatch across
+     * machines. A future timestamp is regarded as illegal when creating a timestamp bounded
+     * transaction.
+     */
+    String instant = Instant.now().minus(1, ChronoUnit.SECONDS).toString();
+
+    ValueProvider.StaticValueProvider<String> timestamp =
+        ValueProvider.StaticValueProvider.of(instant);
+    TimestampBound tsbound = getTimestampBound(instant);
+
+    when(databaseClient.readOnlyTransaction(tsbound)).thenReturn(readOnlyTransaction);
+    when(readOnlyTransaction.executeQuery(any(Statement.class))).thenReturn(resultSet);
+    when(resultSet.next()).thenReturn(true).thenReturn(true).thenReturn(false);
+    when(resultSet.getCurrentRowAsStruct()).thenReturn(struct);
+    when(struct.getString(0)).thenReturn(COLUMN_NAME);
+    when(struct.getString(1)).thenReturn("bigint");
+    when(databaseClient.getDialect()).thenReturn(POSTGRESQL);
+
+    String schemaPath = "/tmp/" + UUID.randomUUID().toString();
+    ValueProvider<String> textWritePrefix = ValueProvider.StaticValueProvider.of(schemaPath);
+    SpannerConverters.ExportTransform exportTransform =
+        SpannerConverters.ExportTransformFactory.create(
+            table, spannerConfig, textWritePrefix, timestamp);
+    exportTransform.setDatabaseClient(databaseClient);
+
+    PCollection<ReadOperation> results = pipeline.apply("Create", exportTransform);
+    ReadOperation readOperation =
+        ReadOperation.create()
+            .withQuery("SELECT \"id\" FROM \"table\";")
+            .withPartitionOptions(PartitionOptions.newBuilder().setMaxPartitions(1000).build());
+    PAssert.that(results).containsInAnyOrder(readOperation);
+    pipeline.run();
+    ReadableByteChannel channel =
+        FileSystems.open(
+            FileSystems.matchNewResource(
+                schemaPath + SpannerConverters.ExportTransform.ExportFn.SCHEMA_SUFFIX, false));
+    java.util.Scanner scanner = new java.util.Scanner(channel).useDelimiter("\\A");
+    assertEquals("{\"id\":\"bigint\"}", scanner.next());
   }
 
   @Test
@@ -198,6 +255,17 @@ public class SpannerConverterTest implements Serializable {
             Struct.newBuilder()
                 .set("col")
                 .to(Value.timestamp(Timestamp.ofTimeMicroseconds(0)))
+                .build()));
+  }
+
+  @Test
+  public void testPgNumeric() {
+    assertEquals(
+        "\"-25398514232141142.0014578090\"",
+        structCsvPrinter.print(
+            Struct.newBuilder()
+                .set("col")
+                .to(Value.pgNumeric("-25398514232141142.0014578090"))
                 .build()));
   }
 
@@ -297,6 +365,19 @@ public class SpannerConverterTest implements Serializable {
             Struct.newBuilder()
                 .set("col")
                 .to(Value.bytesArray(Collections.singletonList(ByteArray.copyFrom("test"))))
+                .build()));
+  }
+
+  @Test
+  public void testPgNumericArray() {
+    assertEquals(
+        "\"[\"\"-25398514232141142.0014578090\"\"]\"",
+        structCsvPrinter.print(
+            Struct.newBuilder()
+                .set("col")
+                .to(
+                    Value.pgNumericArray(
+                        Collections.singletonList("-25398514232141142.0014578090")))
                 .build()));
   }
 }

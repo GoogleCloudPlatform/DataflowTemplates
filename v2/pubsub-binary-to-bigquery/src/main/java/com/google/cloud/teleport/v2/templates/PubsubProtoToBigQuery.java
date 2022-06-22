@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.transforms.FailsafeElementTransforms.ConvertFailsafeElementToPubsubMessage;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
+import com.google.cloud.teleport.v2.utils.GCSUtils;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.annotations.VisibleForTesting;
@@ -181,7 +182,7 @@ public final class PubsubProtoToBigQuery {
       return write.withSchema(
           SchemaUtils.createBigQuerySchema(descriptor, options.getPreserveProtoFieldNames()));
     } else {
-      return write.withJsonSchema(SchemaUtils.getGcsFileAsString(schemaPath));
+      return write.withJsonSchema(GCSUtils.getGcsFileAsString(schemaPath));
     }
   }
 

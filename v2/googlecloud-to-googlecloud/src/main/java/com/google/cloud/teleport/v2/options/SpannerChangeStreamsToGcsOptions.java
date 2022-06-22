@@ -49,9 +49,9 @@ public interface SpannerChangeStreamsToGcsOptions
 
   @Description("The Spanner database to read from.")
   @Validation.Required
-  String getSpannerDatabaseId();
+  String getSpannerDatabase();
 
-  void setSpannerDatabaseId(String spannerDatabaseId);
+  void setSpannerDatabase(String spannerDatabase);
 
   @Description("The Spanner instance to use for the change stream metadata table.")
   @Validation.Required
@@ -61,9 +61,17 @@ public interface SpannerChangeStreamsToGcsOptions
 
   @Description("The Spanner database to use for the change stream metadata table.")
   @Validation.Required
-  String getSpannerMetadataDatabaseId();
+  String getSpannerMetadataDatabase();
 
-  void setSpannerMetadataDatabaseId(String spannerMetadataDatabaseId);
+  void setSpannerMetadataDatabase(String spannerMetadataDatabase);
+
+  @Description(
+      "The Cloud Spanner change streams Connector metadata table name to use. If not provided, a"
+          + " Cloud Spanner change streams Connector metadata table will automatically be created"
+          + " during the pipeline flow.")
+  String getSpannerMetadataTableName();
+
+  void setSpannerMetadataTableName(String value);
 
   @Description("The Spanner change stream to read from.")
   @Validation.Required

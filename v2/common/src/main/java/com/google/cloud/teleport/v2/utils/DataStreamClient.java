@@ -21,18 +21,18 @@ import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
-import com.google.api.services.datastream.v1alpha1.DataStream;
-import com.google.api.services.datastream.v1alpha1.model.DiscoverConnectionProfileRequest;
-import com.google.api.services.datastream.v1alpha1.model.MysqlColumn;
-import com.google.api.services.datastream.v1alpha1.model.MysqlDatabase;
-import com.google.api.services.datastream.v1alpha1.model.MysqlRdbms;
-import com.google.api.services.datastream.v1alpha1.model.MysqlTable;
-import com.google.api.services.datastream.v1alpha1.model.OracleColumn;
-import com.google.api.services.datastream.v1alpha1.model.OracleRdbms;
-import com.google.api.services.datastream.v1alpha1.model.OracleSchema;
-import com.google.api.services.datastream.v1alpha1.model.OracleTable;
-import com.google.api.services.datastream.v1alpha1.model.SourceConfig;
-import com.google.api.services.datastream.v1alpha1.model.Stream;
+import com.google.api.services.datastream.v1.Datastream;
+import com.google.api.services.datastream.v1.model.DiscoverConnectionProfileRequest;
+import com.google.api.services.datastream.v1.model.MysqlColumn;
+import com.google.api.services.datastream.v1.model.MysqlDatabase;
+import com.google.api.services.datastream.v1.model.MysqlRdbms;
+import com.google.api.services.datastream.v1.model.MysqlTable;
+import com.google.api.services.datastream.v1.model.OracleColumn;
+import com.google.api.services.datastream.v1.model.OracleRdbms;
+import com.google.api.services.datastream.v1.model.OracleSchema;
+import com.google.api.services.datastream.v1.model.OracleTable;
+import com.google.api.services.datastream.v1.model.SourceConfig;
+import com.google.api.services.datastream.v1.model.Stream;
 import com.google.auth.Credentials;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.cloud.bigquery.StandardSQLTypeName;
@@ -68,7 +68,7 @@ public class DataStreamClient implements Serializable {
       Pattern.compile("TIMESTAMP\\(?\\d?\\)? WITH LOCAL TIME ZONE");
 
   private final Credentials credentials;
-  private transient DataStream datastream;
+  private transient Datastream datastream;
   private String rootUrl = "https://datastream.googleapis.com/";
 
   private final Counter datastreamRpcs = Metrics.counter(DataStreamClient.class, "datastreamRpcs");
@@ -81,14 +81,14 @@ public class DataStreamClient implements Serializable {
     this.rootUrl = url;
   }
 
-  private DataStream getDataStream() throws IOException {
+  private Datastream getDataStream() throws IOException {
     if (this.datastream == null) {
       try {
         HttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
         JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
         HttpRequestInitializer initializer = getHttpRequestInitializer(credentials);
         this.datastream =
-            new DataStream.Builder(httpTransport, jsonFactory, initializer)
+            new Datastream.Builder(httpTransport, jsonFactory, initializer)
                 .setApplicationName("BeamDataStreamClient")
                 .setRootUrl(this.rootUrl)
                 .build();
@@ -152,10 +152,10 @@ public class DataStreamClient implements Serializable {
     }
   }
 
-  private DataStream.Projects.Locations.ConnectionProfiles.Discover getDiscoverTableRequest(
+  private Datastream.Projects.Locations.ConnectionProfiles.Discover getDiscoverTableRequest(
       String streamName, String schemaName, String tableName, SourceConfig sourceConnProfile)
       throws IOException {
-    String sourceConnProfileName = sourceConnProfile.getSourceConnectionProfileName();
+    String sourceConnProfileName = sourceConnProfile.getSourceConnectionProfile();
     String parent = getParentFromConnectionProfileName(sourceConnProfileName);
 
     DiscoverConnectionProfileRequest discoverRequest =
@@ -170,7 +170,7 @@ public class DataStreamClient implements Serializable {
       throw new IOException("Source Connection Profile Type Not Supported");
     }
 
-    DataStream.Projects.Locations.ConnectionProfiles.Discover discoverConnProfile =
+    Datastream.Projects.Locations.ConnectionProfiles.Discover discoverConnProfile =
         getDataStream()
             .projects()
             .locations()
@@ -187,7 +187,7 @@ public class DataStreamClient implements Serializable {
    */
   public Stream getStream(String streamName) throws IOException {
 
-    DataStream.Projects.Locations.Streams.Get getStream =
+    Datastream.Projects.Locations.Streams.Get getStream =
         getDataStream().projects().locations().streams().get(streamName);
     Stream stream = getStream.execute();
     this.datastreamRpcs.inc();
@@ -231,7 +231,7 @@ public class DataStreamClient implements Serializable {
         discoverMysqlTableSchema(streamName, schemaName, tableName, sourceConnProfile);
     for (MysqlColumn column : table.getMysqlColumns()) {
       StandardSQLTypeName bqType = convertMysqlToBigQueryColumnType(column);
-      objectSchema.put(column.getColumnName(), bqType);
+      objectSchema.put(column.getColumn(), bqType);
     }
     return objectSchema;
   }
@@ -245,7 +245,7 @@ public class DataStreamClient implements Serializable {
     for (MysqlColumn column : table.getMysqlColumns()) {
       Boolean isPrimaryKey = column.getPrimaryKey();
       if (BooleanUtils.isTrue(isPrimaryKey)) {
-        primaryKeys.add(column.getColumnName());
+        primaryKeys.add(column.getColumn());
       }
     }
 
@@ -263,7 +263,7 @@ public class DataStreamClient implements Serializable {
   public MysqlTable discoverMysqlTableSchema(
       String streamName, String schemaName, String tableName, SourceConfig sourceConnProfile)
       throws IOException {
-    DataStream.Projects.Locations.ConnectionProfiles.Discover discoverConnProfile =
+    Datastream.Projects.Locations.ConnectionProfiles.Discover discoverConnProfile =
         getDiscoverTableRequest(streamName, schemaName, tableName, sourceConnProfile);
 
     MysqlRdbms tableResponse = discoverConnProfile.execute().getMysqlRdbms();
@@ -275,11 +275,10 @@ public class DataStreamClient implements Serializable {
 
   private MysqlRdbms buildMysqlRdbmsForTable(String databaseName, String tableName) {
     List<MysqlTable> mysqlTables = new ArrayList<MysqlTable>();
-    mysqlTables.add(new MysqlTable().setTableName(tableName));
+    mysqlTables.add(new MysqlTable().setTable(tableName));
 
     List<MysqlDatabase> mysqlDatabases = new ArrayList<MysqlDatabase>();
-    mysqlDatabases.add(
-        new MysqlDatabase().setDatabaseName(databaseName).setMysqlTables(mysqlTables));
+    mysqlDatabases.add(new MysqlDatabase().setDatabase(databaseName).setMysqlTables(mysqlTables));
 
     MysqlRdbms rdbms = new MysqlRdbms().setMysqlDatabases(mysqlDatabases);
 
@@ -295,7 +294,7 @@ public class DataStreamClient implements Serializable {
     for (OracleColumn column : table.getOracleColumns()) {
       Boolean isPrimaryKey = column.getPrimaryKey();
       if (BooleanUtils.isTrue(isPrimaryKey)) {
-        primaryKeys.add(column.getColumnName());
+        primaryKeys.add(column.getColumn());
       }
     }
 
@@ -311,7 +310,7 @@ public class DataStreamClient implements Serializable {
         discoverOracleTableSchema(streamName, schemaName, tableName, sourceConnProfile);
     for (OracleColumn column : table.getOracleColumns()) {
       StandardSQLTypeName bqType = convertOracleToBigQueryColumnType(column);
-      objectSchema.put(column.getColumnName(), bqType);
+      objectSchema.put(column.getColumn(), bqType);
     }
     return objectSchema;
   }
@@ -327,7 +326,7 @@ public class DataStreamClient implements Serializable {
   public OracleTable discoverOracleTableSchema(
       String streamName, String schemaName, String tableName, SourceConfig sourceConnProfile)
       throws IOException {
-    DataStream.Projects.Locations.ConnectionProfiles.Discover discoverConnProfile =
+    Datastream.Projects.Locations.ConnectionProfiles.Discover discoverConnProfile =
         getDiscoverTableRequest(streamName, schemaName, tableName, sourceConnProfile);
 
     OracleRdbms tableResponse = discoverConnProfile.execute().getOracleRdbms();
@@ -339,10 +338,10 @@ public class DataStreamClient implements Serializable {
 
   private OracleRdbms buildOracleRdbmsForTable(String schemaName, String tableName) {
     List<OracleTable> oracleTables = new ArrayList<OracleTable>();
-    oracleTables.add(new OracleTable().setTableName(tableName));
+    oracleTables.add(new OracleTable().setTable(tableName));
 
     List<OracleSchema> oracleSchemas = new ArrayList<OracleSchema>();
-    oracleSchemas.add(new OracleSchema().setSchemaName(schemaName).setOracleTables(oracleTables));
+    oracleSchemas.add(new OracleSchema().setSchema(schemaName).setOracleTables(oracleTables));
 
     OracleRdbms rdbms = new OracleRdbms().setOracleSchemas(oracleSchemas);
 

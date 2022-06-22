@@ -73,7 +73,7 @@ public class WriteDataChangeRecordsToGcsAvroTest {
         .apply(
             "WriteTextFile(s)",
             WriteDataChangeRecordsToGcsAvro.newBuilder()
-                .withOutputDirectory(fakeDir)
+                .withGcsOutputDirectory(fakeDir)
                 .withOutputFilenamePrefix(AVRO_FILENAME_PREFIX)
                 .setNumShards(NUM_SHARDS)
                 .withTempLocation(fakeTempLocation)
@@ -81,12 +81,14 @@ public class WriteDataChangeRecordsToGcsAvroTest {
     p.run();
 
     // Then, read the records back from the output directory using AvrioIO.read.
-    PCollection<DataChangeRecord> dataChangeRecords =
+    PCollection<com.google.cloud.teleport.v2.DataChangeRecord> dataChangeRecords =
         pipeline.apply(
             "readRecords",
-            AvroIO.read(DataChangeRecord.class)
+            AvroIO.read(com.google.cloud.teleport.v2.DataChangeRecord.class)
                 .from(fakeDir + "/avro-output-GlobalWindow-pane-0-last-00-of-01.avro"));
-    PAssert.that(dataChangeRecords).containsInAnyOrder(dataChangeRecord);
+    PAssert.that(dataChangeRecords)
+        .containsInAnyOrder(
+            WriteDataChangeRecordsToGcsAvro.dataChangeRecordToAvro(dataChangeRecord));
     pipeline.run();
   }
 
@@ -97,14 +99,15 @@ public class WriteDataChangeRecordsToGcsAvroTest {
   @Test
   public void testWriteWithoutOutputDirectory() {
     expectedException.expect(IllegalArgumentException.class);
-    expectedException.expectMessage("withOutputDirectory(outputDirectory) called with null input.");
+    expectedException.expectMessage(
+        "withGcsOutputDirectory(gcsOutputDirectory) called with null input.");
     final DataChangeRecord dataChangeRecord = createTestDataChangeRecord();
     pipeline
         .apply("CreateInput", Create.of(dataChangeRecord))
         .apply(
             "WriteTextFile(s)",
             WriteDataChangeRecordsToGcsAvro.newBuilder()
-                .withOutputDirectory(null)
+                .withGcsOutputDirectory(null)
                 .withOutputFilenamePrefix(AVRO_FILENAME_PREFIX)
                 .setNumShards(NUM_SHARDS)
                 .withTempLocation(fakeTempLocation)
@@ -125,7 +128,7 @@ public class WriteDataChangeRecordsToGcsAvroTest {
         .apply(
             "WriteTextFile(s)",
             WriteDataChangeRecordsToGcsAvro.newBuilder()
-                .withOutputDirectory(fakeDir)
+                .withGcsOutputDirectory(fakeDir)
                 .withOutputFilenamePrefix(AVRO_FILENAME_PREFIX)
                 .setNumShards(NUM_SHARDS)
                 .withTempLocation(null)

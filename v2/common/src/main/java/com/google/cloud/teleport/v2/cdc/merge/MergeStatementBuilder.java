@@ -63,8 +63,7 @@ public class MergeStatementBuilder implements Serializable {
     mergeQueryValues.put(
         "joinCondition",
         buildJoinConditions(primaryKeyFields, REPLICA_TABLE_NAME, STAGING_TABLE_NAME));
-    mergeQueryValues.put(
-        "timestampCompareSql", buildTimestampCheck(getPrimarySortField(orderByFields)));
+    mergeQueryValues.put("sortFieldsCompareSql", buildSortFieldComparisons(orderByFields));
     mergeQueryValues.put(
         "mergeUpdateSql", buildUpdateStatement(allFields, configuration.quoteCharacter()));
     mergeQueryValues.put(
@@ -79,9 +78,13 @@ public class MergeStatementBuilder implements Serializable {
     return orderByFields.get(0);
   }
 
-  static String buildTimestampCheck(String timestampField) {
-    return String.format(
-        "%s.%s <= %s.%s", REPLICA_TABLE_NAME, timestampField, STAGING_TABLE_NAME, timestampField);
+  static String buildSortFieldComparisons(List<String> orderByFields) {
+    return orderByFields.stream()
+        .map(
+            field ->
+                String.format(
+                    "%s.%s <= %s.%s", REPLICA_TABLE_NAME, field, STAGING_TABLE_NAME, field))
+        .collect(Collectors.joining(" AND "));
   }
 
   public static final String LATEST_FROM_STAGING_TEMPLATE = "SELECT %s FROM (%s) WHERE row_num=1";

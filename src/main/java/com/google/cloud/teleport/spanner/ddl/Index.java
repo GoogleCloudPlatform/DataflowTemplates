@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.spanner.ddl;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.spanner.Dialect;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.io.Serializable;
@@ -30,22 +31,82 @@ public abstract class Index implements Serializable {
 
   abstract String name();
 
+  abstract Dialect dialect();
+
   abstract String table();
 
   abstract ImmutableList<IndexColumn> indexColumns();
 
   abstract boolean unique();
 
+  // restricted for gsql
   abstract boolean nullFiltered();
+
+  // restricted for pg
+  @Nullable
+  abstract String filter();
 
   @Nullable
   abstract String interleaveIn();
 
+  public static Builder builder(Dialect dialect) {
+    return new AutoValue_Index.Builder()
+        .dialect(dialect)
+        .nullFiltered(false)
+        .unique(false);
+  }
+
   public static Builder builder() {
-    return new AutoValue_Index.Builder().nullFiltered(false).unique(false);
+    return builder(Dialect.GOOGLE_STANDARD_SQL);
   }
 
   public void prettyPrint(Appendable appendable) throws IOException {
+    switch (dialect()) {
+      case GOOGLE_STANDARD_SQL:
+        prettyPrintGsql(appendable);
+        break;
+      case POSTGRESQL:
+        prettyPrintPg(appendable);
+        break;
+      default:
+        throw new IllegalArgumentException(String.format("Unrecognized dialect: ", dialect()));
+    }
+  }
+
+  private void prettyPrintPg(Appendable appendable) throws IOException {
+    appendable.append("CREATE");
+    if (unique()) {
+      appendable.append(" UNIQUE");
+    }
+    appendable.append(" INDEX \"").append(name()).append("\" ON \"").append(table()).append("\"");
+
+    String indexColumnsString =
+        indexColumns().stream()
+            .filter(c -> c.order() != IndexColumn.Order.STORING)
+            .map(c -> c.prettyPrint())
+            .collect(Collectors.joining(", "));
+    appendable.append("(").append(indexColumnsString).append(")");
+
+    String storingString =
+        indexColumns().stream()
+            .filter(c -> c.order() == IndexColumn.Order.STORING)
+            .map(c -> "\"" + c.name() + "\"")
+            .collect(Collectors.joining(", "));
+
+    if (!storingString.isEmpty()) {
+      appendable.append(" INCLUDE (").append(storingString).append(")");
+    }
+
+    if (interleaveIn() != null) {
+      appendable.append(" INTERLEAVE IN \"").append(interleaveIn()).append("\"");
+    }
+
+    if (filter() != null && !filter().isEmpty()) {
+      appendable.append(" WHERE ").append(filter());
+    }
+  }
+
+  private void prettyPrintGsql(Appendable appendable) throws IOException {
     appendable.append("CREATE");
     if (unique()) {
       appendable.append(" UNIQUE");
@@ -71,6 +132,7 @@ public abstract class Index implements Serializable {
     if (!storingString.isEmpty()) {
       appendable.append(" STORING (").append(storingString).append(")");
     }
+
     if (interleaveIn() != null) {
       appendable.append(", INTERLEAVE IN ").append(interleaveIn());
     }
@@ -81,7 +143,7 @@ public abstract class Index implements Serializable {
   public Builder toBuilder() {
     Builder builder = autoToBuilder();
     for (IndexColumn column : indexColumns()) {
-      builder.columnsBuilder.set(column);
+      builder.columnsBuilder().set(column);
     }
     return builder;
   }
@@ -105,17 +167,20 @@ public abstract class Index implements Serializable {
   @AutoValue.Builder
   public abstract static class Builder {
 
-    private IndexColumn.IndexColumnsBuilder<Builder> columnsBuilder =
-        new IndexColumn.IndexColumnsBuilder<>(this);
+    private IndexColumn.IndexColumnsBuilder<Builder> columnsBuilder;
 
     public abstract Builder name(String name);
 
     public abstract Builder table(String name);
 
+    abstract Builder dialect(Dialect dialect);
+
+    public abstract Dialect dialect();
+
     abstract Builder indexColumns(ImmutableList<IndexColumn> columns);
 
     public IndexColumn.IndexColumnsBuilder<Builder> columns() {
-      return columnsBuilder;
+      return columnsBuilder();
     }
 
     public abstract Builder unique(boolean unique);
@@ -130,12 +195,21 @@ public abstract class Index implements Serializable {
       return nullFiltered(true);
     }
 
+    public abstract Builder filter(String filter);
+
     public abstract Builder interleaveIn(String interleaveIn);
 
     abstract Index autoBuild();
 
     public Index build() {
-      return this.indexColumns(columnsBuilder.build()).autoBuild();
+      return this.indexColumns(columnsBuilder().build()).autoBuild();
+    }
+
+    private IndexColumn.IndexColumnsBuilder<Builder> columnsBuilder() {
+      if (columnsBuilder == null) {
+        columnsBuilder = new IndexColumn.IndexColumnsBuilder<>(this, dialect());
+      }
+      return columnsBuilder;
     }
   }
 }

@@ -18,6 +18,7 @@ package com.google.cloud.teleport.spanner;
 import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingWhiteSpace;
 import static org.junit.Assert.assertThat;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.RandomDdlGenerator;
 import java.io.IOException;
@@ -48,6 +49,30 @@ public class CopySchemaTest {
 
     DdlToAvroSchemaConverter ddlToAvro = new DdlToAvroSchemaConverter("spanner", "test", false);
     AvroSchemaToDdlConverter avroToDdl = new AvroSchemaToDdlConverter();
+
+    Collection<Schema> schemas = ddlToAvro.convert(ddl);
+    Ddl copied = avroToDdl.toDdl(schemas);
+
+    assertThat(copied.prettyPrint(), equalToCompressingWhiteSpace(ddl.prettyPrint()));
+  }
+
+  @Test
+  public void pgCopyRandomSchema() {
+    Ddl ddl =
+        RandomDdlGenerator.builder(Dialect.POSTGRESQL)
+            .setMaxPkComponents(2)
+            .setMaxBranchPerLevel(new int[] {5, 4, 3, 2, 2, 3, 3})
+            .setMaxViews(3)
+            .build()
+            .generate();
+    try {
+      ddl.prettyPrint(System.out);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+
+    DdlToAvroSchemaConverter ddlToAvro = new DdlToAvroSchemaConverter("spanner", "test", false);
+    AvroSchemaToDdlConverter avroToDdl = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
 
     Collection<Schema> schemas = ddlToAvro.convert(ddl);
     Ddl copied = avroToDdl.toDdl(schemas);
