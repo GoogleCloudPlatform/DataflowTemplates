@@ -21,6 +21,7 @@ import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
 import com.google.cloud.secretmanager.v1.SecretVersionName;
 import com.google.cloud.teleport.options.CommonTemplateOptions;
 import com.google.cloud.teleport.util.GCSUtils;
+import com.google.common.annotations.VisibleForTesting;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -44,11 +45,13 @@ public class CommonTemplateJvmInitializer implements JvmInitializer {
 
   private static final Logger LOG = LoggerFactory.getLogger(CommonTemplateJvmInitializer.class);
   private static final Pattern COMMA_PATTERN = Pattern.compile(",");
-  private static final Pattern GCS_PATTERN = Pattern.compile("^gs:\\/\\/");
-  private static final Pattern SECRET_MANAGER_PATTERN =
+  private static final Pattern DEFAULT_GCS_PATTERN = Pattern.compile("^gs:\\/\\/");
+  private static final Pattern DEFAULT_SECRET_MANAGER_PATTERN =
       Pattern.compile(
           "^projects\\/[^\\n\\r\\/]+\\/secrets\\/[^\\n\\r\\/]+\\/versions\\/[^\\n\\r\\/]+$");
-  private static final String DEST_DIRECTORY = "/extra_files";
+  private Pattern gcsPattern = DEFAULT_GCS_PATTERN;
+  private Pattern secretManagerPattern = DEFAULT_SECRET_MANAGER_PATTERN;
+  private String destinationDirectory = "/extra_files";
 
   @Override
   public void onStartup() {}
@@ -84,7 +87,7 @@ public class CommonTemplateJvmInitializer implements JvmInitializer {
    * extraFilesToStage will be stored.
    */
   private void createDestinationDirectory() {
-    File destRoot = new File(DEST_DIRECTORY);
+    File destRoot = new File(destinationDirectory);
     if (!destRoot.mkdir()) {
       throw new RuntimeException("Could not create destination folder for extraFilesToStage.");
     }
@@ -101,8 +104,8 @@ public class CommonTemplateJvmInitializer implements JvmInitializer {
   }
 
   private void saveFileLocally(String source) throws IOException {
-    Matcher gcsMatcher = GCS_PATTERN.matcher(source);
-    Matcher secretManagerMatcher = SECRET_MANAGER_PATTERN.matcher(source);
+    Matcher gcsMatcher = gcsPattern.matcher(source);
+    Matcher secretManagerMatcher = secretManagerPattern.matcher(source);
 
     if (gcsMatcher.find()) {
       saveGcsFile(source);
@@ -121,7 +124,7 @@ public class CommonTemplateJvmInitializer implements JvmInitializer {
     byte[] fileData = GCSUtils.getGcsFileAsBytes(source);
     // Filename will be the same as the file in Cloud Storage
     ResourceId sourceResourceId = FileSystems.matchNewResource(source, /*isDirectory*/ false);
-    File destFile = Paths.get(DEST_DIRECTORY, sourceResourceId.getFilename()).toFile();
+    File destFile = Paths.get(destinationDirectory, sourceResourceId.getFilename()).toFile();
     copy(fileData, destFile);
     LOG.info("Localized {} to {}.", source, destFile.getAbsolutePath());
   }
@@ -130,7 +133,7 @@ public class CommonTemplateJvmInitializer implements JvmInitializer {
     SecretVersionName secretVersionName = parseSecretVersion(source);
     byte[] fileData = getSecretPayload(secretVersionName);
     // Filename will be the secret id
-    File destFile = Paths.get(DEST_DIRECTORY, secretVersionName.getSecret()).toFile();
+    File destFile = Paths.get(destinationDirectory, secretVersionName.getSecret()).toFile();
     copy(fileData, destFile);
     LOG.info("Localized {} to {}.", source, destFile.getAbsolutePath());
   }
@@ -164,5 +167,21 @@ public class CommonTemplateJvmInitializer implements JvmInitializer {
     FileOutputStream outputStream = new FileOutputStream(destFile);
     outputStream.write(data);
     outputStream.close();
+  }
+
+  /** Only to be used by tests. */
+  @VisibleForTesting
+  void withDestinationDirectory(String destinationDirectory) {
+    this.destinationDirectory = destinationDirectory;
+  }
+
+  @VisibleForTesting
+  void withFileSystemPattern(String fileSystemPattern) {
+    this.gcsPattern = Pattern.compile(fileSystemPattern);
+  }
+
+  @VisibleForTesting
+  void withSecretManagerPattern(String secretManagerPattern) {
+    this.secretManagerPattern = Pattern.compile(secretManagerPattern);
   }
 }

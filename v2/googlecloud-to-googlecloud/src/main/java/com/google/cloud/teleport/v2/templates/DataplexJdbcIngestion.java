@@ -28,12 +28,12 @@ import com.google.cloud.teleport.v2.transforms.BeamRowToGenericRecordFn;
 import com.google.cloud.teleport.v2.transforms.GenericRecordsToGcsPartitioned;
 import com.google.cloud.teleport.v2.utils.DataplexJdbcIngestionFilter;
 import com.google.cloud.teleport.v2.utils.DataplexJdbcIngestionNaming;
+import com.google.cloud.teleport.v2.utils.GCSUtils;
 import com.google.cloud.teleport.v2.utils.JdbcConverters;
 import com.google.cloud.teleport.v2.utils.JdbcIngestionWriteDisposition.MapWriteDisposition;
 import com.google.cloud.teleport.v2.utils.JdbcIngestionWriteDisposition.WriteDispositionException;
 import com.google.cloud.teleport.v2.utils.KMSEncryptedNestedValue;
 import com.google.cloud.teleport.v2.utils.Schemas;
-import com.google.cloud.teleport.v2.utils.StorageUtils;
 import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
 import com.google.cloud.teleport.v2.values.PartitionMetadata;
 import com.google.common.annotations.VisibleForTesting;
@@ -240,7 +240,7 @@ public class DataplexJdbcIngestion {
       DataplexJdbcIngestionOptions options,
       DynamicDataSourceConfiguration dataSourceConfig,
       String targetRootPath) {
-    List<String> existingFiles = StorageUtils.getFilesInDirectory(targetRootPath);
+    List<String> existingFiles = GCSUtils.getFilesInDirectory(targetRootPath);
     // Auto inferring beam schema
     Schema beamSchema =
         Schemas.jdbcSchemaToBeamSchema(dataSourceConfig.buildDatasource(), options.getQuery());

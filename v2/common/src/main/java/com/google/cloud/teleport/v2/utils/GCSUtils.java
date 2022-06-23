@@ -25,11 +25,15 @@ import java.io.Reader;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;
 import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.io.CharStreams;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,6 +44,48 @@ public class GCSUtils {
 
   /* Logger for class. */
   private static final Logger LOG = LoggerFactory.getLogger(GCSUtils.class);
+  private static final Pattern BUCKET_URN_SPEC = Pattern.compile("^projects/.*/buckets/(.+)$");
+
+  /**
+   * Parses a Cloud Storage bucket URN and returns the corresponding bucket name.
+   *
+   * @param bucketUrn bucket URN in {@code projects/[project_id]/buckets/[bucket_id]} format
+   * @return the bucket name extracted from the URN, i.e. {@code [bucket_id]}
+   * @throws IllegalArgumentException if the bucket URN format is invalid
+   */
+  public static String parseBucketUrn(String bucketUrn) {
+    Matcher match = BUCKET_URN_SPEC.matcher(bucketUrn);
+    if (!match.matches()) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Bucket reference is not in projects/[project_id]/buckets/[bucket_id] format: \"%s\"",
+              bucketUrn));
+    }
+    return match.group(1);
+  }
+
+  /**
+   * Returns a list of all the files in a particular path.
+   *
+   * @param path input path
+   * @return list of all the files in the path
+   */
+  public static List<String> getFilesInDirectory(String path) {
+    try {
+      String pathPrefix = path + "/";
+      MatchResult result = FileSystems.match(pathPrefix + "**", EmptyMatchTreatment.ALLOW);
+      List<String> fileNames =
+          result.metadata().stream()
+              .map(MatchResult.Metadata::resourceId)
+              .map(ResourceId::toString)
+              .map(s -> StringUtils.removeStart(s, pathPrefix))
+              .collect(toList());
+      LOG.info("{} file(s) found in directory {}", fileNames.size(), path);
+      return fileNames;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
 
   /**
    * The {@link SchemaUtils#getGcsFileAsString(String)} reads a file from GCS and returns it as a

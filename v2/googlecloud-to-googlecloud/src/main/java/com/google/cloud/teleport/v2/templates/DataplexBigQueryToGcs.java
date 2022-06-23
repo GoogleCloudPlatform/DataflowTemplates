@@ -34,7 +34,7 @@ import com.google.cloud.teleport.v2.transforms.UpdateDataplexBigQueryToGcsExport
 import com.google.cloud.teleport.v2.utils.BigQueryMetadataLoader;
 import com.google.cloud.teleport.v2.utils.BigQueryUtils;
 import com.google.cloud.teleport.v2.utils.DataplexBigQueryToGcsFilter;
-import com.google.cloud.teleport.v2.utils.StorageUtils;
+import com.google.cloud.teleport.v2.utils.GCSUtils;
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
@@ -165,7 +165,7 @@ public class DataplexBigQueryToGcs {
       throws ExecutionException, InterruptedException {
 
     Pipeline pipeline = Pipeline.create(options);
-    List<String> existingTargetFiles = StorageUtils.getFilesInDirectory(targetRootPath);
+    List<String> existingTargetFiles = GCSUtils.getFilesInDirectory(targetRootPath);
 
     LOG.info("Loading BigQuery metadata...");
     List<BigQueryTable> tables =
