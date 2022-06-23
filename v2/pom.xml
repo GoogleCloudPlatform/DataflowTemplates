@@ -29,7 +29,7 @@
         <autovalue.annotations.version>1.7.4</autovalue.annotations.version>
         <autovalue.service.version>1.0-rc6</autovalue.service.version>
         <checkstyle.version>8.7</checkstyle.version>
-        <beam.version>2.38.0</beam.version>
+        <beam.version>2.40.0</beam.version>
         <hamcrest.version>2.1</hamcrest.version>
         <hadoop.version>2.10.1</hadoop.version>
         <guava.version>30.1-jre</guava.version>
@@ -645,6 +645,18 @@
              could do
                   mvn test -Psnapshot -Dbeam.version=A.B.C-SNAPSHOT
           -->
+        <profile>
+            <id>validaterelease</id>
+	    <activation>
+              <activeByDefault>true</activeByDefault>
+            </activation>
+            <repositories>
+                <repository>
+                    <id>apache.beam.newrelease</id>
+                    <url>https://repository.apache.org/content/repositories/orgapachebeam-1275/</url>
+                </repository>
+            </repositories>
+        </profile>
         <profile>
             <id>snapshot</id>
             <repositories>

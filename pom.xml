@@ -40,7 +40,7 @@
     <autovalue.service.version>1.0-rc6</autovalue.service.version>
     <avro.version>1.8.2</avro.version>
     <checkstyle.version>8.7</checkstyle.version>
-    <beam.version>2.38.0</beam.version>
+    <beam.version>2.40.0</beam.version>
     <extra.enforcer.rules.version>1.3</extra.enforcer.rules.version>
     <hamcrest.version>2.1</hamcrest.version>
     <java.version>1.8</java.version>
@@ -955,6 +955,18 @@
          could do
               mvn test -Psnapshot -Dbeam.version=A.B.C-SNAPSHOT
       -->
+        <profile>
+            <id>validaterelease</id>
+	    <activation>
+              <activeByDefault>true</activeByDefault>
+            </activation>
+            <repositories>
+                <repository>
+                    <id>apache.beam.newrelease</id>
+                    <url>https://repository.apache.org/content/repositories/orgapachebeam-1275/</url>
+                </repository>
+            </repositories>
+        </profile>
     <profile>
       <id>snapshot</id>
       <repositories>
