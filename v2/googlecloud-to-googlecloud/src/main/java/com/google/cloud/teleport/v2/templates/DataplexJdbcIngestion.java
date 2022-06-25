@@ -34,8 +34,8 @@ import com.google.cloud.teleport.v2.utils.JdbcIngestionWriteDisposition.MapWrite
 import com.google.cloud.teleport.v2.utils.JdbcIngestionWriteDisposition.WriteDispositionException;
 import com.google.cloud.teleport.v2.utils.KMSEncryptedNestedValue;
 import com.google.cloud.teleport.v2.utils.Schemas;
-import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
-import com.google.cloud.teleport.v2.values.PartitionMetadata;
+import com.google.cloud.teleport.v2.values.DataplexEnums.DataplexAssetResourceSpec;
+import com.google.cloud.teleport.v2.values.DataplexPartitionMetadata;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.util.List;
@@ -51,7 +51,6 @@ import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.transforms.Distinct;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
@@ -275,7 +274,7 @@ public class DataplexJdbcIngestion {
     }
 
     // Write to GCS bucket
-    PCollection<PartitionMetadata> metadata =
+    PCollection<DataplexPartitionMetadata> metadata =
         genericRecords.apply(
             "Write to GCS",
             new GenericRecordsToGcsPartitioned(

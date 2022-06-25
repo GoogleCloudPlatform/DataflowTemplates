@@ -49,6 +49,9 @@ public abstract class BigQueryTable implements Serializable {
 
   public abstract SerializableSchemaSupplier getSchemaSupplier();
 
+  @Nullable
+  public abstract String getDataplexEntityName();
+
   public Schema getSchema() {
     return getSchemaSupplier().get();
   }
@@ -104,6 +107,10 @@ public abstract class BigQueryTable implements Serializable {
     public abstract SerializableSchemaSupplier getSchemaSupplier();
 
     public abstract Builder setSchemaSupplier(SerializableSchemaSupplier schema);
+
+    public abstract String getDataplexEntityName();
+
+    public abstract Builder setDataplexEntityName(String dataplexEntityName);
 
     public abstract BigQueryTable build();
 

@@ -138,10 +138,7 @@ public class JdbcConvertersTest {
     Mockito.when(resultSetMetaData.getColumnCount()).thenReturn(2);
 
     Mockito.when(resultSetMetaData.getColumnName(1)).thenReturn(NAME_KEY);
-    Mockito.when(resultSetMetaData.getColumnTypeName(1)).thenReturn("string");
-
     Mockito.when(resultSetMetaData.getColumnName(2)).thenReturn("date_column");
-    Mockito.when(resultSetMetaData.getColumnTypeName(2)).thenReturn("date");
 
     expectedTableRow = new TableRow();
     expectedTableRow.set(NAME_KEY, null);

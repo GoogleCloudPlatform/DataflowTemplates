@@ -28,30 +28,30 @@ import java.io.Serializable;
  * <p>All values are necessary.
  */
 @AutoValue
-public abstract class PartitionMetadata implements Serializable {
+public abstract class DataplexPartitionMetadata implements Serializable {
   public abstract String location();
 
   public abstract ImmutableList<String> values();
 
   public static Builder builder() {
-    return new AutoValue_PartitionMetadata.Builder();
+    return new AutoValue_DataplexPartitionMetadata.Builder();
   }
 
   public GoogleCloudDataplexV1Partition toDataplexPartition() {
     return new GoogleCloudDataplexV1Partition().setLocation(location()).setValues(values());
   }
 
-  /** Builder for {@link PartitionMetadata}. */
+  /** Builder for {@link DataplexPartitionMetadata}. */
   @AutoValue.Builder
   public abstract static class Builder {
     public abstract Builder setLocation(String value);
 
     public abstract Builder setValues(ImmutableList<String> value);
 
-    abstract PartitionMetadata autoBuild();
+    abstract DataplexPartitionMetadata autoBuild();
 
-    public PartitionMetadata build() {
-      PartitionMetadata metadata = autoBuild();
+    public DataplexPartitionMetadata build() {
+      DataplexPartitionMetadata metadata = autoBuild();
       checkState(!metadata.location().isEmpty(), "Location cannot be empty");
 
       ImmutableList<String> values = metadata.values();
