@@ -51,7 +51,6 @@ type MavenFlags interface {
 	SkipDependencyAnalysis() string
 	SkipJib() string
 	SkipTests() string
-	FailAtTheEnd() string
 }
 
 type mvnFlags struct{}
@@ -78,10 +77,6 @@ func (*mvnFlags) SkipJib() string {
 
 func (*mvnFlags) SkipTests() string {
 	return "-Dmaven.test.skip"
-}
-
-func (*mvnFlags) FailAtTheEnd() string {
-	return "-fae"
 }
 
 func NewMavenFlags() MavenFlags {
