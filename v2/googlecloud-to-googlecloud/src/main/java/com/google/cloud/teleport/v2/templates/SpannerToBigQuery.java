@@ -22,6 +22,9 @@ import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.transforms.SpannerToBigQueryTransform.StructToJson;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -53,8 +56,12 @@ public final class SpannerToBigQuery {
     pipeline.run();
   }
 
-  private static BigQueryIO.Write<String> writeToBigQuery(SpannerToBigQueryOptions options) {
-    return BigQueryConverters.<String>createWriteTransform(options)
+  private static Write<String> writeToBigQuery(SpannerToBigQueryOptions options) {
+    return BigQueryIO.<String>write()
+        .to(options.getOutputTableSpec())
+        .withWriteDisposition(WriteDisposition.valueOf(options.getWriteDisposition()))
+        .withCreateDisposition(CreateDisposition.valueOf(options.getCreateDisposition()))
+        .withExtendedErrorInfo()
         .withFormatFunction(BigQueryConverters::convertJsonToTableRow)
         .withJsonSchema(getGcsFileAsString(options.getBigQuerySchemaPath()));
   }
