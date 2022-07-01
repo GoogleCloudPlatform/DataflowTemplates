@@ -15,9 +15,12 @@
  */
 package com.google.cloud.teleport.spanner;
 
+import static org.junit.Assert.assertThrows;
+
 import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.spanner.TextImportProtos.ImportManifest.TableManifest;
@@ -490,6 +493,107 @@ public final class TextRowToMutationTest {
     pipeline.run();
   }
 
+  @Test
+  public void parseRowWithPgArrayColumn() throws Exception {
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("ddl", Create.of(getTestPgDdlWithArray())).apply(View.asSingleton());
+    PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
+        pipeline
+            .apply(
+                "tableColumnsMap",
+                Create.<Map<String, List<TableManifest.Column>>>of(getEmptyTableColumnsMap())
+                    .withCoder(
+                        MapCoder.of(
+                            StringUtf8Coder.of(),
+                            ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
+            .apply("Map as view", View.asSingleton());
+
+    PCollection<KV<String, String>> input =
+        pipeline.apply("input", Create.of(KV.of(testTableName, "str, [a string in an array]")));
+    PCollection<Mutation> mutations =
+        input.apply(
+            ParDo.of(
+                    new TextRowToMutation(
+                        ddlView,
+                        tableColumnsMapView,
+                        columnDelimiter,
+                        StaticValueProvider.of('"'),
+                        trailingDelimiter,
+                        escape,
+                        nullString,
+                        dateFormat,
+                        timestampFormat))
+                .withSideInputs(ddlView, tableColumnsMapView));
+    assertThrows(PipelineExecutionException.class, () -> pipeline.run());
+  }
+
+  @Test
+  public void pgParseRowToMutation() {
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("ddl", Create.of(getPgTestDdl())).apply(View.asSingleton());
+    PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
+        pipeline
+            .apply(
+                "tableColumnsMap",
+                Create.<Map<String, List<TableManifest.Column>>>of(getEmptyTableColumnsMap())
+                    .withCoder(
+                        MapCoder.of(
+                            StringUtf8Coder.of(),
+                            ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
+            .apply("Map as view", View.asSingleton());
+
+    PCollection<KV<String, String>> input =
+        pipeline.apply(
+            "input",
+            Create.of(
+                KV.of(
+                    testTableName,
+                    "123,a string,'another"
+                        + " string',1.23,True,2018-12-31T23:59:59Z,1567637083,aGk=,"
+                        + "-439.25335679, 1910-01-01")));
+    PCollection<Mutation> mutations =
+        input.apply(
+            ParDo.of(
+                    new TextRowToMutation(
+                        ddlView,
+                        tableColumnsMapView,
+                        columnDelimiter,
+                        StaticValueProvider.of('\''),
+                        StaticValueProvider.of(true),
+                        escape,
+                        nullString,
+                        dateFormat,
+                        timestampFormat))
+                .withSideInputs(ddlView, tableColumnsMapView));
+
+    PAssert.that(mutations)
+        .containsInAnyOrder(
+            Mutation.newInsertOrUpdateBuilder(testTableName)
+                .set("int_col")
+                .to(123)
+                .set("str_10_col")
+                .to("a string")
+                .set("str_max_col")
+                .to("another string")
+                .set("float_col")
+                .to(1.23)
+                .set("bool_col")
+                .to(true)
+                .set("timestamp_col")
+                .to(Value.timestamp(Timestamp.parseTimestamp("2018-12-31T23:59:59Z")))
+                .set("timestamp_col_epoch")
+                .to(Value.timestamp(Timestamp.ofTimeMicroseconds(1567637083)))
+                .set("byte_col")
+                .to(Value.bytes(ByteArray.fromBase64("aGk=")))
+                .set("numeric_col")
+                .to(Value.pgNumeric("-439.25335679"))
+                .set("date_col")
+                .to(Value.date(Date.parseDate("1910-01-01")))
+                .build());
+
+    pipeline.run();
+  }
+
   private static Ddl getTestDdl() {
     Ddl ddl =
         Ddl.builder()
@@ -529,6 +633,51 @@ public final class TextRowToMutationTest {
             .endColumn()
             .column("json_col")
             .json()
+            .endColumn()
+            .primaryKey()
+            .asc("int_col")
+            .end()
+            .endTable()
+            .build();
+    return ddl;
+  }
+
+  private static Ddl getPgTestDdl() {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable(testTableName)
+            .column("int_col")
+            .pgInt8()
+            .notNull()
+            .endColumn()
+            .column("str_10_col")
+            .pgVarchar()
+            .size(10)
+            .endColumn()
+            .column("str_max_col")
+            .type(Type.pgVarchar())
+            .max()
+            .endColumn()
+            .column("float_col")
+            .pgFloat8()
+            .endColumn()
+            .column("bool_col")
+            .pgBool()
+            .endColumn()
+            .column("timestamp_col")
+            .pgTimestamptz()
+            .endColumn()
+            .column("timestamp_col_epoch")
+            .pgTimestamptz()
+            .endColumn()
+            .column("byte_col")
+            .pgBytea()
+            .endColumn()
+            .column("numeric_col")
+            .pgNumeric()
+            .endColumn()
+            .column("date_col")
+            .pgDate()
             .endColumn()
             .primaryKey()
             .asc("int_col")
@@ -579,6 +728,27 @@ public final class TextRowToMutationTest {
             .endColumn()
             .column("arr_str_col")
             .type(Type.array(Type.string()))
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("str_col")
+            .end()
+            .endTable()
+            .build();
+    return ddl;
+  }
+
+  private static Ddl getTestPgDdlWithArray() {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable(testTableName)
+            .column("str_col")
+            .pgVarchar()
+            .max()
+            .notNull()
+            .endColumn()
+            .column("arr_str_col")
+            .type(Type.pgArray(Type.pgVarchar()))
             .max()
             .endColumn()
             .primaryKey()

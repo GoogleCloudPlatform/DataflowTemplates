@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The {@link PubsubToJdbc} streaming pipeline reads data from Google Cloud PubSub and publishes to
- * JdbcIO. <br>
+ * JDBC. <br>
  */
 public class PubsubToJdbc {
 
@@ -63,7 +63,7 @@ public class PubsubToJdbc {
   }
 
   /**
-   * Runs a pipeline which reads message from Pub/Sub and writes to JdbcIO.
+   * Runs a pipeline which reads message from Pub/Sub and writes to JDBC.
    *
    * @param options The execution options.
    * @return The pipeline result.

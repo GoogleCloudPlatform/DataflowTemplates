@@ -22,6 +22,9 @@ import org.apache.avro.Schema;
 public class AvroUtil {
   private AvroUtil() {}
 
+  // The property name for change stream for-clause in Avro schema.
+  public static final String CHANGE_STREAM_FOR_CLAUSE = "spannerChangeStreamForClause";
+
   public static Schema unpackNullable(Schema schema) {
     if (schema.getType() != Schema.Type.UNION) {
       return null;

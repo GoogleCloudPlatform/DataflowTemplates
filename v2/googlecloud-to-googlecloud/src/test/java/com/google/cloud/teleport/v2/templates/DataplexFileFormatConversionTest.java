@@ -32,9 +32,9 @@ import com.google.cloud.teleport.v2.transforms.AvroConverters;
 import com.google.cloud.teleport.v2.transforms.ParquetConverters;
 import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
 import com.google.cloud.teleport.v2.utils.WriteDisposition.WriteDispositionOptions;
-import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
 import com.google.cloud.teleport.v2.values.DataplexCompression;
-import com.google.cloud.teleport.v2.values.EntityMetadata.StorageSystem;
+import com.google.cloud.teleport.v2.values.DataplexEnums;
+import com.google.cloud.teleport.v2.values.DataplexEnums.DataplexAssetResourceSpec;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
 import java.io.File;
@@ -93,7 +93,7 @@ public class DataplexFileFormatConversionTest {
       new GoogleCloudDataplexV1Entity()
           .setName("projects/p1/locations/l1/lakes/l1/zones/z1/entities/e1")
           .setId("e1")
-          .setSystem(StorageSystem.CLOUD_STORAGE.name())
+          .setSystem(DataplexEnums.StorageSystem.CLOUD_STORAGE.name())
           .setFormat(new GoogleCloudDataplexV1StorageFormat().setFormat(InputFileFormat.CSV.name()))
           .setSchema(SCHEMA);
 
@@ -115,7 +115,7 @@ public class DataplexFileFormatConversionTest {
           .setName("projects/p1/locations/l1/lakes/l1/zones/z1/entities/e2")
           .setId("e2")
           .setAsset(asset2.getName())
-          .setSystem(StorageSystem.CLOUD_STORAGE.name())
+          .setSystem(DataplexEnums.StorageSystem.CLOUD_STORAGE.name())
           .setFormat(
               new GoogleCloudDataplexV1StorageFormat().setFormat(InputFileFormat.JSON.name()))
           .setDataPath(Resources.getResource(RESOURCES_DIR + "/entity2").getPath())
@@ -125,7 +125,7 @@ public class DataplexFileFormatConversionTest {
       new GoogleCloudDataplexV1Entity()
           .setName("projects/p1/locations/l1/lakes/l1/zones/z1/entities/e3")
           .setId("e3")
-          .setSystem(StorageSystem.CLOUD_STORAGE.name())
+          .setSystem(DataplexEnums.StorageSystem.CLOUD_STORAGE.name())
           .setFormat(
               new GoogleCloudDataplexV1StorageFormat().setFormat(InputFileFormat.AVRO.name()))
           .setDataPath(Resources.getResource(RESOURCES_DIR + "/entity3").getPath())
@@ -135,7 +135,7 @@ public class DataplexFileFormatConversionTest {
       new GoogleCloudDataplexV1Entity()
           .setName("projects/p1/locations/l1/lakes/l1/zones/z1/entities/e4")
           .setId("e4")
-          .setSystem(StorageSystem.CLOUD_STORAGE.name())
+          .setSystem(DataplexEnums.StorageSystem.CLOUD_STORAGE.name())
           .setFormat(
               new GoogleCloudDataplexV1StorageFormat().setFormat(InputFileFormat.PARQUET.name()))
           .setDataPath(Resources.getResource(RESOURCES_DIR + "/entity4").getPath())

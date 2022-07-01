@@ -16,14 +16,13 @@
 package com.google.cloud.teleport.v2.options;
 
 import org.apache.beam.sdk.options.Description;
-import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 
 /**
  * The {@link JdbcToPubsubOptions} interface provides the custom execution options passed by the
  * executor at the command-line.
  */
-public interface JdbcToPubsubOptions extends PipelineOptions {
+public interface JdbcToPubsubOptions extends CommonTemplateOptions {
   @Description("The JDBC driver class name. " + "For example: com.mysql.jdbc.Driver")
   String getDriverClassName();
 

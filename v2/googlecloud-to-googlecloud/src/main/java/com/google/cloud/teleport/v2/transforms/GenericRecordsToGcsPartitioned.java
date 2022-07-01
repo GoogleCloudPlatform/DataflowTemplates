@@ -23,7 +23,7 @@ import com.google.cloud.teleport.v2.utils.DataplexJdbcPartitionUtils;
 import com.google.cloud.teleport.v2.utils.DataplexJdbcPartitionUtils.PartitioningSchema;
 import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
-import com.google.cloud.teleport.v2.values.PartitionMetadata;
+import com.google.cloud.teleport.v2.values.DataplexPartitionMetadata;
 import com.google.common.collect.ImmutableList;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -50,11 +50,11 @@ import org.slf4j.LoggerFactory;
 
 /**
  * A {@link PTransform} that partitions a collection of {@link GenericRecord} by datetime field and
- * writes the partitions to GCS. The transform outputs a collection of {@link PartitionMetadata} for
- * each partition.
+ * writes the partitions to GCS. The transform outputs a collection of {@link
+ * DataplexPartitionMetadata} for each partition.
  */
 public class GenericRecordsToGcsPartitioned
-    extends PTransform<PCollection<GenericRecord>, PCollection<PartitionMetadata>> {
+    extends PTransform<PCollection<GenericRecord>, PCollection<DataplexPartitionMetadata>> {
 
   /* Logger for class.*/
   private static final Logger LOG = LoggerFactory.getLogger(GenericRecordsToGcsPartitioned.class);
@@ -83,7 +83,7 @@ public class GenericRecordsToGcsPartitioned
   }
 
   @Override
-  public PCollection<PartitionMetadata> expand(PCollection<GenericRecord> input) {
+  public PCollection<DataplexPartitionMetadata> expand(PCollection<GenericRecord> input) {
     Schema schema = SchemaUtils.parseAvroSchema(serializedAvroSchema);
     Sink<GenericRecord> sink;
     switch (outputFileFormat) {
@@ -119,10 +119,10 @@ public class GenericRecordsToGcsPartitioned
                   .via((SerializableFunction<KV<Void, String>, String>) KV::getValue))
           .apply(
               MapElements.via(
-                  new SimpleFunction<String, PartitionMetadata>() {
+                  new SimpleFunction<String, DataplexPartitionMetadata>() {
                     @Override
-                    public PartitionMetadata apply(String path) {
-                      return PartitionMetadata.builder()
+                    public DataplexPartitionMetadata apply(String path) {
+                      return DataplexPartitionMetadata.builder()
                           .setValues(ImmutableList.of("1"))
                           .setLocation(withoutFileName(path))
                           .build();
@@ -160,9 +160,10 @@ public class GenericRecordsToGcsPartitioned
         .getPerDestinationOutputFilenames()
         .apply(
             MapElements.via(
-                new SimpleFunction<KV<List<KV<String, Integer>>, String>, PartitionMetadata>() {
+                new SimpleFunction<
+                    KV<List<KV<String, Integer>>, String>, DataplexPartitionMetadata>() {
                   @Override
-                  public PartitionMetadata apply(
+                  public DataplexPartitionMetadata apply(
                       KV<List<KV<String, Integer>>, String> partitionAndPath) {
                     if (partitionAndPath.getKey() == null) {
                       throw new IllegalStateException(
@@ -172,7 +173,7 @@ public class GenericRecordsToGcsPartitioned
                       throw new IllegalStateException(
                           "Path is null for partition " + partitionAndPath.getKey());
                     }
-                    return PartitionMetadata.builder()
+                    return DataplexPartitionMetadata.builder()
                         .setValues(
                             partitionAndPath.getKey().stream()
                                 .map(e -> String.valueOf(e.getValue()))

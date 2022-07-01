@@ -682,6 +682,7 @@
         <module>googlecloud-to-googlecloud</module>
         <module>googlecloud-to-mongodb</module>
         <module>hive-to-bigquery</module>
+        <module>googlecloud-to-splunk</module>
         <module>kafka-to-bigquery</module>
         <module>kafka-to-gcs</module>
         <module>kudu-to-bigquery</module>

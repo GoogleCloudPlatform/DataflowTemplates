@@ -74,11 +74,13 @@ public class SpannerUtils {
   private Map<String, TrackedSpannerTable> getSpannerTableByName(
       Set<String> spannerTableNames,
       Map<String, Set<String>> spannerColumnNamesExplicitlyTrackedByChangeStreamByTableName) {
-    Map<String, List<TrackedSpannerColumn>> spannerColumnsByTableName =
-        getSpannerColumnsByTableName(
-            spannerTableNames, spannerColumnNamesExplicitlyTrackedByChangeStreamByTableName);
     Map<String, Set<String>> keyColumnNameByTableName =
         getKeyColumnNameByTableName(spannerTableNames);
+    Map<String, List<TrackedSpannerColumn>> spannerColumnsByTableName =
+        getSpannerColumnsByTableName(
+            spannerTableNames,
+            keyColumnNameByTableName,
+            spannerColumnNamesExplicitlyTrackedByChangeStreamByTableName);
 
     Map<String, TrackedSpannerTable> result = new HashMap<>();
     for (String tableName : spannerColumnsByTableName.keySet()) {
@@ -104,6 +106,7 @@ public class SpannerUtils {
    */
   private Map<String, List<TrackedSpannerColumn>> getSpannerColumnsByTableName(
       Set<String> spannerTableNames,
+      Map<String, Set<String>> keyColumnNameByTableName,
       Map<String, Set<String>> spannerColumnNamesExplicitlyTrackedByChangeStreamByTableName) {
     Map<String, List<TrackedSpannerColumn>> result = new HashMap<>();
     StringBuilder sqlStringBuilder =
@@ -127,11 +130,13 @@ public class SpannerUtils {
         String tableName = columnsResultSet.getString(INFORMATION_SCHEMA_TABLE_NAME);
         String columnName = columnsResultSet.getString(INFORMATION_SCHEMA_COLUMN_NAME);
         // Skip if the columns of the table is tracked explicitly, and the specified column is not
-        // tracked.
+        // tracked. Primary key columns are always tracked.
         if (spannerColumnNamesExplicitlyTrackedByChangeStreamByTableName.containsKey(tableName)
             && !spannerColumnNamesExplicitlyTrackedByChangeStreamByTableName
                 .get(tableName)
-                .contains(columnName)) {
+                .contains(columnName)
+            && (!keyColumnNameByTableName.containsKey(tableName)
+                || !keyColumnNameByTableName.get(tableName).contains(columnName))) {
           continue;
         }
 

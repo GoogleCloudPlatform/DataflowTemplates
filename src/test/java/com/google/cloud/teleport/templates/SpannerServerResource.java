@@ -19,6 +19,7 @@ import com.google.cloud.spanner.BatchClient;
 import com.google.cloud.spanner.DatabaseAdminClient;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.DatabaseId;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.SpannerOptions;
@@ -26,6 +27,7 @@ import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.RandomInsertMutationGenerator;
+import java.util.Arrays;
 import java.util.Iterator;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
@@ -56,7 +58,10 @@ public class SpannerServerResource extends ExternalResource {
     SpannerOptions spannerOptions;
     if (EMULATOR_HOST == null) {
       spannerOptions =
-          SpannerOptions.newBuilder().setProjectId(this.projectId).setHost(host).build();
+          SpannerOptions.newBuilder()
+              .setProjectId(this.projectId)
+              .setHost(host)
+              .build();
     } else {
       spannerOptions =
           SpannerOptions.newBuilder()
@@ -76,6 +81,20 @@ public class SpannerServerResource extends ExternalResource {
   public void createDatabase(String dbName, Iterable<String> ddlStatements) throws Exception {
     // Waits for create database to complete.
     databaseAdminClient.createDatabase(this.instanceId, dbName, ddlStatements).get();
+  }
+
+  public void createPgDatabase(String dbName, Iterable<String> ddlStatements) throws Exception {
+    databaseAdminClient
+        .createDatabase(
+            databaseAdminClient
+                .newDatabaseBuilder(DatabaseId.of(projectId, instanceId, dbName))
+                .setDialect(Dialect.POSTGRESQL)
+                .build(),
+            Arrays.asList())
+        .get();
+    if (ddlStatements.iterator().hasNext()) {
+      databaseAdminClient.updateDatabaseDdl(instanceId, dbName, ddlStatements, null).get();
+    }
   }
 
   public void updateDatabase(String dbName, Iterable<String> ddlStatements) throws Exception {

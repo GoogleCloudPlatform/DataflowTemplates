@@ -17,8 +17,8 @@ package com.google.cloud.teleport.v2.utils;
 
 import static org.junit.Assert.assertEquals;
 
-import com.google.api.services.datastream.v1alpha1.model.OracleTable;
-import com.google.api.services.datastream.v1alpha1.model.SourceConfig;
+import com.google.api.services.datastream.v1.model.OracleTable;
+import com.google.api.services.datastream.v1.model.SourceConfig;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import org.junit.Ignore;
@@ -56,7 +56,7 @@ public class DataStreamClientTest {
     DataStreamClient datastream = new DataStreamClient(null);
 
     SourceConfig sourceConnProfile = datastream.getSourceConnectionProfile(streamName);
-    String sourceConnProfileName = sourceConnProfile.getSourceConnectionProfileName();
+    String sourceConnProfileName = sourceConnProfile.getSourceConnectionProfile();
 
     assertEquals(sourceConnProfileName, connProfileName);
   }
@@ -80,7 +80,7 @@ public class DataStreamClientTest {
     OracleTable table =
         datastream.discoverOracleTableSchema(streamName, schemaName, tableName, sourceConnProfile);
 
-    String columnName = table.getOracleColumns().get(0).getColumnName();
+    String columnName = table.getOracleColumns().get(0).getColumn();
     Boolean isPrimaryKey = table.getOracleColumns().get(0).getPrimaryKey();
 
     assertEquals(columnName, "JOB_TITLE");
