@@ -1,0 +1,31 @@
+{
+  "config": {
+    "reset_db": true,
+    "node_write_batch_size": 5000,
+    "edge_write_batch_size": 1000
+  },
+  "source": {
+    "type": "text",
+    "name": "Demo musicians",
+    "format": "JSON",
+    "data": [
+        [12, "John Bonham", "Orange", "Drums"],
+        [19, "John Mayer", "White", "Guitar"],
+        [32, "John Scofield", "Black", "Guitar"],
+        [15, "John Butler", "Wooden", "Guitar"]
+      ],
+    "ordered_field_names": "experience,name,instrument_color,instrument"
+   },
+  "options": [
+    {"relationship":"PLAYS"},
+    {"relationship.save.strategy":"keys"},
+    {"relationship.source.labels":":Musician"},
+    {"relationship.source.save.mode":"overwrite"},
+    {"relationship.source.node.keys":"name:name"},
+    {"relationship.target.labels":":Instrument"},
+    {"relationship.target.node.keys":"instrument:name"},
+    {"relationship.target.node.properties":"instrument_color:color"},
+    {"relationship.target.save.mode":"overwrite"}
+  ]
+
+}

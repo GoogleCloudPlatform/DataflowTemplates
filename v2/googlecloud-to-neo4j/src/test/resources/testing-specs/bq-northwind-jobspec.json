@@ -1,0 +1,155 @@
+{
+  "config": {
+    "reset_db": true,
+    "index_all_properties": true,
+    "node_write_batch_size": 5000,
+    "edge_write_batch_size": 1000,
+    "node_write_parallelism": 10,
+    "edge_write_parallelism": 1
+  },
+  "sources": [
+    {
+      "type": "bigquery",
+      "name": "1k orders",
+      "query": "SELECT customer_id,contact_name,company_name,seller_id,seller_first_name,seller_last_name,seller_title,product_id,product_name,category_name,supplier_name, supplier_postal_code, supplier_country,order_id,order_date, shipped_date,required_date,quantity,unit_price,discount FROM neo4jbusinessdev.northwind.V_CUSTOMER_ORDERS"
+    }
+  ],
+  "targets": [
+    {
+      "node": {
+        "source": "1k orders",
+        "name": "Customer",
+        "active": true,
+        "mode": "merge",
+        "transform": {
+          "group": true
+        },
+        "automap": false,
+        "mappings": {
+          "labels": [
+            "\"Customer\""
+          ],
+          "keys": [
+            {
+              "customer_id": "Customer Id"
+            }
+          ],
+          "properties": {
+            "unique": [],
+            "indexed": [
+              {
+                "contact_name": "Contact Name"
+              },
+              {
+                "company_name": "Company Name"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "node": {
+        "source": "1k orders",
+        "name": "Products",
+        "active": true,
+        "mode": "merge",
+        "transform": {
+          "aggregations": [
+            {
+              "expr": "SUM(unit_price*quantity)",
+              "field": "total_amount_sold"
+            },
+            {
+              "expr": "SUM(quantity)",
+              "field": "total_quantity_sold"
+            }
+          ],
+          "group": true,
+          "order_by": "product_name ASC",
+          "limit": -1
+        },
+        "automap": false,
+        "mappings": {
+          "labels": [
+            "\"Product\""
+          ],
+          "keys": [
+            "product_id"
+          ],
+          "properties": {
+            "indexed": [
+              "contact_name",
+              "company_name"
+            ],
+            "strings": [
+              {
+                "product_name": "Product Name"
+              }
+            ],
+            "doubles": {
+              "total_amount_sold": "Total product order amount"
+            },
+            "longs": [
+              {
+                "total_quantity_sold": "Total product quantity"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "edge": {
+        "source": "1k orders",
+        "name": "Purchase Edges",
+        "mode": "merge",
+        "active": true,
+        "transform": {
+          "aggregations": [
+            {
+              "expr": "SUM(unit_price*quantity)",
+              "field": "sum_amount"
+            },
+            {
+              "expr": "SUM(quantity)",
+              "field": "sum_quantity"
+            }
+          ],
+          "group": true,
+          "order_by": "product_name ASC",
+          "limit": -1
+        },
+        "automap": false,
+        "mappings": {
+          "type": "\"Purchases\"",
+          "source": {
+            "label": "\"Customer\"",
+            "key": "customer_id"
+          },
+          "target": {
+            "label": "\"Product\"",
+            "key": "product_id"
+          },
+          "properties": {
+            "indexed": [
+              {
+                "order_id": "Order Id"
+              }
+            ],
+            "longs": [
+              {
+                "sum_quantity": "Calculated order quantity"
+              }
+            ],
+            "doubles": [
+              {
+                "sum_amount": "Calculated order amount"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

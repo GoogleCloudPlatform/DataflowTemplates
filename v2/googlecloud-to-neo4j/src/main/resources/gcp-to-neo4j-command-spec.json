@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.neo4j.GcpToNeo4j",
+  "classPath": "/template/gcp-to-neo4j/*:/template/gcp-to-neo4j/libs/*:/template/gcp-to-neo4j/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"gcp-to-neo4j\"}"
+  }
+}
