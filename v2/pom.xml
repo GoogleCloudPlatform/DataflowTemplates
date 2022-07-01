@@ -680,19 +680,18 @@
         <module>file-format-conversion</module>
         <module>googlecloud-to-elasticsearch</module>
         <module>googlecloud-to-googlecloud</module>
+        <module>googlecloud-to-mongodb</module>
         <module>hive-to-bigquery</module>
         <module>kafka-to-bigquery</module>
         <module>kafka-to-gcs</module>
         <module>kudu-to-bigquery</module>
+        <module>mongodb-to-googlecloud</module>
         <module>pubsub-binary-to-bigquery</module>
         <module>pubsub-cdc-to-bigquery</module>
         <module>pubsub-to-mongodb</module>
         <module>streaming-data-generator</module>
         <module>kafka-to-pubsub</module>
         <module>kafka-common</module>
-        <module>mongodb-to-bigquery</module>
-        <module>bigquery-to-mongodb</module>
-        <module>mongodb-to-bigquery-cdc</module>
     </modules>
 
 </project>

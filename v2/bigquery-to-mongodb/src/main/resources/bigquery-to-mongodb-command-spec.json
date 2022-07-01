@@ -1,7 +1,0 @@
-{
-  "mainClass": "com.google.cloud.teleport.v2.templates.BigQueryToMongoDb",
-  "classPath": "/template/bigquery-to-mongodb/*:/template/bigquery-to-mongodb/libs/*:/template/bigquery-to-mongodb/classes",
-  "defaultParameterValues": {
-    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"bigquery-to-mongodb\"}"
-  }
-}
