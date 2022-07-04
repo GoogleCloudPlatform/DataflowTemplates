@@ -102,7 +102,7 @@ public final class DataplexJdbcIngestionFilterTest {
                     PartitioningSchema.MONTHLY,
                     FileFormatOptions.AVRO.getFileSuffix(),
                     WriteDispositionOptions.WRITE_TRUNCATE,
-                    StorageUtils.getFilesInDirectory(targetRootPath),
+                    GCSUtils.getFilesInDirectory(targetRootPath),
                     FILTERED_RECORDS_OUT,
                     EXISTING_TARGET_FILES_OUT));
     PAssert.that(result.get(FILTERED_RECORDS_OUT)).containsInAnyOrder(record11, record12, record21);
@@ -131,7 +131,7 @@ public final class DataplexJdbcIngestionFilterTest {
                     PartitioningSchema.MONTHLY,
                     FileFormatOptions.AVRO.getFileSuffix(),
                     WriteDispositionOptions.SKIP,
-                    StorageUtils.getFilesInDirectory(targetRootPath),
+                    GCSUtils.getFilesInDirectory(targetRootPath),
                     FILTERED_RECORDS_OUT,
                     EXISTING_TARGET_FILES_OUT));
     PAssert.that(result.get(FILTERED_RECORDS_OUT)).containsInAnyOrder(record21);
@@ -160,7 +160,7 @@ public final class DataplexJdbcIngestionFilterTest {
                     PartitioningSchema.MONTHLY,
                     FileFormatOptions.AVRO.getFileSuffix(),
                     WriteDispositionOptions.WRITE_EMPTY,
-                    StorageUtils.getFilesInDirectory(targetRootPath),
+                    GCSUtils.getFilesInDirectory(targetRootPath),
                     FILTERED_RECORDS_OUT,
                     EXISTING_TARGET_FILES_OUT));
     try {

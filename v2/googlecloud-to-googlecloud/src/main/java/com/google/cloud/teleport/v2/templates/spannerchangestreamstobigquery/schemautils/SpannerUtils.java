@@ -74,19 +74,22 @@ public class SpannerUtils {
   private Map<String, TrackedSpannerTable> getSpannerTableByName(
       Set<String> spannerTableNames,
       Map<String, Set<String>> spannerColumnNamesExplicitlyTrackedByChangeStreamByTableName) {
+    Map<String, Map<String, Integer>> keyColumnNameToOrdinalPositionByTableName =
+        getKeyColumnNameToOrdinalPositionByTableName(spannerTableNames);
     Map<String, List<TrackedSpannerColumn>> spannerColumnsByTableName =
         getSpannerColumnsByTableName(
-            spannerTableNames, spannerColumnNamesExplicitlyTrackedByChangeStreamByTableName);
-    Map<String, Set<String>> keyColumnNameByTableName =
-        getKeyColumnNameByTableName(spannerTableNames);
+            spannerTableNames,
+            keyColumnNameToOrdinalPositionByTableName,
+            spannerColumnNamesExplicitlyTrackedByChangeStreamByTableName);
 
     Map<String, TrackedSpannerTable> result = new HashMap<>();
     for (String tableName : spannerColumnsByTableName.keySet()) {
       List<TrackedSpannerColumn> pkColumns = new ArrayList<>();
       List<TrackedSpannerColumn> nonPkColumns = new ArrayList<>();
-      Set<String> keyColumnNames = keyColumnNameByTableName.get(tableName);
+      Map<String, Integer> keyColumnNameToOrdinalPosition =
+          keyColumnNameToOrdinalPositionByTableName.get(tableName);
       for (TrackedSpannerColumn spannerColumn : spannerColumnsByTableName.get(tableName)) {
-        if (keyColumnNames.contains(spannerColumn.getName())) {
+        if (keyColumnNameToOrdinalPosition.containsKey(spannerColumn.getName())) {
           pkColumns.add(spannerColumn);
         } else {
           nonPkColumns.add(spannerColumn);
@@ -104,6 +107,7 @@ public class SpannerUtils {
    */
   private Map<String, List<TrackedSpannerColumn>> getSpannerColumnsByTableName(
       Set<String> spannerTableNames,
+      Map<String, Map<String, Integer>> keyColumnNameToOrdinalPositionByTableName,
       Map<String, Set<String>> spannerColumnNamesExplicitlyTrackedByChangeStreamByTableName) {
     Map<String, List<TrackedSpannerColumn>> result = new HashMap<>();
     StringBuilder sqlStringBuilder =
@@ -127,20 +131,39 @@ public class SpannerUtils {
         String tableName = columnsResultSet.getString(INFORMATION_SCHEMA_TABLE_NAME);
         String columnName = columnsResultSet.getString(INFORMATION_SCHEMA_COLUMN_NAME);
         // Skip if the columns of the table is tracked explicitly, and the specified column is not
-        // tracked.
+        // tracked. Primary key columns are always tracked.
         if (spannerColumnNamesExplicitlyTrackedByChangeStreamByTableName.containsKey(tableName)
             && !spannerColumnNamesExplicitlyTrackedByChangeStreamByTableName
                 .get(tableName)
-                .contains(columnName)) {
+                .contains(columnName)
+            && (!keyColumnNameToOrdinalPositionByTableName.containsKey(tableName)
+                || !keyColumnNameToOrdinalPositionByTableName
+                    .get(tableName)
+                    .containsKey(columnName))) {
           continue;
         }
 
         int ordinalPosition = (int) columnsResultSet.getLong(INFORMATION_SCHEMA_ORDINAL_POSITION);
         String spannerType = columnsResultSet.getString(INFORMATION_SCHEMA_SPANNER_TYPE);
         result.putIfAbsent(tableName, new ArrayList<>());
+        // Set primary key ordinal position for primary key column.
+        int pkOrdinalPosition = -1;
+        if (!keyColumnNameToOrdinalPositionByTableName.containsKey(tableName)) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "Cannot find key column for change stream %s and table %s",
+                  changeStreamName, tableName));
+        }
+        if (keyColumnNameToOrdinalPositionByTableName.get(tableName).containsKey(columnName)) {
+          pkOrdinalPosition =
+              keyColumnNameToOrdinalPositionByTableName.get(tableName).get(columnName);
+        }
         TrackedSpannerColumn spannerColumn =
             TrackedSpannerColumn.create(
-                columnName, informationSchemaTypeToSpannerType(spannerType), ordinalPosition);
+                columnName,
+                informationSchemaTypeToSpannerType(spannerType),
+                ordinalPosition,
+                pkOrdinalPosition);
         result.get(tableName).add(spannerColumn);
       }
     }
@@ -155,11 +178,12 @@ public class SpannerUtils {
    * information from {@link Mod} whenever we process it, but it's less efficient, since that will
    * require to parse the types and sort them based on the ordinal positions for each {@link Mod}.
    */
-  private Map<String, Set<String>> getKeyColumnNameByTableName(Set<String> spannerTableNames) {
-    Map<String, Set<String>> result = new HashMap<>();
+  private Map<String, Map<String, Integer>> getKeyColumnNameToOrdinalPositionByTableName(
+      Set<String> spannerTableNames) {
+    Map<String, Map<String, Integer>> result = new HashMap<>();
     StringBuilder sqlStringBuilder =
         new StringBuilder(
-            "SELECT TABLE_NAME, COLUMN_NAME, CONSTRAINT_NAME FROM"
+            "SELECT TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, CONSTRAINT_NAME FROM"
                 + " INFORMATION_SCHEMA.KEY_COLUMN_USAGE");
 
     // Skip the tables that are not tracked by change stream.
@@ -177,11 +201,15 @@ public class SpannerUtils {
       while (keyColumnsResultSet.next()) {
         String tableName = keyColumnsResultSet.getString(INFORMATION_SCHEMA_TABLE_NAME);
         String columnName = keyColumnsResultSet.getString(INFORMATION_SCHEMA_COLUMN_NAME);
+        // Note The ordinal position of primary key in INFORMATION_SCHEMA.KEY_COLUMN_USAGE table
+        // is different from the ordinal position from INFORMATION_SCHEMA.COLUMNS table.
+        int ordinalPosition =
+            (int) keyColumnsResultSet.getLong(INFORMATION_SCHEMA_ORDINAL_POSITION);
         String constraintName = keyColumnsResultSet.getString(INFORMATION_SCHEMA_CONSTRAINT_NAME);
         // We are only interested in primary key constraint.
         if (isPrimaryKey(constraintName)) {
-          result.putIfAbsent(tableName, new HashSet<>());
-          result.get(tableName).add(columnName);
+          result.putIfAbsent(tableName, new HashMap<>());
+          result.get(tableName).put(columnName, ordinalPosition);
         }
       }
     }

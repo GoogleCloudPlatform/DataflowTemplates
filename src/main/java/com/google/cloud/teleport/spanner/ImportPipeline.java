@@ -77,6 +77,14 @@ public class ImportPipeline {
     void setWaitForForeignKeys(ValueProvider<Boolean> value);
 
     @Description(
+        "By default the import pipeline is blocked on change stream creation. If false, it may"
+            + " complete with change streams still being created in the background.")
+    @Default.Boolean(true)
+    ValueProvider<Boolean> getWaitForChangeStreams();
+
+    void setWaitForChangeStreams(ValueProvider<Boolean> value);
+
+    @Description(
         "Indexes and Foreign keys are created after dataload. If there are more than "
             + "40 DDL statements to be executed after dataload, it is preferable to create the "
             + "indexes before datalod. This is the flag to turn the feature off.")
@@ -136,6 +144,7 @@ public class ImportPipeline {
             options.getInputDir(),
             options.getWaitForIndexes(),
             options.getWaitForForeignKeys(),
+            options.getWaitForChangeStreams(),
             options.getEarlyIndexCreateFlag(),
             options.getDDLCreationTimeoutInMinutes()));
 

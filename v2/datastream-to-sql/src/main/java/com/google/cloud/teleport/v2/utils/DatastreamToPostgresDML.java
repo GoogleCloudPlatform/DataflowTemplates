@@ -82,8 +82,22 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
       return columnValue;
     }
     switch (dataType.toUpperCase()) {
+      case "INT2":
+      case "INT4":
+      case "INT8":
+      case "FLOAT4":
+      case "FLOAT8":
+      case "SMALLINT":
+      case "INTEGER":
+      case "BIGINT":
       case "DECIMAL":
-        if (columnValue.equals("")) {
+      case "NUMERIC":
+      case "REAL":
+      case "DOUBLE PRECISION":
+      case "SMALLSERIAL":
+      case "SERIAL":
+      case "BIGSERIAL":
+        if (columnValue.equals("") || columnValue.equals("''")) {
           return getNullValueSql();
         }
         break;

@@ -62,7 +62,7 @@ public abstract class FileFormatFactorySpannerChangeStreams
             records.apply(
                 "Write Avro File(s)",
                 WriteDataChangeRecordsToGcsAvro.newBuilder()
-                    .withOutputDirectory(options().getOutputDirectory())
+                    .withGcsOutputDirectory(options().getGcsOutputDirectory())
                     .withOutputFilenamePrefix(options().getOutputFilenamePrefix())
                     .setNumShards(options().getNumShards())
                     .withTempLocation(options().getTempLocation())
@@ -73,7 +73,7 @@ public abstract class FileFormatFactorySpannerChangeStreams
             records.apply(
                 "Write Text File(s)",
                 WriteDataChangeRecordsToGcsText.newBuilder()
-                    .withOutputDirectory(options().getOutputDirectory())
+                    .withGcsOutputDirectory(options().getGcsOutputDirectory())
                     .withOutputFilenamePrefix(options().getOutputFilenamePrefix())
                     .setNumShards(options().getNumShards())
                     .withTempLocation(options().getTempLocation())

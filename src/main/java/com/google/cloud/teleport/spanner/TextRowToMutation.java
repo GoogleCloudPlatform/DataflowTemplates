@@ -170,6 +170,7 @@ class TextRowToMutation extends DoFn<KV<String, String>, Mutation> {
       // in terms of how input is accepted, and throw exceptions on invalid input.
       switch (columnType.getCode()) {
         case BOOL:
+        case PG_BOOL:
           if (isNullValue) {
             columnValue = Value.bool(null);
           } else {
@@ -186,17 +187,22 @@ class TextRowToMutation extends DoFn<KV<String, String>, Mutation> {
           }
           break;
         case INT64:
+        case PG_INT8:
           columnValue =
               isNullValue ? Value.int64(null) : Value.int64(Long.valueOf(cellValue.trim()));
           break;
         case FLOAT64:
+        case PG_FLOAT8:
           columnValue =
               isNullValue ? Value.float64(null) : Value.float64(Double.valueOf(cellValue.trim()));
           break;
         case STRING:
+        case PG_VARCHAR:
+        case PG_TEXT:
           columnValue = Value.string(cellValue);
           break;
         case DATE:
+        case PG_DATE:
           if (isNullValue) {
             columnValue = Value.date(null);
           } else {
@@ -214,6 +220,7 @@ class TextRowToMutation extends DoFn<KV<String, String>, Mutation> {
           }
           break;
         case TIMESTAMP:
+        case PG_TIMESTAMPTZ:
           if (isNullValue) {
             columnValue = Value.timestamp(null);
           } else {
@@ -240,7 +247,11 @@ class TextRowToMutation extends DoFn<KV<String, String>, Mutation> {
         case JSON:
           columnValue = isNullValue ? Value.string(null) : Value.string(cellValue.trim());
           break;
+        case PG_NUMERIC:
+          columnValue = isNullValue ? Value.pgNumeric(null) : Value.pgNumeric(cellValue.trim());
+          break;
         case BYTES:
+        case PG_BYTEA:
           columnValue =
               isNullValue ? Value.bytes(null) : Value.bytes(ByteArray.fromBase64(cellValue.trim()));
           break;

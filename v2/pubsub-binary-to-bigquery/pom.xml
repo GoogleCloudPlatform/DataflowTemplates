@@ -42,6 +42,8 @@
       <artifactId>guava</artifactId>
       <version>${guava.version}</version>
     </dependency>
+
+    <!-- Test dependencies -->
     <dependency>
       <groupId>com.google.truth</groupId>
       <artifactId>truth</artifactId>

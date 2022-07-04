@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.ExportProtos.Export;
 import com.google.common.base.Function;
 import com.google.common.collect.Collections2;
@@ -50,6 +51,7 @@ public class Ddl implements Serializable {
   // This is only populated by InformationSchemaScanner and not while reading from AVRO files.
   private TreeMultimap<String, String> referencedTables;
   private final ImmutableList<Export.DatabaseOption> databaseOptions;
+  private final Dialect dialect;
 
   private Ddl(
       ImmutableSortedMap<String, Table> tables,
@@ -57,13 +59,19 @@ public class Ddl implements Serializable {
       ImmutableSortedMap<String, ChangeStream> changeStreams,
       TreeMultimap<String, String> parents,
       TreeMultimap<String, String> referencedTables,
-      ImmutableList<Export.DatabaseOption> databaseOptions) {
+      ImmutableList<Export.DatabaseOption> databaseOptions,
+      Dialect dialect) {
     this.tables = tables;
     this.views = views;
     this.changeStreams = changeStreams;
     this.parents = parents;
     this.referencedTables = referencedTables;
     this.databaseOptions = databaseOptions;
+    this.dialect = dialect;
+  }
+
+  public Dialect dialect() {
+    return dialect;
   }
 
   public Collection<Table> allTables() {
@@ -138,7 +146,7 @@ public class Ddl implements Serializable {
 
   public void prettyPrint(Appendable appendable) throws IOException {
     for (Export.DatabaseOption databaseOption : databaseOptions()) {
-      appendable.append(getDatabaseOptionsStatements(databaseOption, "%db_name%"));
+      appendable.append(getDatabaseOptionsStatements(databaseOption, "%db_name%", dialect));
       appendable.append("\n");
     }
 
@@ -255,24 +263,37 @@ public class Ddl implements Serializable {
   public List<String> setOptionsStatements(String databaseId) {
     List<String> result = new ArrayList<>();
     for (Export.DatabaseOption databaseOption : databaseOptions()) {
-      result.add(getDatabaseOptionsStatements(databaseOption, databaseId));
+      result.add(getDatabaseOptionsStatements(databaseOption, databaseId, dialect));
     }
     return result;
   }
 
   private static String getDatabaseOptionsStatements(
-      Export.DatabaseOption databaseOption, String databaseId) {
+      Export.DatabaseOption databaseOption, String databaseId, Dialect dialect) {
+    String literalQuote = DdlUtilityComponents.literalQuote(dialect);
     String formattedValue =
         databaseOption.getOptionType().equalsIgnoreCase("STRING")
-            ? "\""
+            ? literalQuote
                 + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(databaseOption.getOptionValue())
-                + "\""
+                + literalQuote
             : databaseOption.getOptionValue();
-
-    String statement =
-        String.format(
-            "ALTER DATABASE `%s` SET OPTIONS ( %s = %s )",
-            databaseId, databaseOption.getOptionName(), formattedValue);
+    String statement;
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        statement =
+            String.format(
+                "ALTER DATABASE `%s` SET OPTIONS ( %s = %s )",
+                databaseId, databaseOption.getOptionName(), formattedValue);
+        break;
+      case POSTGRESQL:
+        statement =
+            String.format(
+                "ALTER DATABASE \"%s\" SET spanner.%s = %s",
+                databaseId, databaseOption.getOptionName(), formattedValue);
+        break;
+      default:
+        throw new IllegalArgumentException(String.format("Unrecognized Dialect: %s", dialect));
+    }
     return statement;
   }
 
@@ -306,7 +327,11 @@ public class Ddl implements Serializable {
   }
 
   public static Builder builder() {
-    return new Builder();
+    return new Builder(Dialect.GOOGLE_STANDARD_SQL);
+  }
+
+  public static Builder builder(Dialect dialect) {
+    return new Builder(dialect);
   }
 
   /** A builder for {@link Ddl}. */
@@ -318,11 +343,16 @@ public class Ddl implements Serializable {
     private TreeMultimap<String, String> parents = TreeMultimap.create();
     private TreeMultimap<String, String> referencedTables = TreeMultimap.create();
     private ImmutableList<Export.DatabaseOption> databaseOptions = ImmutableList.of();
+    private Dialect dialect;
+
+    public Builder(Dialect dialect) {
+      this.dialect = dialect;
+    }
 
     public Table.Builder createTable(String name) {
       Table table = tables.get(name.toLowerCase());
       if (table == null) {
-        return Table.builder().name(name).ddlBuilder(this);
+        return Table.builder(dialect).name(name).ddlBuilder(this);
       }
       return table.toBuilder().ddlBuilder(this);
     }
@@ -346,7 +376,7 @@ public class Ddl implements Serializable {
     public View.Builder createView(String name) {
       View view = views.get(name.toLowerCase());
       if (view == null) {
-        return View.builder().name(name).ddlBuilder(this);
+        return View.builder(dialect).name(name).ddlBuilder(this);
       }
       return view.toBuilder().ddlBuilder(this);
     }
@@ -401,12 +431,13 @@ public class Ddl implements Serializable {
           ImmutableSortedMap.copyOf(changeStreams),
           parents,
           referencedTables,
-          databaseOptions);
+          databaseOptions,
+          dialect);
     }
   }
 
   public Builder toBuilder() {
-    Builder builder = new Builder();
+    Builder builder = new Builder(dialect);
     builder.tables.putAll(tables);
     builder.views.putAll(views);
     builder.changeStreams.putAll(changeStreams);
@@ -427,6 +458,9 @@ public class Ddl implements Serializable {
 
     Ddl ddl = (Ddl) o;
 
+    if (dialect != ddl.dialect) {
+      return false;
+    }
     if (tables != null ? !tables.equals(ddl.tables) : ddl.tables != null) {
       return false;
     }
@@ -451,7 +485,8 @@ public class Ddl implements Serializable {
 
   @Override
   public int hashCode() {
-    int result = tables != null ? tables.hashCode() : 0;
+    int result = dialect != null ? dialect.hashCode() : 0;
+    result = 31 * result + (tables != null ? tables.hashCode() : 0);
     result = 31 * result + (parents != null ? parents.hashCode() : 0);
     result = 31 * result + (referencedTables != null ? referencedTables.hashCode() : 0);
     result = 31 * result + (views != null ? views.hashCode() : 0);

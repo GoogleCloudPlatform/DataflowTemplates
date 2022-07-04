@@ -33,7 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link JdbcToPubsub} batch pipeline reads data from JdbcIO and publishes to Google Cloud
+ * The {@link JdbcToPubsub} batch pipeline reads data from JDBC and publishes to Google Cloud
  * PubSub. <br>
  */
 public class JdbcToPubsub {
@@ -97,7 +97,7 @@ public class JdbcToPubsub {
   }
 
   /**
-   * Runs a pipeline which reads message from JdbcIO and writes to Pub/Sub.
+   * Runs a pipeline which reads message from JDBC and writes to Pub/Sub.
    *
    * @param options The execution options.
    * @return The pipeline result.
