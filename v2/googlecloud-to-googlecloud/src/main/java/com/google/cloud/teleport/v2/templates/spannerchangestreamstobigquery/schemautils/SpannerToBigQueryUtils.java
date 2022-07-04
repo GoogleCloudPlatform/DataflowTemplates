@@ -61,7 +61,7 @@ public class SpannerToBigQueryUtils {
     } else if (spannerType.equals(Type.array(Type.int64()))) {
       bigQueryField.setType("INT64");
     } else if (spannerType.equals(Type.array(Type.json()))) {
-      bigQueryField.setType("STRING");
+      bigQueryField.setType("JSON");
     } else if (spannerType.equals(Type.array(Type.numeric()))) {
       bigQueryField.setType("NUMERIC");
     } else if (spannerType.equals(Type.array(Type.string()))) {
@@ -93,7 +93,7 @@ public class SpannerToBigQueryUtils {
           bigQueryType = StandardSQLTypeName.INT64;
           break;
         case JSON:
-          bigQueryType = StandardSQLTypeName.STRING;
+          bigQueryType = StandardSQLTypeName.JSON;
           break;
         case NUMERIC:
           bigQueryType = StandardSQLTypeName.NUMERIC;

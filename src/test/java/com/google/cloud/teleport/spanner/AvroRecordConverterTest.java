@@ -330,4 +330,61 @@ public class AvroRecordConverterTest {
             avroRecord, LONG, LogicalTypes.timestampMillis(), colName);
     assertArrayEquals(expectedTimestamps, result.get().toArray());
   }
+
+  @Test
+  public void pgNumericArray() {
+    String colName = "arrayOfPgNumeric";
+    Schema schema =
+        SchemaBuilder.record("record")
+            .fields()
+            .requiredBytes("id")
+            .name(colName)
+            .type()
+            .optional()
+            .array()
+            .items()
+            .bytesType()
+            .endRecord();
+
+    // Null field
+    GenericRecord avroRecord = new GenericRecordBuilder(schema).set("id", 0).build();
+    Optional<List<String>> result =
+        AvroRecordConverter.readPgNumericArray(avroRecord, BYTES, colName);
+    assertFalse(result.isPresent());
+
+    StringBuilder maxPgNumeric = new StringBuilder();
+    StringBuilder minPgNumeric = new StringBuilder("-");
+    for (int i = 0; i < NumericUtils.PG_MAX_PRECISION - NumericUtils.PG_MAX_SCALE; i++) {
+      maxPgNumeric.append("9");
+      minPgNumeric.append("9");
+    }
+    maxPgNumeric.append(".");
+    minPgNumeric.append(".");
+    for (int i = 0; i < NumericUtils.PG_MAX_SCALE; i++) {
+      maxPgNumeric.append("9");
+      minPgNumeric.append("9");
+    }
+
+    String[] readablePgNumericValues = {
+      "-123.456000000",
+      "0.000000000",
+      "2387653.235320000",
+      null,
+      "0.000000020",
+      "-99999999999999999999999999999.999999999",
+      "NaN",
+      "100000000000000000000001.000001000",
+      maxPgNumeric.toString(),
+      minPgNumeric.toString()
+    };
+
+    List<ByteBuffer> avroPgNumericValues =
+        Stream.of(readablePgNumericValues)
+            .map(x -> x == null ? null : ByteBuffer.wrap(NumericUtils.pgStringToBytes(x)))
+            .collect(Collectors.toList());
+    avroRecord =
+        new GenericRecordBuilder(schema).set("id", 0).set(colName, avroPgNumericValues).build();
+    result = AvroRecordConverter.readPgNumericArray(avroRecord, BYTES, colName);
+    assertArrayEquals(readablePgNumericValues, result.get().toArray());
+  }
 }

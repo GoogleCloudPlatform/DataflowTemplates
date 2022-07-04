@@ -15,12 +15,16 @@
  */
 package com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery;
 
+import com.google.api.gax.grpc.GrpcCallContext;
+import com.google.api.gax.rpc.ApiCallContext;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Key.Builder;
 import com.google.cloud.spanner.KeySet;
 import com.google.cloud.spanner.Options;
 import com.google.cloud.spanner.ResultSet;
+import com.google.cloud.spanner.SpannerOptions;
+import com.google.cloud.spanner.SpannerOptions.CallContextConfigurator;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.Mod;
@@ -30,11 +34,16 @@ import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.sch
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerToBigQueryUtils;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.collect.ImmutableSet;
+import io.grpc.CallOptions;
+import io.grpc.Context;
+import io.grpc.MethodDescriptor;
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.Serializable;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -50,12 +59,17 @@ import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Throwables;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.node.ObjectNode;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Class {@link FailsafeModJsonToTableRowTransformer} provides methods that convert a {@link Mod}
  * JSON string wrapped in {@link FailsafeElement} to a {@link TableRow}.
  */
 public final class FailsafeModJsonToTableRowTransformer {
+
+  private static final Logger LOG =
+      LoggerFactory.getLogger(FailsafeModJsonToTableRowTransformer.class);
 
   /**
    * Primary class for taking a {@link FailsafeElement} {@link Mod} JSON input and converting to a
@@ -104,24 +118,39 @@ public final class FailsafeModJsonToTableRowTransformer {
       private final SpannerConfig spannerConfig;
       private final String spannerChangeStream;
       private Map<String, TrackedSpannerTable> spannerTableByName;
-      private final Set<String> ignoreFields;
+      private final ImmutableSet<String> ignoreFields;
       public TupleTag<TableRow> transformOut;
       public TupleTag<FailsafeElement<String, String>> transformDeadLetterOut;
+      private transient CallContextConfigurator callContextConfigurator;
 
       public FailsafeModJsonToTableRowFn(
           SpannerConfig spannerConfig,
           String spannerChangeStream,
-          String ignoreFieldsStr,
+          ImmutableSet<String> ignoreFields,
           TupleTag<TableRow> transformOut,
           TupleTag<FailsafeElement<String, String>> transformDeadLetterOut) {
         this.spannerConfig = spannerConfig;
         this.spannerChangeStream = spannerChangeStream;
         this.transformOut = transformOut;
         this.transformDeadLetterOut = transformDeadLetterOut;
-        this.ignoreFields = new HashSet<>();
-        for (String ignoreField : ignoreFieldsStr.split(",")) {
-          ignoreFields.add(ignoreField);
-        }
+        this.ignoreFields = ignoreFields;
+      }
+
+      private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+        in.defaultReadObject();
+        spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
+        setUpCallContextConfigurator();
+      }
+
+      private void setUpCallContextConfigurator() {
+        callContextConfigurator =
+            new CallContextConfigurator() {
+              public <ReqT, RespT> ApiCallContext configure(
+                  ApiCallContext context, ReqT request, MethodDescriptor<ReqT, RespT> method) {
+                return GrpcCallContext.createDefault()
+                    .withCallOptions(CallOptions.DEFAULT.withDeadlineAfter(120L, TimeUnit.SECONDS));
+              }
+            };
       }
 
       @Setup
@@ -130,6 +159,7 @@ public final class FailsafeModJsonToTableRowTransformer {
         spannerTableByName =
             new SpannerUtils(spannerAccessor.getDatabaseClient(), spannerChangeStream)
                 .getSpannerTableByName();
+        setUpCallContextConfigurator();
       }
 
       @Teardown
@@ -230,25 +260,70 @@ public final class FailsafeModJsonToTableRowTransformer {
                 .map(spannerNonPkColumn -> spannerNonPkColumn.getName())
                 .collect(Collectors.toList());
 
-        Options.ReadQueryUpdateTransactionOption options =
-            Options.priority(spannerConfig.getRpcPriority().get());
-        // We assume the Spanner schema isn't changed while the pipeline is running, so the read is
-        // expected to succeed in normal cases. The schema change is currently not supported.
-        try (ResultSet resultSet =
-            spannerAccessor
-                .getDatabaseClient()
-                .singleUseReadOnlyTransaction(
-                    TimestampBound.ofReadTimestamp(spannerCommitTimestamp))
-                .read(
-                    spannerTable.getTableName(),
-                    KeySet.singleKey(keyBuilder.build()),
-                    spannerNonPkColumnNames,
-                    options)) {
-          SpannerToBigQueryUtils.spannerSnapshotRowToBigQueryTableRow(
-              resultSet, spannerNonPkColumns, tableRow);
+        int retryCount = 0;
+        while (true) {
+          try {
+            readSpannerRow(
+                spannerTable.getTableName(),
+                keyBuilder.build(),
+                spannerNonPkColumns,
+                spannerNonPkColumnNames,
+                spannerCommitTimestamp,
+                tableRow);
+            break;
+          } catch (Exception e) {
+            // Retry for maximum 3 times in case of transient error.
+            if (retryCount > 3) {
+              throw e;
+            } else {
+              LOG.error(
+                  "Caught exception from Spanner snapshot read: {}, stack trace:{} current retry"
+                      + " count: {}",
+                  e,
+                  e.getStackTrace(),
+                  retryCount);
+              // Wait for 1 seconds before next retry.
+              TimeUnit.SECONDS.sleep(1);
+              retryCount++;
+            }
+          }
         }
 
         return tableRow;
+      }
+
+      // Do a Spanner read to retrieve full row. The schema change is currently not supported. so we
+      // assume the schema isn't changed while the pipeline is running,
+      private void readSpannerRow(
+          String spannerTableName,
+          com.google.cloud.spanner.Key key,
+          List<TrackedSpannerColumn> spannerNonPkColumns,
+          List<String> spannerNonPkColumnNames,
+          com.google.cloud.Timestamp spannerCommitTimestamp,
+          TableRow tableRow) {
+        Options.ReadQueryUpdateTransactionOption options =
+            Options.priority(spannerConfig.getRpcPriority().get());
+        // Create a context that uses the custom call configuration.
+        Context context =
+            Context.current()
+                .withValue(SpannerOptions.CALL_CONTEXT_CONFIGURATOR_KEY, callContextConfigurator);
+        // Do the snapshot read in the custom context.
+        context.run(
+            () -> {
+              try (ResultSet resultSet =
+                  spannerAccessor
+                      .getDatabaseClient()
+                      .singleUseReadOnlyTransaction(
+                          TimestampBound.ofReadTimestamp(spannerCommitTimestamp))
+                      .read(
+                          spannerTableName,
+                          KeySet.singleKey(key),
+                          spannerNonPkColumnNames,
+                          options)) {
+                SpannerToBigQueryUtils.spannerSnapshotRowToBigQueryTableRow(
+                    resultSet, spannerNonPkColumns, tableRow);
+              }
+            });
       }
     }
   }
@@ -263,7 +338,7 @@ public final class FailsafeModJsonToTableRowTransformer {
 
     public abstract String getSpannerChangeStream();
 
-    public abstract String getIgnoreFields();
+    public abstract ImmutableSet<String> getIgnoreFields();
 
     public abstract FailsafeElementCoder<String, String> getCoder();
 
@@ -278,7 +353,7 @@ public final class FailsafeModJsonToTableRowTransformer {
 
       abstract Builder setSpannerChangeStream(String spannerChangeStream);
 
-      abstract Builder setIgnoreFields(String ignoreFields);
+      abstract Builder setIgnoreFields(ImmutableSet<String> ignoreFields);
 
       abstract Builder setCoder(FailsafeElementCoder<String, String> coder);
 

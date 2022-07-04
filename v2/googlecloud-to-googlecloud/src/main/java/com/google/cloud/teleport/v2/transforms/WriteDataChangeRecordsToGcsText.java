@@ -53,7 +53,7 @@ public abstract class WriteDataChangeRecordsToGcsText
     return new AutoValue_WriteDataChangeRecordsToGcsText.Builder();
   }
 
-  public abstract String outputDirectory();
+  public abstract String gcsOutputDirectory();
 
   public abstract String outputFilenamePrefix();
 
@@ -81,7 +81,7 @@ public abstract class WriteDataChangeRecordsToGcsText
             TextIO.write()
                 .to(
                     new WindowedFilenamePolicy(
-                        outputDirectory(),
+                        gcsOutputDirectory(),
                         outputFilenamePrefix(),
                         WriteToGCSUtility.SHARD_TEMPLATE,
                         WriteToGCSUtility.FILE_SUFFIX_MAP.get(WriteToGCSUtility.FileFormat.TEXT)))
@@ -107,9 +107,9 @@ public abstract class WriteDataChangeRecordsToGcsText
    */
   public interface WriteToGcsTextOptions extends PipelineOptions {
     @Description("The directory to output files to. Must end with a slash.")
-    String getOutputDirectory();
+    String getGcsOutputDirectory();
 
-    void setOutputDirectory(String outputDirectory);
+    void setGcsOutputDirectory(String gcsOutputDirectory);
 
     @Description(
         "The filename prefix of the files to write to. Default file prefix is set to \"output\". ")
@@ -130,9 +130,9 @@ public abstract class WriteDataChangeRecordsToGcsText
   /** Builder for {@link WriteDataChangeRecordsToGcsText}. */
   @AutoValue.Builder
   public abstract static class WriteToGcsBuilder {
-    abstract WriteToGcsBuilder setOutputDirectory(String outputDirectory);
+    abstract WriteToGcsBuilder setGcsOutputDirectory(String gcsOutputDirectory);
 
-    abstract String outputDirectory();
+    abstract String gcsOutputDirectory();
 
     abstract WriteToGcsBuilder setTempLocation(String tempLocation);
 
@@ -144,10 +144,11 @@ public abstract class WriteDataChangeRecordsToGcsText
 
     abstract WriteDataChangeRecordsToGcsText autoBuild();
 
-    public WriteToGcsBuilder withOutputDirectory(String outputDirectory) {
+    public WriteToGcsBuilder withGcsOutputDirectory(String gcsOutputDirectory) {
       checkArgument(
-          outputDirectory != null, "withOutputDirectory(outputDirectory) called with null input.");
-      return setOutputDirectory(outputDirectory);
+          gcsOutputDirectory != null,
+          "withGcsOutputDirectory(gcsOutputDirectory) called with null input.");
+      return setGcsOutputDirectory(gcsOutputDirectory);
     }
 
     public WriteToGcsBuilder withTempLocation(String tempLocation) {
@@ -164,7 +165,7 @@ public abstract class WriteDataChangeRecordsToGcsText
     }
 
     public WriteDataChangeRecordsToGcsText build() {
-      checkNotNull(outputDirectory(), "Provide output directory to write to.");
+      checkNotNull(gcsOutputDirectory(), "Provide output directory to write to.");
       checkNotNull(tempLocation(), "Temporary directory needs to be provided.");
       return autoBuild();
     }

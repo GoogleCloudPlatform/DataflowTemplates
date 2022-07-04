@@ -27,7 +27,7 @@ import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.utils.BigQueryTableCache;
-import com.google.cloud.teleport.v2.utils.SchemaUtils;
+import com.google.cloud.teleport.v2.utils.GCSUtils;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import java.util.ArrayList;
@@ -121,7 +121,7 @@ public class BigQueryMapper<InputT, OutputT>
     }
     // TODO: A supplier that reloads the GCS file regularly would allow
     // a user to change the file w/o tearing down the pipeline.
-    String schemaStr = SchemaUtils.getGcsFileAsString(filePath);
+    String schemaStr = GCSUtils.getGcsFileAsString(filePath);
     List<Field> schemaFields = BigQueryConverters.SchemaUtils.schemaFromString(schemaStr);
 
     Map<String, StandardSQLTypeName> schema = new HashMap<String, StandardSQLTypeName>();

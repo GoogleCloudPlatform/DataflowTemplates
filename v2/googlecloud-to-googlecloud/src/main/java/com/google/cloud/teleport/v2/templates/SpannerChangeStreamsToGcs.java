@@ -70,9 +70,9 @@ public class SpannerChangeStreamsToGcs {
     // Get the Spanner project, instance, database, and change stream parameters.
     String projectId = getProjectId(options);
     String instanceId = options.getSpannerInstanceId();
-    String databaseId = options.getSpannerDatabaseId();
+    String databaseId = options.getSpannerDatabase();
     String metadataInstanceId = options.getSpannerMetadataInstanceId();
-    String metadataDatabaseId = options.getSpannerMetadataDatabaseId();
+    String metadataDatabaseId = options.getSpannerMetadataDatabase();
     String changeStreamName = options.getSpannerChangeStreamName();
 
     // Retrieve and parse the start / end timestamps.
@@ -103,6 +103,11 @@ public class SpannerChangeStreamsToGcs {
     }
     options.setExperiments(experiments);
 
+    String metadataTableName =
+        options.getSpannerMetadataTableName() == null
+            ? null
+            : options.getSpannerMetadataTableName();
+
     final RpcPriority rpcPriority = options.getRpcPriority();
     pipeline
         .apply(
@@ -118,7 +123,8 @@ public class SpannerChangeStreamsToGcs {
                 .withChangeStreamName(changeStreamName)
                 .withInclusiveStartAt(startTimestamp)
                 .withInclusiveEndAt(endTimestamp)
-                .withRpcPriority(rpcPriority))
+                .withRpcPriority(rpcPriority)
+                .withMetadataTable(metadataTableName))
         .apply(
             "Creating " + options.getWindowDuration() + " Window",
             Window.into(FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))

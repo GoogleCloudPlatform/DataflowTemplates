@@ -21,6 +21,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.templates.StreamingDataGenerator;
+import com.google.cloud.teleport.v2.utils.GCSUtils;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -92,7 +93,7 @@ public final class StreamingDataGeneratorWriteToPubSub {
     private boolean hasAttributes;
 
     protected void initialize(String schemaLocation) throws IOException {
-      schema = SchemaUtils.getGcsFileAsString(schemaLocation);
+      schema = GCSUtils.getGcsFileAsString(schemaLocation);
       hasAttributes =
           ATTRIBUTE_PATTERN
               .matcher(schema.replace("\n", "").replace("\r", "").replace("\t", ""))

@@ -28,14 +28,14 @@ import com.google.cloud.teleport.v2.transforms.BeamRowToGenericRecordFn;
 import com.google.cloud.teleport.v2.transforms.GenericRecordsToGcsPartitioned;
 import com.google.cloud.teleport.v2.utils.DataplexJdbcIngestionFilter;
 import com.google.cloud.teleport.v2.utils.DataplexJdbcIngestionNaming;
+import com.google.cloud.teleport.v2.utils.GCSUtils;
 import com.google.cloud.teleport.v2.utils.JdbcConverters;
 import com.google.cloud.teleport.v2.utils.JdbcIngestionWriteDisposition.MapWriteDisposition;
 import com.google.cloud.teleport.v2.utils.JdbcIngestionWriteDisposition.WriteDispositionException;
 import com.google.cloud.teleport.v2.utils.KMSEncryptedNestedValue;
 import com.google.cloud.teleport.v2.utils.Schemas;
-import com.google.cloud.teleport.v2.utils.StorageUtils;
-import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
-import com.google.cloud.teleport.v2.values.PartitionMetadata;
+import com.google.cloud.teleport.v2.values.DataplexEnums.DataplexAssetResourceSpec;
+import com.google.cloud.teleport.v2.values.DataplexPartitionMetadata;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.util.List;
@@ -51,7 +51,6 @@ import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.transforms.Distinct;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
@@ -240,7 +239,7 @@ public class DataplexJdbcIngestion {
       DataplexJdbcIngestionOptions options,
       DynamicDataSourceConfiguration dataSourceConfig,
       String targetRootPath) {
-    List<String> existingFiles = StorageUtils.getFilesInDirectory(targetRootPath);
+    List<String> existingFiles = GCSUtils.getFilesInDirectory(targetRootPath);
     // Auto inferring beam schema
     Schema beamSchema =
         Schemas.jdbcSchemaToBeamSchema(dataSourceConfig.buildDatasource(), options.getQuery());
@@ -275,7 +274,7 @@ public class DataplexJdbcIngestion {
     }
 
     // Write to GCS bucket
-    PCollection<PartitionMetadata> metadata =
+    PCollection<DataplexPartitionMetadata> metadata =
         genericRecords.apply(
             "Write to GCS",
             new GenericRecordsToGcsPartitioned(

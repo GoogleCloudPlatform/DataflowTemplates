@@ -5,6 +5,8 @@ package com.google.cloud.teleport.spanner;
 option java_package = "com.google.cloud.teleport.spanner";
 option java_outer_classname = "TextImportProtos";
 
+import "export.proto";
+
 // Protobuf of the import manifest, consisting of a list of TableManifest.
 message ImportManifest {
   // The per-table import manifest.
@@ -34,4 +36,7 @@ message ImportManifest {
   }
   // The TableManifest of the tables to be imported.
   repeated TableManifest tables = 1;
+
+  // The dialect of the database to be imported.
+  ProtoDialect dialect = 2;
 }

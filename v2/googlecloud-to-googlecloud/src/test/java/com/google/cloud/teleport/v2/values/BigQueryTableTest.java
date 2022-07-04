@@ -39,6 +39,7 @@ public class BigQueryTableTest {
             .setDataset("ds1")
             .setLastModificationTime(123L)
             .setSchema(Schema.create(Schema.Type.STRING))
+            .setDataplexEntityName("entity1")
             .setPartitioningColumn("p1")
             .setPartitions(
                 Collections.singletonList(
@@ -48,7 +49,7 @@ public class BigQueryTableTest {
                         .build()))
             .build();
 
-    BigQueryTable actual = (BigQueryTable) SerializationUtils.clone(expected);
+    BigQueryTable actual = SerializationUtils.clone(expected);
 
     assertThat(actual).isEqualTo(expected);
   }

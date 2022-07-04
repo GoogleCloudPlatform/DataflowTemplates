@@ -17,6 +17,9 @@ package com.google.cloud.teleport.templates;
 
 import static org.junit.Assert.assertEquals;
 
+import com.google.cloud.spanner.Dialect;
+import com.google.cloud.spanner.ResultSet;
+import com.google.cloud.spanner.Statement;
 import com.google.cloud.teleport.spanner.IntegrationTest;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.templates.common.SpannerConverters;
@@ -28,7 +31,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.sql.Timestamp;
-import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import org.apache.beam.sdk.io.TextIO;
@@ -48,6 +50,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TypeDescriptors;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -64,7 +67,7 @@ public final class SpannerToTextTest {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToTextTest.class);
 
-  static String tmpDir = Files.createTempDir().getAbsolutePath();
+  private final String tmpDir = Files.createTempDir().getAbsolutePath();
 
   private final Timestamp timestamp = new Timestamp(System.currentTimeMillis());
   private final long numericTime = timestamp.getTime();
@@ -80,23 +83,54 @@ public final class SpannerToTextTest {
 
   @Rule public final SpannerServerResource spannerServer = new SpannerServerResource();
 
+  @Before
+  public void setup() {
+    spannerServer.dropDatabase(sourceDb);
+  }
+
   @After
   public void teardown() {
     spannerServer.dropDatabase(sourceDb);
-    spannerServer.dropDatabase(destDbPrefix + chkpt1);
-    spannerServer.dropDatabase(destDbPrefix + chkpt2);
   }
 
   /* Creates a database for a given Spanner database and populates it with
    * with random data */
   private void createAndPopulate(String db, Ddl ddl, int numBatches) throws Exception {
-    spannerServer.createDatabase(db, ddl.statements());
+    switch (ddl.dialect()) {
+      case GOOGLE_STANDARD_SQL:
+        spannerServer.createDatabase(db, ddl.statements());
+        break;
+      case POSTGRESQL:
+        spannerServer.createPgDatabase(db, ddl.statements());
+        break;
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + ddl.dialect());
+    }
     spannerServer.populateRandomData(db, ddl, numBatches);
   }
 
-  String getCurrentTimestamp() {
-    Instant instant = Instant.now();
-    return instant.toString();
+  String getCurrentTimestamp(Dialect dialect) {
+    String sql;
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        sql = "SELECT CURRENT_TIMESTAMP();";
+        break;
+      case POSTGRESQL:
+        sql = "SELECT now();";
+        break;
+      default:
+        throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
+    }
+    String timestamp;
+    try (ResultSet resultSet =
+        spannerServer
+            .getDbClient(sourceDb)
+            .singleUseReadOnlyTransaction()
+            .executeQuery(Statement.of(sql))) {
+      resultSet.next();
+      timestamp = resultSet.getTimestamp(0).toString();
+    }
+    return timestamp;
   }
 
   /* Validates behavior of database export without specifying timestamp
@@ -130,21 +164,71 @@ public final class SpannerToTextTest {
     createAndPopulate(sourceDb, ddl, 100);
 
     // Export the database and note the timestamp ts1
-    spannerServer.createDatabase(destDbPrefix + chkpt1, Collections.emptyList());
-    exportDbAtTime(sourceDb, destDbPrefix + chkpt1, chkpt1, "", exportPipeline1);
+    exportDbAtTime(sourceDb, destDbPrefix + chkpt1, chkpt1, "", exportPipeline1, tmpDir);
 
     // Save the timestamp directly after the export
-    String chkPt1Ts = getCurrentTimestamp();
-
-    // Sleep for some time before adding more to the table
-    Thread.sleep(10000);
+    String chkPt1Ts = getCurrentTimestamp(Dialect.GOOGLE_STANDARD_SQL);
 
     // Add more records to the table, export the database and note the timestamp ts3
     spannerServer.populateRandomData(sourceDb, ddl, 100);
-    spannerServer.createDatabase(destDbPrefix + chkpt2, Collections.emptyList());
 
     // Export the table from the database using the saved timestamp
-    exportDbAtTime(sourceDb, destDbPrefix + chkpt2, chkpt2, chkPt1Ts, exportPipeline2);
+    exportDbAtTime(sourceDb, destDbPrefix + chkpt2, chkpt2, chkPt1Ts, exportPipeline2, tmpDir);
+
+    File folder = new File(tmpDir + "/");
+
+    // Store the contents of directory containing the exported CSVs into a List
+    File[] files = folder.listFiles();
+
+    List<String> oldData = readDbData(files, chkpt1);
+    List<String> expectedOldData = readDbData(files, chkpt2);
+
+    // Sort statements
+    Collections.sort(oldData);
+    Collections.sort(expectedOldData);
+
+    assertEquals(oldData, expectedOldData);
+  }
+
+  @Test
+  public void runPgExportWithTsTest() throws Exception {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable(tableName)
+            .column("first_name")
+            .pgVarchar()
+            .max()
+            .endColumn()
+            .column("last_name")
+            .pgVarchar()
+            .size(5)
+            .endColumn()
+            .column("age")
+            .pgInt8()
+            .endColumn()
+            .primaryKey()
+            .asc("first_name")
+            .desc("last_name")
+            .end()
+            .endTable()
+            .build();
+
+    /* Create initial table and populate
+     * numBatches = 100
+     */
+    createAndPopulate(sourceDb, ddl, 100);
+
+    // Export the database and note the timestamp ts1
+    exportDbAtTime(sourceDb, destDbPrefix + chkpt1, chkpt1, "", exportPipeline1, tmpDir);
+
+    // Save the timestamp directly after the export
+    String chkPt1Ts = getCurrentTimestamp(Dialect.POSTGRESQL);
+
+    // Add more records to the table, export the database and note the timestamp ts3
+    spannerServer.populateRandomData(sourceDb, ddl, 100);
+
+    // Export the table from the database using the saved timestamp
+    exportDbAtTime(sourceDb, destDbPrefix + chkpt2, chkpt2, chkPt1Ts, exportPipeline2, tmpDir);
 
     File folder = new File(tmpDir + "/");
 
@@ -162,19 +246,25 @@ public final class SpannerToTextTest {
   }
 
   private void exportDbAtTime(
-      String sourceDb, String destDb, String jobIdName, String ts, TestPipeline exportPipeline) {
+      String sourceDb,
+      String destDb,
+      String jobIdName,
+      String ts,
+      TestPipeline exportPipeline,
+      String outputDir) {
 
     ValueProvider.StaticValueProvider<String> destination =
-        ValueProvider.StaticValueProvider.of(tmpDir + "/");
+        ValueProvider.StaticValueProvider.of(outputDir + "/");
     ValueProvider.StaticValueProvider<String> jobId =
         ValueProvider.StaticValueProvider.of(jobIdName);
     ValueProvider.StaticValueProvider<String> source =
-        ValueProvider.StaticValueProvider.of(tmpDir + "/" + jobIdName);
+        ValueProvider.StaticValueProvider.of(outputDir + "/" + jobIdName);
     ValueProvider.StaticValueProvider<String> table =
         ValueProvider.StaticValueProvider.of(tableName);
     ValueProvider.StaticValueProvider<String> timestamp = ValueProvider.StaticValueProvider.of(ts);
     ValueProvider.StaticValueProvider<Boolean> exportAsLogicalType =
         ValueProvider.StaticValueProvider.of(false);
+
     SpannerConfig sourceConfig = spannerServer.getSpannerConfig(sourceDb);
 
     PCollectionView<Transaction> tx =

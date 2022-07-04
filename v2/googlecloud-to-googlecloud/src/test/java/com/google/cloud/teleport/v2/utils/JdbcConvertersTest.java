@@ -19,6 +19,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
 
 import com.google.api.services.bigquery.model.TableRow;
+import java.sql.Clob;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -33,8 +34,6 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Test class for {@link JdbcConverters}. */
 @RunWith(MockitoJUnitRunner.class)
@@ -44,6 +43,7 @@ public class JdbcConvertersTest {
   private static final String NAME_VALUE = "John";
   private static final String AGE_KEY = "age";
   private static final int AGE_VALUE = 24;
+  private static final String DESCRIPTION_KEY = "description";
   private static final String TIMESTAMP = "2020-10-15T00:37:23.000Z";
 
   static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
@@ -55,18 +55,22 @@ public class JdbcConvertersTest {
   private static TableRow expectedTableRow;
 
   @Mock private ResultSet resultSet;
-
   @Mock private ResultSetMetaData resultSetMetaData;
-
-  private static final Logger LOG = LoggerFactory.getLogger(JdbcConvertersTest.class);
+  @Mock private Clob clobData;
 
   @Test
   public void testRowMapper() throws Exception {
     Mockito.when(resultSet.getObject(1)).thenReturn(NAME_VALUE);
     Mockito.when(resultSet.getObject(2)).thenReturn(AGE_VALUE);
+    Mockito.when(resultSet.getObject(3)).thenReturn(clobData);
+    Mockito.when(resultSet.getClob(3)).thenReturn(clobData);
+
+    Mockito.when(clobData.length()).thenReturn((long) 20);
+    Mockito.when(clobData.getSubString(1, 20)).thenReturn("This is a long text.");
+
     Mockito.when(resultSet.getMetaData()).thenReturn(resultSetMetaData);
 
-    Mockito.when(resultSetMetaData.getColumnCount()).thenReturn(2);
+    Mockito.when(resultSetMetaData.getColumnCount()).thenReturn(3);
 
     Mockito.when(resultSetMetaData.getColumnName(1)).thenReturn(NAME_KEY);
     Mockito.when(resultSetMetaData.getColumnTypeName(1)).thenReturn("string");
@@ -74,9 +78,13 @@ public class JdbcConvertersTest {
     Mockito.when(resultSetMetaData.getColumnName(2)).thenReturn(AGE_KEY);
     Mockito.when(resultSetMetaData.getColumnTypeName(2)).thenReturn("integer");
 
+    Mockito.when(resultSetMetaData.getColumnName(3)).thenReturn(DESCRIPTION_KEY);
+    Mockito.when(resultSetMetaData.getColumnTypeName(3)).thenReturn("clob");
+
     expectedTableRow = new TableRow();
     expectedTableRow.set(NAME_KEY, NAME_VALUE);
     expectedTableRow.set(AGE_KEY, AGE_VALUE);
+    expectedTableRow.set(DESCRIPTION_KEY, "This is a long text.");
 
     JdbcIO.RowMapper<TableRow> resultSetConverters = JdbcConverters.getResultSetToTableRow();
     TableRow actualTableRow = resultSetConverters.mapRow(resultSet);
@@ -130,10 +138,7 @@ public class JdbcConvertersTest {
     Mockito.when(resultSetMetaData.getColumnCount()).thenReturn(2);
 
     Mockito.when(resultSetMetaData.getColumnName(1)).thenReturn(NAME_KEY);
-    Mockito.when(resultSetMetaData.getColumnTypeName(1)).thenReturn("string");
-
     Mockito.when(resultSetMetaData.getColumnName(2)).thenReturn("date_column");
-    Mockito.when(resultSetMetaData.getColumnTypeName(2)).thenReturn("date");
 
     expectedTableRow = new TableRow();
     expectedTableRow.set(NAME_KEY, null);

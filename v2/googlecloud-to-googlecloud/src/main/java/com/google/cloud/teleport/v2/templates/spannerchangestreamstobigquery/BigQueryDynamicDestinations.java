@@ -27,7 +27,9 @@ import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.sch
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerToBigQueryUtils;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerUtils;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
+import com.google.common.collect.ImmutableSet;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.io.gcp.bigquery.DynamicDestinations;
@@ -46,6 +48,7 @@ public final class BigQueryDynamicDestinations
 
   private final Map<String, TrackedSpannerTable> spannerTableByName;
   private final String bigQueryProject, bigQueryDataset, bigQueryTableTemplate;
+  private final ImmutableSet<String> ignoreFields;
 
   public static BigQueryDynamicDestinations of(
       BigQueryDynamicDestinationsOptions bigQueryDynamicDestinationsOptions) {
@@ -65,6 +68,7 @@ public final class BigQueryDynamicDestinations
       BigQueryDynamicDestinationsOptions bigQueryDynamicDestinationsOptions,
       Map<String, TrackedSpannerTable> spannerTableByName) {
     this.spannerTableByName = spannerTableByName;
+    this.ignoreFields = bigQueryDynamicDestinationsOptions.getIgnoreFields();
     this.bigQueryProject = bigQueryDynamicDestinationsOptions.getBigQueryProject();
     this.bigQueryDataset = bigQueryDynamicDestinationsOptions.getBigQueryDataset();
     this.bigQueryTableTemplate = bigQueryDynamicDestinationsOptions.getBigQueryTableTemplate();
@@ -98,7 +102,18 @@ public final class BigQueryDynamicDestinations
     String spannerTableName =
         (String) tableRow.get(BigQueryUtils.BQ_CHANGELOG_FIELD_NAME_TABLE_NAME);
     TrackedSpannerTable spannerTable = spannerTableByName.get(spannerTableName);
+    List<TableFieldSchema> fields = getFields(spannerTable);
+    List<TableFieldSchema> filteredFields = new ArrayList<>();
+    for (TableFieldSchema field : fields) {
+      if (!ignoreFields.contains(field.getName())) {
+        filteredFields.add(field);
+      }
+    }
 
+    return new TableSchema().setFields(filteredFields);
+  }
+
+  private List<TableFieldSchema> getFields(TrackedSpannerTable spannerTable) {
     List<TableFieldSchema> fields =
         SpannerToBigQueryUtils.spannerColumnsToBigQueryIOFields(spannerTable.getAllColumns());
 
@@ -151,7 +166,7 @@ public final class BigQueryDynamicDestinations
             .setType(StandardSQLTypeName.TIMESTAMP.name())
             .setMode(requiredMode));
 
-    return new TableSchema().setFields(fields);
+    return fields;
   }
 
   /**
@@ -163,6 +178,8 @@ public final class BigQueryDynamicDestinations
     public abstract SpannerConfig getSpannerConfig();
 
     public abstract String getChangeStreamName();
+
+    public abstract ImmutableSet<String> getIgnoreFields();
 
     public abstract String getBigQueryProject();
 
@@ -179,6 +196,8 @@ public final class BigQueryDynamicDestinations
       abstract Builder setSpannerConfig(SpannerConfig spannerConfig);
 
       abstract Builder setChangeStreamName(String changeStreamName);
+
+      abstract Builder setIgnoreFields(ImmutableSet<String> ignoreFields);
 
       abstract Builder setBigQueryProject(String bigQueryProject);
 
