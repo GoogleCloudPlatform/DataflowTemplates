@@ -959,6 +959,10 @@
                 <include>com.google.cloud.teleport.spanner</include>
                 <include>com.google.cloud.teleport.spanner.**</include>
               </includes>
+              <excludes>
+                <!-- Excluding generated proto java files -->
+                <exclude>com.google.cloud.teleport.spanner.proto</exclude>
+              </excludes>
             </rule>
           </rules>
         </configuration>

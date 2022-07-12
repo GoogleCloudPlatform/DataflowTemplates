@@ -19,7 +19,7 @@ import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.ReadContext;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
-import com.google.cloud.teleport.spanner.ExportProtos.Export;
+import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;

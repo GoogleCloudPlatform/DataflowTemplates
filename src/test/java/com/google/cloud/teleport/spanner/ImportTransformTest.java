@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.spanner;
 
-import com.google.cloud.teleport.spanner.ExportProtos.TableManifest;
 import com.google.cloud.teleport.spanner.ImportTransform.ValidateInputFiles;
+import com.google.cloud.teleport.spanner.proto.ExportProtos.TableManifest;
 import com.google.common.collect.ImmutableMap;
 import java.nio.file.Files;
 import java.nio.file.Path;

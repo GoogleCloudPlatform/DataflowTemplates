@@ -23,8 +23,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.spanner.Dialect;
-import com.google.cloud.teleport.spanner.ExportProtos.Export;
 import com.google.cloud.teleport.spanner.common.Type;
+import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
 import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.List;

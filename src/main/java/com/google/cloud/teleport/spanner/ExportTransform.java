@@ -21,12 +21,13 @@ import static com.google.cloud.teleport.util.ValueProviderUtils.eitherOrValuePro
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TimestampBound;
-import com.google.cloud.teleport.spanner.ExportProtos.Export;
-import com.google.cloud.teleport.spanner.ExportProtos.ProtoDialect;
-import com.google.cloud.teleport.spanner.ExportProtos.TableManifest;
 import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.cloud.teleport.spanner.proto.ExportProtos;
+import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
+import com.google.cloud.teleport.spanner.proto.ExportProtos.ProtoDialect;
+import com.google.cloud.teleport.spanner.proto.ExportProtos.TableManifest;
 import com.google.cloud.teleport.templates.common.SpannerConverters.CreateTransactionFnWithTimestamp;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;

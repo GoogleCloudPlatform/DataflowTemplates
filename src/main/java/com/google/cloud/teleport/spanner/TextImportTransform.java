@@ -17,13 +17,13 @@ package com.google.cloud.teleport.spanner;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.teleport.spanner.ExportProtos.ProtoDialect;
-import com.google.cloud.teleport.spanner.TextImportProtos.ImportManifest;
-import com.google.cloud.teleport.spanner.TextImportProtos.ImportManifest.TableManifest;
 import com.google.cloud.teleport.spanner.common.Type.Code;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.cloud.teleport.spanner.proto.ExportProtos.ProtoDialect;
+import com.google.cloud.teleport.spanner.proto.TextImportProtos.ImportManifest;
+import com.google.cloud.teleport.spanner.proto.TextImportProtos.ImportManifest.TableManifest;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.HashMultimap;
 import com.google.protobuf.util.JsonFormat;
