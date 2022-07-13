@@ -590,7 +590,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
   }
 
   /** Saves {@link Struct} elements (rows from Spanner) to destination Avro files. */
-  private static class SchemaBasedDynamicDestinations
+  @VisibleForTesting
+  static class SchemaBasedDynamicDestinations
       extends DynamicAvroDestinations<Struct, String, GenericRecord> {
 
     private final PCollectionView<Map<String, SerializableSchemaSupplier>> avroSchemas;
@@ -598,7 +599,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     private final PCollectionView<Dialect> dialectView;
     private final ValueProvider<ResourceId> baseDir;
 
-    private SchemaBasedDynamicDestinations(
+    SchemaBasedDynamicDestinations(
         PCollectionView<Map<String, SerializableSchemaSupplier>> avroSchemas,
         PCollectionView<String> uniqueIdView,
         PCollectionView<Dialect> dialectView,
@@ -665,28 +666,30 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
   }
 
   // TODO: use AvroUtils.serializableSchemaSupplier once it is public
-  private static class SerializableSchemaString implements Serializable {
+  @VisibleForTesting
+  static class SerializableSchemaString implements Serializable {
 
     private final String schema;
 
-    private SerializableSchemaString(String schema) {
+    SerializableSchemaString(String schema) {
       this.schema = schema;
     }
 
-    private Object readResolve() throws IOException, ClassNotFoundException {
+    Object readResolve() throws IOException, ClassNotFoundException {
       return new SerializableSchemaSupplier(Schema.parse(schema));
     }
   }
 
-  private static class SerializableSchemaSupplier implements Serializable, Supplier<Schema> {
+  @VisibleForTesting
+  static class SerializableSchemaSupplier implements Serializable, Supplier<Schema> {
 
     private final Schema schema;
 
-    private SerializableSchemaSupplier(Schema schema) {
+    SerializableSchemaSupplier(Schema schema) {
       this.schema = schema;
     }
 
-    private Object writeReplace() {
+    Object writeReplace() {
       return new SerializableSchemaString(schema.toString());
     }
 

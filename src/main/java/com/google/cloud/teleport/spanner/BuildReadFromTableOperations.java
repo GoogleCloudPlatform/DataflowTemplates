@@ -21,6 +21,7 @@ import com.google.cloud.spanner.PartitionOptions;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.common.annotations.VisibleForTesting;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -110,7 +111,8 @@ class BuildReadFromTableOperations
             }));
   }
 
-  private String createColumnExpression(Column col) {
+  @VisibleForTesting
+  String createColumnExpression(Column col) {
     switch (col.dialect()) {
       case GOOGLE_STANDARD_SQL:
         if (col.typeString().equals("NUMERIC")) {

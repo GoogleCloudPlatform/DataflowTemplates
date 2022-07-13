@@ -132,6 +132,122 @@ public final class TextRowToMutationTest {
   }
 
   @Test
+  public void parseRowToMutationException1() {
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("ddl", Create.of(getTestDdl())).apply(View.asSingleton());
+    PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
+        pipeline
+            .apply(
+                "tableColumnsMap",
+                Create.<Map<String, List<TableManifest.Column>>>of(getEmptyTableColumnsMap())
+                    .withCoder(
+                        MapCoder.of(
+                            StringUtf8Coder.of(),
+                            ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
+            .apply("Map as view", View.asSingleton());
+
+    PCollection<KV<String, String>> input =
+        pipeline.apply(
+            "input", Create.of(KV.of(testTableName, "123,a string,another\n456,two,four")));
+    PCollection<Mutation> mutations =
+        input.apply(
+            ParDo.of(
+                    new TextRowToMutation(
+                        ddlView,
+                        tableColumnsMapView,
+                        columnDelimiter,
+                        StaticValueProvider.of('`'),
+                        StaticValueProvider.of(true),
+                        escape,
+                        nullString,
+                        dateFormat,
+                        timestampFormat))
+                .withSideInputs(ddlView, tableColumnsMapView));
+    // TextRowToMutation throws exception if the input string contains multiple lines.
+    assertThrows(PipelineExecutionException.class, () -> pipeline.run());
+  }
+
+  @Test
+  public void parseRowToMutationEmptyLine() {
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("ddl", Create.of(getTestDdl())).apply(View.asSingleton());
+    PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
+        pipeline
+            .apply(
+                "tableColumnsMap",
+                Create.<Map<String, List<TableManifest.Column>>>of(getEmptyTableColumnsMap())
+                    .withCoder(
+                        MapCoder.of(
+                            StringUtf8Coder.of(),
+                            ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
+            .apply("Map as view", View.asSingleton());
+
+    PCollection<KV<String, String>> input =
+        pipeline.apply("input", Create.of(KV.of(testTableName, "")));
+    PCollection<Mutation> mutations =
+        input.apply(
+            ParDo.of(
+                    new TextRowToMutation(
+                        ddlView,
+                        tableColumnsMapView,
+                        columnDelimiter,
+                        StaticValueProvider.of('`'),
+                        StaticValueProvider.of(true),
+                        escape,
+                        nullString,
+                        dateFormat,
+                        timestampFormat))
+                .withSideInputs(ddlView, tableColumnsMapView));
+
+    PAssert.that(mutations).empty();
+
+    pipeline.run();
+  }
+
+  @Test
+  public void parseRowToMutationException2() {
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("ddl", Create.of(getTestDdl())).apply(View.asSingleton());
+    PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
+        pipeline
+            .apply(
+                "tableColumnsMap",
+                Create.<Map<String, List<TableManifest.Column>>>of(getEmptyTableColumnsMap())
+                    .withCoder(
+                        MapCoder.of(
+                            StringUtf8Coder.of(),
+                            ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
+            .apply("Map as view", View.asSingleton());
+
+    PCollection<KV<String, String>> input =
+        pipeline.apply(
+            "input",
+            Create.of(
+                KV.of(
+                    testTableName,
+                    "123,a string,`another"
+                        + " string`,1.23,NotBool,2019-01-01,2018-12-31T23:59:59Z,1567637083,aGk=,"
+                        + "-439.25335679,`{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}`")));
+    PCollection<Mutation> mutations =
+        input.apply(
+            ParDo.of(
+                    new TextRowToMutation(
+                        ddlView,
+                        tableColumnsMapView,
+                        columnDelimiter,
+                        StaticValueProvider.of('`'),
+                        StaticValueProvider.of(true),
+                        escape,
+                        nullString,
+                        dateFormat,
+                        timestampFormat))
+                .withSideInputs(ddlView, tableColumnsMapView));
+    // TextRowToMutation throws exception if it could not parse the data to corresponding type.
+    // `NotBool` cannot be parsed to Boolean in this test case.
+    assertThrows(PipelineExecutionException.class, () -> pipeline.run());
+  }
+
+  @Test
   public void parseRowToMutationDefaultDatetimeExtraParts() {
     PCollectionView<Ddl> ddlView =
         pipeline.apply("ddl", Create.of(getTestDdl())).apply(View.asSingleton());
