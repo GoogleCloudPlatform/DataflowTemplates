@@ -680,10 +680,12 @@
         <module>elasticsearch-common</module>
         <module>file-format-conversion</module>
         <module>googlecloud-to-elasticsearch</module>
+        <module>googlecloud-to-mongodb</module>
         <module>googlecloud-to-googlecloud</module>
         <module>googlecloud-to-splunk</module>
         <module>kafka-to-bigquery</module>
         <module>kafka-to-gcs</module>
+        <module>mongodb-to-googlecloud</module>
         <module>kudu-to-bigquery</module>
         <module>pubsub-binary-to-bigquery</module>
         <module>pubsub-cdc-to-bigquery</module>
