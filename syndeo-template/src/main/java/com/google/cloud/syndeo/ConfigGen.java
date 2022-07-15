@@ -15,17 +15,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.beam.syndeo;
+package com.google.cloud.syndeo;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import org.apache.beam.sdk.schemas.SchemaTranslation;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
-import org.apache.beam.syndeo.common.ProtoTranslation;
-import org.apache.beam.syndeo.common.ProviderUtil;
-import org.apache.beam.syndeo.v1.SyndeoV1.SchemaTransformConfigurations;
-import org.apache.beam.syndeo.v1.SyndeoV1.SchemaTransformDescription;
+import com.google.cloud.syndeo.common.ProtoTranslation;
+import com.google.cloud.syndeo.common.ProviderUtil;
+import com.google.cloud.syndeo.v1.SyndeoV1.SchemaTransformConfigurations;
+import com.google.cloud.syndeo.v1.SyndeoV1.SchemaTransformDescription;
 
 public class ConfigGen {
 

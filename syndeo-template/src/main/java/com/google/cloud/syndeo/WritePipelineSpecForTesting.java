@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.beam.syndeo;
+package com.google.cloud.syndeo;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -26,8 +26,8 @@ import java.util.List;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.Field;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
-import org.apache.beam.syndeo.common.ProviderUtil.TransformSpec;
-import org.apache.beam.syndeo.v1.SyndeoV1.PipelineDescription;
+import com.google.cloud.syndeo.common.ProviderUtil.TransformSpec;
+import com.google.cloud.syndeo.v1.SyndeoV1.PipelineDescription;
 
 public class WritePipelineSpecForTesting {
 

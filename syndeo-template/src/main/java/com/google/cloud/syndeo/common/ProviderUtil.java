@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.beam.syndeo.common;
+package com.google.cloud.syndeo.common;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -30,7 +30,7 @@ import org.apache.beam.sdk.schemas.transforms.SchemaTransform;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.Row;
-import org.apache.beam.syndeo.v1.SyndeoV1.ConfiguredSchemaTransform;
+import com.google.cloud.syndeo.v1.SyndeoV1.ConfiguredSchemaTransform;
 
 public class ProviderUtil {
 

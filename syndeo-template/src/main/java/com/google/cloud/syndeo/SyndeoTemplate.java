@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.beam.syndeo;
+package com.google.cloud.syndeo;
 
 import static avro.shaded.com.google.common.base.Preconditions.checkArgument;
 
@@ -36,10 +36,10 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
-import org.apache.beam.syndeo.common.ProviderUtil;
-import org.apache.beam.syndeo.common.ProviderUtil.TransformSpec;
-import org.apache.beam.syndeo.v1.SyndeoV1.ConfiguredSchemaTransform;
-import org.apache.beam.syndeo.v1.SyndeoV1.PipelineDescription;
+import com.google.cloud.syndeo.common.ProviderUtil;
+import com.google.cloud.syndeo.common.ProviderUtil.TransformSpec;
+import com.google.cloud.syndeo.v1.SyndeoV1.ConfiguredSchemaTransform;
+import com.google.cloud.syndeo.v1.SyndeoV1.PipelineDescription;
 import org.apache.beam.vendor.grpc.v1p43p2.com.google.common.io.CharStreams;
 
 public class SyndeoTemplate {

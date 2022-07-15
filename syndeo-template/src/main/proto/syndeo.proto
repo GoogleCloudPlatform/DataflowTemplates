@@ -28,7 +28,7 @@ syntax = "proto3";
 
 package org.apache.beam.syndeo.v1;
 
-option java_package = "org.apache.beam.syndeo.v1";
+option java_package = "com.google.cloud.syndeo.v1";
 option java_outer_classname = "SyndeoV1";
 
 // An unconfigured schema transform definition.

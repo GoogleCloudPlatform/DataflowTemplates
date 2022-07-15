@@ -67,7 +67,7 @@ import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.POutput;
 import org.apache.beam.sdk.values.Row;
-import org.apache.beam.syndeo.common.SchemaIOTransformProviderWrapper;
+import com.google.cloud.syndeo.common.SchemaIOTransformProviderWrapper;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.junit.Rule;
 import org.junit.Test;
@@ -80,7 +80,7 @@ public class SchemaIOTransformProviderWrapperTest {
   @Rule public final transient TestPipeline p = TestPipeline.create();
 
   @AutoService(SchemaIOProvider.class)
-  private static class FakeSchemaIOProvider implements SchemaIOProvider {
+  public static class FakeSchemaIOProvider implements SchemaIOProvider {
 
     public FakeSchemaIOProvider() {}
 
@@ -221,6 +221,7 @@ public class SchemaIOTransformProviderWrapperTest {
   @Test
   public void testGetAll() throws Exception {
     List<SchemaTransformProvider> providers = SchemaIOTransformProviderWrapper.getAll();
+    System.out.println("PROVIDERS: " + providers.get(0).toString());
     assertEquals(
         1,
         providers.stream()

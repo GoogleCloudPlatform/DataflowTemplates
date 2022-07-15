@@ -15,10 +15,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.beam.syndeo.common;
+package com.google.cloud.syndeo.common;
 
 import org.apache.beam.model.pipeline.v1.SchemaApi;
-import org.apache.beam.syndeo.v1.SyndeoV1;
+import com.google.cloud.syndeo.v1.SyndeoV1;
 import org.apache.beam.vendor.grpc.v1p43p2.com.google.protobuf.InvalidProtocolBufferException;
 
 public class ProtoTranslation {

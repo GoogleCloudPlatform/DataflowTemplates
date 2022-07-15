@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.beam.syndeo.common;
+package com.google.cloud.syndeo.common;
 
 import avro.shaded.com.google.common.base.Preconditions;
 import java.io.Serializable;
