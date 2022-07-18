@@ -98,6 +98,7 @@ public class SpannerToText {
    */
   public static void main(String[] args) {
     LOG.info("Starting pipeline setup");
+    LOG.info("Testing import from Github PR");
     PipelineOptionsFactory.register(SpannerToTextOptions.class);
     SpannerToTextOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(SpannerToTextOptions.class);
