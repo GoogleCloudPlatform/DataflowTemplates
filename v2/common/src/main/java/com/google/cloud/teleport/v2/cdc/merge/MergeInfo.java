@@ -113,6 +113,21 @@ public abstract class MergeInfo implements Serializable {
         this.getColumns());
   }
 
+  @Override
+  public boolean equals(Object object) {
+    if (object == null || !(object instanceof MergeInfo)) {
+      return false;
+    }
+    MergeInfo other = (MergeInfo) object;
+    if (this.getProjectId().equals(other.getProjectId())
+        && this.getStagingTable().equals(other.getStagingTable())
+        && this.getReplicaTable().equals(other.getReplicaTable())) {
+      return true;
+    }
+
+    return false;
+  }
+
   private BigQueryTableCache getTableCache() {
     if (this.tableCache == null) {
       setUpTableCache();

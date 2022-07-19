@@ -252,8 +252,9 @@ public final class SpannerTableFilterTest {
             .endTable()
             .build();
 
+    SpannerTableFilter spannerTableFilter = new SpannerTableFilter();
     List<String> filteredTables =
-        getFilteredTables(ddl, ImmutableList.of(usersTable)).stream()
+        spannerTableFilter.getFilteredTables(ddl, ImmutableList.of(usersTable)).stream()
             .map(t -> t.name())
             .collect(Collectors.toList());
     List<String> expectedFilteredTables = ImmutableList.of(usersTable);

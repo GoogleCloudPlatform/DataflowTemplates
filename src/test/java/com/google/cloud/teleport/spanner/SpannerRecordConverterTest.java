@@ -17,6 +17,8 @@ package com.google.cloud.teleport.spanner;
 
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.ByteArray;
@@ -64,6 +66,12 @@ public class SpannerRecordConverterTest {
             .string()
             .max()
             .endColumn()
+            .column("bool")
+            .bool()
+            .endColumn()
+            .column("double")
+            .float64()
+            .endColumn()
             .primaryKey()
             .asc("id")
             .end()
@@ -79,6 +87,10 @@ public class SpannerRecordConverterTest {
             .to("abc@google.com")
             .set("name")
             .to("John Doe")
+            .set("bool")
+            .to(true)
+            .set("double")
+            .to(30.2)
             .build();
 
     GenericRecord avroRecord = recordConverter.convert(struct);
@@ -86,6 +98,8 @@ public class SpannerRecordConverterTest {
     assertThat(avroRecord.get("id"), equalTo(1L));
     assertThat(avroRecord.get("email"), equalTo("abc@google.com"));
     assertThat(avroRecord.get("name"), equalTo("John Doe"));
+    assertEquals(true, avroRecord.get("bool"));
+    assertEquals(30.2, avroRecord.get("double"));
   }
 
   @Test
@@ -114,6 +128,12 @@ public class SpannerRecordConverterTest {
             .column("ts")
             .timestamp()
             .endColumn()
+            .column("bool")
+            .bool()
+            .endColumn()
+            .column("double")
+            .float64()
+            .endColumn()
             .primaryKey()
             .asc("id")
             .end()
@@ -135,6 +155,10 @@ public class SpannerRecordConverterTest {
             .to((Date) null)
             .set("ts")
             .to((Timestamp) null)
+            .set("bool")
+            .to((Boolean) null)
+            .set("double")
+            .to((Double) null)
             .build();
 
     GenericRecord avroRecord = recordConverter.convert(struct);
@@ -145,6 +169,8 @@ public class SpannerRecordConverterTest {
     assertThat(avroRecord.get("bytes"), is((ByteArray) null));
     assertThat(avroRecord.get("date"), is((String) null));
     assertThat(avroRecord.get("ts"), is((String) null));
+    assertThat(avroRecord.get("bool"), is((Boolean) null));
+    assertThat(avroRecord.get("double"), is((Double) null));
   }
 
   @Test
@@ -265,6 +291,16 @@ public class SpannerRecordConverterTest {
             .column("date")
             .type(Type.array(Type.date()))
             .endColumn()
+            .column("bool")
+            .type(Type.array(Type.bool()))
+            .endColumn()
+            .column("double")
+            .type(Type.array(Type.float64()))
+            .endColumn()
+            .column("bytes")
+            .type(Type.array(Type.bytes()))
+            .size(35)
+            .endColumn()
             .primaryKey()
             .asc("id")
             .end()
@@ -284,6 +320,13 @@ public class SpannerRecordConverterTest {
             .toTimestampArray(Lists.newArrayList(null, null, Timestamp.ofTimeMicroseconds(10L)))
             .set("date")
             .toDateArray(Lists.newArrayList(null, null, Date.fromYearMonthDay(2018, 2, 2)))
+            .set("bool")
+            .toBoolArray(Lists.newArrayList(true, false, null))
+            .set("double")
+            .toFloat64Array(Lists.newArrayList(1.0, 2.1, 3.3, null))
+            .set("bytes")
+            .toBytesArray(
+                Lists.newArrayList(ByteArray.copyFrom("1234"), ByteArray.copyFrom("5678"), null))
             .build();
 
     GenericRecord avroRecord = recordConverter.convert(struct);
@@ -294,6 +337,11 @@ public class SpannerRecordConverterTest {
     assertThat(avroRecord.get("date"), equalTo(Arrays.asList(null, null, "2018-02-02")));
     assertThat(
         avroRecord.get("ts"), equalTo(Arrays.asList(null, null, "1970-01-01T00:00:00.000010000Z")));
+    assertThat(avroRecord.get("bool"), equalTo(Arrays.asList(true, false, null)));
+    assertThat(avroRecord.get("double"), equalTo(Arrays.asList(1.0, 2.1, 3.3, null)));
+    assertEquals(ByteBuffer.wrap("1234".getBytes()), ((List) avroRecord.get("bytes")).get(0));
+    assertEquals(ByteBuffer.wrap("5678".getBytes()), ((List) avroRecord.get("bytes")).get(1));
+    assertNull(((List) avroRecord.get("bytes")).get(2));
   }
 
   @Test
@@ -722,5 +770,35 @@ public class SpannerRecordConverterTest {
     assertThat(avroRecord.get("date"), equalTo(Arrays.asList(null, null, "2018-02-02")));
     assertThat(
         avroRecord.get("ts"), equalTo(Arrays.asList(null, null, "1970-01-01T00:00:00.000010000Z")));
+  }
+
+  @Test
+  public void generatedColumn() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("users")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("generatedInt")
+            .int64()
+            .size(15)
+            .notNull()
+            .generatedAs("2 + 5")
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+    Schema schema = converter.convert(ddl).iterator().next();
+    SpannerRecordConverter recordConverter = new SpannerRecordConverter(schema);
+    Struct struct = Struct.newBuilder().set("id").to(1L).set("generatedInt").to(7L).build();
+
+    GenericRecord avroRecord = recordConverter.convert(struct);
+
+    assertEquals(1L, avroRecord.get("id"));
+    assertNull(avroRecord.get("generatedInt"));
   }
 }

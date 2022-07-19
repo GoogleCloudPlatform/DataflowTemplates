@@ -269,9 +269,6 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
     switch (avroType) {
       case BYTES:
         List<ByteBuffer> values = (List<ByteBuffer>) record.get(fieldName);
-        if (values == null) {
-          return Optional.empty();
-        }
         return Optional.of(
             values.stream()
                 .map(x -> x == null ? null : NumericUtils.bytesToString(x.array()))
@@ -292,9 +289,6 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
     switch (avroType) {
       case BYTES:
         List<ByteBuffer> values = (List<ByteBuffer>) record.get(fieldName);
-        if (values == null) {
-          return Optional.empty();
-        }
         return Optional.of(
             values.stream()
                 .map(x -> x == null ? null : NumericUtils.pgBytesToString(x.array()))

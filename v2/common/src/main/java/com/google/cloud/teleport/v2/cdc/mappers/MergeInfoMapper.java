@@ -110,12 +110,12 @@ public class MergeInfoMapper
                             METADATA_DELETED,
                             TableId.of(
                                 projectId,
-                                getFormattedBigQueryString(row, stagingDataset),
-                                getFormattedBigQueryString(row, stagingTable)),
+                                row.formatStringTemplateForBigQuery(stagingDataset),
+                                row.formatStringTemplateForBigQuery(stagingTable)),
                             TableId.of(
                                 projectId,
-                                getFormattedBigQueryString(row, replicaDataset),
-                                getFormattedBigQueryString(row, replicaTable)));
+                                row.formatStringTemplateForBigQuery(replicaDataset),
+                                row.formatStringTemplateForBigQuery(replicaTable)));
 
                     return Lists.newArrayList(mergeInfo);
                   } catch (Exception e) {
@@ -126,9 +126,5 @@ public class MergeInfoMapper
                     return Lists.newArrayList();
                   }
                 }));
-  }
-
-  private static String getFormattedBigQueryString(DatastreamRow row, String object) {
-    return row.formatStringTemplate(object).replaceAll("\\$", "_");
   }
 }
