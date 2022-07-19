@@ -25,6 +25,7 @@ import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.ddl.View;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import java.util.Collection;
@@ -226,7 +227,8 @@ public class AvroSchemaToDdlConverter {
     return props.build();
   }
 
-  private com.google.cloud.teleport.spanner.common.Type inferType(Schema f, boolean supportArrays) {
+  @VisibleForTesting
+  com.google.cloud.teleport.spanner.common.Type inferType(Schema f, boolean supportArrays) {
     Schema.Type type = f.getType();
     LogicalType logicalType = LogicalTypes.fromSchema(f);
 
