@@ -1497,38 +1497,62 @@ public class ElasticsearchIO {
         }
         HttpEntity requestBody =
             new NStringEntity(bulkRequest.toString(), ContentType.APPLICATION_JSON);
-        Request request = new Request("POST", endPoint);
-        request.addParameters(Collections.emptyMap());
-        request.setEntity(requestBody);
-        response = restClient.performRequest(request);
-        responseEntity = new BufferedHttpEntity(response.getEntity());
+        try {
+          Request request = new Request("POST", endPoint);
+          request.addParameters(Collections.emptyMap());
+          request.setEntity(requestBody);
+          response = restClient.performRequest(request);
+          responseEntity = new BufferedHttpEntity(response.getEntity());
+        } catch (java.io.IOException ex) {
+          if (spec.getRetryConfiguration() == null || !isRetryableClientException(ex)) {
+            throw ex;
+          }
+          LOG.error("Caught ES timeout, retrying", ex);
+        }
         if (spec.getRetryConfiguration() != null
-            && spec.getRetryConfiguration().getRetryPredicate().test(responseEntity)) {
+            && (response == null
+                || responseEntity == null
+                || spec.getRetryConfiguration().getRetryPredicate().test(responseEntity))) {
+          if (responseEntity != null
+              && spec.getRetryConfiguration().getRetryPredicate().test(responseEntity)) {
+            LOG.warn("ES Cluster is responding with HTP 429 - TOO_MANY_REQUESTS.");
+          }
           responseEntity = handleRetry("POST", endPoint, Collections.emptyMap(), requestBody);
         }
         checkForErrors(responseEntity, backendVersion, spec.getUsePartialUpdate());
       }
-
+      
       /** retry request based on retry configuration policy. */
       private HttpEntity handleRetry(
           String method, String endpoint, Map<String, String> params, HttpEntity requestBody)
           throws IOException, InterruptedException {
         Response response;
-        HttpEntity responseEntity;
+        HttpEntity responseEntity = null;
         Sleeper sleeper = Sleeper.DEFAULT;
         BackOff backoff = retryBackoff.backoff();
         int attempt = 0;
         // while retry policy exists
         while (BackOffUtils.next(sleeper, backoff)) {
-          LOG.warn(String.format(RETRY_ATTEMPT_LOG, ++attempt));
-          Request request = new Request(method, endpoint);
-          request.addParameters(params);
-          request.setEntity(requestBody);
-          response = restClient.performRequest(request);
-          responseEntity = new BufferedHttpEntity(response.getEntity());
+          LOG.warn(RETRY_ATTEMPT_LOG, ++attempt);
+          try {
+            Request request = new Request(method, endpoint);
+            request.addParameters(params);
+            request.setEntity(requestBody);
+            response = restClient.performRequest(request);
+            responseEntity = new BufferedHttpEntity(response.getEntity());
+          } catch (java.io.IOException ex) {
+            if (isRetryableClientException(ex)) {
+              LOG.error("Caught ES timeout, retrying", ex);
+              continue;
+            }
+          }
           // if response has no 429 errors
-          if (!spec.getRetryConfiguration().getRetryPredicate().test(responseEntity)) {
+          if (!Objects.requireNonNull(spec.getRetryConfiguration())
+              .getRetryPredicate()
+              .test(responseEntity)) {
             return responseEntity;
+          } else {
+            LOG.warn("ES Cluster is responding with HTP 429 - TOO_MANY_REQUESTS.");
           }
         }
         throw new IOException(String.format(RETRY_FAILED_LOG, attempt));
