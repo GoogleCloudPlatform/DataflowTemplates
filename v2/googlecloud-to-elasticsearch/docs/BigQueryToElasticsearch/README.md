@@ -29,7 +29,7 @@ export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export TEMPLATE_MODULE=bigquery-to-elasticsearch
-export APP_ROOT=/template/googlecloud-to-elasticsearch
+export APP_ROOT=/template/${TEMPLATE_MODULE}
 export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_MODULE}-command-spec.json
 export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
 
@@ -50,7 +50,7 @@ mvn clean package \
     -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
     -Dapp-root=${APP_ROOT} \
     -Dcommand-spec=${COMMAND_SPEC} \
-    -am -pl ${TEMPLATE_MODULE}
+    -am -pl googlecloud-to-elasticsearch
 ```
 
 #### Creating Image Spec
@@ -139,6 +139,69 @@ echo '{
               "helpText":"Max retry duration in milliseconds, must be > 0. Default: no retries",
               "paramType":"TEXT",
               "isOptional":true
+          },
+          {
+              "name":"javascriptIndexFnGcsPath",
+              "label":"Gcs path to javascript udf source for function to extract index name from row",
+              "helpText":"Gcs path to javascript udf source. Udf will be preferred option for transformation if supplied. Default: null",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"javascriptIndexFnName",
+              "label":"UDF Javascript Function Name for function to extract index name from row",
+              "helpText":"UDF Javascript Function Name. Default: null",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"javascriptIdFnGcsPath",
+              "label":"Gcs path to javascript udf source for function to extract id value from row",
+              "helpText":"Gcs path to javascript udf source. Udf will be preferred option for transformation if supplied. Default: null",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"javascriptIdFnName",
+              "label":"UDF Javascript Function Name for function to extract id value from row",
+              "helpText":"UDF Javascript Function Name. Default: null",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"javascriptTypeFnGcsPath",
+              "label":"Gcs path to javascript udf source for function to extract type value from row",
+              "helpText":"Gcs path to javascript udf source. Udf will be preferred option for transformation if supplied. Default: null",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"javascriptTypeFnName",
+              "label":"UDF Javascript Function Name for function to extract type value from row",
+              "helpText":"UDF Javascript Function Name. Default: null",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"javascriptIsDeleteFnGcsPath",
+              "label":"Gcs path to javascript udf source for function to extract whether operation is delete or not from row",
+              "helpText":"Gcs path to javascript udf source. Udf will be preferred option for transformation if supplied. Default: null",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"javascriptIsDeleteFnName",
+              "label":"UDF Javascript Function Name for function to extract whether operation is delete or not from row",
+              "helpText":"UDF Javascript Function Name. Default: null",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"usePartialUpdate",
+              "label":"Use partial updates (update rather than create or index, allowing partial docs) with Elasticsearch requests",
+              "helpText":"Whether to use partial updates (update rather than create or index, allowing partial docs) with Elasticsearch requests",
+              "paramType":"TEXT",
+              "isOptional":true
           }
       ]
     },
@@ -173,11 +236,20 @@ The template has the following optional parameters:
 * batchSizeBytes: Batch size in number of bytes. Default: 5242880 (5mb)
 * maxRetryAttempts: Max retry attempts, must be > 0. Default: no retries
 * maxRetryDuration: Max retry duration in milliseconds, must be > 0. Default: no retries
+* javascriptIndexFnGcsPath: GCS path of storage location for Javascript UDF to extract _index from row data
+* javascriptIndexFnName: Function name for Javascript UDF to extract _index from row data
+* javascriptIdFnGcsPath: GCS path of storage location for Javascript UDF to extract _id from row data
+* javascriptIdFnName: Function name for Javascript UDF to extract _id from row data
+* javascriptTypeFnGcsPath: GCS path of storage location for Javascript UDF to extract _type from row data
+* javascriptTypeFnName: Function name for Javascript UDF to extract _type from row data
+* javascriptIsDeleteFnGcsPath: GCS path of storage location for Javascript UDF to determine if row should be a delete operation (rather than create, index, or update)
+* javascriptIsDeleteFnName: Function name for Javascript UDF to determine if row should be a delete operation (rather than create, index, or update)
+* usePartialUpdate:  Whether to use partial document updates (update rather than create or index, allows partial document updates)
 
 Template can be executed using the following gcloud command:
 ```sh
 export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
-gcloud beta dataflow flex-template run ${JOB_NAME} \
+gcloud dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
         --parameters inputTableSpec=${INPUT_TABLE_SPEC},connectionUrl=${CONNECTION_URL},index=${INDEX},elasticsearchUsername=${ELASTICSEARCH_USERNAME},elasticsearchPassword=${ELASTICSEARCH_PASSWORD},useLegacySql=${USE_LEGACY_SQL}
