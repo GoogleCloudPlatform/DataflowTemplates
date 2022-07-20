@@ -135,7 +135,7 @@ public class SpannerChangeStreamsToElasticsearch {
         .apply(
             "WriteToElasticsearch",
             WriteToElasticsearch.newBuilder()
-                .setOptions(options.as(SpannerChangeStreamsToElasticsearch.class))
+                .setOptions(options.as(SpannerChangeStreamsToElasticsearchOptions.class))
                 .build());
 
     return pipeline.run();

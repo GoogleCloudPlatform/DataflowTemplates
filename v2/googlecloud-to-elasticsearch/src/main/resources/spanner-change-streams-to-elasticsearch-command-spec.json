@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.elasticsearch.templates.SpannerChangeStreamsToElasticsearch",
+  "classPath": "/template/spanner-change-streams-to-elasticsearch/*:/template/spanner-change-streams-to-elasticsearch/libs/*:/template/spanner-change-streams-to-elasticsearch/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"spanner_change_streams_to_elasticsearch\"}"
+  }
+}
