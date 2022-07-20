@@ -22,6 +22,7 @@ import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Partition;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Schema;
 import com.google.cloud.teleport.v2.clients.DataplexClient;
 import com.google.cloud.teleport.v2.clients.DataplexClientFactory;
+import com.google.cloud.teleport.v2.options.DataplexUpdateMetadataOptions;
 import com.google.cloud.teleport.v2.utils.BigQueryToGcsDirectoryNaming;
 import com.google.cloud.teleport.v2.utils.DataplexUtils;
 import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
@@ -36,10 +37,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.transforms.Combine;
 import org.apache.beam.sdk.transforms.Combine.CombineFn;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -106,7 +104,7 @@ public class DataplexBigQueryToGcsUpdateMetadata
         @Element Map<BigQueryTable, Map<BigQueryTablePartition, Set<String>>> input,
         PipelineOptions options) {
 
-      if (!options.as(Options.class).getUpdateDataplexMetadata()) {
+      if (!options.as(DataplexUpdateMetadataOptions.class).getUpdateDataplexMetadata()) {
         LOG.info("Skipping Dataplex Metadata update.");
       } else {
         // Need to only update entities here. All entities should've been pre-created
@@ -275,16 +273,5 @@ public class DataplexBigQueryToGcsUpdateMetadata
         Map<BigQueryTable, Map<BigQueryTablePartition, Set<String>>> accumulator) {
       return accumulator;
     }
-  }
-
-  /** Pipeline options supported by {@link DataplexBigQueryToGcsUpdateMetadata}. */
-  public interface Options extends PipelineOptions {
-    @Description(
-        "Whether to update Dataplex metadata for the newly created entities. Default: false.")
-    @Default.Boolean(false)
-    @Required
-    Boolean getUpdateDataplexMetadata();
-
-    void setUpdateDataplexMetadata(Boolean updateDataplexMetadata);
   }
 }

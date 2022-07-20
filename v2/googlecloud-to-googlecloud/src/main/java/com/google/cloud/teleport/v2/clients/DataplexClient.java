@@ -54,7 +54,11 @@ public interface DataplexClient {
       throws IOException;
 
   /**
-   * Get entities by their names.
+   * Gets "rich" entities (with all fields populated) by their names.
+   *
+   * <p>Note: the implementation will likely load all entities one by one as it's the only way to
+   * get all entity fields via Dataplex API. If you don't need additional fields like entity schema,
+   * use the {@link #listEntities} method.
    *
    * @param entityNames example:
    *     projects/{project_number}/locations/{location_id}/lakes/{lake_id}/zones/{zone_id}/entities/
@@ -64,6 +68,15 @@ public interface DataplexClient {
    */
   ImmutableList<GoogleCloudDataplexV1Entity> getEntities(List<String> entityNames)
       throws IOException;
+
+  /**
+   * Gets a single "rich" entity (with all fields populated) by its name.
+   *
+   * @param entityName example:
+   *     projects/{project_number}/locations/{location_id}/lakes/{lake_id}/zones/{zone_id}/entities/
+   *     {entity_id_1}
+   */
+  GoogleCloudDataplexV1Entity getEntity(String entityName) throws IOException;
 
   /**
    * Lists all entities in a zone matching an optional filter.

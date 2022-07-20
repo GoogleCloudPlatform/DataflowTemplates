@@ -362,6 +362,12 @@ public class DataplexBigQueryToGcsTest {
                 ImmutableList.of(
                     partitionedEntityWithEmptySchema.clone(),
                     unpartitionedEntityWithEmptySchema.clone()));
+    when(dataplexClientMock.getEntity(any()))
+        .thenAnswer(
+            invocation -> {
+              String name = invocation.getArgument(0);
+              return entities.get(name).clone();
+            });
     when(dataplexClientMock.getEntities(any()))
         .thenAnswer(
             invocation -> {
