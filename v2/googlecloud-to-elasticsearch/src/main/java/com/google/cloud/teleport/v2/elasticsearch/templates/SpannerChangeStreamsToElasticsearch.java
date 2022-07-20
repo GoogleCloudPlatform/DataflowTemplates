@@ -17,7 +17,8 @@ package com.google.cloud.teleport.v2.elasticsearch.templates;
 
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Options.RpcPriority;
-import com.google.cloud.teleport.v2.elasticsearch.options.SpannerChangeStreamsToElasticsearch;
+import com.google.cloud.teleport.v2.elasticsearch.options.SpannerChangeStreamsToElasticsearchOptions;
+import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
@@ -25,9 +26,17 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
+import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ColumnType;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.DataChangeRecord;
+import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.DoFn.Element;
+import org.apache.beam.sdk.transforms.DoFn.OutputReceiver;
+import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,6 +68,8 @@ public class SpannerChangeStreamsToElasticsearch {
     options.setEnableStreamingEngine(true);
     options.setAutoscalingAlgorithm(
         DataflowPipelineWorkerPoolOptions.AutoscalingAlgorithmType.NONE);
+    // Spanner change stream updates would require partial updates when writing to Elasticsearch unless the full record is read    
+    options.setUsePartialUpdate(true);
 
     final Pipeline pipeline = Pipeline.create(options);
 
@@ -135,37 +146,24 @@ public class SpannerChangeStreamsToElasticsearch {
     @ProcessElement
     public void process(@Element DataChangeRecord element, OutputReceiver<String> output) {
       List<ColumnType> cols = element.getRowType();
+      ModType modType = element.getModType();
       element.getMods().forEach(mod -> {
-        JSONObject keysJson = new JSONObject(mod.getKeysJson());
+        JSONObject keysJsonExtended = new JSONObject(mod.getKeysJson());
         JSONObject newValuesJson = new JSONObject(mod.getNewValuesJson());
-        ModType modType = element.getModType();
-        JSONObject jsonRow = new JSONObject();
-        long singerId = keysJson.getLong("SingerId");
-        jsonRow.put("SingerId", singerId);
-        if (modType == ModType.INSERT) {
-          // For INSERT mod, get non-primary key columns from mod.
-          jsonRow.put("FirstName", newValuesJson.get("FirstName"));
-          jsonRow.put("LastName", newValuesJson.get("LastName"));
-        } else if (modType == ModType.UPDATE) {
-          // For UPDATE mod, get non-primary key columns by doing a snapshot read using the primary key column from mod.
-          try (ResultSet resultSet = client
-            .singleUse(TimestampBound.ofReadTimestamp(commitTimestamp))
-            .read(
-              "Singers",
-              KeySet.singleKey(com.google.cloud.spanner.Key.of(singerId)),
-                Arrays.asList("FirstName", "LastName"))) {
-            if (resultSet.next()) {
-              jsonRow.put("FirstName", resultSet.isNull("FirstName") ?
-                JSONObject.NULL : resultSet.getString("FirstName"));
-              jsonRow.put("LastName", resultSet.isNull("LastName") ?
-                JSONObject.NULL : resultSet.getString("LastName"));
+        if (modType == ModType.INSERT || modType == ModType.UPDATE) {
+          // add any properties that are present in newValuesJson to the set of keys to make a partial (or complete) row reflecting
+          // the update (or insert)
+          cols.forEach(col -> {
+            if (newValuesJson.has(col.getName())) {
+              keysJsonExtended.put(col.getName(), newValuesJson.get(col.getName()));
             }
-          }
+          });
         } else {
-          // For DELETE mod, there is nothing to do, as we already set SingerId.
+          // For DELETE mod, need the keys and a property indicating it is a delete
+          keysJsonExtended.put("IsDelete", true);
         }
    
-        output.output(jsonRow.toString());
+        output.output(keysJsonExtended.toString());
       });
     }
    }
