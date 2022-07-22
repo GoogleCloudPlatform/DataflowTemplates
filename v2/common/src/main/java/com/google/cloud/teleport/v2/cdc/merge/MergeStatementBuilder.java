@@ -103,7 +103,8 @@ public class MergeStatementBuilder implements Serializable {
               : String.format("((%s) AND %s)", precedingFieldsComparison, currentFieldComparison);
       comparisonClauses.add(fieldClause);
     }
-    return String.join(" OR ", comparisonClauses);
+    String joinedComparisonClauses = String.join(" OR ", comparisonClauses);
+    return String.format("(%s)", joinedComparisonClauses);
   }
 
   public static final String LATEST_FROM_STAGING_TEMPLATE = "SELECT %s FROM (%s) WHERE row_num=1";
