@@ -752,7 +752,7 @@ public class DataplexBigQueryToGcsTest {
             .setName("should_not_be_used")
             .setId("partitioned_table")
             .setDataPath("gs://wrong_bucket/partitioned_table");
-    when(dataplexClientMock.listEntities(eq(DataplexUtils.getZoneFromAsset(ASSET_NAME)), any()))
+    when(dataplexClientMock.listEntities(eq(zoneName), any()))
         .thenAnswer(
             invocation -> {
               String filter = invocation.getArgument(1);

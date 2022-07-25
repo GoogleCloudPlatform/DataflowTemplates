@@ -450,6 +450,39 @@ public class DataplexUtils {
                 }));
   }
 
+  /**
+   * Loads the entity under a given asset and data path.
+   *
+   * @param dataplex the client to use to call Dataplex API
+   * @param assetName example:
+   *     projects/{project_number}/locations/{location_id}/lakes/{lake_id}/zones/{zone_id}/assets/{asset_id}
+   * @param dataPath entity data path
+   * @return the loaded entity as returned by the Dataplex listEntities API (i.e. potentially with
+   *     some fields unpopulated), or {@code null} if such entity doesn't exist
+   * @throws IllegalStateException if Dataplex returns more than 1 entity matching the data path
+   */
+  public static GoogleCloudDataplexV1Entity getEntityByDataPath(
+      DataplexClient dataplex, String assetName, String dataPath) throws IOException {
+    String zoneName = getZoneFromAsset(assetName);
+
+    LOG.info(
+        "Loading existing Dataplex entities in asset {} with data path {}...", assetName, dataPath);
+    List<GoogleCloudDataplexV1Entity> entities =
+        dataplex.listEntities(zoneName, String.format("data_path=\"%s\"", dataPath));
+    LOG.info("Loaded {} entities.", entities.size());
+
+    if (entities.isEmpty()) {
+      return null;
+    }
+    if (entities.size() > 1) {
+      throw new IllegalStateException(
+          String.format(
+              "Expected exactly 1 entity at data path %s, but got %d.", dataPath, entities.size()));
+    }
+
+    return entities.iterator().next();
+  }
+
   private static boolean errorDetailContains(
       GoogleJsonResponseException e, int statusCode, String message) {
     return e.getStatusCode() == statusCode

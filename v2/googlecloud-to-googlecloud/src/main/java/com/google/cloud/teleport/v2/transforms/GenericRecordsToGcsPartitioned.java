@@ -110,8 +110,6 @@ public class GenericRecordsToGcsPartitioned
                   .to(gcsPath)
                   .withNaming(new DataplexJdbcIngestionNaming(outputFileFormat.getFileSuffix()))
                   .withNumShards(1)) // must be 1 as we can only have 1 file
-          // Dummy conversion to Dataplex partition metadata
-          // TODO(weiwenxu) Change after Dataplex metadata update is enabled
           .getPerDestinationOutputFilenames()
           .apply(
               "MapFileNames",

@@ -554,7 +554,7 @@ public class DataplexFileFormatConversionTest {
                 return ImmutableList.of();
               }
             });
-    // Template should only load the existing entity to verify it's user-manager:
+    // Template should only load the existing entity to verify it's user-managed:
     when(dataplex.getEntity("existing_table_entity_5"))
         .thenReturn(existingOutputEntity1.clone().setEtag("etag123"));
     when(dataplex.createEntity(any(), any()))
