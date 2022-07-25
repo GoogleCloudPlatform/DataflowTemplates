@@ -46,12 +46,30 @@ public class SpannerChangeStreamsToElasticsearchTest {
     new ColumnType("Balance", new TypeCode("INT"), false, 4)
   );
   private static final List<Mod> insertMods = ImmutableList.of(
-    new Mod("", "", ""),
-    new Mod("", "", "")
+    new Mod("{\"UserId\": \"UserId1\", \"AccountId\": \"AccountId1\"}", "", "{\"LastUpdate\": \"2022-09-27T11:30:00.123456Z\", \"Balance\": 1000}"),
+    new Mod("{\"UserId\": \"UserId1\", \"AccountId\": \"AccountId2\"}", "", "{\"LastUpdate\": \"2022-09-27T11:30:00.123456Z\", \"Balance\": 3000}"),
+    new Mod("{\"UserId\": \"UserId2\", \"AccountId\": \"AccountId1\"}", "", "{\"LastUpdate\": \"2022-09-27T11:30:00.123456Z\", \"Balance\": 500}"),
+    new Mod("{\"UserId\": \"UserId2\", \"AccountId\": \"AccountId2\"}", "", "{\"LastUpdate\": \"2022-09-27T11:30:00.123456Z\", \"Balance\": 2000}")
+  );
+  private static final List<Mod> updateMods = ImmutableList.of(
+    new Mod("{\"UserId\": \"UserId1\", \"AccountId\": \"AccountId1\"}", "", "{\"LastUpdate\": \"2022-09-27T12:30:00.123456Z\", \"Balance\": 500}"),
+    new Mod("{\"UserId\": \"UserId1\", \"AccountId\": \"AccountId2\"}", "", "{\"LastUpdate\": \"2022-09-27T12:30:00.123456Z\", \"Balance\": 3500}"),
+    new Mod("{\"UserId\": \"UserId2\", \"AccountId\": \"AccountId1\"}", "", "{\"LastUpdate\": \"2022-09-27T12:30:00.123456Z\", \"Balance\": 700}"),
+    new Mod("{\"UserId\": \"UserId2\", \"AccountId\": \"AccountId2\"}", "", "{\"LastUpdate\": \"2022-09-27T12:30:00.123456Z\", \"Balance\": 1800}")
+  );
+  private static final List<Mod> deleteMods = ImmutableList.of(
+    new Mod("{\"UserId\": \"UserId1\", \"AccountId\": \"AccountId1\"}", "", ""),
+    new Mod("{\"UserId\": \"UserId1\", \"AccountId\": \"AccountId2\"}", "", ""),
+    new Mod("{\"UserId\": \"UserId2\", \"AccountId\": \"AccountId1\"}", "", ""),
+    new Mod("{\"UserId\": \"UserId2\", \"AccountId\": \"AccountId2\"}", "", "")
   );
   private static final DataChangeRecord insertRow =
     new DataChangeRecord("partitionToken1", Timestamp.now(), "transactionId1", true, "recordSequence1","testTable", rowType, insertMods, ModType.INSERT, ValueCaptureType.OLD_AND_NEW_VALUES, 1, 1,null);
-  private static final List<DataChangeRecord> rows = ImmutableList.of(insertRow);
+  private static final DataChangeRecord updateRow =
+    new DataChangeRecord("partitionToken1", Timestamp.now(), "transactionId2", true, "recordSequence2","testTable", rowType, updateMods, ModType.UPDATE, ValueCaptureType.OLD_AND_NEW_VALUES, 1, 1,null);
+    private static final DataChangeRecord deleteRow =
+    new DataChangeRecord("partitionToken1", Timestamp.now(), "transactionId3", true, "recordSequence3","testTable", rowType, deleteMods, ModType.DELETE, ValueCaptureType.OLD_AND_NEW_VALUES, 1, 1,null);
+  private static final List<DataChangeRecord> rows = ImmutableList.of(insertRow, updateRow, deleteRow);
   private static final String jsonifiedInsertleRow =
     "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
