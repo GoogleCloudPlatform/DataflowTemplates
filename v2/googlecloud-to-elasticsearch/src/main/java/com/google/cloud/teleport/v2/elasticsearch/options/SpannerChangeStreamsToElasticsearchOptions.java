@@ -22,10 +22,11 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.Validation;
 
 /**
- * The {@link SpannerChangeStreamsToElasticsearchOptions} interface provides the custom execution options
- * passed by the executor at the command-line.
+ * The {@link SpannerChangeStreamsToElasticsearchOptions} interface provides the custom execution
+ * options passed by the executor at the command-line.
  */
-public interface SpannerChangeStreamsToElasticsearchOptions extends DataflowPipelineOptions, ElasticsearchWriteOptions {
+public interface SpannerChangeStreamsToElasticsearchOptions
+    extends DataflowPipelineOptions, ElasticsearchWriteOptions {
   @Description(
       "Project to read change streams from. The default for this parameter is the project where the"
           + " Dataflow pipeline is running.")

@@ -32,20 +32,18 @@ import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.DoFn.Element;
-import org.apache.beam.sdk.transforms.DoFn.OutputReceiver;
-import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link SpannerChangeStreamsToElasticsearch} pipeline forwards Spanner Change stream data to Elasticsearch.
- *
+ * The {@link SpannerChangeStreamsToElasticsearch} pipeline forwards Spanner Change stream data to
+ * Elasticsearch.
  */
 public class SpannerChangeStreamsToElasticsearch {
-  private static final Logger LOG = LoggerFactory.getLogger(SpannerChangeStreamsToElasticsearch.class);
+  private static final Logger LOG =
+      LoggerFactory.getLogger(SpannerChangeStreamsToElasticsearch.class);
   private static final String USE_RUNNER_V2_EXPERIMENT = "use_runner_v2";
 
   public static void main(String[] args) {
@@ -68,7 +66,8 @@ public class SpannerChangeStreamsToElasticsearch {
     options.setEnableStreamingEngine(true);
     options.setAutoscalingAlgorithm(
         DataflowPipelineWorkerPoolOptions.AutoscalingAlgorithmType.NONE);
-    // Spanner change stream updates would require partial updates when writing to Elasticsearch unless the full record is read    
+    // Spanner change stream updates would require partial updates when writing to Elasticsearch
+    // unless the full record is read
     options.setUsePartialUpdate(true);
 
     final Pipeline pipeline = Pipeline.create(options);
@@ -142,29 +141,34 @@ public class SpannerChangeStreamsToElasticsearch {
   }
 
   static class DataChangeRecordToJsonFn extends DoFn<DataChangeRecord, String> {
-    
+
     @ProcessElement
     public void process(@Element DataChangeRecord element, OutputReceiver<String> output) {
       List<ColumnType> cols = element.getRowType();
       ModType modType = element.getModType();
-      element.getMods().forEach(mod -> {
-        JSONObject keysJsonExtended = new JSONObject(mod.getKeysJson());
-        JSONObject newValuesJson = new JSONObject(mod.getNewValuesJson());
-        if (modType == ModType.INSERT || modType == ModType.UPDATE) {
-          // add any properties that are present in newValuesJson to the set of keys to make a partial (or complete) row reflecting
-          // the update (or insert)
-          cols.forEach(col -> {
-            if (newValuesJson.has(col.getName())) {
-              keysJsonExtended.put(col.getName(), newValuesJson.get(col.getName()));
-            }
-          });
-        } else {
-          // For DELETE mod, need the keys and a property indicating it is a delete
-          keysJsonExtended.put("IsDelete", true);
-        }
-   
-        output.output(keysJsonExtended.toString());
-      });
+      element
+          .getMods()
+          .forEach(
+              mod -> {
+                JSONObject keysJsonExtended = new JSONObject(mod.getKeysJson());
+                if (modType == ModType.INSERT || modType == ModType.UPDATE) {
+                  JSONObject newValuesJson = new JSONObject(mod.getNewValuesJson());
+                  // add any properties that are present in newValuesJson to the set of keys to make
+                  // a partial (or complete) row reflecting
+                  // the update (or insert)
+                  cols.forEach(
+                      col -> {
+                        if (newValuesJson.has(col.getName())) {
+                          keysJsonExtended.put(col.getName(), newValuesJson.get(col.getName()));
+                        }
+                      });
+                } else {
+                  // For DELETE mod, need the keys and a property indicating it is a delete
+                  keysJsonExtended.put("IsDelete", true);
+                }
+
+                output.output(keysJsonExtended.toString());
+              });
     }
-   }
+  }
 }

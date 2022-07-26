@@ -15,11 +15,8 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.templates;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
-
 import com.google.cloud.Timestamp;
+import com.google.cloud.teleport.v2.elasticsearch.templates.SpannerChangeStreamsToElasticsearch.DataChangeRecordToJsonFn;
 import java.util.List;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ColumnType;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.DataChangeRecord;
@@ -39,61 +36,130 @@ import org.junit.rules.ExpectedException;
 
 /** Test cases for {@link SpannerChangeStreamsToElasticsearch}. */
 public class SpannerChangeStreamsToElasticsearchTest {
-  private static final List<ColumnnType> rowType = ImmutableList.of(
-    new ColumnType("UserId", new TypeCode("STRING"), true, 1),
-    new ColumnType("AccountId", new TypeCode("STRING"), true, 2),
-    new ColumnType("LastUpdate", new TypeCode("TIMESTAMP"), false, 3),
-    new ColumnType("Balance", new TypeCode("INT"), false, 4)
-  );
-  private static final List<Mod> insertMods = ImmutableList.of(
-    new Mod("{\"UserId\": \"UserId1\", \"AccountId\": \"AccountId1\"}", "", "{\"LastUpdate\": \"2022-09-27T11:30:00.123456Z\", \"Balance\": 1000}"),
-    new Mod("{\"UserId\": \"UserId1\", \"AccountId\": \"AccountId2\"}", "", "{\"LastUpdate\": \"2022-09-27T11:30:00.123456Z\", \"Balance\": 3000}"),
-    new Mod("{\"UserId\": \"UserId2\", \"AccountId\": \"AccountId1\"}", "", "{\"LastUpdate\": \"2022-09-27T11:30:00.123456Z\", \"Balance\": 500}"),
-    new Mod("{\"UserId\": \"UserId2\", \"AccountId\": \"AccountId2\"}", "", "{\"LastUpdate\": \"2022-09-27T11:30:00.123456Z\", \"Balance\": 2000}")
-  );
-  private static final List<Mod> updateMods = ImmutableList.of(
-    new Mod("{\"UserId\": \"UserId1\", \"AccountId\": \"AccountId1\"}", "", "{\"LastUpdate\": \"2022-09-27T12:30:00.123456Z\", \"Balance\": 500}"),
-    new Mod("{\"UserId\": \"UserId1\", \"AccountId\": \"AccountId2\"}", "", "{\"LastUpdate\": \"2022-09-27T12:30:00.123456Z\", \"Balance\": 3500}"),
-    new Mod("{\"UserId\": \"UserId2\", \"AccountId\": \"AccountId1\"}", "", "{\"LastUpdate\": \"2022-09-27T12:30:00.123456Z\", \"Balance\": 700}"),
-    new Mod("{\"UserId\": \"UserId2\", \"AccountId\": \"AccountId2\"}", "", "{\"LastUpdate\": \"2022-09-27T12:30:00.123456Z\", \"Balance\": 1800}")
-  );
-  private static final List<Mod> deleteMods = ImmutableList.of(
-    new Mod("{\"UserId\": \"UserId1\", \"AccountId\": \"AccountId1\"}", "", ""),
-    new Mod("{\"UserId\": \"UserId1\", \"AccountId\": \"AccountId2\"}", "", ""),
-    new Mod("{\"UserId\": \"UserId2\", \"AccountId\": \"AccountId1\"}", "", ""),
-    new Mod("{\"UserId\": \"UserId2\", \"AccountId\": \"AccountId2\"}", "", "")
-  );
+  private static final List<ColumnType> rowType =
+      ImmutableList.of(
+          new ColumnType("UserId", new TypeCode("STRING"), true, 1),
+          new ColumnType("AccountId", new TypeCode("STRING"), true, 2),
+          new ColumnType("LastUpdate", new TypeCode("TIMESTAMP"), false, 3),
+          new ColumnType("Balance", new TypeCode("INT"), false, 4));
+  private static final List<Mod> insertMods =
+      ImmutableList.of(
+          new Mod(
+              "{\"UserId\": \"UserId1\", \"AccountId\": \"AccountId1\"}",
+              null,
+              "{\"LastUpdate\": \"2022-09-27T11:30:00.123456Z\", \"Balance\": 1000}"),
+          new Mod(
+              "{\"UserId\": \"UserId1\", \"AccountId\": \"AccountId2\"}",
+              null,
+              "{\"LastUpdate\": \"2022-09-27T11:30:00.123456Z\", \"Balance\": 3000}"),
+          new Mod(
+              "{\"UserId\": \"UserId2\", \"AccountId\": \"AccountId1\"}",
+              null,
+              "{\"LastUpdate\": \"2022-09-27T11:30:00.123456Z\", \"Balance\": 500}"),
+          new Mod(
+              "{\"UserId\": \"UserId2\", \"AccountId\": \"AccountId2\"}",
+              null,
+              "{\"LastUpdate\": \"2022-09-27T11:30:00.123456Z\", \"Balance\": 2000}"));
+  private static final List<Mod> updateMods =
+      ImmutableList.of(
+          new Mod(
+              "{\"UserId\": \"UserId1\", \"AccountId\": \"AccountId1\"}",
+              "{\"LastUpdate\": \"2022-09-27T11:30:00.123456Z\", \"Balance\": 1000}",
+              "{\"LastUpdate\": \"2022-09-27T12:30:00.123456Z\", \"Balance\": 500}"),
+          new Mod(
+              "{\"UserId\": \"UserId1\", \"AccountId\": \"AccountId2\"}",
+              "{\"LastUpdate\": \"2022-09-27T11:30:00.123456Z\", \"Balance\": 3000}",
+              "{\"LastUpdate\": \"2022-09-27T12:30:00.123456Z\", \"Balance\": 3500}"),
+          new Mod(
+              "{\"UserId\": \"UserId2\", \"AccountId\": \"AccountId1\"}",
+              "{\"LastUpdate\": \"2022-09-27T11:30:00.123456Z\", \"Balance\": 500}",
+              "{\"LastUpdate\": \"2022-09-27T12:30:00.123456Z\", \"Balance\": 700}"),
+          new Mod(
+              "{\"UserId\": \"UserId2\", \"AccountId\": \"AccountId2\"}",
+              "{\"LastUpdate\": \"2022-09-27T11:30:00.123456Z\", \"Balance\": 2000}",
+              "{\"LastUpdate\": \"2022-09-27T12:30:00.123456Z\", \"Balance\": 1800}"));
+  private static final List<Mod> deleteMods =
+      ImmutableList.of(
+          new Mod("{\"UserId\": \"UserId1\", \"AccountId\": \"AccountId1\"}", null, null),
+          new Mod("{\"UserId\": \"UserId1\", \"AccountId\": \"AccountId2\"}", null, null),
+          new Mod("{\"UserId\": \"UserId2\", \"AccountId\": \"AccountId1\"}", null, null),
+          new Mod("{\"UserId\": \"UserId2\", \"AccountId\": \"AccountId2\"}", null, null));
   private static final DataChangeRecord insertRow =
-    new DataChangeRecord("partitionToken1", Timestamp.now(), "transactionId1", true, "recordSequence1","testTable", rowType, insertMods, ModType.INSERT, ValueCaptureType.OLD_AND_NEW_VALUES, 1, 1,null);
+      new DataChangeRecord(
+          "partitionToken1",
+          Timestamp.now(),
+          "transactionId1",
+          true,
+          "recordSequence1",
+          "testTable",
+          rowType,
+          insertMods,
+          ModType.INSERT,
+          ValueCaptureType.OLD_AND_NEW_VALUES,
+          1,
+          1,
+          null);
   private static final DataChangeRecord updateRow =
-    new DataChangeRecord("partitionToken1", Timestamp.now(), "transactionId2", true, "recordSequence2","testTable", rowType, updateMods, ModType.UPDATE, ValueCaptureType.OLD_AND_NEW_VALUES, 1, 1,null);
-    private static final DataChangeRecord deleteRow =
-    new DataChangeRecord("partitionToken1", Timestamp.now(), "transactionId3", true, "recordSequence3","testTable", rowType, deleteMods, ModType.DELETE, ValueCaptureType.OLD_AND_NEW_VALUES, 1, 1,null);
-  private static final List<DataChangeRecord> rows = ImmutableList.of(insertRow, updateRow, deleteRow);
-  private static final String jsonifiedInsertleRow =
-    "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23}";
+      new DataChangeRecord(
+          "partitionToken1",
+          Timestamp.now(),
+          "transactionId2",
+          true,
+          "recordSequence2",
+          "testTable",
+          rowType,
+          updateMods,
+          ModType.UPDATE,
+          ValueCaptureType.OLD_AND_NEW_VALUES,
+          1,
+          1,
+          null);
+  private static final DataChangeRecord deleteRow =
+      new DataChangeRecord(
+          "partitionToken1",
+          Timestamp.now(),
+          "transactionId3",
+          true,
+          "recordSequence3",
+          "testTable",
+          rowType,
+          deleteMods,
+          ModType.DELETE,
+          ValueCaptureType.OLD_AND_NEW_VALUES,
+          1,
+          1,
+          null);
+  private static final List<DataChangeRecord> rows =
+      ImmutableList.of(insertRow, updateRow, deleteRow);
+  private List<String> jsonifiedRows =
+      ImmutableList.of(
+          "{\"AccountId\":\"AccountId1\",\"LastUpdate\":\"2022-09-27T11:30:00.123456Z\",\"UserId\":\"UserId1\",\"Balance\":1000}",
+          "{\"AccountId\":\"AccountId2\",\"LastUpdate\":\"2022-09-27T11:30:00.123456Z\",\"UserId\":\"UserId1\",\"Balance\":3000}",
+          "{\"AccountId\":\"AccountId1\",\"LastUpdate\":\"2022-09-27T11:30:00.123456Z\",\"UserId\":\"UserId2\",\"Balance\":500}",
+          "{\"AccountId\":\"AccountId2\",\"LastUpdate\":\"2022-09-27T11:30:00.123456Z\",\"UserId\":\"UserId2\",\"Balance\":2000}",
+          "{\"AccountId\":\"AccountId1\",\"LastUpdate\":\"2022-09-27T12:30:00.123456Z\",\"UserId\":\"UserId1\",\"Balance\":500}",
+          "{\"AccountId\":\"AccountId2\",\"LastUpdate\":\"2022-09-27T12:30:00.123456Z\",\"UserId\":\"UserId1\",\"Balance\":3500}",
+          "{\"AccountId\":\"AccountId1\",\"LastUpdate\":\"2022-09-27T12:30:00.123456Z\",\"UserId\":\"UserId2\",\"Balance\":700}",
+          "{\"AccountId\":\"AccountId2\",\"LastUpdate\":\"2022-09-27T12:30:00.123456Z\",\"UserId\":\"UserId2\",\"Balance\":1800}",
+          "{\"AccountId\":\"AccountId1\",\"UserId\":\"UserId1\",\"IsDelete\":true}",
+          "{\"AccountId\":\"AccountId2\",\"UserId\":\"UserId1\",\"IsDelete\":true}",
+          "{\"AccountId\":\"AccountId1\",\"UserId\":\"UserId2\",\"IsDelete\":true}",
+          "{\"AccountId\":\"AccountId2\",\"UserId\":\"UserId2\",\"IsDelete\":true}");
+
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
   @Rule public ExpectedException exceptionRule = ExpectedException.none();
 
-    /** Test the {@link SpannerChangeStreamsToElasticsearch} pipeline end-to-end. */
-    @Test
-    public void testSpannerChangeStreamsToElasticsearchE2E() {
-  
-      // Build pipeline
-      PCollection<String> testStrings =
-          pipeline
-              .apply("CreateInput", Create.of(rows))
-              .apply("DataChangeRecordToJson", ParDo.of(new DataChangeRecordToJsonFn()));
-  
-      PAssert.that(testStrings)
-          .satisfies(
-              collection -> {
-                String result = collection.iterator().next();
-                assertThat(result, is(equalTo(jsonifiedTableRow)));
-                return null;
-              });
-  
-      // Execute pipeline
-      pipeline.run();
-    }
+  /** Test the {@link SpannerChangeStreamsToElasticsearch} pipeline end-to-end. */
+  @Test
+  public void testSpannerChangeStreamsToElasticsearchE2E() {
+
+    // Build pipeline
+    PCollection<String> testResults =
+        pipeline
+            .apply("CreateInput", Create.of(rows))
+            .apply("DataChangeRecordToJson", ParDo.of(new DataChangeRecordToJsonFn()));
+    PAssert.that(testResults).containsInAnyOrder(jsonifiedRows);
+    // Execute pipeline
+    pipeline.run();
+  }
 }
