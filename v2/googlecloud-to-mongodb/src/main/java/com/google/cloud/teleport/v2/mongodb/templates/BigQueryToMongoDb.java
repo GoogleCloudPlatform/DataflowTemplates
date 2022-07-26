@@ -24,8 +24,7 @@ import org.apache.beam.sdk.io.mongodb.MongoDbIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.transforms.SimpleFunction;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.bson.Document;
 
 /**
@@ -34,7 +33,7 @@ import org.bson.Document;
  */
 public class BigQueryToMongoDb {
   /**
-   * Options supported by {@link PubSubToMongoDB}
+   * Options supported by {@link BigQueryToMongoDb}
    *
    * <p>Inherits standard configuration options.
    */
@@ -61,19 +60,21 @@ public class BigQueryToMongoDb {
         .apply(BigQueryIO.readTableRows().withoutValidation().from(options.getInputTableSpec()))
         .apply(
             "bigQueryDataset",
-            MapElements.via(
-                new SimpleFunction<TableRow, Document>() {
-                  @Override
-                  public Document apply(TableRow row) {
-                    Document doc = new Document();
-                    row.forEach(
+            ParDo.of(
+                new DoFn<TableRow, Document>() {
+
+                    @ProcessElement
+                    public void process(ProcessContext c) {
+                        Document doc = new Document();
+                        TableRow row = c.element();
+                        row.forEach(
                         (key, value) -> {
                           if (key != "_id") {
                             doc.append(key, value);
                           }
                         });
-                    return doc;
-                  }
+                        c.output(doc);
+                    }
                 }))
         .apply(
             MongoDbIO.write()
