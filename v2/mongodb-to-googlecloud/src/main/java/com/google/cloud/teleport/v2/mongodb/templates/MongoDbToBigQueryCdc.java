@@ -22,6 +22,9 @@ import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.Mon
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.PubSubOptions;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
@@ -29,8 +32,7 @@ import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.transforms.SimpleFunction;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.bson.Document;
 
 /**
@@ -65,8 +67,14 @@ public class MongoDbToBigQueryCdc {
 
   /** Pipeline to read data from PubSub and write to MongoDB. */
   public static boolean run(Options options) {
-    Pipeline pipeline = Pipeline.create(options);
     options.setStreaming(true);
+    Pipeline pipeline = Pipeline.create(options);
+    TableSchema bigquerySchema =
+        MongoDbUtils.getTableFieldSchema(
+            options.getMongoDbUri(),
+            options.getDatabase(),
+            options.getCollection(),
+            options.getUserOption());
     TableSchema bigquerySchema =
         MongoDbUtils.getTableFieldSchema(
             options.getMongoDbUri(),
@@ -76,18 +84,44 @@ public class MongoDbToBigQueryCdc {
 
     String userOption = options.getUserOption();
     String inputOption = options.getInputTopic();
-
+    MongoDbUtils mongodUtil = MongoDbUtils.getInstance();
     pipeline
         .apply("Read PubSub Messages", PubsubIO.readStrings().fromTopic(inputOption))
         .apply(
             "Read and transform data",
-            MapElements.via(
-                new SimpleFunction<String, TableRow>() {
-                  @Override
-                  public TableRow apply(String document) {
+            ParDo.of(
+                new DoFn<String, TableRow>() {
+                  @ProcessElement
+                  public void process(ProcessContext c) {
+                    String document = c.element();
                     Gson gson = new GsonBuilder().create();
                     HashMap<String, Object> parsedMap = gson.fromJson(document, HashMap.class);
-                    return MongoDbUtils.generateTableRowFromJson(parsedMap, userOption);
+                    TableRow row = new TableRow();
+                    if (userOption.equals("FLATTEN")) {
+                      parsedMap.forEach(
+                          (key, value) -> {
+                            String valueClass = value.getClass().getName();
+                            switch (valueClass) {
+                              case "java.lang.Double":
+                                row.set(key, value);
+                                break;
+                              case "java.util.Integer":
+                                row.set(key, value);
+                                break;
+                              default:
+                                row.set(key, value.toString());
+                            }
+                          });
+                    } else {
+                      DateTimeFormatter timeFormat =
+                          DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
+                      LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
+
+                      row.set("id", parsedMap.get("_id").toString())
+                          .set("source_data", parsedMap.toString())
+                          .set("timestamp", localdate.format(timeFormat));
+                    }
+                    c.output(row);
                   }
                 }))
         .apply(
