@@ -25,7 +25,7 @@
     },
     {
       "name": "outputTableSpec",
-      "label": "outputTableSpec",
+      "label": "output table spec",
       "helpText": "BigQuery destination table spec. e.g bigquery-project:dataset.output_table",
       "paramType": "TEXT"
     },

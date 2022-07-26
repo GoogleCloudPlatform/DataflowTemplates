@@ -1,8 +1,7 @@
 # MongoDB to BigQuery Dataflow Template
 
-The [MongoDbToBigQuery](../../src/main/java/com/google/cloud/teleport/v2/mongodb/templates/MongoDbToBigQuery.java) pipeline
-Reads the data from MongoDb collection, Writes the data to BigQuery.
-
+The [MongoDbToBigQuery](../../src/main/java/com/google/cloud/teleport/v2/mongodb/templates/MongoDbToBigQuery.java) pipeline Reads the data from MongoDb collection, Writes the data to BigQuery.
+The MongoDB to BigQuery template is a batch pipeline that reads document from MongoDB and writes them to BigQuery as specified in userOption. Currently, this pipeline supports two types of userOptions. First is FLATTEN where the documents are Flattened to first level. Second is NONE where the documents are stored as a json string into BigQuery.
 ## Getting Started
 
 ### Requirements
@@ -10,6 +9,17 @@ Reads the data from MongoDb collection, Writes the data to BigQuery.
 * Maven
 * MongoDB host exists and is operational
 * Bigquery dataset exists
+
+### Template parameters
+**mongoDbUri** : MongoDB Connection URI. For example: _mongodb+srv://<username>:<password>@<server-connection-string>_.
+
+**database** : Database in MongoDB to store the collection. For example: _my-db_.
+
+**collection** : Name of the collection inside MongoDB database. For example: _my-collection_.
+
+**outputTableSpec** : BigQuery destination table spec. e.g _bigquery-project:dataset.output_table_,
+
+**userOption** : Could be one of FLATTEN or NONE. FLATTEN will flatten the documents for 1 level. NONE will store the whole document as json string.
 
 ### Building Template
 This is a Flex Template meaning that the pipeline code will be containerized and the container will be used to launch the Dataflow pipeline.

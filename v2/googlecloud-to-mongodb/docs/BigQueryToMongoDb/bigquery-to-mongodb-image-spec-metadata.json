@@ -25,7 +25,7 @@
     },
     {
       "name": "inputTableSpec",
-      "label": "outputTableSpec",
+      "label": "BigQuery table spec to read the data",
       "helpText": "BigQuery input table spec. e.g bigquery-project:dataset.output_table",
       "paramType": "TEXT"
     }
