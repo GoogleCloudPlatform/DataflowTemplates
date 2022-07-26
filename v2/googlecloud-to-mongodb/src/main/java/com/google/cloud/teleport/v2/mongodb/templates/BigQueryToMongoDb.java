@@ -63,18 +63,18 @@ public class BigQueryToMongoDb {
             ParDo.of(
                 new DoFn<TableRow, Document>() {
 
-                    @ProcessElement
-                    public void process(ProcessContext c) {
-                        Document doc = new Document();
-                        TableRow row = c.element();
-                        row.forEach(
+                  @ProcessElement
+                  public void process(ProcessContext c) {
+                    Document doc = new Document();
+                    TableRow row = c.element();
+                    row.forEach(
                         (key, value) -> {
                           if (key != "_id") {
                             doc.append(key, value);
                           }
                         });
-                        c.output(doc);
-                    }
+                    c.output(doc);
+                  }
                 }))
         .apply(
             MongoDbIO.write()

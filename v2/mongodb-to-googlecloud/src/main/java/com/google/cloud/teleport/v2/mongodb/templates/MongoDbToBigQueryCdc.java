@@ -75,16 +75,9 @@ public class MongoDbToBigQueryCdc {
             options.getDatabase(),
             options.getCollection(),
             options.getUserOption());
-    TableSchema bigquerySchema =
-        MongoDbUtils.getTableFieldSchema(
-            options.getMongoDbUri(),
-            options.getDatabase(),
-            options.getCollection(),
-            options.getUserOption());
 
     String userOption = options.getUserOption();
     String inputOption = options.getInputTopic();
-    MongoDbUtils mongodUtil = MongoDbUtils.getInstance();
     pipeline
         .apply("Read PubSub Messages", PubsubIO.readStrings().fromTopic(inputOption))
         .apply(
