@@ -16,24 +16,20 @@
 package com.google.cloud.teleport.v2.mongodb.templates;
 
 import com.google.api.services.bigquery.model.TableFieldSchema;
-import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import java.io.Serializable;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import org.bson.Document;
 
 /** Transforms & DoFns & Options for Teleport DatastoreIO. */
 public class MongoDbUtils implements Serializable {
 
+  private static MongoDbUtils mongoutilInstance = null;
   /**
    * Returns the Table schema for BiQquery table based on user input The tabble schema can be a 3
    * column table with _id, document as a Json string and timestamp by default Or the Table schema
@@ -84,7 +80,6 @@ public class MongoDbUtils implements Serializable {
     Document doc = collection.find().first();
     return doc;
   }
-
   public static TableRow getTableSchema(HashMap<String, Object> parsedMap, String userOption) {
     TableRow row = new TableRow();
     if (userOption.equals("FLATTEN")) {

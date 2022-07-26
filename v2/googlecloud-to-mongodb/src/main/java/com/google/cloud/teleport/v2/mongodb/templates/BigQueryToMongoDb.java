@@ -62,7 +62,6 @@ public class BigQueryToMongoDb {
             "bigQueryDataset",
             ParDo.of(
                 new DoFn<TableRow, Document>() {
-
                   @ProcessElement
                   public void process(ProcessContext c) {
                     Document doc = new Document();

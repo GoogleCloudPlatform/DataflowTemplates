@@ -22,6 +22,9 @@ import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.Mon
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.PubSubOptions;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
