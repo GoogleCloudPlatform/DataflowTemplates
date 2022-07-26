@@ -25,14 +25,14 @@
     },
     {
       "name": "outputTableSpec",
-      "label": "outputTableSpec",
+      "label": "BigQuery table spec to write the data",
       "helpText": "BigQuery destination table spec. e.g bigquery-project:dataset.output_table",
       "paramType": "TEXT"
     },
     {
       "name": "userOption",
-      "label": "User option",
-      "helpText": " ",
+      "label": "user option",
+      "helpText": "Could be one of FLATTEN or NONE. FLATTEN will flatten the documents for 1 level. NONE will store the whole document as json string.",
       "is_optional": true,
       "paramType": "TEXT"
     }

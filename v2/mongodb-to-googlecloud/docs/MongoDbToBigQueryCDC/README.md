@@ -1,7 +1,6 @@
 # MongoDB to BigQuery Dataflow Template
 
-The [MongoDbToBigQueryCdc](src/main/java/com/google/cloud/teleport/v2/templates/MongoDbToBigQueryCdc.java) pipeline
-MongoDb changestream pushes the changes to pubsub queue, The MongoDbToBigQueryCdc pipeline reads the documents pushed to pubsub and transform them as per the userOption provided at the runtime and Writes the data to BigQuery as a new TableRow.
+The MongoDB to BigQuery template is a streaming pipeline t works together with MongoDB change stream. The pipeline [MongoDbToBigQueryCdc](src/main/java/com/google/cloud/teleport/v2/templates/MongoDbToBigQueryCdc.java) read the json pushed to Pub/Sub via MongoDB change stream and writes to BigQuery based on user input. Currently, this pipeline supports two types of userOptions. First is FLATTEN where the documents are Flattened to first level. Second is NONE where the documents are stored as a json string into BigQuery. 
 
 ## Getting Started
 
@@ -10,7 +9,20 @@ MongoDb changestream pushes the changes to pubsub queue, The MongoDbToBigQueryCd
 * Maven
 * MongoDB host exists and is operational
 * Bigquery dataset exists
-* Changestream running that pushes the changes from mongoDb to PubSub topic.
+* Changestream running that pushes the changes from MongoDb to Pub/Sub topic.
+
+### Template parameters
+**mongoDbUri** : MongoDB Connection URI. For example: _mongodb+srv://<username>:<password>@<server-connection-string>_.
+
+**database** : Database in MongoDB to store the collection. For example: _my-db_.
+
+**collection** : Name of the collection inside MongoDB database. For example: _my-collection_.
+
+**outputTableSpec** : BigQuery destination table spec. e.g _bigquery-project:dataset.output_table_,
+
+**userOption** : Could be one of FLATTEN or NONE. FLATTEN will flatten the documents for 1 level. NONE will store the whole document as json string.
+
+**inputTopic** : "Topic Name to read from e.g. projects/<project-name>/topics/<topic-name>",
 
 ### Building Template
 This is a Flex Template meaning that the pipeline code will be containerized and the container will be used to launch the Dataflow pipeline.
