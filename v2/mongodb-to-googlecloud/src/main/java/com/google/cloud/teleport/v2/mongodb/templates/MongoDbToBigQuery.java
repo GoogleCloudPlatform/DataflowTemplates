@@ -64,7 +64,6 @@ public class MongoDbToBigQuery {
             options.getCollection(),
             options.getUserOption());
     String userOption = options.getUserOption();
-    MongoDbUtils mongodUtil = MongoDbUtils.getInstance();
     pipeline
         .apply(
             "Read Documents",

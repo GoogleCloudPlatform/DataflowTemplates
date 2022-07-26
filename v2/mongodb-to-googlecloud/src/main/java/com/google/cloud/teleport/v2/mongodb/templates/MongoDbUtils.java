@@ -29,7 +29,6 @@ import org.bson.Document;
 /** Transforms & DoFns & Options for Teleport DatastoreIO. */
 public class MongoDbUtils implements Serializable {
 
-  private static MongoDbUtils mongoutilInstance = null;
   /**
    * Returns the Table schema for BiQquery table based on user input The tabble schema can be a 3
    * column table with _id, document as a Json string and timestamp by default Or the Table schema
@@ -76,12 +75,5 @@ public class MongoDbUtils implements Serializable {
     MongoCollection<Document> collection = database.getCollection(collName);
     Document doc = collection.find().first();
     return doc;
-  }
-
-  public static MongoDbUtils getInstance() {
-    if (mongoutilInstance == null) {
-      mongoutilInstance = new MongoDbUtils();
-    }
-    return mongoutilInstance;
   }
 }
