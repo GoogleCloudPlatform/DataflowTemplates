@@ -28,7 +28,7 @@ export BASE_CONTAINER_IMAGE_VERSION=latest
 export TEMPLATE_MODULE=mongodb-to-googlecloud
 export APP_ROOT=/template/${TEMPLATE_MODULE}
 export COMMAND_SPEC=${APP_ROOT}/resources/mongodb-to-bigquery-cdc-command-spec.json
-export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/mongodb-to-bigquery-cdc-image-spec.json
+export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/mongodb-to-bigquery-image-spec.json
 
 export MONGODB_HOSTNAME="mongodb+srv://<username>:<password>@<server-connection-string>"
 export MONGODB_DATABASE_NAME=<database name>
@@ -56,8 +56,8 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
 {
   "image": "gcr.io/<project-name>/mongodb-to-bigquery-cdc",
   "metadata": {
-    "name": "MongoDb To BigQuery",
-    "description": "A pipeline reads from MongoDB and writes to BigQuery.",
+    "name": "MongoDb To BigQuery CDC",
+    "description": "A pipeline reads changestream from MongoDb and writes to BigQuery.",
     "parameters": [
       {
         "name": "mongoDbUri",

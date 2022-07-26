@@ -1,0 +1,40 @@
+{
+  "name": "MongoDb to BigQuery",
+  "description": "Reads records from MongoDb Collection and writes them to a BigQuery table",
+  "parameters": [
+    {
+      "name": "mongoDBUri",
+      "label": "MongoDB Connection URI",
+      "helpText": "List of Mongo DB nodes separated by comma. ex: 192.285.234.12:27017,192.287.123.11:27017",
+      "is_optional": false,
+      "paramType": "TEXT"
+    },
+    {
+      "name": "database",
+      "label": "mongo database",
+      "helpText": "Database in MongoDB to store the collection. ex: my-db.",
+      "is_optional": false,
+      "paramType": "TEXT"
+    },
+    {
+      "name": "collection",
+      "label": "mongo collection",
+      "helpText": "Name of the collection inside MongoDB database. ex: my-collection.",
+      "is_optional": false,
+      "paramType": "TEXT"
+    },
+    {
+      "name": "outputTableSpec",
+      "label": "outputTableSpec",
+      "helpText": "BigQuery destination table spec. e.g bigquery-project:dataset.output_table",
+      "paramType": "TEXT"
+    },
+    {
+      "name": "userOption",
+      "label": "User option",
+      "helpText": " ",
+      "is_optional": true,
+      "paramType": "TEXT"
+    }
+  ]
+}

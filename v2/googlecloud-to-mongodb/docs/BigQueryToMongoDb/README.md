@@ -53,7 +53,7 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
   "image": "gcr.io/gsidemo-246315/bigquery-to-mongodb",
   "metadata": {
     "name": "MongoDB To BigQuery",
-    "description": "A pipeline reads from MongoDB and writes to BigQuery.",
+    "description": "A pipeline reads from BigQuery and writes to MongoDb.",
     "parameters": [
       {
         "name": "mongoDbUri",
