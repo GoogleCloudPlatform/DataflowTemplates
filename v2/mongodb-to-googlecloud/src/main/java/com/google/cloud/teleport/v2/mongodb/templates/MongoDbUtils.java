@@ -16,13 +16,18 @@
 package com.google.cloud.teleport.v2.mongodb.templates;
 
 import com.google.api.services.bigquery.model.TableFieldSchema;
+import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import java.io.Serializable;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import org.bson.Document;
 
@@ -34,6 +39,9 @@ public class MongoDbUtils implements Serializable {
    * column table with _id, document as a Json string and timestamp by default Or the Table schema
    * can be flattened version of the document with each field as a column for userOption "FLATTEN".
    */
+  static final DateTimeFormatter TIMEFORMAT =
+      DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
+
   public static TableSchema getTableFieldSchema(
       String uri, String database, String collection, String userOption) {
     List<TableFieldSchema> bigquerySchemaFields = new ArrayList<>();
@@ -75,5 +83,59 @@ public class MongoDbUtils implements Serializable {
     MongoCollection<Document> collection = database.getCollection(collName);
     Document doc = collection.find().first();
     return doc;
+  }
+
+  public static TableRow getTableSchemaCDC(HashMap<String, Object> parsedMap, String userOption) {
+    TableRow row = new TableRow();
+    if (userOption.equals("FLATTEN")) {
+      parsedMap.forEach(
+          (key, value) -> {
+            String valueClass = value.getClass().getName();
+            switch (valueClass) {
+              case "java.lang.Double":
+                row.set(key, value);
+                break;
+              case "java.util.Integer":
+                row.set(key, value);
+                break;
+              default:
+                row.set(key, value.toString());
+            }
+          });
+    } else {
+      LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
+
+      row.set("id", parsedMap.get("_id").toString())
+          .set("source_data", parsedMap.toString())
+          .set("timestamp", localdate.format(TIMEFORMAT));
+    }
+    return row;
+  }
+
+  public static TableRow getTableSchema(Document document, String userOption) {
+    TableRow row = new TableRow();
+    if (userOption.equals("FLATTEN")) {
+      document.forEach(
+          (key, value) -> {
+            String valueClass = value.getClass().getName();
+            switch (valueClass) {
+              case "java.lang.Double":
+                row.set(key, value);
+                break;
+              case "java.util.Integer":
+                row.set(key, value);
+                break;
+              default:
+                row.set(key, value.toString());
+            }
+          });
+    } else {
+      DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
+      LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
+      row.set("id", document.getObjectId("_id").toString())
+          .set("source_data", document.toJson())
+          .set("timestamp", localdate.format(timeFormat));
+    }
+    return row;
   }
 }

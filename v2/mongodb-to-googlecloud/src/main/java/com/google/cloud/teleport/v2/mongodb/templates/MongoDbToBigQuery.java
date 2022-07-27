@@ -19,9 +19,6 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.BigQueryWriteOptions;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.MongoDbOptions;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.mongodb.MongoDbIO;
@@ -79,31 +76,8 @@ public class MongoDbToBigQuery {
 
                   @ProcessElement
                   public void process(ProcessContext c) {
-                    TableRow row = new TableRow();
                     Document document = c.element();
-                    if (userOption.equals("FLATTEN")) {
-                      document.forEach(
-                          (key, value) -> {
-                            String valueClass = value.getClass().getName();
-                            switch (valueClass) {
-                              case "java.lang.Double":
-                                row.set(key, value);
-                                break;
-                              case "java.util.Integer":
-                                row.set(key, value);
-                                break;
-                              default:
-                                row.set(key, value.toString());
-                            }
-                          });
-                    } else {
-                      DateTimeFormatter timeFormat =
-                          DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
-                      LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
-                      row.set("id", document.getObjectId("_id").toString())
-                          .set("source_data", document.toJson())
-                          .set("timestamp", localdate.format(timeFormat));
-                    }
+                    TableRow row = MongoDbUtils.getTableSchema(document, userOption);
                     c.output(row);
                   }
                 }))

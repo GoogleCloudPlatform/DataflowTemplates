@@ -22,9 +22,6 @@ import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.Mon
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.PubSubOptions;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
@@ -89,31 +86,7 @@ public class MongoDbToBigQueryCdc {
                     String document = c.element();
                     Gson gson = new GsonBuilder().create();
                     HashMap<String, Object> parsedMap = gson.fromJson(document, HashMap.class);
-                    TableRow row = new TableRow();
-                    if (userOption.equals("FLATTEN")) {
-                      parsedMap.forEach(
-                          (key, value) -> {
-                            String valueClass = value.getClass().getName();
-                            switch (valueClass) {
-                              case "java.lang.Double":
-                                row.set(key, value);
-                                break;
-                              case "java.util.Integer":
-                                row.set(key, value);
-                                break;
-                              default:
-                                row.set(key, value.toString());
-                            }
-                          });
-                    } else {
-                      DateTimeFormatter timeFormat =
-                          DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
-                      LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
-
-                      row.set("id", parsedMap.get("_id").toString())
-                          .set("source_data", parsedMap.toString())
-                          .set("timestamp", localdate.format(timeFormat));
-                    }
+                    TableRow row = MongoDbUtils.getTableSchemaCDC(parsedMap, userOption);
                     c.output(row);
                   }
                 }))
