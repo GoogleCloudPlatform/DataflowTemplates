@@ -104,7 +104,6 @@ public class MongoDbUtils implements Serializable {
           });
     } else {
       LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
-
       row.set("id", parsedMap.get("_id").toString())
           .set("source_data", parsedMap.toString())
           .set("timestamp", localdate.format(TIMEFORMAT));
@@ -130,11 +129,10 @@ public class MongoDbUtils implements Serializable {
             }
           });
     } else {
-      DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
       LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
       row.set("id", document.getObjectId("_id").toString())
           .set("source_data", document.toJson())
-          .set("timestamp", localdate.format(timeFormat));
+          .set("timestamp", localdate.format(TIMEFORMAT));
     }
     return row;
   }
