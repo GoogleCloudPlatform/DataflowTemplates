@@ -81,7 +81,8 @@ public class MongoDbToBigQuery {
                   public void process(ProcessContext c) {
                     Document document = c.element();
                     Gson gson = new GsonBuilder().create();
-                    HashMap<String, Object> parsedMap = gson.fromJson(document.toJson(), HashMap.class);
+                    HashMap<String, Object> parsedMap =
+                        gson.fromJson(document.toJson(), HashMap.class);
                     TableRow row = MongoDbUtils.getTableSchema(parsedMap, userOption);
                     c.output(row);
                   }
