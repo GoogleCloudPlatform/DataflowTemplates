@@ -19,6 +19,9 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.BigQueryWriteOptions;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.MongoDbOptions;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import java.util.HashMap;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.mongodb.MongoDbIO;
@@ -77,7 +80,9 @@ public class MongoDbToBigQuery {
                   @ProcessElement
                   public void process(ProcessContext c) {
                     Document document = c.element();
-                    TableRow row = MongoDbUtils.getTableSchema(document, userOption);
+                    Gson gson = new GsonBuilder().create();
+                    HashMap<String, Object> parsedMap = gson.fromJson(document.toJson(), HashMap.class);
+                    TableRow row = MongoDbUtils.getTableSchema(parsedMap, userOption);
                     c.output(row);
                   }
                 }))

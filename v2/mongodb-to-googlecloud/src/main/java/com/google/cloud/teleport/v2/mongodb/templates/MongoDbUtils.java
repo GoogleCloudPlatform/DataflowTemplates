@@ -85,7 +85,7 @@ public class MongoDbUtils implements Serializable {
     return doc;
   }
 
-  public static TableRow getTableSchemaCDC(HashMap<String, Object> parsedMap, String userOption) {
+  public static TableRow getTableSchema(HashMap<String, Object> parsedMap, String userOption) {
     TableRow row = new TableRow();
     if (userOption.equals("FLATTEN")) {
       parsedMap.forEach(
@@ -106,32 +106,6 @@ public class MongoDbUtils implements Serializable {
       LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
       row.set("id", parsedMap.get("_id").toString())
           .set("source_data", parsedMap.toString())
-          .set("timestamp", localdate.format(TIMEFORMAT));
-    }
-    return row;
-  }
-
-  public static TableRow getTableSchema(Document document, String userOption) {
-    TableRow row = new TableRow();
-    if (userOption.equals("FLATTEN")) {
-      document.forEach(
-          (key, value) -> {
-            String valueClass = value.getClass().getName();
-            switch (valueClass) {
-              case "java.lang.Double":
-                row.set(key, value);
-                break;
-              case "java.util.Integer":
-                row.set(key, value);
-                break;
-              default:
-                row.set(key, value.toString());
-            }
-          });
-    } else {
-      LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
-      row.set("id", document.getObjectId("_id").toString())
-          .set("source_data", document.toJson())
           .set("timestamp", localdate.format(TIMEFORMAT));
     }
     return row;
