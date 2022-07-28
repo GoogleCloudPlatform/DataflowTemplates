@@ -47,13 +47,11 @@ public final class CustomX509TrustManagerTest {
         new FileInputStream(classLoader.getResource("PubsubToSplunkTestData/RootCA.crt").getFile());
     FileInputStream recognizedInputStream =
         new FileInputStream(
-            classLoader
-                .getResource("PubsubToSplunkTestData/RootCASignedCertificate.crt")
-                .getFile());
+            classLoader.getResource("PubsubToSplunkTestData/RecognizedCertificate.crt").getFile());
     FileInputStream unrecognizedInputStream =
         new FileInputStream(
             classLoader
-                .getResource("PubsubToSplunkTestData/UnrecognizedSelfSignedCertificate.crt")
+                .getResource("PubsubToSplunkTestData/UnrecognizedCertificate.crt")
                 .getFile());
     rootCa = (X509Certificate) cf.generateCertificate(rootCaInputStream);
     recognizedSelfSignedCertificate =
