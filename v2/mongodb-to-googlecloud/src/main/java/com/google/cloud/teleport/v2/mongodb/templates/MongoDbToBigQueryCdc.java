@@ -86,7 +86,7 @@ public class MongoDbToBigQueryCdc {
                     String document = c.element();
                     Gson gson = new GsonBuilder().create();
                     HashMap<String, Object> parsedMap = gson.fromJson(document, HashMap.class);
-                    TableRow row = MongoDbUtils.getTableSchemaCDC(parsedMap, userOption);
+                    TableRow row = MongoDbUtils.getTableSchema(parsedMap, userOption);
                     c.output(row);
                   }
                 }))
