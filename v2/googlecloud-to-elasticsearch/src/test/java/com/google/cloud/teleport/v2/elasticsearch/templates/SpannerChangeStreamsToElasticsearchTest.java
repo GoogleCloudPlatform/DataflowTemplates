@@ -133,18 +133,18 @@ public class SpannerChangeStreamsToElasticsearchTest {
       ImmutableList.of(insertRow, updateRow, deleteRow);
   private List<String> jsonifiedRows =
       ImmutableList.of(
-          "{\"AccountId\":\"AccountId1\",\"LastUpdate\":\"2022-09-27T11:30:00.123456Z\",\"UserId\":\"UserId1\",\"Balance\":1000}",
-          "{\"AccountId\":\"AccountId2\",\"LastUpdate\":\"2022-09-27T11:30:00.123456Z\",\"UserId\":\"UserId1\",\"Balance\":3000}",
-          "{\"AccountId\":\"AccountId1\",\"LastUpdate\":\"2022-09-27T11:30:00.123456Z\",\"UserId\":\"UserId2\",\"Balance\":500}",
-          "{\"AccountId\":\"AccountId2\",\"LastUpdate\":\"2022-09-27T11:30:00.123456Z\",\"UserId\":\"UserId2\",\"Balance\":2000}",
-          "{\"AccountId\":\"AccountId1\",\"LastUpdate\":\"2022-09-27T12:30:00.123456Z\",\"UserId\":\"UserId1\",\"Balance\":500}",
-          "{\"AccountId\":\"AccountId2\",\"LastUpdate\":\"2022-09-27T12:30:00.123456Z\",\"UserId\":\"UserId1\",\"Balance\":3500}",
-          "{\"AccountId\":\"AccountId1\",\"LastUpdate\":\"2022-09-27T12:30:00.123456Z\",\"UserId\":\"UserId2\",\"Balance\":700}",
-          "{\"AccountId\":\"AccountId2\",\"LastUpdate\":\"2022-09-27T12:30:00.123456Z\",\"UserId\":\"UserId2\",\"Balance\":1800}",
-          "{\"AccountId\":\"AccountId1\",\"UserId\":\"UserId1\",\"IsDelete\":true}",
-          "{\"AccountId\":\"AccountId2\",\"UserId\":\"UserId1\",\"IsDelete\":true}",
-          "{\"AccountId\":\"AccountId1\",\"UserId\":\"UserId2\",\"IsDelete\":true}",
-          "{\"AccountId\":\"AccountId2\",\"UserId\":\"UserId2\",\"IsDelete\":true}");
+          "{\"TableName\":\"testTable\",\"AccountId\":\"AccountId1\",\"LastUpdate\":\"2022-09-27T11:30:00.123456Z\",\"UserId\":\"UserId1\",\"Balance\":1000}",
+          "{\"TableName\":\"testTable\",\"AccountId\":\"AccountId2\",\"LastUpdate\":\"2022-09-27T11:30:00.123456Z\",\"UserId\":\"UserId1\",\"Balance\":3000}",
+          "{\"TableName\":\"testTable\",\"AccountId\":\"AccountId1\",\"LastUpdate\":\"2022-09-27T11:30:00.123456Z\",\"UserId\":\"UserId2\",\"Balance\":500}",
+          "{\"TableName\":\"testTable\",\"AccountId\":\"AccountId2\",\"LastUpdate\":\"2022-09-27T11:30:00.123456Z\",\"UserId\":\"UserId2\",\"Balance\":2000}",
+          "{\"TableName\":\"testTable\",\"AccountId\":\"AccountId1\",\"LastUpdate\":\"2022-09-27T12:30:00.123456Z\",\"UserId\":\"UserId1\",\"Balance\":500}",
+          "{\"TableName\":\"testTable\",\"AccountId\":\"AccountId2\",\"LastUpdate\":\"2022-09-27T12:30:00.123456Z\",\"UserId\":\"UserId1\",\"Balance\":3500}",
+          "{\"TableName\":\"testTable\",\"AccountId\":\"AccountId1\",\"LastUpdate\":\"2022-09-27T12:30:00.123456Z\",\"UserId\":\"UserId2\",\"Balance\":700}",
+          "{\"TableName\":\"testTable\",\"AccountId\":\"AccountId2\",\"LastUpdate\":\"2022-09-27T12:30:00.123456Z\",\"UserId\":\"UserId2\",\"Balance\":1800}",
+          "{\"TableName\":\"testTable\",\"AccountId\":\"AccountId1\",\"UserId\":\"UserId1\",\"IsDelete\":true}",
+          "{\"TableName\":\"testTable\",\"AccountId\":\"AccountId2\",\"UserId\":\"UserId1\",\"IsDelete\":true}",
+          "{\"TableName\":\"testTable\",\"AccountId\":\"AccountId1\",\"UserId\":\"UserId2\",\"IsDelete\":true}",
+          "{\"TableName\":\"testTable\",\"AccountId\":\"AccountId2\",\"UserId\":\"UserId2\",\"IsDelete\":true}");
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
   @Rule public ExpectedException exceptionRule = ExpectedException.none();

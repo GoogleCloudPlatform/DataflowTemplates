@@ -146,11 +146,13 @@ public class SpannerChangeStreamsToElasticsearch {
     public void process(@Element DataChangeRecord element, OutputReceiver<String> output) {
       List<ColumnType> cols = element.getRowType();
       ModType modType = element.getModType();
+      String tableName = element.getTableName();
       element
           .getMods()
           .forEach(
               mod -> {
                 JSONObject keysJsonExtended = new JSONObject(mod.getKeysJson());
+                keysJsonExtended.put("TableName", tableName);    
                 if (modType == ModType.INSERT || modType == ModType.UPDATE) {
                   JSONObject newValuesJson = new JSONObject(mod.getNewValuesJson());
                   // add any properties that are present in newValuesJson to the set of keys to make
