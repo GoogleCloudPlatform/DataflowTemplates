@@ -8,5 +8,6 @@ of templates enabling data integration between Google Cloud products and Elastic
 * [BigQueryToElasticsearch](docs/BigQueryToElasticsearch/README.md)
 * [GCSToElasticsearch](docs/GCSToElasticsearch/README.md)
 * [PubSubToElasticsearch](docs/PubSubToElasticsearch/README.md)
+* [SpannerChangeStreamsToElasticsearch](docs/SpannerChangeStreamsToElasticsearch/README.md)
 
 Please refer to the corresponding links above for additional information.
