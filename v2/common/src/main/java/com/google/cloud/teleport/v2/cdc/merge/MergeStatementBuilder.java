@@ -78,13 +78,33 @@ public class MergeStatementBuilder implements Serializable {
     return orderByFields.get(0);
   }
 
+  /*
+   * The sort fields should sort based on the first field, and fall back
+   * to the next fields only if all the preceding fields are equal (as a tie-breaker).
+   */
   static String buildSortFieldComparisons(List<String> orderByFields) {
-    return orderByFields.stream()
-        .map(
-            field ->
-                String.format(
-                    "%s.%s <= %s.%s", REPLICA_TABLE_NAME, field, STAGING_TABLE_NAME, field))
-        .collect(Collectors.joining(" AND "));
+    List<String> comparisonClauses = new ArrayList<>();
+    for (int i = 0; i < orderByFields.size(); i++) {
+      String field = orderByFields.get(i);
+      List<String> precedingFields = orderByFields.subList(0, i);
+      String currentFieldComparison =
+          String.format("%s.%s < %s.%s", REPLICA_TABLE_NAME, field, STAGING_TABLE_NAME, field);
+      String precedingFieldsComparison =
+          precedingFields.stream()
+              .map(
+                  precedingField ->
+                      String.format(
+                          "%s.%s = %s.%s",
+                          REPLICA_TABLE_NAME, precedingField, STAGING_TABLE_NAME, precedingField))
+              .collect(Collectors.joining(" AND "));
+      String fieldClause =
+          precedingFieldsComparison.isEmpty()
+              ? String.format("(%s)", currentFieldComparison)
+              : String.format("((%s) AND %s)", precedingFieldsComparison, currentFieldComparison);
+      comparisonClauses.add(fieldClause);
+    }
+    String joinedComparisonClauses = String.join(" OR ", comparisonClauses);
+    return String.format("(%s)", joinedComparisonClauses);
   }
 
   public static final String LATEST_FROM_STAGING_TEMPLATE = "SELECT %s FROM (%s) WHERE row_num=1";

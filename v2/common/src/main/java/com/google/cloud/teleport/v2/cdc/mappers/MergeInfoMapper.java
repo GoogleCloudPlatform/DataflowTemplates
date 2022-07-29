@@ -19,7 +19,6 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.v2.cdc.merge.MergeInfo;
 import com.google.cloud.teleport.v2.values.DatastreamRow;
-import java.util.Arrays;
 import java.util.List;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -36,10 +35,6 @@ import org.slf4j.LoggerFactory;
 public class MergeInfoMapper
     extends PTransform<PCollection<KV<TableId, TableRow>>, PCollection<MergeInfo>> {
 
-  public static final List<String> ORACLE_ORDER_BY_FIELDS =
-      Arrays.asList("_metadata_timestamp", "_metadata_scn");
-  public static final List<String> MYSQL_ORDER_BY_FIELDS =
-      Arrays.asList("_metadata_timestamp", "_metadata_log_file", "_metadata_log_position");
   public static final String METADATA_DELETED = "_metadata_deleted";
   public static final String METADATA_REPLICA_TABLE = "_metadata_table";
 

@@ -25,6 +25,7 @@ import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1SchemaSche
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1StorageFormat;
 import com.google.cloud.teleport.v2.clients.DataplexClient;
 import com.google.cloud.teleport.v2.options.DataplexBigQueryToGcsOptions;
+import com.google.cloud.teleport.v2.templates.DataplexBigQueryToGcs;
 import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.DataplexCompression;
@@ -36,17 +37,28 @@ import com.google.re2j.Matcher;
 import com.google.re2j.Pattern;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.apache.avro.LogicalType;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Provides utility methods for working with Dataplex. */
 public class DataplexUtils {
 
+  private static final Logger LOG = LoggerFactory.getLogger(DataplexBigQueryToGcs.class);
+
   private static final Pattern ZONE_PATTERN =
       Pattern.compile("projects/[^/]+/locations/[^/]+/lakes/[^/]+/zones/[^/]+");
+
+  public static final Predicate<GoogleCloudDataplexV1Entity> GCS_PATH_ONLY_FILTER =
+      entity -> entity.getDataPath().startsWith("gs://");
 
   /** Gets the zone name from {@code assetName}. */
   public static String getZoneFromAsset(String assetName) {
@@ -376,6 +388,99 @@ public class DataplexUtils {
             String.format("Error creating entity (ID = %s) in zone %s", id, zoneName), e);
       }
     }
+  }
+
+  /**
+   * Verifies a given entity has {@code userManaged} flag enabled in the entity schema.
+   *
+   * @param entity the entity to check, not {@code null}
+   * @throws IllegalStateException if {@code userManaged = false}, or is not set, or the whole
+   *     schema is missing
+   */
+  public static void verifyEntityIsUserManaged(GoogleCloudDataplexV1Entity entity)
+      throws IllegalStateException {
+    checkNotNull(entity);
+    if (entity.getSchema() == null
+        || entity.getSchema().getUserManaged() == null
+        || !entity.getSchema().getUserManaged()) {
+      throw new IllegalStateException(
+          String.format(
+              "Entity %s already exists, but the schema is not user-managed. Only user-managed "
+                  + "schemas are supported when Dataplex metadata updates are enabled.",
+              entity.getName()));
+    }
+  }
+
+  /**
+   * Loads all entities in a given asset and returns a map keyed by entity data path.
+   *
+   * @param dataplex the client to use to call Dataplex API
+   * @param assetName example:
+   *     projects/{project_number}/locations/{location_id}/lakes/{lake_id}/zones/{zone_id}/assets/{asset_id}
+   * @param filter an optional filter
+   * @return an "entity data path" =&gt; "entity" map
+   */
+  public static Map<String, GoogleCloudDataplexV1Entity> getDataPathToEntityMappingForAsset(
+      DataplexClient dataplex, String assetName, Predicate<GoogleCloudDataplexV1Entity> filter)
+      throws IOException {
+    String shortAssetName = getShortAssetNameFromAsset(assetName);
+    String zoneName = getZoneFromAsset(assetName);
+
+    LOG.info(
+        "Loading existing Dataplex entities in zone {}, asset {}...", zoneName, shortAssetName);
+    List<GoogleCloudDataplexV1Entity> entities =
+        dataplex.listEntities(zoneName, String.format("asset=%s", shortAssetName));
+    LOG.info("Loaded {} entities.", entities.size());
+
+    if (filter == null) {
+      filter = entity -> true;
+    }
+
+    return entities.stream()
+        .filter(filter)
+        .collect(
+            Collectors.toMap(
+                GoogleCloudDataplexV1Entity::getDataPath,
+                Function.identity(),
+                (e1, e2) -> {
+                  throw new IllegalStateException(
+                      String.format(
+                          "Duplicate entities %s and %s for the same data path: %s",
+                          e1.getName(), e2.getName(), e1.getDataPath()));
+                }));
+  }
+
+  /**
+   * Loads the entity under a given asset and data path.
+   *
+   * @param dataplex the client to use to call Dataplex API
+   * @param assetName example:
+   *     projects/{project_number}/locations/{location_id}/lakes/{lake_id}/zones/{zone_id}/assets/{asset_id}
+   * @param dataPath entity data path
+   * @return the loaded entity as returned by the Dataplex listEntities API (i.e. potentially with
+   *     some fields unpopulated), or {@code null} if such entity doesn't exist
+   * @throws IllegalStateException if Dataplex returns more than 1 entity matching the data path
+   */
+  public static GoogleCloudDataplexV1Entity getEntityByDataPath(
+      DataplexClient dataplex, String assetName, String dataPath) throws IOException {
+    String zoneName = getZoneFromAsset(assetName);
+
+    LOG.info(
+        "Loading existing Dataplex entities in asset {} with data path {}...", assetName, dataPath);
+    List<GoogleCloudDataplexV1Entity> entities =
+        dataplex.listEntities(zoneName, String.format("data_path=\"%s\"", dataPath));
+    LOG.info("Loaded {} entities.", entities.size());
+
+    if (entities.isEmpty()) {
+      return null;
+    }
+    if (entities.size() > 1) {
+      throw new IllegalStateException(
+          String.format(
+              "Expected exactly 1 entity at data path %s, but got %d.", dataPath, entities.size()));
+    }
+
+    return entities.iterator().next();
   }
 
   private static boolean errorDetailContains(

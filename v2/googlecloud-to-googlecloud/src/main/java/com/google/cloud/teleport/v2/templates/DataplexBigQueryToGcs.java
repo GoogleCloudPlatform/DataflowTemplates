@@ -43,15 +43,14 @@ import com.google.cloud.teleport.v2.utils.GCSUtils;
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import com.google.cloud.teleport.v2.values.DataplexEnums.DataplexAssetResourceSpec;
+import com.google.cloud.teleport.v2.values.DataplexEnums.EntityType;
+import com.google.cloud.teleport.v2.values.DataplexEnums.StorageSystem;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryServices;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -208,32 +207,16 @@ public class DataplexBigQueryToGcs {
       String targetRootPath)
       throws IOException {
 
-    String assetName = options.getDestinationStorageBucketAssetName();
-    String shortAssetName = DataplexUtils.getShortAssetNameFromAsset(assetName);
-    String zoneName = DataplexUtils.getZoneFromAsset(assetName);
-    BigQueryToGcsDirectoryNaming directoryNaming =
-        new BigQueryToGcsDirectoryNaming(options.getEnforceSamePartitionKey());
+    LOG.info("Checking existing Dataplex metadata...");
 
-    LOG.info(
-        "Loading existing Dataplex entities in zone {}, asset {}...", zoneName, shortAssetName);
-    List<GoogleCloudDataplexV1Entity> entities =
-        dataplex.listEntities(zoneName, String.format("asset=%s", shortAssetName));
-    LOG.info("Loaded {} entities.", entities.size());
+    String assetName = options.getDestinationStorageBucketAssetName();
 
     Map<String, GoogleCloudDataplexV1Entity> dataPathToEntity =
-        entities.stream()
-            .filter(e -> e.getDataPath().startsWith("gs://"))
-            .collect(
-                Collectors.toMap(
-                    GoogleCloudDataplexV1Entity::getDataPath,
-                    Function.identity(),
-                    (e1, e2) -> {
-                      throw new IllegalStateException(
-                          String.format(
-                              "Duplicate entities %s and %s for the same data path: %s",
-                              e1.getName(), e2.getName(), e1.getDataPath()));
-                    }));
+        DataplexUtils.getDataPathToEntityMappingForAsset(
+            dataplex, assetName, DataplexUtils.GCS_PATH_ONLY_FILTER);
 
+    BigQueryToGcsDirectoryNaming directoryNaming =
+        new BigQueryToGcsDirectoryNaming(options.getEnforceSamePartitionKey());
     List<BigQueryTable> enrichedTables = new ArrayList<>(tables.size());
 
     for (BigQueryTable table : tables) {
@@ -244,9 +227,7 @@ public class DataplexBigQueryToGcs {
       if (entity != null) {
         verifyEntityIsUserManaged(entity, dataplex);
       } else {
-        entity =
-            createNewEntity(
-                options, dataplex, table, zoneName, assetName, targetPath, directoryNaming);
+        entity = createNewEntity(options, dataplex, table, assetName, targetPath, directoryNaming);
       }
       enrichedTables.add(table.toBuilder().setDataplexEntityName(entity.getName()).build());
     }
@@ -258,30 +239,15 @@ public class DataplexBigQueryToGcs {
       GoogleCloudDataplexV1Entity entity, DataplexClient dataplex) throws IOException {
     // We have to reload each existing entity 1 by 1 to check the userManaged flag
     // because the listEntities API call never returns schemas, only getEntity call does.
-    List<GoogleCloudDataplexV1Entity> richEntities =
-        dataplex.getEntities(Collections.singletonList(entity.getName()));
-    boolean isUserManaged = false;
-    if (richEntities != null && !richEntities.isEmpty()) {
-      GoogleCloudDataplexV1Entity re = richEntities.iterator().next();
-      if (re != null && re.getSchema() != null && re.getSchema().getUserManaged() != null) {
-        isUserManaged = re.getSchema().getUserManaged();
-      }
-    }
-    if (!isUserManaged) {
-      // DataplexBigQueryToGcsUpdateMetadata should check the same, but fail fast here.
-      throw new IllegalStateException(
-          String.format(
-              "Entity %s already exists, but the schema is not user-managed. Only user-managed "
-                  + "schemas are supported when Dataplex metadata updates are enabled.",
-              entity.getName()));
-    }
+    GoogleCloudDataplexV1Entity richEntity = dataplex.getEntity(entity.getName());
+    checkNotNull(richEntity, String.format("Could not load entity %s", entity.getName()));
+    DataplexUtils.verifyEntityIsUserManaged(richEntity);
   }
 
   private static GoogleCloudDataplexV1Entity createNewEntity(
       DataplexBigQueryToGcsOptions options,
       DataplexClient dataplex,
       BigQueryTable table,
-      String zoneName,
       String assetName,
       String targetPath,
       BigQueryToGcsDirectoryNaming directoryNaming)
@@ -296,6 +262,8 @@ public class DataplexBigQueryToGcs {
     DataplexUtils.applyHiveStyle(schema, table, directoryNaming);
     schema.setUserManaged(true);
 
+    String zoneName = DataplexUtils.getZoneFromAsset(assetName);
+
     GoogleCloudDataplexV1Entity entity =
         DataplexUtils.createEntityWithUniqueId(
             dataplex,
@@ -304,8 +272,8 @@ public class DataplexBigQueryToGcs {
                 .setId(table.getTableName())
                 .setAsset(DataplexUtils.getShortAssetNameFromAsset(assetName))
                 .setDataPath(targetPath)
-                .setType("TABLE")
-                .setSystem("CLOUD_STORAGE")
+                .setType(EntityType.TABLE.name())
+                .setSystem(StorageSystem.CLOUD_STORAGE.name())
                 .setSchema(schema)
                 .setFormat(
                     DataplexUtils.storageFormat(

@@ -362,6 +362,12 @@ public class DataplexBigQueryToGcsTest {
                 ImmutableList.of(
                     partitionedEntityWithEmptySchema.clone(),
                     unpartitionedEntityWithEmptySchema.clone()));
+    when(dataplexClientMock.getEntity(any()))
+        .thenAnswer(
+            invocation -> {
+              String name = invocation.getArgument(0);
+              return entities.get(name).clone();
+            });
     when(dataplexClientMock.getEntities(any()))
         .thenAnswer(
             invocation -> {
@@ -746,7 +752,7 @@ public class DataplexBigQueryToGcsTest {
             .setName("should_not_be_used")
             .setId("partitioned_table")
             .setDataPath("gs://wrong_bucket/partitioned_table");
-    when(dataplexClientMock.listEntities(eq(DataplexUtils.getZoneFromAsset(ASSET_NAME)), any()))
+    when(dataplexClientMock.listEntities(eq(zoneName), any()))
         .thenAnswer(
             invocation -> {
               String filter = invocation.getArgument(1);

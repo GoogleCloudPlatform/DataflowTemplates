@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.options;
 
-import com.google.cloud.teleport.v2.transforms.DataplexBigQueryToGcsUpdateMetadata;
 import com.google.cloud.teleport.v2.transforms.DeleteBigQueryDataFn;
 import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
 import com.google.cloud.teleport.v2.utils.WriteDisposition.WriteDispositionOptions;
@@ -34,7 +33,7 @@ public interface DataplexBigQueryToGcsOptions
     extends GcpOptions,
         ExperimentalOptions,
         DeleteBigQueryDataFn.Options,
-        DataplexBigQueryToGcsUpdateMetadata.Options {
+        DataplexUpdateMetadataOptions {
 
   @Description(
       "BigQuery dataset to tier data from. Format: "

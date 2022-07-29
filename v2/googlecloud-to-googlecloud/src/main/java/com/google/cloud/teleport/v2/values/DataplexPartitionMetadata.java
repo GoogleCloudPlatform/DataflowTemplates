@@ -19,8 +19,13 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Partition;
 import com.google.auto.value.AutoValue;
-import com.google.common.collect.ImmutableList;
 import java.io.Serializable;
+import java.util.List;
+import org.apache.beam.sdk.coders.DefaultCoder;
+import org.apache.beam.sdk.schemas.AutoValueSchema;
+import org.apache.beam.sdk.schemas.SchemaCoder;
+import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
+import org.apache.beam.sdk.schemas.annotations.SchemaCreate;
 
 /**
  * Partition metadata for Dataplex.
@@ -28,17 +33,27 @@ import java.io.Serializable;
  * <p>All values are necessary.
  */
 @AutoValue
+@DefaultCoder(SchemaCoder.class)
+@DefaultSchema(AutoValueSchema.class)
 public abstract class DataplexPartitionMetadata implements Serializable {
-  public abstract String location();
+  public abstract String getLocation();
 
-  public abstract ImmutableList<String> values();
+  public abstract List<String> getValues();
 
   public static Builder builder() {
     return new AutoValue_DataplexPartitionMetadata.Builder();
   }
 
+  // Special method for constructing new objects for AutoValueSchema/SchemaCoder.
+  // Required as they support only the hard-coded "build()" method name in the generated builder
+  // class, while we use "autoBuild()" method name here, to implement our own build().
+  @SchemaCreate
+  public static DataplexPartitionMetadata create(String location, List<String> values) {
+    return builder().setLocation(location).setValues(values).build();
+  }
+
   public GoogleCloudDataplexV1Partition toDataplexPartition() {
-    return new GoogleCloudDataplexV1Partition().setLocation(location()).setValues(values());
+    return new GoogleCloudDataplexV1Partition().setLocation(getLocation()).setValues(getValues());
   }
 
   /** Builder for {@link DataplexPartitionMetadata}. */
@@ -46,15 +61,15 @@ public abstract class DataplexPartitionMetadata implements Serializable {
   public abstract static class Builder {
     public abstract Builder setLocation(String value);
 
-    public abstract Builder setValues(ImmutableList<String> value);
+    public abstract Builder setValues(List<String> value);
 
     abstract DataplexPartitionMetadata autoBuild();
 
     public DataplexPartitionMetadata build() {
       DataplexPartitionMetadata metadata = autoBuild();
-      checkState(!metadata.location().isEmpty(), "Location cannot be empty");
+      checkState(!metadata.getLocation().isEmpty(), "Location cannot be empty");
 
-      ImmutableList<String> values = metadata.values();
+      List<String> values = metadata.getValues();
       checkState(!values.isEmpty(), "Values cannot be empty");
 
       return metadata;

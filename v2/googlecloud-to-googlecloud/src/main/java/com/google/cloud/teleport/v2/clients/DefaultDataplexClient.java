@@ -129,6 +129,19 @@ public final class DefaultDataplexClient implements DataplexClient {
   }
 
   @Override
+  public GoogleCloudDataplexV1Entity getEntity(String entityName) throws IOException {
+    return client
+        .projects()
+        .locations()
+        .lakes()
+        .zones()
+        .entities()
+        .get(entityName)
+        .setView(GetEntityRequestEntityView.FULL.name())
+        .execute();
+  }
+
+  @Override
   public ImmutableList<GoogleCloudDataplexV1Entity> listEntities(String zoneName, String filter)
       throws IOException {
     Entities.List listReq =

@@ -25,10 +25,11 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 
 /**
- * The {@link Options} class provides the custom execution options passed by the executor at the
- * command-line.
+ * The {@link DataplexJdbcIngestionOptions} class provides the custom execution options passed by
+ * the executor at the command-line.
  */
-public interface DataplexJdbcIngestionOptions extends GcpOptions, PipelineOptions {
+public interface DataplexJdbcIngestionOptions
+    extends GcpOptions, PipelineOptions, DataplexUpdateMetadataOptions {
   @Description(
       "Comma separate list of driver class/dependency jar file GCS paths "
           + "for example "
