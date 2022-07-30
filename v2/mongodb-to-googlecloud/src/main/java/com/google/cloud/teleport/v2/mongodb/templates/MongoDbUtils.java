@@ -84,6 +84,7 @@ public class MongoDbUtils implements Serializable {
     Document doc = collection.find().first();
     return doc;
   }
+
   public static TableRow getTableSchema(HashMap<String, Object> parsedMap, String userOption) {
     TableRow row = new TableRow();
     if (userOption.equals("FLATTEN")) {
