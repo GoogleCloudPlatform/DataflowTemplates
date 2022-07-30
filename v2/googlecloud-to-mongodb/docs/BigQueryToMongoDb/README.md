@@ -87,8 +87,9 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
       },
       {
         "name": "inputTableSpec",
-        "label": "outputTableSpec",
+        "label": "inputTableSpec",
         "helpText": "BigQuery destination table spec. e.g bigquery-project:dataset.output_table",
+        "is_optional": false,
         "paramType": "TEXT"
       }
     ]

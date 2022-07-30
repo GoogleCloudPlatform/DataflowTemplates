@@ -27,9 +27,9 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>bigquery-to-mongodb</artifactId>
+    <artifactId>googlecloud-to-mongodb</artifactId>
 
-    <name>BigQuery To MongoDB</name>
+    <name>Google Cloud To MongoDB</name>
     <description>
         Stream data from Google PubSub to a hosted MongoDB Database
     </description>

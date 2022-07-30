@@ -14,7 +14,7 @@ The MongoDB to BigQuery template is a streaming pipeline t works together with M
 ### Template parameters
 **mongoDbUri** : MongoDB Connection URI. For example: _mongodb+srv://<username>:<password>@<server-connection-string>_.
 
-**database** : Database in MongoDB to store the collection. For example: _my-db_.
+**database** : Database in MongoDB to read the collection. For example: _my-db_.
 
 **collection** : Name of the collection inside MongoDB database. For example: _my-collection_.
 
@@ -80,14 +80,14 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
       },
       {
         "name": "database",
-        "label": "mongo database",
+        "label": "MongoDB database",
         "helpText": "Database in MongoDB to store the collection. ex: my-db.",
         "is_optional": false,
         "paramType": "TEXT"
       },
       {
         "name": "collection",
-        "label": "mongo collection",
+        "label": "MongoDB collection",
         "helpText": "Name of the collection inside MongoDB database. ex: my-collection.",
         "is_optional": false,
         "paramType": "TEXT"
@@ -96,14 +96,18 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
         "name": "outputTableSpec",
         "label": "outputTableSpec",
         "helpText": "BigQuery destination table spec. e.g bigquery-project:dataset.output_table",
+        "is_optional": false,
         "paramType": "TEXT"
       },
       {
         "name": "userOption",
         "label": "User option",
         "helpText": " ",
-        "is_optional": true,
-        "paramType": "TEXT"
+        "is_optional": false,
+        "paramType": "TEXT",
+        "regexes": [
+          "^(FLATTEN|NONE)$"
+        ]
       },
       {
         "name": "inputTopic",

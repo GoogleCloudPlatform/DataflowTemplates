@@ -11,15 +11,15 @@
     },
     {
       "name": "database",
-      "label": "mongo database",
-      "helpText": "Database in MongoDB to store the collection. ex: my-db.",
+      "label": "MongoDB database",
+      "helpText": "Database in MongoDB to read the collection. ex: my-db.",
       "is_optional": false,
       "paramType": "TEXT"
     },
     {
       "name": "collection",
-      "label": "mongo collection",
-      "helpText": "Name of the collection inside MongoDB database. ex: my-collection.",
+      "label": "MongoDB collection",
+      "helpText": "Name of the collection in MongoDB database. ex: my-collection.",
       "is_optional": false,
       "paramType": "TEXT"
     },
@@ -27,14 +27,18 @@
       "name": "outputTableSpec",
       "label": "BigQuery table spec to write the data",
       "helpText": "BigQuery destination table spec. e.g bigquery-project:dataset.output_table",
+      "is_optional": false,
       "paramType": "TEXT"
     },
     {
       "name": "userOption",
       "label": "user option",
       "helpText": "Could be one of FLATTEN or NONE. FLATTEN will flatten the documents for 1 level. NONE will store the whole document as json string.",
-      "is_optional": true,
-      "paramType": "TEXT"
+      "is_optional": false,
+      "paramType": "TEXT",
+      "regexes": [
+        "^(FLATTEN|NONE)$"
+      ]
     }
   ]
 }

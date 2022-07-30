@@ -11,14 +11,14 @@
     },
     {
       "name": "database",
-      "label": "mongo database",
-      "helpText": "Database in MongoDB to store the collection. ex: my-db.",
+      "label": "MongoDB database",
+      "helpText": "Database in MongoDB to read the collection. ex: my-db.",
       "is_optional": false,
       "paramType": "TEXT"
     },
     {
       "name": "collection",
-      "label": "mongo collection",
+      "label": "MongoDB collection",
       "helpText": "Name of the collection inside MongoDB database. ex: my-collection.",
       "is_optional": false,
       "paramType": "TEXT"
@@ -27,14 +27,18 @@
       "name": "outputTableSpec",
       "label": "output table spec",
       "helpText": "BigQuery destination table spec. e.g bigquery-project:dataset.output_table",
+      "is_optional": false,
       "paramType": "TEXT"
     },
     {
       "name": "userOption",
       "label": "User option",
       "helpText": " ",
-      "is_optional": true,
-      "paramType": "TEXT"
+      "is_optional": false,
+      "paramType": "TEXT",
+      "regexes": [
+        "^(FLATTEN|NONE)$"
+      ]
     },
     {
       "name": "inputTopic",
