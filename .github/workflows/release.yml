@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidateName:
+        description: 'Name of the candidate'
+        type: string
+        required: true
+      branchCommit:
+        description: 'Commit to check out. If it is the most recent commit then leave blank.'
+        type: string
+        required: false
+        default: ''
+      cherrypickCommits:
+        description: 'Comma separated commits to cherry pick'
+        type: string
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get releaser identity
+        run: |
+          git config --global user.name '${{github.actor}}'
+          git config --global user.email '${{github.actor}}@users.noreply.github.com'
+      - name: Declare release branch name and tag name
+        id: variables
+        run: |
+          echo "::set-output name=releaseBranchName::release_${CANDIDATE_NAME,,}"
+          echo "::set-output name=tagName::${CANDIDATE_NAME^^}"
+        env:
+          CANDIDATE_NAME: ${{ inputs.candidateName }}
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Create release branch
+        run: git checkout -b $RELEASE_BRANCH_NAME $BRANCH_COMMIT
+        env:
+          RELEASE_BRANCH_NAME: ${{ steps.variables.outputs.releaseBranchName }}
+          BRANCH_COMMIT: ${{ inputs.branchCommit }}
+      - name: Cherry pick commits
+        run: |
+          commits=$(echo $CHERRYPICK_COMMITS | tr "," "\n")
+          for commit in $commits
+          do
+            echo "Cherry picking $commit."
+            git cherry-pick $commit
+          done
+        env:
+          CHERRYPICK_COMMITS: ${{ inputs.cherrypickCommits }}
+      - name: Add tag to most recent commit
+        run: |
+          DATE=$(date -d"next-monday - 1week" +'%Y-%m-%d')
+          T_COMMIT=$(git log -n 1 $RELEASE_BRANCH_NAME --pretty=format:'%H')
+          git tag -a $TAG_NAME -m "Release week of $DATE" $T_COMMIT
+        env:
+          RELEASE_BRANCH_NAME: ${{ steps.variables.outputs.releaseBranchName }}
+          TAG_NAME: ${{ steps.variables.outputs.tagName }}
+      - name: Push changes
+        run: |
+          git push -u origin --all
+          git push -u origin --tags
+      - name: Release
+        run: |
+          gh release create $TAG_NAME --title "Dataflow Templates $TAG_NAME" --notes ""
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ steps.variables.outputs.tagName }}
