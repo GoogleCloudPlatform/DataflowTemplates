@@ -19,14 +19,16 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.BigQueryWriteOptions;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.MongoDbOptions;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import java.util.HashMap;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.mongodb.MongoDbIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.transforms.SimpleFunction;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.bson.Document;
 
 /**
@@ -42,7 +44,6 @@ public class MongoDbToBigQuery {
   public interface Options extends PipelineOptions, MongoDbOptions, BigQueryWriteOptions {}
 
   private static class ParseAsDocumentsFn extends DoFn<String, Document> {
-
     @ProcessElement
     public void processElement(ProcessContext context) {
       context.output(Document.parse(context.element()));
@@ -50,23 +51,19 @@ public class MongoDbToBigQuery {
   }
 
   public static void main(String[] args) {
-
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     run(options);
   }
 
   public static boolean run(Options options) {
     Pipeline pipeline = Pipeline.create(options);
-
     TableSchema bigquerySchema =
         MongoDbUtils.getTableFieldSchema(
             options.getMongoDbUri(),
             options.getDatabase(),
             options.getCollection(),
             options.getUserOption());
-
     String userOption = options.getUserOption();
-
     pipeline
         .apply(
             "Read Documents",
@@ -77,11 +74,17 @@ public class MongoDbToBigQuery {
                 .withCollection(options.getCollection()))
         .apply(
             "Transform to TableRow",
-            MapElements.via(
-                new SimpleFunction<Document, TableRow>() {
-                  @Override
-                  public TableRow apply(Document document) {
-                    return MongoDbUtils.generateTableRow(document, userOption);
+            ParDo.of(
+                new DoFn<Document, TableRow>() {
+
+                  @ProcessElement
+                  public void process(ProcessContext c) {
+                    Document document = c.element();
+                    Gson gson = new GsonBuilder().create();
+                    HashMap<String, Object> parsedMap =
+                        gson.fromJson(document.toJson(), HashMap.class);
+                    TableRow row = MongoDbUtils.getTableSchema(parsedMap, userOption);
+                    c.output(row);
                   }
                 }))
         .apply(

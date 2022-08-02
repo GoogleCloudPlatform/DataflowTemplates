@@ -1,8 +1,7 @@
 # MongoDB to BigQuery Dataflow Template
 
-The [MongoDbToBigQuery](../../src/main/java/com/google/cloud/teleport/v2/mongodb/templates/MongoDbToBigQuery.java) pipeline
-Reads the data from MongoDb collection, Writes the data to BigQuery.
-
+The [MongoDbToBigQuery](../../src/main/java/com/google/cloud/teleport/v2/mongodb/templates/MongoDbToBigQuery.java) pipeline Reads the data from MongoDb collection, Writes the data to BigQuery.
+The MongoDB to BigQuery template is a batch pipeline that reads document from MongoDB and writes them to BigQuery as specified in userOption. Currently, this pipeline supports two types of userOptions. First is FLATTEN where the documents are Flattened to first level. Second is NONE where the documents are stored as a json string into BigQuery.
 ## Getting Started
 
 ### Requirements
@@ -10,6 +9,17 @@ Reads the data from MongoDb collection, Writes the data to BigQuery.
 * Maven
 * MongoDB host exists and is operational
 * Bigquery dataset exists
+
+### Template parameters
+**mongoDbUri** : MongoDB Connection URI. For example: _mongodb+srv://<username>:<password>@<server-connection-string>_.
+
+**database** : Database in MongoDB to read the collection. For example: _my-db_.
+
+**collection** : Name of the collection inside MongoDB database. For example: _my-collection_.
+
+**outputTableSpec** : BigQuery destination table spec. e.g _bigquery-project:dataset.output_table_,
+
+**userOption** : Could be one of FLATTEN or NONE. FLATTEN will flatten the documents for 1 level. NONE will store the whole document as json string.
 
 ### Building Template
 This is a Flex Template meaning that the pipeline code will be containerized and the container will be used to launch the Dataflow pipeline.
@@ -66,14 +76,14 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
       },
       {
         "name": "database",
-        "label": "mongo database",
+        "label": "MongoDB database",
         "helpText": "Database in MongoDB to store the collection. ex: my-db.",
         "is_optional": false,
         "paramType": "TEXT"
       },
       {
         "name": "collection",
-        "label": "mongo collection",
+        "label": "MongoDB collection",
         "helpText": "Name of the collection inside MongoDB database. ex: my-collection.",
         "is_optional": false,
         "paramType": "TEXT"
@@ -82,14 +92,18 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
         "name": "outputTableSpec",
         "label": "outputTableSpec",
         "helpText": "BigQuery destination table spec. e.g bigquery-project:dataset.output_table",
+        "is_optional": false,
         "paramType": "TEXT"
       },
       {
         "name": "userOption",
         "label": "User option",
         "helpText": " ",
-        "is_optional": true,
-        "paramType": "TEXT"
+        "is_optional": false,
+        "paramType": "TEXT",
+        "regexes": [
+          "^(FLATTEN|NONE)$"
+        ]
       }
     ]
   },
@@ -125,5 +139,5 @@ export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud beta dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-east1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters mongoDbUri=${MONGODB_HOSTNAME},database=${MONGODB_DATABASE_NAME},collection=${MONGODB_COLLECTION_NAME},outputTableSpec=${OUTPUT_TABLE_SPEC}
+        --parameters mongoDbUri=${MONGODB_HOSTNAME},database=${MONGODB_DATABASE_NAME},collection=${MONGODB_COLLECTION_NAME},outputTableSpec=${OUTPUT_TABLE_SPEC},userOption=${USER_OPTION}
 ```

@@ -29,8 +29,7 @@ import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.transforms.SimpleFunction;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.bson.Document;
 
 /**
@@ -65,8 +64,8 @@ public class MongoDbToBigQueryCdc {
 
   /** Pipeline to read data from PubSub and write to MongoDB. */
   public static boolean run(Options options) {
-    Pipeline pipeline = Pipeline.create(options);
     options.setStreaming(true);
+    Pipeline pipeline = Pipeline.create(options);
     TableSchema bigquerySchema =
         MongoDbUtils.getTableFieldSchema(
             options.getMongoDbUri(),
@@ -76,18 +75,19 @@ public class MongoDbToBigQueryCdc {
 
     String userOption = options.getUserOption();
     String inputOption = options.getInputTopic();
-
     pipeline
         .apply("Read PubSub Messages", PubsubIO.readStrings().fromTopic(inputOption))
         .apply(
             "Read and transform data",
-            MapElements.via(
-                new SimpleFunction<String, TableRow>() {
-                  @Override
-                  public TableRow apply(String document) {
+            ParDo.of(
+                new DoFn<String, TableRow>() {
+                  @ProcessElement
+                  public void process(ProcessContext c) {
+                    String document = c.element();
                     Gson gson = new GsonBuilder().create();
                     HashMap<String, Object> parsedMap = gson.fromJson(document, HashMap.class);
-                    return MongoDbUtils.generateTableRowFromJson(parsedMap, userOption);
+                    TableRow row = MongoDbUtils.getTableSchema(parsedMap, userOption);
+                    c.output(row);
                   }
                 }))
         .apply(

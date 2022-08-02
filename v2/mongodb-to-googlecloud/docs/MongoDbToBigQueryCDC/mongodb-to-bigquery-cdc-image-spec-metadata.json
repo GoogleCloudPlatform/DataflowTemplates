@@ -1,0 +1,51 @@
+{
+  "name": "MongoDb To BigQuery CDC",
+  "description": "A pipeline reads changestream from MongoDb and writes to BigQuery.",
+  "parameters": [
+    {
+      "name": "mongoDbUri",
+      "label": "MongoDB Connection URI",
+      "helpText": "URI to connect to MongoDb Atlas",
+      "is_optional": false,
+      "paramType": "TEXT"
+    },
+    {
+      "name": "database",
+      "label": "MongoDB database",
+      "helpText": "Database in MongoDB to read the collection. ex: my-db.",
+      "is_optional": false,
+      "paramType": "TEXT"
+    },
+    {
+      "name": "collection",
+      "label": "MongoDB collection",
+      "helpText": "Name of the collection inside MongoDB database. ex: my-collection.",
+      "is_optional": false,
+      "paramType": "TEXT"
+    },
+    {
+      "name": "outputTableSpec",
+      "label": "output table spec",
+      "helpText": "BigQuery destination table spec. e.g bigquery-project:dataset.output_table",
+      "is_optional": false,
+      "paramType": "TEXT"
+    },
+    {
+      "name": "userOption",
+      "label": "User option",
+      "helpText": " ",
+      "is_optional": false,
+      "paramType": "TEXT",
+      "regexes": [
+        "^(FLATTEN|NONE)$"
+      ]
+    },
+    {
+      "name": "inputTopic",
+      "label": "input Pubsub Topic name",
+      "helpText": "Topic Name to read from e.g. projects/<project-name>/topics/<topic-name>",
+      "is_optional": false,
+      "paramType": "TEXT"
+    }
+  ]
+}

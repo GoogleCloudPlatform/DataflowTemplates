@@ -39,6 +39,9 @@ public class MongoDbUtils implements Serializable {
    * column table with _id, document as a Json string and timestamp by default Or the Table schema
    * can be flattened version of the document with each field as a column for userOption "FLATTEN".
    */
+  static final DateTimeFormatter TIMEFORMAT =
+      DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
+
   public static TableSchema getTableFieldSchema(
       String uri, String database, String collection, String userOption) {
     List<TableFieldSchema> bigquerySchemaFields = new ArrayList<>();
@@ -60,88 +63,6 @@ public class MongoDbUtils implements Serializable {
     return bigquerySchema;
   }
 
-  /**
-   * Generates and returns the tablerow for the mongodb document based on user input. The table row
-   * will have a column with whole document as a json string by default. If user passes "FLATTEN" to
-   * userOption, The document will be flattned for first l evel and stored into BigQuery.
-   */
-  public static TableRow generateTableRow(Document document, String userOption) {
-    TableRow row = new TableRow();
-    if (userOption.equals("FLATTEN")) {
-      document.forEach(
-          (key, value) -> {
-            String valueClass = value.getClass().getName();
-            switch (valueClass) {
-              case "org.bson.types.ObjectId":
-                row.set(key, value.toString());
-                break;
-              case "org.bson.Document":
-                row.set(key, value.toString());
-                break;
-              case "java.lang.Double":
-                row.set(key, value);
-                break;
-              case "java.util.Integer":
-                row.set(key, value);
-                break;
-              case "java.util.ArrayList":
-                row.set(key, value.toString());
-                break;
-              default:
-                row.set(key, value.toString());
-            }
-          });
-    } else {
-      String sourceData = document.toJson();
-      DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
-      LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
-
-      row.set("id", document.getObjectId("_id").toString())
-          .set("source_data", sourceData)
-          .set("timestamp", localdate.format(timeFormat));
-    }
-    return row;
-  }
-
-  public static TableRow generateTableRowFromJson(
-      HashMap<String, Object> document, String userOption) {
-    TableRow row = new TableRow();
-    if (userOption.equals("FLATTEN")) {
-      document.forEach(
-          (key, value) -> {
-            String valueClass = value.getClass().getName();
-            switch (valueClass) {
-              case "org.bson.types.ObjectId":
-                row.set(key, value.toString());
-                break;
-              case "org.bson.Document":
-                row.set(key, value.toString());
-                break;
-              case "java.lang.Double":
-                row.set(key, value);
-                break;
-              case "java.util.Integer":
-                row.set(key, value);
-                break;
-              case "java.util.ArrayList":
-                row.set(key, value.toString());
-                break;
-              default:
-                row.set(key, value.toString());
-            }
-          });
-    } else {
-      String sourceData = document.toString();
-      DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
-      LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
-
-      row.set("id", document.get("_id").toString())
-          .set("source_data", sourceData)
-          .set("timestamp", localdate.format(timeFormat));
-    }
-    return row;
-  }
-
   /** Maps and Returns the Datatype form MongoDb To BigQuery. */
   public static String getTableSchemaDataType(String s) {
     switch (s) {
@@ -149,14 +70,8 @@ public class MongoDbUtils implements Serializable {
         return "INTEGER";
       case "java.lang.Boolean":
         return "BOOLEAN";
-      case "org.bson.Document":
-        return "STRING";
       case "java.lang.Double":
         return "FLOAT";
-      case "java.util.ArrayList":
-        return "STRING";
-      case "org.bson.types.ObjectId":
-        return "STRING";
     }
     return "STRING";
   }
@@ -168,5 +83,31 @@ public class MongoDbUtils implements Serializable {
     MongoCollection<Document> collection = database.getCollection(collName);
     Document doc = collection.find().first();
     return doc;
+  }
+
+  public static TableRow getTableSchema(HashMap<String, Object> parsedMap, String userOption) {
+    TableRow row = new TableRow();
+    if (userOption.equals("FLATTEN")) {
+      parsedMap.forEach(
+          (key, value) -> {
+            String valueClass = value.getClass().getName();
+            switch (valueClass) {
+              case "java.lang.Double":
+                row.set(key, value);
+                break;
+              case "java.util.Integer":
+                row.set(key, value);
+                break;
+              default:
+                row.set(key, value.toString());
+            }
+          });
+    } else {
+      LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
+      row.set("id", parsedMap.get("_id").toString())
+          .set("source_data", parsedMap.toString())
+          .set("timestamp", localdate.format(TIMEFORMAT));
+    }
+    return row;
   }
 }

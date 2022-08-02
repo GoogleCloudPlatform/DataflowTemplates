@@ -1,7 +1,16 @@
 # BigQuery to MongoDB Dataflow Template
 
 The [BigQueryToMongoDB](../../src/main/java/com/google/cloud/teleport/v2/mongodb/templates/BigQueryToMongoDb.java) pipeline
-Reads data from BigQuery and writes to MongoDB
+The BigQuery to MongoDB template is a batch pipeline that reads rows from a BigQUery and writes them to MongoDB as documents. Currently the pipeline stores each rows as a document. For releases, we are planning to add user defined functions to modify the schema before writing the documents to MongoDB. 
+
+### Template parameters
+**mongoDbUri** : MongoDB Connection URI. For example: _mongodb+srv://<username>:<password>@<server-connection-string>_.
+
+**database** : Database in MongoDB to store the collection. For example: _my-db_.
+
+**collection** : Name of the collection inside MongoDB database. For example: _my-collection_.
+
+**inputTableSpec** : BigQuery input table spec. For example: _bigquery-project:dataset.output_table_.
 
 ## Getting Started
 
@@ -53,7 +62,7 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
   "image": "gcr.io/gsidemo-246315/bigquery-to-mongodb",
   "metadata": {
     "name": "MongoDB To BigQuery",
-    "description": "A pipeline reads from MongoDB and writes to BigQuery.",
+    "description": "A pipeline reads from BigQuery and writes to MongoDb.",
     "parameters": [
       {
         "name": "mongoDbUri",
@@ -78,8 +87,9 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
       },
       {
         "name": "inputTableSpec",
-        "label": "outputTableSpec",
+        "label": "inputTableSpec",
         "helpText": "BigQuery destination table spec. e.g bigquery-project:dataset.output_table",
+        "is_optional": false,
         "paramType": "TEXT"
       }
     ]
