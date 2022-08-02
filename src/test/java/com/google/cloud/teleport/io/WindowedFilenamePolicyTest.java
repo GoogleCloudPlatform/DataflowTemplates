@@ -170,10 +170,6 @@ public class WindowedFilenamePolicyTest {
   @Test
   public void testWithDynamicDirectory() throws IOException {
     // Arrange
-    //
-    ResourceId outputDirectory =
-        getBaseTempDirectory()
-            .resolve("YYYY/MM/DD/HH:mm", StandardResolveOptions.RESOLVE_DIRECTORY);
     WindowedContext context = mock(WindowedContext.class);
     IntervalWindow window = mock(IntervalWindow.class);
     PaneInfo paneInfo = PaneInfo.createPane(false, true, Timing.ON_TIME, 0, 0);
@@ -185,20 +181,19 @@ public class WindowedFilenamePolicyTest {
 
     WindowedFilenamePolicy policy =
         WindowedFilenamePolicy.writeWindowedFiles()
-            .withOutputDirectory(StaticValueProvider.of(outputDirectory.toString()))
+            .withOutputDirectory(StaticValueProvider.of("gs://test-bucket-mm/YYYY/MM/DD/HH:mm"))
             .withOutputFilenamePrefix(StaticValueProvider.of("output"))
             .withShardTemplate(StaticValueProvider.of("-SSS-of-NNN"))
             .withSuffix(StaticValueProvider.of(null));
 
     // Act
-    //
     ResourceId filename =
         policy.windowedFilename(1, 1, window, paneInfo, new TestOutputFileHints());
 
     // Assert
-    //
     assertThat(filename).isNotNull();
-    assertThat(filename.getCurrentDirectory().toString()).endsWith("2017/01/08/10:56/");
+    assertThat(filename.getCurrentDirectory().toString())
+        .isEqualTo("gs://test-bucket-mm/2017/01/08/10:56/");
     assertThat(filename.getFilename()).isEqualTo("output-001-of-001");
   }
 
@@ -227,9 +222,6 @@ public class WindowedFilenamePolicyTest {
    */
   @Test
   public void testWindowedDirectoryCustomPattern() {
-
-    ResourceId outputDirectory =
-        getBaseTempDirectory().resolve("y/M/D/H:m", StandardResolveOptions.RESOLVE_DIRECTORY);
     IntervalWindow window = mock(IntervalWindow.class);
     PaneInfo paneInfo = PaneInfo.createPane(false, true, Timing.ON_TIME, 0, 0);
 
@@ -241,7 +233,7 @@ public class WindowedFilenamePolicyTest {
 
     WindowedFilenamePolicy policy =
         WindowedFilenamePolicy.writeWindowedFiles()
-            .withOutputDirectory(StaticValueProvider.of(outputDirectory.toString()))
+            .withOutputDirectory(StaticValueProvider.of("gs://test-bucket-y/y/M/D/H:m"))
             .withOutputFilenamePrefix(StaticValueProvider.of("output"))
             .withShardTemplate(StaticValueProvider.of("-SSS-of-NNN"))
             .withSuffix(StaticValueProvider.of(null))
@@ -255,7 +247,8 @@ public class WindowedFilenamePolicyTest {
         policy.windowedFilename(1, 1, window, paneInfo, new TestOutputFileHints());
 
     assertThat(filename).isNotNull();
-    assertThat(filename.getCurrentDirectory().toString()).endsWith("2017/1/8/10:56/");
+    assertThat(filename.getCurrentDirectory().toString())
+        .isEqualTo("gs://test-bucket-y/2017/1/8/10:56/");
     assertThat(filename.getFilename()).isEqualTo("output-001-of-001");
   }
 
@@ -265,9 +258,6 @@ public class WindowedFilenamePolicyTest {
    */
   @Test
   public void testWindowedDirectoryCustomStringPattern() {
-
-    ResourceId outputDirectory =
-        getBaseTempDirectory().resolve("y/M/D/H:m", StandardResolveOptions.RESOLVE_DIRECTORY);
     IntervalWindow window = mock(IntervalWindow.class);
     PaneInfo paneInfo = PaneInfo.createPane(false, true, Timing.ON_TIME, 0, 0);
 
@@ -279,7 +269,7 @@ public class WindowedFilenamePolicyTest {
 
     WindowedFilenamePolicy policy =
         WindowedFilenamePolicy.writeWindowedFiles()
-            .withOutputDirectory(outputDirectory.toString())
+            .withOutputDirectory("gs://test-bucket-y/y/M/D/H:m")
             .withOutputFilenamePrefix("output")
             .withShardTemplate("-SSS-of-NNN")
             .withSuffix("")
@@ -293,7 +283,8 @@ public class WindowedFilenamePolicyTest {
         policy.windowedFilename(1, 1, window, paneInfo, new TestOutputFileHints());
 
     assertThat(filename).isNotNull();
-    assertThat(filename.getCurrentDirectory().toString()).endsWith("2017/1/8/10:56/");
+    assertThat(filename.getCurrentDirectory().toString())
+        .isEqualTo("gs://test-bucket-y/2017/1/8/10:56/");
     assertThat(filename.getFilename()).isEqualTo("output-001-of-001");
   }
 
@@ -303,10 +294,6 @@ public class WindowedFilenamePolicyTest {
    */
   @Test
   public void testWindowedDirectorySinglePattern() {
-
-    ResourceId outputDirectory =
-        getBaseTempDirectory()
-            .resolve("recommendations/mmmm/", StandardResolveOptions.RESOLVE_DIRECTORY);
     IntervalWindow window = mock(IntervalWindow.class);
     PaneInfo paneInfo = PaneInfo.createPane(false, true, Timing.ON_TIME, 0, 0);
 
@@ -318,7 +305,7 @@ public class WindowedFilenamePolicyTest {
 
     WindowedFilenamePolicy policy =
         WindowedFilenamePolicy.writeWindowedFiles()
-            .withOutputDirectory(outputDirectory.toString())
+            .withOutputDirectory("gs://test-bucket-mmmm/recommendations/mmmm/")
             .withOutputFilenamePrefix("output")
             .withShardTemplate("-SSS-of-NNN")
             .withSuffix("")
@@ -328,16 +315,14 @@ public class WindowedFilenamePolicyTest {
         policy.windowedFilename(1, 1, window, paneInfo, new TestOutputFileHints());
 
     assertThat(filename).isNotNull();
-    assertThat(filename.getCurrentDirectory().toString()).endsWith("recommendations/0056/");
+    assertThat(filename.getCurrentDirectory().toString())
+        .isEqualTo("gs://test-bucket-mmmm/recommendations/0056/");
     assertThat(filename.getFilename()).isEqualTo("output-001-of-001");
   }
 
   @Test
   public void testWindowedDirectoryWrappedPattern() {
     // Arrange
-    ResourceId outputDirectory =
-        getBaseTempDirectory()
-            .resolve("recommendations/{mm}/", StandardResolveOptions.RESOLVE_DIRECTORY);
     IntervalWindow window = mock(IntervalWindow.class);
     PaneInfo paneInfo = PaneInfo.createPane(false, true, Timing.ON_TIME, 0, 0);
 
@@ -349,7 +334,7 @@ public class WindowedFilenamePolicyTest {
 
     WindowedFilenamePolicy policy =
         WindowedFilenamePolicy.writeWindowedFiles()
-            .withOutputDirectory(outputDirectory.toString())
+            .withOutputDirectory("gs://test-bucket/recommendations/{mm}/")
             .withOutputFilenamePrefix("output")
             .withShardTemplate("-SSS-of-NNN")
             .withSuffix("")
