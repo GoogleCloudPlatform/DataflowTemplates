@@ -30,6 +30,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
@@ -66,6 +68,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
+import org.apache.http.ConnectionClosedException;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHost;
@@ -73,6 +76,7 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.config.RequestConfig;
+import org.apache.http.conn.ConnectTimeoutException;
 import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
 import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.entity.BufferedHttpEntity;
@@ -1440,7 +1444,6 @@ public class ElasticsearchIO {
             isDelete = spec.getIsDeleteFn().apply(parsedDocument);
           }
         }
-
         if (isDelete) {
           // delete request used for deleting a document.
           batch.add(String.format("{ \"delete\" : %s }%n", documentMetadata));
@@ -1452,7 +1455,8 @@ public class ElasticsearchIO {
                     "{ \"update\" : %s }%n{ \"doc\" : %s, \"doc_as_upsert\" : true }%n",
                     documentMetadata, document));
           } else {
-            // switch from create to index to allow upsert (beneficial in case of duplication due to timeout/retry)
+            // switch from create to index to allow upsert (beneficial in case of duplication due to
+            // timeout/retry)
             batch.add(String.format("{ \"index\" : %s }%n%s%n", documentMetadata, document));
           }
         }
@@ -1470,6 +1474,16 @@ public class ElasticsearchIO {
         flushBatch();
       }
 
+      private boolean isRetryableClientException(Throwable t) {
+        // RestClient#performRequest only throws wrapped IOException so we must inspect the
+        // exception cause to determine if the exception is likely transient i.e. retryable or
+        // not.
+        return t.getCause() instanceof ConnectTimeoutException
+            || t.getCause() instanceof SocketTimeoutException
+            || t.getCause() instanceof ConnectionClosedException
+            || t.getCause() instanceof ConnectException;
+      }
+
       private void flushBatch() throws IOException, InterruptedException {
         if (batch.isEmpty()) {
           return;
@@ -1480,8 +1494,8 @@ public class ElasticsearchIO {
         }
         batch.clear();
         currentBatchSizeBytes = 0;
-        Response response;
-        HttpEntity responseEntity;
+        Response response = null;
+        HttpEntity responseEntity = null;
         // Elasticsearch will default to the index/type provided here if none are set in the
         // document meta (i.e. using ElasticsearchIO$Write#withIndexFn and
         // ElasticsearchIO$Write#withTypeFn options)
@@ -1521,7 +1535,7 @@ public class ElasticsearchIO {
         }
         checkForErrors(responseEntity, backendVersion, spec.getUsePartialUpdate());
       }
-      
+
       /** retry request based on retry configuration policy. */
       private HttpEntity handleRetry(
           String method, String endpoint, Map<String, String> params, HttpEntity requestBody)
@@ -1547,9 +1561,8 @@ public class ElasticsearchIO {
             }
           }
           // if response has no 429 errors
-          if (!Objects.requireNonNull(spec.getRetryConfiguration())
-              .getRetryPredicate()
-              .test(responseEntity)) {
+          if (spec.getRetryConfiguration() != null
+              && spec.getRetryConfiguration().getRetryPredicate().test(responseEntity)) {
             return responseEntity;
           } else {
             LOG.warn("ES Cluster is responding with HTP 429 - TOO_MANY_REQUESTS.");

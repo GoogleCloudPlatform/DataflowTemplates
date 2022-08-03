@@ -19,6 +19,7 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
+import com.google.cloud.teleport.v2.elasticsearch.transforms.ValueExtractorTransform.BooleanValueExtractorFn;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.ValueExtractorTransform.ValueExtractorFn;
 import com.google.cloud.teleport.v2.elasticsearch.utils.ConnectionInformation;
 import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIO;
@@ -96,47 +97,61 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
             .withConnectionConfiguration(config)
             .withMaxBatchSize(options().getBatchSize())
             .withMaxBatchSizeBytes(options().getBatchSizeBytes());
-    
-    if (options().getJavascriptIdFnGcsPath() != null && options().getJavascriptIdFnName() != null){
-      ValueExtractorFn idFn = ValueExtractorFn.newBuilder()
-      .setFileSystemPath(options().getJavascriptIdFnGcsPath())
-      .setFunctionName(options().getJavascriptIdFnName())
-      .build();
 
-      elasticsearchWriter.withIdFn(idFn);
+    if (options().getJavascriptIdFnGcsPath() != null && options().getJavascriptIdFnName() != null) {
+      ValueExtractorFn idFn =
+          ValueExtractorFn.newBuilder()
+              .setFileSystemPath(options().getJavascriptIdFnGcsPath())
+              .setFunctionName(options().getJavascriptIdFnName())
+              .build();
+
+      elasticsearchWriter = elasticsearchWriter.withIdFn(idFn);
     }
 
-    if (options().getJavascriptIndexFnGcsPath() != null && options().getJavascriptIndexFnName() != null){
-      ValueExtractorFn indexFn = ValueExtractorFn.newBuilder()
-      .setFileSystemPath(options().getJavascriptIndexFnGcsPath())
-      .setFunctionName(options().getJavascriptIndexFnName())
-      .build();
+    if (options().getJavascriptIndexFnGcsPath() != null
+        && options().getJavascriptIndexFnName() != null) {
+      ValueExtractorFn indexFn =
+          ValueExtractorFn.newBuilder()
+              .setFileSystemPath(options().getJavascriptIndexFnGcsPath())
+              .setFunctionName(options().getJavascriptIndexFnName())
+              .build();
 
-      elasticsearchWriter.withIndexFn(indexFn);
+      elasticsearchWriter = elasticsearchWriter.withIndexFn(indexFn);
     }
 
-    if (options().getJavascriptTypeFnGcsPath() != null && options().getJavascriptTypeFnName() != null){
-      ValueExtractorFn typeFn = ValueExtractorFn.newBuilder()
-      .setFileSystemPath(options().getJavascriptTypeFnGcsPath())
-      .setFunctionName(options().getJavascriptTypeFnName())
-      .build();
+    if (options().getJavascriptTypeFnGcsPath() != null
+        && options().getJavascriptTypeFnName() != null) {
+      ValueExtractorFn typeFn =
+          ValueExtractorFn.newBuilder()
+              .setFileSystemPath(options().getJavascriptTypeFnGcsPath())
+              .setFunctionName(options().getJavascriptTypeFnName())
+              .build();
 
-      elasticsearchWriter.withTypeFn(typeFn);
+      elasticsearchWriter = elasticsearchWriter.withTypeFn(typeFn);
     }
 
-    if (options().getJavascriptIsDeleteFnGcsPath() != null && options().getJavascriptIsDeleteFnName() != null){
-      ValueExtractorFn isDeleteFn = ValueExtractorFn.newBuilder()
-        .setFileSystemPath(options().getJavascriptIsDeleteFnGcsPath())
-        .setFunctionName(options().getJavascriptIsDeleteFnName())
-        .build();
+    if (options().getJavascriptIsDeleteFnGcsPath() != null
+        && options().getJavascriptIsDeleteFnName() != null) {
+      BooleanValueExtractorFn isDeleteFn =
+          BooleanValueExtractorFn.newBuilder()
+              .setFileSystemPath(options().getJavascriptIsDeleteFnGcsPath())
+              .setFunctionName(options().getJavascriptIsDeleteFnName())
+              .build();
 
-      elasticsearchWriter.withIsDeleteFn(isDeleteFn);
+      elasticsearchWriter = elasticsearchWriter.withIsDeleteFn(isDeleteFn);
+    }
+
+    if (options().getUsePartialUpdate() != null) {
+      elasticsearchWriter =
+          elasticsearchWriter.withUsePartialUpdate(
+              Boolean.TRUE.equals(options().getUsePartialUpdate()));
     }
 
     if (Optional.ofNullable(options().getMaxRetryAttempts()).isPresent()) {
-      elasticsearchWriter.withRetryConfiguration(
-          ElasticsearchIO.RetryConfiguration.create(
-              options().getMaxRetryAttempts(), getDuration(options().getMaxRetryDuration())));
+      elasticsearchWriter =
+          elasticsearchWriter.withRetryConfiguration(
+              ElasticsearchIO.RetryConfiguration.create(
+                  options().getMaxRetryAttempts(), getDuration(options().getMaxRetryDuration())));
     }
 
     return jsonStrings.apply("WriteDocuments", elasticsearchWriter);

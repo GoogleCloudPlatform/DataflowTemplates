@@ -19,11 +19,12 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIO.Write.BooleanFieldValueExtractFn;
+import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIO.Write.FieldValueExtractFn;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptRuntime;
 import java.io.IOException;
 import javax.annotation.Nullable;
 import javax.script.ScriptException;
-import org.apache.beam.sdk.io.elasticsearch.ElasticsearchIO.Write.FieldValueExtractFn;
 
 /**
  * The {@link ValueExtractorTransform} allows for any Javascript function to be applied to a {@link
@@ -58,6 +59,9 @@ public class ValueExtractorTransform {
     @Nullable
     abstract String fileSystemPath();
 
+    @Nullable
+    transient JavascriptRuntime runtime;
+
     @Override
     public String apply(JsonNode input) {
       if (functionName() == null && fileSystemPath() == null) {
@@ -68,11 +72,13 @@ public class ValueExtractorTransform {
             "Both function name and file system path need to be set.");
       }
 
-      JavascriptRuntime runtime =
+      if (runtime == null) {
+        runtime =
           JavascriptRuntime.newBuilder()
               .setFunctionName(functionName())
               .setFileSystemPath(fileSystemPath())
               .build();
+      }
 
       try {
         return runtime.invoke(input.toString());
@@ -89,6 +95,67 @@ public class ValueExtractorTransform {
       public abstract Builder setFileSystemPath(String fileSystemPath);
 
       public abstract ValueExtractorFn build();
+    }
+  }
+
+  /**
+   * Class for routing functions that implements {@link BooleanFieldValueExtractFn}. {@link
+   * BooleanValueExtractorFn#apply(JsonNode)} will return null if {@link
+   * BooleanValueExtractorFn#functionName()} and {@link BooleanValueExtractorFn#fileSystemPath()}
+   * are null meaning no function is applied to the document.
+   *
+   * <p>If only one of {@link BooleanValueExtractorFn#functionName()} or {@link
+   * BooleanValueExtractorFn#fileSystemPath()} are null then {@link
+   * com.google.api.gax.rpc.InvalidArgumentException} is thrown.
+   */
+  @AutoValue
+  public abstract static class BooleanValueExtractorFn implements BooleanFieldValueExtractFn {
+    public static Builder newBuilder() {
+      return new AutoValue_ValueExtractorTransform_BooleanValueExtractorFn.Builder();
+    }
+
+    @Nullable
+    abstract String functionName();
+
+    @Nullable
+    abstract String fileSystemPath();
+
+    @Nullable
+    transient JavascriptRuntime runtime;
+
+    @Override
+    public Boolean apply(JsonNode input) {
+      if (functionName() == null && fileSystemPath() == null) {
+        return null;
+      } else {
+        checkArgument(
+            functionName() != null && fileSystemPath() != null,
+            "Both function name and file system path need to be set.");
+      }
+
+      if (runtime == null) {
+        runtime =
+          JavascriptRuntime.newBuilder()
+              .setFunctionName(functionName())
+              .setFileSystemPath(fileSystemPath())
+              .build();
+      }
+
+      try {
+        return Boolean.valueOf(runtime.invoke(input.toString()));
+      } catch (ScriptException | IOException | NoSuchMethodException e) {
+        throw new RuntimeException("Error in processing field value extraction: " + e.getMessage());
+      }
+    }
+
+    /** Builder for {@link BooleanValueExtractorFn}. */
+    @AutoValue.Builder
+    public abstract static class Builder {
+      public abstract Builder setFunctionName(String functionName);
+
+      public abstract Builder setFileSystemPath(String fileSystemPath);
+
+      public abstract BooleanValueExtractorFn build();
     }
   }
 }

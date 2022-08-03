@@ -113,4 +113,9 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
   String getJavascriptIsDeleteFnName();
 
   void setJavascriptIsDeleteFnName(String javascriptTextTransformFunctionName);
+
+  @Description("Whether to use partial updates (update type) with Elasticsearch requests")
+  Boolean getUsePartialUpdate();
+
+  void setUsePartialUpdate(Boolean usePartialUpdate);
 }
