@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2022 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.infusionsoft.dataflow.templates;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -38,18 +53,27 @@ import org.slf4j.LoggerFactory;
 /**
  * A template that listens to pubsub and marks emails as bounced, as appropriate.
  *
- * Used by email-history-api
+ * <p>Used by email-history-api
  *
- * Deploy to sand:
- * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.PubsubMarkEmailsBounced -Dexec.args="--project=is-email-history-api-sand --stagingLocation=gs://dataflow-is-email-history-api-sand/staging --templateLocation=gs://dataflow-is-email-history-api-sand/templates/ps_mark_email_bounced --runner=DataflowRunner --serviceAccount=is-email-history-api-sand@appspot.gserviceaccount.com --datastoreProjectId=is-email-history-api-sand"
+ * <p>Deploy to sand: mvn compile exec:java
+ * -Dexec.mainClass=com.infusionsoft.dataflow.templates.PubsubMarkEmailsBounced
+ * -Dexec.args="--project=is-email-history-api-sand
+ * --stagingLocation=gs://dataflow-is-email-history-api-sand/staging
+ * --templateLocation=gs://dataflow-is-email-history-api-sand/templates/ps_mark_email_bounced
+ * --runner=DataflowRunner --serviceAccount=is-email-history-api-sand@appspot.gserviceaccount.com
+ * --datastoreProjectId=is-email-history-api-sand"
  *
- * projects/is-flagship-events-sand/topics/v1.bounce-event
+ * <p>projects/is-flagship-events-sand/topics/v1.bounce-event
  *
- * Deploy to prod:
- * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.PubsubMarkEmailsBounced -Dexec.args="--project=is-email-history-api-prod --stagingLocation=gs://dataflow-is-email-history-api-prod/staging --templateLocation=gs://dataflow-is-email-history-api-prod/templates/ps_mark_email_bounced --runner=DataflowRunner --serviceAccount=is-email-history-api-prod@appspot.gserviceaccount.com --datastoreProjectId=is-email-history-api-prod"
+ * <p>Deploy to prod: mvn compile exec:java
+ * -Dexec.mainClass=com.infusionsoft.dataflow.templates.PubsubMarkEmailsBounced
+ * -Dexec.args="--project=is-email-history-api-prod
+ * --stagingLocation=gs://dataflow-is-email-history-api-prod/staging
+ * --templateLocation=gs://dataflow-is-email-history-api-prod/templates/ps_mark_email_bounced
+ * --runner=DataflowRunner --serviceAccount=is-email-history-api-prod@appspot.gserviceaccount.com
+ * --datastoreProjectId=is-email-history-api-prod"
  *
- * projects/is-flagship-events-prod/topics/v1.bounce-event
- *
+ * <p>projects/is-flagship-events-prod/topics/v1.bounce-event
  */
 public class PubsubMarkEmailsBounced {
 
@@ -58,21 +82,20 @@ public class PubsubMarkEmailsBounced {
    *
    * <p>Inherits standard configuration options.
    */
-  public interface Options extends PipelineOptions, StreamingOptions,
-      PubsubReadOptions {
+  public interface Options extends PipelineOptions, StreamingOptions, PubsubReadOptions {
 
     @Description("GCP Project Id of where the datastore entities live")
     ValueProvider<String> getDatastoreProjectId();
-    void setDatastoreProjectId(ValueProvider<String> datastoreProjectId);
 
+    void setDatastoreProjectId(ValueProvider<String> datastoreProjectId);
   }
 
   public static class ExtractAndHandleEventsFn extends DoFn<String, String> {
 
     private static final Logger LOG = LoggerFactory.getLogger(ExtractAndHandleEventsFn.class);
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-        .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+    private static final ObjectMapper OBJECT_MAPPER =
+        new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
     private String projectId;
 
@@ -83,7 +106,8 @@ public class PubsubMarkEmailsBounced {
       }
 
       final Options options = context.getPipelineOptions().as(Options.class);
-      projectId = (options.getDatastoreProjectId() == null ? null : options.getDatastoreProjectId().get());
+      projectId =
+          (options.getDatastoreProjectId() == null ? null : options.getDatastoreProjectId().get());
       LOG.info("Enabling event filter [projectId: {}]", projectId);
     }
 
@@ -100,25 +124,31 @@ public class PubsubMarkEmailsBounced {
     private void processEvent(ProcessContext context, Map<String, Object> json) {
       final String accountId = (String) json.get("accountId");
       final String bounceId = (String) json.get("bounceId");
-      final ZonedDateTime timestamp = JavaTimeUtils.parseFlagshipDate((String) json.get("timestamp"));
+      final ZonedDateTime timestamp =
+          JavaTimeUtils.parseFlagshipDate((String) json.get("timestamp"));
 
-      final Datastore datastore = DatastoreUtils.getDatastore(context.getPipelineOptions(), projectId);
+      final Datastore datastore =
+          DatastoreUtils.getDatastore(context.getPipelineOptions(), projectId);
 
       findEmails(datastore, accountId, bounceId).stream()
           .forEach(entity -> markBounced(datastore, entity, timestamp));
     }
 
     private void markBounced(Datastore datastore, Entity entity, ZonedDateTime timestamp) {
-      final Entity updated = entity.toBuilder()
-          .putProperties("bounced", Value.newBuilder()
-              .setTimestampValue(JavaTimeUtils.toTimestamp(timestamp))
-              .build())
-          .build();
+      final Entity updated =
+          entity.toBuilder()
+              .putProperties(
+                  "bounced",
+                  Value.newBuilder()
+                      .setTimestampValue(JavaTimeUtils.toTimestamp(timestamp))
+                      .build())
+              .build();
 
-      final CommitRequest request = CommitRequest.newBuilder()
-          .addMutations(DatastoreHelper.makeUpdate(updated))
-          .setMode(CommitRequest.Mode.NON_TRANSACTIONAL)
-          .build();
+      final CommitRequest request =
+          CommitRequest.newBuilder()
+              .addMutations(DatastoreHelper.makeUpdate(updated))
+              .setMode(CommitRequest.Mode.NON_TRANSACTIONAL)
+              .build();
 
       try {
         datastore.commit(request);
@@ -127,31 +157,33 @@ public class PubsubMarkEmailsBounced {
       }
     }
 
-    private List<Entity> findEmails(Datastore datastore,
-                                    String accountId, String bounceId) {
+    private List<Entity> findEmails(Datastore datastore, String accountId, String bounceId) {
 
       final List<Entity> entities = new LinkedList<>();
 
-      final StringBuilder gql = new StringBuilder("SELECT * FROM Email")
-          .append(" WHERE ").append(String.format("accountId = '%s'", accountId))
-          .append(" AND ").append(String.format("bounceId = '%s'", bounceId));
+      final StringBuilder gql =
+          new StringBuilder("SELECT * FROM Email")
+              .append(" WHERE ")
+              .append(String.format("accountId = '%s'", accountId))
+              .append(" AND ")
+              .append(String.format("bounceId = '%s'", bounceId));
 
       LOG.debug(gql.toString());
 
-      final RunQueryRequest request = RunQueryRequest.newBuilder()
-          .setGqlQuery(GqlQuery.newBuilder()
-              .setQueryString(gql.toString())
-              .setAllowLiterals(true)
-              .build())
-          .build();
+      final RunQueryRequest request =
+          RunQueryRequest.newBuilder()
+              .setGqlQuery(
+                  GqlQuery.newBuilder()
+                      .setQueryString(gql.toString())
+                      .setAllowLiterals(true)
+                      .build())
+              .build();
 
       try {
         final RunQueryResponse response = datastore.runQuery(request);
         final QueryResultBatch batch = response.getBatch();
 
-        batch.getEntityResultsList().stream()
-            .map(EntityResult::getEntity)
-            .forEach(entities::add);
+        batch.getEntityResultsList().stream().map(EntityResult::getEntity).forEach(entities::add);
 
       } catch (DatastoreException e) {
         LOG.error("Couldn't find emails", e);
@@ -187,9 +219,10 @@ public class PubsubMarkEmailsBounced {
     Pipeline pipeline = Pipeline.create(options);
 
     pipeline
-        .apply("Read Events", PubsubIO.readStrings()
-            .fromTopic(options.getPubsubReadTopic()))
-        .apply("Shard Events", Reshuffle.viaRandomKey())  // this ensures that we handle the events in parallel
+        .apply("Read Events", PubsubIO.readStrings().fromTopic(options.getPubsubReadTopic()))
+        .apply(
+            "Shard Events",
+            Reshuffle.viaRandomKey()) // this ensures that we handle the events in parallel
         .apply("Handle Events", ParDo.of(new ExtractAndHandleEventsFn()));
 
     // Execute the pipeline and return the result.

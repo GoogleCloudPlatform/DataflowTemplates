@@ -760,7 +760,7 @@ public class CopyDbTest {
     createAndPopulate(ddl, 100);
     runTest(Dialect.POSTGRESQL);
   }
-  
+
   @Test
   public void changeStreams() throws Exception {
     Ddl ddl =

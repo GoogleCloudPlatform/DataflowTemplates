@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2022 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.infusionsoft.dataflow.templates.migration;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -8,7 +23,6 @@ import com.google.datastore.v1.Value;
 import com.infusionsoft.dataflow.utils.CloudStorageUtils;
 import com.infusionsoft.dataflow.utils.DatastoreUtils;
 import java.util.Map;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.datastore.DatastoreIO;
 import org.apache.beam.sdk.options.Description;
@@ -17,27 +31,38 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.http.entity.ContentType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
-
 /**
- * A template that moves email content to cloud storage (because that is 10x cheaper than using Datastore)
+ * A template that moves email content to cloud storage (because that is 10x cheaper than using
+ * Datastore)
  *
- * Used by email-history-api
+ * <p>Used by email-history-api
  *
- * Deploy to sand:
- * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.migration.EmailContent -Dexec.args="--project=is-email-history-api-sand --stagingLocation=gs://dataflow-is-email-history-api-sand/staging --templateLocation=gs://dataflow-is-email-history-api-sand/templates/migration_content --runner=DataflowRunner --serviceAccount=is-email-history-api-sand@appspot.gserviceaccount.com --datastoreProjectId=is-email-history-api-sand --cloudStorageProjectId=is-email-history-api-sand --cloudStorageBucketName=is-email-history-api-sand.appspot.com"
+ * <p>Deploy to sand: mvn compile exec:java
+ * -Dexec.mainClass=com.infusionsoft.dataflow.templates.migration.EmailContent
+ * -Dexec.args="--project=is-email-history-api-sand
+ * --stagingLocation=gs://dataflow-is-email-history-api-sand/staging
+ * --templateLocation=gs://dataflow-is-email-history-api-sand/templates/migration_content
+ * --runner=DataflowRunner --serviceAccount=is-email-history-api-sand@appspot.gserviceaccount.com
+ * --datastoreProjectId=is-email-history-api-sand --cloudStorageProjectId=is-email-history-api-sand
+ * --cloudStorageBucketName=is-email-history-api-sand.appspot.com"
  *
- * n1-highcpu-32
+ * <p>n1-highcpu-32
  *
- * Deploy to prod:
- * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.migration.EmailContent -Dexec.args="--project=is-email-history-api-prod --stagingLocation=gs://dataflow-is-email-history-api-prod/staging --templateLocation=gs://dataflow-is-email-history-api-prod/templates/migration_content --runner=DataflowRunner --serviceAccount=is-email-history-api-prod@appspot.gserviceaccount.com --datastoreProjectId=is-email-history-api-prod --cloudStorageProjectId=is-email-history-api-prod --cloudStorageBucketName=is-email-history-api-prod.appspot.com"
+ * <p>Deploy to prod: mvn compile exec:java
+ * -Dexec.mainClass=com.infusionsoft.dataflow.templates.migration.EmailContent
+ * -Dexec.args="--project=is-email-history-api-prod
+ * --stagingLocation=gs://dataflow-is-email-history-api-prod/staging
+ * --templateLocation=gs://dataflow-is-email-history-api-prod/templates/migration_content
+ * --runner=DataflowRunner --serviceAccount=is-email-history-api-prod@appspot.gserviceaccount.com
+ * --datastoreProjectId=is-email-history-api-prod --cloudStorageProjectId=is-email-history-api-prod
+ * --cloudStorageBucketName=is-email-history-api-prod.appspot.com"
  *
- * n1-highcpu-64
- *
+ * <p>n1-highcpu-64
  */
 public class EmailContent {
 
@@ -45,16 +70,18 @@ public class EmailContent {
 
     @Description("GCP Project Id of where the datastore entities live")
     ValueProvider<String> getDatastoreProjectId();
+
     void setDatastoreProjectId(ValueProvider<String> datastoreProjectId);
 
     @Description("GCP Project Id of where the cloud storage files live")
     ValueProvider<String> getCloudStorageProjectId();
+
     void setCloudStorageProjectId(ValueProvider<String> cloudStorageProjectId);
 
     @Description("Bucket Name of where cloud storage files live")
     ValueProvider<String> getCloudStorageBucketName();
-    void setCloudStorageBucketName(ValueProvider<String> cloudStorageBucketName);
 
+    void setCloudStorageBucketName(ValueProvider<String> cloudStorageBucketName);
   }
 
   public static class SaveContentFn extends DoFn<Entity, Entity> {
@@ -111,10 +138,8 @@ public class EmailContent {
     public void processElement(ProcessContext context) {
       final Entity original = context.element();
 
-      final Entity modified = original.toBuilder()
-          .removeProperties("htmlBody")
-          .removeProperties("textBody")
-          .build();
+      final Entity modified =
+          original.toBuilder().removeProperties("htmlBody").removeProperties("textBody").build();
 
       LOG.debug("migrated: {} -> {}", original, modified);
       context.output(modified);
@@ -122,7 +147,8 @@ public class EmailContent {
   }
 
   public static void main(String[] args) {
-    final Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
+    final Options options =
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     final String datastoreProjectId = options.getDatastoreProjectId().get();
     final String cloudStorageProjectId = options.getCloudStorageProjectId().get();
     final String cloudStorageBucketName = options.getCloudStorageBucketName().get();
@@ -130,13 +156,17 @@ public class EmailContent {
     final Pipeline pipeline = Pipeline.create(options);
 
     pipeline
-        .apply("Load Emails", DatastoreIO.v1().read()
-            .withProjectId(datastoreProjectId)
-            .withLiteralGqlQuery("SELECT * FROM Email"))
-        .apply("Upload Content To Cloud Storage", ParDo.of(new SaveContentFn(cloudStorageProjectId, cloudStorageBucketName)))
+        .apply(
+            "Load Emails",
+            DatastoreIO.v1()
+                .read()
+                .withProjectId(datastoreProjectId)
+                .withLiteralGqlQuery("SELECT * FROM Email"))
+        .apply(
+            "Upload Content To Cloud Storage",
+            ParDo.of(new SaveContentFn(cloudStorageProjectId, cloudStorageBucketName)))
         .apply("Remove Content From Datastore", ParDo.of(new RemoveContentFn()))
-        .apply("Save Emails", DatastoreIO.v1().write()
-            .withProjectId(datastoreProjectId));
+        .apply("Save Emails", DatastoreIO.v1().write().withProjectId(datastoreProjectId));
 
     pipeline.run();
   }

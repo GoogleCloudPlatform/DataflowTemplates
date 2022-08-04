@@ -58,10 +58,7 @@ public class SpannerServerResource extends ExternalResource {
     SpannerOptions spannerOptions;
     if (EMULATOR_HOST == null) {
       spannerOptions =
-          SpannerOptions.newBuilder()
-              .setProjectId(this.projectId)
-              .setHost(host)
-              .build();
+          SpannerOptions.newBuilder().setProjectId(this.projectId).setHost(host).build();
     } else {
       spannerOptions =
           SpannerOptions.newBuilder()

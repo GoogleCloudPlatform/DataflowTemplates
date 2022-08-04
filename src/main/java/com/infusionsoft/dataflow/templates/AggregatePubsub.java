@@ -1,4 +1,21 @@
+/*
+ * Copyright (C) 2022 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.infusionsoft.dataflow.templates;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -6,6 +23,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.templates.common.PubsubConverters.PubsubReadOptions;
 import com.google.cloud.teleport.templates.common.PubsubConverters.PubsubWriteOptions;
 import com.google.cloud.teleport.util.DurationUtils;
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
@@ -27,40 +53,38 @@ import org.apache.beam.sdk.values.PCollection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Spliterator;
-import java.util.Spliterators;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
-
-import static com.google.common.base.Preconditions.checkNotNull;
-
 /**
  * A template that groups pubsub messages by accountId and then re-emits an aggregate message after
  * a few minutes
  *
- * Used by event-bridge-api
+ * <p>Used by event-bridge-api
  *
- * Deploy to sand:
- * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.AggregatePubsub -Dexec.args="--project=is-event-bridge-api-sand --stagingLocation=gs://dataflow-is-event-bridge-api-sand/staging --templateLocation=gs://dataflow-is-event-bridge-api-sand/templates/ps2aps_5m --runner=DataflowRunner --serviceAccount=is-event-bridge-api-sand@appspot.gserviceaccount.com --windowDuration=5m"
+ * <p>Deploy to sand: mvn compile exec:java
+ * -Dexec.mainClass=com.infusionsoft.dataflow.templates.AggregatePubsub
+ * -Dexec.args="--project=is-event-bridge-api-sand
+ * --stagingLocation=gs://dataflow-is-event-bridge-api-sand/staging
+ * --templateLocation=gs://dataflow-is-event-bridge-api-sand/templates/ps2aps_5m
+ * --runner=DataflowRunner --serviceAccount=is-event-bridge-api-sand@appspot.gserviceaccount.com
+ * --windowDuration=5m"
  *
- * projects/is-tracking-pixel-api-sand/topics/v1.render
+ * <p>projects/is-tracking-pixel-api-sand/topics/v1.render
  * projects/is-event-bridge-api-sand/topics/v1.renders
  *
- * projects/is-tracking-link-api-sand/topics/v1.click
+ * <p>projects/is-tracking-link-api-sand/topics/v1.click
  * projects/is-event-bridge-api-sand/topics/v1.clicks
  *
- * Deploy to prod:
- * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.AggregatePubsub -Dexec.args="--project=is-event-bridge-api-prod --stagingLocation=gs://dataflow-is-event-bridge-api-prod/staging --templateLocation=gs://dataflow-is-event-bridge-api-prod/templates/ps2aps_5m --runner=DataflowRunner --serviceAccount=is-event-bridge-api-prod@appspot.gserviceaccount.com --windowDuration=5m"
+ * <p>Deploy to prod: mvn compile exec:java
+ * -Dexec.mainClass=com.infusionsoft.dataflow.templates.AggregatePubsub
+ * -Dexec.args="--project=is-event-bridge-api-prod
+ * --stagingLocation=gs://dataflow-is-event-bridge-api-prod/staging
+ * --templateLocation=gs://dataflow-is-event-bridge-api-prod/templates/ps2aps_5m
+ * --runner=DataflowRunner --serviceAccount=is-event-bridge-api-prod@appspot.gserviceaccount.com
+ * --windowDuration=5m"
  *
- * projects/is-tracking-pixel-api-prod/topics/v1.render
+ * <p>projects/is-tracking-pixel-api-prod/topics/v1.render
  * projects/is-event-bridge-api-prod/topics/v1.renders
  *
- * projects/is-tracking-link-api-prod/topics/v1.click
+ * <p>projects/is-tracking-link-api-prod/topics/v1.click
  * projects/is-event-bridge-api-prod/topics/v1.clicks
  */
 public class AggregatePubsub {
@@ -70,29 +94,33 @@ public class AggregatePubsub {
    *
    * <p>Inherits standard configuration options.
    */
-  public interface Options extends PipelineOptions, StreamingOptions,
-      PubsubReadOptions, PubsubWriteOptions {
+  public interface Options
+      extends PipelineOptions, StreamingOptions, PubsubReadOptions, PubsubWriteOptions {
 
-    @Description("The window duration in which data will be written. "
-        + "Allowed formats are: "
-        + "Ns (for seconds, example: 30s), "
-        + "Nm (for minutes, example: 5m), "
-        + "Nh (for hours, example: 2h).")
+    @Description(
+        "The window duration in which data will be written. "
+            + "Allowed formats are: "
+            + "Ns (for seconds, example: 30s), "
+            + "Nm (for minutes, example: 5m), "
+            + "Nh (for hours, example: 2h).")
     String getWindowDuration();
+
     void setWindowDuration(String value);
 
     @Description(
-            "The Cloud Pub/Sub subscription to consume from. "
-                    + "The name should be in the format of "
-                    + "projects/<project-id>/subscriptions/<subscription-name>.")
+        "The Cloud Pub/Sub subscription to consume from. "
+            + "The name should be in the format of "
+            + "projects/<project-id>/subscriptions/<subscription-name>.")
     ValueProvider<String> getInputSubscription();
+
     void setInputSubscription(ValueProvider<String> value);
   }
 
-  public static class GroupByAccountId extends PTransform<PCollection<String>, PCollection<String>> {
+  public static class GroupByAccountId
+      extends PTransform<PCollection<String>, PCollection<String>> {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-        .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+    private static final ObjectMapper OBJECT_MAPPER =
+        new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
     public PCollection<String> expand(PCollection<String> input) {
       return input
@@ -102,7 +130,8 @@ public class AggregatePubsub {
     }
   }
 
-  public static class AggregateFn extends PTransform<PCollection<KV<String, Iterable<String>>>, PCollection<String>> {
+  public static class AggregateFn
+      extends PTransform<PCollection<KV<String, Iterable<String>>>, PCollection<String>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(AggregateFn.class);
 
@@ -113,39 +142,47 @@ public class AggregatePubsub {
     }
 
     public PCollection<String> expand(PCollection<KV<String, Iterable<String>>> messages) {
-      return messages.apply(MapElements.via(new SimpleFunction<KV<String, Iterable<String>>, String>() {
-        public String apply(KV<String, Iterable<String>> kv) {
-          final Iterable<String> iterable = kv.getValue();
-          final Iterator<String> iterator = iterable.iterator();
-          final AtomicReference<String> accountId = new AtomicReference<>();
+      return messages.apply(
+          MapElements.via(
+              new SimpleFunction<KV<String, Iterable<String>>, String>() {
+                public String apply(KV<String, Iterable<String>> kv) {
+                  final Iterable<String> iterable = kv.getValue();
+                  final Iterator<String> iterator = iterable.iterator();
+                  final AtomicReference<String> accountId = new AtomicReference<>();
 
-          final Map<String, Object> json = new LinkedHashMap<>();
-          json.put("messages", StreamSupport
-              .stream(Spliterators.spliteratorUnknownSize(iterator, Spliterator.ORDERED), false)
-              .map(message -> {
-                try {
-                  final Map<String, Object> map = objectMapper.readValue(message, Map.class);
-                  accountId.compareAndSet(null, (String) map.get("accountId"));
+                  final Map<String, Object> json = new LinkedHashMap<>();
+                  json.put(
+                      "messages",
+                      StreamSupport.stream(
+                              Spliterators.spliteratorUnknownSize(iterator, Spliterator.ORDERED),
+                              false)
+                          .map(
+                              message -> {
+                                try {
+                                  final Map<String, Object> map =
+                                      objectMapper.readValue(message, Map.class);
+                                  accountId.compareAndSet(null, (String) map.get("accountId"));
 
-                  return map;
-                } catch (IOException e) {
-                  LOG.error("unable to deserialize: " + message, e);
-                  throw new IllegalStateException(e);
+                                  return map;
+                                } catch (IOException e) {
+                                  LOG.error("unable to deserialize: " + message, e);
+                                  throw new IllegalStateException(e);
+                                }
+                              })
+                          .collect(Collectors.toList()));
+                  json.put("accountId", accountId.get());
+
+                  try {
+                    final String aggregated = objectMapper.writeValueAsString(json);
+                    LOG.debug("Aggregated: {} -> {}", iterable, aggregated);
+
+                    return aggregated;
+                  } catch (JsonProcessingException e) {
+                    LOG.error("unable to serialize: " + json, e);
+                    throw new IllegalStateException(e);
+                  }
                 }
-              }).collect(Collectors.toList()));
-          json.put("accountId", accountId.get());
-
-          try {
-            final String aggregated = objectMapper.writeValueAsString(json);
-            LOG.debug("Aggregated: {} -> {}", iterable, aggregated);
-
-            return aggregated;
-          } catch (JsonProcessingException e) {
-            LOG.error("unable to serialize: " + json, e);
-            throw new IllegalStateException(e);
-          }
-        }
-      }));
+              }));
     }
   }
 
@@ -200,23 +237,24 @@ public class AggregatePubsub {
     Pipeline pipeline = Pipeline.create(options);
     if (options.getInputSubscription() != null) {
       pipeline
-              .apply("Read Events", PubsubIO.readStrings()
-                      .fromSubscription(options.getInputSubscription()))
-              .apply(options.getWindowDuration() + " Window",
-                      Window.into(FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))
-              .apply("Group By Account", new GroupByAccountId())
-              .apply("Write Events", PubsubIO.writeStrings()
-                      .to(options.getPubsubWriteTopic()));
-    }
-     else {
+          .apply(
+              "Read Events",
+              PubsubIO.readStrings().fromSubscription(options.getInputSubscription()))
+          .apply(
+              options.getWindowDuration() + " Window",
+              Window.into(
+                  FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))
+          .apply("Group By Account", new GroupByAccountId())
+          .apply("Write Events", PubsubIO.writeStrings().to(options.getPubsubWriteTopic()));
+    } else {
       pipeline
-              .apply("Read Events", PubsubIO.readStrings()
-                      .fromTopic(options.getPubsubReadTopic()))
-              .apply(options.getWindowDuration() + " Window",
-                      Window.into(FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))
-              .apply("Group By Account", new GroupByAccountId())
-              .apply("Write Events", PubsubIO.writeStrings()
-                      .to(options.getPubsubWriteTopic()));
+          .apply("Read Events", PubsubIO.readStrings().fromTopic(options.getPubsubReadTopic()))
+          .apply(
+              options.getWindowDuration() + " Window",
+              Window.into(
+                  FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))
+          .apply("Group By Account", new GroupByAccountId())
+          .apply("Write Events", PubsubIO.writeStrings().to(options.getPubsubWriteTopic()));
     }
     // Execute the pipeline and return the result.
     return pipeline.run();

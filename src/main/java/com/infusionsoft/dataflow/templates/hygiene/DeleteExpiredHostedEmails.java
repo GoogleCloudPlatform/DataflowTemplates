@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2022 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.infusionsoft.dataflow.templates.hygiene;
 
 import static com.infusionsoft.dataflow.utils.JavaTimeUtils.UTC;
@@ -21,14 +36,23 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
 /**
  * A template that deletes expired hosted emails.
  *
- * Used by hosted-email-api
+ * <p>Used by hosted-email-api
  *
- * Deploy to sand:
- * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.hygiene.DeleteExpiredHostedEmails -Dexec.args="--project=is-hosted-email-api-sand --stagingLocation=gs://dataflow-is-hosted-email-api-sand/staging --templateLocation=gs://dataflow-is-hosted-email-api-sand/templates/delete_expired_emails --runner=DataflowRunner --serviceAccount=is-hosted-email-api-sand@appspot.gserviceaccount.com --datastoreProjectId=is-hosted-email-api-sand"
+ * <p>Deploy to sand: mvn compile exec:java
+ * -Dexec.mainClass=com.infusionsoft.dataflow.templates.hygiene.DeleteExpiredHostedEmails
+ * -Dexec.args="--project=is-hosted-email-api-sand
+ * --stagingLocation=gs://dataflow-is-hosted-email-api-sand/staging
+ * --templateLocation=gs://dataflow-is-hosted-email-api-sand/templates/delete_expired_emails
+ * --runner=DataflowRunner --serviceAccount=is-hosted-email-api-sand@appspot.gserviceaccount.com
+ * --datastoreProjectId=is-hosted-email-api-sand"
  *
- * Deploy to prod:
- * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.hygiene.DeleteExpiredHostedEmails -Dexec.args="--project=is-hosted-email-api-prod --stagingLocation=gs://dataflow-is-hosted-email-api-prod/staging --templateLocation=gs://dataflow-is-hosted-email-api-prod/templates/delete_expired_emails --runner=DataflowRunner --serviceAccount=is-hosted-email-api-prod@appspot.gserviceaccount.com --datastoreProjectId=is-hosted-email-api-prod"
- *
+ * <p>Deploy to prod: mvn compile exec:java
+ * -Dexec.mainClass=com.infusionsoft.dataflow.templates.hygiene.DeleteExpiredHostedEmails
+ * -Dexec.args="--project=is-hosted-email-api-prod
+ * --stagingLocation=gs://dataflow-is-hosted-email-api-prod/staging
+ * --templateLocation=gs://dataflow-is-hosted-email-api-prod/templates/delete_expired_emails
+ * --runner=DataflowRunner --serviceAccount=is-hosted-email-api-prod@appspot.gserviceaccount.com
+ * --datastoreProjectId=is-hosted-email-api-prod"
  */
 public class DeleteExpiredHostedEmails {
 
@@ -36,33 +60,45 @@ public class DeleteExpiredHostedEmails {
 
     @Description("GCP Project Id of where the datastore entities live")
     ValueProvider<String> getDatastoreProjectId();
+
     void setDatastoreProjectId(ValueProvider<String> datastoreProjectId);
 
     @Description("How many days until an email expires")
     ValueProvider<Integer> getExpireDays();
-    void setExpireDays(ValueProvider<Integer> expireDays);
 
+    void setExpireDays(ValueProvider<Integer> expireDays);
   }
 
   public static void main(String[] args) {
-    final Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
+    final Options options =
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     final String projectId = options.getDatastoreProjectId().get();
 
     final Pipeline pipeline = Pipeline.create(options);
 
     pipeline
-        .apply("Find Emails", DatastoreIO.v1().read()
-            .withProjectId(projectId)
-            .withLiteralGqlQuery(NestedValueProvider.of(options.getExpireDays(), (SerializableFunction<Integer, String>) expireDays -> {
-              final ZonedDateTime expired = ZonedDateTime.now(UTC)
-                  .minusDays(expireDays);
+        .apply(
+            "Find Emails",
+            DatastoreIO.v1()
+                .read()
+                .withProjectId(projectId)
+                .withLiteralGqlQuery(
+                    NestedValueProvider.of(
+                        options.getExpireDays(),
+                        (SerializableFunction<Integer, String>)
+                            expireDays -> {
+                              final ZonedDateTime expired =
+                                  ZonedDateTime.now(UTC).minusDays(expireDays);
 
-              return String.format("SELECT __key__ FROM Email WHERE created < %s", JavaTimeUtils.formatForGql(expired));
-            })))
-        .apply("Shard", Reshuffle.viaRandomKey()) // this ensures that the subsequent steps occur in parallel
+                              return String.format(
+                                  "SELECT __key__ FROM Email WHERE created < %s",
+                                  JavaTimeUtils.formatForGql(expired));
+                            })))
+        .apply(
+            "Shard",
+            Reshuffle.viaRandomKey()) // this ensures that the subsequent steps occur in parallel
         .apply("Entity To Key", ParDo.of(new EntityToKey()))
-        .apply("Delete By Key", DatastoreIO.v1().deleteKey()
-            .withProjectId(projectId));
+        .apply("Delete By Key", DatastoreIO.v1().deleteKey().withProjectId(projectId));
 
     pipeline.run();
   }
