@@ -138,10 +138,10 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
               .build();
     
       elasticsearchWriter = elasticsearchWriter.withIdFn(idFn);
-    } else if (options().getJavaScriptIdFnGcsPath() != null && options().getJavaScriptIdFnName() != null) {
+    } else if (options().getJavaScriptIdFnGCSPath() != null && options().getJavaScriptIdFnName() != null) {
       StringValueExtractorFn idFn =
           StringValueExtractorFn.newBuilder()
-              .setFileSystemPath(options().getJavaScriptIdFnGcsPath())
+              .setFileSystemPath(options().getJavaScriptIdFnGCSPath())
               .setFunctionName(options().getJavaScriptIdFnName())
               .build();
 
@@ -155,11 +155,11 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
               .build();
 
       elasticsearchWriter = elasticsearchWriter.withIdFn(indexFn);
-    } else if (options().getJavaScriptIndexFnGcsPath() != null
+    } else if (options().getJavaScriptIdFnGCSPath() != null
         && options().getJavaScriptIndexFnName() != null) {
       StringValueExtractorFn indexFn =
           StringValueExtractorFn.newBuilder()
-              .setFileSystemPath(options().getJavaScriptIndexFnGcsPath())
+              .setFileSystemPath(options().getJavaScriptIdFnGCSPath())
               .setFunctionName(options().getJavaScriptIndexFnName())
               .build();
 
