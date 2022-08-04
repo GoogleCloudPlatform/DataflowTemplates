@@ -1,6 +1,19 @@
+/*
+ * Copyright (C) 2022 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.infusionsoft.dataflow.templates;
-
-import com.infusionsoft.dataflow.utils.DatastoreUtils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -13,7 +26,11 @@ import com.google.datastore.v1.RunQueryRequest;
 import com.google.datastore.v1.RunQueryResponse;
 import com.google.datastore.v1.client.Datastore;
 import com.google.datastore.v1.client.DatastoreException;
-import org.apache.commons.lang3.StringUtils;
+import com.infusionsoft.dataflow.utils.DatastoreUtils;
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
@@ -25,32 +42,37 @@ import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import javax.annotation.Nullable;
 
 /**
  * A template that filters pubsub triggers so we only hit GAE with the ones we actually need to do
  * something with.
  *
- * Used by strategy-engine-api
+ * <p>Used by strategy-engine-api
  *
- * Deploy to sand:
- * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.FilterPubsubTriggers -Dexec.args="--project=is-strategy-engine-api-sand --stagingLocation=gs://dataflow-is-strategy-engine-api-sand/staging --templateLocation=gs://dataflow-is-strategy-engine-api-sand/templates/filter --runner=DataflowRunner --serviceAccount=is-strategy-engine-api-sand@appspot.gserviceaccount.com --datastoreProjectId=is-strategy-engine-api-sand"
+ * <p>Deploy to sand: mvn compile exec:java
+ * -Dexec.mainClass=com.infusionsoft.dataflow.templates.FilterPubsubTriggers
+ * -Dexec.args="--project=is-strategy-engine-api-sand
+ * --stagingLocation=gs://dataflow-is-strategy-engine-api-sand/staging
+ * --templateLocation=gs://dataflow-is-strategy-engine-api-sand/templates/filter
+ * --runner=DataflowRunner --serviceAccount=is-strategy-engine-api-sand@appspot.gserviceaccount.com
+ * --datastoreProjectId=is-strategy-engine-api-sand"
  *
- * projects/is-tactics-api-sand/topics/v1.contact-events
+ * <p>projects/is-tactics-api-sand/topics/v1.contact-events
  * projects/is-strategy-engine-api-sand/topics/v1.filtered
  *
- * Deploy to prod:
- * mvn compile exec:java -Dexec.mainClass=com.infusionsoft.dataflow.templates.FilterPubsubTriggers -Dexec.args="--project=is-strategy-engine-api-prod --stagingLocation=gs://dataflow-is-strategy-engine-api-prod/staging --templateLocation=gs://dataflow-is-strategy-engine-api-prod/templates/filter --runner=DataflowRunner --serviceAccount=is-strategy-engine-api-prod@appspot.gserviceaccount.com --datastoreProjectId=is-strategy-engine-api-prod"
+ * <p>Deploy to prod: mvn compile exec:java
+ * -Dexec.mainClass=com.infusionsoft.dataflow.templates.FilterPubsubTriggers
+ * -Dexec.args="--project=is-strategy-engine-api-prod
+ * --stagingLocation=gs://dataflow-is-strategy-engine-api-prod/staging
+ * --templateLocation=gs://dataflow-is-strategy-engine-api-prod/templates/filter
+ * --runner=DataflowRunner --serviceAccount=is-strategy-engine-api-prod@appspot.gserviceaccount.com
+ * --datastoreProjectId=is-strategy-engine-api-prod"
  *
- * projects/is-tactics-api-prod/topics/v1.contact-events
+ * <p>projects/is-tactics-api-prod/topics/v1.contact-events
  * projects/is-strategy-engine-api-prod/topics/v1.filtered
- *
  */
 public class FilterPubsubTriggers {
 
@@ -59,21 +81,21 @@ public class FilterPubsubTriggers {
    *
    * <p>Inherits standard configuration options.
    */
-  public interface Options extends PipelineOptions, StreamingOptions,
-      PubsubReadOptions, PubsubWriteOptions {
+  public interface Options
+      extends PipelineOptions, StreamingOptions, PubsubReadOptions, PubsubWriteOptions {
 
     @Description("GCP Project Id of where the datastore entities live")
     ValueProvider<String> getDatastoreProjectId();
-    void setDatastoreProjectId(ValueProvider<String> datastoreProjectId);
 
+    void setDatastoreProjectId(ValueProvider<String> datastoreProjectId);
   }
 
   public static class ExtractAndFilterEventsFn extends DoFn<String, String> {
 
     private static final Logger LOG = LoggerFactory.getLogger(ExtractAndFilterEventsFn.class);
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-        .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+    private static final ObjectMapper OBJECT_MAPPER =
+        new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
     private String projectId;
 
@@ -84,7 +106,8 @@ public class FilterPubsubTriggers {
       }
 
       final Options options = context.getPipelineOptions().as(Options.class);
-      projectId = (options.getDatastoreProjectId() == null ? null : options.getDatastoreProjectId().get());
+      projectId =
+          (options.getDatastoreProjectId() == null ? null : options.getDatastoreProjectId().get());
       LOG.info("Enabling event filter [projectId: {}]", projectId);
     }
 
@@ -96,8 +119,7 @@ public class FilterPubsubTriggers {
       final Map<String, Object> json = OBJECT_MAPPER.readValue(message, Map.class);
       final List<Map<String, Object>> events = (List<Map<String, Object>>) json.get("events");
 
-      events.stream()
-          .forEach(map -> processEvent(context, map));
+      events.stream().forEach(map -> processEvent(context, map));
     }
 
     private void processEvent(ProcessContext context, Map<String, Object> json) {
@@ -107,7 +129,8 @@ public class FilterPubsubTriggers {
       final String sourceType = (String) json.get("source_type");
       final String sourceId = (String) json.get("source_id");
 
-      final Datastore datastore = DatastoreUtils.getDatastore(context.getPipelineOptions(), projectId);
+      final Datastore datastore =
+          DatastoreUtils.getDatastore(context.getPipelineOptions(), projectId);
 
       if (hasTriggers(datastore, channelName, eventType, accountId, sourceType, sourceId)) {
         LOG.info("has triggers: {}", json);
@@ -121,16 +144,24 @@ public class FilterPubsubTriggers {
       }
     }
 
-    private boolean hasTriggers(Datastore datastore,
-                                String channelName, String eventType, String accountId,
-                                @Nullable String sourceType, @Nullable String sourceId) {
+    private boolean hasTriggers(
+        Datastore datastore,
+        String channelName,
+        String eventType,
+        String accountId,
+        @Nullable String sourceType,
+        @Nullable String sourceId) {
 
-      boolean triggers = true;  // in case of error, assume there are triggers
+      boolean triggers = true; // in case of error, assume there are triggers
 
-      final StringBuilder gql = new StringBuilder("SELECT __key__ FROM Trigger")
-          .append(" WHERE ").append(String.format("accountId = '%s'", accountId))
-          .append(" AND ").append(String.format("channelName = '%s'", channelName))
-          .append(" AND ").append(String.format("eventType = '%s'", eventType));
+      final StringBuilder gql =
+          new StringBuilder("SELECT __key__ FROM Trigger")
+              .append(" WHERE ")
+              .append(String.format("accountId = '%s'", accountId))
+              .append(" AND ")
+              .append(String.format("channelName = '%s'", channelName))
+              .append(" AND ")
+              .append(String.format("eventType = '%s'", eventType));
 
       if (StringUtils.isNotBlank(sourceType) && StringUtils.isNotBlank(sourceId)) {
         gql.append(" AND ").append(String.format("sourceType = '%s'", sourceType));
@@ -142,12 +173,14 @@ public class FilterPubsubTriggers {
 
       LOG.debug(gql.toString());
 
-      final RunQueryRequest request = RunQueryRequest.newBuilder()
-          .setGqlQuery(GqlQuery.newBuilder()
-              .setQueryString(gql.toString())
-              .setAllowLiterals(true)
-              .build())
-          .build();
+      final RunQueryRequest request =
+          RunQueryRequest.newBuilder()
+              .setGqlQuery(
+                  GqlQuery.newBuilder()
+                      .setQueryString(gql.toString())
+                      .setAllowLiterals(true)
+                      .build())
+              .build();
 
       try {
         final RunQueryResponse response = datastore.runQuery(request);
@@ -190,12 +223,12 @@ public class FilterPubsubTriggers {
     Pipeline pipeline = Pipeline.create(options);
 
     pipeline
-        .apply("Read Events", PubsubIO.readStrings()
-            .fromTopic(options.getPubsubReadTopic()))
-        .apply("Shard Events", Reshuffle.viaRandomKey())  // this ensures that we filter the events in parallel
+        .apply("Read Events", PubsubIO.readStrings().fromTopic(options.getPubsubReadTopic()))
+        .apply(
+            "Shard Events",
+            Reshuffle.viaRandomKey()) // this ensures that we filter the events in parallel
         .apply("Filter Events", ParDo.of(new ExtractAndFilterEventsFn()))
-        .apply("Write Events", PubsubIO.writeStrings()
-            .to(options.getPubsubWriteTopic()));
+        .apply("Write Events", PubsubIO.writeStrings().to(options.getPubsubWriteTopic()));
 
     // Execute the pipeline and return the result.
     return pipeline.run();

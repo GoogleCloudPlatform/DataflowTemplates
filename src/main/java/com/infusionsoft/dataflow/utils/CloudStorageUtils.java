@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2022 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.infusionsoft.dataflow.utils;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -25,19 +40,17 @@ public class CloudStorageUtils {
 
   private static final Logger LOG = LoggerFactory.getLogger(CloudStorageUtils.class);
 
-  private static final Storage.BlobTargetOption PRIVATE = Storage.BlobTargetOption.predefinedAcl(Storage.PredefinedAcl.PROJECT_PRIVATE);
+  private static final Storage.BlobTargetOption PRIVATE =
+      Storage.BlobTargetOption.predefinedAcl(Storage.PredefinedAcl.PROJECT_PRIVATE);
 
   public static Storage getStorage(String projectId) {
     checkArgument(StringUtils.isNotBlank(projectId), "projectId must not be blank");
 
-    return StorageOptions.newBuilder()
-        .setProjectId(projectId)
-        .build()
-        .getService();
+    return StorageOptions.newBuilder().setProjectId(projectId).build().getService();
   }
 
-  public static Blob upload(Storage storage, String bucketName, String fileName,
-                            String data, ContentType contentType) {
+  public static Blob upload(
+      Storage storage, String bucketName, String fileName, String data, ContentType contentType) {
 
     checkNotNull(storage, "storage must not be null");
     checkArgument(StringUtils.isNotBlank(bucketName), "bucketName must not be blank");
@@ -47,9 +60,8 @@ public class CloudStorageUtils {
 
     final byte[] content = data.getBytes(Charsets.UTF_8);
 
-    final BlobInfo info = BlobInfo.newBuilder(bucketName, fileName)
-        .setContentType(contentType.getMimeType())
-        .build();
+    final BlobInfo info =
+        BlobInfo.newBuilder(bucketName, fileName).setContentType(contentType.getMimeType()).build();
 
     return storage.create(info, content, PRIVATE);
   }
@@ -84,13 +96,18 @@ public class CloudStorageUtils {
     return ids.size() > 0 ? storage.get(ids) : Collections.emptyList();
   }
 
-  public static Page<Blob> find(Storage storage, String bucketName, String prefix, long limit, @Nullable String token) {
+  public static Page<Blob> find(
+      Storage storage, String bucketName, String prefix, long limit, @Nullable String token) {
     checkNotNull(storage, "storage must not be null");
     checkArgument(StringUtils.isNotBlank(prefix), "prefix must not be blank");
     checkArgument(limit > 0, "limit must be > 0");
 
     return StringUtils.isNotBlank(token)
-        ? storage.list(bucketName, BlobListOption.prefix(prefix), BlobListOption.pageSize(limit), BlobListOption.pageToken(token))
+        ? storage.list(
+            bucketName,
+            BlobListOption.prefix(prefix),
+            BlobListOption.pageSize(limit),
+            BlobListOption.pageToken(token))
         : storage.list(bucketName, BlobListOption.prefix(prefix), BlobListOption.pageSize(limit));
   }
 }

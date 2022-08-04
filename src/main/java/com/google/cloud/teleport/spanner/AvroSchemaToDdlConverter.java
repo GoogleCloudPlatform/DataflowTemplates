@@ -264,7 +264,8 @@ public class AvroSchemaToDdlConverter {
           return com.google.cloud.teleport.spanner.common.Type.numeric();
         }
         if (LogicalTypes.decimal(NumericUtils.PG_MAX_PRECISION, NumericUtils.PG_MAX_SCALE)
-            .equals(logicalType) && dialect == Dialect.POSTGRESQL) {
+                .equals(logicalType)
+            && dialect == Dialect.POSTGRESQL) {
           return com.google.cloud.teleport.spanner.common.Type.pgNumeric();
         }
         return (dialect == Dialect.GOOGLE_STANDARD_SQL)

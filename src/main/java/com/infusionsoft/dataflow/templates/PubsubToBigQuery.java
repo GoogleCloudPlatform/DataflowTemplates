@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2022 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.infusionsoft.dataflow.templates;
 
 import com.google.api.client.json.JsonFactory;
@@ -77,6 +92,7 @@ public class PubsubToBigQuery {
   /** The log to output status messages to. */
   private static final Logger LOG =
       LoggerFactory.getLogger(com.google.cloud.teleport.templates.PubSubToBigQuery.class);
+
   private static Logger logger = LoggerFactory.getLogger("PubsubToBigQuery");
 
   /**
@@ -220,6 +236,7 @@ public class PubsubToBigQuery {
 
   /* From package-private in TextToBigQueryStreaming.java */
   private static final JsonFactory JSON_FACTORY = Transport.getJsonFactory();
+
   static FailsafeElement<String, String> wrapBigQueryInsertError(BigQueryInsertError insertError) {
 
     FailsafeElement<String, String> failsafeElement;

@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2022 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.infusionsoft.dataflow.utils;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -11,16 +26,15 @@ import com.google.datastore.v1.Key;
 import com.google.datastore.v1.client.Datastore;
 import com.google.datastore.v1.client.DatastoreFactory;
 import com.google.datastore.v1.client.DatastoreOptions;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
-import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.extensions.gcp.util.RetryHttpRequestInitializer;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import javax.annotation.Nullable;
+import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
+import org.apache.beam.sdk.extensions.gcp.util.RetryHttpRequestInitializer;
+import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.commons.lang3.StringUtils;
 
 public class DatastoreUtils {
 
@@ -32,12 +46,19 @@ public class DatastoreUtils {
 
     final Object initializer;
     if (credential != null) {
-      initializer = new ChainingHttpRequestInitializer(new HttpRequestInitializer[]{new HttpCredentialsAdapter(credential), new RetryHttpRequestInitializer()});
+      initializer =
+          new ChainingHttpRequestInitializer(
+              new HttpRequestInitializer[] {
+                new HttpCredentialsAdapter(credential), new RetryHttpRequestInitializer()
+              });
     } else {
       initializer = new RetryHttpRequestInitializer();
     }
 
-    final DatastoreOptions.Builder builder = (new com.google.datastore.v1.client.DatastoreOptions.Builder()).projectId(projectId).initializer((HttpRequestInitializer)initializer);
+    final DatastoreOptions.Builder builder =
+        (new com.google.datastore.v1.client.DatastoreOptions.Builder())
+            .projectId(projectId)
+            .initializer((HttpRequestInitializer) initializer);
     builder.host("batch-datastore.googleapis.com");
 
     return DatastoreFactory.get().create(builder.build());
@@ -52,10 +73,7 @@ public class DatastoreUtils {
     items.add(String.valueOf(key2));
 
     if (keys != null) {
-      Arrays.stream(keys)
-          .filter(Objects::nonNull)
-          .map(String::valueOf)
-          .forEach(items::add);
+      Arrays.stream(keys).filter(Objects::nonNull).map(String::valueOf).forEach(items::add);
     }
 
     return StringUtils.join(items, ":");

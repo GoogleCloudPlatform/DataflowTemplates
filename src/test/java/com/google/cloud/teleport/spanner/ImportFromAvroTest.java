@@ -943,7 +943,7 @@ public class ImportFromAvroTest {
                 .build()),
         Dialect.POSTGRESQL);
   }
-  
+
   @Test
   public void changeStreams() throws Exception {
     Map<String, Schema> avroFiles = new HashMap<>();

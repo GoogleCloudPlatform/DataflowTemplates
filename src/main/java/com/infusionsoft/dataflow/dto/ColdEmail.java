@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2022 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.infusionsoft.dataflow.dto;
 
 import java.time.ZonedDateTime;
@@ -79,13 +94,13 @@ public class ColdEmail {
       return false;
     }
     ColdEmail coldEmail = (ColdEmail) o;
-    return Objects.equals(accountId, coldEmail.accountId) &&
-        Objects.equals(fromAddress, coldEmail.fromAddress) &&
-        Objects.equals(toAddresses, coldEmail.toAddresses) &&
-        Objects.equals(subject, coldEmail.subject) &&
-        Objects.equals(htmlBody, coldEmail.htmlBody) &&
-        Objects.equals(textBody, coldEmail.textBody) &&
-        Objects.equals(created, coldEmail.created);
+    return Objects.equals(accountId, coldEmail.accountId)
+        && Objects.equals(fromAddress, coldEmail.fromAddress)
+        && Objects.equals(toAddresses, coldEmail.toAddresses)
+        && Objects.equals(subject, coldEmail.subject)
+        && Objects.equals(htmlBody, coldEmail.htmlBody)
+        && Objects.equals(textBody, coldEmail.textBody)
+        && Objects.equals(created, coldEmail.created);
   }
 
   @Override
@@ -95,14 +110,26 @@ public class ColdEmail {
 
   @Override
   public String toString() {
-    return "ColdEmail{" +
-        "accountId='" + accountId + '\'' +
-        ", fromAddress='" + fromAddress + '\'' +
-        ", toAddresses=" + toAddresses +
-        ", subject='" + subject + '\'' +
-        ", htmlBody='" + htmlBody + '\'' +
-        ", textBody='" + textBody + '\'' +
-        ", created=" + created +
-        '}';
+    return "ColdEmail{"
+        + "accountId='"
+        + accountId
+        + '\''
+        + ", fromAddress='"
+        + fromAddress
+        + '\''
+        + ", toAddresses="
+        + toAddresses
+        + ", subject='"
+        + subject
+        + '\''
+        + ", htmlBody='"
+        + htmlBody
+        + '\''
+        + ", textBody='"
+        + textBody
+        + '\''
+        + ", created="
+        + created
+        + '}';
   }
 }

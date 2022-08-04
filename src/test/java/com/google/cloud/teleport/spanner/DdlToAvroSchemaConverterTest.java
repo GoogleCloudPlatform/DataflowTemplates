@@ -775,7 +775,7 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(1).schema(), equalTo(nullableTimestampUnion()));
     assertThat(fields.get(1).getProp("sqlType"), equalTo("timestamp with time zone"));
   }
-  
+
   @Test
   public void changeStreams() {
     DdlToAvroSchemaConverter converter =

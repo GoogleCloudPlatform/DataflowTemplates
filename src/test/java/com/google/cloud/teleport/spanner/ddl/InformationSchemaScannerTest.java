@@ -670,7 +670,7 @@ public class InformationSchemaScannerTest {
     statements.set(0, alterStatement.replace(dbId, "%db_name%"));
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
   }
-  
+
   @Test
   public void changeStreams() throws Exception {
     List<String> statements =
