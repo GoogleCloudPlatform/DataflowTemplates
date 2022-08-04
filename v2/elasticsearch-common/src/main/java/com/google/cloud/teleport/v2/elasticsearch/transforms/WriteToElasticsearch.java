@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.elasticsearch.transforms.ValueExtractorTrans
 import com.google.cloud.teleport.v2.elasticsearch.utils.ConnectionInformation;
 import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIO;
 import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIO.Write.FieldValueExtractFn;
+import javax.annotation.Nullable;
 import java.util.Optional;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PCollection;
@@ -55,6 +56,36 @@ import org.joda.time.Duration;
 @AutoValue
 public abstract class WriteToElasticsearch extends PTransform<PCollection<String>, PDone> {
 
+  /**
+   * The {@link StringFieldValueExtractFn} class is a class implementation for {@link FieldValueExtractFn} 
+   * to extract a property by name.
+   */
+  @AutoValue
+  static abstract class StringFieldValueExtractFn implements FieldValueExtractFn {
+
+    @Nullable
+    abstract String propertyName();
+
+    public static Builder newBuilder() {
+      return new AutoValue_WriteToElasticsearch_StringFieldValueExtractFn.Builder();
+    }
+
+    @Override
+    public String apply(JsonNode input) {
+      if (propertyName() == null) {
+        return null;
+      }
+      return input.get(propertyName()).asText();
+    }
+
+    /** Builder for {@link StringFieldValueExtractFn}. */
+    @AutoValue.Builder
+    public abstract static class Builder {
+      public abstract Builder setPropertyName(String propertyName);
+
+      public abstract StringFieldValueExtractFn build();
+    }
+  }
   /** Convert provided long to {@link Duration}. */
   private static Duration getDuration(Long milliseconds) {
     return new Duration(milliseconds);
@@ -101,13 +132,11 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
             .withMaxBatchSizeBytes(options().getBatchSizeBytes());
 
     if (options().getPropertyAsId() != null) {
-      String propertyAsId = options().getPropertyAsId();
-      FieldValueExtractFn idFn = new FieldValueExtractFn() {
-        @Override
-        public String apply(JsonNode input) {
-          return input.get(propertyAsId).asText();
-        }
-      };
+      StringFieldValueExtractFn idFn =
+          StringFieldValueExtractFn.newBuilder()
+              .setPropertyName(options().getPropertyAsId())
+              .build();
+    
       elasticsearchWriter = elasticsearchWriter.withIdFn(idFn);
     } else if (options().getJavaScriptIdFnGcsPath() != null && options().getJavaScriptIdFnName() != null) {
       StringValueExtractorFn idFn =
@@ -120,13 +149,11 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
     }
 
     if (options().getPropertyAsIndex() != null) {
-      String propertyAsIndex = options().getPropertyAsIndex();
-      FieldValueExtractFn indexFn = new FieldValueExtractFn() {
-        @Override
-        public String apply(JsonNode input) {
-          return input.get(propertyAsIndex).asText();
-        }
-      };
+      StringFieldValueExtractFn indexFn =
+          StringFieldValueExtractFn.newBuilder()
+              .setPropertyName(options().getPropertyAsIndex())
+              .build();
+
       elasticsearchWriter = elasticsearchWriter.withIdFn(indexFn);
     } else if (options().getJavaScriptIndexFnGcsPath() != null
         && options().getJavaScriptIndexFnName() != null) {
@@ -167,10 +194,10 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
               Boolean.TRUE.equals(options().getUsePartialUpdate()));
     }
 
-    if (options().getUseBulkIndexRatherThanCreate() != null) {
+    if (options().getBulkInsertMethod() != null) {
       elasticsearchWriter =
-          elasticsearchWriter.withUseBulkIndexRatherThanCreate(
-              Boolean.TRUE.equals(options().getUseBulkIndexRatherThanCreate()));
+          elasticsearchWriter.withBulkInsertMethod(
+              options().getBulkInsertMethod());
     }
 
     if (Optional.ofNullable(options().getMaxRetryAttempts()).isPresent()) {

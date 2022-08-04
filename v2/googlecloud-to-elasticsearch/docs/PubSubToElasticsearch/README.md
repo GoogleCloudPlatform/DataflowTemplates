@@ -56,7 +56,7 @@ The template has the following optional parameters:
 * javaScriptIsDeleteFnGCSPath: GCS path of storage location for JavaScript UDF to determine if row should be a delete operation (rather than create, index, or update)
 * javaScriptIsDeleteFnName: Function name for JavaScript UDF to determine if row should be a delete operation (rather than create, index, or update)
 * usePartialUpdate:  Whether to use partial document updates (update rather than create or index, allows partial document updates)
-* useBulkIndexRatherThanCreate: Whether to use index (allows upserts) rather than create (errors on duplicate _id) with Elasticsearch bulk requests
+* bulkInsertMethod: Whether to use INDEX (index, allows upserts) or the default CREATE (create, errors on duplicate _id) with Elasticsearch bulk requests
 
 ### Building Template
 This is a Flex Template meaning that the pipeline code will be containerized, and the container will be used to launch the Dataflow pipeline.
@@ -268,9 +268,9 @@ echo '{
               "isOptional":true
           },
           {
-              "name":"useBulkIndexRatherThanCreate",
-              "label":"Use index (allows upserts) rather than create (errors on duplicate _id) in bulk requests",
-              "helpText":"Whether to use index (allows upserts) rather than create (errors on duplicate _id) with Elasticsearch bulk requests",
+              "name":"bulkInsertMethod",
+              "label":"Use INDEX (index, allows upserts) or CREATE (create, errors on duplicate _id) in bulk requests",
+              "helpText":"Whether to use INDEX (index, allows upserts) or the default CREATE (create, errors on duplicate _id) with Elasticsearch bulk requests",
               "paramType":"TEXT",
               "isOptional":true
           }

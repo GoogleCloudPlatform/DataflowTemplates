@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.v2.elasticsearch.utils.BulkInsertMethod.BulkInsertMethodOptions;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -183,7 +184,7 @@ public class ElasticsearchIO {
         // advised default starting batch size in ES docs
         .setMaxBatchSizeBytes(5L * 1024L * 1024L)
         .setUsePartialUpdate(false) // default is document upsert
-        .setUseBulkIndexRatherThanCreate(false) // default to create (error on duplicate _id)
+        .setBulkInsertMethod(BulkInsertMethodOptions.CREATE) // default to create (error on duplicate _id)
         .build();
   }
 
@@ -1124,7 +1125,7 @@ public class ElasticsearchIO {
 
     abstract boolean getUsePartialUpdate();
 
-    abstract boolean getUseBulkIndexRatherThanCreate();
+    abstract BulkInsertMethodOptions getBulkInsertMethod();
 
     abstract @Nullable BooleanFieldValueExtractFn getIsDeleteFn();
 
@@ -1146,7 +1147,7 @@ public class ElasticsearchIO {
 
       abstract Builder setUsePartialUpdate(boolean usePartialUpdate);
 
-      abstract Builder setUseBulkIndexRatherThanCreate(boolean usePartialUpdate);
+      abstract Builder setBulkInsertMethod(BulkInsertMethodOptions bulkInsertMethod);
 
       abstract Builder setRetryConfiguration(RetryConfiguration retryConfiguration);
 
@@ -1255,11 +1256,11 @@ public class ElasticsearchIO {
      * Provide an instruction to control whether bulk requests use index (allows upserts) or 
      * create (errors on duplicate _id).
      *
-     * @param useBulkIndexRatherThanCreate set to true to use index rather than create
+     * @param bulkInsertMethod set to INDEX to use index or CREATE to use create
      * @return the {@link Write} with the index or create control set
      */
-    public Write withUseBulkIndexRatherThanCreate(boolean useBulkIndexRatherThanCreate) {
-      return builder().setUseBulkIndexRatherThanCreate(useBulkIndexRatherThanCreate).build();
+    public Write withBulkInsertMethod(BulkInsertMethodOptions bulkInsertMethod) {
+      return builder().setBulkInsertMethod(bulkInsertMethod).build();
     }
 
     /**
@@ -1471,7 +1472,7 @@ public class ElasticsearchIO {
                     "{ \"update\" : %s }%n{ \"doc\" : %s, \"doc_as_upsert\" : true }%n",
                     documentMetadata, document));
           } else {
-            if (spec.getUseBulkIndexRatherThanCreate()) {
+            if (spec.getBulkInsertMethod() == BulkInsertMethodOptions.INDEX) {
               // index allows upsert of document with same _id as existing document
               batch.add(String.format("{ \"index\" : %s }%n%s%n", documentMetadata, document));
             } else {

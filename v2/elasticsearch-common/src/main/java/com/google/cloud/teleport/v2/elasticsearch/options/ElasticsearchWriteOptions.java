@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.options;
 
+import com.google.cloud.teleport.v2.elasticsearch.utils.BulkInsertMethod.BulkInsertMethodOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -79,7 +80,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   void setPropertyAsIndex(String propertyAsIndex);
 
-  @Description("GCS path to JavaScript udf source for index extraction function")
+  @Description("GCS path to JavaScript UDF source for index extraction function")
   String getJavaScriptIndexFnGCSPath();
 
   void setJavaScriptIndexFnGCSPath(String javaScriptTextTransformGCSPath);
@@ -94,7 +95,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   void setPropertyAsId(String propertyAsId);
 
-  @Description("GCS path to JavaScript udf source for id extraction function")
+  @Description("GCS path to JavaScript UDF source for id extraction function")
   String getJavaScriptIdFnGCSPath();
 
   void setJavaScriptIdFnGCSPath(String javaScriptTextTransformGCSPath);
@@ -104,7 +105,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   void setJavaScriptIdFnName(String javaScriptTextTransformFunctionName);
 
-  @Description("GCS path to JavaScript udf source for type extraction function")
+  @Description("GCS path to JavaScript UDF source for type extraction function")
   String getJavaScriptTypeFnGCSPath();
 
   void setJavaScriptTypeFnGCSPath(String javaScriptTextTransformGCSPath);
@@ -114,7 +115,7 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   void setJavaScriptTypeFnName(String javaScriptTextTransformFunctionName);
 
-  @Description("GCS path to JavaScript udf source for deletion determination")
+  @Description("GCS path to JavaScript UDF source for deletion determination")
   String getJavaScriptIsDeleteFnGCSPath();
 
   void setJavaScriptIsDeleteFnGCSPath(String javaScriptTextTransformGCSPath);
@@ -129,8 +130,9 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   void setUsePartialUpdate(Boolean usePartialUpdate);
 
-  @Description("Whether to use index (supports upsert) rather than create (errors on duplicate _id) in bulk requests")
-  Boolean getUseBulkIndexRatherThanCreate();
+  @Description("Whether to use INDEX (index, supports upsert) or CREATE (create, errors on duplicate _id) in bulk requests")
+  @Default.Enum("CREATE")
+  BulkInsertMethodOptions getBulkInsertMethod();
 
-  void setUseBulkIndexRatherThanCreate(Boolean useBulkIndexRatherThanCreate);
+  void setBulkInsertMethod(BulkInsertMethodOptions bulkInsertMethod);
 }
