@@ -98,7 +98,7 @@
       <dependency>
         <groupId>com.google.cloud</groupId>
         <artifactId>libraries-bom</artifactId>
-        <version>24.1.0</version>
+        <version>${cloud-libraries-bom.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
