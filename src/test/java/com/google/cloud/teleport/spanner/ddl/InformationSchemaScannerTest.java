@@ -24,8 +24,10 @@ import org.junit.Test;
 /** Unit tests for InformationSchemaScanner class. */
 public class InformationSchemaScannerTest {
 
-  final InformationSchemaScanner googleSQLInfoScanner = new InformationSchemaScanner(null, Dialect.GOOGLE_STANDARD_SQL);
-  final InformationSchemaScanner postgresSQLInfoScanner = new InformationSchemaScanner(null, Dialect.POSTGRESQL);
+  final InformationSchemaScanner googleSQLInfoScanner =
+      new InformationSchemaScanner(null, Dialect.GOOGLE_STANDARD_SQL);
+  final InformationSchemaScanner postgresSQLInfoScanner =
+      new InformationSchemaScanner(null, Dialect.POSTGRESQL);
 
   @Test
   public void testDatabaseOptionsSQL() {

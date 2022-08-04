@@ -50,10 +50,7 @@ public abstract class Index implements Serializable {
   abstract String interleaveIn();
 
   public static Builder builder(Dialect dialect) {
-    return new AutoValue_Index.Builder()
-        .dialect(dialect)
-        .nullFiltered(false)
-        .unique(false);
+    return new AutoValue_Index.Builder().dialect(dialect).nullFiltered(false).unique(false);
   }
 
   public static Builder builder() {
