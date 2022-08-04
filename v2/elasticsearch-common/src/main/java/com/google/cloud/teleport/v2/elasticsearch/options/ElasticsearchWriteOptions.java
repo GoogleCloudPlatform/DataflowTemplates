@@ -74,6 +74,11 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   void setMaxRetryDuration(Long maxRetryDuration);
 
+  @Description("A property in the document being indexed whose value specifies which index to add the doc to (takes precendence over an index UDF)")
+  String getPropertyAsIndex();
+
+  void setPropertyAsIndex(String propertyAsIndex);
+
   @Description("Gcs path to javascript udf source for index extraction function")
   String getJavascriptIndexFnGcsPath();
 
@@ -83,6 +88,11 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
   String getJavascriptIndexFnName();
 
   void setJavascriptIndexFnName(String javascriptTextTransformFunctionName);
+
+  @Description("A property in the document being indexed whose value specifies which _id to use for the doc (takes precendence over an id UDF)")
+  String getPropertyAsId();
+
+  void setPropertyAsId(String propertyAsId);
 
   @Description("Gcs path to javascript udf source for id extraction function")
   String getJavascriptIdFnGcsPath();

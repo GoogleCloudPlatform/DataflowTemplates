@@ -183,6 +183,7 @@ public class ElasticsearchIO {
         // advised default starting batch size in ES docs
         .setMaxBatchSizeBytes(5L * 1024L * 1024L)
         .setUsePartialUpdate(false) // default is document upsert
+        .setUseBulkIndexRatherThanCreate(false) // default to create (error on duplicate _id)
         .build();
   }
 
@@ -1252,7 +1253,7 @@ public class ElasticsearchIO {
 
     /**
      * Provide an instruction to control whether bulk requests use index (allows upserts) or 
-     * create (errors on duplicate _id)
+     * create (errors on duplicate _id).
      *
      * @param useBulkIndexRatherThanCreate set to true to use index rather than create
      * @return the {@link Write} with the index or create control set

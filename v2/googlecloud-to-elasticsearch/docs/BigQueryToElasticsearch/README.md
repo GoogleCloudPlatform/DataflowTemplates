@@ -141,56 +141,70 @@ echo '{
               "isOptional":true
           },
           {
-              "name":"JavaScriptIndexFnGCSPath",
+              "name":"propertyAsIndex",
+              "label":"Document property used to specify index",
+              "helpText":"A property in the document being indexed whose value specifies which index to add the doc to (takes precendence over an index UDF)",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"javascriptIndexFnGCSPath",
               "label":"GCS path to JavaScript UDF source for function to extract index name from row",
               "helpText":"GCS path to JavaScript UDF source. UDF will be preferred option for transformation if supplied. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
-              "name":"JavaScriptIndexFnName",
+              "name":"javascriptIndexFnName",
               "label":"UDF JavaScript Function Name for function to extract index name from row",
               "helpText":"UDF JavaScript Function Name. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
-              "name":"JavaScriptIdFnGCSPath",
+              "name":"propertyAsId",
+              "label":"Document property used to specify _id",
+              "helpText":"A property in the document being indexed whose value specifies which _id to use for the doc (takes precendence over an id UDF)",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"javascriptIdFnGCSPath",
               "label":"GCS path to JavaScript UDF source for function to extract id value from row",
               "helpText":"GCS path to JavaScript UDF source. UDF will be preferred option for transformation if supplied. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
-              "name":"JavaScriptIdFnName",
+              "name":"javascriptIdFnName",
               "label":"UDF JavaScript Function Name for function to extract id value from row",
               "helpText":"UDF JavaScript Function Name. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
-              "name":"JavaScriptTypeFnGCSPath",
+              "name":"javascriptTypeFnGCSPath",
               "label":"GCS path to JavaScript UDF source for function to extract type value from row",
               "helpText":"GCS path to JavaScript UDF source. UDF will be preferred option for transformation if supplied. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
-              "name":"JavaScriptTypeFnName",
+              "name":"javascriptTypeFnName",
               "label":"UDF JavaScript Function Name for function to extract type value from row",
               "helpText":"UDF JavaScript Function Name. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
-              "name":"JavaScriptIsDeleteFnGCSPath",
+              "name":"javascriptIsDeleteFnGCSPath",
               "label":"GCS path to JavaScript UDF source for function to extract whether operation is delete or not from row",
               "helpText":"GCS path to JavaScript UDF source. UDF will be preferred option for transformation if supplied. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
-              "name":"JavaScriptIsDeleteFnName",
+              "name":"javascriptIsDeleteFnName",
               "label":"UDF JavaScript Function Name for function to extract whether operation is delete or not from row",
               "helpText":"UDF JavaScript Function Name. Default: null",
               "paramType":"TEXT",
@@ -243,14 +257,16 @@ The template has the following optional parameters:
 * batchSizeBytes: Batch size in number of bytes. Default: 5242880 (5mb)
 * maxRetryAttempts: Max retry attempts, must be > 0. Default: no retries
 * maxRetryDuration: Max retry duration in milliseconds, must be > 0. Default: no retries
-* JavaScriptIndexFnGCSPath: GCS path of storage location for JavaScript UDF to extract _index from row data
-* JavaScriptIndexFnName: Function name for JavaScript UDF to extract _index from row data
-* JavaScriptIdFnGCSPath: GCS path of storage location for JavaScript UDF to extract _id from row data
-* JavaScriptIdFnName: Function name for JavaScript UDF to extract _id from row data
-* JavaScriptTypeFnGCSPath: GCS path of storage location for JavaScript UDF to extract _type from row data
-* JavaScriptTypeFnName: Function name for JavaScript UDF to extract _type from row data
-* JavaScriptIsDeleteFnGCSPath: GCS path of storage location for JavaScript UDF to determine if row should be a delete operation (rather than create, index, or update)
-* JavaScriptIsDeleteFnName: Function name for JavaScript UDF to determine if row should be a delete operation (rather than create, index, or update)
+* propertyAsIndex: A property in the document being indexed whose value specifies which _index to add the doc to (takes precendence over an index UDF)
+* javascriptIndexFnGCSPath: GCS path of storage location for JavaScript UDF to extract _index from row data
+* javascriptIndexFnName: Function name for JavaScript UDF to extract _index from row data
+* propertyAsId: A property in the document being indexed whose value specifies which _id to use for the doc (takes precendence over an id UDF)
+* javascriptIdFnGCSPath: GCS path of storage location for JavaScript UDF to extract _id from row data
+* javascriptIdFnName: Function name for JavaScript UDF to extract _id from row data
+* javascriptTypeFnGCSPath: GCS path of storage location for JavaScript UDF to extract _type from row data
+* javascriptTypeFnName: Function name for JavaScript UDF to extract _type from row data
+* javascriptIsDeleteFnGCSPath: GCS path of storage location for JavaScript UDF to determine if row should be a delete operation (rather than create, index, or update)
+* javascriptIsDeleteFnName: Function name for JavaScript UDF to determine if row should be a delete operation (rather than create, index, or update)
 * usePartialUpdate:  Whether to use partial document updates (update rather than create or index, allows partial document updates)
 * useBulkIndexRatherThanCreate: Whether to use index (allows upserts) rather than create (errors on duplicate _id) with Elasticsearch bulk requests
 

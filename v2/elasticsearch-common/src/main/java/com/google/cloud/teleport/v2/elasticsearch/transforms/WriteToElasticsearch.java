@@ -17,12 +17,14 @@ package com.google.cloud.teleport.v2.elasticsearch.transforms;
 
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.ValueExtractorTransform.BooleanValueExtractorFn;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.ValueExtractorTransform.StringValueExtractorFn;
 import com.google.cloud.teleport.v2.elasticsearch.utils.ConnectionInformation;
 import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIO;
+import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIO.Write.FieldValueExtractFn;
 import java.util.Optional;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PCollection;
@@ -98,7 +100,16 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
             .withMaxBatchSize(options().getBatchSize())
             .withMaxBatchSizeBytes(options().getBatchSizeBytes());
 
-    if (options().getJavascriptIdFnGcsPath() != null && options().getJavascriptIdFnName() != null) {
+    if (options().getPropertyAsId() != null) {
+      String propertyAsId = options().getPropertyAsId();
+      FieldValueExtractFn idFn = new FieldValueExtractFn() {
+        @Override
+        public String apply(JsonNode input) {
+          return input.get(propertyAsId).asText();
+        }
+      };
+      elasticsearchWriter = elasticsearchWriter.withIdFn(idFn);
+    } else if (options().getJavascriptIdFnGcsPath() != null && options().getJavascriptIdFnName() != null) {
       StringValueExtractorFn idFn =
           StringValueExtractorFn.newBuilder()
               .setFileSystemPath(options().getJavascriptIdFnGcsPath())
@@ -108,7 +119,16 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
       elasticsearchWriter = elasticsearchWriter.withIdFn(idFn);
     }
 
-    if (options().getJavascriptIndexFnGcsPath() != null
+    if (options().getPropertyAsIndex() != null) {
+      String propertyAsIndex = options().getPropertyAsIndex();
+      FieldValueExtractFn indexFn = new FieldValueExtractFn() {
+        @Override
+        public String apply(JsonNode input) {
+          return input.get(propertyAsIndex).asText();
+        }
+      };
+      elasticsearchWriter = elasticsearchWriter.withIdFn(indexFn);
+    } else if (options().getJavascriptIndexFnGcsPath() != null
         && options().getJavascriptIndexFnName() != null) {
       StringValueExtractorFn indexFn =
           StringValueExtractorFn.newBuilder()
