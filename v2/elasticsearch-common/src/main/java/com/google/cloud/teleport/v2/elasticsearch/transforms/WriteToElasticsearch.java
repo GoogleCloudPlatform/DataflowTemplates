@@ -25,8 +25,8 @@ import com.google.cloud.teleport.v2.elasticsearch.transforms.ValueExtractorTrans
 import com.google.cloud.teleport.v2.elasticsearch.utils.ConnectionInformation;
 import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIO;
 import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIO.Write.FieldValueExtractFn;
-import javax.annotation.Nullable;
 import java.util.Optional;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
@@ -61,7 +61,7 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
    * to extract a property by name.
    */
   @AutoValue
-  static abstract class StringFieldValueExtractFn implements FieldValueExtractFn {
+  abstract static class StringFieldValueExtractFn implements FieldValueExtractFn {
 
     @Nullable
     abstract String propertyName();
