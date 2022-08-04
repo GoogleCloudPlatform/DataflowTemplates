@@ -26,6 +26,7 @@ import java.nio.channels.WritableByteChannel;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.Compression;
@@ -345,17 +346,18 @@ public class BulkDecompressor {
      * @param inputFile The input file which failed decompression.
      * @param compression The compression mode used during decompression.
      * @return The sanitized error message. If the error was not from a malformed file, the same
-     *     error message passed will be returned.
+     *     error message passed will be returned (if not null) or an empty string will be returned
+     *     (if null).
      */
     private String sanitizeDecompressionErrorMsg(
-        String errorMsg, ResourceId inputFile, Compression compression) {
+        @Nullable String errorMsg, ResourceId inputFile, Compression compression) {
       if (errorMsg != null
           && (errorMsg.contains("not in the BZip2 format")
               || errorMsg.contains("incorrect header check"))) {
         errorMsg = String.format(MALFORMED_ERROR_MSG, inputFile.toString(), compression);
       }
 
-      return errorMsg;
+      return errorMsg == null ? "" : errorMsg;
     }
   }
 }
