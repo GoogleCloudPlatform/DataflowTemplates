@@ -79,50 +79,50 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   void setPropertyAsIndex(String propertyAsIndex);
 
-  @Description("Gcs path to javascript udf source for index extraction function")
-  String getJavascriptIndexFnGcsPath();
+  @Description("GCS path to JavaScript udf source for index extraction function")
+  String getJavaScriptIndexFnGCSPath();
 
-  void setJavascriptIndexFnGcsPath(String javascriptTextTransformGcsPath);
+  void setJavaScriptIndexFnGCSPath(String javaScriptTextTransformGCSPath);
 
-  @Description("UDF Javascript Function Name for index extraction")
-  String getJavascriptIndexFnName();
+  @Description("UDF JavaScript Function Name for index extraction")
+  String getJavaScriptIndexFnName();
 
-  void setJavascriptIndexFnName(String javascriptTextTransformFunctionName);
+  void setJavaScriptIndexFnName(String javaScriptTextTransformFunctionName);
 
   @Description("A property in the document being indexed whose value specifies which _id to use for the doc (takes precendence over an id UDF)")
   String getPropertyAsId();
 
   void setPropertyAsId(String propertyAsId);
 
-  @Description("Gcs path to javascript udf source for id extraction function")
-  String getJavascriptIdFnGcsPath();
+  @Description("GCS path to JavaScript udf source for id extraction function")
+  String getJavaScriptIdFnGCSPath();
 
-  void setJavascriptIdFnGcsPath(String javascriptTextTransformGcsPath);
+  void setJavaScriptIdFnGCSPath(String javaScriptTextTransformGCSPath);
 
-  @Description("UDF Javascript Function Name for id extraction")
-  String getJavascriptIdFnName();
+  @Description("UDF JavaScript Function Name for id extraction")
+  String getJavaScriptIdFnName();
 
-  void setJavascriptIdFnName(String javascriptTextTransformFunctionName);
+  void setJavaScriptIdFnName(String javaScriptTextTransformFunctionName);
 
-  @Description("Gcs path to javascript udf source for type extraction function")
-  String getJavascriptTypeFnGcsPath();
+  @Description("GCS path to JavaScript udf source for type extraction function")
+  String getJavaScriptTypeFnGCSPath();
 
-  void setJavascriptTypeFnGcsPath(String javascriptTextTransformGcsPath);
+  void setJavaScriptTypeFnGCSPath(String javaScriptTextTransformGCSPath);
 
-  @Description("UDF Javascript Function Name for type extraction")
-  String getJavascriptTypeFnName();
+  @Description("UDF JavaScript Function Name for type extraction")
+  String getJavaScriptTypeFnName();
 
-  void setJavascriptTypeFnName(String javascriptTextTransformFunctionName);
+  void setJavaScriptTypeFnName(String javaScriptTextTransformFunctionName);
 
-  @Description("Gcs path to javascript udf source for deletion determination")
-  String getJavascriptIsDeleteFnGcsPath();
+  @Description("GCS path to JavaScript udf source for deletion determination")
+  String getJavaScriptIsDeleteFnGCSPath();
 
-  void setJavascriptIsDeleteFnGcsPath(String javascriptTextTransformGcsPath);
+  void setJavaScriptIsDeleteFnGCSPath(String javaScriptTextTransformGCSPath);
 
-  @Description("UDF Javascript Function Name for deletion determination")
-  String getJavascriptIsDeleteFnName();
+  @Description("UDF JavaScript Function Name for deletion determination")
+  String getJavaScriptIsDeleteFnName();
 
-  void setJavascriptIsDeleteFnName(String javascriptTextTransformFunctionName);
+  void setJavaScriptIsDeleteFnName(String javaScriptTextTransformFunctionName);
 
   @Description("Whether to use partial updates (update type) with Elasticsearch requests")
   Boolean getUsePartialUpdate();

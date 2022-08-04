@@ -109,11 +109,11 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
         }
       };
       elasticsearchWriter = elasticsearchWriter.withIdFn(idFn);
-    } else if (options().getJavascriptIdFnGcsPath() != null && options().getJavascriptIdFnName() != null) {
+    } else if (options().getJavaScriptIdFnGcsPath() != null && options().getJavaScriptIdFnName() != null) {
       StringValueExtractorFn idFn =
           StringValueExtractorFn.newBuilder()
-              .setFileSystemPath(options().getJavascriptIdFnGcsPath())
-              .setFunctionName(options().getJavascriptIdFnName())
+              .setFileSystemPath(options().getJavaScriptIdFnGcsPath())
+              .setFunctionName(options().getJavaScriptIdFnName())
               .build();
 
       elasticsearchWriter = elasticsearchWriter.withIdFn(idFn);
@@ -128,34 +128,34 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
         }
       };
       elasticsearchWriter = elasticsearchWriter.withIdFn(indexFn);
-    } else if (options().getJavascriptIndexFnGcsPath() != null
-        && options().getJavascriptIndexFnName() != null) {
+    } else if (options().getJavaScriptIndexFnGcsPath() != null
+        && options().getJavaScriptIndexFnName() != null) {
       StringValueExtractorFn indexFn =
           StringValueExtractorFn.newBuilder()
-              .setFileSystemPath(options().getJavascriptIndexFnGcsPath())
-              .setFunctionName(options().getJavascriptIndexFnName())
+              .setFileSystemPath(options().getJavaScriptIndexFnGcsPath())
+              .setFunctionName(options().getJavaScriptIndexFnName())
               .build();
 
       elasticsearchWriter = elasticsearchWriter.withIndexFn(indexFn);
     }
 
-    if (options().getJavascriptTypeFnGcsPath() != null
-        && options().getJavascriptTypeFnName() != null) {
+    if (options().getJavaScriptTypeFnGcsPath() != null
+        && options().getJavaScriptTypeFnName() != null) {
       StringValueExtractorFn typeFn =
           StringValueExtractorFn.newBuilder()
-              .setFileSystemPath(options().getJavascriptTypeFnGcsPath())
-              .setFunctionName(options().getJavascriptTypeFnName())
+              .setFileSystemPath(options().getJavaScriptTypeFnGcsPath())
+              .setFunctionName(options().getJavaScriptTypeFnName())
               .build();
 
       elasticsearchWriter = elasticsearchWriter.withTypeFn(typeFn);
     }
 
-    if (options().getJavascriptIsDeleteFnGcsPath() != null
-        && options().getJavascriptIsDeleteFnName() != null) {
+    if (options().getJavaScriptIsDeleteFnGcsPath() != null
+        && options().getJavaScriptIsDeleteFnName() != null) {
       BooleanValueExtractorFn isDeleteFn =
           BooleanValueExtractorFn.newBuilder()
-              .setFileSystemPath(options().getJavascriptIsDeleteFnGcsPath())
-              .setFunctionName(options().getJavascriptIsDeleteFnName())
+              .setFileSystemPath(options().getJavaScriptIsDeleteFnGcsPath())
+              .setFunctionName(options().getJavaScriptIsDeleteFnName())
               .build();
 
       elasticsearchWriter = elasticsearchWriter.withIsDeleteFn(isDeleteFn);
