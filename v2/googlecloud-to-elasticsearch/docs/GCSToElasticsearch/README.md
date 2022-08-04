@@ -3,7 +3,7 @@
 The [GCSToElasticsearch](../../src/main/java/com/google/cloud/teleport/v2/elasticsearch/templates/GCSToElasticsearch.java) pipeline ingests
 data from one or more CSV files in Google Cloud Storage into Elasticsearch. The template creates the schema for the
 JSON document using one of the following:
-1. Javascript UDF (if provided)
+1. JavaScript UDF (if provided)
 2. JSON schema (if provided)
 3. CSV headers* (default)
 
@@ -13,7 +13,7 @@ If either a UDF or JSON schema is provided then it will be used instead of the C
 
 Pipeline flow is illustrated below:
 
-![alt text](../img/gcs-to-elasticsearch-dataflow.png "GCS to Elasticsearch pipeline flow")
+![alt text](../img/GCS-to-elasticsearch-dataflow.png "GCS to Elasticsearch pipeline flow")
 
 ## Getting Started
 
@@ -37,7 +37,7 @@ export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
-export TEMPLATE_MODULE=gcs-to-elasticsearch
+export TEMPLATE_MODULE=GCS-to-elasticsearch
 export APP_ROOT=/template/${TEMPLATE_MODULE}
 export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_MODULE}-command-spec.json
 export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
@@ -173,16 +173,16 @@ echo '{
               "isOptional":true
           },
           {
-              "name":"javascriptTextTransformGcsPath",
-              "label":"Gcs path to javascript udf source",
-              "helpText":"Gcs path to javascript udf source. Udf will be preferred option for transformation if supplied. Default: null",
+              "name":"JavaScriptTextTransformGCSPath",
+              "label":"GCS path to JavaScript UDF source",
+              "helpText":"GCS path to JavaScript UDF source. UDF will be preferred option for transformation if supplied. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
-              "name":"javascriptTextTransformFunctionName",
-              "label":"UDF Javascript Function Name",
-              "helpText":"UDF Javascript Function Name. Default: null",
+              "name":"JavaScriptTextTransformFunctionName",
+              "label":"UDF JavaScript Function Name",
+              "helpText":"UDF JavaScript Function Name. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
@@ -201,58 +201,58 @@ echo '{
               "isOptional":true
           },
           {
-              "name":"javascriptIndexFnGcsPath",
-              "label":"Gcs path to javascript udf source for function to extract index name from row",
-              "helpText":"Gcs path to javascript udf source. Udf will be preferred option for transformation if supplied. Default: null",
+              "name":"JavaScriptIndexFnGCSPath",
+              "label":"GCS path to JavaScript UDF source for function to extract index name from row",
+              "helpText":"GCS path to JavaScript UDF source. UDF will be preferred option for transformation if supplied. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
-              "name":"javascriptIndexFnName",
-              "label":"UDF Javascript Function Name for function to extract index name from row",
-              "helpText":"UDF Javascript Function Name. Default: null",
+              "name":"JavaScriptIndexFnName",
+              "label":"UDF JavaScript Function Name for function to extract index name from row",
+              "helpText":"UDF JavaScript Function Name. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
-              "name":"javascriptIdFnGcsPath",
-              "label":"Gcs path to javascript udf source for function to extract id value from row",
-              "helpText":"Gcs path to javascript udf source. Udf will be preferred option for transformation if supplied. Default: null",
+              "name":"JavaScriptIdFnGCSPath",
+              "label":"GCS path to JavaScript UDF source for function to extract id value from row",
+              "helpText":"GCS path to JavaScript UDF source. UDF will be preferred option for transformation if supplied. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
-              "name":"javascriptIdFnName",
-              "label":"UDF Javascript Function Name for function to extract id value from row",
-              "helpText":"UDF Javascript Function Name. Default: null",
+              "name":"JavaScriptIdFnName",
+              "label":"UDF JavaScript Function Name for function to extract id value from row",
+              "helpText":"UDF JavaScript Function Name. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
-              "name":"javascriptTypeFnGcsPath",
-              "label":"Gcs path to javascript udf source for function to extract type value from row",
-              "helpText":"Gcs path to javascript udf source. Udf will be preferred option for transformation if supplied. Default: null",
+              "name":"JavaScriptTypeFnGCSPath",
+              "label":"GCS path to JavaScript UDF source for function to extract type value from row",
+              "helpText":"GCS path to JavaScript UDF source. UDF will be preferred option for transformation if supplied. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
-              "name":"javascriptTypeFnName",
-              "label":"UDF Javascript Function Name for function to extract type value from row",
-              "helpText":"UDF Javascript Function Name. Default: null",
+              "name":"JavaScriptTypeFnName",
+              "label":"UDF JavaScript Function Name for function to extract type value from row",
+              "helpText":"UDF JavaScript Function Name. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
-              "name":"javascriptIsDeleteFnGcsPath",
-              "label":"Gcs path to javascript udf source for function to extract whether operation is delete or not from row",
-              "helpText":"Gcs path to javascript udf source. Udf will be preferred option for transformation if supplied. Default: null",
+              "name":"JavaScriptIsDeleteFnGCSPath",
+              "label":"GCS path to JavaScript UDF source for function to extract whether operation is delete or not from row",
+              "helpText":"GCS path to JavaScript UDF source. UDF will be preferred option for transformation if supplied. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
-              "name":"javascriptIsDeleteFnName",
-              "label":"UDF Javascript Function Name for function to extract whether operation is delete or not from row",
-              "helpText":"UDF Javascript Function Name. Default: null",
+              "name":"JavaScriptIsDeleteFnName",
+              "label":"UDF JavaScript Function Name for function to extract whether operation is delete or not from row",
+              "helpText":"UDF JavaScript Function Name. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
@@ -260,6 +260,13 @@ echo '{
               "name":"usePartialUpdate",
               "label":"Use partial updates (update rather than create or index, allowing partial docs) with Elasticsearch requests",
               "helpText":"Whether to use partial updates (update rather than create or index, allowing partial docs) with Elasticsearch requests",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"useBulkIndexRatherThanCreate",
+              "label":"Use index (allows upserts) rather than create (errors on duplicate _id) in bulk requests",
+              "helpText":"Whether to use index (allows upserts) rather than create (errors on duplicate _id) with Elasticsearch bulk requests",
               "paramType":"TEXT",
               "isOptional":true
           }
@@ -298,25 +305,26 @@ The template has the following optional parameters:
 * largeNumFiles: Set to true if number of files is in the tens of thousands. Default: false
 * batchSize: Batch size in number of documents. Default: 1000
 * batchSizeBytes: Batch size in number of bytes. Default: 5242880 (5mb)
-* javascriptTextTransformGcsPath: Gcs path to javascript udf source. Udf will be preferred option for transformation if supplied. Default: null
-* javascriptTextTransformFunctionName: UDF Javascript Function Name. Default: null
+* JavaScriptTextTransformGCSPath: GCS path to JavaScript UDF source. UDF will be preferred option for transformation if supplied. Default: null
+* JavaScriptTextTransformFunctionName: UDF JavaScript Function Name. Default: null
 * maxRetryAttempts: Max retry attempts, must be > 0. Default: no retries
 * maxRetryDuration: Max retry duration in milliseconds, must be > 0. Default: no retries
-* javascriptIndexFnGcsPath: GCS path of storage location for Javascript UDF to extract _index from row data
-* javascriptIndexFnName: Function name for Javascript UDF to extract _index from row data
-* javascriptIdFnGcsPath: GCS path of storage location for Javascript UDF to extract _id from row data
-* javascriptIdFnName: Function name for Javascript UDF to extract _id from row data
-* javascriptTypeFnGcsPath: GCS path of storage location for Javascript UDF to extract _type from row data
-* javascriptTypeFnName: Function name for Javascript UDF to extract _type from row data
-* javascriptIsDeleteFnGcsPath: GCS path of storage location for Javascript UDF to determine if row should be a delete operation (rather than create, index, or update)
-* javascriptIsDeleteFnName: Function name for Javascript UDF to determine if row should be a delete operation (rather than create, index, or update)
+* JavaScriptIndexFnGCSPath: GCS path of storage location for JavaScript UDF to extract _index from row data
+* JavaScriptIndexFnName: Function name for JavaScript UDF to extract _index from row data
+* JavaScriptIdFnGCSPath: GCS path of storage location for JavaScript UDF to extract _id from row data
+* JavaScriptIdFnName: Function name for JavaScript UDF to extract _id from row data
+* JavaScriptTypeFnGCSPath: GCS path of storage location for JavaScript UDF to extract _type from row data
+* JavaScriptTypeFnName: Function name for JavaScript UDF to extract _type from row data
+* JavaScriptIsDeleteFnGCSPath: GCS path of storage location for JavaScript UDF to determine if row should be a delete operation (rather than create, index, or update)
+* JavaScriptIsDeleteFnName: Function name for JavaScript UDF to determine if row should be a delete operation (rather than create, index, or update)
 * usePartialUpdate:  Whether to use partial document updates (update rather than create or index, allows partial document updates)
+* useBulkIndexRatherThanCreate: Whether to use index (allows upserts) rather than create (errors on duplicate _id) with Elasticsearch bulk requests
 
 Template can be executed using the following gcloud command:
 ```sh
 export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud beta dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
-        --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
+        --template-file-GCS-location=${TEMPLATE_IMAGE_SPEC} \
         --parameters inputFileSpec=${INPUT_FILE_SPEC},connectionUrl=${CONNECTION_URL},index=${INDEX},elasticsearchUsername=${ELASTICSEARCH_USERNAME},elasticsearchPassword=${ELASTICSEARCH_PASSWORD},containsHeaders=${HEADERS},deadletterTable=${DEADLETTER_TABLE},delimiter=${DELIMITER}
 ```

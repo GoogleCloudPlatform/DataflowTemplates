@@ -118,4 +118,9 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
   Boolean getUsePartialUpdate();
 
   void setUsePartialUpdate(Boolean usePartialUpdate);
+
+  @Description("Whether to use index (supports upsert) rather than create (errors on duplicate _id) in bulk requests")
+  Boolean getUseBulkIndexRatherThanCreate();
+
+  void setUseBulkIndexRatherThanCreate(Boolean useBulkIndexRatherThanCreate);
 }

@@ -20,7 +20,7 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.ValueExtractorTransform.BooleanValueExtractorFn;
-import com.google.cloud.teleport.v2.elasticsearch.transforms.ValueExtractorTransform.ValueExtractorFn;
+import com.google.cloud.teleport.v2.elasticsearch.transforms.ValueExtractorTransform.StringValueExtractorFn;
 import com.google.cloud.teleport.v2.elasticsearch.utils.ConnectionInformation;
 import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIO;
 import java.util.Optional;
@@ -99,8 +99,8 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
             .withMaxBatchSizeBytes(options().getBatchSizeBytes());
 
     if (options().getJavascriptIdFnGcsPath() != null && options().getJavascriptIdFnName() != null) {
-      ValueExtractorFn idFn =
-          ValueExtractorFn.newBuilder()
+      StringValueExtractorFn idFn =
+          StringValueExtractorFn.newBuilder()
               .setFileSystemPath(options().getJavascriptIdFnGcsPath())
               .setFunctionName(options().getJavascriptIdFnName())
               .build();
@@ -110,8 +110,8 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
 
     if (options().getJavascriptIndexFnGcsPath() != null
         && options().getJavascriptIndexFnName() != null) {
-      ValueExtractorFn indexFn =
-          ValueExtractorFn.newBuilder()
+      StringValueExtractorFn indexFn =
+          StringValueExtractorFn.newBuilder()
               .setFileSystemPath(options().getJavascriptIndexFnGcsPath())
               .setFunctionName(options().getJavascriptIndexFnName())
               .build();
@@ -121,8 +121,8 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
 
     if (options().getJavascriptTypeFnGcsPath() != null
         && options().getJavascriptTypeFnName() != null) {
-      ValueExtractorFn typeFn =
-          ValueExtractorFn.newBuilder()
+      StringValueExtractorFn typeFn =
+          StringValueExtractorFn.newBuilder()
               .setFileSystemPath(options().getJavascriptTypeFnGcsPath())
               .setFunctionName(options().getJavascriptTypeFnName())
               .build();
@@ -145,6 +145,12 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
       elasticsearchWriter =
           elasticsearchWriter.withUsePartialUpdate(
               Boolean.TRUE.equals(options().getUsePartialUpdate()));
+    }
+
+    if (options().getUseBulkIndexRatherThanCreate() != null) {
+      elasticsearchWriter =
+          elasticsearchWriter.withUseBulkIndexRatherThanCreate(
+              Boolean.TRUE.equals(options().getUseBulkIndexRatherThanCreate()));
     }
 
     if (Optional.ofNullable(options().getMaxRetryAttempts()).isPresent()) {

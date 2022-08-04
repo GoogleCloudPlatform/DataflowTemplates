@@ -47,7 +47,7 @@ public class ValueExtractorTransformTest {
     JsonNode jsonNode = objectMapper.readTree(stringifiedJsonRecord);
 
     String result =
-        ValueExtractorTransform.ValueExtractorFn.newBuilder()
+        ValueExtractorTransform.StringValueExtractorFn.newBuilder()
             .setFileSystemPath(TRANSFORM_FILE_PATH)
             .setFunctionName("transform")
             .build()
@@ -73,7 +73,7 @@ public class ValueExtractorTransformTest {
     JsonNode jsonNode = objectMapper.readTree(stringifiedJsonRecord);
 
     String result =
-        ValueExtractorTransform.ValueExtractorFn.newBuilder()
+        ValueExtractorTransform.StringValueExtractorFn.newBuilder()
             .setFileSystemPath(null)
             .setFunctionName(null)
             .build()
@@ -99,7 +99,7 @@ public class ValueExtractorTransformTest {
     JsonNode jsonNode = objectMapper.readTree(stringifiedJsonRecord);
 
     String result =
-        ValueExtractorTransform.ValueExtractorFn.newBuilder()
+        ValueExtractorTransform.StringValueExtractorFn.newBuilder()
             .setFileSystemPath(null)
             .setFunctionName("transform")
             .build()
@@ -123,7 +123,7 @@ public class ValueExtractorTransformTest {
     JsonNode jsonNode = objectMapper.readTree(stringifiedJsonRecord);
 
     String result =
-        ValueExtractorTransform.ValueExtractorFn.newBuilder()
+        ValueExtractorTransform.StringValueExtractorFn.newBuilder()
             .setFileSystemPath(TRANSFORM_FILE_PATH)
             .setFunctionName(null)
             .build()

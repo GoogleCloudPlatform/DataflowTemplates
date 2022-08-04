@@ -1123,6 +1123,8 @@ public class ElasticsearchIO {
 
     abstract boolean getUsePartialUpdate();
 
+    abstract boolean getUseBulkIndexRatherThanCreate();
+
     abstract @Nullable BooleanFieldValueExtractFn getIsDeleteFn();
 
     abstract Builder builder();
@@ -1142,6 +1144,8 @@ public class ElasticsearchIO {
       abstract Builder setTypeFn(FieldValueExtractFn typeFn);
 
       abstract Builder setUsePartialUpdate(boolean usePartialUpdate);
+
+      abstract Builder setUseBulkIndexRatherThanCreate(boolean usePartialUpdate);
 
       abstract Builder setRetryConfiguration(RetryConfiguration retryConfiguration);
 
@@ -1244,6 +1248,17 @@ public class ElasticsearchIO {
      */
     public Write withUsePartialUpdate(boolean usePartialUpdate) {
       return builder().setUsePartialUpdate(usePartialUpdate).build();
+    }
+
+    /**
+     * Provide an instruction to control whether bulk requests use index (allows upserts) or 
+     * create (errors on duplicate _id)
+     *
+     * @param useBulkIndexRatherThanCreate set to true to use index rather than create
+     * @return the {@link Write} with the index or create control set
+     */
+    public Write withUseBulkIndexRatherThanCreate(boolean useBulkIndexRatherThanCreate) {
+      return builder().setUseBulkIndexRatherThanCreate(useBulkIndexRatherThanCreate).build();
     }
 
     /**
@@ -1455,9 +1470,13 @@ public class ElasticsearchIO {
                     "{ \"update\" : %s }%n{ \"doc\" : %s, \"doc_as_upsert\" : true }%n",
                     documentMetadata, document));
           } else {
-            // switch from create to index to allow upsert (beneficial in case of duplication due to
-            // timeout/retry)
-            batch.add(String.format("{ \"index\" : %s }%n%s%n", documentMetadata, document));
+            if (spec.getUseBulkIndexRatherThanCreate()) {
+              // index allows upsert of document with same _id as existing document
+              batch.add(String.format("{ \"index\" : %s }%n%s%n", documentMetadata, document));
+            } else {
+              // create will error if document with same _id already exists
+              batch.add(String.format("{ \"create\" : %s }%n%s%n", documentMetadata, document));
+            }            
           }
         }
 
@@ -1547,7 +1566,7 @@ public class ElasticsearchIO {
         int attempt = 0;
         // while retry policy exists
         while (BackOffUtils.next(sleeper, backoff)) {
-          LOG.warn(RETRY_ATTEMPT_LOG, ++attempt);
+          LOG.warn(String.format(RETRY_ATTEMPT_LOG, ++attempt));
           try {
             Request request = new Request(method, endpoint);
             request.addParameters(params);
