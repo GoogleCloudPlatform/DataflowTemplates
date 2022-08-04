@@ -166,22 +166,22 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
       elasticsearchWriter = elasticsearchWriter.withIndexFn(indexFn);
     }
 
-    if (options().getJavaScriptTypeFnGcsPath() != null
+    if (options().getJavaScriptTypeFnGCSPath() != null
         && options().getJavaScriptTypeFnName() != null) {
       StringValueExtractorFn typeFn =
           StringValueExtractorFn.newBuilder()
-              .setFileSystemPath(options().getJavaScriptTypeFnGcsPath())
+              .setFileSystemPath(options().getJavaScriptTypeFnGCSPath())
               .setFunctionName(options().getJavaScriptTypeFnName())
               .build();
 
       elasticsearchWriter = elasticsearchWriter.withTypeFn(typeFn);
     }
 
-    if (options().getJavaScriptIsDeleteFnGcsPath() != null
+    if (options().getJavaScriptIsDeleteFnGCSPath() != null
         && options().getJavaScriptIsDeleteFnName() != null) {
       BooleanValueExtractorFn isDeleteFn =
           BooleanValueExtractorFn.newBuilder()
-              .setFileSystemPath(options().getJavaScriptIsDeleteFnGcsPath())
+              .setFileSystemPath(options().getJavaScriptIsDeleteFnGCSPath())
               .setFunctionName(options().getJavaScriptIsDeleteFnName())
               .build();
 
