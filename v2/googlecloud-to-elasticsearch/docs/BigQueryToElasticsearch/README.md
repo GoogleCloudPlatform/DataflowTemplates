@@ -142,70 +142,70 @@ echo '{
           },
           {
               "name":"propertyAsIndex",
-              "label":"Document property used to specify index",
-              "helpText":"A property in the document being indexed whose value specifies which index to add the doc to (takes precendence over an index UDF)",
+              "label":"Document property used to specify _index metadata with document in bulk request",
+              "helpText":"A property in the document being indexed whose value will specify _index metadata to be included with document in bulk request (takes precendence over an index UDF)",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
-              "name":"javaScriptIndexFnGCSPath",
-              "label":"GCS path to JavaScript UDF source for function to extract index name from row",
-              "helpText":"GCS path to JavaScript UDF source. UDF will be preferred option for transformation if supplied. Default: null",
+              "name":"javaScriptIndexFnGcsPath",
+              "label":"GCS path to JavaScript UDF source for function that will specify _index metadata to be included with document in bulk request",
+              "helpText":"GCS path to JavaScript UDF source. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
               "name":"javaScriptIndexFnName",
-              "label":"UDF JavaScript Function Name for function to extract index name from row",
+              "label":"UDF JavaScript Function Name for function that will specify _index metadata to be included with document in bulk request",
               "helpText":"UDF JavaScript Function Name. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
               "name":"propertyAsId",
-              "label":"Document property used to specify _id",
-              "helpText":"A property in the document being indexed whose value specifies which _id to use for the doc (takes precendence over an id UDF)",
+              "label":"Document property used to specify _id metadata with document in bulk request",
+              "helpText":"A property in the document being indexed whose value will specify _id metadata to be included with document in bulk request (takes precendence over an index UDF)",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
-              "name":"javaScriptIdFnGCSPath",
-              "label":"GCS path to JavaScript UDF source for function to extract id value from row",
-              "helpText":"GCS path to JavaScript UDF source. UDF will be preferred option for transformation if supplied. Default: null",
+              "name":"javaScriptIdFnGcsPath",
+              "label":"GCS path to JavaScript UDF source function that will specify _id metadata to be included with document in bulk request",
+              "helpText":"GCS path to JavaScript UDF source. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
               "name":"javaScriptIdFnName",
-              "label":"UDF JavaScript Function Name for function to extract id value from row",
+              "label":"UDF JavaScript Function Name for function that will specify _id metadata to be included with document in bulk request",
               "helpText":"UDF JavaScript Function Name. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
-              "name":"javaScriptTypeFnGCSPath",
-              "label":"GCS path to JavaScript UDF source for function to extract type value from row",
-              "helpText":"GCS path to JavaScript UDF source. UDF will be preferred option for transformation if supplied. Default: null",
+              "name":"javaScriptTypeFnGcsPath",
+              "label":"GCS path to JavaScript UDF source for function that will specify _type metadata to be included with document in bulk request",
+              "helpText":"GCS path to JavaScript UDF source. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
               "name":"javaScriptTypeFnName",
-              "label":"UDF JavaScript Function Name for function to extract type value from row",
+              "label":"UDF JavaScript Function Name for function that will specify _type metadata to be included with document in bulk request",
               "helpText":"UDF JavaScript Function Name. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
-              "name":"javaScriptIsDeleteFnGCSPath",
-              "label":"GCS path to JavaScript UDF source for function to extract whether operation is delete or not from row",
-              "helpText":"GCS path to JavaScript UDF source. UDF will be preferred option for transformation if supplied. Default: null",
+              "name":"javaScriptIsDeleteFnGcsPath",
+              "label":"GCS path to JavaScript UDF source for function that will determine if document should be deleted rather than inserted or updated, function should return string value \"true\" or \"false\"",
+              "helpText":"GCS path to JavaScript UDF source. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
               "name":"javaScriptIsDeleteFnName",
-              "label":"UDF JavaScript Function Name for function to extract whether operation is delete or not from row",
+              "label":"UDF JavaScript Function Name for function that will determine if document should be deleted rather than inserted or updated, function should return string value \"true\" or \"false\"",
               "helpText":"UDF JavaScript Function Name. Default: null",
               "paramType":"TEXT",
               "isOptional":true
@@ -257,16 +257,16 @@ The template has the following optional parameters:
 * batchSizeBytes: Batch size in number of bytes. Default: 5242880 (5mb)
 * maxRetryAttempts: Max retry attempts, must be > 0. Default: no retries
 * maxRetryDuration: Max retry duration in milliseconds, must be > 0. Default: no retries
-* propertyAsIndex: A property in the document being indexed whose value specifies which _index to add the doc to (takes precendence over an index UDF)
-* javaScriptIndexFnGCSPath: GCS path of storage location for JavaScript UDF to extract _index from row data
-* javaScriptIndexFnName: Function name for JavaScript UDF to extract _index from row data
-* propertyAsId: A property in the document being indexed whose value specifies which _id to use for the doc (takes precendence over an id UDF)
-* javaScriptIdFnGCSPath: GCS path of storage location for JavaScript UDF to extract _id from row data
-* javaScriptIdFnName: Function name for JavaScript UDF to extract _id from row data
-* javaScriptTypeFnGCSPath: GCS path of storage location for JavaScript UDF to extract _type from row data
-* javaScriptTypeFnName: Function name for JavaScript UDF to extract _type from row data
-* javaScriptIsDeleteFnGCSPath: GCS path of storage location for JavaScript UDF to determine if row should be a delete operation (rather than create, index, or update)
-* javaScriptIsDeleteFnName: Function name for JavaScript UDF to determine if row should be a delete operation (rather than create, index, or update)
+* propertyAsIndex: A property in the document being indexed whose value will specify _index metadata to be included with document in bulk request (takes precendence over an index UDF)
+* javaScriptIndexFnGcsPath: GCS path of storage location for JavaScript UDF that will specify _index metadata to be included with document in bulk request
+* javaScriptIndexFnName: Function name for JavaScript UDF that will specify _index metadata to be included with document in bulk request
+* propertyAsId: A property in the document being indexed whose value will specify _id metadata to be included with document in bulk request (takes precendence over an index UDF)
+* javaScriptIdFnGcsPath: GCS path of storage location for JavaScript UDF that will specify _id metadata to be included with document in bulk request
+* javaScriptIdFnName: Function name for JavaScript UDF that will specify _id metadata to be included with document in bulk request
+* javaScriptTypeFnGcsPath: GCS path of storage location for JavaScript UDF that will specify _type metadata to be included with document in bulk request
+* javaScriptTypeFnName: Function name for JavaScript UDF that will specify _type metadata to be included with document in bulk request
+* javaScriptIsDeleteFnGcsPath: GCS path of storage location for JavaScript UDF that will determine if document should be deleted rather than inserted or updated, function should return string value "true" or "false"
+* javaScriptIsDeleteFnName: Function name for JavaScript UDF that will determine if document should be deleted rather than inserted or updated, function should return string value "true" or "false"
 * usePartialUpdate:  Whether to use partial document updates (update rather than create or index, allows partial document updates)
 * bulkInsertMethod: Whether to use INDEX (index, allows upserts) or the default CREATE (create, errors on duplicate _id) with Elasticsearch bulk requests
 
@@ -275,6 +275,6 @@ Template can be executed using the following gcloud command:
 export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
-        --template-file-GCS-location=${TEMPLATE_IMAGE_SPEC} \
+        --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
         --parameters inputTableSpec=${INPUT_TABLE_SPEC},connectionUrl=${CONNECTION_URL},index=${INDEX},elasticsearchUsername=${ELASTICSEARCH_USERNAME},elasticsearchPassword=${ELASTICSEARCH_PASSWORD},useLegacySql=${USE_LEGACY_SQL}
 ```

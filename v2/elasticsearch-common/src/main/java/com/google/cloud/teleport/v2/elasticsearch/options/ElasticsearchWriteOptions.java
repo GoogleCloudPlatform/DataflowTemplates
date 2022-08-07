@@ -75,52 +75,52 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   void setMaxRetryDuration(Long maxRetryDuration);
 
-  @Description("A property in the document being indexed whose value specifies which index to add the doc to (takes precendence over an index UDF)")
+  @Description("A property in the document being indexed whose value will specify _index metadata to be included with document in bulk request (takes precendence over an index UDF)")
   String getPropertyAsIndex();
 
   void setPropertyAsIndex(String propertyAsIndex);
 
-  @Description("GCS path to JavaScript UDF source for index extraction function")
-  String getJavaScriptIndexFnGCSPath();
+  @Description("GCS path to JavaScript UDF source for function that will specify _index metadata to be included with document in bulk request")
+  String getJavaScriptIndexFnGcsPath();
 
-  void setJavaScriptIndexFnGCSPath(String javaScriptTextTransformGCSPath);
+  void setJavaScriptIndexFnGcsPath(String javaScriptTextTransformGcsPath);
 
-  @Description("UDF JavaScript Function Name for index extraction")
+  @Description("UDF JavaScript Function Name for function that will specify _index metadata to be included with document in bulk request")
   String getJavaScriptIndexFnName();
 
   void setJavaScriptIndexFnName(String javaScriptTextTransformFunctionName);
 
-  @Description("A property in the document being indexed whose value specifies which _id to use for the doc (takes precendence over an id UDF)")
+  @Description("A property in the document being indexed whose value will specify _id metadata to be included with document in bulk request (takes precendence over an id UDF)")
   String getPropertyAsId();
 
   void setPropertyAsId(String propertyAsId);
 
-  @Description("GCS path to JavaScript UDF source for id extraction function")
-  String getJavaScriptIdFnGCSPath();
+  @Description("GCS path to JavaScript UDF source for function that will specify _id metadata to be included with document in bulk request")
+  String getJavaScriptIdFnGcsPath();
 
-  void setJavaScriptIdFnGCSPath(String javaScriptTextTransformGCSPath);
+  void setJavaScriptIdFnGcsPath(String javaScriptTextTransformGcsPath);
 
-  @Description("UDF JavaScript Function Name for id extraction")
+  @Description("UDF JavaScript Function Name for function that will specify _id metadata to be included with document in bulk request")
   String getJavaScriptIdFnName();
 
   void setJavaScriptIdFnName(String javaScriptTextTransformFunctionName);
 
-  @Description("GCS path to JavaScript UDF source for type extraction function")
-  String getJavaScriptTypeFnGCSPath();
+  @Description("GCS path to JavaScript UDF source for function that will specify _type metadata to be included with document in bulk request")
+  String getJavaScriptTypeFnGcsPath();
 
-  void setJavaScriptTypeFnGCSPath(String javaScriptTextTransformGCSPath);
+  void setJavaScriptTypeFnGcsPath(String javaScriptTextTransformGcsPath);
 
-  @Description("UDF JavaScript Function Name for type extraction")
+  @Description("UDF JavaScript Function Name for function that will specify _type metadata to be included with document in bulk request")
   String getJavaScriptTypeFnName();
 
   void setJavaScriptTypeFnName(String javaScriptTextTransformFunctionName);
 
-  @Description("GCS path to JavaScript UDF source for deletion determination")
-  String getJavaScriptIsDeleteFnGCSPath();
+  @Description("GCS path to JavaScript UDF source for function that will determine if document should be deleted rather than inserted or updated, function should return string value \"true\" or \"false\"")
+  String getJavaScriptIsDeleteFnGcsPath();
 
-  void setJavaScriptIsDeleteFnGCSPath(String javaScriptTextTransformGCSPath);
+  void setJavaScriptIsDeleteFnGcsPath(String javaScriptTextTransformGcsPath);
 
-  @Description("UDF JavaScript Function Name for deletion determination")
+  @Description("UDF JavaScript Function Name for function that will determine if document should be deleted rather than inserted or updated, function should return string value \"true\" or \"false\"")
   String getJavaScriptIsDeleteFnName();
 
   void setJavaScriptIsDeleteFnName(String javaScriptTextTransformFunctionName);
