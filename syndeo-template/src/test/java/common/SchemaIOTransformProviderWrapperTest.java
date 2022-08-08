@@ -202,16 +202,15 @@ public class SchemaIOTransformProviderWrapperTest {
   @Test
   public void testGetAll() throws Exception {
     List<SchemaTransformProvider> providers = SchemaIOTransformProviderWrapper.getAll();
-    System.out.println("PROVIDERS: " + providers.get(0).toString());
     assertEquals(
         1,
         providers.stream()
-            .filter((provider) -> provider.identifier().equals("fake:v1:read"))
+            .filter((provider) -> provider.identifier().equals("schemaIO:fake:v1:read"))
             .count());
     assertEquals(
         1,
         providers.stream()
-            .filter((provider) -> provider.identifier().equals("fake:v1:write"))
+            .filter((provider) -> provider.identifier().equals("schemaIO:fake:v1:write"))
             .count());
   }
 }
