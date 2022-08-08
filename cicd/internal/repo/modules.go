@@ -27,7 +27,7 @@ const (
 	// Roots in relation to the root directory of the repository.
 	ClassicRoot = "."
 	FlexRoot    = "v2"
-	SyndeoRoot    = "syndeo-template"
+	SyndeoRoot  = "syndeo-template"
 	ItRoot      = "it"
 )
 
