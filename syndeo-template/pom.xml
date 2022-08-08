@@ -30,6 +30,7 @@
         <bigquery.version>2.9.0</bigquery.version>
         <commons.version>1.8</commons.version>
         <commons-text.version>1.9</commons-text.version>
+    <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
     <java.version>1.8</java.version>
     <maven-compiler-plugin.version>3.6.2</maven-compiler-plugin.version>
     <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
@@ -143,6 +144,44 @@
                 </execution>
               </executions>
             </plugin>
+      <!-- Keep this equivalent with v2/pom.xml. Unfortunately, we need to duplicate the
+      plugin. -->
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+        <version>${spotless-maven-plugin.version}</version>
+        <configuration>
+          <formats>
+            <!-- Avoid trailing whitespace and require ending newline. -->
+            <format>
+              <includes>
+                <include>*.md</include>
+                <include>.gitignore</include>
+              </includes>
+              <trimTrailingWhitespace/>
+              <endWithNewline/>
+            </format>
+          </formats>
+          <java>
+            <toggleOffOn />
+            <googleJavaFormat>
+              <version>1.8</version>
+              <style>GOOGLE</style>
+            </googleJavaFormat>
+            <licenseHeader>
+              <file>JAVA_LICENSE_HEADER</file>
+            </licenseHeader>
+          </java>
+        </configuration>
+        <!-- Bind to verify. -->
+        <executions>
+          <execution>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
         </plugins>
     </build>
 </project>
