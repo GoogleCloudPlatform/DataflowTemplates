@@ -15,6 +15,8 @@
  */
 package com.google.cloud.syndeo;
 
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.MoreObjects.firstNonNull;
+
 import com.google.cloud.syndeo.common.ProviderUtil.TransformSpec;
 import com.google.cloud.syndeo.v1.SyndeoV1.PipelineDescription;
 import java.io.File;
@@ -29,10 +31,15 @@ import org.apache.beam.sdk.schemas.Schema.FieldType;
 
 public class WritePipelineSpecForTesting {
 
+  public static final String GCP_PROJECT =
+      firstNonNull(System.getenv("GCP_PROJECT"), "unknown_project12354");
+  public static final String PUBSUB_TOPIC =
+      firstNonNull(System.getenv("PUBSUB_TOPIC"), "unknown_topic12354");
+  public static final String GCS_BUCKET =
+      firstNonNull(System.getenv("GCS_BUCKET") + "/syndeotest/avro", "unknown_bucket1248u058");
+
   public static void main(String[] args) {
-    writeToFile(
-        pubsubToAvro(),
-        "/Users/laraschmidt/Documents/beam2/config_gen/beam/pubsub_to_avro_config.txt");
+    writeToFile(pubsubToAvro(), System.getenv("HOME") + "/pubsub_to_avro_config.txt");
   }
 
   public static void writeToFile(List<TransformSpec> specs, String filename) {
@@ -59,7 +66,7 @@ public class WritePipelineSpecForTesting {
         new TransformSpec(
             "schemaIO:pubsub:read",
             Arrays.asList(
-                "projects/google.com:clouddfe/topics/syndeo_demo",
+                String.format("projects/%s/topics/%s", GCP_PROJECT, PUBSUB_TOPIC),
                 schema,
                 null,
                 null,
@@ -70,7 +77,7 @@ public class WritePipelineSpecForTesting {
     specs.add(
         new TransformSpec(
             "schemaIO:avro:write",
-            Arrays.asList("gs://clouddfe-laraschmidt/avro-out", schema, 60L)));
+            Arrays.asList(String.format("gs://%s/avro-out", GCS_BUCKET), schema, 60L)));
     return specs;
   }
 

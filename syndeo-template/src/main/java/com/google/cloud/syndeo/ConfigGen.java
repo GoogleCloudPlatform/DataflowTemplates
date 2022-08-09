@@ -25,11 +25,12 @@ import java.io.IOException;
 import org.apache.beam.sdk.schemas.SchemaTranslation;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 
+/** A script to generate a transform configuration for Syndeo. */
 public class ConfigGen {
 
   public static void main(String[] args) {
 
-    String fileName = "/Users/laraschmidt/Documents/beam2/config_gen/beam/transforms_metadata.txt";
+    String fileName = System.getenv("HOME") + "/transforms_metadata.txt";
 
     SchemaTransformConfigurations.Builder config = SchemaTransformConfigurations.newBuilder();
 
@@ -51,7 +52,7 @@ public class ConfigGen {
       file.close();
       System.out.println("Wrote to " + output.getName());
     } catch (IOException e) {
-      System.out.println("An error occurred.");
+      System.out.println("An error occurred: " + e.toString());
     }
   }
 }

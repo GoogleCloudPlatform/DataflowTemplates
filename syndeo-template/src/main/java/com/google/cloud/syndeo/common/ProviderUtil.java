@@ -44,7 +44,6 @@ public class ProviderUtil {
 
     Map<String, SchemaTransformProvider> map = new HashMap<>();
     for (SchemaTransformProvider p : list) {
-      // System.out.println(p.identifier());
       map.put(p.identifier(), p);
     }
 
