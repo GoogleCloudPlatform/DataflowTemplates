@@ -26,9 +26,9 @@ import org.apache.beam.sdk.options.Validation.Required;
 public interface SpannerToBigQueryOptions extends PipelineOptions, WriteOptions {
   @Description("Spanner table to read data from.")
   @Required
-  String getSpannerTable();
+  String getSpannerTableId();
 
-  void setSpannerTable(String spannerTable);
+  void setSpannerTableId(String spannerTableId);
 
   @Description("Instance id for spanner table.")
   @Required

@@ -47,7 +47,7 @@ public final class SpannerToBigQuery {
     pipeline
         .apply(
             SpannerIO.read()
-                .withTable(options.getSpannerTable())
+                .withTable(options.getSpannerTableId())
                 .withSpannerConfig(spannerConfig)
                 .withQuery(options.getSqlQuery()))
         .apply(new StructToJson())
