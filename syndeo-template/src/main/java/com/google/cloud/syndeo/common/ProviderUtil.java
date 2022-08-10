@@ -69,7 +69,9 @@ public class ProviderUtil {
     public TransformSpec(String inputId, List<Object> configurationAsList) {
       this.inputId = inputId;
       provider = getProvider(inputId);
-      if (provider == null) throw new RuntimeException(inputId + " not found ");
+      if (provider == null) {
+        throw new RuntimeException(inputId + " not found ");
+      }
       configuration =
           Row.withSchema(provider.configurationSchema()).addValues(configurationAsList).build();
     }
@@ -77,7 +79,9 @@ public class ProviderUtil {
     public TransformSpec(ConfiguredSchemaTransform schemaTransform) {
       inputId = schemaTransform.getTransformUrn();
       provider = getProvider(inputId);
-      if (provider == null) throw new RuntimeException(inputId + " not found ");
+      if (provider == null) {
+        throw new IllegalArgumentException(inputId + " not found ");
+      }
       // TODO: Test handling of rows with missing fields.
       configuration =
           SchemaUtil.addNullsToMatchSchema(

@@ -15,7 +15,7 @@
  */
 package com.google.cloud.syndeo;
 
-import static avro.shaded.com.google.common.base.Preconditions.checkArgument;
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.cloud.syndeo.common.ProviderUtil;
 import com.google.cloud.syndeo.common.ProviderUtil.TransformSpec;

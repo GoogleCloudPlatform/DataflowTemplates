@@ -1,5 +1,5 @@
 {
-  "name": "Any-To-Any-IO-Template",
+  "name": "Any-To-Any-Template",
   "description": "A Beam pipeline that reads from any IO and produces any IO.",
   "parameters": [
     {

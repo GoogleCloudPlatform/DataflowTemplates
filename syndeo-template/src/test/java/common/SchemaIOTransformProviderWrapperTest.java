@@ -60,6 +60,64 @@ import org.junit.runners.JUnit4;
 public class SchemaIOTransformProviderWrapperTest {
   @Rule public final transient TestPipeline p = TestPipeline.create();
 
+  @Test
+  @Category(NeedsRunner.class)
+  public void testSchemaWrapperRead() throws Exception {
+    FakeSchemaIOProvider fakeProvider = new FakeSchemaIOProvider();
+    SchemaIOTransformProviderWrapper wrapper =
+        new SchemaIOTransformProviderWrapper(fakeProvider, true);
+
+    Schema schema = Schema.of(Field.of("a", FieldType.STRING), Field.of("b", FieldType.STRING));
+    Row config = Row.withSchema(wrapper.configurationSchema()).addValues("loc", schema, 3).build();
+
+    assertTrue(wrapper.outputCollectionNames().size() == 1);
+    PCollection<Row> read =
+        PCollectionRowTuple.empty(p)
+            .apply(wrapper.from(config).buildTransform())
+            .get(wrapper.outputCollectionNames().get(0));
+    Row expected = Row.withSchema(schema).addValues("loc3", "loc3").build();
+    PAssert.that(read).containsInAnyOrder(expected, expected, expected);
+    p.run().waitUntilFinish();
+  }
+
+  @Test
+  @Category(NeedsRunner.class)
+  public void testSchemaWrapperWrite() throws Exception {
+    FakeSchemaIOProvider fakeProvider = new FakeSchemaIOProvider();
+    SchemaIOTransformProviderWrapper wrapper =
+        new SchemaIOTransformProviderWrapper(fakeProvider, false);
+
+    Schema schema = Schema.of(Field.of("a", FieldType.STRING), Field.of("b", FieldType.STRING));
+    Row config = Row.withSchema(wrapper.configurationSchema()).addValues("loc", schema, 3).build();
+
+    assertTrue(wrapper.inputCollectionNames().size() == 1);
+    Row inputRow = Row.withSchema(schema).addValues("loc3", "loc3").build();
+    PCollection<Row> toWrite =
+        p.apply(
+            Create.of(inputRow, inputRow, inputRow)
+                .withCoder(RowCoder.of(schema))
+                .withRowSchema(schema));
+
+    PCollectionRowTuple.of(wrapper.inputCollectionNames().get(0), toWrite)
+        .apply(wrapper.from(config).buildTransform());
+    p.run().waitUntilFinish();
+  }
+
+  @Test
+  public void testGetAll() throws Exception {
+    List<SchemaTransformProvider> providers = SchemaIOTransformProviderWrapper.getAll();
+    assertEquals(
+        1,
+        providers.stream()
+            .filter((provider) -> provider.identifier().equals("schemaIO:fake:v1:read"))
+            .count());
+    assertEquals(
+        1,
+        providers.stream()
+            .filter((provider) -> provider.identifier().equals("schemaIO:fake:v1:write"))
+            .count());
+  }
+
   @AutoService(SchemaIOProvider.class)
   public static class FakeSchemaIOProvider implements SchemaIOProvider {
 
@@ -154,63 +212,5 @@ public class SchemaIOTransformProviderWrapperTest {
         }
       };
     }
-  }
-
-  @Test
-  @Category(NeedsRunner.class)
-  public void testSchemaWrapperRead() throws Exception {
-    FakeSchemaIOProvider fakeProvider = new FakeSchemaIOProvider();
-    SchemaIOTransformProviderWrapper wrapper =
-        new SchemaIOTransformProviderWrapper(fakeProvider, true);
-
-    Schema schema = Schema.of(Field.of("a", FieldType.STRING), Field.of("b", FieldType.STRING));
-    Row config = Row.withSchema(wrapper.configurationSchema()).addValues("loc", schema, 3).build();
-
-    assertTrue(wrapper.outputCollectionNames().size() == 1);
-    PCollection<Row> read =
-        PCollectionRowTuple.empty(p)
-            .apply(wrapper.from(config).buildTransform())
-            .get(wrapper.outputCollectionNames().get(0));
-    Row expected = Row.withSchema(schema).addValues("loc3", "loc3").build();
-    PAssert.that(read).containsInAnyOrder(expected, expected, expected);
-    p.run().waitUntilFinish();
-  }
-
-  @Test
-  @Category(NeedsRunner.class)
-  public void testSchemaWrapperWrite() throws Exception {
-    FakeSchemaIOProvider fakeProvider = new FakeSchemaIOProvider();
-    SchemaIOTransformProviderWrapper wrapper =
-        new SchemaIOTransformProviderWrapper(fakeProvider, false);
-
-    Schema schema = Schema.of(Field.of("a", FieldType.STRING), Field.of("b", FieldType.STRING));
-    Row config = Row.withSchema(wrapper.configurationSchema()).addValues("loc", schema, 3).build();
-
-    assertTrue(wrapper.inputCollectionNames().size() == 1);
-    Row inputRow = Row.withSchema(schema).addValues("loc3", "loc3").build();
-    PCollection<Row> toWrite =
-        p.apply(
-            Create.of(inputRow, inputRow, inputRow)
-                .withCoder(RowCoder.of(schema))
-                .withRowSchema(schema));
-
-    PCollectionRowTuple.of(wrapper.inputCollectionNames().get(0), toWrite)
-        .apply(wrapper.from(config).buildTransform());
-    p.run().waitUntilFinish();
-  }
-
-  @Test
-  public void testGetAll() throws Exception {
-    List<SchemaTransformProvider> providers = SchemaIOTransformProviderWrapper.getAll();
-    assertEquals(
-        1,
-        providers.stream()
-            .filter((provider) -> provider.identifier().equals("schemaIO:fake:v1:read"))
-            .count());
-    assertEquals(
-        1,
-        providers.stream()
-            .filter((provider) -> provider.identifier().equals("schemaIO:fake:v1:write"))
-            .count());
   }
 }

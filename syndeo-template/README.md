@@ -6,6 +6,8 @@ and intermediate transforms).
 The prototype comes with a few utilties to bootstrap a simple workflow, though these are meant only for testing of the
 template capabilities.
 
+**This is a prototype and may change significantly**. It is not supported for direct use.
+
 ## How does it work?
 
 The template works by relying on Beam transforms that implement the `SchemaTransform` interface and exist in the
