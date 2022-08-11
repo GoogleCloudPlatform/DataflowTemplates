@@ -579,4 +579,13 @@ public class BigQueryConvertersTest {
 
     assertThat(name).isEqualTo("my_table_name");
   }
+
+  @Test
+  public void testSanitizeBigQueryDatasetChars() {
+    String sourceName = "my$data-set.name";
+
+    String name = BigQueryConverters.sanitizeBigQueryDatasetChars(sourceName, "_");
+
+    assertThat(name).isEqualTo("my_data_set_name");
+  }
 }

@@ -64,7 +64,7 @@ public class DataStreamMapper extends BigQueryMapper<TableRow, KV<TableId, Table
   public TableId getTableId(TableRow input) {
     DatastreamRow row = DatastreamRow.of(input);
 
-    String datasetName = row.formatStringTemplateForBigQuery(datasetNameTemplate);
+    String datasetName = row.formatStringTemplateForBigQueryDataset(datasetNameTemplate);
     String tableName = row.formatStringTemplateForBigQuery(tableNameTemplate);
 
     return TableId.of(getProjectId(), datasetName, tableName);
