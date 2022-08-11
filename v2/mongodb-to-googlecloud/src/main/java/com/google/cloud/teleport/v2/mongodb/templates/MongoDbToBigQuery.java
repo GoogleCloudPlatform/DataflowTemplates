@@ -68,7 +68,6 @@ public class MongoDbToBigQuery {
         .apply(
             "Read Documents",
             MongoDbIO.read()
-                .withBucketAuto(true)
                 .withUri(options.getMongoDbUri())
                 .withDatabase(options.getDatabase())
                 .withCollection(options.getCollection()))
