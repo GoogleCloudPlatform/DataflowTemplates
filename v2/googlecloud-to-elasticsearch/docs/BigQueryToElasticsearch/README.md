@@ -68,7 +68,7 @@ echo '{
               "label":"Table in BigQuery to read from",
               "helpText":"Table in BigQuery to read from in form of: my-project:my-dataset.my-table. Either this or query must be provided.",
               "paramType":"TEXT",
-              "isOptional":false
+              "isOptional":true
           },
           {
               "name":"connectionUrl",
@@ -90,6 +90,13 @@ echo '{
               "helpText":"Password for Elasticsearch endpoint",
               "paramType":"TEXT",
               "isOptional":false
+          },
+          {
+            "name":"apiKey",
+            "label":"Elasticsearch apiKey",
+            "helpText":"API key for access without requiring basic authentication.",
+            "paramType":"TEXT",
+            "isOptional":false
           },
           {
               "name":"index",
@@ -247,6 +254,7 @@ The template requires the following parameters:
 * index: The index toward which the requests will be issued, ex: my-index
 * elasticsearchUsername: Elasticsearch username used to connect to Elasticsearch endpoint
 * elasticsearchPassword: Elasticsearch password used to connect to Elasticsearch endpoint
+* apiKey: Base64 Encoded API Key for access without requiring basic authentication. Refer  https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request.
 
 The template has the following optional parameters:
 * useLegacySql: Set to true to use legacy SQL (only applicable if supplying query). Default: false

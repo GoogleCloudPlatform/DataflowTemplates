@@ -103,6 +103,13 @@ echo '{
               "isOptional":false
           },
           {
+            "name":"apiKey",
+            "label":"Elasticsearch apiKey",
+            "helpText":"API key for access without requiring basic authentication.",
+            "paramType":"TEXT",
+            "isOptional":false
+          },
+          {
               "name":"index",
               "label":"Elasticsearch index",
               "helpText":"The index toward which the requests will be issued, ex: my-index",
@@ -310,6 +317,7 @@ The template requires the following parameters:
 * delimiter: Delimiting character in CSV file(s). Default: use delimiter found in csvFormat
 * elasticsearchUsername: Elasticsearch username used to connect to Elasticsearch endpoint
 * elasticsearchPassword: Elasticsearch password used to connect to Elasticsearch endpoint
+* apiKey: Base64 Encoded API Key for access without requiring basic authentication. Refer  https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request.
 
 The template has the following optional parameters:
 * inputFormat: The format of the input files, default is CSV.
