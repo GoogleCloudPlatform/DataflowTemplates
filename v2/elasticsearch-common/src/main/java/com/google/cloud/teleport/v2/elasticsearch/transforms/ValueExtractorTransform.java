@@ -37,9 +37,7 @@ import javax.script.ScriptException;
  */
 public class ValueExtractorTransform {
 
-  /**
-   * Base Class for routing functions that implements {@link FieldValueExtractFn}.
-   */
+  /** Base Class for routing functions that implements {@link FieldValueExtractFn}. */
   public abstract static class ValueExtractorFn {
     @Nullable
     abstract String functionName();

@@ -75,52 +75,62 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   void setMaxRetryDuration(Long maxRetryDuration);
 
-  @Description("A property in the document being indexed whose value will specify _index metadata to be included with document in bulk request (takes precendence over an index UDF)")
+  @Description(
+      "A property in the document being indexed whose value will specify _index metadata to be included with document in bulk request (takes precendence over an index UDF)")
   String getPropertyAsIndex();
 
   void setPropertyAsIndex(String propertyAsIndex);
 
-  @Description("GCS path to JavaScript UDF source for function that will specify _index metadata to be included with document in bulk request")
+  @Description(
+      "GCS path to JavaScript UDF source for function that will specify _index metadata to be included with document in bulk request")
   String getJavaScriptIndexFnGcsPath();
 
   void setJavaScriptIndexFnGcsPath(String javaScriptTextTransformGcsPath);
 
-  @Description("UDF JavaScript Function Name for function that will specify _index metadata to be included with document in bulk request")
+  @Description(
+      "UDF JavaScript Function Name for function that will specify _index metadata to be included with document in bulk request")
   String getJavaScriptIndexFnName();
 
   void setJavaScriptIndexFnName(String javaScriptTextTransformFunctionName);
 
-  @Description("A property in the document being indexed whose value will specify _id metadata to be included with document in bulk request (takes precendence over an id UDF)")
+  @Description(
+      "A property in the document being indexed whose value will specify _id metadata to be included with document in bulk request (takes precendence over an id UDF)")
   String getPropertyAsId();
 
   void setPropertyAsId(String propertyAsId);
 
-  @Description("GCS path to JavaScript UDF source for function that will specify _id metadata to be included with document in bulk request")
+  @Description(
+      "GCS path to JavaScript UDF source for function that will specify _id metadata to be included with document in bulk request")
   String getJavaScriptIdFnGcsPath();
 
   void setJavaScriptIdFnGcsPath(String javaScriptTextTransformGcsPath);
 
-  @Description("UDF JavaScript Function Name for function that will specify _id metadata to be included with document in bulk request")
+  @Description(
+      "UDF JavaScript Function Name for function that will specify _id metadata to be included with document in bulk request")
   String getJavaScriptIdFnName();
 
   void setJavaScriptIdFnName(String javaScriptTextTransformFunctionName);
 
-  @Description("GCS path to JavaScript UDF source for function that will specify _type metadata to be included with document in bulk request")
+  @Description(
+      "GCS path to JavaScript UDF source for function that will specify _type metadata to be included with document in bulk request")
   String getJavaScriptTypeFnGcsPath();
 
   void setJavaScriptTypeFnGcsPath(String javaScriptTextTransformGcsPath);
 
-  @Description("UDF JavaScript Function Name for function that will specify _type metadata to be included with document in bulk request")
+  @Description(
+      "UDF JavaScript Function Name for function that will specify _type metadata to be included with document in bulk request")
   String getJavaScriptTypeFnName();
 
   void setJavaScriptTypeFnName(String javaScriptTextTransformFunctionName);
 
-  @Description("GCS path to JavaScript UDF source for function that will determine if document should be deleted rather than inserted or updated, function should return string value \"true\" or \"false\"")
+  @Description(
+      "GCS path to JavaScript UDF source for function that will determine if document should be deleted rather than inserted or updated, function should return string value \"true\" or \"false\"")
   String getJavaScriptIsDeleteFnGcsPath();
 
   void setJavaScriptIsDeleteFnGcsPath(String javaScriptTextTransformGcsPath);
 
-  @Description("UDF JavaScript Function Name for function that will determine if document should be deleted rather than inserted or updated, function should return string value \"true\" or \"false\"")
+  @Description(
+      "UDF JavaScript Function Name for function that will determine if document should be deleted rather than inserted or updated, function should return string value \"true\" or \"false\"")
   String getJavaScriptIsDeleteFnName();
 
   void setJavaScriptIsDeleteFnName(String javaScriptTextTransformFunctionName);
@@ -130,7 +140,8 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
 
   void setUsePartialUpdate(Boolean usePartialUpdate);
 
-  @Description("Whether to use INDEX (index, supports upsert) or CREATE (create, errors on duplicate _id) in bulk requests")
+  @Description(
+      "Whether to use INDEX (index, supports upsert) or CREATE (create, errors on duplicate _id) in bulk requests")
   @Default.Enum("CREATE")
   BulkInsertMethodOptions getBulkInsertMethod();
 

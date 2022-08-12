@@ -57,8 +57,8 @@ import org.joda.time.Duration;
 public abstract class WriteToElasticsearch extends PTransform<PCollection<String>, PDone> {
 
   /**
-   * The {@link StringFieldValueExtractFn} class is a class implementation for {@link FieldValueExtractFn} 
-   * to extract a property by name.
+   * The {@link StringFieldValueExtractFn} class is a class implementation for {@link
+   * FieldValueExtractFn} to extract a property by name.
    */
   @AutoValue
   abstract static class StringFieldValueExtractFn implements FieldValueExtractFn {
@@ -136,9 +136,10 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
           StringFieldValueExtractFn.newBuilder()
               .setPropertyName(options().getPropertyAsId())
               .build();
-    
+
       elasticsearchWriter = elasticsearchWriter.withIdFn(idFn);
-    } else if (options().getJavaScriptIdFnGcsPath() != null && options().getJavaScriptIdFnName() != null) {
+    } else if (options().getJavaScriptIdFnGcsPath() != null
+        && options().getJavaScriptIdFnName() != null) {
       StringValueExtractorFn idFn =
           StringValueExtractorFn.newBuilder()
               .setFileSystemPath(options().getJavaScriptIdFnGcsPath())
@@ -196,8 +197,7 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
 
     if (options().getBulkInsertMethod() != null) {
       elasticsearchWriter =
-          elasticsearchWriter.withBulkInsertMethod(
-              options().getBulkInsertMethod());
+          elasticsearchWriter.withBulkInsertMethod(options().getBulkInsertMethod());
     }
 
     if (Optional.ofNullable(options().getMaxRetryAttempts()).isPresent()) {

@@ -184,7 +184,8 @@ public class ElasticsearchIO {
         // advised default starting batch size in ES docs
         .setMaxBatchSizeBytes(5L * 1024L * 1024L)
         .setUsePartialUpdate(false) // default is document upsert
-        .setBulkInsertMethod(BulkInsertMethodOptions.CREATE) // default to create (error on duplicate _id)
+        .setBulkInsertMethod(
+            BulkInsertMethodOptions.CREATE) // default to create (error on duplicate _id)
         .build();
   }
 
@@ -1253,8 +1254,8 @@ public class ElasticsearchIO {
     }
 
     /**
-     * Provide an instruction to control whether bulk requests use index (allows upserts) or 
-     * create (errors on duplicate _id).
+     * Provide an instruction to control whether bulk requests use index (allows upserts) or create
+     * (errors on duplicate _id).
      *
      * @param bulkInsertMethod set to INDEX to use index or CREATE to use create
      * @return the {@link Write} with the index or create control set
@@ -1478,7 +1479,7 @@ public class ElasticsearchIO {
             } else {
               // create will error if document with same _id already exists
               batch.add(String.format("{ \"create\" : %s }%n%s%n", documentMetadata, document));
-            }            
+            }
           }
         }
 
