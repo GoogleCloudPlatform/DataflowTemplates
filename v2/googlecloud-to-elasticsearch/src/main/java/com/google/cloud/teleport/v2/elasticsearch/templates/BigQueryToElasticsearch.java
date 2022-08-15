@@ -32,7 +32,6 @@ import org.apache.beam.sdk.transforms.ParDo;
  * README.md</a></b> for further information.
  */
 public class BigQueryToElasticsearch {
-
   /**
    * Main entry point for pipeline execution.
    *
@@ -57,7 +56,6 @@ public class BigQueryToElasticsearch {
 
     // Create the pipeline.
     Pipeline pipeline = Pipeline.create(options);
-
     /*
      * Steps: 1) Read records from BigQuery via BigQueryIO.
      *        2) Create json string from Table Row.
