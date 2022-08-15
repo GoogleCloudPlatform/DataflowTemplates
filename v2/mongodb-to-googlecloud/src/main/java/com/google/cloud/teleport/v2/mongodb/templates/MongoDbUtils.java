@@ -42,7 +42,7 @@ public class MongoDbUtils implements Serializable {
    */
   static final DateTimeFormatter TIMEFORMAT =
       DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
-  
+
   static final Gson GSON = new Gson();
 
   public static TableSchema getTableFieldSchema(
