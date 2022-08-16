@@ -15,11 +15,12 @@
  */
 package com.google.cloud.teleport.templates;
 
-import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.kinesis.KinesisIO;
 import org.apache.beam.sdk.io.kinesis.KinesisRecord;
 import org.apache.beam.sdk.options.Description;
@@ -32,9 +33,11 @@ import org.apache.beam.sdk.options.ValueProvider;
 
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
+import com.google.common.base.Splitter;
 
 /**
- * <p>Example Usage:
+ * <p>
+ * Example Usage:
  *
  * <pre>
  * {@code mvn compile exec:java \
@@ -50,13 +53,17 @@ import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionIn
  * --AWSEndpointURL=${AWS_ENDPOINT_URL} \
  * --AWSCBORFlag=${AWS_CBOR_FLAG} \
  * --AWSKinesisStreamName=${AWS_KINESIS_STREAM_NAME} \
- * --outputTopic=projects/${PROJECT_ID}/topics/${TOPIC_NAME}"
+ * --outputTopic=projects/${PROJECT_ID}/topics/${TOPIC_NAME} \
+ * --customAttributes=key=value,key2=value2,..."
  * }
  * </pre>
  */
 
 public class KinesisToPubsub {
-  /** The custom options supported by the pipeline. Inherits standard configuration options. */
+  /**
+   * The custom options supported by the pipeline. Inherits standard configuration
+   * options.
+   */
   public interface Options extends PipelineOptions {
     @Description("AWS Access Key")
     @Required
@@ -97,22 +104,35 @@ public class KinesisToPubsub {
     ValueProvider<String> getOutputTopic();
 
     void setOutputTopic(ValueProvider<String> value);
+
+    @Description("Pub/Sub custom attributes (format: key=value,key2=value2,...)")
+    @Required
+    String getCustomAttributes();
+
+    void setCustomAttributes(String value);
   }
 
   /**
    * Main transformation logic here.
    */
-  private static class RecordToStringFn extends DoFn<KinesisRecord, String> {
+  private static class RecordToPubsubMessageFn extends DoFn<KinesisRecord, PubsubMessage> {
+    private Map<String, String> attributes;
+
+    public RecordToPubsubMessageFn(Map<String, String> customAttributes) {
+      attributes = customAttributes;
+    }
+
     @ProcessElement
     public void processElement(ProcessContext c) {
-        String content = new String(c.element().getDataAsBytes(), StandardCharsets.UTF_8);
-        
-        c.output(content);
+      PubsubMessage content = new PubsubMessage(c.element().getDataAsBytes(), attributes);
+
+      c.output(content);
     }
   }
 
   /**
-   * Main entry-point for the pipeline. Reads in the command-line arguments, parses them, and
+   * Main entry-point for the pipeline. Reads in the command-line arguments,
+   * parses them, and
    * executes the pipeline.
    *
    * @param args Arguments passed in from the command-line.
@@ -132,19 +152,33 @@ public class KinesisToPubsub {
   public static PipelineResult run(Options options) {
     if (options.getAWSCBORFlag().equalsIgnoreCase("TRUE"))
       // AWS CBOR Flag (https://github.com/aws/aws-sdk-java/issues/2493)
-      System.setProperty(com.amazonaws.SDKGlobalConfiguration.AWS_CBOR_DISABLE_SYSTEM_PROPERTY, options.getAWSCBORFlag());
-    
+      System.setProperty(com.amazonaws.SDKGlobalConfiguration.AWS_CBOR_DISABLE_SYSTEM_PROPERTY,
+          options.getAWSCBORFlag());
+
+    // Set attributes
+    Map<String, String> customAttributes = splitToMap(options.getCustomAttributes());
+
     // Create the pipeline.
     Pipeline pipeline = Pipeline.create(options);
 
     pipeline
         .apply("Read from Kinesis", KinesisIO.read()
-          .withAWSClientsProvider(options.getAWSAccessKey(), options.getAWSSecretKey(), Regions.fromName(options.getAWSRegion()), options.getAWSEndpointURL())
-          .withStreamName(options.getAWSKinesisStreamName())
-          .withInitialPositionInStream(InitialPositionInStream.LATEST))
-        .apply("KinesisRecord to String", ParDo.of(new RecordToStringFn()))
-        .apply("Write to PubSub", PubsubIO.writeStrings().to(options.getOutputTopic()));
+            .withAWSClientsProvider(options.getAWSAccessKey(), options.getAWSSecretKey(),
+                Regions.fromName(options.getAWSRegion()), options.getAWSEndpointURL())
+            .withStreamName(options.getAWSKinesisStreamName())
+            .withInitialPositionInStream(InitialPositionInStream.LATEST))
+        .apply("KinesisRecord to String", ParDo.of(new RecordToPubsubMessageFn(customAttributes)))
+        .apply("Write to PubSub", PubsubIO.writeMessages().to(options.getOutputTopic()));
 
     return pipeline.run();
+  }
+
+  private static Map<String, String> splitToMap(String in) {
+    try {
+      return Splitter.on(",").withKeyValueSeparator("=").split(in);
+    } catch (Exception e) {
+      System.out.println("Set custom attributes to default due to parsing error.");
+      return Map.of("default_key", "default_value");
+    }
   }
 }
