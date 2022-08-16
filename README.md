@@ -49,6 +49,7 @@ mvn clean install -f unified-templates.xml -pl v2/pubsub-binary-to-bigquery -am
 * [GCS Text to Pub/Sub (Batch)](src/main/java/com/google/cloud/teleport/templates/TextToPubsub.java)
 * [GCS Text to Pub/Sub (Streaming)](src/main/java/com/google/cloud/teleport/templates/TextToPubsubStream.java)
 * [Jdbc to BigQuery](src/main/java/com/google/cloud/teleport/templates/JdbcToBigQuery.java)
+* [Kinesis to Pub/Sub](src/main/java/com/google/cloud/teleport/templates/KinesisToPubsub.java)
 * [Pub/Sub to BigQuery](src/main/java/com/google/cloud/teleport/templates/PubSubToBigQuery.java) *
 * [Pub/Sub to Datastore](src/main/java/com/google/cloud/teleport/templates/PubsubToDatastore.java) *
 * [Pub/Sub to GCS Avro](src/main/java/com/google/cloud/teleport/templates/PubsubToAvro.java)
