@@ -19,5 +19,5 @@ Template.
 
 ## Existing Tutorials
 
-*   [Flex Templates](flex-templates.md): Develop a simple Flex Template and run
+*   [Flex Templates](flex-template.md): Develop a simple Flex Template and run
     it on Google Cloud.
