@@ -152,7 +152,7 @@ public class SpannerChangeStreamsToElasticsearch {
           .forEach(
               mod -> {
                 JSONObject keysJsonExtended = new JSONObject(mod.getKeysJson());
-                keysJsonExtended.put("TableName", tableName);    
+                keysJsonExtended.put("TableName", tableName);
                 if (modType == ModType.INSERT || modType == ModType.UPDATE) {
                   JSONObject newValuesJson = new JSONObject(mod.getNewValuesJson());
                   // add any properties that are present in newValuesJson to the set of keys to make
