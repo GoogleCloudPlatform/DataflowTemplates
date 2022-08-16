@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.templates;
 
+import java.io.IOException;
 import java.util.Map;
 
 import org.apache.beam.sdk.Pipeline;
@@ -27,12 +28,14 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.options.ValueProvider;
 
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
+import com.google.cloud.secretmanager.v1.AccessSecretVersionResponse;
+import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
 import com.google.common.base.Splitter;
 
 /**
@@ -47,8 +50,8 @@ import com.google.common.base.Splitter;
  * --stagingLocation=gs://${STAGING_BUCKET}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
  * --tempLocation=gs://${STAGING_BUCKET}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
  * --runner=DataflowRunner/DirectRunner \
- * --AWSAccessKey=${AWS_ACCESS_KEY} \
- * --AWSSecretKey=${AWS_SECRET_KEY} \
+ * --AWSAccessKey=projects/${PROJECT_ID}/secrets/${AWS_ACCESS_KEY}/versions/${AWS_ACCESS_KEY_VERSION} \
+ * --AWSSecretKey=projects/${PROJECT_ID}/secrets/${AWS_SECRET_KEY}/versions/${AWS_SECRET_KEY_VERSION} \
  * --AWSRegion=${AWS_REGION} \
  * --AWSEndpointURL=${AWS_ENDPOINT_URL} \
  * --AWSCBORFlag=${AWS_CBOR_FLAG} \
@@ -65,13 +68,13 @@ public class KinesisToPubsub {
    * options.
    */
   public interface Options extends PipelineOptions {
-    @Description("AWS Access Key")
+    @Description("AWS Access Key (in complete format)")
     @Required
     String getAWSAccessKey();
 
     void setAWSAccessKey(String value);
 
-    @Description("AWS Secret Key")
+    @Description("AWS Secret Key (in complete format)")
     @Required
     String getAWSSecretKey();
 
@@ -150,20 +153,37 @@ public class KinesisToPubsub {
    * @param options The execution parameters.
    */
   public static PipelineResult run(Options options) {
+    // Set AWS CBOR Flag (https://github.com/aws/aws-sdk-java/issues/2493)
     if (options.getAWSCBORFlag().equalsIgnoreCase("TRUE"))
-      // AWS CBOR Flag (https://github.com/aws/aws-sdk-java/issues/2493)
       System.setProperty(com.amazonaws.SDKGlobalConfiguration.AWS_CBOR_DISABLE_SYSTEM_PROPERTY,
           options.getAWSCBORFlag());
 
     // Set attributes
     Map<String, String> customAttributes = splitToMap(options.getCustomAttributes());
 
+    // Access secret manager
+    SecretManagerServiceClient client;
+    String accessKey = "";
+    String secretKey = "";
+
+    try {
+      client = SecretManagerServiceClient.create();
+      AccessSecretVersionResponse key = client.accessSecretVersion(options.getAWSAccessKey());
+      AccessSecretVersionResponse secret = client.accessSecretVersion(options.getAWSSecretKey());
+
+      accessKey = key.getPayload().getData().toStringUtf8();
+      secretKey = secret.getPayload().getData().toStringUtf8();
+    } catch (IOException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+
     // Create the pipeline.
     Pipeline pipeline = Pipeline.create(options);
 
     pipeline
         .apply("Read from Kinesis", KinesisIO.read()
-            .withAWSClientsProvider(options.getAWSAccessKey(), options.getAWSSecretKey(),
+            .withAWSClientsProvider(accessKey, secretKey,
                 Regions.fromName(options.getAWSRegion()), options.getAWSEndpointURL())
             .withStreamName(options.getAWSKinesisStreamName())
             .withInitialPositionInStream(InitialPositionInStream.LATEST))
