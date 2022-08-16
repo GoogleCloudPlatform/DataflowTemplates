@@ -160,6 +160,11 @@
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-io-jdbc</artifactId>
     </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-io-kinesis</artifactId>
+      <version>${beam.version}</version>
+    </dependency>
 
     <!-- Dependencies needed for the Cassandra to CBT pipeline -->
     <dependency>

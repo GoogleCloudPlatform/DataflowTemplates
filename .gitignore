@@ -13,3 +13,7 @@
 # MacOSX Files
 **/.DS_Store/**/*
 **/.DS_Store
+
+# VSCode and temporary files
+**/.vscode/**/*
+**/.temp/**/*
