@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.templates;
 
+import com.amazonaws.SDKGlobalConfiguration;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
 import com.google.cloud.secretmanager.v1.AccessSecretVersionResponse;
@@ -140,6 +141,12 @@ public class KinesisToPubsub {
     // Parse the user options passed from the command-line
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
+    // Set AWS CBOR Flag (https://github.com/aws/aws-sdk-java/issues/2493)
+    if (options.getAWSCBORFlag().equalsIgnoreCase("TRUE")) {
+      System.setProperty(SDKGlobalConfiguration.AWS_CBOR_DISABLE_ENV_VAR, "TRUE");
+      System.setProperty(SDKGlobalConfiguration.AWS_CBOR_DISABLE_SYSTEM_PROPERTY, "TRUE");
+    }
+
     run(options);
   }
 
@@ -149,13 +156,6 @@ public class KinesisToPubsub {
    * @param options The execution parameters.
    */
   public static PipelineResult run(Options options) {
-    // Set AWS CBOR Flag (https://github.com/aws/aws-sdk-java/issues/2493)
-    if (options.getAWSCBORFlag().equalsIgnoreCase("TRUE")) {
-      System.setProperty(
-          com.amazonaws.SDKGlobalConfiguration.AWS_CBOR_DISABLE_SYSTEM_PROPERTY,
-          options.getAWSCBORFlag());
-    }
-
     // Set attributes
     Map<String, String> customAttributes = stringToMap(options.getCustomAttributes());
 
@@ -180,7 +180,7 @@ public class KinesisToPubsub {
         .apply(
             "KinesisRecord to PubsubMessage with custom attributes",
             ParDo.of(new RecordToPubsubMessageFn(customAttributes)))
-        .apply("Write to PubSub", PubsubIO.writeMessages().to(options.getOutputTopic()));
+        .apply("Write to Pubsub", PubsubIO.writeMessages().to(options.getOutputTopic()));
 
     return pipeline.run();
   }
