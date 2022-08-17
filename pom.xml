@@ -91,7 +91,6 @@
     <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
     <cloud-libraries-bom.version>24.4.0</cloud-libraries-bom.version>
     <jacoco.version>0.8.8</jacoco.version>
-    <kinesis.version>1.12.282</kinesis.version>
   </properties>
 
   <dependencyManagement>
@@ -502,11 +501,6 @@
     <dependency>
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-secretmanager</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.amazonaws</groupId>
-      <artifactId>aws-java-sdk-kinesis</artifactId>
-      <version>${kinesis.version}</version>
     </dependency>
   </dependencies>
 
