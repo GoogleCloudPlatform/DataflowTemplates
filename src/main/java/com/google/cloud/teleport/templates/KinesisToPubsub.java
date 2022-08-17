@@ -31,6 +31,8 @@ import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
@@ -63,6 +65,8 @@ import com.google.common.base.Splitter;
  */
 
 public class KinesisToPubsub {
+  private static final Logger LOG = LoggerFactory.getLogger(KinesisToPubsub.class);
+
   /**
    * The custom options supported by the pipeline. Inherits standard configuration
    * options.
@@ -159,24 +163,11 @@ public class KinesisToPubsub {
           options.getAWSCBORFlag());
 
     // Set attributes
-    Map<String, String> customAttributes = splitToMap(options.getCustomAttributes());
+    Map<String, String> customAttributes = stringToMap(options.getCustomAttributes());
 
     // Access secret manager
-    SecretManagerServiceClient client;
-    String accessKey = "";
-    String secretKey = "";
-
-    try {
-      client = SecretManagerServiceClient.create();
-      AccessSecretVersionResponse key = client.accessSecretVersion(options.getAWSAccessKey());
-      AccessSecretVersionResponse secret = client.accessSecretVersion(options.getAWSSecretKey());
-
-      accessKey = key.getPayload().getData().toStringUtf8();
-      secretKey = secret.getPayload().getData().toStringUtf8();
-    } catch (IOException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
-    }
+    String accessKey = getSecretValue(options.getAWSAccessKey());
+    String secretKey = getSecretValue(options.getAWSSecretKey());
 
     // Create the pipeline.
     Pipeline pipeline = Pipeline.create(options);
@@ -193,12 +184,26 @@ public class KinesisToPubsub {
     return pipeline.run();
   }
 
-  private static Map<String, String> splitToMap(String in) {
+  private static Map<String, String> stringToMap(String string) {
     try {
-      return Splitter.on(",").withKeyValueSeparator("=").split(in);
+      return Splitter.on(",").withKeyValueSeparator("=").split(string);
     } catch (Exception e) {
-      System.out.println("Set custom attributes to default due to parsing error.");
+      LOG.error(
+          "Found error with message: " + e.getMessage() + ". Replaced custom attributes with default key and value");
       return Map.of("default_key", "default_value");
     }
+  }
+
+  private static String getSecretValue(String secretName) {
+    String secretValue = "";
+
+    try (SecretManagerServiceClient client = SecretManagerServiceClient.create()) {
+      AccessSecretVersionResponse response = client.accessSecretVersion(secretName);
+      secretValue = response.getPayload().getData().toStringUtf8();
+    } catch (IOException e) {
+      LOG.error("Found error with message: " + e.getMessage());
+    }
+
+    return secretValue;
   }
 }
