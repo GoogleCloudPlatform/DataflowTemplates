@@ -248,12 +248,15 @@ public class HttpEventPublisherTest {
     byte[] rootCa =
         Resources.toString(Resources.getResource(INCORRECT_ROOT_CA_PATH), StandardCharsets.UTF_8)
             .getBytes();
+
+    int timeoutInMillis = 5000; // 5 seconds
     HttpEventPublisher publisher =
         HttpEventPublisher.newBuilder()
             .withUrl("https://localhost:" + String.valueOf(mockServer.getPort()))
             .withToken("test-token")
             .withDisableCertificateValidation(false)
             .withRootCaCertificate(rootCa)
+            .withMaxElapsedMillis(timeoutInMillis)
             .withEnableGzipHttpCompression(true)
             .build();
     publisher.execute(SPLUNK_EVENTS);
