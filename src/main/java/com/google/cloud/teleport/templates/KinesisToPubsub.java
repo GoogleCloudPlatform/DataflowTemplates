@@ -15,9 +15,13 @@
  */
 package com.google.cloud.teleport.templates;
 
+import com.amazonaws.regions.Regions;
+import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
+import com.google.cloud.secretmanager.v1.AccessSecretVersionResponse;
+import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
+import com.google.common.base.Splitter;
 import java.io.IOException;
 import java.util.Map;
-
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
@@ -34,15 +38,10 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.amazonaws.regions.Regions;
-import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
-import com.google.cloud.secretmanager.v1.AccessSecretVersionResponse;
-import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
-import com.google.common.base.Splitter;
-
 /**
- * <p>
- * Example Usage:
+ * A template that copies messages from Kinesis to Pub/Sub with custom attributes.
+ *
+ * <p>Example Usage:
  *
  * <pre>
  * {@code mvn compile exec:java \
@@ -63,22 +62,18 @@ import com.google.common.base.Splitter;
  * }
  * </pre>
  */
-
 public class KinesisToPubsub {
   private static final Logger LOG = LoggerFactory.getLogger(KinesisToPubsub.class);
 
-  /**
-   * The custom options supported by the pipeline. Inherits standard configuration
-   * options.
-   */
+  /** The custom options supported by the pipeline. Inherits standard configuration options. */
   public interface Options extends PipelineOptions {
-    @Description("AWS Access Key (in complete format)")
+    @Description("AWS Access Key (from Secret Manager, in complete format)")
     @Required
     String getAWSAccessKey();
 
     void setAWSAccessKey(String value);
 
-    @Description("AWS Secret Key (in complete format)")
+    @Description("AWS Secret Key (from Secret Manager, in complete format)")
     @Required
     String getAWSSecretKey();
 
@@ -90,7 +85,7 @@ public class KinesisToPubsub {
 
     void setAWSRegion(String value);
 
-    @Description("AWS Endpoint URL (if any)")
+    @Description("AWS Endpoint URL (optional)")
     String getAWSEndpointURL();
 
     void setAWSEndpointURL(String value);
@@ -119,9 +114,7 @@ public class KinesisToPubsub {
     void setCustomAttributes(String value);
   }
 
-  /**
-   * Main transformation logic here.
-   */
+  /** Main transformation logic here. */
   private static class RecordToPubsubMessageFn extends DoFn<KinesisRecord, PubsubMessage> {
     private Map<String, String> attributes;
 
@@ -138,8 +131,7 @@ public class KinesisToPubsub {
   }
 
   /**
-   * Main entry-point for the pipeline. Reads in the command-line arguments,
-   * parses them, and
+   * Main entry-point for the pipeline. Reads in the command-line arguments, parses them, and
    * executes the pipeline.
    *
    * @param args Arguments passed in from the command-line.
@@ -158,9 +150,11 @@ public class KinesisToPubsub {
    */
   public static PipelineResult run(Options options) {
     // Set AWS CBOR Flag (https://github.com/aws/aws-sdk-java/issues/2493)
-    if (options.getAWSCBORFlag().equalsIgnoreCase("TRUE"))
-      System.setProperty(com.amazonaws.SDKGlobalConfiguration.AWS_CBOR_DISABLE_SYSTEM_PROPERTY,
+    if (options.getAWSCBORFlag().equalsIgnoreCase("TRUE")) {
+      System.setProperty(
+          com.amazonaws.SDKGlobalConfiguration.AWS_CBOR_DISABLE_SYSTEM_PROPERTY,
           options.getAWSCBORFlag());
+    }
 
     // Set attributes
     Map<String, String> customAttributes = stringToMap(options.getCustomAttributes());
@@ -173,12 +167,19 @@ public class KinesisToPubsub {
     Pipeline pipeline = Pipeline.create(options);
 
     pipeline
-        .apply("Read from Kinesis", KinesisIO.read()
-            .withAWSClientsProvider(accessKey, secretKey,
-                Regions.fromName(options.getAWSRegion()), options.getAWSEndpointURL())
-            .withStreamName(options.getAWSKinesisStreamName())
-            .withInitialPositionInStream(InitialPositionInStream.LATEST))
-        .apply("KinesisRecord to String", ParDo.of(new RecordToPubsubMessageFn(customAttributes)))
+        .apply(
+            "Read from Kinesis",
+            KinesisIO.read()
+                .withAWSClientsProvider(
+                    accessKey,
+                    secretKey,
+                    Regions.fromName(options.getAWSRegion()),
+                    options.getAWSEndpointURL())
+                .withStreamName(options.getAWSKinesisStreamName())
+                .withInitialPositionInStream(InitialPositionInStream.LATEST))
+        .apply(
+            "KinesisRecord to PubsubMessage with custom attributes",
+            ParDo.of(new RecordToPubsubMessageFn(customAttributes)))
         .apply("Write to PubSub", PubsubIO.writeMessages().to(options.getOutputTopic()));
 
     return pipeline.run();
@@ -189,7 +190,9 @@ public class KinesisToPubsub {
       return Splitter.on(",").withKeyValueSeparator("=").split(string);
     } catch (Exception e) {
       LOG.error(
-          "Found error with message: " + e.getMessage() + ". Replaced custom attributes with default key and value");
+          "Found error with message: "
+              + e.getMessage()
+              + ". Replaced custom attributes with default key and value");
       return Map.of("default_key", "default_value");
     }
   }
@@ -201,7 +204,8 @@ public class KinesisToPubsub {
       AccessSecretVersionResponse response = client.accessSecretVersion(secretName);
       secretValue = response.getPayload().getData().toStringUtf8();
     } catch (IOException e) {
-      LOG.error("Found error with message: " + e.getMessage());
+      LOG.error("Found error with message: " + e.getMessage() + ". Exiting the application");
+      System.exit(0);
     }
 
     return secretValue;
