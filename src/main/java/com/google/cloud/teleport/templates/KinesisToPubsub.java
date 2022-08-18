@@ -16,6 +16,9 @@
 package com.google.cloud.teleport.templates;
 
 import com.amazonaws.SDKGlobalConfiguration;
+import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
 import com.google.cloud.secretmanager.v1.AccessSecretVersionResponse;
@@ -87,11 +90,13 @@ public class KinesisToPubsub {
     void setAWSRegion(String value);
 
     @Description("AWS Endpoint URL (optional)")
+    @Required
     String getAWSEndpointURL();
 
     void setAWSEndpointURL(String value);
 
-    @Description("AWS CBOR Flag (default to FALSE)")
+    @Description("AWS CBOR Flag (optional)")
+    @Required
     String getAWSCBORFlag();
 
     void setAWSCBORFlag(String value);
@@ -143,7 +148,6 @@ public class KinesisToPubsub {
 
     // Set AWS CBOR Flag (https://github.com/aws/aws-sdk-java/issues/2493)
     if (options.getAWSCBORFlag().equalsIgnoreCase("TRUE")) {
-      System.setProperty(SDKGlobalConfiguration.AWS_CBOR_DISABLE_ENV_VAR, "TRUE");
       System.setProperty(SDKGlobalConfiguration.AWS_CBOR_DISABLE_SYSTEM_PROPERTY, "TRUE");
     }
 
@@ -156,13 +160,6 @@ public class KinesisToPubsub {
    * @param options The execution parameters.
    */
   public static PipelineResult run(Options options) {
-    // Set attributes
-    Map<String, String> customAttributes = stringToMap(options.getCustomAttributes());
-
-    // Access secret manager
-    String accessKey = getSecretValue(options.getAWSAccessKey());
-    String secretKey = getSecretValue(options.getAWSSecretKey());
-
     // Create the pipeline.
     Pipeline pipeline = Pipeline.create(options);
 
@@ -171,21 +168,21 @@ public class KinesisToPubsub {
             "Read from Kinesis",
             KinesisIO.read()
                 .withAWSClientsProvider(
-                    accessKey,
-                    secretKey,
+                    credentialBuilder(options),
                     Regions.fromName(options.getAWSRegion()),
                     options.getAWSEndpointURL())
                 .withStreamName(options.getAWSKinesisStreamName())
                 .withInitialPositionInStream(InitialPositionInStream.LATEST))
         .apply(
             "KinesisRecord to PubsubMessage with custom attributes",
-            ParDo.of(new RecordToPubsubMessageFn(customAttributes)))
+            ParDo.of(new RecordToPubsubMessageFn(stringToMap(options.getCustomAttributes()))))
         .apply("Write to Pubsub", PubsubIO.writeMessages().to(options.getOutputTopic()));
 
     return pipeline.run();
   }
 
   private static Map<String, String> stringToMap(String string) {
+    // Split string to map
     try {
       return Splitter.on(",").withKeyValueSeparator("=").split(string);
     } catch (Exception e) {
@@ -198,6 +195,7 @@ public class KinesisToPubsub {
   }
 
   private static String getSecretValue(String secretName) {
+    // Get Secret
     String secretValue = "";
 
     try (SecretManagerServiceClient client = SecretManagerServiceClient.create()) {
@@ -209,5 +207,17 @@ public class KinesisToPubsub {
     }
 
     return secretValue;
+  }
+
+  private static AWSCredentialsProvider credentialBuilder(Options options) {
+    // Set endpoint URL
+    if (options.getAWSEndpointURL().isEmpty()) {
+      options.setAWSEndpointURL(null);
+    }
+
+    // Build AWS credentials
+    return new AWSStaticCredentialsProvider(
+        new BasicAWSCredentials(
+            getSecretValue(options.getAWSAccessKey()), getSecretValue(options.getAWSSecretKey())));
   }
 }
