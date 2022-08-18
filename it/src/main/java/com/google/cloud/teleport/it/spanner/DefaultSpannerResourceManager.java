@@ -16,8 +16,8 @@
 package com.google.cloud.teleport.it.spanner;
 
 import static com.google.cloud.teleport.it.spanner.SpannerResourceManagerUtils.generateDatabaseId;
-import static com.google.cloud.teleport.it.spanner.SpannerResourceManagerUtils.generateInstanceId;
-import static com.google.cloud.teleport.it.spanner.SpannerResourceManagerUtils.generateNewId;
+import static com.google.cloud.teleport.it.common.ResourceManagerUtils.generateInstanceId;
+import static com.google.cloud.teleport.it.common.ResourceManagerUtils.generateNewId;
 
 import com.google.cloud.spanner.DatabaseAdminClient;
 import com.google.cloud.spanner.DatabaseClient;
@@ -37,6 +37,8 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import java.util.concurrent.ExecutionException;
+
+import com.google.re2j.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,6 +58,7 @@ import org.slf4j.LoggerFactory;
 public final class DefaultSpannerResourceManager implements SpannerResourceManager {
   private static final Logger LOG = LoggerFactory.getLogger(DefaultSpannerResourceManager.class);
   private static final int MAX_BASE_ID_LENGTH = 30;
+  private static final Pattern ILLEGAL_INSTANCE_CHARS = Pattern.compile("[\\W_]");
 
   private boolean hasInstance = false;
   private boolean hasDatabase = false;
@@ -83,7 +86,7 @@ public final class DefaultSpannerResourceManager implements SpannerResourceManag
       testId = generateNewId(testId, MAX_BASE_ID_LENGTH);
     }
     this.projectId = projectId;
-    this.instanceId = generateInstanceId(testId);
+    this.instanceId = generateInstanceId(testId, ILLEGAL_INSTANCE_CHARS, MAX_BASE_ID_LENGTH);
     this.databaseId = generateDatabaseId(testId);
 
     this.region = region;
