@@ -18,6 +18,38 @@ transforms. Then, the template will take the pipeline spec, and
 
 ## Common workflow tasks
 
+### Format code
+
+To apply spotless formatting rules to the Syndeo template code, run the following command:
+
+```shell
+mvn -B spotless:apply compile -f  unified-templates.xml -pl syndeo-template/pom.xml
+```
+
+### Run tests (unit and integration tests)
+
+To **run unit tests** for the Syndeo template, run the following command. Note that this command knows to skip
+integration tests and only runs unit tests:
+
+```shell
+mvn clean package test -f unified-templates.xml -pl syndeo-template/pom.xml
+```
+
+The file `BigTableWriteIT` **holds integration tests** for the basic BigTable Syndeo integration. These integration tests
+rely on the existence of a BigTable instance and table, as well as a BigQuery dataset, which holds the BQ data that
+is part of the pipeline's read.
+
+`# TODO(pabloem): Add cleanup code for BigTable integration tests.`
+
+```shell
+mvn clean package test -f unified-templates.xml -pl syndeo-template/pom.xml  \
+    -Dtest="BigTableWriteIT#testBigQueryToBigTableSmallNonTemplateJob"  \
+    -Dproject="cloud-teleport-testing"  -DartifactBucket="gs://cloud-teleport-testing-df-staging"  \
+    -Dregion="us-central1" -DtempLocation=gs://cloud-teleport-testing-df-staging
+```
+
+### Workflow tasks to run the template manually
+
 Generate SchemaIO configs: This command will traverse the classpath for the template, find all `SchemaTransform`
 subclasses, and generate a file with the protocol buffer configuration for all of these subclasses.
 
