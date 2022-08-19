@@ -15,30 +15,26 @@
  */
 package com.google.cloud.syndeo.it;
 
+import com.google.api.gax.rpc.ServerStream;
+import com.google.api.services.bigquery.Bigquery;
+import com.google.cloud.bigtable.admin.v2.BigtableTableAdminClient;
+import com.google.cloud.bigtable.admin.v2.BigtableTableAdminSettings;
+import com.google.cloud.bigtable.data.v2.BigtableDataClient;
+import com.google.cloud.bigtable.data.v2.BigtableDataSettings;
+import com.google.cloud.bigtable.data.v2.models.Query;
+import com.google.cloud.bigtable.data.v2.models.Row;
+import com.google.cloud.syndeo.SyndeoTemplate;
 import com.google.cloud.syndeo.common.ProviderUtil;
+import com.google.cloud.syndeo.transforms.BigTableSchemaTransformTest;
 import com.google.cloud.syndeo.transforms.bigtable.BigTableWriteSchemaTransformConfiguration;
+import com.google.cloud.syndeo.v1.SyndeoV1;
 import com.google.cloud.teleport.it.TestProperties;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator;
-import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient;
-import com.google.cloud.teleport.it.dataflow.DataflowUtils;
-import com.google.cloud.teleport.it.dataflow.FlexTemplateClient;
-import java.time.Instant;
-import java.util.Base64;
-import java.util.Random;
-import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
+import java.io.IOException;
+import java.util.Arrays;
+import org.apache.beam.sdk.io.gcp.testing.BigqueryClient;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.schemas.Schema;
-import org.apache.beam.sdk.schemas.transforms.SchemaTransform;
-import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
-import org.apache.beam.sdk.transforms.Create;
-import org.apache.beam.sdk.values.PCollectionRowTuple;
-import org.apache.beam.sdk.values.Row;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Lists;
-import org.joda.time.DateTime;
-import org.joda.time.Duration;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
@@ -50,171 +46,62 @@ public class BigTableWriteIT {
 
   @Rule public final TestName testName = new TestName();
 
-  //    private static final Credentials CREDENTIALS = TestProperties.googleCredentials();
   private static final String PROJECT = TestProperties.project();
-  private static final String REGION = TestProperties.region();
-  private static final String SPEC_PATH = TestProperties.specPath();
   private static final String TEMP_LOCATION = TestProperties.artifactBucket();
 
-  private static final Random RND = new Random();
-
-  private static final Schema INPUT_SCHEMA =
-      Schema.builder()
-          .addStringField("name")
-          .addBooleanField("vaccinated")
-          .addDoubleField("height")
-          .addFloatField("temperature")
-          .addInt32Field("age")
-          .addInt64Field("networth")
-          .addDateTimeField("birthday")
-          .build();
-
-  private static String randomString(Integer length) {
-    byte[] byteStr = new byte[length];
-    RND.nextBytes(byteStr);
-    return Base64.getEncoder().encodeToString(byteStr);
-  }
-
-  private static Row generateRow() {
-    return Row.withSchema(INPUT_SCHEMA)
-        .addValue(randomString(10))
-        .addValue(RND.nextBoolean())
-        .addValue(RND.nextDouble())
-        .addValue(RND.nextFloat())
-        .addValue(RND.nextInt())
-        .addValue(RND.nextLong())
-        .addValue(new DateTime(Math.abs(RND.nextLong()) % Instant.now().toEpochMilli()))
-        .build();
-  }
-
   @Test
-  public void testCreateToBigTableSmallNonTemplateJob() {
-    Pipeline p = Pipeline.create();
-    // TODO(pabloem): Add this to test table creation
-    //        String bigTableName = "syndeo-test-" + randomString(10);
-    String bigTableName = "syndeo-test-2022-08";
+  public void testBigQueryToBigTableSmallNonTemplateJob() throws IOException {
+    String bigTableName = "syndeo-test-" + BigTableSchemaTransformTest.randomString(6);
+    String bigQueryName = PROJECT + ":syndeo_dataset." + bigTableName;
 
-    SchemaTransformProvider provider = ProviderUtil.getProvider("bigtable:write");
-    SchemaTransform transform =
-        provider.from(
-            BigTableWriteSchemaTransformConfiguration.builder()
-                .setProjectId(PROJECT)
-                .setInstanceId("teleport")
-                .setTableId(bigTableName)
-                .setKeyColumns(Lists.newArrayList("name", "birthday"))
-                .build()
-                .toBeamRow());
+    BigTableSchemaTransformTest.setUpBigQueryResources(null, bigQueryName);
 
-    PCollectionRowTuple pCollectionRowTuple =
-        PCollectionRowTuple.of(
-            "INPUT",
-            p.apply(
-                    Create.of(
-                        generateRow(), generateRow(), generateRow(), generateRow(), generateRow()))
-                .setRowSchema(INPUT_SCHEMA));
-    pCollectionRowTuple.apply(transform.buildTransform());
-
-    p.run().waitUntilFinish(Duration.standardSeconds(100));
-  }
-
-  @Test
-  public void testBigQueryToBigTableSmallNonTemplateJob() {
-    PipelineOptions setupOptions = PipelineOptionsFactory.create();
-    setupOptions.setTempLocation(TEMP_LOCATION);
-    Pipeline setupP = Pipeline.create(setupOptions);
-    // TODO(pabloem): Add this to test table creation
-    //        String bigTableName = "syndeo-test-" + randomString(10);
-    String bigTableName = "syndeo-test-2022-08";
-    String bigQueryName = PROJECT + ":syndeo_dataset.syndeo-test-2022-08-bq";
-    setupP
-        .apply(
-            Create.of(
-                generateRow(),
-                generateRow(),
-                generateRow(),
-                generateRow(),
-                generateRow(),
-                generateRow()))
-        .setRowSchema(INPUT_SCHEMA)
-        .apply(
-            BigQueryIO.<Row>write()
-                .to(bigQueryName)
-                .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
-                .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_IF_NEEDED)
-                .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
-                .useBeamSchema());
-
-    setupP.run().waitUntilFinish();
-
-    PipelineOptions options = PipelineOptionsFactory.create();
-    options.setTempLocation(TEMP_LOCATION);
-    Pipeline p = Pipeline.create(options);
-
-    SchemaTransformProvider bigqueryProvider = ProviderUtil.getProvider("schemaIO:bigquery:read");
-    SchemaTransform bigqueryReader =
-        bigqueryProvider.from(
-            Row.withSchema(bigqueryProvider.configurationSchema())
-                .addValue("us-central1") // Location
-                .addValue(null) // Schema - it's already known
-                .addValue(bigQueryName) // Table
-                .addValue(null) // Query is not necessary
-                .addValue(null) // Query location is not necessary.
-                .addValue(null) // Create disposition is not necessary
-                .build());
-
-    SchemaTransformProvider bigtableProvider = ProviderUtil.getProvider("bigtable:write");
-    SchemaTransform bigtableWriter =
-        bigtableProvider.from(
-            BigTableWriteSchemaTransformConfiguration.builder()
-                .setProjectId(PROJECT)
-                .setInstanceId("teleport")
-                .setTableId(bigTableName)
-                .setKeyColumns(Lists.newArrayList("name", "birthday"))
-                .build()
-                .toBeamRow());
-
-    PCollectionRowTuple readPcoll =
-        PCollectionRowTuple.empty(p).apply(bigqueryReader.buildTransform());
-
-    PCollectionRowTuple.of("INPUT", readPcoll.getAll().values().iterator().next())
-        .apply(bigtableWriter.buildTransform());
-
-    p.run().waitUntilFinish(Duration.standardSeconds(100));
-  }
-
-  @Ignore
-  @Test
-  public void testBigQueryToBigTableSmallTemplateJob() throws Exception {
-    String name = testName.getMethodName();
-    String jobName = DataflowUtils.createJobName(name);
-
-    DataflowTemplateClient.LaunchConfig options =
-        DataflowTemplateClient.LaunchConfig.builder(jobName, SPEC_PATH)
-            // TODO(pabloem): Add configuration parameters here.
+    SyndeoV1.PipelineDescription description =
+        SyndeoV1.PipelineDescription.newBuilder()
+            .addTransforms(
+                new ProviderUtil.TransformSpec(
+                        "bigquery:read", Arrays.asList(bigQueryName, null, null, null))
+                    .toProto())
+            .addTransforms(
+                new ProviderUtil.TransformSpec(
+                        "bigtable:write",
+                        BigTableWriteSchemaTransformConfiguration.builder()
+                            .setProjectId(PROJECT)
+                            .setInstanceId("teleport")
+                            .setTableId(bigTableName)
+                            .setKeyColumns(Arrays.asList("name", "birthday"))
+                            .setEndpoint("")
+                            .build()
+                            .toBeamRow()
+                            .getValues())
+                    .toProto())
             .build();
-    DataflowTemplateClient dataflow =
-        FlexTemplateClient.builder()
-            //                        .setCredentials(CREDENTIALS)
-            .build();
+    try {
+      PipelineOptions options = PipelineOptionsFactory.create();
+      options.setTempLocation(TEMP_LOCATION);
 
-    // Act
-    DataflowTemplateClient.JobInfo info = dataflow.launchTemplate(PROJECT, REGION, options);
+      SyndeoTemplate.run(options, description);
+      try (BigtableDataClient btClient =
+          BigtableDataClient.create(
+              BigtableDataSettings.newBuilder()
+                  .setProjectId(PROJECT)
+                  .setInstanceId("teleport")
+                  .build())) {
+        ServerStream<Row> rowstream = btClient.readRows(Query.create(bigTableName));
+        assert Lists.newArrayList(rowstream.iterator()).size() == 6;
+      }
 
-    DataflowOperator.Result result =
-        new DataflowOperator(dataflow)
-            .waitForConditionAndFinish(
-                createConfig(info),
-                () -> {
-                  // TODO(pabloem): What condition do we use to validate DF job?
-                  return false;
-                });
-  }
-
-  private static DataflowOperator.Config createConfig(DataflowTemplateClient.JobInfo info) {
-    return DataflowOperator.Config.builder()
-        .setJobId(info.jobId())
-        .setProject(PROJECT)
-        .setRegion(REGION)
-        .build();
+    } finally {
+      Bigquery client = BigqueryClient.getNewBigqueryClient("SyndeoTests");
+      client.tables().delete(PROJECT, "syndeo_dataset", bigTableName);
+      try (BigtableTableAdminClient btClient =
+          BigtableTableAdminClient.create(
+              BigtableTableAdminSettings.newBuilder()
+                  .setProjectId(PROJECT)
+                  .setInstanceId("teleport")
+                  .build())) {
+        btClient.deleteTable(bigTableName);
+      }
+    }
   }
 }

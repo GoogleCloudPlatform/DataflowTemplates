@@ -52,6 +52,7 @@ public class BigTableWriteSchemaTransformProvider
         configuration.getProjectId(),
         configuration.getInstanceId(),
         configuration.getTableId(),
-        configuration.getKeyColumns());
+        configuration.getKeyColumns(),
+        configuration.getEndpoint());
   }
 }

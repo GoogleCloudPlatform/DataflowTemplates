@@ -34,6 +34,8 @@ public abstract class BigTableWriteSchemaTransformConfiguration {
 
   public abstract List<String> getKeyColumns();
 
+  public abstract String getEndpoint();
+
   public static Builder builder() {
     return new AutoValue_BigTableWriteSchemaTransformConfiguration.Builder();
   }
@@ -58,6 +60,8 @@ public abstract class BigTableWriteSchemaTransformConfiguration {
     public abstract Builder setTableId(String value);
 
     public abstract Builder setKeyColumns(List<String> value);
+
+    public abstract Builder setEndpoint(String endpoint);
 
     public abstract BigTableWriteSchemaTransformConfiguration build();
   }

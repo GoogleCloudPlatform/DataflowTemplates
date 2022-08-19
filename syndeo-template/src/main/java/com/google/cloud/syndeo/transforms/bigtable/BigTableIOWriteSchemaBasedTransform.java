@@ -16,9 +16,15 @@
 package com.google.cloud.syndeo.transforms.bigtable;
 
 import com.google.bigtable.v2.Mutation;
+import com.google.cloud.bigtable.admin.v2.BigtableTableAdminClient;
+import com.google.cloud.bigtable.admin.v2.BigtableTableAdminSettings;
+import com.google.cloud.bigtable.admin.v2.models.CreateTableRequest;
+import com.google.cloud.bigtable.admin.v2.models.Table;
 import com.google.protobuf.ByteString;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.coders.ByteArrayCoder;
 import org.apache.beam.sdk.coders.KvCoder;
@@ -35,24 +41,32 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.Row;
+import org.joda.time.Instant;
 
 public class BigTableIOWriteSchemaBasedTransform
     extends PTransform<PCollectionRowTuple, PCollectionRowTuple> implements SchemaTransform {
 
-  private static final String API = "bigtable";
   private static final String INPUT_TAG = "INPUT";
 
   private final String projectId;
   private final String instanceId;
   private final String tableId;
+  private final String bigTableEndpoint;
   private final List<String> keyColumns;
+  private final Instant timestampForRows;
 
   BigTableIOWriteSchemaBasedTransform(
-      String projectId, String instanceId, String tableId, List<String> keyColumns) {
+      String projectId,
+      String instanceId,
+      String tableId,
+      List<String> keyColumns,
+      String bigTableEndpoint) {
     this.projectId = projectId;
     this.instanceId = instanceId;
     this.tableId = tableId;
     this.keyColumns = keyColumns;
+    this.bigTableEndpoint = bigTableEndpoint;
+    this.timestampForRows = Instant.now();
   }
 
   @Override
@@ -60,9 +74,67 @@ public class BigTableIOWriteSchemaBasedTransform
     return this;
   }
 
+  public BigtableTableAdminClient bigtableTableAdminClient() throws IOException {
+    BigtableTableAdminSettings.Builder settingsBuilder;
+    if (this.bigTableEndpoint != null && !this.bigTableEndpoint.isEmpty()) {
+      settingsBuilder =
+          BigtableTableAdminSettings.newBuilderForEmulator(
+                  Integer.parseInt(bigTableEndpoint.split(":")[1]))
+              .setInstanceId(instanceId)
+              .setProjectId(projectId);
+      settingsBuilder.stubSettings().setEndpoint(bigTableEndpoint);
+    } else {
+      settingsBuilder =
+          BigtableTableAdminSettings.newBuilder().setInstanceId(instanceId).setProjectId(projectId);
+    }
+    return BigtableTableAdminClient.create(settingsBuilder.build());
+  }
+
+  private void createTableIfNeeded(Schema inputSchema) {
+    // TODO(pabloem): What happens if we don't have privileges to create the table?
+    try (BigtableTableAdminClient client = bigtableTableAdminClient()) {
+      CreateTableRequest createTableRequest = CreateTableRequest.of(tableId);
+      inputSchema.getFields().forEach(field -> createTableRequest.addFamily(field.getName()));
+      client.createTable(createTableRequest);
+    } catch (IOException e) {
+      // TODO(pabloem): HANDLE THIS POSSIBILITY
+    }
+  }
+
+  private void verifyTableSchemaMatches(Schema inputSchema) {
+    // TODO(pabloem): What happens if we don't have privileges to create the table?
+    try (BigtableTableAdminClient client = bigtableTableAdminClient()) {
+      Table table = client.getTable(tableId);
+      Set<String> columnFamilies =
+          table.getColumnFamilies().stream().map(cf -> cf.getId()).collect(Collectors.toSet());
+      Set<String> inputColumns =
+          inputSchema.getFields().stream()
+              .map(field -> field.getName())
+              .collect(Collectors.toSet());
+
+      // All columns in the input must exist in BigTable, and they must be the same size
+      // TODO(pabloem): Do we support cases where BigTable column families is a SUPERSET of BQ
+      // columns?
+      // TODO(pabloem): Add a test case for this.
+      if (!(columnFamilies.containsAll(inputColumns)
+          && columnFamilies.size() == inputSchema.getFields().size())) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Unable to match input schema with the columns of the destination "
+                    + "table in Bigtable. Fields missing in BigTable: %s.",
+                inputColumns.removeAll(columnFamilies)));
+      }
+    } catch (IOException e) {
+      // TODO(pabloem): HANDLE THIS POSSIBILITY
+    }
+  }
+
   @Override
   public PCollectionRowTuple expand(PCollectionRowTuple input) {
     PCollection<Row> inputData = input.get(INPUT_TAG);
+
+    createTableIfNeeded(inputData.getSchema());
+    verifyTableSchemaMatches(inputData.getSchema());
 
     // STEP 1: Select the key columns from the input Rows
     final Schema keySchema =
@@ -155,11 +227,13 @@ public class BigTableIOWriteSchemaBasedTransform
                             ByteString.copyFrom(elm.getKey()),
                             elm.getValue().getSchema().getFields().stream()
                                 .map(
-                                    field -> // TODO(pabloem): Pass timestamp for all SetCells
-                                    Mutation.newBuilder()
+                                    field ->
+                                        Mutation.newBuilder()
                                             .setSetCell(
                                                 Mutation.SetCell.newBuilder()
                                                     .setFamilyName(field.getName())
+                                                    .setTimestampMicros(
+                                                        timestampForRows.getMillis() * 1000)
                                                     .setValue(
                                                         ByteString.copyFrom(
                                                             elm.getValue()
@@ -171,13 +245,13 @@ public class BigTableIOWriteSchemaBasedTransform
                 }));
 
     // STEP 4: Write all mutations to BigTable
+    BigtableIO.Write btWrite =
+        BigtableIO.write().withProjectId(projectId).withInstanceId(instanceId).withTableId(tableId);
     PCollection<BigtableWriteResult> btWriteResult =
         bigtableMutations.apply(
-            BigtableIO.write()
-                .withProjectId(projectId)
-                .withInstanceId(instanceId)
-                .withTableId(tableId)
-                .withWriteResults());
+            bigTableEndpoint == null || bigTableEndpoint.isEmpty()
+                ? btWrite.withWriteResults()
+                : btWrite.withEmulator(bigTableEndpoint).withWriteResults());
 
     return PCollectionRowTuple.empty(input.getPipeline());
   }

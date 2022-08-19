@@ -54,6 +54,10 @@ public class SyndeoTemplate {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     FileSystems.setDefaultPipelineOptions(options);
     PipelineDescription pipelineDescription = readFromFile(options.getPipelineSpec());
+    run(options, pipelineDescription);
+  }
+
+  public static void run(PipelineOptions options, PipelineDescription pipelineDescription) {
     // Read proto as configuration.
     List<TransformSpec> specs = new ArrayList<>();
     for (ConfiguredSchemaTransform inst : pipelineDescription.getTransformsList()) {
