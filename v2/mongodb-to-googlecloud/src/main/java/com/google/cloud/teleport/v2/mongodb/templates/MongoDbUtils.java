@@ -69,7 +69,7 @@ public class MongoDbUtils implements Serializable {
   /** Maps and Returns the Datatype form MongoDb To BigQuery. */
   public static String getTableSchemaDataType(String s) {
     switch (s) {
-      case "java.lang.Integer":
+      case "java.util.Integer":
         return "INTEGER";
       case "java.lang.Boolean":
         return "BOOLEAN";
