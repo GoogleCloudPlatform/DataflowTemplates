@@ -98,12 +98,15 @@ public class MongoDbUtils implements Serializable {
               case "java.lang.Double":
                 row.set(key, value);
                 break;
-              case "java.util.Integer":
+              case "java.lang.Integer":
                 row.set(key, value);
                 break;
-              default:
+              case "org.bson.Document":
                 String data = GSON.toJson(value);
                 row.set(key, data);
+                break;
+              default:
+                row.set(key, value.toString());
             }
           });
     } else {
