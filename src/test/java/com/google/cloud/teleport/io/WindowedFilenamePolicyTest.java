@@ -21,10 +21,13 @@ import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import org.apache.beam.sdk.io.FileBasedSink.OutputFileHints;
+import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.LocalResources;
 import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.fs.ResourceId;
+import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
+import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.DoFn.WindowedContext;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.IntervalWindow;
@@ -32,6 +35,7 @@ import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo.Timing;
 import org.joda.time.DateTime;
 import org.joda.time.Instant;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -72,6 +76,15 @@ public class WindowedFilenamePolicyTest {
   private ResourceId getBaseTempDirectory() {
     return getTemporaryFolder()
         .resolve(TEMP_DIRECTORY_NAME, StandardResolveOptions.RESOLVE_DIRECTORY);
+  }
+
+  /**
+   * Call {@link FileSystems#setDefaultPipelineOptions(PipelineOptions)} to register the file scheme
+   * (gs) used during the tests.
+   */
+  @BeforeClass
+  public static void setupFileSystem() {
+    FileSystems.setDefaultPipelineOptions(TestPipeline.testingPipelineOptions());
   }
 
   /**
