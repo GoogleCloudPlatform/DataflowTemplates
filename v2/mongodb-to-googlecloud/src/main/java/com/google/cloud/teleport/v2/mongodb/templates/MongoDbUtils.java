@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.mongodb.templates;
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
+import com.google.gson.Gson;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
@@ -41,6 +42,8 @@ public class MongoDbUtils implements Serializable {
    */
   static final DateTimeFormatter TIMEFORMAT =
       DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
+
+  static final Gson GSON = new Gson();
 
   public static TableSchema getTableFieldSchema(
       String uri, String database, String collection, String userOption) {
@@ -95,8 +98,12 @@ public class MongoDbUtils implements Serializable {
               case "java.lang.Double":
                 row.set(key, value);
                 break;
-              case "java.util.Integer":
+              case "java.lang.Integer":
                 row.set(key, value);
+                break;
+              case "org.bson.Document":
+                String data = GSON.toJson(value);
+                row.set(key, data);
                 break;
               default:
                 row.set(key, value.toString());
@@ -104,8 +111,9 @@ public class MongoDbUtils implements Serializable {
           });
     } else {
       LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
+      String sourceData = GSON.toJson(parsedMap);
       row.set("id", parsedMap.get("_id").toString())
-          .set("source_data", parsedMap.toString())
+          .set("source_data", sourceData)
           .set("timestamp", localdate.format(TIMEFORMAT));
     }
     return row;
