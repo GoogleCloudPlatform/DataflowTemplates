@@ -19,6 +19,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import javax.annotation.Nullable;
@@ -68,9 +70,11 @@ public class PubsubToPubsub {
     Pipeline pipeline = Pipeline.create(options);
 
     /**
-     * Steps: 1) Read PubSubMessage with attributes from input PubSub subscription. 2) Apply any
-     * filters if an attribute=value pair is provided. 3) Write each PubSubMessage to output PubSub
-     * topic.
+     * Steps:
+     * 1) Read PubSubMessage with attributes from input PubSub subscription.
+     * 2) Apply any filters if an attribute=value pair is provided.
+     * 3) Enrich attributes with provided key value pairs.
+     * 4) Write each PubSubMessage to output PubSub topic.
      */
     pipeline
         .apply(
@@ -82,6 +86,15 @@ public class PubsubToPubsub {
                 ExtractAndFilterEventsFn.newBuilder()
                     .withFilterKey(options.getFilterKey())
                     .withFilterValue(options.getFilterValue())
+                    .build()))
+        .apply(
+            "Enrich Events with Attributes If Enabled",
+            ParDo.of(
+                EnrichEventsFn.newBuilder()
+                    .withEnrichKey1(options.getEnrichKey1())
+                    .withEnrichValue1(options.getEnrichValue1())
+                    .withEnrichKey2(options.getEnrichKey2())
+                    .withEnrichValue2(options.getEnrichValue2())
                     .build()))
         .apply("Write PubSub Events", PubsubIO.writeMessages().to(options.getOutputTopic()));
 
@@ -130,6 +143,34 @@ public class PubsubToPubsub {
     ValueProvider<String> getFilterValue();
 
     void setFilterValue(ValueProvider<String> filterValue);
+
+    @Description(
+        "Enrich message attributes with this key")
+    @Validation.Required
+    ValueProvider<String> getEnrichKey1();
+
+    void setEnrichKey1(ValueProvider<String> enrichKey1);
+
+    @Description(
+        "Enrich message attributes with this value mapped to EnrichKey1")
+    @Validation.Required
+    ValueProvider<String> getEnrichValue1();
+
+    void setEnrichValue1(ValueProvider<String> enrichValue1);
+
+    @Description(
+        "Enrich message attributes with this key")
+    @Validation.Required
+    ValueProvider<String> getEnrichKey2();
+
+    void setEnrichKey2(ValueProvider<String> enrichKey2);
+
+    @Description(
+        "Enrich message attributes with this value mapped to EnrichKey2")
+    @Validation.Required
+    ValueProvider<String> getEnrichValue2();
+
+    void setEnrichValue2(ValueProvider<String> enrichValue2);
   }
 
   /**
@@ -297,6 +338,146 @@ public class PubsubToPubsub {
       public Builder withFilterValue(ValueProvider<String> filterValue) {
         checkArgument(filterValue != null, "withFilterValue(filterValue) called with null input.");
         return setFilterValue(filterValue);
+      }
+    }
+  }
+
+  /**
+   * DoFn that will enrich events with provided attributes.
+   */
+  @AutoValue
+  public abstract static class EnrichEventsFn extends DoFn<PubsubMessage, PubsubMessage> {
+
+    private static final Logger LOG = LoggerFactory.getLogger(EnrichEventsFn.class);
+
+    private Boolean doEnrich1;
+    private String inputEnrichKey1;
+    private String inputEnrichValue1;
+    private Boolean doEnrich2;
+    private String inputEnrichKey2;
+    private String inputEnrichValue2;
+
+    public static Builder newBuilder() {
+      return new AutoValue_PubsubToPubsub_EnrichEventsFn.Builder();
+    }
+
+    @Nullable
+    abstract ValueProvider<String> enrichKey1();
+
+    @Nullable
+    abstract ValueProvider<String> enrichValue1();
+
+    @Nullable
+    abstract ValueProvider<String> enrichKey2();
+
+    @Nullable
+    abstract ValueProvider<String> enrichValue2();
+
+    @Setup
+    public void setup() {
+
+      if (this.doEnrich1 != null && this.doEnrich2 != null) {
+        return; // Enrich setup has been evaluated already
+      }
+
+      inputEnrichKey1 = (enrichKey1() == null ? null : enrichKey1().get());
+
+      if (inputEnrichKey1 == null) {
+        this.doEnrich1 = false;
+      } else {
+        this.doEnrich1 = true;
+        inputEnrichValue1 = (enrichValue1() == null ? null : enrichValue1().get());
+
+        if (inputEnrichValue1 == null) {
+          LOG.warn("User provided a NULL for enrichValue1.", inputEnrichKey1);
+        }
+      }
+
+      inputEnrichKey2 = (enrichKey2() == null ? null : enrichKey2().get());
+
+      if (inputEnrichKey2 == null) {
+        this.doEnrich2 = false;
+      } else {
+        this.doEnrich2 = true;
+        inputEnrichValue2 = (enrichValue2() == null ? null : enrichValue2().get());
+
+        if (inputEnrichValue2 == null) {
+          LOG.warn("User provided a NULL for enrichValue2.", inputEnrichKey2);
+        }
+      }
+    }
+
+    @ProcessElement
+    public void processElement(ProcessContext context) {
+      PubsubMessage message = context.element();
+      Map<String, String> attrs = message.getAttributeMap();
+      HashMap<String, String> newAttrs = new HashMap<String, String>(attrs);
+      if (this.doEnrich1) {
+        newAttrs.put(this.inputEnrichKey1, this.inputEnrichValue1);
+      }
+      if (this.doEnrich2) {
+        newAttrs.put(this.inputEnrichKey2, this.inputEnrichValue2);
+      }
+      PubsubMessage newMessage = new PubsubMessage(message.getPayload(), newAttrs);
+      context.output(newMessage);
+    }
+
+    /** Builder class for {@link EnrichEventsFn}. */
+    @AutoValue.Builder
+    abstract static class Builder {
+
+      abstract Builder setEnrichKey1(ValueProvider<String> enrichKey1);
+
+      abstract Builder setEnrichValue1(ValueProvider<String> enrichValue1);
+
+      abstract Builder setEnrichKey2(ValueProvider<String> enrichKey2);
+
+      abstract Builder setEnrichValue2(ValueProvider<String> enrichValue2);
+
+      abstract EnrichEventsFn build();
+
+      /**
+       * Method to set the enrichKey1
+       *
+       * @param enrichKey1 key for the {@link PubsubMessage} attribute map.
+       * @return {@link Builder}
+       */
+      public Builder withEnrichKey1(ValueProvider<String> enrichKey1) {
+        checkArgument(enrichKey1 != null, "withEnrichKey1(enrichKey1) called with null input.");
+        return setEnrichKey1(enrichKey1);
+      }
+
+      /**
+       * Method to set the enrichValue1
+       *
+       * @param enrichValue1 value for the {@link PubsubMessage} attribute map.
+       * @return {@link Builder}
+       */
+      public Builder withEnrichValue1(ValueProvider<String> enrichValue1) {
+        checkArgument(enrichValue1 != null, "withFilterValue(enrichValue1) called with null input.");
+        return setEnrichValue1(enrichValue1);
+      }
+
+      /**
+       * Method to set the enrichKey2
+       *
+       * @param enrichKey2 key for the {@link PubsubMessage} attribute map.
+       * @return {@link Builder}
+       */
+      public Builder withEnrichKey2(ValueProvider<String> enrichKey2) {
+        checkArgument(enrichKey2 != null, "withEnrichKey2(enrichKey2) called with null input.");
+        return setEnrichKey2(enrichKey2);
+      }
+
+      /**
+       * Method to set the enrichValue2
+       *
+       * @param enrichValue2 value for the {@link PubsubMessage} attribute map.
+       * @return {@link Builder}
+       */
+      public Builder withEnrichValue2(ValueProvider<String> enrichValue2) {
+        checkArgument(enrichValue2 != null, "withFilterValue(enrichValue2) called with null input.");
+        return setEnrichValue2(enrichValue2);
       }
     }
   }
