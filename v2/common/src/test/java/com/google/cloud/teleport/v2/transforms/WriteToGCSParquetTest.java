@@ -15,10 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import org.apache.beam.sdk.coders.KvCoder;
-import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.testing.TestPipeline;
-import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.values.KV;
 import org.junit.Rule;
 import org.junit.Test;
@@ -53,17 +50,10 @@ public class WriteToGCSParquetTest {
     expectedException.expect(IllegalArgumentException.class);
     expectedException.expectMessage("withOutputDirectory(outputDirectory) called with null input.");
 
-    pipeline
-        .apply(
-            "CreateInput",
-            Create.of(message).withCoder(KvCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
-        .apply(
-            "WriteTextFile(s)",
-            WriteToGCSParquet.newBuilder()
-                .withOutputDirectory(null)
-                .withOutputFilenamePrefix(PARQUET_FILENAME_PREFIX)
-                .setNumShards(NUM_SHARDS)
-                .build());
-    pipeline.run();
+    WriteToGCSParquet.newBuilder()
+        .withOutputDirectory(null)
+        .withOutputFilenamePrefix(PARQUET_FILENAME_PREFIX)
+        .setNumShards(NUM_SHARDS)
+        .build();
   }
 }
