@@ -90,6 +90,7 @@ import org.slf4j.LoggerFactory;
 public class BigQueryConverters {
 
   private static final Pattern BQ_SANITIZE_PATTERN = Pattern.compile("\\$|\\.");
+  private static final Pattern BQ_SANITIZE_DATASET_PATTERN = Pattern.compile("[^0-9a-zA-Z_]");
 
   /* Logger for class. */
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryConverters.class);
@@ -578,6 +579,15 @@ public class BigQueryConverters {
    */
   public static String sanitizeBigQueryChars(String name, String replacement) {
     return BQ_SANITIZE_PATTERN.matcher(name).replaceAll(replacement);
+  }
+
+  /**
+   * Returns a sanitized string by replacing invalid BigQuery Dataset characters
+   * (non- Letters, numbers or underscores) with the replacement argument supplied.
+   * https://cloud.google.com/bigquery/docs/datasets#dataset-naming
+   */
+  public static String sanitizeBigQueryDatasetChars(String name, String replacement) {
+    return BQ_SANITIZE_DATASET_PATTERN.matcher(name).replaceAll(replacement);
   }
 
   /** A {@link SerializableFunction} to convert a {@link TableRow} to a {@link GenericRecord}. */

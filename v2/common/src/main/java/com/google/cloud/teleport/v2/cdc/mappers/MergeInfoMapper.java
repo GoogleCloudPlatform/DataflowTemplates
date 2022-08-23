@@ -105,11 +105,11 @@ public class MergeInfoMapper
                             METADATA_DELETED,
                             TableId.of(
                                 projectId,
-                                row.formatStringTemplateForBigQuery(stagingDataset),
+                                row.formatStringTemplateForBigQueryDataset(stagingDataset),
                                 row.formatStringTemplateForBigQuery(stagingTable)),
                             TableId.of(
                                 projectId,
-                                row.formatStringTemplateForBigQuery(replicaDataset),
+                                row.formatStringTemplateForBigQueryDataset(replicaDataset),
                                 row.formatStringTemplateForBigQuery(replicaTable)));
 
                     return Lists.newArrayList(mergeInfo);

@@ -145,6 +145,14 @@ public class DatastreamRow {
     return BigQueryConverters.sanitizeBigQueryChars(this.formatStringTemplate(template), "_");
   }
 
+  /**
+  * Returns the formatted string after applying the data inside the row and stripped invalid BigQuery Dataset
+  * characters.
+  */
+  public String formatStringTemplateForBigQueryDataset(String template) {
+    return BigQueryConverters.sanitizeBigQueryDatasetChars(this.formatStringTemplate(template), "_");
+  }
+
   /* Returns the list of field/column names for the given row. */
   public Iterable<String> getFieldNames() {
     if (this.jsonRow != null) {
