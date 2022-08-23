@@ -61,6 +61,7 @@ import org.slf4j.LoggerFactory;
  * --AWSEndpointURL=${AWS_ENDPOINT_URL} \
  * --AWSCBORFlag=${AWS_CBOR_FLAG} \
  * --AWSKinesisStreamName=${AWS_KINESIS_STREAM_NAME} \
+ * --AWSKinesisPosition=${AWS_KINESIS_POSITION} \
  * --outputTopic=projects/${PROJECT_ID}/topics/${TOPIC_NAME} \
  * --customAttributes=key=value,key2=value2,..."
  * }
@@ -106,6 +107,12 @@ public class KinesisToPubsub {
     String getAWSKinesisStreamName();
 
     void setAWSKinesisStreamName(String value);
+
+    @Description("Kinesis position (format: LATEST/OLDEST)")
+    @Required
+    String getAWSKinesisPosition();
+
+    void setAWSKinesisPosition(String value);
 
     @Description("Pub/Sub topic name (in complete format)")
     @Required
@@ -172,7 +179,8 @@ public class KinesisToPubsub {
                     Regions.fromName(options.getAWSRegion()),
                     options.getAWSEndpointURL())
                 .withStreamName(options.getAWSKinesisStreamName())
-                .withInitialPositionInStream(InitialPositionInStream.LATEST))
+                .withInitialPositionInStream(
+                    setKinesisInitialPosition(options.getAWSKinesisPosition())))
         .apply(
             "KinesisRecord to PubsubMessage with custom attributes",
             ParDo.of(new RecordToPubsubMessageFn(stringToMap(options.getCustomAttributes()))))
@@ -186,7 +194,7 @@ public class KinesisToPubsub {
     try {
       return Splitter.on(",").withKeyValueSeparator("=").split(string);
     } catch (Exception e) {
-      LOG.error(
+      LOG.warn(
           "Found error with message: "
               + e.getMessage()
               + ". Replaced custom attributes with default key and value");
@@ -219,5 +227,18 @@ public class KinesisToPubsub {
     return new AWSStaticCredentialsProvider(
         new BasicAWSCredentials(
             getSecretValue(options.getAWSAccessKey()), getSecretValue(options.getAWSSecretKey())));
+  }
+
+  private static InitialPositionInStream setKinesisInitialPosition(String initialPosition) {
+    // Set Kinesis initial position
+    switch (initialPosition.toUpperCase()) {
+      case "LATEST":
+        return InitialPositionInStream.LATEST;
+      case "OLDEST":
+        return InitialPositionInStream.TRIM_HORIZON;
+      default:
+        LOG.warn("Found error in the input. Replaced with default value (LATEST)");
+        return InitialPositionInStream.LATEST;
+    }
   }
 }
