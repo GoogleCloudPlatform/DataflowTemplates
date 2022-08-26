@@ -1,0 +1,15 @@
+{
+  "name": "Any-To-Any-Template",
+  "description": "A Beam pipeline that reads from any IO and produces any IO.",
+  "parameters": [
+    {
+      "name": "pipelineSpec",
+      "label": "GCS url for the pipeline spec proto",
+      "helpText": "GCS URL",
+      "regexes": [
+        "^gs:\\/\\/[^\\n\\r]+$"
+      ],
+      "paramType": "TEXT"
+    }
+  ]
+}
