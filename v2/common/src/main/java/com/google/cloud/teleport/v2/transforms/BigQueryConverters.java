@@ -582,8 +582,8 @@ public class BigQueryConverters {
   }
 
   /**
-   * Returns a sanitized string by replacing invalid BigQuery Dataset characters
-   * (non- Letters, numbers or underscores) with the replacement argument supplied.
+   * Returns a sanitized string by replacing invalid BigQuery Dataset characters (non- Letters,
+   * numbers or underscores) with the replacement argument supplied.
    * https://cloud.google.com/bigquery/docs/datasets#dataset-naming
    */
   public static String sanitizeBigQueryDatasetChars(String name, String replacement) {
