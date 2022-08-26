@@ -105,6 +105,7 @@ public final class SpannerChangeStreamsToBigQuery {
   }
 
   private static void setOptions(SpannerChangeStreamsToBigQueryOptions options) {
+    LOG.info("Setting streaing options");
     options.setStreaming(true);
     options.setEnableStreamingEngine(true);
 
@@ -161,13 +162,15 @@ public final class SpannerChangeStreamsToBigQuery {
             ? Timestamp.MAX_VALUE
             : Timestamp.parseTimestamp(options.getEndTimestamp());
 
+    LOG.info("Getting RPC priority");
+
     SpannerConfig spannerConfig =
         SpannerConfig.create()
             .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
             .withProjectId(spannerProjectId)
             .withInstanceId(options.getSpannerInstanceId())
             .withDatabaseId(options.getSpannerDatabase())
-            .withRpcPriority(options.getSpannerRpcPriority());
+            .withRpcPriority(options.getRpcPriority());
 
     SpannerIO.ReadChangeStream readChangeStream =
         SpannerIO.readChangeStream()
@@ -177,7 +180,7 @@ public final class SpannerChangeStreamsToBigQuery {
             .withChangeStreamName(options.getSpannerChangeStreamName())
             .withInclusiveStartAt(startTimestamp)
             .withInclusiveEndAt(endTimestamp)
-            .withRpcPriority(options.getSpannerRpcPriority());
+            .withRpcPriority(options.getRpcPriority());
 
     String spannerMetadataTableName = options.getSpannerMetadataTableName();
     if (spannerMetadataTableName != null) {
