@@ -76,6 +76,18 @@
                 <artifactId>gax</artifactId>
                 <version>2.3.0</version>
             </dependency>
+            <!--
+            Force google-cloud-spanner version to 6.23.3.
+            google-cloud-spanner versions between 6.13.0 and 6.21.0 contain a bug that cause a
+            nullpointer exception to be thrown when recording values in opencensus.
+            -->
+            <dependency>
+                <groupId>com.google.cloud</groupId>
+                <artifactId>google-cloud-spanner-bom</artifactId>
+                <version>6.23.3</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency>
                 <groupId>com.google.api</groupId>
                 <artifactId>gax-grpc</artifactId>
