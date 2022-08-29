@@ -36,6 +36,13 @@ export APP_ROOT=/template/${TEMPLATE_MODULE}
 export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_MODULE}-command-spec.json
 export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
 
+export INPUT_TABLE_SPEC=<my-project:my-dataset.my-table>
+export CONNECTION_URL=<url-or-cloud_id>
+export INDEX=<my-index>
+export USE_LEGACY_SQL=false
+export ELASTICSEARCH_USERNAME=<username>
+export ELASTICSEARCH_PASSWORD=<password>
+
 gcloud config set project ${PROJECT}
 ```
 * Build and push image to Google Container Repository
@@ -124,6 +131,18 @@ echo '{
               "paramType":"TEXT"
           },
           {
+              "name":"elasticsearchUsername",
+              "label":"Username for Elasticsearch endpoint",
+              "helpText":"Username for Elasticsearch endpoint",
+              "paramType":"TEXT"
+          },
+          {
+              "name":"elasticsearchPassword",
+              "label":"Password for Elasticsearch endpoint",
+              "helpText":"Password for Elasticsearch endpoint",
+              "paramType":"TEXT"
+          },
+          {
             "name":"apiKey",
             "label":"Elasticsearch apiKey",
             "helpText":"API key for access without requiring basic authentication.",
@@ -158,20 +177,6 @@ echo '{
               "label":"UDF Javascript Function Name for function to extract whether operation is delete or not from row",
               "helpText":"UDF Javascript Function Name. Default: null",
               "paramType":"TEXT"
-          },
-          {
-            "name":"elasticsearchUsername",
-            "label":"Username for Elasticsearch endpoint",
-            "helpText":"Username for Elasticsearch endpoint",
-            "paramType":"TEXT",
-            "isOptional":true
-          },
-          {
-              "name":"elasticsearchPassword",
-              "label":"Password for Elasticsearch endpoint",
-              "helpText":"Password for Elasticsearch endpoint",
-              "paramType":"TEXT",
-              "isOptional":true
           },
           {
               "name":"batchSize",
@@ -249,11 +254,13 @@ mvn test
 The template requires the following parameters:
 * connectionUrl: Elasticsearch URL in format http://hostname:[port] or Base64 encoded CloudId
 * index: The index toward which the requests will be issued, ex: my-index
-* apiKey: Elasticsearch API key for authentication to cluster (alternative to user/password)
-* javascriptIdFnGcsPath: GCS path of storage location for Javascript UDF to extract _id from row data
-* javascriptIdFnName: Function name for Javascript UDF to extract _id from row data
-* javascriptIsDeleteFnGcsPath: GCS path of storage location for Javascript UDF to determine if row should be a delete operation (rather than create, index, or update)
-* javascriptIsDeleteFnName: Function name for Javascript UDF to determine if row should be a delete operation (rather than create, index, or update)
+* elasticsearchUsername: Elasticsearch username used to connect to Elasticsearch endpoint
+* elasticsearchPassword: Elasticsearch password used to connect to Elasticsearch endpoint
+* apiKey: Base64 Encoded API Key for access without requiring basic authentication. Refer  https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request.
+* javaScriptIdFnGcsPath: GCS path of storage location for JavaScript UDF that will specify _id metadata to be included with document in bulk request
+* javaScriptIdFnName: Function name for JavaScript UDF that will specify _id metadata to be included with document in bulk request
+* javaScriptIsDeleteFnGcsPath: GCS path of storage location for JavaScript UDF that will determine if document should be deleted rather than inserted or updated, function should return string value "true" or "false"
+* javaScriptIsDeleteFnName: Function name for JavaScript UDF that will determine if document should be deleted rather than inserted or updated, function should return string value "true" or "false"
 * spannerInstanceId: The Spanner Instance ID
 * spannerDatabaseId: The Spanner database ID
 * spannerMetadataInstanceId: The Spanner Metadata Instance ID.
@@ -261,20 +268,24 @@ The template requires the following parameters:
 * spannerChangeStream: The Spanner change stream.
 
 The template has the following optional parameters:
-* elasticsearchUsername: Elasticsearch username used to connect to Elasticsearch endpoint
-* elasticsearchPassword: Elasticsearch password used to connect to Elasticsearch endpoint
 * batchSize: Batch size in number of documents. Default: 1000
 * batchSizeBytes: Batch size in number of bytes. Default: 5242880 (5mb)
 * maxRetryAttempts: Max retry attempts, must be > 0. Default: no retries
 * maxRetryDuration: Max retry duration in milliseconds, must be > 0. Default: no retries
-* javascriptIndexFnGcsPath: GCS path of storage location for Javascript UDF to extract _index from row data
-* javascriptIndexFnName: Function name for Javascript UDF to extract _index from row data
-* javascriptTypeFnGcsPath: GCS path of storage location for Javascript UDF to extract _type from row data
-* javascriptTypeFnName: Function name for Javascript UDF to extract _type from row data
+* javaScriptIndexFnGcsPath: GCS path of storage location for JavaScript UDF that will specify _index metadata to be included with document in bulk request
+* javaScriptIndexFnName: Function name for JavaScript UDF that will specify _index metadata to be included with document in bulk request
+* propertyAsId: A property in the document being indexed whose value will specify _id metadata to be included with document in bulk request (takes precendence over an index UDF)
+* javaScriptIdFnGcsPath: GCS path of storage location for JavaScript UDF that will specify _id metadata to be included with document in bulk request
+* javaScriptIdFnName: Function name for JavaScript UDF that will specify _id metadata to be included with document in bulk request
+* javaScriptTypeFnGcsPath: GCS path of storage location for JavaScript UDF that will specify _type metadata to be included with document in bulk request
+* javaScriptTypeFnName: Function name for JavaScript UDF that will specify _type metadata to be included with document in bulk request
+* javaScriptIsDeleteFnGcsPath: GCS path of storage location for JavaScript UDF that will determine if document should be deleted rather than inserted or updated, function should return string value "true" or "false"
+* javaScriptIsDeleteFnName: Function name for JavaScript UDF that will determine if document should be deleted rather than inserted or updated, function should return string value "true" or "false"
 * spannerProjectId: The project containing the spanner instance (default uses same project as template runs in)
 * startTimestamp: The starting DateTime to use for reading change streams. Defaults to now.
 * endTimestamp: The ending DateTime to use for reading change streams. Defaults to infinite.
 * rpcPriority: The priority for Spanner RPC priority. Defaults to HIGH.
+* bulkInsertMethod: Whether to use INDEX (index, allows upserts) or the default CREATE (create, errors on duplicate _id) with Elasticsearch bulk requests
 
 Template can be executed using the following gcloud command:
 ```sh
