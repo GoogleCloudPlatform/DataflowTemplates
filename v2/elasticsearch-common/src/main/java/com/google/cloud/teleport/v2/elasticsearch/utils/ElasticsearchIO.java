@@ -1462,7 +1462,7 @@ public class ElasticsearchIO {
             isDelete = spec.getIsDeleteFn().apply(parsedDocument);
           }
         }
-        long docSizeBytes =  document.getBytes(StandardCharsets.UTF_8).length;
+        long docSizeBytes = document.getBytes(StandardCharsets.UTF_8).length;
         long newBatchSizeBytes = currentBatchSizeBytes + docSizeBytes;
         if (newBatchSizeBytes > spec.getMaxBatchSizeBytes()) {
           flushBatch();
