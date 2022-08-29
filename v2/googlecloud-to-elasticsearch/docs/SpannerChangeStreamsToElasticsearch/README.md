@@ -36,13 +36,6 @@ export APP_ROOT=/template/${TEMPLATE_MODULE}
 export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_MODULE}-command-spec.json
 export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
 
-export INPUT_TABLE_SPEC=<my-project:my-dataset.my-table>
-export CONNECTION_URL=<url-or-cloud_id>
-export INDEX=<my-index>
-export USE_LEGACY_SQL=false
-export ELASTICSEARCH_USERNAME=<username>
-export ELASTICSEARCH_PASSWORD=<password>
-
 gcloud config set project ${PROJECT}
 ```
 * Build and push image to Google Container Repository
@@ -155,30 +148,6 @@ echo '{
               "paramType":"TEXT"
           },
           {
-              "name":"javascriptIdFnGcsPath",
-              "label":"Gcs path to javascript udf source for function to extract id value from row",
-              "helpText":"Gcs path to javascript udf source. Udf will be preferred option for transformation if supplied. Default: null",
-              "paramType":"TEXT"
-          },
-          {
-              "name":"javascriptIdFnName",
-              "label":"UDF Javascript Function Name for function to extract id value from row",
-              "helpText":"UDF Javascript Function Name. Default: null",
-              "paramType":"TEXT"
-          },
-          {
-              "name":"javascriptIsDeleteFnGcsPath",
-              "label":"Gcs path to javascript udf source for function to extract whether operation is delete or not from row",
-              "helpText":"Gcs path to javascript udf source. Udf will be preferred option for transformation if supplied. Default: null",
-              "paramType":"TEXT"
-          },
-          {
-              "name":"javascriptIsDeleteFnName",
-              "label":"UDF Javascript Function Name for function to extract whether operation is delete or not from row",
-              "helpText":"UDF Javascript Function Name. Default: null",
-              "paramType":"TEXT"
-          },
-          {
               "name":"batchSize",
               "label":"Batch size in number of documents",
               "helpText":"Batch size in number of documents. Default: 1000",
@@ -207,30 +176,79 @@ echo '{
               "isOptional":true
           },
           {
-              "name":"javascriptIndexFnGcsPath",
-              "label":"Gcs path to javascript udf source for function to extract index name from row",
-              "helpText":"Gcs path to javascript udf source. Udf will be preferred option for transformation if supplied. Default: null",
+              "name":"propertyAsIndex",
+              "label":"Document property used to specify _index metadata with document in bulk request",
+              "helpText":"A property in the document being indexed whose value will specify _index metadata to be included with document in bulk request (takes precendence over an index UDF)",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
-              "name":"javascriptIndexFnName",
-              "label":"UDF Javascript Function Name for function to extract index name from row",
-              "helpText":"UDF Javascript Function Name. Default: null",
+              "name":"javaScriptIndexFnGcsPath",
+              "label":"GCS path to JavaScript UDF source for function that will specify _index metadata to be included with document in bulk request",
+              "helpText":"GCS path to JavaScript UDF source. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
-              "name":"javascriptTypeFnGcsPath",
-              "label":"Gcs path to javascript udf source for function to extract type value from row",
-              "helpText":"Gcs path to javascript udf source. Udf will be preferred option for transformation if supplied. Default: null",
+              "name":"javaScriptIndexFnName",
+              "label":"UDF JavaScript Function Name for function that will specify _index metadata to be included with document in bulk request",
+              "helpText":"UDF JavaScript Function Name. Default: null",
               "paramType":"TEXT",
               "isOptional":true
           },
           {
-              "name":"javascriptTypeFnName",
-              "label":"UDF Javascript Function Name for function to extract type value from row",
-              "helpText":"UDF Javascript Function Name. Default: null",
+              "name":"propertyAsId",
+              "label":"Document property used to specify _id metadata with document in bulk request",
+              "helpText":"A property in the document being indexed whose value will specify _id metadata to be included with document in bulk request (takes precendence over an index UDF)",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"javaScriptIdFnGcsPath",
+              "label":"GCS path to JavaScript UDF source function that will specify _id metadata to be included with document in bulk request",
+              "helpText":"GCS path to JavaScript UDF source. Default: null",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"javaScriptIdFnName",
+              "label":"UDF JavaScript Function Name for function that will specify _id metadata to be included with document in bulk request",
+              "helpText":"UDF JavaScript Function Name. Default: null",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"javaScriptTypeFnGcsPath",
+              "label":"GCS path to JavaScript UDF source for function that will specify _type metadata to be included with document in bulk request",
+              "helpText":"GCS path to JavaScript UDF source. Default: null",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"javaScriptTypeFnName",
+              "label":"UDF JavaScript Function Name for function that will specify _type metadata to be included with document in bulk request",
+              "helpText":"UDF JavaScript Function Name. Default: null",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"javaScriptIsDeleteFnGcsPath",
+              "label":"GCS path to JavaScript UDF source for function that will determine if document should be deleted rather than inserted or updated, function should return string value \"true\" or \"false\"",
+              "helpText":"GCS path to JavaScript UDF source. Default: null",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"javaScriptIsDeleteFnName",
+              "label":"UDF JavaScript Function Name for function that will determine if document should be deleted rather than inserted or updated, function should return string value \"true\" or \"false\"",
+              "helpText":"UDF JavaScript Function Name. Default: null",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"bulkInsertMethod",
+              "label":"Use INDEX (index, allows upserts) or CREATE (create, errors on duplicate _id) in bulk requests",
+              "helpText":"Whether to use INDEX (index, allows upserts) or the default CREATE (create, errors on duplicate _id) with Elasticsearch bulk requests",
               "paramType":"TEXT",
               "isOptional":true
           }
@@ -257,10 +275,6 @@ The template requires the following parameters:
 * elasticsearchUsername: Elasticsearch username used to connect to Elasticsearch endpoint
 * elasticsearchPassword: Elasticsearch password used to connect to Elasticsearch endpoint
 * apiKey: Base64 Encoded API Key for access without requiring basic authentication. Refer  https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request.
-* javaScriptIdFnGcsPath: GCS path of storage location for JavaScript UDF that will specify _id metadata to be included with document in bulk request
-* javaScriptIdFnName: Function name for JavaScript UDF that will specify _id metadata to be included with document in bulk request
-* javaScriptIsDeleteFnGcsPath: GCS path of storage location for JavaScript UDF that will determine if document should be deleted rather than inserted or updated, function should return string value "true" or "false"
-* javaScriptIsDeleteFnName: Function name for JavaScript UDF that will determine if document should be deleted rather than inserted or updated, function should return string value "true" or "false"
 * spannerInstanceId: The Spanner Instance ID
 * spannerDatabaseId: The Spanner database ID
 * spannerMetadataInstanceId: The Spanner Metadata Instance ID.
@@ -272,6 +286,7 @@ The template has the following optional parameters:
 * batchSizeBytes: Batch size in number of bytes. Default: 5242880 (5mb)
 * maxRetryAttempts: Max retry attempts, must be > 0. Default: no retries
 * maxRetryDuration: Max retry duration in milliseconds, must be > 0. Default: no retries
+* propertyAsIndex: A property in the document being indexed whose value will specify _index metadata to be included with document in bulk request (takes precendence over an index UDF)
 * javaScriptIndexFnGcsPath: GCS path of storage location for JavaScript UDF that will specify _index metadata to be included with document in bulk request
 * javaScriptIndexFnName: Function name for JavaScript UDF that will specify _index metadata to be included with document in bulk request
 * propertyAsId: A property in the document being indexed whose value will specify _id metadata to be included with document in bulk request (takes precendence over an index UDF)
@@ -290,9 +305,16 @@ The template has the following optional parameters:
 Template can be executed using the following gcloud command:
 ```sh
 export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
+export PROJECT=<my-project>
+export BUCKET_NAME=gs://<bucket-name>
+export TEMPLATE_MODULE=spanner-change-streams-to-elasticsearch
+export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
+
 export CONNECTION_URL=<url-or-cloud_id>
 export INDEX=<my-index>
-export ELASTICSEARCH_API_KEY=<es-api-key>
+export ELASTICSEARCH_API_KEY=<api-key>
+export ELASTICSEARCH_USERNAME=<username>
+export ELASTICSEARCH_PASSWORD=<password>
 export JS_ID_FN_GCS_PATH=<javascript-id-extract-gcs-path>
 export JS_ID_FN_NAME=<javascript-id-extract-function-name>
 export JS_IS_DELETE_FN_GCS_PATH=<javascript-delete-operation-determination-gcs-path>
@@ -306,5 +328,5 @@ export SPANNER_CHANGE_STREAM=<spanner-changestream>
 gcloud dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters connectionUrl=${CONNECTION_URL},index=${INDEX},apiKey=${ELASTICSEARCH_API_KEY},javascriptIdFnGcsPath=${JS_ID_FN_GCS_PATH},javascriptIdFnName=${JS_ID_FN_NAME},javascriptIsDeleteFnGcsPath=${JS_IS_DELETE_FN_GCS_PATH},javascriptsDeleteFnName=${JS_IS_DELETE_FN_NAME},spannerInstanceId=${SPANNER_INSTANCE},spannerDatabaseId=${SPANNER_DATABASE},spannerMetadataInstanceId=${SPANNER_METADATA_INSTANCE},spannerMetadataDatabaseId=${SPANNER_METADATA_DATABASE},spannerChangeStreamName=${SPANNER_CHANGE_STREAM}
+        --parameters connectionUrl=${CONNECTION_URL},index=${INDEX},apiKey=${ELASTICSEARCH_API_KEY},javaScriptIdFnGcsPath=${JS_ID_FN_GCS_PATH},javaScriptIdFnName=${JS_ID_FN_NAME},javaScriptIsDeleteFnGcsPath=${JS_IS_DELETE_FN_GCS_PATH},javaScriptsDeleteFnName=${JS_IS_DELETE_FN_NAME},spannerInstanceId=${SPANNER_INSTANCE},spannerDatabaseId=${SPANNER_DATABASE},spannerMetadataInstanceId=${SPANNER_METADATA_INSTANCE},spannerMetadataDatabaseId=${SPANNER_METADATA_DATABASE},spannerChangeStreamName=${SPANNER_CHANGE_STREAM}
 ```

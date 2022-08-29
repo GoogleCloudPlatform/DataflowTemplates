@@ -33,13 +33,6 @@ export APP_ROOT=/template/${TEMPLATE_MODULE}
 export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_MODULE}-command-spec.json
 export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
 
-export INPUT_TABLE_SPEC=<my-project:my-dataset.my-table>
-export CONNECTION_URL=<url-or-cloud_id>
-export INDEX=<my-index>
-export USE_LEGACY_SQL=false
-export ELASTICSEARCH_USERNAME=<username>
-export ELASTICSEARCH_PASSWORD=<password>
-
 gcloud config set project ${PROJECT}
 ```
 * Build and push image to Google Container Repository
@@ -281,8 +274,20 @@ The template has the following optional parameters:
 Template can be executed using the following gcloud command:
 ```sh
 export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
+export PROJECT=<my-project>
+export BUCKET_NAME=gs://<bucket-name>
+export TEMPLATE_MODULE=bigquery-to-elasticsearch
+export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
+
+export INPUT_TABLE_SPEC=<my-project:my-dataset.my-table>
+export CONNECTION_URL=<url-or-cloud_id>
+export INDEX=<my-index>
+export ELASTICSEARCH_API_KEY=<api-key>
+export ELASTICSEARCH_USERNAME=<username>
+export ELASTICSEARCH_PASSWORD=<password>
+
 gcloud dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-central1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters inputTableSpec=${INPUT_TABLE_SPEC},connectionUrl=${CONNECTION_URL},index=${INDEX},elasticsearchUsername=${ELASTICSEARCH_USERNAME},elasticsearchPassword=${ELASTICSEARCH_PASSWORD},useLegacySql=${USE_LEGACY_SQL}
+        --parameters inputTableSpec=${INPUT_TABLE_SPEC},connectionUrl=${CONNECTION_URL},index=${INDEX},elasticsearchUsername=${ELASTICSEARCH_USERNAME},elasticsearchPassword=${ELASTICSEARCH_PASSWORD},apiKey=${ELASTICSEARCH_API_KEY}
 ```
