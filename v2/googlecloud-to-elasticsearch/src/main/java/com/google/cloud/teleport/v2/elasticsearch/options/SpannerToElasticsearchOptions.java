@@ -21,7 +21,10 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation.Required;
 
-/** Custom options for {@link com.google.cloud.teleport.v2.templates.SpannerToElasticsearch} pipeline. */
+/**
+ * Custom options for {@link com.google.cloud.teleport.v2.templates.SpannerToElasticsearch}
+ * pipeline.
+ */
 public interface SpannerToElasticsearchOptions extends PipelineOptions, ElasticsearchWriteOptions {
   @Description("Instance id for spanner table.")
   @Required

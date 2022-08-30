@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.templates;
 
-
 import com.google.cloud.teleport.v2.elasticsearch.options.SpannerToElasticsearchOptions;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
 import com.google.cloud.teleport.v2.transforms.SpannerToJsonTransform.StructToJson;
@@ -30,7 +29,9 @@ public final class SpannerToElasticsearch {
   public static void main(String[] args) {
     PipelineOptionsFactory.register(SpannerToElasticsearchOptions.class);
     SpannerToElasticsearchOptions options =
-        PipelineOptionsFactory.fromArgs(args).withValidation().as(SpannerToElasticsearchOptions.class);
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(SpannerToElasticsearchOptions.class);
     Pipeline pipeline = Pipeline.create(options);
 
     SpannerConfig spannerConfig =
@@ -40,10 +41,7 @@ public final class SpannerToElasticsearch {
             .withRpcPriority(options.getSpannerRpcPriority());
 
     pipeline
-        .apply(
-            SpannerIO.read()
-                .withSpannerConfig(spannerConfig)
-                .withQuery(options.getSqlQuery()))
+        .apply(SpannerIO.read().withSpannerConfig(spannerConfig).withQuery(options.getSqlQuery()))
         .apply(new StructToJson())
         .apply(
             "WriteToElasticsearch",
@@ -54,4 +52,3 @@ public final class SpannerToElasticsearch {
     pipeline.run();
   }
 }
-

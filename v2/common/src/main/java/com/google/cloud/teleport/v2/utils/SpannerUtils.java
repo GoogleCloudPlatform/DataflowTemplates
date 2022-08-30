@@ -65,7 +65,8 @@ public final class SpannerUtils {
           break;
         case BYTES:
           if (!struct.getValue(field.getName()).isNull()) {
-            jsonObject.addProperty(field.getName(), struct.getBytes(field.getName()).toStringUtf8());
+            jsonObject.addProperty(
+                field.getName(), struct.getBytes(field.getName()).toStringUtf8());
           }
           break;
         case DATE:
@@ -74,12 +75,13 @@ public final class SpannerUtils {
           }
           break;
         case TIMESTAMP:
-          if (!struct.getValue(field.getName()).isNull()) {  
-            jsonObject.addProperty(field.getName(), struct.getTimestamp(field.getName()).toString());
+          if (!struct.getValue(field.getName()).isNull()) {
+            jsonObject.addProperty(
+                field.getName(), struct.getTimestamp(field.getName()).toString());
           }
           break;
         case ARRAY:
-          if (!struct.getValue(field.getName()).isNull()) {    
+          if (!struct.getValue(field.getName()).isNull()) {
             jsonObject.add(field.getName(), convertArrayToJsonArray(struct, field.getName()));
           }
           break;

@@ -25,7 +25,6 @@ import java.util.List;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
-import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.ImmutableList;
 import org.junit.Rule;
@@ -36,11 +35,9 @@ import org.junit.rules.ExpectedException;
 public class SpannerToElasticsearchTest {
   private static final String a = "testing";
   private static final long b = 1001;
-  private static final Struct struct =
-    Struct.newBuilder().set("a").to(a).set("b").to(b).build();
+  private static final Struct struct = Struct.newBuilder().set("a").to(a).set("b").to(b).build();
   private static final List<Struct> rows = ImmutableList.of(struct);
-  private static final String jsonifiedTableRow =
-      "{\"a\":\"testing\",\"b\":1001}";
+  private static final String jsonifiedTableRow = "{\"a\":\"testing\",\"b\":1001}";
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
   @Rule public ExpectedException exceptionRule = ExpectedException.none();
 

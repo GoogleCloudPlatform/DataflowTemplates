@@ -27,9 +27,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/**
- * Unit test for {@link com.google.cloud.teleport.v2.transforms.SpannerToJsonTransform} methods.
- */
+/** Unit test for {@link com.google.cloud.teleport.v2.transforms.SpannerToJsonTransform} methods. */
 @RunWith(JUnit4.class)
 public class SpannerToJsonTransformTest {
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
