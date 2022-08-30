@@ -17,6 +17,7 @@ package com.google.cloud.syndeo.transforms.bigtable;
 
 import com.google.auto.value.AutoValue;
 import java.util.List;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.schemas.AutoValueSchema;
 import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 import org.apache.beam.sdk.transforms.SerializableFunction;
@@ -35,6 +36,8 @@ public abstract class BigTableWriteSchemaTransformConfiguration {
   public abstract List<String> getKeyColumns();
 
   public abstract String getEndpoint();
+
+  public abstract @Nullable String getAppProfileId();
 
   public static Builder builder() {
     return new AutoValue_BigTableWriteSchemaTransformConfiguration.Builder();
@@ -62,6 +65,8 @@ public abstract class BigTableWriteSchemaTransformConfiguration {
     public abstract Builder setKeyColumns(List<String> value);
 
     public abstract Builder setEndpoint(String endpoint);
+
+    public abstract Builder setAppProfileId(String appProfile);
 
     public abstract BigTableWriteSchemaTransformConfiguration build();
   }

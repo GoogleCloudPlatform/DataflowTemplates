@@ -26,7 +26,7 @@
     <properties>
         <auto-value.version>1.9</auto-value.version>
         <avro.version>1.8.2</avro.version>
-        <beam.version>2.39.0</beam.version>
+        <beam.version>2.42.0-SNAPSHOT</beam.version>
         <bigtable.version>1.15.0</bigtable.version>
         <bigquery.version>2.9.0</bigquery.version>
         <commons.version>1.8</commons.version>
@@ -59,6 +59,14 @@
         </dependencies>
     </dependencyManagement>
 
+    <!-- TODO(pabloem): Remove the following section before full support.
+    Leave it in for development-->
+    <!--<repositories>
+        <repository>
+          <id>apache.snapshots</id>
+          <url>https://repository.apache.org/content/repositories/snapshots</url>
+        </repository>
+    </repositories>-->
     <dependencies>
         <dependency>
             <groupId>org.apache.beam</groupId>
@@ -128,6 +136,15 @@
             <version>2.10.3</version>
         </dependency>
 
+        <!-- TODO(pabloem): This dependency is used for Arrow reads from BQ. Make sure we need it -->
+        <dependency>
+            <groupId>org.apache.arrow</groupId>
+            <artifactId>arrow-memory-unsafe</artifactId>
+            <version>9.0.0</version>
+            <scope>test</scope>
+        </dependency>
+
+
 
         <!-- Test dependencies -->
         <dependency>
@@ -146,6 +163,12 @@
             <groupId>org.testcontainers</groupId>
             <artifactId>gcloud</artifactId>
             <version>1.17.3</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>3.7.7</version>
             <scope>test</scope>
         </dependency>
 

@@ -20,6 +20,7 @@ import com.google.cloud.bigtable.admin.v2.BigtableTableAdminClient;
 import com.google.cloud.bigtable.admin.v2.BigtableTableAdminSettings;
 import com.google.cloud.bigtable.admin.v2.models.CreateTableRequest;
 import com.google.cloud.bigtable.admin.v2.models.Table;
+import com.google.cloud.bigtable.config.BigtableOptions;
 import com.google.protobuf.ByteString;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -54,19 +55,22 @@ public class BigTableIOWriteSchemaBasedTransform
   private final String bigTableEndpoint;
   private final List<String> keyColumns;
   private final Instant timestampForRows;
+  private final String appProfileId;
 
   BigTableIOWriteSchemaBasedTransform(
       String projectId,
       String instanceId,
       String tableId,
       List<String> keyColumns,
-      String bigTableEndpoint) {
+      String bigTableEndpoint,
+      String appProfileId) {
     this.projectId = projectId;
     this.instanceId = instanceId;
     this.tableId = tableId;
     this.keyColumns = keyColumns;
     this.bigTableEndpoint = bigTableEndpoint;
     this.timestampForRows = Instant.now();
+    this.appProfileId = appProfileId;
   }
 
   @Override
@@ -247,6 +251,12 @@ public class BigTableIOWriteSchemaBasedTransform
     // STEP 4: Write all mutations to BigTable
     BigtableIO.Write btWrite =
         BigtableIO.write().withProjectId(projectId).withInstanceId(instanceId).withTableId(tableId);
+
+    if (appProfileId != null && !appProfileId.isEmpty()) {
+      btWrite =
+          btWrite.withBigtableOptions(
+              BigtableOptions.builder().setAppProfileId(appProfileId).build());
+    }
     PCollection<BigtableWriteResult> btWriteResult =
         bigtableMutations.apply(
             bigTableEndpoint == null || bigTableEndpoint.isEmpty()

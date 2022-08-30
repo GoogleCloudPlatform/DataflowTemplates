@@ -105,7 +105,7 @@ public class SchemaIOTransformProviderWrapperTest {
   }
 
   @Test
-  public void testGetAll() throws Exception {
+  public void testGetAll() {
     List<SchemaTransformProvider> providers = SchemaIOTransformProviderWrapper.getAll();
     assertArrayEquals(
         Collections.singletonList("schemaIO:fake:v1:read").toArray(),

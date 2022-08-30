@@ -51,7 +51,8 @@ public class BigTableWriteIT {
 
   @Test
   public void testBigQueryToBigTableSmallNonTemplateJob() throws IOException {
-    String bigTableName = "syndeo-test-" + BigTableSchemaTransformTest.randomString(6);
+    String bigTableName =
+        "syndeo-test-" + BigTableSchemaTransformTest.randomString(6).replaceAll("[^a-zA-Z0-9]", "");
     String bigQueryName = PROJECT + ":syndeo_dataset." + bigTableName;
 
     BigTableSchemaTransformTest.setUpBigQueryResources(null, bigQueryName);
@@ -60,7 +61,7 @@ public class BigTableWriteIT {
         SyndeoV1.PipelineDescription.newBuilder()
             .addTransforms(
                 new ProviderUtil.TransformSpec(
-                        "bigquery:read", Arrays.asList(bigQueryName, null, null, null))
+                        "bigquery:read", Arrays.asList(bigQueryName, null, null, null, null))
                     .toProto())
             .addTransforms(
                 new ProviderUtil.TransformSpec(
@@ -101,6 +102,7 @@ public class BigTableWriteIT {
                   .setInstanceId("teleport")
                   .build())) {
         btClient.deleteTable(bigTableName);
+      } catch (Exception e) { // IGNORE TEARDOWN EXCEPTION
       }
     }
   }

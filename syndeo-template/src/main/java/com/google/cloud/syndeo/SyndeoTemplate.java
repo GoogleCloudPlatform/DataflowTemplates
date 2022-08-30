@@ -38,7 +38,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
-import org.apache.beam.vendor.grpc.v1p43p2.com.google.common.io.CharStreams;
+import org.apache.beam.vendor.grpc.v1p48p1.com.google.common.io.CharStreams;
 
 public class SyndeoTemplate {
 

@@ -15,8 +15,10 @@
  */
 package com.google.cloud.syndeo.transforms.bigquery;
 
+import com.google.api.services.bigquery.Bigquery;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.service.AutoService;
+import com.google.cloud.bigquery.storage.v1.DataFormat;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -24,12 +26,14 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.TypedRead;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.TypedRead.Method;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
+import org.apache.beam.sdk.io.gcp.testing.BigqueryClient;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.schemas.transforms.Convert;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransform;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.Row;
 
@@ -45,6 +49,7 @@ public class BigQueryReadSchemaTransformProvider implements SchemaTransformProvi
     return Schema.builder()
         .addNullableField("table", FieldType.STRING)
         .addNullableField("query", FieldType.STRING)
+        .addNullableField("method", FieldType.STRING)
         .addNullableField("queryLocation", FieldType.STRING)
         .addNullableField("createDisposition", FieldType.STRING)
         .build();
@@ -82,7 +87,12 @@ public class BigQueryReadSchemaTransformProvider implements SchemaTransformProvi
       return new PTransform<PCollectionRowTuple, PCollectionRowTuple>() {
         public PCollectionRowTuple expand(PCollectionRowTuple input) {
           TypedRead<TableRow> read = BigQueryIO.readTableRowsWithSchema();
-          read = read.withMethod(Method.EXPORT);
+          read = read.withMethod(Method.DIRECT_READ).withFormat(DataFormat.ARROW);
+          String method = BigQueryReadSchemaTransform.this.config.getString("method");
+          if (method != null) {
+            read = read.withMethod(Method.valueOf(method)).withoutValidation();
+          }
+
           String table = BigQueryReadSchemaTransform.this.config.getString("table");
           if (table != null) {
             read = read.from(table);
@@ -102,8 +112,10 @@ public class BigQueryReadSchemaTransformProvider implements SchemaTransformProvi
             read = read.withTestServices(BigQuerySyndeoServices.servicesVariable);
           }
 
-          return PCollectionRowTuple.of(
-              "OUTPUT", input.getPipeline().apply(read).apply(Convert.toRows()));
+          PCollection<TableRow> tableRows = input.getPipeline().apply(read);
+
+          Bigquery client = BigqueryClient.getNewBigqueryClient("SyndeoTests");
+          return PCollectionRowTuple.of("OUTPUT", tableRows.apply(Convert.toRows()));
         }
       };
     }

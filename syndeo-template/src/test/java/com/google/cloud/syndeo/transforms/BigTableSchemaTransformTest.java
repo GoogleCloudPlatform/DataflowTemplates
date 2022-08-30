@@ -17,19 +17,20 @@ package com.google.cloud.syndeo.transforms;
 
 import static org.junit.Assert.assertEquals;
 
+import com.google.api.services.bigquery.model.Table;
+import com.google.api.services.bigquery.model.TableReference;
+import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.syndeo.SyndeoTemplate;
 import com.google.cloud.syndeo.common.ProviderUtil;
 import com.google.cloud.syndeo.transforms.bigquery.BigQuerySyndeoServices;
 import com.google.cloud.syndeo.transforms.bigtable.BigTableWriteSchemaTransformConfiguration;
 import com.google.cloud.syndeo.v1.SyndeoV1;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.Collection;
-import java.util.Random;
+import java.util.*;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryServices;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryUtils;
 import org.apache.beam.sdk.io.gcp.testing.FakeBigQueryServices;
 import org.apache.beam.sdk.io.gcp.testing.FakeDatasetService;
 import org.apache.beam.sdk.io.gcp.testing.FakeJobService;
@@ -39,8 +40,8 @@ import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.values.Row;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Lists;
 import org.joda.time.DateTime;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -53,15 +54,25 @@ public class BigTableSchemaTransformTest {
 
   private static final Random RND = new Random();
 
-  private static final Schema INPUT_SCHEMA =
+  private static final Schema INTEGRATION_TEST_SCHEMA =
       Schema.builder()
           .addStringField("name")
           .addBooleanField("vaccinated")
-          .addDoubleField("height")
-          .addFloatField("temperature")
+          .addDoubleField("temperature")
+          // The following fields cannot be included in local tests
+          // due to limitations of the testing utilities.
           .addInt32Field("age")
           .addInt64Field("networth")
           .addDateTimeField("birthday")
+          .build();
+
+  // We need a different input schema for local tests because not all types are well supported for
+  // the local FakeBigQueryServices utilities.
+  private static final Schema LOCAL_TEST_INPUT_SCHEMA =
+      Schema.builder()
+          .addStringField("name")
+          .addBooleanField("vaccinated")
+          .addDoubleField("temperature")
           .build();
 
   public static String randomString(Integer length) {
@@ -70,16 +81,23 @@ public class BigTableSchemaTransformTest {
     return Base64.getEncoder().encodeToString(byteStr);
   }
 
-  private static Row generateRow() {
-    return Row.withSchema(INPUT_SCHEMA)
-        .addValue(randomString(10))
-        .addValue(RND.nextBoolean())
-        .addValue(RND.nextDouble())
-        .addValue(RND.nextFloat())
-        .addValue(RND.nextInt())
-        .addValue(RND.nextLong())
-        .addValue(new DateTime(Math.abs(RND.nextLong()) % Instant.now().toEpochMilli()))
-        .build();
+  private static Row generateRow(boolean local) {
+    if (local) {
+      return Row.withSchema(LOCAL_TEST_INPUT_SCHEMA)
+          .addValue(randomString(10))
+          .addValue(RND.nextBoolean())
+          .addValue(RND.nextDouble())
+          .build();
+    } else {
+      return Row.withSchema(INTEGRATION_TEST_SCHEMA)
+          .addValue(randomString(10))
+          .addValue(RND.nextBoolean())
+          .addValue(RND.nextDouble())
+          .addValue(RND.nextInt())
+          .addValue(RND.nextLong())
+          .addValue(new DateTime(Math.abs(RND.nextLong()) % Instant.now().toEpochMilli()))
+          .build();
+    }
   }
 
   public static void setUpBigQueryResources(BigQueryServices bqs, String bigQueryName) {
@@ -97,13 +115,13 @@ public class BigTableSchemaTransformTest {
     setupP
         .apply(
             Create.of(
-                generateRow(),
-                generateRow(),
-                generateRow(),
-                generateRow(),
-                generateRow(),
-                generateRow()))
-        .setRowSchema(INPUT_SCHEMA)
+                generateRow(bqs != null),
+                generateRow(bqs != null),
+                generateRow(bqs != null),
+                generateRow(bqs != null),
+                generateRow(bqs != null),
+                generateRow(bqs != null)))
+        .setRowSchema(bqs != null ? LOCAL_TEST_INPUT_SCHEMA : INTEGRATION_TEST_SCHEMA)
         .apply(bqs == null ? bqWrite : bqWrite.withTestServices(bqs));
 
     setupP.run().waitUntilFinish();
@@ -124,8 +142,6 @@ public class BigTableSchemaTransformTest {
             .count());
   }
 
-  @Ignore(
-      "Unable to run this test due to BigQuery exports from FakeJobService are not supporting AVRO schema")
   @Test
   public void testBigQueryToBigTableLocallyWithEmulators() throws Exception {
     String bigTableName = "anytable";
@@ -133,15 +149,34 @@ public class BigTableSchemaTransformTest {
 
     FakeDatasetService.setUp();
     FakeJobService.setUp();
+    FakeDatasetService dss = new FakeDatasetService();
+    dss.createDataset("anyproject", "anyds", "anyloc", null, null);
+    TableReference anytableRef =
+        new TableReference()
+            .setProjectId("anyproject")
+            .setDatasetId("anyds")
+            .setTableId("anytable");
+    dss.createTable(
+        new Table()
+            .setTableReference(anytableRef)
+            .setSchema(BigQueryUtils.toTableSchema(LOCAL_TEST_INPUT_SCHEMA)));
+    List<TableRow> records =
+        Lists.newArrayList(
+            BigQueryUtils.toTableRow(generateRow(true)),
+            BigQueryUtils.toTableRow(generateRow(true)),
+            BigQueryUtils.toTableRow(generateRow(true)),
+            BigQueryUtils.toTableRow(generateRow(true)),
+            BigQueryUtils.toTableRow(generateRow(true)),
+            BigQueryUtils.toTableRow(generateRow(true)),
+            BigQueryUtils.toTableRow(generateRow(true)));
+    dss.insertAll(anytableRef, records, null);
+
+    FakeJobService fjs = new FakeJobService();
     FakeBigQueryServices bqs =
-        new FakeBigQueryServices()
-            .withDatasetService(new FakeDatasetService())
-            .withJobService(new FakeJobService());
-    bqs.getDatasetService(null).createDataset("anyproject", "anyds", "anyloc", null, null);
-    setUpBigQueryResources(bqs, bigQueryName);
+        new FakeBigQueryServices().withDatasetService(dss).withJobService(fjs);
+
     // HACK: We use this global variable to override the BQ Services in the expanded BigQuery
     // SchemaTransform.
-
     BigQuerySyndeoServices.servicesVariable = bqs;
 
     try {
@@ -149,7 +184,7 @@ public class BigTableSchemaTransformTest {
           SyndeoV1.PipelineDescription.newBuilder()
               .addTransforms(
                   new ProviderUtil.TransformSpec(
-                          "bigquery:read", Arrays.asList(bigQueryName, null, null, null))
+                          "bigquery:read", Arrays.asList(bigQueryName, null, "DEFAULT", null, null))
                       .toProto())
               .addTransforms(
                   new ProviderUtil.TransformSpec(
@@ -158,7 +193,7 @@ public class BigTableSchemaTransformTest {
                               .setProjectId("anyproject")
                               .setInstanceId("anyinstance")
                               .setTableId(bigTableName)
-                              .setKeyColumns(Arrays.asList("name", "birthday"))
+                              .setKeyColumns(Arrays.asList("name"))
                               .setEndpoint(bigTableContainer.getEmulatorEndpoint())
                               .build()
                               .toBeamRow()
