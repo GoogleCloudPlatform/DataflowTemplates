@@ -151,7 +151,7 @@ public class SpannerChangeStreamsToElasticsearchTest {
 
   /** Test the {@link SpannerChangeStreamsToElasticsearch} pipeline end-to-end. */
   @Test
-  public void testSpannerChangeStreamsToElasticsearchE2E() {
+  public void testSpannerChangeStreamsToElasticsearchDataChangeRecordToJsonFn() {
 
     // Build pipeline
     PCollection<String> testResults =

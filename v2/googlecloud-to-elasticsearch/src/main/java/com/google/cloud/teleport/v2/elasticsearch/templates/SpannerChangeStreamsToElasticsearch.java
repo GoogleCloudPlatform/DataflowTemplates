@@ -156,8 +156,7 @@ public class SpannerChangeStreamsToElasticsearch {
                 if (modType == ModType.INSERT || modType == ModType.UPDATE) {
                   JSONObject newValuesJson = new JSONObject(mod.getNewValuesJson());
                   // add any properties that are present in newValuesJson to the set of keys to make
-                  // a partial (or complete) row reflecting
-                  // the update (or insert)
+                  // a partial (or complete) row reflecting the update (or insert)
                   cols.forEach(
                       col -> {
                         if (newValuesJson.has(col.getName())) {
