@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.transforms;
 
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.Value;
-import com.google.cloud.teleport.v2.transforms.SpannerToBigQueryTransform.StructToJson;
+import com.google.cloud.teleport.v2.transforms.SpannerToJsonTransform.StructToJson;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
@@ -28,10 +28,10 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /**
- * Unit test for {@link com.google.cloud.teleport.v2.transforms.SpannerToBigQueryTransform} methods.
+ * Unit test for {@link com.google.cloud.teleport.v2.transforms.SpannerToJsonTransform} methods.
  */
 @RunWith(JUnit4.class)
-public class SpannerToBigQueryTransformTest {
+public class SpannerToJsonTransformTest {
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
   @Test
