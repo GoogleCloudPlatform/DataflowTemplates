@@ -43,32 +43,50 @@ public final class SpannerUtils {
     for (StructField field : structFields) {
       switch (field.getType().getCode()) {
         case BOOL:
-          jsonObject.addProperty(field.getName(), struct.getBoolean(field.getName()));
+          if (!struct.getValue(field.getName()).isNull()) {
+            jsonObject.addProperty(field.getName(), struct.getBoolean(field.getName()));
+          }
           break;
         case INT64:
-          jsonObject.addProperty(field.getName(), struct.getLong(field.getName()));
+          if (!struct.getValue(field.getName()).isNull()) {
+            jsonObject.addProperty(field.getName(), struct.getLong(field.getName()));
+          }
           break;
         case FLOAT64:
-          jsonObject.addProperty(field.getName(), struct.getDouble(field.getName()));
+          if (!struct.getValue(field.getName()).isNull()) {
+            jsonObject.addProperty(field.getName(), struct.getDouble(field.getName()));
+          }
           break;
         case STRING:
         case PG_NUMERIC:
-          jsonObject.addProperty(field.getName(), struct.getString(field.getName()));
+          if (!struct.getValue(field.getName()).isNull()) {
+            jsonObject.addProperty(field.getName(), struct.getString(field.getName()));
+          }
           break;
         case BYTES:
-          jsonObject.addProperty(field.getName(), struct.getBytes(field.getName()).toStringUtf8());
+          if (!struct.getValue(field.getName()).isNull()) {
+            jsonObject.addProperty(field.getName(), struct.getBytes(field.getName()).toStringUtf8());
+          }
           break;
         case DATE:
-          jsonObject.addProperty(field.getName(), struct.getDate(field.getName()).toString());
+          if (!struct.getValue(field.getName()).isNull()) {
+            jsonObject.addProperty(field.getName(), struct.getDate(field.getName()).toString());
+          }
           break;
         case TIMESTAMP:
-          jsonObject.addProperty(field.getName(), struct.getTimestamp(field.getName()).toString());
+          if (!struct.getValue(field.getName()).isNull()) {  
+            jsonObject.addProperty(field.getName(), struct.getTimestamp(field.getName()).toString());
+          }
           break;
         case ARRAY:
-          jsonObject.add(field.getName(), convertArrayToJsonArray(struct, field.getName()));
+          if (!struct.getValue(field.getName()).isNull()) {    
+            jsonObject.add(field.getName(), convertArrayToJsonArray(struct, field.getName()));
+          }
           break;
         case STRUCT:
-          jsonObject.add(field.getName(), convertStructToJson(struct.getStruct(field.getName())));
+          if (!struct.getValue(field.getName()).isNull()) {
+            jsonObject.add(field.getName(), convertStructToJson(struct.getStruct(field.getName())));
+          }
           break;
         default:
           throw new RuntimeException("Unsupported type: " + field.getType());

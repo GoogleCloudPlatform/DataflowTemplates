@@ -24,7 +24,7 @@ import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 
-/** Template to write data from Spanner table into BigQuery table. */
+/** Template to write data from Spanner table into Elasticsearch index. */
 public final class SpannerToElasticsearch {
 
   public static void main(String[] args) {
@@ -42,14 +42,13 @@ public final class SpannerToElasticsearch {
     pipeline
         .apply(
             SpannerIO.read()
-                .withTable(options.getSpannerTableId())
                 .withSpannerConfig(spannerConfig)
                 .withQuery(options.getSqlQuery()))
         .apply(new StructToJson())
         .apply(
             "WriteToElasticsearch",
             WriteToElasticsearch.newBuilder()
-                .setOptions(options.as(BigQueryToElasticsearchOptions.class))
+                .setOptions(options.as(SpannerToElasticsearchOptions.class))
                 .build());
 
     pipeline.run();

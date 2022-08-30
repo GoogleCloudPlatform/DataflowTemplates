@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.options;
+package com.google.cloud.teleport.v2.elasticsearch.options;
 
 import com.google.cloud.spanner.Options.RpcPriority;
 import org.apache.beam.sdk.options.Default;
@@ -23,12 +23,6 @@ import org.apache.beam.sdk.options.Validation.Required;
 
 /** Custom options for {@link com.google.cloud.teleport.v2.templates.SpannerToElasticsearch} pipeline. */
 public interface SpannerToElasticsearchOptions extends PipelineOptions, ElasticsearchWriteOptions {
-  @Description("Spanner table to read data from.")
-  @Required
-  String getSpannerTableId();
-
-  void setSpannerTableId(String spannerTableId);
-
   @Description("Instance id for spanner table.")
   @Required
   String getSpannerInstanceId();
