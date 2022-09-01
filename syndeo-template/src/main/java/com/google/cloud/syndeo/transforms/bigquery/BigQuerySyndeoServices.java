@@ -17,6 +17,10 @@ package com.google.cloud.syndeo.transforms.bigquery;
 
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryServices;
 
+/**
+ * This class provides a hacky way to pass a mock for the BigQueryServices implementation for the
+ * Syndeo template.
+ */
 public class BigQuerySyndeoServices {
   public static BigQueryServices servicesVariable = null;
 }
