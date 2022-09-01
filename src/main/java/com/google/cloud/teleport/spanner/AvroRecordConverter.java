@@ -19,6 +19,7 @@ import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.spanner.common.NumericUtils;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Table;
@@ -76,27 +77,35 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
 
       switch (column.type().getCode()) {
         case BOOL:
+        case PG_BOOL:
           builder.set(column.name()).to(readBool(record, avroType, fieldName).orElse(null));
           break;
         case INT64:
+        case PG_INT8:
           builder.set(column.name()).to(readInt64(record, avroType, fieldName).orElse(null));
           break;
         case FLOAT64:
+        case PG_FLOAT8:
           builder.set(column.name()).to(readFloat64(record, avroType, fieldName).orElse(null));
           break;
         case STRING:
+        case PG_VARCHAR:
+        case PG_TEXT:
         case JSON:
           builder.set(column.name()).to(readString(record, avroType, fieldName).orElse(null));
           break;
         case BYTES:
+        case PG_BYTEA:
           builder.set(column.name()).to(readBytes(record, avroType, fieldName).orElse(null));
           break;
         case TIMESTAMP:
+        case PG_TIMESTAMPTZ:
           builder
               .set(column.name())
               .to(readTimestamp(record, avroType, logicalType, fieldName).orElse(null));
           break;
         case DATE:
+        case PG_DATE:
           builder
               .set(column.name())
               .to(readDate(record, avroType, logicalType, fieldName).orElse(null));
@@ -104,7 +113,13 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
         case NUMERIC:
           builder.set(column.name()).to(readNumeric(record, avroType, fieldName).orElse(null));
           break;
+        case PG_NUMERIC:
+          builder
+              .set(column.name())
+              .to(Value.pgNumeric(readPgNumeric(record, avroType, fieldName).orElse(null)));
+          break;
         case ARRAY:
+        case PG_ARRAY:
           {
             Schema arraySchema = avroFieldSchema.getElementType();
             if (arraySchema.getType() == Schema.Type.UNION) {
@@ -117,32 +132,39 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
             Schema.Type arrayType = arraySchema.getType();
             switch (column.type().getArrayElementType().getCode()) {
               case BOOL:
+              case PG_BOOL:
                 builder
                     .set(column.name())
                     .toBoolArray(readBoolArray(record, arrayType, fieldName).orElse(null));
                 break;
               case INT64:
+              case PG_INT8:
                 builder
                     .set(column.name())
                     .toInt64Array(readInt64Array(record, arrayType, fieldName).orElse(null));
                 break;
               case FLOAT64:
+              case PG_FLOAT8:
                 builder
                     .set(column.name())
                     .toFloat64Array(readFloat64Array(record, arrayType, fieldName).orElse(null));
                 break;
               case STRING:
+              case PG_VARCHAR:
+              case PG_TEXT:
               case JSON:
                 builder
                     .set(column.name())
                     .toStringArray(readStringArray(record, arrayType, fieldName).orElse(null));
                 break;
               case BYTES:
+              case PG_BYTEA:
                 builder
                     .set(column.name())
                     .toBytesArray(readBytesArray(record, arrayType, fieldName).orElse(null));
                 break;
               case TIMESTAMP:
+              case PG_TIMESTAMPTZ:
                 builder
                     .set(column.name())
                     .toTimestampArray(
@@ -150,6 +172,7 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
                             .orElse(null));
                 break;
               case DATE:
+              case PG_DATE:
                 builder
                     .set(column.name())
                     .toDateArray(readDateArray(record, arrayType, fieldName).orElse(null));
@@ -158,6 +181,12 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
                 builder
                     .set(column.name())
                     .toStringArray(readNumericArray(record, arrayType, fieldName).orElse(null));
+                break;
+              case PG_NUMERIC:
+                builder
+                    .set(column.name())
+                    .toPgNumericArray(
+                        readPgNumericArray(record, arrayType, fieldName).orElse(null));
                 break;
               default:
                 throw new IllegalArgumentException(
@@ -240,15 +269,32 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
     switch (avroType) {
       case BYTES:
         List<ByteBuffer> values = (List<ByteBuffer>) record.get(fieldName);
-        if (values == null) {
-          return Optional.empty();
-        }
         return Optional.of(
             values.stream()
                 .map(x -> x == null ? null : NumericUtils.bytesToString(x.array()))
                 .collect(Collectors.toList()));
       default:
         throw new IllegalArgumentException("Cannot interpret " + avroType + " as BYTES");
+    }
+  }
+
+  @VisibleForTesting
+  @SuppressWarnings("unchecked")
+  static Optional<List<String>> readPgNumericArray(
+      GenericRecord record, Schema.Type avroType, String fieldName) {
+    Object fieldValue = record.get(fieldName);
+    if (fieldValue == null) {
+      return Optional.empty();
+    }
+    switch (avroType) {
+      case BYTES:
+        List<ByteBuffer> values = (List<ByteBuffer>) record.get(fieldName);
+        return Optional.of(
+            values.stream()
+                .map(x -> x == null ? null : NumericUtils.pgBytesToString(x.array()))
+                .collect(Collectors.toList()));
+      default:
+        throw new IllegalArgumentException("Cannot interpret " + avroType + " as NUMERIC");
     }
   }
 
@@ -459,6 +505,18 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
             .map(NumericUtils::bytesToString);
       default:
         throw new IllegalArgumentException("Cannot interpret " + avroType + " as BYTES");
+    }
+  }
+
+  static Optional<String> readPgNumeric(
+      GenericRecord record, Schema.Type avroType, String fieldName) {
+    switch (avroType) {
+      case BYTES:
+        return Optional.ofNullable((ByteBuffer) record.get(fieldName))
+            .map(ByteBuffer::array)
+            .map(NumericUtils::pgBytesToString);
+      default:
+        throw new IllegalArgumentException("Cannot interpret " + avroType + " as NUMERIC");
     }
   }
 

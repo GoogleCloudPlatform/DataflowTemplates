@@ -94,7 +94,9 @@ public class FileFormatConversionFactory {
                       "ConvertToGenericRecord",
                       ParDo.of(
                           new StringToGenericRecordFn(
-                              options().getSchema(), options().getDelimiter())))
+                                  options().getSchema(), options().getDelimiter())
+                              .withLogDetailedCsvConversionErrors(
+                                  options().getLogDetailedCsvConversionErrors())))
                   .setCoder(
                       AvroCoder.of(
                           GenericRecord.class, SchemaUtils.getAvroSchema(options().getSchema())));

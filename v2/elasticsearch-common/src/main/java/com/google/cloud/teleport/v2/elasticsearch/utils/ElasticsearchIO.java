@@ -25,11 +25,14 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.v2.elasticsearch.utils.BulkInsertMethod.BulkInsertMethodOptions;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
@@ -66,6 +69,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
+import org.apache.http.ConnectionClosedException;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHost;
@@ -73,6 +77,7 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.config.RequestConfig;
+import org.apache.http.conn.ConnectTimeoutException;
 import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
 import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.entity.BufferedHttpEntity;
@@ -179,6 +184,8 @@ public class ElasticsearchIO {
         // advised default starting batch size in ES docs
         .setMaxBatchSizeBytes(5L * 1024L * 1024L)
         .setUsePartialUpdate(false) // default is document upsert
+        .setBulkInsertMethod(
+            BulkInsertMethodOptions.CREATE) // default to create (error on duplicate _id)
         .build();
   }
 
@@ -207,12 +214,16 @@ public class ElasticsearchIO {
         if (partialUpdate) {
           errorRootName = "update";
         } else {
-          if (backendVersion == 2) {
-            errorRootName = "create";
-          } else if (backendVersion >= 5) {
-            errorRootName = "index";
+          // look for error object key dynamically
+          for (String name : new String[] {"create", "index"}) {
+            JsonNode root = item.path(name);
+            if (root != null && !root.isMissingNode()) {
+              errorRootName = name;
+              break;
+            }
           }
         }
+
         JsonNode errorRoot = item.path(errorRootName);
         JsonNode error = errorRoot.get("error");
         if (error != null) {
@@ -752,10 +763,16 @@ public class ElasticsearchIO {
         return estimatedByteSize;
       }
 
-      String endPoint =
-          String.format(
-              "/%s/%s/_count",
-              connectionConfiguration.getIndex(), connectionConfiguration.getType());
+      String endPoint;
+      if (backendVersion < 7) {
+        endPoint =
+            String.format(
+                "/%s/%s/_count",
+                connectionConfiguration.getIndex(), connectionConfiguration.getType());
+      } else {
+        endPoint = String.format("/%s/_count", connectionConfiguration.getIndex());
+      }
+
       try (RestClient restClient = connectionConfiguration.createClient()) {
         long count = queryCount(restClient, endPoint, query);
         LOG.debug("estimate source byte size: query document count " + count);
@@ -862,11 +879,18 @@ public class ElasticsearchIO {
             String.format("\"slice\": {\"id\": %s,\"max\": %s}", source.sliceId, source.numSlices);
         query = query.replaceFirst("\\{", "{" + sliceQuery + ",");
       }
-      String endPoint =
-          String.format(
-              "/%s/%s/_search",
-              source.spec.getConnectionConfiguration().getIndex(),
-              source.spec.getConnectionConfiguration().getType());
+      String endPoint;
+      if (source.backendVersion < 7) {
+        endPoint =
+            String.format(
+                "/%s/%s/_search",
+                source.spec.getConnectionConfiguration().getIndex(),
+                source.spec.getConnectionConfiguration().getType());
+      } else {
+        endPoint =
+            String.format("/%s/_search", source.spec.getConnectionConfiguration().getIndex());
+      }
+
       Map<String, String> params = new HashMap<>();
       params.put("scroll", source.spec.getScrollKeepalive());
       if (source.backendVersion == 2) {
@@ -1102,6 +1126,8 @@ public class ElasticsearchIO {
 
     abstract boolean getUsePartialUpdate();
 
+    abstract BulkInsertMethodOptions getBulkInsertMethod();
+
     abstract @Nullable BooleanFieldValueExtractFn getIsDeleteFn();
 
     abstract Builder builder();
@@ -1121,6 +1147,8 @@ public class ElasticsearchIO {
       abstract Builder setTypeFn(FieldValueExtractFn typeFn);
 
       abstract Builder setUsePartialUpdate(boolean usePartialUpdate);
+
+      abstract Builder setBulkInsertMethod(BulkInsertMethodOptions bulkInsertMethod);
 
       abstract Builder setRetryConfiguration(RetryConfiguration retryConfiguration);
 
@@ -1223,6 +1251,17 @@ public class ElasticsearchIO {
      */
     public Write withUsePartialUpdate(boolean usePartialUpdate) {
       return builder().setUsePartialUpdate(usePartialUpdate).build();
+    }
+
+    /**
+     * Provide an instruction to control whether bulk requests use index (allows upserts) or create
+     * (errors on duplicate _id).
+     *
+     * @param bulkInsertMethod set to INDEX to use index or CREATE to use create
+     * @return the {@link Write} with the index or create control set
+     */
+    public Write withBulkInsertMethod(BulkInsertMethodOptions bulkInsertMethod) {
+      return builder().setBulkInsertMethod(bulkInsertMethod).build();
     }
 
     /**
@@ -1342,7 +1381,8 @@ public class ElasticsearchIO {
         // configure a custom serializer for metadata to be able to change serialization based
         // on ES version
         SimpleModule module = new SimpleModule();
-        module.addSerializer(DocumentMetadata.class, new DocumentMetadataSerializer());
+        module.addSerializer(
+            DocumentMetadata.class, new DocumentMetadataSerializer((backendVersion >= 7)));
         OBJECT_MAPPER.registerModule(module);
       }
 
@@ -1353,9 +1393,11 @@ public class ElasticsearchIO {
       }
 
       private class DocumentMetadataSerializer extends StdSerializer<DocumentMetadata> {
+        private boolean excludeType = false;
 
-        private DocumentMetadataSerializer() {
+        private DocumentMetadataSerializer(boolean excludeType) {
           super(DocumentMetadata.class);
+          this.excludeType = excludeType;
         }
 
         @Override
@@ -1366,7 +1408,7 @@ public class ElasticsearchIO {
           if (value.index != null) {
             gen.writeStringField("_index", value.index);
           }
-          if (value.type != null) {
+          if (value.type != null && !this.excludeType) {
             gen.writeStringField("_type", value.type);
           }
           if (value.id != null) {
@@ -1420,7 +1462,6 @@ public class ElasticsearchIO {
             isDelete = spec.getIsDeleteFn().apply(parsedDocument);
           }
         }
-
         if (isDelete) {
           // delete request used for deleting a document.
           batch.add(String.format("{ \"delete\" : %s }%n", documentMetadata));
@@ -1432,7 +1473,13 @@ public class ElasticsearchIO {
                     "{ \"update\" : %s }%n{ \"doc\" : %s, \"doc_as_upsert\" : true }%n",
                     documentMetadata, document));
           } else {
-            batch.add(String.format("{ \"create\" : %s }%n%s%n", documentMetadata, document));
+            if (spec.getBulkInsertMethod() == BulkInsertMethodOptions.INDEX) {
+              // index allows upsert of document with same _id as existing document
+              batch.add(String.format("{ \"index\" : %s }%n%s%n", documentMetadata, document));
+            } else {
+              // create will error if document with same _id already exists
+              batch.add(String.format("{ \"create\" : %s }%n%s%n", documentMetadata, document));
+            }
           }
         }
 
@@ -1449,6 +1496,16 @@ public class ElasticsearchIO {
         flushBatch();
       }
 
+      private boolean isRetryableClientException(Throwable t) {
+        // RestClient#performRequest only throws wrapped IOException so we must inspect the
+        // exception cause to determine if the exception is likely transient i.e. retryable or
+        // not.
+        return t.getCause() instanceof ConnectTimeoutException
+            || t.getCause() instanceof SocketTimeoutException
+            || t.getCause() instanceof ConnectionClosedException
+            || t.getCause() instanceof ConnectException;
+      }
+
       private void flushBatch() throws IOException, InterruptedException {
         if (batch.isEmpty()) {
           return;
@@ -1459,25 +1516,43 @@ public class ElasticsearchIO {
         }
         batch.clear();
         currentBatchSizeBytes = 0;
-        Response response;
-        HttpEntity responseEntity;
+        Response response = null;
+        HttpEntity responseEntity = null;
         // Elasticsearch will default to the index/type provided here if none are set in the
         // document meta (i.e. using ElasticsearchIO$Write#withIndexFn and
         // ElasticsearchIO$Write#withTypeFn options)
-        String endPoint =
-            String.format(
-                "/%s/%s/_bulk",
-                spec.getConnectionConfiguration().getIndex(),
-                spec.getConnectionConfiguration().getType());
+        String endPoint;
+        if (backendVersion < 7) {
+          endPoint =
+              String.format(
+                  "/%s/%s/_bulk",
+                  spec.getConnectionConfiguration().getIndex(),
+                  spec.getConnectionConfiguration().getType());
+        } else {
+          endPoint = String.format("/%s/_bulk", spec.getConnectionConfiguration().getIndex());
+        }
         HttpEntity requestBody =
             new NStringEntity(bulkRequest.toString(), ContentType.APPLICATION_JSON);
-        Request request = new Request("POST", endPoint);
-        request.addParameters(Collections.emptyMap());
-        request.setEntity(requestBody);
-        response = restClient.performRequest(request);
-        responseEntity = new BufferedHttpEntity(response.getEntity());
+        try {
+          Request request = new Request("POST", endPoint);
+          request.addParameters(Collections.emptyMap());
+          request.setEntity(requestBody);
+          response = restClient.performRequest(request);
+          responseEntity = new BufferedHttpEntity(response.getEntity());
+        } catch (java.io.IOException ex) {
+          if (spec.getRetryConfiguration() == null || !isRetryableClientException(ex)) {
+            throw ex;
+          }
+          LOG.error("Caught ES timeout, retrying", ex);
+        }
         if (spec.getRetryConfiguration() != null
-            && spec.getRetryConfiguration().getRetryPredicate().test(responseEntity)) {
+            && (response == null
+                || responseEntity == null
+                || spec.getRetryConfiguration().getRetryPredicate().test(responseEntity))) {
+          if (responseEntity != null
+              && spec.getRetryConfiguration().getRetryPredicate().test(responseEntity)) {
+            LOG.warn("ES Cluster is responding with HTP 429 - TOO_MANY_REQUESTS.");
+          }
           responseEntity = handleRetry("POST", endPoint, Collections.emptyMap(), requestBody);
         }
         checkForErrors(responseEntity, backendVersion, spec.getUsePartialUpdate());
@@ -1488,21 +1563,31 @@ public class ElasticsearchIO {
           String method, String endpoint, Map<String, String> params, HttpEntity requestBody)
           throws IOException, InterruptedException {
         Response response;
-        HttpEntity responseEntity;
+        HttpEntity responseEntity = null;
         Sleeper sleeper = Sleeper.DEFAULT;
         BackOff backoff = retryBackoff.backoff();
         int attempt = 0;
         // while retry policy exists
         while (BackOffUtils.next(sleeper, backoff)) {
           LOG.warn(String.format(RETRY_ATTEMPT_LOG, ++attempt));
-          Request request = new Request(method, endpoint);
-          request.addParameters(params);
-          request.setEntity(requestBody);
-          response = restClient.performRequest(request);
-          responseEntity = new BufferedHttpEntity(response.getEntity());
+          try {
+            Request request = new Request(method, endpoint);
+            request.addParameters(params);
+            request.setEntity(requestBody);
+            response = restClient.performRequest(request);
+            responseEntity = new BufferedHttpEntity(response.getEntity());
+          } catch (java.io.IOException ex) {
+            if (isRetryableClientException(ex)) {
+              LOG.error("Caught ES timeout, retrying", ex);
+              continue;
+            }
+          }
           // if response has no 429 errors
-          if (!spec.getRetryConfiguration().getRetryPredicate().test(responseEntity)) {
+          if (spec.getRetryConfiguration() != null
+              && spec.getRetryConfiguration().getRetryPredicate().test(responseEntity)) {
             return responseEntity;
+          } else {
+            LOG.warn("ES Cluster is responding with HTP 429 - TOO_MANY_REQUESTS.");
           }
         }
         throw new IOException(String.format(RETRY_FAILED_LOG, attempt));
@@ -1528,10 +1613,11 @@ public class ElasticsearchIO {
           (backendVersion == 2
               || backendVersion == 5
               || backendVersion == 6
-              || backendVersion == 7),
+              || backendVersion == 7
+              || backendVersion == 8),
           "The Elasticsearch version to connect to is %s.x. "
               + "This version of the ElasticsearchIO is only compatible with "
-              + "Elasticsearch v7.x, v6.x, v5.x and v2.x",
+              + "Elasticsearch v8.x, v7.x, v6.x, v5.x and v2.x",
           backendVersion);
       return backendVersion;
 

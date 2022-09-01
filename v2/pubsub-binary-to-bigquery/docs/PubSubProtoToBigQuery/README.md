@@ -93,7 +93,7 @@ The template requires the following parameters:
 *   protoSchemaPath: GCS path to the self-contained proto schema. For example,
     gs://MyBucket/schema.pb. This can be created by passing
     `descriptor_set_out=schema.pb` to the `protoc` command. Use
-    `--include-imports` to make sure that the file is self-contained.
+    `--include_imports` to make sure that the file is self-contained.
 *   fullMessageName: The full proto message name, for instance
     package.name.MessageName. Messages are separated by the '.' delimiter, such
     as package.name.OuterMessage.InnerMessage. Be sure to use the value set with

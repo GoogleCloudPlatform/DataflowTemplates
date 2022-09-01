@@ -17,6 +17,7 @@ package com.google.cloud.teleport.spanner;
 
 import static com.google.cloud.teleport.spanner.AvroUtil.unpackNullable;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.common.NumericUtils;
 import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.ChangeStream;
@@ -24,6 +25,7 @@ import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.ddl.View;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import java.util.Collection;
@@ -36,13 +38,22 @@ import org.slf4j.LoggerFactory;
 /** Allows to convert a set of Avro schemas to {@link Ddl}. */
 public class AvroSchemaToDdlConverter {
   private static final Logger LOG = LoggerFactory.getLogger(AvroSchemaToDdlConverter.class);
+  private final Dialect dialect;
+
+  public AvroSchemaToDdlConverter() {
+    this.dialect = Dialect.GOOGLE_STANDARD_SQL;
+  }
+
+  public AvroSchemaToDdlConverter(Dialect dialect) {
+    this.dialect = dialect;
+  }
 
   public Ddl toDdl(Collection<Schema> avroSchemas) {
-    Ddl.Builder builder = Ddl.builder();
+    Ddl.Builder builder = Ddl.builder(dialect);
     for (Schema schema : avroSchemas) {
       if (schema.getProp("spannerViewQuery") != null) {
         builder.addView(toView(null, schema));
-      } else if (schema.getProp("spannerChangeStreamForClause") != null) {
+      } else if (schema.getProp(AvroUtil.CHANGE_STREAM_FOR_CLAUSE) != null) {
         builder.addChangeStream(toChangeStream(null, schema));
       } else {
         builder.addTable(toTable(null, schema));
@@ -57,7 +68,8 @@ public class AvroSchemaToDdlConverter {
     }
     LOG.debug("Converting to Ddl viewName {}", viewName);
 
-    View.Builder builder = View.builder().name(viewName).query(schema.getProp("spannerViewQuery"));
+    View.Builder builder =
+        View.builder(dialect).name(viewName).query(schema.getProp("spannerViewQuery"));
     if (schema.getProp("spannerViewSecurity") != null) {
       builder.security(View.SqlSecurity.valueOf(schema.getProp("spannerViewSecurity")));
     }
@@ -73,7 +85,7 @@ public class AvroSchemaToDdlConverter {
     ChangeStream.Builder builder =
         ChangeStream.builder()
             .name(changeStreamName)
-            .forClause(schema.getProp("spannerChangeStreamForClause"));
+            .forClause(schema.getProp(AvroUtil.CHANGE_STREAM_FOR_CLAUSE));
 
     ImmutableList.Builder<String> changeStreamOptions = ImmutableList.builder();
     for (int i = 0; ; i++) {
@@ -94,7 +106,7 @@ public class AvroSchemaToDdlConverter {
     }
     LOG.debug("Converting to Ddl tableName {}", tableName);
 
-    Table.Builder table = Table.builder();
+    Table.Builder table = Table.builder(dialect);
     table.name(tableName);
     for (Schema.Field f : schema.getFields()) {
       Column.Builder column = table.column(f.name());
@@ -134,7 +146,8 @@ public class AvroSchemaToDdlConverter {
           Type spannerType = inferType(avroType, true);
           sqlType = toString(spannerType, true);
         }
-        column.parseType(sqlType).notNull(!nullable);
+        String defaultExpression = f.getProp("defaultExpression");
+        column.parseType(sqlType).notNull(!nullable).defaultExpression(defaultExpression);
       }
       ImmutableList.Builder<String> columnOptions = ImmutableList.builder();
       for (int i = 0; ; i++) {
@@ -155,10 +168,10 @@ public class AvroSchemaToDdlConverter {
       }
       if (spannerPrimaryKey.endsWith(" ASC")) {
         String name = spannerPrimaryKey.substring(0, spannerPrimaryKey.length() - 4);
-        table.primaryKey().asc(unescape(name)).end();
+        table.primaryKey().asc(unescape(name, dialect)).end();
       } else if (spannerPrimaryKey.endsWith(" DESC")) {
         String name = spannerPrimaryKey.substring(0, spannerPrimaryKey.length() - 5);
-        table.primaryKey().desc(unescape(name)).end();
+        table.primaryKey().desc(unescape(name, dialect)).end();
       } else {
         throw new IllegalArgumentException("Cannot parse spannerPrimaryKey " + spannerPrimaryKey);
       }
@@ -194,8 +207,9 @@ public class AvroSchemaToDdlConverter {
   }
 
   // TODO: maybe encapsulate in the Ddl library.
-  private static String unescape(String name) {
-    if (name.startsWith("`") && name.endsWith("`")) {
+  private static String unescape(String name, Dialect dialect) {
+    if ((dialect == Dialect.GOOGLE_STANDARD_SQL && name.startsWith("`") && name.endsWith("`"))
+        || (dialect == Dialect.POSTGRESQL && name.startsWith("\"") && name.endsWith("\""))) {
       return name.substring(1, name.length() - 1);
     }
     return name;
@@ -213,33 +227,52 @@ public class AvroSchemaToDdlConverter {
     return props.build();
   }
 
-  private com.google.cloud.teleport.spanner.common.Type inferType(Schema f, boolean supportArrays) {
+  @VisibleForTesting
+  com.google.cloud.teleport.spanner.common.Type inferType(Schema f, boolean supportArrays) {
     Schema.Type type = f.getType();
     LogicalType logicalType = LogicalTypes.fromSchema(f);
 
     switch (type) {
       case BOOLEAN:
-        return com.google.cloud.teleport.spanner.common.Type.bool();
+        return (dialect == Dialect.GOOGLE_STANDARD_SQL)
+            ? com.google.cloud.teleport.spanner.common.Type.bool()
+            : com.google.cloud.teleport.spanner.common.Type.pgBool();
       case INT:
-        return com.google.cloud.teleport.spanner.common.Type.int64();
+        return (dialect == Dialect.GOOGLE_STANDARD_SQL)
+            ? com.google.cloud.teleport.spanner.common.Type.int64()
+            : com.google.cloud.teleport.spanner.common.Type.pgInt8();
       case LONG:
-        if (LogicalTypes.timestampMillis().equals(logicalType)) {
-          return com.google.cloud.teleport.spanner.common.Type.timestamp();
+        if (LogicalTypes.timestampMillis().equals(logicalType)
+            || LogicalTypes.timestampMicros().equals(logicalType)) {
+          return (dialect == Dialect.GOOGLE_STANDARD_SQL)
+              ? com.google.cloud.teleport.spanner.common.Type.timestamp()
+              : com.google.cloud.teleport.spanner.common.Type.pgTimestamptz();
         }
-        if (LogicalTypes.timestampMicros().equals(logicalType)) {
-          return com.google.cloud.teleport.spanner.common.Type.timestamp();
-        }
-        return com.google.cloud.teleport.spanner.common.Type.int64();
+        return (dialect == Dialect.GOOGLE_STANDARD_SQL)
+            ? com.google.cloud.teleport.spanner.common.Type.int64()
+            : com.google.cloud.teleport.spanner.common.Type.pgInt8();
       case FLOAT:
       case DOUBLE:
-        return com.google.cloud.teleport.spanner.common.Type.float64();
+        return (dialect == Dialect.GOOGLE_STANDARD_SQL)
+            ? com.google.cloud.teleport.spanner.common.Type.float64()
+            : com.google.cloud.teleport.spanner.common.Type.pgFloat8();
       case STRING:
-        return com.google.cloud.teleport.spanner.common.Type.string();
+        return (dialect == Dialect.GOOGLE_STANDARD_SQL)
+            ? com.google.cloud.teleport.spanner.common.Type.string()
+            : com.google.cloud.teleport.spanner.common.Type.pgVarchar();
       case BYTES:
-        if (LogicalTypes.decimal(NumericUtils.PRECISION, NumericUtils.SCALE).equals(logicalType)) {
+        if (LogicalTypes.decimal(NumericUtils.PRECISION, NumericUtils.SCALE).equals(logicalType)
+            && dialect == Dialect.GOOGLE_STANDARD_SQL) {
           return com.google.cloud.teleport.spanner.common.Type.numeric();
         }
-        return com.google.cloud.teleport.spanner.common.Type.bytes();
+        if (LogicalTypes.decimal(NumericUtils.PG_MAX_PRECISION, NumericUtils.PG_MAX_SCALE)
+                .equals(logicalType)
+            && dialect == Dialect.POSTGRESQL) {
+          return com.google.cloud.teleport.spanner.common.Type.pgNumeric();
+        }
+        return (dialect == Dialect.GOOGLE_STANDARD_SQL)
+            ? com.google.cloud.teleport.spanner.common.Type.bytes()
+            : com.google.cloud.teleport.spanner.common.Type.pgBytea();
       case ARRAY:
         {
           if (supportArrays) {
@@ -252,7 +285,10 @@ public class AvroSchemaToDdlConverter {
               element = unpacked;
             }
             try {
-              return com.google.cloud.teleport.spanner.common.Type.array(inferType(element, false));
+              return (dialect == Dialect.GOOGLE_STANDARD_SQL)
+                  ? com.google.cloud.teleport.spanner.common.Type.array(inferType(element, false))
+                  : com.google.cloud.teleport.spanner.common.Type.pgArray(
+                      inferType(element, false));
             } catch (IllegalArgumentException e) {
               throw new IllegalArgumentException("Cannot infer array type for field " + f);
             }
@@ -269,20 +305,38 @@ public class AvroSchemaToDdlConverter {
     switch (spannerType.getCode()) {
       case BOOL:
         return "BOOL";
+      case PG_BOOL:
+        return "boolean";
       case INT64:
         return "INT64";
+      case PG_INT8:
+        return "bigint";
       case FLOAT64:
         return "FLOAT64";
+      case PG_FLOAT8:
+        return "double precision";
       case STRING:
         return "STRING(MAX)";
+      case PG_TEXT:
+        return "text";
+      case PG_VARCHAR:
+        return "character varying";
       case BYTES:
         return "BYTES(MAX)";
+      case PG_BYTEA:
+        return "bytea";
       case TIMESTAMP:
         return "TIMESTAMP";
+      case PG_TIMESTAMPTZ:
+        return "timestamp with time zone";
       case DATE:
         return "DATE";
+      case PG_DATE:
+        return "date";
       case NUMERIC:
         return "NUMERIC";
+      case PG_NUMERIC:
+        return "numeric";
       case JSON:
         return "JSON";
       case ARRAY:
@@ -292,6 +346,17 @@ public class AvroSchemaToDdlConverter {
                 spannerType.getArrayElementType();
             String elementStr = toString(element, false);
             return "ARRAY<" + elementStr + ">";
+          }
+          // otherwise fall through and throw an error.
+          break;
+        }
+      case PG_ARRAY:
+        {
+          if (supportArray) {
+            com.google.cloud.teleport.spanner.common.Type element =
+                spannerType.getArrayElementType();
+            String elementStr = toString(element, false);
+            return elementStr + "[]";
           }
           // otherwise fall through and throw an error.
           break;

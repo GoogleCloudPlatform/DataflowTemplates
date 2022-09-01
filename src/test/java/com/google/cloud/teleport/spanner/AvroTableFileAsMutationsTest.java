@@ -17,7 +17,11 @@ package com.google.cloud.teleport.spanner;
 
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.spanner.common.Type;
@@ -36,6 +40,7 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumWriter;
+import org.apache.beam.sdk.Pipeline.PipelineExecutionException;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.MatchResult;
@@ -83,10 +88,46 @@ public class AvroTableFileAsMutationsTest {
                     assertThat(
                         shard.getRange().getTo() - shard.getRange().getFrom(),
                         equalTo(splitSize * 1L));
+                    assertNotNull(shard.toString());
                   });
+              assertTrue(shards.get(0).equals(shards.get(0)));
+              assertFalse(shards.get(0).equals(shards.get(1)));
+              assertFalse(shards.get(0).equals(null));
               return null;
             });
     p.run();
+  }
+
+  @Test
+  public void testFileShardingException() throws Exception {
+    Path path = tmpFolder.newFile("testfile").toPath();
+    int splitSize = 10000;
+    Files.write(path, new byte[splitSize * 2]);
+    MatchResult.Metadata fileMetadata =
+        MatchResult.Metadata.builder()
+            .setResourceId(FileSystems.matchNewResource(path.toString(), false /* isDirectory */))
+            .setIsReadSeekEfficient(true)
+            .setSizeBytes(splitSize * 2)
+            .build();
+
+    PCollectionView<Map<String, String>> filenamesToTableNamesMapView =
+        p.apply(
+                "Create File/Table names Map",
+                Create.of(ImmutableMap.<String, String>of("fakeFileMetadata", "null")))
+            .apply(View.asMap());
+
+    p.apply("Create Metadata", Create.of(fileMetadata))
+        .apply(FileIO.readMatches())
+        // Pcollection<FileIO.ReadableFile>
+        .apply(
+            "Split into ranges",
+            ParDo.of(new SplitIntoRangesFn(splitSize, filenamesToTableNamesMapView))
+                .withSideInputs(filenamesToTableNamesMapView))
+        .setCoder(FileShard.Coder.of());
+
+    // The pipeline throws an exception if filenamesToTableNamesMapView Map doesn't contain mapping
+    // for an input file.
+    assertThrows(PipelineExecutionException.class, () -> p.run());
   }
 
   @Test
@@ -245,5 +286,12 @@ public class AvroTableFileAsMutationsTest {
                 .to("Doe")
                 .build());
     p.run();
+  }
+
+  @Test
+  public void testFileShardCreation() {
+    assertThrows(NullPointerException.class, () -> new AutoValue_FileShard(null, null, null));
+    assertThrows(
+        NullPointerException.class, () -> new AutoValue_FileShard("testTable", null, null));
   }
 }

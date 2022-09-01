@@ -29,12 +29,13 @@
     <properties>
         <avro.version>1.8.2</avro.version>
         <bigtable.version>1.15.0</bigtable.version>
-        <bigquery.version>1.128.0</bigquery.version>
+        <bigquery.version>2.9.0</bigquery.version>
         <commons.version>1.8</commons.version>
         <commons-text.version>1.9</commons-text.version>
         <protoc.version>3.15.8</protoc.version>
         <truth.version>1.0.1</truth.version>
         <truth-proto-extension.version>1.0.1</truth-proto-extension.version>
+        <secretmanager.version>2.1.2</secretmanager.version>
     </properties>
 
     <dependencies>
@@ -43,6 +44,12 @@
             <groupId>org.apache.avro</groupId>
             <artifactId>avro</artifactId>
             <version>${avro.version}</version>
+            <exclusions>
+              <exclusion>
+                <groupId>org.xerial.snappy</groupId>
+                <artifactId>snappy-java</artifactId>
+              </exclusion>
+          </exclusions>
         </dependency>
         <dependency>
           <groupId>org.apache.hadoop</groupId>
@@ -117,8 +124,25 @@
             </exclusion>
           </exclusions>
         </dependency>
+        <dependency>
+          <groupId>com.google.cloud</groupId>
+          <artifactId>google-cloud-secretmanager</artifactId>
+          <version>${secretmanager.version}</version>
+          <exclusions>
+            <exclusion>
+              <groupId>io.grpc</groupId>
+              <artifactId>*</artifactId>
+            </exclusion>
+          </exclusions>
+        </dependency>
 
         <!-- Test dependencies -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>com.google.truth</groupId>
             <artifactId>truth</artifactId>

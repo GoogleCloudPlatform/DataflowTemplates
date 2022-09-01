@@ -18,8 +18,8 @@ package com.google.cloud.teleport.v2.cdc.mappers;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
-import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.utils.DataStreamClient;
+import com.google.cloud.teleport.v2.values.DatastreamRow;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -62,9 +62,10 @@ public class DataStreamMapper extends BigQueryMapper<TableRow, KV<TableId, Table
 
   @Override
   public TableId getTableId(TableRow input) {
-    String datasetName = BigQueryConverters.formatStringTemplate(datasetNameTemplate, input);
-    String tableName =
-        BigQueryConverters.formatStringTemplate(tableNameTemplate, input).replaceAll("\\$", "_");
+    DatastreamRow row = DatastreamRow.of(input);
+
+    String datasetName = row.formatStringTemplateForBigQueryDataset(datasetNameTemplate);
+    String tableName = row.formatStringTemplateForBigQuery(tableNameTemplate);
 
     return TableId.of(getProjectId(), datasetName, tableName);
   }
@@ -115,7 +116,8 @@ public class DataStreamMapper extends BigQueryMapper<TableRow, KV<TableId, Table
       if (retriesRemaining > 0) {
         int sleepSecs = (int) Math.pow(MAX_RETRIES - retriesRemaining + 1, 2) * 10;
         LOG.info(
-            "IOException Occurred, will retry after {} seconds: Failed to Retrieve Schema: {} {}.{} : {}",
+            "IOException Occurred, will retry after {} seconds: Failed to Retrieve Schema: {} {}.{}"
+                + " : {}",
             sleepSecs,
             streamName,
             schemaName,

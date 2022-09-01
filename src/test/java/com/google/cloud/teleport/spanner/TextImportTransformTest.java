@@ -16,16 +16,27 @@
 package com.google.cloud.teleport.spanner;
 
 import static org.hamcrest.Matchers.equalTo;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertThrows;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.TextImportTransform.ReadImportManifest;
+import com.google.cloud.teleport.spanner.TextImportTransform.ReadTableColumns;
 import com.google.cloud.teleport.spanner.TextImportTransform.ResolveDataFiles;
+import com.google.cloud.teleport.spanner.common.Type.Code;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
+import com.google.cloud.teleport.spanner.proto.TextImportProtos.ImportManifest;
+import com.google.cloud.teleport.spanner.proto.TextImportProtos.ImportManifest.TableManifest.Column;
+import com.google.common.collect.Lists;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import org.apache.beam.sdk.Pipeline.PipelineExecutionException;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.PAssert;
@@ -151,9 +162,14 @@ public class TextImportTransformTest {
     PCollectionView<Ddl> ddlView =
         pipeline.apply("ddl", Create.of(getTestDdl())).apply(View.asSingleton());
 
+    PCollectionView<Dialect> dialectView =
+        pipeline
+            .apply("Dialect", Create.of(Dialect.GOOGLE_STANDARD_SQL))
+            .apply("Dialect As PCollectionView", View.asSingleton());
+
     PCollection<KV<String, String>> tableAndFiles =
         pipeline
-            .apply("Read manifest file", new ReadImportManifest(importManifest))
+            .apply("Read manifest file", new ReadImportManifest(importManifest, dialectView))
             .apply("Resolve data files", new ResolveDataFiles(importManifest, ddlView));
 
     PAssert.that(tableAndFiles)
@@ -308,9 +324,9 @@ public class TextImportTransformTest {
       assertThat(
           e.getMessage(),
           equalTo(
-              "java.lang.RuntimeException: DB table table3 has one or more generated columns. An "
-                  + "explict column list that excludes the generated columns must be provided in the "
-                  + "manifest."));
+              "java.lang.RuntimeException: DB table table3 has one or more generated columns. An"
+                  + " explicit column list that excludes the generated columns must be provided in"
+                  + " the manifest."));
     }
   }
 
@@ -351,6 +367,76 @@ public class TextImportTransformTest {
               "java.lang.RuntimeException: Column gen_col in manifest is a generated column "
                   + "in DB table table3. Generated columns cannot be imported."));
     }
+  }
+
+  @Test
+  public void readPgImportManifestTypeMustMatch() throws Exception {
+    Path f11 = Files.createTempFile("table1-file", "1");
+    Path manifestFile = Files.createTempFile("import-manifest", ".json");
+    Charset charset = Charset.forName("UTF-8");
+    try (BufferedWriter writer = Files.newBufferedWriter(manifestFile, charset)) {
+      String jsonString =
+          String.format(
+              "{\"tables\": [{\"table_name\": \"table1\",\"file_patterns\": [\"%s\"],\"columns\":"
+                  + " [{\"column_name\": \"int_col\", \"type_name\": \"bigint\"},"
+                  + " {\"column_name\":\"str_10_col\", \"type_name\": \"character varying(10)\"},"
+                  + " {\"column_name\":\"float_col\", \"type_name\": \"double precision\"},"
+                  + " {\"column_name\":\"bool_col\", \"type_name\": \"boolean\"},"
+                  + " {\"column_name\": \"byte_col\", \"type_name\": \"bytea\"},"
+                  + " {\"column_name\": \"timestamp_col\","
+                  + " \"type_name\":\"timestamp with time zone\"},"
+                  + " {\"column_name\": \"numeric_col\", \"type_name\": \"numeric\"},"
+                  + " {\"column_name\": \"date_col\", \"type_name\": \"date\"}]}]}",
+              f11.toString());
+      writer.write(jsonString, 0, jsonString.length());
+    }
+
+    ValueProvider<String> importManifest =
+        ValueProvider.StaticValueProvider.of(manifestFile.toString());
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("ddl", Create.of(getPgTestDdl())).apply(View.asSingleton());
+
+    PCollection<KV<String, String>> tableAndFiles =
+        pipeline
+            .apply("Read manifest file", new ReadImportManifest(importManifest))
+            .apply("Resolve data files", new ResolveDataFiles(importManifest, ddlView));
+    pipeline.run();
+  }
+
+  @Test
+  public void readPgImportManifestTypeMismatch() throws Exception {
+    Path f11 = Files.createTempFile("table1-file", "1");
+    Path manifestFile = Files.createTempFile("import-manifest", ".json");
+    Charset charset = Charset.forName("UTF-8");
+    try (BufferedWriter writer = Files.newBufferedWriter(manifestFile, charset)) {
+      String jsonString =
+          String.format(
+              "{\"tables\": ["
+                  + "{\"table_name\": \"table1\","
+                  + "\"file_patterns\": [\"%s\"],"
+                  + "\"columns\": [{\"column_name\": \"int_col\", \"type_name\": \"text\"}]}"
+                  + "]}",
+              f11.toString());
+      writer.write(jsonString, 0, jsonString.length());
+    }
+
+    ValueProvider<String> importManifest =
+        ValueProvider.StaticValueProvider.of(manifestFile.toString());
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("ddl", Create.of(getPgTestDdl())).apply(View.asSingleton());
+
+    PCollection<KV<String, String>> tableAndFiles =
+        pipeline
+            .apply("Read manifest file", new ReadImportManifest(importManifest))
+            .apply("Resolve data files", new ResolveDataFiles(importManifest, ddlView));
+
+    PipelineExecutionException thrown =
+        assertThrows(PipelineExecutionException.class, () -> pipeline.run());
+    assertThat(
+        thrown.getMessage(),
+        equalTo(
+            "java.lang.RuntimeException: Mismatching type: Table table1 Column int_col [PG_INT8"
+                + " from DB and text from manifest]"));
   }
 
   private static Ddl getTestDdl() {
@@ -413,5 +499,102 @@ public class TextImportTransformTest {
             .endView()
             .build();
     return ddl;
+  }
+
+  private static Ddl getPgTestDdl() {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("table1")
+            .column("int_col")
+            .pgInt8()
+            .notNull()
+            .endColumn()
+            .column("str_10_col")
+            .pgVarchar()
+            .size(10)
+            .endColumn()
+            .column("float_col")
+            .pgFloat8()
+            .endColumn()
+            .column("bool_col")
+            .pgBool()
+            .endColumn()
+            .column("byte_col")
+            .pgBytea()
+            .endColumn()
+            .column("timestamp_col")
+            .pgTimestamptz()
+            .endColumn()
+            .column("numeric_col")
+            .pgNumeric()
+            .endColumn()
+            .column("date_col")
+            .pgDate()
+            .endColumn()
+            .primaryKey()
+            .asc("int_col")
+            .end()
+            .endTable()
+            .build();
+    return ddl;
+  }
+
+  @Test
+  public void testParseSpannerDataType() {
+    assertEquals(
+        Code.STRING,
+        ResolveDataFiles.parseSpannerDataType("STRING(MAX)", Dialect.GOOGLE_STANDARD_SQL));
+    assertEquals(
+        Code.INT64, ResolveDataFiles.parseSpannerDataType("INT64", Dialect.GOOGLE_STANDARD_SQL));
+    assertEquals(
+        Code.FLOAT64,
+        ResolveDataFiles.parseSpannerDataType("FLOAT64", Dialect.GOOGLE_STANDARD_SQL));
+    assertEquals(
+        Code.BOOL, ResolveDataFiles.parseSpannerDataType("BOOL", Dialect.GOOGLE_STANDARD_SQL));
+    assertEquals(
+        Code.DATE, ResolveDataFiles.parseSpannerDataType("DATE", Dialect.GOOGLE_STANDARD_SQL));
+    assertEquals(
+        Code.TIMESTAMP,
+        ResolveDataFiles.parseSpannerDataType("TIMESTAMP", Dialect.GOOGLE_STANDARD_SQL));
+    assertEquals(
+        Code.BYTES, ResolveDataFiles.parseSpannerDataType("BYTES", Dialect.GOOGLE_STANDARD_SQL));
+    assertEquals(
+        Code.NUMERIC,
+        ResolveDataFiles.parseSpannerDataType("NUMERIC", Dialect.GOOGLE_STANDARD_SQL));
+    assertEquals(
+        Code.JSON, ResolveDataFiles.parseSpannerDataType("JSON", Dialect.GOOGLE_STANDARD_SQL));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ResolveDataFiles.parseSpannerDataType("unknown", Dialect.GOOGLE_STANDARD_SQL));
+  }
+
+  @Test
+  public void testReadTableColumns() throws Exception {
+    ImportManifest importManifest1 =
+        ImportManifest.newBuilder()
+            .addTables(
+                ImportManifest.TableManifest.newBuilder()
+                    .setTableName("table1")
+                    .addColumns(Column.newBuilder().setColumnName("col1").build())
+                    .build())
+            .build();
+
+    PCollection<ImportManifest> input =
+        pipeline.apply("ImportManifest", Create.of(importManifest1));
+    PCollection<Map<String, List<Column>>> manifestColumns =
+        input.apply("ReadTableColumns", new ReadTableColumns());
+
+    PAssert.that(manifestColumns)
+        .satisfies(
+            input1 -> {
+              LinkedList<Map<String, List<Column>>> manifestCols = Lists.newLinkedList(input1);
+              assertEquals(1, manifestCols.size());
+              for (Map<String, List<Column>> manifest : manifestCols) {
+                assertEquals(1, manifest.get("table1").size());
+                assertEquals("col1", manifest.get("table1").get(0).getColumnName());
+              }
+              return null;
+            });
+    pipeline.run();
   }
 }

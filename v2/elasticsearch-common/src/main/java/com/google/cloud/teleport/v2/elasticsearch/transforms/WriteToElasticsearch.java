@@ -17,11 +17,16 @@ package com.google.cloud.teleport.v2.elasticsearch.transforms;
 
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.elasticsearch.options.ElasticsearchWriteOptions;
+import com.google.cloud.teleport.v2.elasticsearch.transforms.ValueExtractorTransform.BooleanValueExtractorFn;
+import com.google.cloud.teleport.v2.elasticsearch.transforms.ValueExtractorTransform.StringValueExtractorFn;
 import com.google.cloud.teleport.v2.elasticsearch.utils.ConnectionInformation;
 import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIO;
+import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIO.Write.FieldValueExtractFn;
 import java.util.Optional;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
@@ -51,6 +56,36 @@ import org.joda.time.Duration;
 @AutoValue
 public abstract class WriteToElasticsearch extends PTransform<PCollection<String>, PDone> {
 
+  /**
+   * The {@link StringFieldValueExtractFn} class is a class implementation for {@link
+   * FieldValueExtractFn} to extract a property by name.
+   */
+  @AutoValue
+  abstract static class StringFieldValueExtractFn implements FieldValueExtractFn {
+
+    @Nullable
+    abstract String propertyName();
+
+    public static Builder newBuilder() {
+      return new AutoValue_WriteToElasticsearch_StringFieldValueExtractFn.Builder();
+    }
+
+    @Override
+    public String apply(JsonNode input) {
+      if (propertyName() == null) {
+        return null;
+      }
+      return input.get(propertyName()).asText();
+    }
+
+    /** Builder for {@link StringFieldValueExtractFn}. */
+    @AutoValue.Builder
+    public abstract static class Builder {
+      public abstract Builder setPropertyName(String propertyName);
+
+      public abstract StringFieldValueExtractFn build();
+    }
+  }
   /** Convert provided long to {@link Duration}. */
   private static Duration getDuration(Long milliseconds) {
     return new Duration(milliseconds);
@@ -96,10 +131,80 @@ public abstract class WriteToElasticsearch extends PTransform<PCollection<String
             .withMaxBatchSize(options().getBatchSize())
             .withMaxBatchSizeBytes(options().getBatchSizeBytes());
 
+    if (options().getPropertyAsId() != null) {
+      StringFieldValueExtractFn idFn =
+          StringFieldValueExtractFn.newBuilder()
+              .setPropertyName(options().getPropertyAsId())
+              .build();
+
+      elasticsearchWriter = elasticsearchWriter.withIdFn(idFn);
+    } else if (options().getJavaScriptIdFnGcsPath() != null
+        && options().getJavaScriptIdFnName() != null) {
+      StringValueExtractorFn idFn =
+          StringValueExtractorFn.newBuilder()
+              .setFileSystemPath(options().getJavaScriptIdFnGcsPath())
+              .setFunctionName(options().getJavaScriptIdFnName())
+              .build();
+
+      elasticsearchWriter = elasticsearchWriter.withIdFn(idFn);
+    }
+
+    if (options().getPropertyAsIndex() != null) {
+      StringFieldValueExtractFn indexFn =
+          StringFieldValueExtractFn.newBuilder()
+              .setPropertyName(options().getPropertyAsIndex())
+              .build();
+
+      elasticsearchWriter = elasticsearchWriter.withIndexFn(indexFn);
+    } else if (options().getJavaScriptIndexFnGcsPath() != null
+        && options().getJavaScriptIndexFnName() != null) {
+      StringValueExtractorFn indexFn =
+          StringValueExtractorFn.newBuilder()
+              .setFileSystemPath(options().getJavaScriptIndexFnGcsPath())
+              .setFunctionName(options().getJavaScriptIndexFnName())
+              .build();
+
+      elasticsearchWriter = elasticsearchWriter.withIndexFn(indexFn);
+    }
+
+    if (options().getJavaScriptTypeFnGcsPath() != null
+        && options().getJavaScriptTypeFnName() != null) {
+      StringValueExtractorFn typeFn =
+          StringValueExtractorFn.newBuilder()
+              .setFileSystemPath(options().getJavaScriptTypeFnGcsPath())
+              .setFunctionName(options().getJavaScriptTypeFnName())
+              .build();
+
+      elasticsearchWriter = elasticsearchWriter.withTypeFn(typeFn);
+    }
+
+    if (options().getJavaScriptIsDeleteFnGcsPath() != null
+        && options().getJavaScriptIsDeleteFnName() != null) {
+      BooleanValueExtractorFn isDeleteFn =
+          BooleanValueExtractorFn.newBuilder()
+              .setFileSystemPath(options().getJavaScriptIsDeleteFnGcsPath())
+              .setFunctionName(options().getJavaScriptIsDeleteFnName())
+              .build();
+
+      elasticsearchWriter = elasticsearchWriter.withIsDeleteFn(isDeleteFn);
+    }
+
+    if (options().getUsePartialUpdate() != null) {
+      elasticsearchWriter =
+          elasticsearchWriter.withUsePartialUpdate(
+              Boolean.TRUE.equals(options().getUsePartialUpdate()));
+    }
+
+    if (options().getBulkInsertMethod() != null) {
+      elasticsearchWriter =
+          elasticsearchWriter.withBulkInsertMethod(options().getBulkInsertMethod());
+    }
+
     if (Optional.ofNullable(options().getMaxRetryAttempts()).isPresent()) {
-      elasticsearchWriter.withRetryConfiguration(
-          ElasticsearchIO.RetryConfiguration.create(
-              options().getMaxRetryAttempts(), getDuration(options().getMaxRetryDuration())));
+      elasticsearchWriter =
+          elasticsearchWriter.withRetryConfiguration(
+              ElasticsearchIO.RetryConfiguration.create(
+                  options().getMaxRetryAttempts(), getDuration(options().getMaxRetryDuration())));
     }
 
     return jsonStrings.apply("WriteDocuments", elasticsearchWriter);

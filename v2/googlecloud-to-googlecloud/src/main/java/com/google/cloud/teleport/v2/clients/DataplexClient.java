@@ -19,7 +19,6 @@ import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Asset;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Entity;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Partition;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Zone;
-import com.google.cloud.teleport.v2.values.EntityMetadata;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.util.List;
@@ -55,7 +54,11 @@ public interface DataplexClient {
       throws IOException;
 
   /**
-   * Get entities by their names.
+   * Gets "rich" entities (with all fields populated) by their names.
+   *
+   * <p>Note: the implementation will likely load all entities one by one as it's the only way to
+   * get all entity fields via Dataplex API. If you don't need additional fields like entity schema,
+   * use the {@link #listEntities} method.
    *
    * @param entityNames example:
    *     projects/{project_number}/locations/{location_id}/lakes/{lake_id}/zones/{zone_id}/entities/
@@ -67,36 +70,82 @@ public interface DataplexClient {
       throws IOException;
 
   /**
-   * Get partitions of the entity.
+   * Gets a single "rich" entity (with all fields populated) by its name.
+   *
+   * @param entityName example:
+   *     projects/{project_number}/locations/{location_id}/lakes/{lake_id}/zones/{zone_id}/entities/
+   *     {entity_id_1}
+   */
+  GoogleCloudDataplexV1Entity getEntity(String entityName) throws IOException;
+
+  /**
+   * Lists all entities in a zone matching an optional filter.
+   *
+   * @param zoneName example:
+   *     projects/{project_number}/locations/{location_id}/lakes/{lake_id}/zones/{zone_id}
+   * @param filter optional filter, can be {@code null} or empty, follows <a
+   *     href="https://google.aip.dev/160">AIP-160</a> standard, Dataplex supports {@code asset} and
+   *     {@code data_path} fields, example filter: {@code asset=&lt;asset name&gt; AND
+   *     data_path="gs://bucket/directory"}
+   */
+  ImmutableList<GoogleCloudDataplexV1Entity> listEntities(String zoneName, String filter)
+      throws IOException;
+
+  /**
+   * Creates a new entity in a specific zone (failing if it already exists).
+   *
+   * @param zoneName example:
+   *     projects/{project_number}/locations/{location_id}/lakes/{lake_id}/zones/{zone_id}
+   * @param entity entity to create, {@link GoogleCloudDataplexV1Entity#getName() name} must be
+   *     empty
+   * @return the created instance as returned by Dataplex, with the new generated {@link
+   *     GoogleCloudDataplexV1Entity#getName() name}
+   * @throws IOException if entity with this name already exists
+   */
+  GoogleCloudDataplexV1Entity createEntity(String zoneName, GoogleCloudDataplexV1Entity entity)
+      throws IOException;
+
+  /**
+   * Updates an existing entity (failing if it doesn't exist).
+   *
+   * @param entity entity to update, {@link GoogleCloudDataplexV1Entity#getName() name} must not be
+   *     empty
+   * @return the updated instance as returned by Dataplex, theoretically could be different from
+   *     {@code entity}
+   * @throws IOException if entity with this name doesn't exist
+   */
+  GoogleCloudDataplexV1Entity updateEntity(GoogleCloudDataplexV1Entity entity) throws IOException;
+
+  /**
+   * Creates a new partition for an entity.
+   *
+   * @param entityName example:
+   *     projects/{project_number}/locations/{location_id}/lakes/{lake_id}/zones/{zone_id}/entities/{entity_id}
+   * @param partition partition to create, {@code name} must be empty
+   * @return the created instance as returned by Dataplex, with the new generated {@code name}
+   */
+  GoogleCloudDataplexV1Partition createPartition(
+      String entityName, GoogleCloudDataplexV1Partition partition) throws IOException;
+
+  /**
+   * Creates a new partition for an entity, or updates it if it already exists.
+   *
+   * <p>Since Dataplex doesn't support partition updates, update means delete+create.
+   *
+   * @param entityName example:
+   *     projects/{project_number}/locations/{location_id}/lakes/{lake_id}/zones/{zone_id}/entities/{entity_id}
+   * @param partition partition to create, {@code name} must be empty
+   * @return the created instance as returned by Dataplex, with the new generated {@code name}
+   */
+  GoogleCloudDataplexV1Partition createOrUpdatePartition(
+      String entityName, GoogleCloudDataplexV1Partition partition) throws IOException;
+
+  /**
+   * Gets partitions of the entity.
    *
    * @param entityName example:
    *     projects/{project_number}/locations/{location_id}/lakes/{lake_id}/zones/{zone_id}/entities/
    *     {entity_id}
    */
   ImmutableList<GoogleCloudDataplexV1Partition> getPartitions(String entityName) throws IOException;
-
-  /**
-   * Creates the metadata for {@code asset}.
-   *
-   * <p>Implementations may or may not throw an exception on failure. They should document their
-   * chosen behavior.
-   *
-   * @param assetName example:
-   *     projects/{name}/locations/{location}/lakes/{lake}/zones/{zone}/assets/{asset}
-   * @param metadata entities and partitions to create and/or update
-   * @param createBehavior what to do if an entity already exists (partitions can only be created)
-   *     Implementations may create some or all of the non-existing records.
-   */
-  void createMetadata(
-      String assetName, ImmutableList<EntityMetadata> metadata, CreateBehavior createBehavior)
-      throws IOException;
-
-  /** Determines what to do on a create request if a given resource already exists. */
-  enum CreateBehavior {
-    /** Fail (exit method) if the resource exists. */
-    FAIL_IF_EXISTS,
-
-    /** Update the existing resource with the new metadata. */
-    UPDATE_IF_EXISTS
-  }
 }

@@ -50,6 +50,7 @@ public class DataplexJdbcIngestionFilter
   private TupleTag<GenericRecord> filteredRecordsOutputTag;
   /** The tag for existing target file names. */
   private TupleTag<String> existingTargetFilesOutputTag;
+
   private ZoneId zoneId;
 
   public DataplexJdbcIngestionFilter(

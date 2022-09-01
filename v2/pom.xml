@@ -29,7 +29,7 @@
         <autovalue.annotations.version>1.7.4</autovalue.annotations.version>
         <autovalue.service.version>1.0-rc6</autovalue.service.version>
         <checkstyle.version>8.7</checkstyle.version>
-        <beam.version>2.38.0</beam.version>
+        <beam.version>2.39.0</beam.version>
         <hamcrest.version>2.1</hamcrest.version>
         <hadoop.version>2.10.1</hadoop.version>
         <guava.version>30.1-jre</guava.version>
@@ -75,6 +75,18 @@
                 <groupId>com.google.api</groupId>
                 <artifactId>gax</artifactId>
                 <version>2.3.0</version>
+            </dependency>
+            <!--
+            Force google-cloud-spanner version to 6.23.3.
+            google-cloud-spanner versions between 6.13.0 and 6.21.0 contain a bug that cause a
+            nullpointer exception to be thrown when recording values in opencensus.
+            -->
+            <dependency>
+                <groupId>com.google.cloud</groupId>
+                <artifactId>google-cloud-spanner-bom</artifactId>
+                <version>6.23.3</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
             <dependency>
                 <groupId>com.google.api</groupId>
@@ -680,10 +692,12 @@
         <module>elasticsearch-common</module>
         <module>file-format-conversion</module>
         <module>googlecloud-to-elasticsearch</module>
+        <module>googlecloud-to-mongodb</module>
         <module>googlecloud-to-googlecloud</module>
-        <module>hive-to-bigquery</module>
+        <module>googlecloud-to-splunk</module>
         <module>kafka-to-bigquery</module>
         <module>kafka-to-gcs</module>
+        <module>mongodb-to-googlecloud</module>
         <module>kudu-to-bigquery</module>
         <module>pubsub-binary-to-bigquery</module>
         <module>pubsub-cdc-to-bigquery</module>

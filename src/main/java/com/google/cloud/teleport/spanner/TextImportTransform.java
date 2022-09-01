@@ -15,13 +15,15 @@
  */
 package com.google.cloud.teleport.spanner;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.teleport.spanner.TextImportProtos.ImportManifest;
-import com.google.cloud.teleport.spanner.TextImportProtos.ImportManifest.TableManifest;
 import com.google.cloud.teleport.spanner.common.Type.Code;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.cloud.teleport.spanner.proto.ExportProtos.ProtoDialect;
+import com.google.cloud.teleport.spanner.proto.TextImportProtos.ImportManifest;
+import com.google.cloud.teleport.spanner.proto.TextImportProtos.ImportManifest.TableManifest;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.HashMultimap;
 import com.google.protobuf.util.JsonFormat;
@@ -56,6 +58,7 @@ import org.apache.beam.sdk.io.gcp.spanner.SpannerWriteResult;
 import org.apache.beam.sdk.io.gcp.spanner.Transaction;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Combine;
+import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Keys;
 import org.apache.beam.sdk.transforms.MapElements;
@@ -94,13 +97,19 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
     PCollectionView<Transaction> tx =
         begin.apply(SpannerIO.createTransaction().withSpannerConfig(spannerConfig));
 
+    PCollectionView<Dialect> dialectView =
+        begin
+            .apply("Read Dialect", new ReadDialect(spannerConfig))
+            .apply("Dialect As PCollectionView", View.asSingleton());
+
     PCollection<Ddl> ddl =
-        begin.apply("Read Information Schema", new ReadInformationSchema(spannerConfig, tx));
+        begin.apply(
+            "Read Information Schema", new ReadInformationSchema(spannerConfig, tx, dialectView));
 
     PCollectionView<Ddl> ddlView = ddl.apply("Cloud Spanner DDL as view", View.asSingleton());
 
     PCollection<ImportManifest> manifest =
-        begin.apply("Read manifest file", new ReadImportManifest(importManifest));
+        begin.apply("Read manifest file", new ReadImportManifest(importManifest, dialectView));
 
     PCollection<KV<String, String>> allFiles =
         manifest.apply("Resolve data files", new ResolveDataFiles(importManifest, ddlView));
@@ -189,7 +198,8 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
                       .withCommitDeadline(Duration.standardMinutes(1))
                       .withMaxCumulativeBackoff(Duration.standardHours(2))
                       .withMaxNumMutations(10000)
-                      .withGroupingFactor(100));
+                      .withGroupingFactor(100)
+                      .withDialectView(dialectView));
       previousComputation = result.getOutput();
     }
 
@@ -302,23 +312,60 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
   static class ReadImportManifest extends PTransform<PBegin, PCollection<ImportManifest>> {
 
     private final ValueProvider<String> importManifest;
+    private PCollectionView<Dialect> dialectView;
+
+    ReadImportManifest(ValueProvider<String> importManifest, PCollectionView<Dialect> dialectView) {
+      this.importManifest = importManifest;
+      this.dialectView = dialectView;
+    }
 
     ReadImportManifest(ValueProvider<String> importManifest) {
       this.importManifest = importManifest;
+      this.dialectView = null;
     }
 
     @Override
     public PCollection<ImportManifest> expand(PBegin input) {
-      return input
-          .apply("Read manifest", FileIO.match().filepattern(importManifest))
-          .apply(
-              "Resource id",
-              MapElements.into(TypeDescriptor.of(ResourceId.class))
-                  .via((MatchResult.Metadata::resourceId)))
-          .apply(
-              "Read manifest json",
-              MapElements.into(TypeDescriptor.of(ImportManifest.class))
-                  .via(ReadImportManifest::readManifest));
+      if (dialectView == null) {
+        dialectView =
+            input
+                .getPipeline()
+                .apply("CreateSingleton", Create.of(Dialect.GOOGLE_STANDARD_SQL))
+                .apply("Default Dialect As PCollectionView", View.asSingleton());
+      }
+      PCollection<ImportManifest> manifest =
+          input
+              .apply("Read manifest", FileIO.match().filepattern(importManifest))
+              .apply(
+                  "Resource id",
+                  MapElements.into(TypeDescriptor.of(ResourceId.class))
+                      .via((MatchResult.Metadata::resourceId)))
+              .apply(
+                  "Read manifest json",
+                  MapElements.into(TypeDescriptor.of(ImportManifest.class))
+                      .via(ReadImportManifest::readManifest));
+      manifest.apply(
+          "Check dialect",
+          ParDo.of(
+                  new DoFn<ImportManifest, Dialect>() {
+
+                    @ProcessElement
+                    public void processElement(ProcessContext c) {
+                      ImportManifest proto = c.element();
+                      Dialect dialect = c.sideInput(dialectView);
+                      ProtoDialect protoDialect = proto.getDialect();
+                      if (!protoDialect.name().equals(dialect.name())) {
+                        throw new RuntimeException(
+                            String.format(
+                                "Dialect mismatches: Dialect of the database (%s) is different from"
+                                    + " the one in exported manifest (%s).",
+                                dialect, protoDialect));
+                      }
+                      c.output(dialect);
+                    }
+                  })
+              .withSideInputs(dialectView));
+      return manifest;
     }
 
     private static ImportManifest readManifest(ResourceId fileResource) {
@@ -405,25 +452,46 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
               .withSideInputs(ddlView));
     }
 
-    public static Code parseSpannerDataType(String columnType) {
-      if (STRING_PATTERN.matcher(columnType).matches()) {
+    public static Code parseSpannerDataType(String columnType, Dialect dialect) {
+      if (STRING_PATTERN.matcher(columnType).matches() && dialect == Dialect.GOOGLE_STANDARD_SQL) {
         return Code.STRING;
-      } else if (columnType.equalsIgnoreCase("INT64")) {
+      } else if (columnType.equalsIgnoreCase("INT64") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
         return Code.INT64;
-      } else if (columnType.equalsIgnoreCase("FLOAT64")) {
+      } else if (columnType.equalsIgnoreCase("FLOAT64") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
         return Code.FLOAT64;
-      } else if (columnType.equalsIgnoreCase("BOOL")) {
+      } else if (columnType.equalsIgnoreCase("BOOL") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
         return Code.BOOL;
-      } else if (columnType.equalsIgnoreCase("DATE")) {
+      } else if (columnType.equalsIgnoreCase("DATE") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
         return Code.DATE;
-      } else if (columnType.equalsIgnoreCase("TIMESTAMP")) {
+      } else if (columnType.equalsIgnoreCase("TIMESTAMP")
+          && dialect == Dialect.GOOGLE_STANDARD_SQL) {
         return Code.TIMESTAMP;
-      } else if (columnType.equalsIgnoreCase("BYTES")) {
+      } else if (columnType.equalsIgnoreCase("BYTES") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
         return Code.BYTES;
-      } else if (columnType.equalsIgnoreCase("NUMERIC")) {
+      } else if (columnType.equalsIgnoreCase("NUMERIC") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
         return Code.NUMERIC;
-      } else if (columnType.equalsIgnoreCase("JSON")) {
+      } else if (columnType.equalsIgnoreCase("JSON") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
         return Code.JSON;
+      } else if (columnType.equalsIgnoreCase("bigint") && dialect == Dialect.POSTGRESQL) {
+        return Code.PG_INT8;
+      } else if (columnType.equalsIgnoreCase("double precision") && dialect == Dialect.POSTGRESQL) {
+        return Code.PG_FLOAT8;
+      } else if (columnType.equalsIgnoreCase("boolean") && dialect == Dialect.POSTGRESQL) {
+        return Code.PG_BOOL;
+      } else if (columnType.equalsIgnoreCase("timestamp with time zone")
+          && dialect == Dialect.POSTGRESQL) {
+        return Code.PG_TIMESTAMPTZ;
+      } else if (columnType.equalsIgnoreCase("bytea") && dialect == Dialect.POSTGRESQL) {
+        return Code.PG_BYTEA;
+      } else if (columnType.equalsIgnoreCase("numeric") && dialect == Dialect.POSTGRESQL) {
+        return Code.PG_NUMERIC;
+      } else if (columnType.toLowerCase().startsWith("character varying")
+          && dialect == Dialect.POSTGRESQL) {
+        return Code.PG_VARCHAR;
+      } else if (columnType.equalsIgnoreCase("text") && dialect == Dialect.POSTGRESQL) {
+        return Code.PG_TEXT;
+      } else if (columnType.equalsIgnoreCase("date") && dialect == Dialect.POSTGRESQL) {
+        return Code.PG_DATE;
       } else {
         throw new IllegalArgumentException(
             "Unrecognized or unsupported column data type: " + columnType);
@@ -444,7 +512,7 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
         if (table.columns().stream().anyMatch(x -> x.isGenerated())) {
           throw new RuntimeException(
               String.format(
-                  "DB table %s has one or more generated columns. An explict column list that "
+                  "DB table %s has one or more generated columns. An explicit column list that "
                       + "excludes the generated columns must be provided in the manifest.",
                   table.name()));
         }
@@ -465,7 +533,8 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
                       + "Generated columns cannot be imported.",
                   manifiestColumn.getColumnName(), table.name()));
         }
-        if (parseSpannerDataType(manifiestColumn.getTypeName()) != dbColumn.type().getCode()) {
+        if (parseSpannerDataType(manifiestColumn.getTypeName(), ddl.dialect())
+            != dbColumn.type().getCode()) {
           throw new RuntimeException(
               String.format(
                   "Mismatching type: Table %s Column %s [%s from DB and %s from manifest]",

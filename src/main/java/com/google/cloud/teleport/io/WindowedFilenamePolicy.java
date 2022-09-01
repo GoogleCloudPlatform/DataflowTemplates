@@ -70,6 +70,9 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
   private static final String MINUTE_GROUP_NAME = "minute";
   private static final Pattern MINUTE_PATTERN_REGEX =
       createUserPatternRegex(MINUTE_GROUP_NAME, "m+");
+  // GCS_BUCKET_PATTERN has two groups. The first group is the bucket name (e.g. gs://bucket-name/)
+  // and the second group is the directory path inside the bucket (e.g. path/to/folder/)
+  private static final Pattern GCS_BUCKET_PATTERN = Pattern.compile("^(gs:\\/\\/[^\\/]+\\/)(.*)$");
 
   public static WindowedFilenamePolicy writeWindowedFiles() {
     return new AutoValue_WindowedFilenamePolicy.Builder().build();
@@ -411,9 +414,11 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
   }
 
   /**
-   * Resolves any date variables which exist in the output directory path. This allows for the
-   * dynamically changing of the output location based on the window end time. A custom pattern can
-   * be used, if provided.
+   * Resolves any date variables which exist in the output path. This allows for the dynamically
+   * changing of the output location based on the window end time. A custom pattern can be used, if
+   * provided.
+   *
+   * <p>Note: The bucket name in the output directory should not be changed.
    *
    * @return The new output directory with all variables resolved.
    */
@@ -422,58 +427,76 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
     ResourceId outputDirectory = FileSystems.matchNewResource(outputDirectoryStr.get(), true);
 
     if (window instanceof IntervalWindow) {
-      IntervalWindow intervalWindow = (IntervalWindow) window;
-      DateTime time = intervalWindow.end().toDateTime();
-      String outputPath = outputDirectory.toString();
-
-      String userYearPattern = getUserPattern(yearPattern(), /* defaultValue= */ "YYYY");
-      String userMonthPattern = getUserPattern(monthPattern(), /* defaultValue= */ "MM");
-      String userDayPattern = getUserPattern(dayPattern(), /* defaultValue= */ "DD");
-      String userHourPattern = getUserPattern(hourPattern(), /* defaultValue= */ "HH");
-      String userMinutePattern = getUserPattern(minutePattern(), /* defaultValue= */ "mm");
-      LOG.debug(
-          "User patterns set to: Year: {}, Month: {}, Day: {}, Hour: {}, Minute: {}",
-          userDayPattern,
-          userMonthPattern,
-          userDayPattern,
-          userHourPattern,
-          userMinutePattern);
-
-      String jodaYearPattern = getJodaPattern(userYearPattern, YEAR_PATTERN_REGEX, YEAR_GROUP_NAME);
-      String jodaMonthPattern =
-          getJodaPattern(userMonthPattern, MONTH_PATTERN_REGEX, MONTH_GROUP_NAME);
-      String jodaDayPattern = getJodaPattern(userDayPattern, DAY_PATTERN_REGEX, DAY_GROUP_NAME);
-      String jodaHourPattern = getJodaPattern(userHourPattern, HOUR_PATTERN_REGEX, HOUR_GROUP_NAME);
-      String jodaMinutePattern =
-          getJodaPattern(userMinutePattern, MINUTE_PATTERN_REGEX, MINUTE_GROUP_NAME);
-      LOG.debug(
-          "Time patterns set to: Year: {}, Month: {}, Day: {}, Hour: {}, Minute: {}",
-          jodaYearPattern,
-          jodaMonthPattern,
-          jodaDayPattern,
-          jodaHourPattern,
-          jodaMinutePattern);
-
-      try {
-        final DateTimeFormatter yearFormatter = DateTimeFormat.forPattern(jodaYearPattern);
-        final DateTimeFormatter monthFormatter = DateTimeFormat.forPattern(jodaMonthPattern);
-        final DateTimeFormatter dayFormatter = DateTimeFormat.forPattern(jodaDayPattern);
-        final DateTimeFormatter hourFormatter = DateTimeFormat.forPattern(jodaHourPattern);
-        final DateTimeFormatter minuteFormatter = DateTimeFormat.forPattern(jodaMinutePattern);
-
-        outputPath = outputPath.replace(userYearPattern, yearFormatter.print(time));
-        outputPath = outputPath.replace(userMonthPattern, monthFormatter.print(time));
-        outputPath = outputPath.replace(userDayPattern, dayFormatter.print(time));
-        outputPath = outputPath.replace(userHourPattern, hourFormatter.print(time));
-        outputPath = outputPath.replace(userMinutePattern, minuteFormatter.print(time));
-      } catch (IllegalArgumentException e) {
+      Matcher matcher = GCS_BUCKET_PATTERN.matcher(outputDirectory.toString());
+      // If the output path is not a cloud storage path, fail.
+      // This should never happen as it should be caught earlier.
+      if (!matcher.find()) {
         throw new RuntimeException(
-            "Could not resolve custom DateTime pattern. " + e.getMessage(), e);
+            String.format(
+                "The output directory must be a cloud storage path. It should be in the format"
+                    + " gs://, but found %s.",
+                outputDirectory.toString()));
       }
 
-      outputDirectory = FileSystems.matchNewResource(outputPath, true);
+      IntervalWindow intervalWindow = (IntervalWindow) window;
+      DateTime time = intervalWindow.end().toDateTime();
+      outputDirectory =
+          FileSystems.matchNewResource(
+              resolveDirectoryPath(time, matcher.group(1), matcher.group(2)), /*isDirectory*/ true);
     }
     return outputDirectory;
+  }
+
+  /** Resolves any date variables which exist in the output directory path. */
+  private String resolveDirectoryPath(DateTime time, String bucket, String directoryPath) {
+    if (directoryPath == null || directoryPath.isEmpty()) {
+      return bucket;
+    }
+
+    String userYearPattern = getUserPattern(yearPattern(), /* defaultValue= */ "YYYY");
+    String userMonthPattern = getUserPattern(monthPattern(), /* defaultValue= */ "MM");
+    String userDayPattern = getUserPattern(dayPattern(), /* defaultValue= */ "DD");
+    String userHourPattern = getUserPattern(hourPattern(), /* defaultValue= */ "HH");
+    String userMinutePattern = getUserPattern(minutePattern(), /* defaultValue= */ "mm");
+    LOG.debug(
+        "User patterns set to: Year: {}, Month: {}, Day: {}, Hour: {}, Minute: {}",
+        userDayPattern,
+        userMonthPattern,
+        userDayPattern,
+        userHourPattern,
+        userMinutePattern);
+
+    String jodaYearPattern = getJodaPattern(userYearPattern, YEAR_PATTERN_REGEX, YEAR_GROUP_NAME);
+    String jodaMonthPattern =
+        getJodaPattern(userMonthPattern, MONTH_PATTERN_REGEX, MONTH_GROUP_NAME);
+    String jodaDayPattern = getJodaPattern(userDayPattern, DAY_PATTERN_REGEX, DAY_GROUP_NAME);
+    String jodaHourPattern = getJodaPattern(userHourPattern, HOUR_PATTERN_REGEX, HOUR_GROUP_NAME);
+    String jodaMinutePattern =
+        getJodaPattern(userMinutePattern, MINUTE_PATTERN_REGEX, MINUTE_GROUP_NAME);
+    LOG.debug(
+        "Time patterns set to: Year: {}, Month: {}, Day: {}, Hour: {}, Minute: {}",
+        jodaYearPattern,
+        jodaMonthPattern,
+        jodaDayPattern,
+        jodaHourPattern,
+        jodaMinutePattern);
+
+    try {
+      final DateTimeFormatter yearFormatter = DateTimeFormat.forPattern(jodaYearPattern);
+      final DateTimeFormatter monthFormatter = DateTimeFormat.forPattern(jodaMonthPattern);
+      final DateTimeFormatter dayFormatter = DateTimeFormat.forPattern(jodaDayPattern);
+      final DateTimeFormatter hourFormatter = DateTimeFormat.forPattern(jodaHourPattern);
+      final DateTimeFormatter minuteFormatter = DateTimeFormat.forPattern(jodaMinutePattern);
+
+      directoryPath = directoryPath.replace(userYearPattern, yearFormatter.print(time));
+      directoryPath = directoryPath.replace(userMonthPattern, monthFormatter.print(time));
+      directoryPath = directoryPath.replace(userDayPattern, dayFormatter.print(time));
+      directoryPath = directoryPath.replace(userHourPattern, hourFormatter.print(time));
+      directoryPath = directoryPath.replace(userMinutePattern, minuteFormatter.print(time));
+    } catch (IllegalArgumentException e) {
+      throw new RuntimeException("Could not resolve custom DateTime pattern. " + e.getMessage(), e);
+    }
+    return bucket + directoryPath;
   }
 
   /**

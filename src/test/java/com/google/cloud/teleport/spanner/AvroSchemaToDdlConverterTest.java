@@ -18,8 +18,11 @@ package com.google.cloud.teleport.spanner;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingWhiteSpace;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
+import com.google.cloud.spanner.Dialect;
+import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -34,6 +37,14 @@ public class AvroSchemaToDdlConverterTest {
   public void emptySchema() {
     AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
     Ddl ddl = converter.toDdl(Collections.emptyList());
+    assertThat(ddl.allTables(), empty());
+  }
+
+  @Test
+  public void pgEmptySchema() {
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl ddl = converter.toDdl(Collections.emptyList());
+    assertEquals(ddl.dialect(), Dialect.POSTGRESQL);
     assertThat(ddl.allTables(), empty());
   }
 
@@ -102,7 +113,19 @@ public class AvroSchemaToDdlConverterTest {
             + "  }, {"
             + "    \"name\":\"notJsonArr\","
             + "    \"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",\"string\"]}]"
+            + "  }, {"
             // Omitting sqlType
+            + "    \"name\" : \"boolean\","
+            + "    \"type\" : [ \"null\", \"boolean\" ]"
+            + "  }, {"
+            + "    \"name\" : \"integer\","
+            + "    \"type\" : [ \"null\", \"long\" ]"
+            + "  }, {"
+            + "    \"name\" : \"float\","
+            + "    \"type\" : [ \"null\", \"double\" ]"
+            + "  }, {"
+            + "    \"name\" : \"timestamp\","
+            + "    \"type\" : [ \"null\", {\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}]"
             + "  }],"
             + "  \"googleStorage\" : \"CloudSpanner\","
             + "  \"spannerParent\" : \"\","
@@ -142,11 +165,164 @@ public class AvroSchemaToDdlConverterTest {
                 + " `notJson`         STRING(MAX),"
                 + " `jsonArr`         ARRAY<JSON>,"
                 + " `notJsonArr`      ARRAY<STRING(MAX)>,"
+                + " `boolean`         BOOL,"
+                + " `integer`         INT64,"
+                + " `float`           FLOAT64,"
+                + " `timestamp`       TIMESTAMP,"
                 + " CONSTRAINT `ck` CHECK(`first_name` != 'last_name'),"
                 + " ) PRIMARY KEY (`id` ASC, `last_name` DESC)"
                 + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"
                 + " ALTER TABLE `Users` ADD CONSTRAINT `fk`"
                 + " FOREIGN KEY (`first_name`) REFERENCES `AllowedNames` (`first_name`)"));
+  }
+
+  @Test
+  public void pgSimple() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Users\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"id\","
+            + "    \"type\" : \"long\","
+            + "    \"sqlType\" : \"bigint\""
+            + "  }, {"
+            + "    \"name\" : \"first_name\","
+            + "    \"type\" : [ \"null\", \"string\" ],"
+            + "    \"sqlType\" : \"character varying(10)\","
+            + "    \"defaultExpression\" : \"'John'\""
+            + "  }, {"
+            + "    \"name\" : \"last_name\","
+            + "    \"type\" : [ \"null\", \"string\" ],"
+            + "    \"sqlType\" : \"character varying\""
+            + "  }, {"
+            + "    \"name\" : \"full_name\","
+            + "    \"type\" : \"null\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"notNull\" : \"false\","
+            + "    \"generationExpression\" : \"CONCAT(first_name, ' ', last_name)\","
+            + "    \"stored\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"numeric\","
+            + "    \"type\" : [\"null\", {\"type\":\"bytes\",\"logicalType\":\"decimal\"}],"
+            + "    \"sqlType\" : \"numeric\""
+            + "  }, {"
+            + "    \"name\" : \"numeric2\","
+            + "    \"type\" : [\"null\", {\"type\":\"bytes\",\"logicalType\":\"decimal\","
+            + "                \"precision\":147455,\"scale\":16383}]" // Omitting sqlType
+            + "  }, {"
+            + "    \"name\" : \"notNumeric\","
+            + "    \"type\" : [\"null\", {\"type\":\"bytes\",\"logicalType\":\"decimal\","
+            + "                \"precision\":147455}]" // Omitting sqlType
+            + "  }, {"
+            + "    \"name\" : \"notNumeric2\","
+            + "    \"type\" : [\"null\", {\"type\":\"bytes\",\"logicalType\":\"decimal\","
+            + "                \"precision\":147455,\"scale\":16384}]" // Omitting sqlType
+            + "  }, {"
+            + "    \"name\":\"numericArr\","
+            + "    \"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",{\"type\":\"bytes\","
+            + "    \"logicalType\":\"decimal\",\"precision\":147455,\"scale\":16383}]}]"
+            // Omitting sqlType
+            + "  }, {"
+            + "    \"name\":\"notNumericArr\","
+            + "    \"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",{\"type\":\"bytes\","
+            + "    \"logicalType\":\"decimal\",\"precision\":147455}]}]" // Omitting sqlType
+            + "  }, {"
+            + "    \"name\" : \"bool\","
+            + "    \"type\" : [ \"null\", \"boolean\" ],"
+            + "    \"sqlType\" : \"boolean\""
+            + "  }, {"
+            + "    \"name\" : \"float\","
+            + "    \"type\" : [ \"null\", \"double\" ],"
+            + "    \"sqlType\" : \"double precision\""
+            + "  }, {"
+            + "    \"name\" : \"bytes\","
+            + "    \"type\" : [ \"null\", \"bytes\" ],"
+            + "    \"sqlType\" : \"bytea\""
+            + "  }, {"
+            + "    \"name\" : \"text\","
+            + "    \"type\" : [ \"null\", \"string\" ],"
+            + "    \"sqlType\" : \"text\""
+            + "  }, {"
+            + "    \"name\" : \"timestamptz\","
+            + "    \"type\" : [ \"null\", \"string\" ],"
+            + "    \"sqlType\" : \"timestamp with time zone\""
+            + "  }, {"
+            + "    \"name\" : \"date\","
+            + "    \"type\" : [ \"null\", \"string\" ],"
+            + "    \"sqlType\" : \"date\""
+            + "  }, {"
+            + "    \"name\" : \"varcharArr1\","
+            + "    \"type\" : [\"null\","
+            + "               {\"type\":\"array\",\"items\":[\"null\",{\"type\":\"string\"}]}],"
+            + "    \"sqlType\" : \"character varying[]\""
+            + "  }, {"
+            + "    \"name\" : \"varcharArr2\","
+            + "    \"type\" : [\"null\","
+            + "               {\"type\":\"array\",\"items\":[\"null\",{\"type\":\"string\"}]}]"
+            + "  }, {"
+            // Omitting sqlType
+            + "    \"name\" : \"boolean\","
+            + "    \"type\" : [ \"null\", \"boolean\" ]"
+            + "  }, {"
+            + "    \"name\" : \"integer1\","
+            + "    \"type\" : [ \"null\", \"long\" ]"
+            + "  }, {"
+            + "    \"name\" : \"float1\","
+            + "    \"type\" : [ \"null\", \"double\" ]"
+            + "  }, {"
+            + "    \"name\" : \"timestamp1\","
+            + "    \"type\" : [ \"null\", {\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}]"
+            + "  } ],  \"googleStorage\" : \"CloudSpanner\",  \"spannerParent\" : \"\", "
+            + " \"googleFormatVersion\" : \"booleans\",  \"spannerPrimaryKey_0\" : \"\\\"id\\\""
+            + " ASC\",  \"spannerPrimaryKey_1\" : \"\\\"last_name\\\" ASC\",  \"spannerIndex_0\" :"
+            + "   \"CREATE INDEX \\\"UsersByFirstName\\\" ON \\\"Users\\\" (\\\"first_name\\\")\", "
+            + " \"spannerForeignKey_0\" :   \"ALTER TABLE \\\"Users\\\" ADD CONSTRAINT \\\"fk\\\""
+            + " FOREIGN KEY (\\\"first_name\\\")   REFERENCES \\\"AllowedNames\\\""
+            + " (\\\"first_name\\\")\",  \"spannerCheckConstraint_0\" :   \"CONSTRAINT \\\"ck\\\""
+            + " CHECK(\\\"first_name\\\" != \\\"last_name\\\")\"}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertEquals(ddl.dialect(), Dialect.POSTGRESQL);
+    assertThat(ddl.allTables(), hasSize(1));
+    assertThat(ddl.views(), hasSize(0));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE \"Users\" ("
+                + " \"id\"              bigint NOT NULL,"
+                + " \"first_name\"      character varying(10) DEFAULT 'John',"
+                + " \"last_name\"       character varying,"
+                + " \"full_name\"       character varying GENERATED ALWAYS AS"
+                + " (CONCAT(first_name, ' ', last_name)) STORED,"
+                + " \"numeric\"         numeric,"
+                + " \"numeric2\"        numeric,"
+                + " \"notNumeric\"      bytea,"
+                + " \"notNumeric2\"     bytea,"
+                + " \"numericArr\"         numeric[],"
+                + " \"notNumericArr\"      bytea[],"
+                + " \"bool\" boolean,"
+                + " \"float\" double precision,"
+                + " \"bytes\" bytea,"
+                + " \"text\" text,"
+                + " \"timestamptz\" timestamp with time zone,"
+                + " \"date\" date,"
+                + " \"varcharArr1\"     character varying[],"
+                + " \"varcharArr2\"     character varying[],"
+                + " \"boolean\"         boolean,"
+                + " \"integer1\"        bigint,"
+                + " \"float1\"          double precision,"
+                + " \"timestamp1\"      timestamp with time zone,"
+                + " CONSTRAINT \"ck\" CHECK(\"first_name\" != \"last_name\"),"
+                + " PRIMARY KEY (\"id\", \"last_name\")"
+                + " )"
+                + " CREATE INDEX \"UsersByFirstName\" ON \"Users\" (\"first_name\")"
+                + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"
+                + " REFERENCES \"AllowedNames\" (\"first_name\")"));
   }
 
   @Test
@@ -172,6 +348,33 @@ public class AvroSchemaToDdlConverterTest {
         ddl.prettyPrint(),
         equalToCompressingWhiteSpace(
             "CREATE VIEW `Names` SQL SECURITY INVOKER AS SELECT first_name, last_name FROM Users"));
+  }
+
+  @Test
+  public void pgInvokerRightsView() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Names\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerViewSecurity\" : \"INVOKER\","
+            + "  \"spannerViewQuery\" : \"SELECT first_name, last_name FROM Users\""
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertEquals(ddl.dialect(), Dialect.POSTGRESQL);
+    assertThat(ddl.views(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE VIEW \"Names\" SQL SECURITY INVOKER AS SELECT first_name, last_name FROM"
+                + " Users"));
   }
 
   @Test
@@ -268,5 +471,64 @@ public class AvroSchemaToDdlConverterTest {
                 + " CREATE CHANGE STREAM `ChangeStreamTableColumns`"
                 + " FOR `T1`, `T2`(`c1`, `c2`), `T3`()"
                 + " OPTIONS (retention_period=\"24h\")"));
+  }
+
+  @Test
+  public void testInferType() {
+    AvroSchemaToDdlConverter avroSchemaToDdlConverter = new AvroSchemaToDdlConverter();
+
+    assertEquals(
+        Type.bool(), avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.BOOLEAN), false));
+    assertEquals(
+        Type.int64(), avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.INT), false));
+    assertEquals(
+        Type.int64(), avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.LONG), false));
+    assertEquals(
+        Type.float64(),
+        avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.FLOAT), false));
+    assertEquals(
+        Type.float64(),
+        avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.DOUBLE), false));
+    assertEquals(
+        Type.string(),
+        avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.STRING), false));
+    assertEquals(
+        Type.bytes(), avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.BYTES), false));
+
+    Schema timestampSchema = Schema.create(Schema.Type.LONG);
+    timestampSchema.addProp("logicalType", "timestamp-millis");
+    assertEquals(Type.timestamp(), avroSchemaToDdlConverter.inferType(timestampSchema, false));
+    timestampSchema = Schema.create(Schema.Type.LONG);
+    timestampSchema.addProp("logicalType", "timestamp-micros");
+    assertEquals(Type.timestamp(), avroSchemaToDdlConverter.inferType(timestampSchema, false));
+
+    avroSchemaToDdlConverter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+
+    assertEquals(
+        Type.pgBool(),
+        avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.BOOLEAN), false));
+    assertEquals(
+        Type.pgInt8(), avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.INT), false));
+    assertEquals(
+        Type.pgInt8(), avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.LONG), false));
+    assertEquals(
+        Type.pgFloat8(),
+        avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.FLOAT), false));
+    assertEquals(
+        Type.pgFloat8(),
+        avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.DOUBLE), false));
+    assertEquals(
+        Type.pgVarchar(),
+        avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.STRING), false));
+    assertEquals(
+        Type.pgBytea(),
+        avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.BYTES), false));
+
+    timestampSchema = Schema.create(Schema.Type.LONG);
+    timestampSchema.addProp("logicalType", "timestamp-millis");
+    assertEquals(Type.pgTimestamptz(), avroSchemaToDdlConverter.inferType(timestampSchema, false));
+    timestampSchema = Schema.create(Schema.Type.LONG);
+    timestampSchema.addProp("logicalType", "timestamp-micros");
+    assertEquals(Type.pgTimestamptz(), avroSchemaToDdlConverter.inferType(timestampSchema, false));
   }
 }

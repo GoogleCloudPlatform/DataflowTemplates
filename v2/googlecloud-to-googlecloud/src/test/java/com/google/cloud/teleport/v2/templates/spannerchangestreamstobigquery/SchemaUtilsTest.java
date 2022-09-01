@@ -54,7 +54,9 @@ import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigqu
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.when;
 
+import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.cloud.bigquery.Field;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.ReadContext;
@@ -95,24 +97,24 @@ public class SchemaUtilsTest {
     when(mockDatabaseClient.singleUse()).thenReturn(mockReadContext);
     spannerColumnsOfAllTypes =
         ImmutableList.of(
-            TrackedSpannerColumn.create(BOOLEAN_COL, Type.bool(), 1),
-            TrackedSpannerColumn.create(BYTES_COL, Type.bytes(), 2),
-            TrackedSpannerColumn.create(DATE_COL, Type.date(), 3),
-            TrackedSpannerColumn.create(FLOAT64_COL, Type.float64(), 4),
-            TrackedSpannerColumn.create(INT64_COL, Type.int64(), 5),
-            TrackedSpannerColumn.create(JSON_COL, Type.json(), 6),
-            TrackedSpannerColumn.create(NUMERIC_COL, Type.numeric(), 7),
-            TrackedSpannerColumn.create(STRING_COL, Type.string(), 8),
-            TrackedSpannerColumn.create(TIMESTAMP_COL, Type.timestamp(), 9),
-            TrackedSpannerColumn.create(BOOLEAN_ARRAY_COL, Type.array(Type.bool()), 10),
-            TrackedSpannerColumn.create(BYTES_ARRAY_COL, Type.array(Type.bytes()), 11),
-            TrackedSpannerColumn.create(DATE_ARRAY_COL, Type.array(Type.date()), 12),
-            TrackedSpannerColumn.create(FLOAT64_ARRAY_COL, Type.array(Type.float64()), 13),
-            TrackedSpannerColumn.create(INT64_ARRAY_COL, Type.array(Type.int64()), 14),
-            TrackedSpannerColumn.create(JSON_ARRAY_COL, Type.array(Type.json()), 15),
-            TrackedSpannerColumn.create(NUMERIC_ARRAY_COL, Type.array(Type.numeric()), 16),
-            TrackedSpannerColumn.create(STRING_ARRAY_COL, Type.array(Type.string()), 17),
-            TrackedSpannerColumn.create(TIMESTAMP_ARRAY_COL, Type.array(Type.timestamp()), 18));
+            TrackedSpannerColumn.create(BOOLEAN_COL, Type.bool(), 1, 1),
+            TrackedSpannerColumn.create(BYTES_COL, Type.bytes(), 2, 2),
+            TrackedSpannerColumn.create(DATE_COL, Type.date(), 3, 3),
+            TrackedSpannerColumn.create(FLOAT64_COL, Type.float64(), 4, 4),
+            TrackedSpannerColumn.create(INT64_COL, Type.int64(), 5, 5),
+            TrackedSpannerColumn.create(JSON_COL, Type.json(), 6, -1),
+            TrackedSpannerColumn.create(NUMERIC_COL, Type.numeric(), 7, 6),
+            TrackedSpannerColumn.create(STRING_COL, Type.string(), 8, 7),
+            TrackedSpannerColumn.create(TIMESTAMP_COL, Type.timestamp(), 9, 8),
+            TrackedSpannerColumn.create(BOOLEAN_ARRAY_COL, Type.array(Type.bool()), 10, -1),
+            TrackedSpannerColumn.create(BYTES_ARRAY_COL, Type.array(Type.bytes()), 11, -1),
+            TrackedSpannerColumn.create(DATE_ARRAY_COL, Type.array(Type.date()), 12, -1),
+            TrackedSpannerColumn.create(FLOAT64_ARRAY_COL, Type.array(Type.float64()), 13, -1),
+            TrackedSpannerColumn.create(INT64_ARRAY_COL, Type.array(Type.int64()), 14, -1),
+            TrackedSpannerColumn.create(JSON_ARRAY_COL, Type.array(Type.json()), 15, -1),
+            TrackedSpannerColumn.create(NUMERIC_ARRAY_COL, Type.array(Type.numeric()), 16, -1),
+            TrackedSpannerColumn.create(STRING_ARRAY_COL, Type.array(Type.string()), 17, -1),
+            TrackedSpannerColumn.create(TIMESTAMP_ARRAY_COL, Type.array(Type.timestamp()), 18, -1));
   }
 
   @Test
@@ -137,11 +139,11 @@ public class SchemaUtilsTest {
         new SpannerUtils(mockDatabaseClient, changeStreamName).getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
-        ImmutableList.of(TrackedSpannerColumn.create("SingerId", Type.int64(), 1));
+        ImmutableList.of(TrackedSpannerColumn.create("SingerId", Type.int64(), 1, 1));
     List<TrackedSpannerColumn> singersNonPkColumns =
         ImmutableList.of(
-            TrackedSpannerColumn.create("FirstName", Type.string(), 2),
-            TrackedSpannerColumn.create("LastName", Type.string(), 3));
+            TrackedSpannerColumn.create("FirstName", Type.string(), 2, -1),
+            TrackedSpannerColumn.create("LastName", Type.string(), 3, -1));
     Map<String, TrackedSpannerTable> expectedSpannerTableByName = new HashMap<>();
     expectedSpannerTableByName.put(
         "Singers", new TrackedSpannerTable("Singers", singersPkColumns, singersNonPkColumns));
@@ -170,11 +172,11 @@ public class SchemaUtilsTest {
         new SpannerUtils(mockDatabaseClient, changeStreamName).getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
-        ImmutableList.of(TrackedSpannerColumn.create("SingerId", Type.int64(), 1));
+        ImmutableList.of(TrackedSpannerColumn.create("SingerId", Type.int64(), 1, 1));
     List<TrackedSpannerColumn> singersNonPkColumns =
         ImmutableList.of(
-            TrackedSpannerColumn.create("FirstName", Type.string(), 2),
-            TrackedSpannerColumn.create("LastName", Type.string(), 3));
+            TrackedSpannerColumn.create("FirstName", Type.string(), 2, -1),
+            TrackedSpannerColumn.create("LastName", Type.string(), 3, -1));
     Map<String, TrackedSpannerTable> expectedSpannerTableByName = new HashMap<>();
     expectedSpannerTableByName.put(
         "Singers", new TrackedSpannerTable("Singers", singersPkColumns, singersNonPkColumns));
@@ -182,7 +184,108 @@ public class SchemaUtilsTest {
   }
 
   @Test
-  public void testChangeStreamTrackTwoColumns() {
+  public void testChangeStreamPrimaryKeyReverseOrder() {
+    mockInformationSchemaChangeStreamsQuery(true);
+    mockInformationSchemaTablesQuery();
+
+    // Mock the query to INFORMATION_SCHEMA.COLUMNS.
+    String sql =
+        "SELECT TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, SPANNER_TYPE "
+            + "FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME IN UNNEST (@tableNames)";
+    List<String> tableNames = new ArrayList<>();
+    tableNames.add("Singers");
+    // spotless:off
+    List<Struct> rows =
+        new ArrayList<>(
+            ImmutableList.of(
+                Struct.newBuilder()
+                    .set("TABLE_NAME").to(Value.string("Singers"))
+                    .set("COLUMN_NAME").to(Value.string("SingerId1"))
+                    .set("ORDINAL_POSITION").to(Value.int64(1))
+                    .set("SPANNER_TYPE").to(Value.string("INT64"))
+                    .build(),
+                Struct.newBuilder()
+                    .set("TABLE_NAME").to(Value.string("Singers"))
+                    .set("COLUMN_NAME").to(Value.string("SingerId2"))
+                    .set("ORDINAL_POSITION").to(Value.int64(2))
+                    .set("SPANNER_TYPE").to(Value.string("INT64"))
+                    .build()));
+    // spotless:on
+    when(mockReadContext.executeQuery(
+            Statement.newBuilder(sql)
+                .bind("tableNames")
+                .to(Value.stringArray(new ArrayList<>(tableNames)))
+                .build()))
+        .thenReturn(
+            ResultSets.forRows(
+                Type.struct(
+                    Type.StructField.of("TABLE_NAME", Type.string()),
+                    Type.StructField.of("COLUMN_NAME", Type.string()),
+                    Type.StructField.of("ORDINAL_POSITION", Type.int64()),
+                    Type.StructField.of("SPANNER_TYPE", Type.string())),
+                rows));
+
+    // Mock the query to INFORMATION_SCHEMA.KEY_COLUMN_USAGE.
+    sql =
+        "SELECT TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, CONSTRAINT_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE "
+            + "WHERE TABLE_NAME IN UNNEST (@tableNames)";
+    // spotless:off
+    rows =
+        new ArrayList<>(
+            ImmutableList.of(
+                Struct.newBuilder()
+                    .set("TABLE_NAME").to(Value.string("Singers"))
+                    .set("COLUMN_NAME").to(Value.string("SingerId2"))
+                    .set("ORDINAL_POSITION").to(Value.int64(1))
+                    .set("CONSTRAINT_NAME").to(Value.string("PK_Singers"))
+                    .build(),
+                Struct.newBuilder()
+                    .set("TABLE_NAME").to(Value.string("Singers"))
+                    .set("COLUMN_NAME").to(Value.string("SingerId1"))
+                    .set("ORDINAL_POSITION").to(Value.int64(2))
+                    .set("CONSTRAINT_NAME").to(Value.string("PK_Singers"))
+                    .build()));
+    // spotless:on
+    when(mockReadContext.executeQuery(
+            Statement.newBuilder(sql).bind("tableNames").to(Value.stringArray(tableNames)).build()))
+        .thenReturn(
+            ResultSets.forRows(
+                Type.struct(
+                    Type.StructField.of("TABLE_NAME", Type.string()),
+                    Type.StructField.of("COLUMN_NAME", Type.string()),
+                    Type.StructField.of("ORDINAL_POSITION", Type.int64()),
+                    Type.StructField.of("CONSTRAINT_NAME", Type.string())),
+                rows));
+
+    // Mock the query to INFORMATION_SCHEMA.CHANGE_STREAM_COLUMNS.
+    sql =
+        "SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.CHANGE_STREAM_COLUMNS "
+            + "WHERE CHANGE_STREAM_NAME = @changeStreamName";
+    when(mockReadContext.executeQuery(
+            Statement.newBuilder(sql).bind("changeStreamName").to(changeStreamName).build()))
+        .thenReturn(
+            ResultSets.forRows(
+                Type.struct(
+                    Type.StructField.of("TABLE_NAME", Type.string()),
+                    Type.StructField.of("COLUMN_NAME", Type.string())),
+                Collections.emptyList()));
+
+    Map<String, TrackedSpannerTable> actualSpannerTableByName =
+        new SpannerUtils(mockDatabaseClient, changeStreamName).getSpannerTableByName();
+
+    List<TrackedSpannerColumn> singersPkColumns =
+        ImmutableList.of(
+            TrackedSpannerColumn.create("SingerId2", Type.int64(), 2, 1),
+            TrackedSpannerColumn.create("SingerId1", Type.int64(), 1, 2));
+    List<TrackedSpannerColumn> singersNonPkColumns = Collections.emptyList();
+    Map<String, TrackedSpannerTable> expectedSpannerTableByName = new HashMap<>();
+    expectedSpannerTableByName.put(
+        "Singers", new TrackedSpannerTable("Singers", singersPkColumns, singersNonPkColumns));
+    assertThat(actualSpannerTableByName).isEqualTo(expectedSpannerTableByName);
+  }
+
+  @Test
+  public void testChangeStreamTrackOneColumn() {
     mockInformationSchemaChangeStreamsQuery(false);
     mockInformationSchemaChangeStreamTablesQuery();
     mockInformationSchemaColumnsQuery();
@@ -217,9 +320,9 @@ public class SchemaUtilsTest {
         new SpannerUtils(mockDatabaseClient, changeStreamName).getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
-        Collections.singletonList(TrackedSpannerColumn.create("SingerId", Type.int64(), 1));
+        Collections.singletonList(TrackedSpannerColumn.create("SingerId", Type.int64(), 1, 1));
     List<TrackedSpannerColumn> singersNonPkColumns =
-        Collections.singletonList(TrackedSpannerColumn.create("FirstName", Type.string(), 2));
+        Collections.singletonList(TrackedSpannerColumn.create("FirstName", Type.string(), 2, -1));
     Map<String, TrackedSpannerTable> expectedSpannerTableByName = new HashMap<>();
     expectedSpannerTableByName.put(
         "Singers", new TrackedSpannerTable("Singers", singersPkColumns, singersNonPkColumns));
@@ -304,37 +407,83 @@ public class SchemaUtilsTest {
 
   @Test
   public void testSpannerColumnsToBigQueryIOFields() {
-    String bigQueryIOFieldsStr =
-        SpannerToBigQueryUtils.spannerColumnsToBigQueryIOFields(spannerColumnsOfAllTypes)
-            .toString();
-    // Remove redundant information.
-    bigQueryIOFieldsStr =
-        bigQueryIOFieldsStr.replace(
-            "classInfo=[categories, collationSpec, description, fields, maxLength, mode, name,"
-                + " policyTags, precision, scale, type], ",
-            "");
-    bigQueryIOFieldsStr = bigQueryIOFieldsStr.replace("GenericData", "");
+    List<TableFieldSchema> tableFields =
+        ImmutableList.of(
+            new TableFieldSchema()
+                .setName(BOOLEAN_COL)
+                .setMode(Field.Mode.NULLABLE.name())
+                .setType("BOOL"),
+            new TableFieldSchema()
+                .setName(BYTES_COL)
+                .setMode(Field.Mode.NULLABLE.name())
+                .setType("BYTES"),
+            new TableFieldSchema()
+                .setName(DATE_COL)
+                .setMode(Field.Mode.NULLABLE.name())
+                .setType("DATE"),
+            new TableFieldSchema()
+                .setName(FLOAT64_COL)
+                .setMode(Field.Mode.NULLABLE.name())
+                .setType("FLOAT64"),
+            new TableFieldSchema()
+                .setName(INT64_COL)
+                .setMode(Field.Mode.NULLABLE.name())
+                .setType("INT64"),
+            new TableFieldSchema()
+                .setName(JSON_COL)
+                .setMode(Field.Mode.NULLABLE.name())
+                .setType("JSON"),
+            new TableFieldSchema()
+                .setName(NUMERIC_COL)
+                .setMode(Field.Mode.NULLABLE.name())
+                .setType("NUMERIC"),
+            new TableFieldSchema()
+                .setName(STRING_COL)
+                .setMode(Field.Mode.NULLABLE.name())
+                .setType("STRING"),
+            new TableFieldSchema()
+                .setName(TIMESTAMP_COL)
+                .setMode(Field.Mode.NULLABLE.name())
+                .setType("TIMESTAMP"),
+            new TableFieldSchema()
+                .setName(BOOLEAN_ARRAY_COL)
+                .setMode(Field.Mode.REPEATED.name())
+                .setType("BOOL"),
+            new TableFieldSchema()
+                .setName(BYTES_ARRAY_COL)
+                .setMode(Field.Mode.REPEATED.name())
+                .setType("BYTES"),
+            new TableFieldSchema()
+                .setName(DATE_ARRAY_COL)
+                .setMode(Field.Mode.REPEATED.name())
+                .setType("DATE"),
+            new TableFieldSchema()
+                .setName(FLOAT64_ARRAY_COL)
+                .setMode(Field.Mode.REPEATED.name())
+                .setType("FLOAT64"),
+            new TableFieldSchema()
+                .setName(INT64_ARRAY_COL)
+                .setMode(Field.Mode.REPEATED.name())
+                .setType("INT64"),
+            new TableFieldSchema()
+                .setName(JSON_ARRAY_COL)
+                .setMode(Field.Mode.REPEATED.name())
+                .setType("JSON"),
+            new TableFieldSchema()
+                .setName(NUMERIC_ARRAY_COL)
+                .setMode(Field.Mode.REPEATED.name())
+                .setType("NUMERIC"),
+            new TableFieldSchema()
+                .setName(STRING_ARRAY_COL)
+                .setMode(Field.Mode.REPEATED.name())
+                .setType("STRING"),
+            new TableFieldSchema()
+                .setName(TIMESTAMP_ARRAY_COL)
+                .setMode(Field.Mode.REPEATED.name())
+                .setType("TIMESTAMP"));
 
-    assertThat(bigQueryIOFieldsStr)
-        .isEqualTo(
-            "[{{mode=NULLABLE, name=BooleanCol, type=BOOL}}, "
-                + "{{mode=NULLABLE, name=BytesCol, type=BYTES}}, "
-                + "{{mode=NULLABLE, name=DateCol, type=DATE}}, "
-                + "{{mode=NULLABLE, name=Float64Col, type=FLOAT64}}, "
-                + "{{mode=NULLABLE, name=Int64Col, type=INT64}}, "
-                + "{{mode=NULLABLE, name=JsonCol, type=STRING}}, "
-                + "{{mode=NULLABLE, name=NumericCol, type=NUMERIC}}, "
-                + "{{mode=NULLABLE, name=StringCol, type=STRING}}, "
-                + "{{mode=NULLABLE, name=TimestampCol, type=TIMESTAMP}}, "
-                + "{{mode=REPEATED, name=BooleanArrayCol, type=BOOL}}, "
-                + "{{mode=REPEATED, name=BytesArrayCol, type=BYTES}}, "
-                + "{{mode=REPEATED, name=DateArrayCol, type=DATE}}, "
-                + "{{mode=REPEATED, name=Float64ArrayCol, type=FLOAT64}}, "
-                + "{{mode=REPEATED, name=Int64ArrayCol, type=INT64}}, "
-                + "{{mode=REPEATED, name=JsonArrayCol, type=STRING}}, "
-                + "{{mode=REPEATED, name=NumericArrayCol, type=NUMERIC}}, "
-                + "{{mode=REPEATED, name=StringArrayCol, type=STRING}}, "
-                + "{{mode=REPEATED, name=TimestampArrayCol, type=TIMESTAMP}}]");
+    assertThat(SpannerToBigQueryUtils.spannerColumnsToBigQueryIOFields(spannerColumnsOfAllTypes))
+        .isEqualTo(tableFields);
   }
 
   @Test
@@ -455,7 +604,7 @@ public class SchemaUtilsTest {
 
   private void mockInformationSchemaKeyColumnUsageQuery() {
     String sql =
-        "SELECT TABLE_NAME, COLUMN_NAME, CONSTRAINT_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE "
+        "SELECT TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, CONSTRAINT_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE "
             + "WHERE TABLE_NAME IN UNNEST (@tableNames)";
     List<String> tableNames = new ArrayList<>();
     tableNames.add("Singers");
@@ -466,6 +615,7 @@ public class SchemaUtilsTest {
                 Struct.newBuilder()
                     .set("TABLE_NAME").to(Value.string("Singers"))
                     .set("COLUMN_NAME").to(Value.string("SingerId"))
+                    .set("ORDINAL_POSITION").to(Value.int64(1))
                     .set("CONSTRAINT_NAME").to(Value.string("PK_Singers"))
                     .build()));
     // spotless:on
@@ -477,6 +627,7 @@ public class SchemaUtilsTest {
                 Type.struct(
                     Type.StructField.of("TABLE_NAME", Type.string()),
                     Type.StructField.of("COLUMN_NAME", Type.string()),
+                    Type.StructField.of("ORDINAL_POSITION", Type.int64()),
                     Type.StructField.of("CONSTRAINT_NAME", Type.string())),
                 rows));
   }

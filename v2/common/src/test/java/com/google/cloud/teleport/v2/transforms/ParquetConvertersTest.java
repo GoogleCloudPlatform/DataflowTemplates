@@ -80,8 +80,6 @@ public class ParquetConvertersTest {
             .withInputFileSpec(PARQUET_FILE_PATH)
             .withSchema(null)
             .build());
-
-    pipeline.run();
   }
 
   /**
@@ -93,13 +91,10 @@ public class ParquetConvertersTest {
     expectedException.expect(IllegalArgumentException.class);
     expectedException.expectMessage("withInputFileSpec(inputFileSpec) called with null input.");
 
-    pipeline.apply(
-        ParquetConverters.ReadParquetFile.newBuilder()
-            .withInputFileSpec(null)
-            .withSchema(SCHEMA_FILE_PATH)
-            .build());
-
-    pipeline.run();
+    ParquetConverters.ReadParquetFile.newBuilder()
+        .withInputFileSpec(null)
+        .withSchema(SCHEMA_FILE_PATH)
+        .build();
   }
 
   /**
@@ -111,19 +106,10 @@ public class ParquetConvertersTest {
     expectedException.expect(IllegalArgumentException.class);
     expectedException.expectMessage("withSchema(schema) called with null input.");
 
-    pipeline
-        .apply(
-            ParquetConverters.ReadParquetFile.newBuilder()
-                .withInputFileSpec(PARQUET_FILE_PATH)
-                .withSchema(SCHEMA_FILE_PATH)
-                .build())
-        .apply(
-            ParquetConverters.WriteParquetFile.newBuilder()
-                .withOutputFile(FAKE_DIR)
-                .withSchema(null)
-                .build());
-
-    pipeline.run();
+    ParquetConverters.WriteParquetFile.newBuilder()
+        .withOutputFile(FAKE_DIR)
+        .withSchema(null)
+        .build();
   }
 
   /**
@@ -135,18 +121,9 @@ public class ParquetConvertersTest {
     expectedException.expect(IllegalArgumentException.class);
     expectedException.expectMessage("withOutputFile(outputFile) called with null input.");
 
-    pipeline
-        .apply(
-            ParquetConverters.ReadParquetFile.newBuilder()
-                .withInputFileSpec(PARQUET_FILE_PATH)
-                .withSchema(SCHEMA_FILE_PATH)
-                .build())
-        .apply(
-            ParquetConverters.WriteParquetFile.newBuilder()
-                .withOutputFile(null)
-                .withSchema(SCHEMA_FILE_PATH)
-                .build());
-
-    pipeline.run();
+    ParquetConverters.WriteParquetFile.newBuilder()
+        .withOutputFile(null)
+        .withSchema(SCHEMA_FILE_PATH)
+        .build();
   }
 }

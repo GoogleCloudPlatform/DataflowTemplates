@@ -27,43 +27,59 @@ import org.apache.beam.sdk.options.Validation;
  */
 public interface SpannerChangeStreamsToBigQueryOptions extends DataflowPipelineOptions {
 
-  @Description("The Spanner instance ID that contains the Change Stream.")
+  @Description(
+      "Project to read change streams from. The default for this parameter is the project where the"
+          + " Dataflow pipeline is running.")
+  @Default.String("")
+  String getSpannerProjectId();
+
+  void setSpannerProjectId(String projectId);
+
+  @Description("The Spanner instance ID that contains the change stream.")
   @Validation.Required
   String getSpannerInstanceId();
 
   void setSpannerInstanceId(String value);
 
-  @Description("The Spanner database ID that contains the Change Stream.")
+  @Description("The Spanner database that contains the change stream.")
   @Validation.Required
-  String getSpannerDatabaseId();
+  String getSpannerDatabase();
 
-  void setSpannerDatabaseId(String value);
+  void setSpannerDatabase(String value);
 
-  @Description("The Spanner metadata instance ID that's used by the Change Stream connector.")
+  @Description("The Spanner metadata instance ID that's used by the change stream connector.")
   @Validation.Required
   String getSpannerMetadataInstanceId();
 
   void setSpannerMetadataInstanceId(String value);
 
-  @Description("The Spanner metadata database ID that's used by the Change Stream connector.")
+  @Description("The Spanner metadata database that's used by the change stream connector.")
   @Validation.Required
-  String getSpannerMetadataDatabaseId();
+  String getSpannerMetadataDatabase();
 
-  void setSpannerMetadataDatabaseId(String value);
+  void setSpannerMetadataDatabase(String value);
 
-  @Description("The name of the Spanner Change Stream.")
+  @Description(
+      "The Cloud Spanner change streams Connector metadata table name to use. If not provided, a"
+          + " Cloud Spanner change streams Connector metadata table will automatically be created"
+          + " during the pipeline flow.")
+  String getSpannerMetadataTableName();
+
+  void setSpannerMetadataTableName(String value);
+
+  @Description("The name of the Spanner change stream.")
   @Validation.Required
-  String getSpannerChangeStream();
+  String getSpannerChangeStreamName();
 
-  void setSpannerChangeStream(String value);
+  void setSpannerChangeStreamName(String value);
 
   @Description(
       "Priority for Spanner RPC invocations. Defaults to HIGH. Allowed priorites are LOW, MEDIUM,"
           + " HIGH.")
   @Default.Enum("HIGH")
-  RpcPriority getSpannerRpcPriority();
+  RpcPriority getRpcPriority();
 
-  void setSpannerRpcPriority(RpcPriority value);
+  void setRpcPriority(RpcPriority value);
 
   @Description("Spanner host endpoint (only used for testing).")
   @Default.String("https://batch-spanner.googleapis.com")
@@ -72,7 +88,7 @@ public interface SpannerChangeStreamsToBigQueryOptions extends DataflowPipelineO
   void setSpannerHost(String value);
 
   @Description(
-      "The starting DateTime to use for reading Change Streams"
+      "The starting DateTime to use for reading change streams"
           + " (https://tools.ietf.org/html/rfc3339). Defaults to pipeline start time.")
   @Default.String("")
   String getStartTimestamp();
@@ -80,7 +96,7 @@ public interface SpannerChangeStreamsToBigQueryOptions extends DataflowPipelineO
   void setStartTimestamp(String startTimestamp);
 
   @Description(
-      "The ending DateTime to use for reading Change Streams"
+      "The ending DateTime to use for reading change streams"
           + " (https://tools.ietf.org/html/rfc3339). The default value is \"max\", which represents"
           + " an infinite time in the future.")
   @Default.String("")
@@ -118,11 +134,12 @@ public interface SpannerChangeStreamsToBigQueryOptions extends DataflowPipelineO
 
   void setDlqRetryMinutes(Integer value);
 
+  // TODO(haikuo-google): Test this in UIF test.
   @Description(
-      "Comma separated list of fields to be ignored, these could be fields of tracked tables, or"
-          + " metadata fields which are _metadata_spanner_mod_type, _metadata_spanner_table_name,"
-          + " _metadata_spanner_commit_timestamp, _metadata_spanner_server_transaction_id,"
-          + " _metadata_spanner_record_sequence,"
+      "Comma separated list of fields (case sensitive) to be ignored, these could be fields of"
+          + " tracked tables, or metadata fields which are _metadata_spanner_mod_type,"
+          + " _metadata_spanner_table_name, _metadata_spanner_commit_timestamp,"
+          + " _metadata_spanner_server_transaction_id, _metadata_spanner_record_sequence,"
           + " _metadata_spanner_is_last_record_in_transaction_in_partition,"
           + " _metadata_spanner_number_of_records_in_transaction,"
           + " _metadata_spanner_number_of_partitions_in_transaction,"

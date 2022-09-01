@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.api.services.datastream.v1alpha1.model.SourceConfig;
+import com.google.api.services.datastream.v1.model.SourceConfig;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;

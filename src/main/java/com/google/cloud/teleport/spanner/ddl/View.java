@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.spanner.ddl;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.spanner.Dialect;
 import java.io.IOException;
 import java.io.Serializable;
 import javax.annotation.Nullable;
@@ -39,10 +40,13 @@ public abstract class View implements Serializable {
   @Nullable
   public abstract SqlSecurity security();
 
+  public abstract Dialect dialect();
+
   public abstract Builder toBuilder();
 
   public void prettyPrint(Appendable appendable) throws IOException {
-    appendable.append("CREATE VIEW `").append(name()).append("`");
+    String identifierQuote = DdlUtilityComponents.identifierQuote(dialect());
+    appendable.append("CREATE VIEW " + identifierQuote).append(name()).append(identifierQuote);
     SqlSecurity rights = security();
     if (rights != null) {
       appendable.append(" SQL SECURITY ").append(rights.toString());
@@ -65,8 +69,12 @@ public abstract class View implements Serializable {
     return prettyPrint();
   }
 
+  public static Builder builder(Dialect dialect) {
+    return new AutoValue_View.Builder().dialect(dialect);
+  }
+
   public static Builder builder() {
-    return new AutoValue_View.Builder();
+    return builder(Dialect.GOOGLE_STANDARD_SQL);
   }
 
   /** A builder for {@link View}. */
@@ -90,6 +98,8 @@ public abstract class View implements Serializable {
     public abstract Builder security(SqlSecurity rights);
 
     public abstract SqlSecurity security();
+
+    abstract Builder dialect(Dialect dialect);
 
     public abstract View build();
 

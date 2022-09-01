@@ -264,8 +264,10 @@ public class ChangeEventConvertorTest {
     changeEvent.put("float64_field", "2344.34");
     changeEvent.put("string_field", "testtest");
     changeEvent.put("bytes_field", "asdf233sf");
-    changeEvent.put("timestamp_field", "2020-12-30T12:12:12Z");
-    changeEvent.put("timestamp_field2", "2020-12-30T12:12:12.1Z");
+    changeEvent.put(
+        "timestamp_field", Timestamp.of(java.sql.Timestamp.valueOf("2020-12-30 4:12:12")));
+    changeEvent.put(
+        "timestamp_field2", Timestamp.of(java.sql.Timestamp.valueOf("2020-12-30 4:12:12.1")));
     changeEvent.put("date_field", "2020-12-30T00:00:00Z");
     changeEvent.put("date_field2", "2020-12-30");
     changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, tableName);

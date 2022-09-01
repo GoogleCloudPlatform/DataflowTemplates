@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.utils;
 
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 import com.google.api.services.bigquery.model.TableSchema;
@@ -54,39 +53,6 @@ public class SchemaUtilsTest {
       "com.google.cloud.teleport.v2.proto.testing.MyMessage";
   private static final String PROTO_MESSAGE_INVALID_FOR_BQ =
       "com.google.cloud.teleport.v2.proto.testing.CircularlyReferencedMessage";
-
-  @Test
-  public void testGetGcsFileAsBytes() throws IOException {
-    assertArrayEquals(
-        getFileBytes(PROTO_SCHEMA_FILE_PATH),
-        SchemaUtils.getGcsFileAsBytes(PROTO_SCHEMA_FILE_PATH));
-  }
-
-  /**
-   * Test whether {@link SchemaUtils#getGcsFileAsString(String)} reads a file correctly as a String.
-   */
-  @Test
-  public void testGetGcsFileAsString() {
-    String expectedContent =
-        "{\n"
-            + "  \"type\" : \"record\",\n"
-            + "  \"name\" : \"test_file\",\n"
-            + "  \"namespace\" : \"com.test\",\n"
-            + "  \"fields\" : [\n"
-            + "    {\n"
-            + "      \"name\": \"id\",\n"
-            + "      \"type\": \"string\"\n"
-            + "    },\n"
-            + "    {\n"
-            + "      \"name\": \"price\",\n"
-            + "      \"type\": \"double\"\n"
-            + "    }\n"
-            + "  ]\n"
-            + "}\n";
-    String actualContent = SchemaUtils.getGcsFileAsString(AVRO_SCHEMA_FILE_PATH);
-
-    assertEquals(expectedContent, actualContent);
-  }
 
   /**
    * Test whether {@link SchemaUtils#getAvroSchema(String)} reads an Avro schema correctly and

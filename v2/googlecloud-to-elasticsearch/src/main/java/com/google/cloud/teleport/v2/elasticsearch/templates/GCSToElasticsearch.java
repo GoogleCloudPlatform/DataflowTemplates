@@ -55,7 +55,7 @@ public class GCSToElasticsearch {
   /** The tag for the lines of the CSV. */
   static final TupleTag<String> CSV_LINES = new TupleTag<String>() {};
 
-  /** The tag for the dead-letter output of the udf. */
+  /** The tag for the dead-letter output of the UDF. */
   static final TupleTag<FailsafeElement<String, String>> PROCESSING_DEADLETTER_OUT =
       new TupleTag<FailsafeElement<String, String>>() {};
 

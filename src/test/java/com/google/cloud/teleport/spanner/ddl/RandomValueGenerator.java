@@ -19,6 +19,7 @@ import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Value;
+import com.google.cloud.teleport.spanner.common.NumericUtils;
 import com.google.cloud.teleport.spanner.common.Type;
 import java.util.ArrayList;
 import java.util.List;
@@ -43,52 +44,83 @@ public class RandomValueGenerator {
     this.arrayNullThreshold = arrayNullThreshold;
   }
 
-  public Stream<Value> valueStream(Column column) {
+  public Stream<Value> valueStream(Column column, boolean notNull) {
     return Stream.generate(
         () -> {
           int threshold = nullThreshold;
-          if (column.notNull()) {
+          if (notNull || column.notNull()) {
             threshold = -1;
           }
           if (random.nextInt(100) < threshold) {
-            return generateNullValue(column.type());
+            return generateNullOrNaNValue(column.type());
           }
           return generate(column);
         });
   }
 
-  private Value generateNullValue(Type type) {
+  private Value generateNullOrNaNValue(Type type) {
     switch (type.getCode()) {
       case BOOL:
+      case PG_BOOL:
         return Value.bool(null);
       case INT64:
+      case PG_INT8:
         return Value.int64(null);
       case FLOAT64:
+      case PG_FLOAT8:
+        if (random.nextBoolean()) {
+          return Value.float64(Double.NaN);
+        }
         return Value.float64(null);
       case BYTES:
+      case PG_BYTEA:
         return Value.bytes(null);
       case STRING:
+      case PG_TEXT:
+      case PG_VARCHAR:
         return Value.string(null);
       case DATE:
+      case PG_DATE:
         return Value.date(null);
       case TIMESTAMP:
+      case PG_TIMESTAMPTZ:
         return Value.timestamp(null);
+      case NUMERIC:
+        return Value.numeric(null);
+      case PG_NUMERIC:
+        if (random.nextBoolean()) {
+          return Value.pgNumeric("NaN");
+        }
+        return Value.pgNumeric(null);
       case ARRAY:
+      case PG_ARRAY:
         switch (type.getArrayElementType().getCode()) {
           case BOOL:
+          case PG_BOOL:
             return Value.boolArray((boolean[]) null);
           case INT64:
+          case PG_INT8:
             return Value.int64Array((long[]) null);
           case FLOAT64:
+          case PG_FLOAT8:
             return Value.float64Array((double[]) null);
           case BYTES:
+          case PG_BYTEA:
             return Value.bytesArray(null);
           case STRING:
+          case PG_TEXT:
+          case PG_VARCHAR:
             return Value.stringArray(null);
           case DATE:
+          case PG_DATE:
             return Value.dateArray(null);
           case TIMESTAMP:
+          case PG_TIMESTAMPTZ:
             return Value.timestampArray(null);
+          case NUMERIC:
+            return Value.numericArray(null);
+          case PG_NUMERIC:
+            return Value.pgNumericArray(null);
         }
     }
     throw new IllegalArgumentException("Unexpected type " + type);
@@ -97,25 +129,35 @@ public class RandomValueGenerator {
   private Value generate(Column column) {
     Type type = column.type();
 
-    if (type.getCode() != Type.Code.ARRAY) {
+    if (type.getCode() != Type.Code.ARRAY && type.getCode() != Type.Code.PG_ARRAY) {
       return generateScalar(column);
     }
 
     switch (type.getArrayElementType().getCode()) {
       case BOOL:
+      case PG_BOOL:
         return Value.boolArray(generateList(random::nextBoolean));
       case INT64:
+      case PG_INT8:
         return Value.int64Array(generateList(random::nextLong));
       case FLOAT64:
+      case PG_FLOAT8:
         return Value.float64Array(generateList(random::nextDouble));
       case BYTES:
+      case PG_BYTEA:
         return Value.bytesArray(generateList(() -> randomByteArray(column.size())));
       case STRING:
+      case PG_VARCHAR:
+      case PG_TEXT:
         return Value.stringArray(generateList(() -> randomString(column.size())));
       case DATE:
+      case PG_DATE:
         return Value.dateArray(generateList(this::randomDate));
       case TIMESTAMP:
+      case PG_TIMESTAMPTZ:
         return Value.timestampArray(generateList(this::randomTimestamp));
+      case PG_NUMERIC:
+        return Value.pgNumericArray(generateList(this::randomPgNumeric));
     }
     throw new IllegalArgumentException("Unexpected type " + type);
   }
@@ -134,29 +176,60 @@ public class RandomValueGenerator {
     Type type = column.type();
     switch (type.getCode()) {
       case BOOL:
+      case PG_BOOL:
         return Value.bool(random.nextBoolean());
       case INT64:
+      case PG_INT8:
         return Value.int64(random.nextLong());
       case FLOAT64:
+      case PG_FLOAT8:
         return Value.float64(random.nextDouble());
       case BYTES:
+      case PG_BYTEA:
         {
           return Value.bytes(randomByteArray(column.size()));
         }
       case STRING:
+      case PG_VARCHAR:
+      case PG_TEXT:
         {
           return Value.string(randomString(column.size()));
         }
       case DATE:
+      case PG_DATE:
         {
           return Value.date(randomDate());
         }
       case TIMESTAMP:
+      case PG_TIMESTAMPTZ:
         {
           return Value.timestamp(randomTimestamp());
         }
+      case PG_NUMERIC:
+        return Value.pgNumeric(randomPgNumeric());
     }
     throw new IllegalArgumentException("Unexpected type " + type);
+  }
+
+  private String randomPgNumeric() {
+    int leftSize = random.nextInt(NumericUtils.PG_MAX_PRECISION - NumericUtils.PG_MAX_SCALE) + 1;
+    int rightSize = random.nextInt(NumericUtils.PG_MAX_SCALE + 1);
+    StringBuilder sb = new StringBuilder();
+    if (leftSize == 1) {
+      sb.append(0);
+    } else {
+      sb.append(random.nextInt(9) + 1);
+    }
+    for (int i = 1; i < leftSize; i++) {
+      sb.append(random.nextInt(10));
+    }
+    if (rightSize > 0) {
+      sb.append(".");
+      for (int i = 0; i < rightSize; i++) {
+        sb.append(random.nextInt(10));
+      }
+    }
+    return sb.toString();
   }
 
   private ByteArray randomByteArray(Integer size) {

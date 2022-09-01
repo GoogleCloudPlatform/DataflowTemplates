@@ -16,17 +16,37 @@
 package com.google.cloud.teleport.v2.cdc.merge;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertThrows;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
 
+import com.google.cloud.bigquery.BigQuery;
+import com.google.cloud.bigquery.Field;
+import com.google.cloud.bigquery.Schema;
+import com.google.cloud.bigquery.StandardSQLTypeName;
+import com.google.cloud.bigquery.Table;
+import com.google.cloud.bigquery.TableDefinition;
 import com.google.cloud.bigquery.TableId;
+import com.google.cloud.teleport.v2.utils.BigQueryTableCache;
 import com.google.common.collect.ImmutableList;
 import java.util.List;
+import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnit;
+import org.mockito.junit.MockitoRule;
 
 /** MergeInfo tests to validate merge is built correctly. */
 @RunWith(JUnit4.class)
 public final class MergeInfoTest {
+  @Rule public final MockitoRule mockito = MockitoJUnit.rule();
+
+  @Mock private BigQuery bigQuery;
+  @Mock private Table table;
+  @Mock private TableDefinition tableDefinition;
 
   private static final String MERGE_SQL =
       "MERGE `projectId.dataset.table` AS replica USING (SELECT `id,"
@@ -38,13 +58,20 @@ public final class MergeInfoTest {
           + " TIMESTAMP(DATE_ADD(CURRENT_DATE(), INTERVAL -1 DAY))    OR (_PARTITIONTIME >="
           + " TIMESTAMP(DATE_ADD(CURRENT_DATE(), INTERVAL -2 DAY))        AND"
           + " metadata_deleteField))) WHERE row_num=1) AS staging ON replica.id = staging.id WHEN"
-          + " MATCHED AND replica.timestamp <= staging.timestamp AND"
-          + " staging.metadata_deleteField=True THEN DELETE WHEN MATCHED AND replica.timestamp <="
-          + " staging.timestamp THEN UPDATE SET `id, cola` = staging.id, cola, `colb` ="
-          + " staging.colb, `timestamp` = staging.timestamp, `other` = staging.other WHEN NOT"
-          + " MATCHED BY TARGET AND staging.metadata_deleteField!=True THEN INSERT(`id,"
-          + " cola`,`colb`,`timestamp`,`other`) VALUES (staging.id, cola, staging.colb,"
+          + " MATCHED AND ((replica.timestamp < staging.timestamp) OR "
+          + "((replica.timestamp = staging.timestamp) AND replica.other < staging.other))"
+          + " AND staging.metadata_deleteField=True THEN DELETE WHEN MATCHED AND"
+          + " ((replica.timestamp < staging.timestamp) OR ((replica.timestamp = staging.timestamp)"
+          + " AND replica.other < staging.other)) THEN UPDATE SET `id, cola` ="
+          + " staging.id, cola, `colb` = staging.colb, `timestamp` = staging.timestamp, `other` ="
+          + " staging.other WHEN NOT MATCHED BY TARGET AND staging.metadata_deleteField!=True THEN"
+          + " INSERT(`id, cola`,`colb`,`timestamp`,`other`) VALUES (staging.id, cola, staging.colb,"
           + " staging.timestamp, staging.other)";
+
+  @Before
+  public void setup() {
+    MergeInfo.resetTableCache();
+  }
 
   @Test
   public void create_expectedResult() {
@@ -122,5 +149,53 @@ public final class MergeInfoTest {
             mergeFields);
 
     assertThat(mergeInfo.buildMergeStatement(cfg)).isEqualTo(MERGE_SQL);
+  }
+
+  @Test
+  public void getMergeFields_expectedResult() {
+    MergeInfo mergeInfo = buildSampleMergeInfo();
+
+    when(bigQuery.getTable(eq(mergeInfo.getStagingTable()))).thenReturn(table);
+    when(table.getDefinition()).thenReturn(tableDefinition);
+    when(tableDefinition.getSchema())
+        .thenReturn(Schema.of(Field.of("id", StandardSQLTypeName.STRING)));
+
+    MergeInfo.setTableCache(new BigQueryTableCache(bigQuery));
+
+    List<String> mergeFields = mergeInfo.getMergeFields(mergeInfo.getStagingTable());
+    assertThat(mergeFields).containsExactly("id");
+  }
+
+  @Test
+  public void getMergeFields_tableSchemaNotFound() {
+    MergeInfo mergeInfo = buildSampleMergeInfo();
+
+    when(bigQuery.getTable(eq(mergeInfo.getStagingTable()))).thenReturn(table);
+    when(table.getDefinition()).thenReturn(tableDefinition);
+    when(tableDefinition.getSchema()).thenReturn(null);
+
+    MergeInfo.setTableCache(new BigQueryTableCache(bigQuery));
+
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> mergeInfo.getMergeFields(mergeInfo.getStagingTable()));
+    assertThat(exception).hasMessageThat().contains("Could not get the schema for BigQuery table");
+  }
+
+  private MergeInfo buildSampleMergeInfo() {
+    List<String> allPkFields = ImmutableList.of("id");
+    List<String> orderByFields = ImmutableList.of("timestamp", "other");
+    List<String> customColumns = ImmutableList.of();
+    TableId stagingTable = TableId.of("projectId", "dataset", "staging_table");
+    TableId replicaTable = TableId.of("projectId", "dataset", "table");
+    return MergeInfo.create(
+        "projectId",
+        allPkFields,
+        orderByFields,
+        "metadata_deleteField",
+        stagingTable,
+        replicaTable,
+        customColumns);
   }
 }
