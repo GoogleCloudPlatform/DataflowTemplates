@@ -105,7 +105,6 @@ public final class SpannerChangeStreamsToBigQuery {
   }
 
   private static void setOptions(SpannerChangeStreamsToBigQueryOptions options) {
-    LOG.info("Setting streaing options");
     options.setStreaming(true);
     options.setEnableStreamingEngine(true);
 
@@ -161,8 +160,6 @@ public final class SpannerChangeStreamsToBigQuery {
         options.getEndTimestamp().isEmpty()
             ? Timestamp.MAX_VALUE
             : Timestamp.parseTimestamp(options.getEndTimestamp());
-
-    LOG.info("Getting RPC priority");
 
     SpannerConfig spannerConfig =
         SpannerConfig.create()
