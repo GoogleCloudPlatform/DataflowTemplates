@@ -114,7 +114,6 @@ public class BigQueryReadSchemaTransformProvider implements SchemaTransformProvi
 
           PCollection<TableRow> tableRows = input.getPipeline().apply(read);
 
-          Bigquery client = BigqueryClient.getNewBigqueryClient("SyndeoTests");
           return PCollectionRowTuple.of("OUTPUT", tableRows.apply(Convert.toRows()));
         }
       };
