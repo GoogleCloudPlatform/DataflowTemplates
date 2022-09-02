@@ -15,7 +15,6 @@
  */
 package com.google.cloud.syndeo.transforms.bigquery;
 
-import com.google.api.services.bigquery.Bigquery;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.service.AutoService;
 import com.google.cloud.bigquery.storage.v1.DataFormat;
