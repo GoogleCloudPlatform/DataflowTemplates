@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.bigtable;
 
+import java.util.List;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -23,8 +24,12 @@ import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
 import org.apache.beam.sdk.io.parquet.ParquetIO;
+import org.apache.beam.sdk.io.range.ByteKeyRange;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.SerializableFunction;
+
 
 /**
  * Dataflow pipeline that exports data from a Cloud Bigtable table to Parquet files in GCS.
@@ -60,7 +65,15 @@ public class BigtableToParquetNoSort extends BigtableToParquet {
                 BigtableIO.read()
                         .withProjectId(options.getBigtableProjectId())
                         .withInstanceId(options.getBigtableInstanceId())
-                        .withTableId(options.getBigtableTableId());
+                        .withTableId(options.getBigtableTableId())
+                        .withKeyRanges(ValueProvider.NestedValueProvider.of(
+                                options.getKeyRange(),
+                                new SerializableFunction<String, List<ByteKeyRange>>() {
+                                    @Override
+                                    public List<ByteKeyRange> apply(String keyRange) {
+                                        return KeyRangeParamTransformer.getByteKeyRanges(keyRange);
+                                    }
+                                }));
 
         // Do not validate input fields if it is running as a template.
         if (options.as(DataflowPipelineOptions.class).getTemplateLocation() != null) {
