@@ -29,6 +29,7 @@ import java.time.Instant;
 import java.util.*;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryServices;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryUtils;
 import org.apache.beam.sdk.io.gcp.testing.FakeBigQueryServices;
@@ -202,6 +203,7 @@ public class BigTableSchemaTransformTest {
               .build();
       PipelineOptions options = PipelineOptionsFactory.create();
       options.setTempLocation("any");
+      options.as(BigQueryOptions.class).setProject("anyproject");
       SyndeoTemplate.run(options, description);
     } finally {
       BigQuerySyndeoServices.servicesVariable = null;
