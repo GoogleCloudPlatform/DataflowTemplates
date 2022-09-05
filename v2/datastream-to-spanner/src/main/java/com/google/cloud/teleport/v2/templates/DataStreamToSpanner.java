@@ -347,6 +347,7 @@ public class DataStreamToSpanner {
             new SpannerTransactionWriter(
                 spannerConfig,
                 ddlView,
+                session,
                 options.getShadowTablePrefix(),
                 options.getDatastreamSourceType()));
 

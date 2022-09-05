@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.apache.avro.Conversions.DecimalConversion;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
@@ -122,6 +123,7 @@ public class FormatDatastreamRecordToJson
     outputObject.put("_metadata_table", getMetadataTable(record));
     outputObject.put("_metadata_change_type", getMetadataChangeType(record));
     outputObject.put("_metadata_primary_keys", getPrimaryKeys(record));
+    outputObject.put("_metadata_uuid", getUUID());
 
     if (sourceType.equals("mysql")) {
       // MySQL Specific Metadata
@@ -238,6 +240,10 @@ public class FormatDatastreamRecordToJson
     ObjectMapper mapper = new ObjectMapper();
     JsonNode dataInput = getSourceMetadataJson(record);
     return dataInput.get("primary_keys");
+  }
+
+  private String getUUID() {
+    return UUID.randomUUID().toString();
   }
 
   private Boolean getMetadataIsDeleted(GenericRecord record) {

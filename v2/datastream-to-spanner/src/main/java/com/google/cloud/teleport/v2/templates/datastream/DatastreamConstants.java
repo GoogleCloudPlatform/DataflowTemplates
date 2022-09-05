@@ -49,6 +49,9 @@ public class DatastreamConstants {
   /* The key for the table name in the event json */
   public static final String EVENT_TABLE_NAME_KEY = "_metadata_table";
 
+  /* The key for the uuid field of the change event */
+  public static final String EVENT_UUID_KEY = "_metadata_uuid";
+
   /* The key for the read method in the event json */
   public static final String EVENT_READ_METHOD_KEY = "_metadata_read_method";
 
