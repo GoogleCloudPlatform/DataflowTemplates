@@ -1,0 +1,59 @@
+{
+  "image": "gcr.io/project-id/image-name",
+  "metadata": {
+    "name": "Pub/Sub Avro to Bigtable streaming",
+    "description": "Stream Avro records from Pub/Sub to Bigtable",
+    "parameters": [
+      {
+        "name": "inputSubscription",
+        "label": "PubSub subscription name",
+        "helpText": "The name of the subscription from which data is read. For example, projects/<project-id>/subscriptions/<subscription-name>",
+        "isOptional": false,
+        "regexes": [
+          "^projects\\/[^\\n\\r\\/]+\\/subscriptions\\/[^\\n\\r\\/]+$"
+        ],
+        "paramType": "PUBSUB_SUBSCRIPTION"
+      },
+      {
+        "name": "outputTopic",
+        "label": "Dead-letter output topic",
+        "helpText": "Pub/Sub topic to write dead-letter records. For example, projects/<project-id>/topics/<topic-name>.",
+        "isOptional": false,
+        "regexes": [
+          "^projects\\/[^\\n\\r\\/]+\\/topics\\/[^\\n\\r\\/]+$"],
+        "paramType": "PUBSUB_TOPIC"
+      },
+      {
+        "name": "bigtableWriteProjectId",
+        "label": "Bigtable project id",
+        "helpText": "Bigtable project id to write to",
+        "paramType": "TEXT",
+        "isOptional": false
+      },
+      {
+        "name": "bigtableWriteInstanceId",
+        "label": "Bigtable instance id",
+        "helpText": "Bigtable instance id to write to",
+        "paramType": "TEXT",
+        "isOptional": false
+      },
+      {
+        "name": "bigtableWriteTableId",
+        "label": "Bigtable table id",
+        "helpText": "Bigtable table id to write to",
+        "paramType": "TEXT",
+        "isOptional": false
+      },
+      {
+        "name": "bigtableWriteAppProfile",
+        "label": "Bigtable app profile",
+        "helpText": "Bigtable app profile to use for the export",
+        "paramType": "TEXT",
+        "isOptional": true
+      }
+    ]
+  },
+  "sdkInfo": {
+    "language": "JAVA"
+  }
+}
