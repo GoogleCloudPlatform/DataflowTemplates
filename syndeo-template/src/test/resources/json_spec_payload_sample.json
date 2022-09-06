@@ -6,14 +6,14 @@
         "topic": "mytopic123",
         "bootstrapServers": "123.123.123.123:12345",
         "dataFormat": "AVRO",
-        "confluentSchemaRegistryUrl": "https://123.234.123.234/schema/provider/url",
+        "confluentSchemaRegistryUrl": "https://localhost/schema/provider/url",
         "confluentSchemaRegistrySubject": "somesubject"
       }
     },
     "sink": {
       "urn": "schemaIO:bigquery:write",
       "configurationParameters": {
-        "tableSpec": "project:dataset.table",
+        "table": "project:dataset.table",
         "createDisposition": "CREATE_IF_NECESSARY",
         "writeDisposition": "WRITE_APPEND"
       }
@@ -26,13 +26,13 @@
         "topic": "mytopic123",
         "bootstrapServers": "123.123.123.123:12345",
         "dataFormat": "JSON",
-        "avroSchema": "TODO(pabloem): Json Schema"
+        "avroSchema": "{\"type\":\"record\",\"namespace\":\"com.example\",\"name\":\"FullName\",\"fields\":[{\"name\":\"first\",\"type\":\"string\"},{\"name\":\"last\",\"type\":\"string\"}]}"
       }
     },
     "sink": {
       "urn": "schemaIO:bigquery:write",
       "configurationParameters": {
-        "tableSpec": "project:dataset.table",
+        "table": "project:dataset.table",
         "createDisposition": "CREATE_IF_NECESSARY",
         "writeDisposition": "WRITE_APPEND"
       }
@@ -43,14 +43,15 @@
       "urn": "kafka:read",
       "configurationParameters": {
         "topic": "mytopic123_avro",
+        "bootstrapServers": "123.123.123.123:12345",
         "dataFormat": "AVRO",
-        "schema": "{\"type\":\"record\",\"namespace\":\"com.example\",\"name\":\"FullName\",\"fields\":[{\"name\":\"first\",\"type\":\"string\"},{\"name\":\"last\",\"type\":\"string\"}]}"
+        "avroSchema": "{\"type\":\"record\",\"namespace\":\"com.example\",\"name\":\"FullName\",\"fields\":[{\"name\":\"first\",\"type\":\"string\"},{\"name\":\"last\",\"type\":\"string\"}]}"
       }
     },
     "sink": {
       "urn": "schemaIO:bigquery:write",
       "configurationParameters": {
-        "tableSpec": "project:dataset.table",
+        "table": "project:dataset.table",
         "createDisposition": "CREATE_IF_NECESSARY",
         "writeDisposition": "WRITE_APPEND"
       }

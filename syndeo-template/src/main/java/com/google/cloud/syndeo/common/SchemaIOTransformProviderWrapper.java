@@ -23,7 +23,6 @@ import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.apache.beam.sdk.schemas.Schema;
-import org.apache.beam.sdk.schemas.Schema.Field;
 import org.apache.beam.sdk.schemas.io.InvalidConfigurationException;
 import org.apache.beam.sdk.schemas.io.SchemaIO;
 import org.apache.beam.sdk.schemas.io.SchemaIOProvider;
@@ -79,27 +78,27 @@ public class SchemaIOTransformProviderWrapper implements SchemaTransformProvider
   @Override
   public Schema configurationSchema() {
     // Turn the schema and location into actual configuration fields.
-    Schema.Builder builder = Schema.builder();
-//    builder.addStringField("location");
-//    builder.addNullableField("schema", Schema.FieldType.logicalType(new SchemaLogicalType()));
-    for (Field field : provider.configurationSchema().getFields()) {
-      builder.addField(field);
+    if (provider.requiresDataSchema()) {
+      Schema.Builder builder = Schema.builder();
+      for (Schema.Field field : provider.configurationSchema().getFields()) {
+        builder.addField(field);
+      }
+      builder.addNullableField("schema", Schema.FieldType.logicalType(new SchemaLogicalType()));
+      return builder.build();
+    } else {
+      return provider.configurationSchema();
     }
-    return builder.build();
   }
 
   @Override
   public SchemaTransform from(Row configuration) {
-    Row.Builder rowBuilder = Row.withSchema(provider.configurationSchema());
-    int numAdditionalFields =
-        configurationSchema().getFieldCount() - provider.configurationSchema().getFieldCount();
-    // Assumes the additional fields come first.
-    for (int i = 0; i < provider.configurationSchema().getFieldCount(); i++) {
-      rowBuilder.addValue(configuration.getValue(i + numAdditionalFields));
+    Row.Builder rowBuilder = Row.withSchema(configurationSchema());
+    for (int i = 0; i < configurationSchema().getFieldCount(); i++) {
+      rowBuilder.addValue(configuration.getValue(i));
     }
 
-    String location = configuration.getString("location");
-    Schema schema = configuration.getLogicalTypeValue("schema", Schema.class);
+    String location = configuration.getSchema().hasField("location") ? configuration.getString("location") : null;
+    Schema schema = configuration.getSchema().hasField("schema") ? configuration.getLogicalTypeValue("schema", Schema.class) : null;
     if (schema == null && provider.requiresDataSchema()) {
       throw new IllegalArgumentException("No schema provided for SchemaIO that requires schema.");
     }
@@ -162,7 +161,7 @@ public class SchemaIOTransformProviderWrapper implements SchemaTransformProvider
         public PCollectionRowTuple expand(PCollectionRowTuple inputs) {
           PCollection<Row> input = inputs.get("input");
           // Verify that the input schema matches what we expect.
-          Preconditions.checkArgument(schemaIO.schema().equals(input.getSchema()));
+          Preconditions.checkArgument(schemaIO.schema() == null || schemaIO.schema().equals(input.getSchema()));
           input.apply(schemaIO.buildWriter());
           return PCollectionRowTuple.empty(input.getPipeline());
         }

@@ -39,6 +39,10 @@ public class JsonToPipelineSpecBuilderTest {
         }
     }
 
+    private Boolean canTestBuildPipeline() {
+        return !sample.toString().contains("confluentSchemaRegistryUrl");
+    }
+
     @Parameterized.Parameter
     public JsonNode sample;
 
@@ -50,9 +54,10 @@ public class JsonToPipelineSpecBuilderTest {
             specs.add(new ProviderUtil.TransformSpec(inst));
         }
 
-        Pipeline p = Pipeline.create();
-        // Run pipeline from configuration.
-        ProviderUtil.applyConfigs(specs, PCollectionRowTuple.empty(p));
-        LOG.info("PIPELINE: {}", p);
+        if (canTestBuildPipeline()) {
+            Pipeline p = Pipeline.create();
+            // Run pipeline from configuration.
+            ProviderUtil.applyConfigs(specs, PCollectionRowTuple.empty(p));
+        }
     }
 }

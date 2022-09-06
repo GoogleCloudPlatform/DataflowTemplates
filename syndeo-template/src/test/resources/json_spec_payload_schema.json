@@ -33,7 +33,7 @@
   "bigquery_write": {
     "urn": "bigquery",
     "configurationParameters": {
-      "tableSpec": {
+      "table": {
         "description": "The name of the BigQuery table to read from. Format: \"[project:]dataset.table\"",
         "optional": false,
         "type": "string"
