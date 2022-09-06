@@ -41,7 +41,6 @@ import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.vendor.grpc.v1p48p1.com.google.common.io.CharStreams;
@@ -50,7 +49,6 @@ public class SyndeoTemplate {
 
   public interface Options extends PipelineOptions {
     @Description("Pipeline Options.")
-    @Validation.Required
     @Nullable
     String getPipelineSpec();
 
@@ -90,55 +88,36 @@ public class SyndeoTemplate {
     p.run();
   }
 
+  private static ConfiguredSchemaTransform buildFromJsonConfig(JsonNode transformConfig) {
+    JsonNode params = transformConfig.get("configurationParameters");
+    SchemaTransformProvider transformProvider =
+        ProviderUtil.getProvider(transformConfig.get("urn").asText());
+    List<Object> configurationParameters =
+        transformProvider.configurationSchema().getFields().stream()
+            .map(field -> field.getName())
+            .map(fieldName -> params.has(fieldName) ? params.get(fieldName) : null)
+            .map(
+                fieldNode ->
+                    fieldNode == null
+                        ? null
+                        : fieldNode.isBoolean()
+                            ? fieldNode.asBoolean()
+                            : fieldNode.isFloatingPointNumber()
+                                ? fieldNode.asDouble()
+                                : fieldNode.isNumber() ? fieldNode.asLong() : fieldNode.asText())
+            .collect(Collectors.toList());
+    return new ProviderUtil.TransformSpec(
+            transformConfig.get("urn").asText(), configurationParameters)
+        .toProto();
+  }
+
   public static PipelineDescription buildFromJsonPayload(String jsonPayload)
       throws JsonProcessingException {
     ObjectMapper om = new ObjectMapper();
     JsonNode config = om.readTree(jsonPayload);
-    JsonNode sourceConfig = config.get("source").get("configurationParameters");
-    SchemaTransformProvider sourceProvider =
-        ProviderUtil.getProvider(config.get("source").get("urn").asText());
-    List<Object> configurationParameters =
-        sourceProvider.configurationSchema().getFields().stream()
-            .map(field -> field.getName())
-            .map(fieldName -> sourceConfig.has(fieldName) ? sourceConfig.get(fieldName) : null)
-            .map(
-                fieldNode ->
-                    fieldNode == null
-                        ? null
-                        : fieldNode.isBoolean()
-                            ? fieldNode.asBoolean()
-                            : fieldNode.isFloatingPointNumber()
-                                ? fieldNode.asDouble()
-                                : fieldNode.isNumber() ? fieldNode.asLong() : fieldNode.asText())
-            .collect(Collectors.toList());
-
-    SchemaTransformProvider sinkProvider =
-        ProviderUtil.getProvider(config.get("sink").get("urn").asText());
-    JsonNode sinkConfig = config.get("sink").get("configurationParameters");
-    List<Object> sinkConfigurationParameters =
-        sinkProvider.configurationSchema().getFields().stream()
-            .map(field -> field.getName())
-            .map(fieldName -> sinkConfig.has(fieldName) ? sinkConfig.get(fieldName) : null)
-            .map(
-                fieldNode ->
-                    fieldNode == null
-                        ? null
-                        : fieldNode.isBoolean()
-                            ? fieldNode.asBoolean()
-                            : fieldNode.isFloatingPointNumber()
-                                ? fieldNode.asDouble()
-                                : fieldNode.isNumber() ? fieldNode.asLong() : fieldNode.asText())
-            .collect(Collectors.toList());
-
     return PipelineDescription.newBuilder()
-        .addTransforms(
-            new ProviderUtil.TransformSpec(
-                    config.get("source").get("urn").asText(), configurationParameters)
-                .toProto())
-        .addTransforms(
-            new ProviderUtil.TransformSpec(
-                    config.get("sink").get("urn").asText(), sinkConfigurationParameters)
-                .toProto())
+        .addTransforms(buildFromJsonConfig(config.get("source")))
+        .addTransforms(buildFromJsonConfig(config.get("sink")))
         .build();
   }
 

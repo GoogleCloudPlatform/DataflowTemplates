@@ -40,6 +40,7 @@
         <truth.version>1.0.1</truth.version>
         <truth-proto-extension.version>1.0.1</truth-proto-extension.version>
         <secretmanager.version>2.1.2</secretmanager.version>
+        <slf4j.version>1.7.25</slf4j.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -155,8 +156,6 @@ Leave it in for development-->
             <scope>test</scope>
         </dependency>
 
-
-
         <!-- Test dependencies -->
         <dependency>
             <groupId>com.google.truth</groupId>
@@ -182,7 +181,12 @@ Leave it in for development-->
             <version>3.7.7</version>
             <scope>test</scope>
         </dependency>
-
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>kafka</artifactId>
+            <version>1.17.3</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
