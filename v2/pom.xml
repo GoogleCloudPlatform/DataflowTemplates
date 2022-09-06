@@ -697,6 +697,7 @@
         <module>kudu-to-bigquery</module>
         <module>mongodb-to-googlecloud</module>
         <module>pubsub-binary-to-bigquery</module>
+        <module>pubsub-binary-to-bigtable</module>
         <module>pubsub-cdc-to-bigquery</module>
         <module>pubsub-to-mongodb</module>
         <module>streaming-data-generator</module>

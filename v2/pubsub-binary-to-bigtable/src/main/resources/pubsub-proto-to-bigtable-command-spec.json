@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.PubsubProtoToBigtable",
+  "classPath": "/template/pubsub-proto-to-bigtable/*:/template/pubsub-proto-to-bigtable/libs/*:/template/pubsub-proto-to-bigtable/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"pubsub_proto_to_bigtable\"}"
+  }
+}

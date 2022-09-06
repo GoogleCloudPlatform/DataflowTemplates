@@ -1,0 +1,40 @@
+{
+  "name": "BigtableRow",
+  "type": "record",
+  "namespace": "com.google.cloud.teleport.v2.avro",
+  "fields": [
+    {
+      "name": "rowKey",
+      "type": "bytes"
+    },
+    {
+      "name": "cells",
+      "type": {
+        "type": "array",
+        "items": {
+          "name": "BigtableCell",
+          "type": "record",
+          "fields": [
+            {
+              "name": "columnFamily",
+              "type": "bytes"
+            },
+            {
+              "name": "columnQualifier",
+              "type": "bytes"
+            },
+            {
+              "name": "timestamp",
+              "type": "long",
+              "logicalType": "timestamp-micros"
+            },
+            {
+              "name": "value",
+              "type": "bytes"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
