@@ -97,8 +97,12 @@ public class SchemaIOTransformProviderWrapper implements SchemaTransformProvider
       rowBuilder.addValue(configuration.getValue(i));
     }
 
-    String location = configuration.getSchema().hasField("location") ? configuration.getString("location") : null;
-    Schema schema = configuration.getSchema().hasField("schema") ? configuration.getLogicalTypeValue("schema", Schema.class) : null;
+    String location =
+        configuration.getSchema().hasField("location") ? configuration.getString("location") : null;
+    Schema schema =
+        configuration.getSchema().hasField("schema")
+            ? configuration.getLogicalTypeValue("schema", Schema.class)
+            : null;
     if (schema == null && provider.requiresDataSchema()) {
       throw new IllegalArgumentException("No schema provided for SchemaIO that requires schema.");
     }
@@ -161,7 +165,8 @@ public class SchemaIOTransformProviderWrapper implements SchemaTransformProvider
         public PCollectionRowTuple expand(PCollectionRowTuple inputs) {
           PCollection<Row> input = inputs.get("input");
           // Verify that the input schema matches what we expect.
-          Preconditions.checkArgument(schemaIO.schema() == null || schemaIO.schema().equals(input.getSchema()));
+          Preconditions.checkArgument(
+              schemaIO.schema() == null || schemaIO.schema().equals(input.getSchema()));
           input.apply(schemaIO.buildWriter());
           return PCollectionRowTuple.empty(input.getPipeline());
         }

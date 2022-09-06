@@ -23,11 +23,8 @@ import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-
-import org.apache.beam.sdk.io.kafka.KafkaSchemaTransformReadConfiguration;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.schemas.SchemaTranslation;
-import org.apache.beam.sdk.schemas.io.SchemaIOProvider;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransform;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
@@ -45,7 +42,8 @@ public class ProviderUtil {
         StreamSupport.stream(provider.spliterator(), false).collect(Collectors.toList());
     list.addAll(SchemaIOTransformProviderWrapper.getAll());
 
-    ServiceLoader<SchemaTransformProvider> providers = ServiceLoader.load(SchemaTransformProvider.class);
+    ServiceLoader<SchemaTransformProvider> providers =
+        ServiceLoader.load(SchemaTransformProvider.class);
     Map<String, SchemaTransformProvider> map = new HashMap<>();
     for (SchemaTransformProvider p : list) {
       map.put(p.identifier(), p);

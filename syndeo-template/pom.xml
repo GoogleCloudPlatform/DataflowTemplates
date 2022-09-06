@@ -254,7 +254,7 @@ Leave it in for development-->
                         </excludes>
                         <toggleOffOn/>
                         <googleJavaFormat>
-                            <version>11</version>
+                            <version>1.8</version>
                             <style>GOOGLE</style>
                         </googleJavaFormat>
                         <licenseHeader>

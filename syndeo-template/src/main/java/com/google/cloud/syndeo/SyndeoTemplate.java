@@ -53,11 +53,13 @@ public class SyndeoTemplate {
     @Validation.Required
     @Nullable
     String getPipelineSpec();
+
     void setPipelineSpec(String gcsSpec);
 
     @Description("JSON Spec Payload. Consistent with JSON schema in sampleschema.json")
     @Nullable
     String getJsonSpecPayload();
+
     void setJsonSpecPayload(String jsonSpecPayload);
   }
 
@@ -88,29 +90,56 @@ public class SyndeoTemplate {
     p.run();
   }
 
-  public static PipelineDescription buildFromJsonPayload(String jsonPayload) throws JsonProcessingException {
+  public static PipelineDescription buildFromJsonPayload(String jsonPayload)
+      throws JsonProcessingException {
     ObjectMapper om = new ObjectMapper();
     JsonNode config = om.readTree(jsonPayload);
     JsonNode sourceConfig = config.get("source").get("configurationParameters");
-    SchemaTransformProvider sourceProvider  = ProviderUtil.getProvider(config.get("source").get("urn").asText());
-    List<Object> configurationParameters = sourceProvider.configurationSchema().getFields().stream()
+    SchemaTransformProvider sourceProvider =
+        ProviderUtil.getProvider(config.get("source").get("urn").asText());
+    List<Object> configurationParameters =
+        sourceProvider.configurationSchema().getFields().stream()
             .map(field -> field.getName())
             .map(fieldName -> sourceConfig.has(fieldName) ? sourceConfig.get(fieldName) : null)
-            .map(fieldNode -> fieldNode == null ? null : fieldNode.isBoolean() ? fieldNode.asBoolean() : fieldNode.isFloatingPointNumber() ? fieldNode.asDouble() : fieldNode.isNumber() ? fieldNode.asLong() : fieldNode.asText())
+            .map(
+                fieldNode ->
+                    fieldNode == null
+                        ? null
+                        : fieldNode.isBoolean()
+                            ? fieldNode.asBoolean()
+                            : fieldNode.isFloatingPointNumber()
+                                ? fieldNode.asDouble()
+                                : fieldNode.isNumber() ? fieldNode.asLong() : fieldNode.asText())
             .collect(Collectors.toList());
 
-    SchemaTransformProvider sinkProvider  = ProviderUtil.getProvider(config.get("sink").get("urn").asText());
+    SchemaTransformProvider sinkProvider =
+        ProviderUtil.getProvider(config.get("sink").get("urn").asText());
     JsonNode sinkConfig = config.get("sink").get("configurationParameters");
-    List<Object> sinkConfigurationParameters = sinkProvider.configurationSchema().getFields().stream()
+    List<Object> sinkConfigurationParameters =
+        sinkProvider.configurationSchema().getFields().stream()
             .map(field -> field.getName())
             .map(fieldName -> sinkConfig.has(fieldName) ? sinkConfig.get(fieldName) : null)
-            .map(fieldNode -> fieldNode == null ? null : fieldNode.isBoolean() ? fieldNode.asBoolean() : fieldNode.isFloatingPointNumber() ? fieldNode.asDouble() : fieldNode.isNumber() ? fieldNode.asLong() : fieldNode.asText())
+            .map(
+                fieldNode ->
+                    fieldNode == null
+                        ? null
+                        : fieldNode.isBoolean()
+                            ? fieldNode.asBoolean()
+                            : fieldNode.isFloatingPointNumber()
+                                ? fieldNode.asDouble()
+                                : fieldNode.isNumber() ? fieldNode.asLong() : fieldNode.asText())
             .collect(Collectors.toList());
 
     return PipelineDescription.newBuilder()
-            .addTransforms(new ProviderUtil.TransformSpec(config.get("source").get("urn").asText(), configurationParameters).toProto())
-            .addTransforms(new ProviderUtil.TransformSpec(config.get("sink").get("urn").asText(), sinkConfigurationParameters).toProto())
-            .build();
+        .addTransforms(
+            new ProviderUtil.TransformSpec(
+                    config.get("source").get("urn").asText(), configurationParameters)
+                .toProto())
+        .addTransforms(
+            new ProviderUtil.TransformSpec(
+                    config.get("sink").get("urn").asText(), sinkConfigurationParameters)
+                .toProto())
+        .build();
   }
 
   public static PipelineDescription readFromFile(String filename) {
@@ -134,10 +163,11 @@ public class SyndeoTemplate {
       throw new IllegalArgumentException(
           "Template received both --pipelineSpec and --jsonSpecPayload parameters. "
               + "Only one of these parameters should be specified.");
-    } else if (inputOptions.getPipelineSpec() == null && inputOptions.getJsonSpecPayload() == null) {
+    } else if (inputOptions.getPipelineSpec() == null
+        && inputOptions.getJsonSpecPayload() == null) {
       throw new IllegalArgumentException(
-              "Template received neither of --pipelineSpec or --jsonSpecPayload parameters. "
-                      + "One of these parameters must be specified.");
+          "Template received neither of --pipelineSpec or --jsonSpecPayload parameters. "
+              + "One of these parameters must be specified.");
     }
   }
 }
