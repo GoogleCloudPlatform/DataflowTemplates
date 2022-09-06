@@ -15,24 +15,30 @@
  */
 package com.google.cloud.syndeo.transforms;
 
+import static org.junit.Assert.assertEquals;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.syndeo.SyndeoTemplate;
 import java.time.Instant;
-import java.util.*;
+import java.util.Base64;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import org.apache.beam.runners.direct.DirectOptions;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.testing.FakeDatasetService;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.transforms.Count;
-import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SimpleFunction;
-import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.Row;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -55,8 +61,7 @@ import org.testcontainers.utility.DockerImageName;
 public class KafkaToBigQueryLocalTest {
   @Rule
   public KafkaContainer kafka =
-      new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:6.2.1"))
-          .withEmbeddedZookeeper();
+      new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:6.2.1"));
 
   // TODO(pabloem): Rely on single implementation for row generator.
   private static final Random RND = new Random();
@@ -96,57 +101,38 @@ public class KafkaToBigQueryLocalTest {
   private static final String AVRO_SCHEMA =
       AvroUtils.toAvroSchema(INTEGRATION_TEST_SCHEMA).toString();
 
+  private void writeRowsToKafka(Integer numRows) throws Exception {
+    SimpleFunction<Row, byte[]> toBytesFn =
+        AvroUtils.getRowToAvroBytesFunction(INTEGRATION_TEST_SCHEMA);
+    try (KafkaProducer<byte[], byte[]> producer =
+        new KafkaProducer<byte[], byte[]>(
+            Map.<String, Object>of(
+                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
+                kafka.getBootstrapServers(),
+                ProducerConfig.CLIENT_ID_CONFIG,
+                UUID.randomUUID().toString()),
+            new ByteArraySerializer(),
+            new ByteArraySerializer()); ) {
+      for (int i = 0; i < numRows; i++) {
+        producer
+            .send(
+                new ProducerRecord<byte[], byte[]>(
+                    KAFKA_TOPIC, new byte[] {(byte) i}, toBytesFn.apply(generateRow())))
+            .get();
+      }
+    }
+  }
+
   @Before
   public void setUpKafka() throws Exception {
     try (AdminClient adminClient =
-            AdminClient.create(
-                Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers()));
-        KafkaProducer<byte[], byte[]> producer =
-            new KafkaProducer<byte[], byte[]>(
-                Map.<String, Object>of(
-                    ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
-                    kafka.getBootstrapServers(),
-                    ProducerConfig.CLIENT_ID_CONFIG,
-                    UUID.randomUUID().toString()),
-                new ByteArraySerializer(),
-                new ByteArraySerializer()); ) {
+        AdminClient.create(
+            Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers()))) {
       Collection<NewTopic> topics =
           Collections.singletonList(new NewTopic(KAFKA_TOPIC, KAFKA_TOPIC_PARTITIONS, (short) 1));
       adminClient.createTopics(topics).all().get(30, TimeUnit.SECONDS);
-
-      SimpleFunction<Row, byte[]> toBytesFn =
-          AvroUtils.getRowToAvroBytesFunction(INTEGRATION_TEST_SCHEMA);
-      producer
-          .send(
-              new ProducerRecord<byte[], byte[]>(
-                  KAFKA_TOPIC, new byte[] {0}, toBytesFn.apply(generateRow())))
-          .get();
-      producer
-          .send(
-              new ProducerRecord<byte[], byte[]>(
-                  KAFKA_TOPIC, new byte[] {1}, toBytesFn.apply(generateRow())))
-          .get();
-      producer
-          .send(
-              new ProducerRecord<byte[], byte[]>(
-                  KAFKA_TOPIC, new byte[] {2}, toBytesFn.apply(generateRow())))
-          .get();
-      producer
-          .send(
-              new ProducerRecord<byte[], byte[]>(
-                  KAFKA_TOPIC, new byte[] {3}, toBytesFn.apply(generateRow())))
-          .get();
-      producer
-          .send(
-              new ProducerRecord<byte[], byte[]>(
-                  KAFKA_TOPIC, new byte[] {4}, toBytesFn.apply(generateRow())))
-          .get();
-      producer
-          .send(
-              new ProducerRecord<byte[], byte[]>(
-                  KAFKA_TOPIC, new byte[] {5}, toBytesFn.apply(generateRow())))
-          .get();
     }
+    writeRowsToKafka(6);
   }
 
   @Test
@@ -161,6 +147,7 @@ public class KafkaToBigQueryLocalTest {
     ((ObjectNode) kafkaConfigParams).put("topic", KAFKA_TOPIC);
     ((ObjectNode) kafkaConfigParams).put("dataFormat", "AVRO");
     ((ObjectNode) kafkaConfigParams).put("avroSchema", AVRO_SCHEMA);
+    ((ObjectNode) kafkaConfigParams).put("startOffset", "earliest");
 
     FakeDatasetService.setUp();
     new FakeDatasetService().createDataset("anyproject", "anydataset", null, null, null);
@@ -171,37 +158,46 @@ public class KafkaToBigQueryLocalTest {
     ((ObjectNode) bqConfigParams).put("table", "anyproject:anydataset.sampletable");
     ((ObjectNode) bqConfigParams).put("useTestingBigQueryServices", true);
 
-    SyndeoTemplate.main(
-        new String[] {
-          "--jsonSpecPayload=" + rootConfiguration,
-          "--streaming",
-          "--experiments=use_deprecated_read"
-        });
-  }
+    PipelineResult result =
+        SyndeoTemplate.run(
+            new String[] {
+              "--jsonSpecPayload=" + rootConfiguration,
+              "--streaming",
+              "--experiments=use_deprecated_read",
+              // We need to set this option because otherwise the pipeline will block on p.run() and
+              // never
+              // reach Thread.sleep (and never be cancelled).
+              "--blockOnRun=false"
+            });
 
-  static class MyPrintingDoFn extends DoFn<KV<byte[], byte[]>, KV<byte[], byte[]>> {
-    @ProcessElement
-    public void process(
-        @DoFn.Element KV<byte[], byte[]> elm, OutputReceiver<KV<byte[], byte[]>> receiver) {
-      System.out.println("ELEMENT: " + elm.toString());
-      receiver.output(elm);
-    }
+    writeRowsToKafka(6);
+    Thread.sleep(30 * 1000); // Wait 30 seconds
+    result.cancel();
+
+    // We expect 6 rows aadded on setup and 6 rows added while the pipeline runs.
+    assertEquals(
+        new FakeDatasetService().getAllRows("anyproject", "anydataset", "sampletable").size(), 12);
   }
 
   @Test
-  public void testBasicKafkaRead() {
-
+  public void testBasicKafkaRead() throws Exception {
     Pipeline p = Pipeline.create();
+    // We need to set this option because otherwise the pipeline will block on p.run()
+    // and terminate before reaching writeRowsToKafka.
+    p.getOptions().as(DirectOptions.class).setBlockOnRun(false);
     PAssert.that(
             p.apply(
                     KafkaIO.readBytes()
                         .withBootstrapServers(kafka.getBootstrapServers())
                         .withTopic(KAFKA_TOPIC)
-                        .withMaxReadTime(Duration.standardSeconds(30))
+                        .withStartReadTime(org.joda.time.Instant.EPOCH)
+                        .withMaxReadTime(Duration.standardSeconds(20))
                         .withoutMetadata())
-                .apply(ParDo.of(new MyPrintingDoFn()))
                 .apply(Count.globally()))
-        .containsInAnyOrder(5L);
-    p.run().waitUntilFinish();
+        // We expect 6 rows aadded on setup and 6 rows added while the pipeline runs.
+        .containsInAnyOrder(12L);
+    PipelineResult result = p.run();
+    writeRowsToKafka(6);
+    result.waitUntilFinish();
   }
 }

@@ -27,6 +27,12 @@
         "description": "The address to the Confluent Schema Registry to use to get schema information for this Kafka instance. Mutually exclusive with schema parameter.",
         "optional": true,
         "type": "string"
+      },
+      "startOffset": {
+        "description": "The offset where we can start consuming data. Options: earliest, latest.",
+        "optional": true,
+        "type": "string",
+        "validValues": ["earliest", "latest"]
       }
     }
   },

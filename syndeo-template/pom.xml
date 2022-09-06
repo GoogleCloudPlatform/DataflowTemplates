@@ -38,7 +38,6 @@
         <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
         <protobuf.version>3.21.5</protobuf.version>
         <truth.version>1.0.1</truth.version>
-        <truth-proto-extension.version>1.0.1</truth-proto-extension.version>
         <secretmanager.version>2.1.2</secretmanager.version>
         <slf4j.version>1.7.25</slf4j.version>
     </properties>

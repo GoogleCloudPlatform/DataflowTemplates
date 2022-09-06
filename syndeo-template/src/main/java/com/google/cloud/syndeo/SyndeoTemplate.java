@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.MatchResult.Status;
@@ -62,6 +63,10 @@ public class SyndeoTemplate {
   }
 
   public static void main(String[] args) throws Exception {
+    run(args);
+  }
+
+  public static PipelineResult run(String[] args) throws Exception {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     validateOptions(options);
 
@@ -85,7 +90,7 @@ public class SyndeoTemplate {
     Pipeline p = Pipeline.create(options);
     // Run pipeline from configuration.
     ProviderUtil.applyConfigs(specs, PCollectionRowTuple.empty(p));
-    p.run();
+    return p.run();
   }
 
   private static ConfiguredSchemaTransform buildFromJsonConfig(JsonNode transformConfig) {
