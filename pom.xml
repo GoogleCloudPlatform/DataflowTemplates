@@ -683,6 +683,15 @@
                 <ignoredUsedUndeclaredDependency>
                   com.google.api.grpc:proto-google-cloud-secretmanager-v1
                 </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  org.apache.beam:beam-runners-core-java
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  com.google.api:gax-grpc
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  com.google.api.grpc:proto-google-cloud-spanner-v1
+                </ignoredUsedUndeclaredDependency>
              </ignoredUsedUndeclaredDependencies>
              <ignoredUnusedDeclaredDependencies>
                 <ignoredUnusedDeclaredDependency>org.threeten:threetenbp</ignoredUnusedDeclaredDependency>
