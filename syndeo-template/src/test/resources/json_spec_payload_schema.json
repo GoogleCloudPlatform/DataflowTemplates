@@ -1,0 +1,53 @@
+{
+  "kafka_read": {
+    "urn": "kafka:read",
+    "configurationParameters": {
+      "topic": {
+        "description": "The name of the Kafka topic to consume data from",
+        "optional": false,
+        "type": "string"
+      },
+      "dataFormat": {
+        "description": "A string defining the data format for the data encoded in Kafka",
+        "optional": false,
+        "type": "string",
+        "validValues": ["AVRO", "JSON", "CSV"]
+      },
+      "bootstrapServers": {
+        "description": "The IP addresses and ports for the bootstrap servers in your Kafka cluster.",
+        "optional": false,
+        "type": "string"
+      },
+      "schema": {
+        "description": "A JSON string describing the schema of the messages in Kafka. Mutually exclusive with schemaRegistry parameter. For AVRO format, a valid AVRO schema must be provided.",
+        "optional": true,
+        "type": "string"
+      },
+      "schemaRegistry": {
+        "description": "The address to the Confluent Schema Registry to use to get schema information for this Kafka instance. Mutually exclusive with schema parameter.",
+        "optional": true,
+        "type": "string"
+      }
+    }
+  },
+  "bigquery_write": {
+    "urn": "bigquery",
+    "configurationParameters": {
+      "tableSpec": {
+        "description": "The name of the BigQuery table to read from. Format: \"[project:]dataset.table\"",
+        "optional": false,
+        "type": "string"
+      },
+      "createDisposition": {
+        "description": "Create disposition for the BigQuery table. Default: CREATE_IF_NECESSARY.",
+        "optional": true,
+        "type": "string"
+      },
+      "writeDisposition": {
+        "description": "Write disposition for the BigQuery table. Default: WRITE_APPEND.",
+        "optional": true,
+        "type": "string"
+      }
+    }
+  }
+}

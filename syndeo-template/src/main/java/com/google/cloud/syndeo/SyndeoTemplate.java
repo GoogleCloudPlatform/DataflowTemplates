@@ -17,6 +17,9 @@ package com.google.cloud.syndeo;
 
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.syndeo.common.ProviderUtil;
 import com.google.cloud.syndeo.common.ProviderUtil.TransformSpec;
 import com.google.cloud.syndeo.v1.SyndeoV1.ConfiguredSchemaTransform;
@@ -28,6 +31,8 @@ import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.MatchResult;
@@ -37,6 +42,7 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
+import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.vendor.grpc.v1p48p1.com.google.common.io.CharStreams;
 
@@ -45,16 +51,28 @@ public class SyndeoTemplate {
   public interface Options extends PipelineOptions {
     @Description("Pipeline Options.")
     @Validation.Required
+    @Nullable
     String getPipelineSpec();
-
     void setPipelineSpec(String gcsSpec);
+
+    @Description("JSON Spec Payload. Consistent with JSON schema in sampleschema.json")
+    @Nullable
+    String getJsonSpecPayload();
+    void setJsonSpecPayload(String jsonSpecPayload);
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws Exception {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
+    validateOptions(options);
+
     FileSystems.setDefaultPipelineOptions(options);
-    PipelineDescription pipelineDescription = readFromFile(options.getPipelineSpec());
-    run(options, pipelineDescription);
+    PipelineDescription pipeline;
+    if (options.getPipelineSpec() != null) {
+      pipeline = readFromFile(options.getPipelineSpec());
+    } else {
+      pipeline = buildFromJsonPayload(options.getJsonSpecPayload());
+    }
+    run(options, pipeline);
   }
 
   public static void run(PipelineOptions options, PipelineDescription pipelineDescription) {
@@ -70,6 +88,31 @@ public class SyndeoTemplate {
     p.run();
   }
 
+  public static PipelineDescription buildFromJsonPayload(String jsonPayload) throws JsonProcessingException {
+    ObjectMapper om = new ObjectMapper();
+    JsonNode config = om.readTree(jsonPayload);
+    JsonNode sourceConfig = config.get("source").get("configurationParameters");
+    SchemaTransformProvider sourceProvider  = ProviderUtil.getProvider(config.get("source").get("urn").asText());
+    List<Object> configurationParameters = sourceProvider.configurationSchema().getFields().stream()
+            .map(field -> field.getName())
+            .map(fieldName -> sourceConfig.has(fieldName) ? sourceConfig.get(fieldName) : null)
+            .map(fieldNode -> fieldNode == null ? null : fieldNode.isBoolean() ? fieldNode.asBoolean() : fieldNode.isFloatingPointNumber() ? fieldNode.asDouble() : fieldNode.isNumber() ? fieldNode.asLong() : fieldNode.asText())
+            .collect(Collectors.toList());
+
+    SchemaTransformProvider sinkProvider  = ProviderUtil.getProvider(config.get("sink").get("urn").asText());
+    JsonNode sinkConfig = config.get("sink").get("configurationParameters");
+    List<Object> sinkConfigurationParameters = sinkProvider.configurationSchema().getFields().stream()
+            .map(field -> field.getName())
+            .map(fieldName -> sinkConfig.has(fieldName) ? sinkConfig.get(fieldName) : null)
+            .map(fieldNode -> fieldNode == null ? null : fieldNode.isBoolean() ? fieldNode.asBoolean() : fieldNode.isFloatingPointNumber() ? fieldNode.asDouble() : fieldNode.isNumber() ? fieldNode.asLong() : fieldNode.asText())
+            .collect(Collectors.toList());
+
+    return PipelineDescription.newBuilder()
+            .addTransforms(new ProviderUtil.TransformSpec(config.get("source").get("urn").asText(), configurationParameters).toProto())
+            .addTransforms(new ProviderUtil.TransformSpec(config.get("sink").get("urn").asText(), sinkConfigurationParameters).toProto())
+            .build();
+  }
+
   public static PipelineDescription readFromFile(String filename) {
     try {
       MatchResult result = FileSystems.match(filename);
@@ -83,6 +126,18 @@ public class SyndeoTemplate {
           ByteString.copyFrom(CharStreams.toString(reader), StandardCharsets.ISO_8859_1));
     } catch (IOException e) {
       throw new RuntimeException("Issue reading file.", e);
+    }
+  }
+
+  private static void validateOptions(Options inputOptions) {
+    if (inputOptions.getPipelineSpec() != null && inputOptions.getJsonSpecPayload() != null) {
+      throw new IllegalArgumentException(
+          "Template received both --pipelineSpec and --jsonSpecPayload parameters. "
+              + "Only one of these parameters should be specified.");
+    } else if (inputOptions.getPipelineSpec() == null && inputOptions.getJsonSpecPayload() == null) {
+      throw new IllegalArgumentException(
+              "Template received neither of --pipelineSpec or --jsonSpecPayload parameters. "
+                      + "One of these parameters must be specified.");
     }
   }
 }

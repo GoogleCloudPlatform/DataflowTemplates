@@ -80,8 +80,8 @@ public class SchemaIOTransformProviderWrapper implements SchemaTransformProvider
   public Schema configurationSchema() {
     // Turn the schema and location into actual configuration fields.
     Schema.Builder builder = Schema.builder();
-    builder.addNullableField("location", Schema.FieldType.STRING);
-    builder.addNullableField("schema", Schema.FieldType.logicalType(new SchemaLogicalType()));
+//    builder.addStringField("location");
+//    builder.addNullableField("schema", Schema.FieldType.logicalType(new SchemaLogicalType()));
     for (Field field : provider.configurationSchema().getFields()) {
       builder.addField(field);
     }
