@@ -69,6 +69,10 @@ class LocalReadSpannerSchema extends DoFn<Void, SpannerSchema> {
         String type = resultSet.getString(2);
         long cellsMutated = resultSet.getLong(3);
 
+        if (type.equalsIgnoreCase("JSONB")) {
+          type = "CHARACTER VARYING";
+        }
+
         builder.addColumn(tableName, columnName, type, cellsMutated);
       }
 

@@ -485,6 +485,8 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
         return Code.PG_BYTEA;
       } else if (columnType.equalsIgnoreCase("numeric") && dialect == Dialect.POSTGRESQL) {
         return Code.PG_NUMERIC;
+      } else if (columnType.equalsIgnoreCase("jsonb") && dialect == Dialect.POSTGRESQL) {
+        return Code.PG_JSONB;
       } else if (columnType.toLowerCase().startsWith("character varying")
           && dialect == Dialect.POSTGRESQL) {
         return Code.PG_VARCHAR;

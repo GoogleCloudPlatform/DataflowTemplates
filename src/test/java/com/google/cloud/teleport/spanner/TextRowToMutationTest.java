@@ -664,9 +664,9 @@ public final class TextRowToMutationTest {
             Create.of(
                 KV.of(
                     testTableName,
-                    "123,a string,'another"
-                        + " string',1.23,True,2018-12-31T23:59:59Z,1567637083,aGk=,"
-                        + "-439.25335679, 1910-01-01")));
+                    "123,a string,'another string',1.23,True,2018-12-31T23:59:59Z,1567637083"
+                        + ",aGk=,-439.25335679,'{\"a\": null, \"b\": [true, false, 14.234"
+                        + ", \"dsafaaf\"]}',1910-01-01")));
     PCollection<Mutation> mutations =
         input.apply(
             ParDo.of(
@@ -703,6 +703,8 @@ public final class TextRowToMutationTest {
                 .to(Value.bytes(ByteArray.fromBase64("aGk=")))
                 .set("numeric_col")
                 .to(Value.pgNumeric("-439.25335679"))
+                .set("jsonb_col")
+                .to("{\"a\": null, \"b\": [true, false, 14.234, \"dsafaaf\"]}")
                 .set("date_col")
                 .to(Value.date(Date.parseDate("1910-01-01")))
                 .build());
@@ -791,6 +793,9 @@ public final class TextRowToMutationTest {
             .endColumn()
             .column("numeric_col")
             .pgNumeric()
+            .endColumn()
+            .column("jsonb_col")
+            .pgJsonb()
             .endColumn()
             .column("date_col")
             .pgDate()
