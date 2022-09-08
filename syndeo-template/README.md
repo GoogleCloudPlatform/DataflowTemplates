@@ -35,15 +35,54 @@ integration tests and only runs unit tests:
 mvn clean package test -f unified-templates.xml -pl syndeo-template/pom.xml
 ```
 
+To set up your Google Cloud project for the integration tests, the following steps assume you have installed and setup [gcloud](https://cloud.google.com/sdk/gcloud).
+
+1. Set your default project.
+
+```shell
+gcloud config set project PROJECT
+```
+
+#### BigQuery to BigTable tests
+
 The file `BigTableWriteIT` **holds integration tests** for the basic BigTable Syndeo integration. These integration tests
 rely on the existence of a BigTable instance and table, as well as a BigQuery dataset, which holds the BQ data that
 is part of the pipeline's read.
 
+This integration test requires a BigQuery dataset and a BigTable instance, as well as GCS buckets to handle artifacts.
+
+1. Create the BigQuery dataset.
+
+```
+bq mk syndeo_dataset
+```
+
+2. Create the BigTable instance.
+
+```
+gcloud bigtable instances create teleport --display-name=teleport --cluster-config=id=teleport,zone=us-central1-a
+```
+
+3. Create the artifact bucket
+
+```
+ARTIFACT_BUCKET=[CHANGE ME]
+gsutil mb gs://$ARTIFACT_BUCKET
+```
+
+4. Create the temporary location bucket
+
+```
+TEMP_LOCATION_BUCKET=[CHANGE ME]
+gsutil mb gs://$TEMP_LOCATION_BUCKET
+```
+
+
 ```shell
 mvn clean package test -f unified-templates.xml -pl syndeo-template/pom.xml  \
     -Dtest="BigTableWriteIT#testBigQueryToBigTableSmallNonTemplateJob"  \
-    -Dproject="cloud-teleport-testing"  -DartifactBucket="gs://cloud-teleport-testing-df-staging"  \
-    -Dregion="us-central1" -DtempLocation=gs://cloud-teleport-testing-df-staging
+    -Dproject="$(gcloud config get-value project)"  -DartifactBucket="gs://$ARTIFACT_BUCKET"  \
+    -Dregion="us-central1" -DtempLocation=gs://$TEMP_LOCATION_BUCKET
 ```
 
 ### Push template to GCP
