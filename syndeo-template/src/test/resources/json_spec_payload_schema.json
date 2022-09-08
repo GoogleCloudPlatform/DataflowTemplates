@@ -14,7 +14,7 @@
         "validValues": ["AVRO", "JSON", "CSV"]
       },
       "bootstrapServers": {
-        "description": "The IP addresses and ports for the bootstrap servers in your Kafka cluster.",
+        "description": "The IP addresses and ports for the bootstrap servers in your Kafka c  luster.",
         "optional": false,
         "type": "string"
       },
@@ -28,11 +28,16 @@
         "optional": true,
         "type": "string"
       },
-      "startOffset": {
+      "autoOffsetResetConfig": {
         "description": "The offset where we can start consuming data. Options: earliest, latest.",
         "optional": true,
         "type": "string",
         "validValues": ["earliest", "latest"]
+      },
+      "consumerConfigUpdates": {
+        "description": "A map of Kafka Consumer Config Updates (see https://docs.confluent.io/platform/current/installation/configuration/consumer-configs.html)",
+        "optional": true,
+        "type": "map"
       }
     }
   },

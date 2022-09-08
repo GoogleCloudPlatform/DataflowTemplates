@@ -43,6 +43,7 @@ import org.apache.beam.sdk.values.Row;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -71,8 +72,6 @@ public class KafkaToBigQueryLocalTest {
           .addStringField("name")
           .addBooleanField("vaccinated")
           .addDoubleField("temperature")
-          // The following fields cannot be included in local tests
-          // due to limitations of the testing utilities.
           .addInt32Field("age")
           .addInt64Field("networth")
           .addDateTimeField("birthday")
@@ -96,8 +95,8 @@ public class KafkaToBigQueryLocalTest {
   }
 
   private static final String KAFKA_TOPIC = "sampleTopic" + UUID.randomUUID();
-  // TODO(pabloem): add more kafka partitions to test a more realistic scenario.
-  private static final Integer KAFKA_TOPIC_PARTITIONS = 1;
+  // TODO(pabloem): Vary number of partitions to make sure we're safe on any distribution
+  private static final Integer KAFKA_TOPIC_PARTITIONS = 3;
   private static final String AVRO_SCHEMA =
       AvroUtils.toAvroSchema(INTEGRATION_TEST_SCHEMA).toString();
 
@@ -123,20 +122,7 @@ public class KafkaToBigQueryLocalTest {
     }
   }
 
-  @Before
-  public void setUpKafka() throws Exception {
-    try (AdminClient adminClient =
-        AdminClient.create(
-            Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers()))) {
-      Collection<NewTopic> topics =
-          Collections.singletonList(new NewTopic(KAFKA_TOPIC, KAFKA_TOPIC_PARTITIONS, (short) 1));
-      adminClient.createTopics(topics).all().get(30, TimeUnit.SECONDS);
-    }
-    writeRowsToKafka(6);
-  }
-
-  @Test
-  public void testSyndeoKafkaToBQWithEmulators() throws Exception {
+  private JsonNode generateRootConfiguration() {
     JsonNode rootConfiguration = JsonNodeFactory.instance.objectNode();
     JsonNode kafkaSourceNode = ((ObjectNode) rootConfiguration).putObject("source");
     ((ObjectNode) kafkaSourceNode).put("urn", "kafka:read");
@@ -147,21 +133,95 @@ public class KafkaToBigQueryLocalTest {
     ((ObjectNode) kafkaConfigParams).put("topic", KAFKA_TOPIC);
     ((ObjectNode) kafkaConfigParams).put("dataFormat", "AVRO");
     ((ObjectNode) kafkaConfigParams).put("avroSchema", AVRO_SCHEMA);
-    ((ObjectNode) kafkaConfigParams).put("startOffset", "earliest");
+    ((ObjectNode) kafkaConfigParams).put("autoOffsetResetConfig", "earliest");
+    ((ObjectNode) kafkaConfigParams).putObject("consumerConfigUpdates");
+    ((ObjectNode) kafkaConfigParams.get("consumerConfigUpdates"))
+        .put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "100");
+    ((ObjectNode) kafkaConfigParams.get("consumerConfigUpdates"))
+        .put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
-    FakeDatasetService.setUp();
-    new FakeDatasetService().createDataset("anyproject", "anydataset", null, null, null);
     JsonNode bqSinkNode = ((ObjectNode) rootConfiguration).putObject("sink");
     ((ObjectNode) bqSinkNode).put("urn", "schemaIO:bigquery:write");
     JsonNode bqConfigParams = ((ObjectNode) bqSinkNode).putObject("configurationParameters");
     // TODO(pabloem): Test with different formats for tableSpec.
-    ((ObjectNode) bqConfigParams).put("table", "anyproject:anydataset.sampletable");
+    ((ObjectNode) bqConfigParams).put("table", "anyproject.anydataset.sampletable");
+    ((ObjectNode) bqConfigParams).put("writeDisposition", "WRITE_APPEND");
+    ((ObjectNode) bqConfigParams).put("createDisposition", "CREATE_IF_NECESSARY");
     ((ObjectNode) bqConfigParams).put("useTestingBigQueryServices", true);
+    return rootConfiguration;
+  }
 
+  @Before
+  public void setUpKafka() throws Exception {
+    try (AdminClient adminClient =
+        AdminClient.create(
+            Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers()))) {
+      Collection<NewTopic> topics =
+          Collections.singletonList(new NewTopic(KAFKA_TOPIC, KAFKA_TOPIC_PARTITIONS, (short) 1));
+      try {
+        adminClient
+            .deleteTopics(Collections.singletonList(KAFKA_TOPIC))
+            .all()
+            .get(30, TimeUnit.SECONDS);
+      } catch (Exception e) {
+        // Ignore this exception
+      }
+      adminClient.createTopics(topics).all().get(30, TimeUnit.SECONDS);
+    }
+    writeRowsToKafka(6);
+  }
+
+  @Test
+  public void testSyndeoKafkaToBQWithEmulatorsWithRestarts() throws Exception {
+    FakeDatasetService.setUp();
+    new FakeDatasetService().createDataset("anyproject", "anydataset", null, null, null);
     PipelineResult result =
         SyndeoTemplate.run(
             new String[] {
-              "--jsonSpecPayload=" + rootConfiguration,
+              "--jsonSpecPayload=" + generateRootConfiguration(),
+              "--streaming",
+              "--experiments=use_deprecated_read",
+              // We need to set this option because otherwise the pipeline will block on p.run() and
+              // never
+              // reach Thread.sleep (and never be cancelled).
+              "--blockOnRun=false"
+            });
+
+    writeRowsToKafka(6);
+    Thread.sleep(30 * 1000); // Wait 30 seconds
+    result.cancel();
+    writeRowsToKafka(6);
+    result =
+        SyndeoTemplate.run(
+            new String[] {
+              "--jsonSpecPayload=" + generateRootConfiguration(),
+              "--streaming",
+              "--experiments=use_deprecated_read",
+              // We need to set this option because otherwise the pipeline will block on p.run() and
+              // never
+              // reach Thread.sleep (and never be cancelled).
+              "--blockOnRun=false"
+            });
+    writeRowsToKafka(6);
+    Thread.sleep(30 * 1000); // Wait 30 seconds
+    result.cancel();
+
+    // We expect 6 rows added on setup and 6 rows added while the pipeline runs, 6 rows added before
+    // restart, and
+    // 6 rows added after restart.
+    assertEquals(
+        24, new FakeDatasetService().getAllRows("anyproject", "anydataset", "sampletable").size());
+  }
+
+  @Test
+  public void testSyndeoKafkaToBQWithEmulators() throws Exception {
+    FakeDatasetService.setUp();
+    new FakeDatasetService().createDataset("anyproject", "anydataset", null, null, null);
+    new FakeDatasetService().getDataset("anyproject", "anydataset").get("sampletable");
+    PipelineResult result =
+        SyndeoTemplate.run(
+            new String[] {
+              "--jsonSpecPayload=" + generateRootConfiguration(),
               "--streaming",
               "--experiments=use_deprecated_read",
               // We need to set this option because otherwise the pipeline will block on p.run() and
@@ -174,9 +234,9 @@ public class KafkaToBigQueryLocalTest {
     Thread.sleep(30 * 1000); // Wait 30 seconds
     result.cancel();
 
-    // We expect 6 rows aadded on setup and 6 rows added while the pipeline runs.
+    // We expect 6 rows added on setup and 6 rows added while the pipeline runs.
     assertEquals(
-        new FakeDatasetService().getAllRows("anyproject", "anydataset", "sampletable").size(), 12);
+        12, new FakeDatasetService().getAllRows("anyproject", "anydataset", "sampletable").size());
   }
 
   @Test
@@ -190,11 +250,16 @@ public class KafkaToBigQueryLocalTest {
                     KafkaIO.readBytes()
                         .withBootstrapServers(kafka.getBootstrapServers())
                         .withTopic(KAFKA_TOPIC)
-                        .withStartReadTime(org.joda.time.Instant.EPOCH)
+                        .withConsumerConfigUpdates(
+                            Map.of(
+                                ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG,
+                                100,
+                                ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
+                                "earliest"))
                         .withMaxReadTime(Duration.standardSeconds(20))
                         .withoutMetadata())
                 .apply(Count.globally()))
-        // We expect 6 rows aadded on setup and 6 rows added while the pipeline runs.
+        // We expect 6 rows added on setup and 6 rows added while the pipeline runs.
         .containsInAnyOrder(12L);
     PipelineResult result = p.run();
     writeRowsToKafka(6);

@@ -31,6 +31,7 @@ import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.Pipeline;
@@ -109,7 +110,11 @@ public class SyndeoTemplate {
                             ? fieldNode.asBoolean()
                             : fieldNode.isFloatingPointNumber()
                                 ? fieldNode.asDouble()
-                                : fieldNode.isNumber() ? fieldNode.asLong() : fieldNode.asText())
+                                : fieldNode.isNumber()
+                                    ? fieldNode.asLong()
+                                    : fieldNode.isContainerNode()
+                                        ? new ObjectMapper().convertValue(fieldNode, Map.class)
+                                        : fieldNode.asText())
             .collect(Collectors.toList());
     return new ProviderUtil.TransformSpec(
             transformConfig.get("urn").asText(), configurationParameters)
