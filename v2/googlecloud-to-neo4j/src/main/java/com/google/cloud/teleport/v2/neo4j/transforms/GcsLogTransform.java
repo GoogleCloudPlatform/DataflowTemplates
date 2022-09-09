@@ -38,8 +38,8 @@ public class GcsLogTransform extends PTransform<PCollection<Row>, POutput> {
 
   private static final Logger LOG = LoggerFactory.getLogger(GcsLogTransform.class);
 
-  JobSpec jobSpec;
-  Target target;
+  private final JobSpec jobSpec;
+  private final Target target;
 
   public GcsLogTransform(JobSpec jobSpecRequest, Target target) {
     this.target = target;
@@ -49,7 +49,7 @@ public class GcsLogTransform extends PTransform<PCollection<Row>, POutput> {
   @Override
   public POutput expand(PCollection<Row> input) {
 
-    String auditFilePath = jobSpec.config.auditGsUri;
+    String auditFilePath = jobSpec.getConfig().auditGsUri;
     if (!StringUtils.endsWith(auditFilePath, "/")) {
       auditFilePath += "/";
     }
@@ -57,19 +57,18 @@ public class GcsLogTransform extends PTransform<PCollection<Row>, POutput> {
     org.apache.avro.Schema targetAvroSchema = AvroUtils.toAvroSchema(input.getSchema());
 
     FileIO.Sink<GenericRecord> sink;
-    if (jobSpec.config.avroType == AvroType.parquet) {
+    if (jobSpec.getConfig().avroType == AvroType.parquet) {
       sink = ParquetIO.sink(targetAvroSchema).withCompressionCodec(CompressionCodecName.SNAPPY);
-    } else if (jobSpec.config.avroType == AvroType.avro) {
+    } else if (jobSpec.getConfig().avroType == AvroType.avro) {
       sink = new AvroSinkWithJodaDatesConversion<>(targetAvroSchema);
     } else {
       throw new UnsupportedOperationException(
-          "Output format is not implemented: " + jobSpec.config.avroType);
+          "Output format is not implemented: " + jobSpec.getConfig().avroType);
     }
     LOG.info(
-        "Logging to "
-            + auditFilePath
-            + " with prefix: "
-            + input.getPipeline().getOptions().getJobName());
+        "Logging to {} with prefix: {}",
+        auditFilePath,
+        input.getPipeline().getOptions().getJobName());
     PCollection<GenericRecord> genericInput =
         input.apply(
             target.sequence + ": Log xform " + target.name, Convert.to(GenericRecord.class));
@@ -79,6 +78,6 @@ public class GcsLogTransform extends PTransform<PCollection<Row>, POutput> {
             .via(sink)
             .to(auditFilePath)
             .withPrefix(input.getPipeline().getOptions().getJobName())
-            .withSuffix("." + jobSpec.config.avroType));
+            .withSuffix("." + jobSpec.getConfig().avroType));
   }
 }

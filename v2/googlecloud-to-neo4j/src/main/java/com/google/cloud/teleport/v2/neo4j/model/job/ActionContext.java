@@ -21,6 +21,7 @@ import org.apache.beam.sdk.values.Row;
 
 /** Context for actions. */
 public class ActionContext {
+
   public PCollection<Row> dataContext;
   public ConnectionParams neo4jConnection;
   public JobSpec jobSpec;

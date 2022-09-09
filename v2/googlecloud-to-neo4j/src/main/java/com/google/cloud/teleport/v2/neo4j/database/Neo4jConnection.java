@@ -44,11 +44,7 @@ public class Neo4jConnection implements Serializable {
   public AuthType authType = AuthType.BASIC;
   Driver driver = null;
 
-  /**
-   * Constructor.
-   *
-   * @param connectionParams
-   */
+  /** Constructor. */
   public Neo4jConnection(ConnectionParams connectionParams) {
     this.username = connectionParams.username;
     this.password = connectionParams.password;
@@ -64,14 +60,7 @@ public class Neo4jConnection implements Serializable {
     this.serverUrl = getUrl(hostName, port);
   }
 
-  /**
-   * Constructor.
-   *
-   * @param serverUrl
-   * @param database
-   * @param username
-   * @param password
-   */
+  /** Constructor. */
   public Neo4jConnection(String serverUrl, String database, String username, String password) {
     this.username = username;
     this.password = password;
@@ -86,7 +75,7 @@ public class Neo4jConnection implements Serializable {
   /** Helper method to get the Neo4j driver. */
   public Driver getDriver() throws URISyntaxException {
     if (this.authType != AuthType.BASIC) {
-      LOG.error("Unsupported authType: " + this.authType);
+      LOG.error("Unsupported authType: {}", this.authType);
       throw new RuntimeException("Unsupported authentication type: " + this.authType);
     }
     if (this.serverUrl.contains("neo4j+s")) {
@@ -119,20 +108,16 @@ public class Neo4jConnection implements Serializable {
    *
    * @param cypher statement
    */
-  public void executeCypher(String cypher) throws Exception {
+  public void executeCypher(String cypher) throws URISyntaxException {
     try (Session session = getSession()) {
       session.run(cypher);
     }
   }
 
-  /**
-   * Write transaction.
-   *
-   * @param transactionWork
-   * @param transactionConfig
-   */
+  /** Write transaction. */
   public void writeTransaction(
-      TransactionWork<Void> transactionWork, TransactionConfig transactionConfig) throws Exception {
+      TransactionWork<Void> transactionWork, TransactionConfig transactionConfig)
+      throws URISyntaxException {
     try (Session session = getSession()) {
       session.writeTransaction(transactionWork, transactionConfig);
     }
@@ -148,11 +133,11 @@ public class Neo4jConnection implements Serializable {
       if (!StringUtils.isEmpty(database)) {
         StringUtils.replace(deleteCypher, "neo4j", database);
       }
-      LOG.info("Executing cypher: " + deleteCypher);
+      LOG.info("Executing cypher: {}", deleteCypher);
       executeCypher(deleteCypher);
 
     } catch (Exception e) {
-      LOG.error("Error executing cypher: " + deleteCypher + ", " + e.getMessage());
+      LOG.error("Error executing cypher: {}, {}", deleteCypher, e.getMessage());
     }
   }
 }

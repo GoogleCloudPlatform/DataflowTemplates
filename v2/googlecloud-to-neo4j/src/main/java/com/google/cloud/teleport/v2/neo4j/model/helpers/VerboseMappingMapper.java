@@ -25,7 +25,8 @@ import org.json.JSONObject;
 
 /** Helper object for parsing verbose field mappings. */
 public class VerboseMappingMapper {
-  public static Mapping fromJsonObject(final JSONObject mappingObj) {
+
+  public static Mapping fromJsonObject(JSONObject mappingObj) {
     Mapping mapping = new Mapping();
     mapping.labels = Arrays.asList(mappingObj.has("label") ? mappingObj.getString("label") : "");
     mapping.constant = mappingObj.has("constant") ? mappingObj.getString("constant") : "";
@@ -56,7 +57,8 @@ public class VerboseMappingMapper {
       mapping.type = PropertyType.String;
     }
     mapping.mandatory = mappingObj.has("mandatory") && mappingObj.getBoolean("mandatory");
-    mapping.defaultValue = mappingObj.has("default") ? mappingObj.get("default") + "" : "";
+    mapping.defaultValue =
+        mappingObj.has("default") ? String.valueOf(mappingObj.get("default")) : "";
     return mapping;
   }
 }

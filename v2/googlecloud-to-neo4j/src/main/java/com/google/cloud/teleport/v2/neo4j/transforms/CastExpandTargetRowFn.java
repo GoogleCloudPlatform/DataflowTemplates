@@ -46,10 +46,9 @@ public class CastExpandTargetRowFn extends DoFn<Row, Row> {
     List<Object> castVals = DataCastingUtils.sourceTextToTargetObjects(inputRow, target);
     if (targetSchema.getFieldCount() != castVals.size()) {
       LOG.error(
-          "Unable to parse line.  Expecting "
-              + targetSchema.getFieldCount()
-              + " fields, found "
-              + castVals.size());
+          "Unable to parse line.  Expecting {} fields, found {}",
+          targetSchema.getFieldCount(),
+          castVals.size());
     } else {
       Row targetRow = Row.withSchema(targetSchema).attachValues(castVals);
       processContext.output(targetRow);

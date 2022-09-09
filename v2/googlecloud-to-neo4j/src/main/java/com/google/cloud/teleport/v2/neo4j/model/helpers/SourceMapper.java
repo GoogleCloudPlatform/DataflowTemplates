@@ -28,10 +28,11 @@ import org.slf4j.LoggerFactory;
 
 /** Helper class for parsing json into Source model object. */
 public class SourceMapper {
+
   static final Pattern NEWLINE_PATTERN = Pattern.compile("\\R");
   private static final Logger LOG = LoggerFactory.getLogger(SourceMapper.class);
 
-  public static Source fromJson(final JSONObject sourceObj) {
+  public static Source fromJson(JSONObject sourceObj) {
     Source source = new Source();
     source.name = sourceObj.getString("name");
     // TODO: avro, parquet, etc.
@@ -41,23 +42,23 @@ public class SourceMapper {
     boolean isJson = false;
     String formatStr =
         sourceObj.has("format") ? sourceObj.getString("format").toUpperCase() : "DEFAULT";
-    if (formatStr.equals("EXCEL")) {
+    if ("EXCEL".equals(formatStr)) {
       source.csvFormat = CSVFormat.EXCEL;
-    } else if (formatStr.equals("MONGO")) {
+    } else if ("MONGO".equals(formatStr)) {
       source.csvFormat = CSVFormat.MONGODB_CSV;
-    } else if (formatStr.equals("INFORMIX")) {
+    } else if ("INFORMIX".equals(formatStr)) {
       source.csvFormat = CSVFormat.INFORMIX_UNLOAD_CSV;
-    } else if (formatStr.equals("POSTGRES")) {
+    } else if ("POSTGRES".equals(formatStr)) {
       source.csvFormat = CSVFormat.POSTGRESQL_CSV;
-    } else if (formatStr.equals("MYSQL")) {
+    } else if ("MYSQL".equals(formatStr)) {
       source.csvFormat = CSVFormat.MYSQL;
-    } else if (formatStr.equals("ORACLE")) {
+    } else if ("ORACLE".equals(formatStr)) {
       source.csvFormat = CSVFormat.ORACLE;
-    } else if (formatStr.equals("MONGO_TSV")) {
+    } else if ("MONGO_TSV".equals(formatStr)) {
       source.csvFormat = CSVFormat.MONGODB_TSV;
-    } else if (formatStr.equals("RFC4180")) {
+    } else if ("RFC4180".equals(formatStr)) {
       source.csvFormat = CSVFormat.RFC4180;
-    } else if (formatStr.equals("POSTGRESQL_CSV")) {
+    } else if ("POSTGRESQL_CSV".equals(formatStr)) {
       source.csvFormat = CSVFormat.POSTGRESQL_CSV;
     } else {
       source.csvFormat = CSVFormat.DEFAULT;
@@ -72,10 +73,10 @@ public class SourceMapper {
       if (sourceObj.get("data") instanceof JSONArray) {
 
         if (source.csvFormat == CSVFormat.DEFAULT) {
-          source.inline = source.jsonToListOfListsArray(sourceObj.getJSONArray("data"));
+          source.inline = Source.jsonToListOfListsArray(sourceObj.getJSONArray("data"));
         } else {
           String[] rows =
-              source.jsonToListOfStringArray(sourceObj.getJSONArray("data"), source.delimiter);
+              Source.jsonToListOfStringArray(sourceObj.getJSONArray("data"), source.delimiter);
           source.inline = TextParserUtils.parseDelimitedLines(source.csvFormat, rows);
         }
 
@@ -100,7 +101,7 @@ public class SourceMapper {
     // uri or url accepted
     source.uri = sourceObj.has("url") ? sourceObj.getString("url") : "";
     source.uri = sourceObj.has("uri") ? sourceObj.getString("uri") : "";
-    final String colNamesStr =
+    String colNamesStr =
         sourceObj.has("ordered_field_names") ? sourceObj.getString("ordered_field_names") : "";
     if (StringUtils.isNotEmpty(colNamesStr)) {
       source.fieldNames = StringUtils.split(colNamesStr, ",");

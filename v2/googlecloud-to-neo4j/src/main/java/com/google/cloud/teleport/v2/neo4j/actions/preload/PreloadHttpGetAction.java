@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 /** Http GET action handler. */
 public class PreloadHttpGetAction implements PreloadAction {
+
   private static final Logger LOG = LoggerFactory.getLogger(PreloadHttpGetAction.class);
 
   Action action;
@@ -45,12 +46,12 @@ public class PreloadHttpGetAction implements PreloadAction {
     }
     try {
       CloseableHttpResponse response =
-          HttpUtils.getHttpRespoonse(
+          HttpUtils.getHttpResponse(
               false, action.options.get("url"), action.options, action.headers);
-      LOG.info("Request returned: " + HttpUtils.getResponseContent(response));
+      LOG.info("Request returned: {}", HttpUtils.getResponseContent(response));
 
     } catch (Exception e) {
-      LOG.error("Exception making http get request: " + e.getMessage());
+      LOG.error("Exception making http get request: {}", e.getMessage());
     }
 
     return msgs;

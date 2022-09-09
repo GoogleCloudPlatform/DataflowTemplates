@@ -26,12 +26,13 @@ import org.slf4j.LoggerFactory;
 
 /** Field to Neo4j property mapping. */
 public class Mapping implements Serializable {
+
   private static final Logger LOG = LoggerFactory.getLogger(Mapping.class);
   public String constant;
   public RoleType role = RoleType.property;
   public PropertyType type;
   public String name = "";
-  public List<String> labels = new ArrayList();
+  public List<String> labels = new ArrayList<>();
   public String field = "";
   public String description = "";
   public String defaultValue = "";

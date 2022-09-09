@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 
 /** Provider implementation for reading and writing BigQuery. */
 public class BigQueryImpl implements Provider {
+
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryImpl.class);
 
   private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
@@ -76,25 +77,24 @@ public class BigQueryImpl implements Provider {
   }
 
   @Override
-  public PTransform<PBegin, PCollection<Row>> queryMetadata(final Source source) {
+  public PTransform<PBegin, PCollection<Row>> queryMetadata(Source source) {
     return new BqQueryToRow(optionsParams, getMetadataQueryBeamSpec(source));
   }
 
   /**
    * Returns zero rows metadata query based on original query.
    *
-   * @param source
    * @return helper object includes metadata and SQL
    */
-  public SqlQuerySpec getMetadataQueryBeamSpec(final Source source) {
+  public SqlQuerySpec getMetadataQueryBeamSpec(Source source) {
 
-    final String baseQuery = getBaseQuery(source);
+    String baseQuery = getBaseQuery(source);
 
     ////////////////////////////
     // Dry run won't return schema so use regular query
     // We need fieldSet for SQL generation later
-    final String zeroRowSql = "SELECT * FROM (" + baseQuery + ") LIMIT 0";
-    LOG.info("Reading BQ metadata with query: " + zeroRowSql);
+    String zeroRowSql = "SELECT * FROM (" + baseQuery + ") LIMIT 0";
+    LOG.info("Reading BQ metadata with query: {}", zeroRowSql);
 
     return SqlQuerySpec.builder()
         .readDescription("Read from BQ " + source.name)
@@ -106,7 +106,6 @@ public class BigQueryImpl implements Provider {
   /**
    * Returns base source query from source helper object.
    *
-   * @param sourceQuerySpec
    * @return helper object includes metadata and SQL
    */
   public SqlQuerySpec getSourceQueryBeamSpec(SourceQuerySpec sourceQuerySpec) {
@@ -120,13 +119,12 @@ public class BigQueryImpl implements Provider {
   /**
    * Returns target query from helper object which includes source and target.
    *
-   * @param targetQuerySpec
    * @return helper object includes metadata and SQL
    */
   public SqlQuerySpec getTargetQueryBeamSpec(TargetQuerySpec targetQuerySpec) {
     Set<String> sourceFieldSet = ModelUtils.getBeamFieldSet(targetQuerySpec.sourceBeamSchema);
-    final String baseSql = getBaseQuery(targetQuerySpec.source);
-    final String targetSpecificSql =
+    String baseSql = getBaseQuery(targetQuerySpec.source);
+    String targetSpecificSql =
         ModelUtils.getTargetSql(sourceFieldSet, targetQuerySpec.target, true, baseSql);
     return SqlQuerySpec.builder()
         .readDescription(

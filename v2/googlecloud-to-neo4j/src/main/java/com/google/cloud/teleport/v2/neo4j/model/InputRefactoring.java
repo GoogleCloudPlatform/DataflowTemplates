@@ -24,7 +24,7 @@ import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.util.Collections;
-import java.util.Iterator;
+import java.util.Map.Entry;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,11 +38,7 @@ public class InputRefactoring {
 
   private InputRefactoring() {}
 
-  /**
-   * Constructor uses template input options.
-   *
-   * @param optionsParams
-   */
+  /** Constructor uses template input options. */
   public InputRefactoring(OptionsParams optionsParams) {
     this.optionsParams = optionsParams;
   }
@@ -50,31 +46,31 @@ public class InputRefactoring {
   public void refactorJobSpec(JobSpec jobSpec) {
 
     // Create or enrich targets from options
-    if (jobSpec.targets.size() == 0) {
-      if (jobSpec.options.size() > 0) {
+    if (jobSpec.getTargets().size() == 0) {
+      if (jobSpec.getOptions().size() > 0) {
         LOG.info("Targets not found, synthesizing from options");
         throw new RuntimeException("Not currently synthesizing targets from options.");
       }
       // targets defined but no field names defined.
-    } else if (jobSpec.getAllFieldNames().size() == 0) {
+    } else if (jobSpec.getAllFieldNames().isEmpty()) {
       LOG.info("Targets not found, synthesizing from source.  All properties will be indexed.");
       throw new RuntimeException("Not currently auto-generating targets.");
     }
 
-    LOG.info("Options params: " + gson.toJson(optionsParams));
+    LOG.info("Options params: {}", gson.toJson(optionsParams));
 
     // replace URI and SQL with run-time options
     for (Source source : jobSpec.getSourceList()) {
       rewriteSource(source);
     }
 
-    for (Action action : jobSpec.actions) {
+    for (Action action : jobSpec.getActions()) {
       rewriteAction(action);
     }
 
     // number and name targets
     int targetNum = 0;
-    for (Target target : jobSpec.targets) {
+    for (Target target : jobSpec.getTargets()) {
       targetNum++;
       target.sequence = targetNum;
       if (StringUtils.isEmpty(target.name)) {
@@ -87,7 +83,7 @@ public class InputRefactoring {
 
     // NODES first then relationships
     // This does not actually change execution order, just numbering
-    Collections.sort(jobSpec.targets);
+    Collections.sort(jobSpec.getTargets());
   }
 
   private void rewriteSource(Source source) {
@@ -110,11 +106,10 @@ public class InputRefactoring {
   }
 
   private void rewriteAction(Action action) {
-    Iterator<String> optionIt = action.options.keySet().iterator();
-    while (optionIt.hasNext()) {
-      String key = optionIt.next();
-      String value = action.options.get(key);
-      action.options.put(key, ModelUtils.replaceVariableTokens(value, optionsParams.tokenMap));
+    for (Entry<String, String> entry : action.options.entrySet()) {
+      String value = entry.getValue();
+      action.options.put(
+          entry.getKey(), ModelUtils.replaceVariableTokens(value, optionsParams.tokenMap));
     }
   }
 }

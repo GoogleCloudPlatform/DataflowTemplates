@@ -31,15 +31,16 @@ import org.slf4j.LoggerFactory;
 
 /** Utility function to queue PCollections, flatten and return empty queue on demand. */
 public class BeamBlock {
+
   private static final Logger LOG = LoggerFactory.getLogger(BeamBlock.class);
-  protected List<PCollection<Row>> sourceQueue = new ArrayList<>();
-  protected List<PCollection<Row>> preloadActionQueue = new ArrayList<>();
-  protected List<PCollection<Row>> otherActionQueue = new ArrayList<>();
-  protected List<PCollection<Row>> nodeQueue = new ArrayList<>();
-  protected List<PCollection<Row>> edgeQueue = new ArrayList<>();
-  protected Map<String, PCollection<Row>> namedQueue = new HashMap<>();
-  protected Map<String, PCollection<Row>> executionContexts = new HashMap<>();
-  PCollection<Row> defaultCollection;
+  private final List<PCollection<Row>> sourceQueue = new ArrayList<>();
+  private final List<PCollection<Row>> preloadActionQueue = new ArrayList<>();
+  private final List<PCollection<Row>> otherActionQueue = new ArrayList<>();
+  private final List<PCollection<Row>> nodeQueue = new ArrayList<>();
+  private final List<PCollection<Row>> edgeQueue = new ArrayList<>();
+  private final Map<String, PCollection<Row>> namedQueue = new HashMap<>();
+  private final Map<String, PCollection<Row>> executionContexts = new HashMap<>();
+  private PCollection<Row> defaultCollection;
 
   private BeamBlock() {}
 
@@ -89,17 +90,17 @@ public class BeamBlock {
       allQueues.addAll(sourceQueue);
     } else if (executeAfter == ActionExecuteAfter.nodes) {
       allQueues.addAll(nodeQueue);
-      if (allQueues.size() == 0) {
+      if (allQueues.isEmpty()) {
         allQueues.addAll(sourceQueue);
       }
       // end is same as after edges
     } else if (executeAfter == ActionExecuteAfter.edges
         || executeAfter == ActionExecuteAfter.loads) {
       allQueues.addAll(edgeQueue);
-      if (allQueues.size() == 0) {
+      if (allQueues.isEmpty()) {
         allQueues.addAll(nodeQueue);
       }
-      if (allQueues.size() == 0) {
+      if (allQueues.isEmpty()) {
         allQueues.addAll(sourceQueue);
       }
     } else if (!StringUtils.isEmpty(dependsOn)) {
@@ -113,13 +114,11 @@ public class BeamBlock {
         allQueues.add(namedQueue.get(ArtifactType.source + ":" + dependsOn));
       }
     }
-    if (allQueues.size() == 0) {
+    if (allQueues.isEmpty()) {
       allQueues.add(defaultCollection);
     }
 
-    PCollection<Row> combinedQueue =
-        PCollectionList.of(allQueues)
-            .apply(" Waiting on " + queuingDescription, Flatten.pCollections());
-    return combinedQueue;
+    return PCollectionList.of(allQueues)
+        .apply(" Waiting on " + queuingDescription, Flatten.pCollections());
   }
 }

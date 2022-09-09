@@ -29,7 +29,7 @@ import org.json.JSONArray;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Source query metdata. */
+/** Source query metadata. */
 public class Source implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(Source.class);
@@ -43,7 +43,7 @@ public class Source implements Serializable {
   public String query = "";
   public CSVFormat csvFormat = CSVFormat.DEFAULT;
   public String[] fieldNames = new String[0];
-  public Map<String, Integer> fieldPosByName = new HashMap();
+  public Map<String, Integer> fieldPosByName = new HashMap<>();
   public List<List<Object>> inline = new ArrayList<>();
 
   public ActionExecuteAfter executeAfter = ActionExecuteAfter.preloads;

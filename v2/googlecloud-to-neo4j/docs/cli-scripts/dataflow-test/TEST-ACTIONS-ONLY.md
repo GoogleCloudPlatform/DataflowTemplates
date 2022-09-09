@@ -1,6 +1,7 @@
-#  Integration Test: BQ
+# Integration Test: BQ
 
 ## Requirements
+
 * Java 11
 * Maven
 * Text file exists

@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.neo4j;
+package com.google.cloud.teleport.v2.neo4j.options;
 
 import com.google.cloud.teleport.v2.options.CommonTemplateOptions;
 import org.apache.beam.sdk.options.Default;

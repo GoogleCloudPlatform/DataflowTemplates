@@ -20,6 +20,7 @@ import org.apache.beam.sdk.schemas.Schema;
 
 /** Utils for streamlining creation of processing records. */
 public class ProcessingCoder {
+
   private static Schema getProcessingSchema() {
     return Schema.of(
         Schema.Field.of("JOB", Schema.FieldType.STRING),

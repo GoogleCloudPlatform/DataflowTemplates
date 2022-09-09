@@ -73,7 +73,7 @@ public class DataCastingUtils {
   private static final DateTimeFormatter jsDateFormatter = DateTimeFormat.forPattern("YYYY-MM-DD");
   private static final SimpleDateFormat jsTimeFormatter = new SimpleDateFormat("HH:MM:SS");
 
-  public static List<Object> sourceTextToTargetObjects(final Row rowOfStrings, Target target) {
+  public static List<Object> sourceTextToTargetObjects(Row rowOfStrings, Target target) {
     Schema targetSchema = BeamUtils.toBeamSchema(target);
     List<Mapping> targetMappings = target.mappings;
     List<Object> castVals = new ArrayList<>();
@@ -94,16 +94,15 @@ public class DataCastingUtils {
         String constant = findConstantValue(targetMappings, fieldName);
         if (constant != null) {
           castVals.add(StringUtils.trim(constant));
-          continue;
         } else {
-          LOG.error("Value for " + fieldName + " not found.");
+          LOG.error("Value for {} not found.", fieldName);
           castVals.add(null);
-          continue;
         }
+        continue;
       }
 
       try {
-        String strEl = objVal + "";
+        String strEl = String.valueOf(objVal);
         // LOG.info(fieldName+":"+objVal);
         if (type.getTypeName().isNumericType()) {
           if (type.getTypeName() == Schema.TypeName.DECIMAL) {
@@ -118,7 +117,7 @@ public class DataCastingUtils {
         } else if (type.getTypeName().isLogicalType()) {
           castVals.add(Boolean.parseBoolean(strEl));
         } else if (type.getTypeName().isDateType()) {
-          if (strEl.indexOf(":") > 0) {
+          if (strEl.indexOf(':') > 0) {
             DateTime dt = DateTime.parse(strEl, jsDateTimeFormatter);
             LocalDate ldt = LocalDate.of(dt.getYear(), dt.getMonthOfYear(), dt.getDayOfMonth());
             ldt.atTime(dt.getHourOfDay(), dt.getMinuteOfHour(), dt.getSecondOfMinute());
@@ -134,13 +133,7 @@ public class DataCastingUtils {
         }
       } catch (Exception e) {
         castVals.add(null);
-        LOG.warn(
-            "Exception casting "
-                + fieldName
-                + " ("
-                + type.getTypeName().toString()
-                + "): "
-                + objVal);
+        LOG.warn("Exception casting {} ({}): {}", fieldName, type.getTypeName().toString(), objVal);
       }
     }
     // LOG.info("Constructing target row: {}, values:
@@ -162,7 +155,7 @@ public class DataCastingUtils {
 
   public static Map<String, Object> rowToNeo4jDataMap(Row row, Target target) {
 
-    Map<String, Object> map = new HashMap();
+    Map<String, Object> map = new HashMap<>();
 
     Schema dataSchema = row.getSchema();
     for (Schema.Field field : dataSchema.getFields()) {
@@ -185,7 +178,7 @@ public class DataCastingUtils {
           } else if (type.getTypeName() == Schema.TypeName.DOUBLE) {
             map.put(fieldName, row.getDouble(fieldName));
           } else {
-            map.put(fieldName, Long.parseLong(row.getValue(fieldName) + ""));
+            map.put(fieldName, Long.parseLong(String.valueOf(row.getValue(fieldName))));
           }
           // TODO: this is an upstream error.  Dates are coming across as LOGICAL_TYPE.  Logical
           // type identifier does include ":date:"
@@ -213,24 +206,19 @@ public class DataCastingUtils {
                   ZoneOffset.ofTotalSeconds(dt.getZone().getOffset(dt) / 1000));
           map.put(fieldName, zdt);
         } else if (type.typesEqual(Schema.FieldType.BOOLEAN)) {
-          map.put(fieldName, Boolean.parseBoolean(row.getBoolean(fieldName) + ""));
+          map.put(fieldName, Boolean.parseBoolean(String.valueOf(row.getBoolean(fieldName))));
         } else {
-          map.put(fieldName, row.getValue(fieldName) + "");
+          map.put(fieldName, String.valueOf(row.getValue(fieldName)));
         }
       } catch (Exception e) {
         LOG.error(
-            "Error casting "
-                + type.getTypeName().name()
-                + ", "
-                + type.getLogicalType()
-                + ", "
-                + fieldName
-                + ": "
-                + row.getValue(fieldName)
-                + " ["
-                + e.getMessage()
-                + "]");
-        map.put(fieldName, row.getValue(fieldName) + "");
+            "Error casting {}, {}, {}: {} [{}]",
+            type.getTypeName().name(),
+            type.getLogicalType(),
+            fieldName,
+            row.getValue(fieldName),
+            e.getMessage());
+        map.put(fieldName, String.valueOf(row.getValue(fieldName)));
       }
     }
     for (Mapping m : target.mappings) {
@@ -264,11 +252,9 @@ public class DataCastingUtils {
   }
 
   private static String mapToString(Map<String, ?> map) {
-    String mapAsString =
-        map.keySet().stream()
-            .map(key -> key + "=" + map.get(key))
-            .collect(Collectors.joining(", ", "{", "}"));
-    return mapAsString;
+    return map.entrySet().stream()
+        .map(entry -> entry.getKey() + "=" + entry.getValue())
+        .collect(Collectors.joining(", ", "{", "}"));
   }
 
   private static byte[] asBytes(Object obj) throws IOException {

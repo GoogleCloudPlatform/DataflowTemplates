@@ -1,6 +1,7 @@
 # Neo4j Flex Templates
 
-This project contains FlexTemplates that facilitate loading files within the Google Cloud to the Neo4j graph database
+This project contains FlexTemplates that facilitate loading files within the
+Google Cloud to the Neo4j graph database
 
 ## Version History
 
@@ -8,23 +9,50 @@ v. 0.10 initial PR
 
 ## Introductory Blog
 
-Neo4j has released flex templates for GCP Dataflow which support complex ETL processes through configuration not code.  This capability fills a gap for joint GCP and Neo4j customers who are looking for cloud native data integration without having to manage Spark services.  Over the past decade, graph databases have become an invaluable tool for discovering fraud, understanding network operations and supply chains, disambiguating identities, and providing recommendations – among other things.  Now, BigQuery, Spanner, and Google Cloud Storage customers will be able to easily leverage graphs to mine insights in the data.
+Neo4j has released flex templates for GCP Dataflow which support complex ETL
+processes through configuration not code. This capability fills a gap for joint
+GCP and Neo4j customers who are looking for cloud native data integration
+without having to manage Spark services. Over the past decade, graph databases
+have become an invaluable tool for discovering fraud, understanding network
+operations and supply chains, disambiguating identities, and providing
+recommendations – among other things. Now, BigQuery, Spanner, and Google Cloud
+Storage customers will be able to easily leverage graphs to mine insights in the
+data.
 
-There are many ways to move data into Neo4j.  The most popular approach for bulk loading Neo4j is the LOAD CSV cypher command from any client connection such as Java, Python, Go, .NET, Node, Spring and others.  Data scientists tend to favor the Neo4j Spark connector and Data Warehouse connector, which both run on DataProc and are easily incorporated into python notebooks.  For individual users, the graphical ETL import tool is very convenient and for enterprises needing lifecycle management, Apache Hop, a project co-sponsored by Neo4j, is a great option.
+There are many ways to move data into Neo4j. The most popular approach for bulk
+loading Neo4j is the LOAD CSV cypher command from any client connection such as
+Java, Python, Go, .NET, Node, Spring and others. Data scientists tend to favor
+the Neo4j Spark connector and Data Warehouse connector, which both run on
+DataProc and are easily incorporated into python notebooks. For individual
+users, the graphical ETL import tool is very convenient and for enterprises
+needing lifecycle management, Apache Hop, a project co-sponsored by Neo4j, is a
+great option.
 
-The Dataflow approach is interesting and different for a few reasons.  Although it requires a customized JSON configuration file, that’s all that is required.  No notebooks, no Spark environment, no code, no cost when the system is idle.  Also, Dataflow runs within the context of GCP security so if a resource is accessible to the project and service account there is no need to track and secure another resource locator and set of credentials.  Finally, the Neo4j flex  template implements Neo4j java API best practices.
+The Dataflow approach is interesting and different for a few reasons. Although
+it requires a customized JSON configuration file, that’s all that is required.
+No notebooks, no Spark environment, no code, no cost when the system is idle.
+Also, Dataflow runs within the context of GCP security so if a resource is
+accessible to the project and service account there is no need to track and
+secure another resource locator and set of credentials. Finally, the Neo4j flex
+template implements Neo4j java API best practices.
 
-These features make this solution ideal for copy-and-paste re-use between customer environments.  For example, a best-practices mapping that loads Google Analytics (GA) from BigQuery to Neo4j could be leveraged by any GA customer.   ISVs may leverage this capability to move their solutions to the Google cloud and Google Data Lake adopters will accelerate their adoption of graph as an essential side-car service in their reference data architectures.
+These features make this solution ideal for copy-and-paste re-use between
+customer environments. For example, a best-practices mapping that loads Google
+Analytics (GA) from BigQuery to Neo4j could be leveraged by any GA customer.
+ISVs may leverage this capability to move their solutions to the Google cloud
+and Google Data Lake adopters will accelerate their adoption of graph as an
+essential side-car service in their reference data architectures.
 
 ## Executing Template Example
 
 The template requires the following parameters:
 
-* jobSpecUri: GS hosted job specification file
-* neo4jConnectionUri: GS hosted Neo4j configuration file
-* inputFilePattern: (Optional) Job spec source override with GS text file
+* jobSpecUri: GCS hosted job specification file
+* neo4jConnectionUri: GCS hosted Neo4j configuration file
+* inputFilePattern: (Optional) Job spec source override with GCS text file
 * readQuery: (Optional) Job spec source override with query
-* optionsJson: (Opitonal) JSON formatted string to supply runtime variables that replace $ delimited variables
+* optionsJson: (Optional) JSON formatted string to supply runtime variables that
+  replace `$` delimited variables
 
 Template can be executed using the following gcloud command:
 
@@ -49,11 +77,11 @@ gcloud dataflow flex-template run "test-text-cli-`date +%Y%m%d-%H%M%S`" \
 Execute the following command from the directory containing the root pom.xml:
 
 ```sh
-export JAVA_HOME=`/usr/libexec/java_home -v 8`
+export JAVA_HOME=`/usr/libexec/java_home -v 11`
 mvn -DskipTests=true clean compile -pl v2/googlecloud-to-neo4j -am -f unified-templates.xml
 ```
 
-#### Execuing unit tests
+#### Executing unit tests
 
 Execute the following command from the directory containing the root pom.xml:
 
@@ -68,7 +96,7 @@ mvn clean test -pl v2/googlecloud-to-neo4j -am -f unified-templates.xml
 
 ```sh
 export PROJECT=neo4jbusinessdev
-export GS_WORKING_DIR=gs://neo4j-sandbox/dataflow-working
+export GCS_WORKING_DIR=gs://neo4j-sandbox/dataflow-working
 export APP_NAME=gcp-to-neo4j
 export REGION=us-central1
 export MACHINE_TYPE=n2-highmem-8
@@ -92,7 +120,7 @@ mvn -DskipTests=true clean package \
     -f unified-templates.xml \
     -pl v2/${TEMPLATE_POM_MODULE} \
     -am \
-    -Djib.container.mainClass=com.google.cloud.teleport.v2.neo4j.GcpToNeo4j \
+    -Djib.container.mainClass=com.google.cloud.teleport.v2.neo4j.templates.BigQueryToNeo4j \
     -Dimage=${TARGET_GCR_IMAGE} \
     -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
     -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
@@ -102,19 +130,20 @@ mvn -DskipTests=true clean package \
 
 ### Creating Image Spec
 
-Create file in Cloud Storage with path to container image in Google Container Repository.
+Create file in Cloud Storage with path to container image in Google Container
+Repository.
 
 ```sh
 echo "{
   \"image\": \"${TARGET_GCR_IMAGE}\",
   \"metadata\": {
-    \"name\": \"Google Cloud to Neo4j\",
+    \"name\": \"BigQuery to Neo4j\",
     \"description\": \"BigQuery, Text, and other source import into Neo4j\",
     \"parameters\": [
       {
         \"name\": \"jobSpecUri\",
         \"label\": \"Job configuration file\",
-        \"helpText\": \"Configuration, source and target metadatga\",
+        \"helpText\": \"Configuration, source and target metadata\",
         \"paramType\": \"TEXT\",
         \"isOptional\": false
       }, 
@@ -166,14 +195,17 @@ rm image_spec.json
 
 ### Known limitations
 
-- This is not implemented in the Text writer since order by operations do not work well in Beam SQL
-- For any one label, insertion parallelism will be limited by parameter, but these will accumulate over many nodes. This
-  is by design currently.
+- This is not implemented in the Text writer since order by operations do not
+  work well in Beam SQL.
+- For any one label, insertion parallelism will be limited by parameter, but
+  these will accumulate over many nodes. This is by design currently.
 
 ### Roadmap
 
-- Support for reading data from other non-SQL sources including Avro, Parquet, and MongoDb
-- Support for reading data from other SQL based sources including Spanner and Postgres
+- Support for reading data from other non-SQL sources including Avro, Parquet,
+  and MongoDb
+- Support for reading data from other SQL based sources including Spanner and
+  Postgres
 - Support for auditing writes to Parquet on GCS
 - Supporting join transformations inside the job
 - Support for write back to Neo4j
@@ -182,9 +214,11 @@ rm image_spec.json
 
 ## Running Apache Hop
 
-export JAVA_HOME=`/usr/libexec/java_home -v 8`
+```sh
+export JAVA_HOME=`/usr/libexec/java_home -v 11`
 cd ~/Documents/hop
 ./hop-gui.sh
+```
 
 ### Testing Template
 
@@ -194,15 +228,16 @@ The template unit tests can be run using:
 mvn test
 ```
 
-
 ## Maintainer
 
     Anthony Krinsky 
     Sr. Partner Solution Architect
     anthony.krinsky@neo4j.com
 
-Note that test scripts point to my auraDb instance.  AuraDb is free up to 50,000 nodes/edges.  
-Great for testing but don't forget to manually "resume" it if inactive for 3 days.
-    
+Note that test scripts point to my auraDb instance. AuraDb is free up to 50,000
+nodes/edges.  
+Great for testing but don't forget to manually "resume" it if inactive for 3
+days.
+
     https://console.neo4j.io
 

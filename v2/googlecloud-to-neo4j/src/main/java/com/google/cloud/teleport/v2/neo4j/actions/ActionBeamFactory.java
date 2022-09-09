@@ -28,6 +28,7 @@ import org.apache.beam.sdk.values.Row;
 
 /** Factory providing indirection to action handler. */
 public class ActionBeamFactory {
+
   public static PTransform<PCollection<Row>, PCollection<Row>> of(
       Action action, ActionContext context) {
     ActionType actionType = action.type;

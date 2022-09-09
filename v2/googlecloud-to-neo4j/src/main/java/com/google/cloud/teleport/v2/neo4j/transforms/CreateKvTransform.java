@@ -50,7 +50,8 @@ public class CreateKvTransform extends PTransform<PCollection<Row>, PCollection<
         .setCoder(KvCoder.of(BigEndianIntegerCoder.of(), input.getCoder()));
   }
 
-  private class CreateKeysFn extends DoFn<Row, KV<Integer, Row>> {
+  private static class CreateKeysFn extends DoFn<Row, KV<Integer, Row>> {
+
     private final Integer specifiedParallelism;
     private Integer calculatedParallelism;
 

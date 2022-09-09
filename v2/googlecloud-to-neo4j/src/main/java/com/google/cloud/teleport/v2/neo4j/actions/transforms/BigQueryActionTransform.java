@@ -30,10 +30,11 @@ import org.slf4j.LoggerFactory;
 
 /** Query action handler. */
 public class BigQueryActionTransform extends PTransform<PCollection<Row>, PCollection<Row>> {
+
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryActionTransform.class);
 
-  Action action;
-  ActionContext context;
+  protected final Action action;
+  protected final ActionContext context;
 
   public BigQueryActionTransform(Action action, ActionContext context) {
     this.action = action;
@@ -46,19 +47,19 @@ public class BigQueryActionTransform extends PTransform<PCollection<Row>, PColle
     if (StringUtils.isEmpty(sql)) {
       throw new RuntimeException("Options 'sql' not provided for preload query transform.");
     }
-    try {
 
+    try {
       BigQuery bigquery = BigQueryOptions.getDefaultInstance().getService();
       QueryJobConfiguration queryConfig = QueryJobConfiguration.newBuilder(sql).build();
-      LOG.info("Query: " + sql);
+      LOG.info("Query: {}", sql);
       TableResult queryResult = bigquery.query(queryConfig);
-      LOG.info("Result rows: " + queryResult.getTotalRows());
+      LOG.info("Result rows: {}", queryResult.getTotalRows());
 
     } catch (Exception e) {
-      LOG.error("Exception running sql " + sql + ": " + e.getMessage());
+      LOG.error("Exception running sql {}: {}", sql, e.getMessage());
     }
-    // we are not running anything that generates an output, so can return an input for next
-    // transform
+
+    // we are not running anything that generates an output, so can return an input.
     return input;
   }
 }

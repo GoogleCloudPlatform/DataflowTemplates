@@ -7,31 +7,31 @@
       {
         "name": "jobSpecUri",
         "label": "Job configuration file",
-        "helpText": "Configuration, source and target metadatga",
+        "helpText": "Configuration, source and target metadata",
         "paramType": "TEXT",
         "isOptional": false
-      }, 
+      },
       {
         "name": "neo4jConnectionUri",
         "label": "Neo4j connection metadata",
         "helpText": "Neo4j connection metadata json file",
         "paramType": "TEXT",
         "isOptional": false
-      },  
+      },
       {
         "name": "inputFilePattern",
         "label": "Text file",
         "helpText": "Override text file pattern (optional)",
         "paramType": "TEXT",
         "isOptional": true
-      } ,  
+      },
       {
         "name": "readQuery",
         "label": "Query SQL",
         "helpText": "Override SQL query (optional)",
         "paramType": "TEXT",
         "isOptional": true
-      } ,  
+      },
       {
         "name": "optionsJson",
         "label": "Options JSON",
@@ -39,9 +39,9 @@
         "paramType": "TEXT",
         "isOptional": true
       }
-      ]
-    },
-    "sdk_info": {
-       "language": "JAVA"
-    }
+    ]
+  },
+  "sdk_info": {
+    "language": "JAVA"
   }
+}

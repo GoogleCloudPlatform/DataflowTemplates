@@ -1,6 +1,7 @@
-#  Integration Test: Inline Text
+# Integration Test: Inline Text
 
 ## Requirements
+
 * Java 11
 * Maven
 * Text file exists
@@ -19,6 +20,7 @@ gcloud dataflow flex-template run "test-inline-cli-`date +%Y%m%d-%H%M%S`" \
     --parameters jobSpecUri="gs://neo4j-dataflow/job-specs/testing/text/inline-northwind-jobspec.json" \
     --parameters neo4jConnectionUri="gs://neo4j-dataflow/job-specs/testing/common/auradb-free-connection.json"
  ```
+
 REST version looks like this:
 
  ```sh

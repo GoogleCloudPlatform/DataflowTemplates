@@ -68,7 +68,7 @@ public class TextImpl implements Provider {
   }
 
   @Override
-  public PTransform<PBegin, PCollection<Row>> queryMetadata(final Source source) {
+  public PTransform<PBegin, PCollection<Row>> queryMetadata(Source source) {
     return new TextSourceFileMetadataToRow(optionsParams, source);
   }
 }

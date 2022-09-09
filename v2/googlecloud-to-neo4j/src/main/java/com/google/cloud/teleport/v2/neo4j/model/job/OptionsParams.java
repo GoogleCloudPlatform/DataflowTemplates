@@ -41,18 +41,18 @@ public class OptionsParams implements Serializable {
   @JsonIgnore
   public void overlayTokens(String optionsJsonStr) {
     if (!StringUtils.isEmpty(optionsJsonStr)) {
-      LOG.info("Pipeline options: " + optionsJsonStr);
-      final JSONObject optionsJson = new JSONObject(optionsJsonStr);
+      LOG.info("Pipeline options: {}", optionsJsonStr);
+      JSONObject optionsJson = new JSONObject(optionsJsonStr);
       Iterator<String> optionsKeys = optionsJson.keys();
       while (optionsKeys.hasNext()) {
         String optionsKey = optionsKeys.next();
-        this.tokenMap.put(optionsKey, optionsJson.opt(optionsKey) + "");
-        if (optionsKey.equals("readQuery")) {
+        this.tokenMap.put(optionsKey, String.valueOf(optionsJson.opt(optionsKey)));
+        if ("readQuery".equals(optionsKey)) {
           this.readQuery = optionsJson.getString("readQuery");
-        } else if (optionsKey.equals("inputFilePattern")) {
+        } else if ("inputFilePattern".equals(optionsKey)) {
           this.inputFilePattern = optionsJson.getString("inputFilePattern");
         }
-        LOG.info(optionsKey + ": " + optionsJson.opt(optionsKey));
+        LOG.info("{}: {}", optionsKey, optionsJson.opt(optionsKey));
       }
     }
   }

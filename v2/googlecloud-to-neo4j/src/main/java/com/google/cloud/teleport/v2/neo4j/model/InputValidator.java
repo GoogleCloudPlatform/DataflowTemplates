@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.neo4j.model;
 
-import com.google.cloud.teleport.v2.neo4j.Neo4jFlexTemplateOptions;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.enums.ActionType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.FragmentType;
@@ -27,6 +26,7 @@ import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.Source;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
+import com.google.cloud.teleport.v2.neo4j.options.Neo4jFlexTemplateOptions;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import com.google.common.collect.Sets;
 import com.google.gson.Gson;
@@ -64,7 +64,7 @@ public class InputValidator {
   public static List<String> validateNeo4jPipelineOptions(
       Neo4jFlexTemplateOptions pipelineOptions) {
 
-    List<String> validationMessages = new ArrayList();
+    List<String> validationMessages = new ArrayList<>();
 
     if (StringUtils.isEmpty(pipelineOptions.getNeo4jConnectionUri())) {
       validationMessages.add("Neo4j connection URI not provided.");
@@ -112,7 +112,7 @@ public class InputValidator {
     }
 
     // Target validation
-    for (Target target : jobSpec.targets) {
+    for (Target target : jobSpec.getTargets()) {
       // Check that all targets have names
       if (StringUtils.isBlank(target.name)) {
         validationMessages.add("Targets must include a 'name' attribute.");
@@ -153,7 +153,7 @@ public class InputValidator {
               validationMessages.add(
                   "Invalid role " + mapping.role + " on relationship: " + mapping.fragmentType);
             }
-            if (mapping.labels.size() == 0) {
+            if (mapping.labels.isEmpty()) {
               validationMessages.add(mapping.fragmentType + " missing label attribute");
             }
           }
@@ -190,7 +190,7 @@ public class InputValidator {
         if (StringUtils.isBlank(
             ModelUtils.getFirstFieldOrConstant(
                 target, FragmentType.node, Arrays.asList(RoleType.label)))) {
-          LOG.info("Invalid target: " + gson.toJson(target));
+          LOG.info("Invalid target: {}", gson.toJson(target));
           validationMessages.add("Missing label in node: " + target.name);
         }
         if (StringUtils.isBlank(
@@ -200,10 +200,8 @@ public class InputValidator {
         }
       }
       // check that calculated fields are used
-      if (target.transform != null && target.transform.aggregations.size() > 0) {
+      if (target.transform != null && !target.transform.aggregations.isEmpty()) {
         for (Aggregation aggregation : target.transform.aggregations) {
-          // LOG.info("Looking for aggregation: " + gson.toJson(aggregation) + " in mappings: " +
-          // gson.toJson(target.mappings));
           if (!fieldIsMapped(target, aggregation.field)) {
             validationMessages.add("Aggregation for field " + aggregation.field + " is unmapped.");
           }
@@ -211,9 +209,9 @@ public class InputValidator {
       }
     }
 
-    if (jobSpec.options.size() > 0) {
+    if (jobSpec.getOptions().size() > 0) {
       // check valid options
-      Iterator<String> optionIt = jobSpec.options.keySet().iterator();
+      Iterator<String> optionIt = jobSpec.getOptions().keySet().iterator();
       while (optionIt.hasNext()) {
         String option = optionIt.next();
         if (!validOptions.contains(option)) {
@@ -222,9 +220,9 @@ public class InputValidator {
       }
     }
 
-    if (jobSpec.actions.size() > 0) {
+    if (jobSpec.getActions().size() > 0) {
       // check valid options
-      for (Action action : jobSpec.actions) {
+      for (Action action : jobSpec.getActions()) {
         String actionName = action.name;
         if (StringUtils.isBlank(actionName)) {
           validationMessages.add("Action is not named");

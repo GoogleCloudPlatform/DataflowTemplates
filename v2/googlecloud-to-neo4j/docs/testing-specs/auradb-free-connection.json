@@ -1,7 +1,7 @@
 {
-  "server_url":"neo4j+s://<AuraDb free instance>.databases.neo4j.io",
+  "server_url": "neo4j+s://<AuraDb free instance>.databases.neo4j.io",
   "database": "neo4j",
   "auth_type": "basic",
-  "username":"neo4j",
-  "pwd":"<password>"
+  "username": "neo4j",
+  "pwd": "<password>"
 }

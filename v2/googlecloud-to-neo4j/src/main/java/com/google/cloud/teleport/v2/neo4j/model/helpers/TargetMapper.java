@@ -29,7 +29,7 @@ import org.json.JSONObject;
 /** Helper class for parsing json into Target model object. */
 public class TargetMapper {
 
-  public static Target fromJson(final JSONObject targetObj) {
+  public static Target fromJson(JSONObject targetObj) {
     Target target = new Target();
     if (targetObj.has("node")) {
       target.type = TargetType.node;
@@ -44,7 +44,7 @@ public class TargetMapper {
     return target;
   }
 
-  private static void parseMappingsObject(Target target, final JSONObject targetObj) {
+  private static void parseMappingsObject(Target target, JSONObject targetObj) {
     parseHeader(target, targetObj);
     List<Mapping> mappings =
         TransposedMappingMapper.parseMappings(target, targetObj.getJSONObject("mappings"));
@@ -53,12 +53,12 @@ public class TargetMapper {
     }
   }
 
-  public static void parseMappingsArray(Target target, final JSONObject targetObj) {
+  public static void parseMappingsArray(Target target, JSONObject targetObj) {
 
     parseHeader(target, targetObj);
     JSONArray mappingsArray = targetObj.getJSONArray("mappings");
     for (int i = 0; i < mappingsArray.length(); i++) {
-      final JSONObject mappingObj = mappingsArray.getJSONObject(i);
+      JSONObject mappingObj = mappingsArray.getJSONObject(i);
       addMapping(target, VerboseMappingMapper.fromJsonObject(mappingObj));
     }
   }
@@ -71,7 +71,7 @@ public class TargetMapper {
     }
   }
 
-  private static void parseHeader(Target target, final JSONObject targetObj) {
+  private static void parseHeader(Target target, JSONObject targetObj) {
     target.name = targetObj.getString("name");
     target.active = !targetObj.has("active") || targetObj.getBoolean("active");
     target.saveMode = SaveMode.valueOf(targetObj.getString("mode"));
@@ -91,12 +91,12 @@ public class TargetMapper {
         targetObj.has("execute_after_name") ? targetObj.getString("execute_after_name") : "";
 
     if (targetObj.has("transform")) {
-      final JSONObject queryObj = targetObj.getJSONObject("transform");
+      JSONObject queryObj = targetObj.getJSONObject("transform");
       if (queryObj.has("aggregations")) {
         List<Aggregation> aggregations = new ArrayList<>();
         JSONArray aggregationsArray = queryObj.getJSONArray("aggregations");
         for (int i = 0; i < aggregationsArray.length(); i++) {
-          final JSONObject aggregationObj = aggregationsArray.getJSONObject(i);
+          JSONObject aggregationObj = aggregationsArray.getJSONObject(i);
           Aggregation agg = new Aggregation();
           agg.expression = aggregationObj.getString("expr");
           agg.field = aggregationObj.getString("field");

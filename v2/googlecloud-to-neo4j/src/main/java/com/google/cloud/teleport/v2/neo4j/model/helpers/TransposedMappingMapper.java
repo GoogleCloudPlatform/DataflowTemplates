@@ -40,17 +40,17 @@ public class TransposedMappingMapper {
   private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
   private static final Logger LOG = LoggerFactory.getLogger(TransposedMappingMapper.class);
 
-  public static List<Mapping> parseMappings(Target target, final JSONObject mappingsObject) {
-    if (target.type == TargetType.node.node) {
+  public static List<Mapping> parseMappings(Target target, JSONObject mappingsObject) {
+    if (target.type == TargetType.node) {
       return parseNode(mappingsObject);
-    } else if (target.type == TargetType.edge.edge) {
+    } else if (target.type == TargetType.edge) {
       return parseEdge(mappingsObject);
     } else {
-      return new ArrayList();
+      return new ArrayList<>();
     }
   }
 
-  public static List<Mapping> parseNode(final JSONObject nodeMappingsObject) {
+  public static List<Mapping> parseNode(JSONObject nodeMappingsObject) {
     List<Mapping> mappings = new ArrayList<>();
 
     if (nodeMappingsObject.has("label")) {
@@ -85,7 +85,7 @@ public class TransposedMappingMapper {
     return mappings;
   }
 
-  public static List<Mapping> parseEdge(final JSONObject edgeMappingsObject) {
+  public static List<Mapping> parseEdge(JSONObject edgeMappingsObject) {
     List<Mapping> mappings = new ArrayList<>();
     // type
     if (edgeMappingsObject.has("type")) {
@@ -212,7 +212,7 @@ public class TransposedMappingMapper {
         labels.add(it.next());
       }
     } else {
-      labels.add(tuplesObj + "");
+      labels.add(String.valueOf(tuplesObj));
     }
     return labels;
   }
@@ -242,7 +242,7 @@ public class TransposedMappingMapper {
         tuples.add(createFieldNameTuple(key, jsonObject.getString(key)));
       }
     } else {
-      tuples.add(createFieldNameTuple(tuplesObj + "", tuplesObj + ""));
+      tuples.add(createFieldNameTuple(String.valueOf(tuplesObj), String.valueOf(tuplesObj)));
     }
     return tuples;
   }

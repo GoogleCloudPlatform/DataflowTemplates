@@ -25,7 +25,8 @@ import org.json.JSONObject;
 
 /** Helper class for parsing json into Action model object. */
 public class ActionMapper {
-  public static Action fromJson(final JSONObject actionObj) {
+
+  public static Action fromJson(JSONObject actionObj) {
     Action action = new Action();
     action.name = actionObj.getString("name");
     action.type = ActionType.valueOf(actionObj.getString("type"));
@@ -46,14 +47,14 @@ public class ActionMapper {
     return action;
   }
 
-  private static HashMap<String, String> parseMapObj(final JSONArray mapArrayJson) {
+  private static HashMap<String, String> parseMapObj(JSONArray mapArrayJson) {
     HashMap<String, String> obj = new HashMap<>();
     for (int i = 0; i < mapArrayJson.length(); i++) {
       JSONObject mapObj = mapArrayJson.getJSONObject(i);
       Iterator<String> keys = mapObj.keys();
       while (keys.hasNext()) {
         String key = keys.next();
-        obj.put(key, mapObj.opt(key) + "");
+        obj.put(key, String.valueOf(mapObj.opt(key)));
       }
     }
     return obj;

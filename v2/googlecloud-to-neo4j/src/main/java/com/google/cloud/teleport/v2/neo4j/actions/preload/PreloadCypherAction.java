@@ -26,16 +26,19 @@ import org.slf4j.LoggerFactory;
 
 /** Cypher runner action handler. */
 public class PreloadCypherAction implements PreloadAction {
+
   private static final Logger LOG = LoggerFactory.getLogger(PreloadCypherAction.class);
 
   Action action;
   ActionContext context;
 
+  @Override
   public void configure(Action action, ActionContext context) {
     this.action = action;
     this.context = context;
   }
 
+  @Override
   public List<String> execute() {
     List<String> msgs = new ArrayList<>();
 
@@ -44,11 +47,11 @@ public class PreloadCypherAction implements PreloadAction {
     if (StringUtils.isEmpty(cypher)) {
       throw new RuntimeException("Options 'cypher' not provided for preload cypher action.");
     }
-    LOG.info("Executing cypher: " + cypher);
+    LOG.info("Executing cypher: {}", cypher);
     try {
       directConnect.executeCypher(cypher);
     } catch (Exception e) {
-      LOG.error("Exception running cypher, " + cypher + ": " + e.getMessage());
+      LOG.error("Exception running cypher, {}: {}", cypher, e.getMessage());
     }
 
     return msgs;

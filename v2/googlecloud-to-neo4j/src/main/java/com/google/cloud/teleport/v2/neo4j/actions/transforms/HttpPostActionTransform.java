@@ -30,8 +30,8 @@ import org.slf4j.LoggerFactory;
 public class HttpPostActionTransform extends PTransform<PCollection<Row>, PCollection<Row>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(HttpPostActionTransform.class);
-  Action action;
-  ActionContext context;
+  private final Action action;
+  private final ActionContext context;
 
   public HttpPostActionTransform(Action action, ActionContext context) {
     this.action = action;
@@ -46,11 +46,11 @@ public class HttpPostActionTransform extends PTransform<PCollection<Row>, PColle
     }
     try {
       CloseableHttpResponse response =
-          HttpUtils.getHttpRespoonse(true, uri, action.options, action.headers);
-      LOG.info("Request returned: " + HttpUtils.getResponseContent(response));
+          HttpUtils.getHttpResponse(true, uri, action.options, action.headers);
+      LOG.info("Request returned: {}", HttpUtils.getResponseContent(response));
 
     } catch (Exception e) {
-      LOG.error("Exception making http get request: " + e.getMessage());
+      LOG.error("Exception making http get request: {}", e.getMessage());
     }
     // we are not running anything that generates an output, so can return an input.
     return input;

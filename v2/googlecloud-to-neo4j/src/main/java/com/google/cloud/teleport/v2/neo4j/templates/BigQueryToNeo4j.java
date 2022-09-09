@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.neo4j;
+package com.google.cloud.teleport.v2.neo4j.templates;
 
 import com.google.cloud.teleport.v2.neo4j.actions.ActionBeamFactory;
 import com.google.cloud.teleport.v2.neo4j.actions.ActionFactory;
@@ -34,6 +34,7 @@ import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
 import com.google.cloud.teleport.v2.neo4j.model.job.Source;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
+import com.google.cloud.teleport.v2.neo4j.options.Neo4jFlexTemplateOptions;
 import com.google.cloud.teleport.v2.neo4j.providers.Provider;
 import com.google.cloud.teleport.v2.neo4j.providers.ProviderFactory;
 import com.google.cloud.teleport.v2.neo4j.transforms.GcsLogTransform;
@@ -62,23 +63,23 @@ import org.slf4j.LoggerFactory;
  * Dataflow template which reads BigQuery data and writes it to Neo4j. The source data can be either
  * a BigQuery table or an SQL query.
  */
-public class GcpToNeo4j {
+public class BigQueryToNeo4j {
 
-  private static final Logger LOG = LoggerFactory.getLogger(GcpToNeo4j.class);
+  private static final Logger LOG = LoggerFactory.getLogger(BigQueryToNeo4j.class);
 
   private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
-  public OptionsParams optionsParams;
-  ConnectionParams neo4jConnection;
-  JobSpec jobSpec;
-  Pipeline pipeline;
+  private final OptionsParams optionsParams;
+  private final ConnectionParams neo4jConnection;
+  private final JobSpec jobSpec;
+  private final Pipeline pipeline;
 
   /**
    * Main class for template. Initializes job using run-time on pipelineOptions.
    *
-   * @pipelineOptions framework supplied arguments
+   * @param pipelineOptions framework supplied arguments
    */
-  public GcpToNeo4j(final Neo4jFlexTemplateOptions pipelineOptions) {
+  public BigQueryToNeo4j(Neo4jFlexTemplateOptions pipelineOptions) {
 
     ////////////////////////////
     // Job name gets a date on it when running within the container, but not with DirectRunner
@@ -127,7 +128,7 @@ public class GcpToNeo4j {
     }
 
     // Output debug log spec
-    LOG.info("JobSpec: " + System.lineSeparator() + gson.toJson(this.jobSpec));
+    LOG.info("JobSpec: {}{}", System.lineSeparator(), gson.toJson(this.jobSpec));
   }
 
   /**
@@ -135,34 +136,30 @@ public class GcpToNeo4j {
    *
    * @param args arguments to the pipeline
    */
-  public static void main(final String[] args) {
-    final Neo4jFlexTemplateOptions options =
+  public static void main(String[] args) {
+    Neo4jFlexTemplateOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(Neo4jFlexTemplateOptions.class);
 
     // Allow users to supply their own list of disabled algorithms if necessary
-    if (!StringUtils.isBlank(options.getDisabledAlgorithms())) {
+    if (StringUtils.isNotBlank(options.getDisabledAlgorithms())) {
       options.setDisabledAlgorithms(
           "SSLv3, RC4, DES, MD5withRSA, DH keySize < 1024, EC keySize < 224, 3DES_EDE_CBC, anon, NULL");
     }
 
-    LOG.info("Job: " + options.getJobSpecUri());
-    final GcpToNeo4j bqToNeo4jTemplate = new GcpToNeo4j(options);
-    bqToNeo4jTemplate.run();
+    LOG.info("Job: {}", options.getJobSpecUri());
+    BigQueryToNeo4j template = new BigQueryToNeo4j(options);
+    template.run();
   }
 
-  /**
-   * Raises RuntimeExceptions for validation errors.
-   *
-   * @param validationMessages
-   */
+  /** Raises RuntimeExceptions for validation errors. */
   private void processValidations(String description, List<String> validationMessages) {
     StringBuilder sb = new StringBuilder();
-    if (validationMessages.size() > 0) {
+    if (!validationMessages.isEmpty()) {
       for (String msg : validationMessages) {
         sb.append(msg);
         sb.append(System.lineSeparator());
       }
-      throw new RuntimeException(description + " " + sb.toString());
+      throw new RuntimeException(description + " " + sb);
     }
   }
 
@@ -170,7 +167,7 @@ public class GcpToNeo4j {
 
     ////////////////////////////
     // Reset db
-    if (jobSpec.config.resetDb) {
+    if (jobSpec.getConfig().resetDb) {
       Neo4jConnection directConnect = new Neo4jConnection(this.neo4jConnection);
       directConnect.resetDatabase();
     }
@@ -179,7 +176,7 @@ public class GcpToNeo4j {
     runPreloadActions(jobSpec.getPreloadActions());
 
     ////////////////////////////
-    // If an action transformation has no upstream PCollection, it iwll use this default context
+    // If an action transformation has no upstream PCollection, it will use this default context
     PCollection<Row> defaultActionContext =
         pipeline.apply(
             "Default Context",
@@ -190,7 +187,7 @@ public class GcpToNeo4j {
 
     ////////////////////////////
     // Process sources
-    for (final Source source : jobSpec.getSourceList()) {
+    for (Source source : jobSpec.getSourceList()) {
 
       // get provider implementation for source
       Provider providerImpl = ProviderFactory.of(source.sourceType);
@@ -200,7 +197,7 @@ public class GcpToNeo4j {
       Schema sourceBeamSchema = sourceMetadata.getSchema();
       processingQueue.addToQueue(
           ArtifactType.source, false, source.name, defaultActionContext, sourceMetadata);
-      PCollection nullableSourceBeamRows = null;
+      PCollection<Row> nullableSourceBeamRows = null;
 
       ////////////////////////////
       // Optimization: if single source query, reuse this PCollection rather than write it again
@@ -264,7 +261,7 @@ public class GcpToNeo4j {
                   .setCoder(preInsertBeamRows.getCoder())
                   .apply(target.sequence + ": Writing Neo4j " + target.name, targetWriterTransform);
         }
-        if (!StringUtils.isEmpty(jobSpec.config.auditGsUri)) {
+        if (!StringUtils.isEmpty(jobSpec.getConfig().auditGsUri)) {
           GcsLogTransform logTransform = new GcsLogTransform(jobSpec, target);
           preInsertBeamRows.apply(target.sequence + ": Logging " + target.name, logTransform);
         }
@@ -318,7 +315,7 @@ public class GcpToNeo4j {
                   .setCoder(preInsertBeamRows.getCoder())
                   .apply(target.sequence + ": Writing Neo4j " + target.name, targetWriterTransform);
         }
-        if (!StringUtils.isEmpty(jobSpec.config.auditGsUri)) {
+        if (!StringUtils.isEmpty(jobSpec.getConfig().auditGsUri)) {
           GcsLogTransform logTransform = new GcsLogTransform(jobSpec, target);
           preInsertBeamRows.apply(target.sequence + ": Logging " + target.name, logTransform);
         }
@@ -338,7 +335,7 @@ public class GcpToNeo4j {
 
   private void runPreloadActions(List<Action> actions) {
     for (Action action : actions) {
-      LOG.info("Executing preload action: " + action.name);
+      LOG.info("Executing preload action: {}", action.name);
       // Get targeted execution context
       ActionContext context = new ActionContext();
       context.jobSpec = this.jobSpec;
@@ -346,7 +343,7 @@ public class GcpToNeo4j {
       PreloadAction actionImpl = ActionFactory.of(action, context);
       List<String> msgs = actionImpl.execute();
       for (String msg : msgs) {
-        LOG.info("Preload action " + action.name + ": " + msg);
+        LOG.info("Preload action {}: {}", action.name, msg);
       }
     }
   }
@@ -362,7 +359,7 @@ public class GcpToNeo4j {
       } else if (action.executeAfter == ActionExecuteAfter.edge) {
         artifactType = ArtifactType.edge;
       }
-      LOG.info("Executing delayed action: " + action.name);
+      LOG.info("Executing delayed action: {}", action.name);
       // Get targeted execution context
       PCollection<Row> executionContext =
           blockingQueue.getContextCollection(artifactType, action.executeAfterName);
@@ -372,7 +369,7 @@ public class GcpToNeo4j {
       context.neo4jConnection = this.neo4jConnection;
       PTransform<PCollection<Row>, PCollection<Row>> actionImpl =
           ActionBeamFactory.of(action, context);
-      // Action execution context will be be rendered as "Default Context"
+      // Action execution context will be rendered as "Default Context"
       PCollection<Row> actionTransformed =
           executionContext
               .apply(

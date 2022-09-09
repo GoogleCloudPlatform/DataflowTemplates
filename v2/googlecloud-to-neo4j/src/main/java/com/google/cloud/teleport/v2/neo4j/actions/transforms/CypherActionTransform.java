@@ -27,9 +27,10 @@ import org.slf4j.LoggerFactory;
 
 /** Cypher runner action handler. */
 public class CypherActionTransform extends PTransform<PCollection<Row>, PCollection<Row>> {
+
   private static final Logger LOG = LoggerFactory.getLogger(CypherActionTransform.class);
-  Action action;
-  ActionContext context;
+  private final Action action;
+  private final ActionContext context;
 
   public CypherActionTransform(Action action, ActionContext context) {
     this.action = action;
@@ -43,11 +44,11 @@ public class CypherActionTransform extends PTransform<PCollection<Row>, PCollect
     if (StringUtils.isEmpty(cypher)) {
       throw new RuntimeException("Options 'cypher' not provided for cypher action transform.");
     }
-    LOG.info("Executing cypher: " + cypher);
+    LOG.info("Executing cypher: {}", cypher);
     try {
       directConnect.executeCypher(cypher);
     } catch (Exception e) {
-      LOG.error("Exception running cypher, " + cypher + ": " + e.getMessage());
+      LOG.error("Exception running cypher, {}: {}", cypher, e.getMessage());
     }
     // we are not running anything that generates an output, so can return an input.
     return input;

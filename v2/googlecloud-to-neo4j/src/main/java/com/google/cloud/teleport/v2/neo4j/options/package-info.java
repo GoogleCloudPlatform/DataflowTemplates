@@ -15,10 +15,10 @@
  */
 
 /**
- * GCP to Neo4j flex template implementation.
+ * This module includes template options for Neo4j.
  *
  * @author drumcircle
  * @version 1.0
  * @since 1.0
  */
-package com.google.cloud.teleport.v2.neo4j;
+package com.google.cloud.teleport.v2.neo4j.options;

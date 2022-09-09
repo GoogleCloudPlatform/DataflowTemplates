@@ -55,13 +55,9 @@ public class ModelUtils {
 
   public static Target generateDefaultTarget(Source source) {
     if (source.sourceType == SourceType.text) {
-      Target target = new Target();
-
       // TODO: create default target (nodes) for source
-
-      return target;
+      return new Target();
     } else {
-      LOG.error("Unhandled source type: " + source.sourceType);
       throw new RuntimeException("Unhandled source type: " + source.sourceType);
     }
   }
@@ -90,7 +86,7 @@ public class ModelUtils {
 
   public static boolean singleSourceSpec(JobSpec jobSpec) {
     boolean singleSourceQuery = true;
-    for (Target target : jobSpec.targets) {
+    for (Target target : jobSpec.getTargets()) {
       if (target.active) {
         boolean targetRequiresRequery = ModelUtils.targetHasTransforms(target);
         if (targetRequiresRequery) {
@@ -102,7 +98,7 @@ public class ModelUtils {
   }
 
   public static boolean targetsHaveTransforms(JobSpec jobSpec, Source source) {
-    for (Target target : jobSpec.targets) {
+    for (Target target : jobSpec.getTargets()) {
       if (target.active) {
         if (target.source.equals(source.name)) {
           boolean targetRequiresRequery = ModelUtils.targetHasTransforms(target);
@@ -116,7 +112,7 @@ public class ModelUtils {
   }
 
   public static boolean nodesOnly(JobSpec jobSpec) {
-    for (Target target : jobSpec.targets) {
+    for (Target target : jobSpec.getTargets()) {
       if (target.active) {
         if (target.type == TargetType.edge) {
           return false;
@@ -127,7 +123,7 @@ public class ModelUtils {
   }
 
   public static boolean relationshipsOnly(JobSpec jobSpec) {
-    for (Target target : jobSpec.targets) {
+    for (Target target : jobSpec.getTargets()) {
       if (target.active) {
         if (target.type == TargetType.node) {
           return false;
@@ -206,28 +202,28 @@ public class ModelUtils {
                   + target.name
                   + ". Please verify that target fields exist in source query.");
         }
-        sb.append("SELECT " + StringUtils.join(fieldList, ","));
+        sb.append("SELECT ").append(StringUtils.join(fieldList, ","));
         if (query.aggregations.size() > 0) {
           for (Aggregation agg : query.aggregations) {
-            sb.append("," + agg.expression + " " + agg.field);
+            sb.append(",").append(agg.expression).append(" ").append(agg.field);
           }
         }
         sb.append(" FROM PCOLLECTION");
         if (StringUtils.isNotBlank(query.where)) {
-          sb.append(" WHERE " + query.where);
+          sb.append(" WHERE ").append(query.where);
         }
-        sb.append(" GROUP BY " + StringUtils.join(fieldList, ","));
+        sb.append(" GROUP BY ").append(StringUtils.join(fieldList, ","));
 
         if (StringUtils.isNotEmpty(orderByClause) && generateSqlSort) {
           LOG.info("Order by clause: " + orderByClause);
           sb.append(orderByClause);
           //  ORDER BY without a LIMIT is not supported!
           if (query.limit > -1) {
-            sb.append(" LIMIT " + query.limit);
+            sb.append(" LIMIT ").append(query.limit);
           }
         } else {
           if (query.limit > -1) {
-            sb.append(" LIMIT " + query.limit);
+            sb.append(" LIMIT ").append(query.limit);
           }
         }
       }
@@ -267,9 +263,7 @@ public class ModelUtils {
   }
 
   public static String makeValidNeo4jRelationshipIdentifier(String proposedIdString) {
-    String finalRelationshipIdString =
-        proposedIdString.replaceAll(allowedCharactersRegex, "_").toUpperCase().trim();
-    return finalRelationshipIdString;
+    return proposedIdString.replaceAll(allowedCharactersRegex, "_").toUpperCase().trim();
   }
 
   public static List<String> getStaticOrDynamicRelationshipType(
@@ -397,9 +391,9 @@ public class ModelUtils {
       i = matcher.end();
     }
     builder.append(text.substring(i));
-    String repacedText = builder.toString();
-    LOG.info("Before: " + text + ", after: " + repacedText);
-    return repacedText;
+    String replacedText = builder.toString();
+    LOG.info("Before: " + text + ", after: " + replacedText);
+    return replacedText;
   }
 
   public static List<String> getIndexedProperties(

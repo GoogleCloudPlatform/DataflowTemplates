@@ -49,13 +49,12 @@ public class LineToRowFn extends DoFn<String, Row> {
       String line = processContext.element();
       // Note: parser must return objects
       List<Object> strCols = TextParserUtils.parseDelimitedLine(csvFormat, line);
-      if (strCols.size() > 0) {
+      if (!strCols.isEmpty()) {
         if (this.schema.getFieldCount() != strCols.size()) {
           LOG.error(
-              "Unable to parse line.  Expecting "
-                  + this.schema.getFieldCount()
-                  + " fields, found "
-                  + strCols.size());
+              "Unable to parse line.  Expecting {} fields, found {}",
+              this.schema.getFieldCount(),
+              strCols.size());
         } else {
           Row row = Row.withSchema(this.schema).attachValues(strCols);
           processContext.output(row);
@@ -64,7 +63,7 @@ public class LineToRowFn extends DoFn<String, Row> {
         LOG.error("Row was empty!");
       }
     } else {
-      LOG.error("Unhandled source type: " + source.sourceType);
+      LOG.error("Unhandled source type: {}", source.sourceType);
     }
   }
 }

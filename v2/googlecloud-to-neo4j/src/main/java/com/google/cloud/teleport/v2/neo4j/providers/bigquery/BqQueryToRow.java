@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 
 /** Transform to query BigQuery and output PCollection<Row>. */
 public class BqQueryToRow extends PTransform<PBegin, PCollection<Row>> {
+
   private static final Logger LOG = LoggerFactory.getLogger(BqQueryToRow.class);
   private final SqlQuerySpec bqQuerySpec;
   private final OptionsParams optionsParams;
@@ -46,7 +47,7 @@ public class BqQueryToRow extends PTransform<PBegin, PCollection<Row>> {
   public PCollection<Row> expand(PBegin input) {
 
     String rewrittenSql = this.bqQuerySpec.sql;
-    LOG.info("Reading BQ with query: " + rewrittenSql);
+    LOG.info("Reading BQ with query: {}", rewrittenSql);
 
     PCollection<TableRow> sourceRows =
         input.apply(
@@ -59,12 +60,10 @@ public class BqQueryToRow extends PTransform<PBegin, PCollection<Row>> {
     Schema beamSchema = sourceRows.getSchema();
     Coder<Row> rowCoder = SchemaCoder.of(beamSchema);
     LOG.info("Beam schema: {}", beamSchema);
-    PCollection<Row> beamRows =
-        sourceRows
-            .apply(
-                bqQuerySpec.castDescription,
-                MapElements.into(TypeDescriptor.of(Row.class)).via(sourceRows.getToRowFunction()))
-            .setCoder(rowCoder);
-    return beamRows;
+    return sourceRows
+        .apply(
+            bqQuerySpec.castDescription,
+            MapElements.into(TypeDescriptor.of(Row.class)).via(sourceRows.getToRowFunction()))
+        .setCoder(rowCoder);
   }
 }

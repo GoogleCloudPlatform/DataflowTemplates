@@ -42,8 +42,8 @@ import org.joda.time.ReadableInstant;
  *
  * <p>The processes that use {@link org.apache.beam.sdk.schemas.utils.AvroUtils} produce generic
  * records with Avro logical type {@link JodaDateTimeOrLongConversion} being represented by {@link
- * ReadableInstant}, and processes that don't use it produce records with with Avro logical type
- * {@link JodaDateTimeOrLongConversion} being represented by {@link Long}.
+ * ReadableInstant}, and processes that don't use it produce records with Avro logical type {@link
+ * JodaDateTimeOrLongConversion} being represented by {@link Long}.
  */
 public class AvroSinkWithJodaDatesConversion<ElementT extends IndexedRecord>
     implements FileIO.Sink<ElementT> {

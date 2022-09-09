@@ -15,7 +15,7 @@
  */
 
 /**
- * This module supports pre-load actions which are run as the pipeline is being scaffolded.
+ * This module supports preload actions which are run as the pipeline is being scaffolded.
  *
  * @author drumcircle
  * @version 1.0

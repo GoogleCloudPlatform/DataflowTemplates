@@ -53,41 +53,45 @@ public class CypherGenerator {
         // MERGE (variable1:Label1 {nodeProperties1})-[:REL_TYPE]->
         // (variable2:Label2 {nodeProperties2})
         // MATCH before MERGE
-        sb.append(
-            " MATCH ("
-                + getLabelsPropertiesListCypherFragment(
-                    "source", true, FragmentType.source, Arrays.asList(RoleType.key), target)
-                + ")");
-        sb.append(
-            " MATCH ("
-                + getLabelsPropertiesListCypherFragment(
-                    "target", true, FragmentType.target, Arrays.asList(RoleType.key), target)
-                + ")");
+        sb.append(" MATCH (")
+            .append(
+                getLabelsPropertiesListCypherFragment(
+                    "source", true, FragmentType.source, Arrays.asList(RoleType.key), target))
+            .append(")");
+        sb.append(" MATCH (")
+            .append(
+                getLabelsPropertiesListCypherFragment(
+                    "target", true, FragmentType.target, Arrays.asList(RoleType.key), target))
+            .append(")");
         sb.append(" MERGE (source)");
-        sb.append(" -[" + getRelationshipTypePropertiesListFragment("rel", false, target) + "]-> ");
+        sb.append(" -[")
+            .append(getRelationshipTypePropertiesListFragment("rel", false, target))
+            .append("]-> ");
         sb.append("(target)");
         // SET properties...
       } else if (target.saveMode == SaveMode.append) { // Fast, blind create
         sb.append("UNWIND $" + CONST_ROW_VARIABLE_NAME + " AS row CREATE ");
-        sb.append(
-            "("
-                + getLabelsPropertiesListCypherFragment(
+        sb.append("(")
+            .append(
+                getLabelsPropertiesListCypherFragment(
                     "source",
                     false,
                     FragmentType.source,
                     Arrays.asList(RoleType.key, RoleType.property),
-                    target)
-                + ")");
-        sb.append(" -[" + getRelationshipTypePropertiesListFragment("rel", false, target) + "]-> ");
-        sb.append(
-            "("
-                + getLabelsPropertiesListCypherFragment(
+                    target))
+            .append(")");
+        sb.append(" -[")
+            .append(getRelationshipTypePropertiesListFragment("rel", false, target))
+            .append("]-> ");
+        sb.append("(")
+            .append(
+                getLabelsPropertiesListCypherFragment(
                     "target",
                     false,
                     FragmentType.target,
                     Arrays.asList(RoleType.key, RoleType.property),
-                    target)
-                + ")");
+                    target))
+            .append(")");
       } else {
         LOG.error("Unhandled saveMode: " + target.saveMode);
       }
@@ -102,28 +106,28 @@ public class CypherGenerator {
         // MERGE (charlie {name: 'Charlie Sheen', age: 10})  A new node with the name 'Charlie
         // Sheen' will be created since not all properties matched the existing 'Charlie Sheen'
         // node.
-        sb.append(
-            "MERGE ("
-                + getLabelsPropertiesListCypherFragment(
-                    "n", false, FragmentType.node, Arrays.asList(RoleType.key), target)
-                + ")");
+        sb.append("MERGE (")
+            .append(
+                getLabelsPropertiesListCypherFragment(
+                    "n", false, FragmentType.node, Arrays.asList(RoleType.key), target))
+            .append(")");
         String nodePropertyMapStr =
             getPropertiesListCypherFragment(
                 FragmentType.node, false, Arrays.asList(RoleType.property), target);
         if (nodePropertyMapStr.length() > 0) {
-          sb.append(" SET n+=" + nodePropertyMapStr);
+          sb.append(" SET n+=").append(nodePropertyMapStr);
         }
       } else if (target.saveMode == SaveMode.append) { // fast create
         sb.append("UNWIND $" + CONST_ROW_VARIABLE_NAME + " AS row ");
-        sb.append(
-            "CREATE ("
-                + getLabelsPropertiesListCypherFragment(
+        sb.append("CREATE (")
+            .append(
+                getLabelsPropertiesListCypherFragment(
                     "n",
                     false,
                     FragmentType.node,
                     Arrays.asList(RoleType.key, RoleType.property),
-                    target)
-                + ")");
+                    target))
+            .append(")");
       } else {
         LOG.error("Unhandled saveMode: " + target.saveMode);
       }
@@ -148,16 +152,16 @@ public class CypherGenerator {
     if (labels.size() > 0) {
       sb.append(alias);
       for (String label : labels) {
-        sb.append(":" + ModelUtils.makeValidNeo4jIdentifier(label));
+        sb.append(":").append(ModelUtils.makeValidNeo4jIdentifier(label));
       }
     } else if (StringUtils.isNotEmpty(target.name)) {
       sb.append(alias);
-      sb.append(":" + ModelUtils.makeValidNeo4jIdentifier(target.name));
+      sb.append(":").append(ModelUtils.makeValidNeo4jIdentifier(target.name));
     } else {
       sb.append(alias);
     }
     if (StringUtils.isNotEmpty(propertiesKeyListStr)) {
-      sb.append(" " + propertiesKeyListStr);
+      sb.append(" ").append(propertiesKeyListStr);
     }
     return sb.toString();
   }
@@ -176,9 +180,12 @@ public class CypherGenerator {
             sb.append(",");
           }
           if (StringUtils.isNotEmpty(m.constant)) {
-            sb.append(ModelUtils.makeValidNeo4jIdentifier(m.name) + ": \"" + m.constant + "\"");
+            sb.append(ModelUtils.makeValidNeo4jIdentifier(m.name))
+                .append(": \"")
+                .append(m.constant)
+                .append("\"");
           } else {
-            sb.append(ModelUtils.makeValidNeo4jIdentifier(m.name) + ": row." + m.field);
+            sb.append(ModelUtils.makeValidNeo4jIdentifier(m.name)).append(": row.").append(m.field);
           }
           targetColCount++;
         }
@@ -246,10 +253,10 @@ public class CypherGenerator {
     StringBuilder sb = new StringBuilder();
     List<String> relType =
         ModelUtils.getStaticOrDynamicRelationshipType(CONST_ROW_VARIABLE_NAME, target);
-    sb.append(prefix + ":" + StringUtils.join(relType, ":"));
-    sb.append(
-        " "
-            + getPropertiesListCypherFragment(
+    sb.append(prefix).append(":").append(StringUtils.join(relType, ":"));
+    sb.append(" ")
+        .append(
+            getPropertiesListCypherFragment(
                 FragmentType.rel,
                 onlyIndexedProperties,
                 Arrays.asList(RoleType.key, RoleType.property),

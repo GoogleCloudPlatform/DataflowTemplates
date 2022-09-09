@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 
 /** Utilities for organizing Bean rows and schema. */
 public class BeamUtils {
+
   private static final Logger LOG = LoggerFactory.getLogger(BeamUtils.class);
 
   public static String getSchemaFieldNameCsv(Schema schema) {

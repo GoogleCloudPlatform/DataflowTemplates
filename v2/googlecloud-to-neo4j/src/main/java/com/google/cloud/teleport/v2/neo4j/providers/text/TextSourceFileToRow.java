@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 /** Transform that reads data from a source file. */
 public class TextSourceFileToRow extends PTransform<PBegin, PCollection<Row>> {
+
   private static final Logger LOG = LoggerFactory.getLogger(TextSourceFileToRow.class);
   SourceQuerySpec sourceQuerySpec;
   OptionsParams optionsParams;
@@ -48,15 +49,15 @@ public class TextSourceFileToRow extends PTransform<PBegin, PCollection<Row>> {
     String dataFileUri = source.uri;
 
     if (StringUtils.isNotBlank(dataFileUri)) {
-      LOG.info("Ingesting file: " + dataFileUri + ".");
+      LOG.info("Ingesting file: {}.", dataFileUri);
       return input
           .apply("Read " + source.name + " data: " + dataFileUri, TextIO.read().from(dataFileUri))
           .apply(
               "Parse lines into string columns.",
               ParDo.of(new LineToRowFn(source, beamTextSchema, source.csvFormat)))
           .setRowSchema(beamTextSchema);
-    } else if (source.inline != null && source.inline.size() > 0) {
-      LOG.info("Processing " + source.inline.size() + " rows inline.");
+    } else if (source.inline != null && !source.inline.isEmpty()) {
+      LOG.info("Processing {} rows inline.", source.inline.size());
       return input
           .apply("Ingest inline dataset: " + source.name, Create.of(source.inline))
           .apply(

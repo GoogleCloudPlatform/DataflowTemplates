@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 
 /** Transform to return zero row PCollection with schema from text sources. */
 public class TextSourceFileMetadataToRow extends PTransform<PBegin, PCollection<Row>> {
+
   private static final Logger LOG = LoggerFactory.getLogger(TextSourceFileMetadataToRow.class);
   Source source;
   OptionsParams optionsParams;

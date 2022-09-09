@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
  * rows. Beam SQLTransform does not support ORDER BY nicely, therefore ordering must be forbidden.
  */
 public class TextTargetToRow extends PTransform<PBegin, PCollection<Row>> {
+
   private static final Logger LOG = LoggerFactory.getLogger(TextTargetToRow.class);
   TargetQuerySpec targetQuerySpec;
   OptionsParams optionsParams;
@@ -53,17 +54,17 @@ public class TextTargetToRow extends PTransform<PBegin, PCollection<Row>> {
 
     PCollection<Row> sourceBeamRows = targetQuerySpec.nullableSourceRows;
     Schema sourceSchema = targetQuerySpec.sourceBeamSchema;
-    final Set<String> sourceFieldSet = ModelUtils.getBeamFieldSet(sourceSchema);
+    Set<String> sourceFieldSet = ModelUtils.getBeamFieldSet(sourceSchema);
 
     Target target = targetQuerySpec.target;
-    final Schema targetSchema = BeamUtils.toBeamSchema(target);
-    final DoFn<Row, Row> castToTargetRow = new CastExpandTargetRowFn(target, targetSchema);
+    Schema targetSchema = BeamUtils.toBeamSchema(target);
+    DoFn<Row, Row> castToTargetRow = new CastExpandTargetRowFn(target, targetSchema);
 
-    // conditionally apply sql to rows..
+    // conditionally apply sql to rows.
     if (ModelUtils.targetHasTransforms(target)) {
       String sql = getRewritten(ModelUtils.getTargetSql(sourceFieldSet, target, false));
       LOG.info("Target schema: {}", targetSchema);
-      LOG.info("Executing SQL on PCOLLECTION: " + sql);
+      LOG.info("Executing SQL on PCOLLECTION: {}", sql);
       PCollection<Row> sqlDataRow =
           sourceBeamRows.apply(
               target.sequence + ": SQLTransform " + target.name, SqlTransform.query(sql));

@@ -20,10 +20,11 @@ import com.google.cloud.teleport.v2.neo4j.providers.bigquery.BigQueryImpl;
 import com.google.cloud.teleport.v2.neo4j.providers.text.TextImpl;
 
 /**
- * Factory for binding implementation adapters into framework. Currently supports two providers:
+ * Factory for binding implementation adapters into framework. Currently, supports two providers:
  * bigquery and text
  */
 public class ProviderFactory {
+
   public static Provider of(SourceType sourceType) {
     if (sourceType == SourceType.bigquery) {
       return new BigQueryImpl();

@@ -28,17 +28,17 @@ public class ConnectionParams implements Serializable {
 
   public String serverUrl, database, authType, username, password;
 
-  public ConnectionParams(final String neoConnectionUri) {
+  public ConnectionParams(String neoConnectionUri) {
 
     String neoConnectionJsonStr = "{}";
     try {
       neoConnectionJsonStr = FileSystemUtils.getPathContents(neoConnectionUri);
-    } catch (final Exception e) {
+    } catch (Exception e) {
       LOG.error("Unable to read {} neo4j configuration: ", neoConnectionUri, e);
     }
 
     try {
-      final JSONObject neoConnectionJson = new JSONObject(neoConnectionJsonStr);
+      JSONObject neoConnectionJson = new JSONObject(neoConnectionJsonStr);
       serverUrl = neoConnectionJson.getString("server_url");
       if (neoConnectionJson.has("auth_type")) {
         authType = neoConnectionJson.getString("auth_type");
@@ -50,7 +50,7 @@ public class ConnectionParams implements Serializable {
       username = neoConnectionJson.getString("username");
       password = neoConnectionJson.getString("pwd");
 
-    } catch (final Exception e) {
+    } catch (Exception e) {
       throw new RuntimeException(e);
     }
   }

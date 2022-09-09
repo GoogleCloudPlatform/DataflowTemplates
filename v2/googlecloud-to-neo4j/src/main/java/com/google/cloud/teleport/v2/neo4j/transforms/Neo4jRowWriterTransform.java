@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 /** Neo4j write transformation. */
 public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PCollection<Row>> {
+
   private static final Logger LOG = LoggerFactory.getLogger(Neo4jRowWriterTransform.class);
   JobSpec jobSpec;
   ConnectionParams neoConnection;
@@ -49,35 +50,35 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
   @Override
   public PCollection<Row> expand(PCollection<Row> input) {
 
-    Config config = jobSpec.config;
+    Config config = jobSpec.getConfig();
     // indices and constraints
     List<String> cyphers =
         CypherGenerator.getNodeIndexAndConstraintsCypherStatements(config, target);
-    if (cyphers.size() > 0) {
+    if (!cyphers.isEmpty()) {
       Neo4jConnection neo4jDirectConnect = new Neo4jConnection(neoConnection);
-      LOG.info("Adding " + cyphers.size() + " indices and constraints");
+      LOG.info("Adding {} indices and constraints", cyphers.size());
       for (String cypher : cyphers) {
-        LOG.info("Executing cypher: " + cypher);
+        LOG.info("Executing cypher: {}", cypher);
         try {
           neo4jDirectConnect.executeCypher(cypher);
         } catch (Exception e) {
-          LOG.error("Error executing cypher: " + cypher + ", " + e.getMessage());
+          LOG.error("Error executing cypher: {}, {}", cypher, e.getMessage());
         }
       }
     }
 
     // set batch sizes
-    int batchSize = jobSpec.config.nodeBatchSize;
-    int parallelism = jobSpec.config.nodeParallelism;
+    int batchSize = jobSpec.getConfig().nodeBatchSize;
+    int parallelism = jobSpec.getConfig().nodeParallelism;
 
     if (target.type == TargetType.edge) {
-      batchSize = jobSpec.config.edgeBatchSize;
-      parallelism = jobSpec.config.edgeParallelism;
+      batchSize = jobSpec.getConfig().edgeBatchSize;
+      parallelism = jobSpec.getConfig().edgeParallelism;
     }
 
     // data loading
     String unwindCypher = CypherGenerator.getUnwindCreateCypher(target);
-    LOG.info("Unwind cypher: " + unwindCypher);
+    LOG.info("Unwind cypher: {}", unwindCypher);
 
     Neo4jConnection neo4jConnection = new Neo4jConnection(neoConnection);
     Row emptyRow = Row.nullRow(input.getSchema());
@@ -92,13 +93,10 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
             "rows",
             getRowCastingFunction());
 
-    PCollection<Row> output =
-        input
-            .apply("Create KV pairs", CreateKvTransform.of(parallelism))
-            .apply(target.sequence + ": Neo4j write " + target.name, ParDo.of(neo4jUnwindFn))
-            .setRowSchema(input.getSchema());
-
-    return output;
+    return input
+        .apply("Create KV pairs", CreateKvTransform.of(parallelism))
+        .apply(target.sequence + ": Neo4j write " + target.name, ParDo.of(neo4jUnwindFn))
+        .setRowSchema(input.getSchema());
   }
 
   private SerializableFunction<Row, Map<String, Object>> getRowCastingFunction() {

@@ -28,6 +28,7 @@ import org.apache.beam.sdk.values.Row;
  */
 @Builder
 public class TargetQuerySpec {
+
   public Source source;
   public Schema sourceBeamSchema;
   public PCollection<Row> nullableSourceRows;

@@ -42,7 +42,7 @@
           "type": "String",
           "unique": false,
           "indexed": true
-        }, 
+        },
         {
           "field": "company_name",
           "name": "CompanyName",

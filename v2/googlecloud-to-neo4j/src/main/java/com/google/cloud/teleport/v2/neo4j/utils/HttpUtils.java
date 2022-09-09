@@ -40,65 +40,64 @@ public class HttpUtils {
 
   private static final Logger LOG = LoggerFactory.getLogger(HttpUtils.class);
 
-  public static CloseableHttpResponse getHttpRespoonse(
+  public static CloseableHttpResponse getHttpResponse(
       boolean post, String uri, Map<String, String> options, Map<String, String> headers)
       throws IOException, URISyntaxException {
 
-    CloseableHttpClient httpclient = HttpClients.createDefault();
+    try (CloseableHttpClient httpclient = HttpClients.createDefault()) {
 
-    if (options.containsKey("url")) {
       options.remove("url");
-    }
-    List<NameValuePair> paramPairs = getNvPairs(options);
-    List<NameValuePair> headerPairs = getNvPairs(headers);
+      List<NameValuePair> paramPairs = getNvPairs(options);
+      List<NameValuePair> headerPairs = getNvPairs(headers);
 
-    if (post) {
-      HttpPost httpPost = new HttpPost(uri);
-      if (paramPairs.size() > 0) {
-        httpPost.setEntity(new UrlEncodedFormEntity(paramPairs));
+      if (post) {
+        HttpPost httpPost = new HttpPost(uri);
+        if (!paramPairs.isEmpty()) {
+          httpPost.setEntity(new UrlEncodedFormEntity(paramPairs));
+        }
+        for (NameValuePair t : headerPairs) {
+          httpPost.addHeader(t.getName(), t.getValue());
+        }
+        return httpclient.execute(httpPost);
+      } else {
+        URIBuilder builder = new URIBuilder(uri);
+        builder.addParameters(paramPairs);
+        HttpGet httpGet = new HttpGet(builder.build());
+        for (NameValuePair t : headerPairs) {
+          httpGet.addHeader(t.getName(), t.getValue());
+        }
+        return httpclient.execute(httpGet);
       }
-      for (NameValuePair t : headerPairs) {
-        httpPost.addHeader(t.getName(), t.getValue());
-      }
-      return httpclient.execute(httpPost);
-    } else {
-      URIBuilder builder = new URIBuilder(uri);
-      builder.addParameters(paramPairs);
-      HttpGet httpGet = new HttpGet(builder.build());
-      for (NameValuePair t : headerPairs) {
-        httpGet.addHeader(t.getName(), t.getValue());
-      }
-      return httpclient.execute(httpGet);
     }
   }
 
   public static String getResponseContent(CloseableHttpResponse httpResponse) throws IOException {
-    LOG.info("GET Response Status:: " + httpResponse.getStatusLine().getStatusCode());
+    LOG.info("GET Response Status: {}", httpResponse.getStatusLine().getStatusCode());
 
-    BufferedReader reader =
-        new BufferedReader(new InputStreamReader(httpResponse.getEntity().getContent()));
+    try (BufferedReader reader =
+        new BufferedReader(new InputStreamReader(httpResponse.getEntity().getContent()))) {
 
-    String inputLine;
-    StringBuilder response = new StringBuilder();
+      String inputLine;
+      StringBuilder response = new StringBuilder();
 
-    while ((inputLine = reader.readLine()) != null) {
-      response.append(inputLine);
+      while ((inputLine = reader.readLine()) != null) {
+        response.append(inputLine);
+      }
+      try {
+        httpResponse.close();
+      } catch (Exception e) {
+        LOG.error("Exception closing connection.");
+      }
+
+      return response.toString();
     }
-    reader.close();
-    try {
-      httpResponse.close();
-    } catch (Exception e) {
-      LOG.error("Exception closing connection.");
-    }
-
-    return response.toString();
   }
 
   private static List<NameValuePair> getNvPairs(Map<String, String> options) {
     Iterator optionsIterator = options.keySet().iterator();
-    List<NameValuePair> nvps = new ArrayList<NameValuePair>();
+    List<NameValuePair> nvps = new ArrayList<>();
     while (optionsIterator.hasNext()) {
-      String key = optionsIterator.next() + "";
+      String key = String.valueOf(optionsIterator.next());
       String value = options.get(key);
       nvps.add(new BasicNameValuePair(key, value));
     }

@@ -28,9 +28,10 @@ import org.slf4j.LoggerFactory;
 
 /** Http GET action handler. */
 public class HttpGetActionTransform extends PTransform<PCollection<Row>, PCollection<Row>> {
+
   private static final Logger LOG = LoggerFactory.getLogger(HttpGetActionTransform.class);
-  Action action;
-  ActionContext context;
+  private final Action action;
+  private final ActionContext context;
 
   public HttpGetActionTransform(Action action, ActionContext context) {
     this.action = action;
@@ -45,12 +46,13 @@ public class HttpGetActionTransform extends PTransform<PCollection<Row>, PCollec
     }
     try {
       CloseableHttpResponse response =
-          HttpUtils.getHttpRespoonse(false, uri, action.options, action.headers);
-      LOG.info("Request returned: " + HttpUtils.getResponseContent(response));
+          HttpUtils.getHttpResponse(false, uri, action.options, action.headers);
+      LOG.info("Request returned: {}", HttpUtils.getResponseContent(response));
 
     } catch (Exception e) {
-      LOG.error("Exception making http get request: " + e.getMessage());
+      LOG.error("Exception making http get request: {}", e.getMessage());
     }
+
     // we are not running anything that generates an output, so can return an input.
     return input;
   }

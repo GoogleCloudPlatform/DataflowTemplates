@@ -21,10 +21,11 @@ import org.json.JSONObject;
 
 /** Global configuration options. */
 public class Config implements Serializable {
+
   public Boolean resetDb = false;
   public Boolean indexAllProperties = false;
 
-  public String auditGsUri = null;
+  public String auditGsUri;
   public AvroType avroType = AvroType.parquet;
 
   public Integer nodeParallelism = 5;
@@ -34,7 +35,7 @@ public class Config implements Serializable {
 
   public Config() {}
 
-  public Config(final JSONObject jsonObject) {
+  public Config(JSONObject jsonObject) {
     resetDb = jsonObject.has("reset_db") && jsonObject.getBoolean("reset_db");
     auditGsUri =
         jsonObject.has("audit_gcs_uri") ? jsonObject.getString("audit_gcs_uri") : auditGsUri;

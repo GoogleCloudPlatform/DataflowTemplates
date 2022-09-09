@@ -40,10 +40,9 @@ public class ListOfStringToRowFn extends DoFn<List<Object>, Row> {
     List<Object> strCols = processContext.element();
     if (this.schema.getFieldCount() != strCols.size()) {
       LOG.error(
-          "Row field count mismatch, expecting: "
-              + this.schema.getFieldCount()
-              + ", row: "
-              + StringUtils.join(strCols.size(), ","));
+          "Row field count mismatch, expecting: {}, row: {}",
+          this.schema.getFieldCount(),
+          StringUtils.join(strCols.size(), ","));
     } else {
       Row row = Row.withSchema(this.schema).addValues(strCols).build();
       processContext.output(row);

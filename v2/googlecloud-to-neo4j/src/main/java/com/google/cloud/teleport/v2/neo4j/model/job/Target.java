@@ -41,7 +41,7 @@ public class Target implements Serializable, Comparable {
   public Transform transform = new Transform();
   public List<Mapping> mappings = new ArrayList<>();
   public SaveMode saveMode = SaveMode.append;
-  public Map<String, Mapping> mappingByFieldMap = new HashMap();
+  public Map<String, Mapping> mappingByFieldMap = new HashMap<>();
   public List<String> fieldNames = new ArrayList<>();
   public int sequence = 0;
   public ActionExecuteAfter executeAfter = null;

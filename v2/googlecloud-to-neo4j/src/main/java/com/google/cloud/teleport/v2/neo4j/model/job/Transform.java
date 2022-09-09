@@ -21,6 +21,7 @@ import java.util.List;
 
 /** Transform metadata. */
 public class Transform implements Serializable {
+
   public String sql = "";
   public List<Aggregation> aggregations = new ArrayList<>();
   public boolean group;

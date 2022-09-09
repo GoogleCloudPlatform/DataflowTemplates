@@ -23,6 +23,7 @@ import lombok.Builder;
  */
 @Builder
 public class SqlQuerySpec {
+
   public String readDescription;
   public String castDescription;
   public String sql;

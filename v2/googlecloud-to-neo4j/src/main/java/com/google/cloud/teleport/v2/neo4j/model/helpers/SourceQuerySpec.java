@@ -22,6 +22,7 @@ import org.apache.beam.sdk.schemas.Schema;
 /** Convenience object for passing Source metadata and PCollection schema together. */
 @Builder
 public class SourceQuerySpec {
+
   public Source source;
   public Schema sourceSchema;
 }
