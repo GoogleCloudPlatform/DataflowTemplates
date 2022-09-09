@@ -9,7 +9,7 @@ not exist prior to execution. Both output and error tables are specified by the 
 ## Getting Started
 
 ### Requirements
-* Java 11
+* Java 8
 * Maven
 * The Kafka topic(s) exists and the message is encoded in a valid JSON format.
 * The BigQuery output table exists.
@@ -26,7 +26,7 @@ export PROJECT=<my-project>
 export IMAGE_NAME=<my-image-name>
 export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
-export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
+export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export TEMPLATE_MODULE=kafka-to-bigquery
 export APP_ROOT=/template/${TEMPLATE_MODULE}

@@ -45,7 +45,7 @@ import org.apache.beam.sdk.values.PCollection;
  * export TEMPLATE_NAME=pubsub-to-text
  * export BUCKET_NAME=gs://<bucket name>
  * export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${TEMPLATE_NAME}-image
- * export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
+ * export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
  * export BASE_CONTAINER_IMAGE_VERSION=latest
  * export APP_ROOT=/template/${TEMPLATE_NAME}
  * export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_NAME}-command-spec.json

@@ -8,7 +8,7 @@ batch pipeline which ingests table from Kudu and outputs the resulting records t
 ## Getting Started
 
 ### Requirements
-* Java 11
+* Java 8
 * Maven
 * The Kudu table exists.
 * The BigQuery output table exists.
@@ -24,7 +24,7 @@ export PROJECT=my-project
 export IMAGE_NAME=my-image-name
 export OUTPUT_TABLE=${PROJECT}:dataflow_template.bigquery_table
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
-export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
+export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export APP_ROOT=/template/kudu-to-bigquery
 export COMMAND_SPEC=${APP_ROOT}/resources/kudu-to-bigquery-command-spec.json

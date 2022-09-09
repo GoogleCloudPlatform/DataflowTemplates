@@ -7,7 +7,7 @@ and writes the data to MongoDB collections.
 ## Getting Started
 
 ### Requirements
-* Java 11
+* Java 8
 * Maven
 * DataStream stream is created and sending data to storage
 * PubSub Subscription exists or GCS Bucket contains data
@@ -26,7 +26,7 @@ export PROJECT=<my-project>
 export IMAGE_NAME=datastream-to-mongodb
 export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
-export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
+export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export APP_ROOT=/template/${IMAGE_NAME}
 export DATAFLOW_JAVA_COMMAND_SPEC=${APP_ROOT}/resources/${IMAGE_NAME}-command-spec.json

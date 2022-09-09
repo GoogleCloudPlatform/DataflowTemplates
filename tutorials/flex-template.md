@@ -571,7 +571,7 @@ export IMAGE_NAME="$USERNAME-wordcount"
 export MODULE_NAME=wordcount
 
 export TARGET_GCR_IMAGE="gcr.io/$PROJECT/$IMAGE_NAME"
-export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
+export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export APP_ROOT="/template/$MODULE_NAME"
 export COMMAND_SPEC="$APP_ROOT/resources/$MODULE_NAME-command-spec.json"

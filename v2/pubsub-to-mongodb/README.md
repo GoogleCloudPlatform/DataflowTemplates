@@ -6,7 +6,7 @@ ingests data from a PubSub subscription, optionally applies a Javascript UDF if 
 ## Getting Started
 
 ### Requirements
-* Java 11
+* Java 8
 * Maven
 * PubSub Subscription exists
 * MongoDB host exists and is operational
@@ -22,7 +22,7 @@ export PROJECT=<my-project>
 export IMAGE_NAME=<my-image-name>
 export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
-export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
+export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export TEMPLATE_MODULE=pubsub-to-mongodb
 export APP_ROOT=/template/${TEMPLATE_MODULE}

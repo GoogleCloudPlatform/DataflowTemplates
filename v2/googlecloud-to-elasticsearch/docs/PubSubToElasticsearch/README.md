@@ -20,7 +20,7 @@ To enable the out of the box integration:
 2. [Export logs](https://cloud.google.com/logging/docs/export) from above data source to a separate Pub/Sub subscription. You can then use the Dataflow template's `dataset` parameter to specify the data source name and their corresponding `inputSubscription`.
 
 ### Requirements for this pipeline
-* Java 11
+* Java 8
 * Maven
 * The source Pub/Sub subscription exists
 * Elasticsearch version 7.0 and above
@@ -68,7 +68,7 @@ export PROJECT=<my-project>
 export IMAGE_NAME=<my-image-name>
 export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
-export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
+export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export TEMPLATE_MODULE=pubsub-to-elasticsearch
 export APP_ROOT=/template/${TEMPLATE_MODULE}

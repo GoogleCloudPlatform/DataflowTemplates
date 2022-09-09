@@ -6,7 +6,7 @@ pipeline is a  batch pipeline that reads records from a Spanner Table and writes
 
 ## Requirements
 
-* Java 11
+* Java 8 or 11
 * Maven
 * The Spanner table exists
 
@@ -28,7 +28,7 @@ export TEMPLATE_MODULE=googlecloud-to-googlecloud
 export COMMAND_MODULE=spanner-to-bigquery
 
 export TARGET_GCR_IMAGE="gcr.io/$PROJECT/images/$IMAGE_NAME"
-export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
+export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export APP_ROOT="/template/$COMMAND_MODULE"
 export COMMAND_SPEC="$APP_ROOT/resources/$COMMAND_MODULE-command-spec.json"

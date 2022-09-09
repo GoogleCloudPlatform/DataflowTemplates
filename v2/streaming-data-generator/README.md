@@ -30,7 +30,7 @@ Below table outlines supported sinks and output encoding formats:
 
 ### Requirements
 
-* Java 11
+* Java 8
 * Maven 3
 * One of the following depending on Sink Type:
   &nbsp;&nbsp;PubSub Topic
@@ -186,7 +186,7 @@ export PROJECT=<my-project>
 export IMAGE_NAME=<my-image-name>
 export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
-export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
+export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export TEMPLATE_MODULE=streaming-data-generator
 export APP_ROOT=/template/${TEMPLATE_MODULE}

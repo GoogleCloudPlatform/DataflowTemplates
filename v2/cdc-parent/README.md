@@ -47,7 +47,7 @@ so we can prioritize accordingly. Some planned improvements:
 
 ## Requirements
 
-- Java 11
+- Java 8
 - Maven
 - A MySQL instance
 - A set of Pub/Sub topics

@@ -15,7 +15,7 @@ The BigQuery to MongoDB template is a batch pipeline that reads rows from a BigQ
 ## Getting Started
 
 ### Requirements
-* Java 11
+* Java 8
 * Maven
 * Bigquery dataset
 * MongoDB host exists and is operational
@@ -31,7 +31,7 @@ export PROJECT=<project-id>
 export IMAGE_NAME="bigquery-to-mongodb"
 export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
-export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
+export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export TEMPLATE_MODULE="googlecloud-to-mongodb"
 export APP_ROOT=/template/${TEMPLATE_MODULE}

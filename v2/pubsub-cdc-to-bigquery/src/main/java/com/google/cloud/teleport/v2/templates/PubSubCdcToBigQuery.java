@@ -99,7 +99,7 @@ import org.slf4j.LoggerFactory;
  * # Set containerization vars
  * IMAGE_NAME=pubsub-cdc-to-bigquery
  * TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
- * BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
+ * BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
  * BASE_CONTAINER_IMAGE_VERSION=latest
  * APP_ROOT=/template/pubsub-cdc-to-bigquery
  * DATAFLOW_JAVA_COMMAND_SPEC=${APP_ROOT}/resources/pubsub-cdc-to-bigquery-command-spec.json

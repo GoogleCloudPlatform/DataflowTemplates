@@ -18,7 +18,7 @@ Pipeline flow is illustrated below:
 ## Getting Started
 
 ### Requirements
-* Java 11
+* Java 8
 * Maven
 * Cloud Storage bucket exists
 * Elasticsearch nodes are reachable from the Dataflow workers (Elasticsearch 7.0 and above)
@@ -35,7 +35,7 @@ export PROJECT=<my-project>
 export IMAGE_NAME=<my-image-name>
 export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
-export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
+export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export TEMPLATE_MODULE=GCS-to-elasticsearch
 export APP_ROOT=/template/${TEMPLATE_MODULE}
