@@ -16,15 +16,17 @@
 package com.google.cloud.teleport.v2.neo4j.model.helpers;
 
 import lombok.Builder;
+import lombok.Getter;
 
 /**
  * Convenience object for invoking SQL query as well as providing descriptions for read and cast
  * phase of transform.
  */
 @Builder
+@Getter
 public class SqlQuerySpec {
 
-  public String readDescription;
-  public String castDescription;
-  public String sql;
+  private String readDescription;
+  private String castDescription;
+  private String sql;
 }

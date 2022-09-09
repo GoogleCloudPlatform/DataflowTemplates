@@ -44,7 +44,7 @@ public class JobSpec implements Serializable {
   public List<Target> getActiveTargetsBySource(String sourceName) {
     List<Target> targets = new ArrayList<>();
     for (Target target : this.targets) {
-      if (target.active && target.source.equals(sourceName)) {
+      if (target.isActive() && target.getSource().equals(sourceName)) {
         targets.add(target);
       }
     }
@@ -54,7 +54,9 @@ public class JobSpec implements Serializable {
   public List<Target> getActiveNodeTargetsBySource(String sourceName) {
     List<Target> targets = new ArrayList<>();
     for (Target target : this.targets) {
-      if (target.active && target.type == TargetType.node && target.source.equals(sourceName)) {
+      if (target.isActive()
+          && target.getType() == TargetType.node
+          && target.getSource().equals(sourceName)) {
         targets.add(target);
       }
     }
@@ -64,7 +66,9 @@ public class JobSpec implements Serializable {
   public List<Target> getActiveRelationshipTargetsBySource(String sourceName) {
     List<Target> targets = new ArrayList<>();
     for (Target target : this.targets) {
-      if (target.active && target.type == TargetType.edge && target.source.equals(sourceName)) {
+      if (target.isActive()
+          && target.getType() == TargetType.edge
+          && target.getSource().equals(sourceName)) {
         targets.add(target);
       }
     }
@@ -87,7 +91,7 @@ public class JobSpec implements Serializable {
   public List<String> getAllFieldNames() {
     ArrayList<String> fieldNameList = new ArrayList<>();
     for (Target target : targets) {
-      fieldNameList.addAll(target.fieldNames);
+      fieldNameList.addAll(target.getFieldNames());
     }
     return fieldNameList;
   }

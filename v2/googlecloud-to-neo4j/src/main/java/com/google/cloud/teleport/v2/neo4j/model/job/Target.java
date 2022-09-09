@@ -25,27 +25,31 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.Getter;
+import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Target (node/edge) metadata. */
+@Getter
+@Setter
 public class Target implements Serializable, Comparable {
 
   private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
   private static final Logger LOG = LoggerFactory.getLogger(Target.class);
-  public String source = "";
-  public String name = "";
-  public boolean active = true;
-  public TargetType type;
-  public boolean autoMap = false;
-  public Transform transform = new Transform();
-  public List<Mapping> mappings = new ArrayList<>();
-  public SaveMode saveMode = SaveMode.append;
-  public Map<String, Mapping> mappingByFieldMap = new HashMap<>();
-  public List<String> fieldNames = new ArrayList<>();
-  public int sequence = 0;
-  public ActionExecuteAfter executeAfter = null;
-  public String executeAfterName = "";
+  private String source = "";
+  private String name = "";
+  private boolean active = true;
+  private TargetType type;
+  private boolean autoMap = false;
+  private Transform transform = new Transform();
+  private List<Mapping> mappings = new ArrayList<>();
+  private SaveMode saveMode = SaveMode.append;
+  private Map<String, Mapping> mappingByFieldMap = new HashMap<>();
+  private List<String> fieldNames = new ArrayList<>();
+  private int sequence = 0;
+  private ActionExecuteAfter executeAfter;
+  private String executeAfterName = "";
 
   public Target() {}
 

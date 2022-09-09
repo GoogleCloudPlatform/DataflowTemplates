@@ -55,8 +55,8 @@ public class JobSpecMapper {
 
       if (jobSpecObj.has("source")) {
         Source source = SourceMapper.fromJson(jobSpecObj.getJSONObject("source"));
-        if (StringUtils.isNotEmpty(source.name)) {
-          jobSpecRequest.getSources().put(source.name, source);
+        if (StringUtils.isNotEmpty(source.getName())) {
+          jobSpecRequest.getSources().put(source.getName(), source);
         } else {
           jobSpecRequest.getSources().put(DEFAULT_SOURCE_NAME, source);
         }
@@ -65,8 +65,8 @@ public class JobSpecMapper {
         JSONArray sourceArray = jobSpecObj.getJSONArray("sources");
         for (int i = 0; i < sourceArray.length(); i++) {
           Source source = SourceMapper.fromJson(sourceArray.getJSONObject(i));
-          if (StringUtils.isNotEmpty(source.name)) {
-            jobSpecRequest.getSources().put(source.name, source);
+          if (StringUtils.isNotEmpty(source.getName())) {
+            jobSpecRequest.getSources().put(source.getName(), source);
           } else {
             jobSpecRequest.getSources().put(DEFAULT_SOURCE_NAME, source);
           }

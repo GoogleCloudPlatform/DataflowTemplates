@@ -44,7 +44,7 @@ public class LineToRowFn extends DoFn<String, Row> {
   @ProcessElement
   public void processElement(ProcessContext processContext) {
 
-    if (this.source.sourceType == SourceType.text) {
+    if (this.source.getSourceType() == SourceType.text) {
 
       String line = processContext.element();
       // Note: parser must return objects
@@ -63,7 +63,7 @@ public class LineToRowFn extends DoFn<String, Row> {
         LOG.error("Row was empty!");
       }
     } else {
-      LOG.error("Unhandled source type: {}", source.sourceType);
+      LOG.error("Unhandled source type: {}", source.getSourceType());
     }
   }
 }

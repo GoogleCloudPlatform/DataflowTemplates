@@ -41,9 +41,9 @@ public class TransposedMappingMapper {
   private static final Logger LOG = LoggerFactory.getLogger(TransposedMappingMapper.class);
 
   public static List<Mapping> parseMappings(Target target, JSONObject mappingsObject) {
-    if (target.type == TargetType.node) {
+    if (target.getType() == TargetType.node) {
       return parseNode(mappingsObject);
-    } else if (target.type == TargetType.edge) {
+    } else if (target.getType() == TargetType.edge) {
       return parseEdge(mappingsObject);
     } else {
       return new ArrayList<>();
@@ -62,7 +62,7 @@ public class TransposedMappingMapper {
       List<FieldNameTuple> labels = getFieldAndNameTuples(nodeMappingsObject.get("labels"));
       for (FieldNameTuple f : labels) {
         Mapping mapping = new Mapping(FragmentType.node, RoleType.label, f);
-        mapping.indexed = true;
+        mapping.setIndexed(true);
         addMapping(mappings, mapping);
       }
     }
@@ -76,7 +76,7 @@ public class TransposedMappingMapper {
       List<FieldNameTuple> keys = getFieldAndNameTuples(nodeMappingsObject.get("keys"));
       for (FieldNameTuple f : keys) {
         Mapping mapping = new Mapping(FragmentType.node, RoleType.key, f);
-        mapping.indexed = true;
+        mapping.setIndexed(true);
         addMapping(mappings, mapping);
       }
     }
@@ -101,7 +101,7 @@ public class TransposedMappingMapper {
       List<String> labels = getLabels(sourceObj.getString("label"));
       FieldNameTuple keyTuple = createFieldNameTuple(sourceObj.getString("key"));
       Mapping keyMapping = new Mapping(FragmentType.source, RoleType.key, keyTuple);
-      keyMapping.labels = labels;
+      keyMapping.setLabels(labels);
       mappings.add(keyMapping);
     }
 
@@ -110,7 +110,7 @@ public class TransposedMappingMapper {
       List<String> labels = getLabels(sourceObj.getString("label"));
       FieldNameTuple keyTuple = createFieldNameTuple(sourceObj.getString("key"));
       Mapping keyMapping = new Mapping(FragmentType.target, RoleType.key, keyTuple);
-      keyMapping.labels = labels;
+      keyMapping.setLabels(labels);
       mappings.add(keyMapping);
     }
 
@@ -137,20 +137,20 @@ public class TransposedMappingMapper {
     for (FieldNameTuple f : uniques) {
       Mapping mapping = new Mapping(fragmentType, RoleType.property, f);
       addMapping(mappings, mapping);
-      mapping.indexed = indexed.contains(f);
+      mapping.setIndexed(indexed.contains(f));
     }
     for (FieldNameTuple f : indexed) {
       Mapping mapping = new Mapping(fragmentType, RoleType.property, f);
       addMapping(mappings, mapping);
-      mapping.unique = uniques.contains(f);
+      mapping.setUnique(uniques.contains(f));
     }
     if (propertyMappingsObject.has("dates")) {
       List<FieldNameTuple> dates = getFieldAndNameTuples(propertyMappingsObject.get("dates"));
       for (FieldNameTuple f : dates) {
         Mapping mapping = new Mapping(fragmentType, RoleType.property, f);
-        mapping.type = PropertyType.Date;
-        mapping.indexed = indexed.contains(f);
-        mapping.unique = uniques.contains(f);
+        mapping.setType(PropertyType.Date);
+        mapping.setIndexed(indexed.contains(f));
+        mapping.setUnique(uniques.contains(f));
         addMapping(mappings, mapping);
       }
     }
@@ -160,9 +160,9 @@ public class TransposedMappingMapper {
       List<FieldNameTuple> numbers = getFieldAndNameTuples(propertyMappingsObject.get("doubles"));
       for (FieldNameTuple f : numbers) {
         Mapping mapping = new Mapping(fragmentType, RoleType.property, f);
-        mapping.type = PropertyType.BigDecimal;
-        mapping.indexed = indexed.contains(f);
-        mapping.unique = uniques.contains(f);
+        mapping.setType(PropertyType.BigDecimal);
+        mapping.setIndexed(indexed.contains(f));
+        mapping.setUnique(uniques.contains(f));
         addMapping(mappings, mapping);
       }
     }
@@ -170,9 +170,9 @@ public class TransposedMappingMapper {
       List<FieldNameTuple> longs = getFieldAndNameTuples(propertyMappingsObject.get("longs"));
       for (FieldNameTuple f : longs) {
         Mapping mapping = new Mapping(fragmentType, RoleType.property, f);
-        mapping.type = PropertyType.Long;
-        mapping.indexed = indexed.contains(f);
-        mapping.unique = uniques.contains(f);
+        mapping.setType(PropertyType.Long);
+        mapping.setIndexed(indexed.contains(f));
+        mapping.setUnique(uniques.contains(f));
         addMapping(mappings, mapping);
       }
     }
@@ -180,9 +180,9 @@ public class TransposedMappingMapper {
       List<FieldNameTuple> strings = getFieldAndNameTuples(propertyMappingsObject.get("strings"));
       for (FieldNameTuple f : strings) {
         Mapping mapping = new Mapping(fragmentType, RoleType.property, f);
-        mapping.type = PropertyType.String;
-        mapping.indexed = indexed.contains(f);
-        mapping.unique = uniques.contains(f);
+        mapping.setType(PropertyType.String);
+        mapping.setIndexed(indexed.contains(f));
+        mapping.setUnique(uniques.contains(f));
         addMapping(mappings, mapping);
       }
     }
@@ -253,32 +253,33 @@ public class TransposedMappingMapper {
 
   private static FieldNameTuple createFieldNameTuple(String field, String name) {
     FieldNameTuple fieldSet = new FieldNameTuple();
-    fieldSet.name = name;
+    fieldSet.setName(name);
     field = field.trim();
     // handle double quoted constants
     if (field.charAt(0) == '\"' && field.charAt(field.length() - 1) == '\"') {
-      fieldSet.constant = StringUtils.replace(field, "\"", "");
+      fieldSet.setConstant(StringUtils.replace(field, "\"", ""));
       if (StringUtils.isEmpty(name)) {
-        fieldSet.name = fieldSet.constant;
+        fieldSet.setName(fieldSet.getConstant());
       } else {
-        fieldSet.name = StringUtils.replace(name, "\"", "");
+        fieldSet.setName(StringUtils.replace(name, "\"", ""));
       }
       // field is ""
     } else {
       if (StringUtils.isEmpty(name)) {
-        fieldSet.name = ModelUtils.makeValidNeo4jIdentifier(field);
+        fieldSet.setName(ModelUtils.makeValidNeo4jIdentifier(field));
       } else {
-        fieldSet.name = ModelUtils.makeValidNeo4jIdentifier(name);
+        fieldSet.setName(ModelUtils.makeValidNeo4jIdentifier(name));
       }
-      fieldSet.field = field;
+      fieldSet.setField(field);
     }
     return fieldSet;
   }
 
   private static void addMapping(List<Mapping> mappings, Mapping mapping) {
-    if (!StringUtils.isEmpty(mapping.field)) {
+    if (!StringUtils.isEmpty(mapping.getField())) {
       for (Mapping existingMapping : mappings) {
-        if (existingMapping.field != null && existingMapping.field.equals(mapping.field)) {
+        if (existingMapping.getField() != null
+            && existingMapping.getField().equals(mapping.getField())) {
           throw new RuntimeException("Duplicate mapping: " + gson.toJson(mapping));
         }
       }

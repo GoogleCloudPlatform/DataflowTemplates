@@ -18,14 +18,18 @@ package com.google.cloud.teleport.v2.neo4j.model.job;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
 
 /** Transform metadata. */
+@Getter
+@Setter
 public class Transform implements Serializable {
 
-  public String sql = "";
-  public List<Aggregation> aggregations = new ArrayList<>();
-  public boolean group;
-  public String orderBy = "";
-  public String where = "";
-  public int limit = -1;
+  private String sql = "";
+  private List<Aggregation> aggregations = new ArrayList<>();
+  private boolean group;
+  private String orderBy = "";
+  private String where = "";
+  private int limit = -1;
 }

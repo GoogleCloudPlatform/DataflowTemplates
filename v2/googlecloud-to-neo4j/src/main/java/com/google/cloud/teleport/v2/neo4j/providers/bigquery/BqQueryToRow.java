@@ -46,12 +46,12 @@ public class BqQueryToRow extends PTransform<PBegin, PCollection<Row>> {
   @Override
   public PCollection<Row> expand(PBegin input) {
 
-    String rewrittenSql = this.bqQuerySpec.sql;
+    String rewrittenSql = this.bqQuerySpec.getSql();
     LOG.info("Reading BQ with query: {}", rewrittenSql);
 
     PCollection<TableRow> sourceRows =
         input.apply(
-            bqQuerySpec.readDescription,
+            bqQuerySpec.getReadDescription(),
             BigQueryIO.readTableRowsWithSchema()
                 .fromQuery(rewrittenSql)
                 .usingStandardSql()
@@ -62,7 +62,7 @@ public class BqQueryToRow extends PTransform<PBegin, PCollection<Row>> {
     LOG.info("Beam schema: {}", beamSchema);
     return sourceRows
         .apply(
-            bqQuerySpec.castDescription,
+            bqQuerySpec.getCastDescription(),
             MapElements.into(TypeDescriptor.of(Row.class)).via(sourceRows.getToRowFunction()))
         .setCoder(rowCoder);
   }

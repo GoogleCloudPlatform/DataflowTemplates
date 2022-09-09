@@ -34,83 +34,85 @@ public class SourceMapper {
 
   public static Source fromJson(JSONObject sourceObj) {
     Source source = new Source();
-    source.name = sourceObj.getString("name");
+    source.setName(sourceObj.getString("name"));
     // TODO: avro, parquet, etc.
-    source.sourceType =
-        sourceObj.has("type") ? SourceType.valueOf(sourceObj.getString("type")) : SourceType.text;
+    source.setSourceType(
+        sourceObj.has("type") ? SourceType.valueOf(sourceObj.getString("type")) : SourceType.text);
 
     boolean isJson = false;
     String formatStr =
         sourceObj.has("format") ? sourceObj.getString("format").toUpperCase() : "DEFAULT";
     if ("EXCEL".equals(formatStr)) {
-      source.csvFormat = CSVFormat.EXCEL;
+      source.setCsvFormat(CSVFormat.EXCEL);
     } else if ("MONGO".equals(formatStr)) {
-      source.csvFormat = CSVFormat.MONGODB_CSV;
+      source.setCsvFormat(CSVFormat.MONGODB_CSV);
     } else if ("INFORMIX".equals(formatStr)) {
-      source.csvFormat = CSVFormat.INFORMIX_UNLOAD_CSV;
+      source.setCsvFormat(CSVFormat.INFORMIX_UNLOAD_CSV);
     } else if ("POSTGRES".equals(formatStr)) {
-      source.csvFormat = CSVFormat.POSTGRESQL_CSV;
+      source.setCsvFormat(CSVFormat.POSTGRESQL_CSV);
     } else if ("MYSQL".equals(formatStr)) {
-      source.csvFormat = CSVFormat.MYSQL;
+      source.setCsvFormat(CSVFormat.MYSQL);
     } else if ("ORACLE".equals(formatStr)) {
-      source.csvFormat = CSVFormat.ORACLE;
+      source.setCsvFormat(CSVFormat.ORACLE);
     } else if ("MONGO_TSV".equals(formatStr)) {
-      source.csvFormat = CSVFormat.MONGODB_TSV;
+      source.setCsvFormat(CSVFormat.MONGODB_TSV);
     } else if ("RFC4180".equals(formatStr)) {
-      source.csvFormat = CSVFormat.RFC4180;
+      source.setCsvFormat(CSVFormat.RFC4180);
     } else if ("POSTGRESQL_CSV".equals(formatStr)) {
-      source.csvFormat = CSVFormat.POSTGRESQL_CSV;
+      source.setCsvFormat(CSVFormat.POSTGRESQL_CSV);
     } else {
-      source.csvFormat = CSVFormat.DEFAULT;
+      source.setCsvFormat(CSVFormat.DEFAULT);
     }
 
-    source.delimiter =
-        sourceObj.has("delimiter") ? sourceObj.getString("delimiter") : source.delimiter;
-    source.separator =
-        sourceObj.has("separator") ? sourceObj.getString("separator") : source.separator;
+    source.setDelimiter(
+        sourceObj.has("delimiter") ? sourceObj.getString("delimiter") : source.getDelimiter());
+    source.setSeparator(
+        sourceObj.has("separator") ? sourceObj.getString("separator") : source.getSeparator());
     // handle inline data
     if (sourceObj.has("data")) {
       if (sourceObj.get("data") instanceof JSONArray) {
 
-        if (source.csvFormat == CSVFormat.DEFAULT) {
-          source.inline = Source.jsonToListOfListsArray(sourceObj.getJSONArray("data"));
+        if (source.getCsvFormat() == CSVFormat.DEFAULT) {
+          source.setInline(Source.jsonToListOfListsArray(sourceObj.getJSONArray("data")));
         } else {
           String[] rows =
-              Source.jsonToListOfStringArray(sourceObj.getJSONArray("data"), source.delimiter);
-          source.inline = TextParserUtils.parseDelimitedLines(source.csvFormat, rows);
+              Source.jsonToListOfStringArray(sourceObj.getJSONArray("data"), source.getDelimiter());
+          source.setInline(TextParserUtils.parseDelimitedLines(source.getCsvFormat(), rows));
         }
 
       } else {
         String csv = sourceObj.getString("data");
         String[] rows;
-        if (source.separator != null && csv.contains(source.separator)) {
-          rows = StringUtils.split(csv, source.separator);
+        if (source.getSeparator() != null && csv.contains(source.getSeparator())) {
+          rows = StringUtils.split(csv, source.getSeparator());
           // we may have more luck with varieties of newline
         } else {
           rows = NEWLINE_PATTERN.split(csv);
         }
         if (rows.length < 2) {
-          String errMsg = "Cold not parse inline data.  Check separator: " + source.separator;
+          String errMsg = "Cold not parse inline data.  Check separator: " + source.getSeparator();
           LOG.error(errMsg);
           throw new RuntimeException(errMsg);
         }
-        source.inline = TextParserUtils.parseDelimitedLines(source.csvFormat, rows);
+        source.setInline(TextParserUtils.parseDelimitedLines(source.getCsvFormat(), rows));
       }
     }
-    source.query = sourceObj.has("query") ? sourceObj.getString("query") : "";
+    source.setQuery(sourceObj.has("query") ? sourceObj.getString("query") : "");
     // uri or url accepted
-    source.uri = sourceObj.has("url") ? sourceObj.getString("url") : "";
-    source.uri = sourceObj.has("uri") ? sourceObj.getString("uri") : "";
+    source.setUri(
+        sourceObj.has("uri")
+            ? sourceObj.getString("uri")
+            : sourceObj.has("url") ? sourceObj.getString("url") : "");
     String colNamesStr =
         sourceObj.has("ordered_field_names") ? sourceObj.getString("ordered_field_names") : "";
     if (StringUtils.isNotEmpty(colNamesStr)) {
-      source.fieldNames = StringUtils.split(colNamesStr, ",");
-      for (int i = 0; i < source.fieldNames.length; i++) {
-        source.fieldPosByName.put(source.fieldNames[i], (i + 1));
+      source.setFieldNames(StringUtils.split(colNamesStr, ","));
+      for (int i = 0; i < source.getFieldNames().length; i++) {
+        source.getFieldPosByName().put(source.getFieldNames()[i], (i + 1));
       }
     }
-    if (StringUtils.isNotEmpty(source.delimiter)) {
-      source.csvFormat.withDelimiter(source.delimiter.charAt(0));
+    if (StringUtils.isNotEmpty(source.getDelimiter())) {
+      source.getCsvFormat().withDelimiter(source.getDelimiter().charAt(0));
     }
     return source;
   }

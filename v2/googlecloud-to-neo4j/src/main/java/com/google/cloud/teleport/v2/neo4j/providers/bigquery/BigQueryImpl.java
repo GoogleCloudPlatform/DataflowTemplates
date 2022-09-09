@@ -97,8 +97,8 @@ public class BigQueryImpl implements Provider {
     LOG.info("Reading BQ metadata with query: {}", zeroRowSql);
 
     return SqlQuerySpec.builder()
-        .readDescription("Read from BQ " + source.name)
-        .castDescription("Cast to BeamRow " + source.name)
+        .readDescription("Read from BQ " + source.getName())
+        .castDescription("Cast to BeamRow " + source.getName())
         .sql(zeroRowSql)
         .build();
   }
@@ -110,9 +110,9 @@ public class BigQueryImpl implements Provider {
    */
   public SqlQuerySpec getSourceQueryBeamSpec(SourceQuerySpec sourceQuerySpec) {
     return SqlQuerySpec.builder()
-        .castDescription("Cast to BeamRow " + sourceQuerySpec.source.name)
-        .readDescription("Read from BQ " + sourceQuerySpec.source.name)
-        .sql(getBaseQuery(sourceQuerySpec.source))
+        .castDescription("Cast to BeamRow " + sourceQuerySpec.getSource().getName())
+        .readDescription("Read from BQ " + sourceQuerySpec.getSource().getName())
+        .sql(getBaseQuery(sourceQuerySpec.getSource()))
         .build();
   }
 
@@ -122,24 +122,28 @@ public class BigQueryImpl implements Provider {
    * @return helper object includes metadata and SQL
    */
   public SqlQuerySpec getTargetQueryBeamSpec(TargetQuerySpec targetQuerySpec) {
-    Set<String> sourceFieldSet = ModelUtils.getBeamFieldSet(targetQuerySpec.sourceBeamSchema);
-    String baseSql = getBaseQuery(targetQuerySpec.source);
+    Set<String> sourceFieldSet = ModelUtils.getBeamFieldSet(targetQuerySpec.getSourceBeamSchema());
+    String baseSql = getBaseQuery(targetQuerySpec.getSource());
     String targetSpecificSql =
-        ModelUtils.getTargetSql(sourceFieldSet, targetQuerySpec.target, true, baseSql);
+        ModelUtils.getTargetSql(sourceFieldSet, targetQuerySpec.getTarget(), true, baseSql);
     return SqlQuerySpec.builder()
         .readDescription(
-            targetQuerySpec.target.sequence + ": Read from BQ " + targetQuerySpec.target.name)
+            targetQuerySpec.getTarget().getSequence()
+                + ": Read from BQ "
+                + targetQuerySpec.getTarget().getName())
         .castDescription(
-            targetQuerySpec.target.sequence + ": Cast to BeamRow " + targetQuerySpec.target.name)
+            targetQuerySpec.getTarget().getSequence()
+                + ": Cast to BeamRow "
+                + targetQuerySpec.getTarget().getName())
         .sql(targetSpecificSql)
         .build();
   }
 
   private String getBaseQuery(Source source) {
-    String baseSql = source.query;
-    if (StringUtils.isNotEmpty(optionsParams.readQuery)) {
+    String baseSql = source.getQuery();
+    if (StringUtils.isNotEmpty(optionsParams.getReadQuery())) {
       LOG.info("Overriding source query with run-time option");
-      baseSql = optionsParams.readQuery;
+      baseSql = optionsParams.getReadQuery();
     }
     return baseSql;
   }

@@ -31,7 +31,11 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Generates cypher based on model metadata. TODO: Needs to be refactored to use DSL */
+/**
+ * Generates cypher based on model metadata.
+ *
+ * <p>TODO: Needs to be refactored to use DSL.
+ */
 public class CypherGenerator {
 
   private static final Logger LOG = LoggerFactory.getLogger(CypherGenerator.class);
@@ -45,10 +49,10 @@ public class CypherGenerator {
     String nodeAlias = "N_" + RandomStringUtils.randomAlphanumeric(8);
 
     /// RELATIONSHIP TYPE
-    if (target.type == TargetType.edge) {
+    if (target.getType() == TargetType.edge) {
 
       // Verb
-      if (target.saveMode == SaveMode.merge) { // merge
+      if (target.getSaveMode() == SaveMode.merge) { // merge
         sb.append("UNWIND $" + CONST_ROW_VARIABLE_NAME + " AS row ");
         // MERGE (variable1:Label1 {nodeProperties1})-[:REL_TYPE]->
         // (variable2:Label2 {nodeProperties2})
@@ -69,7 +73,7 @@ public class CypherGenerator {
             .append("]-> ");
         sb.append("(target)");
         // SET properties...
-      } else if (target.saveMode == SaveMode.append) { // Fast, blind create
+      } else if (target.getSaveMode() == SaveMode.append) { // Fast, blind create
         sb.append("UNWIND $" + CONST_ROW_VARIABLE_NAME + " AS row CREATE ");
         sb.append("(")
             .append(
@@ -93,14 +97,14 @@ public class CypherGenerator {
                     target))
             .append(")");
       } else {
-        LOG.error("Unhandled saveMode: " + target.saveMode);
+        LOG.error("Unhandled saveMode: " + target.getSaveMode());
       }
 
       // NODE TYPE
-    } else if (target.type == TargetType.node) {
+    } else if (target.getType() == TargetType.node) {
 
       // Verb
-      if (target.saveMode == SaveMode.merge) { // merge
+      if (target.getSaveMode() == SaveMode.merge) { // merge
         sb.append("UNWIND $" + CONST_ROW_VARIABLE_NAME + " AS row ");
         // MERGE clause represents matching properties
         // MERGE (charlie {name: 'Charlie Sheen', age: 10})  A new node with the name 'Charlie
@@ -117,7 +121,7 @@ public class CypherGenerator {
         if (nodePropertyMapStr.length() > 0) {
           sb.append(" SET n+=").append(nodePropertyMapStr);
         }
-      } else if (target.saveMode == SaveMode.append) { // fast create
+      } else if (target.getSaveMode() == SaveMode.append) { // fast create
         sb.append("UNWIND $" + CONST_ROW_VARIABLE_NAME + " AS row ");
         sb.append("CREATE (")
             .append(
@@ -129,10 +133,10 @@ public class CypherGenerator {
                     target))
             .append(")");
       } else {
-        LOG.error("Unhandled saveMode: " + target.saveMode);
+        LOG.error("Unhandled saveMode: " + target.getSaveMode());
       }
     } else {
-      throw new RuntimeException("Unhandled target type: " + target.type);
+      throw new RuntimeException("Unhandled target type: " + target.getType());
     }
     return sb.toString();
   }
@@ -154,9 +158,9 @@ public class CypherGenerator {
       for (String label : labels) {
         sb.append(":").append(ModelUtils.makeValidNeo4jIdentifier(label));
       }
-    } else if (StringUtils.isNotEmpty(target.name)) {
+    } else if (StringUtils.isNotEmpty(target.getName())) {
       sb.append(alias);
-      sb.append(":").append(ModelUtils.makeValidNeo4jIdentifier(target.name));
+      sb.append(":").append(ModelUtils.makeValidNeo4jIdentifier(target.getName()));
     } else {
       sb.append(alias);
     }
@@ -173,19 +177,21 @@ public class CypherGenerator {
       Target target) {
     StringBuilder sb = new StringBuilder();
     int targetColCount = 0;
-    for (Mapping m : target.mappings) {
-      if (m.fragmentType == entityType) {
-        if (roleTypes.contains(m.role) && (!onlyIndexedProperties || m.indexed)) {
+    for (Mapping m : target.getMappings()) {
+      if (m.getFragmentType() == entityType) {
+        if (roleTypes.contains(m.getRole()) && (!onlyIndexedProperties || m.isIndexed())) {
           if (targetColCount > 0) {
             sb.append(",");
           }
-          if (StringUtils.isNotEmpty(m.constant)) {
-            sb.append(ModelUtils.makeValidNeo4jIdentifier(m.name))
+          if (StringUtils.isNotEmpty(m.getConstant())) {
+            sb.append(ModelUtils.makeValidNeo4jIdentifier(m.getName()))
                 .append(": \"")
-                .append(m.constant)
+                .append(m.getConstant())
                 .append("\"");
           } else {
-            sb.append(ModelUtils.makeValidNeo4jIdentifier(m.name)).append(": row.").append(m.field);
+            sb.append(ModelUtils.makeValidNeo4jIdentifier(m.getName()))
+                .append(": row.")
+                .append(m.getField());
           }
           targetColCount++;
         }

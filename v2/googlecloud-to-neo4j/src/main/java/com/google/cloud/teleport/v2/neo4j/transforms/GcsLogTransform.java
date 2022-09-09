@@ -49,7 +49,7 @@ public class GcsLogTransform extends PTransform<PCollection<Row>, POutput> {
   @Override
   public POutput expand(PCollection<Row> input) {
 
-    String auditFilePath = jobSpec.getConfig().auditGsUri;
+    String auditFilePath = jobSpec.getConfig().getAuditGsUri();
     if (!StringUtils.endsWith(auditFilePath, "/")) {
       auditFilePath += "/";
     }
@@ -57,13 +57,13 @@ public class GcsLogTransform extends PTransform<PCollection<Row>, POutput> {
     org.apache.avro.Schema targetAvroSchema = AvroUtils.toAvroSchema(input.getSchema());
 
     FileIO.Sink<GenericRecord> sink;
-    if (jobSpec.getConfig().avroType == AvroType.parquet) {
+    if (jobSpec.getConfig().getAvroType() == AvroType.parquet) {
       sink = ParquetIO.sink(targetAvroSchema).withCompressionCodec(CompressionCodecName.SNAPPY);
-    } else if (jobSpec.getConfig().avroType == AvroType.avro) {
+    } else if (jobSpec.getConfig().getAvroType() == AvroType.avro) {
       sink = new AvroSinkWithJodaDatesConversion<>(targetAvroSchema);
     } else {
       throw new UnsupportedOperationException(
-          "Output format is not implemented: " + jobSpec.getConfig().avroType);
+          "Output format is not implemented: " + jobSpec.getConfig().getAvroType());
     }
     LOG.info(
         "Logging to {} with prefix: {}",
@@ -71,13 +71,14 @@ public class GcsLogTransform extends PTransform<PCollection<Row>, POutput> {
         input.getPipeline().getOptions().getJobName());
     PCollection<GenericRecord> genericInput =
         input.apply(
-            target.sequence + ": Log xform " + target.name, Convert.to(GenericRecord.class));
+            target.getSequence() + ": Log xform " + target.getName(),
+            Convert.to(GenericRecord.class));
     return genericInput.apply(
-        target.sequence + ": Log write " + target.name,
+        target.getSequence() + ": Log write " + target.getName(),
         FileIO.<GenericRecord>write()
             .via(sink)
             .to(auditFilePath)
             .withPrefix(input.getPipeline().getOptions().getJobName())
-            .withSuffix("." + jobSpec.getConfig().avroType));
+            .withSuffix("." + jobSpec.getConfig().getAvroType()));
   }
 }

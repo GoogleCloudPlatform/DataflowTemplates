@@ -32,8 +32,8 @@ public class PreloadBigQueryAction implements PreloadAction {
 
   private static final Logger LOG = LoggerFactory.getLogger(PreloadBigQueryAction.class);
 
-  Action action;
-  ActionContext context;
+  private Action action;
+  private ActionContext context;
 
   @Override
   public void configure(Action action, ActionContext context) {

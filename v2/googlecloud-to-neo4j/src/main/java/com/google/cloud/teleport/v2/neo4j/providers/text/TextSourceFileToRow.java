@@ -44,22 +44,23 @@ public class TextSourceFileToRow extends PTransform<PBegin, PCollection<Row>> {
 
   @Override
   public PCollection<Row> expand(PBegin input) {
-    Source source = sourceQuerySpec.source;
-    Schema beamTextSchema = sourceQuerySpec.sourceSchema;
-    String dataFileUri = source.uri;
+    Source source = sourceQuerySpec.getSource();
+    Schema beamTextSchema = sourceQuerySpec.getSourceSchema();
+    String dataFileUri = source.getUri();
 
     if (StringUtils.isNotBlank(dataFileUri)) {
       LOG.info("Ingesting file: {}.", dataFileUri);
       return input
-          .apply("Read " + source.name + " data: " + dataFileUri, TextIO.read().from(dataFileUri))
+          .apply(
+              "Read " + source.getName() + " data: " + dataFileUri, TextIO.read().from(dataFileUri))
           .apply(
               "Parse lines into string columns.",
-              ParDo.of(new LineToRowFn(source, beamTextSchema, source.csvFormat)))
+              ParDo.of(new LineToRowFn(source, beamTextSchema, source.getCsvFormat())))
           .setRowSchema(beamTextSchema);
-    } else if (source.inline != null && !source.inline.isEmpty()) {
-      LOG.info("Processing {} rows inline.", source.inline.size());
+    } else if (source.getInline() != null && !source.getInline().isEmpty()) {
+      LOG.info("Processing {} rows inline.", source.getInline().size());
       return input
-          .apply("Ingest inline dataset: " + source.name, Create.of(source.inline))
+          .apply("Ingest inline dataset: " + source.getName(), Create.of(source.getInline()))
           .apply(
               "Parse lines into string columns.", ParDo.of(new ListOfStringToRowFn(beamTextSchema)))
           .setRowSchema(beamTextSchema);

@@ -39,10 +39,10 @@ public class Neo4jConnection implements Serializable {
   private static final Logger LOG = LoggerFactory.getLogger(Neo4jConnection.class);
   private final String username;
   private final String password;
-  public String serverUrl = null;
-  public String database = null;
-  public AuthType authType = AuthType.BASIC;
-  Driver driver = null;
+  private String serverUrl;
+  private String database;
+  private AuthType authType = AuthType.BASIC;
+  private Driver driver;
 
   /** Constructor. */
   public Neo4jConnection(ConnectionParams connectionParams) {

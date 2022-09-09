@@ -37,9 +37,9 @@ import org.slf4j.LoggerFactory;
 public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PCollection<Row>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(Neo4jRowWriterTransform.class);
-  JobSpec jobSpec;
-  ConnectionParams neoConnection;
-  Target target;
+  private JobSpec jobSpec;
+  private ConnectionParams neoConnection;
+  private Target target;
 
   public Neo4jRowWriterTransform(JobSpec jobSpec, ConnectionParams neoConnection, Target target) {
     this.jobSpec = jobSpec;
@@ -68,12 +68,12 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
     }
 
     // set batch sizes
-    int batchSize = jobSpec.getConfig().nodeBatchSize;
-    int parallelism = jobSpec.getConfig().nodeParallelism;
+    int batchSize = jobSpec.getConfig().getNodeBatchSize();
+    int parallelism = jobSpec.getConfig().getNodeParallelism();
 
-    if (target.type == TargetType.edge) {
-      batchSize = jobSpec.getConfig().edgeBatchSize;
-      parallelism = jobSpec.getConfig().edgeParallelism;
+    if (target.getType() == TargetType.edge) {
+      batchSize = jobSpec.getConfig().getEdgeBatchSize();
+      parallelism = jobSpec.getConfig().getEdgeParallelism();
     }
 
     // data loading
@@ -95,7 +95,7 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
 
     return input
         .apply("Create KV pairs", CreateKvTransform.of(parallelism))
-        .apply(target.sequence + ": Neo4j write " + target.name, ParDo.of(neo4jUnwindFn))
+        .apply(target.getSequence() + ": Neo4j write " + target.getName(), ParDo.of(neo4jUnwindFn))
         .setRowSchema(input.getSchema());
   }
 

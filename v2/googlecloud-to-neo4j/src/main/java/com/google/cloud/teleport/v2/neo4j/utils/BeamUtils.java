@@ -75,46 +75,46 @@ public class BeamUtils {
     // map source column names to order
     List<Schema.Field> fields = new ArrayList<>();
     // Map these fields to a schema in a row
-    for (int i = 0; i < target.mappings.size(); i++) {
-      Mapping mapping = target.mappings.get(i);
+    for (int i = 0; i < target.getMappings().size(); i++) {
+      Mapping mapping = target.getMappings().get(i);
       String fieldName = "";
-      if (StringUtils.isNotBlank(mapping.field)) {
-        fieldName = mapping.field;
-      } else if (StringUtils.isNotBlank(mapping.name)) {
-        fieldName = mapping.name;
-      } else if (StringUtils.isNotBlank(mapping.constant)) {
-        fieldName = mapping.constant;
+      if (StringUtils.isNotBlank(mapping.getField())) {
+        fieldName = mapping.getField();
+      } else if (StringUtils.isNotBlank(mapping.getName())) {
+        fieldName = mapping.getName();
+      } else if (StringUtils.isNotBlank(mapping.getConstant())) {
+        fieldName = mapping.getConstant();
       }
 
       if (StringUtils.isEmpty(fieldName)) {
         throw new RuntimeException(
-            "Could not find field name or constant in target: " + target.name);
+            "Could not find field name or constant in target: " + target.getName());
       }
       Schema.Field schemaField;
-      if (mapping.type == PropertyType.Integer || mapping.type == PropertyType.Long) {
+      if (mapping.getType() == PropertyType.Integer || mapping.getType() == PropertyType.Long) {
         // avoid truncation by making it long
         schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.INT64);
-      } else if (mapping.type == PropertyType.BigDecimal) {
+      } else if (mapping.getType() == PropertyType.BigDecimal) {
         schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.DECIMAL);
-      } else if (mapping.type == PropertyType.Float) {
+      } else if (mapping.getType() == PropertyType.Float) {
         schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.FLOAT);
-      } else if (mapping.type == PropertyType.Boolean) {
+      } else if (mapping.getType() == PropertyType.Boolean) {
         schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.BOOLEAN);
-      } else if (mapping.type == PropertyType.ByteArray) {
+      } else if (mapping.getType() == PropertyType.ByteArray) {
         schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.BYTES);
-      } else if (mapping.type == PropertyType.Point) {
+      } else if (mapping.getType() == PropertyType.Point) {
         schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.STRING);
-      } else if (mapping.type == PropertyType.Duration) {
+      } else if (mapping.getType() == PropertyType.Duration) {
         schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.DECIMAL);
-      } else if (mapping.type == PropertyType.Date) {
+      } else if (mapping.getType() == PropertyType.Date) {
         schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.DATETIME);
-      } else if (mapping.type == PropertyType.LocalDateTime) {
+      } else if (mapping.getType() == PropertyType.LocalDateTime) {
         schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.DATETIME);
-      } else if (mapping.type == PropertyType.DateTime) {
+      } else if (mapping.getType() == PropertyType.DateTime) {
         schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.DATETIME);
-      } else if (mapping.type == PropertyType.LocalTime) {
+      } else if (mapping.getType() == PropertyType.LocalTime) {
         schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.DATETIME);
-      } else if (mapping.type == PropertyType.Time) {
+      } else if (mapping.getType() == PropertyType.Time) {
         schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.STRING);
       } else {
         schemaField = Schema.Field.nullable(fieldName, Schema.FieldType.STRING);

@@ -27,7 +27,7 @@ import com.google.cloud.teleport.v2.neo4j.model.job.Source;
 import com.google.cloud.teleport.v2.neo4j.providers.Provider;
 import com.google.cloud.teleport.v2.neo4j.providers.ProviderFactory;
 import com.google.cloud.teleport.v2.neo4j.providers.text.TextImpl;
-import com.google.cloud.teleport.v2.neo4j.templates.BigQueryToNeo4j;
+import com.google.cloud.teleport.v2.neo4j.templates.GoogleCloudToNeo4j;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -43,7 +43,7 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Unit tests for {@link BigQueryToNeo4j}. */
+/** Unit tests for {@link GoogleCloudToNeo4j}. */
 @RunWith(JUnit4.class)
 public class GoogleToNeo4jTest {
 
@@ -63,7 +63,7 @@ public class GoogleToNeo4jTest {
     neo4jConnection =
         new ConnectionParams("src/test/resources/testing-specs/auradb-free-connection.json");
     jobSpec = JobSpecMapper.fromUri("src/test/resources/testing-specs/text-northwind-jobspec.json");
-    providerImpl = ProviderFactory.of(jobSpec.getSourceList().get(0).sourceType);
+    providerImpl = ProviderFactory.of(jobSpec.getSourceList().get(0).getSourceType());
     optionsParams = new OptionsParams();
     optionsParams.overlayTokens("{\"limit\":7}");
     providerImpl.configure(optionsParams, jobSpec);
@@ -82,13 +82,13 @@ public class GoogleToNeo4jTest {
 
   @Test
   public void testResolvedVariable() {
-    assertEquals("7", optionsParams.tokenMap.get("limit"));
+    assertEquals("7", optionsParams.getTokenMap().get("limit"));
   }
 
   @Test
   public void testResolvedSqlVariable() {
     String uri = "SELECT * FROM TEST LIMIT $limit";
-    String uriReplaced = ModelUtils.replaceVariableTokens(uri, optionsParams.tokenMap);
+    String uriReplaced = ModelUtils.replaceVariableTokens(uri, optionsParams.getTokenMap());
     LOG.info("uri: {}, uri_replaced: {}", uri, uriReplaced);
     assertTrue(uriReplaced.contains("LIMIT 7"));
   }
@@ -96,7 +96,7 @@ public class GoogleToNeo4jTest {
   @Test
   public void testGetInvalidOrderQuery() {
     Source source = jobSpec.getSourceList().get(0);
-    source.query = "SELECT * FROM FOO ORDER BY X";
+    source.setQuery("SELECT * FROM FOO ORDER BY X");
     List<String> messages = InputValidator.validateJobSpec(jobSpec);
     assertTrue(
         ModelUtils.messagesContains(messages, "SQL contains ORDER BY which is not supported"));

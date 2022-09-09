@@ -60,12 +60,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Dataflow template which reads BigQuery data and writes it to Neo4j. The source data can be either
- * a BigQuery table or an SQL query.
+ * Dataflow template which reads Google Cloud data (Text, BigQuery) and writes it to Neo4j.
+ *
+ * <p>In case of BigQuery, the source data can be either a table or a SQL query.
  */
-public class BigQueryToNeo4j {
+public class GoogleCloudToNeo4j {
 
-  private static final Logger LOG = LoggerFactory.getLogger(BigQueryToNeo4j.class);
+  private static final Logger LOG = LoggerFactory.getLogger(GoogleCloudToNeo4j.class);
 
   private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
@@ -79,7 +80,7 @@ public class BigQueryToNeo4j {
    *
    * @param pipelineOptions framework supplied arguments
    */
-  public BigQueryToNeo4j(Neo4jFlexTemplateOptions pipelineOptions) {
+  public GoogleCloudToNeo4j(Neo4jFlexTemplateOptions pipelineOptions) {
 
     ////////////////////////////
     // Job name gets a date on it when running within the container, but not with DirectRunner
@@ -123,7 +124,7 @@ public class BigQueryToNeo4j {
     // Source specific validations
     for (Source source : jobSpec.getSourceList()) {
       // get provider implementation for source
-      Provider providerImpl = ProviderFactory.of(source.sourceType);
+      Provider providerImpl = ProviderFactory.of(source.getSourceType());
       providerImpl.configure(optionsParams, jobSpec);
     }
 
@@ -147,7 +148,7 @@ public class BigQueryToNeo4j {
     }
 
     LOG.info("Job: {}", options.getJobSpecUri());
-    BigQueryToNeo4j template = new BigQueryToNeo4j(options);
+    GoogleCloudToNeo4j template = new GoogleCloudToNeo4j(options);
     template.run();
   }
 
@@ -167,7 +168,7 @@ public class BigQueryToNeo4j {
 
     ////////////////////////////
     // Reset db
-    if (jobSpec.getConfig().resetDb) {
+    if (jobSpec.getConfig().getResetDb()) {
       Neo4jConnection directConnect = new Neo4jConnection(this.neo4jConnection);
       directConnect.resetDatabase();
     }
@@ -190,13 +191,13 @@ public class BigQueryToNeo4j {
     for (Source source : jobSpec.getSourceList()) {
 
       // get provider implementation for source
-      Provider providerImpl = ProviderFactory.of(source.sourceType);
+      Provider providerImpl = ProviderFactory.of(source.getSourceType());
       providerImpl.configure(optionsParams, jobSpec);
       PCollection<Row> sourceMetadata =
           pipeline.apply("Source metadata", providerImpl.queryMetadata(source));
       Schema sourceBeamSchema = sourceMetadata.getSchema();
       processingQueue.addToQueue(
-          ArtifactType.source, false, source.name, defaultActionContext, sourceMetadata);
+          ArtifactType.source, false, source.getName(), defaultActionContext, sourceMetadata);
       PCollection<Row> nullableSourceBeamRows = null;
 
       ////////////////////////////
@@ -207,7 +208,7 @@ public class BigQueryToNeo4j {
             SourceQuerySpec.builder().source(source).sourceSchema(sourceBeamSchema).build();
         nullableSourceBeamRows =
             pipeline
-                .apply("Common query", providerImpl.querySourceBeamRows(sourceQuerySpec))
+                .apply("Common Query", providerImpl.querySourceBeamRows(sourceQuerySpec))
                 .setRowSchema(sourceBeamSchema);
       }
 
@@ -218,7 +219,7 @@ public class BigQueryToNeo4j {
       ////////////////////////////
       // No optimization possible so write nodes then edges.
       // Write node targets
-      List<Target> nodeTargets = jobSpec.getActiveNodeTargetsBySource(source.name);
+      List<Target> nodeTargets = jobSpec.getActiveNodeTargetsBySource(source.getName());
       for (Target target : nodeTargets) {
         TargetQuerySpec targetQuerySpec =
             TargetQuerySpec.builder()
@@ -231,7 +232,7 @@ public class BigQueryToNeo4j {
         if (ModelUtils.targetHasTransforms(target)) {
           preInsertBeamRows =
               pipeline.apply(
-                  target.sequence + ": Nodes query " + target.name,
+                  target.getSequence() + ": Nodes query " + target.getName(),
                   providerImpl.queryTargetBeamRows(targetQuerySpec));
         } else {
           preInsertBeamRows = nullableSourceBeamRows;
@@ -242,36 +243,41 @@ public class BigQueryToNeo4j {
         PCollection<Row> emptyReturn = null;
         // We don't need to add an explicit queue step under these conditions.
         // Implicitly, the job will queue until after its source is complete.
-        if (target.executeAfter == ActionExecuteAfter.start
-            || target.executeAfter == ActionExecuteAfter.sources
-            || target.executeAfter == ActionExecuteAfter.async) {
+        if (target.getExecuteAfter() == ActionExecuteAfter.start
+            || target.getExecuteAfter() == ActionExecuteAfter.sources
+            || target.getExecuteAfter() == ActionExecuteAfter.async) {
           emptyReturn =
               preInsertBeamRows.apply(
-                  target.sequence + ": Writing Neo4j " + target.name, targetWriterTransform);
+                  target.getSequence() + ": Writing Neo4j " + target.getName(),
+                  targetWriterTransform);
         } else {
           emptyReturn =
               preInsertBeamRows
                   .apply(
-                      "Executing " + target.executeAfter + " (" + target.name + ")",
+                      "Executing " + target.getExecuteAfter() + " (" + target.getName() + ")",
                       Wait.on(
                           processingQueue.waitOnCollection(
-                              target.executeAfter,
-                              target.executeAfterName,
-                              source.name + " nodes")))
+                              target.getExecuteAfter(),
+                              target.getExecuteAfterName(),
+                              source.getName() + " nodes")))
                   .setCoder(preInsertBeamRows.getCoder())
-                  .apply(target.sequence + ": Writing Neo4j " + target.name, targetWriterTransform);
+                  .apply(
+                      target.getSequence() + ": Writing Neo4j " + target.getName(),
+                      targetWriterTransform);
         }
-        if (!StringUtils.isEmpty(jobSpec.getConfig().auditGsUri)) {
+        if (!StringUtils.isEmpty(jobSpec.getConfig().getAuditGsUri())) {
           GcsLogTransform logTransform = new GcsLogTransform(jobSpec, target);
-          preInsertBeamRows.apply(target.sequence + ": Logging " + target.name, logTransform);
+          preInsertBeamRows.apply(
+              target.getSequence() + ": Logging " + target.getName(), logTransform);
         }
         processingQueue.addToQueue(
-            ArtifactType.node, false, target.name, emptyReturn, preInsertBeamRows);
+            ArtifactType.node, false, target.getName(), emptyReturn, preInsertBeamRows);
       }
 
       ////////////////////////////
       // Write relationship targets
-      List<Target> relationshipTargets = jobSpec.getActiveRelationshipTargetsBySource(source.name);
+      List<Target> relationshipTargets =
+          jobSpec.getActiveRelationshipTargetsBySource(source.getName());
       for (Target target : relationshipTargets) {
         TargetQuerySpec targetQuerySpec =
             TargetQuerySpec.builder()
@@ -284,7 +290,7 @@ public class BigQueryToNeo4j {
         if (ModelUtils.targetHasTransforms(target)) {
           preInsertBeamRows =
               pipeline.apply(
-                  target.sequence + ": Edges query " + target.name,
+                  target.getSequence() + ": Edges query " + target.getName(),
                   providerImpl.queryTargetBeamRows(targetQuerySpec));
         } else {
           preInsertBeamRows = nullableSourceBeamRows;
@@ -294,34 +300,38 @@ public class BigQueryToNeo4j {
         PCollection<Row> emptyReturn = null;
         // We don't need to add an explicit queue step under these conditions
         // Implicitly, the job will queue until after its source is complete.
-        if (target.executeAfter == ActionExecuteAfter.start
-            || target.executeAfter == ActionExecuteAfter.sources
-            || target.executeAfter == ActionExecuteAfter.async) {
+        if (target.getExecuteAfter() == ActionExecuteAfter.start
+            || target.getExecuteAfter() == ActionExecuteAfter.sources
+            || target.getExecuteAfter() == ActionExecuteAfter.async) {
 
           emptyReturn =
               preInsertBeamRows.apply(
-                  target.sequence + ": Writing Neo4j " + target.name, targetWriterTransform);
+                  target.getSequence() + ": Writing Neo4j " + target.getName(),
+                  targetWriterTransform);
 
         } else {
           emptyReturn =
               preInsertBeamRows
                   .apply(
-                      "Executing " + target.executeAfter + " (" + target.name + ")",
+                      "Executing " + target.getExecuteAfter() + " (" + target.getName() + ")",
                       Wait.on(
                           processingQueue.waitOnCollection(
-                              target.executeAfter,
-                              target.executeAfterName,
-                              source.name + " nodes")))
+                              target.getExecuteAfter(),
+                              target.getExecuteAfterName(),
+                              source.getName() + " nodes")))
                   .setCoder(preInsertBeamRows.getCoder())
-                  .apply(target.sequence + ": Writing Neo4j " + target.name, targetWriterTransform);
+                  .apply(
+                      target.getSequence() + ": Writing Neo4j " + target.getName(),
+                      targetWriterTransform);
         }
-        if (!StringUtils.isEmpty(jobSpec.getConfig().auditGsUri)) {
+        if (!StringUtils.isEmpty(jobSpec.getConfig().getAuditGsUri())) {
           GcsLogTransform logTransform = new GcsLogTransform(jobSpec, target);
-          preInsertBeamRows.apply(target.sequence + ": Logging " + target.name, logTransform);
+          preInsertBeamRows.apply(
+              target.getSequence() + ": Logging " + target.getName(), logTransform);
         }
         // serialize relationships
         processingQueue.addToQueue(
-            ArtifactType.edge, false, target.name, emptyReturn, preInsertBeamRows);
+            ArtifactType.edge, false, target.getName(), emptyReturn, preInsertBeamRows);
       }
     }
 

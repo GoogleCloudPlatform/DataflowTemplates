@@ -17,21 +17,25 @@ package com.google.cloud.teleport.v2.neo4j.model.job;
 
 import com.google.cloud.teleport.v2.neo4j.model.enums.AvroType;
 import java.io.Serializable;
+import lombok.Getter;
+import lombok.Setter;
 import org.json.JSONObject;
 
 /** Global configuration options. */
+@Getter
+@Setter
 public class Config implements Serializable {
 
-  public Boolean resetDb = false;
-  public Boolean indexAllProperties = false;
+  private Boolean resetDb = false;
+  private Boolean indexAllProperties = false;
 
-  public String auditGsUri;
-  public AvroType avroType = AvroType.parquet;
+  private String auditGsUri;
+  private AvroType avroType = AvroType.parquet;
 
-  public Integer nodeParallelism = 5;
-  public Integer edgeParallelism = 1;
-  public Integer nodeBatchSize = 5000;
-  public Integer edgeBatchSize = 1000;
+  private Integer nodeParallelism = 5;
+  private Integer edgeParallelism = 1;
+  private Integer nodeBatchSize = 5000;
+  private Integer edgeBatchSize = 1000;
 
   public Config() {}
 

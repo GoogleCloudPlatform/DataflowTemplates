@@ -52,11 +52,11 @@ public class TextTargetToRow extends PTransform<PBegin, PCollection<Row>> {
   @Override
   public PCollection<Row> expand(PBegin input) {
 
-    PCollection<Row> sourceBeamRows = targetQuerySpec.nullableSourceRows;
-    Schema sourceSchema = targetQuerySpec.sourceBeamSchema;
+    PCollection<Row> sourceBeamRows = targetQuerySpec.getNullableSourceRows();
+    Schema sourceSchema = targetQuerySpec.getSourceBeamSchema();
     Set<String> sourceFieldSet = ModelUtils.getBeamFieldSet(sourceSchema);
 
-    Target target = targetQuerySpec.target;
+    Target target = targetQuerySpec.getTarget();
     Schema targetSchema = BeamUtils.toBeamSchema(target);
     DoFn<Row, Row> castToTargetRow = new CastExpandTargetRowFn(target, targetSchema);
 
@@ -67,20 +67,24 @@ public class TextTargetToRow extends PTransform<PBegin, PCollection<Row>> {
       LOG.info("Executing SQL on PCOLLECTION: {}", sql);
       PCollection<Row> sqlDataRow =
           sourceBeamRows.apply(
-              target.sequence + ": SQLTransform " + target.name, SqlTransform.query(sql));
+              target.getSequence() + ": SQLTransform " + target.getName(), SqlTransform.query(sql));
       LOG.info("Sql final schema: {}", sqlDataRow.getSchema());
       return sqlDataRow
-          .apply(target.sequence + ": Cast " + target.name + " rows", ParDo.of(castToTargetRow))
+          .apply(
+              target.getSequence() + ": Cast " + target.getName() + " rows",
+              ParDo.of(castToTargetRow))
           .setRowSchema(targetSchema);
     } else {
       LOG.info("Target schema: {}", targetSchema);
       return sourceBeamRows
-          .apply(target.sequence + ": Cast " + target.name + " rows", ParDo.of(castToTargetRow))
+          .apply(
+              target.getSequence() + ": Cast " + target.getName() + " rows",
+              ParDo.of(castToTargetRow))
           .setRowSchema(targetSchema);
     }
   }
 
   private String getRewritten(String sql) {
-    return ModelUtils.replaceVariableTokens(sql, optionsParams.tokenMap);
+    return ModelUtils.replaceVariableTokens(sql, optionsParams.getTokenMap());
   }
 }

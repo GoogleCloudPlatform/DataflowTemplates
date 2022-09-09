@@ -16,10 +16,14 @@
 package com.google.cloud.teleport.v2.neo4j.model.job;
 
 import java.io.Serializable;
+import lombok.Getter;
+import lombok.Setter;
 
 /** Model to capture SQL aggregate expressions. */
+@Getter
+@Setter
 public class Aggregation implements Serializable {
 
-  public String expression;
-  public String field;
+  private String expression;
+  private String field;
 }

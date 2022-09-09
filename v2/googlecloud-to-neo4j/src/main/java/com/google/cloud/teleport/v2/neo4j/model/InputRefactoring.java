@@ -72,9 +72,9 @@ public class InputRefactoring {
     int targetNum = 0;
     for (Target target : jobSpec.getTargets()) {
       targetNum++;
-      target.sequence = targetNum;
-      if (StringUtils.isEmpty(target.name)) {
-        target.name = "Target " + targetNum;
+      target.setSequence(targetNum);
+      if (StringUtils.isEmpty(target.getName())) {
+        target.setName("Target " + targetNum);
       }
     }
   }
@@ -89,27 +89,27 @@ public class InputRefactoring {
   private void rewriteSource(Source source) {
 
     // rewrite file URI
-    String dataFileUri = source.uri;
-    if (StringUtils.isNotEmpty(optionsParams.inputFilePattern)) {
+    String dataFileUri = source.getUri();
+    if (StringUtils.isNotEmpty(optionsParams.getInputFilePattern())) {
       LOG.info("Overriding source uri with run-time option");
-      dataFileUri = optionsParams.inputFilePattern;
+      dataFileUri = optionsParams.getInputFilePattern();
     }
-    source.uri = ModelUtils.replaceVariableTokens(dataFileUri, optionsParams.tokenMap);
+    source.setUri(ModelUtils.replaceVariableTokens(dataFileUri, optionsParams.getTokenMap()));
 
     // rewrite SQL
-    String sql = source.query;
-    if (StringUtils.isNotEmpty(optionsParams.readQuery)) {
+    String sql = source.getQuery();
+    if (StringUtils.isNotEmpty(optionsParams.getReadQuery())) {
       LOG.info("Overriding sql with run-time option");
-      sql = optionsParams.readQuery;
+      sql = optionsParams.getReadQuery();
     }
-    source.query = ModelUtils.replaceVariableTokens(sql, optionsParams.tokenMap);
+    source.setQuery(ModelUtils.replaceVariableTokens(sql, optionsParams.getTokenMap()));
   }
 
   private void rewriteAction(Action action) {
     for (Entry<String, String> entry : action.options.entrySet()) {
       String value = entry.getValue();
       action.options.put(
-          entry.getKey(), ModelUtils.replaceVariableTokens(value, optionsParams.tokenMap));
+          entry.getKey(), ModelUtils.replaceVariableTokens(value, optionsParams.getTokenMap()));
     }
   }
 }

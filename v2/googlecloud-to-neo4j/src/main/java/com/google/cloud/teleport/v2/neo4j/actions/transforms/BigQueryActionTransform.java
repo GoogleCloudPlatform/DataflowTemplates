@@ -33,8 +33,8 @@ public class BigQueryActionTransform extends PTransform<PCollection<Row>, PColle
 
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryActionTransform.class);
 
-  protected final Action action;
-  protected final ActionContext context;
+  private final Action action;
+  private final ActionContext context;
 
   public BigQueryActionTransform(Action action, ActionContext context) {
     this.action = action;

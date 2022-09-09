@@ -1,7 +1,7 @@
 # Neo4j Flex Templates
 
-This project contains FlexTemplates that facilitate loading files within the
-Google Cloud to the Neo4j graph database
+This project contains FlexTemplates that facilitate loading files within 
+Google Cloud Platform to the Neo4j graph database.
 
 ## Version History
 
@@ -57,12 +57,12 @@ The template requires the following parameters:
 Template can be executed using the following gcloud command:
 
 ```sh
-export TEMPLATE_GCS_LOCATION="gs://neo4j-dataflow/flex-templates/images/gcp-to-neo4j-image-spec.json"
+export TEMPLATE_IMAGE_SPEC="gs://neo4j-dataflow/flex-templates/images/googlecloud-to-neo4j-image-spec.json"
 export REGION=us-central1
 export MACHINE_TYPE=n2-highmem-8
  
-gcloud dataflow flex-template run "test-text-cli-`date +%Y%m%d-%H%M%S`" \
-    --template-file-gcs-location="$TEMPLATE_GCS_LOCATION" \
+gcloud dataflow flex-template run "googlecloud-to-neo4j-text-cli-`date +%Y%m%d-%H%M%S`" \
+    --template-file-gcs-location="$TEMPLATE_IMAGE_SPEC" \
     --region "$REGION" \
     --parameters jobSpecUri="gs://neo4j-dataflow/job-specs/testing/text/text-northwind-jobspec.json" \
     --parameters neo4jConnectionUri="gs://neo4j-dataflow/job-specs/testing/common/auradb-free-connection.json" \
@@ -97,10 +97,10 @@ mvn clean test -pl v2/googlecloud-to-neo4j -am -f unified-templates.xml
 ```sh
 export PROJECT=neo4jbusinessdev
 export GCS_WORKING_DIR=gs://neo4j-sandbox/dataflow-working
-export APP_NAME=gcp-to-neo4j
+export APP_NAME=googlecloud-to-neo4j
 export REGION=us-central1
 export MACHINE_TYPE=n2-highmem-8
-export IMAGE_NAME=gcp-to-neo4j
+export IMAGE_NAME=googlecloud-to-neo4j
 export BUCKET_NAME=gs://neo4j-dataflow/flex-templates
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
@@ -120,7 +120,7 @@ mvn -DskipTests=true clean package \
     -f unified-templates.xml \
     -pl v2/${TEMPLATE_POM_MODULE} \
     -am \
-    -Djib.container.mainClass=com.google.cloud.teleport.v2.neo4j.templates.BigQueryToNeo4j \
+    -Djib.container.mainClass=com.google.cloud.teleport.v2.neo4j.templates.GoogleCloudToNeo4j \
     -Dimage=${TARGET_GCR_IMAGE} \
     -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
     -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
@@ -137,8 +137,8 @@ Repository.
 echo "{
   \"image\": \"${TARGET_GCR_IMAGE}\",
   \"metadata\": {
-    \"name\": \"BigQuery to Neo4j\",
-    \"description\": \"BigQuery, Text, and other source import into Neo4j\",
+    \"name\": \"Google Cloud to Neo4j\",
+    \"description\": \"Copy data from Google Cloud (BigQuery, Text) into Neo4j\",
     \"parameters\": [
       {
         \"name\": \"jobSpecUri\",
@@ -180,10 +180,8 @@ echo "{
     \"sdk_info\": {
        \"language\": \"JAVA\"
     }
-  }" > image_spec.json
-gsutil cp image_spec.json ${TEMPLATE_IMAGE_SPEC}
-cp image_spec.json ./v2/googlecloud-to-neo4j/docs/gcp-to-neo4j-image-spec.json
-rm image_spec.json
+  }" > ./v2/googlecloud-to-neo4j/docs/googlecloud-to-neo4j-image-spec.json
+gsutil cp ./v2/googlecloud-to-neo4j/docs/googlecloud-to-neo4j-image-spec.json ${TEMPLATE_IMAGE_SPEC}
 ```
 
 ## Other resources

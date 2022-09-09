@@ -18,6 +18,8 @@ package com.google.cloud.teleport.v2.neo4j.model.job;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Iterator;
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.commons.lang3.StringUtils;
 import org.codehaus.jackson.annotate.JsonIgnore;
 import org.json.JSONObject;
@@ -28,13 +30,15 @@ import org.slf4j.LoggerFactory;
  * Runtime options object that coalesces well-known (readQuery, inputFilePattern) and arbitrary
  * options.
  */
+@Getter
+@Setter
 public class OptionsParams implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(OptionsParams.class);
 
-  public String readQuery = "";
-  public String inputFilePattern = "";
-  public HashMap<String, String> tokenMap = new HashMap<>();
+  private String readQuery = "";
+  private String inputFilePattern = "";
+  private HashMap<String, String> tokenMap = new HashMap<>();
 
   public OptionsParams() {}
 

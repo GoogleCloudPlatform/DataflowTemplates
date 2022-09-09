@@ -97,14 +97,14 @@ public class InputValidator {
 
     // Source validation
     for (Source source : jobSpec.getSourceList()) {
-      String sourceName = source.name;
+      String sourceName = source.getName();
       if (StringUtils.isBlank(sourceName)) {
         validationMessages.add("Source is not named");
       }
       // Check that SQL does not have order by...
-      if (StringUtils.isNotBlank(source.query)) {
+      if (StringUtils.isNotBlank(source.getQuery())) {
         LOG.info("Checking source for ORDER BY");
-        Matcher m = ORDER_BY_PATTERN.matcher(source.query);
+        Matcher m = ORDER_BY_PATTERN.matcher(source.getQuery());
         if (m.find()) {
           validationMessages.add("SQL contains ORDER BY which is not supported");
         }
@@ -114,47 +114,50 @@ public class InputValidator {
     // Target validation
     for (Target target : jobSpec.getTargets()) {
       // Check that all targets have names
-      if (StringUtils.isBlank(target.name)) {
+      if (StringUtils.isBlank(target.getName())) {
         validationMessages.add("Targets must include a 'name' attribute.");
       }
-      if (StringUtils.isBlank(target.source)) {
+      if (StringUtils.isBlank(target.getSource())) {
         validationMessages.add(
             "Targets must include a 'source' attribute that maps to a 'source.name'.");
       }
       // Check that source exists if defined (otherwise it will be default source)
-      if (StringUtils.isNotEmpty(target.source)) {
-        if (jobSpec.getSourceByName(target.source) == null) {
-          validationMessages.add("Target source not defined: " + target.source);
+      if (StringUtils.isNotEmpty(target.getSource())) {
+        if (jobSpec.getSourceByName(target.getSource()) == null) {
+          validationMessages.add("Target source not defined: " + target.getSource());
         }
       }
 
       // Check that SQL does not have order by...
-      if (target.transform != null && StringUtils.isNotBlank(target.transform.sql)) {
-        if (target.transform.sql.toUpperCase().matches("")) {
-          Matcher m = ORDER_BY_PATTERN.matcher(target.transform.sql);
+      if (target.getTransform() != null && StringUtils.isNotBlank(target.getTransform().getSql())) {
+        if (target.getTransform().getSql().toUpperCase().matches("")) {
+          Matcher m = ORDER_BY_PATTERN.matcher(target.getTransform().getSql());
           if (m.find()) {
             validationMessages.add(
-                "Target " + target.name + " SQL contains ORDER BY which is not supported");
+                "Target " + target.getName() + " SQL contains ORDER BY which is not supported");
           }
         }
       }
-      if (target.type == TargetType.edge) {
-        for (Mapping mapping : target.mappings) {
-          if (mapping.fragmentType == FragmentType.node) {
+      if (target.getType() == TargetType.edge) {
+        for (Mapping mapping : target.getMappings()) {
+          if (mapping.getFragmentType() == FragmentType.node) {
             validationMessages.add(
                 "Invalid fragment type "
-                    + mapping.fragmentType
+                    + mapping.getFragmentType()
                     + " for node mapping: "
-                    + mapping.name);
+                    + mapping.getName());
           }
-          if (mapping.fragmentType == FragmentType.target
-              || mapping.fragmentType == FragmentType.source) {
-            if (mapping.role != RoleType.key && mapping.role != RoleType.label) {
+          if (mapping.getFragmentType() == FragmentType.target
+              || mapping.getFragmentType() == FragmentType.source) {
+            if (mapping.getRole() != RoleType.key && mapping.getRole() != RoleType.label) {
               validationMessages.add(
-                  "Invalid role " + mapping.role + " on relationship: " + mapping.fragmentType);
+                  "Invalid role "
+                      + mapping.getRole()
+                      + " on relationship: "
+                      + mapping.getFragmentType());
             }
-            if (mapping.labels.isEmpty()) {
-              validationMessages.add(mapping.fragmentType + " missing label attribute");
+            if (mapping.getLabels().isEmpty()) {
+              validationMessages.add(mapping.getFragmentType() + " missing label attribute");
             }
           }
         }
@@ -164,46 +167,47 @@ public class InputValidator {
             ModelUtils.getFirstFieldOrConstant(
                 target, FragmentType.source, Arrays.asList(RoleType.key)))) {
           validationMessages.add(
-              "Could not find target key field for relationship: " + target.name);
+              "Could not find target key field for relationship: " + target.getName());
         }
         if (StringUtils.isBlank(
             ModelUtils.getFirstFieldOrConstant(
                 target, FragmentType.target, Arrays.asList(RoleType.key)))) {
           validationMessages.add(
-              "Could not find target key field for relationship: " + target.name);
+              "Could not find target key field for relationship: " + target.getName());
         }
         if (StringUtils.isBlank(
             ModelUtils.getFirstFieldOrConstant(
                 target, FragmentType.rel, Arrays.asList(RoleType.type)))) {
-          validationMessages.add("Could not find relationship type: " + target.name);
+          validationMessages.add("Could not find relationship type: " + target.getName());
         }
-      } else if (target.type == TargetType.node) {
-        for (Mapping mapping : target.mappings) {
-          if (mapping.fragmentType != FragmentType.node) {
+      } else if (target.getType() == TargetType.node) {
+        for (Mapping mapping : target.getMappings()) {
+          if (mapping.getFragmentType() != FragmentType.node) {
             validationMessages.add(
                 "Invalid fragment type "
-                    + mapping.fragmentType
+                    + mapping.getFragmentType()
                     + " for node mapping: "
-                    + mapping.name);
+                    + mapping.getName());
           }
         }
         if (StringUtils.isBlank(
             ModelUtils.getFirstFieldOrConstant(
                 target, FragmentType.node, Arrays.asList(RoleType.label)))) {
           LOG.info("Invalid target: {}", gson.toJson(target));
-          validationMessages.add("Missing label in node: " + target.name);
+          validationMessages.add("Missing label in node: " + target.getName());
         }
         if (StringUtils.isBlank(
             ModelUtils.getFirstFieldOrConstant(
                 target, FragmentType.node, Arrays.asList(RoleType.key)))) {
-          validationMessages.add("Missing key field in node: " + target.name);
+          validationMessages.add("Missing key field in node: " + target.getName());
         }
       }
       // check that calculated fields are used
-      if (target.transform != null && !target.transform.aggregations.isEmpty()) {
-        for (Aggregation aggregation : target.transform.aggregations) {
-          if (!fieldIsMapped(target, aggregation.field)) {
-            validationMessages.add("Aggregation for field " + aggregation.field + " is unmapped.");
+      if (target.getTransform() != null && !target.getTransform().getAggregations().isEmpty()) {
+        for (Aggregation aggregation : target.getTransform().getAggregations()) {
+          if (!fieldIsMapped(target, aggregation.getField())) {
+            validationMessages.add(
+                "Aggregation for field " + aggregation.getField() + " is unmapped.");
           }
         }
       }
@@ -253,9 +257,8 @@ public class InputValidator {
     if (fieldName == null) {
       return false;
     }
-    for (Mapping mapping : target.mappings) {
-      // LOG.info("Mapping fieldName "+fieldName+": "+gson.toJson(mapping));
-      if (fieldName.equals(mapping.field)) {
+    for (Mapping mapping : target.getMappings()) {
+      if (fieldName.equals(mapping.getField())) {
         return true;
       }
     }

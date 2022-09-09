@@ -32,13 +32,13 @@ public class TargetMapper {
   public static Target fromJson(JSONObject targetObj) {
     Target target = new Target();
     if (targetObj.has("node")) {
-      target.type = TargetType.node;
+      target.setType(TargetType.node);
       parseMappingsObject(target, targetObj.getJSONObject("node"));
     } else if (targetObj.has("edge")) {
-      target.type = TargetType.edge;
+      target.setType(TargetType.edge);
       parseMappingsObject(target, targetObj.getJSONObject("edge"));
     } else {
-      target.type = TargetType.valueOf(targetObj.getString("type"));
+      target.setType(TargetType.valueOf(targetObj.getString("type")));
       parseMappingsArray(target, targetObj);
     }
     return target;
@@ -64,31 +64,31 @@ public class TargetMapper {
   }
 
   private static void addMapping(Target target, Mapping mapping) {
-    target.mappings.add(mapping);
-    if (mapping.field != null) {
-      target.mappingByFieldMap.put(mapping.field, mapping);
-      target.fieldNames.add(mapping.field);
+    target.getMappings().add(mapping);
+    if (mapping.getField() != null) {
+      target.getMappingByFieldMap().put(mapping.getField(), mapping);
+      target.getFieldNames().add(mapping.getField());
     }
   }
 
   private static void parseHeader(Target target, JSONObject targetObj) {
-    target.name = targetObj.getString("name");
-    target.active = !targetObj.has("active") || targetObj.getBoolean("active");
-    target.saveMode = SaveMode.valueOf(targetObj.getString("mode"));
-    target.source = targetObj.has("source") ? targetObj.getString("source") : "";
-    target.autoMap = !targetObj.has("automap") || targetObj.getBoolean("automap");
+    target.setName(targetObj.getString("name"));
+    target.setActive(!targetObj.has("active") || targetObj.getBoolean("active"));
+    target.setSaveMode(SaveMode.valueOf(targetObj.getString("mode")));
+    target.setSource(targetObj.has("source") ? targetObj.getString("source") : "");
+    target.setAutoMap(!targetObj.has("automap") || targetObj.getBoolean("automap"));
     if (targetObj.has("execute_after")) {
-      target.executeAfter = ActionExecuteAfter.valueOf(targetObj.getString("execute_after"));
+      target.setExecuteAfter(ActionExecuteAfter.valueOf(targetObj.getString("execute_after")));
     } else {
-      if (target.type == TargetType.node) {
+      if (target.getType() == TargetType.node) {
         // this will not wait for anything...
-        target.executeAfter = ActionExecuteAfter.sources;
-      } else if (target.type == TargetType.edge) {
-        target.executeAfter = ActionExecuteAfter.nodes;
+        target.setExecuteAfter(ActionExecuteAfter.sources);
+      } else if (target.getType() == TargetType.edge) {
+        target.setExecuteAfter(ActionExecuteAfter.nodes);
       }
     }
-    target.executeAfterName =
-        targetObj.has("execute_after_name") ? targetObj.getString("execute_after_name") : "";
+    target.setExecuteAfterName(
+        targetObj.has("execute_after_name") ? targetObj.getString("execute_after_name") : "");
 
     if (targetObj.has("transform")) {
       JSONObject queryObj = targetObj.getJSONObject("transform");
@@ -98,16 +98,18 @@ public class TargetMapper {
         for (int i = 0; i < aggregationsArray.length(); i++) {
           JSONObject aggregationObj = aggregationsArray.getJSONObject(i);
           Aggregation agg = new Aggregation();
-          agg.expression = aggregationObj.getString("expr");
-          agg.field = aggregationObj.getString("field");
+          agg.setExpression(aggregationObj.getString("expr"));
+          agg.setField(aggregationObj.getString("field"));
           aggregations.add(agg);
         }
-        target.transform.aggregations = aggregations;
+        target.getTransform().setAggregations(aggregations);
       }
-      target.transform.group = queryObj.has("group") && queryObj.getBoolean("group");
-      target.transform.orderBy = queryObj.has("order_by") ? queryObj.getString("order_by") : "";
-      target.transform.limit = queryObj.has("limit") ? queryObj.getInt("limit") : -1;
-      target.transform.where = queryObj.has("where") ? queryObj.getString("where") : "";
+      target.getTransform().setGroup(queryObj.has("group") && queryObj.getBoolean("group"));
+      target
+          .getTransform()
+          .setOrderBy(queryObj.has("order_by") ? queryObj.getString("order_by") : "");
+      target.getTransform().setLimit(queryObj.has("limit") ? queryObj.getInt("limit") : -1);
+      target.getTransform().setWhere(queryObj.has("where") ? queryObj.getString("where") : "");
     }
   }
 }

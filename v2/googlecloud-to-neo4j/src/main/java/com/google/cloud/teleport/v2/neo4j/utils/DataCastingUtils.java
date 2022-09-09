@@ -30,7 +30,6 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
@@ -75,12 +74,12 @@ public class DataCastingUtils {
 
   public static List<Object> sourceTextToTargetObjects(Row rowOfStrings, Target target) {
     Schema targetSchema = BeamUtils.toBeamSchema(target);
-    List<Mapping> targetMappings = target.mappings;
+    List<Mapping> targetMappings = target.getMappings();
     List<Object> castVals = new ArrayList<>();
-    Iterator<Schema.Field> it = targetSchema.getFields().iterator();
-    int indx = -1;
-    while (it.hasNext()) {
-      Schema.Field field = it.next();
+
+    List<String> missingFields = new ArrayList<>();
+
+    for (Schema.Field field : targetSchema.getFields()) {
       String fieldName = field.getName();
       Schema.FieldType type = field.getType();
       Object objVal = null;
@@ -95,7 +94,7 @@ public class DataCastingUtils {
         if (constant != null) {
           castVals.add(StringUtils.trim(constant));
         } else {
-          LOG.error("Value for {} not found.", fieldName);
+          missingFields.add(fieldName);
           castVals.add(null);
         }
         continue;
@@ -103,7 +102,6 @@ public class DataCastingUtils {
 
       try {
         String strEl = String.valueOf(objVal);
-        // LOG.info(fieldName+":"+objVal);
         if (type.getTypeName().isNumericType()) {
           if (type.getTypeName() == Schema.TypeName.DECIMAL) {
             castVals.add(Double.parseDouble(strEl));
@@ -136,17 +134,20 @@ public class DataCastingUtils {
         LOG.warn("Exception casting {} ({}): {}", fieldName, type.getTypeName().toString(), objVal);
       }
     }
-    // LOG.info("Constructing target row: {}, values:
-    // {}",targetSchema,StringUtils.join(castVals,","));
+
+    if (!missingFields.isEmpty()) {
+      LOG.warn("Value for fields {} were not found.", missingFields);
+    }
+
     return castVals;
   }
 
   private static String findConstantValue(List<Mapping> targetMappings, String fieldName) {
     for (Mapping m : targetMappings) {
       // lookup data type
-      if (StringUtils.isNotEmpty(m.constant)) {
-        if (m.name.equals(fieldName) || m.constant.equals(fieldName)) {
-          return m.constant;
+      if (StringUtils.isNotEmpty(m.getConstant())) {
+        if (m.getName().equals(fieldName) || m.getConstant().equals(fieldName)) {
+          return m.getConstant();
         }
       }
     }
@@ -160,16 +161,17 @@ public class DataCastingUtils {
     Schema dataSchema = row.getSchema();
     for (Schema.Field field : dataSchema.getFields()) {
       String fieldName = field.getName();
+      if (row.getValue(fieldName) == null) {
+        map.put(fieldName, null);
+        continue;
+      }
+
       Schema.FieldType type = field.getType();
 
       try {
         // BYTE, INT16, INT32, INT64, DECIMAL, FLOAT, DOUBLE, STRING, DATETIME, BOOLEAN, BYTES,
         // ARRAY, ITERABLE, MAP, ROW, LOGICAL_TYPE;
         // NUMERIC_TYPES; STRING_TYPES; DATE_TYPES; COLLECTION_TYPES; MAP_TYPES; COMPOSITE_TYPES;
-        if (row.getValue(fieldName) == null) {
-          map.put(fieldName, null);
-          continue;
-        }
         if (type.getTypeName().isNumericType()) {
           if (type.getTypeName() == Schema.TypeName.DECIMAL) {
             map.put(fieldName, row.getDecimal(fieldName).doubleValue());
@@ -208,7 +210,7 @@ public class DataCastingUtils {
         } else if (type.typesEqual(Schema.FieldType.BOOLEAN)) {
           map.put(fieldName, Boolean.parseBoolean(String.valueOf(row.getBoolean(fieldName))));
         } else {
-          map.put(fieldName, String.valueOf(row.getValue(fieldName)));
+          map.put(fieldName, row.getValue(fieldName));
         }
       } catch (Exception e) {
         LOG.error(
@@ -218,27 +220,26 @@ public class DataCastingUtils {
             fieldName,
             row.getValue(fieldName),
             e.getMessage());
-        map.put(fieldName, String.valueOf(row.getValue(fieldName)));
+        map.put(fieldName, row.getValue(fieldName));
       }
     }
-    for (Mapping m : target.mappings) {
+    for (Mapping m : target.getMappings()) {
       // if row is empty continue
       if (listFullOfNulls(row.getValues())) {
         continue;
       }
-      String fieldName = m.field;
-      PropertyType targetMappingType = m.type;
+      String fieldName = m.getField();
+      PropertyType targetMappingType = m.getType();
       // lookup data type
-      if (StringUtils.isNotEmpty(m.constant)) {
-        if (StringUtils.isNotEmpty(m.name)) {
-          map.put(m.name, m.constant);
+      if (StringUtils.isNotEmpty(m.getConstant())) {
+        if (StringUtils.isNotEmpty(m.getName())) {
+          map.put(m.getName(), m.getConstant());
         } else {
-          map.put(m.constant, m.constant);
+          map.put(m.getConstant(), m.getConstant());
         }
       }
     }
 
-    // LOG.info("Casted map: "+mapToString(map));
     return map;
   }
 
@@ -258,14 +259,13 @@ public class DataCastingUtils {
   }
 
   private static byte[] asBytes(Object obj) throws IOException {
-    ByteArrayOutputStream bytesOut = new ByteArrayOutputStream();
-    ObjectOutputStream oos = new ObjectOutputStream(bytesOut);
-    oos.writeObject(obj);
-    oos.flush();
-    byte[] bytes = bytesOut.toByteArray();
-    bytesOut.close();
-    oos.close();
-    return bytes;
+    try (ByteArrayOutputStream bytesOut = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream(bytesOut)) {
+      oos.writeObject(obj);
+      oos.flush();
+      byte[] bytes = bytesOut.toByteArray();
+      return bytes;
+    }
   }
 
   private static DateTime asDateTime(Object o) {

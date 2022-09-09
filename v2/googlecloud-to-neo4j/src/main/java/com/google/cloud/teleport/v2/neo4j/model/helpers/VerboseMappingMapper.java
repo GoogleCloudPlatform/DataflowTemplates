@@ -28,37 +28,40 @@ public class VerboseMappingMapper {
 
   public static Mapping fromJsonObject(JSONObject mappingObj) {
     Mapping mapping = new Mapping();
-    mapping.labels = Arrays.asList(mappingObj.has("label") ? mappingObj.getString("label") : "");
-    mapping.constant = mappingObj.has("constant") ? mappingObj.getString("constant") : "";
-    mapping.role =
-        mappingObj.has("role") ? RoleType.valueOf(mappingObj.getString("role")) : mapping.role;
-    mapping.fragmentType =
+    mapping.setLabels(Arrays.asList(mappingObj.has("label") ? mappingObj.getString("label") : ""));
+    mapping.setConstant(mappingObj.has("constant") ? mappingObj.getString("constant") : "");
+    mapping.setRole(
+        mappingObj.has("role")
+            ? RoleType.valueOf(mappingObj.getString("role"))
+            : mapping.getRole());
+    mapping.setFragmentType(
         mappingObj.has("fragment")
             ? FragmentType.valueOf(mappingObj.getString("fragment"))
-            : mapping.fragmentType;
+            : mapping.getFragmentType());
 
-    mapping.field = mappingObj.has("field") ? mappingObj.getString("field") : "";
-    mapping.name = mappingObj.has("name") ? mappingObj.getString("name") : "";
-    if (StringUtils.isNotEmpty(mapping.field) && StringUtils.isEmpty(mapping.name)) {
+    mapping.setField(mappingObj.has("field") ? mappingObj.getString("field") : "");
+    mapping.setName(mappingObj.has("name") ? mappingObj.getString("name") : "");
+    if (StringUtils.isNotEmpty(mapping.getField()) && StringUtils.isEmpty(mapping.getName())) {
       throw new RuntimeException("Invalid target.  Every field must include a 'name' attribute.");
     }
     // source value is required.
-    mapping.description = mappingObj.has("description") ? mappingObj.getString("description") : "";
-    mapping.unique = mappingObj.has("unique") && mappingObj.getBoolean("unique");
-    mapping.indexed = mappingObj.has("indexed") && mappingObj.getBoolean("indexed");
-    if (mapping.role == RoleType.key) {
-      mapping.unique = true;
-      mapping.indexed = true;
+    mapping.setDescription(
+        mappingObj.has("description") ? mappingObj.getString("description") : "");
+    mapping.setUnique(mappingObj.has("unique") && mappingObj.getBoolean("unique"));
+    mapping.setIndexed(mappingObj.has("indexed") && mappingObj.getBoolean("indexed"));
+    if (mapping.getRole() == RoleType.key) {
+      mapping.setUnique(true);
+      mapping.setIndexed(true);
     }
     if (mappingObj.has("type")) {
-      mapping.type = PropertyType.valueOf(mappingObj.getString("type"));
+      mapping.setType(PropertyType.valueOf(mappingObj.getString("type")));
     } else {
       // check to see if data type is defined in fields...
-      mapping.type = PropertyType.String;
+      mapping.setType(PropertyType.String);
     }
-    mapping.mandatory = mappingObj.has("mandatory") && mappingObj.getBoolean("mandatory");
-    mapping.defaultValue =
-        mappingObj.has("default") ? String.valueOf(mappingObj.get("default")) : "";
+    mapping.setMandatory(mappingObj.has("mandatory") && mappingObj.getBoolean("mandatory"));
+    mapping.setDefaultValue(
+        mappingObj.has("default") ? String.valueOf(mappingObj.get("default")) : "");
     return mapping;
   }
 }

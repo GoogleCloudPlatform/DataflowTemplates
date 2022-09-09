@@ -11,7 +11,7 @@
 Run the Apache Beam pipeline using the GCP sdk.
 
  ```sh
- export TEMPLATE_GCS_LOCATION="gs://neo4j-dataflow/flex-templates/images/gcp-to-neo4j-image-spec.json"
+ export TEMPLATE_GCS_LOCATION="gs://neo4j-dataflow/flex-templates/images/googlecloud-to-neo4j-image-spec.json"
 export REGION=us-central1
  
 gcloud dataflow flex-template run "test-inline-cli-`date +%Y%m%d-%H%M%S`" \
@@ -34,7 +34,7 @@ curl -X POST "https://dataflow.googleapis.com/v1b3/projects/neo4jbusinessdev/loc
          "jobSpecUri": "gs://neo4j-dataflow/job-specs/testing/inline-northwind-jobspec.json",
          "neo4jConnectionUri": "gs://neo4j-dataflow/job-specs/testing/common/auradb-free-connection.json"
       },
-   "containerSpecGcsPath": "gs://neo4j-dataflow/flex-templates/images/gcp-to-neo4j-image-spec.json"
+   "containerSpecGcsPath": "gs://neo4j-dataflow/flex-templates/images/googlecloud-to-neo4j-image-spec.json"
    }
 }'
  ```

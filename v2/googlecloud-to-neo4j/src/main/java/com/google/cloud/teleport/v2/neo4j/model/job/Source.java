@@ -23,6 +23,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.commons.csv.CSVFormat;
 import org.json.JSONArray;
@@ -30,24 +32,26 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Source query metadata. */
+@Getter
+@Setter
 public class Source implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(Source.class);
-  public SourceType sourceType = SourceType.text;
-  public String name = "";
-  public String uri = "";
-  public String delimiter = ",";
+  private SourceType sourceType = SourceType.text;
+  private String name = "";
+  private String uri = "";
+  private String delimiter = ",";
   // row separator
-  public String separator = null;
+  private String separator;
 
-  public String query = "";
-  public CSVFormat csvFormat = CSVFormat.DEFAULT;
-  public String[] fieldNames = new String[0];
-  public Map<String, Integer> fieldPosByName = new HashMap<>();
-  public List<List<Object>> inline = new ArrayList<>();
+  private String query = "";
+  private CSVFormat csvFormat = CSVFormat.DEFAULT;
+  private String[] fieldNames = new String[0];
+  private Map<String, Integer> fieldPosByName = new HashMap<>();
+  private List<List<Object>> inline = new ArrayList<>();
 
-  public ActionExecuteAfter executeAfter = ActionExecuteAfter.preloads;
-  public String executeAfterName = "";
+  private ActionExecuteAfter executeAfter = ActionExecuteAfter.preloads;
+  private String executeAfterName = "";
 
   public static List<List<Object>> jsonToListOfListsArray(JSONArray lines) {
     if (lines == null) {

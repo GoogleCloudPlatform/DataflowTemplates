@@ -31,10 +31,10 @@ public class OptionsParamsMapper {
     try {
 
       if (StringUtils.isNotEmpty(pipelineOptions.getReadQuery())) {
-        optionsParams.readQuery = pipelineOptions.getReadQuery();
+        optionsParams.setReadQuery(pipelineOptions.getReadQuery());
       }
       if (StringUtils.isNotEmpty(pipelineOptions.getInputFilePattern())) {
-        optionsParams.inputFilePattern = pipelineOptions.getInputFilePattern();
+        optionsParams.setInputFilePattern(pipelineOptions.getInputFilePattern());
       }
       optionsParams.overlayTokens(pipelineOptions.getOptionsJson());
 
