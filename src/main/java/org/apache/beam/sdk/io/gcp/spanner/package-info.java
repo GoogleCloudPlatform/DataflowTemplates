@@ -16,7 +16,5 @@
  * limitations under the License.
  */
 
-/**
- * Package info for the copy of SpannerIO.
- */
+/** Package info for the copy of SpannerIO. */
 package org.apache.beam.sdk.io.gcp.spanner;
