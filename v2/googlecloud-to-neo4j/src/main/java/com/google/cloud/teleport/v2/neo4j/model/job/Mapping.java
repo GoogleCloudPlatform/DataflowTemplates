@@ -54,4 +54,9 @@ public class Mapping implements Serializable {
     this.field = fieldNameTuple.getField();
     this.constant = fieldNameTuple.getConstant();
   }
+
+  public Mapping(String name, PropertyType type) {
+    this.name = name;
+    this.type = type;
+  }
 }

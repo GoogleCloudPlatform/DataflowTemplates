@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -35,9 +36,12 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.schemas.Schema;
+import org.apache.beam.sdk.schemas.Schema.TypeName;
 import org.apache.beam.sdk.values.Row;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+import org.joda.time.Instant;
 import org.joda.time.ReadableDateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
@@ -68,11 +72,11 @@ public class DataCastingUtils {
   private static final Logger LOG = LoggerFactory.getLogger(DataCastingUtils.class);
 
   private static final DateTimeFormatter jsDateTimeFormatter =
-      DateTimeFormat.forPattern("YYYY-MM-DD HH:MM:SSZ");
+      DateTimeFormat.forPattern("YYYY-MM-DD HH:mm:ssZ");
   private static final DateTimeFormatter jsDateFormatter = DateTimeFormat.forPattern("YYYY-MM-DD");
-  private static final SimpleDateFormat jsTimeFormatter = new SimpleDateFormat("HH:MM:SS");
+  private static final SimpleDateFormat jsTimeFormatter = new SimpleDateFormat("HH:mm:ss");
 
-  public static List<Object> sourceTextToTargetObjects(Row rowOfStrings, Target target) {
+  public static List<Object> sourceTextToTargetObjects(Row row, Target target) {
     Schema targetSchema = BeamUtils.toBeamSchema(target);
     List<Mapping> targetMappings = target.getMappings();
     List<Object> castVals = new ArrayList<>();
@@ -85,7 +89,7 @@ public class DataCastingUtils {
       Object objVal = null;
 
       try {
-        objVal = StringUtils.trim(rowOfStrings.getValue(fieldName));
+        objVal = row.getValue(fieldName);
       } catch (Exception e) {
         // LOG.warn("Error getting value: "+fieldName);
       }
@@ -101,31 +105,22 @@ public class DataCastingUtils {
       }
 
       try {
-        String strEl = String.valueOf(objVal);
         if (type.getTypeName().isNumericType()) {
-          if (type.getTypeName() == Schema.TypeName.DECIMAL) {
-            castVals.add(Double.parseDouble(strEl));
-          } else if (type.getTypeName() == Schema.TypeName.FLOAT) {
-            castVals.add(Float.parseFloat(strEl));
-          } else if (type.getTypeName() == Schema.TypeName.DOUBLE) {
-            castVals.add(Double.parseDouble(strEl));
+          if (type.getTypeName() == TypeName.INT16 || type.getTypeName() == TypeName.INT32) {
+            castVals.add(asInteger(objVal));
+          } else if (type.getTypeName() == TypeName.DECIMAL) {
+            castVals.add(asBigDecimal(objVal));
+          } else if (type.getTypeName() == TypeName.FLOAT) {
+            castVals.add(asFloat(objVal));
+          } else if (type.getTypeName() == TypeName.DOUBLE) {
+            castVals.add(asDouble(objVal));
           } else {
-            castVals.add(Long.parseLong(strEl));
+            castVals.add(asLong(objVal));
           }
         } else if (type.getTypeName().isLogicalType()) {
-          castVals.add(Boolean.parseBoolean(strEl));
+          castVals.add(asBoolean(objVal));
         } else if (type.getTypeName().isDateType()) {
-          if (strEl.indexOf(':') > 0) {
-            DateTime dt = DateTime.parse(strEl, jsDateTimeFormatter);
-            LocalDate ldt = LocalDate.of(dt.getYear(), dt.getMonthOfYear(), dt.getDayOfMonth());
-            ldt.atTime(dt.getHourOfDay(), dt.getMinuteOfHour(), dt.getSecondOfMinute());
-            castVals.add(ldt);
-          } else {
-            DateTime dt = DateTime.parse(strEl, jsDateFormatter);
-            LocalDate ldt = LocalDate.of(dt.getYear(), dt.getMonthOfYear(), dt.getDayOfMonth());
-            ldt.atTime(dt.getHourOfDay(), dt.getMinuteOfHour(), dt.getSecondOfMinute());
-            castVals.add(ldt);
-          }
+          castVals.add(toZonedDateTime(asDateTime(objVal)));
         } else {
           castVals.add(objVal);
         }
@@ -173,20 +168,21 @@ public class DataCastingUtils {
         // ARRAY, ITERABLE, MAP, ROW, LOGICAL_TYPE;
         // NUMERIC_TYPES; STRING_TYPES; DATE_TYPES; COLLECTION_TYPES; MAP_TYPES; COMPOSITE_TYPES;
         if (type.getTypeName().isNumericType()) {
-          if (type.getTypeName() == Schema.TypeName.DECIMAL) {
-            map.put(fieldName, row.getDecimal(fieldName).doubleValue());
-          } else if (type.getTypeName() == Schema.TypeName.FLOAT) {
-            map.put(fieldName, row.getFloat(fieldName).doubleValue());
-          } else if (type.getTypeName() == Schema.TypeName.DOUBLE) {
+          if (type.getTypeName() == TypeName.INT16 || type.getTypeName() == TypeName.INT32) {
+            map.put(fieldName, asInteger(row.getValue(fieldName)));
+          } else if (type.getTypeName() == TypeName.DECIMAL) {
+            map.put(fieldName, asDouble(row.getDecimal(fieldName)));
+          } else if (type.getTypeName() == TypeName.FLOAT) {
+            map.put(fieldName, asDouble(row.getFloat(fieldName)));
+          } else if (type.getTypeName() == TypeName.DOUBLE) {
             map.put(fieldName, row.getDouble(fieldName));
           } else {
-            map.put(fieldName, Long.parseLong(String.valueOf(row.getValue(fieldName))));
+            map.put(fieldName, asLong(row.getValue(fieldName)));
           }
           // TODO: this is an upstream error.  Dates are coming across as LOGICAL_TYPE.  Logical
           // type identifier does include ":date:"
-        } else if ((type.getLogicalType() == null ? "" : type.getLogicalType().getIdentifier())
-            .contains(":date:")) {
-          // SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+        } else if (type.getLogicalType() != null
+            && type.getLogicalType().getIdentifier().contains(":date:")) {
           SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
           sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
           Date parsedDate = sdf.parse(row.getValue(fieldName));
@@ -194,32 +190,20 @@ public class DataCastingUtils {
           map.put(fieldName, zdt);
         } else if (type.getTypeName().isDateType()) {
           ReadableDateTime dt = row.getDateTime(fieldName);
-          ZonedDateTime zdt =
-              ZonedDateTime.ofLocal(
-                  LocalDateTime.of(
-                      dt.getYear(),
-                      dt.getMonthOfYear(),
-                      dt.getDayOfMonth(),
-                      dt.getHourOfDay(),
-                      dt.getMinuteOfHour(),
-                      dt.getSecondOfMinute(),
-                      dt.getMillisOfSecond() * 1_000_000),
-                  ZoneId.of(dt.getZone().getID(), ZoneId.SHORT_IDS),
-                  ZoneOffset.ofTotalSeconds(dt.getZone().getOffset(dt) / 1000));
-          map.put(fieldName, zdt);
+          map.put(fieldName, toZonedDateTime(dt));
         } else if (type.typesEqual(Schema.FieldType.BOOLEAN)) {
-          map.put(fieldName, Boolean.parseBoolean(String.valueOf(row.getBoolean(fieldName))));
+          map.put(fieldName, asBoolean(row.getBoolean(fieldName)));
         } else {
           map.put(fieldName, row.getValue(fieldName));
         }
       } catch (Exception e) {
         LOG.error(
-            "Error casting {}, {}, {}: {} [{}]",
+            "Error casting {}, {}, {}: {}",
             type.getTypeName().name(),
             type.getLogicalType(),
             fieldName,
             row.getValue(fieldName),
-            e.getMessage());
+            e);
         map.put(fieldName, row.getValue(fieldName));
       }
     }
@@ -243,7 +227,25 @@ public class DataCastingUtils {
     return map;
   }
 
-  private static boolean listFullOfNulls(List<Object> entries) {
+  private static ZonedDateTime toZonedDateTime(ReadableDateTime dt) {
+    return ZonedDateTime.ofLocal(
+        LocalDateTime.of(
+            dt.getYear(),
+            dt.getMonthOfYear(),
+            dt.getDayOfMonth(),
+            dt.getHourOfDay(),
+            dt.getMinuteOfHour(),
+            dt.getSecondOfMinute(),
+            dt.getMillisOfSecond() * 1_000_000),
+        ZoneId.of(dt.getZone().getID(), ZoneId.SHORT_IDS),
+        ZoneOffset.ofTotalSeconds(dt.getZone().getOffset(dt) / 1000));
+  }
+
+  static boolean listFullOfNulls(List<Object> entries) {
+    if (entries == null) {
+      return true;
+    }
+
     for (Object key : entries) {
       if (key != null) {
         return false;
@@ -252,85 +254,147 @@ public class DataCastingUtils {
     return true;
   }
 
-  private static String mapToString(Map<String, ?> map) {
+  static String mapToString(Map<String, ?> map) {
+    if (map == null) {
+      return null;
+    }
+
     return map.entrySet().stream()
         .map(entry -> entry.getKey() + "=" + entry.getValue())
         .collect(Collectors.joining(", ", "{", "}"));
   }
 
-  private static byte[] asBytes(Object obj) throws IOException {
+  static byte[] asBytes(Object obj) throws IOException {
     try (ByteArrayOutputStream bytesOut = new ByteArrayOutputStream();
         ObjectOutputStream oos = new ObjectOutputStream(bytesOut)) {
       oos.writeObject(obj);
       oos.flush();
-      byte[] bytes = bytesOut.toByteArray();
-      return bytes;
+      return bytesOut.toByteArray();
     }
   }
 
-  private static DateTime asDateTime(Object o) {
+  static DateTime asDateTime(Object o) {
     if (o == null) {
       return null;
     }
-    DateTime val = null;
+    DateTime val;
     if (o instanceof DateTime) {
       val = ((DateTime) o).toDateTime();
+    } else if (o instanceof Instant) {
+      val = ((Instant) o).toDateTime();
+    } else if (o instanceof java.time.Instant) {
+      val = new DateTime(((java.time.Instant) o).toEpochMilli());
+    } else if (o instanceof Long) {
+      val = new DateTime(o);
+    } else {
+      String strEl = asString(o);
+      if (strEl.indexOf(':') > 0) {
+        val = DateTime.parse(strEl, jsDateTimeFormatter);
+      } else {
+        val = DateTime.parse(strEl, jsDateFormatter);
+      }
     }
-    return val;
+    return val.withZone(DateTimeZone.UTC);
   }
 
-  private static Double asDouble(Object o) {
+  static LocalDateTime toLocalDateTime(DateTime dateTime) {
+    return LocalDate.of(dateTime.getYear(), dateTime.getMonthOfYear(), dateTime.getDayOfMonth())
+        .atTime(dateTime.getHourOfDay(), dateTime.getMinuteOfHour(), dateTime.getSecondOfMinute());
+  }
+
+  static Double asDouble(Object o) {
     if (o == null) {
       return null;
     }
-    Double val = null;
+
+    double val;
     if (o instanceof Number) {
       val = ((Number) o).doubleValue();
+    } else {
+      val = Double.parseDouble(asString(o));
     }
+
     return val;
   }
 
-  private static Float asFloat(Object o) {
+  static BigDecimal asBigDecimal(Object o) {
     if (o == null) {
       return null;
     }
-    Float val = null;
+
+    BigDecimal val;
+    if (o instanceof Number) {
+      val = new BigDecimal(((Number) o).doubleValue());
+    } else {
+      val = new BigDecimal(asString(o));
+    }
+
+    return val;
+  }
+
+  static Float asFloat(Object o) {
+    if (o == null) {
+      return null;
+    }
+
+    float val;
     if (o instanceof Number) {
       val = ((Number) o).floatValue();
+    } else {
+      val = Float.parseFloat(asString(o));
     }
     return val;
   }
 
-  private static Integer asInteger(Object o) {
+  static Integer asInteger(Object o) {
     if (o == null) {
       return null;
     }
-    Integer val = null;
+    int val;
     if (o instanceof Number) {
       val = ((Number) o).intValue();
+    } else {
+      val = Integer.parseInt(asString(o));
     }
     return val;
   }
 
-  private static Boolean asBoolean(Object o) {
+  static Long asLong(Object o) {
     if (o == null) {
       return null;
     }
-    Boolean val = null;
+    long val;
+    if (o instanceof Number) {
+      val = ((Number) o).longValue();
+    } else {
+      val = Long.parseLong(asString(o));
+    }
+    return val;
+  }
+
+  static Boolean asBoolean(Object o) {
+    if (o == null) {
+      return null;
+    }
+    boolean val;
     if (o instanceof Boolean) {
-      val = ((Boolean) o).booleanValue();
+      val = (Boolean) o;
+    } else {
+      val = Boolean.parseBoolean(asString(o));
     }
     return val;
   }
 
-  private static String asString(Object o) {
+  static String asString(Object o) {
     if (o == null) {
       return null;
     }
-    String val = null;
+    String val;
     if (o instanceof String) {
       val = ((String) o);
+    } else {
+      val = o.toString();
     }
-    return val;
+    return StringUtils.trim(val);
   }
 }

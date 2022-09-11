@@ -14,5 +14,5 @@
  * the License.
  */
 
-/** Package for unit tests. */
-package com.google.cloud.teleport.v2.neo4j.testing;
+/** Package for unit tests for templates. */
+package com.google.cloud.teleport.v2.neo4j.templates;

@@ -37,9 +37,9 @@ import org.slf4j.LoggerFactory;
 public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PCollection<Row>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(Neo4jRowWriterTransform.class);
-  private JobSpec jobSpec;
-  private ConnectionParams neoConnection;
-  private Target target;
+  private final JobSpec jobSpec;
+  private final ConnectionParams neoConnection;
+  private final Target target;
 
   public Neo4jRowWriterTransform(JobSpec jobSpec, ConnectionParams neoConnection, Target target) {
     this.jobSpec = jobSpec;
@@ -100,8 +100,6 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
   }
 
   private SerializableFunction<Row, Map<String, Object>> getRowCastingFunction() {
-    return (row) -> {
-      return DataCastingUtils.rowToNeo4jDataMap(row, target);
-    };
+    return (row) -> DataCastingUtils.rowToNeo4jDataMap(row, target);
   }
 }

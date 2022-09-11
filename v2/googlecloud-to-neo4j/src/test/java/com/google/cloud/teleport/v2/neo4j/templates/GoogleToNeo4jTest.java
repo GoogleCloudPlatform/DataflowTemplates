@@ -13,10 +13,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.neo4j.testing;
+package com.google.cloud.teleport.v2.neo4j.templates;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.v2.neo4j.model.InputValidator;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
@@ -27,11 +26,9 @@ import com.google.cloud.teleport.v2.neo4j.model.job.Source;
 import com.google.cloud.teleport.v2.neo4j.providers.Provider;
 import com.google.cloud.teleport.v2.neo4j.providers.ProviderFactory;
 import com.google.cloud.teleport.v2.neo4j.providers.text.TextImpl;
-import com.google.cloud.teleport.v2.neo4j.templates.GoogleCloudToNeo4j;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import java.io.IOException;
 import java.util.List;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.values.PCollection;
@@ -58,7 +55,7 @@ public class GoogleToNeo4jTest {
   private static OptionsParams optionsParams;
 
   @BeforeClass
-  public static void setUp() throws InterruptedException, IOException {
+  public static void setUp() {
     LOG.info("Initializing...");
     neo4jConnection =
         new ConnectionParams("src/test/resources/testing-specs/auradb-free-connection.json");
@@ -71,18 +68,18 @@ public class GoogleToNeo4jTest {
 
   @Test
   public void testValidateSourceType() {
-    assertEquals(TextImpl.class, providerImpl.getClass());
+    assertThat(providerImpl.getClass()).isEqualTo(TextImpl.class);
   }
 
   @Test
   public void testValidJobSpec() {
     List<String> sourceValidationMessages = providerImpl.validateJobSpec();
-    assertEquals(0, sourceValidationMessages.size());
+    assertThat(sourceValidationMessages).isEmpty();
   }
 
   @Test
   public void testResolvedVariable() {
-    assertEquals("7", optionsParams.getTokenMap().get("limit"));
+    assertThat(optionsParams.getTokenMap().get("limit")).isEqualTo("7");
   }
 
   @Test
@@ -90,7 +87,7 @@ public class GoogleToNeo4jTest {
     String uri = "SELECT * FROM TEST LIMIT $limit";
     String uriReplaced = ModelUtils.replaceVariableTokens(uri, optionsParams.getTokenMap());
     LOG.info("uri: {}, uri_replaced: {}", uri, uriReplaced);
-    assertTrue(uriReplaced.contains("LIMIT 7"));
+    assertThat(uriReplaced).contains("LIMIT 7");
   }
 
   @Test
@@ -98,13 +95,7 @@ public class GoogleToNeo4jTest {
     Source source = jobSpec.getSourceList().get(0);
     source.setQuery("SELECT * FROM FOO ORDER BY X");
     List<String> messages = InputValidator.validateJobSpec(jobSpec);
-    assertTrue(
-        ModelUtils.messagesContains(messages, "SQL contains ORDER BY which is not supported"));
-  }
-
-  @Test
-  public void testCastDateTransform() {
-
-    assertTrue(true);
+    assertThat(messages).hasSize(1);
+    assertThat(messages.get(0)).contains("SQL contains ORDER BY which is not supported");
   }
 }

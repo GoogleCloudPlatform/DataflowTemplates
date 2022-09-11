@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.neo4j.utils;
 
+import com.google.common.io.ByteStreams;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,7 +37,7 @@ public class FileSystemUtils {
             FileSystems.open(FileSystems.matchNewResource(gsPath, /*isDirectory=*/ false));
         InputStream inputStream = Channels.newInputStream(chan)) {
 
-      return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+      return new String(ByteStreams.toByteArray(inputStream), StandardCharsets.UTF_8);
     }
   }
 

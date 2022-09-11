@@ -75,7 +75,7 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Row>, Row> {
   public void processElement(ProcessContext context) {
 
     KV<Integer, Row> parameters = context.element();
-    LOG.info("Processing row from group/key: {}", parameters.getKey());
+    LOG.debug("Processing row from group/key: {}", parameters.getKey());
 
     if (parametersFunction != null) {
       // Every input element creates a new Map<String,Object> entry in unwindList

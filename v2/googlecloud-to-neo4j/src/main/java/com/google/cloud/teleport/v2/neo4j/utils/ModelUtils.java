@@ -28,10 +28,10 @@ import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.Source;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.cloud.teleport.v2.neo4j.model.job.Transform;
+import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -63,7 +63,7 @@ public class ModelUtils {
   }
 
   public static String getRelationshipKeyField(Target target, FragmentType fragmentType) {
-    return getFirstField(target, fragmentType, Arrays.asList(RoleType.key));
+    return getFirstField(target, fragmentType, ImmutableList.of(RoleType.key));
   }
 
   public static String getFirstField(
@@ -230,7 +230,7 @@ public class ModelUtils {
     }
 
     // If edge/relationship, sort by destination nodeId to reduce locking
-    String innerSql = null;
+    String innerSql;
     if (sb.length() == 0 && generateSqlSort) {
       innerSql = DEFAULT_STAR_QUERY + orderByClause;
     } else if (sb.length() == 0) {
@@ -243,15 +243,6 @@ public class ModelUtils {
     } else {
       return innerSql;
     }
-  }
-
-  public static boolean messagesContains(List<String> messages, String text) {
-    for (String msg : messages) {
-      if (msg.toUpperCase().contains(text.toUpperCase())) {
-        return true;
-      }
-    }
-    return false;
   }
 
   public static String makeValidNeo4jIdentifier(String proposedIdString) {
