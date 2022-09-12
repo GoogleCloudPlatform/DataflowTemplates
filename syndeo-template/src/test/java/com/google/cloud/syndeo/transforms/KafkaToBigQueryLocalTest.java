@@ -53,6 +53,7 @@ import org.joda.time.Duration;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.testcontainers.containers.KafkaContainer;
@@ -63,6 +64,8 @@ public class KafkaToBigQueryLocalTest {
   @Rule
   public KafkaContainer kafka =
       new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:6.2.1"));
+
+  @Rule public TestName testName = new TestName();
 
   // TODO(pabloem): Rely on single implementation for row generator.
   private static final Random RND = new Random();
@@ -144,7 +147,7 @@ public class KafkaToBigQueryLocalTest {
     ((ObjectNode) bqSinkNode).put("urn", "schemaIO:bigquery:write");
     JsonNode bqConfigParams = ((ObjectNode) bqSinkNode).putObject("configurationParameters");
     // TODO(pabloem): Test with different formats for tableSpec.
-    ((ObjectNode) bqConfigParams).put("table", "anyproject.anydataset.sampletable");
+    ((ObjectNode) bqConfigParams).put("table", "anyproject.anydataset." + testName.getMethodName());
     ((ObjectNode) bqConfigParams).put("writeDisposition", "WRITE_APPEND");
     ((ObjectNode) bqConfigParams).put("createDisposition", "CREATE_IF_NECESSARY");
     ((ObjectNode) bqConfigParams).put("useTestingBigQueryServices", true);
@@ -210,14 +213,17 @@ public class KafkaToBigQueryLocalTest {
     // restart, and
     // 6 rows added after restart.
     assertEquals(
-        24, new FakeDatasetService().getAllRows("anyproject", "anydataset", "sampletable").size());
+        24,
+        new FakeDatasetService()
+            .getAllRows("anyproject", "anydataset", testName.getMethodName())
+            .size());
   }
 
   @Test
   public void testSyndeoKafkaToBQWithEmulators() throws Exception {
     FakeDatasetService.setUp();
     new FakeDatasetService().createDataset("anyproject", "anydataset", null, null, null);
-    new FakeDatasetService().getDataset("anyproject", "anydataset").get("sampletable");
+    new FakeDatasetService().getDataset("anyproject", "anydataset").get(testName.getMethodName());
     PipelineResult result =
         SyndeoTemplate.run(
             new String[] {
@@ -236,7 +242,10 @@ public class KafkaToBigQueryLocalTest {
 
     // We expect 6 rows added on setup and 6 rows added while the pipeline runs.
     assertEquals(
-        12, new FakeDatasetService().getAllRows("anyproject", "anydataset", "sampletable").size());
+        12,
+        new FakeDatasetService()
+            .getAllRows("anyproject", "anydataset", testName.getMethodName())
+            .size());
   }
 
   @Test
