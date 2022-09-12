@@ -569,6 +569,7 @@
         <executions>
           <execution>
             <id>analyze-dependencies</id>
+            <phase>package</phase>
             <goals>
               <goal>analyze-only</goal>
             </goals>
@@ -682,6 +683,18 @@
                 </ignoredUsedUndeclaredDependency>
                 <ignoredUsedUndeclaredDependency>
                   com.google.api.grpc:proto-google-cloud-secretmanager-v1
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  org.apache.beam:beam-runners-core-java
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  com.google.api:gax-grpc
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  com.google.api.grpc:proto-google-cloud-spanner-v1
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  org.checkerframework:checker-qual
                 </ignoredUsedUndeclaredDependency>
              </ignoredUsedUndeclaredDependencies>
              <ignoredUnusedDeclaredDependencies>

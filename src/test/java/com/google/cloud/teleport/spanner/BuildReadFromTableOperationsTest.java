@@ -105,4 +105,21 @@ public class BuildReadFromTableOperationsTest {
         "t.\"colName\"",
         buildReadFromTableOperations.createColumnExpression(ddl.table("table").column("colName")));
   }
+
+  @Test
+  public void testColumnExpressionPgJsonb() {
+    BuildReadFromTableOperations buildReadFromTableOperations =
+        new BuildReadFromTableOperations(null);
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("table")
+            .column("colName")
+            .pgJsonb()
+            .endColumn()
+            .endTable()
+            .build();
+    assertEquals(
+        "CAST(t.\"colName\" AS VARCHAR) AS colName",
+        buildReadFromTableOperations.createColumnExpression(ddl.table("table").column("colName")));
+  }
 }

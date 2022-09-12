@@ -139,6 +139,9 @@ class BuildReadFromTableOperations
         }
         return "t.`" + col.name() + "`";
       case POSTGRESQL:
+        if (col.typeString().equals("jsonb")) {
+          return "CAST(" + "t.\"" + col.name() + "\"" + " AS VARCHAR) AS " + col.name();
+        }
         return "t.\"" + col.name() + "\"";
       default:
         throw new IllegalArgumentException(

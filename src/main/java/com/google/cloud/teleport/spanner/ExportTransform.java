@@ -73,9 +73,9 @@ import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.WriteFilesResult;
 import org.apache.beam.sdk.io.fs.ResolveOptions;
 import org.apache.beam.sdk.io.fs.ResourceId;
+import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.Transaction;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Combine;
@@ -178,7 +178,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
     /*
      * Allow users to specify read timestamp.
-     * CreateTransaction and CreateTransactionFn classes in SpannerIO
+     * CreateTransaction and CreateTransactionFn classes in LocalSpannerIO
      * only take a timestamp object for exact staleness which works when
      * parameters are provided during template compile time. They do not work with
      * a Timestamp valueProvider which can take parameters at runtime. Hence a new
@@ -369,7 +369,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     PCollection<Struct> rows =
         tables.apply(
             "Read all rows from Spanner",
-            SpannerIO.readAll().withTransaction(tx).withSpannerConfig(spannerConfig));
+            LocalSpannerIO.readAll().withTransaction(tx).withSpannerConfig(spannerConfig));
 
     ValueProvider<ResourceId> resource =
         ValueProvider.NestedValueProvider.of(

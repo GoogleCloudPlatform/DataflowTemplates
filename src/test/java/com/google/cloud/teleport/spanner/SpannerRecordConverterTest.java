@@ -714,6 +714,35 @@ public class SpannerRecordConverterTest {
   }
 
   @Test
+  public void pgJsonbs() {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("jsonbtable")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("jsonb")
+            .type(Type.pgJsonb())
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+    Schema schema = converter.convert(ddl).iterator().next();
+    SpannerRecordConverter recordConverter = new SpannerRecordConverter(schema, Dialect.POSTGRESQL);
+
+    Struct struct =
+        Struct.newBuilder().set("id").to(1L).set("jsonb").to("{\"a\": true, \"b\": 2}").build();
+
+    GenericRecord avroRecord = recordConverter.convert(struct);
+
+    assertThat(avroRecord.get("id"), equalTo(1L));
+    assertThat(avroRecord.get("jsonb"), equalTo("{\"a\": true, \"b\": 2}"));
+  }
+
+  @Test
   public void pgArrays() {
     Ddl ddl =
         Ddl.builder(Dialect.POSTGRESQL)

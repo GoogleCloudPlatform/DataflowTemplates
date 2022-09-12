@@ -348,6 +348,7 @@
                 <executions>
                     <execution>
                         <id>analyze-dependencies</id>
+                        <phase>package</phase>
                         <goals>
                             <goal>analyze-only</goal>
                         </goals>
