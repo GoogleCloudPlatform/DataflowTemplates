@@ -47,7 +47,7 @@ public class HttpGetActionTransform extends PTransform<PCollection<Row>, PCollec
     try {
       CloseableHttpResponse response =
           HttpUtils.getHttpResponse(false, uri, action.options, action.headers);
-      LOG.info("Request returned: {}", HttpUtils.getResponseContent(response));
+      LOG.info("Action {} request returned: {}", action.name, HttpUtils.getResponseContent(response));
 
     } catch (Exception e) {
       LOG.error("Exception making http get request: {}", e.getMessage());

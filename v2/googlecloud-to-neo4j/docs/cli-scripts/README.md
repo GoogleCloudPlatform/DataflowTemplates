@@ -1,10 +1,7 @@
 # Notes
 
-Local runner CLI scripts have been removed from this project.
+DirectRunner CLI test scripts will not all run in your local environment.
 
-They still exist at the Neo4j shadow repository used for development and
-experiments:
-
-    https://github.com/neo4j-partners/dataflow-flex-templates
+They exist for the benefit of the maintenance team.
 
 

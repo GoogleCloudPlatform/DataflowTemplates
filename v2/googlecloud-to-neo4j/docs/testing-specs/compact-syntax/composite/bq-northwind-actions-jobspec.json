@@ -1,5 +1,6 @@
 {
   "config": {
+    "debug": true,
     "reset_db": true,
     "index_all_properties": true,
     "node_write_batch_size": 5000,
@@ -30,19 +31,13 @@
             "\"Customer\""
           ],
           "keys": [
-            {
-              "customer_id": "Customer Id"
-            }
+            {"customer_id": "Customer Id"}
           ],
           "properties": {
             "unique": [],
             "indexed": [
-              {
-                "contact_name": "Contact Name"
-              },
-              {
-                "company_name": "Company Name"
-              }
+              {"contact_name": "Contact Name"},
+              {"company_name": "Company Name"}
             ]
           }
         }
@@ -82,18 +77,12 @@
               "contact_name",
               "company_name"
             ],
-            "strings": [
-              {
-                "product_name": "Product Name"
-              }
-            ],
-            "doubles": {
-              "total_amount_sold": "Total product order amount"
-            },
+            "strings": [{"product_name": "Product Name"}],
+            "doubles":
+              {"total_amount_sold": "Total product order amount"}
+            ,
             "longs": [
-              {
-                "total_quantity_sold": "Total product quantity"
-              }
+              {"total_quantity_sold": "Total product quantity"}
             ]
           }
         }
@@ -138,18 +127,104 @@
               }
             ],
             "longs": [
-              {
-                "sum_quantity": "Calculated order quantity"
-              }
+              {"sum_quantity": "Calculated order quantity"}
             ],
             "doubles": [
-              {
-                "sum_amount": "Calculated order amount"
-              }
+              {"sum_amount": "Calculated order amount"}
             ]
           }
         }
       }
+    }
+  ],
+  "actions": [
+    {
+      "name": "Pre Action cypher, node count",
+      "execute_after": "start",
+      "type": "cypher",
+      "options": [
+        {"cypher": "MATCH (n)\nRETURN count(n)"}
+      ]
+    },
+    {
+      "name": "Post Action cypher, node count",
+      "execute_after": "loads",
+      "type": "cypher",
+      "options": [
+        {"cypher": "MATCH (n)\nRETURN count(n)"}
+      ]
+    },
+    {
+      "name": "Pre Action GET test url",
+      "execute_after": "start",
+      "type": "http_get",
+      "options": [
+        {"url": "https://httpbin.org/get"}
+      ],
+      "headers": [
+        {"header1": "value1"},
+        {"header2": "value2"}
+      ]
+    },
+    {
+      "name": "Post Action GET test url",
+      "execute_after": "loads",
+      "type": "http_get",
+      "options": [
+        {"url": "foo"}
+      ],
+      "headers": [
+        {"header1": "value1"},
+        {"header2": "value2"}
+      ]
+    },
+    {
+      "name": "Pre Action POST test url",
+      "execute_after": "start",
+      "type": "http_post",
+      "options": [
+        {"url": "https://httpbin.org/post"}
+      ],
+      "headers": [
+        {"header1": "value1"},
+        {"header2": "value2"}
+      ]
+    },
+    {
+      "name": "Post Action POST test url",
+      "execute_after": "loads",
+      "type": "http_post",
+      "options": [
+        {"url": "https://httpbin.org/post"}
+      ],
+      "headers": [
+        {"header1": "value1"},
+        {"header2": "value2"}
+      ]
+    },
+    {
+      "name": "Pre Action BigQuery",
+      "execute_after": "start",
+      "type": "bigquery",
+      "options": [
+        {"sql": "SELECT count(*) FROM neo4j-se-team-201905.northwind.V_CUSTOMER_ORDERS"}
+      ],
+      "headers": [
+        {"header1": "value1"},
+        {"header2": "value2"}
+      ]
+    },
+    {
+      "name": "Post Action BigQuery",
+      "execute_after": "loads",
+      "type": "bigquery",
+      "options": [
+        {"sql": "SELECT count(*) FROM neo4j-se-team-201905.northwind.V_CUSTOMER_ORDERS"}
+      ],
+      "headers": [
+        {"header1": "value1"},
+        {"header2": "value2"}
+      ]
     }
   ]
 }

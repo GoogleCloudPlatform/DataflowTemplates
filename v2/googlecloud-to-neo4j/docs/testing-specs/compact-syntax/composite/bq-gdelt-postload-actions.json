@@ -1,0 +1,166 @@
+{
+  "config": {
+    "reset_db": true,
+    "index_all_properties": false,
+    "node_write_batch_size": 1000,
+    "edge_write_batch_size": 1000,
+    "node_write_parallelism": 10,
+    "edge_write_parallelism": 1
+  },
+  "sources": [
+    {
+      "type": "bigquery",
+      "name": "ggg",
+      "query": "SELECT GENERATE_UUID() Guid, DateTime, URL, Title, DocTone, Location, Lat, Lon, CountryCode, Adm1Code, GeoType, ContextualText FROM gdelt-bq.gdeltv2.ggg LIMIT 1000"
+    }
+  ],
+  "targets": [
+    {
+      "node": {
+        "source": "ggg",
+        "name": "BQ_GGGRecord",
+        "active": true,
+        "mode": "merge",
+        "transform": {
+          "group": true
+        },
+        "automap": false,
+        "mappings": {
+          "labels": [
+            "\"BQ_GGGRecord\""
+          ],
+          "keys": [
+            {"Guid": "Guid"}
+          ],
+          "properties": {
+            "strings": ["URL","DateTime","Title","DocTone","Location","Lat","Lon","CountryCode","Adm1Code","GeoType","ContextualText"]
+          }
+        }
+      }
+    },
+    {
+      "node": {
+        "source": "ggg",
+        "name": "BQ_GGGRecord2",
+        "active": true,
+        "mode": "merge",
+        "transform": {
+          "group": true
+        },
+        "automap": false,
+        "mappings": {
+          "labels": [
+            "\"BQ_GGGRecord2\""
+          ],
+          "keys": ["Guid"],
+          "properties": {
+            "strings": ["URL","DateTime","Title","DocTone","Location","Lat","Lon","CountryCode","Adm1Code","GeoType","ContextualText"]
+          }
+        }
+      }
+    },
+    {
+      "node": {
+        "source": "ggg",
+        "name": "BQ_GGGRecord3",
+        "active": true,
+        "mode": "merge",
+        "transform": {
+          "group": true
+        },
+        "automap": false,
+        "mappings": {
+          "labels": [
+            "\"BQ_GGGRecord3\""
+          ],
+          "keys": [
+            "Guid"
+          ],
+          "properties": {
+            "strings": [
+              "URL",
+              "DateTime",
+              "Title",
+              "DocTone",
+              "Location",
+              "Lat",
+              "Lon",
+              "CountryCode",
+              "Adm1Code",
+              "GeoType",
+              "ContextualText"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "actions": [
+    {
+      "name": "Cypher transform BQ GGG rows -> GGG nodes",
+      "execute_after": "loads",
+      "execute_after_name": "BQ_GGGRecord",
+      "type": "cypher",
+      "options": [
+        {"cypher": "MATCH (row:BQ_GGGRecord) WITH row.URL as GGGsourceUrl, row.Guid as GGGguid, datetime(row.DateTime) as GGGdate, toFloat(head(split(coalesce(toString(row.DocTone), '0.0'), ','))) as GGGaverageTone, row.Location as GeoRefname, row.GeoType as GeoReftype, row.Adm1Code as GeoRefcode, row.ContextualText as GGGtext, row.Title as GGGtitle, row.Lon as Coordinateslongitude, row.Lat as Coordinateslatitude, row.the_geom as Coordinatespoint, row.CountryCode as countryCode MERGE (ggg:GGGRecord {Guid: GGGguid}) SET ggg.date = GGGdate,ggg.averageTone = GGGaverageTone,ggg.title = GGGtitle, ggg.text = GGGtext"}
+      ],
+      "headers": [
+      ]
+    },
+    {
+      "name": "Cypher transform BQ GGG rows -> GGG nodes",
+      "execute_after": "loads",
+      "execute_after_name": "BQ_GGGRecord2",
+      "type": "cypher",
+      "options": [
+        {"cypher": "MATCH (row:BQ_GGGRecord2) WITH row.URL as GGGsourceUrl, row.Guid as GGGguid, datetime(row.DateTime) as GGGdate, toFloat(head(split(coalesce(toString(row.DocTone), '0.0'), ','))) as GGGaverageTone, row.Location as GeoRefname, row.GeoType as GeoReftype, row.Adm1Code as GeoRefcode, row.ContextualText as GGGtext, row.Title as GGGtitle, row.Lon as Coordinateslongitude, row.Lat as Coordinateslatitude, row.the_geom as Coordinatespoint, row.CountryCode as countryCode MERGE (ggg:GGGRecord2 {Guid: GGGguid}) SET ggg.date = GGGdate,ggg.averageTone = GGGaverageTone,ggg.title = GGGtitle, ggg.text = GGGtext"}
+      ],
+      "headers": [
+      ]
+    },
+    {
+      "name": "Test Action 1",
+      "execute_after": "loads",
+      "execute_after_name": "",
+      "type": "cypher",
+      "options": [
+        {"cypher": "CREATE (n:Test {id:1,name:'After loads'})"}
+      ],
+      "headers": [
+      ]
+    },
+    {
+      "name": "Test Action 2",
+      "execute_after": "node",
+      "execute_after_name": "BQ_GGGRecord",
+      "type": "cypher",
+      "options": [
+        {"cypher": "CREATE (n:Test {id:2,name:'After BQ_GGGRecord'})"}
+      ],
+      "headers": [
+      ]
+    },
+    {
+      "name": "Test Action 3",
+      "execute_after": "node",
+      "execute_after_name": "BQ_GGGRecord2",
+      "type": "cypher",
+      "options": [
+        {"cypher": "CREATE (n:Test {id:3,name:'After BQ_GGGRecord2'})"}
+      ],
+      "headers": [
+      ]
+    },
+    {
+      "name": "Test Action 4",
+      "execute_after": "node",
+      "execute_after_name": "BQ_GGGRecord3",
+      "type": "cypher",
+      "options": [
+        {"cypher": "CREATE (n:Test {id:4,name:'After BQ_GGGRecord3'})"}
+      ],
+      "headers": [
+      ]
+    }
+  ]
+}

@@ -218,14 +218,6 @@ public class CypherGenerator {
     List<String> mandatoryProperties = ModelUtils.getRequiredProperties(FragmentType.node, target);
     List<String> nodeKeyProperties = ModelUtils.getNodeKeyProperties(FragmentType.node, target);
 
-    for (String indexedProperty : indexedProperties) {
-      cyphers.add(
-          "CREATE INDEX IF NOT EXISTS FOR (t:"
-              + StringUtils.join(labels, ":")
-              + ") ON (t."
-              + indexedProperty
-              + ")");
-    }
     for (String uniqueProperty : uniqueProperties) {
       cyphers.add(
           "CREATE CONSTRAINT IF NOT EXISTS FOR (n:"
@@ -249,6 +241,15 @@ public class CypherGenerator {
               + ") REQUIRE n."
               + nodeKeyProperty
               + " IS NODE KEY");
+    }
+    //constraints must be created last
+    for (String indexedProperty : indexedProperties) {
+      cyphers.add(
+              "CREATE INDEX IF NOT EXISTS FOR (t:"
+                      + StringUtils.join(labels, ":")
+                      + ") ON (t."
+                      + indexedProperty
+                      + ")");
     }
 
     return cyphers;

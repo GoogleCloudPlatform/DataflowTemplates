@@ -57,15 +57,15 @@ The template requires the following parameters:
 Template can be executed using the following gcloud command:
 
 ```sh
-export TEMPLATE_IMAGE_SPEC="gs://neo4j-dataflow/flex-templates/images/googlecloud-to-neo4j-image-spec.json"
+export TEMPLATE_IMAGE_SPEC="gs://neo4j-se-dataflow/flex-templates/images/googlecloud-to-neo4j-image-spec.json"
 export REGION=us-central1
 export MACHINE_TYPE=n2-highmem-8
  
 gcloud dataflow flex-template run "googlecloud-to-neo4j-text-cli-`date +%Y%m%d-%H%M%S`" \
     --template-file-gcs-location="$TEMPLATE_IMAGE_SPEC" \
     --region "$REGION" \
-    --parameters jobSpecUri="gs://neo4j-dataflow/job-specs/testing/text/text-northwind-jobspec.json" \
-    --parameters neo4jConnectionUri="gs://neo4j-dataflow/job-specs/testing/common/auradb-free-connection.json" \
+    --parameters jobSpecUri="gs://neo4j-se-dataflow/job-specs/testing/text/text-northwind-jobspec.json" \
+    --parameters neo4jConnectionUri="gs://neo4j-se-dataflow/job-specs/testing/connection/auradb-free-connection.json" \
     --max-workers=1 \
     --worker-machine-type=${MACHINE_TYPE} 
 ```
@@ -95,14 +95,14 @@ mvn clean test -pl v2/googlecloud-to-neo4j -am -f unified-templates.xml
 * Note that /template is the working directory inside the container image
 
 ```sh
-export PROJECT=neo4jbusinessdev
-export GCS_WORKING_DIR=gs://neo4j-sandbox/dataflow-working
+export PROJECT=neo4j-se-team-201905
+export GCS_WORKING_DIR=gs://neo4j-se-temp/dataflow-working
 export APP_NAME=googlecloud-to-neo4j
 export REGION=us-central1
 export MACHINE_TYPE=n2-highmem-8
-export IMAGE_NAME=googlecloud-to-neo4j
-export BUCKET_NAME=gs://neo4j-dataflow/flex-templates
-export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
+export IMAGE_NAME=neo4j-dataflow
+export BUCKET_NAME=gs://neo4j-se-dataflow/flex-templates
+export TARGET_GCR_IMAGE=us.gcr.io/${PROJECT}/${IMAGE_NAME}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export TEMPLATE_POM_MODULE=googlecloud-to-neo4j
@@ -190,13 +190,6 @@ gsutil cp ./v2/googlecloud-to-neo4j/docs/googlecloud-to-neo4j-image-spec.json ${
     https://cloud.google.com/sdk/gcloud/reference/dataflow/flex-template/run
 
 ## Known issues
-
-### Known limitations
-
-- This is not implemented in the Text writer since order by operations do not
-  work well in Beam SQL.
-- For any one label, insertion parallelism will be limited by parameter, but
-  these will accumulate over many nodes. This is by design currently.
 
 ### Roadmap
 

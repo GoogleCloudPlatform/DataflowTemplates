@@ -1,0 +1,47 @@
+{
+  "config": {
+    "reset_db": false,
+    "index_all_properties": false,
+    "node_write_batch_size": 1000,
+    "edge_write_batch_size": 1000,
+    "node_write_parallelism": 10,
+    "edge_write_parallelism": 1
+  },
+  "sources": [
+    {
+      "type": "bigquery",
+      "name": "ggg",
+      "query": "SELECT DateTime, URL, Title, DocTone, Location, Lat, Lon, CountryCode, Adm1Code, GeoType, ContextualText FROM gdelt-bq.gdeltv2.ggg LIMIT 1000"
+    }
+  ],
+  "targets": [
+    {
+      "node": {
+        "source": "ggg",
+        "name": "GGGRecord",
+        "active": true,
+        "mode": "merge",
+        "transform": {
+          "group": true
+        },
+        "automap": false,
+        "mappings": {
+          "labels": [
+            "\"GGGRecord\""
+          ],
+          "keys": [
+            {"sourceUrl": "URL"}
+          ],
+          "properties": {
+            "strings": [
+              {"title": "Title"}
+            ],
+            "doubles": [
+              {"averageTone": "DocTone"}
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

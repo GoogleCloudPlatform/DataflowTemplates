@@ -80,7 +80,7 @@ public class BeamBlock {
   }
 
   public PCollection<Row> waitOnCollection(
-      ActionExecuteAfter executeAfter, String dependsOn, String queuingDescription) {
+      ActionExecuteAfter executeAfter, String executeAfterName, String queuingDescription) {
     List<PCollection<Row>> allQueues = new ArrayList<>();
     if (executeAfter == ActionExecuteAfter.start) {
       // no dependencies
@@ -103,21 +103,22 @@ public class BeamBlock {
       if (allQueues.isEmpty()) {
         allQueues.addAll(sourceQueue);
       }
-    } else if (!StringUtils.isEmpty(dependsOn)) {
+    } else if (!StringUtils.isEmpty(executeAfterName)) {
       if (executeAfter.toString().equals(ArtifactType.node)) {
-        allQueues.add(namedQueue.get(ArtifactType.node + ":" + dependsOn));
+        allQueues.add(namedQueue.get(ArtifactType.node + ":" + executeAfterName));
       } else if (executeAfter.toString().equals(ArtifactType.edge)) {
-        allQueues.add(namedQueue.get(ArtifactType.edge + ":" + dependsOn));
+        allQueues.add(namedQueue.get(ArtifactType.edge + ":" + executeAfterName));
       } else if (executeAfter.toString().equals(ArtifactType.action)) {
-        allQueues.add(namedQueue.get(ArtifactType.action + ":" + dependsOn));
+        allQueues.add(namedQueue.get(ArtifactType.action + ":" + executeAfterName));
       } else if (executeAfter.toString().equals(ArtifactType.source)) {
-        allQueues.add(namedQueue.get(ArtifactType.source + ":" + dependsOn));
+        allQueues.add(namedQueue.get(ArtifactType.source + ":" + executeAfterName));
       }
     }
     if (allQueues.isEmpty()) {
       allQueues.add(defaultCollection);
     }
 
+    LOG.info("Queue: "+queuingDescription+", executeAfter: "+executeAfter.name()+", executeAfterName: "+executeAfterName+", waiting on "+allQueues.size()+" queues");
     return PCollectionList.of(allQueues)
         .apply(" Waiting on " + queuingDescription, Flatten.pCollections());
   }

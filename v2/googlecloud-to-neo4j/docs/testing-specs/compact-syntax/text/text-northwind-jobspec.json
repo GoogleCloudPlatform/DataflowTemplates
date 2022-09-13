@@ -1,17 +1,20 @@
 {
   "config": {
+    "debug": true,
     "reset_db": true,
     "index_all_properties": true,
     "node_write_batch_size": 5000,
-    "edge_write_batch_size": 1000,
-    "node_write_parallelism": 10,
-    "edge_write_parallelism": 1
+    "edge_write_batch_size": 1000
   },
   "sources": [
     {
-      "type": "bigquery",
+      "type": "text",
+      "format": "EXCEL",
       "name": "1k orders",
-      "query": "SELECT customer_id,contact_name,company_name,seller_id,seller_first_name,seller_last_name,seller_title,product_id,product_name,category_name,supplier_name, supplier_postal_code, supplier_country,order_id,order_date, shipped_date,required_date,quantity,unit_price,discount FROM neo4j-se-team-201905.northwind.V_CUSTOMER_ORDERS"
+      "uri": "gs://neo4j-datasets/northwinds/nw_orders_1k_noheader.csv",
+      "//uri": "can be supplied at run-time in the template, or simply specified here. assumes that no security is required in vpc",
+      "delimiter": ",",
+      "ordered_field_names": "customer_id,contact_name,company_name,seller_id,seller_first_name,seller_last_name,seller_title,product_id,product_name,category_name,supplier_name,supplier_postal_code,supplier_country,order_id,order_date,shipped_date,required_date,quantity,unit_price,discount"
     }
   ],
   "targets": [
@@ -30,19 +33,13 @@
             "\"Customer\""
           ],
           "keys": [
-            {
-              "customer_id": "Customer Id"
-            }
+            {"customer_id": "Customer Id"}
           ],
           "properties": {
             "unique": [],
             "indexed": [
-              {
-                "contact_name": "Contact Name"
-              },
-              {
-                "company_name": "Company Name"
-              }
+              {"contact_name": "Contact Name"},
+              {"company_name": "Company Name"}
             ]
           }
         }
@@ -82,18 +79,12 @@
               "contact_name",
               "company_name"
             ],
-            "strings": [
-              {
-                "product_name": "Product Name"
-              }
-            ],
-            "doubles": {
-              "total_amount_sold": "Total product order amount"
-            },
+            "strings": [{"product_name": "Product Name"}],
+            "doubles":
+            {"total_amount_sold": "Total product order amount"}
+          ,
             "longs": [
-              {
-                "total_quantity_sold": "Total product quantity"
-              }
+              {"total_quantity_sold": "Total product quantity"}
             ]
           }
         }
@@ -138,14 +129,10 @@
               }
             ],
             "longs": [
-              {
-                "sum_quantity": "Calculated order quantity"
-              }
+              {"sum_quantity": "Calculated order quantity"}
             ],
             "doubles": [
-              {
-                "sum_amount": "Calculated order amount"
-              }
+              {"sum_amount": "Calculated order amount"}
             ]
           }
         }

@@ -129,7 +129,7 @@ public class GoogleCloudToNeo4j {
     }
 
     // Output debug log spec
-    LOG.info("JobSpec: {}{}", System.lineSeparator(), gson.toJson(this.jobSpec));
+    LOG.info("Normalized JobSpec: {}", gson.toJson(this.jobSpec));
   }
 
   /**
@@ -369,7 +369,7 @@ public class GoogleCloudToNeo4j {
       } else if (action.executeAfter == ActionExecuteAfter.edge) {
         artifactType = ArtifactType.edge;
       }
-      LOG.info("Executing delayed action: {}", action.name);
+      LOG.info("Registering action: {}", action.name);
       // Get targeted execution context
       PCollection<Row> executionContext =
           blockingQueue.getContextCollection(artifactType, action.executeAfterName);
