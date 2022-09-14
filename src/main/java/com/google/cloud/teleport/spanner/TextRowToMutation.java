@@ -18,9 +18,9 @@ package com.google.cloud.teleport.spanner;
 import com.google.cloud.ByteArray;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
-import com.google.cloud.teleport.spanner.TextImportProtos.ImportManifest.TableManifest;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.cloud.teleport.spanner.proto.TextImportProtos.ImportManifest.TableManifest;
 import com.google.common.base.Strings;
 import com.google.common.primitives.Longs;
 import java.io.IOException;
@@ -245,6 +245,7 @@ class TextRowToMutation extends DoFn<KV<String, String>, Mutation> {
           break;
         case NUMERIC:
         case JSON:
+        case PG_JSONB:
           columnValue = isNullValue ? Value.string(null) : Value.string(cellValue.trim());
           break;
         case PG_NUMERIC:

@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.values;
 
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -137,6 +138,20 @@ public class DatastreamRow {
     // Substitute any templated values in the template
     String result = StringSubstitutor.replace(template, values, "{", "}");
     return result;
+  }
+
+  /* Returns the formatted string after applying the data inside the row and stripped invalid BigQuery characters. */
+  public String formatStringTemplateForBigQuery(String template) {
+    return BigQueryConverters.sanitizeBigQueryChars(this.formatStringTemplate(template), "_");
+  }
+
+  /**
+   * Returns the formatted string after applying the data inside the row and stripped invalid
+   * BigQuery Dataset characters.
+   */
+  public String formatStringTemplateForBigQueryDataset(String template) {
+    return BigQueryConverters.sanitizeBigQueryDatasetChars(
+        this.formatStringTemplate(template), "_");
   }
 
   /* Returns the list of field/column names for the given row. */

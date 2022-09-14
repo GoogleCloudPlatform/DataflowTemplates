@@ -476,6 +476,7 @@ public class DataStreamToBigQuery {
   }
 
   private static TableRow removeTableRowFields(TableRow tableRow, Set<String> ignoreFields) {
+    LOG.debug("BigQuery Writes: {}", tableRow);
     TableRow cleanTableRow = tableRow.clone();
     Set<String> rowKeys = tableRow.keySet();
 

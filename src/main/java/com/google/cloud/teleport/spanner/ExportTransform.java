@@ -21,12 +21,13 @@ import static com.google.cloud.teleport.util.ValueProviderUtils.eitherOrValuePro
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TimestampBound;
-import com.google.cloud.teleport.spanner.ExportProtos.Export;
-import com.google.cloud.teleport.spanner.ExportProtos.ProtoDialect;
-import com.google.cloud.teleport.spanner.ExportProtos.TableManifest;
 import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.cloud.teleport.spanner.proto.ExportProtos;
+import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
+import com.google.cloud.teleport.spanner.proto.ExportProtos.ProtoDialect;
+import com.google.cloud.teleport.spanner.proto.ExportProtos.TableManifest;
 import com.google.cloud.teleport.templates.common.SpannerConverters.CreateTransactionFnWithTimestamp;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
@@ -72,9 +73,9 @@ import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.WriteFilesResult;
 import org.apache.beam.sdk.io.fs.ResolveOptions;
 import org.apache.beam.sdk.io.fs.ResourceId;
+import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.Transaction;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Combine;
@@ -177,7 +178,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
     /*
      * Allow users to specify read timestamp.
-     * CreateTransaction and CreateTransactionFn classes in SpannerIO
+     * CreateTransaction and CreateTransactionFn classes in LocalSpannerIO
      * only take a timestamp object for exact staleness which works when
      * parameters are provided during template compile time. They do not work with
      * a Timestamp valueProvider which can take parameters at runtime. Hence a new
@@ -368,7 +369,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     PCollection<Struct> rows =
         tables.apply(
             "Read all rows from Spanner",
-            SpannerIO.readAll().withTransaction(tx).withSpannerConfig(spannerConfig));
+            LocalSpannerIO.readAll().withTransaction(tx).withSpannerConfig(spannerConfig));
 
     ValueProvider<ResourceId> resource =
         ValueProvider.NestedValueProvider.of(
@@ -589,7 +590,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
   }
 
   /** Saves {@link Struct} elements (rows from Spanner) to destination Avro files. */
-  private static class SchemaBasedDynamicDestinations
+  @VisibleForTesting
+  static class SchemaBasedDynamicDestinations
       extends DynamicAvroDestinations<Struct, String, GenericRecord> {
 
     private final PCollectionView<Map<String, SerializableSchemaSupplier>> avroSchemas;
@@ -597,7 +599,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     private final PCollectionView<Dialect> dialectView;
     private final ValueProvider<ResourceId> baseDir;
 
-    private SchemaBasedDynamicDestinations(
+    SchemaBasedDynamicDestinations(
         PCollectionView<Map<String, SerializableSchemaSupplier>> avroSchemas,
         PCollectionView<String> uniqueIdView,
         PCollectionView<Dialect> dialectView,
@@ -664,28 +666,30 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
   }
 
   // TODO: use AvroUtils.serializableSchemaSupplier once it is public
-  private static class SerializableSchemaString implements Serializable {
+  @VisibleForTesting
+  static class SerializableSchemaString implements Serializable {
 
     private final String schema;
 
-    private SerializableSchemaString(String schema) {
+    SerializableSchemaString(String schema) {
       this.schema = schema;
     }
 
-    private Object readResolve() throws IOException, ClassNotFoundException {
+    Object readResolve() throws IOException, ClassNotFoundException {
       return new SerializableSchemaSupplier(Schema.parse(schema));
     }
   }
 
-  private static class SerializableSchemaSupplier implements Serializable, Supplier<Schema> {
+  @VisibleForTesting
+  static class SerializableSchemaSupplier implements Serializable, Supplier<Schema> {
 
     private final Schema schema;
 
-    private SerializableSchemaSupplier(Schema schema) {
+    SerializableSchemaSupplier(Schema schema) {
       this.schema = schema;
     }
 
-    private Object writeReplace() {
+    Object writeReplace() {
       return new SerializableSchemaString(schema.toString());
     }
 

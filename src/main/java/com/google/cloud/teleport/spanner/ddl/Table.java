@@ -166,10 +166,10 @@ public abstract class Table implements Serializable {
           .append(",\nINTERLEAVE IN PARENT " + identifierQuote)
           .append(interleaveInParent())
           .append(identifierQuote);
-        if (onDeleteCascade()) {
-          appendable.append(" ON DELETE CASCADE");
-        }
+      if (onDeleteCascade()) {
+        appendable.append(" ON DELETE CASCADE");
       }
+    }
     if (includeIndexes) {
       appendable.append("\n");
       appendable.append(String.join("\n", indexes()));

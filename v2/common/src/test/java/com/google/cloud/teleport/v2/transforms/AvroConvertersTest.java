@@ -75,13 +75,10 @@ public class AvroConvertersTest {
     expectedException.expect(IllegalArgumentException.class);
     expectedException.expectMessage("withSchema(schema) called with null input.");
 
-    pipeline.apply(
-        AvroConverters.ReadAvroFile.newBuilder()
-            .withInputFileSpec(AVRO_FILE_PATH)
-            .withSchema(null)
-            .build());
-
-    pipeline.run();
+    AvroConverters.ReadAvroFile.newBuilder()
+        .withInputFileSpec(AVRO_FILE_PATH)
+        .withSchema(null)
+        .build();
   }
 
   /**
@@ -93,13 +90,10 @@ public class AvroConvertersTest {
     expectedException.expect(IllegalArgumentException.class);
     expectedException.expectMessage("withInputFileSpec(inputFileSpec) called with null input.");
 
-    pipeline.apply(
-        AvroConverters.ReadAvroFile.newBuilder()
-            .withInputFileSpec(null)
-            .withSchema(SCHEMA_FILE_PATH)
-            .build());
-
-    pipeline.run();
+    AvroConverters.ReadAvroFile.newBuilder()
+        .withInputFileSpec(null)
+        .withSchema(SCHEMA_FILE_PATH)
+        .build();
   }
 
   /**
@@ -111,19 +105,7 @@ public class AvroConvertersTest {
     expectedException.expect(IllegalArgumentException.class);
     expectedException.expectMessage("withSchema(schema) called with null input.");
 
-    pipeline
-        .apply(
-            AvroConverters.ReadAvroFile.newBuilder()
-                .withInputFileSpec(AVRO_FILE_PATH)
-                .withSchema(SCHEMA_FILE_PATH)
-                .build())
-        .apply(
-            AvroConverters.WriteAvroFile.newBuilder()
-                .withOutputFile(FAKE_DIR)
-                .withSchema(null)
-                .build());
-
-    pipeline.run();
+    AvroConverters.WriteAvroFile.newBuilder().withOutputFile(FAKE_DIR).withSchema(null).build();
   }
 
   /**
@@ -135,18 +117,9 @@ public class AvroConvertersTest {
     expectedException.expect(IllegalArgumentException.class);
     expectedException.expectMessage("withOutputFile(outputFile) called with null input.");
 
-    pipeline
-        .apply(
-            AvroConverters.ReadAvroFile.newBuilder()
-                .withInputFileSpec(AVRO_FILE_PATH)
-                .withSchema(SCHEMA_FILE_PATH)
-                .build())
-        .apply(
-            AvroConverters.WriteAvroFile.newBuilder()
-                .withOutputFile(null)
-                .withSchema(AVRO_FILE_PATH)
-                .build());
-
-    pipeline.run();
+    AvroConverters.WriteAvroFile.newBuilder()
+        .withOutputFile(null)
+        .withSchema(AVRO_FILE_PATH)
+        .build();
   }
 }

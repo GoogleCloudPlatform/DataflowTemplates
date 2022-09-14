@@ -40,7 +40,7 @@
     <autovalue.service.version>1.0-rc6</autovalue.service.version>
     <avro.version>1.8.2</avro.version>
     <checkstyle.version>8.7</checkstyle.version>
-    <beam.version>2.38.0</beam.version>
+    <beam.version>2.39.0</beam.version>
     <extra.enforcer.rules.version>1.3</extra.enforcer.rules.version>
     <hamcrest.version>2.1</hamcrest.version>
     <java.version>1.8</java.version>
@@ -58,7 +58,7 @@
     <mock-server-netty.version>5.11.1</mock-server-netty.version>
     <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
     <open-census.version>0.24.0</open-census.version>
-    <bigtable.version>1.15.0</bigtable.version>
+    <!-- TODO: check if this could be declared on a Beam BOM instead of here -->
     <bigtable-beam-import.version>1.15.0</bigtable-beam-import.version>
     <protobuf.version>3.11.1</protobuf.version>
     <json.version>20200518</json.version>
@@ -90,6 +90,7 @@
     <proto-kms.version>0.87.0</proto-kms.version>
     <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
     <cloud-libraries-bom.version>24.4.0</cloud-libraries-bom.version>
+    <jacoco.version>0.8.8</jacoco.version>
   </properties>
 
   <dependencyManagement>
@@ -380,28 +381,6 @@
       <groupId>com.google.cloud.bigtable</groupId>
       <artifactId>bigtable-beam-import</artifactId>
       <version>${bigtable-beam-import.version}</version>
-      <scope>runtime</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.google.cloud.bigtable</groupId>
-      <artifactId>bigtable-hbase-1.x-shaded</artifactId>
-      <version>${bigtable.version}</version>
-      <scope>runtime</scope>
-      <exclusions>
-        <!-- slf4j-log4j12 and log4j-over-slf4j cannot coexist
-             https://www.slf4j.org/codes.html
-             -->
-        <exclusion>
-          <groupId>org.slf4j</groupId>
-          <artifactId>slf4j-log4j12</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>com.google.cloud.bigtable</groupId>
-      <artifactId>bigtable-client-core</artifactId>
-      <version>${bigtable.version}</version>
-      <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>org.json</groupId>
@@ -594,6 +573,7 @@
         <executions>
           <execution>
             <id>analyze-dependencies</id>
+            <phase>package</phase>
             <goals>
               <goal>analyze-only</goal>
             </goals>
@@ -708,6 +688,18 @@
                 <ignoredUsedUndeclaredDependency>
                   com.google.api.grpc:proto-google-cloud-secretmanager-v1
                 </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  org.apache.beam:beam-runners-core-java
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  com.google.api:gax-grpc
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  com.google.api.grpc:proto-google-cloud-spanner-v1
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
+                  org.checkerframework:checker-qual
+                </ignoredUsedUndeclaredDependency>
              </ignoredUsedUndeclaredDependencies>
              <ignoredUnusedDeclaredDependencies>
                 <ignoredUnusedDeclaredDependency>org.threeten:threetenbp</ignoredUnusedDeclaredDependency>
@@ -718,6 +710,8 @@
                 <ignoredUnusedDeclaredDependency>org.codehaus.jackson:jackson-mapper-asl</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>io.opencensus:opencensus-api</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>com.google.auto.service:auto-service</ignoredUnusedDeclaredDependency>
+                <!-- com.google.cloud.bigtable:bigtable-beam-import has the Main-Class on some templates. -->
+                <ignoredUnusedDeclaredDependency>com.google.cloud.bigtable:bigtable-beam-import</ignoredUnusedDeclaredDependency>
              </ignoredUnusedDeclaredDependencies>
            </configuration>
           </execution>
@@ -969,6 +963,65 @@
             <goals>
               <goal>check</goal>
             </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco.version}</version>
+        <configuration>
+          <rules>
+            <rule>
+              <element>PACKAGE</element>
+              <includes>
+                <include>com.google.cloud.teleport.spanner</include>
+                <include>com.google.cloud.teleport.spanner.**</include>
+              </includes>
+              <excludes>
+                <!-- Excluding generated proto java files -->
+                <exclude>com.google.cloud.teleport.spanner.proto</exclude>
+              </excludes>
+            </rule>
+          </rules>
+        </configuration>
+        <executions>
+          <execution>
+            <id>default-prepare-agent</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>default-report</id>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>default-check</id>
+            <goals>
+              <goal>check</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <rule>
+                  <limits>
+                    <limit>
+                      <counter>LINE</counter>
+                      <value>COVEREDRATIO</value>
+                      <minimum>0.6</minimum>
+                    </limit>
+                    <limit>
+                      <counter>BRANCH</counter>
+                      <value>COVEREDRATIO</value>
+                      <minimum>0.6</minimum>
+                    </limit>
+                  </limits>
+                </rule>
+              </rules>
+            </configuration>
           </execution>
         </executions>
       </plugin>

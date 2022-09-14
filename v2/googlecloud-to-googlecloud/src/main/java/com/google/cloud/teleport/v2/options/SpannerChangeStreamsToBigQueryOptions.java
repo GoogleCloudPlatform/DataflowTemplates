@@ -77,9 +77,9 @@ public interface SpannerChangeStreamsToBigQueryOptions extends DataflowPipelineO
       "Priority for Spanner RPC invocations. Defaults to HIGH. Allowed priorites are LOW, MEDIUM,"
           + " HIGH.")
   @Default.Enum("HIGH")
-  RpcPriority getSpannerRpcPriority();
+  RpcPriority getRpcPriority();
 
-  void setSpannerRpcPriority(RpcPriority value);
+  void setRpcPriority(RpcPriority value);
 
   @Description("Spanner host endpoint (only used for testing).")
   @Default.String("https://batch-spanner.googleapis.com")

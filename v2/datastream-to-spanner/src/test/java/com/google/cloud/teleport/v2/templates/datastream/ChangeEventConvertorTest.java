@@ -263,7 +263,7 @@ public class ChangeEventConvertorTest {
     changeEvent.put("int64_field", "2344");
     changeEvent.put("float64_field", "2344.34");
     changeEvent.put("string_field", "testtest");
-    changeEvent.put("bytes_field", "asdf233sf");
+    changeEvent.put("bytes_field", "7835383030");
     changeEvent.put(
         "timestamp_field", Timestamp.of(java.sql.Timestamp.valueOf("2020-12-30 4:12:12")));
     changeEvent.put(
@@ -287,7 +287,7 @@ public class ChangeEventConvertorTest {
             put("int64_field", Value.int64(2344));
             put("float64_field", Value.float64(2344.34));
             put("string_field", Value.string("testtest"));
-            put("bytes_field", Value.bytes(ByteArray.copyFrom("asdf233sf")));
+            put("bytes_field", Value.bytes(ByteArray.copyFrom(new byte[] {120, 53, 56, 48, 48})));
             // Added expected time in localtime
             put(
                 "timestamp_field",
@@ -484,7 +484,7 @@ public class ChangeEventConvertorTest {
     expectedKeyParts.add(Long.valueOf(2344));
     expectedKeyParts.add(Double.valueOf(2344.34));
     expectedKeyParts.add("testtest");
-    expectedKeyParts.add(ByteArray.copyFrom("asdf233sf"));
+    expectedKeyParts.add(ByteArray.copyFrom(new byte[] {120, 53, 56, 48, 48}));
     expectedKeyParts.add(Timestamp.of(java.sql.Timestamp.valueOf("2020-12-30 4:12:12")));
     expectedKeyParts.add(Timestamp.of(java.sql.Timestamp.valueOf("2020-12-30 4:12:12.1")));
     expectedKeyParts.add(Date.parseDate("2020-12-30"));

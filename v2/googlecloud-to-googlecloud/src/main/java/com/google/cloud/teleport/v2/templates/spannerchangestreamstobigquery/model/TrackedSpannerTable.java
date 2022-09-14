@@ -41,6 +41,12 @@ public final class TrackedSpannerTable implements Serializable {
   /** Default constructor for serialization only. */
   public TrackedSpannerTable() {}
 
+  private static class SortByPkOrdinalPosition implements Comparator<TrackedSpannerColumn> {
+    public int compare(TrackedSpannerColumn o1, TrackedSpannerColumn o2) {
+      return Integer.compare(o1.getPkOrdinalPosition(), o2.getPkOrdinalPosition());
+    }
+  }
+
   private static class SortByOrdinalPosition implements Comparator<TrackedSpannerColumn> {
     public int compare(TrackedSpannerColumn o1, TrackedSpannerColumn o2) {
       return Integer.compare(o1.getOrdinalPosition(), o2.getOrdinalPosition());
@@ -53,7 +59,8 @@ public final class TrackedSpannerTable implements Serializable {
       List<TrackedSpannerColumn> nonPkColumns) {
     this.pkColumns = new ArrayList<>(pkColumns);
     this.nonPkColumns = new ArrayList<>(nonPkColumns);
-    Collections.sort(this.pkColumns, new SortByOrdinalPosition());
+    // Sort the primary key column by primary key oridinal position.
+    Collections.sort(this.pkColumns, new SortByPkOrdinalPosition());
     Collections.sort(this.nonPkColumns, new SortByOrdinalPosition());
     this.tableName = tableName;
 

@@ -130,9 +130,11 @@ public class ImportPipeline {
             // a bug resulting in the label value being set to the original parameter value,
             // with no fallback to the default project.
             // TODO: remove NestedValueProvider when this is fixed in Beam.
-            .withProjectId(NestedValueProvider.of(options.getSpannerProjectId(),
-                (SerializableFunction<String, String>) input ->
-                    input != null ? input : SpannerOptions.getDefaultProjectId()))
+            .withProjectId(
+                NestedValueProvider.of(
+                    options.getSpannerProjectId(),
+                    (SerializableFunction<String, String>)
+                        input -> input != null ? input : SpannerOptions.getDefaultProjectId()))
             .withHost(options.getSpannerHost())
             .withInstanceId(options.getInstanceId())
             .withDatabaseId(options.getDatabaseId())
@@ -149,6 +151,7 @@ public class ImportPipeline {
             options.getDDLCreationTimeoutInMinutes()));
 
     PipelineResult result = p.run();
+
     if (options.getWaitUntilFinish()
         &&
         /* Only if template location is null, there is a dataflow job to wait for. Else it's

@@ -21,10 +21,11 @@ import static org.junit.Assert.assertThat;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.ReadOnlyTransaction;
-import com.google.cloud.teleport.spanner.ExportProtos.ProtoDialect;
 import com.google.cloud.teleport.spanner.common.NumericUtils;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.InformationSchemaScanner;
+import com.google.cloud.teleport.spanner.proto.ExportProtos;
+import com.google.cloud.teleport.spanner.proto.ExportProtos.ProtoDialect;
 import com.google.protobuf.util.JsonFormat;
 import java.io.File;
 import java.nio.ByteBuffer;
@@ -943,7 +944,7 @@ public class ImportFromAvroTest {
                 .build()),
         Dialect.POSTGRESQL);
   }
-  
+
   @Test
   public void changeStreams() throws Exception {
     Map<String, Schema> avroFiles = new HashMap<>();

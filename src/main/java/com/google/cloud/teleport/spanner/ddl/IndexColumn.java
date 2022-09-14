@@ -39,11 +39,7 @@ public abstract class IndexColumn implements Serializable {
   public abstract NullsOrder nullsOrder();
 
   public static IndexColumn create(String name, Order order, Dialect dialect) {
-    return new AutoValue_IndexColumn.Builder()
-        .dialect(dialect)
-        .name(name)
-        .order(order)
-        .autoBuild();
+    return new AutoValue_IndexColumn.Builder().dialect(dialect).name(name).order(order).autoBuild();
   }
 
   public static IndexColumn create(String name, Order order) {
@@ -87,8 +83,8 @@ public abstract class IndexColumn implements Serializable {
         .append(identifierQuote + " ")
         .append(order().title);
     if (nullsOrder() != null) {
-        appendable.append(" NULLS ").append(nullsOrder().title);
-      }
+      appendable.append(" NULLS ").append(nullsOrder().title);
+    }
   }
 
   public String prettyPrint() {

@@ -130,7 +130,9 @@ public class SpannerRecordConverter {
               builder.set(field, nullValue ? null : row.getDate(fieldName).toString());
             }
           } else if (dialect == Dialect.POSTGRESQL) {
-            if (VARCHAR_PATTERN.matcher(spannerType).matches() || spannerType.equals("text")) {
+            if (VARCHAR_PATTERN.matcher(spannerType).matches()
+                || spannerType.equals("text")
+                || spannerType.equals("jsonb")) {
               builder.set(field, nullValue ? null : row.getString(fieldName));
             } else if (spannerType.equals("timestamp with time zone")) {
               builder.set(field, nullValue ? null : row.getTimestamp(fieldName).toString());
