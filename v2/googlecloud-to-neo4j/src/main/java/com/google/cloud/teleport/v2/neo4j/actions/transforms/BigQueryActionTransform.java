@@ -24,6 +24,8 @@ import com.google.cloud.teleport.v2.neo4j.model.job.ActionContext;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,10 +45,45 @@ public class BigQueryActionTransform extends PTransform<PCollection<Row>, PColle
 
   @Override
   public PCollection<Row> expand(PCollection<Row> input) {
-    String sql = action.options.get("sql");
-    if (StringUtils.isEmpty(sql)) {
-      throw new RuntimeException("Options 'sql' not provided for preload query transform.");
-    }
+
+      // Expand executes at DAG creation time
+      String sql = action.options.get("sql");
+      if (StringUtils.isEmpty(sql)) {
+        throw new RuntimeException("Options 'sql' not provided for preload query transform.");
+      }
+
+
+    return input.apply("Actions", ParDo.of(new DoFn<Row, Row>() {
+      @Setup
+      public void setup() {
+        //Nothing to setup
+      }
+
+      @ProcessElement
+      public void processElement(@Element Row row, OutputReceiver<Row> outputReceiver) {
+        // not processing each row here.
+        // This will be good for logging down the road
+        //outputReceiver.output(row);
+      }
+
+      @FinishBundle
+      public void bundleProcessed(FinishBundleContext c) {
+        // executing SQL query *once*
+        // note: this is not guaranteed to execute just once.  if there are many input rows, it could be several times.  right now there are just a handful of rows.
+        executeBqQuery( sql);
+      }
+
+      @Teardown
+      public void tearDown() throws Exception {
+        //Nothing to tear down
+      }
+
+    }));
+
+
+  }
+
+  private void executeBqQuery(String sql){
 
     try {
       BigQuery bigquery = BigQueryOptions.getDefaultInstance().getService();
@@ -58,8 +95,5 @@ public class BigQueryActionTransform extends PTransform<PCollection<Row>, PColle
     } catch (Exception e) {
       LOG.error("Exception executing BQ action sql {}: {}", sql, e.getMessage());
     }
-
-    // we are not running anything that generates an output, so can return an input.
-    return input;
   }
 }

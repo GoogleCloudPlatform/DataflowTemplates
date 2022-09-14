@@ -39,18 +39,51 @@ public class CypherActionTransform extends PTransform<PCollection<Row>, PCollect
 
   @Override
   public PCollection<Row> expand(PCollection<Row> input) {
-    Neo4jConnection directConnect = new Neo4jConnection(this.context.neo4jConnection);
+
+      // Expand executes at DAG creation time
     String cypher = action.options.get("cypher");
     if (StringUtils.isEmpty(cypher)) {
       throw new RuntimeException("Options 'cypher' not provided for cypher action transform.");
     }
-    LOG.info("Executing cypher action transform: {}", cypher);
-    try {
-      directConnect.executeCypher(cypher);
-    } catch (Exception e) {
-      LOG.error("Exception running cypher transform, {}: {}", cypher, e.getMessage());
+
+      return input.apply("Actions", org.apache.beam.sdk.transforms.ParDo.of(new org.apache.beam.sdk.transforms.DoFn<org.apache.beam.sdk.values.Row, org.apache.beam.sdk.values.Row>() {
+
+        private Neo4jConnection directConnect;
+
+        @Setup
+        public void setup() {
+          directConnect = new Neo4jConnection(context.neo4jConnection);
+        }
+
+        @ProcessElement
+        public void processElement(@Element Row row, OutputReceiver<Row> outputReceiver) {
+          // not processing each row here.
+          // This will be good for logging down the road
+          //outputReceiver.output(row);
+        }
+
+        @FinishBundle
+        public void bundleProcessed(FinishBundleContext c) {
+          // executing SQL query *once*
+          // note: this is not guaranteed to execute just once.  if there are many input rows, it could be several times.  right now there are just a handful of rows.
+          LOG.info("Executing cypher action transform: {}", cypher);
+          try {
+            directConnect.executeCypher(cypher);
+          } catch (Exception e) {
+            LOG.error("Exception running cypher transform, {}: {}", cypher, e.getMessage());
+          }
+        }
+
+        @Teardown
+        public void tearDown() throws Exception {
+          if (directConnect!=null && directConnect.getSession().isOpen()){
+            directConnect.getSession().close();
+          }
+        }
+
+      }));
+
+
     }
-    // we are not running anything that generates an output, so can return an input.
-    return input;
-  }
+
 }

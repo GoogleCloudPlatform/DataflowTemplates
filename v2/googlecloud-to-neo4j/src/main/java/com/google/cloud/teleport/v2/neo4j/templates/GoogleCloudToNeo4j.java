@@ -260,7 +260,6 @@ public class GoogleCloudToNeo4j {
                               target.getExecuteAfter(),
                               target.getExecuteAfterName(),
                               source.getName() + " nodes")))
-                  .setCoder(preInsertBeamRows.getCoder())
                   .apply(
                       target.getSequence() + ": Writing Neo4j " + target.getName(),
                       targetWriterTransform);
@@ -371,30 +370,29 @@ public class GoogleCloudToNeo4j {
       }
       LOG.info("Registering action: {}", action.name);
       // Get targeted execution context
-      PCollection<Row> executionContext =
-          blockingQueue.getContextCollection(artifactType, action.executeAfterName);
+      PCollection<Row> executionContextCollection =blockingQueue.getContextCollection(artifactType, action.executeAfterName);
+      //LOG.info("Execution context coder: "+executionContextCollection.getCoder().toString());
       ActionContext context = new ActionContext();
-      context.dataContext = executionContext;
+      context.dataContext = executionContextCollection;
       context.jobSpec = this.jobSpec;
       context.neo4jConnection = this.neo4jConnection;
-      PTransform<PCollection<Row>, PCollection<Row>> actionImpl =
-          ActionBeamFactory.of(action, context);
+      PTransform<PCollection<Row>, PCollection<Row>> actionImpl = ActionBeamFactory.of(action, context);
       // Action execution context will be rendered as "Default Context"
+      LOG.info("Instantiated transformer: {}", action.name);
       PCollection<Row> actionTransformed =
-          executionContext
+          executionContextCollection
               .apply(
                   "Executing " + action.executeAfter + " (" + action.name + ")",
                   Wait.on(
                       blockingQueue.waitOnCollection(
                           action.executeAfter, action.executeAfterName, action.name)))
-              .setCoder(executionContext.getCoder())
               .apply("Action " + action.name, actionImpl);
       blockingQueue.addToQueue(
           ArtifactType.action,
           action.executeAfter == ActionExecuteAfter.start,
           action.name,
           actionTransformed,
-          executionContext);
+          executionContextCollection);
     }
   }
 }

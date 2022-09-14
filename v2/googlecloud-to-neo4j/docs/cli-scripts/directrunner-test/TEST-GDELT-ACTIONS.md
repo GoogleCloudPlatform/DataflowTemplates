@@ -23,6 +23,7 @@ Run the Apache Beam pipeline locally for development.
 * Running this below from the /v2/googlecloud-to-neo4j directory
  ```sh
  mvn compile exec:java \
+   -e \
    -Dexec.mainClass=com.google.cloud.teleport.v2.neo4j.templates.GoogleCloudToNeo4j \
    -Dexec.args="\
      --project=$PROJECT \
