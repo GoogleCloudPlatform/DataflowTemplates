@@ -29,7 +29,6 @@ public class Config implements Serializable {
   private Boolean resetDb = false;
   private Boolean indexAllProperties = false;
 
-  private String auditGsUri;
   private AvroType avroType = AvroType.parquet;
 
   private Integer nodeParallelism = 5;
@@ -41,8 +40,6 @@ public class Config implements Serializable {
 
   public Config(JSONObject jsonObject) {
     resetDb = jsonObject.has("reset_db") && jsonObject.getBoolean("reset_db");
-    auditGsUri =
-        jsonObject.has("audit_gcs_uri") ? jsonObject.getString("audit_gcs_uri") : auditGsUri;
     nodeParallelism =
         jsonObject.has("node_write_batch_size")
             ? jsonObject.getInt("node_write_batch_size")

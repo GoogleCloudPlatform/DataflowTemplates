@@ -34,6 +34,7 @@ public enum ActionExecuteAfter {
   source,
   node,
   edge,
+  action, // after action
   async,
   loads,
   preloads

@@ -30,6 +30,9 @@ public class ActionMapper {
     Action action = new Action();
     action.name = actionObj.getString("name");
     action.type = ActionType.valueOf(actionObj.getString("type"));
+    if (actionObj.has("description")) {
+      action.description = actionObj.getString("description");
+    }
     if (actionObj.has("execute_after")) {
       action.executeAfter = ActionExecuteAfter.valueOf(actionObj.getString("execute_after"));
     } else {

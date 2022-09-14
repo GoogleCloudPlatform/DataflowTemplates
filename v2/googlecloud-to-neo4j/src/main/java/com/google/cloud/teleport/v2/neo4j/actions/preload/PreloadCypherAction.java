@@ -42,7 +42,7 @@ public class PreloadCypherAction implements PreloadAction {
   public List<String> execute() {
     List<String> msgs = new ArrayList<>();
 
-    Neo4jConnection directConnect = new Neo4jConnection(this.context.neo4jConnection);
+    Neo4jConnection directConnect = new Neo4jConnection(this.context.neo4jConnectionParams);
     String cypher = action.options.get("cypher");
     if (StringUtils.isEmpty(cypher)) {
       throw new RuntimeException("Options 'cypher' not provided for preload cypher action.");

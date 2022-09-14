@@ -57,7 +57,8 @@ The template requires the following parameters:
 Template can be executed using the following gcloud command:
 
 ```sh
-export TEMPLATE_IMAGE_SPEC="gs://neo4j-se-dataflow/flex-templates/images/googlecloud-to-neo4j-image-spec.json"
+export IMAGE_NAME_VERSION=b0.1
+export TEMPLATE_IMAGE_SPEC="gs://neo4j-se-dataflow/flex-templates/images/googlecloud-to-neo4j-image-spec-${IMAGE_NAME_VERSION}.json"
 export REGION=us-central1
 export MACHINE_TYPE=n2-highmem-8
  
@@ -101,14 +102,15 @@ export APP_NAME=googlecloud-to-neo4j
 export REGION=us-central1
 export MACHINE_TYPE=n2-highmem-8
 export IMAGE_NAME=neo4j-dataflow
+export IMAGE_NAME_VERSION=b0.1
 export BUCKET_NAME=gs://neo4j-se-dataflow/flex-templates
-export TARGET_GCR_IMAGE=us.gcr.io/${PROJECT}/${IMAGE_NAME}
+export TARGET_GCR_IMAGE=us.gcr.io/${PROJECT}/${IMAGE_NAME}-${IMAGE_NAME_VERSION}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export TEMPLATE_POM_MODULE=googlecloud-to-neo4j
 export APP_ROOT=/template/${APP_NAME}
 export COMMAND_SPEC=${APP_ROOT}/resources/${APP_NAME}-command-spec.json
-export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${APP_NAME}-image-spec.json
+export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${APP_NAME}-image-spec-${IMAGE_NAME_VERSION}.json
 gcloud config set project ${PROJECT}
 ```
 
@@ -180,8 +182,8 @@ echo "{
     \"sdk_info\": {
        \"language\": \"JAVA\"
     }
-  }" > ./v2/googlecloud-to-neo4j/docs/googlecloud-to-neo4j-image-spec.json
-gsutil cp ./v2/googlecloud-to-neo4j/docs/googlecloud-to-neo4j-image-spec.json ${TEMPLATE_IMAGE_SPEC}
+  }" > ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec-${IMAGE_NAME_VERSION}.json
+gsutil cp ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec-${IMAGE_NAME_VERSION}.json ${TEMPLATE_IMAGE_SPEC}
 ```
 
 ## Other resources

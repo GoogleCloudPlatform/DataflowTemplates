@@ -10,14 +10,14 @@
   "sources": [
     {
       "type": "bigquery",
-      "name": "ggg",
+      "name": "gdelt",
       "query": "SELECT GENERATE_UUID() Guid, DateTime, URL, Title, DocTone, Location, Lat, Lon, CountryCode, Adm1Code, GeoType, ContextualText FROM gdelt-bq.gdeltv2.ggg LIMIT 1000"
     }
   ],
   "targets": [
     {
       "node": {
-        "source": "ggg",
+        "source": "gdelt",
         "name": "BQ_GGGRecord",
         "active": true,
         "mode": "merge",
@@ -40,7 +40,7 @@
     },
     {
       "node": {
-        "source": "ggg",
+        "source": "gdelt",
         "name": "BQ_GGGRecord2",
         "active": true,
         "mode": "merge",
@@ -61,7 +61,7 @@
     },
     {
       "node": {
-        "source": "ggg",
+        "source": "gdelt",
         "name": "BQ_GGGRecord3",
         "active": true,
         "mode": "merge",
@@ -97,8 +97,9 @@
   ],
   "actions": [
     {
-      "name": "Cypher transform BQ GGG rows -> GGG nodes",
-      "execute_after": "loads",
+      "name": "BQ_GGG->GGG",
+      "description": "Xform BQ GGG rows -> GGG nodes",
+      "execute_after": "node",
       "execute_after_name": "BQ_GGGRecord",
       "type": "cypher",
       "options": [
@@ -108,7 +109,8 @@
       ]
     },
     {
-      "name": "Cypher transform BQ GGG rows -> GGG nodes",
+      "name": "BQ_GGG2->GGG2",
+      "description": "Xform BQ GGG2 rows -> GGG2 nodes",
       "execute_after": "loads",
       "execute_after_name": "BQ_GGGRecord2",
       "type": "cypher",
@@ -119,9 +121,10 @@
       ]
     },
     {
-      "name": "Test Action 1",
-      "execute_after": "loads",
-      "execute_after_name": "",
+      "name": "action1",
+      "description": "Test Action 1",
+      "execute_after": "action",
+      "execute_after_name": "BQ_GGG2->GGG2",
       "type": "cypher",
       "options": [
         {"cypher": "CREATE (n:Test {id:1,name:'After loads'})"}
@@ -130,34 +133,37 @@
       ]
     },
     {
-      "name": "Test Action 2",
-      "execute_after": "node",
-      "execute_after_name": "BQ_GGGRecord",
+      "name": "action2",
+      "description": "Test Action 2",
+      "execute_after": "action",
+      "execute_after_name": "BQ_GGG->GGG",
       "type": "cypher",
       "options": [
-        {"cypher": "CREATE (n:Test {id:2,name:'After BQ_GGGRecord'})"}
+        {"cypher": "CREATE (n:Test {id:2,name:'After BQ_GGG->GGG'})"}
       ],
       "headers": [
       ]
     },
     {
-      "name": "Test Action 3",
-      "execute_after": "node",
-      "execute_after_name": "BQ_GGGRecord2",
+      "name": "action2.1",
+      "description": "Test Action 2.1",
+      "execute_after": "action",
+      "execute_after_name": "action2",
       "type": "cypher",
       "options": [
-        {"cypher": "CREATE (n:Test {id:3,name:'After BQ_GGGRecord2'})"}
+        {"cypher": "CREATE (n:Test {id:3,name:'After Action 2.1'})"}
       ],
       "headers": [
       ]
     },
     {
-      "name": "Test Action 4",
-      "execute_after": "node",
-      "execute_after_name": "BQ_GGGRecord3",
+      "name": "action2.2",
+      "description": "Test Action 2.2",
+      "execute_after": "action",
+      "execute_after_name": "action2.1",
       "type": "cypher",
       "options": [
-        {"cypher": "CREATE (n:Test {id:4,name:'After BQ_GGGRecord3'})"}
+        {"cypher": "CREATE (n:Test {id:4,name:'After Action 2.2'})"}
       ],
       "headers": [
       ]

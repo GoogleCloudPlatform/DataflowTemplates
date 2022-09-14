@@ -13,38 +13,26 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.neo4j.actions;
+package com.google.cloud.teleport.v2.neo4j.actions.doFn;
 
-import com.google.cloud.teleport.v2.neo4j.actions.preload.PreloadAction;
-import com.google.cloud.teleport.v2.neo4j.actions.preload.PreloadBigQueryAction;
-import com.google.cloud.teleport.v2.neo4j.actions.preload.PreloadCypherAction;
-import com.google.cloud.teleport.v2.neo4j.actions.preload.PreloadHttpGetAction;
-import com.google.cloud.teleport.v2.neo4j.actions.preload.PreloadHttpPostAction;
 import com.google.cloud.teleport.v2.neo4j.model.enums.ActionType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Action;
 import com.google.cloud.teleport.v2.neo4j.model.job.ActionContext;
 
 /** Factory providing indirection to action handler. */
-public class ActionFactory {
+public class ActionDoFnFactory {
 
-  public static PreloadAction of(Action action, ActionContext context) {
+  public static org.apache.beam.sdk.transforms.DoFn<Integer,Void> of(ActionContext context) {
+    Action action=context.action;
     ActionType actionType = action.type;
     if (actionType == ActionType.bigquery) {
-      PreloadBigQueryAction impl = new PreloadBigQueryAction();
-      impl.configure(action, context);
-      return impl;
+      return new com.google.cloud.teleport.v2.neo4j.actions.doFn.BigQueryActionFn( context);
     } else if (actionType == ActionType.cypher) {
-      PreloadCypherAction impl = new PreloadCypherAction();
-      impl.configure(action, context);
-      return impl;
+      return new com.google.cloud.teleport.v2.neo4j.actions.doFn.CypherActionFn( context);
     } else if (actionType == ActionType.http_post) {
-      PreloadHttpPostAction impl = new PreloadHttpPostAction();
-      impl.configure(action, context);
-      return impl;
+      return new com.google.cloud.teleport.v2.neo4j.actions.doFn.HttpPostActionFn( context);
     } else if (actionType == ActionType.http_get) {
-      PreloadHttpGetAction impl = new PreloadHttpGetAction();
-      impl.configure(action, context);
-      return impl;
+      return new com.google.cloud.teleport.v2.neo4j.actions.doFn.HttpGetActionFn( context);
     } else {
       throw new RuntimeException("Unhandled action type: " + actionType);
     }

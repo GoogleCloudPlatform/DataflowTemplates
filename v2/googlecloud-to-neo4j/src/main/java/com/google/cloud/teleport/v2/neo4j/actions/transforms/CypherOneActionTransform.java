@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.actions.transforms;
 
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
-import com.google.cloud.teleport.v2.neo4j.model.job.Action;
+import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.job.ActionContext;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PCollection;
@@ -26,14 +26,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Cypher runner action handler. */
-public class CypherActionTransform extends PTransform<PCollection<Row>, PCollection<Row>> {
+public class CypherOneActionTransform extends PTransform<PCollection<Row>, PCollection<Row>> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(CypherActionTransform.class);
-  private final Action action;
+  private static final Logger LOG = LoggerFactory.getLogger(CypherOneActionTransform.class);
   private final ActionContext context;
 
-  public CypherActionTransform(Action action, ActionContext context) {
-    this.action = action;
+  public CypherOneActionTransform(ActionContext context) {
     this.context = context;
   }
 
@@ -41,10 +39,12 @@ public class CypherActionTransform extends PTransform<PCollection<Row>, PCollect
   public PCollection<Row> expand(PCollection<Row> input) {
 
       // Expand executes at DAG creation time
-    String cypher = action.options.get("cypher");
+    String cypher = this.context.action.options.get("cypher");
     if (StringUtils.isEmpty(cypher)) {
       throw new RuntimeException("Options 'cypher' not provided for cypher action transform.");
     }
+
+    ConnectionParams connectionParams=context.neo4jConnectionParams;
 
       return input.apply("Actions", org.apache.beam.sdk.transforms.ParDo.of(new org.apache.beam.sdk.transforms.DoFn<org.apache.beam.sdk.values.Row, org.apache.beam.sdk.values.Row>() {
 
@@ -52,7 +52,7 @@ public class CypherActionTransform extends PTransform<PCollection<Row>, PCollect
 
         @Setup
         public void setup() {
-          directConnect = new Neo4jConnection(context.neo4jConnection);
+          directConnect = new Neo4jConnection(connectionParams);
         }
 
         @ProcessElement
@@ -81,7 +81,7 @@ public class CypherActionTransform extends PTransform<PCollection<Row>, PCollect
           }
         }
 
-      }));
+      })).setCoder(input.getCoder());
 
 
     }

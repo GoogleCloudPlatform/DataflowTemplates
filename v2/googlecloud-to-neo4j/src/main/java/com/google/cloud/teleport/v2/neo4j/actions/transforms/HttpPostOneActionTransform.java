@@ -15,43 +15,34 @@
  */
 package com.google.cloud.teleport.v2.neo4j.actions.transforms;
 
-import com.google.cloud.bigquery.BigQuery;
-import com.google.cloud.bigquery.BigQueryOptions;
-import com.google.cloud.bigquery.QueryJobConfiguration;
-import com.google.cloud.bigquery.TableResult;
-import com.google.cloud.teleport.v2.neo4j.model.job.Action;
 import com.google.cloud.teleport.v2.neo4j.model.job.ActionContext;
+import com.google.cloud.teleport.v2.neo4j.utils.HttpUtils;
+import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
-import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Query action handler. */
-public class BigQueryActionTransform extends PTransform<PCollection<Row>, PCollection<Row>> {
+/** Http POST action handler. */
+public class HttpPostOneActionTransform extends PTransform<PCollection<Row>, PCollection<Row>> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(BigQueryActionTransform.class);
-
-  private final Action action;
+  private static final Logger LOG = LoggerFactory.getLogger(HttpPostOneActionTransform.class);
   private final ActionContext context;
 
-  public BigQueryActionTransform(Action action, ActionContext context) {
-    this.action = action;
+  public HttpPostOneActionTransform(ActionContext context) {
     this.context = context;
   }
 
   @Override
   public PCollection<Row> expand(PCollection<Row> input) {
-
-      // Expand executes at DAG creation time
-      String sql = action.options.get("sql");
-      if (StringUtils.isEmpty(sql)) {
-        throw new RuntimeException("Options 'sql' not provided for preload query transform.");
-      }
-
+    String uri = this.context.action.options.get("url");
+    if (StringUtils.isEmpty(uri)) {
+      throw new RuntimeException("Options 'url' not provided for preload http_post action.");
+    }
 
     return input.apply("Actions", ParDo.of(new DoFn<Row, Row>() {
       @Setup
@@ -68,9 +59,16 @@ public class BigQueryActionTransform extends PTransform<PCollection<Row>, PColle
 
       @FinishBundle
       public void bundleProcessed(FinishBundleContext c) {
-        // executing SQL query *once*
+        // executing http get *once*
         // note: this is not guaranteed to execute just once.  if there are many input rows, it could be several times.  right now there are just a handful of rows.
-        executeBqQuery( sql);
+        try {
+          CloseableHttpResponse response =
+                  HttpUtils.getHttpResponse(true, uri, context.action.options, context.action.headers);
+          LOG.info("Executing http_post {} transform, returned: {}", context.action.name, HttpUtils.getResponseContent(response));
+
+        } catch (Exception e) {
+          LOG.error("Exception executing http_post {} transform: {}", context.action.name, e.getMessage());
+        }
       }
 
       @Teardown
@@ -78,22 +76,8 @@ public class BigQueryActionTransform extends PTransform<PCollection<Row>, PColle
         //Nothing to tear down
       }
 
-    }));
+    })).setCoder(input.getCoder());
 
-
-  }
-
-  private void executeBqQuery(String sql){
-
-    try {
-      BigQuery bigquery = BigQueryOptions.getDefaultInstance().getService();
-      QueryJobConfiguration queryConfig = QueryJobConfiguration.newBuilder(sql).build();
-      LOG.info("Executing BQ action sql: {}", sql);
-      TableResult queryResult = bigquery.query(queryConfig);
-      LOG.info("Result rows: {}", queryResult.getTotalRows());
-
-    } catch (Exception e) {
-      LOG.error("Exception executing BQ action sql {}: {}", sql, e.getMessage());
-    }
   }
 }
+

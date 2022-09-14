@@ -27,6 +27,7 @@ public class Action implements Serializable {
   // Extent providers to emit structured run-log.
 
   public String name = "";
+  public String description = "";
   public ActionType type = ActionType.cypher;
   public HashMap<String, String> options = new HashMap<>();
   public HashMap<String, String> headers = new HashMap<>();

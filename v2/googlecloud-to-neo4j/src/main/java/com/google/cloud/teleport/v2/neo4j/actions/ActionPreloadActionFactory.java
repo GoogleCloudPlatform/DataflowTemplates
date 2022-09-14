@@ -15,31 +15,36 @@
  */
 package com.google.cloud.teleport.v2.neo4j.actions;
 
-import com.google.cloud.teleport.v2.neo4j.actions.transforms.BigQueryActionTransform;
-import com.google.cloud.teleport.v2.neo4j.actions.transforms.CypherActionTransform;
-import com.google.cloud.teleport.v2.neo4j.actions.transforms.HttpGetActionTransform;
-import com.google.cloud.teleport.v2.neo4j.actions.transforms.HttpPostActionTransform;
+import com.google.cloud.teleport.v2.neo4j.actions.preload.PreloadAction;
+import com.google.cloud.teleport.v2.neo4j.actions.preload.PreloadBigQueryAction;
+import com.google.cloud.teleport.v2.neo4j.actions.preload.PreloadCypherAction;
+import com.google.cloud.teleport.v2.neo4j.actions.preload.PreloadHttpGetAction;
+import com.google.cloud.teleport.v2.neo4j.actions.preload.PreloadHttpPostAction;
 import com.google.cloud.teleport.v2.neo4j.model.enums.ActionType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Action;
 import com.google.cloud.teleport.v2.neo4j.model.job.ActionContext;
-import org.apache.beam.sdk.transforms.PTransform;
-import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.Row;
 
 /** Factory providing indirection to action handler. */
-public class ActionBeamFactory {
+public class ActionPreloadActionFactory {
 
-  public static PTransform<PCollection<Row>, PCollection<Row>> of(
-      Action action, ActionContext context) {
+  public static PreloadAction of(Action action, ActionContext context) {
     ActionType actionType = action.type;
     if (actionType == ActionType.bigquery) {
-      return new BigQueryActionTransform(action, context);
+      PreloadBigQueryAction impl = new PreloadBigQueryAction();
+      impl.configure(action, context);
+      return impl;
     } else if (actionType == ActionType.cypher) {
-      return new CypherActionTransform(action, context);
+      PreloadCypherAction impl = new PreloadCypherAction();
+      impl.configure(action, context);
+      return impl;
     } else if (actionType == ActionType.http_post) {
-      return new HttpPostActionTransform(action, context);
+      PreloadHttpPostAction impl = new PreloadHttpPostAction();
+      impl.configure(action, context);
+      return impl;
     } else if (actionType == ActionType.http_get) {
-      return new HttpGetActionTransform(action, context);
+      PreloadHttpGetAction impl = new PreloadHttpGetAction();
+      impl.configure(action, context);
+      return impl;
     } else {
       throw new RuntimeException("Unhandled action type: " + actionType);
     }

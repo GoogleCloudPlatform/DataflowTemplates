@@ -45,6 +45,7 @@ import org.slf4j.LoggerFactory;
 /** A helper class to validate DataFlow run-time inputs. */
 public class InputValidator {
 
+  //Note: options are future functionality
   private static final Set<String> validOptions =
       Sets.newHashSet(
           "relationship",
@@ -95,11 +96,17 @@ public class InputValidator {
 
     List<String> validationMessages = new ArrayList<>();
 
+    Set<String> sourceNames=new java.util.HashSet<>();
     // Source validation
     for (Source source : jobSpec.getSourceList()) {
       String sourceName = source.getName();
       if (StringUtils.isBlank(sourceName)) {
         validationMessages.add("Source is not named");
+      }
+      if (sourceNames.contains(sourceName)){
+        validationMessages.add("Duplicate source name: "+sourceName);
+      } else {
+        sourceNames.add(sourceName);
       }
       // Check that SQL does not have order by...
       if (StringUtils.isNotBlank(source.getQuery())) {
@@ -111,11 +118,17 @@ public class InputValidator {
       }
     }
 
+    Set<String> targetNames=new java.util.HashSet<>();
     // Target validation
     for (Target target : jobSpec.getTargets()) {
       // Check that all targets have names
       if (StringUtils.isBlank(target.getName())) {
         validationMessages.add("Targets must include a 'name' attribute.");
+      }
+      if (targetNames.contains(target.getName())){
+        validationMessages.add("Duplicate target name: "+target.getName());
+      } else {
+        targetNames.add(target.getName());
       }
       if (StringUtils.isBlank(target.getSource())) {
         validationMessages.add(
@@ -224,12 +237,18 @@ public class InputValidator {
       }
     }
 
+    Set<String> actionNames=new java.util.HashSet<>();
     if (jobSpec.getActions().size() > 0) {
       // check valid options
       for (Action action : jobSpec.getActions()) {
         String actionName = action.name;
         if (StringUtils.isBlank(actionName)) {
           validationMessages.add("Action is not named");
+        }
+        if (actionNames.contains(actionName)){
+          validationMessages.add("Duplicate action name: "+actionName);
+        } else {
+          actionNames.add(actionName);
         }
         // Check that SQL does not have order by...
         if (action.type == ActionType.cypher) {
