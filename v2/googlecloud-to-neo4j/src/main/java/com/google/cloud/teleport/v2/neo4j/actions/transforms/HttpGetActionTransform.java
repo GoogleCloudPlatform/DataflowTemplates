@@ -47,10 +47,10 @@ public class HttpGetActionTransform extends PTransform<PCollection<Row>, PCollec
     try {
       CloseableHttpResponse response =
           HttpUtils.getHttpResponse(false, uri, action.options, action.headers);
-      LOG.info("Action {} request returned: {}", action.name, HttpUtils.getResponseContent(response));
+      LOG.info("Executing http_get {} transform, returned: {}", action.name, HttpUtils.getResponseContent(response));
 
     } catch (Exception e) {
-      LOG.error("Exception making http get request: {}", e.getMessage());
+      LOG.error("Exception executing http_get {} transform: {}", action.name, e.getMessage());
     }
 
     // we are not running anything that generates an output, so can return an input.

@@ -51,12 +51,12 @@ public class BigQueryActionTransform extends PTransform<PCollection<Row>, PColle
     try {
       BigQuery bigquery = BigQueryOptions.getDefaultInstance().getService();
       QueryJobConfiguration queryConfig = QueryJobConfiguration.newBuilder(sql).build();
-      LOG.info("Query: {}", sql);
+      LOG.info("Executing BQ action sql: {}", sql);
       TableResult queryResult = bigquery.query(queryConfig);
       LOG.info("Result rows: {}", queryResult.getTotalRows());
 
     } catch (Exception e) {
-      LOG.error("Exception running sql {}: {}", sql, e.getMessage());
+      LOG.error("Exception executing BQ action sql {}: {}", sql, e.getMessage());
     }
 
     // we are not running anything that generates an output, so can return an input.
