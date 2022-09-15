@@ -23,6 +23,7 @@ import com.google.cloud.teleport.v2.neo4j.model.job.FieldNameTuple;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
+import com.google.cloud.teleport.v2.neo4j.model.enums.PropertyType;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.util.ArrayList;
@@ -181,6 +182,36 @@ public class TransposedMappingMapper {
       for (FieldNameTuple f : strings) {
         Mapping mapping = new Mapping(fragmentType, RoleType.property, f);
         mapping.setType(PropertyType.String);
+        mapping.setIndexed(indexed.contains(f));
+        mapping.setUnique(uniques.contains(f));
+        addMapping(mappings, mapping);
+      }
+    }
+    if (propertyMappingsObject.has("points")) {
+      List<FieldNameTuple> strings = getFieldAndNameTuples(propertyMappingsObject.get("points"));
+      for (FieldNameTuple f : strings) {
+        Mapping mapping = new Mapping(fragmentType, RoleType.property, f);
+        mapping.setType(PropertyType.Point);
+        mapping.setIndexed(indexed.contains(f));
+        mapping.setUnique(uniques.contains(f));
+        addMapping(mappings, mapping);
+      }
+    }
+    if (propertyMappingsObject.has("floats")) {
+      List<FieldNameTuple> strings = getFieldAndNameTuples(propertyMappingsObject.get("floats"));
+      for (FieldNameTuple f : strings) {
+        Mapping mapping = new Mapping(fragmentType, RoleType.property, f);
+        mapping.setType(PropertyType.Float);
+        mapping.setIndexed(indexed.contains(f));
+        mapping.setUnique(uniques.contains(f));
+        addMapping(mappings, mapping);
+      }
+    }
+    if (propertyMappingsObject.has("integers")) {
+      List<FieldNameTuple> strings = getFieldAndNameTuples(propertyMappingsObject.get("integers"));
+      for (FieldNameTuple f : strings) {
+        Mapping mapping = new Mapping(fragmentType, RoleType.property, f);
+        mapping.setType(PropertyType.Integer);
         mapping.setIndexed(indexed.contains(f));
         mapping.setUnique(uniques.contains(f));
         addMapping(mappings, mapping);
