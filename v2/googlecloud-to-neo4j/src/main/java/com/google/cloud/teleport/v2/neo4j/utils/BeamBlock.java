@@ -94,7 +94,8 @@ public class BeamBlock {
         waitOnQueues.addAll(sourceQueue);
       }
       // end is same as after edges
-    } else if (executeAfter == ActionExecuteAfter.edges || executeAfter == ActionExecuteAfter.loads) {
+    } else if (executeAfter == ActionExecuteAfter.edges
+        || executeAfter == ActionExecuteAfter.loads) {
       waitOnQueues.addAll(edgeQueue);
       if (waitOnQueues.isEmpty()) {
         waitOnQueues.addAll(nodeQueue);
@@ -103,22 +104,43 @@ public class BeamBlock {
         waitOnQueues.addAll(sourceQueue);
       }
     } else if (!StringUtils.isEmpty(executeAfterName)) {
-      if (executeAfter==ActionExecuteAfter.node) {
-        waitOnQueues.add(executeAfterNamedQueue.get(ArtifactType.node.name() + ":" + executeAfterName));
-      } else if (executeAfter==ActionExecuteAfter.edge) {
-        waitOnQueues.add(executeAfterNamedQueue.get(ArtifactType.edge.name() + ":" + executeAfterName));
-      } else if (executeAfter==ActionExecuteAfter.action) {
-        waitOnQueues.add(executeAfterNamedQueue.get(ArtifactType.action.name() + ":" + executeAfterName));
-      } else if (executeAfter==ActionExecuteAfter.source) {
-        waitOnQueues.add(executeAfterNamedQueue.get(ArtifactType.source.name() + ":" + executeAfterName));
+      if (executeAfter == ActionExecuteAfter.node) {
+        waitOnQueues.add(
+            executeAfterNamedQueue.get(ArtifactType.node.name() + ":" + executeAfterName));
+      } else if (executeAfter == ActionExecuteAfter.edge) {
+        waitOnQueues.add(
+            executeAfterNamedQueue.get(ArtifactType.edge.name() + ":" + executeAfterName));
+      } else if (executeAfter == ActionExecuteAfter.action) {
+        waitOnQueues.add(
+            executeAfterNamedQueue.get(ArtifactType.action.name() + ":" + executeAfterName));
+      } else if (executeAfter == ActionExecuteAfter.source) {
+        waitOnQueues.add(
+            executeAfterNamedQueue.get(ArtifactType.source.name() + ":" + executeAfterName));
       }
     }
     if (waitOnQueues.isEmpty()) {
       waitOnQueues.add(defaultCollection);
     }
 
-    LOG.info("Queue: "+queuingDescription+", executeAfter: "+executeAfter.name()+", executeAfterName: "+executeAfterName+", waiting on "+waitOnQueues.size()+" queues");
+    LOG.info(
+        "Queue: "
+            + queuingDescription
+            + ", executeAfter: "
+            + executeAfter.name()
+            + ", executeAfterName: "
+            + executeAfterName
+            + ", waiting on "
+            + waitOnQueues.size()
+            + " queues");
     return PCollectionList.of(waitOnQueues)
-        .apply("** Waiting "+queuingDescription+" (after " + executeAfter.name()+"/"+executeAfterName+")", Flatten.pCollections());
+        .apply(
+            "** Waiting "
+                + queuingDescription
+                + " (after "
+                + executeAfter.name()
+                + "/"
+                + executeAfterName
+                + ")",
+            Flatten.pCollections());
   }
 }

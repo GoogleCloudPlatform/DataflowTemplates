@@ -5,9 +5,11 @@ Google Cloud Platform to the Neo4j graph database.
 
 ## Version History
 
-v. 0.10 initial PR
+a 0.1 - initial PR
+<br>
+b 0.1 - updates solved dependency challenges
 
-## Introductory Blog
+## Project Introduction
 
 Neo4j has released flex templates for GCP Dataflow which support complex ETL
 processes through configuration not code. This capability fills a gap for joint
@@ -15,7 +17,7 @@ GCP and Neo4j customers who are looking for cloud native data integration
 without having to manage Spark services. Over the past decade, graph databases
 have become an invaluable tool for discovering fraud, understanding network
 operations and supply chains, disambiguating identities, and providing
-recommendations – among other things. Now, BigQuery, Spanner, and Google Cloud
+recommendations – among other things. Now, BigQuery and Google Cloud
 Storage customers will be able to easily leverage graphs to mine insights in the
 data.
 
@@ -73,6 +75,8 @@ gcloud dataflow flex-template run "googlecloud-to-neo4j-text-cli-`date +%Y%m%d-%
 
 ## Building Project
 
+The following code allows creating a new FlexTemplate image and the JSON template files that drives DataFlow template UI and also 
+
 #### Compiling the pipeline
 
 Execute the following command from the directory containing the root pom.xml:
@@ -80,6 +84,13 @@ Execute the following command from the directory containing the root pom.xml:
 ```sh
 export JAVA_HOME=`/usr/libexec/java_home -v 11`
 mvn -DskipTests=true clean compile -pl v2/googlecloud-to-neo4j -am -f unified-templates.xml
+```
+
+Running spotless from root
+
+```sh
+export JAVA_HOME=`/usr/libexec/java_home -v 8`
+mvn spotless:apply -f unified-templates.xml -pl v2/googlecloud-to-neo4j
 ```
 
 #### Executing unit tests
@@ -224,7 +235,7 @@ mvn test
 ## Maintainer
 
     Anthony Krinsky 
-    Sr. Partner Solution Architect
+    Sr. Sales Engineer
     anthony.krinsky@neo4j.com
 
 Note that test scripts point to my auraDb instance. AuraDb is free up to 50,000

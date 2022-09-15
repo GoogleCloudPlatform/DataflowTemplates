@@ -45,7 +45,7 @@ import org.slf4j.LoggerFactory;
 /** A helper class to validate DataFlow run-time inputs. */
 public class InputValidator {
 
-  //Note: options are future functionality
+  // Note: options are future functionality
   private static final Set<String> validOptions =
       Sets.newHashSet(
           "relationship",
@@ -96,15 +96,15 @@ public class InputValidator {
 
     List<String> validationMessages = new ArrayList<>();
 
-    Set<String> sourceNames=new java.util.HashSet<>();
+    Set<String> sourceNames = new java.util.HashSet<>();
     // Source validation
     for (Source source : jobSpec.getSourceList()) {
       String sourceName = source.getName();
       if (StringUtils.isBlank(sourceName)) {
         validationMessages.add("Source is not named");
       }
-      if (sourceNames.contains(sourceName)){
-        validationMessages.add("Duplicate source name: "+sourceName);
+      if (sourceNames.contains(sourceName)) {
+        validationMessages.add("Duplicate source name: " + sourceName);
       } else {
         sourceNames.add(sourceName);
       }
@@ -118,15 +118,15 @@ public class InputValidator {
       }
     }
 
-    Set<String> targetNames=new java.util.HashSet<>();
+    Set<String> targetNames = new java.util.HashSet<>();
     // Target validation
     for (Target target : jobSpec.getTargets()) {
       // Check that all targets have names
       if (StringUtils.isBlank(target.getName())) {
         validationMessages.add("Targets must include a 'name' attribute.");
       }
-      if (targetNames.contains(target.getName())){
-        validationMessages.add("Duplicate target name: "+target.getName());
+      if (targetNames.contains(target.getName())) {
+        validationMessages.add("Duplicate target name: " + target.getName());
       } else {
         targetNames.add(target.getName());
       }
@@ -237,7 +237,7 @@ public class InputValidator {
       }
     }
 
-    Set<String> actionNames=new java.util.HashSet<>();
+    Set<String> actionNames = new java.util.HashSet<>();
     if (jobSpec.getActions().size() > 0) {
       // check valid options
       for (Action action : jobSpec.getActions()) {
@@ -245,8 +245,8 @@ public class InputValidator {
         if (StringUtils.isBlank(actionName)) {
           validationMessages.add("Action is not named");
         }
-        if (actionNames.contains(actionName)){
-          validationMessages.add("Duplicate action name: "+actionName);
+        if (actionNames.contains(actionName)) {
+          validationMessages.add("Duplicate action name: " + actionName);
         } else {
           actionNames.add(actionName);
         }

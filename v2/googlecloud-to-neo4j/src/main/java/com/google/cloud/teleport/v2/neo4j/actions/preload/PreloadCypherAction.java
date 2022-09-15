@@ -50,13 +50,12 @@ public class PreloadCypherAction implements PreloadAction {
     LOG.info("Executing cypher: {}", cypher);
     try {
       directConnect.executeCypher(cypher);
-      if (directConnect!=null && directConnect.getSession().isOpen()){
+      if (directConnect != null && directConnect.getSession().isOpen()) {
         directConnect.getSession().close();
       }
     } catch (Exception e) {
       LOG.error("Exception running cypher, {}: {}", cypher, e.getMessage());
     }
-
 
     return msgs;
   }

@@ -14,10 +14,10 @@
  * the License.
  */
 /**
- * This module supports post-load action transforms.
+ * This module supports pre and post-load actions.
  *
  * @author drumcircle
  * @version 1.0
  * @since 1.0
  */
-package com.google.cloud.teleport.v2.neo4j.actions.transforms;
+package com.google.cloud.teleport.v2.neo4j.actions.function;

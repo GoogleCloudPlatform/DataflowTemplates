@@ -242,14 +242,14 @@ public class CypherGenerator {
               + nodeKeyProperty
               + " IS NODE KEY");
     }
-    //constraints must be created last
+    // constraints must be created last
     for (String indexedProperty : indexedProperties) {
       cyphers.add(
-              "CREATE INDEX IF NOT EXISTS FOR (t:"
-                      + StringUtils.join(labels, ":")
-                      + ") ON (t."
-                      + indexedProperty
-                      + ")");
+          "CREATE INDEX IF NOT EXISTS FOR (t:"
+              + StringUtils.join(labels, ":")
+              + ") ON (t."
+              + indexedProperty
+              + ")");
     }
 
     return cyphers;

@@ -1,7 +1,0 @@
-            DoFn<Integer, Void> doFnActionImpl = ActionDoFnFactory.of(context);
-            // Action execution context will be rendered as "Default Context"
-            LOG.info("Instantiated transformer: {}", action.name);
-            pipeline.apply(Create.of(1)).apply(Wait.on(
-                    blockingQueue.waitOnCollection(action.executeAfter, action.executeAfterName, action.name)
-                    )).setCoder(org.apache.beam.sdk.coders.VarIntCoder.of())
-                    .apply(org.apache.beam.sdk.transforms.ParDo.of(doFnActionImpl));

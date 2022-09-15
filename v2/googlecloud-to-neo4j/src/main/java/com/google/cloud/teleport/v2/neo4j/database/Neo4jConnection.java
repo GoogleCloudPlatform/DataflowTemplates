@@ -127,7 +127,7 @@ public class Neo4jConnection implements Serializable {
   public void resetDatabase() {
     // Direct connect utility...
     LOG.info("Resetting database");
-        try {
+    try {
       String crdeCypher = "CREATE OR REPLACE DATABASE `neo4j`";
       if (!StringUtils.isEmpty(database)) {
         StringUtils.replace(crdeCypher, "neo4j", database);
@@ -135,13 +135,17 @@ public class Neo4jConnection implements Serializable {
       LOG.info("Executing delete DB cypher: {}", crdeCypher);
       executeCypher(crdeCypher);
     } catch (Exception crde) {
-      LOG.error("Error executing reset database using CREATE OR REPLACE: {}, {}", crde, crde.getMessage());
+      LOG.error(
+          "Error executing reset database using CREATE OR REPLACE: {}, {}",
+          crde,
+          crde.getMessage());
       // Trying DELETE /DETACH approach
       try {
         String ddeCypher = "MATCH (n) DETACH DELETE n";
         LOG.info("Executing alternate delete cypher: {}", ddeCypher);
         executeCypher(ddeCypher);
-        String constraintsDeleteCypher = "CALL apoc.schema.assert({},{},true) YIELD label, key RETURN *";
+        String constraintsDeleteCypher =
+            "CALL apoc.schema.assert({},{},true) YIELD label, key RETURN *";
         executeCypher(constraintsDeleteCypher);
       } catch (Exception dde) {
         LOG.error("Error executing detach delete", dde, dde.getMessage());
