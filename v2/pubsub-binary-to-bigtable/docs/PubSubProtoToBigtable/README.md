@@ -92,7 +92,7 @@ The template requires the following parameters:
 
 *   inputSubscription: The name of the subscription from which data is read. For
     example, projects/\<project-id\>/subscriptions/\<subscription-name\>.
-*   outputTopic: Pub/Sub topic to write unprocessed records. For example,
+*   deadLetterTopic: Pub/Sub topic to write unprocessed records. For example,
     projects/\<project-id\>/topics/\<topic-name\>.
 *   bigtableWriteProjectId: Bigtable project id to write to
 *   bigtableWriteInstanceId: Bigtable instance id to write to
@@ -109,7 +109,7 @@ gcloud beta dataflow flex-template run my-job-name \
  --template-file-gcs-location=gs://path-to-image-spec-file \
  --parameters="\
  inputSubscription=projects/my-project/subscriptions/input-subscription,\
- outputTopic=projects/my-project/topics/deadletter-topic,\
+ deadLetterTopic=projects/my-project/topics/deadletter-topic,\
  bigtableWriteProjectId=${BIGTABLE_WRITE_PROJECT_ID},\
  bigtableWriteInstanceId=${BIGTABLE_WRITE_INSTANCE_ID},\
  bigtableWriteTableId=${BIGTABLE_WRITE_TABLE_ID}"

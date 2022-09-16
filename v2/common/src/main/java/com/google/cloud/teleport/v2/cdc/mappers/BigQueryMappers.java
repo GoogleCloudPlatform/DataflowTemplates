@@ -44,7 +44,7 @@ public class BigQueryMappers {
     this.projectId = projectId;
   }
 
-  /** * Section 1: Functions to build Mapper Class for each different required input ** */
+  /*** Section 1: Functions to build Mapper Class for each different required input ***/
   /* Build Static TableRow BigQuery Mapper */
   public static BigQueryMapper<TableRow, KV<TableId, TableRow>> buildBigQueryTableMapper(
       String datasetNameTemplate, String tableNameTemplate) {
