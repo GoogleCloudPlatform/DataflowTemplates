@@ -21,7 +21,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation.Required;
 
 /**
- * Common {@link PipelineOptions} for writing data to Bigtable using {@link
+ * Common {@link PipelineOptions} for writing data to Google Cloud Bigtable using {@link
  * com.google.cloud.bigtable.beam.CloudBigtableIO}.
  */
 public final class BigtableCommonOptions {
@@ -37,19 +37,19 @@ public final class BigtableCommonOptions {
 
     void setBigtableWriteProjectId(String value);
 
-    @Description("Bigtable Instance id")
+    @Description("Bigtable Instance Id")
     @Required
     String getBigtableWriteInstanceId();
 
     void setBigtableWriteInstanceId(String value);
 
-    @Description("Bigtable table id")
+    @Description("Bigtable Table Id")
     @Required
     String getBigtableWriteTableId();
 
     void setBigtableWriteTableId(String value);
 
-    @Description("Bigtable app profile")
+    @Description("Bigtable App Profile")
     @Default.String("default")
     String getBigtableWriteAppProfile();
 

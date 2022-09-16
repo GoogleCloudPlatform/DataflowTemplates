@@ -15,9 +15,9 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.v2.templates.TestUtils.addProtoCell;
-import static com.google.cloud.teleport.v2.templates.TestUtils.assertEquals;
-import static com.google.cloud.teleport.v2.templates.TestUtils.createProtoRow;
+import static com.google.cloud.teleport.v2.templates.BigtableAvroProtoTestUtils.addProtoCell;
+import static com.google.cloud.teleport.v2.templates.BigtableAvroProtoTestUtils.assertEquals;
+import static com.google.cloud.teleport.v2.templates.BigtableAvroProtoTestUtils.createProtoRow;
 
 import com.google.cloud.teleport.v2.proto.BigtableRow;
 import com.google.cloud.teleport.v2.transforms.ProtoToBigtableMutation;

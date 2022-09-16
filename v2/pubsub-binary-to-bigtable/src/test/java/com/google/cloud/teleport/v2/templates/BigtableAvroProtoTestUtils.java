@@ -30,8 +30,8 @@ import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Assert;
 
-/** {@link TestUtils} provides methods for testing. */
-public class TestUtils {
+/** {@link BigtableAvroProtoTestUtils} provides methods for testing. */
+public class BigtableAvroProtoTestUtils {
 
   /* assertEquals code taken from {@link https://github.com/apache/hbase/blob/master/hbase-client/src/test/java/org/apache/hadoop/hbase/client/TestMutation.java}\
    * This method checks whether the two bigtable {@link Mutation} are equal in contents or not

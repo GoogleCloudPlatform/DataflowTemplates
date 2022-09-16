@@ -20,12 +20,13 @@ import com.google.cloud.bigtable.beam.CloudBigtableTableConfiguration;
 import com.google.cloud.teleport.v2.avro.BigtableRow;
 import com.google.cloud.teleport.v2.options.BigtableCommonOptions.WriteOptions;
 import com.google.cloud.teleport.v2.options.PubsubCommonOptions.ReadSubscriptionOptions;
-import com.google.cloud.teleport.v2.options.PubsubCommonOptions.WriteTopicOptions;
 import com.google.cloud.teleport.v2.transforms.AvroToBigtableMutation;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
+import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.transforms.ParDo;
 
 /**
@@ -55,8 +56,16 @@ public final class PubsubAvroToBigtable {
    * Provides custom {@link org.apache.beam.sdk.options.PipelineOptions} required to execute the
    * {@link PubsubAvroToBigtable} pipeline.
    */
-  public interface PubsubAvroToBigtableOptions
-      extends ReadSubscriptionOptions, WriteTopicOptions, WriteOptions {}
+  public interface PubsubAvroToBigtableOptions extends ReadSubscriptionOptions, WriteOptions {
+    @Description(
+        "Pub/Sub topic to write dead-letter records. "
+            + "The name should be in the format of "
+            + "projects/<project-id>/topics/<topic-name>.")
+    @Validation.Required
+    String getDeadLetterTopic();
+
+    void setDeadLetterTopic(String deadLetterTopic);
+  }
 
   /**
    * Runs the pipeline with the supplied options.
@@ -83,7 +92,7 @@ public final class PubsubAvroToBigtable {
             "Read Avro Records from Pub/Sub Subscription",
             PubsubIO.readAvros(BigtableRow.class)
                 .fromSubscription(options.getInputSubscription())
-                .withDeadLetterTopic(options.getOutputTopic()))
+                .withDeadLetterTopic(options.getDeadLetterTopic()))
         .apply("Transform to Bigtable Mutation", ParDo.of(new AvroToBigtableMutation()))
         .apply("Write To Bigtable", CloudBigtableIO.writeToTable(bigtableTableConfig));
 
