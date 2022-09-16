@@ -28,20 +28,18 @@ the container will be used to launch the Dataflow pipeline.
 
 ### Compiling the pipeline
 
-Execute the following command from the directory containing the parent pom.xml
-(v2/):
+Execute the following command from the root directory:
 
 ```shell
-mvn clean compile -pl pubsub-binary-to-bigtable -am
+mvn clean compile -f unified-templates.xml -pl pubsub-binary-to-bigtable -am
 ```
 
 ### Executing unit tests
 
-Execute the following command from the directory containing the parent pom.xml
-(v2/):
+Execute the following command from the root directory:
 
 ```shell
-mvn clean test -pl pubsub-binary-to-bigtable -am
+mvn clean test -f unified-templates.xml -pl pubsub-binary-to-bigtable -am
 ```
 
 ## Uploading Templates
@@ -49,8 +47,7 @@ mvn clean test -pl pubsub-binary-to-bigtable -am
 NOTE: This requires [Cloud SDK](https://cloud.google.com/sdk/downloads) version
 284.0.0 or higher.
 
-The Template should be built from the directory containing the parent pom.xml
-(v2/).
+The Template should be build from the root pom.xml.
 
 ### Building Container Image
 
@@ -74,7 +71,7 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
                   -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
                   -Dapp-root=${APP_ROOT} \
                   -Dcommand-spec=${COMMAND_SPEC} \
-                  -pl pubsub-binary-to-bigtable -am
+                  -f unified-templates.xml -pl v2/pubsub-binary-to-bigtable -am
 ```
 
 ### Creating Image Spec

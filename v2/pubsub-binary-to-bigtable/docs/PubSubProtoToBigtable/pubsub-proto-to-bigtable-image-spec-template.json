@@ -15,7 +15,7 @@
         "paramType": "PUBSUB_SUBSCRIPTION"
       },
       {
-        "name": "outputTopic",
+        "name": "deadLetterTopic",
         "label": "Dead-letter output topic",
         "helpText": "Pub/Sub topic to write dead-letter records. For example, projects/<project-id>/topics/<topic-name>.",
         "isOptional": false,
