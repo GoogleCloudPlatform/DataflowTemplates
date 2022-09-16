@@ -24,7 +24,7 @@ the container will be used to launch the Dataflow pipeline.
 Execute the following command from the root directory:
 
 ```shell
-mvn clean compile -f unified-templates.xml -pl pubsub-binary-to-bigtable -am
+mvn clean compile -f unified-templates.xml -pl v2/pubsub-binary-to-bigtable -am
 ```
 
 ### Executing unit tests
@@ -32,7 +32,7 @@ mvn clean compile -f unified-templates.xml -pl pubsub-binary-to-bigtable -am
 Execute the following command from the root directory:
 
 ```shell
-mvn clean test -f unified-templates.xml -pl pubsub-binary-to-bigtable -am
+mvn clean test -f unified-templates.xml -pl v2/pubsub-binary-to-bigtable -am
 ```
 
 ## Uploading Templates
