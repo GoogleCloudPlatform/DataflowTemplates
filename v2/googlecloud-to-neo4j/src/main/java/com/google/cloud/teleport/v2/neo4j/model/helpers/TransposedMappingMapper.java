@@ -23,7 +23,6 @@ import com.google.cloud.teleport.v2.neo4j.model.job.FieldNameTuple;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.Target;
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
-import com.google.cloud.teleport.v2.neo4j.model.enums.PropertyType;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.util.ArrayList;

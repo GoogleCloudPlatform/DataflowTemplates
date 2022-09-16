@@ -18,7 +18,6 @@ export REGION=us-central1
 gcloud dataflow flex-template run "test-actions-only-cli-`date +%Y%m%d-%H%M%S`" \
     --template-file-gcs-location="$TEMPLATE_GCS_LOCATION" \
     --region "$REGION" \
-    --runner "DirectRunner"
     --parameters jobSpecUri="gs://neo4j-se-dataflow/job-specs/testing/other/only-actions-jobspec.json" \
     --parameters neo4jConnectionUri="gs://neo4j-se-dataflow/job-specs/testing/connection/auradb-free-connection.json"
  ```
