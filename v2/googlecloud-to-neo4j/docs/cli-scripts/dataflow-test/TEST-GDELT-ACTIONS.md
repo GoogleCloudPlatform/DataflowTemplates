@@ -11,8 +11,7 @@
 Run the Apache Beam pipeline using the GCP sdk.
 
  ```sh
-export IMAGE_NAME_VERSION=b0.1
-export TEMPLATE_GCS_LOCATION="gs://neo4j-dataflow/flex-templates/images/googlecloud-to-neo4j-image-spec-${IMAGE_NAME_VERSION}.json"
+export TEMPLATE_GCS_LOCATION="gs://neo4j-dataflow/flex-templates/images/googlecloud-to-neo4j-image-spec.json"
 export REGION=us-central1
  
 gcloud dataflow flex-template run "test-gdelt-actions-cli-`date +%Y%m%d-%H%M%S`" \
