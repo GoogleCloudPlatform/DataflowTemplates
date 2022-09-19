@@ -245,7 +245,9 @@ public class ModelUtils {
   }
 
   public static String makeValidNeo4jIdentifier(String proposedIdString) {
-    if (isQuoted(proposedIdString)) return proposedIdString;
+    if (isQuoted(proposedIdString)){
+      return proposedIdString;
+    }
     String finalIdString =
         proposedIdString.trim().replaceAll(neoIdentifierDisAllowedCharactersRegexIncSpace, "_");
     if (finalIdString.substring(0, 1).matches(nonAlphaCharsRegex)) {
@@ -268,7 +270,9 @@ public class ModelUtils {
   }
 
   private static String backTickedExpressionWithSpaces(String expression) {
-    if (expression.indexOf(" ") == -1) return expression;
+    if (expression.indexOf(" ") == -1) {
+      return expression;
+    }
     String trExpression = expression.trim();
     if (trExpression.startsWith("`")
         || trExpression.startsWith("\"")
