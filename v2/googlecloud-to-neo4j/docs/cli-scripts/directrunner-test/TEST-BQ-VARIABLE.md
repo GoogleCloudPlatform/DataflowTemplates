@@ -38,6 +38,6 @@ Run the Apache Beam pipeline locally for development.
      supplier_postal_code, supplier_country,order_id, \
      quantity,unit_price, discount FROM neo4j-se-team-201905.northwind.V_CUSTOMER_ORDERS LIMIT \$limit\" \
      --optionsJson="{\"limit\":7}" \
-     --jobSpecUri=gs://neo4j-se-dataflow/job-specs/testing/bigquery/bq-northwind-jobspec.json \
-     --neo4jConnectionUri=gs://neo4j-se-dataflow/job-specs/testing/connection/auradb-free-connection.json"
+     --jobSpecUri=gs://neo4j-dataflow/job-specs/testing/bigquery/bq-northwind-jobspec.json \
+     --neo4jConnectionUri=gs://neo4j-dataflow/job-specs/testing/connection/auradb-free-connection.json"
  ```

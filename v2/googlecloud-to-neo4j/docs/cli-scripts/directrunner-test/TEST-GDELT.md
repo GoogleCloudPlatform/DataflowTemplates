@@ -33,7 +33,7 @@ Run the Apache Beam pipeline locally for development.
      --region=$REGION \
      --workerMachineType=$MACHINE_TYPE \
      --maxNumWorkers=2 \
-     --jobSpecUri=gs://neo4j-se-dataflow/job-specs/testing/bigquery/bq_gdelt_test_spec2.json \
-     --neo4jConnectionUri=gs://neo4j-se-dataflow/job-specs/testing/connection/auradb-free-connection.json"
+     --jobSpecUri=gs://neo4j-dataflow/job-specs/testing/bigquery/bq_gdelt_test_spec2.json \
+     --neo4jConnectionUri=gs://neo4j-dataflow/job-specs/testing/connection/auradb-free-connection.json"
  ```
 

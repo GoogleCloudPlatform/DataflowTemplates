@@ -62,15 +62,15 @@ Template can be executed using the following gcloud command:
 
 ```sh
 export IMAGE_NAME_VERSION=b0.11
-export TEMPLATE_IMAGE_SPEC="gs://neo4j-se-dataflow/flex-templates/images/googlecloud-to-neo4j-image-spec-${IMAGE_NAME_VERSION}.json"
+export TEMPLATE_IMAGE_SPEC="gs://neo4j-dataflow/flex-templates/images/googlecloud-to-neo4j-image-spec-${IMAGE_NAME_VERSION}.json"
 export REGION=us-central1
 export MACHINE_TYPE=n2-highmem-8
  
 gcloud dataflow flex-template run "googlecloud-to-neo4j-text-cli-`date +%Y%m%d-%H%M%S`" \
     --template-file-gcs-location="$TEMPLATE_IMAGE_SPEC" \
     --region "$REGION" \
-    --parameters jobSpecUri="gs://neo4j-se-dataflow/job-specs/testing/text/text-northwind-jobspec.json" \
-    --parameters neo4jConnectionUri="gs://neo4j-se-dataflow/job-specs/testing/connection/auradb-free-connection.json" \
+    --parameters jobSpecUri="gs://neo4j-dataflow/job-specs/testing/text/text-northwind-jobspec.json" \
+    --parameters neo4jConnectionUri="gs://neo4j-dataflow/job-specs/testing/connection/auradb-free-connection.json" \
     --max-workers=1 \
     --worker-machine-type=${MACHINE_TYPE} 
 ```
@@ -116,7 +116,7 @@ export REGION=us-central1
 export MACHINE_TYPE=n2-highmem-8
 export IMAGE_NAME=neo4j-dataflow
 export IMAGE_NAME_VERSION=b0.11
-export BUCKET_NAME=gs://neo4j-se-dataflow/flex-templates
+export BUCKET_NAME=gs://neo4j-dataflow/flex-templates
 export TARGET_GCR_IMAGE=us.gcr.io/${PROJECT}/${IMAGE_NAME}-${IMAGE_NAME_VERSION}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
