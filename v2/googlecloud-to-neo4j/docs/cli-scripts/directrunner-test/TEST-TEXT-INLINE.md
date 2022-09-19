@@ -26,14 +26,13 @@ Run the Apache Beam pipeline locally for development.
    -Dexec.args="\
      --project=$PROJECT \
      --usePublicIps=true \
-     --stagingLocation=$GS_WORKING_DIR/staging/ \
-     --tempLocation=$GS_WORKING_DIR/temp/ \
+     --stagingLocation=$GS_WORKING_DIR/staging \
+     --tempLocation=$GS_WORKING_DIR/temp \
      --jobName=$JOB_NAME \
      --appName=$APP_NAME \
      --region=$REGION \
      --workerMachineType=$MACHINE_TYPE \
      --maxNumWorkers=2 \
-     --tempLocation=gs://neo4j-se-temp/dataflow-working \
      --jobSpecUri=gs://neo4j-se-dataflow/job-specs/testing/text/inline-northwind-jobspec.json \
      --neo4jConnectionUri=gs://neo4j-se-dataflow/job-specs/testing/connection/auradb-free-connection.json"
  ```

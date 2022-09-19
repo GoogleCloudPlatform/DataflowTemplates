@@ -156,11 +156,11 @@ public class CypherGenerator {
     if (labels.size() > 0) {
       sb.append(alias);
       for (String label : labels) {
-        sb.append(":").append(ModelUtils.makeValidNeo4jIdentifier(label));
+        sb.append(":").append(ModelUtils.makeSpaceSafeValidNeo4jIdentifier(label.trim()));
       }
     } else if (StringUtils.isNotEmpty(target.getName())) {
       sb.append(alias);
-      sb.append(":").append(ModelUtils.makeValidNeo4jIdentifier(target.getName()));
+      sb.append(":").append(ModelUtils.makeSpaceSafeValidNeo4jIdentifier(target.getName()));
     } else {
       sb.append(alias);
     }
@@ -184,12 +184,12 @@ public class CypherGenerator {
             sb.append(",");
           }
           if (StringUtils.isNotEmpty(m.getConstant())) {
-            sb.append(ModelUtils.makeValidNeo4jIdentifier(m.getName()))
+            sb.append(ModelUtils.makeSpaceSafeValidNeo4jIdentifier(m.getName()))
                 .append(": \"")
                 .append(m.getConstant())
                 .append("\"");
           } else {
-            sb.append(ModelUtils.makeValidNeo4jIdentifier(m.getName()))
+            sb.append(ModelUtils.makeSpaceSafeValidNeo4jIdentifier(m.getName()))
                 .append(": row.")
                 .append(m.getField());
           }
@@ -213,7 +213,7 @@ public class CypherGenerator {
     // derive labels
     List<String> labels = ModelUtils.getStaticLabels(FragmentType.node, target);
     List<String> indexedProperties =
-        ModelUtils.getIndexedProperties(config, FragmentType.node, target);
+        ModelUtils.getIndexedProperties(config.getIndexAllProperties(), FragmentType.node, target);
     List<String> uniqueProperties = ModelUtils.getUniqueProperties(FragmentType.node, target);
     List<String> mandatoryProperties = ModelUtils.getRequiredProperties(FragmentType.node, target);
     List<String> nodeKeyProperties = ModelUtils.getNodeKeyProperties(FragmentType.node, target);
@@ -221,34 +221,34 @@ public class CypherGenerator {
     for (String uniqueProperty : uniqueProperties) {
       cyphers.add(
           "CREATE CONSTRAINT IF NOT EXISTS FOR (n:"
-              + StringUtils.join(labels, ":")
+              + StringUtils.join(ModelUtils.makeSpaceSafeValidNeo4jIdentifiers(labels), ":")
               + ") REQUIRE n."
-              + uniqueProperty
+              + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(uniqueProperty)
               + " IS UNIQUE");
     }
     for (String mandatoryProperty : mandatoryProperties) {
       cyphers.add(
           "CREATE CONSTRAINT IF NOT EXISTS FOR (n:"
-              + StringUtils.join(labels, ":")
+              + StringUtils.join(ModelUtils.makeSpaceSafeValidNeo4jIdentifiers(labels), ":")
               + ") REQUIRE n."
-              + mandatoryProperty
+              + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(mandatoryProperty)
               + " IS NOT NULL");
     }
     for (String nodeKeyProperty : nodeKeyProperties) {
       cyphers.add(
           "CREATE CONSTRAINT IF NOT EXISTS FOR (n:"
-              + StringUtils.join(labels, ":")
+              + StringUtils.join(ModelUtils.makeSpaceSafeValidNeo4jIdentifiers(labels), ":")
               + ") REQUIRE n."
-              + nodeKeyProperty
+              + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(nodeKeyProperty)
               + " IS NODE KEY");
     }
     // constraints must be created last
     for (String indexedProperty : indexedProperties) {
       cyphers.add(
           "CREATE INDEX IF NOT EXISTS FOR (t:"
-              + StringUtils.join(labels, ":")
+              + StringUtils.join(ModelUtils.makeSpaceSafeValidNeo4jIdentifiers(labels), ":")
               + ") ON (t."
-              + indexedProperty
+              + ModelUtils.makeSpaceSafeValidNeo4jIdentifier(indexedProperty)
               + ")");
     }
 

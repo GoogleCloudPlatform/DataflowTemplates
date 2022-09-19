@@ -80,8 +80,9 @@ public class TransposedMappingMapper {
         addMapping(mappings, mapping);
       }
     }
-
-    parseProperties(nodeMappingsObject.getJSONObject("properties"), mappings, FragmentType.node);
+    if (nodeMappingsObject.has("properties")) {
+      parseProperties(nodeMappingsObject.getJSONObject("properties"), mappings, FragmentType.node);
+    }
     return mappings;
   }
 
@@ -98,20 +99,36 @@ public class TransposedMappingMapper {
 
     if (edgeMappingsObject.has("source")) {
       JSONObject sourceObj = edgeMappingsObject.getJSONObject("source");
-      List<String> labels = getLabels(sourceObj.getString("label"));
-      FieldNameTuple keyTuple = createFieldNameTuple(sourceObj.getString("key"));
+      FieldNameTuple keyTuple = getFieldAndNameTuple(sourceObj.get("key"));
       Mapping keyMapping = new Mapping(FragmentType.source, RoleType.key, keyTuple);
-      keyMapping.setLabels(labels);
+      // List<String> labels = getLabels(sourceObj.getString("label").trim());
+      // keyMapping.setLabels(labels);
       mappings.add(keyMapping);
+
+      // support dynamic labels on source
+      List<FieldNameTuple> labels = getFieldAndNameTuples(sourceObj.get("label"));
+      for (FieldNameTuple f : labels) {
+        Mapping mapping = new Mapping(FragmentType.source, RoleType.label, f);
+        mapping.setIndexed(true);
+        addMapping(mappings, mapping);
+      }
     }
 
     if (edgeMappingsObject.has("target")) {
       JSONObject sourceObj = edgeMappingsObject.getJSONObject("target");
-      List<String> labels = getLabels(sourceObj.getString("label"));
-      FieldNameTuple keyTuple = createFieldNameTuple(sourceObj.getString("key"));
+      FieldNameTuple keyTuple = getFieldAndNameTuple(sourceObj.get("key"));
       Mapping keyMapping = new Mapping(FragmentType.target, RoleType.key, keyTuple);
-      keyMapping.setLabels(labels);
+
+      // List<String> labels = getLabels(sourceObj.getString("label").trim());
+      // keyMapping.setLabels(labels);
       mappings.add(keyMapping);
+
+      List<FieldNameTuple> labels = getFieldAndNameTuples(sourceObj.get("label"));
+      for (FieldNameTuple f : labels) {
+        Mapping mapping = new Mapping(FragmentType.target, RoleType.label, f);
+        mapping.setIndexed(true);
+        addMapping(mappings, mapping);
+      }
     }
 
     parseProperties(edgeMappingsObject.getJSONObject("properties"), mappings, FragmentType.rel);
@@ -275,6 +292,22 @@ public class TransposedMappingMapper {
       tuples.add(createFieldNameTuple(String.valueOf(tuplesObj), String.valueOf(tuplesObj)));
     }
     return tuples;
+  }
+
+  private static FieldNameTuple getFieldAndNameTuple(Object tuplesObj) {
+    FieldNameTuple tuple = new FieldNameTuple();
+    if (tuplesObj instanceof JSONObject) {
+      JSONObject jsonObject = (JSONObject) tuplesObj;
+      // {field:name} or {field1:name,field2:name} tuples
+      Iterator<String> it = jsonObject.keys();
+      while (it.hasNext()) {
+        String key = it.next();
+        tuple = createFieldNameTuple(key, jsonObject.getString(key));
+      }
+    } else {
+      tuple = createFieldNameTuple(String.valueOf(tuplesObj), String.valueOf(tuplesObj));
+    }
+    return tuple;
   }
 
   private static FieldNameTuple createFieldNameTuple(String field) {

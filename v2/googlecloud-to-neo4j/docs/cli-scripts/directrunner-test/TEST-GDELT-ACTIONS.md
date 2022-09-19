@@ -27,8 +27,8 @@ Run the Apache Beam pipeline locally for development.
    -Dexec.args="\
      --project=$PROJECT \
      --usePublicIps=true \
-     --stagingLocation=$GS_WORKING_DIR/staging/ \
-     --tempLocation=$GS_WORKING_DIR/temp/ \
+     --stagingLocation=$GS_WORKING_DIR/staging \
+     --tempLocation=$GS_WORKING_DIR/temp \
      --jobName=$JOB_NAME \
      --appName=$APP_NAME \
      --region=$REGION \

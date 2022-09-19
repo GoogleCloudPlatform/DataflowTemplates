@@ -25,9 +25,10 @@ Run the Apache Beam pipeline locally for development.
  mvn compile exec:java \
    -Dexec.mainClass=com.google.cloud.teleport.v2.neo4j.templates.GoogleCloudToNeo4j \
    -Dexec.args="\
+     --project=$PROJECT \
      --usePublicIps=true \
-     --stagingLocation=$GS_WORKING_DIR/staging/ \
-     --tempLocation=$GS_WORKING_DIR/temp/ \
+     --stagingLocation=$GS_WORKING_DIR/staging \
+     --tempLocation=$GS_WORKING_DIR/temp \
      --jobName=$JOB_NAME \
      --appName=$APP_NAME \
      --region=$REGION \

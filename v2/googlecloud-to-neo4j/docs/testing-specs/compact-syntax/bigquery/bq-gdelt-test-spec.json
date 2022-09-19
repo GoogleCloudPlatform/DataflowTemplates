@@ -1,6 +1,6 @@
 {
   "config": {
-    "reset_db": false,
+    "reset_db": true,
     "index_all_properties": false,
     "node_write_batch_size": 1000,
     "edge_write_batch_size": 1000,

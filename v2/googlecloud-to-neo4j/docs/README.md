@@ -8,6 +8,8 @@ Google Cloud Platform to the Neo4j graph database.
 a 0.1 - initial PR
 <br>
 b 0.1 - updates solved dependency challenges
+<br>
+b 0.11 - made properties in transposed/compact syntax, optional
 
 ## Project Introduction
 
@@ -59,7 +61,7 @@ The template requires the following parameters:
 Template can be executed using the following gcloud command:
 
 ```sh
-export IMAGE_NAME_VERSION=b0.1
+export IMAGE_NAME_VERSION=b0.11
 export TEMPLATE_IMAGE_SPEC="gs://neo4j-se-dataflow/flex-templates/images/googlecloud-to-neo4j-image-spec-${IMAGE_NAME_VERSION}.json"
 export REGION=us-central1
 export MACHINE_TYPE=n2-highmem-8
@@ -113,7 +115,7 @@ export APP_NAME=googlecloud-to-neo4j
 export REGION=us-central1
 export MACHINE_TYPE=n2-highmem-8
 export IMAGE_NAME=neo4j-dataflow
-export IMAGE_NAME_VERSION=b0.1
+export IMAGE_NAME_VERSION=b0.11
 export BUCKET_NAME=gs://neo4j-se-dataflow/flex-templates
 export TARGET_GCR_IMAGE=us.gcr.io/${PROJECT}/${IMAGE_NAME}-${IMAGE_NAME_VERSION}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
@@ -195,6 +197,11 @@ echo "{
     }
   }" > ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec-${IMAGE_NAME_VERSION}.json
 gsutil cp ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec-${IMAGE_NAME_VERSION}.json ${TEMPLATE_IMAGE_SPEC}
+```
+
+## Rewrite default image to latest
+```sh
+gsutil cp ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec.json ${TEMPLATE_IMAGE_SPEC}
 ```
 
 ## Other resources

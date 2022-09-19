@@ -28,8 +28,9 @@ public class VerboseMappingMapper {
 
   public static Mapping fromJsonObject(JSONObject mappingObj) {
     Mapping mapping = new Mapping();
-    mapping.setLabels(Arrays.asList(mappingObj.has("label") ? mappingObj.getString("label") : ""));
-    mapping.setConstant(mappingObj.has("constant") ? mappingObj.getString("constant") : "");
+    mapping.setLabels(
+        Arrays.asList(mappingObj.has("label") ? mappingObj.getString("label").trim() : ""));
+    mapping.setConstant(mappingObj.has("constant") ? mappingObj.getString("constant").trim() : "");
     mapping.setRole(
         mappingObj.has("role")
             ? RoleType.valueOf(mappingObj.getString("role"))

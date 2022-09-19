@@ -22,7 +22,6 @@ import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.SourceType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Aggregation;
-import com.google.cloud.teleport.v2.neo4j.model.job.Config;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.Source;
@@ -47,9 +46,9 @@ import org.slf4j.LoggerFactory;
 public class ModelUtils {
   public static final String DEFAULT_STAR_QUERY = "SELECT * FROM PCOLLECTION";
   private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
-  private static final String allowedCharactersRegex = "[^a-zA-Z0-9_]";
-  private static final String allowedCharactersRegexSpace = "[^a-zA-Z0-9_ ]";
-  private static final String alphaCharsRegex = "[^a-zA-Z]";
+  private static final String neoIdentifierDisAllowedCharactersRegex = "[^a-zA-Z0-9_]";
+  private static final String neoIdentifierDisAllowedCharactersRegexIncSpace = "[^a-zA-Z0-9_ ]";
+  private static final String nonAlphaCharsRegex = "[^a-zA-Z]";
   private static final Pattern variablePattern = Pattern.compile("(\\$([a-zA-Z0-9_]+))");
   private static final Logger LOG = LoggerFactory.getLogger(ModelUtils.class);
 
@@ -246,15 +245,62 @@ public class ModelUtils {
   }
 
   public static String makeValidNeo4jIdentifier(String proposedIdString) {
-    String finalIdString = proposedIdString.replaceAll(allowedCharactersRegex, "_").trim();
-    if (finalIdString.substring(0, 1).matches(alphaCharsRegex)) {
-      finalIdString = "N" + finalIdString;
+    if (isQuoted(proposedIdString)) return proposedIdString;
+    String finalIdString =
+        proposedIdString.trim().replaceAll(neoIdentifierDisAllowedCharactersRegexIncSpace, "_");
+    if (finalIdString.substring(0, 1).matches(nonAlphaCharsRegex)) {
+      finalIdString = "_" + finalIdString;
     }
     return finalIdString;
   }
 
-  public static String makeValidNeo4jRelationshipIdentifier(String proposedIdString) {
-    return proposedIdString.replaceAll(allowedCharactersRegex, "_").toUpperCase().trim();
+  public static String makeSpaceSafeValidNeo4jIdentifier(String proposedIdString) {
+    proposedIdString = makeValidNeo4jIdentifier(proposedIdString);
+    return backTickedExpressionWithSpaces(proposedIdString);
+  }
+
+  public static List<String> makeSpaceSafeValidNeo4jIdentifiers(List<String> proposedIds) {
+    List<String> safeList = new java.util.ArrayList<>();
+    for (String proposed : proposedIds) {
+      safeList.add(makeSpaceSafeValidNeo4jIdentifier(proposed));
+    }
+    return safeList;
+  }
+
+  private static String backTickedExpressionWithSpaces(String expression) {
+    if (expression.indexOf(" ") == -1) return expression;
+    String trExpression = expression.trim();
+    if (trExpression.startsWith("`")
+        || trExpression.startsWith("\"")
+        || trExpression.startsWith("'")) {
+      // already starts with quotes...
+      // NOTE_TODO: strip existing quotes, replace with double quotes
+    } else {
+      trExpression = "`" + trExpression.trim() + "`";
+    }
+    return trExpression;
+  }
+
+  public static boolean isQuoted(String expression) {
+    String trExpression = expression.trim();
+    if ((trExpression.startsWith("\"") || trExpression.startsWith("'"))
+        && (trExpression.endsWith("\"") || trExpression.endsWith("'"))) {
+      return true;
+    }
+    return false;
+  }
+
+  // Make relationships idenfifiers upper case, no spaces
+  public static String makeValidNeo4jRelationshipTypeIdentifier(String proposedTypeIdString) {
+    String finalIdString =
+        proposedTypeIdString
+            .replaceAll(neoIdentifierDisAllowedCharactersRegex, "_")
+            .toUpperCase()
+            .trim();
+    if (!finalIdString.substring(0, 1).matches(nonAlphaCharsRegex)) {
+      finalIdString = "N" + finalIdString;
+    }
+    return finalIdString;
   }
 
   public static List<String> getStaticOrDynamicRelationshipType(
@@ -275,7 +321,7 @@ public class ModelUtils {
     }
     if (relationships.isEmpty()) {
       // if relationship labels are not defined, use target name
-      relationships.add(ModelUtils.makeValidNeo4jRelationshipIdentifier(target.getName()));
+      relationships.add(ModelUtils.makeValidNeo4jRelationshipTypeIdentifier(target.getName()));
     }
     return relationships;
   }
@@ -290,6 +336,8 @@ public class ModelUtils {
           if (StringUtils.isNotEmpty(m.getConstant())) {
             labels.add(m.getConstant());
           } else {
+            // we cannot index on dynamic labels.  These would need to happen with a pre-transform
+            // action
             // dynamic labels not handled here
             // labels.add(prefix+"."+m.field);
           }
@@ -388,12 +436,12 @@ public class ModelUtils {
   }
 
   public static List<String> getIndexedProperties(
-      Config config, FragmentType entityType, Target target) {
+      boolean indexAllProperties, FragmentType entityType, Target target) {
     List<String> indexedProperties = new ArrayList<>();
     for (Mapping m : target.getMappings()) {
 
       if (m.getFragmentType() == entityType) {
-        if (m.getRole() == RoleType.key || m.isIndexed() || config.getIndexAllProperties()) {
+        if (m.getRole() == RoleType.key || m.isIndexed() || indexAllProperties) {
           indexedProperties.add(m.getName());
         }
       }

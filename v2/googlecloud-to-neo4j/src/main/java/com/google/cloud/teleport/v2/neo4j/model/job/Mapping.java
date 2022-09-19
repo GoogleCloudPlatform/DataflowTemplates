@@ -59,4 +59,6 @@ public class Mapping implements Serializable {
     this.name = name;
     this.type = type;
   }
+
+  public void setLabels(List<String> labels) {}
 }

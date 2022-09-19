@@ -94,6 +94,8 @@ public class InputValidator {
 
   public static List<String> validateJobSpec(JobSpec jobSpec) {
 
+    com.google.cloud.teleport.v2.neo4j.model.job.Config config = jobSpec.getConfig();
+
     List<String> validationMessages = new ArrayList<>();
 
     Set<String> sourceNames = new java.util.HashSet<>();
@@ -160,6 +162,7 @@ public class InputValidator {
                     + " for node mapping: "
                     + mapping.getName());
           }
+          boolean missingLabel = false;
           if (mapping.getFragmentType() == FragmentType.target
               || mapping.getFragmentType() == FragmentType.source) {
             if (mapping.getRole() != RoleType.key && mapping.getRole() != RoleType.label) {
@@ -168,9 +171,6 @@ public class InputValidator {
                       + mapping.getRole()
                       + " on relationship: "
                       + mapping.getFragmentType());
-            }
-            if (mapping.getLabels().isEmpty()) {
-              validationMessages.add(mapping.getFragmentType() + " missing label attribute");
             }
           }
         }
