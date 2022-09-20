@@ -106,7 +106,8 @@ public class SpannerRecordConverter {
                 field,
                 nullValue
                     ? null
-                    : ByteBuffer.wrap(NumericUtils.stringToBytes(row.getString(fieldName))));
+                    : ByteBuffer.wrap(
+                        NumericUtils.stringToBytes(row.getBigDecimal(fieldName).toString())));
             break;
           }
           if (dialect == Dialect.POSTGRESQL && spannerType.equals("numeric")) {

@@ -115,9 +115,6 @@ class BuildReadFromTableOperations
   String createColumnExpression(Column col) {
     switch (col.dialect()) {
       case GOOGLE_STANDARD_SQL:
-        if (col.typeString().equals("NUMERIC")) {
-          return "CAST(" + "t.`" + col.name() + "`" + " AS STRING) AS " + col.name();
-        }
         if (col.typeString().equals("JSON")) {
           return "TO_JSON_STRING(" + "t.`" + col.name() + "`" + ") AS " + col.name();
         }
