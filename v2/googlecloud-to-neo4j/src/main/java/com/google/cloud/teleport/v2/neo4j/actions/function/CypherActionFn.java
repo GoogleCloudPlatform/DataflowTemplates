@@ -49,11 +49,11 @@ public class CypherActionFn extends DoFn<Integer, Row> {
 
   @ProcessElement
   public void processElement(ProcessContext context) throws InterruptedException {
-    LOG.info("Executing cypher action transform: {}", cypher);
+    LOG.info("Executing cypher action: {}", cypher);
     try {
       directConnect.executeCypher(cypher);
     } catch (Exception e) {
-      LOG.error("Exception running cypher transform, {}: {}", cypher, e.getMessage());
+      LOG.error("Exception running cypher action {}: {}", cypher, e.getMessage());
     }
   }
 
