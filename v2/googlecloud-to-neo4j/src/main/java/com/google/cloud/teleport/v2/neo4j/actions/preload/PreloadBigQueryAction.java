@@ -57,7 +57,7 @@ public class PreloadBigQueryAction implements PreloadAction {
       msgs.add("Result rows: " + queryResult.getTotalRows());
 
     } catch (Exception e) {
-      LOG.error("Exception running sql {}", sql, e);
+      throw new RuntimeException(String.format("Exception running sql {}", sql, e.getMessage()),e);
     }
 
     return msgs;

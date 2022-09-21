@@ -18,52 +18,51 @@ package com.google.cloud.teleport.v2.neo4j.actions.function;
 import com.google.cloud.teleport.v2.neo4j.utils.HttpUtils;
 import org.apache.beam.sdk.values.Row;
 
-/** Http POST action handler. */
+/**
+ * Http POST action handler.
+ */
 public class HttpPostActionFn extends org.apache.beam.sdk.transforms.DoFn<Integer, Row> {
 
-  private static final org.slf4j.Logger LOG =
-      org.slf4j.LoggerFactory.getLogger(HttpGetActionFn.class);
+    private static final org.slf4j.Logger LOG =
+            org.slf4j.LoggerFactory.getLogger(HttpGetActionFn.class);
 
-  private final com.google.cloud.teleport.v2.neo4j.model.job.ActionContext context;
-  private final String uri;
+    private final com.google.cloud.teleport.v2.neo4j.model.job.ActionContext context;
+    private final String uri;
 
-  public HttpPostActionFn(com.google.cloud.teleport.v2.neo4j.model.job.ActionContext context) {
-    this.context = context;
-    this.uri = this.context.action.options.get("url");
-    if (org.apache.commons.lang3.StringUtils.isEmpty(uri)) {
-      throw new RuntimeException("Options 'url' not provided for preload http_get action.");
+    public HttpPostActionFn(com.google.cloud.teleport.v2.neo4j.model.job.ActionContext context) {
+        this.context = context;
+        this.uri = this.context.action.options.get("url");
+        if (org.apache.commons.lang3.StringUtils.isEmpty(uri)) {
+            throw new RuntimeException("Options 'url' not provided for preload http_get action.");
+        }
     }
-  }
 
-  @Setup
-  public void setup() {
-    // Nothing to setup
-  }
-
-  @ProcessElement
-  public void processElement(ProcessContext context)
-      throws InterruptedException { // executing http get *once*
-    // note: this is not guaranteed to execute just once.  if there are many input rows, it could be
-    // several times.  right now there are just a handful of rows.
-    try {
-      org.apache.http.client.methods.CloseableHttpResponse response =
-          com.google.cloud.teleport.v2.neo4j.utils.HttpUtils.getHttpResponse(
-              true, uri, this.context.action.options, this.context.action.headers);
-      LOG.info(
-          "Executing http_post {} transform, returned: {}",
-          this.context.action.name,
-          HttpUtils.getResponseContent(response));
-
-    } catch (Exception e) {
-      LOG.error(
-          "Exception executing http_post {} transform: {}",
-          this.context.action.name,
-          e.getMessage());
+    @Setup
+    public void setup() {
+        // Nothing to setup
     }
-  }
 
-  @Teardown
-  public void tearDown() throws Exception {
-    // Nothing to tear down
-  }
+    @ProcessElement
+    public void processElement(ProcessContext context)
+            throws InterruptedException { // executing http get *once*
+        // note: this is not guaranteed to execute just once.  if there are many input rows, it could be
+        // several times.  right now there are just a handful of rows.
+        try {
+            org.apache.http.client.methods.CloseableHttpResponse response =
+                    com.google.cloud.teleport.v2.neo4j.utils.HttpUtils.getHttpResponse(
+                            true, uri, this.context.action.options, this.context.action.headers);
+            LOG.info(
+                    "Executing http_post {} transform, returned: {}",
+                    this.context.action.name,
+                    HttpUtils.getResponseContent(response));
+
+        } catch (Exception e) {
+            throw new RuntimeException(String.format("Exception executing http_post{} transform: {}", this.context.action.name, e.getMessage()), e);
+        }
+    }
+
+    @Teardown
+    public void tearDown() throws Exception {
+        // Nothing to tear down
+    }
 }

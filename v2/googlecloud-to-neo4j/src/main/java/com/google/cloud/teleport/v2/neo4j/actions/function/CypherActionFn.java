@@ -21,46 +21,48 @@ import com.google.cloud.teleport.v2.neo4j.model.job.ActionContext;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.Row;
 
-/** Cypher action handler. */
+/**
+ * Cypher action handler.
+ */
 public class CypherActionFn extends DoFn<Integer, Row> {
 
-  private static final org.slf4j.Logger LOG =
-      org.slf4j.LoggerFactory.getLogger(CypherActionFn.class);
+    private static final org.slf4j.Logger LOG =
+            org.slf4j.LoggerFactory.getLogger(CypherActionFn.class);
 
-  private final ActionContext context;
-  private final ConnectionParams connectionParams;
-  private final String cypher;
+    private final ActionContext context;
+    private final ConnectionParams connectionParams;
+    private final String cypher;
 
-  private Neo4jConnection directConnect;
+    private Neo4jConnection directConnect;
 
-  public CypherActionFn(ActionContext context) {
-    this.context = context;
-    this.connectionParams = context.neo4jConnectionParams;
-    this.cypher = this.context.action.options.get("cypher");
-    if (org.apache.commons.lang3.StringUtils.isEmpty(cypher)) {
-      throw new RuntimeException("Options 'cypher' not provided for cypher action transform.");
+    public CypherActionFn(ActionContext context) {
+        this.context = context;
+        this.connectionParams = context.neo4jConnectionParams;
+        this.cypher = this.context.action.options.get("cypher");
+        if (org.apache.commons.lang3.StringUtils.isEmpty(cypher)) {
+            throw new RuntimeException("Options 'cypher' not provided for cypher action transform.");
+        }
     }
-  }
 
-  @Setup
-  public void setup() {
-    directConnect = new Neo4jConnection(connectionParams);
-  }
-
-  @ProcessElement
-  public void processElement(ProcessContext context) throws InterruptedException {
-    LOG.info("Executing cypher action: {}", cypher);
-    try {
-      directConnect.executeCypher(cypher);
-    } catch (Exception e) {
-      LOG.error("Exception running cypher action {}: {}", cypher, e.getMessage());
+    @Setup
+    public void setup() {
+        directConnect = new Neo4jConnection(connectionParams);
     }
-  }
 
-  @Teardown
-  public void tearDown() throws Exception {
-    if (directConnect != null && directConnect.getSession().isOpen()) {
-      directConnect.getSession().close();
+    @ProcessElement
+    public void processElement(ProcessContext context) throws InterruptedException {
+        LOG.info("Executing cypher action: {}", cypher);
+        try {
+            directConnect.executeCypher(cypher);
+        } catch (Exception e) {
+            throw new RuntimeException(String.format("Exception running cypher action {}: {}", cypher, e.getMessage()), e);
+        }
     }
-  }
+
+    @Teardown
+    public void tearDown() throws Exception {
+        if (directConnect != null && directConnect.getSession().isOpen()) {
+            directConnect.getSession().close();
+        }
+    }
 }
