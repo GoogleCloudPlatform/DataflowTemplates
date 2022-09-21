@@ -10,6 +10,7 @@ a 0.1 - initial PR
 b 0.1 - updates solved dependency challenges
 <br>
 b 0.11 - made properties in transposed/compact syntax, optional
+b 0.12 - throw RuntimeException from failed actions
 
 ## Project Introduction
 
@@ -61,7 +62,7 @@ The template requires the following parameters:
 Template can be executed using the following gcloud command:
 
 ```sh
-export IMAGE_NAME_VERSION=b0.11
+export IMAGE_NAME_VERSION=b0.12
 export TEMPLATE_IMAGE_SPEC="gs://neo4j-dataflow/flex-templates/images/googlecloud-to-neo4j-image-spec-${IMAGE_NAME_VERSION}.json"
 export REGION=us-central1
 export MACHINE_TYPE=n2-highmem-8
@@ -115,7 +116,7 @@ export APP_NAME=googlecloud-to-neo4j
 export REGION=us-central1
 export MACHINE_TYPE=n2-highmem-8
 export IMAGE_NAME=neo4j-dataflow
-export IMAGE_NAME_VERSION=b0.11
+export IMAGE_NAME_VERSION=b0.12
 export BUCKET_NAME=gs://neo4j-dataflow/flex-templates
 export TARGET_GCR_IMAGE=us.gcr.io/${PROJECT}/${IMAGE_NAME}-${IMAGE_NAME_VERSION}
 export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base

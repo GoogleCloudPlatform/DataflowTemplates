@@ -130,8 +130,9 @@ public class TransposedMappingMapper {
         addMapping(mappings, mapping);
       }
     }
-
-    parseProperties(edgeMappingsObject.getJSONObject("properties"), mappings, FragmentType.rel);
+    if (edgeMappingsObject.has("properties")) {
+      parseProperties(edgeMappingsObject.getJSONObject("properties"), mappings, FragmentType.rel);
+    }
     return mappings;
   }
 

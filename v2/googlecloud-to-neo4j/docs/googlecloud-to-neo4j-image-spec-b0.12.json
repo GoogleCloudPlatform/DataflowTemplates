@@ -1,5 +1,5 @@
 {
-  "image": "us.gcr.io/neo4j-se-team-201905/neo4j-dataflow-b0.11",
+  "image": "us.gcr.io/neo4j-se-team-201905/neo4j-dataflow-b0.12",
   "metadata": {
     "name": "Google Cloud to Neo4j",
     "description": "Copy data from Google Cloud (BigQuery, Text) into Neo4j",
