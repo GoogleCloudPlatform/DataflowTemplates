@@ -53,8 +53,8 @@ public class PreloadHttpGetAction implements PreloadAction {
       LOG.info("Request returned: {}", HttpUtils.getResponseContent(response));
 
     } catch (Exception e) {
-      throw new RuntimeException(String.format("Exception making http get request: {}", e.getMessage()),e);
-
+      throw new RuntimeException(
+          String.format("Exception making http get request: {}", e.getMessage()), e);
     }
 
     return msgs;

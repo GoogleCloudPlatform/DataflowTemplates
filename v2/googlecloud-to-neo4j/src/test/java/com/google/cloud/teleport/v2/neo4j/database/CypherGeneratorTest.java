@@ -19,9 +19,7 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
 
-/**
- * Unit test functions in the cypher generator.
- */
+/** Unit test functions in the cypher generator. */
 public class CypherGeneratorTest {
 
   @org.junit.Test

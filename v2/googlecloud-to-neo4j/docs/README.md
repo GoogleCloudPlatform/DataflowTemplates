@@ -10,6 +10,7 @@ a 0.1 - initial PR
 b 0.1 - updates solved dependency challenges
 <br>
 b 0.11 - made properties in transposed/compact syntax, optional
+<br>
 b 0.12 - throw RuntimeException from failed actions
 
 ## Project Introduction
@@ -202,7 +203,8 @@ gsutil cp ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec-${IMAGE_NAME_VER
 
 ## Rewrite default image to latest
 ```sh
-gsutil cp ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec.json ${TEMPLATE_IMAGE_SPEC}
+cp ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec-${IMAGE_NAME_VERSION}.json ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec.json
+gsutil cp ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec-${IMAGE_NAME_VERSION}.json ${BUCKET_NAME}/images/${APP_NAME}-image-spec.json
 ```
 
 ## Other resources

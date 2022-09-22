@@ -54,7 +54,8 @@ public class PreloadCypherAction implements PreloadAction {
         directConnect.getSession().close();
       }
     } catch (Exception e) {
-      throw new RuntimeException(String.format("Exception running cypher, {}: {}", cypher, e.getMessage()),e);
+      throw new RuntimeException(
+          String.format("Exception running cypher, {}: {}", cypher, e.getMessage()), e);
     }
 
     return msgs;

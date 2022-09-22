@@ -52,8 +52,8 @@ public class PreloadHttpPostAction implements PreloadAction {
       LOG.info("Request returned: {}", HttpUtils.getResponseContent(response));
 
     } catch (Exception e) {
-      throw new RuntimeException(String.format("Exception making http post request: {}", e.getMessage()),e);
-
+      throw new RuntimeException(
+          String.format("Exception making http post request: {}", e.getMessage()), e);
     }
 
     return msgs;

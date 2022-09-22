@@ -245,7 +245,7 @@ public class ModelUtils {
   }
 
   public static String makeValidNeo4jIdentifier(String proposedIdString) {
-    if (isQuoted(proposedIdString)){
+    if (isQuoted(proposedIdString)) {
       return proposedIdString;
     }
     String finalIdString =
