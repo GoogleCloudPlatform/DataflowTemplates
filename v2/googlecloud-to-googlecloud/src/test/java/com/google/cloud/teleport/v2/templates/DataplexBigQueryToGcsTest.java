@@ -167,6 +167,7 @@ public class DataplexBigQueryToGcsTest {
     options.setDestinationStorageBucketAssetName(ASSET_NAME);
     // Required when using BigQueryIO.withMethod(EXPORT).
     options.setTempLocation(tmpDir.newFolder("bqTmp").getAbsolutePath());
+    options.setJobName("test-job"); // otherwise the job name can randomly change during execution
 
     outDir = tmpDir.newFolder("out");
 

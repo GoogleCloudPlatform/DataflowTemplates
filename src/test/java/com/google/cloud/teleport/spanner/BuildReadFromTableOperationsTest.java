@@ -41,7 +41,7 @@ public class BuildReadFromTableOperationsTest {
             .endTable()
             .build();
     assertEquals(
-        "CAST(t.`colName` AS STRING) AS colName",
+        "t.`colName`",
         buildReadFromTableOperations.createColumnExpression(ddl.table("table").column("colName")));
     assertEquals(
         "(SELECT ARRAY_AGG(CAST(num AS STRING)) FROM UNNEST(t.`colName1`) AS num) AS colName1",

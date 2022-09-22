@@ -210,7 +210,10 @@ abstract class LocalBatchSpannerRead
     public void startBundle() throws Exception {
       serviceCallMetric =
           createServiceCallMetric(
-              projectId, this.config.getDatabaseId().get(), this.config.getInstanceId().get());
+              projectId,
+              this.config.getInstanceId().get(),
+              this.config.getDatabaseId().get(),
+              this.config.getInstanceId().get());
     }
 
     @ProcessElement
@@ -234,14 +237,14 @@ abstract class LocalBatchSpannerRead
     }
 
     private ServiceCallMetric createServiceCallMetric(
-        String projectId, String databaseId, String tableId) {
+        String projectId, String instanceId, String databaseId, String tableId) {
       HashMap<String, String> baseLabels = new HashMap<>();
       baseLabels.put(MonitoringInfoConstants.Labels.PTRANSFORM, "");
       baseLabels.put(MonitoringInfoConstants.Labels.SERVICE, "Spanner");
       baseLabels.put(MonitoringInfoConstants.Labels.METHOD, "Read");
       baseLabels.put(
           MonitoringInfoConstants.Labels.RESOURCE,
-          GcpResourceIdentifiers.spannerTable(projectId, databaseId, tableId));
+          GcpResourceIdentifiers.spannerTable(projectId, instanceId, databaseId, tableId));
       baseLabels.put(MonitoringInfoConstants.Labels.SPANNER_PROJECT_ID, projectId);
       baseLabels.put(MonitoringInfoConstants.Labels.SPANNER_DATABASE_ID, databaseId);
       baseLabels.put(MonitoringInfoConstants.Labels.SPANNER_INSTANCE_ID, tableId);
