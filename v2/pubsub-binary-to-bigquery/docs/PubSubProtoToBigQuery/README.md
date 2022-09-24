@@ -15,7 +15,7 @@ NOTE: The JavaScript UDF currently does not support ES6.
 
 These are common requirements for all of the templates in this collection.
 
-*   Java 8
+*   Java 11
 *   Maven
 *   Docker
 
@@ -60,7 +60,7 @@ __Set environment variables that will be used in the build process.__
 export PROJECT=my-project
 export IMAGE_NAME=pubsub-proto-to-bigquery
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
-export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
+export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export APP_ROOT=/template/pubsub-proto-to-bigquery
 export COMMAND_SPEC=${APP_ROOT}/resources/pubsub-proto-to-bigquery-command-spec.json
