@@ -56,7 +56,7 @@ public class TextIOToBigQuery {
 
     void setJSONPath(ValueProvider<String> value);
 
-    @Description("Output topic to write to")
+    @Description("Output BigQuery Table to write to")
     ValueProvider<String> getOutputTable();
 
     void setOutputTable(ValueProvider<String> value);
