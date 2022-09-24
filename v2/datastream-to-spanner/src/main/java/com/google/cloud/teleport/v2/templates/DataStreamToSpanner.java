@@ -21,6 +21,8 @@ import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
+import com.google.cloud.teleport.v2.templates.session.ReadSessionFile;
+import com.google.cloud.teleport.v2.templates.session.Session;
 import com.google.cloud.teleport.v2.templates.spanner.ProcessInformationSchema;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
@@ -93,6 +95,11 @@ public class DataStreamToSpanner {
    * <p>Inherits standard configuration options.
    */
   public interface Options extends PipelineOptions, StreamingOptions {
+    @Description("Session file path in GCS that contains mapping information from HarbourBridge")
+    String getSessionFilePath();
+
+    void setSessionFilePath(String value);
+
     @Description("Instance ID to write to Spanner")
     String getInstanceId();
 
@@ -272,6 +279,8 @@ public class DataStreamToSpanner {
     Pipeline pipeline = Pipeline.create(options);
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
 
+    // Ingest session file into memory.
+    Session session = (new ReadSessionFile(options.getSessionFilePath())).getSession();
     /*
      * Stage 1: Ingest/Normalize Data to FailsafeElement with JSON Strings and
      * read Cloud Spanner information schema.
@@ -286,6 +295,7 @@ public class DataStreamToSpanner {
             .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
             .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
             .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));
+
     /* Process information schema
      * 1) Read information schema from destination Cloud Spanner database
      * 2) Check if shadow tables are present and create if necessary
@@ -337,6 +347,7 @@ public class DataStreamToSpanner {
             new SpannerTransactionWriter(
                 spannerConfig,
                 ddlView,
+                session,
                 options.getShadowTablePrefix(),
                 options.getDatastreamSourceType()));
 

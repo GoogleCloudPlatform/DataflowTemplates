@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.io;
 
+import com.google.re2j.Matcher;
+import com.google.re2j.Pattern;
 import org.apache.beam.sdk.io.DefaultFilenamePolicy;
 import org.apache.beam.sdk.io.FileBasedSink.FilenamePolicy;
 import org.apache.beam.sdk.io.FileBasedSink.OutputFileHints;
@@ -46,6 +48,9 @@ public class WindowedFilenamePolicy extends FilenamePolicy {
   private static final DateTimeFormatter DAY = DateTimeFormat.forPattern("dd");
   private static final DateTimeFormatter HOUR = DateTimeFormat.forPattern("HH");
   private static final DateTimeFormatter MINUTE = DateTimeFormat.forPattern("mm");
+  // GCS_BUCKET_PATTERN has two groups. The first group is the bucket name (e.g. gs://bucket-name/)
+  // and the second group is the directory path inside the bucket (e.g. path/to/folder/)
+  private static final Pattern GCS_BUCKET_PATTERN = Pattern.compile("^(gs:\\/\\/[^\\/]+\\/)(.*)$");
   /** The filename baseFile. */
   private final ValueProvider<String> outputDirectory;
   /** The prefix of the file to output. */
@@ -143,16 +148,35 @@ public class WindowedFilenamePolicy extends FilenamePolicy {
       ValueProvider<String> outputDirectoryStr, BoundedWindow window) {
     ResourceId outputDirectory = FileSystems.matchNewResource(outputDirectoryStr.get(), true);
     if (window instanceof IntervalWindow) {
+      Matcher matcher = GCS_BUCKET_PATTERN.matcher(outputDirectory.toString());
       IntervalWindow intervalWindow = (IntervalWindow) window;
       DateTime time = intervalWindow.end().toDateTime();
-      String outputPath = outputDirectory.toString();
-      outputPath = outputPath.replace("YYYY", YEAR.print(time));
-      outputPath = outputPath.replace("MM", MONTH.print(time));
-      outputPath = outputPath.replace("DD", DAY.print(time));
-      outputPath = outputPath.replace("HH", HOUR.print(time));
-      outputPath = outputPath.replace("mm", MINUTE.print(time));
-      outputDirectory = FileSystems.matchNewResource(outputPath, true);
+      if (!matcher.find()) {
+        // This should happen only in tests.
+        outputDirectory =
+            FileSystems.matchNewResource(
+                resolveDirectoryPath(time, "", outputDirectoryStr.get()), /*isDirectory*/ true);
+      } else {
+        outputDirectory =
+            FileSystems.matchNewResource(
+                resolveDirectoryPath(time, matcher.group(1), matcher.group(2)), /*isDirectory*/
+                true);
+      }
     }
     return outputDirectory;
+  }
+
+  /** Resolves any date variables which exist in the output directory path. */
+  private String resolveDirectoryPath(DateTime time, String bucket, String directoryPath) {
+    if (directoryPath == null || directoryPath.isEmpty()) {
+      return bucket;
+    }
+
+    directoryPath = directoryPath.replace("YYYY", YEAR.print(time));
+    directoryPath = directoryPath.replace("MM", MONTH.print(time));
+    directoryPath = directoryPath.replace("DD", DAY.print(time));
+    directoryPath = directoryPath.replace("HH", HOUR.print(time));
+    directoryPath = directoryPath.replace("mm", MINUTE.print(time));
+    return bucket + directoryPath;
   }
 }

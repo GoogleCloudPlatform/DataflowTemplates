@@ -17,6 +17,9 @@ package com.google.cloud.teleport.v2.transforms;
 
 import static org.junit.Assert.assertEquals;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -32,6 +35,8 @@ import org.junit.runners.JUnit4;
 /** Tests for FormatDatastreamRecordToJson function. These check appropriate Avro-to-Json conv. */
 @RunWith(JUnit4.class)
 public class FormatDatastreamRecordToJsonTest {
+
+  private static final String EVENT_UUID_KEY = "_metadata_uuid";
 
   private static final String EXPECTED_FIRST_RECORD =
       "{\"LOCATION_ID\":1000.0,\"STREET_ADDRESS\":\"1297 Via Cola di Rie\","
@@ -110,7 +115,10 @@ public class FormatDatastreamRecordToJsonTest {
     DataFileReader<GenericRecord> dataFileReader = new DataFileReader<>(file, datumReader);
     GenericRecord record = dataFileReader.next();
     String jsonData = FormatDatastreamRecordToJson.create().apply(record).getOriginalPayload();
-    assertEquals(EXPECTED_FIRST_RECORD, jsonData);
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode changeEvent = mapper.readTree(jsonData);
+    ((ObjectNode) changeEvent).remove(EVENT_UUID_KEY);
+    assertEquals(EXPECTED_FIRST_RECORD, changeEvent.toString());
     while (dataFileReader.hasNext()) {
       record = dataFileReader.next();
       FormatDatastreamRecordToJson.create().apply(record);
@@ -128,7 +136,10 @@ public class FormatDatastreamRecordToJsonTest {
 
     GenericRecord record = dataFileReader.next();
     String jsonData = FormatDatastreamRecordToJson.create().apply(record).getOriginalPayload();
-    assertEquals(EXPECTED_MYSQL_PEOPLE, jsonData);
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode changeEvent = mapper.readTree(jsonData);
+    ((ObjectNode) changeEvent).remove(EVENT_UUID_KEY);
+    assertEquals(EXPECTED_MYSQL_PEOPLE, changeEvent.toString());
 
     while (dataFileReader.hasNext()) {
       record = dataFileReader.next();
@@ -148,7 +159,10 @@ public class FormatDatastreamRecordToJsonTest {
     dataFileReader.next();
     GenericRecord record = dataFileReader.next();
     String jsonData = FormatDatastreamRecordToJson.create().apply(record).getOriginalPayload();
-    assertEquals(EXPECTED_NUMERIC_RECORD, jsonData);
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode changeEvent = mapper.readTree(jsonData);
+    ((ObjectNode) changeEvent).remove(EVENT_UUID_KEY);
+    assertEquals(EXPECTED_NUMERIC_RECORD, changeEvent.toString());
   }
 
   @Test

@@ -41,7 +41,7 @@ public class BuildReadFromTableOperationsTest {
             .endTable()
             .build();
     assertEquals(
-        "CAST(t.`colName` AS STRING) AS colName",
+        "t.`colName`",
         buildReadFromTableOperations.createColumnExpression(ddl.table("table").column("colName")));
     assertEquals(
         "(SELECT ARRAY_AGG(CAST(num AS STRING)) FROM UNNEST(t.`colName1`) AS num) AS colName1",
@@ -103,6 +103,23 @@ public class BuildReadFromTableOperationsTest {
             .build();
     assertEquals(
         "t.\"colName\"",
+        buildReadFromTableOperations.createColumnExpression(ddl.table("table").column("colName")));
+  }
+
+  @Test
+  public void testColumnExpressionPgJsonb() {
+    BuildReadFromTableOperations buildReadFromTableOperations =
+        new BuildReadFromTableOperations(null);
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("table")
+            .column("colName")
+            .pgJsonb()
+            .endColumn()
+            .endTable()
+            .build();
+    assertEquals(
+        "CAST(t.\"colName\" AS VARCHAR) AS colName",
         buildReadFromTableOperations.createColumnExpression(ddl.table("table").column("colName")));
   }
 }

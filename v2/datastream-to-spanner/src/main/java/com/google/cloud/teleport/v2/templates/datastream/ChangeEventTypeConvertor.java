@@ -125,8 +125,14 @@ public class ChangeEventTypeConvertor {
       return null;
     }
     try {
-      String value = changeEvent.get(key).asText();
-      return ByteArray.copyFrom(value);
+      // For data with Spanner type as BYTES, Datastream returns a hex encoded string. We need to
+      // decode it before returning to ensure data correctness.
+      String s = changeEvent.get(key).asText();
+      // Make an odd length hex string even by appending a 0 in the beginning.
+      if (s.length() % 2 == 1) {
+        s = "0" + s;
+      }
+      return ByteArray.copyFrom(hexStringToByteArray(s));
     } catch (Exception e) {
       throw new ChangeEventConvertorException(
           "Unable to convert field " + key + " to ByteArray", e);
@@ -165,6 +171,16 @@ public class ChangeEventTypeConvertor {
     } catch (Exception e) {
       throw new ChangeEventConvertorException("Unable to convert field " + key + " to Date", e);
     }
+  }
+
+  public static byte[] hexStringToByteArray(String s) {
+    int len = s.length();
+    byte[] data = new byte[len / 2];
+    for (int i = 0; i < len; i += 2) {
+      data[i / 2] =
+          (byte) ((Character.digit(s.charAt(i), 16) << 4) + Character.digit(s.charAt(i + 1), 16));
+    }
+    return data;
   }
 
   private static boolean isNumeric(String str) {

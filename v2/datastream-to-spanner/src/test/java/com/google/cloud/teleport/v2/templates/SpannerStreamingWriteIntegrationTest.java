@@ -28,6 +28,7 @@ import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.spanner.IntegrationTest;
 import com.google.cloud.teleport.v2.spanner.SpannerServerResource;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
+import com.google.cloud.teleport.v2.templates.session.Session;
 import com.google.cloud.teleport.v2.templates.spanner.ProcessInformationSchema;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.InformationSchemaScanner;
@@ -145,10 +146,11 @@ public class SpannerStreamingWriteIntegrationTest {
             "Process Information Schema",
             new ProcessInformationSchema(sourceConfig, true, shadowTablePrefix, "oracle"));
     PCollectionView<Ddl> ddlView = ddl.apply("Cloud Spanner DDL as view", View.asSingleton());
+    Session session = new Session();
 
     jsonRecords.apply(
         "Write events to Cloud Spanner",
-        new SpannerTransactionWriter(sourceConfig, ddlView, shadowTablePrefix, "oracle"));
+        new SpannerTransactionWriter(sourceConfig, ddlView, session, shadowTablePrefix, "oracle"));
 
     PipelineResult testResult = testPipeline.run();
     testResult.waitUntilFinish();

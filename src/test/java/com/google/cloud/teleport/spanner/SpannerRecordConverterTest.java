@@ -30,6 +30,7 @@ import com.google.cloud.teleport.spanner.common.NumericUtils;
 import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.common.collect.Lists;
+import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
@@ -373,7 +374,7 @@ public class SpannerRecordConverterTest {
             .set("id")
             .to(1L)
             .set("numeric")
-            .to("-9305028.140032")
+            .to(new BigDecimal(-912348.125))
             .set("numeric_arr")
             .toStringArray(Lists.newArrayList(numericArrValues))
             .build();
@@ -387,7 +388,7 @@ public class SpannerRecordConverterTest {
     assertThat(avroRecord.get("id"), equalTo(1L));
     assertThat(
         avroRecord.get("numeric"),
-        equalTo(ByteBuffer.wrap(NumericUtils.stringToBytes("-9305028.140032"))));
+        equalTo(ByteBuffer.wrap(NumericUtils.stringToBytes("-912348.125"))));
     assertThat(avroRecord.get("numeric_arr"), equalTo(expectedNumericArr));
   }
 
@@ -711,6 +712,35 @@ public class SpannerRecordConverterTest {
         avroRecord.get("numeric3"),
         equalTo(ByteBuffer.wrap(NumericUtils.pgStringToBytes("1999999999.1246"))));
     assertThat(avroRecord.get("numeric_arr"), equalTo(expectedPgNumericArr));
+  }
+
+  @Test
+  public void pgJsonbs() {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("jsonbtable")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("jsonb")
+            .type(Type.pgJsonb())
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+    Schema schema = converter.convert(ddl).iterator().next();
+    SpannerRecordConverter recordConverter = new SpannerRecordConverter(schema, Dialect.POSTGRESQL);
+
+    Struct struct =
+        Struct.newBuilder().set("id").to(1L).set("jsonb").to("{\"a\": true, \"b\": 2}").build();
+
+    GenericRecord avroRecord = recordConverter.convert(struct);
+
+    assertThat(avroRecord.get("id"), equalTo(1L));
+    assertThat(avroRecord.get("jsonb"), equalTo("{\"a\": true, \"b\": 2}"));
   }
 
   @Test
