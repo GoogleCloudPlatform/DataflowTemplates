@@ -9,7 +9,7 @@ The [FileFormatConversion](src/main/java/com/google/cloud/teleport/v2/templates/
 ## Getting started
 
 ### Requirements
-* Java 8
+* Java 11
 * Maven
 * Input file in Cloud Storage exists
 * Cloud Storage output bucket exists
@@ -25,7 +25,7 @@ export PROJECT=<my-project>
 export IMAGE_NAME=<my-image-name>
 export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
-export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
+export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export TEMPLATE_MODULE=file-format-conversion
 export APP_ROOT=/template/${TEMPLATE_MODULE}
