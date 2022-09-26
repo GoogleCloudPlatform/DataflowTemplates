@@ -30,7 +30,7 @@ inputs:
     type: string
     description: 'The version of Java to install'
     required: false
-    default: '8'
+    default: '11'
 outputs:
   cache-hit:
     description: 'Whether or not there was a cache hit'
