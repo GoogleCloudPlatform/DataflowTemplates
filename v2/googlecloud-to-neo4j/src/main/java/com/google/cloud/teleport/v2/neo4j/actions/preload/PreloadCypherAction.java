@@ -55,7 +55,7 @@ public class PreloadCypherAction implements PreloadAction {
       }
     } catch (Exception e) {
       throw new RuntimeException(
-          String.format("Exception running cypher, {}: {}", cypher, e.getMessage()), e);
+          String.format("Exception running cypher, %s: %s", cypher, e.getMessage()), e);
     }
 
     return msgs;

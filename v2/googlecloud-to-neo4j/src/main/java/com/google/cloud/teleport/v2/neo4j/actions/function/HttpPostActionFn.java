@@ -15,22 +15,27 @@
  */
 package com.google.cloud.teleport.v2.neo4j.actions.function;
 
+import com.google.cloud.teleport.v2.neo4j.model.job.ActionContext;
 import com.google.cloud.teleport.v2.neo4j.utils.HttpUtils;
+import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.Row;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Http POST action handler. */
-public class HttpPostActionFn extends org.apache.beam.sdk.transforms.DoFn<Integer, Row> {
+public class HttpPostActionFn extends DoFn<Integer, Row> {
 
-  private static final org.slf4j.Logger LOG =
-      org.slf4j.LoggerFactory.getLogger(HttpGetActionFn.class);
+  private static final Logger LOG = LoggerFactory.getLogger(HttpGetActionFn.class);
 
-  private final com.google.cloud.teleport.v2.neo4j.model.job.ActionContext context;
+  private final ActionContext context;
   private final String uri;
 
-  public HttpPostActionFn(com.google.cloud.teleport.v2.neo4j.model.job.ActionContext context) {
+  public HttpPostActionFn(ActionContext context) {
     this.context = context;
     this.uri = this.context.action.options.get("url");
-    if (org.apache.commons.lang3.StringUtils.isEmpty(uri)) {
+    if (StringUtils.isEmpty(uri)) {
       throw new RuntimeException("Options 'url' not provided for preload http_get action.");
     }
   }
@@ -46,8 +51,8 @@ public class HttpPostActionFn extends org.apache.beam.sdk.transforms.DoFn<Intege
     // note: this is not guaranteed to execute just once.  if there are many input rows, it could be
     // several times.  right now there are just a handful of rows.
     try {
-      org.apache.http.client.methods.CloseableHttpResponse response =
-          com.google.cloud.teleport.v2.neo4j.utils.HttpUtils.getHttpResponse(
+      CloseableHttpResponse response =
+          HttpUtils.getHttpResponse(
               true, uri, this.context.action.options, this.context.action.headers);
       LOG.info(
           "Executing http_post {} transform, returned: {}",
@@ -57,9 +62,8 @@ public class HttpPostActionFn extends org.apache.beam.sdk.transforms.DoFn<Intege
     } catch (Exception e) {
       throw new RuntimeException(
           String.format(
-              "Exception executing http_post{} transform: {}",
-              this.context.action.name,
-              e.getMessage()),
+              "Exception executing http_post %s transform: %s",
+              this.context.action.name, e.getMessage()),
           e);
     }
   }

@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.neo4j.utils;
 
+import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.LegacySQLTypeName;
 import com.google.cloud.teleport.v2.neo4j.model.enums.PropertyType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
@@ -38,7 +39,7 @@ public class BeamUtils {
   public static Schema toBeamSchema(com.google.cloud.bigquery.Schema bqSchema) {
     List<Schema.Field> schemaFieldList = new ArrayList<>();
     for (int i = 0; i < bqSchema.getFields().size(); i++) {
-      com.google.cloud.bigquery.Field field = bqSchema.getFields().get(i);
+      Field field = bqSchema.getFields().get(i);
       Schema.Field schemaField =
           Schema.Field.nullable(field.getName(), bigQueryToBeamFieldType(field));
       schemaFieldList.add(schemaField);
@@ -46,7 +47,7 @@ public class BeamUtils {
     return new Schema(schemaFieldList);
   }
 
-  public static Schema.FieldType bigQueryToBeamFieldType(com.google.cloud.bigquery.Field field) {
+  public static Schema.FieldType bigQueryToBeamFieldType(Field field) {
 
     LegacySQLTypeName legacySQLTypeName = field.getType();
     if (LegacySQLTypeName.STRING.equals(legacySQLTypeName)) {

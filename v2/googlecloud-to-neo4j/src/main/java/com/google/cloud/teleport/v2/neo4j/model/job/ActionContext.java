@@ -16,9 +16,10 @@
 package com.google.cloud.teleport.v2.neo4j.model.job;
 
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
+import java.io.Serializable;
 
 /** Context for actions. */
-public class ActionContext implements java.io.Serializable {
+public class ActionContext implements Serializable {
 
   public Action action;
   public ConnectionParams neo4jConnectionParams;

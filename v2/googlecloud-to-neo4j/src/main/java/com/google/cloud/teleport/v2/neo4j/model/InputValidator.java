@@ -22,6 +22,7 @@ import com.google.cloud.teleport.v2.neo4j.model.enums.RoleType;
 import com.google.cloud.teleport.v2.neo4j.model.enums.TargetType;
 import com.google.cloud.teleport.v2.neo4j.model.job.Action;
 import com.google.cloud.teleport.v2.neo4j.model.job.Aggregation;
+import com.google.cloud.teleport.v2.neo4j.model.job.Config;
 import com.google.cloud.teleport.v2.neo4j.model.job.JobSpec;
 import com.google.cloud.teleport.v2.neo4j.model.job.Mapping;
 import com.google.cloud.teleport.v2.neo4j.model.job.Source;
@@ -33,6 +34,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -94,11 +96,11 @@ public class InputValidator {
 
   public static List<String> validateJobSpec(JobSpec jobSpec) {
 
-    com.google.cloud.teleport.v2.neo4j.model.job.Config config = jobSpec.getConfig();
+    Config config = jobSpec.getConfig();
 
     List<String> validationMessages = new ArrayList<>();
 
-    Set<String> sourceNames = new java.util.HashSet<>();
+    Set<String> sourceNames = new HashSet<>();
     // Source validation
     for (Source source : jobSpec.getSourceList()) {
       String sourceName = source.getName();
@@ -120,7 +122,7 @@ public class InputValidator {
       }
     }
 
-    Set<String> targetNames = new java.util.HashSet<>();
+    Set<String> targetNames = new HashSet<>();
     // Target validation
     for (Target target : jobSpec.getTargets()) {
       // Check that all targets have names
@@ -237,7 +239,7 @@ public class InputValidator {
       }
     }
 
-    Set<String> actionNames = new java.util.HashSet<>();
+    Set<String> actionNames = new HashSet<>();
     if (jobSpec.getActions().size() > 0) {
       // check valid options
       for (Action action : jobSpec.getActions()) {

@@ -262,7 +262,7 @@ public class ModelUtils {
   }
 
   public static List<String> makeSpaceSafeValidNeo4jIdentifiers(List<String> proposedIds) {
-    List<String> safeList = new java.util.ArrayList<>();
+    List<String> safeList = new ArrayList<>();
     for (String proposed : proposedIds) {
       safeList.add(makeSpaceSafeValidNeo4jIdentifier(proposed));
     }
@@ -287,11 +287,8 @@ public class ModelUtils {
 
   public static boolean isQuoted(String expression) {
     String trExpression = expression.trim();
-    if ((trExpression.startsWith("\"") || trExpression.startsWith("'"))
-        && (trExpression.endsWith("\"") || trExpression.endsWith("'"))) {
-      return true;
-    }
-    return false;
+    return (trExpression.startsWith("\"") || trExpression.startsWith("'"))
+        && (trExpression.endsWith("\"") || trExpression.endsWith("'"));
   }
 
   // Make relationships idenfifiers upper case, no spaces

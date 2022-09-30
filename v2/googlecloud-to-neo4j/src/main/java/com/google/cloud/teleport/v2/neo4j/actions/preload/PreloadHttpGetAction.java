@@ -54,7 +54,7 @@ public class PreloadHttpGetAction implements PreloadAction {
 
     } catch (Exception e) {
       throw new RuntimeException(
-          String.format("Exception making http get request: {}", e.getMessage()), e);
+          String.format("Exception making http get request: %s", e.getMessage()), e);
     }
 
     return msgs;

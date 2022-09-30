@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.templates;
 
 import com.google.cloud.teleport.v2.neo4j.actions.ActionDoFnFactory;
+import com.google.cloud.teleport.v2.neo4j.actions.ActionPreloadFactory;
 import com.google.cloud.teleport.v2.neo4j.actions.preload.PreloadAction;
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
 import com.google.cloud.teleport.v2.neo4j.model.InputRefactoring;
@@ -44,11 +45,13 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.util.List;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.coders.VarIntCoder;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Wait;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
@@ -345,8 +348,7 @@ public class GoogleCloudToNeo4j {
       ActionContext context = new ActionContext();
       context.jobSpec = this.jobSpec;
       context.neo4jConnectionParams = this.neo4jConnection;
-      PreloadAction actionImpl =
-          com.google.cloud.teleport.v2.neo4j.actions.ActionPreloadFactory.of(action, context);
+      PreloadAction actionImpl = ActionPreloadFactory.of(action, context);
       List<String> msgs = actionImpl.execute();
       for (String msg : msgs) {
         LOG.info("Preload action {}: {}", action.name, msg);
@@ -399,9 +401,8 @@ public class GoogleCloudToNeo4j {
                   Wait.on(
                       blockingQueue.waitOnCollection(
                           action.executeAfter, action.executeAfterName, action.name)))
-              .setCoder(org.apache.beam.sdk.coders.VarIntCoder.of())
-              .apply(
-                  "Running " + action.name, org.apache.beam.sdk.transforms.ParDo.of(doFnActionImpl))
+              .setCoder(VarIntCoder.of())
+              .apply("Running " + action.name, ParDo.of(doFnActionImpl))
               .setCoder(executionContextCollection.getCoder());
 
       // Add action to blocking queue since action could be a dependency.

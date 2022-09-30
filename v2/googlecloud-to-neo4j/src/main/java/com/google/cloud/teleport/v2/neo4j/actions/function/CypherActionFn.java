@@ -20,12 +20,14 @@ import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.model.job.ActionContext;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.Row;
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Cypher action handler. */
 public class CypherActionFn extends DoFn<Integer, Row> {
 
-  private static final org.slf4j.Logger LOG =
-      org.slf4j.LoggerFactory.getLogger(CypherActionFn.class);
+  private static final Logger LOG = LoggerFactory.getLogger(CypherActionFn.class);
 
   private final ActionContext context;
   private final ConnectionParams connectionParams;
@@ -37,7 +39,7 @@ public class CypherActionFn extends DoFn<Integer, Row> {
     this.context = context;
     this.connectionParams = context.neo4jConnectionParams;
     this.cypher = this.context.action.options.get("cypher");
-    if (org.apache.commons.lang3.StringUtils.isEmpty(cypher)) {
+    if (StringUtils.isEmpty(cypher)) {
       throw new RuntimeException("Options 'cypher' not provided for cypher action transform.");
     }
   }
@@ -54,7 +56,7 @@ public class CypherActionFn extends DoFn<Integer, Row> {
       directConnect.executeCypher(cypher);
     } catch (Exception e) {
       throw new RuntimeException(
-          String.format("Exception running cypher action {}: {}", cypher, e.getMessage()), e);
+          String.format("Exception running cypher action %s: %s", cypher, e.getMessage()), e);
     }
   }
 

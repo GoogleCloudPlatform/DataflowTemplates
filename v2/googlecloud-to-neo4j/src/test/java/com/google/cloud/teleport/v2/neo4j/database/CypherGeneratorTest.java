@@ -18,11 +18,12 @@ package com.google.cloud.teleport.v2.neo4j.database;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.v2.neo4j.utils.ModelUtils;
+import org.junit.Test;
 
 /** Unit test functions in the cypher generator. */
 public class CypherGeneratorTest {
 
-  @org.junit.Test
+  @Test
   public void testFixIdentifierFirstCharAndSpaces() {
     String testExpression = "1Customer Id";
     String testExpressionValidated = ModelUtils.makeValidNeo4jIdentifier(testExpression);

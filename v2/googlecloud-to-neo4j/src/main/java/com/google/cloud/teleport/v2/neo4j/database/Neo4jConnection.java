@@ -39,9 +39,9 @@ public class Neo4jConnection implements Serializable {
   private static final Logger LOG = LoggerFactory.getLogger(Neo4jConnection.class);
   private final String username;
   private final String password;
-  private String serverUrl;
-  private String database;
-  private AuthType authType = AuthType.BASIC;
+  private final String serverUrl;
+  private final String database;
+  private final AuthType authType = AuthType.BASIC;
   private Driver driver;
 
   /** Constructor. */
@@ -148,7 +148,7 @@ public class Neo4jConnection implements Serializable {
             "CALL apoc.schema.assert({},{},true) YIELD label, key RETURN *";
         executeCypher(constraintsDeleteCypher);
       } catch (Exception dde) {
-        LOG.error("Error executing detach delete", dde, dde.getMessage());
+        LOG.error("Error executing detach delete", dde);
       }
     }
   }
