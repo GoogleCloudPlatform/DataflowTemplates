@@ -100,6 +100,7 @@ public class DdlTest {
                 Export.DatabaseOption.newBuilder()
                     .setOptionName("version_retention_period")
                     .setOptionValue("4d")
+                    .setOptionType("STRING")
                     .build())
             .build();
     builder.mergeDatabaseOptions(export.getDatabaseOptionsList());
@@ -107,7 +108,7 @@ public class DdlTest {
     assertThat(
         ddl.prettyPrint(),
         equalToCompressingWhiteSpace(
-            "ALTER DATABASE `%db_name%` SET OPTIONS ( version_retention_period = 4d )"
+            "ALTER DATABASE `%db_name%` SET OPTIONS ( version_retention_period = \"4d\" )"
                 + " CREATE TABLE `Users` ("
                 + " `id` INT64 NOT NULL,"
                 + " `first_name` STRING(10),"
@@ -141,7 +142,7 @@ public class DdlTest {
     assertThat(
         statements.get(3),
         equalToCompressingWhiteSpace(
-            "ALTER DATABASE `%db_name%` SET OPTIONS ( version_retention_period = 4d )"));
+            "ALTER DATABASE `%db_name%` SET OPTIONS ( version_retention_period = \"4d\" )"));
     assertNotNull(ddl.hashCode());
   }
 
@@ -188,7 +189,7 @@ public class DdlTest {
                 Export.DatabaseOption.newBuilder()
                     .setOptionName("version_retention_period")
                     .setOptionValue("4d")
-                    .setOptionType("STRING")
+                    .setOptionType("character varying")
                     .build())
             .build();
     builder.mergeDatabaseOptions(export.getDatabaseOptionsList());
@@ -347,6 +348,7 @@ public class DdlTest {
         Export.DatabaseOption.newBuilder()
             .setOptionName("version_retention_period")
             .setOptionValue("4d")
+            .setOptionType("STRING")
             .build());
     dbOptionList.add(
         Export.DatabaseOption.newBuilder()
@@ -359,7 +361,7 @@ public class DdlTest {
     assertThat(optionStatements.size(), is(1));
     assertThat(
         optionStatements.get(0),
-        is("ALTER DATABASE `database_id` SET OPTIONS ( version_retention_period = 4d )"));
+        is("ALTER DATABASE `database_id` SET OPTIONS ( version_retention_period = \"4d\" )"));
     assertNotNull(ddl.hashCode());
   }
 
@@ -371,8 +373,7 @@ public class DdlTest {
         Export.DatabaseOption.newBuilder()
             .setOptionName("version_retention_period")
             .setOptionValue("4d")
-            .setOptionValue("4d")
-            .setOptionType("STRING")
+            .setOptionType("character varying")
             .build());
     dbOptionList.add(
         Export.DatabaseOption.newBuilder()
