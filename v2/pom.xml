@@ -697,6 +697,7 @@
         <module>datastream-to-sql</module>
         <module>elasticsearch-common</module>
         <module>file-format-conversion</module>
+        <module>googlecloud-to-neo4j</module>
         <module>googlecloud-to-elasticsearch</module>
         <module>googlecloud-to-mongodb</module>
         <module>googlecloud-to-googlecloud</module>
