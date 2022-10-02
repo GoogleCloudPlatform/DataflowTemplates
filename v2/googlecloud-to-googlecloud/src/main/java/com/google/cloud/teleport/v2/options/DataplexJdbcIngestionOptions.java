@@ -136,4 +136,11 @@ public interface DataplexJdbcIngestionOptions
   FileFormatOptions getFileFormat();
 
   void setFileFormat(FileFormatOptions fileFormat);
+
+  @Description(
+      "If enabled (set to true) the pipeline will consider column alias (\"AS\") instead of the column name to map the rows to BigQuery")
+  @Default.Boolean(false)
+  Boolean getUseColumnAlias();
+
+  void setUseColumnAlias(Boolean useColumnAlias);
 }

@@ -101,7 +101,7 @@ public class JdbcToBigQuery {
                         .withConnectionProperties(options.getConnectionProperties()))
                 .withQuery(options.getQuery())
                 .withCoder(TableRowJsonCoder.of())
-                .withRowMapper(JdbcConverters.getResultSetToTableRow()))
+                .withRowMapper(JdbcConverters.getResultSetToTableRow(options.getUseColumnAlias())))
         /*
          * Step 2: Append TableRow to an existing BigQuery table
          */

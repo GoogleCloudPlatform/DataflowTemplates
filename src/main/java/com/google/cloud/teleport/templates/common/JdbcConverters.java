@@ -20,6 +20,7 @@ import com.google.cloud.teleport.options.CommonTemplateOptions;
 import java.sql.Clob;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
@@ -95,11 +96,17 @@ public class JdbcConverters {
     ValueProvider<String> getKMSEncryptionKey();
 
     void setKMSEncryptionKey(ValueProvider<String> keyName);
+
+    @Description("Flag to enable the mapping of column alias projection instead of the column name")
+    ValueProvider<Boolean> getUseColumnAlias();
+
+    void setUseColumnAlias(ValueProvider<Boolean> useColumnAlias);
   }
 
   /** Factory method for {@link ResultSetToTableRow}. */
-  public static JdbcIO.RowMapper<TableRow> getResultSetToTableRow() {
-    return new ResultSetToTableRow();
+  public static JdbcIO.RowMapper<TableRow> getResultSetToTableRow(
+      ValueProvider<Boolean> useColumnAlias) {
+    return new ResultSetToTableRow(useColumnAlias);
   }
 
   /**
@@ -113,6 +120,12 @@ public class JdbcConverters {
     static SimpleDateFormat timestampFormatter =
         new SimpleDateFormat("yyyy-MM-dd hh:mm:ss.SSSSSSXXX");
 
+    private ValueProvider<Boolean> useColumnAlias;
+
+    public ResultSetToTableRow(ValueProvider<Boolean> useColumnAlias) {
+      this.useColumnAlias = useColumnAlias;
+    }
+
     @Override
     public TableRow mapRow(ResultSet resultSet) throws Exception {
 
@@ -122,7 +135,7 @@ public class JdbcConverters {
 
       for (int i = 1; i <= metaData.getColumnCount(); i++) {
         if (resultSet.getObject(i) == null) {
-          outputTableRow.set(metaData.getColumnName(i), resultSet.getObject(i));
+          outputTableRow.set(getColumnRef(metaData, i), resultSet.getObject(i));
           continue;
         }
 
@@ -136,16 +149,16 @@ public class JdbcConverters {
         switch (metaData.getColumnTypeName(i).toLowerCase()) {
           case "date":
             outputTableRow.set(
-                metaData.getColumnName(i), dateFormatter.format(resultSet.getDate(i)));
+                getColumnRef(metaData, i), dateFormatter.format(resultSet.getDate(i)));
             break;
           case "datetime":
             outputTableRow.set(
-                metaData.getColumnName(i),
+                getColumnRef(metaData, i),
                 datetimeFormatter.format((TemporalAccessor) resultSet.getObject(i)));
             break;
           case "timestamp":
             outputTableRow.set(
-                metaData.getColumnName(i), timestampFormatter.format(resultSet.getTimestamp(i)));
+                getColumnRef(metaData, i), timestampFormatter.format(resultSet.getTimestamp(i)));
             break;
           case "clob":
             Clob clobObject = resultSet.getClob(i);
@@ -153,17 +166,28 @@ public class JdbcConverters {
               LOG.warn(
                   "The Clob value size {} in column {} exceeds 2GB and will be truncated.",
                   clobObject.length(),
-                  metaData.getColumnName(i));
+                  getColumnRef(metaData, i));
             }
             outputTableRow.set(
-                metaData.getColumnName(i), clobObject.getSubString(1, (int) clobObject.length()));
+                getColumnRef(metaData, i), clobObject.getSubString(1, (int) clobObject.length()));
             break;
           default:
-            outputTableRow.set(metaData.getColumnName(i), resultSet.getObject(i));
+            outputTableRow.set(getColumnRef(metaData, i), resultSet.getObject(i));
         }
       }
 
       return outputTableRow;
+    }
+
+    protected String getColumnRef(ResultSetMetaData metaData, int index) throws SQLException {
+      if (useColumnAlias != null && useColumnAlias.get() != null && useColumnAlias.get()) {
+        String columnLabel = metaData.getColumnLabel(index);
+        if (columnLabel != null && !columnLabel.isEmpty()) {
+          return columnLabel;
+        }
+      }
+
+      return metaData.getColumnName(index);
     }
   }
 }
