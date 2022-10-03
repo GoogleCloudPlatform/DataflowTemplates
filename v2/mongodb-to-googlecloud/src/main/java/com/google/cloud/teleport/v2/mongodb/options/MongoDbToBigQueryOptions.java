@@ -68,5 +68,17 @@ public class MongoDbToBigQueryOptions {
     String getOutputTableSpec();
 
     void setOutputTableSpec(String outputTableSpec);
+
+    @Description("gcs bucket path")
+    @Default.String("gs://vshanbh")
+    String getJavascriptTextTransformGcsPath();
+
+    void setJavascriptTextTransformGcsPath(String gcsPath);
+
+    @Description("gcs bucket path")
+    @Default.String("gs://vshanbh/text-transform")
+    String getJavascriptTextTransformFunctionName();
+
+    void setJavascriptTextTransformFunctionName(String gcsTransformPath);
   }
 }

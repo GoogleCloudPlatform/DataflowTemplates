@@ -55,5 +55,11 @@ public class BigQueryToMongoDbOptions {
     String getInputTableSpec();
 
     void setInputTableSpec(String inputTableSpec);
+
+    @Description("gcs bucket path")
+    @Default.String("gs://vshanbh")
+    String getJavascriptTextTransformGcsPath();
+
+    void setJavascriptTextTransformGcsPath(String gcsPath);
   }
 }
