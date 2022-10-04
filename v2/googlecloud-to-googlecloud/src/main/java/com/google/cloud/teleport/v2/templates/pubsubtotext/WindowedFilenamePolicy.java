@@ -433,7 +433,7 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
       String userMinutePattern = getUserPattern(minutePattern(), /* defaultValue= */ "mm");
       LOG.debug(
           "User patterns set to: Year: {}, Month: {}, Day: {}, Hour: {}, Minute: {}",
-          userDayPattern,
+          userYearPattern,
           userMonthPattern,
           userDayPattern,
           userHourPattern,
