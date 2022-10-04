@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.options;
 
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 
 /** Interface used by the JdbcToBigQuery pipeline to accept user input. */
@@ -79,4 +80,11 @@ public interface JdbcToBigQueryOptions extends CommonTemplateOptions, BigQueryOp
   String getKMSEncryptionKey();
 
   void setKMSEncryptionKey(String keyName);
+
+  @Description(
+      "If enabled (set to true) the pipeline will consider column alias (\"AS\") instead of the column name to map the rows to BigQuery")
+  @Default.Boolean(false)
+  Boolean getUseColumnAlias();
+
+  void setUseColumnAlias(Boolean useColumnAlias);
 }

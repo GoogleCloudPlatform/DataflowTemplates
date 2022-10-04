@@ -69,7 +69,7 @@ the official [docs](https://cloud.google.com/dataflow/docs/templates/provided-te
 
 ### Requirements
 
-* Java 8
+* Java 11
 * Maven 3
 
 ### Building the Project

@@ -445,12 +445,19 @@ public class InformationSchemaScanner {
       KV<String, String> kv = KV.of(tableName, columnName);
       ImmutableList.Builder<String> options =
           allOptions.computeIfAbsent(kv, k -> ImmutableList.builder());
+
       if (optionType.equalsIgnoreCase("STRING")) {
         options.add(
             optionName
                 + "=\""
                 + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
                 + "\"");
+      } else if (optionType.equalsIgnoreCase("character varying")) {
+        options.add(
+            optionName
+                + "='"
+                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
+                + "'");
       } else {
         options.add(optionName + "=" + optionValue);
       }
@@ -779,6 +786,12 @@ public class InformationSchemaScanner {
                 + "=\""
                 + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
                 + "\"");
+      } else if (optionType.equalsIgnoreCase("character varying")) {
+        options.add(
+            optionName
+                + "='"
+                + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
+                + "'");
       } else {
         options.add(optionName + "=" + optionValue);
       }

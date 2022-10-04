@@ -271,8 +271,9 @@ public class Ddl implements Serializable {
   private static String getDatabaseOptionsStatements(
       Export.DatabaseOption databaseOption, String databaseId, Dialect dialect) {
     String literalQuote = DdlUtilityComponents.literalQuote(dialect);
+    String optionType = databaseOption.getOptionType();
     String formattedValue =
-        databaseOption.getOptionType().equalsIgnoreCase("STRING")
+        (optionType.equalsIgnoreCase("STRING") || optionType.equalsIgnoreCase("character varying"))
             ? literalQuote
                 + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(databaseOption.getOptionValue())
                 + literalQuote
