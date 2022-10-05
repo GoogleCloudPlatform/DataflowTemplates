@@ -82,11 +82,13 @@ public abstract class WriteDataChangeRecordsToGcsAvro
             "Writing as Avro",
             AvroIO.write(com.google.cloud.teleport.v2.DataChangeRecord.class)
                 .to(
-                    new WindowedFilenamePolicy(
-                        gcsOutputDirectory(),
-                        outputFilenamePrefix(),
-                        WriteToGCSUtility.SHARD_TEMPLATE,
-                        WriteToGCSUtility.FILE_SUFFIX_MAP.get(WriteToGCSUtility.FileFormat.AVRO)))
+                    WindowedFilenamePolicy.writeWindowedFiles()
+                        .withOutputDirectory(gcsOutputDirectory())
+                        .withOutputFilenamePrefix(outputFilenamePrefix())
+                        .withShardTemplate(WriteToGCSUtility.SHARD_TEMPLATE)
+                        .withSuffix(
+                            WriteToGCSUtility.FILE_SUFFIX_MAP.get(
+                                WriteToGCSUtility.FileFormat.AVRO)))
                 .withTempDirectory(
                     FileBasedSink.convertToFileResourceIfPossible(tempLocation())
                         .getCurrentDirectory())

@@ -13,12 +13,11 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.pubsubtotext;
+package com.google.cloud.teleport.v2.options;
 
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.options.ValueProvider;
 import org.joda.time.format.DateTimeFormat;
 
 /**
@@ -31,9 +30,9 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
           + "of the letters 'S' or 'N' (example: SSS-NNN). These are replaced with the "
           + "shard number, or number of shards respectively")
   @Default.String("W-P-SS-of-NN")
-  ValueProvider<String> getOutputShardTemplate();
+  String getOutputShardTemplate();
 
-  void setOutputShardTemplate(ValueProvider<String> value);
+  void setOutputShardTemplate(String value);
 
   @Description("The maximum number of output shards produced when writing.")
   @Default.Integer(1)
@@ -53,27 +52,27 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
   void setWindowDuration(String value);
 
   @Description("The custom year pattern to use for the output directory.")
-  ValueProvider<String> getYearPattern();
+  String getYearPattern();
 
-  void setYearPattern(ValueProvider<String> yearPattern);
+  void setYearPattern(String yearPattern);
 
   @Description("The custom month pattern to use for the output directory.")
-  ValueProvider<String> getMonthPattern();
+  String getMonthPattern();
 
-  void setMonthPattern(ValueProvider<String> monthPattern);
+  void setMonthPattern(String monthPattern);
 
   @Description("The custom day pattern to use for the output directory.")
-  ValueProvider<String> getDayPattern();
+  String getDayPattern();
 
-  void setDayPattern(ValueProvider<String> dayPattern);
+  void setDayPattern(String dayPattern);
 
   @Description("The custom hour pattern to use for the output directory.")
-  ValueProvider<String> getHourPattern();
+  String getHourPattern();
 
-  void setHourPattern(ValueProvider<String> hourPattern);
+  void setHourPattern(String hourPattern);
 
   @Description("The custom minute pattern to use for the output directory.")
-  ValueProvider<String> getMinutePattern();
+  String getMinutePattern();
 
-  void setMinutePattern(ValueProvider<String> minutePattern);
+  void setMinutePattern(String minutePattern);
 }
