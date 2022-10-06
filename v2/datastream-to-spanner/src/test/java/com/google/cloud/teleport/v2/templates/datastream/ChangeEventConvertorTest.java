@@ -542,4 +542,48 @@ public class ChangeEventConvertorTest {
     Key key = ChangeEventConvertor.changeEventToPrimaryKey(ddl, ce);
     // Expect an exception since the event has invalid timestamp
   }
+
+  @Test
+  public void canValidateSpannerSchema() throws Exception {
+    Ddl ddl = getTestDdl();
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("first_name", "A");
+    changeEvent.put("last_name", "B");
+    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    ChangeEventConvertor.verifySpannerSchema(ddl, ce);
+  }
+
+  @Test(expected = ChangeEventConvertorException.class)
+  public void validateSpannerSchemaWithIncorrectTableName() throws Exception {
+    Ddl ddl = getTestDdl();
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("first_name", "A");
+    changeEvent.put("last_name", "B");
+    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users_test");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    ChangeEventConvertor.verifySpannerSchema(ddl, ce);
+  }
+
+  @Test(expected = ChangeEventConvertorException.class)
+  public void validateSpannerSchemaWithIncorrectColumnName() throws Exception {
+    Ddl ddl = getTestDdl();
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("first_name", "A");
+    changeEvent.put("last_name", "B");
+    changeEvent.put("test_column", "C");
+    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    ChangeEventConvertor.verifySpannerSchema(ddl, ce);
+  }
+
+  @Test(expected = ChangeEventConvertorException.class)
+  public void validateSpannerSchemaWithMissingKeyColumnsInChangeEvent() throws Exception {
+    Ddl ddl = getTestDdl();
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("first_name", "A");
+    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    ChangeEventConvertor.verifySpannerSchema(ddl, ce);
+  }
 }

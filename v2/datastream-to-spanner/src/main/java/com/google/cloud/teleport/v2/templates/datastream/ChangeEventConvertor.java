@@ -39,6 +39,36 @@ public class ChangeEventConvertor {
 
   private ChangeEventConvertor() {}
 
+  static void verifySpannerSchema(Ddl ddl, JsonNode changeEvent)
+      throws ChangeEventConvertorException, InvalidChangeEventException {
+    String tableName = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
+    if (ddl.table(tableName) == null) {
+      throw new ChangeEventConvertorException(
+          "Table from change event does not exist in Spanner. table=" + tableName);
+    }
+    List<String> changeEventColumns = getEventColumnKeys(changeEvent);
+    for (String changeEventColumn : changeEventColumns) {
+      if (ddl.table(tableName).column(changeEventColumn) == null) {
+        throw new ChangeEventConvertorException(
+            "Column from change event doesn't exist in Spanner. column="
+                + changeEventColumn
+                + ", table="
+                + tableName);
+      }
+    }
+    Set<String> keyColumns =
+        ddl.table(tableName).primaryKeys().stream()
+            .map(keyCol -> keyCol.name())
+            .map(colName -> colName.toLowerCase())
+            .collect(Collectors.toSet());
+    Set<String> changeEventColumnsAsSet = new HashSet<>(changeEventColumns);
+    if (!changeEventColumnsAsSet.containsAll(keyColumns)) {
+      throw new ChangeEventConvertorException(
+          "Key columns from change event do not exist in Spanner. keyColumns="
+              + keyColumns);
+    }
+  }
+
   static void convertChangeEventColumnKeysToLowerCase(JsonNode changeEvent)
       throws ChangeEventConvertorException, InvalidChangeEventException {
     List<String> changeEventKeys = getEventColumnKeys(changeEvent);
