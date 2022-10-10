@@ -61,6 +61,7 @@
     <!-- TODO: check if this could be declared on a Beam BOM instead of here -->
     <bigtable-beam-import.version>1.15.0</bigtable-beam-import.version>
     <protobuf.version>3.11.1</protobuf.version>
+    <nashorn.version>15.4</nashorn.version>
     <json.version>20200518</json.version>
     <junit.jupiter.version>5.5.2</junit.jupiter.version>
     <re2j.version>1.4</re2j.version>
@@ -189,7 +190,10 @@
       <artifactId>hadoop-mapreduce-client-core</artifactId>
       <version>${hadoop.version}</version>
       <exclusions>
-        <exclusion><groupId>org.codehaus.jackson</groupId><artifactId>*</artifactId></exclusion>
+        <exclusion>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
@@ -197,8 +201,15 @@
       <artifactId>hadoop-common</artifactId>
       <version>${hadoop.version}</version>
       <exclusions>
-      <exclusion><groupId>org.codehaus.jackson</groupId><artifactId>*</artifactId></exclusion>
-    </exclusions>
+        <exclusion>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>asm</groupId>
+          <artifactId>asm</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.hbase</groupId>
@@ -232,6 +243,13 @@
       <groupId>com.google.http-client</groupId>
       <artifactId>google-http-client-apache-v2</artifactId>
       <version>${apache-http-client-v2}</version>
+    </dependency>
+
+    <!-- UDFs -->
+    <dependency>
+      <groupId>org.openjdk.nashorn</groupId>
+      <artifactId>nashorn-core</artifactId>
+      <version>${nashorn.version}</version>
     </dependency>
 
     <!-- Test -->
@@ -674,8 +692,8 @@
                 <ignoredUsedUndeclaredDependency>
                   org.checkerframework:checker-qual
                 </ignoredUsedUndeclaredDependency>
-             </ignoredUsedUndeclaredDependencies>
-             <ignoredUnusedDeclaredDependencies>
+              </ignoredUsedUndeclaredDependencies>
+              <ignoredUnusedDeclaredDependencies>
                 <ignoredUnusedDeclaredDependency>org.threeten:threetenbp</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>org.json:json</ignoredUnusedDeclaredDependency>
                 <ignoredUnusedDeclaredDependency>org.apache.hadoop:hadoop-mapreduce-client-core</ignoredUnusedDeclaredDependency>
@@ -686,8 +704,8 @@
                 <ignoredUnusedDeclaredDependency>com.google.auto.service:auto-service</ignoredUnusedDeclaredDependency>
                 <!-- com.google.cloud.bigtable:bigtable-beam-import has the Main-Class on some templates. -->
                 <ignoredUnusedDeclaredDependency>com.google.cloud.bigtable:bigtable-beam-import</ignoredUnusedDeclaredDependency>
-             </ignoredUnusedDeclaredDependencies>
-           </configuration>
+              </ignoredUnusedDeclaredDependencies>
+            </configuration>
           </execution>
         </executions>
       </plugin>
@@ -869,12 +887,6 @@
           <!-- Exclude Cloud Spanner integration tests that require a GCP project to run.
           They can be run run manually using
           'mvn -Dexcluded.spanner.tests="" -Dtest=<testname> test' -->
-          <systemProperties>
-            <property>
-              <name>nashorn.args</name>
-              <value>--no-deprecation-warning</value>
-            </property>
-          </systemProperties>
           <excludedGroups>${excluded.spanner.tests}</excludedGroups>
         </configuration>
       </plugin>

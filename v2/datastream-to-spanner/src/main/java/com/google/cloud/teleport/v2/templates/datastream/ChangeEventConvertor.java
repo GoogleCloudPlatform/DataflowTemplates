@@ -64,8 +64,7 @@ public class ChangeEventConvertor {
     Set<String> changeEventColumnsAsSet = new HashSet<>(changeEventColumns);
     if (!changeEventColumnsAsSet.containsAll(keyColumns)) {
       throw new ChangeEventConvertorException(
-          "Key columns from change event do not exist in Spanner. keyColumns="
-              + keyColumns);
+          "Key columns from change event do not exist in Spanner. keyColumns=" + keyColumns);
     }
   }
 
