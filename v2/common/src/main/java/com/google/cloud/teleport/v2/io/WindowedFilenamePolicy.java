@@ -77,7 +77,7 @@ public abstract class WindowedFilenamePolicy extends FilenamePolicy {
         .setSuffix("")
         .setYearPattern("YYYY")
         .setMonthPattern("MM")
-        .setDayPattern("DD")
+        .setDayPattern("dd")
         .setHourPattern("HH")
         .setMinutePattern("mm")
         .build();

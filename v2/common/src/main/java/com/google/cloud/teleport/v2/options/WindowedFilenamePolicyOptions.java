@@ -52,26 +52,31 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
   void setWindowDuration(String value);
 
   @Description("The custom year pattern to use for the output directory.")
+  @Default.String("YYYY")
   String getYearPattern();
 
   void setYearPattern(String yearPattern);
 
   @Description("The custom month pattern to use for the output directory.")
+  @Default.String("MM")
   String getMonthPattern();
 
   void setMonthPattern(String monthPattern);
 
   @Description("The custom day pattern to use for the output directory.")
+  @Default.String("dd")
   String getDayPattern();
 
   void setDayPattern(String dayPattern);
 
   @Description("The custom hour pattern to use for the output directory.")
+  @Default.String("HH")
   String getHourPattern();
 
   void setHourPattern(String hourPattern);
 
   @Description("The custom minute pattern to use for the output directory.")
+  @Default.String("mm")
   String getMinutePattern();
 
   void setMinutePattern(String minutePattern);

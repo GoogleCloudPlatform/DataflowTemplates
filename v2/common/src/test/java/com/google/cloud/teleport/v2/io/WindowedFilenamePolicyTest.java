@@ -134,7 +134,7 @@ public class WindowedFilenamePolicyTest {
 
     WindowedFilenamePolicy policy =
         WindowedFilenamePolicy.writeWindowedFiles()
-            .withOutputDirectory("gs://test-bucket-mm/YYYY/MM/DD/HH:mm")
+            .withOutputDirectory("gs://test-bucket-mm/YYYY/MM/dd/HH:mm")
             .withOutputFilenamePrefix("output")
             .withShardTemplate("-SSS-of-NNN");
 
