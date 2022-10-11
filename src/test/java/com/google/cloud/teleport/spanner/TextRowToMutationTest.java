@@ -712,6 +712,96 @@ public final class TextRowToMutationTest {
     pipeline.run();
   }
 
+  @Test
+  public void parseRowWithDefaultColumnOmitted() {
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("ddl", Create.of(getTestDdlWithDefaultValue())).apply(View.asSingleton());
+    PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
+        pipeline
+            .apply(
+                "tableColumnsMap",
+                Create.<Map<String, List<TableManifest.Column>>>of(getEmptyTableColumnsMap())
+                    .withCoder(
+                        MapCoder.of(
+                            StringUtf8Coder.of(),
+                            ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
+            .apply("Map as view", View.asSingleton());
+
+    // Omit the value of int_col3.
+    PCollection<KV<String, String>> input =
+        pipeline.apply("input", Create.of(KV.of(testTableName, "10,20")));
+    PCollection<Mutation> mutations =
+        input.apply(
+            ParDo.of(
+                    new TextRowToMutation(
+                        ddlView,
+                        tableColumnsMapView,
+                        columnDelimiter,
+                        StaticValueProvider.of('\''),
+                        StaticValueProvider.of(true),
+                        escape,
+                        nullString,
+                        dateFormat,
+                        timestampFormat))
+                .withSideInputs(ddlView, tableColumnsMapView));
+
+    // Verify that int_col3 doesn't appear in the mutation column list.
+    PAssert.that(mutations)
+        .containsInAnyOrder(
+            Mutation.newInsertOrUpdateBuilder(testTableName)
+                .set("int_col1")
+                .to(10)
+                .set("int_col2")
+                .to(20)
+                .build());
+    pipeline.run();
+  }
+
+  @Test
+  public void pgParseRowWithDefaultColumnOmitted() {
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("ddl", Create.of(getPgTestDdlWithDefaultValue())).apply(View.asSingleton());
+    PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
+        pipeline
+            .apply(
+                "tableColumnsMap",
+                Create.<Map<String, List<TableManifest.Column>>>of(getEmptyTableColumnsMap())
+                    .withCoder(
+                        MapCoder.of(
+                            StringUtf8Coder.of(),
+                            ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
+            .apply("Map as view", View.asSingleton());
+
+    // Omit the value of int_col3.
+    PCollection<KV<String, String>> input =
+        pipeline.apply("input", Create.of(KV.of(testTableName, "10,20")));
+    PCollection<Mutation> mutations =
+        input.apply(
+            ParDo.of(
+                    new TextRowToMutation(
+                        ddlView,
+                        tableColumnsMapView,
+                        columnDelimiter,
+                        StaticValueProvider.of('\''),
+                        StaticValueProvider.of(true),
+                        escape,
+                        nullString,
+                        dateFormat,
+                        timestampFormat))
+                .withSideInputs(ddlView, tableColumnsMapView));
+
+    // Verify that int_col3 doesn't appear in the mutation column list.
+    PAssert.that(mutations)
+        .containsInAnyOrder(
+            Mutation.newInsertOrUpdateBuilder(testTableName)
+                .set("int_col1")
+                .to(10)
+                .set("int_col2")
+                .to(20)
+                .build());
+    pipeline.run();
+  }
+
   private static Ddl getTestDdl() {
     Ddl ddl =
         Ddl.builder()
@@ -874,6 +964,54 @@ public final class TextRowToMutationTest {
             .endColumn()
             .primaryKey()
             .asc("str_col")
+            .end()
+            .endTable()
+            .build();
+    return ddl;
+  }
+
+  private static Ddl getTestDdlWithDefaultValue() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(testTableName)
+            .column("int_col1")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("int_col2")
+            .int64()
+            .defaultExpression("2")
+            .endColumn()
+            .column("int_col3")
+            .int64()
+            .defaultExpression("3")
+            .endColumn()
+            .primaryKey()
+            .asc("int_col1")
+            .end()
+            .endTable()
+            .build();
+    return ddl;
+  }
+
+  private static Ddl getPgTestDdlWithDefaultValue() {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable(testTableName)
+            .column("int_col1")
+            .pgInt8()
+            .notNull()
+            .endColumn()
+            .column("int_col2")
+            .pgInt8()
+            .defaultExpression("2")
+            .endColumn()
+            .column("int_col3")
+            .pgInt8()
+            .defaultExpression("3")
+            .endColumn()
+            .primaryKey()
+            .asc("int_col1")
             .end()
             .endTable()
             .build();
