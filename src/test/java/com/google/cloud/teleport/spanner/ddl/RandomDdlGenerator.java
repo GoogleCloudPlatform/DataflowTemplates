@@ -116,6 +116,8 @@ public abstract class RandomDdlGenerator {
 
   public abstract boolean getEnableGeneratedColumns();
 
+  public abstract boolean getEnableDefaultColumns();
+
   public abstract boolean getEnableCheckConstraints();
 
   public abstract int getMaxViews();
@@ -142,6 +144,7 @@ public abstract class RandomDdlGenerator {
         .setMaxColumns(8)
         .setMaxIdLength(11)
         .setEnableGeneratedColumns(true)
+        .setEnableDefaultColumns(true)
         // Change stream is only supported in GoogleSQL, not in PostgreSQL.
         .setMaxChangeStreams(dialect == Dialect.GOOGLE_STANDARD_SQL ? 2 : 0);
   }
@@ -171,6 +174,8 @@ public abstract class RandomDdlGenerator {
     public abstract Builder setMaxForeignKeys(int foreignKeys);
 
     public abstract Builder setEnableGeneratedColumns(boolean enable);
+
+    public abstract Builder setEnableDefaultColumns(boolean enable);
 
     public abstract Builder setEnableCheckConstraints(boolean checkConstraints);
 
@@ -518,17 +523,43 @@ public abstract class RandomDdlGenerator {
     }
   }
 
+  private String addDefaultValueToColumn(Type type) {
+    String expr = null;
+    if (getEnableDefaultColumns()) {
+      // Generate default values to columns with certain types only:
+      switch (type.getCode()) {
+        case BOOL:
+        case PG_BOOL:
+          expr = "(false)";
+          break;
+        case INT64:
+          expr = "(100)";
+          break;
+        case PG_INT8:
+          expr = "'100::bigint'";
+          break;
+        case STRING:
+        case PG_VARCHAR:
+          expr = "'John'";
+          break;
+      }
+    }
+    return expr;
+  }
+
   private Column generateColumn(Type.Code[] codes, int arrayPercentage) {
     int length = 1 + getRandom().nextInt(getMaxIdLength());
     String name = generateIdentifier(length);
     Type type = generateType(codes, arrayPercentage);
     int size = -1;
     boolean nullable = getRandom().nextBoolean();
+    String expr = addDefaultValueToColumn(type);
     return Column.builder(getDialect())
         .name(name)
         .type(type)
         .size(size)
         .notNull(nullable)
+        .defaultExpression(expr)
         .autoBuild();
   }
 

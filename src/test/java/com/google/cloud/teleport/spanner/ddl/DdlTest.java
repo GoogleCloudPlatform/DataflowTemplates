@@ -73,6 +73,7 @@ public class DdlTest {
         .column("first_name")
         .string()
         .size(10)
+        .defaultExpression("'John'")
         .endColumn()
         .column("last_name")
         .type(Type.string())
@@ -111,7 +112,7 @@ public class DdlTest {
             "ALTER DATABASE `%db_name%` SET OPTIONS ( version_retention_period = \"4d\" )"
                 + " CREATE TABLE `Users` ("
                 + " `id` INT64 NOT NULL,"
-                + " `first_name` STRING(10),"
+                + " `first_name` STRING(10) DEFAULT ('John'),"
                 + " `last_name` STRING(MAX),"
                 + " `full_name` STRING(MAX) AS (CONCAT(first_name, ' ', last_name)) STORED,"
                 + " CONSTRAINT `ck` CHECK (`first_name` != `last_name`),"
@@ -126,7 +127,7 @@ public class DdlTest {
         equalToCompressingWhiteSpace(
             " CREATE TABLE `Users` ("
                 + " `id` INT64 NOT NULL,"
-                + " `first_name` STRING(10),"
+                + " `first_name` STRING(10) DEFAULT ('John'),"
                 + " `last_name` STRING(MAX),"
                 + " `full_name` STRING(MAX) AS (CONCAT(first_name, ' ', last_name)) STORED,"
                 + " CONSTRAINT `ck` CHECK (`first_name` != `last_name`),"

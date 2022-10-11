@@ -613,6 +613,19 @@ public class InformationSchemaScannerIT {
   }
 
   @Test
+  public void defaultColumns() throws Exception {
+    String statement =
+        "CREATE TABLE `T` ("
+            + " `id`                                     INT64 NOT NULL,"
+            + " `generated`                              INT64 NOT NULL DEFAULT (10), "
+            + " ) PRIMARY KEY (`id` ASC)";
+
+    spannerServer.createDatabase(dbId, Collections.singleton(statement));
+    Ddl ddl = getDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(statement));
+  }
+
+  @Test
   public void pgDefaultColumns() throws Exception {
     String statement =
         "CREATE TABLE \"T\" ( \"id\"                       bigint NOT NULL,"

@@ -47,7 +47,7 @@ public class InformationSchemaScannerTest {
     assertThat(
         googleSQLInfoScanner.listColumnsSQL().getSql(),
         equalToCompressingWhiteSpace(
-            "SELECT c.table_name, c.column_name, c.ordinal_position, c.spanner_type, c.is_nullable, c.is_generated, c.generation_expression, c.is_stored FROM information_schema.columns as c WHERE c.table_catalog = '' AND c.table_schema = ''  AND c.spanner_state = 'COMMITTED'  ORDER BY c.table_name, c.ordinal_position"));
+            "SELECT c.table_name, c.column_name, c.ordinal_position, c.spanner_type, c.is_nullable, c.is_generated, c.generation_expression, c.is_stored, c.column_default FROM information_schema.columns as c WHERE c.table_catalog = '' AND c.table_schema = ''  AND c.spanner_state = 'COMMITTED'  ORDER BY c.table_name, c.ordinal_position"));
 
     assertThat(
         postgresSQLInfoScanner.listColumnsSQL().getSql(),
