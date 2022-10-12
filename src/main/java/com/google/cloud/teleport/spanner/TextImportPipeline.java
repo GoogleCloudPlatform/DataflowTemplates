@@ -177,6 +177,14 @@ public class TextImportPipeline {
     ValueProvider<RpcPriority> getSpannerPriority();
 
     void setSpannerPriority(ValueProvider<RpcPriority> value);
+
+    @Description(
+        "If true, run the template in handleNewLine mode, which is slower but handles newline"
+            + " characters inside data.")
+    @Default.Boolean(false)
+    ValueProvider<Boolean> getHandleNewLine();
+
+    void setHandleNewLine(ValueProvider<Boolean> value);
   }
 
   public static void main(String[] args) {
