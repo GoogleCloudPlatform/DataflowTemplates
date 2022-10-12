@@ -114,6 +114,18 @@
       <version>${mockito.version}</version>
       <scope>test</scope>
     </dependency>
+      <dependency>
+          <groupId>com.google.api.grpc</groupId>
+          <artifactId>proto-google-cloud-datastream-v1</artifactId>
+          <version>1.2.2</version>
+          <scope>compile</scope>
+      </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-datastream</artifactId>
+      <version>1.2.2</version>
+      <scope>compile</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -124,8 +136,8 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>${maven-compiler-plugin.version}</version>
         <configuration>
-          <source>${java.version}</source>
-          <target>${java.version}</target>
+          <source>11</source>
+          <target>11</target>
           <!-- <compilerArgument>-parameters</compilerArgument> -->
           <parameters>true</parameters>
           <testCompilerArgument>-parameters</testCompilerArgument>
