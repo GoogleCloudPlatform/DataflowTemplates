@@ -55,6 +55,7 @@
         <json.version>20200518</json.version>
         <excluded.spanner.tests>com.google.cloud.teleport.v2.spanner.IntegrationTest</excluded.spanner.tests>
         <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
+        <cloud-libraries-bom.version>24.4.0</cloud-libraries-bom.version>
         <google-cloud-logging-logback.version>0.123.4-alpha</google-cloud-logging-logback.version>
     </properties>
 
@@ -66,6 +67,13 @@
                 <version>${beam.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+              <groupId>com.google.cloud</groupId>
+              <artifactId>libraries-bom</artifactId>
+              <version>${cloud-libraries-bom.version}</version>
+              <type>pom</type>
+              <scope>import</scope>
             </dependency>
             <!--
             Force gax version to 2.3.0.
