@@ -398,8 +398,11 @@ public class PubSubCdcToBigQuery {
                   .withWindowedWrites()
                   .withNumShards(20)
                   .to(
-                      new WindowedFilenamePolicy(
-                          gcsOutputDateTimeDirectory, "error", "-SSSSS-of-NNNNN", ".json"))
+                      WindowedFilenamePolicy.writeWindowedFiles()
+                          .withOutputDirectory(gcsOutputDateTimeDirectory)
+                          .withOutputFilenamePrefix("error")
+                          .withShardTemplate("-SSSSS-of-NNNNN")
+                          .withSuffix(".json"))
                   .withTempDirectory(
                       FileBasedSink.convertToFileResourceIfPossible(
                           options.getDeadLetterQueueDirectory())));
@@ -426,8 +429,11 @@ public class PubSubCdcToBigQuery {
               .withWindowedWrites()
               .withNumShards(20)
               .to(
-                  new WindowedFilenamePolicy(
-                      gcsOutputDateTimeDirectory, "error", "-SSSSS-of-NNNNN", ".json"))
+                  WindowedFilenamePolicy.writeWindowedFiles()
+                      .withOutputDirectory(gcsOutputDateTimeDirectory)
+                      .withOutputFilenamePrefix("error")
+                      .withShardTemplate("-SSSSS-of-NNNNN")
+                      .withSuffix(".json"))
               .withTempDirectory(
                   FileBasedSink.convertToFileResourceIfPossible(
                       gcsOutputDateTimeDirectory + "tmp/")));

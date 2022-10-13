@@ -62,7 +62,8 @@ public class AvroSchemaToDdlConverterTest {
             + "  }, {"
             + "    \"name\" : \"first_name\","
             + "    \"type\" : [ \"null\", \"string\" ],"
-            + "    \"sqlType\" : \"STRING(10)\""
+            + "    \"sqlType\" : \"STRING(10)\","
+            + "    \"defaultExpression\" : \"'John'\""
             + "  }, {"
             + "    \"name\" : \"last_name\","
             + "    \"type\" : [ \"null\", \"string\" ],"
@@ -152,7 +153,7 @@ public class AvroSchemaToDdlConverterTest {
         equalToCompressingWhiteSpace(
             "CREATE TABLE `Users` ("
                 + " `id`              INT64 NOT NULL,"
-                + " `first_name`      STRING(10),"
+                + " `first_name`      STRING(10) DEFAULT ('John'),"
                 + " `last_name`       STRING(MAX),"
                 + " `full_name`       STRING(MAX) AS (CONCAT(first_name, ' ', last_name)) STORED,"
                 + " `numeric`         NUMERIC,"

@@ -246,10 +246,7 @@ public class InformationSchemaScanner {
       String generationExpression = resultSet.isNull(6) ? "" : resultSet.getString(6);
       boolean isStored =
           resultSet.isNull(7) ? false : resultSet.getString(7).equalsIgnoreCase("YES");
-      String defaultExpression =
-          (dialect == Dialect.GOOGLE_STANDARD_SQL || resultSet.isNull(8))
-              ? null
-              : resultSet.getString(8);
+      String defaultExpression = resultSet.isNull(8) ? null : resultSet.getString(8);
       builder
           .createTable(tableName)
           .column(columnName)
@@ -271,7 +268,7 @@ public class InformationSchemaScanner {
         return Statement.of(
             "SELECT c.table_name, c.column_name,"
                 + " c.ordinal_position, c.spanner_type, c.is_nullable,"
-                + " c.is_generated, c.generation_expression, c.is_stored"
+                + " c.is_generated, c.generation_expression, c.is_stored, c.column_default"
                 + " FROM information_schema.columns as c"
                 + " WHERE c.table_catalog = '' AND c.table_schema = '' "
                 + " AND c.spanner_state = 'COMMITTED' "

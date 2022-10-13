@@ -76,8 +76,13 @@ public abstract class Column implements Serializable {
     if (notNull()) {
       appendable.append(" NOT NULL");
     }
-    if ((dialect() == Dialect.POSTGRESQL) && defaultExpression() != null) {
-      appendable.append(" DEFAULT ").append(defaultExpression());
+    if (defaultExpression() != null) {
+      appendable.append(" DEFAULT ");
+      if (dialect() == Dialect.POSTGRESQL) {
+        appendable.append(defaultExpression());
+      } else {
+        appendable.append(" (").append(defaultExpression()).append(")");
+      }
     }
     if (isGenerated()) {
       if (dialect() == Dialect.POSTGRESQL) {

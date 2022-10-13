@@ -1,6 +1,6 @@
 {
   "mainClass": "com.google.cloud.teleport.v2.templates.DataplexFileFormatConversion",
-  "classPath": "/template/dataplex-file-format-conversion/*:/template/dataplex-file-format-conversion/libs/*:/template/dataplex-file-format-conversion/classes",
+  "classPath": "/template/dataplex-file-format-conversion/*:/template/dataplex-file-format-conversion/libs/*:/template/dataplex-file-format-conversion/classes:/template/dataplex-file-format-conversion/resources",
   "defaultParameterValues": {
     "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"dataplex_file_format_conversion\"}"
   }

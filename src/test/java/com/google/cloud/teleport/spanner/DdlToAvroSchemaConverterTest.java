@@ -68,6 +68,7 @@ public class DdlToAvroSchemaConverterTest {
             .column("first_name")
             .string()
             .size(10)
+            .defaultExpression("'John'")
             .endColumn()
             .column("last_name")
             .type(Type.string())
@@ -113,6 +114,7 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(0).getProp("notNull"), equalTo(null));
     assertThat(fields.get(0).getProp("generationExpression"), equalTo(null));
     assertThat(fields.get(0).getProp("stored"), equalTo(null));
+    assertThat(fields.get(0).getProp("defaultExpression"), equalTo(null));
 
     assertThat(fields.get(1).name(), equalTo("first_name"));
     assertThat(fields.get(1).schema(), equalTo(nullableUnion(Schema.Type.STRING)));
@@ -120,6 +122,7 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(1).getProp("notNull"), equalTo(null));
     assertThat(fields.get(1).getProp("generationExpression"), equalTo(null));
     assertThat(fields.get(1).getProp("stored"), equalTo(null));
+    assertThat(fields.get(1).getProp("defaultExpression"), equalTo("'John'"));
 
     assertThat(fields.get(2).name(), equalTo("last_name"));
     assertThat(fields.get(2).schema(), equalTo(nullableUnion(Schema.Type.STRING)));
@@ -127,6 +130,7 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(2).getProp("notNull"), equalTo(null));
     assertThat(fields.get(2).getProp("generationExpression"), equalTo(null));
     assertThat(fields.get(2).getProp("stored"), equalTo(null));
+    assertThat(fields.get(2).getProp("defaultExpression"), equalTo(null));
 
     assertThat(fields.get(3).name(), equalTo("full_name"));
     assertThat(fields.get(3).schema(), equalTo(Schema.create(Schema.Type.NULL)));
@@ -136,6 +140,7 @@ public class DdlToAvroSchemaConverterTest {
         fields.get(3).getProp("generationExpression"),
         equalTo("CONCAT(first_name, ' ', last_name)"));
     assertThat(fields.get(3).getProp("stored"), equalTo("true"));
+    assertThat(fields.get(3).getProp("defaultExpression"), equalTo(null));
 
     // spanner pk
     assertThat(avroSchema.getProp("spannerPrimaryKey_0"), equalTo("`id` ASC"));
@@ -220,6 +225,7 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(0).getProp("notNull"), equalTo(null));
     assertThat(fields.get(0).getProp("generationExpression"), equalTo(null));
     assertThat(fields.get(0).getProp("stored"), equalTo(null));
+    assertThat(fields.get(0).getProp("defaultExpression"), equalTo(null));
 
     assertThat(fields.get(1).name(), equalTo("first_name"));
     assertThat(fields.get(1).schema(), equalTo(nullableUnion(Schema.Type.STRING)));

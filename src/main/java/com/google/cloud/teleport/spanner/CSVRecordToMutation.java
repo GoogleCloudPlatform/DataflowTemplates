@@ -24,8 +24,6 @@ import com.google.cloud.teleport.spanner.proto.TextImportProtos.ImportManifest.T
 import com.google.common.base.Strings;
 import com.google.common.primitives.Longs;
 import java.io.IOException;
-import java.io.Reader;
-import java.io.StringReader;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -35,21 +33,19 @@ import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollectionView;
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 
 /**
- * Converts a line in text file into a {@link Mutation} objects.
+ * Converts a CSVRecord into a {@link Mutation} object.
  *
- * <p>This class receives a pair of file name and table name. It reads the file and converts each
- * row into a {@link Mutation}, using the table schema retrieved from {@link Ddl} passed in as a
- * side input. When the text cannot be converted to the requested table schema, an
+ * <p>This class receives a pair of table name and CSVRecord object. It reads the file and converts
+ * each row into a {@link Mutation}, using the table schema retrieved from {@link Ddl} passed in as
+ * a side input. When the record cannot be converted to the requested table schema, an
  * IllegalArgumentException will be raised.
  *
- * <p>Input PCollection is a @{code KV<filePath, tableName>}
+ * <p>Input PCollection is a @{code KV<tableName, CSVRecord>}
  */
-class TextRowToMutation extends DoFn<KV<String, String>, Mutation> {
+class CSVRecordToMutation extends DoFn<KV<String, CSVRecord>, Mutation> {
 
   // Schema of the destination Spanner database.
   private final PCollectionView<Ddl> ddlView;
@@ -64,7 +60,7 @@ class TextRowToMutation extends DoFn<KV<String, String>, Mutation> {
 
   private Mutation.WriteBuilder writeBuilder = null;
 
-  public TextRowToMutation(
+  public CSVRecordToMutation(
       PCollectionView<Ddl> ddlView,
       PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsView,
       ValueProvider<Character> columnDelimiter,
@@ -91,28 +87,12 @@ class TextRowToMutation extends DoFn<KV<String, String>, Mutation> {
      * Input string is one line but Apache CSVParser process multiple lines, so we only take the
      * first item in the result list
      */
-    KV<String, String> kv = c.element();
+    KV<String, CSVRecord> kv = c.element();
     String tableName = kv.getKey();
     Ddl ddl = c.sideInput(ddlView);
     Map<String, List<TableManifest.Column>> tableColumnsMap = c.sideInput(tableColumnsView);
     Table table = ddl.table(tableName);
-    Reader in = new StringReader(kv.getValue());
-    CSVFormat csvFormat =
-        CSVFormat.newFormat(columnDelimiter.get())
-            .withQuote(fieldQualifier.get())
-            .withIgnoreEmptyLines(true)
-            .withTrailingDelimiter(trailingDelimiter.get())
-            .withEscape(escape.get())
-            .withNullString(nullString.get());
-    CSVParser parser = new CSVParser(in, csvFormat);
-    List<CSVRecord> list = parser.getRecords();
-    if (list.isEmpty()) {
-      return;
-    }
-    if (list.size() > 1) {
-      throw new RuntimeException("Unable to parse this row: " + c.element());
-    }
-    CSVRecord row = list.get(0);
+    CSVRecord row = kv.getValue();
     writeBuilder = Mutation.newInsertOrUpdateBuilder(table.name());
     try {
       c.output(parseRow(writeBuilder, row, table, tableColumnsMap.get(tableName)));

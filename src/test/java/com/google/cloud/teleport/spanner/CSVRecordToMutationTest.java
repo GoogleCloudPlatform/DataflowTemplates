@@ -31,8 +31,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.Pipeline.PipelineExecutionException;
+import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.ListCoder;
 import org.apache.beam.sdk.coders.MapCoder;
+import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.extensions.protobuf.ProtoCoder;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -45,11 +47,14 @@ import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 import org.junit.Rule;
 import org.junit.Test;
 
-/** Tests for TextRowToMutation class. */
-public final class TextRowToMutationTest {
+/** Tests for CSVRecordToMutation class. */
+public final class CSVRecordToMutationTest {
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
   private static String testTableName = "TestTable";
@@ -62,8 +67,16 @@ public final class TextRowToMutationTest {
   private final ValueProvider<String> dateFormat = StaticValueProvider.of(null);
   private final ValueProvider<String> timestampFormat = StaticValueProvider.of(null);
 
+  private final CSVFormat csvFormat =
+      CSVFormat.newFormat(columnDelimiter.get())
+          .withQuote(fieldQualifier.get())
+          .withIgnoreEmptyLines(true)
+          .withTrailingDelimiter(trailingDelimiter.get())
+          .withEscape(escape.get())
+          .withNullString(nullString.get());
+
   @Test
-  public void parseRowToMutation() {
+  public void parseRowToMutation() throws Exception {
     PCollectionView<Ddl> ddlView =
         pipeline.apply("ddl", Create.of(getTestDdl())).apply(View.asSingleton());
     PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
@@ -77,19 +90,24 @@ public final class TextRowToMutationTest {
                             ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
             .apply("Map as view", View.asSingleton());
 
-    PCollection<KV<String, String>> input =
+    CSVRecord csvRecord =
+        CSVParser.parse(
+                "123,a string,`another"
+                    + " string`,1.23,True,2019-01-01,2018-12-31T23:59:59Z,1567637083,aGk=,"
+                    + "-439.25335679,`{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}`",
+                csvFormat.withQuote('`').withTrailingDelimiter(true))
+            .getRecords()
+            .get(0);
+    PCollection<KV<String, CSVRecord>> input =
         pipeline.apply(
             "input",
-            Create.of(
-                KV.of(
-                    testTableName,
-                    "123,a string,`another"
-                        + " string`,1.23,True,2019-01-01,2018-12-31T23:59:59Z,1567637083,aGk=,"
-                        + "-439.25335679,`{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}`")));
+            Create.of(KV.of(testTableName, csvRecord))
+                .withCoder(
+                    KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(CSVRecord.class))));
     PCollection<Mutation> mutations =
         input.apply(
             ParDo.of(
-                    new TextRowToMutation(
+                    new CSVRecordToMutation(
                         ddlView,
                         tableColumnsMapView,
                         columnDelimiter,
@@ -132,7 +150,7 @@ public final class TextRowToMutationTest {
   }
 
   @Test
-  public void parseRowToMutationException1() {
+  public void parseRowToMutationNewlineInData() throws Exception {
     PCollectionView<Ddl> ddlView =
         pipeline.apply("ddl", Create.of(getTestDdl())).apply(View.asSingleton());
     PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
@@ -146,48 +164,24 @@ public final class TextRowToMutationTest {
                             ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
             .apply("Map as view", View.asSingleton());
 
-    PCollection<KV<String, String>> input =
+    CSVRecord csvRecord =
+        CSVParser.parse(
+                "123,a string,`another\n"
+                    + "string`,1.23,True,2019-01-01,2018-12-31T23:59:59Z,1567637083,aGk=,"
+                    + "-439.25335679,`{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}`",
+                csvFormat.withQuote('`').withTrailingDelimiter(true))
+            .getRecords()
+            .get(0);
+    PCollection<KV<String, CSVRecord>> input =
         pipeline.apply(
-            "input", Create.of(KV.of(testTableName, "123,a string,another\n456,two,four")));
+            "input",
+            Create.of(KV.of(testTableName, csvRecord))
+                .withCoder(
+                    KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(CSVRecord.class))));
     PCollection<Mutation> mutations =
         input.apply(
             ParDo.of(
-                    new TextRowToMutation(
-                        ddlView,
-                        tableColumnsMapView,
-                        columnDelimiter,
-                        StaticValueProvider.of('`'),
-                        StaticValueProvider.of(true),
-                        escape,
-                        nullString,
-                        dateFormat,
-                        timestampFormat))
-                .withSideInputs(ddlView, tableColumnsMapView));
-    // TextRowToMutation throws exception if the input string contains multiple lines.
-    assertThrows(PipelineExecutionException.class, () -> pipeline.run());
-  }
-
-  @Test
-  public void parseRowToMutationEmptyLine() {
-    PCollectionView<Ddl> ddlView =
-        pipeline.apply("ddl", Create.of(getTestDdl())).apply(View.asSingleton());
-    PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
-        pipeline
-            .apply(
-                "tableColumnsMap",
-                Create.<Map<String, List<TableManifest.Column>>>of(getEmptyTableColumnsMap())
-                    .withCoder(
-                        MapCoder.of(
-                            StringUtf8Coder.of(),
-                            ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
-            .apply("Map as view", View.asSingleton());
-
-    PCollection<KV<String, String>> input =
-        pipeline.apply("input", Create.of(KV.of(testTableName, "")));
-    PCollection<Mutation> mutations =
-        input.apply(
-            ParDo.of(
-                    new TextRowToMutation(
+                    new CSVRecordToMutation(
                         ddlView,
                         tableColumnsMapView,
                         columnDelimiter,
@@ -199,13 +193,38 @@ public final class TextRowToMutationTest {
                         timestampFormat))
                 .withSideInputs(ddlView, tableColumnsMapView));
 
-    PAssert.that(mutations).empty();
+    PAssert.that(mutations)
+        .containsInAnyOrder(
+            Mutation.newInsertOrUpdateBuilder(testTableName)
+                .set("int_col")
+                .to(123)
+                .set("str_10_col")
+                .to("a string")
+                .set("str_max_col")
+                .to("another\nstring")
+                .set("float_col")
+                .to(1.23)
+                .set("bool_col")
+                .to(true)
+                .set("date_col")
+                .to(Value.date(Date.parseDate("2019-01-01")))
+                .set("timestamp_col")
+                .to(Value.timestamp(Timestamp.parseTimestamp("2018-12-31T23:59:59Z")))
+                .set("timestamp_col_epoch")
+                .to(Value.timestamp(Timestamp.ofTimeMicroseconds(1567637083)))
+                .set("byte_col")
+                .to(Value.bytes(ByteArray.fromBase64("aGk=")))
+                .set("numeric_col")
+                .to("-439.25335679")
+                .set("json_col")
+                .to("{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}")
+                .build());
 
     pipeline.run();
   }
 
   @Test
-  public void parseRowToMutationException2() {
+  public void parseRowToMutationException2() throws Exception {
     PCollectionView<Ddl> ddlView =
         pipeline.apply("ddl", Create.of(getTestDdl())).apply(View.asSingleton());
     PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
@@ -218,20 +237,24 @@ public final class TextRowToMutationTest {
                             StringUtf8Coder.of(),
                             ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
             .apply("Map as view", View.asSingleton());
-
-    PCollection<KV<String, String>> input =
+    CSVRecord csvRecord =
+        CSVParser.parse(
+                "123,a string,`another"
+                    + " string`,1.23,NotBool,2019-01-01,2018-12-31T23:59:59Z,1567637083,aGk=,"
+                    + "-439.25335679,`{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}`",
+                csvFormat.withQuote('`').withTrailingDelimiter(true))
+            .getRecords()
+            .get(0);
+    PCollection<KV<String, CSVRecord>> input =
         pipeline.apply(
             "input",
-            Create.of(
-                KV.of(
-                    testTableName,
-                    "123,a string,`another"
-                        + " string`,1.23,NotBool,2019-01-01,2018-12-31T23:59:59Z,1567637083,aGk=,"
-                        + "-439.25335679,`{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}`")));
+            Create.of(KV.of(testTableName, csvRecord))
+                .withCoder(
+                    KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(CSVRecord.class))));
     PCollection<Mutation> mutations =
         input.apply(
             ParDo.of(
-                    new TextRowToMutation(
+                    new CSVRecordToMutation(
                         ddlView,
                         tableColumnsMapView,
                         columnDelimiter,
@@ -242,13 +265,13 @@ public final class TextRowToMutationTest {
                         dateFormat,
                         timestampFormat))
                 .withSideInputs(ddlView, tableColumnsMapView));
-    // TextRowToMutation throws exception if it could not parse the data to corresponding type.
+    // CSVRecordToMutation throws exception if it could not parse the data to corresponding type.
     // `NotBool` cannot be parsed to Boolean in this test case.
     assertThrows(PipelineExecutionException.class, () -> pipeline.run());
   }
 
   @Test
-  public void parseRowToMutationDefaultDatetimeExtraParts() {
+  public void parseRowToMutationDefaultDatetimeExtraParts() throws Exception {
     PCollectionView<Ddl> ddlView =
         pipeline.apply("ddl", Create.of(getTestDdl())).apply(View.asSingleton());
     PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
@@ -261,19 +284,23 @@ public final class TextRowToMutationTest {
                             StringUtf8Coder.of(),
                             ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
             .apply("Map as view", View.asSingleton());
-
-    PCollection<KV<String, String>> input =
+    CSVRecord csvRecord =
+        CSVParser.parse(
+                "1,str,\"str with, commas,\",1.1,False,1910-01-01"
+                    + " 00:00:00,2018-12-31T23:59:59.123Z,1567637083000,aGk=",
+                csvFormat.withTrailingDelimiter(true))
+            .getRecords()
+            .get(0);
+    PCollection<KV<String, CSVRecord>> input =
         pipeline.apply(
             "input",
-            Create.of(
-                KV.of(
-                    testTableName,
-                    "1,str,\"str with, commas,\",1.1,False,1910-01-01"
-                        + " 00:00:00,2018-12-31T23:59:59.123Z,1567637083000,aGk=")));
+            Create.of(KV.of(testTableName, csvRecord))
+                .withCoder(
+                    KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(CSVRecord.class))));
     PCollection<Mutation> mutations =
         input.apply(
             ParDo.of(
-                    new TextRowToMutation(
+                    new CSVRecordToMutation(
                         ddlView,
                         tableColumnsMapView,
                         columnDelimiter,
@@ -312,7 +339,7 @@ public final class TextRowToMutationTest {
   }
 
   @Test
-  public void parseRowToMutationCustomizedDimiterAndFieldQulifier() {
+  public void parseRowToMutationCustomizedDimiterAndFieldQulifier() throws Exception {
     PCollectionView<Ddl> ddlView =
         pipeline.apply("ddl", Create.of(getTestDdl())).apply(View.asSingleton());
     PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
@@ -326,13 +353,21 @@ public final class TextRowToMutationTest {
                             ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
             .apply("Map as view", View.asSingleton());
 
-    PCollection<KV<String, String>> input =
+    CSVRecord csvRecord =
+        CSVParser.parse(
+                "123|`str1 with |`|`\"str2\"+ \"'\"|`", csvFormat.withDelimiter('|').withQuote('`'))
+            .getRecords()
+            .get(0);
+    PCollection<KV<String, CSVRecord>> input =
         pipeline.apply(
-            "input", Create.of(KV.of(testTableName, "123|`str1 with |`|`\"str2\"+ \"'\"|`")));
+            "input",
+            Create.of(KV.of(testTableName, csvRecord))
+                .withCoder(
+                    KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(CSVRecord.class))));
     PCollection<Mutation> mutations =
         input.apply(
             ParDo.of(
-                    new TextRowToMutation(
+                    new CSVRecordToMutation(
                         ddlView,
                         tableColumnsMapView,
                         StaticValueProvider.of('|'),
@@ -359,7 +394,7 @@ public final class TextRowToMutationTest {
   }
 
   @Test
-  public void parseRowToMutationCustomizedDateFormat() {
+  public void parseRowToMutationCustomizedDateFormat() throws Exception {
     PCollectionView<Ddl> ddlView =
         pipeline.apply("ddl", Create.of(getTestDdlDateOnly())).apply(View.asSingleton());
     PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
@@ -372,13 +407,17 @@ public final class TextRowToMutationTest {
                             StringUtf8Coder.of(),
                             ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
             .apply("Map as view", View.asSingleton());
-
-    PCollection<KV<String, String>> input =
-        pipeline.apply("input", Create.of(KV.of(testTableName, "1/21/1998")));
+    CSVRecord csvRecord = CSVParser.parse("1/21/1998", csvFormat).getRecords().get(0);
+    PCollection<KV<String, CSVRecord>> input =
+        pipeline.apply(
+            "input",
+            Create.of(KV.of(testTableName, csvRecord))
+                .withCoder(
+                    KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(CSVRecord.class))));
     PCollection<Mutation> mutations =
         input.apply(
             ParDo.of(
-                    new TextRowToMutation(
+                    new CSVRecordToMutation(
                         ddlView,
                         tableColumnsMapView,
                         columnDelimiter,
@@ -401,7 +440,7 @@ public final class TextRowToMutationTest {
   }
 
   @Test
-  public void parseRowToMutationCustomizedTimestampFormat() {
+  public void parseRowToMutationCustomizedTimestampFormat() throws Exception {
     PCollectionView<Ddl> ddlView =
         pipeline.apply("ddl", Create.of(getTestDdlTimestampOnly())).apply(View.asSingleton());
     PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
@@ -414,13 +453,18 @@ public final class TextRowToMutationTest {
                             StringUtf8Coder.of(),
                             ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
             .apply("Map as view", View.asSingleton());
-
-    PCollection<KV<String, String>> input =
-        pipeline.apply("input", Create.of(KV.of(testTableName, "Jan 21 1998 01:02:03.456+08:00")));
+    CSVRecord csvRecord =
+        CSVParser.parse("Jan 21 1998 01:02:03.456+08:00", csvFormat).getRecords().get(0);
+    PCollection<KV<String, CSVRecord>> input =
+        pipeline.apply(
+            "input",
+            Create.of(KV.of(testTableName, csvRecord))
+                .withCoder(
+                    KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(CSVRecord.class))));
     PCollection<Mutation> mutations =
         input.apply(
             ParDo.of(
-                    new TextRowToMutation(
+                    new CSVRecordToMutation(
                         ddlView,
                         tableColumnsMapView,
                         columnDelimiter,
@@ -443,7 +487,7 @@ public final class TextRowToMutationTest {
   }
 
   @Test
-  public void parseRowToMutationCustomizedEmptyAndNullFields() {
+  public void parseRowToMutationCustomizedEmptyAndNullFields() throws Exception {
     PCollectionView<Ddl> ddlView =
         pipeline.apply("ddl", Create.of(getTestDdl())).apply(View.asSingleton());
     PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
@@ -456,13 +500,26 @@ public final class TextRowToMutationTest {
                             StringUtf8Coder.of(),
                             ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
             .apply("Map as view", View.asSingleton());
-
-    PCollection<KV<String, String>> input =
-        pipeline.apply("input", Create.of(KV.of(testTableName, "123||\\NA||||||")));
+    CSVRecord csvRecord =
+        CSVParser.parse(
+                "123||\\NA||||||",
+                csvFormat
+                    .withDelimiter('|')
+                    .withTrailingDelimiter(false)
+                    .withEscape('`')
+                    .withNullString("\\NA"))
+            .getRecords()
+            .get(0);
+    PCollection<KV<String, CSVRecord>> input =
+        pipeline.apply(
+            "input",
+            Create.of(KV.of(testTableName, csvRecord))
+                .withCoder(
+                    KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(CSVRecord.class))));
     PCollection<Mutation> mutations =
         input.apply(
             ParDo.of(
-                    new TextRowToMutation(
+                    new CSVRecordToMutation(
                         ddlView,
                         tableColumnsMapView,
                         StaticValueProvider.of('|'),
@@ -514,16 +571,20 @@ public final class TextRowToMutationTest {
                             StringUtf8Coder.of(),
                             ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
             .apply("Map as view", View.asSingleton());
-
-    PCollection<KV<String, String>> input =
+    CSVRecord csvRecord =
+        CSVParser.parse("123,a string,yet another string,1.23,True,99999/99/99", csvFormat)
+            .getRecords()
+            .get(0);
+    PCollection<KV<String, CSVRecord>> input =
         pipeline.apply(
             "input",
-            Create.of(
-                KV.of(testTableName, "123,a string,yet another string,1.23,True,99999/99/99")));
+            Create.of(KV.of(testTableName, csvRecord))
+                .withCoder(
+                    KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(CSVRecord.class))));
     PCollection<Mutation> mutations =
         input.apply(
             ParDo.of(
-                    new TextRowToMutation(
+                    new CSVRecordToMutation(
                         ddlView,
                         tableColumnsMapView,
                         columnDelimiter,
@@ -552,19 +613,24 @@ public final class TextRowToMutationTest {
                             StringUtf8Coder.of(),
                             ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
             .apply("Map as view", View.asSingleton());
-
-    PCollection<KV<String, String>> input =
+    CSVRecord csvRecord =
+        CSVParser.parse("123,a string,yet another string,1.23,True,,,,,,,", csvFormat)
+            .getRecords()
+            .get(0);
+    PCollection<KV<String, CSVRecord>> input =
         pipeline.apply(
             "input",
-            Create.of(KV.of(testTableName, "123,a string,yet another string,1.23,True,,,,,,,")));
+            Create.of(KV.of(testTableName, csvRecord))
+                .withCoder(
+                    KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(CSVRecord.class))));
     PCollection<Mutation> mutations =
         input.apply(
             ParDo.of(
-                    new TextRowToMutation(
+                    new CSVRecordToMutation(
                         ddlView,
                         tableColumnsMapView,
                         columnDelimiter,
-                        StaticValueProvider.of('"'),
+                        fieldQualifier,
                         trailingDelimiter,
                         escape,
                         nullString,
@@ -589,17 +655,22 @@ public final class TextRowToMutationTest {
                             StringUtf8Coder.of(),
                             ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
             .apply("Map as view", View.asSingleton());
-
-    PCollection<KV<String, String>> input =
-        pipeline.apply("input", Create.of(KV.of(testTableName, "str, [a string in an array]")));
+    CSVRecord csvRecord =
+        CSVParser.parse("str, [a string in an array]", csvFormat).getRecords().get(0);
+    PCollection<KV<String, CSVRecord>> input =
+        pipeline.apply(
+            "input",
+            Create.of(KV.of(testTableName, csvRecord))
+                .withCoder(
+                    KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(CSVRecord.class))));
     PCollection<Mutation> mutations =
         input.apply(
             ParDo.of(
-                    new TextRowToMutation(
+                    new CSVRecordToMutation(
                         ddlView,
                         tableColumnsMapView,
                         columnDelimiter,
-                        StaticValueProvider.of('"'),
+                        fieldQualifier,
                         trailingDelimiter,
                         escape,
                         nullString,
@@ -623,17 +694,22 @@ public final class TextRowToMutationTest {
                             StringUtf8Coder.of(),
                             ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
             .apply("Map as view", View.asSingleton());
-
-    PCollection<KV<String, String>> input =
-        pipeline.apply("input", Create.of(KV.of(testTableName, "str, [a string in an array]")));
+    CSVRecord csvRecord =
+        CSVParser.parse("str, [a string in an array]", csvFormat).getRecords().get(0);
+    PCollection<KV<String, CSVRecord>> input =
+        pipeline.apply(
+            "input",
+            Create.of(KV.of(testTableName, csvRecord))
+                .withCoder(
+                    KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(CSVRecord.class))));
     PCollection<Mutation> mutations =
         input.apply(
             ParDo.of(
-                    new TextRowToMutation(
+                    new CSVRecordToMutation(
                         ddlView,
                         tableColumnsMapView,
                         columnDelimiter,
-                        StaticValueProvider.of('"'),
+                        fieldQualifier,
                         trailingDelimiter,
                         escape,
                         nullString,
@@ -644,7 +720,7 @@ public final class TextRowToMutationTest {
   }
 
   @Test
-  public void pgParseRowToMutation() {
+  public void pgParseRowToMutation() throws Exception {
     PCollectionView<Ddl> ddlView =
         pipeline.apply("ddl", Create.of(getPgTestDdl())).apply(View.asSingleton());
     PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
@@ -658,19 +734,25 @@ public final class TextRowToMutationTest {
                             ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
             .apply("Map as view", View.asSingleton());
 
-    PCollection<KV<String, String>> input =
+    CSVRecord csvRecord =
+        CSVParser.parse(
+                "123,a string,'another string',1.23,True,2018-12-31T23:59:59Z,1567637083"
+                    + ",aGk=,-439.25335679,'{\"a\": null, \"b\": [true, false, 14.234"
+                    + ", \"dsafaaf\"]}',1910-01-01",
+                csvFormat.withQuote('\'').withTrailingDelimiter(true))
+            .getRecords()
+            .get(0);
+    PCollection<KV<String, CSVRecord>> input =
         pipeline.apply(
             "input",
-            Create.of(
-                KV.of(
-                    testTableName,
-                    "123,a string,'another string',1.23,True,2018-12-31T23:59:59Z,1567637083"
-                        + ",aGk=,-439.25335679,'{\"a\": null, \"b\": [true, false, 14.234"
-                        + ", \"dsafaaf\"]}',1910-01-01")));
+            Create.of(KV.of(testTableName, csvRecord))
+                .withCoder(
+                    KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(CSVRecord.class))));
+
     PCollection<Mutation> mutations =
         input.apply(
             ParDo.of(
-                    new TextRowToMutation(
+                    new CSVRecordToMutation(
                         ddlView,
                         tableColumnsMapView,
                         columnDelimiter,
@@ -709,6 +791,105 @@ public final class TextRowToMutationTest {
                 .to(Value.date(Date.parseDate("1910-01-01")))
                 .build());
 
+    pipeline.run();
+  }
+
+  @Test
+  public void parseRowWithDefaultColumnOmitted() throws Exception {
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("ddl", Create.of(getTestDdlWithDefaultValue())).apply(View.asSingleton());
+    PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
+        pipeline
+            .apply(
+                "tableColumnsMap",
+                Create.<Map<String, List<TableManifest.Column>>>of(getEmptyTableColumnsMap())
+                    .withCoder(
+                        MapCoder.of(
+                            StringUtf8Coder.of(),
+                            ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
+            .apply("Map as view", View.asSingleton());
+
+    CSVRecord csvRecord = CSVParser.parse("10,20", csvFormat).getRecords().get(0);
+    // Omit the value of int_col3.
+    PCollection<KV<String, CSVRecord>> input =
+        pipeline.apply(
+            "input",
+            Create.of(KV.of(testTableName, csvRecord))
+                .withCoder(
+                    KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(CSVRecord.class))));
+    PCollection<Mutation> mutations =
+        input.apply(
+            ParDo.of(
+                    new CSVRecordToMutation(
+                        ddlView,
+                        tableColumnsMapView,
+                        columnDelimiter,
+                        StaticValueProvider.of('\''),
+                        StaticValueProvider.of(true),
+                        escape,
+                        nullString,
+                        dateFormat,
+                        timestampFormat))
+                .withSideInputs(ddlView, tableColumnsMapView));
+
+    // Verify that int_col3 doesn't appear in the mutation column list.
+    PAssert.that(mutations)
+        .containsInAnyOrder(
+            Mutation.newInsertOrUpdateBuilder(testTableName)
+                .set("int_col1")
+                .to(10)
+                .set("int_col2")
+                .to(20)
+                .build());
+    pipeline.run();
+  }
+
+  @Test
+  public void pgParseRowWithDefaultColumnOmitted() throws Exception {
+    PCollectionView<Ddl> ddlView =
+        pipeline.apply("ddl", Create.of(getPgTestDdlWithDefaultValue())).apply(View.asSingleton());
+    PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
+        pipeline
+            .apply(
+                "tableColumnsMap",
+                Create.<Map<String, List<TableManifest.Column>>>of(getEmptyTableColumnsMap())
+                    .withCoder(
+                        MapCoder.of(
+                            StringUtf8Coder.of(),
+                            ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
+            .apply("Map as view", View.asSingleton());
+    CSVRecord csvRecord = CSVParser.parse("10,20", csvFormat).getRecords().get(0);
+    // Omit the value of int_col3.
+    PCollection<KV<String, CSVRecord>> input =
+        pipeline.apply(
+            "input",
+            Create.of(KV.of(testTableName, csvRecord))
+                .withCoder(
+                    KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(CSVRecord.class))));
+    PCollection<Mutation> mutations =
+        input.apply(
+            ParDo.of(
+                    new CSVRecordToMutation(
+                        ddlView,
+                        tableColumnsMapView,
+                        columnDelimiter,
+                        StaticValueProvider.of('\''),
+                        StaticValueProvider.of(true),
+                        escape,
+                        nullString,
+                        dateFormat,
+                        timestampFormat))
+                .withSideInputs(ddlView, tableColumnsMapView));
+
+    // Verify that int_col3 doesn't appear in the mutation column list.
+    PAssert.that(mutations)
+        .containsInAnyOrder(
+            Mutation.newInsertOrUpdateBuilder(testTableName)
+                .set("int_col1")
+                .to(10)
+                .set("int_col2")
+                .to(20)
+                .build());
     pipeline.run();
   }
 
@@ -874,6 +1055,54 @@ public final class TextRowToMutationTest {
             .endColumn()
             .primaryKey()
             .asc("str_col")
+            .end()
+            .endTable()
+            .build();
+    return ddl;
+  }
+
+  private static Ddl getTestDdlWithDefaultValue() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(testTableName)
+            .column("int_col1")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("int_col2")
+            .int64()
+            .defaultExpression("2")
+            .endColumn()
+            .column("int_col3")
+            .int64()
+            .defaultExpression("3")
+            .endColumn()
+            .primaryKey()
+            .asc("int_col1")
+            .end()
+            .endTable()
+            .build();
+    return ddl;
+  }
+
+  private static Ddl getPgTestDdlWithDefaultValue() {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable(testTableName)
+            .column("int_col1")
+            .pgInt8()
+            .notNull()
+            .endColumn()
+            .column("int_col2")
+            .pgInt8()
+            .defaultExpression("2")
+            .endColumn()
+            .column("int_col3")
+            .pgInt8()
+            .defaultExpression("3")
+            .endColumn()
+            .primaryKey()
+            .asc("int_col1")
             .end()
             .endTable()
             .build();

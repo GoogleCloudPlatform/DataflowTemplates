@@ -913,6 +913,38 @@ public class ImportFromAvroTest {
   }
 
   @Test
+  public void defaultColumns() throws Exception {
+    SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("defaultColumns");
+    SchemaBuilder.FieldAssembler<Schema> fieldAssembler = record.fields();
+
+    fieldAssembler
+        // Primary key.
+        .requiredLong("id")
+        // Integer columns.
+        .optionalLong("optional_default")
+        .requiredLong("required_default")
+        .optionalLong("optional_default_2");
+    Schema schema = fieldAssembler.endRecord();
+    String spannerSchema =
+        "CREATE TABLE `AvroTable` ("
+            + "`id`                                  INT64 NOT NULL,"
+            + "`optional_default`                    INT64 DEFAULT (1),"
+            + "`required_default`                    INT64 NOT NULL DEFAULT (2),"
+            + "`optional_default_2`                  INT64 DEFAULT (3),"
+            + ") PRIMARY KEY (`id`)";
+
+    runTest(
+        schema,
+        spannerSchema,
+        Arrays.asList(
+            new GenericRecordBuilder(schema)
+                .set("id", 1L)
+                .set("optional_default", 1L)
+                .set("required_default", 1L)
+                .build()));
+  }
+
+  @Test
   public void pgDefaultColumns() throws Exception {
     SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("defaultColumns");
     SchemaBuilder.FieldAssembler<Schema> fieldAssembler = record.fields();

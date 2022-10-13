@@ -45,6 +45,7 @@ import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.MatchResult.Metadata;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
@@ -121,7 +122,11 @@ public class AvroTableFileAsMutationsTest {
         // Pcollection<FileIO.ReadableFile>
         .apply(
             "Split into ranges",
-            ParDo.of(new SplitIntoRangesFn(splitSize, filenamesToTableNamesMapView))
+            ParDo.of(
+                    new SplitIntoRangesFn(
+                        splitSize,
+                        filenamesToTableNamesMapView,
+                        ValueProvider.StaticValueProvider.of(false)))
                 .withSideInputs(filenamesToTableNamesMapView))
         .setCoder(FileShard.Coder.of());
 
@@ -201,7 +206,11 @@ public class AvroTableFileAsMutationsTest {
         // Pcollection<FileIO.ReadableFile>
         .apply(
             "Split into ranges",
-            ParDo.of(new SplitIntoRangesFn(splitSize, filenamesToTableNamesMapView))
+            ParDo.of(
+                    new SplitIntoRangesFn(
+                        splitSize,
+                        filenamesToTableNamesMapView,
+                        ValueProvider.StaticValueProvider.of(false)))
                 .withSideInputs(filenamesToTableNamesMapView))
         .setCoder(FileShard.Coder.of());
   }
@@ -290,8 +299,8 @@ public class AvroTableFileAsMutationsTest {
 
   @Test
   public void testFileShardCreation() {
-    assertThrows(NullPointerException.class, () -> new AutoValue_FileShard(null, null, null));
+    assertThrows(NullPointerException.class, () -> new AutoValue_FileShard(null, null, null, 0L));
     assertThrows(
-        NullPointerException.class, () -> new AutoValue_FileShard("testTable", null, null));
+        NullPointerException.class, () -> new AutoValue_FileShard("testTable", null, null, 0L));
   }
 }

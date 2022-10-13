@@ -80,11 +80,13 @@ public abstract class WriteDataChangeRecordsToGcsText
             "Writing as Text",
             TextIO.write()
                 .to(
-                    new WindowedFilenamePolicy(
-                        gcsOutputDirectory(),
-                        outputFilenamePrefix(),
-                        WriteToGCSUtility.SHARD_TEMPLATE,
-                        WriteToGCSUtility.FILE_SUFFIX_MAP.get(WriteToGCSUtility.FileFormat.TEXT)))
+                    WindowedFilenamePolicy.writeWindowedFiles()
+                        .withOutputDirectory(gcsOutputDirectory())
+                        .withOutputFilenamePrefix(outputFilenamePrefix())
+                        .withShardTemplate(WriteToGCSUtility.SHARD_TEMPLATE)
+                        .withSuffix(
+                            WriteToGCSUtility.FILE_SUFFIX_MAP.get(
+                                WriteToGCSUtility.FileFormat.TEXT)))
                 .withTempDirectory(
                     FileBasedSink.convertToFileResourceIfPossible(tempLocation())
                         .getCurrentDirectory())

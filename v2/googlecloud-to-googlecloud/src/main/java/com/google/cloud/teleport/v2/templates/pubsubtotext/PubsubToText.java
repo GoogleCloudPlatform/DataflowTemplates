@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates.pubsubtotext;
 
+import com.google.cloud.teleport.v2.io.WindowedFilenamePolicy;
+import com.google.cloud.teleport.v2.options.WindowedFilenamePolicyOptions;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import com.google.common.base.Strings;
 import org.apache.beam.sdk.Pipeline;
