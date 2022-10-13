@@ -68,7 +68,8 @@ public final class OracleChangeEventContextTest {
     Map<String, Value> actual = shadowMutation.asMap();
 
     // Expected result
-    Map<String, Value> expected = ChangeEventConvertorTest.getExpectedMapForTestChangeEvent();
+    Map<String, Value> expected =
+        ChangeEventConvertorTest.getExpectedMapForTestChangeEventWithoutJsonField();
     expected.put(
         DatastreamConstants.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft(), Value.int64(eventTimestamp));
     expected.put(DatastreamConstants.ORACLE_SCN_SHADOW_INFO.getLeft(), Value.int64(1));
@@ -104,7 +105,8 @@ public final class OracleChangeEventContextTest {
     Map<String, Value> actual = shadowMutation.asMap();
 
     // Expected result
-    Map<String, Value> expected = ChangeEventConvertorTest.getExpectedMapForTestChangeEvent();
+    Map<String, Value> expected =
+        ChangeEventConvertorTest.getExpectedMapForTestChangeEventWithoutJsonField();
     expected.put(
         DatastreamConstants.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft(), Value.int64(eventTimestamp));
     expected.put(DatastreamConstants.ORACLE_SCN_SHADOW_INFO.getLeft(), Value.int64(-1));
@@ -139,7 +141,8 @@ public final class OracleChangeEventContextTest {
     Map<String, Value> actual = shadowMutation.asMap();
 
     // Expected result
-    Map<String, Value> expected = ChangeEventConvertorTest.getExpectedMapForTestChangeEvent();
+    Map<String, Value> expected =
+        ChangeEventConvertorTest.getExpectedMapForTestChangeEventWithoutJsonField();
     expected.put(
         DatastreamConstants.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft(), Value.int64(eventTimestamp));
     expected.put(DatastreamConstants.ORACLE_SCN_SHADOW_INFO.getLeft(), Value.int64(-1));
