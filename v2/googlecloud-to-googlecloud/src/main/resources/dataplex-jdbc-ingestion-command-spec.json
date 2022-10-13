@@ -1,6 +1,6 @@
 {
   "mainClass": "com.google.cloud.teleport.v2.templates.DataplexJdbcIngestion",
-  "classPath": "/template/dataplex-jdbc-ingestion/*:/template/dataplex-jdbc-ingestion/libs/*:/template/dataplex-jdbc-ingestion/classes",
+  "classPath": "/template/dataplex-jdbc-ingestion/*:/template/dataplex-jdbc-ingestion/libs/*:/template/dataplex-jdbc-ingestion/classes:/template/dataplex-jdbc-ingestion/resources",
   "defaultParameterValues": {
     "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"dataplex_jdbc_ingestion\"}"
   }
