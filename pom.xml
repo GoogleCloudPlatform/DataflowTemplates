@@ -888,6 +888,7 @@
           They can be run run manually using
           'mvn -Dexcluded.spanner.tests="" -Dtest=<testname> test' -->
           <excludedGroups>${excluded.spanner.tests}</excludedGroups>
+          <forkCount>0</forkCount>
         </configuration>
       </plugin>
 
