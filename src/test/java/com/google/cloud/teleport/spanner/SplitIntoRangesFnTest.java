@@ -17,6 +17,7 @@ package com.google.cloud.teleport.spanner;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -40,7 +41,7 @@ import org.junit.Rule;
 import org.junit.Test;
 
 /** Tests for SplitIntoRangesFn class. */
-public final class SplitIntoRangesFnTest {
+public final class SplitIntoRangesFnTest implements Serializable {
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
   private static String testTableName = "TestTable";
 
