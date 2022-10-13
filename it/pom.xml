@@ -36,7 +36,7 @@
     <re2j.version>1.5</re2j.version>
     <slf4j.version>1.7.25</slf4j.version>
     <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
-    <surefire.version>2.21.0</surefire.version>
+    <surefire.version>2.22.2</surefire.version>
     <truth.version>1.0.1</truth.version>
   </properties>
 
