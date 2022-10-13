@@ -22,7 +22,7 @@ on:
       - 'main'
     paths:
       - '**.java'
-      - '**pom.xml'
+      - '**.xml'
       # Include relevant GitHub Action files for running these checks.
       # This will make it easier to verify action changes don't break anything.
       - '.github/actions/setup-env/*'
