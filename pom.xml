@@ -45,7 +45,7 @@
     <hamcrest.version>2.1</hamcrest.version>
     <java.version>11</java.version>
     <junit.version>4.13</junit.version>
-    <surefire.version>2.21.0</surefire.version>
+    <surefire.version>3.0.0-M5</surefire.version>
     <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
     <maven-compiler-plugin.version>3.6.2</maven-compiler-plugin.version>
     <maven-dependency-plugin.version>3.1.2</maven-dependency-plugin.version>
