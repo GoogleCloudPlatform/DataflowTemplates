@@ -1,6 +1,6 @@
 {
   "mainClass": "com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.SpannerChangeStreamsToBigQuery",
-  "classPath": "/template/spanner-changestreams-to-bigquery/*:/template/spanner-changestreams-to-bigquery/libs/*:/template/spanner-changestreams-to-bigquery/classes:/template/spanner-changestreams-to-bigquery/resources",
+  "classPath": "/template/spanner-changestreams-to-bigquery/*:/template/spanner-changestreams-to-bigquery/libs/*:/template/spanner-changestreams-to-bigquery/classes",
     "defaultParameterValues": {
     "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"spanner-changestreams-to-bigquery\"}"
   }

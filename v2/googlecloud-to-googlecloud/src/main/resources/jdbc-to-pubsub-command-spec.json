@@ -1,6 +1,6 @@
 {
   "mainClass": "com.google.cloud.teleport.v2.templates.JdbcToPubsub",
-  "classPath": "/template/jdbc-to-pubsub/*:/template/jdbc-to-pubsub/libs/*:/template/jdbc-to-pubsub/classes:/template/jdbc-to-pubsub/resources",
+  "classPath": "/template/jdbc-to-pubsub/*:/template/jdbc-to-pubsub/libs/*:/template/jdbc-to-pubsub/classes",
   "defaultParameterValues": {
     "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"jdbc-to-pubsub\"}"
   }
