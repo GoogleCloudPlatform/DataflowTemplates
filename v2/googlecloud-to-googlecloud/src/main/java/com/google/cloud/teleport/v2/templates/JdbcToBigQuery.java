@@ -112,12 +112,17 @@ public class JdbcToBigQuery {
   }
 
   /** Create the {@link Write} transform that outputs the collection to BigQuery. */
+  // Dt 13-10-2022 : Added conditional check for APPEND or TRUNCATE as per input parameter. :
+  // @suddhasatwa
   @VisibleForTesting
   static Write<TableRow> writeToBQTransform(JdbcToBigQueryOptions options) {
     return BigQueryIO.writeTableRows()
         .withoutValidation()
         .withCreateDisposition(Write.CreateDisposition.CREATE_NEVER)
-        .withWriteDisposition(Write.WriteDisposition.WRITE_APPEND)
+        .withWriteDisposition(
+            options.getIsTruncate()
+                ? Write.WriteDisposition.WRITE_TRUNCATE
+                : Write.WriteDisposition.WRITE_APPEND)
         .withCustomGcsTempLocation(
             StaticValueProvider.of(options.getBigQueryLoadingTemporaryDirectory()))
         .to(options.getOutputTable());
