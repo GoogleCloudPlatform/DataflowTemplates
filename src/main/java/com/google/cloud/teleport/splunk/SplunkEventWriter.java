@@ -61,7 +61,7 @@ import org.slf4j.LoggerFactory;
 @AutoValue
 public abstract class SplunkEventWriter extends DoFn<KV<Integer, SplunkEvent>, SplunkWriteError> {
 
-  private static final Integer DEFAULT_BATCH_COUNT = 1;
+  private static final Integer DEFAULT_BATCH_COUNT = 10;
   private static final Boolean DEFAULT_DISABLE_CERTIFICATE_VALIDATION = false;
   private static final Boolean DEFAULT_ENABLE_BATCH_LOGS = true;
   private static final Boolean DEFAULT_ENABLE_GZIP_HTTP_COMPRESSION = true;
