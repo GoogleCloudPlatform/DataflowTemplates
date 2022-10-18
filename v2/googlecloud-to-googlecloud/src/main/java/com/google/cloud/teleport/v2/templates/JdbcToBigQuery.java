@@ -111,9 +111,9 @@ public class JdbcToBigQuery {
     return pipeline.run();
   }
 
-  /** Create the {@link Write} transform that outputs the collection to BigQuery. */
-  // Dt 13-10-2022 : Added conditional check for APPEND or TRUNCATE as per input parameter. :
-  // @suddhasatwa
+  /**
+   * Create the {@link Write} transform that outputs the collection to BigQuery as per input option.
+   */
   @VisibleForTesting
   static Write<TableRow> writeToBQTransform(JdbcToBigQueryOptions options) {
     return BigQueryIO.writeTableRows()
