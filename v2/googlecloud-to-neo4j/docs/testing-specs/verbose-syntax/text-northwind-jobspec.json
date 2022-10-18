@@ -1,0 +1,188 @@
+{
+  "config": {
+    "reset_db": true,
+    "node_write_batch_size": 5000,
+    "edge_write_batch_size": 1000
+  },
+  "source": {
+    "type": "text",
+    "format": "EXCEL",
+    "name": "1k orders text",
+    "uri": "gs://neo4j-datasets/northwinds/nw_orders_1k_noheader.csv",
+    "//uri": "can be supplied at run-time in the template, or simply specified here. assumes that no security is required in vpc",
+    "delimiter": ",",
+    "ordered_field_names": "customer_id,contact_name,company_name,seller_id,seller_first_name,seller_last_name,seller_title,product_id,product_name,category_name,supplier_name,supplier_postal_code,supplier_country,order_id,order_date,shipped_date,required_date,quantity,unit_price,discount"
+  },
+  "targets": [
+    {
+      "name": "Customer Nodes",
+      "source": "1k orders text",
+      "active": true,
+      "type": "node",
+      "mode": "merge",
+      "transform": {
+        "group": true
+      },
+      "mappings": [
+        {
+          "constant": "Customer",
+          "name": "Customer",
+          "role": "label"
+        },
+        {
+          "field": "customer_id",
+          "name": "CustomerId",
+          "role": "key",
+          "description": "Customer identifier",
+          "type": "String",
+          "unique": true,
+          "indexed": true
+        },
+        {
+          "field": "contact_name",
+          "name": "ContactName",
+          "role": "property",
+          "description": "Customer contact",
+          "type": "String",
+          "unique": false,
+          "indexed": true
+        },
+        {
+          "field": "company_name",
+          "name": "CompanyName",
+          "role": "property",
+          "description": "Customer company",
+          "type": "String",
+          "unique": false,
+          "indexed": true
+        }
+      ]
+    },
+    {
+      "name": "Product Nodes",
+      "source": "1k orders text",
+      "type": "node",
+      "mode": "merge",
+      "transform": {
+        "aggregations": [{
+          "expr": "SUM(unit_price*quantity)",
+          "field": "total_amount_sold"
+        },
+          {
+            "expr": "SUM(quantity)",
+            "field": "total_quantity_sold"
+          }
+        ],
+        "group": true,
+        "order_by": "product_name ASC",
+        "limit": -1
+      },
+      "mappings": [
+        {
+          "constant":  "Product",
+          "name": "Product",
+          "role": "label"
+        },
+        {
+          "field": "product_id",
+          "name": "ProductId",
+          "role": "key",
+          "description": "",
+          "type": "Integer"
+        },
+        {
+          "field": "product_name",
+          "name": "ProductName",
+          "role": "property",
+          "description": "",
+          "type": "String",
+          "unique": false,
+          "indexed": true
+        },
+        {
+          "field": "total_amount_sold",
+          "name": "Amount",
+          "role": "property",
+          "description": "Total product order amount",
+          "type": "Float"
+        },
+        {
+          "field": "total_quantity_sold",
+          "name": "Quantity",
+          "role": "property",
+          "description": "Total product quantity",
+          "type": "Integer"
+        }
+      ]
+    },
+    {
+      "name": "Purchase Edges",
+      "source": "1k orders text",
+      "type": "edge",
+      "mode": "merge",
+      "transform": {
+        "aggregations": [{
+          "expr": "SUM(unit_price*quantity)",
+          "field": "sum_amount"
+        },
+          {
+            "expr": "SUM(quantity)",
+            "field": "sum_quantity"
+          }
+        ],
+        "group": true,
+        "order_by": "product_name ASC",
+        "limit": -1
+      },
+      "mappings": [
+        {
+          "constant": "PURCHASES",
+          "role": "type",
+          "fragment": "rel"
+        },
+        {
+          "field": "customer_id",
+          "name": "CustomerId",
+          "role": "key",
+          "label": "Customer",
+          "fragment": "source",
+          "description": "",
+          "type": "String"
+        },
+        {
+          "field": "product_id",
+          "name": "ProductId",
+          "role": "key",
+          "label": "Product",
+          "fragment": "target",
+          "description": "",
+          "type": "Integer"
+        },
+        {
+          "field": "order_id",
+          "name": "OrderId",
+          "fragment": "rel",
+          "role": "key",
+          "description": "Unique order id",
+          "type": "Integer"
+        },
+        {
+          "field": "sum_amount",
+          "name": "Amount",
+          "fragment": "rel",
+          "role": "property",
+          "description": "Calculated order amount",
+          "type": "Float"
+        },
+        {
+          "field": "sum_quantity",
+          "name": "Quantity",
+          "fragment": "rel",
+          "role": "property",
+          "description": "Calculated order quantity",
+          "type": "Integer"
+        }
+      ]
+    }
+  ]
+}

@@ -30,7 +30,7 @@ Kafka username and password, and with SSL certificate location in Google Cloud S
 
 ## Requirements
 
-- Java 8
+- Java 11
 - Kafka Bootstrap Server(s) up and running
 - Source Kafka Topic(s)
 - Destination PubSub output topic created

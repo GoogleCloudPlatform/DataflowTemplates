@@ -17,11 +17,13 @@ package com.google.cloud.teleport.options;
 
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.options.ValueProvider;
 
 /** Provides options that are supported by all templates. */
 public interface CommonTemplateOptions extends PipelineOptions {
-
+  // "Required" annotation is added as a workaround for BEAM-7983.
+  @Validation.Required
   @Description(
       "Comma separated algorithms to disable. If this value is set to \"none\" then"
           + " jdk.tls.disabledAlgorithms is set to \"\". Use with care, as the algorithms"
@@ -30,4 +32,14 @@ public interface CommonTemplateOptions extends PipelineOptions {
   ValueProvider<String> getDisabledAlgorithms();
 
   void setDisabledAlgorithms(ValueProvider<String> disabledAlgorithms);
+
+  // "Required" annotation is added as a workaround for BEAM-7983.
+  @Validation.Required
+  @Description(
+      "Comma separated files to stage in the workers. The files can be Cloud storage paths or"
+          + " Secret manager secrets. For example:"
+          + " gs://your-bucket/file1.txt,projects/project-id/secrets/secret-id/versions/version-id")
+  ValueProvider<String> getExtraFilesToStage();
+
+  void setExtraFilesToStage(ValueProvider<String> extraFilesToStage);
 }

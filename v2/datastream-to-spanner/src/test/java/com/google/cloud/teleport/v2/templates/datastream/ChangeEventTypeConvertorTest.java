@@ -306,20 +306,16 @@ public final class ChangeEventTypeConvertorTest {
   @Test
   public void canConvertToNumericBigDecimal() throws Exception {
     String jsonChangeEvent =
-        "{ "
-            + "\"field1\" : 123456789.0123456789,"
-            + "\"field2\" : -123456789.0123456789,"
-            + "\"field3\" : \"-123456789.0123456789\","
-            + "\"field4\" : 9223372036854775807,"
-            + "\"field5\" : \"9223372036854775807\","
-            + "\"field6\" : \"123345678903456545422346373223.903495832\","
-            + "\"field7\" : 123345678903456545422346373223.903495832,"
-            + "\"field8\" : 1233456789034565454223463732234502384848374579495483732758539938558,"
-            + "\"field9\" : \"1233456789034565454223463732234502384848374579495483732758539938558\","
-            + "\"field10\" : \"1.2334567890345654542E10\","
-            + "\"field11\" : 123345.678903456545422346373223903495832,"
-            + "\"field12\" : \"123345.678903456545422346373223903495832\""
-            + " }";
+        "{ \"field1\" : 123456789.0123456789,\"field2\" : -123456789.0123456789,\"field3\" :"
+            + " \"-123456789.0123456789\",\"field4\" : 9223372036854775807,\"field5\" :"
+            + " \"9223372036854775807\",\"field6\" :"
+            + " \"123345678903456545422346373223.903495832\",\"field7\" :"
+            + " 123345678903456545422346373223.903495832,\"field8\" :"
+            + " 1233456789034565454223463732234502384848374579495483732758539938558,\"field9\" :"
+            + " \"1233456789034565454223463732234502384848374579495483732758539938558\",\"field10\""
+            + " : \"1.2334567890345654542E10\",\"field11\" :"
+            + " 123345.678903456545422346373223903495832,\"field12\" :"
+            + " \"123345.678903456545422346373223903495832\" }";
     JsonNode ce = getJsonNode(jsonChangeEvent);
 
     assertEquals(
@@ -402,7 +398,7 @@ public final class ChangeEventTypeConvertorTest {
   @Test
   public void canConvertToByteArray() throws Exception {
     JSONObject changeEvent = new JSONObject();
-    changeEvent.put("field1", "asidjf987asd");
+    changeEvent.put("field1", "68656c6c6f20686f772061722065796f75");
     changeEvent.put("field2", "");
     changeEvent.put("field3", 123456789);
     changeEvent.put("field4", true);
@@ -411,16 +407,19 @@ public final class ChangeEventTypeConvertorTest {
 
     assertEquals(
         ChangeEventTypeConvertor.toByteArray(ce, "field1", /*requiredField=*/ true),
-        ByteArray.copyFrom("asidjf987asd"));
+        ByteArray.copyFrom(
+            new byte[] {
+              104, 101, 108, 108, 111, 32, 104, 111, 119, 32, 97, 114, 32, 101, 121, 111, 117
+            }));
     assertEquals(
         ChangeEventTypeConvertor.toByteArray(ce, "field2", /*requiredField=*/ true),
         ByteArray.copyFrom(""));
     assertEquals(
         ChangeEventTypeConvertor.toByteArray(ce, "field3", /*requiredField=*/ true),
-        ByteArray.copyFrom("123456789"));
+        ByteArray.copyFrom(new byte[] {1, 35, 69, 103, -119}));
     assertEquals(
         ChangeEventTypeConvertor.toByteArray(ce, "field4", /*requiredField=*/ true),
-        ByteArray.copyFrom("true"));
+        ByteArray.copyFrom(new byte[] {-17, -2}));
     assertNull(ChangeEventTypeConvertor.toByteArray(ce, "field5", /*requiredField=*/ false));
   }
 

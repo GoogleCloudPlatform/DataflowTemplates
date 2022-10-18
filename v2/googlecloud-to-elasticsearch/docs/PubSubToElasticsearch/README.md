@@ -20,7 +20,7 @@ To enable the out of the box integration:
 2. [Export logs](https://cloud.google.com/logging/docs/export) from above data source to a separate Pub/Sub subscription. You can then use the Dataflow template's `dataset` parameter to specify the data source name and their corresponding `inputSubscription`.
 
 ### Requirements for this pipeline
-* Java 8
+* Java 11
 * Maven
 * The source Pub/Sub subscription exists
 * Elasticsearch version 7.0 and above
@@ -41,10 +41,22 @@ The template has the following optional parameters:
 * namespace: An arbitrary grouping, such as an environment (dev, prod, or qa), a team, or a strategic business unit. Default is `default`
 * batchSize: Batch size in number of documents. Default: 1000
 * batchSizeBytes: Batch size in number of bytes. Default: 5242880 (5mb)
-* javascriptTextTransformGcsPath: Gcs path to javascript udf source. Udf will be preferred option for transformation if supplied. Default: null
-* javascriptTextTransformFunctionName: UDF Javascript Function Name. Default: null
+* javaScriptTextTransformGCSPath: GCS path to JavaScript UDF source. UDF will be preferred option for transformation if supplied. Default: null
+* javaScriptTextTransformFunctionName: UDF JavaScript Function Name. Default: null
 * maxRetryAttempts: Max retry attempts, must be > 0. Default: no retries
 * maxRetryDuration: Max retry duration in milliseconds, must be > 0. Default: no retries
+* propertyAsIndex: A property in the document being indexed whose value will specify _index metadata to be included with document in bulk request (takes precendence over an index UDF)
+* javaScriptIndexFnGcsPath: GCS path of storage location for JavaScript UDF that will specify _index metadata to be included with document in bulk request
+* javaScriptIndexFnName: Function name for JavaScript UDF that will specify _index metadata to be included with document in bulk request
+* propertyAsId: A property in the document being indexed whose value will specify _id metadata to be included with document in bulk request (takes precendence over an index UDF)
+* javaScriptIdFnGcsPath: GCS path of storage location for JavaScript UDF that will specify _id metadata to be included with document in bulk request
+* javaScriptIdFnName: Function name for JavaScript UDF that will specify _id metadata to be included with document in bulk request
+* javaScriptTypeFnGcsPath: GCS path of storage location for JavaScript UDF that will specify _type metadata to be included with document in bulk request
+* javaScriptTypeFnName: Function name for JavaScript UDF that will specify _type metadata to be included with document in bulk request
+* javaScriptIsDeleteFnGcsPath: GCS path of storage location for JavaScript UDF that will determine if document should be deleted rather than inserted or updated, function should return string value "true" or "false"
+* javaScriptIsDeleteFnName: Function name for JavaScript UDF that will determine if document should be deleted rather than inserted or updated, function should return string value "true" or "false"
+* usePartialUpdate:  Whether to use partial document updates (update rather than create or index, allows partial document updates)
+* bulkInsertMethod: Whether to use INDEX (index, allows upserts) or the default CREATE (create, errors on duplicate _id) with Elasticsearch bulk requests
 
 ### Building Template
 This is a Flex Template meaning that the pipeline code will be containerized, and the container will be used to launch the Dataflow pipeline.
@@ -56,10 +68,10 @@ export PROJECT=<my-project>
 export IMAGE_NAME=<my-image-name>
 export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
-export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
+export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export TEMPLATE_MODULE=pubsub-to-elasticsearch
-export APP_ROOT=/template/googlecloud-to-elasticsearch
+export APP_ROOT=/template/${TEMPLATE_MODULE}
 export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_MODULE}-command-spec.json
 export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_MODULE}-image-spec.json
 
@@ -81,7 +93,7 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
                   -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
                   -Dapp-root=${APP_ROOT} \
                   -Dcommand-spec=${COMMAND_SPEC} \
-                  -am -pl ${TEMPLATE_MODULE}
+                  -am -pl googlecloud-to-elasticsearch
 ```
 
 #### Creating Image Spec
@@ -175,6 +187,90 @@ echo '{
               "name":"maxRetryDuration",
               "label":"Max retry duration in milliseconds",
               "helpText":"Max retry duration in milliseconds, must be > 0. Default: no retries",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"propertyAsIndex",
+              "label":"Document property used to specify _index metadata with document in bulk request",
+              "helpText":"A property in the document being indexed whose value will specify _index metadata to be included with document in bulk request (takes precendence over an index UDF)",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"javaScriptIndexFnGcsPath",
+              "label":"GCS path to JavaScript UDF source for function that will specify _index metadata to be included with document in bulk request",
+              "helpText":"GCS path to JavaScript UDF source. Default: null",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"javaScriptIndexFnName",
+              "label":"UDF JavaScript Function Name for function that will specify _index metadata to be included with document in bulk request",
+              "helpText":"UDF JavaScript Function Name. Default: null",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"propertyAsId",
+              "label":"Document property used to specify _id metadata with document in bulk request",
+              "helpText":"A property in the document being indexed whose value will specify _id metadata to be included with document in bulk request (takes precendence over an index UDF)",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"javaScriptIdFnGcsPath",
+              "label":"GCS path to JavaScript UDF source function that will specify _id metadata to be included with document in bulk request",
+              "helpText":"GCS path to JavaScript UDF source. Default: null",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"javaScriptIdFnName",
+              "label":"UDF JavaScript Function Name for function that will specify _id metadata to be included with document in bulk request",
+              "helpText":"UDF JavaScript Function Name. Default: null",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"javaScriptTypeFnGcsPath",
+              "label":"GCS path to JavaScript UDF source for function that will specify _type metadata to be included with document in bulk request",
+              "helpText":"GCS path to JavaScript UDF source. Default: null",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"javaScriptTypeFnName",
+              "label":"UDF JavaScript Function Name for function that will specify _type metadata to be included with document in bulk request",
+              "helpText":"UDF JavaScript Function Name. Default: null",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"javaScriptIsDeleteFnGcsPath",
+              "label":"GCS path to JavaScript UDF source for function that will determine if document should be deleted rather than inserted or updated, function should return string value \"true\" or \"false\"",
+              "helpText":"GCS path to JavaScript UDF source. Default: null",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"javaScriptIsDeleteFnName",
+              "label":"UDF JavaScript Function Name for function that will determine if document should be deleted rather than inserted or updated, function should return string value \"true\" or \"false\"",
+              "helpText":"UDF JavaScript Function Name. Default: null",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"usePartialUpdate",
+              "label":"Use partial updates (update rather than create or index, allowing partial docs) with Elasticsearch requests",
+              "helpText":"Whether to use partial updates (update rather than create or index, allowing partial docs) with Elasticsearch requests",
+              "paramType":"TEXT",
+              "isOptional":true
+          },
+          {
+              "name":"bulkInsertMethod",
+              "label":"Use INDEX (index, allows upserts) or CREATE (create, errors on duplicate _id) in bulk requests",
+              "helpText":"Whether to use INDEX (index, allows upserts) or the default CREATE (create, errors on duplicate _id) with Elasticsearch bulk requests",
               "paramType":"TEXT",
               "isOptional":true
           }

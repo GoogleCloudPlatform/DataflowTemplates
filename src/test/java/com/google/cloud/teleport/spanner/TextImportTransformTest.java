@@ -16,18 +16,27 @@
 package com.google.cloud.teleport.spanner;
 
 import static org.hamcrest.Matchers.equalTo;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.TextImportTransform.ReadImportManifest;
+import com.google.cloud.teleport.spanner.TextImportTransform.ReadTableColumns;
 import com.google.cloud.teleport.spanner.TextImportTransform.ResolveDataFiles;
+import com.google.cloud.teleport.spanner.common.Type.Code;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
+import com.google.cloud.teleport.spanner.proto.TextImportProtos.ImportManifest;
+import com.google.cloud.teleport.spanner.proto.TextImportProtos.ImportManifest.TableManifest.Column;
+import com.google.common.collect.Lists;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import org.apache.beam.sdk.Pipeline.PipelineExecutionException;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.PAssert;
@@ -153,9 +162,14 @@ public class TextImportTransformTest {
     PCollectionView<Ddl> ddlView =
         pipeline.apply("ddl", Create.of(getTestDdl())).apply(View.asSingleton());
 
+    PCollectionView<Dialect> dialectView =
+        pipeline
+            .apply("Dialect", Create.of(Dialect.GOOGLE_STANDARD_SQL))
+            .apply("Dialect As PCollectionView", View.asSingleton());
+
     PCollection<KV<String, String>> tableAndFiles =
         pipeline
-            .apply("Read manifest file", new ReadImportManifest(importManifest))
+            .apply("Read manifest file", new ReadImportManifest(importManifest, dialectView))
             .apply("Resolve data files", new ResolveDataFiles(importManifest, ddlView));
 
     PAssert.that(tableAndFiles)
@@ -523,5 +537,64 @@ public class TextImportTransformTest {
             .endTable()
             .build();
     return ddl;
+  }
+
+  @Test
+  public void testParseSpannerDataType() {
+    assertEquals(
+        Code.STRING,
+        ResolveDataFiles.parseSpannerDataType("STRING(MAX)", Dialect.GOOGLE_STANDARD_SQL));
+    assertEquals(
+        Code.INT64, ResolveDataFiles.parseSpannerDataType("INT64", Dialect.GOOGLE_STANDARD_SQL));
+    assertEquals(
+        Code.FLOAT64,
+        ResolveDataFiles.parseSpannerDataType("FLOAT64", Dialect.GOOGLE_STANDARD_SQL));
+    assertEquals(
+        Code.BOOL, ResolveDataFiles.parseSpannerDataType("BOOL", Dialect.GOOGLE_STANDARD_SQL));
+    assertEquals(
+        Code.DATE, ResolveDataFiles.parseSpannerDataType("DATE", Dialect.GOOGLE_STANDARD_SQL));
+    assertEquals(
+        Code.TIMESTAMP,
+        ResolveDataFiles.parseSpannerDataType("TIMESTAMP", Dialect.GOOGLE_STANDARD_SQL));
+    assertEquals(
+        Code.BYTES, ResolveDataFiles.parseSpannerDataType("BYTES", Dialect.GOOGLE_STANDARD_SQL));
+    assertEquals(
+        Code.NUMERIC,
+        ResolveDataFiles.parseSpannerDataType("NUMERIC", Dialect.GOOGLE_STANDARD_SQL));
+    assertEquals(
+        Code.JSON, ResolveDataFiles.parseSpannerDataType("JSON", Dialect.GOOGLE_STANDARD_SQL));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ResolveDataFiles.parseSpannerDataType("unknown", Dialect.GOOGLE_STANDARD_SQL));
+  }
+
+  @Test
+  public void testReadTableColumns() throws Exception {
+    ImportManifest importManifest1 =
+        ImportManifest.newBuilder()
+            .addTables(
+                ImportManifest.TableManifest.newBuilder()
+                    .setTableName("table1")
+                    .addColumns(Column.newBuilder().setColumnName("col1").build())
+                    .build())
+            .build();
+
+    PCollection<ImportManifest> input =
+        pipeline.apply("ImportManifest", Create.of(importManifest1));
+    PCollection<Map<String, List<Column>>> manifestColumns =
+        input.apply("ReadTableColumns", new ReadTableColumns());
+
+    PAssert.that(manifestColumns)
+        .satisfies(
+            input1 -> {
+              LinkedList<Map<String, List<Column>>> manifestCols = Lists.newLinkedList(input1);
+              assertEquals(1, manifestCols.size());
+              for (Map<String, List<Column>> manifest : manifestCols) {
+                assertEquals(1, manifest.get("table1").size());
+                assertEquals("col1", manifest.get("table1").get(0).getColumnName());
+              }
+              return null;
+            });
+    pipeline.run();
   }
 }

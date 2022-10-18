@@ -22,7 +22,6 @@ import com.google.cloud.teleport.v2.transforms.FileFormatFactorySpannerChangeStr
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -62,8 +61,6 @@ public class SpannerChangeStreamsToGcs {
     LOG.info("Requested File Format is " + options.getOutputFileFormat());
     options.setStreaming(true);
     options.setEnableStreamingEngine(true);
-    options.setAutoscalingAlgorithm(
-        DataflowPipelineWorkerPoolOptions.AutoscalingAlgorithmType.NONE);
 
     final Pipeline pipeline = Pipeline.create(options);
 

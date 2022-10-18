@@ -23,6 +23,7 @@ import com.google.cloud.bigquery.FieldList;
 import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.v2.utils.BigQueryTableCache;
+import com.google.common.annotations.VisibleForTesting;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -113,6 +114,21 @@ public abstract class MergeInfo implements Serializable {
         this.getColumns());
   }
 
+  @Override
+  public boolean equals(Object object) {
+    if (object == null || !(object instanceof MergeInfo)) {
+      return false;
+    }
+    MergeInfo other = (MergeInfo) object;
+    if (this.getProjectId().equals(other.getProjectId())
+        && this.getStagingTable().equals(other.getStagingTable())
+        && this.getReplicaTable().equals(other.getReplicaTable())) {
+      return true;
+    }
+
+    return false;
+  }
+
   private BigQueryTableCache getTableCache() {
     if (this.tableCache == null) {
       setUpTableCache();
@@ -129,6 +145,16 @@ public abstract class MergeInfo implements Serializable {
     }
   }
 
+  @VisibleForTesting
+  static void setTableCache(BigQueryTableCache newTableCache) {
+    tableCache = newTableCache;
+  }
+
+  @VisibleForTesting
+  static void resetTableCache() {
+    tableCache = null;
+  }
+
   private List<String> getColumns() {
     if (getCustomColumns().isEmpty()) {
       return getMergeFields(getReplicaTable());
@@ -137,9 +163,19 @@ public abstract class MergeInfo implements Serializable {
     return getCustomColumns();
   }
 
-  private List<String> getMergeFields(TableId tableId) {
+  @VisibleForTesting
+  List<String> getMergeFields(TableId tableId) {
     List<String> mergeFields = new ArrayList<String>();
     Table table = getTableCache().get(tableId);
+    if (table == null) {
+      throw new IllegalArgumentException(
+          "Could not get the table '" + getTableReference(tableId) + "' from BigQuery.");
+    }
+    if (table.getDefinition() == null || table.getDefinition().getSchema() == null) {
+      throw new IllegalArgumentException(
+          "Could not get the schema for BigQuery table '" + getTableReference(tableId) + "'.");
+    }
+
     FieldList tableFields = table.getDefinition().getSchema().getFields();
 
     for (Field field : tableFields) {

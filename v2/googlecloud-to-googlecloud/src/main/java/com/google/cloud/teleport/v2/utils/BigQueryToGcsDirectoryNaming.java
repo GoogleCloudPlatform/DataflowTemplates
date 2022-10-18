@@ -31,11 +31,12 @@ public class BigQueryToGcsDirectoryNaming {
 
   public String getPartitionDirectory(
       String tableName, String partitionName, String partitioningColumn) {
-    return String.format(
-        "%s/%s%s=%s",
-        tableName,
-        partitioningColumn,
-        enforceSamePartitionKey ? "" : PARTITION_ID_RENAME_SUFFIX,
-        partitionName);
+    return String.format("%s/%s=%s", tableName, getPartitionKey(partitioningColumn), partitionName);
+  }
+
+  public String getPartitionKey(String partitioningColumn) {
+    return enforceSamePartitionKey
+        ? partitioningColumn
+        : partitioningColumn + PARTITION_ID_RENAME_SUFFIX;
   }
 }

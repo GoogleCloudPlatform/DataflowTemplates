@@ -570,4 +570,22 @@ public class BigQueryConvertersTest {
     assertThat(shortStringField).isEqualTo(Bytes.toString(CellUtil.cloneQualifier(cells.get(0))));
     assertThat(CellUtil.cloneValue(cells.get(0))).isEmpty();
   }
+
+  @Test
+  public void testSanitizeBigQueryChars() {
+    String sourceName = "my$table.name";
+
+    String name = BigQueryConverters.sanitizeBigQueryChars(sourceName, "_");
+
+    assertThat(name).isEqualTo("my_table_name");
+  }
+
+  @Test
+  public void testSanitizeBigQueryDatasetChars() {
+    String sourceName = "my$data-set.name";
+
+    String name = BigQueryConverters.sanitizeBigQueryDatasetChars(sourceName, "_");
+
+    assertThat(name).isEqualTo("my_data_set_name");
+  }
 }

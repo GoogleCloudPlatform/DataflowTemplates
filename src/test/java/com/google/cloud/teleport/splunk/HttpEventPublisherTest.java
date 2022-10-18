@@ -74,11 +74,12 @@ public class HttpEventPublisherTest {
   private static final List<SplunkEvent> SPLUNK_EVENTS =
       ImmutableList.of(SPLUNK_TEST_EVENT_1, SPLUNK_TEST_EVENT_2);
   private static final String ROOT_CA_PATH = "PubsubToSplunkTestData/RootCA.crt";
+  private static final String ROOT_CA_KEY_PATH =
+      Resources.getResource("PubsubToSplunkTestData/RootCA_PrivateKey.pem").getPath();
   private static final String INCORRECT_ROOT_CA_PATH = "PubsubToSplunkTestData/RootCA_2.crt";
-  private static final String CERTIFICATE_PATH =
-      "PubsubToSplunkTestData/RootCASignedCertificate.crt";
+  private static final String CERTIFICATE_PATH = "PubsubToSplunkTestData/RecognizedCertificate.crt";
   private static final String KEY_PATH =
-      Resources.getResource("PubsubToSplunkTestData/PrivateKey.key").getPath();
+      Resources.getResource("PubsubToSplunkTestData/PrivateKey.pem").getPath();
   private static final String EXPECTED_PATH = "/" + HttpEventPublisher.HEC_URL_PATH;
   private ClientAndServer mockServer;
 
@@ -87,6 +88,8 @@ public class HttpEventPublisherTest {
     ConfigurationProperties.disableSystemOut(true);
     ConfigurationProperties.privateKeyPath(KEY_PATH);
     ConfigurationProperties.x509CertificatePath(CERTIFICATE_PATH);
+    ConfigurationProperties.certificateAuthorityCertificate(ROOT_CA_PATH);
+    ConfigurationProperties.certificateAuthorityPrivateKey(ROOT_CA_KEY_PATH);
     ServerSocket socket = new ServerSocket(0);
     int port = socket.getLocalPort();
     socket.close();
@@ -245,12 +248,15 @@ public class HttpEventPublisherTest {
     byte[] rootCa =
         Resources.toString(Resources.getResource(INCORRECT_ROOT_CA_PATH), StandardCharsets.UTF_8)
             .getBytes();
+
+    int timeoutInMillis = 5000; // 5 seconds
     HttpEventPublisher publisher =
         HttpEventPublisher.newBuilder()
             .withUrl("https://localhost:" + String.valueOf(mockServer.getPort()))
             .withToken("test-token")
             .withDisableCertificateValidation(false)
             .withRootCaCertificate(rootCa)
+            .withMaxElapsedMillis(timeoutInMillis)
             .withEnableGzipHttpCompression(true)
             .build();
     publisher.execute(SPLUNK_EVENTS);

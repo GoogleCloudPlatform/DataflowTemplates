@@ -80,11 +80,13 @@ public abstract class WriteToGCSAvro extends PTransform<PCollection<KV<String, S
             "Writing as Avro",
             AvroIO.writeGenericRecords(KeyValueToGenericRecordFn.SCHEMA)
                 .to(
-                    new WindowedFilenamePolicy(
-                        outputDirectory(),
-                        outputFilenamePrefix(),
-                        WriteToGCSUtility.SHARD_TEMPLATE,
-                        WriteToGCSUtility.FILE_SUFFIX_MAP.get(WriteToGCSUtility.FileFormat.AVRO)))
+                    WindowedFilenamePolicy.writeWindowedFiles()
+                        .withOutputDirectory(outputDirectory())
+                        .withOutputFilenamePrefix(outputFilenamePrefix())
+                        .withShardTemplate(WriteToGCSUtility.SHARD_TEMPLATE)
+                        .withSuffix(
+                            WriteToGCSUtility.FILE_SUFFIX_MAP.get(
+                                WriteToGCSUtility.FileFormat.AVRO)))
                 .withTempDirectory(
                     FileBasedSink.convertToFileResourceIfPossible(tempLocation())
                         .getCurrentDirectory())

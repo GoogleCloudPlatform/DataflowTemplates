@@ -69,13 +69,6 @@ public class JdbcToBigQuery {
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
 
-    // See https://issues.apache.org/jira/browse/BEAM-7983
-    // Template parameters do not work if they are not used in main.
-    // disabledAlgorithms parameter is used by the CustomJvmInitializer.
-    // Added this log statement to prevent getting unexpected parameter error for
-    // disabledAlgorithms.
-    LOG.info("Disabled Algorithms: {}", options.getDisabledAlgorithms());
-
     /*
      * Steps: 1) Read records via JDBC and convert to TableRow via RowMapper
      *        2) Append TableRow to BigQuery via BigQueryIO
@@ -100,7 +93,7 @@ public class JdbcToBigQuery {
                         .withConnectionProperties(options.getConnectionProperties()))
                 .withQuery(options.getQuery())
                 .withCoder(TableRowJsonCoder.of())
-                .withRowMapper(JdbcConverters.getResultSetToTableRow()))
+                .withRowMapper(JdbcConverters.getResultSetToTableRow(options.getUseColumnAlias())))
         /*
          * Step 2: Append TableRow to an existing BigQuery table
          */

@@ -20,7 +20,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -39,10 +38,8 @@ import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Schema;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1StorageFormat;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Zone;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1ZoneDiscoverySpec;
-import com.google.cloud.teleport.v2.clients.DataplexClient.CreateBehavior;
-import com.google.cloud.teleport.v2.values.EntityMetadata;
-import com.google.cloud.teleport.v2.values.EntityMetadata.EntityType;
-import com.google.cloud.teleport.v2.values.EntityMetadata.StorageSystem;
+import com.google.cloud.teleport.v2.values.DataplexEnums.EntityType;
+import com.google.cloud.teleport.v2.values.DataplexEnums.StorageSystem;
 import com.google.cloud.teleport.v2.values.GetEntityRequestEntityView;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
@@ -61,17 +58,16 @@ public class DefaultDataplexClientTest {
   private static final String ASSET_NAME2 = ZONE_NAME + "/asset/asset_2";
   private static final String PAGE_TOKEN = "token_1";
 
-  // Metadata for use in tests where it doens't  matter what the values are
-  private static final EntityMetadata UNUSED_METADATA =
-      EntityMetadata.builder()
+  // Entity for use in tests where it doens't  matter what the values are
+  private static final GoogleCloudDataplexV1Entity UNUSED_ENTITY =
+      new GoogleCloudDataplexV1Entity()
           .setDataPath("invalid")
           .setSchema(new GoogleCloudDataplexV1Schema())
-          .setStorageFormat(new GoogleCloudDataplexV1StorageFormat())
-          .setEntityType(EntityType.TYPE_UNSPECIFIED)
-          .setStorageSystem(StorageSystem.STORAGE_SYSTEM_UNSPECIFIED)
-          .setAssetName("invalid")
-          .setId("invalid")
-          .build();
+          .setFormat(new GoogleCloudDataplexV1StorageFormat())
+          .setType(EntityType.TYPE_UNSPECIFIED.name())
+          .setSystem(StorageSystem.STORAGE_SYSTEM_UNSPECIFIED.name())
+          .setAsset("invalid")
+          .setId("invalid");
 
   private static final GoogleCloudDataplexV1AssetDiscoverySpec ENABLED_ASSET_DISCOVERY_SPEC =
       new GoogleCloudDataplexV1AssetDiscoverySpec().setEnabled(true);
@@ -250,27 +246,25 @@ public class DefaultDataplexClientTest {
   }
 
   @Test
-  public void testCreateEntitiesWhenDiscoveryEnabled() throws IOException {
+  public void testCreateEntity() throws IOException {
     CloudDataplex dataplex = mock(CloudDataplex.class, Answers.RETURNS_DEEP_STUBS);
-    Zones zones = getZones(dataplex);
-    Assets assets = getAssets(dataplex);
-    // Don't care about the order they're checked, so set up for two calls.
-    when(assets.get(any()).execute())
-        .thenReturn(createAsset(ENABLED_ASSET_DISCOVERY_SPEC))
-        .thenReturn(createAsset(DISABLED_ASSET_DISCOVERY_SPEC));
-    when(zones.get(any()).execute())
-        .thenReturn(createZone(ENABLED_ZONE_DISCOVERY_SPEC))
-        .thenReturn(createZone(DISABLED_ZONE_DISCOVERY_SPEC));
+    Entities entities = getEntities(dataplex);
     DataplexClient client = DefaultDataplexClient.withClient(dataplex);
 
-    client.createMetadata(
-        ASSET_NAME1, ImmutableList.of(UNUSED_METADATA), CreateBehavior.UPDATE_IF_EXISTS);
-    client.createMetadata(
-        ASSET_NAME1, ImmutableList.of(UNUSED_METADATA), CreateBehavior.UPDATE_IF_EXISTS);
+    GoogleCloudDataplexV1Entity entity =
+        new GoogleCloudDataplexV1Entity()
+            .setDataPath("gs://bucket/table1")
+            .setSchema(new GoogleCloudDataplexV1Schema())
+            .setFormat(new GoogleCloudDataplexV1StorageFormat())
+            .setType(EntityType.TYPE_UNSPECIFIED.name())
+            .setSystem(StorageSystem.STORAGE_SYSTEM_UNSPECIFIED.name())
+            .setAsset(SHORT_ASSET_NAME1)
+            .setId("table1");
+    GoogleCloudDataplexV1Entity expectedEntity = entity.clone();
 
-    verify(assets, atLeastOnce()).get(ASSET_NAME1);
-    verify(zones, atLeastOnce()).get(ZONE_NAME);
-    verify(zones, never()).entities(); // Enough to know nothing was done with partitions
+    client.createEntity(ZONE_NAME, entity);
+
+    verify(entities, atLeastOnce()).create(ZONE_NAME, expectedEntity);
   }
 
   private static Zones getZones(CloudDataplex dataplex) {
@@ -279,6 +273,10 @@ public class DefaultDataplexClientTest {
 
   private static Assets getAssets(CloudDataplex dataplex) {
     return dataplex.projects().locations().lakes().zones().assets();
+  }
+
+  private static Entities getEntities(CloudDataplex dataplex) {
+    return dataplex.projects().locations().lakes().zones().entities();
   }
 
   private static GoogleCloudDataplexV1Zone createZone(

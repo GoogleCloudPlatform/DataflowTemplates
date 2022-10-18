@@ -19,7 +19,9 @@ import static com.google.common.truth.Truth.assertThat;
 import static com.google.re2j.Pattern.CASE_INSENSITIVE;
 import static com.google.re2j.Pattern.DOTALL;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -35,6 +37,12 @@ import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.api.services.bigquery.model.TimePartitioning;
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Entity;
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Partition;
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Schema;
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1SchemaPartitionField;
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1SchemaSchemaField;
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1StorageFormat;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.DatasetId;
 import com.google.cloud.bigquery.EmptyTableResult;
@@ -46,8 +54,11 @@ import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.bigquery.storage.v1beta1.AvroProto.AvroSchema;
 import com.google.cloud.bigquery.storage.v1beta1.BigQueryStorageClient;
 import com.google.cloud.bigquery.storage.v1beta1.Storage.ReadSession;
+import com.google.cloud.teleport.v2.clients.DataplexClient;
+import com.google.cloud.teleport.v2.clients.DataplexClientFactory;
 import com.google.cloud.teleport.v2.options.DataplexBigQueryToGcsOptions;
 import com.google.cloud.teleport.v2.utils.BigQueryMetadataLoader;
+import com.google.cloud.teleport.v2.utils.DataplexUtils;
 import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
 import com.google.cloud.teleport.v2.utils.Schemas;
 import com.google.cloud.teleport.v2.utils.WriteDisposition.WriteDispositionException;
@@ -55,6 +66,11 @@ import com.google.cloud.teleport.v2.utils.WriteDisposition.WriteDispositionOptio
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import com.google.cloud.teleport.v2.values.DataplexCompression;
+import com.google.cloud.teleport.v2.values.DataplexEnums.CompressionFormat;
+import com.google.cloud.teleport.v2.values.DataplexEnums.EntityType;
+import com.google.cloud.teleport.v2.values.DataplexEnums.FieldType;
+import com.google.cloud.teleport.v2.values.DataplexEnums.StorageFormat;
+import com.google.cloud.teleport.v2.values.DataplexEnums.StorageSystem;
 import com.google.common.collect.ImmutableList;
 import com.google.re2j.Pattern;
 import java.io.ByteArrayOutputStream;
@@ -69,6 +85,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.avro.Schema;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.KvCoder;
@@ -104,17 +123,20 @@ import org.mockito.junit.MockitoRule;
 /** Unit tests for {@link DataplexBigQueryToGcs}. */
 @RunWith(JUnit4.class)
 public class DataplexBigQueryToGcsTest {
+
   private static final String PROJECT = "test-project1";
   private static final String DATASET = "test-dataset1";
+  private static final String ASSET_NAME =
+      "projects/test-project1/locations/us-central1/lakes/lake1/zones/zone1/assets/asset1";
   private static final int MAX_PARALLEL_REQUESTS = 5;
 
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
   @Rule public final TemporaryFolder tmpDir = new TemporaryFolder();
   @Rule public final TestPipeline testPipeline = TestPipeline.create();
 
-  // bqMock has to be static, otherwise it won't be serialized properly when passed to
-  // DeleteBigQueryDataFn#withTestBqClientFactory.
+  // These have to be static, otherwise they won't be serialized properly when passed to transforms.
   @Mock private static BigQuery bqMock;
+  @Mock private static DataplexClient dataplexClientMock;
 
   @Mock private BigQueryStorageClient bqsMock;
   @Mock private TableResult tableResultMock;
@@ -123,12 +145,17 @@ public class DataplexBigQueryToGcsTest {
   private BigQueryServices bqFakeServices;
   private CustomFakeJobService fakeJobService;
   private FakeDatasetService fakeDatasetService;
+  private DataplexClientFactory dataplexClientFactory;
   private DataplexBigQueryToGcsOptions options;
   private File outDir;
   private TableRow[] defaultRecords;
   private String[] defaultExpectedRecords;
   private TableSchema bqSchema;
   private Schema avroSchema;
+  private GoogleCloudDataplexV1Schema dataplexPartitionedSchema;
+  private GoogleCloudDataplexV1Schema dataplexUnpartitionedSchema;
+  private GoogleCloudDataplexV1Entity partitionedEntityWithEmptySchema;
+  private GoogleCloudDataplexV1Entity unpartitionedEntityWithEmptySchema;
   private Map<String, BigQueryTable> tableByName;
 
   @Before
@@ -137,8 +164,10 @@ public class DataplexBigQueryToGcsTest {
     options.setProject(PROJECT);
     options.setUpdateDataplexMetadata(true);
     options.setEnforceSamePartitionKey(false);
+    options.setDestinationStorageBucketAssetName(ASSET_NAME);
     // Required when using BigQueryIO.withMethod(EXPORT).
     options.setTempLocation(tmpDir.newFolder("bqTmp").getAbsolutePath());
+    options.setJobName("test-job"); // otherwise the job name can randomly change during execution
 
     outDir = tmpDir.newFolder("out");
 
@@ -164,6 +193,29 @@ public class DataplexBigQueryToGcsTest {
                     + "{\"name\":\"dt\",\"type\":[\"null\",{\"type\":\"string\",\"logicalType\":\"datetime\"}]},"
                     + "{\"name\":\"i1\",\"type\":[\"null\",\"long\"]}]}");
 
+    dataplexUnpartitionedSchema =
+        new GoogleCloudDataplexV1Schema()
+            .setFields(
+                Arrays.asList(
+                    dataplexField("ts", "TIMESTAMP", "NULLABLE"),
+                    dataplexField("s1", "STRING", "NULLABLE"),
+                    dataplexField("d1", "DATE", "NULLABLE"),
+                    dataplexField("t1", "TIME", "REQUIRED"),
+                    // "datetime" is not actually a valid Avro logical type, so parsed as STRING:
+                    dataplexField("dt", "STRING", "NULLABLE"),
+                    dataplexField("i1", "INT64", "NULLABLE")));
+    dataplexPartitionedSchema =
+        new GoogleCloudDataplexV1Schema()
+            .setFields(
+                Arrays.asList(
+                    dataplexField("s1", "STRING", "NULLABLE"),
+                    dataplexField("d1", "DATE", "NULLABLE"),
+                    dataplexField("t1", "TIME", "REQUIRED"),
+                    // "datetime" is not actually a valid Avro logical type, so parsed as STRING:
+                    dataplexField("dt", "STRING", "NULLABLE"),
+                    dataplexField("i1", "INT64", "NULLABLE")))
+            .setPartitionFields(Arrays.asList(dataplexPartitionField("ts", "TIMESTAMP")));
+
     long modTime = System.currentTimeMillis() * 1000;
 
     BigQueryTablePartition p1 =
@@ -186,6 +238,7 @@ public class DataplexBigQueryToGcsTest {
             .setLastModificationTime(modTime)
             .setPartitioningColumn("ts")
             .setPartitions(Arrays.asList(p1, p2))
+            .setDataplexEntityName("partitioned_table_entity")
             .build();
 
     BigQueryTable t2 =
@@ -195,6 +248,7 @@ public class DataplexBigQueryToGcsTest {
             .setDataset(DATASET)
             .setSchema(avroSchema)
             .setLastModificationTime(modTime)
+            .setDataplexEntityName("unpartitioned_table_entity")
             .build();
 
     tableByName = new HashMap<>();
@@ -282,6 +336,49 @@ public class DataplexBigQueryToGcsTest {
                 .build());
 
     metadataLoader = new BigQueryMetadataLoader(bqMock, bqsMock, MAX_PARALLEL_REQUESTS);
+
+    partitionedEntityWithEmptySchema =
+        defaultDataplexEntity()
+            .setName("partitioned_table_entity")
+            .setId("partitioned_table")
+            .setDataPath("gs://test-bucket1/partitioned_table");
+    unpartitionedEntityWithEmptySchema =
+        defaultDataplexEntity()
+            .setName("unpartitioned_table_entity")
+            .setId("unpartitioned_table")
+            .setDataPath("gs://test-bucket1/unpartitioned_table");
+    Map<String, GoogleCloudDataplexV1Entity> entities =
+        Stream.of(partitionedEntityWithEmptySchema, unpartitionedEntityWithEmptySchema)
+            .collect(Collectors.toMap(GoogleCloudDataplexV1Entity::getName, Function.identity()));
+
+    GoogleCloudDataplexV1Partition fakePartition =
+        new GoogleCloudDataplexV1Partition()
+            .setName("fake_partition_name")
+            .setLocation("gs://test-bucket1/fake_table/fake_partition=20220101/fake_file")
+            .setValues(Arrays.asList("20220101"));
+
+    when(dataplexClientMock.listEntities(eq(DataplexUtils.getZoneFromAsset(ASSET_NAME)), any()))
+        .thenAnswer(
+            invocation ->
+                ImmutableList.of(
+                    partitionedEntityWithEmptySchema.clone(),
+                    unpartitionedEntityWithEmptySchema.clone()));
+    when(dataplexClientMock.getEntity(any()))
+        .thenAnswer(
+            invocation -> {
+              String name = invocation.getArgument(0);
+              return entities.get(name).clone();
+            });
+    when(dataplexClientMock.getEntities(any()))
+        .thenAnswer(
+            invocation -> {
+              List<String> names = invocation.getArgument(0);
+              return ImmutableList.copyOf(
+                  names.stream().map(s -> entities.get(s).clone()).collect(Collectors.toList()));
+            });
+    when(dataplexClientMock.createPartition(any(), any())).thenReturn(fakePartition);
+    when(dataplexClientMock.createOrUpdatePartition(any(), any())).thenReturn(fakePartition);
+    dataplexClientFactory = () -> dataplexClientMock;
   }
 
   @Test
@@ -301,6 +398,43 @@ public class DataplexBigQueryToGcsTest {
 
     runTransform("unpartitioned_table", "partitioned_table");
 
+    // Verify metadata was correctly updated in Dataplex:
+
+    verify(dataplexClientMock, times(1))
+        .updateEntity(
+            partitionedEntityWithEmptySchema
+                .clone()
+                .setFormat(
+                    new GoogleCloudDataplexV1StorageFormat()
+                        .setMimeType(StorageFormat.PARQUET.getMimeType())
+                        .setCompressionFormat(
+                            CompressionFormat.COMPRESSION_FORMAT_UNSPECIFIED.name()))
+                .setSchema(
+                    cloneAndApplyHiveStyle(dataplexPartitionedSchema, "ts", "ts_pid")
+                        .setUserManaged(true)));
+    verify(dataplexClientMock, times(1))
+        .updateEntity(
+            unpartitionedEntityWithEmptySchema
+                .setFormat(
+                    new GoogleCloudDataplexV1StorageFormat()
+                        .setMimeType(StorageFormat.PARQUET.getMimeType())
+                        .setCompressionFormat(
+                            CompressionFormat.COMPRESSION_FORMAT_UNSPECIFIED.name()))
+                .clone()
+                .setSchema(dataplexUnpartitionedSchema.clone().setUserManaged(true)));
+    verify(dataplexClientMock, times(1))
+        .createOrUpdatePartition(
+            "partitioned_table_entity",
+            dataplexPartition("p1")
+                .setLocation(outDir.getAbsolutePath() + "/partitioned_table/ts_pid=p1"));
+    verify(dataplexClientMock, times(1))
+        .createOrUpdatePartition(
+            "partitioned_table_entity",
+            dataplexPartition("p2")
+                .setLocation(outDir.getAbsolutePath() + "/partitioned_table/ts_pid=p2"));
+
+    // Verify source BQ tables were deleted:
+
     verify(bqMock, times(1))
         .query(
             QueryJobConfiguration.newBuilder(
@@ -309,6 +443,8 @@ public class DataplexBigQueryToGcsTest {
     verify(bqMock, times(1)).delete(tableId("partitioned_table$p1"));
     verify(bqMock, times(1)).delete(tableId("partitioned_table$p2"));
     verifyNoMoreInteractions(bqMock);
+
+    // Verify pipeline output:
 
     PCollection<String> actualUnpartitionedRecords =
         testPipeline
@@ -491,7 +627,11 @@ public class DataplexBigQueryToGcsTest {
 
     try {
       DataplexBigQueryToGcs.buildPipeline(
-          options, metadataLoader, outDir.getAbsolutePath(), DatasetId.of(PROJECT, DATASET));
+          options,
+          metadataLoader,
+          dataplexClientMock,
+          outDir.getAbsolutePath(),
+          DatasetId.of(PROJECT, DATASET));
       fail("Expected a WriteDispositionException");
     } catch (Exception e) {
       assertThat(e).hasCauseThat().hasCauseThat().isInstanceOf(WriteDispositionException.class);
@@ -503,6 +643,7 @@ public class DataplexBigQueryToGcsTest {
           "select.*table_id.*last_modified_time.*partitioning_column", CASE_INSENSITIVE | DOTALL);
   private static final Pattern PARTITION_QUERY_PATTERN =
       Pattern.compile("select.*partition_id.*last_modified_time", CASE_INSENSITIVE | DOTALL);
+
   /**
    * Tests that the pipeline throws an exception if {@code writeDisposition = FAIL}, {@code
    * enforceSamePartitionKey = true}, and one of the target files exist, when processing a
@@ -528,7 +669,7 @@ public class DataplexBigQueryToGcsTest {
               Iterable<FieldValueList> result = null;
               QueryJobConfiguration q = (QueryJobConfiguration) invocation.getArguments()[0];
               if (TABLE_QUERY_PATTERN.matcher(q.getQuery()).find()) {
-                result = Collections.singletonList(fields("partitioned_table", "0", "ts"));
+                result = Arrays.asList(fields("partitioned_table", "0", "ts"));
               } else if (PARTITION_QUERY_PATTERN.matcher(q.getQuery()).find()) {
                 result = Arrays.asList(fields("p1", "0"), fields("p2", "0"));
               }
@@ -538,7 +679,11 @@ public class DataplexBigQueryToGcsTest {
 
     try {
       DataplexBigQueryToGcs.buildPipeline(
-          options, metadataLoader, outDir.getAbsolutePath(), DatasetId.of(PROJECT, DATASET));
+          options,
+          metadataLoader,
+          dataplexClientMock,
+          outDir.getAbsolutePath(),
+          DatasetId.of(PROJECT, DATASET));
       fail("Expected a WriteDispositionException");
     } catch (Exception e) {
       assertThat(e).hasCauseThat().hasCauseThat().isInstanceOf(WriteDispositionException.class);
@@ -562,12 +707,121 @@ public class DataplexBigQueryToGcsTest {
 
     Pipeline p =
         DataplexBigQueryToGcs.buildPipeline(
-            options, metadataLoader, outDir.getAbsolutePath(), DatasetId.of(PROJECT, DATASET));
+            options,
+            metadataLoader,
+            dataplexClientMock,
+            outDir.getAbsolutePath(),
+            DatasetId.of(PROJECT, DATASET));
     p.run();
     testPipeline.run();
 
     // Checking to see if the file was skipped and data was not overwritten
     assertThat(readFirstLine(outputFile)).isEqualTo("Test data");
+  }
+
+  /**
+   * Verifies that given a list of BQ tables, loadDataplexMetadata() loads and updates the names of
+   * the corresponding entities in Dataplex.
+   *
+   * <p>Also checks that non-existing entities are created, and already existing entities are not
+   * re-created and their name is re-used.
+   */
+  @Test
+  public void test_loadDataplexMetadata_populatesEntityName() throws IOException {
+    options.setEnforceSamePartitionKey(true);
+
+    String zoneName = DataplexUtils.getZoneFromAsset(ASSET_NAME);
+    String shortAssetName = DataplexUtils.getShortAssetNameFromAsset(ASSET_NAME);
+    BigQueryTable t1 = tableByName.get("partitioned_table");
+    BigQueryTable t2 = tableByName.get("unpartitioned_table");
+    BigQueryTable t3 = t1.toBuilder().setTableName("new_table").build();
+
+    GoogleCloudDataplexV1Entity existingEntity1 =
+        defaultDataplexEntity()
+            .setName("partitioned_table_entity")
+            .setId("partitioned_table")
+            .setDataPath("gs://target_bucket/partitioned_table");
+    GoogleCloudDataplexV1Entity existingEntity2 =
+        defaultDataplexEntity()
+            .setName("unpartitioned_table_entity")
+            .setId("unpartitioned_table")
+            .setDataPath("gs://target_bucket/unpartitioned_table");
+    // This is an extra entity returned by Mock Dataplex with a different dataPath,
+    // to verify only entities with matching dataPath are picked up:
+    GoogleCloudDataplexV1Entity unusedEntity =
+        defaultDataplexEntity()
+            .setName("should_not_be_used")
+            .setId("partitioned_table")
+            .setDataPath("gs://wrong_bucket/partitioned_table");
+    when(dataplexClientMock.listEntities(eq(zoneName), any()))
+        .thenAnswer(
+            invocation -> {
+              String filter = invocation.getArgument(1);
+              if (filter.equals("asset=" + shortAssetName)) {
+                return ImmutableList.of(
+                    existingEntity1.clone(), existingEntity2.clone(), unusedEntity.clone());
+              } else {
+                return ImmutableList.of();
+              }
+            });
+    when(dataplexClientMock.createEntity(any(), any()))
+        .thenAnswer(
+            invocation -> {
+              GoogleCloudDataplexV1Entity entity = invocation.getArgument(1);
+              return entity.clone().setName("generated_name-" + entity.getId());
+            });
+
+    List<BigQueryTable> actualTables =
+        DataplexBigQueryToGcs.loadDataplexMetadata(
+            options, dataplexClientMock, Arrays.asList(t1, t2, t3), "gs://target_bucket");
+
+    List<BigQueryTable> expectedTables =
+        Arrays.asList(
+            t1.toBuilder().setDataplexEntityName("partitioned_table_entity").build(),
+            t2.toBuilder().setDataplexEntityName("unpartitioned_table_entity").build(),
+            t3.toBuilder().setDataplexEntityName("generated_name-new_table").build());
+    GoogleCloudDataplexV1Entity expectedNewEntity =
+        defaultDataplexEntity()
+            .setId("new_table")
+            .setDataPath("gs://target_bucket/new_table")
+            .setSchema(cloneAndApplyHiveStyle(dataplexPartitionedSchema).setUserManaged(true));
+
+    assertThat(actualTables).isEqualTo(expectedTables);
+    verify(dataplexClientMock, times(1)).createEntity(zoneName, expectedNewEntity);
+    verify(dataplexClientMock, atLeastOnce()).listEntities(any(), any());
+    // Make sure no other entities were created:
+    verify(dataplexClientMock, times(1)).createEntity(any(), any());
+  }
+
+  @Test
+  public void
+      test_loadDataplexMetadata_withEnforcedSamePartitionKeyDisabled_renamesPartitionKeyInDataplexSchema()
+          throws IOException {
+    options.setEnforceSamePartitionKey(false);
+    String zoneName = DataplexUtils.getZoneFromAsset(ASSET_NAME);
+    BigQueryTable table = tableByName.get("partitioned_table");
+
+    when(dataplexClientMock.listEntities(any(), any())).thenReturn(ImmutableList.of());
+    when(dataplexClientMock.createEntity(any(), any()))
+        .thenAnswer(
+            invocation -> {
+              GoogleCloudDataplexV1Entity entity = invocation.getArgument(1);
+              return entity.clone().setName("generated_name-" + entity.getId());
+            });
+
+    DataplexBigQueryToGcs.loadDataplexMetadata(
+        options, dataplexClientMock, Arrays.asList(table), "gs://target_bucket");
+
+    GoogleCloudDataplexV1Entity expectedNewEntity =
+        defaultDataplexEntity()
+            .setId("partitioned_table")
+            .setDataPath("gs://target_bucket/partitioned_table")
+            .setSchema(
+                cloneAndApplyHiveStyle(dataplexPartitionedSchema, "ts", "ts_pid")
+                    .setUserManaged(true));
+    verify(dataplexClientMock, times(1)).createEntity(zoneName, expectedNewEntity);
+    // Make sure no other entities were created:
+    verify(dataplexClientMock, times(1)).createEntity(any(), any());
   }
 
   private String readFirstLine(File outputFile) throws FileNotFoundException {
@@ -616,7 +870,13 @@ public class DataplexBigQueryToGcsTest {
   private void runTransform(BigQueryTable... tables) {
     Pipeline p = Pipeline.create(options);
     DataplexBigQueryToGcs.transformPipeline(
-        p, Arrays.asList(tables), options, outDir.getAbsolutePath(), bqFakeServices, () -> bqMock);
+        p,
+        Arrays.asList(tables),
+        options,
+        outDir.getAbsolutePath(),
+        dataplexClientFactory,
+        bqFakeServices,
+        () -> bqMock);
     p.run();
   }
 
@@ -625,6 +885,7 @@ public class DataplexBigQueryToGcsTest {
   }
 
   private static class CustomFakeJobService extends FakeJobService {
+
     private final Map<String, String> queryResults = new HashMap<>();
 
     protected void expectQuery(
@@ -672,5 +933,46 @@ public class DataplexBigQueryToGcsTest {
       list.add(FieldValue.of(FieldValue.Attribute.RECORD, fieldValue));
     }
     return FieldValueList.of(list);
+  }
+
+  private static GoogleCloudDataplexV1Entity defaultDataplexEntity() {
+    return new GoogleCloudDataplexV1Entity()
+        .setAsset(DataplexUtils.getShortAssetNameFromAsset(ASSET_NAME))
+        .setType(EntityType.TABLE.name())
+        .setSystem(StorageSystem.CLOUD_STORAGE.name())
+        .setSchema(new GoogleCloudDataplexV1Schema().setUserManaged(true))
+        .setFormat(
+            new GoogleCloudDataplexV1StorageFormat()
+                .setMimeType(StorageFormat.PARQUET.getMimeType())
+                .setCompressionFormat(CompressionFormat.COMPRESSION_FORMAT_UNSPECIFIED.name()));
+  }
+
+  private static GoogleCloudDataplexV1Schema cloneAndApplyHiveStyle(
+      GoogleCloudDataplexV1Schema schema) {
+    return cloneAndApplyHiveStyle(schema, null, null);
+  }
+
+  private static GoogleCloudDataplexV1Schema cloneAndApplyHiveStyle(
+      GoogleCloudDataplexV1Schema schema,
+      String originalPartitionKey,
+      String renameToPartitionKey) {
+    GoogleCloudDataplexV1Schema result = schema.clone();
+    DataplexUtils.applyHiveStyle(
+        result, originalPartitionKey, renameToPartitionKey, FieldType.STRING);
+    return result;
+  }
+
+  private static GoogleCloudDataplexV1SchemaSchemaField dataplexField(
+      String name, String type, String mode) {
+    return new GoogleCloudDataplexV1SchemaSchemaField().setName(name).setType(type).setMode(mode);
+  }
+
+  private static GoogleCloudDataplexV1SchemaPartitionField dataplexPartitionField(
+      String name, String type) {
+    return new GoogleCloudDataplexV1SchemaPartitionField().setName(name).setType(type);
+  }
+
+  private static GoogleCloudDataplexV1Partition dataplexPartition(String... value) {
+    return new GoogleCloudDataplexV1Partition().setValues(Arrays.asList(value));
   }
 }

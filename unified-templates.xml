@@ -56,5 +56,6 @@
     <module>.</module>
     <module>it</module>
     <module>v2</module>
+    <module>syndeo-template</module>
   </modules>
 </project>

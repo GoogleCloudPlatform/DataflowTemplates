@@ -1,0 +1,34 @@
+{
+  "name": "BigQuery to MongoDb",
+  "description": "A pipeline reads from BigQUery and writes to MongoDb.",
+  "parameters": [
+    {
+      "name": "mongoDbUri",
+      "label": "MongoDB Connection URI",
+      "helpText": "URI to connect to MongoDb Atlas",
+      "is_optional": false,
+      "paramType": "TEXT"
+    },
+    {
+      "name": "database",
+      "label": "mongodb database",
+      "helpText": "Database in MongoDB to store the collection. ex: my-db.",
+      "is_optional": false,
+      "paramType": "TEXT"
+    },
+    {
+      "name": "collection",
+      "label": "mongodb collection",
+      "helpText": "Name of the collection inside MongoDB database. ex: my-collection.",
+      "is_optional": false,
+      "paramType": "TEXT"
+    },
+    {
+      "name": "inputTableSpec",
+      "label": "input table spec",
+      "helpText": "BigQuery input table spec. e.g bigquery-project:dataset.output_table",
+      "is_optional": false,
+      "paramType": "TEXT"
+    }
+  ]
+}

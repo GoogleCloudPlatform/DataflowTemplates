@@ -69,7 +69,8 @@ public final class MySqlChangeEventContextTest {
     Map<String, Value> actual = shadowMutation.asMap();
 
     // Expected result
-    Map<String, Value> expected = ChangeEventConvertorTest.getExpectedMapForTestChangeEvent();
+    Map<String, Value> expected =
+        ChangeEventConvertorTest.getExpectedMapForTestChangeEventWithoutJsonField();
     expected.put(
         DatastreamConstants.MYSQL_TIMESTAMP_SHADOW_INFO.getLeft(), Value.int64(eventTimestamp));
     expected.put(
@@ -110,7 +111,8 @@ public final class MySqlChangeEventContextTest {
     Map<String, Value> actual = shadowMutation.asMap();
 
     // Expected result
-    Map<String, Value> expected = ChangeEventConvertorTest.getExpectedMapForTestChangeEvent();
+    Map<String, Value> expected =
+        ChangeEventConvertorTest.getExpectedMapForTestChangeEventWithoutJsonField();
     expected.put(
         DatastreamConstants.MYSQL_TIMESTAMP_SHADOW_INFO.getLeft(), Value.int64(eventTimestamp));
     expected.put(DatastreamConstants.MYSQL_LOGFILE_SHADOW_INFO.getLeft(), Value.string(""));
@@ -149,7 +151,8 @@ public final class MySqlChangeEventContextTest {
     Map<String, Value> actual = shadowMutation.asMap();
 
     // Expected result
-    Map<String, Value> expected = ChangeEventConvertorTest.getExpectedMapForTestChangeEvent();
+    Map<String, Value> expected =
+        ChangeEventConvertorTest.getExpectedMapForTestChangeEventWithoutJsonField();
     expected.put(
         DatastreamConstants.MYSQL_TIMESTAMP_SHADOW_INFO.getLeft(), Value.int64(eventTimestamp));
     expected.put(DatastreamConstants.MYSQL_LOGFILE_SHADOW_INFO.getLeft(), Value.string(""));

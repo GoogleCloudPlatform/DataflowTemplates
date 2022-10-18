@@ -25,10 +25,11 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 
 /**
- * The {@link Options} class provides the custom execution options passed by the executor at the
- * command-line.
+ * The {@link DataplexJdbcIngestionOptions} class provides the custom execution options passed by
+ * the executor at the command-line.
  */
-public interface DataplexJdbcIngestionOptions extends GcpOptions, PipelineOptions {
+public interface DataplexJdbcIngestionOptions
+    extends GcpOptions, PipelineOptions, DataplexUpdateMetadataOptions {
   @Description(
       "Comma separate list of driver class/dependency jar file GCS paths "
           + "for example "
@@ -135,4 +136,11 @@ public interface DataplexJdbcIngestionOptions extends GcpOptions, PipelineOption
   FileFormatOptions getFileFormat();
 
   void setFileFormat(FileFormatOptions fileFormat);
+
+  @Description(
+      "If enabled (set to true) the pipeline will consider column alias (\"AS\") instead of the column name to map the rows to BigQuery")
+  @Default.Boolean(false)
+  Boolean getUseColumnAlias();
+
+  void setUseColumnAlias(Boolean useColumnAlias);
 }

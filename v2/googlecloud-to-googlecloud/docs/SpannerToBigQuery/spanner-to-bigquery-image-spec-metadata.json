@@ -1,0 +1,84 @@
+{
+  "name": "Spanner to BigQuery",
+  "description": "Reads records from Spanner table and writes them to a BigQuery table",
+  "parameters": [
+    {
+      "name": "spannerInstanceId",
+      "label": "Spanner Instance ID",
+      "helpText": "The Spanner instance for the Spanner table.",
+      "isOptional": false,
+      "paramType": "TEXT"
+    },
+    {
+      "name": "spannerDatabaseId",
+      "label": "Spanner Database ID",
+      "helpText": "The Spanner database containing the Spanner table.",
+      "isOptional": false,
+      "paramType": "TEXT"
+    },
+    {
+      "name": "spannerTableId",
+      "label": "Spanner Table ID",
+      "helpText": "The Spanner table to read records from.",
+      "isOptional": false,
+      "paramType": "TEXT"
+    },
+    {
+      "name": "spannerRpcPriority",
+      "label": "Spanner RPC Priority",
+      "helpText": "The priority of Spanner job. Must be one of the following: [HIGH, MEDIUM, LOW]. Default is HIGH.",
+      "isOptional": true,
+      "regexes": [
+        "^(HIGH|MEDIUM|LOW)$"
+      ],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "sqlQuery",
+      "label": "SQL Query",
+      "helpText": "The SQL Query used to read data from the Spanner table.",
+      "isOptional": false,
+      "paramType": "TEXT"
+    },
+    {
+      "name": "bigQuerySchemaPath",
+      "label": "BigQuery Table Schema in Cloud Storage.",
+      "helpText": "The schema for the output BigQuery table. JSON file located in Cloud Storage. Example: gs://your-bigquery-schema.json",
+      "isOptional": false,
+      "regexes": [
+        "^gs:\\/\\/[^\\n\\r]+$"
+      ],
+      "paramType": "GCS_READ_FILE"
+    },
+    {
+      "name": "outputTableSpec",
+      "label": "Output BigQuery Table",
+      "helpText": "Location of the output BigQuery Table. Example: your-project-id:your-dataset.your-table-name",
+      "isOptional": false,
+      "regexes": [
+        ".+:.+\\..+"
+      ],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "writeDisposition",
+      "label": "Write Disposition for BigQuery Table",
+      "helpText": "The write disposition to use for BigQuery table. Must be one of the following: [WRITE_APPEND, WRITE_EMPTY, WRITE_TRUNCATE]. Defaults to WRITE_APPEND.",
+      "isOptional": true,
+      "regexes": [
+        "^(WRITE_APPEND|WRITE_EMPTY|WRITE_TRUNCATE)$"
+      ],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "createDisposition",
+      "label": "Create Disposition for BigQuery Table",
+      "helpText": "The create disposition to use for BigQuery table. Must be one of the following: [CREATE_IF_NEEDED, CREATE_NEVER]. Defaults to CREATE_IF_NEEDED.",
+      "isOptional": true,
+      "regexes": [
+        "^(CREATE_IF_NEEDED|CREATE_NEVER)$"
+      ],
+      "paramType": "TEXT"
+    }
+  ]
+}

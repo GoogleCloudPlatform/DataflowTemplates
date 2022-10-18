@@ -92,6 +92,7 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
         case PG_VARCHAR:
         case PG_TEXT:
         case JSON:
+        case PG_JSONB:
           builder.set(column.name()).to(readString(record, avroType, fieldName).orElse(null));
           break;
         case BYTES:
@@ -269,9 +270,6 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
     switch (avroType) {
       case BYTES:
         List<ByteBuffer> values = (List<ByteBuffer>) record.get(fieldName);
-        if (values == null) {
-          return Optional.empty();
-        }
         return Optional.of(
             values.stream()
                 .map(x -> x == null ? null : NumericUtils.bytesToString(x.array()))
@@ -292,9 +290,6 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
     switch (avroType) {
       case BYTES:
         List<ByteBuffer> values = (List<ByteBuffer>) record.get(fieldName);
-        if (values == null) {
-          return Optional.empty();
-        }
         return Optional.of(
             values.stream()
                 .map(x -> x == null ? null : NumericUtils.pgBytesToString(x.array()))

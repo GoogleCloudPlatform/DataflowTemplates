@@ -31,7 +31,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
-import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
@@ -108,9 +107,6 @@ public final class SpannerChangeStreamsToBigQuery {
   private static void setOptions(SpannerChangeStreamsToBigQueryOptions options) {
     options.setStreaming(true);
     options.setEnableStreamingEngine(true);
-    // TODO(haikuo-google): Enable scaling when it's supported.
-    options.setAutoscalingAlgorithm(
-        DataflowPipelineWorkerPoolOptions.AutoscalingAlgorithmType.NONE);
 
     // Add use_runner_v2 to the experiments option, since change streams connector is only supported
     // on Dataflow runner v2.
@@ -171,7 +167,7 @@ public final class SpannerChangeStreamsToBigQuery {
             .withProjectId(spannerProjectId)
             .withInstanceId(options.getSpannerInstanceId())
             .withDatabaseId(options.getSpannerDatabase())
-            .withRpcPriority(options.getSpannerRpcPriority());
+            .withRpcPriority(options.getRpcPriority());
 
     SpannerIO.ReadChangeStream readChangeStream =
         SpannerIO.readChangeStream()
@@ -181,7 +177,7 @@ public final class SpannerChangeStreamsToBigQuery {
             .withChangeStreamName(options.getSpannerChangeStreamName())
             .withInclusiveStartAt(startTimestamp)
             .withInclusiveEndAt(endTimestamp)
-            .withRpcPriority(options.getSpannerRpcPriority());
+            .withRpcPriority(options.getRpcPriority());
 
     String spannerMetadataTableName = options.getSpannerMetadataTableName();
     if (spannerMetadataTableName != null) {

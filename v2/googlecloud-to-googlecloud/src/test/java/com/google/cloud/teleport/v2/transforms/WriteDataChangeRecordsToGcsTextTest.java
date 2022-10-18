@@ -99,7 +99,8 @@ public class WriteDataChangeRecordsToGcsTextTest {
   @Test
   public void testWriteWithoutOutputDirectory() {
     expectedException.expect(IllegalArgumentException.class);
-    expectedException.expectMessage("withGcsOutputDirectory(gcsOutputDirectory) called with null input.");
+    expectedException.expectMessage(
+        "withGcsOutputDirectory(gcsOutputDirectory) called with null input.");
     final DataChangeRecord dataChangeRecord = createTestDataChangeRecord();
     pipeline
         .apply("CreateInput", Create.of(dataChangeRecord))

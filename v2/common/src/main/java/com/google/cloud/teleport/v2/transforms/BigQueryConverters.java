@@ -40,6 +40,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.Coder.Context;
@@ -87,6 +88,9 @@ import org.slf4j.LoggerFactory;
 
 /** Common transforms for Teleport BigQueryIO. */
 public class BigQueryConverters {
+
+  private static final Pattern BQ_SANITIZE_PATTERN = Pattern.compile("\\$|\\.");
+  private static final Pattern BQ_SANITIZE_DATASET_PATTERN = Pattern.compile("[^0-9a-zA-Z_]");
 
   /* Logger for class. */
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryConverters.class);
@@ -567,6 +571,23 @@ public class BigQueryConverters {
     // Substitute any templated values in the template
     String result = StringSubstitutor.replace(formatTemplate, values, "{", "}");
     return result;
+  }
+
+  /**
+   * Returns a sanitized string by replacing invalid BigQuery characters ($ or .) with the
+   * replacement argument supplied.
+   */
+  public static String sanitizeBigQueryChars(String name, String replacement) {
+    return BQ_SANITIZE_PATTERN.matcher(name).replaceAll(replacement);
+  }
+
+  /**
+   * Returns a sanitized string by replacing invalid BigQuery Dataset characters (non- Letters,
+   * numbers or underscores) with the replacement argument supplied.
+   * https://cloud.google.com/bigquery/docs/datasets#dataset-naming
+   */
+  public static String sanitizeBigQueryDatasetChars(String name, String replacement) {
+    return BQ_SANITIZE_DATASET_PATTERN.matcher(name).replaceAll(replacement);
   }
 
   /** A {@link SerializableFunction} to convert a {@link TableRow} to a {@link GenericRecord}. */

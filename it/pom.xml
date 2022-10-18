@@ -26,12 +26,13 @@
     <beam.version>2.38.0</beam.version>
     <cloud-bom.version>24.2.0</cloud-bom.version>
     <cloud-storage.version>2.2.2</cloud-storage.version>
-    <java.version>1.8</java.version>
+    <java.version>11</java.version>
     <junit.version>4.13.1</junit.version>
     <guava.version>31.0.1-jre</guava.version>
     <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
     <maven-compiler-plugin.version>3.6.2</maven-compiler-plugin.version>
     <mockito.version>3.7.7</mockito.version>
+    <mockito-inline.version>4.5.1</mockito-inline.version>
     <puppycrawl.version>8.7</puppycrawl.version>
     <re2j.version>1.5</re2j.version>
     <slf4j.version>1.7.25</slf4j.version>
@@ -66,6 +67,10 @@
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-storage</artifactId>
       <version>${cloud-storage.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-bigquery</artifactId>
     </dependency>
 
     <dependency>
@@ -112,6 +117,12 @@
       <groupId>org.mockito</groupId>
       <artifactId>mockito-core</artifactId>
       <version>${mockito.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-inline</artifactId>
+      <version>${mockito-inline.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -189,6 +200,11 @@
             </format>
           </formats>
           <java>
+            <!-- Exclude Beam code from formatting/license headers -->
+            <excludes>
+              <exclude>src/main/java/org/apache/beam/**</exclude>
+              <exclude>src/test/java/org/apache/beam/**</exclude>
+            </excludes>
             <toggleOffOn />
             <googleJavaFormat>
               <version>1.8</version>

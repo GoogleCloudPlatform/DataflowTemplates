@@ -61,6 +61,7 @@ public final class Type implements Serializable {
   private static final Type TYPE_PG_VARCHAR = new Type(Code.PG_VARCHAR, null, null);
   private static final Type TYPE_PG_TEXT = new Type(Code.PG_TEXT, null, null);
   private static final Type TYPE_PG_NUMERIC = new Type(Code.PG_NUMERIC, null, null);
+  private static final Type TYPE_PG_JSONB = new Type(Code.PG_JSONB, null, null);
   private static final Type TYPE_PG_BYTEA = new Type(Code.PG_BYTEA, null, null);
   private static final Type TYPE_PG_TIMESTAMPTZ = new Type(Code.PG_TIMESTAMPTZ, null, null);
   private static final Type TYPE_PG_DATE = new Type(Code.PG_DATE, null, null);
@@ -159,6 +160,10 @@ public final class Type implements Serializable {
 
   public static Type pgNumeric() {
     return TYPE_PG_NUMERIC;
+  }
+
+  public static Type pgJsonb() {
+    return TYPE_PG_JSONB;
   }
 
   public static Type pgBytea() {
@@ -281,6 +286,7 @@ public final class Type implements Serializable {
     PG_TEXT("text", Dialect.POSTGRESQL),
     PG_VARCHAR("character varying", Dialect.POSTGRESQL),
     PG_NUMERIC("numeric", Dialect.POSTGRESQL),
+    PG_JSONB("jsonb", Dialect.POSTGRESQL),
     PG_BYTEA("bytea", Dialect.POSTGRESQL),
     PG_TIMESTAMPTZ("timestamp with time zone", Dialect.POSTGRESQL),
     PG_DATE("date", Dialect.POSTGRESQL),

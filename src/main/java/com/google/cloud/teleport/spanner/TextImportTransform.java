@@ -17,13 +17,13 @@ package com.google.cloud.teleport.spanner;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.teleport.spanner.ExportProtos.ProtoDialect;
-import com.google.cloud.teleport.spanner.TextImportProtos.ImportManifest;
-import com.google.cloud.teleport.spanner.TextImportProtos.ImportManifest.TableManifest;
 import com.google.cloud.teleport.spanner.common.Type.Code;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.cloud.teleport.spanner.proto.ExportProtos.ProtoDialect;
+import com.google.cloud.teleport.spanner.proto.TextImportProtos.ImportManifest;
+import com.google.cloud.teleport.spanner.proto.TextImportProtos.ImportManifest.TableManifest;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.HashMultimap;
 import com.google.protobuf.util.JsonFormat;
@@ -46,14 +46,13 @@ import java.util.regex.Pattern;
 import org.apache.beam.sdk.extensions.gcp.options.GcsOptions;
 import org.apache.beam.sdk.extensions.gcp.util.GcsUtil;
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
-import org.apache.beam.sdk.io.BoundedSource;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;
 import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.ResourceId;
+import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerWriteResult;
 import org.apache.beam.sdk.io.gcp.spanner.Transaction;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -95,7 +94,7 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
   @Override
   public PDone expand(PBegin begin) {
     PCollectionView<Transaction> tx =
-        begin.apply(SpannerIO.createTransaction().withSpannerConfig(spannerConfig));
+        begin.apply(LocalSpannerIO.createTransaction().withSpannerConfig(spannerConfig));
 
     PCollectionView<Dialect> dialectView =
         begin
@@ -193,7 +192,7 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
               .apply("Wait for previous depth " + depth, Wait.on(previousComputation))
               .apply(
                   "Write mutations " + depth,
-                  SpannerIO.write()
+                  LocalSpannerIO.write()
                       .withSpannerConfig(spannerConfig)
                       .withCommitDeadline(Duration.standardMinutes(1))
                       .withMaxCumulativeBackoff(Duration.standardHours(2))
@@ -239,7 +238,12 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
               "Split into ranges",
               ParDo.of(
                       new SplitIntoRangesFn(
-                          SplitIntoRangesFn.DEFAULT_BUNDLE_SIZE, filesToTablesMapView))
+                          SplitIntoRangesFn.DEFAULT_BUNDLE_SIZE,
+                          filesToTablesMapView,
+                          options.getFieldQualifier(),
+                          options.getColumnDelimiter(),
+                          options.getEscape(),
+                          options.getHandleNewLine()))
                   .withSideInputs(filesToTablesMapView))
           .setCoder(FileShard.Coder.of())
           // PCollection<FileShard>
@@ -248,43 +252,17 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
           .apply(
               "Read lines",
               ParDo.of(
-                  new DoFn<FileShard, KV<String, String>>() {
-
-                    @ProcessElement
-                    public void processElement(ProcessContext c) {
-                      FileShard shard = c.element();
-
-                      // Create a TextSource, passing null as the delimiter to use the default
-                      // delimiters ('\n', '\r', or '\r\n').
-                      TextSource textSource =
-                          new TextSource(
-                              shard.getFile().getMetadata(),
-                              shard.getRange().getFrom(),
-                              shard.getRange().getTo(),
-                              null);
-                      String line;
-                      try {
-                        BoundedSource.BoundedReader<String> reader =
-                            textSource
-                                .createForSubrangeOfFile(
-                                    shard.getFile().getMetadata(),
-                                    shard.getRange().getFrom(),
-                                    shard.getRange().getTo())
-                                .createReader(c.getPipelineOptions());
-                        for (boolean more = reader.start(); more; more = reader.advance()) {
-                          c.output(KV.of(shard.getTableName(), reader.getCurrent()));
-                        }
-                      } catch (IOException e) {
-                        throw new RuntimeException(
-                            "Unable to readFile: "
-                                + shard.getFile().getMetadata().resourceId().toString());
-                      }
-                    }
-                  }))
-          // PCollection<KV<String, String>>: tableName, line
+                  new ReadFileShardFn(
+                      options.getColumnDelimiter(),
+                      options.getFieldQualifier(),
+                      options.getTrailingDelimiter(),
+                      options.getEscape(),
+                      options.getNullString(),
+                      options.getHandleNewLine())))
+          // PCollection<KV<String, CSVRecord>>: tableName, row
           .apply(
               ParDo.of(
-                      new TextRowToMutation(
+                      new CSVRecordToMutation(
                           ddlView,
                           tableColumnsView,
                           options.getColumnDelimiter(),
@@ -485,6 +463,8 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
         return Code.PG_BYTEA;
       } else if (columnType.equalsIgnoreCase("numeric") && dialect == Dialect.POSTGRESQL) {
         return Code.PG_NUMERIC;
+      } else if (columnType.equalsIgnoreCase("jsonb") && dialect == Dialect.POSTGRESQL) {
+        return Code.PG_JSONB;
       } else if (columnType.toLowerCase().startsWith("character varying")
           && dialect == Dialect.POSTGRESQL) {
         return Code.PG_VARCHAR;

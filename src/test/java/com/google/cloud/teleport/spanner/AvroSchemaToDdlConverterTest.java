@@ -22,6 +22,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.spanner.Dialect;
+import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -61,7 +62,8 @@ public class AvroSchemaToDdlConverterTest {
             + "  }, {"
             + "    \"name\" : \"first_name\","
             + "    \"type\" : [ \"null\", \"string\" ],"
-            + "    \"sqlType\" : \"STRING(10)\""
+            + "    \"sqlType\" : \"STRING(10)\","
+            + "    \"defaultExpression\" : \"'John'\""
             + "  }, {"
             + "    \"name\" : \"last_name\","
             + "    \"type\" : [ \"null\", \"string\" ],"
@@ -112,7 +114,19 @@ public class AvroSchemaToDdlConverterTest {
             + "  }, {"
             + "    \"name\":\"notJsonArr\","
             + "    \"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",\"string\"]}]"
+            + "  }, {"
             // Omitting sqlType
+            + "    \"name\" : \"boolean\","
+            + "    \"type\" : [ \"null\", \"boolean\" ]"
+            + "  }, {"
+            + "    \"name\" : \"integer\","
+            + "    \"type\" : [ \"null\", \"long\" ]"
+            + "  }, {"
+            + "    \"name\" : \"float\","
+            + "    \"type\" : [ \"null\", \"double\" ]"
+            + "  }, {"
+            + "    \"name\" : \"timestamp\","
+            + "    \"type\" : [ \"null\", {\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}]"
             + "  }],"
             + "  \"googleStorage\" : \"CloudSpanner\","
             + "  \"spannerParent\" : \"\","
@@ -139,7 +153,7 @@ public class AvroSchemaToDdlConverterTest {
         equalToCompressingWhiteSpace(
             "CREATE TABLE `Users` ("
                 + " `id`              INT64 NOT NULL,"
-                + " `first_name`      STRING(10),"
+                + " `first_name`      STRING(10) DEFAULT ('John'),"
                 + " `last_name`       STRING(MAX),"
                 + " `full_name`       STRING(MAX) AS (CONCAT(first_name, ' ', last_name)) STORED,"
                 + " `numeric`         NUMERIC,"
@@ -152,6 +166,10 @@ public class AvroSchemaToDdlConverterTest {
                 + " `notJson`         STRING(MAX),"
                 + " `jsonArr`         ARRAY<JSON>,"
                 + " `notJsonArr`      ARRAY<STRING(MAX)>,"
+                + " `boolean`         BOOL,"
+                + " `integer`         INT64,"
+                + " `float`           FLOAT64,"
+                + " `timestamp`       TIMESTAMP,"
                 + " CONSTRAINT `ck` CHECK(`first_name` != 'last_name'),"
                 + " ) PRIMARY KEY (`id` ASC, `last_name` DESC)"
                 + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"
@@ -244,7 +262,19 @@ public class AvroSchemaToDdlConverterTest {
             + "    \"name\" : \"varcharArr2\","
             + "    \"type\" : [\"null\","
             + "               {\"type\":\"array\",\"items\":[\"null\",{\"type\":\"string\"}]}]"
+            + "  }, {"
             // Omitting sqlType
+            + "    \"name\" : \"boolean\","
+            + "    \"type\" : [ \"null\", \"boolean\" ]"
+            + "  }, {"
+            + "    \"name\" : \"integer1\","
+            + "    \"type\" : [ \"null\", \"long\" ]"
+            + "  }, {"
+            + "    \"name\" : \"float1\","
+            + "    \"type\" : [ \"null\", \"double\" ]"
+            + "  }, {"
+            + "    \"name\" : \"timestamp1\","
+            + "    \"type\" : [ \"null\", {\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}]"
             + "  } ],  \"googleStorage\" : \"CloudSpanner\",  \"spannerParent\" : \"\", "
             + " \"googleFormatVersion\" : \"booleans\",  \"spannerPrimaryKey_0\" : \"\\\"id\\\""
             + " ASC\",  \"spannerPrimaryKey_1\" : \"\\\"last_name\\\" ASC\",  \"spannerIndex_0\" :"
@@ -284,6 +314,10 @@ public class AvroSchemaToDdlConverterTest {
                 + " \"date\" date,"
                 + " \"varcharArr1\"     character varying[],"
                 + " \"varcharArr2\"     character varying[],"
+                + " \"boolean\"         boolean,"
+                + " \"integer1\"        bigint,"
+                + " \"float1\"          double precision,"
+                + " \"timestamp1\"      timestamp with time zone,"
                 + " CONSTRAINT \"ck\" CHECK(\"first_name\" != \"last_name\"),"
                 + " PRIMARY KEY (\"id\", \"last_name\")"
                 + " )"
@@ -438,5 +472,64 @@ public class AvroSchemaToDdlConverterTest {
                 + " CREATE CHANGE STREAM `ChangeStreamTableColumns`"
                 + " FOR `T1`, `T2`(`c1`, `c2`), `T3`()"
                 + " OPTIONS (retention_period=\"24h\")"));
+  }
+
+  @Test
+  public void testInferType() {
+    AvroSchemaToDdlConverter avroSchemaToDdlConverter = new AvroSchemaToDdlConverter();
+
+    assertEquals(
+        Type.bool(), avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.BOOLEAN), false));
+    assertEquals(
+        Type.int64(), avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.INT), false));
+    assertEquals(
+        Type.int64(), avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.LONG), false));
+    assertEquals(
+        Type.float64(),
+        avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.FLOAT), false));
+    assertEquals(
+        Type.float64(),
+        avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.DOUBLE), false));
+    assertEquals(
+        Type.string(),
+        avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.STRING), false));
+    assertEquals(
+        Type.bytes(), avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.BYTES), false));
+
+    Schema timestampSchema = Schema.create(Schema.Type.LONG);
+    timestampSchema.addProp("logicalType", "timestamp-millis");
+    assertEquals(Type.timestamp(), avroSchemaToDdlConverter.inferType(timestampSchema, false));
+    timestampSchema = Schema.create(Schema.Type.LONG);
+    timestampSchema.addProp("logicalType", "timestamp-micros");
+    assertEquals(Type.timestamp(), avroSchemaToDdlConverter.inferType(timestampSchema, false));
+
+    avroSchemaToDdlConverter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+
+    assertEquals(
+        Type.pgBool(),
+        avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.BOOLEAN), false));
+    assertEquals(
+        Type.pgInt8(), avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.INT), false));
+    assertEquals(
+        Type.pgInt8(), avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.LONG), false));
+    assertEquals(
+        Type.pgFloat8(),
+        avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.FLOAT), false));
+    assertEquals(
+        Type.pgFloat8(),
+        avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.DOUBLE), false));
+    assertEquals(
+        Type.pgVarchar(),
+        avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.STRING), false));
+    assertEquals(
+        Type.pgBytea(),
+        avroSchemaToDdlConverter.inferType(Schema.create(Schema.Type.BYTES), false));
+
+    timestampSchema = Schema.create(Schema.Type.LONG);
+    timestampSchema.addProp("logicalType", "timestamp-millis");
+    assertEquals(Type.pgTimestamptz(), avroSchemaToDdlConverter.inferType(timestampSchema, false));
+    timestampSchema = Schema.create(Schema.Type.LONG);
+    timestampSchema.addProp("logicalType", "timestamp-micros");
+    assertEquals(Type.pgTimestamptz(), avroSchemaToDdlConverter.inferType(timestampSchema, false));
   }
 }

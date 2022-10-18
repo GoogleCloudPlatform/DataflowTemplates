@@ -16,14 +16,13 @@
 package com.google.cloud.teleport.v2.options;
 
 import org.apache.beam.sdk.options.Description;
-import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 
 /**
  * The {@link PubsubToJdbcOptions} interface provides the custom execution options passed by the
  * executor at the command-line.
  */
-public interface PubsubToJdbcOptions extends PipelineOptions {
+public interface PubsubToJdbcOptions extends CommonTemplateOptions {
 
   @Description(
       "The Cloud Pub/Sub subscription to read from. "
