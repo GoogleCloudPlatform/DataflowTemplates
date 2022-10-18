@@ -31,7 +31,7 @@
         <bigtable.version>1.15.0</bigtable.version>
         <bigquery.version>2.9.0</bigquery.version>
         <commons.version>1.8</commons.version>
-        <commons-text.version>1.10</commons-text.version>
+        <commons-text.version>1.10.0</commons-text.version>
         <protoc.version>3.15.8</protoc.version>
         <nashorn.version>15.4</nashorn.version>
         <truth.version>1.0.1</truth.version>
