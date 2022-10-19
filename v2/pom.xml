@@ -16,19 +16,28 @@
 <project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.google.cloud.teleport</groupId>
+        <artifactId>templates</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
     <groupId>com.google.cloud.teleport.v2</groupId>
     <artifactId>dynamic-templates</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <name>Google Cloud Teleport Dynamic</name>
+    <description>
+        Cloud Teleport Classic is a collection of Apache Beam pipelines for common tasks, like data movement
+        across databases or batch transforms on random datasets. They are released as Dataflow Classic Templates.
+    </description>
 
     <packaging>pom</packaging>
-    <name>dynamic-templates</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <autovalue.version>1.7.4</autovalue.version>
         <autovalue.annotations.version>1.7.4</autovalue.annotations.version>
         <autovalue.service.version>1.0-rc6</autovalue.service.version>
-        <checkstyle.version>8.7</checkstyle.version>
         <beam.version>2.41.0</beam.version>
         <hamcrest.version>2.1</hamcrest.version>
         <hadoop.version>2.10.1</hadoop.version>
@@ -39,7 +48,6 @@
         <junit-dep.version>4.10</junit-dep.version>
         <opensensus.version>0.31.0</opensensus.version>
         <surefire.version>2.21.0</surefire.version>
-        <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
         <maven-compiler-plugin.version>3.6.2</maven-compiler-plugin.version>
         <maven-dependency-plugin.version>3.1.2</maven-dependency-plugin.version>
         <maven-enforcer-plugin.version>3.0.0-M1</maven-enforcer-plugin.version>
@@ -54,7 +62,6 @@
         <mvn-target-dir>${basedir}/target</mvn-target-dir>
         <json.version>20200518</json.version>
         <excluded.spanner.tests>com.google.cloud.teleport.v2.spanner.IntegrationTest</excluded.spanner.tests>
-        <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
     </properties>
 
     <dependencyManagement>
@@ -176,7 +183,7 @@
         <dependency>
             <groupId>com.google.cloud.teleport</groupId>
             <artifactId>integration-testing-lib</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>${pom.version}</version>
             <scope>test</scope>
         </dependency>
 
@@ -493,42 +500,6 @@
                 <version>${maven-jar-plugin.version}</version>
             </plugin>
 
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-checkstyle-plugin</artifactId>
-                <version>${maven-checkstyle-plugin.version}</version>
-                <dependencies>
-                    <dependency>
-                        <groupId>com.puppycrawl.tools</groupId>
-                        <artifactId>checkstyle</artifactId>
-                        <version>${checkstyle.version}</version>
-                    </dependency>
-                </dependencies>
-                <configuration>
-                    <configLocation>checkstyle/checkstyle.xml</configLocation>
-                    <suppressionsLocation>checkstyle/suppressions.xml</suppressionsLocation>
-                    <consoleOutput>true</consoleOutput>
-                    <failOnViolation>true</failOnViolation>
-                    <includeResources>false</includeResources>
-                    <includeTestSourceDirectory>true</includeTestSourceDirectory>
-                </configuration>
-                <executions>
-                    <!--
-                      Execute checkstyle after compilation but before tests.
-                      This ensures that any parsing or type checking errors are from
-                      javac, so they look as expected. Beyond that, we want to
-                      fail as early as possible.
-                    -->
-                    <execution>
-                        <phase>test-compile</phase>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
@@ -608,51 +579,6 @@
                   <disableXmlReport>true</disableXmlReport>
                   <excludedGroups>${excluded.spanner.tests}</excludedGroups>
                 </configuration>
-            </plugin>
-
-            <!-- Keep this equivalent with ../pom.xml. Unfortunately, we need to duplicate the
-            plugin until we can fix errors introduced by adding v2 as a child module of the root
-            teleport module. -->
-            <plugin>
-              <groupId>com.diffplug.spotless</groupId>
-              <artifactId>spotless-maven-plugin</artifactId>
-              <version>${spotless-maven-plugin.version}</version>
-              <configuration>
-                <formats>
-                  <!-- Avoid trailing whitespace and require ending newline. -->
-                  <format>
-                    <includes>
-                      <!-- .gitignore does not need to be included here. -->
-                      <include>*.md</include>
-                    </includes>
-                    <trimTrailingWhitespace/>
-                    <endWithNewline/>
-                  </format>
-                </formats>
-                <java>
-                  <!-- Exclude Beam code from formatting/license headers -->
-                  <excludes>
-                    <exclude>src/main/java/org/apache/beam/**</exclude>
-                    <exclude>src/test/java/org/apache/beam/**</exclude>
-                  </excludes>
-                  <toggleOffOn />
-                  <googleJavaFormat>
-                    <version>1.8</version>
-                    <style>GOOGLE</style>
-                  </googleJavaFormat>
-                  <licenseHeader>
-                    <file>JAVA_LICENSE_HEADER</file>
-                  </licenseHeader>
-                </java>
-              </configuration>
-              <!-- Bind to verify. -->
-              <executions>
-                <execution>
-                  <goals>
-                    <goal>check</goal>
-                  </goals>
-                </execution>
-              </executions>
             </plugin>
         </plugins>
     </build>

@@ -20,10 +20,9 @@
   <parent>
     <groupId>com.google.cloud.dataflow.cdc</groupId>
     <artifactId>cdc-parent</artifactId>
-    <version>0.1</version>
+    <version>1.0-SNAPSHOT</version>
   </parent>
   <artifactId>cdc-common</artifactId>
-  <version>0.1</version>
   <packaging>jar</packaging>
   <inceptionYear>2019</inceptionYear>
   <licenses>

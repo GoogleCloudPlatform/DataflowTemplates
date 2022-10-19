@@ -46,7 +46,7 @@ export COMMAND_SPEC=${APP_ROOT}/resources/gcs-to-splunk-command-spec.json
 #### Build and Push Image to Google Container Repository
 
 ```sh
-mvn clean package -f unified-templates.xml -pl v2/googlecloud-to-splunk -am \
+mvn clean package -pl v2/googlecloud-to-splunk -am \
     -Dimage=${TARGET_GCR_IMAGE} \
     -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
     -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \

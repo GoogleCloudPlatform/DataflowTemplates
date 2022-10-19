@@ -26,7 +26,6 @@
 
   <groupId>com.google.cloud.dataflow.cdc</groupId>
   <artifactId>cdc-parent</artifactId>
-  <version>0.1</version>
   <inceptionYear>2019</inceptionYear>
   <packaging>pom</packaging>
   <properties>
