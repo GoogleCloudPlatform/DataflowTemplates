@@ -136,10 +136,22 @@
     </plugins>
   </build>
 
+     <profiles>
+     <profile>
+       <id>oss-build</id>
+       <activation>
+          <activeByDefault>true</activeByDefault>
+       </activation>
+       <modules>
+         <module>syndeo-template</module>
+       </modules>
+     </profile>
+   </profiles>
+
+
   <modules>
     <module>it</module>
     <module>v1</module>
     <module>v2</module>
-    <module>syndeo-template</module>
   </modules>
 </project>
