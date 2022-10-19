@@ -104,4 +104,3 @@ gcloud dataflow flex-template build gs://$GCS_BUCKET_NAME/syndeo-template.json  
     --jar "syndeo-template/target/syndeo-template-1.0-SNAPSHOT.jar"  \
     --env FLEX_TEMPLATE_JAVA_MAIN_CLASS="com.google.cloud.syndeo.SyndeoTemplate"
 ```
-
