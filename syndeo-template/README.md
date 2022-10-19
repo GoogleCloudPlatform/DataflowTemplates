@@ -77,6 +77,10 @@ TEMP_LOCATION_BUCKET=[CHANGE ME]
 gsutil mb gs://$TEMP_LOCATION_BUCKET
 ```
 
+5. Run the end-to-end test.
+
+The below command tests the workflow by publishing some data to BQ and checking that it makes it over to Bigtable.
+
 
 ```shell
 mvn clean package test -f unified-templates.xml -pl syndeo-template/pom.xml  \
@@ -89,6 +93,9 @@ mvn clean package test -f unified-templates.xml -pl syndeo-template/pom.xml  \
 
 The following command will take the already-built artifacts and push them to GCS and GCR, where they can be utilized to run a template.
 
+(Note: The project does not currently have an end-to-end test to validate template-based runs because the template would run as part of
+syndeo, which involves repeated runs and so on).
+
 ```shell
 # Push Template to GCP:
 gcloud dataflow flex-template build gs://$GCS_BUCKET_NAME/syndeo-template.json  \
@@ -98,28 +105,3 @@ gcloud dataflow flex-template build gs://$GCS_BUCKET_NAME/syndeo-template.json  
     --env FLEX_TEMPLATE_JAVA_MAIN_CLASS="com.google.cloud.syndeo.SyndeoTemplate"
 ```
 
-
-### Workflow tasks to run the template manually
-
-Generate SchemaIO configs: This command will traverse the classpath for the template, find all `SchemaTransform`
-subclasses, and generate a file with the protocol buffer configuration for all of these subclasses.
-
-```shell
-mvn compile exec:java -Dexec.mainClass="com.google.cloud.syndeo.ConfigGen"
-```
-
-Write out the pipeline spec for testing: This command will generate a configuration proto for a pipeline that reads
-from a Pubsub topic, and writes avro files into a GCS bucket.
-
-```shell
-mvn compile exec:java -Dexec.mainClass="com.google.cloud.syndeo.WritePipelineSpecForTesting"
-```
-
-Run the template:
-```shell
-# Running a pushed template (see Push template below)
-Run Template on Dataflow from Uploaded Template:
-gcloud dataflow flex-template run "syndeojob-`date +%Y%m%d-%H%M%S`" \
-  --template-file-gcs-location "gs://$GCS_BUCKET/template.json" --region $REGION \
-  --temp-location "gs://$GCS_BUCKET/temp" --parameters=pipelineSpec="gs://$GCS_BUCKET/pubsub_to_avro_config.txt"
-```
