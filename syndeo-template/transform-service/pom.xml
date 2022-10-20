@@ -21,21 +21,27 @@
     <groupId>com.google.cloud.teleport.syndeo</groupId>
     <version>1.0-SNAPSHOT</version>
     <modelVersion>4.0.0</modelVersion>
+    <repositories>
+	    <repository>
+    <id>confluent</id>
+    <url>https://packages.confluent.io/maven/</url>
+</repository>
+    </repositories>
 
 
     <properties>
         <avro.version>1.8.2</avro.version>
-        <beam.version>2.43.0-SNAPSHOT</beam.version>
+        <beam.version>2.42.0</beam.version>
         <bigtable.version>1.15.0</bigtable.version>
         <bigquery.version>2.9.0</bigquery.version>
         <commons.version>1.8</commons.version>
         <commons-text.version>1.9</commons-text.version>
-        <grpc.version>1.50.0</grpc.version>
+        <grpc.version>1.45.1</grpc.version>
         <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
         <java.version>11</java.version>
         <maven-compiler-plugin.version>3.6.2</maven-compiler-plugin.version>
         <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
-        <protobuf.version>3.15.8</protobuf.version>
+        <protobuf.version>3.19.4</protobuf.version>
         <truth.version>1.0.1</truth.version>
         <truth-proto-extension.version>1.0.1</truth-proto-extension.version>
         <secretmanager.version>2.1.2</secretmanager.version>
@@ -48,6 +54,11 @@
                 <version>${beam.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java</artifactId>
+                <version>${protobuf.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -65,13 +76,12 @@
             <version>2.0.0</version>
             <scope>runtime</scope>
         </dependency>
-
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-netty-shaded</artifactId>
-            <version>${grpc.version}</version>
-            <scope>runtime</scope>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>io.grpc</groupId>-->
+<!--            <artifactId>grpc-netty-shaded</artifactId>-->
+<!--            <version>${grpc.version}</version>-->
+<!--            <scope>runtime</scope>-->
+<!--        </dependency>-->
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-protobuf</artifactId>
@@ -80,9 +90,7 @@
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-services</artifactId>
-    <!--            TODO(pabloem): How come 1.50.0 is giving us trouble?-->
-            <version>1.49.2</version>
-            <scope>runtime</scope>
+            <version>${grpc.version}</version>
         </dependency>
 
         <dependency>
@@ -140,8 +148,21 @@
             <version>1.0.1</version>
         </dependency>
 
-
         <!-- Test dependencies -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.hamcrest</groupId>
+            <artifactId>java-hamcrest</artifactId>
+            <version>2.0.0.0</version>
+            <scope>test</scope>
+        </dependency>
+
+
     </dependencies>
 
     <build>
@@ -188,6 +209,10 @@
                     <target>${java.version}</target>
                     <parameters>true</parameters>
                     <testCompilerArgument>-parameters</testCompilerArgument>
+                    <compilerArgs>
+                        <arg>-verbose</arg>
+                        <arg>-Xlint:all,-options,-path</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
             <plugin>
@@ -195,10 +220,9 @@
                 <artifactId>protobuf-maven-plugin</artifactId>
                 <version>0.6.1</version>
                 <configuration>
-                    <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}
-                    </protocArtifact>
+                    <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
                     <pluginId>grpc-java</pluginId>
-                    <pluginArtifact>io.grpc:protoc-gen-grpc-java:1.50.1:exe:${os.detected.classifier}</pluginArtifact>
+                    <pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}</pluginArtifact>
                     <writeDescriptorSet>true</writeDescriptorSet>
                     <includeDependenciesInDescriptorSet>true</includeDependenciesInDescriptorSet>
                     <descriptorSetFileName>schema.pb</descriptorSetFileName>
@@ -234,18 +258,6 @@
                             <endWithNewline/>
                         </format>
                     </formats>
-                    <java>
-                        <!-- Exclude Beam code from formatting/license headers -->
-                        <excludes>
-                            <exclude>src/main/java/org/apache/beam/**</exclude>
-                            <exclude>src/test/java/org/apache/beam/**</exclude>
-                        </excludes>
-                        <toggleOffOn/>
-                        <googleJavaFormat>
-                            <version>1.8</version>
-                            <style>GOOGLE</style>
-                        </googleJavaFormat>
-                    </java>
                 </configuration>
                 <!-- Bind to verify. -->
                 <executions>

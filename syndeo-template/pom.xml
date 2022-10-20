@@ -25,7 +25,7 @@
 
     <properties>
         <avro.version>1.8.2</avro.version>
-        <beam.version>2.39.0</beam.version>
+        <beam.version>2.42.0</beam.version>
         <bigtable.version>1.15.0</bigtable.version>
         <bigquery.version>2.9.0</bigquery.version>
         <commons.version>1.8</commons.version>
@@ -129,12 +129,12 @@
                 <configuration>
                     <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}
                     </protocArtifact>
-                    <writeDescriptorSet>true</writeDescriptorSet>
-                    <includeDependenciesInDescriptorSet>true</includeDependenciesInDescriptorSet>
-                    <descriptorSetFileName>schema.pb</descriptorSetFileName>
-                    <!-- This path must be unique, or else it may delete existing files. -->
-                    <descriptorSetOutputDirectory>${basedir}/target/generated-test-sources/protobuf/schema
-                    </descriptorSetOutputDirectory>
+<!--                    <writeDescriptorSet>true</writeDescriptorSet>-->
+<!--                    <includeDependenciesInDescriptorSet>true</includeDependenciesInDescriptorSet>-->
+<!--                    <descriptorSetFileName>schema.pb</descriptorSetFileName>-->
+<!--                    &lt;!&ndash; This path must be unique, or else it may delete existing files. &ndash;&gt;-->
+<!--                    <descriptorSetOutputDirectory>${basedir}/target/generated-test-sources/protobuf/schema-->
+<!--                    </descriptorSetOutputDirectory>-->
                 </configuration>
                 <executions>
                     <execution>
@@ -174,9 +174,6 @@
                             <version>1.8</version>
                             <style>GOOGLE</style>
                         </googleJavaFormat>
-                        <licenseHeader>
-                            <file>JAVA_LICENSE_HEADER</file>
-                        </licenseHeader>
                     </java>
                 </configuration>
                 <!-- Bind to verify. -->
