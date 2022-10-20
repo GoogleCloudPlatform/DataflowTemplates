@@ -21,13 +21,6 @@
     <groupId>com.google.cloud.teleport.syndeo</groupId>
     <version>1.0-SNAPSHOT</version>
     <modelVersion>4.0.0</modelVersion>
-    <repositories>
-	    <repository>
-    <id>confluent</id>
-    <url>https://packages.confluent.io/maven/</url>
-</repository>
-    </repositories>
-
 
     <properties>
         <avro.version>1.8.2</avro.version>
@@ -36,12 +29,12 @@
         <bigquery.version>2.9.0</bigquery.version>
         <commons.version>1.8</commons.version>
         <commons-text.version>1.9</commons-text.version>
-        <grpc.version>1.45.1</grpc.version>
+        <grpc.version>1.48.0</grpc.version>
         <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
         <java.version>11</java.version>
         <maven-compiler-plugin.version>3.6.2</maven-compiler-plugin.version>
         <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
-        <protobuf.version>3.19.4</protobuf.version>
+        <protobuf.version>3.21.4</protobuf.version>
         <truth.version>1.0.1</truth.version>
         <truth-proto-extension.version>1.0.1</truth-proto-extension.version>
         <secretmanager.version>2.1.2</secretmanager.version>
@@ -49,20 +42,12 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>org.apache.beam</groupId>
-                <artifactId>beam-sdks-java-bom</artifactId>
-                <version>${beam.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>com.google.protobuf</groupId>
-                <artifactId>protobuf-java</artifactId>
-                <version>${protobuf.version}</version>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-netty-shaded</artifactId>
+                <version>${grpc.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
-
     <dependencies>
 
         <dependency>
@@ -75,34 +60,6 @@
             <artifactId>slf4j-jdk14</artifactId>
             <version>2.0.0</version>
             <scope>runtime</scope>
-        </dependency>
-<!--        <dependency>-->
-<!--            <groupId>io.grpc</groupId>-->
-<!--            <artifactId>grpc-netty-shaded</artifactId>-->
-<!--            <version>${grpc.version}</version>-->
-<!--            <scope>runtime</scope>-->
-<!--        </dependency>-->
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-protobuf</artifactId>
-            <version>${grpc.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-services</artifactId>
-            <version>${grpc.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-stub</artifactId>
-            <version>${grpc.version}</version>
-        </dependency>
-        <dependency> <!-- necessary for Java 9+ -->
-            <groupId>org.apache.tomcat</groupId>
-            <artifactId>annotations-api</artifactId>
-            <version>6.0.53</version>
-            <scope>provided</scope>
         </dependency>
 
         <dependency>
@@ -118,10 +75,12 @@
         <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-sdks-java-core</artifactId>
+	    <version>${beam.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-sdks-java-expansion-service</artifactId>
+	    <version>${beam.version}</version>
         </dependency>
 
         <dependency>
@@ -130,6 +89,8 @@
             <version>0.1</version>
         </dependency>
 
+
+	<!-- Protobuf and GRPC dependencies -->
         <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
@@ -141,6 +102,34 @@
             <version>${protobuf.version}</version>
             <type>pom</type>
         </dependency>
+<!--        <dependency>-->
+<!--            <groupId>io.grpc</groupId>-->
+<!--            <artifactId>grpc-netty-shaded</artifactId>-->
+<!--            <version>${grpc.version}</version>-->
+<!--            <scope>runtime</scope>-->
+<!--        </dependency>-->
+<!--        <dependency>-->
+<!--            <groupId>io.grpc</groupId>-->
+<!--            <artifactId>grpc-protobuf</artifactId>-->
+<!--            <version>${grpc.version}</version>-->
+<!--        </dependency>-->
+<!--        <dependency>-->
+<!--            <groupId>io.grpc</groupId>-->
+<!--            <artifactId>grpc-services</artifactId>-->
+<!--            <version>${grpc.version}</version>-->
+<!--        </dependency>-->
+
+<!--        <dependency>-->
+<!--            <groupId>io.grpc</groupId>-->
+<!--            <artifactId>grpc-stub</artifactId>-->
+<!--            <version>${grpc.version}</version>-->
+<!--        </dependency>-->
+<!--        <dependency> &lt;!&ndash; necessary for Java 9+ &ndash;&gt;-->
+<!--            <groupId>org.apache.tomcat</groupId>-->
+<!--            <artifactId>annotations-api</artifactId>-->
+<!--            <version>6.0.53</version>-->
+<!--            <scope>provided</scope>-->
+<!--        </dependency>-->
 
         <dependency>
             <groupId>com.google.auto.service</groupId>
@@ -155,12 +144,12 @@
             <version>4.13.2</version>
             <scope>test</scope>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>org.hamcrest</groupId>-->
-<!--            <artifactId>java-hamcrest</artifactId>-->
-<!--            <version>2.0.0.0</version>-->
-<!--            <scope>test</scope>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>org.hamcrest</groupId>
+            <artifactId>java-hamcrest</artifactId>
+            <version>2.0.0.0</version>
+            <scope>test</scope>
+        </dependency>
 
     </dependencies>
 
