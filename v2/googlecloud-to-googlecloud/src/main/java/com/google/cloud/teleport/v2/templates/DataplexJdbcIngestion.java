@@ -19,26 +19,40 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Asset;
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Entity;
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Schema;
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1SchemaPartitionField;
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1StorageFormat;
 import com.google.cloud.teleport.v2.clients.DataplexClient;
+import com.google.cloud.teleport.v2.clients.DataplexClientFactory;
 import com.google.cloud.teleport.v2.clients.DefaultDataplexClient;
 import com.google.cloud.teleport.v2.io.DynamicJdbcIO;
 import com.google.cloud.teleport.v2.io.DynamicJdbcIO.DynamicDataSourceConfiguration;
 import com.google.cloud.teleport.v2.options.DataplexJdbcIngestionOptions;
 import com.google.cloud.teleport.v2.transforms.BeamRowToGenericRecordFn;
+import com.google.cloud.teleport.v2.transforms.DataplexJdbcIngestionUpdateMetadata;
 import com.google.cloud.teleport.v2.transforms.GenericRecordsToGcsPartitioned;
 import com.google.cloud.teleport.v2.utils.DataplexJdbcIngestionFilter;
 import com.google.cloud.teleport.v2.utils.DataplexJdbcIngestionNaming;
+import com.google.cloud.teleport.v2.utils.DataplexUtils;
+import com.google.cloud.teleport.v2.utils.GCSUtils;
 import com.google.cloud.teleport.v2.utils.JdbcConverters;
 import com.google.cloud.teleport.v2.utils.JdbcIngestionWriteDisposition.MapWriteDisposition;
 import com.google.cloud.teleport.v2.utils.JdbcIngestionWriteDisposition.WriteDispositionException;
+import com.google.cloud.teleport.v2.utils.JdbcIngestionWriteDisposition.WriteDispositionOptions;
 import com.google.cloud.teleport.v2.utils.KMSEncryptedNestedValue;
 import com.google.cloud.teleport.v2.utils.Schemas;
-import com.google.cloud.teleport.v2.utils.StorageUtils;
-import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
-import com.google.cloud.teleport.v2.values.PartitionMetadata;
+import com.google.cloud.teleport.v2.values.DataplexCompression;
+import com.google.cloud.teleport.v2.values.DataplexEnums.DataplexAssetResourceSpec;
+import com.google.cloud.teleport.v2.values.DataplexEnums.EntityType;
+import com.google.cloud.teleport.v2.values.DataplexEnums.FieldType;
+import com.google.cloud.teleport.v2.values.DataplexEnums.PartitionStyle;
+import com.google.cloud.teleport.v2.values.DataplexEnums.StorageSystem;
+import com.google.cloud.teleport.v2.values.DataplexPartitionMetadata;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.AvroCoder;
@@ -51,7 +65,6 @@ import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.transforms.Distinct;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
@@ -73,6 +86,7 @@ public class DataplexJdbcIngestion {
 
   /* Logger for class.*/
   private static final Logger LOG = LoggerFactory.getLogger(DataplexJdbcIngestion.class);
+  private static final int MAX_CREATE_ENTITY_ATTEMPTS = 10;
 
   /** The tag for filtered records. */
   private static final TupleTag<GenericRecord> FILTERED_RECORDS_OUT =
@@ -98,10 +112,9 @@ public class DataplexJdbcIngestion {
 
     Pipeline pipeline = Pipeline.create(options);
 
-    DataplexClient dataplexClient =
-        DefaultDataplexClient.withDefaultClient(options.getGcpCredential());
+    DataplexClient dataplex = DefaultDataplexClient.withDefaultClient(options.getGcpCredential());
     String assetName = options.getOutputAsset();
-    GoogleCloudDataplexV1Asset asset = resolveAsset(assetName, dataplexClient);
+    GoogleCloudDataplexV1Asset asset = resolveAsset(assetName, dataplex);
 
     DynamicDataSourceConfiguration dataSourceConfig = configDataSource(options);
     String assetType = asset.getResourceSpec().getType();
@@ -110,19 +123,16 @@ public class DataplexJdbcIngestion {
     } else if (DataplexAssetResourceSpec.STORAGE_BUCKET.name().equals(assetType)) {
       String targetRootPath =
           "gs://" + asset.getResourceSpec().getName() + "/" + options.getOutputTable();
-      buildGcsPipeline(pipeline, options, dataSourceConfig, targetRootPath);
+      DataplexClientFactory dcf = DataplexClientFactory.defaultFactory(options.getGcpCredential());
+      buildGcsPipeline(pipeline, options, dataSourceConfig, targetRootPath, dataplex, dcf);
     } else {
       throw new IllegalArgumentException(
           String.format(
-              "Asset "
-                  + assetName
-                  + " is of type "
-                  + assetType
-                  + ". Only "
-                  + DataplexAssetResourceSpec.BIGQUERY_DATASET.name()
-                  + "and "
-                  + DataplexAssetResourceSpec.STORAGE_BUCKET.name()
-                  + " supported."));
+              "Asset %s is of type %s. Only %s and %s supported.",
+              assetName,
+              assetType,
+              DataplexAssetResourceSpec.BIGQUERY_DATASET.name(),
+              DataplexAssetResourceSpec.STORAGE_BUCKET.name()));
     }
 
     pipeline.run();
@@ -132,14 +142,14 @@ public class DataplexJdbcIngestion {
    * Resolves a Dataplex asset.
    *
    * @param assetName Asset name from which the Dataplex asset will be resolved.
-   * @param dataplexClient Dataplex client to connect to Dataplex via asset name.
+   * @param dataplex Dataplex client to connect to Dataplex via asset name.
    * @return The resolved asset
    */
-  private static GoogleCloudDataplexV1Asset resolveAsset(
-      String assetName, DataplexClient dataplexClient) throws IOException {
+  private static GoogleCloudDataplexV1Asset resolveAsset(String assetName, DataplexClient dataplex)
+      throws IOException {
 
     LOG.info("Resolving asset: {}", assetName);
-    GoogleCloudDataplexV1Asset asset = dataplexClient.getAsset(assetName);
+    GoogleCloudDataplexV1Asset asset = dataplex.getAsset(assetName);
     checkNotNull(asset.getResourceSpec(), "Asset has no ResourceSpec.");
     String assetType = asset.getResourceSpec().getType();
     checkNotNull(assetType, "Asset has no type.");
@@ -194,6 +204,9 @@ public class DataplexJdbcIngestion {
       String targetRootPath,
       org.apache.avro.Schema avroSchema,
       List<String> existingFiles) {
+
+    WriteDispositionOptions writeDisposition = options.getWriteDisposition();
+
     PCollectionTuple filteredRecordsTuple =
         genericRecords.apply(
             "Filter pre-existing records",
@@ -203,7 +216,7 @@ public class DataplexJdbcIngestion {
                 options.getParitionColumn(),
                 options.getPartitioningScheme(),
                 options.getFileFormat().getFileSuffix(),
-                options.getWriteDisposition(),
+                writeDisposition,
                 existingFiles,
                 FILTERED_RECORDS_OUT,
                 EXISTING_TARGET_FILES_OUT));
@@ -228,10 +241,40 @@ public class DataplexJdbcIngestion {
                             + " {} writeDisposition strategy.",
                         filename,
                         targetRootPath,
-                        options.getWriteDisposition());
+                        writeDisposition);
                   }
                 }));
     return filteredRecordsTuple.get(FILTERED_RECORDS_OUT);
+  }
+
+  @VisibleForTesting
+  static void buildBigQueryPipeline(
+      Pipeline pipeline,
+      DataplexJdbcIngestionOptions options,
+      DynamicDataSourceConfiguration dataSourceConfig) {
+
+    if (options.getUpdateDataplexMetadata()) {
+      LOG.warn("Dataplex metadata updates enabled, but not supported for BigQuery targets.");
+    }
+
+    pipeline
+        .apply(
+            "Read from JdbcIO",
+            DynamicJdbcIO.<TableRow>read()
+                .withDataSourceConfiguration(dataSourceConfig)
+                .withQuery(options.getQuery())
+                .withCoder(TableRowJsonCoder.of())
+                .withRowMapper(JdbcConverters.getResultSetToTableRow(options.getUseColumnAlias())))
+        .apply(
+            "Write to BigQuery",
+            BigQueryIO.writeTableRows()
+                .withoutValidation()
+                .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER)
+                // Mapping DataplexJdbcIngestionWriteDisposition.WriteDispositionOptions to
+                // BigqueryIO.Write.WriteDisposition
+                .withWriteDisposition(
+                    MapWriteDisposition.mapWriteDispostion(options.getWriteDisposition()))
+                .to(options.getOutputTable()));
   }
 
   @VisibleForTesting
@@ -239,8 +282,11 @@ public class DataplexJdbcIngestion {
       Pipeline pipeline,
       DataplexJdbcIngestionOptions options,
       DynamicDataSourceConfiguration dataSourceConfig,
-      String targetRootPath) {
-    List<String> existingFiles = StorageUtils.getFilesInDirectory(targetRootPath);
+      String targetRootPath,
+      DataplexClient dataplex,
+      DataplexClientFactory dcf)
+      throws IOException {
+    List<String> existingFiles = GCSUtils.getFilesInDirectory(targetRootPath);
     // Auto inferring beam schema
     Schema beamSchema =
         Schemas.jdbcSchemaToBeamSchema(dataSourceConfig.buildDatasource(), options.getQuery());
@@ -262,9 +308,12 @@ public class DataplexJdbcIngestion {
             .apply("convert to GenericRecord", ParDo.of(new BeamRowToGenericRecordFn(avroSchema)))
             .setCoder(AvroCoder.of(avroSchema));
 
+    boolean hasPartitions =
+        options.getParitionColumn() != null && options.getPartitioningScheme() != null;
+
     // If targetRootPath is changed in the following lines, please also change the root path for
     // existingFiles
-    if (options.getParitionColumn() == null || options.getPartitioningScheme() == null) {
+    if (!hasPartitions) {
       if (shouldSkipUnpartitionedTable(options, targetRootPath, existingFiles)) {
         return;
       }
@@ -275,7 +324,7 @@ public class DataplexJdbcIngestion {
     }
 
     // Write to GCS bucket
-    PCollection<PartitionMetadata> metadata =
+    PCollection<DataplexPartitionMetadata> metadata =
         genericRecords.apply(
             "Write to GCS",
             new GenericRecordsToGcsPartitioned(
@@ -284,31 +333,131 @@ public class DataplexJdbcIngestion {
                 options.getParitionColumn(),
                 options.getPartitioningScheme(),
                 options.getFileFormat()));
+
+    // Update Dataplex Metadata, if enabled
+    if (options.getUpdateDataplexMetadata()) {
+      GoogleCloudDataplexV1Entity outputEntity =
+          loadDataplexMetadata(dataplex, options, avroSchema, targetRootPath, hasPartitions);
+
+      // All entities should've been pre-created and updated with the latest schema in
+      // loadDataplexMetadata(). Only partitions need to be updated after the ingestion.
+      // If partitioning scheme is not set, then nothing to update.
+      if (hasPartitions) {
+        metadata.apply(
+            "Update Metadata",
+            new DataplexJdbcIngestionUpdateMetadata(dcf, outputEntity.getName()));
+      }
+    }
   }
 
   @VisibleForTesting
-  static void buildBigQueryPipeline(
-      Pipeline pipeline,
+  static GoogleCloudDataplexV1Entity loadDataplexMetadata(
+      DataplexClient dataplex,
       DataplexJdbcIngestionOptions options,
-      DynamicDataSourceConfiguration dataSourceConfig) {
-    pipeline
-        .apply(
-            "Read from JdbcIO",
-            DynamicJdbcIO.<TableRow>read()
-                .withDataSourceConfiguration(dataSourceConfig)
-                .withQuery(options.getQuery())
-                .withCoder(TableRowJsonCoder.of())
-                .withRowMapper(JdbcConverters.getResultSetToTableRow()))
-        .apply(
-            "Write to BigQuery",
-            BigQueryIO.writeTableRows()
-                .withoutValidation()
-                .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER)
-                // Mapping DataplexJdbcIngestionWriteDisposition.WriteDispositionOptions to
-                // BigqueryIO.Write.WriteDisposition
-                .withWriteDisposition(
-                    MapWriteDisposition.mapWriteDispostion(options.getWriteDisposition()))
-                .to(options.getOutputTable()));
+      org.apache.avro.Schema avroSchema,
+      String targetRootPath,
+      boolean hasPartitions)
+      throws IOException {
+
+    GoogleCloudDataplexV1Schema schema = DataplexUtils.toDataplexSchema(avroSchema, null);
+    schema.setUserManaged(true);
+    if (hasPartitions) {
+      schema
+          .setPartitionStyle(PartitionStyle.HIVE_COMPATIBLE.name())
+          .setPartitionFields(
+              options.getPartitioningScheme().getKeyNames().stream()
+                  .map(
+                      key ->
+                          new GoogleCloudDataplexV1SchemaPartitionField()
+                              .setName(key)
+                              // Dataplex supports only STRING partition keys for GCS files.
+                              .setType(FieldType.STRING.name()))
+                  .collect(Collectors.toList()));
+    }
+
+    GoogleCloudDataplexV1Entity outputEntity =
+        DataplexUtils.getEntityByDataPath(dataplex, options.getOutputAsset(), targetRootPath);
+    if (outputEntity == null) {
+      return createNewOutputEntity(dataplex, options, schema, targetRootPath);
+    }
+    // Reload the full entity once again as the listEntities API never returns entity schema.
+    GoogleCloudDataplexV1Entity richOutputEntity = loadEntity(dataplex, outputEntity.getName());
+    DataplexUtils.verifyEntityIsUserManaged(richOutputEntity);
+    return updateEntitySchema(dataplex, options, schema, richOutputEntity);
+  }
+
+  private static GoogleCloudDataplexV1Entity loadEntity(DataplexClient dataplex, String entityName)
+      throws IOException {
+    GoogleCloudDataplexV1Entity richEntity = dataplex.getEntity(entityName);
+    checkNotNull(richEntity, String.format("Could not load entity %s", entityName));
+    return richEntity;
+  }
+
+  private static GoogleCloudDataplexV1Entity createNewOutputEntity(
+      DataplexClient dataplex,
+      DataplexJdbcIngestionOptions options,
+      GoogleCloudDataplexV1Schema schema,
+      String targetRootPath)
+      throws IOException {
+
+    String assetName = options.getOutputAsset();
+    String zoneName = DataplexUtils.getZoneFromAsset(assetName);
+
+    GoogleCloudDataplexV1Entity entity =
+        DataplexUtils.createEntityWithUniqueId(
+            dataplex,
+            zoneName,
+            new GoogleCloudDataplexV1Entity()
+                .setId(options.getOutputTable())
+                .setAsset(DataplexUtils.getShortAssetNameFromAsset(assetName))
+                .setDataPath(targetRootPath)
+                .setType(EntityType.TABLE.name())
+                .setSystem(StorageSystem.CLOUD_STORAGE.name())
+                .setSchema(schema)
+                .setFormat(storageFormat(options)),
+            MAX_CREATE_ENTITY_ATTEMPTS);
+    if (entity.getName() == null || entity.getName().isEmpty()) {
+      throw new IOException("Dataplex returned an entity with no name: " + entity);
+    }
+    LOG.info(
+        "Created a new entity for data path {} in zone {}: {}",
+        targetRootPath,
+        zoneName,
+        entity.getName());
+    return entity;
+  }
+
+  private static GoogleCloudDataplexV1Entity updateEntitySchema(
+      DataplexClient dataplex,
+      DataplexJdbcIngestionOptions options,
+      GoogleCloudDataplexV1Schema schema,
+      GoogleCloudDataplexV1Entity richOutputEntity)
+      throws IOException {
+
+    GoogleCloudDataplexV1Entity entity =
+        richOutputEntity
+            .clone()
+            .setType(EntityType.TABLE.name())
+            .setSystem(StorageSystem.CLOUD_STORAGE.name())
+            .setSchema(schema)
+            .setFormat(storageFormat(options));
+
+    GoogleCloudDataplexV1Entity updatedEntity;
+    try {
+      updatedEntity = dataplex.updateEntity(entity);
+    } catch (IOException e) {
+      throw new IOException(String.format("Error updating entity: %s", entity.getName()), e);
+    }
+
+    LOG.info("Updated metadata for entity: {}", entity.getName());
+    return updatedEntity;
+  }
+
+  private static GoogleCloudDataplexV1StorageFormat storageFormat(
+      DataplexJdbcIngestionOptions options) {
+    // Snappy is the default compression for both ParquetIO and AvroIO,
+    // and we don't override it in this template.
+    return DataplexUtils.storageFormat(options.getFileFormat(), DataplexCompression.SNAPPY);
   }
 
   static DynamicDataSourceConfiguration configDataSource(DataplexJdbcIngestionOptions options) {

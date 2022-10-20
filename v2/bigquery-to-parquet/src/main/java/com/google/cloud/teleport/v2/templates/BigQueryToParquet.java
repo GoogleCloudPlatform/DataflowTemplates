@@ -22,6 +22,7 @@ import com.google.cloud.bigquery.storage.v1beta1.ReadOptions.TableReadOptions;
 import com.google.cloud.bigquery.storage.v1beta1.Storage.CreateReadSessionRequest;
 import com.google.cloud.bigquery.storage.v1beta1.Storage.ReadSession;
 import com.google.cloud.bigquery.storage.v1beta1.TableReferenceProto;
+import com.google.common.base.Strings;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -202,6 +203,15 @@ public class BigQueryToParquet {
     String getFields();
 
     void setFields(String fields);
+
+    @Description(
+        "Read only rows which match the specified filter, which must be a SQL expression "
+            + "compatible with Google standard SQL "
+            + "(https://cloud.google.com/bigquery/docs/reference/standard-sql). If no value is "
+            + "specified, then all rows are returned.")
+    String getRowRestriction();
+
+    void setRowRestriction(String restriction);
   }
 
   /**
@@ -271,6 +281,11 @@ public class BigQueryToParquet {
       List<String> selectedFields = Splitter.on(",").splitToList(options.getFields());
       readFromBQ =
           selectedFields.isEmpty() ? readFromBQ : readFromBQ.withSelectedFields(selectedFields);
+    }
+
+    // Add row restrictions/filter if any.
+    if (!Strings.isNullOrEmpty(options.getRowRestriction())) {
+      readFromBQ = readFromBQ.withRowRestriction(options.getRowRestriction());
     }
 
     /*

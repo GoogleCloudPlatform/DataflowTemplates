@@ -74,6 +74,18 @@ public class DataplexJdbcPartitionUtils {
       }
       return result.build();
     }
+
+    public List<String> getKeyNames() {
+      ImmutableList.Builder<String> result = ImmutableList.builder();
+      result.add("year");
+      for (PartitioningSchema schema : PartitioningSchema.values()) {
+        result.add(schema.label);
+        if (this == schema) {
+          break;
+        }
+      }
+      return result.build();
+    }
   }
 
   public static ZoneId getZoneId(Schema schema, String partitionColumnName) {

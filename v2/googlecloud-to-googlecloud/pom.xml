@@ -30,7 +30,6 @@
 
   <properties>
     <google-truth.version>1.0.1</google-truth.version>
-    <re2j.version>1.4</re2j.version>
     <kms.version>1.20.0</kms.version>
     <mockito.version>1.10.19</mockito.version>
     <mockito-core.version>3.0.0</mockito-core.version>
@@ -77,11 +76,8 @@
         </plugin>
     </plugins>
   </build>
+
   <dependencies>
-    <dependency>
-      <groupId>org.apache.beam</groupId>
-      <artifactId>beam-sdks-java-io-parquet</artifactId>
-    </dependency>
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-io-hadoop-common</artifactId>
@@ -95,26 +91,6 @@
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
       <version>${guava.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-client</artifactId>
-      <version>${hadoop.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>org.codehaus.jackson</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.slf4j</groupId>
-          <artifactId>slf4j-log4j12</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>com.google.re2j</groupId>
-      <artifactId>re2j</artifactId>
-      <version>${re2j.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.cloud</groupId>

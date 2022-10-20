@@ -76,8 +76,13 @@ public abstract class Column implements Serializable {
     if (notNull()) {
       appendable.append(" NOT NULL");
     }
-    if ((dialect() == Dialect.POSTGRESQL) && defaultExpression() != null) {
-      appendable.append(" DEFAULT ").append(defaultExpression());
+    if (defaultExpression() != null) {
+      appendable.append(" DEFAULT ");
+      if (dialect() == Dialect.POSTGRESQL) {
+        appendable.append(defaultExpression());
+      } else {
+        appendable.append(" (").append(defaultExpression()).append(")");
+      }
     }
     if (isGenerated()) {
       if (dialect() == Dialect.POSTGRESQL) {
@@ -156,6 +161,8 @@ public abstract class Column implements Serializable {
         return "numeric";
       case JSON:
         return "JSON";
+      case PG_JSONB:
+        return "jsonb";
       case ARRAY:
         {
           Type arrayType = type.getArrayElementType();
@@ -288,6 +295,10 @@ public abstract class Column implements Serializable {
       return type(Type.json());
     }
 
+    public Builder pgJsonb() {
+      return type(Type.pgJsonb());
+    }
+
     public Builder max() {
       return size(-1);
     }
@@ -400,6 +411,9 @@ public abstract class Column implements Serializable {
           }
           if (spannerType.equals("numeric")) {
             return t(Type.pgNumeric(), null);
+          }
+          if (spannerType.equals("jsonb")) {
+            return t(Type.pgJsonb(), null);
           }
           if (spannerType.equals("date")) {
             return t(Type.pgDate(), null);

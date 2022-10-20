@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package com.google.cloud.teleport.spanner;
+package com.google.cloud.teleport.spanner.proto;
 
-option java_package = "com.google.cloud.teleport.spanner";
+option java_package = "com.google.cloud.teleport.spanner.proto";
 option java_outer_classname = "TextImportProtos";
 
 import "export.proto";

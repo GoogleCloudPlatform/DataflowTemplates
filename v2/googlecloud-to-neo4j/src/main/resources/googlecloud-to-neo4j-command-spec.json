@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.neo4j.templates.GoogleCloudToNeo4j",
+  "classPath": "/template/googlecloud-to-neo4j/*:/template/googlecloud-to-neo4j/libs/*:/template/googlecloud-to-neo4j/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"googlecloud-to-neo4j\"}"
+  }
+}

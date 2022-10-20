@@ -60,6 +60,7 @@ public abstract class ChangeEventContext {
   protected void convertChangeEventToMutation(Ddl ddl)
       throws ChangeEventConvertorException, InvalidChangeEventException {
     ChangeEventConvertor.convertChangeEventColumnKeysToLowerCase(changeEvent);
+    ChangeEventConvertor.verifySpannerSchema(ddl, changeEvent);
     this.primaryKey = ChangeEventConvertor.changeEventToPrimaryKey(ddl, changeEvent);
     this.dataMutation = ChangeEventConvertor.changeEventToMutation(ddl, changeEvent);
     this.shadowTableMutation = generateShadowTableMutation(ddl);

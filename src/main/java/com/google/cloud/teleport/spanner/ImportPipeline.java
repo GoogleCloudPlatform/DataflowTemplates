@@ -151,6 +151,7 @@ public class ImportPipeline {
             options.getDDLCreationTimeoutInMinutes()));
 
     PipelineResult result = p.run();
+
     if (options.getWaitUntilFinish()
         &&
         /* Only if template location is null, there is a dataflow job to wait for. Else it's

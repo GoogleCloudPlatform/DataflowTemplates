@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.transforms;
 
 import com.google.cloud.teleport.v2.utils.DataplexJdbcPartitionUtils.PartitioningSchema;
 import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
-import com.google.cloud.teleport.v2.values.PartitionMetadata;
+import com.google.cloud.teleport.v2.values.DataplexPartitionMetadata;
 import com.google.common.collect.ImmutableList;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -69,7 +69,7 @@ public class GenericRecordsToGcsPartitionedTest {
 
     String tmpRootPath = temporaryFolder.getRoot().getAbsolutePath();
 
-    PCollection<PartitionMetadata> result =
+    PCollection<DataplexPartitionMetadata> result =
         mainPipeline
             .apply(
                 Create.<GenericRecord>of(record11, record12, record21)
@@ -85,11 +85,11 @@ public class GenericRecordsToGcsPartitionedTest {
 
     PAssert.that(result)
         .containsInAnyOrder(
-            PartitionMetadata.builder()
+            DataplexPartitionMetadata.builder()
                 .setLocation(tmpRootPath + "/year=2010/month=1")
                 .setValues(ImmutableList.of("2010", "1"))
                 .build(),
-            PartitionMetadata.builder()
+            DataplexPartitionMetadata.builder()
                 .setLocation(tmpRootPath + "/year=2010/month=2")
                 .setValues(ImmutableList.of("2010", "2"))
                 .build());
@@ -117,7 +117,7 @@ public class GenericRecordsToGcsPartitionedTest {
 
     String tmpRootPath = temporaryFolder.getRoot().getAbsolutePath();
 
-    PCollection<PartitionMetadata> result =
+    PCollection<DataplexPartitionMetadata> result =
         mainPipeline
             .apply(
                 Create.<GenericRecord>of(record11, record12, record21, record31)
@@ -133,15 +133,15 @@ public class GenericRecordsToGcsPartitionedTest {
 
     PAssert.that(result)
         .containsInAnyOrder(
-            PartitionMetadata.builder()
+            DataplexPartitionMetadata.builder()
                 .setLocation(tmpRootPath + "/year=2010/month=1/day=1")
                 .setValues(ImmutableList.of("2010", "1", "1"))
                 .build(),
-            PartitionMetadata.builder()
+            DataplexPartitionMetadata.builder()
                 .setLocation(tmpRootPath + "/year=2010/month=1/day=2")
                 .setValues(ImmutableList.of("2010", "1", "2"))
                 .build(),
-            PartitionMetadata.builder()
+            DataplexPartitionMetadata.builder()
                 .setLocation(tmpRootPath + "/year=2010/month=2/day=1")
                 .setValues(ImmutableList.of("2010", "2", "1"))
                 .build());
@@ -170,7 +170,7 @@ public class GenericRecordsToGcsPartitionedTest {
 
     String tmpRootPath = temporaryFolder.getRoot().getAbsolutePath();
 
-    PCollection<PartitionMetadata> result =
+    PCollection<DataplexPartitionMetadata> result =
         mainPipeline
             .apply(
                 Create.<GenericRecord>of(record11, record12, record21, record31)
@@ -186,15 +186,15 @@ public class GenericRecordsToGcsPartitionedTest {
 
     PAssert.that(result)
         .containsInAnyOrder(
-            PartitionMetadata.builder()
+            DataplexPartitionMetadata.builder()
                 .setLocation(tmpRootPath + "/year=2010/month=1/day=1/hour=1")
                 .setValues(ImmutableList.of("2010", "1", "1", "1"))
                 .build(),
-            PartitionMetadata.builder()
+            DataplexPartitionMetadata.builder()
                 .setLocation(tmpRootPath + "/year=2010/month=1/day=1/hour=2")
                 .setValues(ImmutableList.of("2010", "1", "1", "2"))
                 .build(),
-            PartitionMetadata.builder()
+            DataplexPartitionMetadata.builder()
                 .setLocation(tmpRootPath + "/year=2010/month=1/day=2/hour=1")
                 .setValues(ImmutableList.of("2010", "1", "2", "1"))
                 .build());

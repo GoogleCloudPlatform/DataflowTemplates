@@ -20,6 +20,7 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
+import com.google.cloud.teleport.v2.utils.GCSUtils;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.gson.JsonArray;
@@ -186,6 +187,7 @@ public class CsvConverters {
     void setInputFileSpec(String inputFileSpec);
 
     @Description("If file(s) contain headers")
+    @Default.Boolean(false)
     Boolean getContainsHeaders();
 
     void setContainsHeaders(Boolean containsHeaders);
@@ -230,6 +232,15 @@ public class CsvConverters {
     String getCsvFileEncoding();
 
     void setCsvFileEncoding(String csvFileEncoding);
+
+    @Description(
+        "Set to true to enable detailed error logging when CSV parsing fails. Note that this may"
+            + " expose sensitive data in the logs (e.g. if the CSV file contains passwords)."
+            + " Default: false.")
+    @Default.Boolean(false)
+    Boolean getLogDetailedCsvConversionErrors();
+
+    void setLogDetailedCsvConversionErrors(Boolean logDetailedCsvConversionErrors);
   }
 
   /**
@@ -307,9 +318,7 @@ public class CsvConverters {
       // If no udf then use json schema
       if (jsonSchemaPath() != null || jsonSchema() != null) {
         String schema =
-            jsonSchemaPath() != null
-                ? SchemaUtils.getGcsFileAsString(jsonSchemaPath())
-                : jsonSchema();
+            jsonSchemaPath() != null ? GCSUtils.getGcsFileAsString(jsonSchemaPath()) : jsonSchema();
 
         return lineFailsafeElements.apply(
             "LineToDocumentUsingSchema",
@@ -590,6 +599,7 @@ public class CsvConverters {
     private String serializedSchema;
     private final String delimiter;
     private Schema schema;
+    private boolean logDetailedCsvConversionErrors = false;
 
     public StringToGenericRecordFn(String schemaLocation, String delimiter) {
       withSchemaLocation(schemaLocation);
@@ -601,12 +611,18 @@ public class CsvConverters {
     }
 
     public StringToGenericRecordFn withSchemaLocation(String schemaLocation) {
-      this.serializedSchema = SchemaUtils.getGcsFileAsString(schemaLocation);
+      this.serializedSchema = GCSUtils.getGcsFileAsString(schemaLocation);
       return this;
     }
 
     public StringToGenericRecordFn withSerializedSchema(String serializedSchema) {
       this.serializedSchema = serializedSchema;
+      return this;
+    }
+
+    public StringToGenericRecordFn withLogDetailedCsvConversionErrors(
+        boolean logDetailedCsvConversionErrors) {
+      this.logDetailedCsvConversionErrors = logDetailedCsvConversionErrors;
       return this;
     }
 
@@ -680,12 +696,22 @@ public class CsvConverters {
             genericRecord.put(fieldName, Boolean.valueOf(data));
             break;
           default:
-            LOG.error(fieldType + " field type is not supported.");
+            LOG.error("{} field type is not supported.", fieldType);
             throw new IllegalArgumentException(fieldType + " field type is not supported.");
         }
       } catch (Exception e) {
-        LOG.error("Failed to convert Strings to Generic Record.");
-        throw new RuntimeException("Failed to convert Strings to Generic Record.");
+        if (logDetailedCsvConversionErrors) {
+          String msg =
+              String.format(
+                  "Failed to convert string '%s' to %s (field name = %s).",
+                  data, fieldType, fieldName);
+          LOG.error(msg, e);
+          throw new RuntimeException(msg, e);
+        } else {
+          String msg = String.format("Failed to convert field '%s'.", fieldName);
+          LOG.error(msg);
+          throw new RuntimeException(msg);
+        }
       }
     }
   }

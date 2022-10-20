@@ -39,11 +39,25 @@ abstract class FileShard {
 
   abstract OffsetRange getRange();
 
+  // Stores the number of records in the shard. Note: This field is relevant only to the text import
+  // template and hence gets populated correctly only for that case. In other places, it is
+  // populated with 0 and is not a valid value.
+  abstract Long getRecordCount();
+
   static FileShard create(String tableName, ReadableFile file, OffsetRange range) {
     Preconditions.checkNotNull(tableName);
     Preconditions.checkNotNull(file);
     Preconditions.checkNotNull(range);
-    return new AutoValue_FileShard(tableName, file, range);
+    return new AutoValue_FileShard(tableName, file, range, 0L);
+  }
+
+  static FileShard create(
+      String tableName, ReadableFile file, OffsetRange range, Long recordCount) {
+    Preconditions.checkNotNull(tableName);
+    Preconditions.checkNotNull(file);
+    Preconditions.checkNotNull(range);
+    Preconditions.checkNotNull(recordCount);
+    return new AutoValue_FileShard(tableName, file, range, recordCount);
   }
 
   @Override
@@ -72,6 +86,7 @@ abstract class FileShard {
       ReadableFileCoder.of().encode(value.getFile(), os);
       VarLongCoder.of().encode(value.getRange().getFrom(), os);
       VarLongCoder.of().encode(value.getRange().getTo(), os);
+      VarLongCoder.of().encode(value.getRecordCount(), os);
     }
 
     @Override
@@ -80,7 +95,8 @@ abstract class FileShard {
       ReadableFile file = ReadableFileCoder.of().decode(is);
       long from = VarLongCoder.of().decode(is);
       long to = VarLongCoder.of().decode(is);
-      return new AutoValue_FileShard(tableName, file, new OffsetRange(from, to));
+      long recordCount = VarLongCoder.of().decode(is);
+      return new AutoValue_FileShard(tableName, file, new OffsetRange(from, to), recordCount);
     }
   }
 }

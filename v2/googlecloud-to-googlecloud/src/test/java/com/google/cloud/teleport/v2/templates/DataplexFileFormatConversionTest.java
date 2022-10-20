@@ -15,7 +15,14 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Asset;
@@ -26,15 +33,21 @@ import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Schema;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1SchemaSchemaField;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1StorageFormat;
 import com.google.cloud.teleport.v2.clients.DataplexClient;
+import com.google.cloud.teleport.v2.templates.DataplexFileFormatConversion.EntityWithPartitions;
 import com.google.cloud.teleport.v2.templates.DataplexFileFormatConversion.FileFormatConversionOptions;
 import com.google.cloud.teleport.v2.templates.DataplexFileFormatConversion.InputFileFormat;
 import com.google.cloud.teleport.v2.transforms.AvroConverters;
 import com.google.cloud.teleport.v2.transforms.ParquetConverters;
+import com.google.cloud.teleport.v2.utils.DataplexUtils;
 import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
 import com.google.cloud.teleport.v2.utils.WriteDisposition.WriteDispositionOptions;
-import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
 import com.google.cloud.teleport.v2.values.DataplexCompression;
-import com.google.cloud.teleport.v2.values.EntityMetadata.StorageSystem;
+import com.google.cloud.teleport.v2.values.DataplexEnums;
+import com.google.cloud.teleport.v2.values.DataplexEnums.CompressionFormat;
+import com.google.cloud.teleport.v2.values.DataplexEnums.DataplexAssetResourceSpec;
+import com.google.cloud.teleport.v2.values.DataplexEnums.EntityType;
+import com.google.cloud.teleport.v2.values.DataplexEnums.StorageFormat;
+import com.google.cloud.teleport.v2.values.DataplexEnums.StorageSystem;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
 import java.io.File;
@@ -43,10 +56,12 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Parser;
 import org.apache.avro.generic.GenericData.Record;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.NeedsRunner;
 import org.apache.beam.sdk.testing.PAssert;
@@ -66,7 +81,8 @@ public class DataplexFileFormatConversionTest {
   private static final GoogleCloudDataplexV1Schema SCHEMA =
       new GoogleCloudDataplexV1Schema()
           .setFields(
-              ImmutableList.of(
+              // Don't use ImmutableList here as it can't be cloned.
+              Arrays.asList(
                   new GoogleCloudDataplexV1SchemaSchemaField()
                       .setName("Word")
                       .setType("STRING")
@@ -93,19 +109,19 @@ public class DataplexFileFormatConversionTest {
       new GoogleCloudDataplexV1Entity()
           .setName("projects/p1/locations/l1/lakes/l1/zones/z1/entities/e1")
           .setId("e1")
-          .setSystem(StorageSystem.CLOUD_STORAGE.name())
+          .setSystem(DataplexEnums.StorageSystem.CLOUD_STORAGE.name())
           .setFormat(new GoogleCloudDataplexV1StorageFormat().setFormat(InputFileFormat.CSV.name()))
           .setSchema(SCHEMA);
 
   private static final GoogleCloudDataplexV1Partition partition11 =
       new GoogleCloudDataplexV1Partition()
           .setName("projects/p1/locations/l1/lakes/l1/zones/z1/entities/e1/partitions/p11")
-          .setLocation(Resources.getResource(RESOURCES_DIR + "/entity1/partition11").getPath());
+          .setLocation(resourcePath("/entity1/partition11"));
 
   private static final GoogleCloudDataplexV1Partition partition12 =
       new GoogleCloudDataplexV1Partition()
           .setName("projects/p1/locations/l1/lakes/l1/zones/z1/entities/e1/partitions/p12")
-          .setLocation(Resources.getResource(RESOURCES_DIR + "/entity1/partition12").getPath());
+          .setLocation(resourcePath("/entity1/partition12"));
 
   private static final GoogleCloudDataplexV1Asset asset2 =
       new GoogleCloudDataplexV1Asset()
@@ -115,30 +131,30 @@ public class DataplexFileFormatConversionTest {
           .setName("projects/p1/locations/l1/lakes/l1/zones/z1/entities/e2")
           .setId("e2")
           .setAsset(asset2.getName())
-          .setSystem(StorageSystem.CLOUD_STORAGE.name())
+          .setSystem(DataplexEnums.StorageSystem.CLOUD_STORAGE.name())
           .setFormat(
               new GoogleCloudDataplexV1StorageFormat().setFormat(InputFileFormat.JSON.name()))
-          .setDataPath(Resources.getResource(RESOURCES_DIR + "/entity2").getPath())
+          .setDataPath(resourcePath("/entity2"))
           .setSchema(SCHEMA);
 
   private static final GoogleCloudDataplexV1Entity entity3 =
       new GoogleCloudDataplexV1Entity()
           .setName("projects/p1/locations/l1/lakes/l1/zones/z1/entities/e3")
           .setId("e3")
-          .setSystem(StorageSystem.CLOUD_STORAGE.name())
+          .setSystem(DataplexEnums.StorageSystem.CLOUD_STORAGE.name())
           .setFormat(
               new GoogleCloudDataplexV1StorageFormat().setFormat(InputFileFormat.AVRO.name()))
-          .setDataPath(Resources.getResource(RESOURCES_DIR + "/entity3").getPath())
+          .setDataPath(resourcePath("/entity3"))
           .setSchema(SCHEMA);
 
   private static final GoogleCloudDataplexV1Entity entity4 =
       new GoogleCloudDataplexV1Entity()
           .setName("projects/p1/locations/l1/lakes/l1/zones/z1/entities/e4")
           .setId("e4")
-          .setSystem(StorageSystem.CLOUD_STORAGE.name())
+          .setSystem(DataplexEnums.StorageSystem.CLOUD_STORAGE.name())
           .setFormat(
               new GoogleCloudDataplexV1StorageFormat().setFormat(InputFileFormat.PARQUET.name()))
-          .setDataPath(Resources.getResource(RESOURCES_DIR + "/entity4").getPath())
+          .setDataPath(resourcePath("/entity4"))
           .setSchema(SCHEMA);
 
   @Rule public final transient TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -163,7 +179,7 @@ public class DataplexFileFormatConversionTest {
   /** Tests CSV to Avro conversion for an entity with partitions. */
   @Test
   @Category(NeedsRunner.class)
-  public void testEntityWithPartitionsCsvToAvroE2E() throws IOException {
+  public void testE2E_entityWithPartitionsCsvToAvro() throws IOException {
     DataplexClient dataplex = mock(DataplexClient.class);
     when(dataplex.getEntities(ImmutableList.of(entity1.getName())))
         .thenReturn(ImmutableList.of(entity1));
@@ -196,7 +212,7 @@ public class DataplexFileFormatConversionTest {
   /** Tests JSON to Parquet conversion for an asset with entity using non-default compression. */
   @Test
   @Category(NeedsRunner.class)
-  public void testAssetWithEntityJsonToGzippedParquetE2E() throws IOException {
+  public void testE2E_assetWithEntityJsonToGzippedParquet() throws IOException {
     DataplexClient dataplex = mock(DataplexClient.class);
     when(dataplex.getCloudStorageEntities(asset2.getName())).thenReturn(ImmutableList.of(entity2));
     when(dataplex.getPartitions(entity2.getName())).thenReturn(ImmutableList.of());
@@ -228,7 +244,7 @@ public class DataplexFileFormatConversionTest {
   /** Tests Avro to Parquet conversion for an asset with entity. */
   @Test
   @Category(NeedsRunner.class)
-  public void testAssetWithEntityAvroToParquetE2E() throws IOException {
+  public void testE2E_assetWithEntityAvroToParquet() throws IOException {
     DataplexClient dataplex = mock(DataplexClient.class);
     when(dataplex.getEntities(ImmutableList.of(entity3.getName())))
         .thenReturn(ImmutableList.of(entity3));
@@ -260,7 +276,7 @@ public class DataplexFileFormatConversionTest {
   /** Tests Parquet to Avro conversion for an asset with entity. */
   @Test
   @Category(NeedsRunner.class)
-  public void testAssetWithEntityParquetToAvroE2E() throws IOException {
+  public void testE2E_assetWithEntityParquetToAvro() throws IOException {
     DataplexClient dataplex = mock(DataplexClient.class);
     when(dataplex.getEntities(ImmutableList.of(entity4.getName())))
         .thenReturn(ImmutableList.of(entity4));
@@ -295,7 +311,7 @@ public class DataplexFileFormatConversionTest {
    */
   @Test
   @Category(NeedsRunner.class)
-  public void testAssetWithEntityJsonToParquetSkipExistingFilesE2E() throws IOException {
+  public void testE2E_assetWithEntityJsonToParquetSkipExistingFiles() throws IOException {
     // setup Dataplex client to return entity 2
     DataplexClient dataplex = mock(DataplexClient.class);
     when(dataplex.getCloudStorageEntities(asset2.getName())).thenReturn(ImmutableList.of(entity2));
@@ -352,7 +368,7 @@ public class DataplexFileFormatConversionTest {
    */
   @Test(expected = RuntimeException.class)
   @Category(NeedsRunner.class)
-  public void testAssetWithEntityJsonToParquetFailOnExistingFilesE2E() throws IOException {
+  public void testE2E_assetWithEntityJsonToParquetFailOnExistingFiles() throws IOException {
     // setup Dataplex client to return entity 2
     DataplexClient dataplex = mock(DataplexClient.class);
     when(dataplex.getCloudStorageEntities(asset2.getName())).thenReturn(ImmutableList.of(entity2));
@@ -376,6 +392,236 @@ public class DataplexFileFormatConversionTest {
     DataplexFileFormatConversion.run(
             mainPipeline, options, dataplex, DataplexFileFormatConversionTest::outputPathProvider)
         .waitUntilFinish();
+  }
+
+  @Test
+  public void testE2E_metadataUpdatedIfParamEnabled() throws IOException {
+    FileFormatConversionOptions options =
+        PipelineOptionsFactory.create().as(FileFormatConversionOptions.class);
+    options.setUpdateDataplexMetadata(true);
+    options.setInputAssetOrEntitiesList(asset2.getName());
+    options.setOutputFileFormat(FileFormatOptions.PARQUET);
+    options.setOutputAsset(outputAsset.getName());
+
+    DataplexClient dataplex = mock(DataplexClient.class);
+    when(dataplex.getCloudStorageEntities(asset2.getName())).thenReturn(ImmutableList.of(entity2));
+    when(dataplex.getPartitions(entity2.getName())).thenReturn(ImmutableList.of());
+    when(dataplex.getAsset(outputAsset.getName())).thenReturn(outputAsset);
+    when(dataplex.listEntities(any(), any())).thenReturn(ImmutableList.of(entity2));
+    when(dataplex.createEntity(any(), any()))
+        .thenAnswer(
+            invocation -> {
+              GoogleCloudDataplexV1Entity entity = invocation.getArgument(1);
+              return entity.clone().setName("generated_name-" + entity.getId());
+            });
+
+    DataplexFileFormatConversion.run(
+            mainPipeline, options, dataplex, DataplexFileFormatConversionTest::outputPathProvider)
+        .waitUntilFinish();
+
+    String expectedZone = DataplexUtils.getZoneFromAsset(outputAsset.getName());
+    String expectedAsset = DataplexUtils.getShortAssetNameFromAsset(outputAsset.getName());
+    verify(dataplex, times(1))
+        .createEntity(
+            eq(expectedZone),
+            argThat(
+                e ->
+                    // Comparing the whole entity using equals() is too tricky (e.g. dataPath
+                    // will be under the temp directory). Check only the main fields:
+                    e.getId().equals(entity2.getId())
+                        && e.getAsset().equals(expectedAsset)
+                        && e.getSchema().equals(entity2.getSchema().clone().setUserManaged(true))));
+  }
+
+  @Test
+  public void testE2E_metadataNotUpdatedIfParamDisabled() throws IOException {
+    FileFormatConversionOptions options =
+        PipelineOptionsFactory.create().as(FileFormatConversionOptions.class);
+    options.setUpdateDataplexMetadata(false);
+    options.setInputAssetOrEntitiesList(asset2.getName());
+    options.setOutputFileFormat(FileFormatOptions.PARQUET);
+    options.setOutputAsset(outputAsset.getName());
+
+    DataplexClient dataplex = mock(DataplexClient.class);
+    when(dataplex.getCloudStorageEntities(asset2.getName())).thenReturn(ImmutableList.of(entity2));
+    when(dataplex.getPartitions(entity2.getName())).thenReturn(ImmutableList.of());
+    when(dataplex.getAsset(outputAsset.getName())).thenReturn(outputAsset);
+    when(dataplex.listEntities(any(), any())).thenReturn(ImmutableList.of(entity2));
+    when(dataplex.createEntity(any(), any()))
+        .thenAnswer(
+            invocation -> {
+              GoogleCloudDataplexV1Entity entity = invocation.getArgument(1);
+              return entity.clone().setName("generated_name-" + entity.getId());
+            });
+
+    DataplexFileFormatConversion.run(
+            mainPipeline, options, dataplex, DataplexFileFormatConversionTest::outputPathProvider)
+        .waitUntilFinish();
+
+    verify(dataplex, never()).updateEntity(any());
+    verify(dataplex, never()).createEntity(any(), any());
+    verify(dataplex, never()).createOrUpdatePartition(any(), any());
+  }
+
+  @Test
+  public void test_updateDataplexMetadata_createsEntitiesAndPartitions() throws IOException {
+    // Arrange
+
+    DataplexClient dataplex = mock(DataplexClient.class);
+    FileFormatConversionOptions options =
+        PipelineOptionsFactory.create().as(FileFormatConversionOptions.class);
+    options.setInputAssetOrEntitiesList(asset2.getName());
+    options.setOutputFileFormat(FileFormatOptions.PARQUET);
+    options.setOutputAsset(outputAsset.getName());
+    options.setWriteDisposition(WriteDispositionOptions.OVERWRITE);
+    options.setUpdateDataplexMetadata(true);
+
+    String outputZoneName = DataplexUtils.getZoneFromAsset(outputAsset.getName());
+    String shortOutputAssetName = DataplexUtils.getShortAssetNameFromAsset(outputAsset.getName());
+
+    // Scenario:
+    //   - Source entities 1, 2, 3 are being converted.
+    //   - Output entities corresponding to source entities 1 and 2 don't exist (should be created).
+    //   - Output entity corresponding to source entities 3 already exists (shouldn't be created,
+    // but should have the schema updated).
+    //   - Entity 1 is partitioned, 2 is unpartitioned.
+    //   - Output asset also contains entity "should_not_be_used", which shouldn't be used.
+    GoogleCloudDataplexV1Schema oldSchema =
+        new GoogleCloudDataplexV1Schema()
+            .setUserManaged(true)
+            .setFields(
+                Arrays.asList(
+                    dataplexField("ts", "TIMESTAMP", "NULLABLE"),
+                    dataplexField("s1", "STRING", "NULLABLE")));
+    GoogleCloudDataplexV1Schema newSchema =
+        new GoogleCloudDataplexV1Schema()
+            .setUserManaged(true)
+            .setFields(
+                Arrays.asList(
+                    dataplexField("ts", "TIMESTAMP", "NULLABLE"),
+                    dataplexField("s1", "STRING", "NULLABLE"),
+                    dataplexField("d1", "DATE", "NULLABLE")));
+    GoogleCloudDataplexV1Entity sourceEntity1 =
+        defaultDataplexEntity()
+            .setName("partitioned_table_entity")
+            .setId("partitioned_table")
+            .setDataPath("gs://source_bucket/partitioned_table")
+            .setSchema(newSchema.clone());
+    GoogleCloudDataplexV1Partition p1 =
+        dataplexPartition("20220101")
+            .setLocation("gs://source_bucket/partitioned_table/date=20220101");
+    GoogleCloudDataplexV1Partition p2 =
+        dataplexPartition("20220202")
+            .setLocation("gs://source_bucket/partitioned_table/date=20220202");
+    GoogleCloudDataplexV1Entity sourceEntity2 =
+        defaultDataplexEntity()
+            .setName("unpartitioned_table_entity")
+            .setId("unpartitioned_table")
+            .setDataPath("gs://source_bucket/unpartitioned_table")
+            .setSchema(newSchema.clone());
+    GoogleCloudDataplexV1Entity sourceEntity3 =
+        defaultDataplexEntity()
+            .setName("existing_table_entity")
+            .setId("existing_table")
+            .setDataPath("gs://source_bucket/existing_table")
+            .setSchema(newSchema.clone());
+    GoogleCloudDataplexV1Entity existingOutputEntity1 =
+        defaultDataplexEntity()
+            .setAsset(DataplexUtils.getShortAssetNameFromAsset(outputAsset.getName()))
+            .setName("existing_table_entity_5")
+            .setId("existing_table_5")
+            .setDataPath("gs://target_bucket/existing_table")
+            .setSchema(oldSchema.clone());
+    // This is an extra entity returned by Mock Dataplex with a different dataPath,
+    // to verify only entities with matching dataPath are picked up:
+    GoogleCloudDataplexV1Entity unusedEntity =
+        defaultDataplexEntity()
+            .setAsset(DataplexUtils.getShortAssetNameFromAsset(outputAsset.getName()))
+            .setName("should_not_be_used")
+            .setId("partitioned_table")
+            .setDataPath("gs://wrong_bucket/partitioned_table");
+    when(dataplex.listEntities(eq(DataplexUtils.getZoneFromAsset(asset2.getName())), any()))
+        .thenAnswer(
+            invocation -> {
+              String filter = invocation.getArgument(1);
+              if (filter.equals("asset=" + shortOutputAssetName)) {
+                // listEntities should return entities without schema,
+                // only getEntity returns entities with schemas.
+                return ImmutableList.of(
+                    existingOutputEntity1.clone().setSchema(null),
+                    unusedEntity.clone().setSchema(null));
+              } else {
+                return ImmutableList.of();
+              }
+            });
+    // Template should only load the existing entity to verify it's user-managed:
+    when(dataplex.getEntity("existing_table_entity_5"))
+        .thenReturn(existingOutputEntity1.clone().setEtag("etag123"));
+    when(dataplex.createEntity(any(), any()))
+        .thenAnswer(
+            invocation -> {
+              GoogleCloudDataplexV1Entity entity = invocation.getArgument(1);
+              return entity.clone().setName("generated_name-" + entity.getId());
+            });
+    when(dataplex.createOrUpdatePartition(any(), any()))
+        .thenAnswer(
+            invocation -> {
+              GoogleCloudDataplexV1Partition p = invocation.getArgument(1);
+              return p.clone().setName("generated_name-" + p.getValues());
+            });
+
+    // Act
+
+    DataplexFileFormatConversion.updateDataplexMetadata(
+        dataplex,
+        options,
+        Arrays.asList(
+            new EntityWithPartitions(sourceEntity1, Arrays.asList(p1, p2)),
+            new EntityWithPartitions(sourceEntity2),
+            new EntityWithPartitions(sourceEntity3)),
+        DataplexFileFormatConversionTest::gcsOutputPathProvider,
+        "target_bucket");
+
+    // Assert
+
+    GoogleCloudDataplexV1Entity expectedNewEntity1 =
+        defaultDataplexEntity()
+            .setAsset(shortOutputAssetName)
+            .setId("partitioned_table")
+            .setDataPath("gs://target_bucket/partitioned_table")
+            .setSchema(newSchema.clone());
+    GoogleCloudDataplexV1Partition expectedMergedPartition1 =
+        dataplexPartition("20220101")
+            .setLocation("gs://target_bucket/partitioned_table/date=20220101");
+    GoogleCloudDataplexV1Partition expectedMergedPartition2 =
+        dataplexPartition("20220202")
+            .setLocation("gs://target_bucket/partitioned_table/date=20220202");
+    GoogleCloudDataplexV1Entity expectedNewEntity2 =
+        defaultDataplexEntity()
+            .setAsset(shortOutputAssetName)
+            .setId("unpartitioned_table")
+            .setDataPath("gs://target_bucket/unpartitioned_table")
+            .setSchema(newSchema.clone());
+    GoogleCloudDataplexV1Entity expectedUpdatedEntity3 =
+        defaultDataplexEntity()
+            .setAsset(shortOutputAssetName)
+            .setId("existing_table_5") // Note that the existing id_5 should've been reused.
+            .setName("existing_table_entity_5")
+            .setDataPath("gs://target_bucket/existing_table")
+            .setSchema(newSchema.clone())
+            .setEtag("etag123"); // The latest etag must be provided on update.
+
+    verify(dataplex, times(1)).createEntity(outputZoneName, expectedNewEntity1);
+    verify(dataplex, times(1)).createEntity(outputZoneName, expectedNewEntity2);
+    verify(dataplex, times(1)).updateEntity(expectedUpdatedEntity3);
+    verify(dataplex, times(1))
+        .createOrUpdatePartition("generated_name-partitioned_table", expectedMergedPartition1);
+    verify(dataplex, times(1))
+        .createOrUpdatePartition("generated_name-partitioned_table", expectedMergedPartition2);
+    verify(dataplex, atLeastOnce()).listEntities(any(), any());
+    // Make sure no other entities were created or updated:
+    verify(dataplex, times(2)).createEntity(any(), any());
+    verify(dataplex, times(1)).updateEntity(any());
   }
 
   private void copyFileToOutputBucket(String sourceRelativePath, String destinationRelativePath)
@@ -417,5 +663,34 @@ public class DataplexFileFormatConversionTest {
       throw new RuntimeException(e);
     }
     return outputBucket + '/' + relativeInputPath;
+  }
+
+  private static String gcsOutputPathProvider(String inputPath, String outputBucket) {
+    return String.format("gs://%s/%s", outputBucket, GcsPath.fromUri(inputPath).getObject());
+  }
+
+  private static GoogleCloudDataplexV1Entity defaultDataplexEntity() {
+    return new GoogleCloudDataplexV1Entity()
+        .setAsset(DataplexUtils.getShortAssetNameFromAsset(asset2.getName()))
+        .setType(EntityType.TABLE.name())
+        .setSystem(StorageSystem.CLOUD_STORAGE.name())
+        .setSchema(new GoogleCloudDataplexV1Schema().setUserManaged(true))
+        .setFormat(
+            new GoogleCloudDataplexV1StorageFormat()
+                .setMimeType(StorageFormat.PARQUET.getMimeType())
+                .setCompressionFormat(CompressionFormat.COMPRESSION_FORMAT_UNSPECIFIED.name()));
+  }
+
+  private static GoogleCloudDataplexV1SchemaSchemaField dataplexField(
+      String name, String type, String mode) {
+    return new GoogleCloudDataplexV1SchemaSchemaField().setName(name).setType(type).setMode(mode);
+  }
+
+  private static GoogleCloudDataplexV1Partition dataplexPartition(String... value) {
+    return new GoogleCloudDataplexV1Partition().setValues(Arrays.asList(value));
+  }
+
+  private static String resourcePath(String relativePath) {
+    return Resources.getResource(RESOURCES_DIR + relativePath).getPath();
   }
 }

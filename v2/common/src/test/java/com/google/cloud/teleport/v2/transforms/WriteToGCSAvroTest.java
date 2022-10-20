@@ -15,10 +15,7 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-import org.apache.beam.sdk.coders.KvCoder;
-import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.testing.TestPipeline;
-import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.values.KV;
 import org.junit.Rule;
 import org.junit.Test;
@@ -55,19 +52,12 @@ public class WriteToGCSAvroTest {
     expectedException.expect(IllegalArgumentException.class);
     expectedException.expectMessage("withOutputDirectory(outputDirectory) called with null input.");
 
-    pipeline
-        .apply(
-            "CreateInput",
-            Create.of(message).withCoder(KvCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
-        .apply(
-            "WriteTextFile(s)",
-            WriteToGCSAvro.newBuilder()
-                .withOutputDirectory(null)
-                .withOutputFilenamePrefix(AVRO_FILENAME_PREFIX)
-                .setNumShards(NUM_SHARDS)
-                .withTempLocation(FAKE_TEMP_LOCATION)
-                .build());
-    pipeline.run();
+    WriteToGCSAvro.newBuilder()
+        .withOutputDirectory(null)
+        .withOutputFilenamePrefix(AVRO_FILENAME_PREFIX)
+        .setNumShards(NUM_SHARDS)
+        .withTempLocation(FAKE_TEMP_LOCATION)
+        .build();
   }
 
   /**
@@ -78,18 +68,11 @@ public class WriteToGCSAvroTest {
     expectedException.expect(IllegalArgumentException.class);
     expectedException.expectMessage("withTempLocation(tempLocation) called with null input. ");
 
-    pipeline
-        .apply(
-            "CreateInput",
-            Create.of(message).withCoder(KvCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of())))
-        .apply(
-            "WriteTextFile(s)",
-            WriteToGCSAvro.newBuilder()
-                .withOutputDirectory(FAKE_DIR)
-                .withOutputFilenamePrefix(AVRO_FILENAME_PREFIX)
-                .setNumShards(NUM_SHARDS)
-                .withTempLocation(null)
-                .build());
-    pipeline.run();
+    WriteToGCSAvro.newBuilder()
+        .withOutputDirectory(FAKE_DIR)
+        .withOutputFilenamePrefix(AVRO_FILENAME_PREFIX)
+        .setNumShards(NUM_SHARDS)
+        .withTempLocation(null)
+        .build();
   }
 }

@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.SpannerToBigQuery",
+  "classPath": "/template/spanner-to-bigquery/*:/template/spanner-to-bigquery/libs/*:/template/spanner-to-bigquery/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"spanner_to_bigquery\"}"
+  }
+}

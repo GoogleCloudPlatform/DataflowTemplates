@@ -27,6 +27,7 @@ import org.apache.beam.sdk.io.AvroSource;
 import org.apache.beam.sdk.io.BoundedSource;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Keys;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -76,7 +77,9 @@ class AvroTableFileAsMutations
             "Split into ranges",
             ParDo.of(
                     new SplitIntoRangesFn(
-                        SplitIntoRangesFn.DEFAULT_BUNDLE_SIZE, filenamesToTableNamesMapView))
+                        SplitIntoRangesFn.DEFAULT_BUNDLE_SIZE,
+                        filenamesToTableNamesMapView,
+                        ValueProvider.StaticValueProvider.of(false)))
                 .withSideInputs(filenamesToTableNamesMapView))
         .setCoder(FileShard.Coder.of())
         // PCollection<FileShard>

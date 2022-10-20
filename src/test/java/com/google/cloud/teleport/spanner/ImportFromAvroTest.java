@@ -21,10 +21,11 @@ import static org.junit.Assert.assertThat;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.ReadOnlyTransaction;
-import com.google.cloud.teleport.spanner.ExportProtos.ProtoDialect;
 import com.google.cloud.teleport.spanner.common.NumericUtils;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.InformationSchemaScanner;
+import com.google.cloud.teleport.spanner.proto.ExportProtos;
+import com.google.cloud.teleport.spanner.proto.ExportProtos.ProtoDialect;
 import com.google.protobuf.util.JsonFormat;
 import java.io.File;
 import java.nio.ByteBuffer;
@@ -909,6 +910,38 @@ public class ImportFromAvroTest {
                 .set("required_generated", 1L)
                 .build()),
         Dialect.POSTGRESQL);
+  }
+
+  @Test
+  public void defaultColumns() throws Exception {
+    SchemaBuilder.RecordBuilder<Schema> record = SchemaBuilder.record("defaultColumns");
+    SchemaBuilder.FieldAssembler<Schema> fieldAssembler = record.fields();
+
+    fieldAssembler
+        // Primary key.
+        .requiredLong("id")
+        // Integer columns.
+        .optionalLong("optional_default")
+        .requiredLong("required_default")
+        .optionalLong("optional_default_2");
+    Schema schema = fieldAssembler.endRecord();
+    String spannerSchema =
+        "CREATE TABLE `AvroTable` ("
+            + "`id`                                  INT64 NOT NULL,"
+            + "`optional_default`                    INT64 DEFAULT (1),"
+            + "`required_default`                    INT64 NOT NULL DEFAULT (2),"
+            + "`optional_default_2`                  INT64 DEFAULT (3),"
+            + ") PRIMARY KEY (`id`)";
+
+    runTest(
+        schema,
+        spannerSchema,
+        Arrays.asList(
+            new GenericRecordBuilder(schema)
+                .set("id", 1L)
+                .set("optional_default", 1L)
+                .set("required_default", 1L)
+                .build()));
   }
 
   @Test

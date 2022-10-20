@@ -15,9 +15,13 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_TABLE_NAME_KEY;
+import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_UUID_KEY;
+
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
@@ -27,12 +31,17 @@ import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertorExc
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceFactory;
 import com.google.cloud.teleport.v2.templates.datastream.InvalidChangeEventException;
+import com.google.cloud.teleport.v2.templates.session.NameAndCols;
+import com.google.cloud.teleport.v2.templates.session.Session;
+import com.google.cloud.teleport.v2.templates.session.SyntheticPKey;
 import com.google.cloud.teleport.v2.templates.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Preconditions;
 import java.io.PrintWriter;
 import java.io.Serializable;
 import java.io.StringWriter;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.metrics.Counter;
@@ -64,6 +73,8 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   private static final Logger LOG = LoggerFactory.getLogger(SpannerTransactionWriterDoFn.class);
 
   private final PCollectionView<Ddl> ddlView;
+
+  private final Session session;
 
   private final SpannerConfig spannerConfig;
 
@@ -100,11 +111,13 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   SpannerTransactionWriterDoFn(
       SpannerConfig spannerConfig,
       PCollectionView<Ddl> ddlView,
+      Session session,
       String shadowTablePrefix,
       String sourceType) {
     Preconditions.checkNotNull(spannerConfig);
     this.spannerConfig = spannerConfig;
     this.ddlView = ddlView;
+    this.session = session;
     this.shadowTablePrefix =
         (shadowTablePrefix.endsWith("_")) ? shadowTablePrefix : shadowTablePrefix + "_";
     this.sourceType = sourceType;
@@ -137,7 +150,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
      */
     try {
       JsonNode changeEvent = mapper.readTree(msg.getPayload());
-
+      changeEvent = transformChangeEvent(changeEvent, session);
       ChangeEventContext changeEventContext =
           ChangeEventContextFactory.createChangeEventContext(
               changeEvent, ddl, shadowTablePrefix, sourceType);
@@ -199,6 +212,32 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       outputWithErrorTag(c, msg, e, SpannerTransactionWriter.PERMANENT_ERROR_TAG);
       failedEvents.inc();
     }
+  }
+
+  JsonNode transformChangeEvent(JsonNode changeEvent, Session session) {
+    String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
+    if (!session.isEmpty()) {
+      NameAndCols nameAndCols = session.getToSpanner().get(tableName);
+      String spTableName = nameAndCols.getName();
+      HashMap<String, String> cols = nameAndCols.getCols();
+
+      // Convert the table name to corresponding Spanner table name.
+      ((ObjectNode) changeEvent).put(EVENT_TABLE_NAME_KEY, spTableName);
+      // Convert the column names to corresponding Spanner column names.
+      for (Map.Entry<String, String> col : cols.entrySet()) {
+        String srcCol = col.getKey(), spCol = col.getValue();
+        if (!srcCol.equals(spCol)) {
+          ((ObjectNode) changeEvent).set(spCol, changeEvent.get(srcCol));
+          ((ObjectNode) changeEvent).remove(srcCol);
+        }
+      }
+      HashMap<String, SyntheticPKey> synthPks = session.getSyntheticPks();
+      if (synthPks.containsKey(spTableName)) {
+        ((ObjectNode) changeEvent)
+            .put(synthPks.get(spTableName).getCol(), changeEvent.get(EVENT_UUID_KEY).asText());
+      }
+    }
+    return changeEvent;
   }
 
   void outputWithErrorTag(

@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.options;
 
+import com.google.cloud.teleport.v2.elasticsearch.utils.BulkInsertMethod.BulkInsertMethodOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -73,4 +74,76 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
   Long getMaxRetryDuration();
 
   void setMaxRetryDuration(Long maxRetryDuration);
+
+  @Description(
+      "A property in the document being indexed whose value will specify _index metadata to be included with document in bulk request (takes precendence over an index UDF)")
+  String getPropertyAsIndex();
+
+  void setPropertyAsIndex(String propertyAsIndex);
+
+  @Description(
+      "GCS path to JavaScript UDF source for function that will specify _index metadata to be included with document in bulk request")
+  String getJavaScriptIndexFnGcsPath();
+
+  void setJavaScriptIndexFnGcsPath(String javaScriptTextTransformGcsPath);
+
+  @Description(
+      "UDF JavaScript Function Name for function that will specify _index metadata to be included with document in bulk request")
+  String getJavaScriptIndexFnName();
+
+  void setJavaScriptIndexFnName(String javaScriptTextTransformFunctionName);
+
+  @Description(
+      "A property in the document being indexed whose value will specify _id metadata to be included with document in bulk request (takes precendence over an id UDF)")
+  String getPropertyAsId();
+
+  void setPropertyAsId(String propertyAsId);
+
+  @Description(
+      "GCS path to JavaScript UDF source for function that will specify _id metadata to be included with document in bulk request")
+  String getJavaScriptIdFnGcsPath();
+
+  void setJavaScriptIdFnGcsPath(String javaScriptTextTransformGcsPath);
+
+  @Description(
+      "UDF JavaScript Function Name for function that will specify _id metadata to be included with document in bulk request")
+  String getJavaScriptIdFnName();
+
+  void setJavaScriptIdFnName(String javaScriptTextTransformFunctionName);
+
+  @Description(
+      "GCS path to JavaScript UDF source for function that will specify _type metadata to be included with document in bulk request")
+  String getJavaScriptTypeFnGcsPath();
+
+  void setJavaScriptTypeFnGcsPath(String javaScriptTextTransformGcsPath);
+
+  @Description(
+      "UDF JavaScript Function Name for function that will specify _type metadata to be included with document in bulk request")
+  String getJavaScriptTypeFnName();
+
+  void setJavaScriptTypeFnName(String javaScriptTextTransformFunctionName);
+
+  @Description(
+      "GCS path to JavaScript UDF source for function that will determine if document should be deleted rather than inserted or updated, function should return string value \"true\" or \"false\"")
+  String getJavaScriptIsDeleteFnGcsPath();
+
+  void setJavaScriptIsDeleteFnGcsPath(String javaScriptTextTransformGcsPath);
+
+  @Description(
+      "UDF JavaScript Function Name for function that will determine if document should be deleted rather than inserted or updated, function should return string value \"true\" or \"false\"")
+  String getJavaScriptIsDeleteFnName();
+
+  void setJavaScriptIsDeleteFnName(String javaScriptTextTransformFunctionName);
+
+  @Description("Whether to use partial updates (update type) with Elasticsearch requests")
+  Boolean getUsePartialUpdate();
+
+  void setUsePartialUpdate(Boolean usePartialUpdate);
+
+  @Description(
+      "Whether to use INDEX (index, supports upsert) or CREATE (create, errors on duplicate _id) in bulk requests")
+  @Default.Enum("CREATE")
+  BulkInsertMethodOptions getBulkInsertMethod();
+
+  void setBulkInsertMethod(BulkInsertMethodOptions bulkInsertMethod);
 }

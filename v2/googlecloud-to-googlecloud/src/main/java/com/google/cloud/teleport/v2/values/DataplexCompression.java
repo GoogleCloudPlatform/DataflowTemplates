@@ -15,13 +15,14 @@
  */
 package com.google.cloud.teleport.v2.values;
 
+import com.google.cloud.teleport.v2.values.DataplexEnums.CompressionFormat;
 import java.util.zip.Deflater;
 import org.apache.avro.file.CodecFactory;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
 /** Compression types supported by Dataplex mapped to Avro/Parquet codecs. */
 public enum DataplexCompression {
-  UNCOMPRESSED("COMPRESSION_FORMAT_UNSPECIFIED") {
+  UNCOMPRESSED(CompressionFormat.COMPRESSION_FORMAT_UNSPECIFIED) {
     @Override
     public CodecFactory getAvroCodec() {
       return CodecFactory.nullCodec();
@@ -33,7 +34,7 @@ public enum DataplexCompression {
     }
   },
   // TODO: Update Dataplex compression name once Snappy is supported.
-  SNAPPY("COMPRESSION_FORMAT_UNSPECIFIED" /* Not supported yet */) {
+  SNAPPY(CompressionFormat.COMPRESSION_FORMAT_UNSPECIFIED /* Not supported yet */) {
     @Override
     public CodecFactory getAvroCodec() {
       return CodecFactory.snappyCodec();
@@ -44,7 +45,7 @@ public enum DataplexCompression {
       return CompressionCodecName.SNAPPY;
     }
   },
-  GZIP("GZIP") {
+  GZIP(CompressionFormat.GZIP) {
     @Override
     public CodecFactory getAvroCodec() {
       return CodecFactory.deflateCodec(Deflater.DEFAULT_COMPRESSION);
@@ -55,7 +56,7 @@ public enum DataplexCompression {
       return CompressionCodecName.UNCOMPRESSED;
     }
   },
-  BZIP2("BZIP2") {
+  BZIP2(CompressionFormat.BZIP2) {
     @Override
     public CodecFactory getAvroCodec() {
       return CodecFactory.bzip2Codec();
@@ -73,8 +74,8 @@ public enum DataplexCompression {
 
   public abstract CompressionCodecName getParquetCodec();
 
-  DataplexCompression(String dataplexCompressionName) {
-    this.dataplexCompressionName = dataplexCompressionName;
+  DataplexCompression(CompressionFormat dataplexCompressionFormat) {
+    this.dataplexCompressionName = dataplexCompressionFormat.name();
   }
 
   public String getDataplexCompressionName() {

@@ -21,6 +21,7 @@ import com.google.cloud.spanner.PartitionOptions;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.common.annotations.VisibleForTesting;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -110,12 +111,10 @@ class BuildReadFromTableOperations
             }));
   }
 
-  private String createColumnExpression(Column col) {
+  @VisibleForTesting
+  String createColumnExpression(Column col) {
     switch (col.dialect()) {
       case GOOGLE_STANDARD_SQL:
-        if (col.typeString().equals("NUMERIC")) {
-          return "CAST(" + "t.`" + col.name() + "`" + " AS STRING) AS " + col.name();
-        }
         if (col.typeString().equals("JSON")) {
           return "TO_JSON_STRING(" + "t.`" + col.name() + "`" + ") AS " + col.name();
         }
@@ -137,6 +136,9 @@ class BuildReadFromTableOperations
         }
         return "t.`" + col.name() + "`";
       case POSTGRESQL:
+        if (col.typeString().equals("jsonb")) {
+          return "CAST(" + "t.\"" + col.name() + "\"" + " AS VARCHAR) AS " + col.name();
+        }
         return "t.\"" + col.name() + "\"";
       default:
         throw new IllegalArgumentException(

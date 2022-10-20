@@ -19,29 +19,37 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Asset;
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Entity;
+import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Schema;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryOptions;
 import com.google.cloud.bigquery.DatasetId;
 import com.google.cloud.bigquery.storage.v1beta1.BigQueryStorageClient;
 import com.google.cloud.teleport.v2.clients.DataplexClient;
+import com.google.cloud.teleport.v2.clients.DataplexClientFactory;
 import com.google.cloud.teleport.v2.clients.DefaultDataplexClient;
 import com.google.cloud.teleport.v2.options.DataplexBigQueryToGcsOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryTableToGcsTransform;
+import com.google.cloud.teleport.v2.transforms.DataplexBigQueryToGcsUpdateMetadata;
 import com.google.cloud.teleport.v2.transforms.DeleteBigQueryDataFn;
 import com.google.cloud.teleport.v2.transforms.DeleteBigQueryDataFn.BigQueryClientFactory;
 import com.google.cloud.teleport.v2.transforms.NoopTransform;
-import com.google.cloud.teleport.v2.transforms.UpdateDataplexBigQueryToGcsExportMetadataTransform;
 import com.google.cloud.teleport.v2.utils.BigQueryMetadataLoader;
+import com.google.cloud.teleport.v2.utils.BigQueryToGcsDirectoryNaming;
 import com.google.cloud.teleport.v2.utils.BigQueryUtils;
 import com.google.cloud.teleport.v2.utils.DataplexBigQueryToGcsFilter;
-import com.google.cloud.teleport.v2.utils.StorageUtils;
+import com.google.cloud.teleport.v2.utils.DataplexUtils;
+import com.google.cloud.teleport.v2.utils.GCSUtils;
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
-import com.google.cloud.teleport.v2.values.DataplexAssetResourceSpec;
+import com.google.cloud.teleport.v2.values.DataplexEnums.DataplexAssetResourceSpec;
+import com.google.cloud.teleport.v2.values.DataplexEnums.EntityType;
+import com.google.cloud.teleport.v2.values.DataplexEnums.StorageSystem;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryServices;
@@ -76,7 +84,9 @@ import org.slf4j.LoggerFactory;
  * README</a> for further information.
  */
 public class DataplexBigQueryToGcs {
+
   private static final Logger LOG = LoggerFactory.getLogger(DataplexBigQueryToGcs.class);
+  private static final int MAX_CREATE_ENTITY_ATTEMPTS = 10;
 
   /**
    * Main entry point for pipeline execution.
@@ -146,8 +156,7 @@ public class DataplexBigQueryToGcs {
 
     BigQueryMetadataLoader metadataLoader =
         new BigQueryMetadataLoader(bqClient, bqsClient, maxParallelBigQueryRequests);
-
-    return buildPipeline(options, metadataLoader, targetRootPath, datasetId);
+    return buildPipeline(options, metadataLoader, dataplex, targetRootPath, datasetId);
   }
 
   /**
@@ -160,12 +169,13 @@ public class DataplexBigQueryToGcs {
   static Pipeline buildPipeline(
       DataplexBigQueryToGcsOptions options,
       BigQueryMetadataLoader metadataLoader,
+      DataplexClient dataplex,
       String targetRootPath,
       DatasetId datasetId)
-      throws ExecutionException, InterruptedException {
+      throws ExecutionException, InterruptedException, IOException {
 
     Pipeline pipeline = Pipeline.create(options);
-    List<String> existingTargetFiles = StorageUtils.getFilesInDirectory(targetRootPath);
+    List<String> existingTargetFiles = GCSUtils.getFilesInDirectory(targetRootPath);
 
     LOG.info("Loading BigQuery metadata...");
     List<BigQueryTable> tables =
@@ -173,8 +183,15 @@ public class DataplexBigQueryToGcs {
             datasetId, new DataplexBigQueryToGcsFilter(options, existingTargetFiles));
     LOG.info("Loaded {} table(s).", tables.size());
 
+    if (options.getUpdateDataplexMetadata()) {
+      LOG.info("Loading Dataplex metadata...");
+      tables = loadDataplexMetadata(options, dataplex, tables, targetRootPath);
+      LOG.info("Loaded Dataplex metadata.");
+    }
+
     if (!tables.isEmpty()) {
-      transformPipeline(pipeline, tables, options, targetRootPath, null, null);
+      DataplexClientFactory dcf = DataplexClientFactory.defaultFactory(options.getGcpCredential());
+      transformPipeline(pipeline, tables, options, targetRootPath, dcf, null, null);
     } else {
       pipeline.apply("Nothing to export", new NoopTransform());
     }
@@ -183,11 +200,103 @@ public class DataplexBigQueryToGcs {
   }
 
   @VisibleForTesting
+  static List<BigQueryTable> loadDataplexMetadata(
+      DataplexBigQueryToGcsOptions options,
+      DataplexClient dataplex,
+      List<BigQueryTable> tables,
+      String targetRootPath)
+      throws IOException {
+
+    LOG.info("Checking existing Dataplex metadata...");
+
+    String assetName = options.getDestinationStorageBucketAssetName();
+
+    Map<String, GoogleCloudDataplexV1Entity> dataPathToEntity =
+        DataplexUtils.getDataPathToEntityMappingForAsset(
+            dataplex, assetName, DataplexUtils.GCS_PATH_ONLY_FILTER);
+
+    BigQueryToGcsDirectoryNaming directoryNaming =
+        new BigQueryToGcsDirectoryNaming(options.getEnforceSamePartitionKey());
+    List<BigQueryTable> enrichedTables = new ArrayList<>(tables.size());
+
+    for (BigQueryTable table : tables) {
+      String targetPath =
+          String.format(
+              "%s/%s", targetRootPath, directoryNaming.getTableDirectory(table.getTableName()));
+      GoogleCloudDataplexV1Entity entity = dataPathToEntity.get(targetPath);
+      if (entity != null) {
+        verifyEntityIsUserManaged(entity, dataplex);
+      } else {
+        entity = createNewEntity(options, dataplex, table, assetName, targetPath, directoryNaming);
+      }
+      enrichedTables.add(table.toBuilder().setDataplexEntityName(entity.getName()).build());
+    }
+
+    return enrichedTables;
+  }
+
+  private static void verifyEntityIsUserManaged(
+      GoogleCloudDataplexV1Entity entity, DataplexClient dataplex) throws IOException {
+    // We have to reload each existing entity 1 by 1 to check the userManaged flag
+    // because the listEntities API call never returns schemas, only getEntity call does.
+    GoogleCloudDataplexV1Entity richEntity = dataplex.getEntity(entity.getName());
+    checkNotNull(richEntity, String.format("Could not load entity %s", entity.getName()));
+    DataplexUtils.verifyEntityIsUserManaged(richEntity);
+  }
+
+  private static GoogleCloudDataplexV1Entity createNewEntity(
+      DataplexBigQueryToGcsOptions options,
+      DataplexClient dataplex,
+      BigQueryTable table,
+      String assetName,
+      String targetPath,
+      BigQueryToGcsDirectoryNaming directoryNaming)
+      throws IOException {
+
+    // Must generate a full schema here. Creating an empty schema with only userManaged = true
+    // won't work, as Dataplex won't allow incompatible schema updates later, e.g. updating the
+    // partitioning column in the schema results in the following error: "The number of the
+    // partition fields 1 is inconsistent with the current count 0".
+    GoogleCloudDataplexV1Schema schema =
+        DataplexUtils.toDataplexSchema(table.getSchema(), table.getPartitioningColumn());
+    DataplexUtils.applyHiveStyle(schema, table, directoryNaming);
+    schema.setUserManaged(true);
+
+    String zoneName = DataplexUtils.getZoneFromAsset(assetName);
+
+    GoogleCloudDataplexV1Entity entity =
+        DataplexUtils.createEntityWithUniqueId(
+            dataplex,
+            zoneName,
+            new GoogleCloudDataplexV1Entity()
+                .setId(table.getTableName())
+                .setAsset(DataplexUtils.getShortAssetNameFromAsset(assetName))
+                .setDataPath(targetPath)
+                .setType(EntityType.TABLE.name())
+                .setSystem(StorageSystem.CLOUD_STORAGE.name())
+                .setSchema(schema)
+                .setFormat(
+                    DataplexUtils.storageFormat(
+                        options.getFileFormat(), options.getFileCompression())),
+            MAX_CREATE_ENTITY_ATTEMPTS);
+    if (entity.getName() == null || entity.getName().isEmpty()) {
+      throw new IOException("Dataplex returned an entity with no name: " + entity);
+    }
+    LOG.info(
+        "Created a new entity for data path {} in zone {}: {}",
+        targetPath,
+        zoneName,
+        entity.getName());
+    return entity;
+  }
+
+  @VisibleForTesting
   static void transformPipeline(
       Pipeline pipeline,
       List<BigQueryTable> tables,
       DataplexBigQueryToGcsOptions options,
       String targetRootPath,
+      DataplexClientFactory dataplexClientFactory,
       BigQueryServices testBqServices,
       BigQueryClientFactory testBqClientFactory) {
 
@@ -216,7 +325,12 @@ public class DataplexBigQueryToGcs {
 
     PCollection<Void> metadataUpdateResults =
         exportFileResults.apply(
-            "UpdateDataplexMetadata", new UpdateDataplexBigQueryToGcsExportMetadataTransform());
+            "UpdateDataplexMetadata",
+            new DataplexBigQueryToGcsUpdateMetadata(
+                options.getFileFormat(),
+                options.getFileCompression(),
+                dataplexClientFactory,
+                options.getEnforceSamePartitionKey()));
 
     exportFileResults
         .apply(

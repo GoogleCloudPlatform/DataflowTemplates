@@ -47,8 +47,8 @@ import java.util.List;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.Transaction;
 import org.apache.beam.sdk.options.Default;
@@ -176,16 +176,16 @@ public class SpannerConverters {
       return new AutoValue_SpannerConverters_ExportTransform.Builder();
     }
 
-    private SpannerAccessor spannerAccessor;
+    private LocalSpannerAccessor spannerAccessor;
     private DatabaseClient databaseClient;
 
-    // SpannerAccessor is not serialiazable, thus can't be passed as a mock so we need to pass
+    // LocalSpannerAccessor is not serialiazable, thus can't be passed as a mock so we need to pass
     // mocked database client directly instead. We can't generate stub of ExportTransform because
     // AutoValue generates a final class.
-    // TODO make SpannerAccessor serializable
+    // TODO make LocalSpannerAccessor serializable
     DatabaseClient getDatabaseClient(SpannerConfig spannerConfig) {
       if (databaseClient == null) {
-        this.spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
+        this.spannerAccessor = LocalSpannerAccessor.getOrCreate(spannerConfig);
         return this.spannerAccessor.getDatabaseClient();
       } else {
         return this.databaseClient;
@@ -508,11 +508,11 @@ public class SpannerConverters {
       this.spannerSnapshotTime = spannerSnapshotTime;
     }
 
-    private transient SpannerAccessor spannerAccessor;
+    private transient LocalSpannerAccessor spannerAccessor;
 
     @DoFn.Setup
     public void setup() throws Exception {
-      spannerAccessor = SpannerAccessor.getOrCreate(config);
+      spannerAccessor = LocalSpannerAccessor.getOrCreate(config);
     }
 
     @Teardown
