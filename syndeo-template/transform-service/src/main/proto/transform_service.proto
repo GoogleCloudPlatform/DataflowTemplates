@@ -1,0 +1,89 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto3";
+
+package com.google.cloud.syndeo.service.v1;
+
+import "org/apache/beam/model/pipeline/v1/beam_runner_api.proto";
+import "org/apache/beam/model/pipeline/v1/schema.proto";
+
+option java_package = "com.google.cloud.syndeo.service.v1";
+option java_outer_classname = "SyndeoServiceV1";
+
+message ListTransformRequest {}
+
+message TransformSpec {
+  string urn = 1;
+  org.apache.beam.model.pipeline.v1.Schema config_schema = 2;
+  repeated string expected_inputs = 3;
+  // TODO: We could consider listing outputs as well, but this may depend
+  // on the configuration.
+  // Note that sinks may have outputs too (e.g. files written, errors).
+  // This is fine as we may want to do dead letter patterns and such.
+  // Sources have zero inputs, but we should decide if we want a hard line
+  // between sinks and non-sink transforms.
+}
+
+message ConfiguredTransform {
+  string urn = 1;
+  org.apache.beam.model.pipeline.v1.Schema config_schema = 2;
+  bytes config_values = 3;
+}
+
+message TransformInput {
+  org.apache.beam.model.pipeline.v1.Schema schema = 1; // TODO: Is this even needed? Possibly it could be used to avoid re-computation.
+  string producer_id = 2;
+  string producer_output = 3;
+}
+
+message AppliedTransform {
+  ConfiguredTransform transform = 1;
+  map<string, TransformInput> inputs = 2;
+}
+
+message ListTransformResponse {
+  repeated TransformSpec transform_specs = 1;
+}
+
+message ValidateTransformRequest {
+  //  AppliedTransform tranform = 1;
+  ConfiguredTransform transform = 1;
+  map<string, org.apache.beam.model.pipeline.v1.Schema> inputs = 2;
+}
+
+message ValidateTransformResponse {
+  string error = 1;
+  map<string, org.apache.beam.model.pipeline.v1.Schema> outputs = 2;
+}
+
+message RunPipelineRequest {
+  map<string, AppliedTransform> transforms = 1;
+  repeated string pipeline_options = 2;
+}
+
+message RunPipelineResponse {
+  string error = 1;
+  string handle = 2;
+}
+
+service TransformService {
+  rpc ListTransforms (ListTransformRequest) returns (ListTransformResponse);
+  rpc ValidateTransform (ValidateTransformRequest) returns (ValidateTransformResponse);
+  rpc RunPipeline (RunPipelineRequest) returns (RunPipelineResponse);
+}
