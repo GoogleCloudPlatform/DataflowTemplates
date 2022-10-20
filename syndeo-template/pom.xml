@@ -129,12 +129,12 @@
                 <configuration>
                     <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}
                     </protocArtifact>
-<!--                    <writeDescriptorSet>true</writeDescriptorSet>-->
-<!--                    <includeDependenciesInDescriptorSet>true</includeDependenciesInDescriptorSet>-->
-<!--                    <descriptorSetFileName>schema.pb</descriptorSetFileName>-->
-<!--                    &lt;!&ndash; This path must be unique, or else it may delete existing files. &ndash;&gt;-->
-<!--                    <descriptorSetOutputDirectory>${basedir}/target/generated-test-sources/protobuf/schema-->
-<!--                    </descriptorSetOutputDirectory>-->
+                    <writeDescriptorSet>true</writeDescriptorSet>
+                    <includeDependenciesInDescriptorSet>true</includeDependenciesInDescriptorSet>
+                    <descriptorSetFileName>schema.pb</descriptorSetFileName>
+                    <!-- This path must be unique, or else it may delete existing files. -->
+                    <descriptorSetOutputDirectory>${basedir}/target/generated-test-sources/protobuf/schema
+                    </descriptorSetOutputDirectory>
                 </configuration>
                 <executions>
                     <execution>
