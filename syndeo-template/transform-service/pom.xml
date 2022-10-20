@@ -30,6 +30,7 @@
         <bigquery.version>2.9.0</bigquery.version>
         <commons.version>1.8</commons.version>
         <commons-text.version>1.9</commons-text.version>
+        <grpc.version>1.50.0</grpc.version>
         <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
         <java.version>11</java.version>
         <maven-compiler-plugin.version>3.6.2</maven-compiler-plugin.version>
@@ -52,21 +53,42 @@
     </dependencyManagement>
 
     <dependencies>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>2.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-jdk14</artifactId>
+            <version>2.0.0</version>
+            <scope>runtime</scope>
+        </dependency>
+
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-netty-shaded</artifactId>
-            <version>1.50.1</version>
+            <version>${grpc.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-protobuf</artifactId>
-            <version>1.50.1</version>
+            <version>${grpc.version}</version>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
+            <artifactId>grpc-services</artifactId>
+    <!--            TODO(pabloem): How come 1.50.0 is giving us trouble?-->
+            <version>1.49.2</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.grpc</groupId>
             <artifactId>grpc-stub</artifactId>
-            <version>1.50.1</version>
+            <version>${grpc.version}</version>
         </dependency>
         <dependency> <!-- necessary for Java 9+ -->
             <groupId>org.apache.tomcat</groupId>
@@ -223,9 +245,6 @@
                             <version>1.8</version>
                             <style>GOOGLE</style>
                         </googleJavaFormat>
-                        <licenseHeader>
-                            <file>JAVA_LICENSE_HEADER</file>
-                        </licenseHeader>
                     </java>
                 </configuration>
                 <!-- Bind to verify. -->
