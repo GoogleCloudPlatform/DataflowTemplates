@@ -28,7 +28,7 @@ const (
 	ClassicRoot       = "."
 	FlexRoot          = "v2"
 	SyndeoRoot        = "syndeo-template"
-	SyndeoServiceRoot = "syndeo-template/transform-service"
+	SyndeoServiceRoot = "transform-service"
 	ItRoot            = "it"
 )
 
@@ -49,7 +49,7 @@ func GetModulesForPaths(paths []string) map[string][]string {
 	it := fmt.Sprintf("it%s", string(os.PathSeparator))
 	v2 := fmt.Sprintf("v2%s", string(os.PathSeparator))
 	syndeo := fmt.Sprintf("syndeo-template%s", string(os.PathSeparator))
-	syndeo_service := fmt.Sprintf("syndeo-template%stransform-service%s", string(os.PathSeparator), string(os.PathSeparator))
+	syndeo_service := fmt.Sprintf("transform-service%s", string(os.PathSeparator))
 
 	for _, path := range paths {
 		if strings.HasPrefix(path, v2) {

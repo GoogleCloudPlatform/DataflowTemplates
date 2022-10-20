@@ -141,5 +141,6 @@
     <module>v1</module>
     <module>v2</module>
     <module>syndeo-template</module>
+    <module>transform-service</module>
   </modules>
 </project>
