@@ -23,16 +23,22 @@ transforms. Then, the template will take the pipeline spec, and
 To apply spotless formatting rules to the Syndeo template code, run the following command:
 
 ```shell
-mvn -B spotless:apply compile -f  unified-templates.xml -pl syndeo-template/pom.xml
+mvn -B spotless:apply compile -f pom.xml -pl syndeo-template/pom.xml
 ```
 
 ### Run tests (unit and integration tests)
+
+Note that syndeo depends of the teleport integration testing framework, so make sure to install that locally:
+
+```
+mvn install -DskipTests
+```
 
 To **run unit tests** for the Syndeo template, run the following command. Note that this command knows to skip
 integration tests and only runs unit tests:
 
 ```shell
-mvn clean package test -f unified-templates.xml -pl syndeo-template/pom.xml
+mvn clean package test -f pom.xml -pl syndeo-template/pom.xml
 ```
 
 To set up your Google Cloud project for the integration tests, the following steps assume you have installed and setup [gcloud](https://cloud.google.com/sdk/gcloud).
@@ -83,7 +89,7 @@ The below command tests the workflow by publishing some data to BQ and checking 
 
 
 ```shell
-mvn clean package test -f unified-templates.xml -pl syndeo-template/pom.xml  \
+mvn clean package test -f pom.xml -pl syndeo-template/pom.xml  \
     -Dtest="BigTableWriteIT#testBigQueryToBigTableSmallNonTemplateJob"  \
     -Dproject="$(gcloud config get-value project)"  -DartifactBucket="gs://$ARTIFACT_BUCKET"  \
     -Dregion="us-central1" -DtempLocation=gs://$TEMP_LOCATION_BUCKET
