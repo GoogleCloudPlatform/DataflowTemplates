@@ -25,10 +25,11 @@ import (
 
 const (
 	// Roots in relation to the root directory of the repository.
-	ClassicRoot = "."
-	FlexRoot    = "v2"
-	SyndeoRoot  = "syndeo-template"
-	ItRoot      = "it"
+	ClassicRoot       = "."
+	FlexRoot          = "v2"
+	SyndeoRoot        = "syndeo-template"
+	SyndeoServiceRoot = "syndeo-template/transform-service"
+	ItRoot            = "it"
 )
 
 // Gets all the unique modules for files whose path from the root directory is in `paths`. Example paths:
@@ -48,6 +49,7 @@ func GetModulesForPaths(paths []string) map[string][]string {
 	it := fmt.Sprintf("it%s", string(os.PathSeparator))
 	v2 := fmt.Sprintf("v2%s", string(os.PathSeparator))
 	syndeo := fmt.Sprintf("syndeo-template%s", string(os.PathSeparator))
+	syndeo_service := fmt.Sprintf("syndeo-template%stransform-service%s", string(os.PathSeparator), string(os.PathSeparator))
 
 	for _, path := range paths {
 		if strings.HasPrefix(path, v2) {
@@ -56,6 +58,8 @@ func GetModulesForPaths(paths []string) map[string][]string {
 			m[ItRoot] = make([]string, 0)
 		} else if strings.HasPrefix(path, syndeo) {
 			m[SyndeoRoot] = make([]string, 0)
+		} else if strings.HasPrefix(path, syndeo_service) {
+			m[SyndeoServiceRoot] = make([]string, 0)
 		} else {
 			// TODO(zhoufek): Make this more granular, especially separating .github and cicd code
 			// into separate "modules"
