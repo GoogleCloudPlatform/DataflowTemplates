@@ -36,7 +36,7 @@
         <dependency>
             <groupId>com.google.cloud.teleport.v2</groupId>
             <artifactId>common</artifactId>
-            <version>${pom.version}</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>

@@ -78,17 +78,17 @@
     <dependency>
       <groupId>com.google.cloud.dataflow.cdc</groupId>
       <artifactId>cdc-common</artifactId>
-      <version>${pom.version}</version>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.cloud.dataflow.cdc</groupId>
       <artifactId>cdc-embedded-connector</artifactId>
-      <version>${pom.version}</version>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.cloud.dataflow.cdc</groupId>
       <artifactId>cdc-change-applier</artifactId>
-      <version>${pom.version}</version>
+      <version>${project.version}</version>
     </dependency>
   </dependencies>
 </project>
