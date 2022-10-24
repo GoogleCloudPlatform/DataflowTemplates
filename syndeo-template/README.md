@@ -90,7 +90,7 @@ The below command tests the workflow by publishing some data to BQ and checking 
 
 ```shell
 mvn clean package test -f pom.xml -pl syndeo-template/pom.xml  \
-    -Dtest="BigTableWriteIT#testBigQueryToBigTableSmallNonTemplateJob"  \
+    -Dtests="BigTableWriteIT#testBigQueryToBigTableSmallNonTemplateJob"  \
     -Dproject="$(gcloud config get-value project)"  -DartifactBucket="gs://$ARTIFACT_BUCKET"  \
     -Dregion="us-central1" -DtempLocation=gs://$TEMP_LOCATION_BUCKET
 ```
@@ -103,6 +103,8 @@ The following command will take the already-built artifacts and push them to GCS
 syndeo, which involves repeated runs and so on).
 
 ```shell
+mvn package -DskipTests -f pom.xml -pl syndeo-template/pom.xml
+
 # Push Template to GCP:
 gcloud dataflow flex-template build gs://$GCS_BUCKET_NAME/syndeo-template.json  \
     --metadata-file syndeo-template/metadata.json   --sdk-language "JAVA"  \
