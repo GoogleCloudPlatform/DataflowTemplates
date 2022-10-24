@@ -31,7 +31,7 @@ mvn -B spotless:apply compile -f pom.xml -pl syndeo-template/pom.xml
 Note that syndeo depends of the teleport integration testing framework, so make sure to install that locally:
 
 ```
-mvn install -DskipTests
+mvn install -DskipTests -f pom.xml -pl .,it/pom.xml
 ```
 
 To **run unit tests** for the Syndeo template, run the following command. Note that this command knows to skip
