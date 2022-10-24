@@ -137,6 +137,8 @@ public class SchemaIOTransformProviderWrapper implements SchemaTransformProvider
             throw new InvalidConfigurationException(
                 "Unexpected input transform: SchemaIO read's should not have an input.");
           }
+          // If the transform does not have a schema as part of its configuration, then
+          // the transform itself will infer the schema and automatically return it.
           if (schemaIO.schema() == null) {
             return PCollectionRowTuple.of(
                 "output", input.getPipeline().apply(schemaIO.buildReader()));
@@ -165,8 +167,18 @@ public class SchemaIOTransformProviderWrapper implements SchemaTransformProvider
         public PCollectionRowTuple expand(PCollectionRowTuple inputs) {
           PCollection<Row> input = inputs.get("input");
           // Verify that the input schema matches what we expect.
+          // And error a proper error otherwise.
           Preconditions.checkArgument(
-              schemaIO.schema() == null || schemaIO.schema().equals(input.getSchema()));
+              schemaIO.schema() == null || input.getSchema().equals(schemaIO.schema()),
+              "Input collection schema does not match expected schema (input: %s fields, expected: %s fields)",
+              input.getSchema().getFields().stream()
+                  .map(f -> f.getName())
+                  .collect(Collectors.toList()),
+              schemaIO.schema() == null
+                  ? "null"
+                  : schemaIO.schema().getFields().stream()
+                      .map(f -> f.getName())
+                      .collect(Collectors.toList()));
           input.apply(schemaIO.buildWriter());
           return PCollectionRowTuple.empty(input.getPipeline());
         }
