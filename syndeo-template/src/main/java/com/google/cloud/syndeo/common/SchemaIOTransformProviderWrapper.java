@@ -80,7 +80,7 @@ public class SchemaIOTransformProviderWrapper implements SchemaTransformProvider
   public Schema configurationSchema() {
     // Turn the schema and location into actual configuration fields.
     Schema.Builder builder = Schema.builder();
-    builder.addStringField("location");
+    builder.addNullableField("location", Schema.FieldType.STRING);
     builder.addNullableField("schema", Schema.FieldType.logicalType(new SchemaLogicalType()));
     for (Field field : provider.configurationSchema().getFields()) {
       builder.addField(field);
@@ -134,9 +134,14 @@ public class SchemaIOTransformProviderWrapper implements SchemaTransformProvider
             throw new InvalidConfigurationException(
                 "Unexpected input transform: SchemaIO read's should not have an input.");
           }
-          return PCollectionRowTuple.of(
-              "output",
-              input.getPipeline().apply(schemaIO.buildReader()).setRowSchema(schemaIO.schema()));
+          if (schemaIO.schema() == null) {
+            return PCollectionRowTuple.of(
+                "output", input.getPipeline().apply(schemaIO.buildReader()));
+          } else {
+            return PCollectionRowTuple.of(
+                "output",
+                input.getPipeline().apply(schemaIO.buildReader()).setRowSchema(schemaIO.schema()));
+          }
         }
       };
     }

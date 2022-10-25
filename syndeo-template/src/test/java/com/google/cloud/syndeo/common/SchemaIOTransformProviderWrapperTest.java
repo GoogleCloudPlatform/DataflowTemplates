@@ -13,16 +13,17 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package common;
+package com.google.cloud.syndeo.common;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import com.google.auto.service.AutoService;
-import com.google.cloud.syndeo.common.SchemaIOTransformProviderWrapper;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.RowCoder;
 import org.apache.beam.sdk.coders.VarIntCoder;
@@ -104,18 +105,22 @@ public class SchemaIOTransformProviderWrapperTest {
   }
 
   @Test
-  public void testGetAll() throws Exception {
+  public void testGetAll() {
     List<SchemaTransformProvider> providers = SchemaIOTransformProviderWrapper.getAll();
-    assertEquals(
-        1,
+    assertArrayEquals(
+        Collections.singletonList("schemaIO:fake:v1:read").toArray(),
         providers.stream()
             .filter((provider) -> provider.identifier().equals("schemaIO:fake:v1:read"))
-            .count());
-    assertEquals(
-        1,
+            .map((provider) -> provider.identifier())
+            .collect(Collectors.toSet())
+            .toArray());
+    assertArrayEquals(
+        Collections.singletonList("schemaIO:fake:v1:write").toArray(),
         providers.stream()
             .filter((provider) -> provider.identifier().equals("schemaIO:fake:v1:write"))
-            .count());
+            .map((provider) -> provider.identifier())
+            .collect(Collectors.toSet())
+            .toArray());
   }
 
   @AutoService(SchemaIOProvider.class)

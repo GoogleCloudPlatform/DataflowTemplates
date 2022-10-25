@@ -38,7 +38,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
-import org.apache.beam.vendor.grpc.v1p43p2.com.google.common.io.CharStreams;
+import org.apache.beam.vendor.grpc.v1p48p1.com.google.common.io.CharStreams;
 
 public class SyndeoTemplate {
 
@@ -53,10 +53,14 @@ public class SyndeoTemplate {
   public static void main(String[] args) {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     FileSystems.setDefaultPipelineOptions(options);
-    PipelineDescription pipeline = readFromFile(options.getPipelineSpec());
+    PipelineDescription pipelineDescription = readFromFile(options.getPipelineSpec());
+    run(options, pipelineDescription);
+  }
+
+  public static void run(PipelineOptions options, PipelineDescription pipelineDescription) {
     // Read proto as configuration.
     List<TransformSpec> specs = new ArrayList<>();
-    for (ConfiguredSchemaTransform inst : pipeline.getTransformsList()) {
+    for (ConfiguredSchemaTransform inst : pipelineDescription.getTransformsList()) {
       specs.add(new TransformSpec(inst));
     }
 
