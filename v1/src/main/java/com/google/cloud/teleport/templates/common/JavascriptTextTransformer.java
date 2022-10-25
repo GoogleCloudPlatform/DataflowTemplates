@@ -42,6 +42,8 @@ import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.MatchResult.Metadata;
 import org.apache.beam.sdk.io.fs.MatchResult.Status;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
@@ -312,6 +314,12 @@ public abstract class JavascriptTextTransformer {
       return new AutoValue_JavascriptTextTransformer_FailsafeJavascriptUdf.Builder<>();
     }
 
+    private Counter successCounter =
+        Metrics.counter(FailsafeJavascriptUdf.class, "udf-transform-success-count");
+
+    private Counter failedCounter =
+        Metrics.counter(FailsafeJavascriptUdf.class, "udf-transform-failed-count");
+
     /** Builder for {@link FailsafeJavascriptUdf}. */
     @AutoValue.Builder
     public abstract static class Builder<T> {
@@ -362,6 +370,7 @@ public abstract class JavascriptTextTransformer {
                         if (!Strings.isNullOrEmpty(payloadStr)) {
                           context.output(
                               FailsafeElement.of(element.getOriginalPayload(), payloadStr));
+                          successCounter.inc();
                         }
 
                       } catch (ScriptException | IOException | NoSuchMethodException e) {
@@ -378,13 +387,25 @@ public abstract class JavascriptTextTransformer {
                             FailsafeElement.of(element)
                                 .setErrorMessage(e.getMessage())
                                 .setStacktrace(Throwables.getStackTraceAsString(e)));
+                        failedCounter.inc();
 
-                      } catch (Exception e) {
+                      } catch (Throwable e) {
+                        // Throwable caught because UDFS can trigger Errors (e.g., StackOverflow)
+                        if (loggingEnabled) {
+                          LOG.warn(
+                              "Unexpected error occurred while applying UDF '{}' from file path '{}' due"
+                                  + " to '{}'",
+                              functionName().get(),
+                              fileSystemPath().get(),
+                              e.getMessage());
+                        }
+
                         context.output(
                             failureTag(),
                             FailsafeElement.of(element)
                                 .setErrorMessage(e.getMessage())
                                 .setStacktrace(Throwables.getStackTraceAsString(e)));
+                        failedCounter.inc();
                       }
                     }
                   })

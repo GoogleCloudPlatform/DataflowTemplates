@@ -23,4 +23,5 @@ function transform(inJson) {
   return "OH NO";
 }
 
+// Not a valid JSON to be parsed
 JSON.parse("{a}");

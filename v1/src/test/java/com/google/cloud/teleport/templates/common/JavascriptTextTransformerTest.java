@@ -21,6 +21,8 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
@@ -48,7 +50,6 @@ import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
-import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -96,7 +97,7 @@ public class JavascriptTextTransformerTest {
     javascriptRuntime.getInvocable();
   }
 
-  /** Test @{link JavscriptRuntime#getInvocable} throws ScriptException if error in script. */
+  /** Test {@link JavascriptRuntime#getInvocable} throws ScriptException if error in script. */
   @Test
   public void testInvokeScriptException() throws Exception {
     JavascriptRuntime javascriptRuntime =
@@ -105,7 +106,8 @@ public class JavascriptTextTransformerTest {
             .setFunctionName("transform")
             .build();
     thrown.expect(ScriptException.class);
-    String data = javascriptRuntime.invoke("{\"answerToLife\": 42}");
+    thrown.expectMessage("Invalid JSON");
+    javascriptRuntime.invoke("{\"answerToLife\": 42}");
   }
 
   /**
@@ -120,7 +122,7 @@ public class JavascriptTextTransformerTest {
             .setFunctionName("transform")
             .build();
     String data = javascriptRuntime.invoke("{\"answerToLife\": 42}");
-    Assert.assertEquals("{\"answerToLife\":42,\"someProp\":\"someValue\"}", data);
+    assertEquals("{\"answerToLife\":42,\"someProp\":\"someValue\"}", data);
   }
 
   /**
@@ -135,7 +137,7 @@ public class JavascriptTextTransformerTest {
             .setFunctionName("transformWithFilter")
             .build();
     String data = javascriptRuntime.invoke("{\"answerToLife\": 43}");
-    Assert.assertNull(data);
+    assertNull(data);
   }
 
   /**
