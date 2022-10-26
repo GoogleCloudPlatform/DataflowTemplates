@@ -78,10 +78,11 @@ public class SyndeoTemplate {
     } else {
       pipeline = buildFromJsonPayload(options.getJsonSpecPayload());
     }
-    run(options, pipeline);
+    return run(options, pipeline);
   }
 
-  public static void run(PipelineOptions options, PipelineDescription pipelineDescription) {
+  public static PipelineResult run(
+      PipelineOptions options, PipelineDescription pipelineDescription) {
     // Read proto as configuration.
     List<TransformSpec> specs = new ArrayList<>();
     for (ConfiguredSchemaTransform inst : pipelineDescription.getTransformsList()) {
