@@ -87,8 +87,8 @@ jobs:
           java-version: '11'
           distribution: 'adopt'
       - name: Build with Maven
-        run: mvn install -DskipTests
+        run: mvn install -f pom.xml -pl .,it,syndeo-template,v1 -DskipTests
       - name: Run integration tests with Maven
-        run: mvn test -Dproject=cloud-teleport-testing -Dregion=us-central1 -DartifactBucket=gs://cloud-teleport-testing-df-staging/${github.job}/artifacts -DtempLocation=gs://cloud-teleport-testing-df-staging/${github.job}/temp
+        run: mvn test -f pom.xml -pl syndeo-template -Dproject=cloud-teleport-testing -Dregion=us-central1 -DartifactBucket=gs://cloud-teleport-testing-df-staging/${{ github.job }}/artifacts -DtempLocation=gs://cloud-teleport-testing-df-staging/${{ github.job }}/temp
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
