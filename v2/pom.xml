@@ -185,6 +185,18 @@
             <artifactId>integration-testing-lib</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-simple</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <!-- Structured logging in Google Cloud Format -->
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>structured-logging</artifactId>
+            <version>${project.version}</version>
         </dependency>
 
 
@@ -214,11 +226,6 @@
             <groupId>com.google.re2j</groupId>
             <artifactId>re2j</artifactId>
             <version>${re2j.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-            <version>${slf4j.version}</version>
         </dependency>
         <dependency>
             <groupId>org.json</groupId>
