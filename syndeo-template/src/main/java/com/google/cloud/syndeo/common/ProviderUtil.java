@@ -42,10 +42,14 @@ public class ProviderUtil {
         StreamSupport.stream(provider.spliterator(), false).collect(Collectors.toList());
     list.addAll(SchemaIOTransformProviderWrapper.getAll());
 
+    ServiceLoader<SchemaTransformProvider> providers =
+        ServiceLoader.load(SchemaTransformProvider.class);
     Map<String, SchemaTransformProvider> map = new HashMap<>();
     for (SchemaTransformProvider p : list) {
       map.put(p.identifier(), p);
     }
+
+    providers.forEach(prov -> map.put(prov.identifier(), prov));
 
     return map;
   }

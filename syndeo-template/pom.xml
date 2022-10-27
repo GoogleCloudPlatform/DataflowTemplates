@@ -26,19 +26,20 @@
     <properties>
         <auto-value.version>1.9</auto-value.version>
         <avro.version>1.8.2</avro.version>
-        <beam.version>2.42.0</beam.version>
+        <beam.version>2.43.0-SNAPSHOT</beam.version>
         <bigtable.version>1.15.0</bigtable.version>
         <bigquery.version>2.9.0</bigquery.version>
         <commons.version>1.8</commons.version>
         <commons-text.version>1.9</commons-text.version>
         <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
         <java.version>11</java.version>
+        <kafka.version>2.4.1</kafka.version>
         <maven-compiler-plugin.version>3.6.2</maven-compiler-plugin.version>
         <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
         <protobuf.version>3.21.5</protobuf.version>
         <truth.version>1.0.1</truth.version>
-        <truth-proto-extension.version>1.0.1</truth-proto-extension.version>
         <secretmanager.version>2.1.2</secretmanager.version>
+        <slf4j.version>1.7.25</slf4j.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -58,6 +59,22 @@
                 </dependency>
         </dependencies>
     </dependencyManagement>
+    <!-- TODO(pabloem): Remove the following section before full support.
+    Leave it in for development-->
+    <profiles>
+      <profile>
+        <id>oss-build</id>
+        <activation>
+          <activeByDefault>true</activeByDefault>
+        </activation>
+        <repositories>
+          <repository>
+            <id>apache.snapshots</id>
+            <url>https://repository.apache.org/content/repositories/snapshots</url>
+          </repository>
+        </repositories>
+     </profile>
+   </profiles>
 
     <dependencies>
         <dependency>
@@ -67,6 +84,16 @@
         <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-sdks-java-io-kafka</artifactId>
+            <version>${beam.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>${kafka.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>
@@ -136,8 +163,6 @@
             <scope>test</scope>
         </dependency>
 
-
-
         <!-- Test dependencies -->
         <dependency>
             <groupId>com.google.truth</groupId>
@@ -163,7 +188,12 @@
             <version>3.7.7</version>
             <scope>test</scope>
         </dependency>
-
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>kafka</artifactId>
+            <version>1.17.3</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

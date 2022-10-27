@@ -69,14 +69,20 @@ public class SchemaIOTransformProviderWrapperTest {
         new SchemaIOTransformProviderWrapper(fakeProvider, true);
 
     Schema schema = Schema.of(Field.of("a", FieldType.STRING), Field.of("b", FieldType.STRING));
-    Row config = Row.withSchema(wrapper.configurationSchema()).addValues("loc", schema, 3).build();
+    Row config;
+    if (fakeProvider.requiresDataSchema()) {
+      config = Row.withSchema(wrapper.configurationSchema()).addValues(3, schema).build();
+    } else {
+      config = Row.withSchema(wrapper.configurationSchema()).addValues(3).build();
+    }
 
     assertTrue(wrapper.outputCollectionNames().size() == 1);
     PCollection<Row> read =
         PCollectionRowTuple.empty(p)
             .apply(wrapper.from(config).buildTransform())
             .get(wrapper.outputCollectionNames().get(0));
-    Row expected = Row.withSchema(schema).addValues("loc3", "loc3").build();
+    // null3 as we have 3 elements, and location is null
+    Row expected = Row.withSchema(schema).addValues("null3", "null3").build();
     PAssert.that(read).containsInAnyOrder(expected, expected, expected);
     p.run().waitUntilFinish();
   }
@@ -89,10 +95,16 @@ public class SchemaIOTransformProviderWrapperTest {
         new SchemaIOTransformProviderWrapper(fakeProvider, false);
 
     Schema schema = Schema.of(Field.of("a", FieldType.STRING), Field.of("b", FieldType.STRING));
-    Row config = Row.withSchema(wrapper.configurationSchema()).addValues("loc", schema, 3).build();
+    Row config;
+    if (fakeProvider.requiresDataSchema()) {
+      config = Row.withSchema(wrapper.configurationSchema()).addValues(3, schema).build();
+    } else {
+      config = Row.withSchema(wrapper.configurationSchema()).addValues(3).build();
+    }
 
     assertTrue(wrapper.inputCollectionNames().size() == 1);
-    Row inputRow = Row.withSchema(schema).addValues("loc3", "loc3").build();
+    // null3 as we have 3 elements, and location is null
+    Row inputRow = Row.withSchema(schema).addValues("null3", "null3").build();
     PCollection<Row> toWrite =
         p.apply(
             Create.of(inputRow, inputRow, inputRow)
