@@ -28,6 +28,9 @@ on:
       - '.github/actions/setup-env/*'
       - '.github/workflows/java-pr.yml'
 
+env:
+  MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
+
 permissions: read-all
 
 jobs:
