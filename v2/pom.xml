@@ -29,6 +29,7 @@
     <description>
         Cloud Teleport Classic is a collection of Apache Beam pipelines for common tasks, like data movement
         across databases or batch transforms on random datasets. They are released as Dataflow Classic Templates.
+
     </description>
 
     <packaging>pom</packaging>
