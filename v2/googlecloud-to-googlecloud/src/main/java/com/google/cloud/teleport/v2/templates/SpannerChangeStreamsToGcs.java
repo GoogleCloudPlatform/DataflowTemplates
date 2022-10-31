@@ -117,15 +117,21 @@ public class SpannerChangeStreamsToGcs {
             : options.getSpannerMetadataTableName();
 
     final RpcPriority rpcPriority = options.getRpcPriority();
+    SpannerConfig spannerConfig = SpannerConfig.create()
+        .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
+        .withProjectId(projectId)
+        .withInstanceId(instanceId)
+        .withDatabaseId(databaseId);
+    // Propagate database role for fine-grained access control on change stream.
+    if (options.getSpannerDatabaseRole() != null){
+      LOG.info("Setting database role on SpannerConfig: " + options.getSpannerDatabaseRole());
+      spannerConfig = spannerConfig.withDatabaseRole(options.getSpannerDatabaseRole());
+    }
+    LOG.info("Created SpannerConfig: " + spannerConfig);
     pipeline
         .apply(
             SpannerIO.readChangeStream()
-                .withSpannerConfig(
-                    SpannerConfig.create()
-                        .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
-                        .withProjectId(projectId)
-                        .withInstanceId(instanceId)
-                        .withDatabaseId(databaseId))
+                .withSpannerConfig(spannerConfig)
                 .withMetadataInstance(metadataInstanceId)
                 .withMetadataDatabase(metadataDatabaseId)
                 .withChangeStreamName(changeStreamName)

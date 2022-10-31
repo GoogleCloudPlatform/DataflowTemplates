@@ -104,6 +104,17 @@ public interface SpannerChangeStreamsToGcsOptions
 
   void setSpannerChangeStreamName(String spannerChangeStreamName);
 
+  @Description(
+      "Database role user assumes while reading from the change stream. The database role should"
+          + " have required privileges to read from change stream. If a database role is not"
+          + " specified, the user should have required IAM permissions to read from the database.")
+  String getSpannerDatabaseRole();
+
+  void setSpannerDatabaseRole(String spannerDatabaseRole);
+
+  @Description(
+      "The starting DateTime to use for reading change streams"
+          + " (https://tools.ietf.org/html/rfc3339). Defaults to now.")
   @TemplateParameter.DateTime(
       order = 8,
       optional = true,

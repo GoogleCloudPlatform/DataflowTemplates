@@ -179,6 +179,10 @@ public final class SpannerChangeStreamsToBigQuery {
             .withInstanceId(options.getSpannerInstanceId())
             .withDatabaseId(options.getSpannerDatabase())
             .withRpcPriority(options.getRpcPriority());
+    // Propagate database role for fine-grained access control on change stream.
+    if (options.getSpannerDatabaseRole() != null){
+      spannerConfig = spannerConfig.withDatabaseRole(options.getSpannerDatabaseRole());
+    }
 
     SpannerIO.ReadChangeStream readChangeStream =
         SpannerIO.readChangeStream()
