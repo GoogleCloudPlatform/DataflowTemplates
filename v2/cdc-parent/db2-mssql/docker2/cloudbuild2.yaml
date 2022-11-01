@@ -1,10 +1,10 @@
 steps:
   # Build the container image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/mlops-abed31/db2testing/db2testimage', '.']
+    args: ['build', '-t', 'gcr.io/mlops-abed31/db2testing/db2testimage2', '.']
   # Push the container image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/mlops-abed31/db2testing/db2testimage']
+    args: ['push', 'gcr.io/mlops-abed31/db2testing/db2testimage2']
   # Deploy container image to Cloud Run
   #- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   #  entrypoint: gcloud
