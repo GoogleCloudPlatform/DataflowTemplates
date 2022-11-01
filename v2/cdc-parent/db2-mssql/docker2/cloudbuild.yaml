@@ -2,7 +2,7 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: [ 'build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/db2testing/db2testimage', '.' ]
     id: "build db2testimage"
-  - name: 'cloud run for db2testimage'
+  - name: 'cloudrunfordb2testimage'
     args:
       - 'run'
       - 'deploy'
