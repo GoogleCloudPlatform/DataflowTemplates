@@ -1,0 +1,19 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [ 'build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/db2testing/db2testimage', '.' ]
+    id: "build db2testimage"
+  - name: 'cloud run for db2testimage'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'cloudrunservice'
+      - '--image'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/db2testing/db2testimage'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+    id: "running on CR"
+images:
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/db2testing/db2testimage'
