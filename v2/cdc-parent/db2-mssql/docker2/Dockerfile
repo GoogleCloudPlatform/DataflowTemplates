@@ -7,4 +7,3 @@ ENV DBNAME=testdb
 COPY ./helpers/entrypoint.sh /home/entrypoint.sh
 CMD "db2start"
 CMD ["sh", "home/entrypoint.sh"]
-EXPOSE 50000
