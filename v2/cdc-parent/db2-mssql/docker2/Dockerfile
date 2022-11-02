@@ -5,4 +5,5 @@ ENV DB2INST1_PASSWORD=password
 ENV DBNAME=testdb
 
 COPY ./helpers/entrypoint.sh /home/entrypoint.sh
+CMD "db2start"
 CMD ["sh", "home/entrypoint.sh"]
