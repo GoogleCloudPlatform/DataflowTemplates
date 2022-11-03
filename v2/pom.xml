@@ -39,7 +39,7 @@
         <autovalue.version>1.7.4</autovalue.version>
         <autovalue.annotations.version>1.7.4</autovalue.annotations.version>
         <autovalue.service.version>1.0-rc6</autovalue.service.version>
-        <beam.version>2.41.0</beam.version>
+        <beam.version>2.42.0</beam.version>
         <hamcrest.version>2.1</hamcrest.version>
         <hadoop.version>2.10.1</hadoop.version>
         <guava.version>30.1-jre</guava.version>
@@ -84,18 +84,6 @@
                 <artifactId>gax</artifactId>
                 <version>2.3.0</version>
             </dependency>
-            <!--
-            Force google-cloud-spanner version to 6.23.3.
-            google-cloud-spanner versions between 6.13.0 and 6.21.0 contain a bug that cause a
-            nullpointer exception to be thrown when recording values in opencensus.
-            -->
-            <dependency>
-                <groupId>com.google.cloud</groupId>
-                <artifactId>google-cloud-spanner-bom</artifactId>
-                <version>6.23.3</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
             <dependency>
                 <groupId>com.google.api</groupId>
                 <artifactId>gax-grpc</artifactId>
@@ -115,20 +103,20 @@
             <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
             <exclusions>
                 <exclusion>
-                    <groupId>junit</groupId>
-                    <artifactId>junit</artifactId>
+                  <groupId>junit</groupId>
+                  <artifactId>junit</artifactId>
                 </exclusion>
                 <exclusion>
-                    <groupId>io.grpc</groupId>
-                    <artifactId>grpc-netty-shaded</artifactId>
+                  <groupId>io.grpc</groupId>
+                  <artifactId>grpc-netty-shaded</artifactId>
                 </exclusion>
                 <exclusion>
-                    <groupId>io.grpc</groupId>
-                    <artifactId>grpc-core</artifactId>
+                  <groupId>io.grpc</groupId>
+                  <artifactId>grpc-core</artifactId>
                 </exclusion>
                 <exclusion>
-                    <groupId>io.grpc</groupId>
-                    <artifactId>grpc-api</artifactId>
+                  <groupId>io.grpc</groupId>
+                  <artifactId>grpc-api</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -301,7 +289,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-shade-plugin</artifactId>
-                    <version>3.0.0</version>
+                    <version>${maven-shade-plugin.version}</version>
                     <executions>
                         <execution>
                             <id>bundle-and-repackage</id>
@@ -310,11 +298,19 @@
                                 <goal>shade</goal>
                             </goals>
                             <configuration>
+                                <extraDirectories>
+                                  <paths>
+                                    <path>${mvn-target-dir}/extra_libs</path>
+                                  </paths>
+                                </extraDirectories>
                                 <dependencyReducedPomLocation>
                                     ${mvn-target-dir}/dependency-reduced-pom.xml
                                 </dependencyReducedPomLocation>
                                 <shadeTestJar>true</shadeTestJar>
                                 <artifactSet>
+                                    <excludes>
+                                        <exclude>org.conscrypt:conscrypt-openjdk-uber</exclude>
+                                    </excludes>
                                     <includes>
                                         <include>*:*</include>
                                     </includes>
@@ -354,6 +350,18 @@
                 <artifactId>maven-dependency-plugin</artifactId>
                 <version>${maven-dependency-plugin.version}</version>
                 <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>package</phase>
+                        <goals>
+                          <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                          <outputDirectory>${mvn-target-dir}/extra_libs</outputDirectory>
+                          <includeArtifactIds>conscrypt-openjdk-uber</includeArtifactIds>
+                          <stripVersion>true</stripVersion>
+                        </configuration>
+                    </execution>
                     <execution>
                         <id>analyze-dependencies</id>
                         <phase>package</phase>
@@ -442,37 +450,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>bundle-and-repackage</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                        <configuration>
-                            <shadeTestJar>true</shadeTestJar>
-                            <artifactSet>
-                                <includes>
-                                    <include>*:*</include>
-                                </includes>
-                            </artifactSet>
-                            <filters>
-                                <filter>
-                                    <artifact>*:*</artifact>
-                                    <excludes>
-                                        <exclude>META-INF/*.SF</exclude>
-                                        <exclude>META-INF/*.DSA</exclude>
-                                        <exclude>META-INF/*.RSA</exclude>
-                                    </excludes>
-                                </filter>
-                            </filters>
-                            <transformers>
-                                <transformer
-                                        implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
-                            </transformers>
-                        </configuration>
-                    </execution>
-                </executions>
+                <version>${maven-shade-plugin.version}</version>
             </plugin>
 
 
