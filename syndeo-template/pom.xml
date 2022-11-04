@@ -30,7 +30,7 @@
         <bigtable.version>1.15.0</bigtable.version>
         <bigquery.version>2.9.0</bigquery.version>
         <commons.version>1.8</commons.version>
-        <commons-text.version>1.9</commons-text.version>
+        <commons-text.version>1.10.0</commons-text.version>
         <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
         <java.version>11</java.version>
         <kafka.version>2.4.1</kafka.version>
