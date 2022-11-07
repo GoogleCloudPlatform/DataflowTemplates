@@ -81,4 +81,16 @@ public class MongoDbToBigQueryOptions {
 
     void setJavascriptTextTransformFunctionName(String gcsTransformPath);
   }
+
+  public interface JavascriptDocumentTransformerOptions extends PipelineOptions {
+    @Description("Gcs path to javascript udf source")
+    String getJavascriptDocumentTransformGcsPath();
+
+    void setJavascriptDocumentTransformGcsPath(String javascriptDocumentTransformGcsPath);
+
+    @Description("UDF Javascript Function Name")
+    String getJavascriptDocumentTransformFunctionName();
+
+    void setJavascriptDocumentTransformFunctionName(String javascriptDocumentTransformFunctionName);
+  }
 }
