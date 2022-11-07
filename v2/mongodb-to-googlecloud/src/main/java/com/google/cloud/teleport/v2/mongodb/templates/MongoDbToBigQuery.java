@@ -15,18 +15,35 @@
  */
 package com.google.cloud.teleport.v2.mongodb.templates;
 
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.BigQueryWriteOptions;
+import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.JavascriptDocumentTransformerOptions;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.MongoDbOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
-import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
+//import com.google.cloud.teleport.v2.mongodb.templates.JavascriptDocumentTransformer.JavascriptDocumentTransformerOptions;
+import com.google.cloud.teleport.v2.mongodb.templates.JavascriptDocumentTransformer.TransformDocumentViaJavascript;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import java.io.IOException;
+import java.io.Reader;
+import java.io.UncheckedIOException;
+import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
+import java.util.stream.Collectors;
+import javax.script.*;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.fs.MatchResult;
+import org.apache.beam.sdk.io.fs.MatchResult.Metadata;
+import org.apache.beam.sdk.io.fs.MatchResult.Status;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.mongodb.MongoDbIO;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -38,7 +55,10 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.io.CharStreams;
 import org.bson.Document;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 
@@ -47,6 +67,8 @@ import org.bson.Document;
  * outputs the resulting records to BigQuery.
  */
 public class MongoDbToBigQuery {
+
+  private static final Logger LOG = LoggerFactory.getLogger(MongoDbToBigQuery.class);
   /**
    * Options supported by {@link MongoDbToBigQuery}
    *
@@ -69,7 +91,7 @@ public class MongoDbToBigQuery {
   public static final TupleTag<TableRow> TRANSFORM_OUT = new TupleTag<TableRow>() {};
 
 
-  public interface Options extends PipelineOptions, MongoDbOptions, BigQueryWriteOptions {}
+  public interface Options extends PipelineOptions, MongoDbOptions, BigQueryWriteOptions, JavascriptDocumentTransformerOptions {}
 
   private static class ParseAsDocumentsFn extends DoFn<String, Document> {
     @ProcessElement
@@ -78,27 +100,55 @@ public class MongoDbToBigQuery {
     }
   }
 
-  public static void main(String[] args) {
+
+
+  public static void main(String[] args) throws IOException, ScriptException, NoSuchMethodException{
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     run(options);
   }
 
-  public static boolean run(Options options) {
+
+
+  public static boolean run(Options options) throws IOException, ScriptException, NoSuchMethodException{
     Pipeline pipeline = Pipeline.create(options);
-    TableSchema bigquerySchema =
-        MongoDbUtils.getTableFieldSchema(
-            options.getMongoDbUri(),
-            options.getDatabase(),
-            options.getCollection(),
-            options.getUserOption());
     String userOption = options.getUserOption();
+
+    TableSchema bigquerySchema;
+
+    if(options.getUserOption().equals("UDF")){
+      bigquerySchema =
+        MongoDbUtils.getTableFieldSchemaForUDF(
+          options.getMongoDbUri(),
+          options.getDatabase(),
+          options.getCollection(),
+          options.getUserOption(),
+          options.getJavascriptDocumentTransformGcsPath(),
+          options.getJavascriptDocumentTransformFunctionName()
+                );
+    }
+    else{
+      bigquerySchema =
+        MongoDbUtils.getTableFieldSchema(
+          options.getMongoDbUri(),
+          options.getDatabase(),
+          options.getCollection(),
+          options.getUserOption());
+    }
+
     PCollection<Document> lines = pipeline.apply(
             "Read Documents",
             MongoDbIO.read()
                 .withUri(options.getMongoDbUri())
                 .withDatabase(options.getDatabase())
-                .withCollection(options.getCollection()));
-
+                .withCollection(options.getCollection())
+            )
+            .apply(
+                    "UDF",
+                    TransformDocumentViaJavascript.newBuilder()
+                            .setFileSystemPath(options.getJavascriptDocumentTransformGcsPath())
+                            .setFunctionName(options.getJavascriptDocumentTransformFunctionName())
+                            .build()
+            );
 
     lines.apply(
             "Transform to TableRow",
@@ -125,65 +175,6 @@ public class MongoDbToBigQuery {
     pipeline.run();
     return true;
   }
-
-  static class DocumentToTableRow
-          extends PTransform<PCollection<Document>, PCollectionTuple> {
-
-    private final Options options;
-
-    DocumentToTableRow(Options options) {
-      this.options = options;
-    }
-
-    @Override
-    public PCollectionTuple expand(PCollection<Document> input) {
-
-      PCollectionTuple udfOut =
-        input
-          // Map the incoming messages into FailsafeElements so we can recover from failures
-          // across multiple transforms.
-          .apply("MapToRecord", ParDo.of(new DocumentToFailsafeElementFn()))
-          .apply(
-            "InvokeUDF",
-            FailsafeJavascriptUdf.<Document>newBuilder()
-                    .setFileSystemPath(options.getJavascriptTextTransformGcsPath())
-                    .setFunctionName(options.getJavascriptTextTransformFunctionName())
-                    .setSuccessTag(UDF_OUT)
-                    .setFailureTag(UDF_DEADLETTER_OUT)
-                    .build());
-
-      // Convert the records which were successfully processed by the UDF into TableRow objects.
-      PCollectionTuple jsonToTableRowOut =
-              udfOut
-                      .get(UDF_OUT)
-                      .apply(
-                              "JsonToTableRow",
-                              FailsafeJsonToTableRow.<Document>newBuilder()
-                                      .setSuccessTag(TRANSFORM_OUT)
-                                      .setFailureTag(TRANSFORM_DEADLETTER_OUT)
-                                      .build());
-
-      // Re-wrap the PCollections so we can return a single PCollectionTuple
-      return PCollectionTuple.of(UDF_OUT, udfOut.get(UDF_OUT))
-              .and(UDF_DEADLETTER_OUT, udfOut.get(UDF_DEADLETTER_OUT))
-              .and(TRANSFORM_OUT, jsonToTableRowOut.get(TRANSFORM_OUT))
-              .and(TRANSFORM_DEADLETTER_OUT, jsonToTableRowOut.get(TRANSFORM_DEADLETTER_OUT));
-    }
-  }
-
-  /**
-   * The {@link DocumentToFailsafeElementFn} wraps an incoming {@link Document} with the
-   * {@link FailsafeElement} class so errors can be recovered from and the original message can be
-   * output to a error records table.
-   */
-  static class DocumentToFailsafeElementFn
-          extends DoFn<Document, FailsafeElement<Document, String>> {
-    @ProcessElement
-    public void processElement(ProcessContext context) {
-      Document message = context.element();
-      System.out.println("Failed !!");
-//      context.output(
-//              FailsafeElement.of(message, new String(message, StandardCharsets.UTF_8)));
-    }
-  }
 }
+
+

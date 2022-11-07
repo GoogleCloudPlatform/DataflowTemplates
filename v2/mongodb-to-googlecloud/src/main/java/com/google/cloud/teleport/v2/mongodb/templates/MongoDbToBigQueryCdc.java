@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.mongodb.templates;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.BigQueryWriteOptions;
+import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.JavascriptDocumentTransformerOptions;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.MongoDbOptions;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.PubSubOptions;
 import com.google.gson.Gson;
@@ -40,7 +41,7 @@ public class MongoDbToBigQueryCdc {
 
   /** Options interface. */
   public interface Options
-      extends PipelineOptions, MongoDbOptions, PubSubOptions, BigQueryWriteOptions {}
+      extends PipelineOptions, MongoDbOptions, PubSubOptions, BigQueryWriteOptions, JavascriptDocumentTransformerOptions {}
 
   /** class ParseAsDocumentsFn. */
   private static class ParseAsDocumentsFn extends DoFn<String, Document> {
