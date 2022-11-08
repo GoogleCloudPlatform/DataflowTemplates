@@ -42,10 +42,14 @@ public class ProviderUtil {
         StreamSupport.stream(provider.spliterator(), false).collect(Collectors.toList());
     list.addAll(SchemaIOTransformProviderWrapper.getAll());
 
+    ServiceLoader<SchemaTransformProvider> providers =
+        ServiceLoader.load(SchemaTransformProvider.class);
     Map<String, SchemaTransformProvider> map = new HashMap<>();
     for (SchemaTransformProvider p : list) {
       map.put(p.identifier(), p);
     }
+
+    providers.forEach(prov -> map.put(prov.identifier(), prov));
 
     return map;
   }
@@ -72,8 +76,16 @@ public class ProviderUtil {
       if (provider == null) {
         throw new RuntimeException(inputId + " not found ");
       }
-      configuration =
-          Row.withSchema(provider.configurationSchema()).addValues(configurationAsList).build();
+      try {
+        configuration =
+            Row.withSchema(provider.configurationSchema()).addValues(configurationAsList).build();
+      } catch (ClassCastException | IllegalArgumentException e) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Given config schema %s, and configuration %s, we're unable to configure transform.",
+                provider.configurationSchema(), configurationAsList),
+            e);
+      }
     }
 
     public TransformSpec(ConfiguredSchemaTransform schemaTransform) {

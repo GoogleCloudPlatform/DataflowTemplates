@@ -121,11 +121,11 @@ public abstract class StreamingDataGeneratorWriteToGcs
   }
 
   private WindowedFilenamePolicy getFileNamePolicy() {
-    return new WindowedFilenamePolicy(
-        getPipelineOptions().getOutputDirectory(),
-        getPipelineOptions().getOutputFilenamePrefix(),
-        SHARD_TEMPLATE,
-        getPipelineOptions().getOutputType().getFileExtension());
+    return WindowedFilenamePolicy.writeWindowedFiles()
+        .withOutputDirectory(getPipelineOptions().getOutputDirectory())
+        .withOutputFilenamePrefix(getPipelineOptions().getOutputFilenamePrefix())
+        .withShardTemplate(SHARD_TEMPLATE)
+        .withSuffix(getPipelineOptions().getOutputType().getFileExtension());
   }
 
   /** Converts the fake messages in bytes to json format and writes to a text file. */

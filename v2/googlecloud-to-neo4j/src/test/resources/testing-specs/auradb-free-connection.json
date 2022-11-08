@@ -1,0 +1,7 @@
+{
+  "server_url": "neo4j+s://5581bcc5.databases.neo4j.io",
+  "database": "neo4j",
+  "auth_type": "basic",
+  "username": "neo4j",
+  "pwd": "iXeREEXVCMXbbslvV5CJg_JHLjG9DZV8YqpfuVFlHg8"
+}

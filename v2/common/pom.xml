@@ -31,8 +31,9 @@
         <bigtable.version>1.15.0</bigtable.version>
         <bigquery.version>2.9.0</bigquery.version>
         <commons.version>1.8</commons.version>
-        <commons-text.version>1.9</commons-text.version>
+        <commons-text.version>1.10.0</commons-text.version>
         <protoc.version>3.15.8</protoc.version>
+        <nashorn.version>15.4</nashorn.version>
         <truth.version>1.0.1</truth.version>
         <truth-proto-extension.version>1.0.1</truth-proto-extension.version>
         <secretmanager.version>2.1.2</secretmanager.version>
@@ -63,6 +64,10 @@
             <exclusion>
               <groupId>org.slf4j</groupId>
               <artifactId>slf4j-log4j12</artifactId>
+            </exclusion>
+            <exclusion>
+              <groupId>asm</groupId>
+              <artifactId>asm</artifactId>
             </exclusion>
           </exclusions>
         </dependency>
@@ -134,6 +139,13 @@
               <artifactId>*</artifactId>
             </exclusion>
           </exclusions>
+        </dependency>
+
+        <!-- UDFs -->
+        <dependency>
+          <groupId>org.openjdk.nashorn</groupId>
+          <artifactId>nashorn-core</artifactId>
+          <version>${nashorn.version}</version>
         </dependency>
 
         <!-- Test dependencies -->

@@ -39,7 +39,7 @@ const (
 	pomFileRegex      = "pom\\.xml$"
 
 	// notable files
-	unifiedPom = "unified-templates.xml"
+	unifiedPom = "pom.xml"
 )
 
 // Interface for retrieving flags that can be passed into the workflow's

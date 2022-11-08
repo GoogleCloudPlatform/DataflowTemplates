@@ -250,10 +250,10 @@ public class InformationSchemaScanner {
     ResultSet resultSet =
         context.executeQuery(
             Statement.newBuilder(
-                    "SELECT t.table_name, t.column_name, t.option_name, t.option_type, t.option_value "
-                        + " FROM information_schema.column_options AS t "
-                        + " WHERE t.table_catalog = '' AND t.table_schema = ''"
-                        + " ORDER BY t.table_name, t.column_name")
+                    "SELECT t.table_name, t.column_name, t.option_name, t.option_type,"
+                        + " t.option_value  FROM information_schema.column_options AS t  WHERE"
+                        + " t.table_catalog = '' AND t.table_schema = '' ORDER BY t.table_name,"
+                        + " t.column_name")
                 .build());
 
     Map<KV<String, String>, ImmutableList.Builder<String>> allOptions = Maps.newHashMap();
@@ -269,6 +269,8 @@ public class InformationSchemaScanner {
           allOptions.computeIfAbsent(kv, k -> ImmutableList.builder());
       if (optionType.equalsIgnoreCase("STRING")) {
         options.add(optionName + "=\"" + ESCAPER.escape(optionValue) + "\"");
+      } else if (optionType.equalsIgnoreCase("character varying")) {
+        options.add(optionName + "='" + ESCAPER.escape(optionValue) + "'");
       } else {
         options.add(optionName + "=" + optionValue);
       }

@@ -187,6 +187,7 @@ public class CsvConverters {
     void setInputFileSpec(String inputFileSpec);
 
     @Description("If file(s) contain headers")
+    @Default.Boolean(false)
     Boolean getContainsHeaders();
 
     void setContainsHeaders(Boolean containsHeaders);

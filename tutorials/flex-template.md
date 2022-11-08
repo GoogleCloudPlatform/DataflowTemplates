@@ -326,7 +326,7 @@ Go to the `DataflowTemplates/` directory (the parent of the `v2/` directory) and
 run the following command:
 
 ```shell
-mvn spotless:apply -f unified-templates.xml -pl v2/wordcount
+mvn spotless:apply -pl v2/wordcount
 ```
 
 This will format the code. If you try to build and get checkstyle violations,
@@ -336,19 +336,16 @@ such as missing Javadocs.
 Once formatted, you can run:
 
 ```shell
-mvn clean install -f unified-templates.xml -pl v2/wordcount -am \
+mvn clean install -pl v2/wordcount -am \
   -Dmaven.test.skip \
   -Djib.skip
 ```
 
-`-f unified-templates.xml` specifies the POM we're using, in this case an
-[aggregator POM](https://maven.apache.org/pom.html#Aggregation) that contains
-all the modules in the repository. Combined with the `-am` option, we can
-guarantee that all the necessary local dependencies are included in the build.
+The `-am` option guarantees that all the necessary local dependencies are included in the build.
 
 `-pl v2/wordcount` is how we specify the target module, allowing us to only
 build what we need. You can see all the available modules in the
-`unified-templates.xml` file.
+`pom.xml` file.
 
 Lastly, we use `-Dmaven.test.skip` and `-Djib.skip` to avoid running steps of
 `install` that we want to skip for now.
@@ -446,7 +443,7 @@ equivalent.
 You can run the unit test with the following command:
 
 ```shell
-mvn clean install -f unified-templates.xml -pl v2/wordcount -am \
+mvn clean install -pl v2/wordcount -am \
   -Dtest=WordCountTest -DfailIfNoTests=false \
   -Djib.skip
 ```
@@ -576,7 +573,7 @@ export BASE_CONTAINER_IMAGE_VERSION=latest
 export APP_ROOT="/template/$MODULE_NAME"
 export COMMAND_SPEC="$APP_ROOT/resources/$MODULE_NAME-command-spec.json"
 
-mvn clean package -f unified-templates.xml -pl "v2/$MODULE_NAME" -am \
+mvn clean package -pl "v2/$MODULE_NAME" -am \
   -Dimage="$TARGET_GCR_IMAGE" \
   -Dbase-container-image="$BASE_CONTAINER_IMAGE" \
   -Dbase-container-image.version="$BASE_CONTAINER_IMAGE_VERSION" \

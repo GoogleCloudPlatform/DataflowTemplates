@@ -1462,6 +1462,12 @@ public class ElasticsearchIO {
             isDelete = spec.getIsDeleteFn().apply(parsedDocument);
           }
         }
+        long docSizeBytes = document.getBytes(StandardCharsets.UTF_8).length;
+        long newBatchSizeBytes = currentBatchSizeBytes + docSizeBytes;
+        if (newBatchSizeBytes > spec.getMaxBatchSizeBytes()) {
+          flushBatch();
+        }
+
         if (isDelete) {
           // delete request used for deleting a document.
           batch.add(String.format("{ \"delete\" : %s }%n", documentMetadata));
@@ -1483,7 +1489,8 @@ public class ElasticsearchIO {
           }
         }
 
-        currentBatchSizeBytes += document.getBytes(StandardCharsets.UTF_8).length;
+        currentBatchSizeBytes += docSizeBytes;
+
         if (batch.size() >= spec.getMaxBatchSize()
             || currentBatchSizeBytes >= spec.getMaxBatchSizeBytes()) {
           flushBatch();
