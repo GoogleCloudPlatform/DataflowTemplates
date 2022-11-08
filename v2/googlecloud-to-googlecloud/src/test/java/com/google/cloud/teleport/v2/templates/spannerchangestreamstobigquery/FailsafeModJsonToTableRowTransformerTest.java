@@ -102,6 +102,7 @@ import java.util.List;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
+import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ValueCaptureType;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestStream;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -153,8 +154,22 @@ public final class FailsafeModJsonToTableRowTransformerTest {
         spannerDatabaseName,
         insertCommitTimestamp,
         ModType.INSERT,
+        ValueCaptureType.OLD_AND_NEW_VALUES,
         getKeysJson(),
-        getInsertNewValuesJson(insertCommitTimestamp));
+        getNewValuesJson(insertCommitTimestamp));
+  }
+
+  // Test the case where a TableRow can be constructed from an INSERT Mod
+  // with value capture type as NEW_ROW.
+  @Test
+  public void testFailsafeModJsonToTableRowInsertNewRow() throws Exception {
+    validateBigQueryRow(
+        spannerDatabaseName,
+        insertCommitTimestamp,
+        ModType.INSERT,
+        ValueCaptureType.NEW_ROW,
+        getKeysJson(),
+        getNewValuesJson(insertCommitTimestamp));
   }
 
   // Test the case where a TableRow can be constructed from a UPDATE Mod.
@@ -162,22 +177,57 @@ public final class FailsafeModJsonToTableRowTransformerTest {
   public void testFailsafeModJsonToTableRowUpdate() throws Exception {
     String updateNewValuesJson =
         String.format("{\"TimestampCol\":\"%s\"}", updateCommitTimestamp.toString());
-
     validateBigQueryRow(
         spannerDatabaseName,
         updateCommitTimestamp,
         ModType.UPDATE,
+        ValueCaptureType.OLD_AND_NEW_VALUES,
         getKeysJson(),
         updateNewValuesJson);
   }
 
-  // Test the case where a TableRow can be constructed from an DELETE Mod.
+  // Test the case where a TableRow can be constructed from a UPDATE Mod
+  // with value capture type as NEW_ROW.
+  @Test
+  public void testFailsafeModJsonToTableRowUpdateNewRow() throws Exception {
+    validateBigQueryRow(
+        spannerDatabaseName,
+        updateCommitTimestamp,
+        ModType.UPDATE,
+        ValueCaptureType.NEW_ROW,
+        getKeysJson(),
+        getNewValuesJson(updateCommitTimestamp));
+  }
+
+  // Test the case where a TableRow can be constructed from a DELETE Mod.
   @Test
   public void testFailsafeModJsonToTableRowDelete() throws Exception {
     // When we process a mod for deleted row, we only need keys from mod, and don't have to do a
     // snapshot read to Spanner, thus we don't need to actually delete the row in Spanner, and we
     // can use a fake commit timestamp here.
-    validateBigQueryRow(spannerDatabaseName, Timestamp.now(), ModType.DELETE, getKeysJson(), "");
+    validateBigQueryRow(
+        spannerDatabaseName,
+        Timestamp.now(),
+        ModType.DELETE,
+        ValueCaptureType.OLD_AND_NEW_VALUES,
+        getKeysJson(),
+        "");
+  }
+
+  // Test the case where a TableRow can be constructed from a DELETE Mod
+  // with value capture type as NEW_ROW.
+  @Test
+  public void testFailsafeModJsonToTableRowDeleteNewRow() throws Exception {
+    // When we process a mod for deleted row, we only need keys from mod, and don't have to do a
+    // snapshot read to Spanner, thus we don't need to actually delete the row in Spanner, and we
+    // can use a fake commit timestamp here.
+    validateBigQueryRow(
+        spannerDatabaseName,
+        Timestamp.now(),
+        ModType.DELETE,
+        ValueCaptureType.NEW_ROW,
+        getKeysJson(),
+        "");
   }
 
   // Test the case where the snapshot read to Spanner fails and we can capture the failures from
@@ -198,6 +248,7 @@ public final class FailsafeModJsonToTableRowTransformerTest {
             "00000001",
             TEST_SPANNER_TABLE,
             ModType.INSERT,
+            ValueCaptureType.OLD_AND_NEW_VALUES,
             1L,
             1L);
     TestStream<String> testSream =
@@ -227,6 +278,7 @@ public final class FailsafeModJsonToTableRowTransformerTest {
             + "\"commitTimestampSeconds\":1650908264,\"commitTimestampNanos\":925679000,"
             + "\"serverTransactionId\":\"1\",\"isLastRecordInTransactionInPartition\":true,"
             + "\"recordSequence\":\"00000001\",\"tableName\":\"AllTypes\",\"modType\":\"INSERT\","
+            + "\"valueCaptureType\":\"OLD_AND_NEW_VALUES\","
             + "\"numberOfRecordsInTransaction\":1,\"numberOfPartitionsInTransaction\":1}";
     PAssert.that(
             out.get(failsafeModJsonToTableRow.transformDeadLetterOut)
@@ -258,6 +310,7 @@ public final class FailsafeModJsonToTableRowTransformerTest {
       String spannerDatabaseName,
       Timestamp commitTimestamp,
       ModType modType,
+      ValueCaptureType valueCaptureType,
       String keysJson,
       String newValuesJson)
       throws Exception {
@@ -271,6 +324,7 @@ public final class FailsafeModJsonToTableRowTransformerTest {
             "00000001",
             TEST_SPANNER_TABLE,
             modType,
+            valueCaptureType,
             1L,
             1L);
 
@@ -287,8 +341,8 @@ public final class FailsafeModJsonToTableRowTransformerTest {
     expectedTableRow.set(TIMESTAMP_PK_COL, TIMESTAMP_RAW_VAL.toString());
     if (modType == modType.INSERT || modType == modType.UPDATE) {
       // The order matters when comparing TableRow, so we need to set different orders for INSERT
-      // and UPDATE.
-      if (modType == modType.UPDATE) {
+      // and UPDATE NEW VALUES.
+      if (modType == modType.UPDATE && valueCaptureType != ValueCaptureType.NEW_ROW) {
         expectedTableRow.set(TIMESTAMP_COL, commitTimestamp.toString());
       }
       expectedTableRow.set(BOOLEAN_ARRAY_COL, BOOLEAN_ARRAY_RAW_VAL);
@@ -308,7 +362,8 @@ public final class FailsafeModJsonToTableRowTransformerTest {
       expectedTableRow.set(JSON_COL, JSON_RAW_VAL);
       expectedTableRow.set(NUMERIC_COL, NUMERIC_RAW_VAL);
       expectedTableRow.set(STRING_COL, STRING_RAW_VAL);
-      if (modType == modType.INSERT) {
+      if (modType == modType.INSERT
+          || (modType == modType.UPDATE && valueCaptureType == ValueCaptureType.NEW_ROW)) {
         expectedTableRow.set(TIMESTAMP_COL, commitTimestamp.toString());
       }
     }
@@ -442,7 +497,7 @@ public final class FailsafeModJsonToTableRowTransformerTest {
     return jsonNode.toString();
   }
 
-  private String getInsertNewValuesJson(Timestamp insertCommitTimestamp) {
+  private String getNewValuesJson(Timestamp commitTimestamp) {
     ObjectNode jsonNode = new ObjectNode(JsonNodeFactory.instance);
     ArrayNode arrayNode = jsonNode.putArray(BOOLEAN_ARRAY_COL);
     arrayNode.add(BOOLEAN_ARRAY_RAW_VAL.get(0));
@@ -492,7 +547,7 @@ public final class FailsafeModJsonToTableRowTransformerTest {
     jsonNode.put(JSON_COL, JSON_RAW_VAL);
     jsonNode.put(NUMERIC_COL, NUMERIC_RAW_VAL);
     jsonNode.put(STRING_COL, STRING_RAW_VAL);
-    jsonNode.put(TIMESTAMP_COL, insertCommitTimestamp.toString());
+    jsonNode.put(TIMESTAMP_COL, commitTimestamp.toString());
     return jsonNode.toString();
   }
 }
