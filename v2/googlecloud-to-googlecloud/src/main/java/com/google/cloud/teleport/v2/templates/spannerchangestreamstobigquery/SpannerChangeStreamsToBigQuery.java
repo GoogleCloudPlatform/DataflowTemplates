@@ -367,6 +367,7 @@ public final class SpannerChangeStreamsToBigQuery {
                 input.getRecordSequence(),
                 input.getTableName(),
                 input.getModType(),
+                input.getValueCaptureType(),
                 input.getNumberOfRecordsInTransaction(),
                 input.getNumberOfPartitionsInTransaction());
 
