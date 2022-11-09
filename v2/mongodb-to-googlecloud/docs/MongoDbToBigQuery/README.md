@@ -102,7 +102,7 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
         "is_optional": false,
         "paramType": "TEXT",
         "regexes": [
-          "^(FLATTEN|NONE)$"
+          "^(FLATTEN|NONE|UDF)$"
         ]
       },
       {
