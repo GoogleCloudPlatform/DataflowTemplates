@@ -153,6 +153,26 @@ The template requires the following parameters:
 * collection: The collection in mongoDB database to put the documents to, ex: my-collection
 * outputTableSpec: The BQ table where we want to write the data read from MongoDb collection to.
 * inputTopic: the Topic where the changes are pushed from MongoDb changestream
+* javascriptDocumentTransformGcsPath: Path to GCS bucket where the javascript function is stored.
+* javascriptDocumentTransformFunctionName: Name of the Function that needs to be run
+
+
+### UDF:
+
+Below is the test function that takes document as input and returns the documents as it is.
+
+```
+/**
+ * A transform which adds a field to the incoming data.
+ * @param {Document} doc
+ * @return {Document} returnObj
+ */
+ function transform(doc) {
+    var obj = doc;
+    var returnObj = new Object();
+    return returnObj;
+  }
+```
 
 The template has the following optional parameters:
 * userOption: The user option to Flatten the document or store it as a jsonString. To Flatten the document pass the parameter as "FLATTEN".
