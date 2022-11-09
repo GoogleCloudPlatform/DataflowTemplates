@@ -190,6 +190,7 @@ public abstract class JavascriptDocumentTransformer {
     }
   }
 
+
   /** Comvert Document to table row. * */
   @AutoValue
   public abstract static class TransformDocumentViaJavascript
