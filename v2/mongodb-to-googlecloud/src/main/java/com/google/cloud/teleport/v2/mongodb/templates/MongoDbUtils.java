@@ -20,7 +20,6 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
-import com.google.cloud.teleport.v2.mongodb.templates.JavascriptDocumentTransformer.TransformDocumentViaJavascript;
 import com.google.gson.Gson;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -28,17 +27,14 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import java.io.IOException;
 import java.io.Reader;
-import java.io.UncheckedIOException;
 import java.io.Serializable;
+import java.io.UncheckedIOException;
 import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
-import java.text.ParseException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -53,7 +49,6 @@ import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.io.CharStreams;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 /** Transforms & DoFns & Options for Teleport DatastoreIO. */
 public class MongoDbUtils implements Serializable {
@@ -70,7 +65,6 @@ public class MongoDbUtils implements Serializable {
 
   static final Gson GSON = new Gson();
 
-
   public static TableSchema getTableFieldSchema(
       String uri, String database, String collection, String userOption) {
     List<TableFieldSchema> bigquerySchemaFields = new ArrayList<>();
@@ -84,8 +78,7 @@ public class MongoDbUtils implements Serializable {
                     .setType(getTableSchemaDataType(value.getClass().getName())));
           });
       bigquerySchemaFields.add(new TableFieldSchema().setName("timestamp").setType("TIMESTAMP"));
-    }
-    else {
+    } else {
       bigquerySchemaFields.add(new TableFieldSchema().setName("id").setType("STRING"));
       bigquerySchemaFields.add(new TableFieldSchema().setName("source_data").setType("STRING"));
       bigquerySchemaFields.add(new TableFieldSchema().setName("timestamp").setType("TIMESTAMP"));
@@ -95,15 +88,19 @@ public class MongoDbUtils implements Serializable {
   }
 
   public static TableSchema getTableFieldSchemaForUDF(
-          String uri, String database, String collection, String userOption, String udfGcsPath, String udfFunctionName)
-          throws IOException, ScriptException, NoSuchMethodException {
+      String uri,
+      String database,
+      String collection,
+      String userOption,
+      String udfGcsPath,
+      String udfFunctionName)
+      throws IOException, ScriptException, NoSuchMethodException {
     Document document = getMongoDbDocument(uri, database, collection);
     List<TableFieldSchema> bigquerySchemaFields = new ArrayList<>();
 
     ScriptEngineManager manager = new ScriptEngineManager();
     ScriptEngine engine = manager.getEngineByName("JavaScript");
     Collection<String> scripts = getScripts(udfGcsPath);
-
 
     Invocable invocable = newInvocable(scripts);
     if (invocable == null) {
@@ -113,20 +110,16 @@ public class MongoDbUtils implements Serializable {
     Object result = invocable.invokeFunction(udfFunctionName, document);
     Document doc = (Document) result;
     doc.forEach(
-            (key, value) -> {
-              bigquerySchemaFields.add(
-                      new TableFieldSchema()
-                              .setName(key)
-                              .setType(getTableSchemaDataType(value.getClass().getName())));
-            });
+        (key, value) -> {
+          bigquerySchemaFields.add(
+              new TableFieldSchema()
+                  .setName(key)
+                  .setType(getTableSchemaDataType(value.getClass().getName())));
+        });
     bigquerySchemaFields.add(new TableFieldSchema().setName("timestamp").setType("TIMESTAMP"));
     TableSchema bigquerySchema = new TableSchema().setFields(bigquerySchemaFields);
     return bigquerySchema;
   }
-
-
-
-
 
   /** Maps and Returns the Datatype form MongoDb To BigQuery. */
   public static String getTableSchemaDataType(String s) {
@@ -175,29 +168,28 @@ public class MongoDbUtils implements Serializable {
           });
       LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
       row.set("timestamp", localdate.format(TIMEFORMAT));
-    } else if(userOption.equals("UDF")){
+    } else if (userOption.equals("UDF")) {
       parsedMap.forEach(
-              (key, value) -> {
-                String valueClass = value.getClass().getName();
-                switch (valueClass) {
-                  case "java.lang.Double":
-                    row.set(key, value);
-                    break;
-                  case "java.lang.Integer":
-                    row.set(key, value);
-                    break;
-                  case "org.bson.Document":
-                    String data = GSON.toJson(value);
-                    row.set(key, data);
-                    break;
-                  default:
-                    row.set(key, value.toString());
-                }
-              });
+          (key, value) -> {
+            String valueClass = value.getClass().getName();
+            switch (valueClass) {
+              case "java.lang.Double":
+                row.set(key, value);
+                break;
+              case "java.lang.Integer":
+                row.set(key, value);
+                break;
+              case "org.bson.Document":
+                String data = GSON.toJson(value);
+                row.set(key, data);
+                break;
+              default:
+                row.set(key, value.toString());
+            }
+          });
       LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
       row.set("timestamp", localdate.format(TIMEFORMAT));
-    }
-    else {
+    } else {
       LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
       String sourceData = GSON.toJson(parsedMap);
       row.set("id", parsedMap.get("_id").toString())
@@ -205,34 +197,32 @@ public class MongoDbUtils implements Serializable {
           .set("timestamp", localdate.format(TIMEFORMAT));
     }
 
-
     return row;
   }
 
   private static Collection<String> getScripts(String path) throws IOException {
     MatchResult result = FileSystems.match(path);
     checkArgument(
-            result.status() == Status.OK && !result.metadata().isEmpty(),
-            "Failed to match any files with the pattern: " + path);
+        result.status() == Status.OK && !result.metadata().isEmpty(),
+        "Failed to match any files with the pattern: " + path);
 
     List<String> scripts =
-            result.metadata().stream()
-                    .filter(metadata -> metadata.resourceId().getFilename().endsWith(".js"))
-                    .map(Metadata::resourceId)
-                    .map(
-                            resourceId -> {
-                              try (Reader reader =
-                                           Channels.newReader(
-                                                   FileSystems.open(resourceId), StandardCharsets.UTF_8.name())) {
-                                return CharStreams.toString(reader);
-                              } catch (IOException e) {
-                                throw new UncheckedIOException(e);
-                              }
-                            })
-                    .collect(Collectors.toList());
+        result.metadata().stream()
+            .filter(metadata -> metadata.resourceId().getFilename().endsWith(".js"))
+            .map(Metadata::resourceId)
+            .map(
+                resourceId -> {
+                  try (Reader reader =
+                      Channels.newReader(
+                          FileSystems.open(resourceId), StandardCharsets.UTF_8.name())) {
+                    return CharStreams.toString(reader);
+                  } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                  }
+                })
+            .collect(Collectors.toList());
     return scripts;
   }
-
 
   @Nullable
   private static Invocable newInvocable(Collection<String> scripts) throws ScriptException {
@@ -245,7 +235,7 @@ public class MongoDbUtils implements Serializable {
         availableEngines.add(factory.getEngineName() + " " + factory.getEngineVersion());
       }
       throw new RuntimeException(
-              String.format("JavaScript engine not available. Found engines: %s.", availableEngines));
+          String.format("JavaScript engine not available. Found engines: %s.", availableEngines));
     }
 
     for (String script : scripts) {
@@ -254,5 +244,4 @@ public class MongoDbUtils implements Serializable {
 
     return (Invocable) engine;
   }
-
 }
