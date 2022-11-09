@@ -103,26 +103,26 @@
             <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
             <exclusions>
                 <exclusion>
-                  <groupId>junit</groupId>
-                  <artifactId>junit</artifactId>
+                    <groupId>junit</groupId>
+                    <artifactId>junit</artifactId>
                 </exclusion>
                 <exclusion>
-                  <groupId>io.grpc</groupId>
-                  <artifactId>grpc-netty-shaded</artifactId>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>grpc-netty-shaded</artifactId>
                 </exclusion>
                 <exclusion>
-                  <groupId>io.grpc</groupId>
-                  <artifactId>grpc-core</artifactId>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>grpc-core</artifactId>
                 </exclusion>
                 <exclusion>
-                  <groupId>io.grpc</groupId>
-                  <artifactId>grpc-api</artifactId>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>grpc-api</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
         <dependency>
-          <groupId>org.apache.beam</groupId>
-          <artifactId>beam-sdks-java-io-jdbc</artifactId>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-sdks-java-io-jdbc</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>
@@ -175,10 +175,10 @@
             <version>${project.version}</version>
             <scope>test</scope>
             <exclusions>
-               <exclusion>
-                 <groupId>org.slf4j</groupId>
-                 <artifactId>slf4j-simple</artifactId>
-               </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-simple</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
 
@@ -306,9 +306,9 @@
                             </goals>
                             <configuration>
                                 <extraDirectories>
-                                  <paths>
-                                    <path>${mvn-target-dir}/extra_libs</path>
-                                  </paths>
+                                    <paths>
+                                        <path>${mvn-target-dir}/extra_libs</path>
+                                    </paths>
                                 </extraDirectories>
                                 <dependencyReducedPomLocation>
                                     ${mvn-target-dir}/dependency-reduced-pom.xml
@@ -361,12 +361,12 @@
                         <id>copy-dependencies</id>
                         <phase>package</phase>
                         <goals>
-                          <goal>copy-dependencies</goal>
+                            <goal>copy-dependencies</goal>
                         </goals>
                         <configuration>
-                          <outputDirectory>${mvn-target-dir}/extra_libs</outputDirectory>
-                          <includeArtifactIds>conscrypt-openjdk-uber</includeArtifactIds>
-                          <stripVersion>true</stripVersion>
+                            <outputDirectory>${mvn-target-dir}/extra_libs</outputDirectory>
+                            <includeArtifactIds>conscrypt-openjdk-uber</includeArtifactIds>
+                            <stripVersion>true</stripVersion>
                         </configuration>
                     </execution>
                     <execution>
@@ -550,20 +550,20 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${surefire.version}</version>
                 <configuration>
-                  <!-- Exclude Cloud Spanner integration tests that require a GCP project to run.
-                  They can be run run manually using
-                  TODO: Add support for emulator to run integration tests.
-                  'mvn -Dexcluded.spanner.tests="" -Dtest=<testname> test' -->
-                  <systemProperties>
-                    <property>
-                      <name>nashorn.args</name>
-                      <value>--no-deprecation-warning</value>
-                    </property>
-                  </systemProperties>
-                  <!-- TODO(zhoufek): Try to find an alternative way to avoid writing
-                   sensitive info to disk.-->
-                  <disableXmlReport>true</disableXmlReport>
-                  <excludedGroups>${excluded.spanner.tests}</excludedGroups>
+                    <!-- Exclude Cloud Spanner integration tests that require a GCP project to run.
+                    They can be run run manually using
+                    TODO: Add support for emulator to run integration tests.
+                    'mvn -Dexcluded.spanner.tests="" -Dtest=<testname> test' -->
+                    <systemProperties>
+                        <property>
+                            <name>nashorn.args</name>
+                            <value>--no-deprecation-warning</value>
+                        </property>
+                    </systemProperties>
+                    <!-- TODO(zhoufek): Try to find an alternative way to avoid writing
+                     sensitive info to disk.-->
+                    <disableXmlReport>true</disableXmlReport>
+                    <excludedGroups>${excluded.spanner.tests}</excludedGroups>
                 </configuration>
             </plugin>
         </plugins>
