@@ -23,7 +23,9 @@ import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.Mon
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.PubSubOptions;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import java.io.IOException;
 import java.util.HashMap;
+import javax.script.ScriptException;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
@@ -41,7 +43,11 @@ public class MongoDbToBigQueryCdc {
 
   /** Options interface. */
   public interface Options
-      extends PipelineOptions, MongoDbOptions, PubSubOptions, BigQueryWriteOptions, JavascriptDocumentTransformerOptions {}
+      extends PipelineOptions,
+          MongoDbOptions,
+          PubSubOptions,
+          BigQueryWriteOptions,
+          JavascriptDocumentTransformerOptions {}
 
   /** class ParseAsDocumentsFn. */
   private static class ParseAsDocumentsFn extends DoFn<String, Document> {
@@ -57,22 +63,37 @@ public class MongoDbToBigQueryCdc {
    *
    * @param args Command line arguments to the pipeline.
    */
-  public static void main(String[] args) {
+  public static void main(String[] args)
+      throws IOException, ScriptException, NoSuchMethodException {
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     run(options);
   }
 
   /** Pipeline to read data from PubSub and write to MongoDB. */
-  public static boolean run(Options options) {
+  public static boolean run(Options options)
+      throws ScriptException, IOException, NoSuchMethodException {
     options.setStreaming(true);
     Pipeline pipeline = Pipeline.create(options);
-    TableSchema bigquerySchema =
-        MongoDbUtils.getTableFieldSchema(
-            options.getMongoDbUri(),
-            options.getDatabase(),
-            options.getCollection(),
-            options.getUserOption());
+    TableSchema bigquerySchema;
+
+    if (options.getUserOption().equals("UDF")) {
+      bigquerySchema =
+          MongoDbUtils.getTableFieldSchemaForUDF(
+              options.getMongoDbUri(),
+              options.getDatabase(),
+              options.getCollection(),
+              options.getUserOption(),
+              options.getJavascriptDocumentTransformGcsPath(),
+              options.getJavascriptDocumentTransformFunctionName());
+    } else {
+      bigquerySchema =
+          MongoDbUtils.getTableFieldSchema(
+              options.getMongoDbUri(),
+              options.getDatabase(),
+              options.getCollection(),
+              options.getUserOption());
+    }
 
     String userOption = options.getUserOption();
     String inputOption = options.getInputTopic();
