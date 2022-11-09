@@ -36,7 +36,7 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.bson.Document;
 
 /**
- * The {@link BigQueryToMongoDb} pipeline is a streaming pipeline which reads data pushed to PubSub
+ * The {@link BigQueryToMongoDbCDC} pipeline is a streaming pipeline which reads data pushed to PubSub
  * from MongoDB Changestream and outputs the resulting records to BigQuery.
  */
 public class MongoDbToBigQueryCdc {

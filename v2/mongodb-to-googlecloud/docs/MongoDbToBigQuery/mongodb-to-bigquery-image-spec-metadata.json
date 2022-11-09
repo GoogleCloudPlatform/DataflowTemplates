@@ -37,8 +37,20 @@
       "is_optional": false,
       "paramType": "TEXT",
       "regexes": [
-        "^(FLATTEN|NONE)$"
+        "^(FLATTEN|NONE|UDF)$"
       ]
+    },
+    {
+      "name":"javascriptDocumentTransformGcsPath",
+      "label" : "UDF bucket path",
+      "is_optional": "true",
+      "paramType": "TEXT"
+    },
+    {
+      "name":"javascriptDocumentTransformFunctionName",
+      "label" : "UDF Function Name",
+      "is_optional": "true",
+      "paramType": "TEXT"
     }
   ]
 }

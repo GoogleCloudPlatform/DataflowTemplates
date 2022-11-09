@@ -26,7 +26,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.io.IOException;
 import java.util.HashMap;
-import javax.script.*;
+import javax.script.ScriptException;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.mongodb.MongoDbIO;
@@ -52,21 +52,8 @@ public class MongoDbToBigQuery {
    *
    * <p>Inherits standard configuration options.
    */
-  /** The tag for the dead-letter output of the udf. */
-  public static final TupleTag<FailsafeElement<Document, String>> UDF_DEADLETTER_OUT =
-      new TupleTag<FailsafeElement<Document, String>>() {};
 
-  /** The tag for the main output for the UDF. */
-  public static final TupleTag<FailsafeElement<Document, String>> UDF_OUT =
-      new TupleTag<FailsafeElement<Document, String>>() {};
-
-  /** The tag for the dead-letter output of the json to table row transform. */
-  public static final TupleTag<FailsafeElement<Document, String>> TRANSFORM_DEADLETTER_OUT =
-      new TupleTag<FailsafeElement<Document, String>>() {};
-
-  /** The tag for the main output of the json transformation. */
-  public static final TupleTag<TableRow> TRANSFORM_OUT = new TupleTag<TableRow>() {};
-
+  /** The tage for reading options from input paramters. */
   public interface Options
       extends PipelineOptions,
           MongoDbOptions,

@@ -104,6 +104,18 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
         "regexes": [
           "^(FLATTEN|NONE)$"
         ]
+      },
+      {
+        "name":"javascriptDocumentTransformGcsPath",
+        "label" : "UDF bucket path",
+        "is_optional": "true",
+        "paramType": "TEXT"
+      },
+      {
+        "name":"javascriptDocumentTransformFunctionName",
+        "label" : "UDF Function Name",
+        "is_optional": "true",
+        "paramType": "TEXT"
       }
     ]
   },

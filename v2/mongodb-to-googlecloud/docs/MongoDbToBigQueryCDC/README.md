@@ -115,6 +115,18 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
         "helpText": "Topic Name to read from e.g. projects/<project-name>/topics/<topic-name>",
         "is_optional": false,
         "paramType": "TEXT"
+      },
+      {
+        "name":"javascriptDocumentTransformGcsPath",
+        "label" : "UDF bucket path",
+        "is_optional": "true",
+        "paramType": "TEXT"
+      },
+      {
+        "name":"javascriptDocumentTransformFunctionName",
+        "label" : "UDF Function Name",
+        "is_optional": "true",
+        "paramType": "TEXT"
       }
     ]
   },
