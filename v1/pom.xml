@@ -88,6 +88,7 @@
     <proto-kms.version>0.87.0</proto-kms.version>
     <cloud-libraries-bom.version>24.4.0</cloud-libraries-bom.version>
     <jacoco.version>0.8.8</jacoco.version>
+    <conscrypt.version>2.5.2</conscrypt.version>
   </properties>
 
   <dependencyManagement>
@@ -111,6 +112,13 @@
           <artifactId>google-http-client-bom</artifactId>
           <version>1.41.2</version>
           <type>pom</type>
+        </dependency>
+
+        <!-- Enforce Conscrypt version -->
+        <dependency>
+            <groupId>org.conscrypt</groupId>
+            <artifactId>conscrypt-openjdk-uber</artifactId>
+            <version>${conscrypt.version}</version>
         </dependency>
       </dependencies>
   </dependencyManagement>

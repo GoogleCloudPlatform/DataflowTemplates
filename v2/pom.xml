@@ -62,6 +62,7 @@
         <slf4j.version>1.7.25</slf4j.version>
         <mvn-target-dir>${basedir}/target</mvn-target-dir>
         <json.version>20200518</json.version>
+        <conscrypt.version>2.5.2</conscrypt.version>
         <excluded.spanner.tests>com.google.cloud.teleport.v2.spanner.IntegrationTest</excluded.spanner.tests>
     </properties>
 
@@ -89,7 +90,15 @@
                 <artifactId>gax-grpc</artifactId>
                 <version>2.3.0</version>
             </dependency>
+
+            <!-- Enforce Conscrypt version -->
+            <dependency>
+                <groupId>org.conscrypt</groupId>
+                <artifactId>conscrypt-openjdk-uber</artifactId>
+                <version>${conscrypt.version}</version>
+            </dependency>
         </dependencies>
+
     </dependencyManagement>
 
     <dependencies>
