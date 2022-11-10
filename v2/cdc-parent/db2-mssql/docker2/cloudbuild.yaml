@@ -1,0 +1,7 @@
+steps:
+  # Deploy container image to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args: ['run', 'deploy', 'db2instance', '--image', 'us-central1-docker.pkg.dev/mlops-abed31/db2testing/db2testimage', '--region', 'us-central1']
+images:
+  - us-central1-docker.pkg.dev/mlops-abed31/db2testing/db2testimage

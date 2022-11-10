@@ -11,7 +11,7 @@
 # execution so the artifacts can be uploaded upon build completion.
 #
 # gcloud builds submit . \
-#   --config=cloudbuild.yaml \
+#   --config=test_cloudbuild.yaml \
 #   --substitutions=BRANCH_NAME="master",REVISION_ID="bd671f47ce9e95dce00d0c07aee08f46d65658e4"
 #
 
