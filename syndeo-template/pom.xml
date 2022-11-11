@@ -40,6 +40,7 @@
         <truth.version>1.0.1</truth.version>
         <secretmanager.version>2.1.2</secretmanager.version>
         <slf4j.version>1.7.25</slf4j.version>
+        <jib.maven.version>2.6.0</jib.maven.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -239,8 +240,6 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- Keep this equivalent with v2/pom.xml. Unfortunately, we need to duplicate the
-            plugin. -->
             <plugin>
                 <groupId>com.diffplug.spotless</groupId>
                 <artifactId>spotless-maven-plugin</artifactId>
@@ -281,6 +280,45 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.google.cloud.tools</groupId>
+                <artifactId>jib-maven-plugin</artifactId>
+                <version>${jib.maven.version}</version>
+                <configuration>
+                    <from>
+                        <image>${base-container-image}:${base-container-image.version}</image>
+                    </from>
+                    <container>
+                        <!--
+                        The root directory to use to expand the compiled classes and dependencies in. The
+                        Jib plugin  will create the following directories under this root:
+                            - resources: All the files under src/resources will be copied to this folder as-is.
+                            - libs: All dependency jars needed to execute this pipeline will be copied into this
+                                    folder.
+                            - classes: Compiled pipeline code will be copied into this folder.
+                        The libs and classes folders under appRoot should thus be added in the classpath
+                        defined in src/resources/command-spec.json.
+                        -->
+                        <appRoot>${app-root}</appRoot>
+                        <!--
+                        INHERIT the base containers entrypoint. Do not override or the Dataflow service
+                        will be unable to launch this template.
+                        -->
+                        <entrypoint>INHERIT</entrypoint>
+                        <environment>
+                            <!--
+                            Set an environment variable called DATAFLOW_JAVA_COMMAND_SPEC that points to the
+                            java-command-spec.json file inside the container. Note that since the Jib plugin
+                            copies the containers of src/resources/* to appRoot/resources, the value of this
+                            environment variable can be set here.
+                            -->
+                            <DATAFLOW_JAVA_COMMAND_SPEC>
+                                ${command-spec}
+                            </DATAFLOW_JAVA_COMMAND_SPEC>
+                        </environment>
+                    </container>
+                </configuration>
             </plugin>
         </plugins>
     </build>
