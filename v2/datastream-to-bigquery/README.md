@@ -106,13 +106,13 @@ echo '{
         {
             "name": "outputStagingDatasetTemplate",
             "label": "Name or template for the dataset to contain staging tables.",
-            "help_text": "This is the name for the dataset to contain staging tables. This parameter supports templates (e.g. {_metadata_dataset}_log or my_dataset_log). Normally, this parameter is a dataset name.",
+            "help_text": "This is the name for the dataset to contain staging tables. This parameter supports templates (e.g. {_metadata_schema}_log or my_dataset_log). Normally, this parameter is a dataset name.",
             "param_type": "TEXT"
         },
         {
             "name": "outputDatasetTemplate",
             "label": "Template for the dataset to contain replica tables.",
-            "help_text": "This is the name for the dataset to contain replica tables. This parameter supports templates (e.g. {_metadata_dataset} or my_dataset). Normally, this parameter is a dataset name.",
+            "help_text": "This is the name for the dataset to contain replica tables. This parameter supports templates (e.g. {_metadata_schema} or my_dataset). Normally, this parameter is a dataset name.",
             "param_type": "TEXT"
         },
         {
@@ -264,8 +264,8 @@ The template requires the following parameters:
 * inputFilePattern: This is the file location for Datastream file output in Cloud Storage, in the format: gs://${BUCKET}/${ROOT_PATH}/.
 * gcsPubSubSubscription: The Pub/Sub subscription used by Cloud Storage to notify Dataflow of new files available for processing, in the format: projects/{PROJECT_NAME}/subscriptions/{SUBSCRIPTION_NAME}
 * inputFileFormat: The format of the output files produced by Datastream. Value can be 'avro' or 'json'.
-* outputStagingDatasetTemplate: This is the name for the dataset to contain staging tables. This parameter supports templates (e.g. {_metadata_dataset}_log or my_dataset_log). Normally, this parameter is a dataset name.
-* outputDatasetTemplate: This is the name for the dataset to contain replica tables. This parameter supports templates (e.g. {_metadata_dataset} or my_dataset). Normally, this parameter is a dataset name.
+* outputStagingDatasetTemplate: This is the name for the dataset to contain staging tables. This parameter supports templates (e.g. {_metadata_schema}_log or my_dataset_log). Normally, this parameter is a dataset name.
+* outputDatasetTemplate: This is the name for the dataset to contain replica tables. This parameter supports templates (e.g. {_metadata_schema} or my_dataset). Normally, this parameter is a dataset name.
 * deadLetterQueueDirectory: This is the file path for Dataflow to write the dead letter queue output. This path should not be in the same path as the Datastream file output.
 
 The template has the following optional parameters:
