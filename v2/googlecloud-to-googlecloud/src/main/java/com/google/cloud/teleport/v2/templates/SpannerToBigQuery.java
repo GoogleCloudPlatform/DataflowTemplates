@@ -19,7 +19,7 @@ import static com.google.cloud.teleport.v2.utils.GCSUtils.getGcsFileAsString;
 
 import com.google.cloud.teleport.v2.options.SpannerToBigQueryOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
-import com.google.cloud.teleport.v2.transforms.SpannerToBigQueryTransform.StructToJson;
+import com.google.cloud.teleport.v2.transforms.SpannerToJsonTransform.StructToJson;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write;

@@ -16,15 +16,14 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import com.google.cloud.spanner.Struct;
-import com.google.cloud.teleport.v2.templates.SpannerToBigQuery;
 import com.google.cloud.teleport.v2.utils.SpannerUtils;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.PCollection;
 
-/** Transforms used by {@link SpannerToBigQuery} template. */
-public final class SpannerToBigQueryTransform {
+/** Transforms used by Spanner templates. */
+public final class SpannerToJsonTransform {
 
   /** Converts {@link Struct} records to JSON string records. */
   public static class StructToJson extends PTransform<PCollection<Struct>, PCollection<String>> {
