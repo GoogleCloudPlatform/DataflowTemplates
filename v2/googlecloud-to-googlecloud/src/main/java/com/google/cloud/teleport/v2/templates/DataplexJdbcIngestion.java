@@ -32,6 +32,7 @@ import com.google.cloud.teleport.v2.options.DataplexJdbcIngestionOptions;
 import com.google.cloud.teleport.v2.transforms.BeamRowToGenericRecordFn;
 import com.google.cloud.teleport.v2.transforms.DataplexJdbcIngestionUpdateMetadata;
 import com.google.cloud.teleport.v2.transforms.GenericRecordsToGcsPartitioned;
+import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.DataplexJdbcIngestionFilter;
 import com.google.cloud.teleport.v2.utils.DataplexJdbcIngestionNaming;
 import com.google.cloud.teleport.v2.utils.DataplexUtils;
@@ -109,6 +110,8 @@ public class DataplexJdbcIngestion {
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()
             .as(DataplexJdbcIngestionOptions.class);
+
+    BigQueryIOUtils.validateBQStorageApiOptionsBatch(options);
 
     Pipeline pipeline = Pipeline.create(options);
 

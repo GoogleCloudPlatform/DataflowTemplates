@@ -19,6 +19,7 @@ import com.google.cloud.teleport.v2.utils.DataplexJdbcPartitionUtils.Partitionin
 import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
 import com.google.cloud.teleport.v2.utils.JdbcIngestionWriteDisposition.WriteDispositionOptions;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -29,7 +30,7 @@ import org.apache.beam.sdk.options.Validation;
  * the executor at the command-line.
  */
 public interface DataplexJdbcIngestionOptions
-    extends GcpOptions, PipelineOptions, DataplexUpdateMetadataOptions {
+    extends GcpOptions, PipelineOptions, DataplexUpdateMetadataOptions, BigQueryOptions {
   @Description(
       "Comma separate list of driver class/dependency jar file GCS paths "
           + "for example "
@@ -138,7 +139,8 @@ public interface DataplexJdbcIngestionOptions
   void setFileFormat(FileFormatOptions fileFormat);
 
   @Description(
-      "If enabled (set to true) the pipeline will consider column alias (\"AS\") instead of the column name to map the rows to BigQuery")
+      "If enabled (set to true) the pipeline will consider column alias (\"AS\") instead of the"
+          + " column name to map the rows to BigQuery")
   @Default.Boolean(false)
   Boolean getUseColumnAlias();
 

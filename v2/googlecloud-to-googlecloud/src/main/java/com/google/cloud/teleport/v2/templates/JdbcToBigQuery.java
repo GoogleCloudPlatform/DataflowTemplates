@@ -19,6 +19,7 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.v2.io.DynamicJdbcIO;
 import com.google.cloud.teleport.v2.io.DynamicJdbcIO.DynamicDataSourceConfiguration;
 import com.google.cloud.teleport.v2.options.JdbcToBigQueryOptions;
+import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.JdbcConverters;
 import com.google.cloud.teleport.v2.utils.KMSEncryptedNestedValue;
 import com.google.common.annotations.VisibleForTesting;
@@ -28,7 +29,7 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write;
 import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
+import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;  
 
 /**
  * A template that copies data from a relational database using JDBC to an existing BigQuery table.
@@ -65,14 +66,7 @@ public class JdbcToBigQuery {
   @VisibleForTesting
   static PipelineResult run(JdbcToBigQueryOptions options, Write<TableRow> writeToBQ) {
     // Validate BQ STORAGE_WRITE_API options
-    if (options.getUseStorageWriteApiAtLeastOnce() && !options.getUseStorageWriteApi()) {
-      // Technically this is a no-op, since useStorageWriteApiAtLeastOnce is only checked by
-      // BigQueryIO when useStorageWriteApi is true, but it might be confusing to a user why
-      // useStorageWriteApiAtLeastOnce doesn't take effect.
-      throw new IllegalArgumentException(
-          "When at-least-once semantics (useStorageWriteApiAtLeastOnce) are enabled Storage Write"
-              + " API (useStorageWriteApi) must also be enabled.");
-    }
+    BigQueryIOUtils.validateBQStorageApiOptionsBatch(options);
 
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
