@@ -15,11 +15,14 @@
  */
 package com.google.cloud.teleport.templates;
 
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.templates.WordCount.WordCountOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -32,7 +35,15 @@ import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 
-/** An template that counts words in Shakespeare. */
+/** A template that counts words in text files. */
+@Template(
+    name = "Word_Count",
+    category = TemplateCategory.GET_STARTED,
+    displayName = "Word Count",
+    description =
+        "Batch pipeline. Reads text from Cloud Storage, tokenizes text lines into individual words, and performs frequency count on each of the words.",
+    optionsClass = WordCountOptions.class,
+    contactInformation = "https://cloud.google.com/support")
 public class WordCount {
 
   static class ExtractWordsFn extends DoFn<String, String> {
@@ -89,12 +100,22 @@ public class WordCount {
    * <p>Inherits standard configuration options.
    */
   public interface WordCountOptions extends PipelineOptions {
-    @Description("Path of the file to read from")
+
+    @TemplateParameter.GcsReadFile(
+        order = 1,
+        description = "Input file(s) in Cloud Storage",
+        helpText =
+            "The input file pattern Dataflow reads from. Use the example file "
+                + "(gs://dataflow-samples/shakespeare/kinglear.txt) or enter the path to your own "
+                + "using the same format: gs://your-bucket/your-file.txt")
     ValueProvider<String> getInputFile();
 
     void setInputFile(ValueProvider<String> value);
 
-    @Description("Path of the file to write to")
+    @TemplateParameter.GcsWriteFolder(
+        order = 2,
+        description = "Output Cloud Storage file prefix",
+        helpText = "Path and filename prefix for writing output files. Ex: gs://your-bucket/counts")
     ValueProvider<String> getOutput();
 
     void setOutput(ValueProvider<String> value);

@@ -35,6 +35,7 @@
     <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
     <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
     <checkstyle.version>8.7</checkstyle.version>
+    <metadata.version>1.0-SNAPSHOT</metadata.version>
   </properties>
 
   <build>
@@ -150,6 +151,7 @@
 
 
   <modules>
+    <module>metadata</module>
     <module>it</module>
     <module>v1</module>
     <module>v2</module>

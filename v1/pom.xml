@@ -124,6 +124,12 @@
   </dependencyManagement>
 
   <dependencies>
+    <!-- Templates Annotations -->
+    <dependency>
+      <groupId>com.google.cloud.teleport.metadata</groupId>
+      <artifactId>metadata</artifactId>
+      <version>${metadata.version}</version>
+    </dependency>
     <!-- Beam -->
     <dependency>
       <groupId>org.apache.beam</groupId>

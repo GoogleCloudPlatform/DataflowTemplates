@@ -17,7 +17,11 @@ package com.google.cloud.teleport.templates;
 
 import com.google.cloud.teleport.avro.AvroPubsubMessageRecord;
 import com.google.cloud.teleport.io.WindowedFilenamePolicy;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.options.WindowedFilenamePolicyOptions;
+import com.google.cloud.teleport.templates.PubsubToAvro.Options;
 import com.google.cloud.teleport.util.DurationUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -117,6 +121,14 @@ import org.apache.beam.sdk.values.PCollection;
  * outputFilenameSuffix=.avro"
  * </pre>
  */
+@Template(
+    name = "Cloud_PubSub_to_Avro",
+    category = TemplateCategory.STREAMING,
+    displayName = "Pub/Sub to Avro Files on Cloud Storage",
+    description =
+        "Streaming pipeline. Reads from a Pub/Sub subscription and outputs windowed Avro files to the specified directory.",
+    optionsClass = Options.class,
+    contactInformation = "https://cloud.google.com/support")
 public class PubsubToAvro {
 
   /**
@@ -126,15 +138,22 @@ public class PubsubToAvro {
    */
   public interface Options
       extends PipelineOptions, StreamingOptions, WindowedFilenamePolicyOptions {
-    @Description(
-        "The Cloud Pub/Sub subscription to consume from. "
-            + "The name should be in the format of "
-            + "projects/<project-id>/subscriptions/<subscription-name>.")
+    @TemplateParameter.PubsubSubscription(
+        order = 1,
+        description = "Pub/Sub input subscription",
+        helpText =
+            "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name'",
+        example = "projects/your-project-id/subscriptions/your-subscription-name")
     ValueProvider<String> getInputSubscription();
 
     void setInputSubscription(ValueProvider<String> value);
 
-    @Description("The Cloud Pub/Sub topic to read from.")
+    @TemplateParameter.PubsubTopic(
+        order = 2,
+        description = "Pub/Sub input topic",
+        helpText =
+            "Pub/Sub topic to read the input from, in the format of "
+                + "'projects/your-project-id/topics/your-topic-name'")
     ValueProvider<String> getInputTopic();
 
     void setInputTopic(ValueProvider<String> value);
@@ -146,25 +165,41 @@ public class PubsubToAvro {
 
     void setUseSubscription(Boolean value);
 
-    @Description("The directory to output files to. Must end with a slash.")
+    @TemplateParameter.GcsWriteFolder(
+        order = 4,
+        description = "Output file directory in Cloud Storage",
+        helpText =
+            "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters.")
     @Required
     ValueProvider<String> getOutputDirectory();
 
     void setOutputDirectory(ValueProvider<String> value);
 
-    @Description("The filename prefix of the files to write to.")
+    @TemplateParameter.Text(
+        order = 5,
+        description = "Output filename prefix of the files to write",
+        helpText = "The prefix to place on each windowed file.")
     @Default.String("output")
     ValueProvider<String> getOutputFilenamePrefix();
 
     void setOutputFilenamePrefix(ValueProvider<String> value);
 
-    @Description("The suffix of the files to write.")
+    @TemplateParameter.Text(
+        order = 6,
+        optional = true,
+        description = "Output filename suffix of the files to write",
+        helpText =
+            "The suffix to place on each windowed file. Typically a file extension such "
+                + "as .txt or .csv.")
     @Default.String("")
     ValueProvider<String> getOutputFilenameSuffix();
 
     void setOutputFilenameSuffix(ValueProvider<String> value);
 
-    @Description("The Avro Write Temporary Directory. Must end with /")
+    @TemplateParameter.GcsWriteFolder(
+        order = 7,
+        description = "Temporary Avro write directory",
+        helpText = "Directory for temporary Avro files.")
     @Required
     ValueProvider<String> getAvroTempDirectory();
 

@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.io.DynamicJdbcIO;
 import com.google.cloud.teleport.v2.options.JdbcToPubsubOptions;
 import com.google.cloud.teleport.v2.utils.KMSEncryptedNestedValue;
@@ -36,6 +38,15 @@ import org.slf4j.LoggerFactory;
  * The {@link JdbcToPubsub} batch pipeline reads data from JDBC and publishes to Google Cloud
  * PubSub. <br>
  */
+@Template(
+    name = "Jdbc_to_PubSub",
+    category = TemplateCategory.BATCH,
+    displayName = "JDBC to Pub/Sub",
+    description =
+        "A batch pipeline which ingests data from JDBC source and writes to a pre-existing Pub/Sub topic as a JSON string. JDBC connection string, user name and password can be passed in directly as plaintext or encrypted using the Google Cloud KMS API.  If the parameter KMSEncryptionKey is specified, connectionUrl, username, and password should be all in encrypted format. A sample curl command for the KMS API encrypt endpoint: curl -s -X POST \"https://cloudkms.googleapis.com/v1/projects/your-project/locations/your-path/keyRings/your-keyring/cryptoKeys/your-key:encrypt\"  -d \"{\\\"plaintext\\\":\"PasteBase64EncodedString\\\"}\"  -H \"Authorization: Bearer $(gcloud auth application-default print-access-token)\"  -H \"Content-Type: application/json\"",
+    optionsClass = JdbcToPubsubOptions.class,
+    flexContainerName = "jdbc-to-pubsub",
+    contactInformation = "https://cloud.google.com/support")
 public class JdbcToPubsub {
 
   /* Logger for class.*/

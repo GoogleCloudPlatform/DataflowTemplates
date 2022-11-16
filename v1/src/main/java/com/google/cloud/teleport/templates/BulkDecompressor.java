@@ -15,6 +15,10 @@
  */
 package com.google.cloud.teleport.templates;
 
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.templates.BulkDecompressor.Options;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteStreams;
@@ -37,7 +41,6 @@ import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.MoveOptions;
 import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.fs.ResourceId;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
@@ -113,6 +116,14 @@ import org.slf4j.LoggerFactory;
  * --outputFailureFile=gs://${PROJECT_ID}/decompressed-dir/failed.csv"
  * </pre>
  */
+@Template(
+    name = "Bulk_Decompress_GCS_Files",
+    category = TemplateCategory.UTILITIES,
+    displayName = "Bulk Decompress Files on Cloud Storage",
+    description =
+        "A pipeline which decompresses files on Cloud Storage to a specified location. Supported formats: Bzip2, deflate, and gzip.",
+    optionsClass = Options.class,
+    contactInformation = "https://cloud.google.com/support")
 public class BulkDecompressor {
 
   /** The logger to output status messages to. */
@@ -150,23 +161,33 @@ public class BulkDecompressor {
    * command-line.
    */
   public interface Options extends PipelineOptions {
-    @Description("The input file pattern to read from (e.g. gs://bucket-name/compressed/*.gz)")
+    @TemplateParameter.GcsReadFile(
+        order = 1,
+        description = "Input Cloud Storage File(s)",
+        helpText = "The Cloud Storage location of the files you'd like to process.",
+        example = "gs://your-bucket/your-files/*.gz")
     @Required
     ValueProvider<String> getInputFilePattern();
 
     void setInputFilePattern(ValueProvider<String> value);
 
-    @Description("The output location to write to (e.g. gs://bucket-name/decompressed)")
+    @TemplateParameter.GcsWriteFolder(
+        order = 2,
+        description = "Output file directory in Cloud Storage",
+        helpText =
+            "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters.",
+        example = "gs://your-bucket/decompressed/")
     @Required
     ValueProvider<String> getOutputDirectory();
 
     void setOutputDirectory(ValueProvider<String> value);
 
-    @Description(
-        "The output file to write failures during the decompression process "
-            + "(e.g. gs://bucket-name/decompressed/failed.txt). The contents will be one line for "
-            + "each file which failed decompression. Note that this parameter will "
-            + "allow the pipeline to continue processing in the event of a failure.")
+    @TemplateParameter.GcsWriteFile(
+        order = 3,
+        description = "The output file for failures during the decompression process",
+        helpText =
+            "The output file to write failures to during the decompression process. If there are no failures, the file will still be created but will be empty. The contents will be one line for each file which failed decompression in CSV format (Filename, Error). Note that this parameter will allow the pipeline to continue processing in the event of a failure.",
+        example = "gs://your-bucket/decompressed/failed.csv")
     @Required
     ValueProvider<String> getOutputFailureFile();
 

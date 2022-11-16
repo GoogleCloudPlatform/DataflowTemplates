@@ -17,6 +17,8 @@ package com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery;
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.Timestamp;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
@@ -69,6 +71,15 @@ import org.slf4j.LoggerFactory;
  * DataChangeRecord} is then broken into {@link Mod}, which converted into {@link TableRow} and
  * inserted into BigQuery table.
  */
+@Template(
+    name = "Spanner_Change_Streams_to_BigQuery",
+    category = TemplateCategory.STREAMING,
+    displayName = "Cloud Spanner change streams to BigQuery",
+    description =
+        "Streaming pipeline. Streams Spanner data change records and writes them into BigQuery using Dataflow Runner V2.",
+    optionsClass = SpannerChangeStreamsToBigQueryOptions.class,
+    flexContainerName = "spanner-changestreams-to-bigquery",
+    contactInformation = "https://cloud.google.com/support")
 public final class SpannerChangeStreamsToBigQuery {
 
   /** String/String Coder for {@link FailsafeElement}. */

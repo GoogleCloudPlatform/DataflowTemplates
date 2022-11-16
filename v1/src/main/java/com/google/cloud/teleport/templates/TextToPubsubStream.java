@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.templates;
 
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.templates.TextToPubsub.Options;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -46,6 +48,14 @@ import org.joda.time.Duration;
  * }
  * </pre>
  */
+@Template(
+    name = "Stream_GCS_Text_to_Cloud_PubSub",
+    category = TemplateCategory.STREAMING,
+    displayName = "Text Files on Cloud Storage to Pub/Sub",
+    description =
+        "A pipeline that polls every 10 seconds for new text files stored in Cloud Storage and outputs each line to a Pub/Sub topic.",
+    optionsClass = Options.class,
+    contactInformation = "https://cloud.google.com/support")
 public class TextToPubsubStream extends TextToPubsub {
   private static final Duration DEFAULT_POLL_INTERVAL = Duration.standardSeconds(10);
 

@@ -15,6 +15,10 @@
  */
 package com.google.cloud.teleport.templates;
 
+import com.google.cloud.teleport.metadata.MultiTemplate;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.templates.TextToDatastore.TextToDatastoreOptions;
 import com.google.cloud.teleport.templates.common.DatastoreConverters.DatastoreWriteOptions;
 import com.google.cloud.teleport.templates.common.DatastoreConverters.WriteJsonEntities;
 import com.google.cloud.teleport.templates.common.ErrorConverters.ErrorWriteOptions;
@@ -35,6 +39,36 @@ import org.apache.beam.sdk.values.TupleTag;
  * The Json is expected to be in the format of:
  * https://cloud.google.com/datastore/docs/reference/rest/v1/Entity
  */
+@MultiTemplate({
+  @Template(
+      name = "GCS_Text_to_Datastore",
+      category = TemplateCategory.BATCH,
+      displayName = "Text Files on Cloud Storage to Datastore [Deprecated]",
+      description =
+          "Batch pipeline. Reads from text files stored in Cloud Storage and writes JSON-encoded entities to Datastore.",
+      optionsClass = TextToDatastoreOptions.class,
+      skipOptions = {
+        "firestoreWriteProjectId",
+        "firestoreWriteEntityKind",
+        "firestoreWriteNamespace",
+        "firestoreHintNumWorkers"
+      },
+      contactInformation = "https://cloud.google.com/support"),
+  @Template(
+      name = "GCS_Text_to_Firestore",
+      category = TemplateCategory.BATCH,
+      displayName = "Text Files on Cloud Storage to Firestore (Datastore mode)",
+      description =
+          "Batch pipeline. Reads from text files stored in Cloud Storage and writes JSON-encoded entities to Firestore.",
+      optionsClass = TextToDatastoreOptions.class,
+      skipOptions = {
+        "datastoreWriteProjectId",
+        "datastoreWriteEntityKind",
+        "datastoreWriteNamespace",
+        "datastoreHintNumWorkers"
+      },
+      contactInformation = "https://cloud.google.com/support")
+})
 public class TextToDatastore {
 
   public static <T> ValueProvider<T> selectProvidedInput(

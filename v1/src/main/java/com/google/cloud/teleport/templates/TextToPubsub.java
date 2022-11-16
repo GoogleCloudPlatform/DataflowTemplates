@@ -15,11 +15,14 @@
  */
 package com.google.cloud.teleport.templates;
 
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.templates.TextToPubsub.Options;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
@@ -45,19 +48,34 @@ import org.apache.beam.sdk.options.ValueProvider;
  * }
  * </pre>
  */
+@Template(
+    name = "GCS_Text_to_Cloud_PubSub",
+    category = TemplateCategory.BATCH,
+    displayName = "Cloud Storage Text File to Pub/Sub (Batch)",
+    description =
+        "Batch pipeline. Reads records from text files stored in Cloud Storage and publishes them to a Pub/Sub topic.",
+    optionsClass = Options.class,
+    contactInformation = "https://cloud.google.com/support")
 public class TextToPubsub {
 
   /** The custom options supported by the pipeline. Inherits standard configuration options. */
   public interface Options extends PipelineOptions {
-    @Description("The file pattern to read records from (e.g. gs://bucket/file-*.csv)")
+    @TemplateParameter.GcsReadFile(
+        order = 1,
+        description = "Cloud Storage Input File(s)",
+        helpText = "Path of the file pattern glob to read from.",
+        example = "gs://your-bucket/path/*.txt")
     @Required
     ValueProvider<String> getInputFilePattern();
 
     void setInputFilePattern(ValueProvider<String> value);
 
-    @Description(
-        "The name of the topic which data should be published to. "
-            + "The name should be in the format of projects/<project-id>/topics/<topic-name>.")
+    @TemplateParameter.PubsubTopic(
+        order = 2,
+        description = "Output Pub/Sub topic",
+        helpText =
+            "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name'",
+        example = "projects/your-project-id/topics/your-topic-name")
     @Required
     ValueProvider<String> getOutputTopic();
 

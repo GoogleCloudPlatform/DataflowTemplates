@@ -15,6 +15,9 @@
  */
 package com.google.cloud.teleport.templates;
 
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.templates.DatastoreToText.DatastoreToTextOptions;
 import com.google.cloud.teleport.templates.common.DatastoreConverters.DatastoreReadOptions;
 import com.google.cloud.teleport.templates.common.DatastoreConverters.ReadJsonEntities;
 import com.google.cloud.teleport.templates.common.FirestoreNestedValueProvider;
@@ -32,6 +35,24 @@ import org.apache.beam.sdk.options.ValueProvider;
  * encoded entity in the v1/Entity rest format:
  * https://cloud.google.com/datastore/docs/reference/rest/v1/Entity
  */
+@Template(
+    name = "Datastore_to_GCS_Text",
+    category = TemplateCategory.BATCH,
+    displayName = "Datastore to Text Files on Cloud Storage [Deprecated]",
+    description =
+        "Batch pipeline. Reads Datastore entities and writes them to Cloud Storage as text files.",
+    optionsClass = DatastoreToTextOptions.class,
+    skipOptions = {"firestoreReadNamespace", "firestoreReadGqlQuery", "firestoreReadProjectId"},
+    contactInformation = "https://cloud.google.com/support")
+@Template(
+    name = "Firestore_to_GCS_Text",
+    category = TemplateCategory.BATCH,
+    displayName = "Firestore (Datastore mode) to Text Files on Cloud Storage",
+    description =
+        "Batch pipeline. Reads Firestore entities and writes them to Cloud Storage as text files.",
+    optionsClass = DatastoreToTextOptions.class,
+    skipOptions = {"datastoreReadNamespace", "datastoreReadGqlQuery", "datastoreReadProjectId"},
+    contactInformation = "https://cloud.google.com/support")
 public class DatastoreToText {
 
   public static ValueProvider<String> selectProvidedInput(

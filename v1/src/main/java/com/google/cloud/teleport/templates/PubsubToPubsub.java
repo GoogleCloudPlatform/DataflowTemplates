@@ -19,6 +19,10 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.templates.PubsubToPubsub.Options;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import javax.annotation.Nullable;
@@ -28,7 +32,6 @@ import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
@@ -39,7 +42,15 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** An template that copies messages from one Pubsub subscription to another Pubsub topic. */
+/** A template that copies messages from one Pubsub subscription to another Pubsub topic. */
+@Template(
+    name = "Cloud_PubSub_to_Cloud_PubSub",
+    category = TemplateCategory.STREAMING,
+    displayName = "Pub/Sub to Pub/Sub",
+    description =
+        "Streaming pipeline. Reads from a Pub/Sub subscription and writes to a Pub/Sub topic. ",
+    optionsClass = Options.class,
+    contactInformation = "https://cloud.google.com/support")
 public class PubsubToPubsub {
 
   /**
@@ -95,38 +106,47 @@ public class PubsubToPubsub {
    * <p>Inherits standard configuration options.
    */
   public interface Options extends PipelineOptions, StreamingOptions {
-    @Description(
-        "The Cloud Pub/Sub subscription to consume from. "
-            + "The name should be in the format of "
-            + "projects/<project-id>/subscriptions/<subscription-name>.")
+    @TemplateParameter.PubsubSubscription(
+        order = 1,
+        description = "Pub/Sub input subscription",
+        helpText =
+            "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name'",
+        example = "projects/your-project-id/subscriptions/your-subscription-name")
     @Validation.Required
     ValueProvider<String> getInputSubscription();
 
     void setInputSubscription(ValueProvider<String> inputSubscription);
 
-    @Description(
-        "The Cloud Pub/Sub topic to publish to. "
-            + "The name should be in the format of "
-            + "projects/<project-id>/topics/<topic-name>.")
+    @TemplateParameter.PubsubTopic(
+        order = 2,
+        description = "Output Pub/Sub topic",
+        helpText =
+            "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name'",
+        example = "projects/your-project-id/topics/your-topic-name")
     @Validation.Required
     ValueProvider<String> getOutputTopic();
 
     void setOutputTopic(ValueProvider<String> outputTopic);
 
-    @Description(
-        "Filter events based on an optional attribute key. "
-            + "No filters are applied if a filterKey is not specified.")
-    @Validation.Required
+    @TemplateParameter.Text(
+        order = 3,
+        optional = true,
+        description = "Event filter key",
+        helpText =
+            "Attribute key by which events are filtered. No filters are applied if no key is specified.")
     ValueProvider<String> getFilterKey();
 
     void setFilterKey(ValueProvider<String> filterKey);
 
-    @Description(
-        "Filter attribute value to use in case a filterKey is provided. Accepts a valid Java regex"
-            + " string as a filterValue. In case a regex is provided, the complete expression"
-            + " should match in order for the message to be filtered. Partial matches (e.g."
-            + " substring) will not be filtered. A null filterValue is used by default.")
-    @Validation.Required
+    @TemplateParameter.Text(
+        order = 4,
+        optional = true,
+        description = "Event filter value",
+        helpText =
+            "Filter attribute value to use if an event filter key is provided. Accepts a valid "
+                + "Java Regex string as an event filter value. In case a regex is provided, the complete "
+                + "expression should match in order for the message to be filtered. Partial matches (e.g. "
+                + "substring) will not be filtered. A null event filter value is used by default.")
     ValueProvider<String> getFilterValue();
 
     void setFilterValue(ValueProvider<String> filterValue);

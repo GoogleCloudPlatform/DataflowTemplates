@@ -17,8 +17,11 @@ package com.google.cloud.teleport.v2.mongodb.templates;
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.BigQueryWriteOptions;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.MongoDbOptions;
+import com.google.cloud.teleport.v2.mongodb.templates.MongoDbToBigQuery.Options;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -34,9 +37,18 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.bson.Document;
 
 /**
- * The {@link BigQueryToMongoDb} pipeline is a batch pipeline which ingests data from MongoDB and
+ * The {@link MongoDbToBigQuery} pipeline is a batch pipeline which ingests data from MongoDB and
  * outputs the resulting records to BigQuery.
  */
+@Template(
+    name = "MongoDB_to_BigQuery",
+    category = TemplateCategory.BATCH,
+    displayName = "MongoDB to BigQuery",
+    description =
+        "A batch pipeline which reads data documents from MongoDB and writes them to BigQuery.",
+    optionsClass = Options.class,
+    flexContainerName = "mongodb-to-bigquery",
+    contactInformation = "https://cloud.google.com/support")
 public class MongoDbToBigQuery {
   /**
    * Options supported by {@link MongoDbToBigQuery}

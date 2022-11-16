@@ -37,7 +37,6 @@
             <groupId>com.google.cloud.teleport.v2</groupId>
             <artifactId>common</artifactId>
             <version>${project.version}</version>
-            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.json</groupId>

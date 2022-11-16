@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.templates.common;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.templates.common.ErrorConverters.ErrorMessage;
 import com.google.datastore.v1.ArrayValue;
 import com.google.datastore.v1.Entity;
@@ -38,7 +39,6 @@ import org.apache.beam.sdk.io.gcp.datastore.DatastoreV1;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.Hidden;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -62,7 +62,11 @@ public class DatastoreConverters {
   /** Options for Reading Datastore Entities. */
   public interface DatastoreReadOptions extends PipelineOptions {
     /** @deprecated Please use getFirestoreReadGqlQuery() instead. */
-    @Description("GQL Query which specifies what entities to grab")
+    @TemplateParameter.Text(
+        order = 1,
+        regexes = {"^.+$"},
+        description = "GQL Query",
+        helpText = "Specifies which Datastore entities to read. Ex: ‘SELECT * FROM MyKind’")
     @Hidden
     @Deprecated
     ValueProvider<String> getDatastoreReadGqlQuery();
@@ -73,7 +77,10 @@ public class DatastoreConverters {
     void setDatastoreReadGqlQuery(ValueProvider<String> datastoreReadGqlQuery);
 
     /** @deprecated Please use getFirestoreReadProjectId() instead. */
-    @Description("GCP Project Id of where the datastore entities live")
+    @TemplateParameter.ProjectId(
+        order = 2,
+        description = "Project ID",
+        helpText = "The Google Cloud project ID of the Datastore instance to read from")
     @Hidden
     @Deprecated
     ValueProvider<String> getDatastoreReadProjectId();
@@ -84,7 +91,12 @@ public class DatastoreConverters {
     void setDatastoreReadProjectId(ValueProvider<String> datastoreReadProjectId);
 
     /** @deprecated Please use getFirestoreReadNamespace() instead. */
-    @Description("Namespace of requested Entties. Set as \"\" for default namespace")
+    @TemplateParameter.Text(
+        order = 3,
+        regexes = {"^[0-9A-Za-z._-]{0,100}$"},
+        description = "Namespace",
+        helpText =
+            "Namespace of requested Datastore entities. Leave blank to use default namespace.")
     @Hidden
     @Deprecated
     ValueProvider<String> getDatastoreReadNamespace();
@@ -94,17 +106,30 @@ public class DatastoreConverters {
     @Deprecated
     void setDatastoreReadNamespace(ValueProvider<String> datstoreReadNamespace);
 
-    @Description("GQL Query which specifies what entities to grab")
+    @TemplateParameter.Text(
+        order = 4,
+        regexes = {"^.+$"},
+        description = "GQL Query",
+        helpText = "Specifies which Firestore entities to read. Ex: ‘SELECT * FROM MyKind’")
     ValueProvider<String> getFirestoreReadGqlQuery();
 
     void setFirestoreReadGqlQuery(ValueProvider<String> firestoreReadGqlQuery);
 
-    @Description("GCP Project Id of where the datastore entities live")
+    @TemplateParameter.ProjectId(
+        order = 5,
+        description = "Project ID",
+        helpText = "The Google Cloud project ID of the Firestore instance to read from")
     ValueProvider<String> getFirestoreReadProjectId();
 
     void setFirestoreReadProjectId(ValueProvider<String> firestoreReadProjectId);
 
-    @Description("Namespace of requested Entties. Set as \"\" for default namespace")
+    @TemplateParameter.Text(
+        order = 6,
+        optional = true,
+        regexes = {"^[0-9A-Za-z._-]{0,100}$"},
+        description = "Namespace",
+        helpText =
+            "Namespace of requested Firestore entities. Leave blank to use default namespace.")
     ValueProvider<String> getFirestoreReadNamespace();
 
     void setFirestoreReadNamespace(ValueProvider<String> firestoreReadNamespace);
@@ -113,7 +138,10 @@ public class DatastoreConverters {
   /** Options for writing Datastore Entities. */
   public interface DatastoreWriteOptions extends PipelineOptions {
     /** @deprecated Please use getFirestoreWriteProjectId() instead. */
-    @Description("GCP Project Id of where to write the datastore entities")
+    @TemplateParameter.ProjectId(
+        order = 1,
+        description = "Project ID",
+        helpText = "The Google Cloud project ID of where to write Datastore entities")
     @Hidden
     @Deprecated
     ValueProvider<String> getDatastoreWriteProjectId();
@@ -124,7 +152,11 @@ public class DatastoreConverters {
     void setDatastoreWriteProjectId(ValueProvider<String> datstoreWriteProjectId);
 
     /** @deprecated Please use getFirestoreWriteEntityKind() instead. */
-    @Description("Kind of the Datastore entity")
+    @TemplateParameter.Text(
+        order = 2,
+        description = "Datastore entity kind",
+        helpText =
+            "Datastore kind under which entities will be written in the output Google Cloud project")
     @Hidden
     @Deprecated
     ValueProvider<String> getDatastoreWriteEntityKind();
@@ -135,7 +167,12 @@ public class DatastoreConverters {
     void setDatastoreWriteEntityKind(ValueProvider<String> value);
 
     /** @deprecated Please use getFirestoreWriteNamespace() instead. */
-    @Description("Namespace of the Datastore entity")
+    @TemplateParameter.Text(
+        order = 3,
+        optional = true,
+        description = "Datastore namespace",
+        helpText =
+            "Datastore namespace under which entities will be written in the output Google Cloud project")
     @Hidden
     @Deprecated
     ValueProvider<String> getDatastoreWriteNamespace();
@@ -146,7 +183,13 @@ public class DatastoreConverters {
     void setDatastoreWriteNamespace(ValueProvider<String> value);
 
     /** @deprecated Please use getFirestoreHintNumWorkers() instead. */
-    @Description("Hint for the expected number of workers in the ramp-up throttling step")
+    @TemplateParameter.Text(
+        order = 4,
+        optional = true,
+        regexes = {"^[1-9]+[0-9]*$"},
+        description = "Expected number of workers",
+        helpText =
+            "Hint for the expected number of workers in the Datastore ramp-up throttling step.")
     @Default.Integer(500)
     @Hidden
     @Deprecated
@@ -157,22 +200,40 @@ public class DatastoreConverters {
     @Deprecated
     void setDatastoreHintNumWorkers(ValueProvider<Integer> value);
 
-    @Description("GCP Project Id of where to write the datastore entities")
+    @TemplateParameter.ProjectId(
+        order = 5,
+        description = "Project ID",
+        helpText = "The Google Cloud project ID of where to write Firestore entities")
     ValueProvider<String> getFirestoreWriteProjectId();
 
     void setFirestoreWriteProjectId(ValueProvider<String> firestoreWriteProjectId);
 
-    @Description("Kind of the Datastore entity")
+    @TemplateParameter.Text(
+        order = 6,
+        description = "Firestore entity kind",
+        helpText =
+            "Firestore kind under which entities will be written in the output Google Cloud project")
     ValueProvider<String> getFirestoreWriteEntityKind();
 
     void setFirestoreWriteEntityKind(ValueProvider<String> value);
 
-    @Description("Namespace of the Datastore entity")
+    @TemplateParameter.Text(
+        order = 7,
+        optional = true,
+        description = "Namespace of the Firestore entity",
+        helpText =
+            "Firestore namespace under which entities will be written in the output Google Cloud project")
     ValueProvider<String> getFirestoreWriteNamespace();
 
     void setFirestoreWriteNamespace(ValueProvider<String> value);
 
-    @Description("Hint for the expected number of workers in the ramp-up throttling step")
+    @TemplateParameter.Integer(
+        order = 8,
+        optional = true,
+        description = "Expected number of workers",
+        helpText =
+            "Hint for the expected number of workers in the Firestore ramp-up throttling step. Default: 500.")
+    @Default.Integer(500)
     ValueProvider<Integer> getFirestoreHintNumWorkers();
 
     void setFirestoreHintNumWorkers(ValueProvider<Integer> value);
@@ -181,7 +242,11 @@ public class DatastoreConverters {
   /** Options for deleting Datastore Entities. */
   public interface DatastoreDeleteOptions extends PipelineOptions {
     /** @deprecated Please use getFirestoreDeleteProjectId() instead. */
-    @Description("GCP Project Id of where to delete the datastore entities")
+    @TemplateParameter.ProjectId(
+        order = 1,
+        description =
+            "Delete all matching entities from the GQL Query present in this Datastore Project Id of",
+        helpText = "Google Cloud Project Id of where to delete the datastore entities")
     @Hidden
     @Deprecated
     ValueProvider<String> getDatastoreDeleteProjectId();
@@ -192,7 +257,13 @@ public class DatastoreConverters {
     void setDatastoreDeleteProjectId(ValueProvider<String> datastoreDeleteProjectId);
 
     /** @deprecated Please use getFirestoreHintNumWorkers() instead. */
-    @Description("Hint for the expected number of workers in the ramp-up throttling step")
+    @TemplateParameter.Text(
+        order = 2,
+        optional = true,
+        regexes = {"^[1-9][0-9]*$"},
+        description = "Expected number of workers",
+        helpText =
+            "Hint for the expected number of workers in the Datastore ramp-up throttling step.")
     @Default.Integer(500)
     @Hidden
     @Deprecated
@@ -203,12 +274,22 @@ public class DatastoreConverters {
     @Deprecated
     void setDatastoreHintNumWorkers(ValueProvider<Integer> value);
 
-    @Description("GCP Project Id of where to delete the datastore entities")
+    @TemplateParameter.ProjectId(
+        order = 3,
+        description =
+            "Delete all matching entities from the GQL Query present in this Firestore Project Id of",
+        helpText = "Google Cloud Project Id of where to delete the firestore entities")
     ValueProvider<String> getFirestoreDeleteProjectId();
 
     void setFirestoreDeleteProjectId(ValueProvider<String> firestoreDeleteProjectId);
 
-    @Description("Hint for the expected number of workers in the ramp-up throttling step")
+    @TemplateParameter.Integer(
+        order = 4,
+        optional = true,
+        description = "Expected number of workers",
+        helpText =
+            "Hint for the expected number of workers in the Firestore ramp-up throttling step.")
+    @Default.Integer(500)
     ValueProvider<Integer> getFirestoreHintNumWorkers();
 
     void setFirestoreHintNumWorkers(ValueProvider<Integer> value);

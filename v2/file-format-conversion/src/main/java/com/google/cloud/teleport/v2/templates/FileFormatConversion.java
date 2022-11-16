@@ -15,6 +15,10 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.templates.FileFormatConversion.FileFormatConversionOptions;
 import com.google.cloud.teleport.v2.transforms.AvroConverters.AvroOptions;
 import com.google.cloud.teleport.v2.transforms.CsvConverters.CsvPipelineOptions;
 import com.google.cloud.teleport.v2.transforms.ParquetConverters.ParquetOptions;
@@ -22,7 +26,6 @@ import java.io.IOException;
 import java.util.EnumMap;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
@@ -113,6 +116,14 @@ import org.slf4j.LoggerFactory;
  *      '
  * </pre>
  */
+@Template(
+    name = "File_Format_Conversion",
+    category = TemplateCategory.UTILITIES,
+    displayName = "Convert file formats between Avro, Parquet & CSV",
+    description = "A pipeline to convert file formats between Avro, Parquet & csv.",
+    optionsClass = FileFormatConversionOptions.class,
+    flexContainerName = "file-format-conversion",
+    contactInformation = "https://cloud.google.com/support")
 public class FileFormatConversion {
 
   /** Logger for class. */
@@ -127,13 +138,21 @@ public class FileFormatConversion {
    */
   public interface FileFormatConversionOptions
       extends PipelineOptions, CsvPipelineOptions, AvroOptions, ParquetOptions {
-    @Description("Input file format.")
+    @TemplateParameter.Enum(
+        order = 1,
+        enumOptions = {"avro", "csv", "parquet"},
+        description = "File format of the input files.",
+        helpText = "File format of the input files. Needs to be either avro, parquet or csv.")
     @Required
     String getInputFileFormat();
 
     void setInputFileFormat(String inputFileFormat);
 
-    @Description("Output file format.")
+    @TemplateParameter.Enum(
+        order = 2,
+        enumOptions = {"avro", "parquet"},
+        description = "File format of the output files.",
+        helpText = "File format of the output files. Needs to be either avro or parquet.")
     @Required
     String getOutputFileFormat();
 

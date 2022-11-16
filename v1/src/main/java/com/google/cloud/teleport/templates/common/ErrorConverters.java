@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.values.FailsafeElement;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
@@ -41,7 +42,6 @@ import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -79,7 +79,13 @@ public class ErrorConverters {
 
   /** Options for Writing Errors to GCS. */
   public interface ErrorWriteOptions extends PipelineOptions {
-    @Description("Pattern of where to write errors, ex: gs://mybucket/somepath/errors.txt")
+
+    @TemplateParameter.GcsWriteFolder(
+        order = 1,
+        description = "Output failure file",
+        helpText =
+            "The error log output folder to use for write failures that occur during processing.",
+        example = "gs://your-bucket/errors/")
     ValueProvider<String> getErrorWritePath();
 
     void setErrorWritePath(ValueProvider<String> errorWritePath);

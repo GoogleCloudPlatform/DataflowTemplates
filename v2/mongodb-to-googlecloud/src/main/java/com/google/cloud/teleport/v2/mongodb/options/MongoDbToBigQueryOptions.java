@@ -15,9 +15,9 @@
  */
 package com.google.cloud.teleport.v2.mongodb.options;
 
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 
 /**
@@ -28,25 +28,40 @@ public class MongoDbToBigQueryOptions {
 
   /** Options for Reading MongoDb Documents. */
   public interface MongoDbOptions extends PipelineOptions, DataflowPipelineOptions {
-    @Description("MongoDB URI for connecting to MongoDB Cluster")
+    @TemplateParameter.Text(
+        order = 1,
+        description = "MongoDB Connection URI",
+        helpText = "URI to connect to MongoDB Atlas.")
     @Default.String("mongouri")
     String getMongoDbUri();
 
     void setMongoDbUri(String getMongoDbUri);
 
-    @Description("MongoDb Database name to read the data from")
-    @Default.String("db")
+    @TemplateParameter.Text(
+        order = 2,
+        description = "MongoDB database",
+        helpText = "Database in MongoDB to read the collection from.",
+        example = "my-db")
     String getDatabase();
 
     void setDatabase(String database);
 
-    @Description("MongoDb collection to read the data from")
+    @TemplateParameter.Text(
+        order = 3,
+        description = "MongoDB collection",
+        helpText = "Name of the collection inside MongoDB database.",
+        example = "my-collection")
     @Default.String("collection")
     String getCollection();
 
     void setCollection(String collection);
 
-    @Description("MongoDb collection to read the data from")
+    @TemplateParameter.Enum(
+        order = 4,
+        enumOptions = {"FLATTEN", "NONE"},
+        description = "User option",
+        helpText =
+            "User option: FLATTEN or NONE. FLATTEN will flatten the documents for 1 level. NONE will store the whole document as json string.")
     String getUserOption();
 
     void setUserOption(String userOption);
@@ -54,7 +69,13 @@ public class MongoDbToBigQueryOptions {
 
   /** Options for reading from PubSub. */
   public interface PubSubOptions extends PipelineOptions, DataflowPipelineOptions {
-    @Description("MongoDb collection to read the data from")
+    @TemplateParameter.PubsubTopic(
+        order = 1,
+        description = "Pub/Sub input topic",
+        helpText =
+            "Pub/Sub topic to read the input from, in the format of "
+                + "'projects/your-project-id/topics/your-topic-name'",
+        example = "projects/your-project-id/topics/your-topic-name")
     String getInputTopic();
 
     void setInputTopic(String inputTopic);
@@ -63,7 +84,11 @@ public class MongoDbToBigQueryOptions {
   /** Options for Reading BigQuery Rows. */
   public interface BigQueryWriteOptions extends PipelineOptions, DataflowPipelineOptions {
 
-    @Description("BigQuery Table name to write to")
+    @TemplateParameter.BigQueryTable(
+        order = 1,
+        description = "BigQuery output table",
+        helpText =
+            "BigQuery table location to write the output to. The name should be in the format <project>:<dataset>.<table_name>. The table's schema must match input objects.")
     @Default.String("bqtable")
     String getOutputTableSpec();
 

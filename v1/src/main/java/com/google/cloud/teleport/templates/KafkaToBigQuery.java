@@ -19,6 +19,8 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.kafka.connector.KafkaIO;
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.templates.KafkaToBigQuery.Options;
 import com.google.cloud.teleport.templates.common.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.JavascriptTextTransformerOptions;
@@ -36,12 +38,10 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -134,24 +134,45 @@ public class KafkaToBigQuery {
    * command-line.
    */
   public interface Options extends PipelineOptions, JavascriptTextTransformerOptions {
-    @Description("Table spec to write the output to")
+    @TemplateParameter.BigQueryTable(
+        order = 1,
+        description = "BigQuery output table",
+        helpText =
+            "BigQuery table location to write the output to. The name should be in the format "
+                + "<project>:<dataset>.<table_name>. The table's schema must match input objects.")
     ValueProvider<String> getOutputTableSpec();
 
     void setOutputTableSpec(ValueProvider<String> value);
 
-    @Description("Kafka Bootstrap Servers")
+    @TemplateParameter.Text(
+        order = 2,
+        regexes = {"[,:a-zA-Z0-9._-]+"},
+        description = "Kafka Bootstrap Server list",
+        helpText = "Kafka Bootstrap Server list, separated by commas.",
+        example = "localhost:9092,127.0.0.1:9093")
     ValueProvider<String> getBootstrapServers();
 
     void setBootstrapServers(ValueProvider<String> value);
 
-    @Description("Kafka topic to read the input from")
+    @TemplateParameter.Text(
+        order = 3,
+        regexes = {"[a-zA-Z0-9._-,]+"},
+        description = "Kafka topic(s) to read input from.",
+        helpText = "Kafka topic(s) to read input from.",
+        example = "topic1,topic2")
     ValueProvider<String> getInputTopic();
 
     void setInputTopic(ValueProvider<String> value);
 
-    @Description(
-        "The dead-letter table to output to within BigQuery in <project-id>:<dataset>.<table> "
-            + "format. If it doesn't exist, it will be created during pipeline execution.")
+    @TemplateParameter.BigQueryTable(
+        order = 4,
+        optional = true,
+        description = "The dead-letter table name to output failed messages to BigQuery",
+        helpText =
+            "Messages failed to reach the output table for all kind of reasons (e.g., mismatched "
+                + "schema, malformed json) are written to this table. If it doesn't exist, it will be "
+                + "created during pipeline execution.",
+        example = "your-project-id:your-dataset.your-table-name")
     ValueProvider<String> getOutputDeadletterTable();
 
     void setOutputDeadletterTable(ValueProvider<String> value);

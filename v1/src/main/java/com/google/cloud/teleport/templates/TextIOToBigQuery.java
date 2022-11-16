@@ -17,6 +17,10 @@ package com.google.cloud.teleport.templates;
 
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableSchema;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.templates.TextIOToBigQuery.Options;
 import com.google.cloud.teleport.templates.common.BigQueryConverters;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.TransformTextViaJavascript;
@@ -28,7 +32,6 @@ import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -42,39 +45,76 @@ import org.slf4j.LoggerFactory;
 /**
  * Templated pipeline to read text from TextIO, apply a javascript UDF to it, and write it to GCS.
  */
+@Template(
+    name = "GCS_Text_to_BigQuery",
+    category = TemplateCategory.BATCH,
+    displayName = "Text Files on Cloud Storage to BigQuery",
+    description =
+        "Batch pipeline. Reads text files stored in Cloud Storage, transforms them using a JavaScript user-defined function (UDF), and outputs the result to BigQuery.",
+    optionsClass = Options.class,
+    contactInformation = "https://cloud.google.com/support")
 public class TextIOToBigQuery {
 
   /** Options supported by {@link TextIOToBigQuery}. */
   public interface Options extends DataflowPipelineOptions, JavascriptTextTransformerOptions {
-    @Description("The GCS location of the text you'd like to process")
+
+    @TemplateParameter.GcsReadFile(
+        order = 1,
+        description = "Cloud Storage Input File(s)",
+        helpText = "Path of the file pattern glob to read from.",
+        example = "gs://your-bucket/path/*.csv")
     ValueProvider<String> getInputFilePattern();
 
     void setInputFilePattern(ValueProvider<String> value);
 
-    @Description("JSON file with BigQuery Schema description")
+    @TemplateParameter.GcsReadFile(
+        order = 2,
+        description = "Cloud Storage location of your BigQuery schema file, described as a JSON",
+        helpText =
+            "JSON file with BigQuery Schema description. JSON Example: {\n"
+                + "\t\"BigQuery Schema\": [\n"
+                + "\t\t{\n"
+                + "\t\t\t\"name\": \"location\",\n"
+                + "\t\t\t\"type\": \"STRING\"\n"
+                + "\t\t},\n"
+                + "\t\t{\n"
+                + "\t\t\t\"name\": \"name\",\n"
+                + "\t\t\t\"type\": \"STRING\"\n"
+                + "\t\t},\n"
+                + "\t\t{\n"
+                + "\t\t\t\"name\": \"age\",\n"
+                + "\t\t\t\"type\": \"STRING\"\n"
+                + "\t\t},\n"
+                + "\t\t{\n"
+                + "\t\t\t\"name\": \"color\",\n"
+                + "\t\t\t\"type\": \"STRING\"\n"
+                + "\t\t},\n"
+                + "\t\t{\n"
+                + "\t\t\t\"name\": \"coffee\",\n"
+                + "\t\t\t\"type\": \"STRING\"\n"
+                + "\t\t}\n"
+                + "\t]\n"
+                + "}")
     ValueProvider<String> getJSONPath();
 
     void setJSONPath(ValueProvider<String> value);
 
-    @Description("Output BigQuery Table to write to")
+    @TemplateParameter.BigQueryTable(
+        order = 3,
+        description = "BigQuery output table",
+        helpText =
+            "BigQuery table location to write the output to. The table's schema must match the "
+                + "input objects.")
     ValueProvider<String> getOutputTable();
 
     void setOutputTable(ValueProvider<String> value);
 
-    @Description("GCS path to javascript fn for transforming output")
-    ValueProvider<String> getJavascriptTextTransformGcsPath();
-
-    void setJavascriptTextTransformGcsPath(ValueProvider<String> jsTransformPath);
-
+    @TemplateParameter.GcsWriteFolder(
+        order = 6,
+        description = "Temporary directory for BigQuery loading process",
+        helpText = "Temporary directory for BigQuery loading process",
+        example = "gs://your-bucket/your-files/temp_dir")
     @Validation.Required
-    @Description("UDF Javascript Function Name")
-    ValueProvider<String> getJavascriptTextTransformFunctionName();
-
-    void setJavascriptTextTransformFunctionName(
-        ValueProvider<String> javascriptTextTransformFunctionName);
-
-    @Validation.Required
-    @Description("Temporary directory for BigQuery loading process")
     ValueProvider<String> getBigQueryLoadingTemporaryDirectory();
 
     void setBigQueryLoadingTemporaryDirectory(ValueProvider<String> directory);

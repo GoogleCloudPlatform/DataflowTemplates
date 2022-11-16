@@ -16,6 +16,10 @@
 package com.google.cloud.teleport.templates;
 
 import com.google.api.services.bigquery.model.TableFieldSchema;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.templates.BigQueryToTFRecord.Options;
 import com.google.cloud.teleport.templates.common.BigQueryConverters.BigQueryReadOptions;
 import com.google.protobuf.ByteString;
 import java.util.Iterator;
@@ -31,7 +35,6 @@ import org.apache.beam.sdk.io.TFRecordIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.SchemaAndRecord;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Partition;
@@ -47,6 +50,15 @@ import org.tensorflow.example.Features;
  * Dataflow template which reads BigQuery data and writes it to GCS as a set of TFRecords. The
  * source is a SQL query.
  */
+@Template(
+    name = "Cloud_BigQuery_to_GCS_TensorFlow_Records",
+    category = TemplateCategory.BATCH,
+    displayName = "BigQuery to TensorFlow Records",
+    description =
+        "A pipeline that reads rows from BigQuery and writes them as TFRecords in Cloud Storage. (NOTE: Nested BigQuery columns are currently not supported and should be unnested within the SQL query.)",
+    optionsClass = Options.class,
+    optionsOrder = {BigQueryReadOptions.class, Options.class},
+    contactInformation = "https://cloud.google.com/support")
 public class BigQueryToTFRecord {
 
   /**
@@ -302,30 +314,54 @@ public class BigQueryToTFRecord {
   /** Define command line arguments. */
   public interface Options extends BigQueryReadOptions {
 
-    @Description("The GCS directory to store output TFRecord files.")
+    @TemplateParameter.GcsWriteFolder(
+        order = 1,
+        description = "Output Cloud Storage directory.",
+        helpText = "Cloud Storage directory to store output TFRecord files.",
+        example = "gs://your-bucket/your-path")
     ValueProvider<String> getOutputDirectory();
 
     void setOutputDirectory(ValueProvider<String> outputDirectory);
 
-    @Description("The output suffix for TFRecord Files")
+    @TemplateParameter.Text(
+        order = 2,
+        optional = true,
+        regexes = {"^[A-Za-z_0-9.]*"},
+        description = "The output suffix for TFRecord files",
+        helpText = "File suffix to append to TFRecord files. Defaults to .tfrecord")
     @Default.String(".tfrecord")
     ValueProvider<String> getOutputSuffix();
 
     void setOutputSuffix(ValueProvider<String> outputSuffix);
 
-    @Description("The training percentage split for TFRecord Files")
+    @TemplateParameter.Text(
+        order = 3,
+        optional = true,
+        regexes = {"(^\\.[1-9]*$)|(^[01]*)"},
+        description = "Percentage of data to be in the training set ",
+        helpText = "Defaults to 1 or 100%. Should be decimal between 0 and 1 inclusive")
     @Default.Float(1)
     ValueProvider<Float> getTrainingPercentage();
 
     void setTrainingPercentage(ValueProvider<Float> trainingPercentage);
 
-    @Description("The testing percentage split for TFRecord Files")
+    @TemplateParameter.Text(
+        order = 4,
+        optional = true,
+        regexes = {"(^\\.[1-9]*$)|(^[01]*)"},
+        description = "Percentage of data to be in the testing set ",
+        helpText = "Defaults to 0 or 0%. Should be decimal between 0 and 1 inclusive")
     @Default.Float(0)
     ValueProvider<Float> getTestingPercentage();
 
     void setTestingPercentage(ValueProvider<Float> testingPercentage);
 
-    @Description("The validation percentage split for TFRecord Files")
+    @TemplateParameter.Text(
+        order = 5,
+        optional = true,
+        regexes = {"(^\\.[1-9]*$)|(^[01]*)"},
+        description = "Percentage of data to be in the validation set ",
+        helpText = "Defaults to 0 or 0%. Should be decimal between 0 and 1 inclusive")
     @Default.Float(0)
     ValueProvider<Float> getValidationPercentage();
 

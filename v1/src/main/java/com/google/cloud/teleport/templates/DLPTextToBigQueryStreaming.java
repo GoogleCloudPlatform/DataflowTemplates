@@ -20,6 +20,10 @@ import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.dlp.v2.DlpServiceClient;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.templates.DLPTextToBigQueryStreaming.TokenizePipelineOptions;
 import com.google.common.base.Charsets;
 import com.google.privacy.dlp.v2.ContentItem;
 import com.google.privacy.dlp.v2.DeidentifyContentRequest;
@@ -57,7 +61,6 @@ import org.apache.beam.sdk.io.gcp.bigquery.TableDestination;
 import org.apache.beam.sdk.io.range.OffsetRange;
 import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -133,6 +136,14 @@ import org.slf4j.LoggerFactory;
  *  deidentifyTemplateName=projects/{projectId}/deidentifyTemplates/{deIdTemplateId}
  * </pre>
  */
+@Template(
+    name = "Stream_DLP_GCS_Text_to_BigQuery",
+    category = TemplateCategory.STREAMING,
+    displayName = "Data Masking/Tokenization from Cloud Storage to BigQuery (using Cloud DLP)",
+    description =
+        "An example pipeline that reads CSV files from Cloud Storage, uses Cloud DLP API to mask and tokenize data based on the DLP templates provided and stores output in BigQuery. Note, not all configuration settings are available in this default template. You may need to deploy a custom template to accommodate your specific environment and data needs. More details here: https://cloud.google.com/solutions/de-identification-re-identification-pii-using-cloud-dlp",
+    optionsClass = TokenizePipelineOptions.class,
+    contactInformation = "https://cloud.google.com/support")
 public class DLPTextToBigQueryStreaming {
 
   public static final Logger LOG = LoggerFactory.getLogger(DLPTextToBigQueryStreaming.class);
@@ -281,42 +292,72 @@ public class DLPTextToBigQueryStreaming {
    */
   public interface TokenizePipelineOptions extends DataflowPipelineOptions {
 
-    @Description("The file pattern to read records from (e.g. gs://bucket/file-*.csv)")
+    @TemplateParameter.GcsReadFile(
+        order = 1,
+        description = "Input Cloud Storage File(s)",
+        helpText = "The Cloud Storage location of the files you'd like to process.",
+        example = "gs://your-bucket/your-files/*.csv")
     ValueProvider<String> getInputFilePattern();
 
     void setInputFilePattern(ValueProvider<String> value);
 
-    @Description(
-        "DLP Deidentify Template to be used for API request "
-            + "(e.g.projects/{project_id}/deidentifyTemplates/{deIdTemplateId}")
+    @TemplateParameter.Text(
+        order = 2,
+        regexes = {
+          "^projects\\/[^\\n\\r\\/]+(\\/locations\\/[^\\n\\r\\/]+)?\\/deidentifyTemplates\\/[^\\n\\r\\/]+$"
+        },
+        description = "Cloud DLP deidentify template name",
+        helpText =
+            "Cloud DLP template to deidentify contents. Must be created here: https://console.cloud.google.com/security/dlp/create/template.",
+        example =
+            "projects/your-project-id/locations/global/deidentifyTemplates/generated_template_id")
     @Required
     ValueProvider<String> getDeidentifyTemplateName();
 
     void setDeidentifyTemplateName(ValueProvider<String> value);
 
-    @Description(
-        "DLP Inspect Template to be used for API request "
-            + "(e.g.projects/{project_id}/inspectTemplates/{inspectTemplateId}")
+    @TemplateParameter.Text(
+        order = 3,
+        optional = true,
+        regexes = {
+          "^projects\\/[^\\n\\r\\/]+(\\/locations\\/[^\\n\\r\\/]+)?\\/inspectTemplates\\/[^\\n\\r\\/]+$"
+        },
+        description = "Cloud DLP inspect template name",
+        helpText = "Cloud DLP template to inspect contents.",
+        example =
+            "projects/your-project-id/locations/global/inspectTemplates/generated_template_id")
     ValueProvider<String> getInspectTemplateName();
 
     void setInspectTemplateName(ValueProvider<String> value);
 
-    @Description(
-        "DLP API has a limit for payload size of 524KB /api call. "
-            + "That's why dataflow process will need to chunk it. User will have to decide "
-            + "on how they would like to batch the request depending on number of rows "
-            + "and how big each row is.")
+    @TemplateParameter.Integer(
+        order = 4,
+        optional = true,
+        description = "Batch size",
+        helpText =
+            "Batch size contents (number of rows) to optimize DLP API call. Total size of the "
+                + "rows must not exceed 512 KB and total cell count must not exceed 50,000. Default batch "
+                + "size is set to 100. Ex. 1000")
     @Required
     ValueProvider<Integer> getBatchSize();
 
     void setBatchSize(ValueProvider<Integer> value);
 
-    @Description("Big Query data set must exist before the pipeline runs (e.g. pii-dataset")
+    @TemplateParameter.Text(
+        order = 5,
+        regexes = {"^[^.]*$"},
+        description = "BigQuery Dataset",
+        helpText =
+            "BigQuery Dataset to be used. Dataset must exist prior to execution. Ex. pii_dataset")
     ValueProvider<String> getDatasetName();
 
     void setDatasetName(ValueProvider<String> value);
 
-    @Description("Project id to be used for DLP Tokenization")
+    @TemplateParameter.ProjectId(
+        order = 6,
+        description = "Cloud DLP project ID",
+        helpText =
+            "Cloud DLP project ID to be used for data masking/tokenization. Ex. your-dlp-project")
     ValueProvider<String> getDlpProjectId();
 
     void setDlpProjectId(ValueProvider<String> value);

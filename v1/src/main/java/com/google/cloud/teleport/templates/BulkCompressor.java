@@ -15,6 +15,10 @@
  */
 package com.google.cloud.teleport.templates;
 
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.templates.BulkCompressor.Options;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteStreams;
 import java.io.IOException;
@@ -29,7 +33,6 @@ import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.fs.ResourceId;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
@@ -102,6 +105,13 @@ import org.slf4j.LoggerFactory;
  * compression=GZIP"
  * </pre>
  */
+@Template(
+    name = "Bulk_Compress_GCS_Files",
+    category = TemplateCategory.UTILITIES,
+    displayName = "Bulk Compress Files on Cloud Storage",
+    description = "Batch pipeline. Compresses files on Cloud Storage to a specified location.",
+    optionsClass = Options.class,
+    contactInformation = "https://cloud.google.com/support")
 public class BulkCompressor {
 
   /** The logger to output status messages to. */
@@ -119,29 +129,46 @@ public class BulkCompressor {
    * command-line.
    */
   public interface Options extends PipelineOptions {
-    @Description("The input file pattern to read from (e.g. gs://bucket-name/uncompressed/*.gz)")
+    @TemplateParameter.GcsReadFile(
+        order = 1,
+        description = "Input Cloud Storage File(s)",
+        helpText = "The Cloud Storage location of the files you'd like to process.",
+        example = "gs://your-bucket/your-files/*.txt")
     @Required
     ValueProvider<String> getInputFilePattern();
 
     void setInputFilePattern(ValueProvider<String> value);
 
-    @Description("The output location to write to (e.g. gs://bucket-name/compressed)")
+    @TemplateParameter.GcsWriteFolder(
+        order = 2,
+        description = "Output file directory in Cloud Storage",
+        helpText =
+            "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters.",
+        example = "gs://your-bucket/your-path")
     @Required
     ValueProvider<String> getOutputDirectory();
 
     void setOutputDirectory(ValueProvider<String> value);
 
-    @Description(
-        "The output file to write failures during the compression process "
-            + "(e.g. gs://bucket-name/compressed/failed.txt). The contents will be one line for "
-            + "each file which failed compression. Note that this parameter will "
-            + "allow the pipeline to continue processing in the event of a failure.")
+    @TemplateParameter.GcsWriteFile(
+        order = 3,
+        description = "Output failure file",
+        helpText =
+            "The error log output file to use for write failures that occur during compression. The contents will be one line for "
+                + "each file which failed compression. Note that this parameter will "
+                + "allow the pipeline to continue processing in the event of a failure.",
+        example = "gs://your-bucket/compressed/failed.csv")
     @Required
     ValueProvider<String> getOutputFailureFile();
 
     void setOutputFailureFile(ValueProvider<String> value);
 
-    @Description("The compression algorithm to use on the matched files.")
+    @TemplateParameter.Enum(
+        order = 4,
+        enumOptions = {"BZIP2", "DEFLATE", "GZIP"},
+        description = "Compression",
+        helpText =
+            "The compression algorithm used to compress the matched files. Valid algorithms: BZIP2, DEFLATE, GZIP")
     @Required
     ValueProvider<Compression> getCompression();
 

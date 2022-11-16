@@ -336,7 +336,7 @@ such as missing Javadocs.
 Once formatted, you can run:
 
 ```shell
-mvn clean install -pl v2/wordcount -am \
+mvn clean package -pl v2/wordcount -am \
   -Dmaven.test.skip \
   -Djib.skip
 ```
@@ -443,7 +443,7 @@ equivalent.
 You can run the unit test with the following command:
 
 ```shell
-mvn clean install -pl v2/wordcount -am \
+mvn clean package -pl v2/wordcount -am \
   -Dtest=WordCountTest -DfailIfNoTests=false \
   -Djib.skip
 ```

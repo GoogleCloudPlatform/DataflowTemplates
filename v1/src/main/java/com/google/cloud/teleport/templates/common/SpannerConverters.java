@@ -31,6 +31,7 @@ import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.spanner.Type;
 import com.google.cloud.spanner.Type.Code;
 import com.google.cloud.spanner.Type.StructField;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -52,7 +53,6 @@ import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.Transaction;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Create;
@@ -75,43 +75,71 @@ public class SpannerConverters {
 
   /** Options for exporting a Spanner table. */
   public interface SpannerReadOptions extends PipelineOptions {
-    @Description("Spanner table to extract")
+    @TemplateParameter.Text(
+        order = 1,
+        regexes = {"^.+$"},
+        description = "Spanner Table",
+        helpText = "Spanner Table to read from")
     ValueProvider<String> getSpannerTable();
 
     @SuppressWarnings("unused")
     void setSpannerTable(ValueProvider<String> table);
 
-    @Description("GCP Project Id of where the Spanner table lives.")
+    @TemplateParameter.ProjectId(
+        order = 2,
+        description = "Read data from Cloud Spanner Project Id",
+        helpText =
+            "The Google Cloud Project Id of the Cloud Spanner database that you want to read data from")
     ValueProvider<String> getSpannerProjectId();
 
     @SuppressWarnings("unused")
     void setSpannerProjectId(ValueProvider<String> spannerReadProjectId);
 
-    @Description("Instance with the requested table.")
+    @TemplateParameter.Text(
+        order = 3,
+        regexes = {".+"},
+        description = "Read data from Cloud Spanner Instance",
+        helpText = "Instance of requested table.")
     ValueProvider<String> getSpannerInstanceId();
 
     @SuppressWarnings("unused")
     void setSpannerInstanceId(ValueProvider<String> spannerInstanceId);
 
-    @Description("Database with a requested table.")
+    @TemplateParameter.Text(
+        order = 4,
+        regexes = {".+"},
+        description = "Read data from Cloud Spanner Database ",
+        helpText = "Database of requested table.")
     ValueProvider<String> getSpannerDatabaseId();
 
     @SuppressWarnings("unused")
     void setSpannerDatabaseId(ValueProvider<String> spannerDatabaseId);
 
-    @Description("Spanner host")
+    @TemplateParameter.Text(
+        order = 5,
+        optional = true,
+        description = "Cloud Spanner Endpoint to call",
+        helpText = "The Cloud Spanner endpoint to call in the template. Only used for testing.",
+        example = "https://batch-spanner.googleapis.com")
     @Default.String("https://batch-spanner.googleapis.com")
     ValueProvider<String> getSpannerHost();
 
     @SuppressWarnings("unused")
     void setSpannerHost(ValueProvider<String> value);
 
-    @Description(
-        "If set, specifies the time when the snapshot must be taken."
-            + " String is in the RFC 3339 format in UTC time. "
-            + " Example - 1990-12-31T23:59:60Z"
-            + " Timestamp must be in the past and Maximum timestamp staleness applies."
-            + "https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness")
+    @TemplateParameter.Text(
+        order = 6,
+        optional = true,
+        regexes = {
+          "^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):(([0-9]{2})(\\.[0-9]+)?)Z$"
+        },
+        description = "Snapshot time",
+        helpText =
+            "If set, specifies the time when the snapshot must be taken."
+                + " String is in the RFC 3339 format in UTC time. "
+                + " Timestamp must be in the past and Maximum timestamp staleness applies."
+                + "https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness",
+        example = "1990-12-31T23:59:60Z")
     @Default.String(value = "")
     ValueProvider<String> getSpannerSnapshotTime();
 

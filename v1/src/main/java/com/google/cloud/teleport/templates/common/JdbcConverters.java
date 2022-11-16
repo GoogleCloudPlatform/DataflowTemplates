@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.templates.common;
 
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.options.CommonTemplateOptions;
 import java.sql.Clob;
 import java.sql.ResultSet;
@@ -25,7 +26,8 @@ import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
-import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.Default;
+import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,66 +40,124 @@ public class JdbcConverters {
   /** Interface used by the JdbcToBigQuery pipeline to accept user input. */
   public interface JdbcToBigQueryOptions extends CommonTemplateOptions {
 
-    @Description(
-        "Comma separate list of driver class/dependency jar file GCS paths "
-            + "for example "
-            + "gs://<some-bucket>/driver_jar1.jar,gs://<some_bucket>/driver_jar2.jar")
+    @TemplateParameter.Text(
+        order = 1,
+        regexes = {"^.+$"},
+        description = "Cloud Storage paths for JDBC drivers",
+        helpText = "Comma separate Cloud Storage paths for JDBC drivers.",
+        example = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar")
     ValueProvider<String> getDriverJars();
 
     void setDriverJars(ValueProvider<String> driverJar);
 
-    @Description("The JDBC driver class name. " + "for example: com.mysql.jdbc.Driver")
+    @TemplateParameter.Text(
+        order = 2,
+        regexes = {"^.+$"},
+        description = "JDBC driver class name.",
+        helpText = "JDBC driver class name to use.",
+        example = "com.mysql.jdbc.Driver")
     ValueProvider<String> getDriverClassName();
 
     void setDriverClassName(ValueProvider<String> driverClassName);
 
-    @Description(
-        "The JDBC connection URL string. " + "for example: jdbc:mysql://some-host:3306/sampledb")
+    @TemplateParameter.Text(
+        order = 3,
+        regexes = {
+          "(^jdbc:[a-zA-Z0-9/:@.?_+!*=&-;]+$)|(^([A-Za-z0-9+/]{4}){1,}([A-Za-z0-9+/]{0,3})={0,3})"
+        },
+        description =
+            "JDBC connection URL string. Connection string can be passed in as plaintext or as "
+                + "a base64 encoded string encrypted by Google Cloud KMS.",
+        helpText = "Url connection string to connect to the JDBC source.",
+        example = "jdbc:mysql://some-host:3306/sampledb")
     ValueProvider<String> getConnectionURL();
 
     void setConnectionURL(ValueProvider<String> connectionURL);
 
-    @Description(
-        "JDBC connection property string. " + "for example: unicode=true&characterEncoding=UTF-8")
+    @TemplateParameter.Text(
+        order = 4,
+        optional = true,
+        regexes = {"^[a-zA-Z0-9_;!*&=@#-:\\/]+$"},
+        description = "JDBC connection property string.",
+        helpText =
+            "Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*.",
+        example = "unicode=true;characterEncoding=UTF-8")
+    @Validation.Required
     ValueProvider<String> getConnectionProperties();
 
     void setConnectionProperties(ValueProvider<String> connectionProperties);
 
-    @Description("JDBC connection user name. ")
+    @TemplateParameter.Text(
+        order = 5,
+        optional = true,
+        regexes = {"^.+$"},
+        description = "JDBC connection username.",
+        helpText =
+            "User name to be used for the JDBC connection. User name can be passed in as plaintext "
+                + "or as a base64 encoded string encrypted by Google Cloud KMS.")
     ValueProvider<String> getUsername();
 
     void setUsername(ValueProvider<String> username);
 
-    @Description("JDBC connection password. ")
+    @TemplateParameter.Password(
+        order = 6,
+        optional = true,
+        description = "JDBC connection password.",
+        helpText =
+            "Password to be used for the JDBC connection. Password can be passed in as plaintext "
+                + "or as a base64 encoded string encrypted by Google Cloud KMS.")
     ValueProvider<String> getPassword();
 
     void setPassword(ValueProvider<String> password);
 
-    @Description("Source data query string. " + "for example: select * from sampledb.sample_table")
+    @TemplateParameter.Text(
+        order = 7,
+        regexes = {"^.+$"},
+        description = "JDBC source SQL query.",
+        helpText = "Query to be executed on the source to extract the data.",
+        example = "select * from sampledb.sample_table")
     ValueProvider<String> getQuery();
 
     void setQuery(ValueProvider<String> query);
 
-    @Description(
-        "BigQuery Table spec to write the output to"
-            + "for example: some-project-id:somedataset.sometable")
+    @TemplateParameter.BigQueryTable(
+        order = 8,
+        description = "BigQuery output table",
+        helpText =
+            "BigQuery table location to write the output to. The table's schema must match the "
+                + "input objects.")
     ValueProvider<String> getOutputTable();
 
     void setOutputTable(ValueProvider<String> value);
 
-    @Description("Temporary directory for BigQuery loading process")
+    @TemplateParameter.GcsWriteFolder(
+        order = 9,
+        description = "Temporary directory for BigQuery loading process",
+        helpText = "Temporary directory for BigQuery loading process",
+        example = "gs://your-bucket/your-files/temp_dir")
     ValueProvider<String> getBigQueryLoadingTemporaryDirectory();
 
     void setBigQueryLoadingTemporaryDirectory(ValueProvider<String> directory);
 
-    @Description(
-        "KMS Encryption Key should be in the format"
-            + " projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}")
+    @TemplateParameter.KmsEncryptionKey(
+        order = 10,
+        optional = true,
+        description = "Google Cloud KMS key",
+        helpText =
+            "If this parameter is provided, password, user name and connection string should all be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt",
+        example =
+            "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key")
     ValueProvider<String> getKMSEncryptionKey();
 
     void setKMSEncryptionKey(ValueProvider<String> keyName);
 
-    @Description("Flag to enable the mapping of column alias projection instead of the column name")
+    @TemplateParameter.Boolean(
+        order = 11,
+        optional = true,
+        description = "Whether to use column alias to map the rows.",
+        helpText =
+            "If enabled (set to true) the pipeline will consider column alias (\"AS\") instead of the column name to map the rows to BigQuery. Defaults to false.")
+    @Default.Boolean(false)
     ValueProvider<Boolean> getUseColumnAlias();
 
     void setUseColumnAlias(ValueProvider<Boolean> useColumnAlias);

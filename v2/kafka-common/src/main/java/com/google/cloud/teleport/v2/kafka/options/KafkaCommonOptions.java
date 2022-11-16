@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.kafka.options;
 
-import org.apache.beam.sdk.options.Description;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.apache.beam.sdk.options.PipelineOptions;
 
 /**
@@ -23,12 +23,21 @@ import org.apache.beam.sdk.options.PipelineOptions;
  * executor at the command-line.
  */
 public interface KafkaCommonOptions extends PipelineOptions {
-  @Description("URL to credentials in Vault")
+
+  @TemplateParameter.Text(
+      order = 1,
+      optional = true,
+      description = "Secret Store URL",
+      helpText = "URL to credentials in Vault")
   String getSecretStoreUrl();
 
   void setSecretStoreUrl(String secretStoreUrl);
 
-  @Description("Vault token")
+  @TemplateParameter.Text(
+      order = 2,
+      optional = true,
+      description = "Vault token",
+      helpText = "Token to use for Vault")
   String getVaultToken();
 
   void setVaultToken(String vaultToken);

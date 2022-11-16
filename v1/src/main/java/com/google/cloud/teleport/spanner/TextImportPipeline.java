@@ -17,6 +17,11 @@ package com.google.cloud.teleport.spanner;
 
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.spanner.SpannerOptions;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateCreationParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.spanner.TextImportPipeline.Options;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -83,104 +88,175 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
  * }
  * </pre>
  */
+@Template(
+    name = "GCS_Text_to_Cloud_Spanner",
+    category = TemplateCategory.BATCH,
+    displayName = "Text Files on Cloud Storage to Cloud Spanner",
+    description =
+        "A pipeline to import a Cloud Spanner database from a set of Text (CSV) files in Cloud Storage.",
+    optionsClass = Options.class,
+    contactInformation = "https://cloud.google.com/support")
 public class TextImportPipeline {
 
   /** Options for {@link TextImportPipeline}. */
   public interface Options extends PipelineOptions {
 
-    @Description("Instance ID to write to Spanner")
+    @TemplateParameter.Text(
+        order = 1,
+        regexes = {"^[a-z0-9\\-]+$"},
+        description = "Cloud Spanner instance id",
+        helpText = "The instance id of the Cloud Spanner database that you want to import to.")
     ValueProvider<String> getInstanceId();
 
     void setInstanceId(ValueProvider<String> value);
 
-    @Description("Database ID to write to Spanner")
+    @TemplateParameter.Text(
+        order = 2,
+        regexes = {"^[a-z_0-9\\-]+$"},
+        description = "Cloud Spanner database id",
+        helpText =
+            "The database id of the Cloud Spanner database that you want to import into (must already exist, and with the destination tables created).")
     ValueProvider<String> getDatabaseId();
 
     void setDatabaseId(ValueProvider<String> value);
 
-    @Description("Spanner host. The default value is https://batch-spanner.googleapis.com.")
+    @TemplateParameter.Text(
+        order = 3,
+        optional = true,
+        description = "Cloud Spanner Endpoint to call",
+        helpText = "The Cloud Spanner endpoint to call in the template. Only used for testing.",
+        example = "https://batch-spanner.googleapis.com")
     @Default.String("https://batch-spanner.googleapis.com")
     ValueProvider<String> getSpannerHost();
 
     void setSpannerHost(ValueProvider<String> value);
 
-    @Description("Text Import Manifest file, storing a json-encoded {@link importManifest} object.")
+    @TemplateParameter.GcsReadFile(
+        order = 4,
+        description = "Text Import Manifest file",
+        helpText =
+            "The Cloud Storage path and filename of the text import manifest file. Text Import Manifest file, storing a json-encoded importManifest object.",
+        example = "gs://your-bucket/your-folder/your-manifest.json")
     ValueProvider<String> getImportManifest();
 
     void setImportManifest(ValueProvider<String> value);
 
-    @Description("Column delimiter of the data files. The default value is comma.")
+    @TemplateParameter.Text(
+        order = 5,
+        optional = true,
+        description = "Column delimiter of the data files",
+        helpText = "The column delimiter of the input text files. Defaults to ','",
+        example = ",")
     @Default.Character(',')
     ValueProvider<Character> getColumnDelimiter();
 
     void setColumnDelimiter(ValueProvider<Character> value);
 
-    @Description(
-        "Field qualifier used by the source file. Field qualifier should be used when character"
-            + " needs to be escaped. The default value is double quote.")
+    @TemplateParameter.Text(
+        order = 6,
+        optional = true,
+        description = "Field qualifier used by the source file",
+        helpText =
+            "The field qualifier used by the source file. It should be used when character needs to be escaped. Field qualifier should be used when character needs to be escaped. The default value is double quotes.")
     @Default.Character('"')
     ValueProvider<Character> getFieldQualifier();
 
     void setFieldQualifier(ValueProvider<Character> value);
 
-    @Description("If true, the lines has trailing delimiters. The default value is true.")
+    @TemplateParameter.Boolean(
+        order = 7,
+        optional = true,
+        description = "If true, the lines has trailing delimiters",
+        helpText =
+            "The flag indicating whether or not the input lines have trailing delimiters. The default value is true")
     @Default.Boolean(true)
     ValueProvider<Boolean> getTrailingDelimiter();
 
     void setTrailingDelimiter(ValueProvider<Boolean> value);
 
-    @Description(
-        "The escape character. The default value is NULL (not using the escape character).")
+    @TemplateParameter.Text(
+        order = 8,
+        optional = true,
+        description = "Escape character",
+        helpText =
+            "The escape character. The default value is NULL (not using the escape character).")
     ValueProvider<Character> getEscape();
 
     void setEscape(ValueProvider<Character> value);
 
-    @Description(
-        "The string that represents the NULL value. The default value is null (not using the null"
-            + " string).")
+    @TemplateParameter.Text(
+        order = 9,
+        optional = true,
+        description = "Null String",
+        helpText =
+            "The string that represents the NULL value. The default value is null (not using the null string).")
     ValueProvider<String> getNullString();
 
     void setNullString(ValueProvider<String> value);
 
-    @Description(
-        "The format used to parse date columns. By default, the pipeline will try to parse the"
-            + " date columns as \"yyyy-MM-dd[' 00:00:00']\" (e.g., 2019-01-31, or 2019-01-31"
-            + " 00:00:00). If your data format is different, please specify the format using the"
-            + " {@link DateTimeFormatter} patterns.")
+    @TemplateParameter.Text(
+        order = 10,
+        optional = true,
+        description = "Date format",
+        helpText =
+            "The format used to parse date columns. By default, the pipeline tries to parse the "
+                + "date columns as \"yyyy-MM-dd[' 00:00:00']\" (e.g., 2019-01-31, or 2019-01-31 00:00:00). "
+                + "If your data format is different, please specify the format using the "
+                + "java.time.format.DateTimeFormatter patterns. For more details, please refer to "
+                + "https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/time/format/DateTimeFormatter.html")
     ValueProvider<String> getDateFormat();
 
     void setDateFormat(ValueProvider<String> value);
 
-    @Description(
-        "The format used to parse timestamp columns. If the timestamp is a long integer, then it's"
-            + " treated as Unix epoch (the microsecond since 1970-01-01T00:00:00.000Z. Otherwise,"
-            + " it parsed as a string using the {@link DateTimeFormatter#ISO_INSTANT} format. For"
-            + " other cases, please specify you own pattern string, e.g., \"MMM dd yyyy"
-            + " HH:mm:ss.SSSVV\" for timestamp in the form of \"Jan 21 1998 01:02:03.456+08:00\"."
-            + " Please refer to {@link DateTimeFormatter} for more details.")
+    @TemplateParameter.Text(
+        order = 11,
+        optional = true,
+        description = "Timestamp format",
+        helpText =
+            "The format used to parse timestamp columns. If the timestamp is a long integer, then "
+                + "it is treated as Unix epoch (the microsecond since 1970-01-01T00:00:00.000Z. Otherwise, "
+                + "it is parsed as a string using the java.time.format.DateTimeFormatter.ISO_INSTANT format. "
+                + "For other cases, please specify you own pattern string, e.g., \"MMM dd yyyy HH:mm:ss.SSSVV\" "
+                + "for timestamp in the form of \"Jan 21 1998 01:02:03.456+08:00\". For more details, "
+                + "please refer to https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/time/format/DateTimeFormatter.html")
     ValueProvider<String> getTimestampFormat();
 
     void setTimestampFormat(ValueProvider<String> value);
 
+    @TemplateCreationParameter
     @Description("If true, wait for job finish. The default value is true.")
     @Default.Boolean(true)
     boolean getWaitUntilFinish();
 
     void setWaitUntilFinish(boolean value);
 
-    @Description("GCP Project Id of where the Spanner table lives.")
+    @TemplateParameter.ProjectId(
+        order = 13,
+        optional = true,
+        description = "Cloud Spanner Project Id",
+        helpText = "The project id of the Cloud Spanner instance.")
     ValueProvider<String> getSpannerProjectId();
 
     void setSpannerProjectId(ValueProvider<String> value);
 
-    @Description("The spanner priority. --spannerPriority must be one of:[HIGH,MEDIUM,LOW]")
+    @TemplateParameter.Enum(
+        order = 14,
+        enumOptions = {"LOW", "MEDIUM", "HIGH"},
+        optional = true,
+        description = "Priority for Spanner RPC invocations",
+        helpText =
+            "The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW].")
     ValueProvider<RpcPriority> getSpannerPriority();
 
     void setSpannerPriority(ValueProvider<RpcPriority> value);
 
-    @Description(
-        "If true, run the template in handleNewLine mode, which is slower but handles newline"
-            + " characters inside data.")
+    @TemplateParameter.Boolean(
+        order = 15,
+        optional = true,
+        description = "Handle new line",
+        helpText =
+            "If true, run the template in handleNewLine mode, which is slower but handles newline"
+                + " characters inside data.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getHandleNewLine();
 

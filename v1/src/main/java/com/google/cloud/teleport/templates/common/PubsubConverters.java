@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.templates.common;
 
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
@@ -41,10 +42,12 @@ public class PubsubConverters {
 
   /** Options for Pubsub reads from a subscription. */
   public interface PubsubReadSubscriptionOptions extends PipelineOptions {
-    @Description(
-        "The Cloud Pub/Sub subscription to consume from. "
-            + "The name should be in the format of "
-            + "projects/<project-id>/subscriptions/<subscription-name>.")
+    @TemplateParameter.PubsubSubscription(
+        order = 1,
+        description = "Pub/Sub input subscription",
+        helpText =
+            "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name'",
+        example = "projects/your-project-id/subscriptions/your-subscription-name")
     ValueProvider<String> getInputSubscription();
 
     void setInputSubscription(ValueProvider<String> inputSubscription);
@@ -52,10 +55,11 @@ public class PubsubConverters {
 
   /** Options for using Pub/Sub as a deadletter sink. */
   public interface PubsubWriteDeadletterTopicOptions extends PipelineOptions {
-    @Description(
-        "The Cloud Pub/Sub topic to publish deadletter records to. "
-            + "The name should be in the format of "
-            + "projects/<project-id>/topics/<topic-name>.")
+    @TemplateParameter.PubsubTopic(
+        order = 1,
+        description = "Output deadletter Pub/Sub topic",
+        helpText =
+            "The Pub/Sub topic to publish deadletter records to. The name should be in the format of projects/your-project-id/topics/your-topic-name.")
     @Validation.Required
     ValueProvider<String> getOutputDeadletterTopic();
 

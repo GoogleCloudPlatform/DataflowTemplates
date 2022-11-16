@@ -21,6 +21,10 @@ import com.google.bigtable.v2.Cell;
 import com.google.bigtable.v2.Column;
 import com.google.bigtable.v2.Family;
 import com.google.bigtable.v2.Row;
+import com.google.cloud.teleport.bigtable.BigtableToParquet.Options;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,7 +38,6 @@ import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
 import org.apache.beam.sdk.io.parquet.ParquetIO;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -46,47 +49,79 @@ import org.apache.beam.sdk.values.PCollection;
  * Dataflow pipeline that exports data from a Cloud Bigtable table to Parquet files in GCS.
  * Currently, filtering on Cloud Bigtable table is not supported.
  */
+@Template(
+    name = "Cloud_Bigtable_to_GCS_Parquet",
+    category = TemplateCategory.BATCH,
+    displayName = "Cloud Bigtable to Parquet Files on Cloud Storage",
+    description =
+        "A pipeline which reads in Cloud Bigtable table and writes it to Cloud Storage in Parquet format.",
+    optionsClass = Options.class,
+    contactInformation = "https://cloud.google.com/support")
 public class BigtableToParquet {
 
   /** Options for the export pipeline. */
   public interface Options extends PipelineOptions {
 
-    @Description("The project that contains the table to export.")
+    @TemplateParameter.ProjectId(
+        order = 1,
+        description = "Project ID",
+        helpText =
+            "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to read data from")
     ValueProvider<String> getBigtableProjectId();
 
     @SuppressWarnings("unused")
     void setBigtableProjectId(ValueProvider<String> projectId);
 
-    @Description("The Bigtable instance id that contains the table to export.")
+    @TemplateParameter.Text(
+        order = 2,
+        regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
+        description = "Instance ID",
+        helpText = "The ID of the Cloud Bigtable instance that contains the table")
     ValueProvider<String> getBigtableInstanceId();
 
     @SuppressWarnings("unused")
     void setBigtableInstanceId(ValueProvider<String> instanceId);
 
-    @Description("The Bigtable table id to export.")
+    @TemplateParameter.Text(
+        order = 3,
+        regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
+        description = "Table ID",
+        helpText = "The ID of the Cloud Bigtable table to export")
     ValueProvider<String> getBigtableTableId();
 
     @SuppressWarnings("unused")
     void setBigtableTableId(ValueProvider<String> tableId);
 
-    @Description("The output location to write to (e.g. gs://mybucket/somefolder/)")
+    @TemplateParameter.GcsWriteFolder(
+        order = 4,
+        description = "Output file directory in Cloud Storage",
+        helpText =
+            "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters.",
+        example = "gs://your-bucket/your-path")
     ValueProvider<String> getOutputDirectory();
 
     @SuppressWarnings("unused")
     void setOutputDirectory(ValueProvider<String> outputDirectory);
 
-    @Description(
-        "The prefix for each exported file in outputDirectory. Default file prefix is set to"
-            + " \"output\".")
+    @TemplateParameter.Text(
+        order = 5,
+        description = "Parquet file prefix",
+        helpText = "The prefix of the Parquet file name. For example, \"table1-\"")
     @Default.String("output")
     ValueProvider<String> getFilenamePrefix();
 
     @SuppressWarnings("unused")
     void setFilenamePrefix(ValueProvider<String> filenamePrefix);
 
-    @Description(
-        "The maximum number of output shards produced when writing. Default number is runner"
-            + " defined. ")
+    @TemplateParameter.Integer(
+        order = 6,
+        optional = true,
+        description = "Maximum output shards",
+        helpText =
+            "The maximum number of output shards produced when writing. A higher number of "
+                + "shards means higher throughput for writing to Cloud Storage, but potentially higher "
+                + "data aggregation cost across shards when processing output Cloud Storage files. "
+                + "Default value is decided by the runner.")
     @Default.Integer(0)
     ValueProvider<Integer> getNumShards();
 

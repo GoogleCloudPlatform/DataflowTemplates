@@ -18,6 +18,10 @@ package com.google.cloud.teleport.templates;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.templates.TextToBigQueryStreaming.TextToBigQueryStreamingOptions;
 import com.google.cloud.teleport.templates.common.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.templates.common.ErrorConverters.WriteStringMessageErrors;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.FailsafeJavascriptUdf;
@@ -47,7 +51,6 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.options.ValueProvider.NestedValueProvider;
@@ -89,6 +92,14 @@ import org.slf4j.LoggerFactory;
  * }
  * </pre>
  */
+@Template(
+    name = "Stream_GCS_Text_to_BigQuery",
+    category = TemplateCategory.STREAMING,
+    displayName = "Cloud Storage Text to BigQuery (Stream)",
+    description =
+        "A streaming pipeline that can read text files stored in Cloud Storage, perform a transform via a user defined JavaScript function, and stream the results into BigQuery. This pipeline requires a JavaScript function and a JSON representation of the BigQuery TableSchema.",
+    optionsClass = TextToBigQueryStreamingOptions.class,
+    contactInformation = "https://cloud.google.com/support")
 public class TextToBigQueryStreaming {
 
   private static final Logger LOG = LoggerFactory.getLogger(TextToBigQueryStreaming.class);
@@ -320,9 +331,16 @@ public class TextToBigQueryStreaming {
    * by the executor at the command-line.
    */
   public interface TextToBigQueryStreamingOptions extends TextIOToBigQuery.Options {
-    @Description(
-        "The dead-letter table to output to within BigQuery in <project-id>:<dataset>.<table> "
-            + "format. If it doesn't exist, it will be created during pipeline execution.")
+    @TemplateParameter.BigQueryTable(
+        order = 1,
+        optional = true,
+        description = "The dead-letter table name to output failed messages to BigQuery",
+        helpText =
+            "Messages failed to reach the output table for all kind of reasons (e.g., mismatched "
+                + "schema, malformed json) are written to this table. If it doesn't exist, it will be "
+                + "created during pipeline execution. If not specified, \"outputTableSpec_error_records\" "
+                + "is used instead.",
+        example = "your-project-id:your-dataset.your-table-name")
     ValueProvider<String> getOutputDeadletterTable();
 
     void setOutputDeadletterTable(ValueProvider<String> value);

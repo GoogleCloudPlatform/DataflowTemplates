@@ -18,6 +18,7 @@ package com.google.cloud.teleport.templates.common;
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.templates.common.DatastoreConverters.CheckNoKey;
 import com.google.cloud.teleport.values.FailsafeElement;
 import com.google.common.base.Throwables;
@@ -43,7 +44,6 @@ import org.apache.beam.sdk.coders.Coder.Context;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.SchemaAndRecord;
 import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -81,17 +81,30 @@ public class BigQueryConverters {
 
   /** Options for reading data from BigQuery. */
   public interface BigQueryReadOptions extends PipelineOptions {
-    @Description("SQL query in standard SQL to pull data from BigQuery")
+    @TemplateParameter.Text(
+        order = 1,
+        description = "Input SQL query",
+        helpText = "SQL query in standard SQL to pull data from BigQuery")
     ValueProvider<String> getReadQuery();
 
     void setReadQuery(ValueProvider<String> value);
 
-    @Description("Name of the BQ column storing the unique identifier of the row")
+    @TemplateParameter.Text(
+        order = 2,
+        optional = true,
+        regexes = {"[A-Za-z_][A-Za-z_0-9]*"},
+        description = "Unique identifier column",
+        helpText = "Name of the BigQuery column storing the unique identifier of the row")
     ValueProvider<String> getReadIdColumn();
 
     void setReadIdColumn(ValueProvider<String> value);
 
-    @Description("Pattern of where to write errors, ex: gs://mybucket/somepath/errors.txt")
+    @TemplateParameter.GcsWriteFolder(
+        order = 3,
+        description = "Invalid rows output path",
+        helpText =
+            "Cloud Storage path where to write BigQuery rows that cannot be converted to target entities.",
+        example = "gs://your-bucket/your-path")
     ValueProvider<String> getInvalidOutputPath();
 
     void setInvalidOutputPath(ValueProvider<String> value);

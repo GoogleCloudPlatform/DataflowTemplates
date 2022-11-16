@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.templates;
 
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.templates.common.BigQueryConverters;
 import com.google.cloud.teleport.templates.common.DatastoreConverters.DatastoreReadOptions;
 import com.google.cloud.teleport.templates.common.DatastoreConverters.ReadJsonEntities;
@@ -24,7 +25,6 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
@@ -34,13 +34,22 @@ import org.apache.beam.sdk.options.ValueProvider;
 public class DatastoreToBigQuery {
   interface DatastoreToBigQueryOptions
       extends PipelineOptions, DatastoreReadOptions, JavascriptTextTransformerOptions {
-    @Description("The BigQuery table spec to write the output to")
+    @TemplateParameter.BigQueryTable(
+        order = 1,
+        description = "BigQuery output table",
+        helpText =
+            "BigQuery table location to write the output to. The name should be in the format "
+                + "<project>:<dataset>.<table_name>. The table's schema must match input objects.")
     ValueProvider<String> getOutputTableSpec();
 
     void setOutputTableSpec(ValueProvider<String> value);
 
+    @TemplateParameter.GcsWriteFolder(
+        order = 2,
+        description = "Temporary directory for BigQuery loading process",
+        helpText = "Temporary directory for BigQuery loading process",
+        example = "gs://your-bucket/your-files/temp_dir")
     @Validation.Required
-    @Description("Temporary directory for BigQuery loading process")
     ValueProvider<String> getBigQueryLoadingTemporaryDirectory();
 
     void setBigQueryLoadingTemporaryDirectory(ValueProvider<String> directory);

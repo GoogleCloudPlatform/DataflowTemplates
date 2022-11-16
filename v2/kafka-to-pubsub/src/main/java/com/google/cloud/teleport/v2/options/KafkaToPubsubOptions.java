@@ -15,7 +15,9 @@
  */
 package com.google.cloud.teleport.v2.options;
 
-import org.apache.beam.sdk.options.Description;
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.kafka.options.KafkaCommonOptions;
+import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
 
@@ -23,54 +25,50 @@ import org.apache.beam.sdk.options.Validation;
  * The {@link KafkaToPubsubOptions} interface provides the custom execution options passed by the
  * executor at the command-line.
  */
-public interface KafkaToPubsubOptions extends PipelineOptions {
-  @Description(
-      "Comma Separated list of Kafka Bootstrap Servers (e.g: server1:[port],server2:[port]).")
+public interface KafkaToPubsubOptions
+    extends PipelineOptions, KafkaCommonOptions, JavascriptTextTransformerOptions {
+  @TemplateParameter.Text(
+      order = 1,
+      optional = true,
+      regexes = {"[,:a-zA-Z0-9._-]+"},
+      description = "Kafka Bootstrap Server list",
+      helpText = "Kafka Bootstrap Server list, separated by commas.",
+      example = "localhost:9092,127.0.0.1:9093")
   @Validation.Required
   String getBootstrapServers();
 
   void setBootstrapServers(String bootstrapServers);
 
-  @Description(
-      "Comma Separated list of Kafka topic(s) to read the input from (e.g: topic1,topic2).")
+  @TemplateParameter.Text(
+      order = 2,
+      optional = false,
+      regexes = {"[a-zA-Z0-9._-]+"},
+      description = "Kafka topic(s) to read the input from",
+      helpText = "Kafka topic(s) to read the input from.",
+      example = "topic1,topic2")
   @Validation.Required
   String getInputTopics();
 
   void setInputTopics(String inputTopics);
 
-  @Description(
-      "The Cloud Pub/Sub topic to publish to. "
-          + "The name should be in the format of "
-          + "projects/<project-id>/topics/<topic-name>.")
+  @TemplateParameter.PubsubTopic(
+      order = 3,
+      description = "Output Pub/Sub topic",
+      helpText =
+          "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name'",
+      example = "projects/your-project-id/topics/your-topic-name")
   @Validation.Required
   String getOutputTopic();
 
   void setOutputTopic(String outputTopic);
 
-  @Description("Gcs path to javascript udf source")
-  String getJavascriptTextTransformGcsPath();
-
-  void setJavascriptTextTransformGcsPath(String javascriptTextTransformGcsPath);
-
-  @Description("UDF Javascript Function Name")
-  String getJavascriptTextTransformFunctionName();
-
-  void setJavascriptTextTransformFunctionName(String javascriptTextTransformFunctionName);
-
-  @Description(
-      "The dead-letter topic to receive failed messages. "
-          + "The name should be in the format of projects/<project-id>/topics/<topic-name>.")
+  @TemplateParameter.PubsubTopic(
+      order = 4,
+      description = "Output deadletter Pub/Sub topic",
+      helpText =
+          "The Pub/Sub topic to publish deadletter records to. The name should be in the "
+              + "format of projects/your-project-id/topics/your-topic-name.")
   String getOutputDeadLetterTopic();
 
   void setOutputDeadLetterTopic(String outputDeadLetterTable);
-
-  @Description("URL to credentials in Vault")
-  String getSecretStoreUrl();
-
-  void setSecretStoreUrl(String secretStoreUrl);
-
-  @Description("Vault token")
-  String getVaultToken();
-
-  void setVaultToken(String vaultToken);
 }

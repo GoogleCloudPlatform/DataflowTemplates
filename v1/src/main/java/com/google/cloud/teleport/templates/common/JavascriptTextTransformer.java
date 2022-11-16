@@ -18,6 +18,7 @@ package com.google.cloud.teleport.templates.common;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.values.FailsafeElement;
 import com.google.common.base.Strings;
 import com.google.common.base.Throwables;
@@ -44,9 +45,7 @@ import org.apache.beam.sdk.io.fs.MatchResult.Metadata;
 import org.apache.beam.sdk.io.fs.MatchResult.Status;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -68,14 +67,25 @@ public abstract class JavascriptTextTransformer {
   /** Necessary CLI options for running UDF function. */
   public interface JavascriptTextTransformerOptions extends PipelineOptions {
     // "Required" annotation is added as a workaround for BEAM-7983.
-    @Validation.Required
-    @Description("Gcs path to javascript udf source")
+    @TemplateParameter.GcsReadFile(
+        order = 10,
+        optional = true,
+        description = "JavaScript UDF path in Cloud Storage",
+        helpText =
+            "The Cloud Storage path pattern for the JavaScript code containing your user-defined "
+                + "functions.")
     ValueProvider<String> getJavascriptTextTransformGcsPath();
 
     void setJavascriptTextTransformGcsPath(ValueProvider<String> javascriptTextTransformGcsPath);
 
-    @Validation.Required
-    @Description("UDF Javascript Function Name")
+    @TemplateParameter.Text(
+        order = 11,
+        optional = true,
+        regexes = {"[a-zA-Z0-9_]+"},
+        description = "JavaScript UDF name",
+        helpText =
+            "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores.",
+        example = "transform_udf1")
     ValueProvider<String> getJavascriptTextTransformFunctionName();
 
     void setJavascriptTextTransformFunctionName(

@@ -17,6 +17,11 @@ package com.google.cloud.teleport.spanner;
 
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.spanner.SpannerOptions;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateCreationParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.spanner.ExportPipeline.ExportPipelineOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -30,89 +35,146 @@ import org.apache.beam.sdk.options.ValueProvider.NestedValueProvider;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 
 /** Dataflow template that exports a Cloud Spanner database to Avro files in GCS. */
+@Template(
+    name = "Cloud_Spanner_to_GCS_Avro",
+    category = TemplateCategory.BATCH,
+    displayName = "Cloud Spanner to Avro Files on Cloud Storage",
+    description =
+        "A pipeline to export a Cloud Spanner database to a set of Avro files in Cloud Storage.",
+    optionsClass = ExportPipelineOptions.class,
+    contactInformation = "https://cloud.google.com/support")
 public class ExportPipeline {
 
   /** Options for Export pipeline. */
   public interface ExportPipelineOptions extends PipelineOptions {
-    @Description("Instance ID for Cloud Spanner")
+    @TemplateParameter.Text(
+        order = 1,
+        regexes = {"[a-z][a-z0-9\\-]*[a-z0-9]"},
+        description = "Cloud Spanner instance id",
+        helpText = "The instance id of the Cloud Spanner database that you want to export.")
     ValueProvider<String> getInstanceId();
 
     void setInstanceId(ValueProvider<String> value);
 
-    @Description("Database ID for Cloud Spanner")
+    @TemplateParameter.Text(
+        order = 2,
+        regexes = {"[a-z][a-z0-9_\\-]*[a-z0-9]"},
+        description = "Cloud Spanner database id",
+        helpText = "The database id of the Cloud Spanner database that you want to export.")
     ValueProvider<String> getDatabaseId();
 
     void setDatabaseId(ValueProvider<String> value);
 
-    @Description("Output directory in GCS")
+    @TemplateParameter.GcsWriteFolder(
+        order = 3,
+        description = "Cloud Storage output directory",
+        helpText =
+            "The Cloud Storage path where the Avro files should be exported to. A new directory will be created under this path that contains the export.",
+        example = "gs://your-bucket/your-path")
     ValueProvider<String> getOutputDir();
 
     void setOutputDir(ValueProvider<String> value);
 
-    @Description("Temporary Directory to store Avro files.")
+    @TemplateParameter.GcsWriteFolder(
+        order = 4,
+        optional = true,
+        description = "Cloud Storage temp directory for storing Avro files",
+        helpText =
+            "The Cloud Storage path where the temporary Avro files can be created. Ex: gs://your-bucket/your-path")
     ValueProvider<String> getAvroTempDirectory();
 
     void setAvroTempDirectory(ValueProvider<String> value);
 
+    @TemplateCreationParameter
     @Description("Test dataflow job identifier for Beam Direct Runner")
     @Default.String(value = "")
     ValueProvider<String> getTestJobId();
 
     void setTestJobId(ValueProvider<String> jobId);
 
-    @Description("Cloud Spanner API endpoint")
+    @TemplateParameter.Text(
+        order = 6,
+        optional = true,
+        description = "Cloud Spanner Endpoint to call",
+        helpText = "The Cloud Spanner endpoint to call in the template. Only used for testing.",
+        example = "https://batch-spanner.googleapis.com")
     @Default.String("https://batch-spanner.googleapis.com")
     ValueProvider<String> getSpannerHost();
 
     void setSpannerHost(ValueProvider<String> value);
 
+    @TemplateCreationParameter
     @Description("If true, wait for job finish")
     @Default.Boolean(true)
     boolean getWaitUntilFinish();
 
     void setWaitUntilFinish(boolean value);
 
-    @Description(
-        "If set, specifies the time when the snapshot must be taken."
-            + " String is in the RFC 3339 format. "
-            + " Example - 1990-12-31T23:59:60Z"
-            + " Timestamp must be in the past and Maximum timestamp staleness applies."
-            + " https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness")
+    @TemplateParameter.Text(
+        order = 7,
+        optional = true,
+        regexes = {
+          "^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):(([0-9]{2})(\\.[0-9]+)?)Z$"
+        },
+        description = "Snapshot time",
+        helpText =
+            "Specifies the snapshot time as RFC 3339 format in UTC time without the timezone offset(always ends in 'Z'). Timestamp must be in the past and Maximum timestamp staleness applies. See https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness",
+        example = "1990-12-31T23:59:59Z")
     @Default.String(value = "")
     ValueProvider<String> getSnapshotTime();
 
     void setSnapshotTime(ValueProvider<String> value);
 
-    @Description("GCP Project Id of where the Spanner table lives.")
+    @TemplateParameter.ProjectId(
+        order = 8,
+        optional = true,
+        description = "Cloud Spanner Project Id",
+        helpText = "The project id of the Cloud Spanner instance.")
     ValueProvider<String> getSpannerProjectId();
 
     void setSpannerProjectId(ValueProvider<String> value);
 
-    @Description(
-        "If true, Timestamps are exported with timestamp-micros logical type."
-            + "By default, Timestamps are exported as ISO8601 strings at nanosecond precision.")
+    @TemplateParameter.Boolean(
+        order = 9,
+        optional = true,
+        description = "Export Timestamps as Timestamp-micros type",
+        helpText =
+            "If true, Timestamps are exported as timestamp-micros type. Timestamps are exported as ISO8601 strings at nanosecond precision by default.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getShouldExportTimestampAsLogicalType();
 
     void setShouldExportTimestampAsLogicalType(ValueProvider<Boolean> value);
 
-    @Description(
-        "If provided, these tables (along with any necessary parent or foreign key"
-            + " tables) are exported from Cloud Spanner.")
+    @TemplateParameter.Text(
+        order = 10,
+        optional = true,
+        regexes = {"^[a-zA-Z0-9_]+(,[a-zA-Z0-9_]+)*$"},
+        description = "Cloud Spanner table name(s).",
+        helpText =
+            "If provided, only this comma separated list of tables are exported. Ancestor tables and tables that are referenced via foreign keys are required. If not explicitly listed, the `shouldExportRelatedTables` flag must be set for a successful export.")
     @Default.String(value = "")
     ValueProvider<String> getTableNames();
 
     void setTableNames(ValueProvider<String> value);
 
-    @Description(
-        "If true, export not only the specified list of tables, but any related tables necessary"
-            + " for the export, such as interleaved parent tables and foreign keys tables")
+    @TemplateParameter.Boolean(
+        order = 11,
+        optional = true,
+        description = "Export necessary Related Spanner tables.",
+        helpText =
+            "Used in conjunction with `tableNames`. If true, add related tables necessary for the export, such as interleaved parent tables and foreign keys tables.  If `tableNames` is specified but doesn't include related tables, this option must be set to true for a successful export.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getShouldExportRelatedTables();
 
     void setShouldExportRelatedTables(ValueProvider<Boolean> value);
 
-    @Description("The spanner priority. --spannerPriority must be one of:[HIGH,MEDIUM,LOW]")
+    @TemplateParameter.Enum(
+        order = 12,
+        enumOptions = {"LOW", "MEDIUM", "HIGH"},
+        optional = true,
+        description = "Priority for Spanner RPC invocations",
+        helpText =
+            "The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW].")
     ValueProvider<RpcPriority> getSpannerPriority();
 
     void setSpannerPriority(ValueProvider<RpcPriority> value);

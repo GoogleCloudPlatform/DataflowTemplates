@@ -18,6 +18,10 @@ package com.google.cloud.teleport.templates;
 import static com.google.cloud.teleport.util.ValueProviderUtils.eitherOrValueProvider;
 
 import com.google.cloud.spanner.Options.RpcPriority;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.templates.SpannerToText.SpannerToTextOptions;
 import com.google.cloud.teleport.templates.common.SpannerConverters;
 import com.google.cloud.teleport.templates.common.SpannerConverters.CreateTransactionFnWithTimestamp;
 import com.google.cloud.teleport.templates.common.SpannerConverters.SpannerReadOptions;
@@ -30,7 +34,6 @@ import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.Transaction;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -71,6 +74,14 @@ import org.slf4j.LoggerFactory;
  *                --textWritePrefix=gcsOutputPath"
  * </pre>
  */
+@Template(
+    name = "Spanner_to_GCS_Text",
+    category = TemplateCategory.BATCH,
+    displayName = "Cloud Spanner to Text Files on Cloud Storage",
+    description =
+        "A pipeline which reads in Cloud Spanner table and writes it to Cloud Storage as CSV text files.",
+    optionsClass = SpannerToTextOptions.class,
+    contactInformation = "https://cloud.google.com/support")
 public class SpannerToText {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToText.class);
@@ -79,13 +90,24 @@ public class SpannerToText {
   public interface SpannerToTextOptions
       extends PipelineOptions, SpannerReadOptions, FilesystemWriteOptions {
 
-    @Description("Temporary Directory to store Csv files.")
+    @TemplateParameter.GcsWriteFolder(
+        order = 1,
+        optional = true,
+        description = "Cloud Storage temp directory for storing CSV files",
+        helpText = "The Cloud Storage path where the temporary CSV files can be stored.",
+        example = "gs://your-bucket/your-path")
     ValueProvider<String> getCsvTempDirectory();
 
     @SuppressWarnings("unused")
     void setCsvTempDirectory(ValueProvider<String> value);
 
-    @Description("The spanner priority. --spannerPriority must be one of:[HIGH,MEDIUM,LOW]")
+    @TemplateParameter.Enum(
+        order = 2,
+        enumOptions = {"LOW", "MEDIUM", "HIGH"},
+        optional = true,
+        description = "Priority for Spanner RPC invocations",
+        helpText =
+            "The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW].")
     ValueProvider<RpcPriority> getSpannerPriority();
 
     void setSpannerPriority(ValueProvider<RpcPriority> value);

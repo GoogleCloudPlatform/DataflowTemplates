@@ -16,10 +16,13 @@
 package com.google.cloud.teleport.templates;
 
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.splunk.SplunkEvent;
 import com.google.cloud.teleport.splunk.SplunkEventCoder;
 import com.google.cloud.teleport.splunk.SplunkIO;
 import com.google.cloud.teleport.splunk.SplunkWriteError;
+import com.google.cloud.teleport.templates.PubSubToSplunk.PubSubToSplunkOptions;
 import com.google.cloud.teleport.templates.common.ErrorConverters;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.JavascriptTextTransformerOptions;
@@ -120,6 +123,20 @@ import org.slf4j.LoggerFactory;
  * javascriptTextTransformFunctionName=myUdf"
  * </pre>
  */
+@Template(
+    name = "Cloud_PubSub_to_Splunk",
+    category = TemplateCategory.STREAMING,
+    displayName = "Pub/Sub to Splunk",
+    description =
+        "A pipeline that reads from a Pub/Sub subscription and writes to Splunk's HTTP Event Collector (HEC).",
+    optionsClass = PubSubToSplunkOptions.class,
+    optionsOrder = {
+      PubsubReadSubscriptionOptions.class,
+      SplunkOptions.class,
+      JavascriptTextTransformerOptions.class,
+      PubsubWriteDeadletterTopicOptions.class
+    },
+    contactInformation = "https://cloud.google.com/support")
 public class PubSubToSplunk {
 
   /** String/String Coder for FailsafeElement. */

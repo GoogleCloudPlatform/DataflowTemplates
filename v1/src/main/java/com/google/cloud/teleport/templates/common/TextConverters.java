@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.templates.common;
 
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -26,7 +27,12 @@ public class TextConverters {
 
   /** Options for reading data from a Filesystem. */
   public interface FilesystemReadOptions extends PipelineOptions {
-    @Description("Pattern to where data lives, ex: gs://mybucket/somepath/*.json")
+
+    @TemplateParameter.Text(
+        order = 1,
+        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
+        description = "Input file(s) in Cloud Storage",
+        helpText = "The input file pattern Dataflow reads from. Ex: gs://your-bucket/.../*.json")
     ValueProvider<String> getTextReadPattern();
 
     void setTextReadPattern(ValueProvider<String> textReadPattern);
@@ -34,7 +40,11 @@ public class TextConverters {
 
   /** Options for writing data to a Filesystem. */
   public interface FilesystemWriteOptions extends PipelineOptions {
-    @Description("Prefix path as to where data should be written, ex: gs://mybucket/somefolder/")
+    @TemplateParameter.GcsWriteFolder(
+        order = 2,
+        description = "Output file directory in Cloud Storage",
+        helpText = "The path and filename prefix for writing output files.",
+        example = "gs://your-bucket/your-path")
     ValueProvider<String> getTextWritePrefix();
 
     void setTextWritePrefix(ValueProvider<String> textWritePrefix);
@@ -43,15 +53,23 @@ public class TextConverters {
   /** Options for writing into a filesystem using sharded files in windows. */
   public interface FilesystemWindowedWriteOptions extends PipelineOptions {
 
-    @Description("The directory to output files to. Must end with a slash.")
+    @TemplateParameter.GcsWriteFolder(
+        order = 1,
+        description = "Output file directory in Cloud Storage",
+        helpText =
+            "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters.",
+        example = "gs://your-bucket/your-path")
     @Validation.Required
     ValueProvider<String> getOutputDirectory();
 
     void setOutputDirectory(ValueProvider<String> value);
 
-    @Description("The filename prefix of the files to write to.")
+    @TemplateParameter.Text(
+        order = 2,
+        description = "Output filename prefix of the files to write",
+        helpText = "The prefix to place on each windowed file.",
+        example = "output-")
     @Default.String("output")
-    @Validation.Required
     ValueProvider<String> getOutputFilenamePrefix();
 
     void setOutputFilenamePrefix(ValueProvider<String> value);
@@ -71,18 +89,27 @@ public class TextConverters {
 
     void setOutputShardTemplate(ValueProvider<String> value);
 
-    @Description("The maximum number of output shards produced when writing.")
+    @TemplateParameter.Integer(
+        order = 4,
+        optional = true,
+        description = "Maximum output shards",
+        helpText =
+            "The maximum number of output shards produced when writing. A higher number of "
+                + "shards means higher throughput for writing to Cloud Storage, but potentially higher "
+                + "data aggregation cost across shards when processing output Cloud Storage files.")
     @Default.Integer(1)
     Integer getNumShards();
 
     void setNumShards(Integer value);
 
-    @Description(
-        "The window duration in which data will be written. Defaults to 5m. "
-            + "Allowed formats are: "
-            + "Ns (for seconds, example: 5s), "
-            + "Nm (for minutes, example: 12m), "
-            + "Nh (for hours, example: 2h).")
+    @TemplateParameter.Duration(
+        order = 5,
+        optional = true,
+        description = "Window duration",
+        helpText =
+            "The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for "
+                + "seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h).",
+        example = "5m")
     @Default.String("1m")
     String getWindowDuration();
 

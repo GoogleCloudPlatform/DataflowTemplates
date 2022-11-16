@@ -102,6 +102,12 @@
     </dependencyManagement>
 
     <dependencies>
+        <!-- Templates Annotations -->
+        <dependency>
+            <groupId>com.google.cloud.teleport.metadata</groupId>
+            <artifactId>metadata</artifactId>
+            <version>${metadata.version}</version>
+        </dependency>
         <!-- Beam -->
         <dependency>
             <groupId>org.apache.beam</groupId>
@@ -190,7 +196,6 @@
                </exclusion>
             </exclusions>
         </dependency>
-
 
         <!-- Misc -->
         <dependency>
@@ -468,8 +473,7 @@
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>${maven-shade-plugin.version}</version>
             </plugin>
-
-
+            
             <plugin>
                 <!-- Set up Javadoc configuration for javadoc run via in the Maven
                      build. Teleport only uses the plugin to create the individual javadoc
@@ -611,28 +615,30 @@
     <modules>
         <module>bigquery-to-bigtable</module>
         <module>bigquery-to-parquet</module>
-        <module>common</module>
         <module>cdc-parent</module>
+        <module>common</module>
         <module>datastream-to-bigquery</module>
+        <module>datastream-to-mongodb</module>
+        <module>datastream-to-postgres</module>
         <module>datastream-to-spanner</module>
         <module>datastream-to-sql</module>
         <module>elasticsearch-common</module>
         <module>file-format-conversion</module>
-        <module>googlecloud-to-neo4j</module>
         <module>googlecloud-to-elasticsearch</module>
-        <module>googlecloud-to-mongodb</module>
         <module>googlecloud-to-googlecloud</module>
+        <module>googlecloud-to-mongodb</module>
+        <module>googlecloud-to-neo4j</module>
         <module>googlecloud-to-splunk</module>
+        <module>kafka-common</module>
         <module>kafka-to-bigquery</module>
         <module>kafka-to-gcs</module>
-        <module>mongodb-to-googlecloud</module>
+        <module>kafka-to-pubsub</module>
         <module>kudu-to-bigquery</module>
+        <module>mongodb-to-googlecloud</module>
         <module>pubsub-binary-to-bigquery</module>
         <module>pubsub-cdc-to-bigquery</module>
         <module>pubsub-to-mongodb</module>
         <module>streaming-data-generator</module>
-        <module>kafka-to-pubsub</module>
-        <module>kafka-common</module>
     </modules>
 
 </project>

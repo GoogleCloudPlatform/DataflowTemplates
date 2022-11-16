@@ -17,14 +17,16 @@ their functionality.
 
 As of November 18, 2021, our default branch is now named "main". This does not
 affect forks. If you would like your fork and its local clone to reflect these
-changes you can follow [GitHub's branch renaming guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-branches-in-your-repository/renaming-a-branch).
+changes you can
+follow [GitHub's branch renaming guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-branches-in-your-repository/renaming-a-branch)
+.
 
 ## Building
 
 Maven commands should be run on the parent POM. An example would be:
 
 ```
-mvn clean install -pl v2/pubsub-binary-to-bigquery -am
+mvn clean package -pl v2/pubsub-binary-to-bigquery -am
 ```
 
 ## Template Pipelines
@@ -60,11 +62,11 @@ mvn clean install -pl v2/pubsub-binary-to-bigquery -am
 * [Spanner to GCS Text](v1/src/main/java/com/google/cloud/teleport/templates/SpannerToText.java)
 * [Word Count](v1/src/main/java/com/google/cloud/teleport/templates/WordCount.java)
 
-
 \* Supports user-defined functions (UDFs).
 
-For documentation on each template's usage and parameters, please see
-the official [docs](https://cloud.google.com/dataflow/docs/templates/provided-templates).
+For documentation on each template's usage and parameters, please see the
+official [docs](https://cloud.google.com/dataflow/docs/templates/provided-templates)
+.
 
 ## Getting Started
 
@@ -83,8 +85,8 @@ mvn clean compile
 
 ### Building/Testing from IntelliJ
 
-IntelliJ, by default, will often skip necessary Maven goals, leading to
-build failures. You can fix these in the Maven view by going to
+IntelliJ, by default, will often skip necessary Maven goals, leading to build
+failures. You can fix these in the Maven view by going to
 **Module_Name > Plugins > Plugin_Name** where Module_Name and Plugin_Name are
 the names of the respective module and plugin with the rule. From there,
 right-click the rule and select "Execute Before Build".
@@ -114,10 +116,11 @@ v2/ or not.
 
 ### Creating a Template File
 
-Dataflow templates can be [created](https://cloud.google.com/dataflow/docs/templates/creating-templates#creating-and-staging-templates)
-using a maven command which builds the project and stages the template
-file on Google Cloud Storage. Any parameters passed at template build
-time will not be able to be overwritten at execution time.
+Dataflow templates can
+be [created](https://cloud.google.com/dataflow/docs/templates/creating-templates#creating-and-staging-templates)
+using a Maven command which builds the project and stages the template file on
+Google Cloud Storage. Any parameters passed at template build time will not be
+able to be overwritten at execution time.
 
 ```sh
 mvn compile exec:java \
@@ -131,11 +134,10 @@ mvn compile exec:java \
 --runner=DataflowRunner"
 ```
 
-
 ### Executing a Template File
 
-Once the template is staged on Google Cloud Storage, it can then be
-executed using the
+Once the template is staged on Google Cloud Storage, it can then be executed
+using the
 [gcloud CLI](https://cloud.google.com/sdk/gcloud/reference/dataflow/jobs/run)
 tool. The runtime parameters required by the template can be passed in the
 parameters field via comma-separated list of `paramName=Value`.
@@ -147,23 +149,120 @@ gcloud dataflow jobs run <job-name> \
 --parameters <parameters>
 ```
 
+## Metadata Annotations
+
+A template requires more information than just a name and description. For
+example, in order to be used from the Dataflow UI, parameters need a longer help
+text to guide users, as well as proper types and validations to make sure
+parameters are being passed correctly.
+
+We introduced annotations to have the source code as a single source of truth,
+along with a set of utilities / plugins to generate template-accompanying
+artifacts (such as command specs, parameter specs).
+
+### @Template Annotation
+
+Every template must be annotated with `@Template`. Existing templates can be
+used for reference, but the structure is as follows:
+
+```java
+
+@Template(
+    name = "BigQuery_to_Elasticsearch",
+    category = TemplateCategory.BATCH,
+    displayName = "BigQuery to Elasticsearch",
+    description = "A pipeline which sends BigQuery records into an Elasticsearch instance as JSON documents.",
+    optionsClass = BigQueryToElasticsearchOptions.class,
+    flexContainerName = "bigquery-to-elasticsearch")
+public class BigQueryToElasticsearch {
+```
+
+### @TemplateParameter Annotation
+
+A set of `@TemplateParameter.{Type}` annotations were created to allow the
+definition of options for a template, and the proper rendering in the UI, and
+validations by the template launch service. Examples can be found in the
+repository, but the general structure is as follows:
+
+```java
+@TemplateParameter.Text(
+    order = 2,
+    optional = false,
+    regexes = {"[a-zA-Z0-9._-,]+"},
+    description = "Kafka topic(s) to read the input from",
+    helpText = "Kafka topic(s) to read the input from.",
+    example = "topic1,topic2")
+@Validation.Required
+String getInputTopics();
+```
+
+```java
+@TemplateParameter.GcsReadFile(
+    order = 1,
+    description = "Cloud Storage Input File(s)",
+    helpText = "Path of the file pattern glob to read from.",
+    example = "gs://your-bucket/path/*.csv")
+String getInputFilePattern();
+```
+
+```java
+@TemplateParameter.Boolean(
+    order = 11,
+    optional = true,
+    description = "Whether to use column alias to map the rows.",
+    helpText = "If enabled (set to true) the pipeline will consider column alias (\"AS\") instead of the column name to map the rows to BigQuery.")
+@Default.Boolean(false)
+Boolean getUseColumnAlias();
+```
+
+```java
+@TemplateParameter.Enum(
+    order = 21,
+    enumOptions = {"INDEX", "CREATE"},
+    optional = true,
+    description = "Build insert method",
+    helpText = "Whether to use INDEX (index, allows upsert) or CREATE (create, errors on duplicate _id) with Elasticsearch bulk requests.")
+@Default.Enum("CREATE")
+BulkInsertMethodOptions getBulkInsertMethod();
+```
+
+Note: `order` is relevant for templates that can be used from the UI, and
+specify the relative order of parameters.
+
+### @TemplateIntegrationTest Annotation
+
+This annotation should be used by classes that are used for integration tests of
+other templates. This is used to wire a specific `IT` class with a template, and
+allows environment preparation / proper template staging before tests are
+executed on Dataflow.
+
+Template tests have to follow this general format (please note
+the `@TemplateIntegrationTest` annotation and the `TemplateTestBase`
+super-class):
+
+```java
+
+@TemplateIntegrationTest(PubsubToText.class)
+@RunWith(JUnit4.class)
+public final class PubsubToTextIT extends TemplateTestBase {
+```
 
 ## Using UDFs
 
-User-defined functions (UDFs) allow you to customize a template's
-functionality by providing a short JavaScript function without having to
-maintain the entire codebase. This is useful in situations which you'd
-like to rename fields, filter values, or even transform data formats
-before output to the destination. All UDFs are executed by providing the
-payload of the element as a string to the JavaScript function. You can
-then use JavaScript's in-built JSON parser or other system functions to
-transform the data prior to the pipeline's output. The return statement
-of a UDF specifies the payload to pass forward in the pipeline. This
-should always return a string value. If no value is returned or the
-function returns undefined, the incoming record will be filtered from
-the output.
+User-defined functions (UDFs) allow you to customize a template's functionality
+by providing a short JavaScript function without having to maintain the entire
+codebase. This is useful in situations which you'd like to rename fields, filter
+values, or even transform data formats before output to the destination. All
+UDFs are executed by providing the payload of the element as a string to the
+JavaScript function. You can then use JavaScript's in-built JSON parser or other
+system functions to transform the data prior to the pipeline's output. The
+return statement of a UDF specifies the payload to pass forward in the pipeline.
+This should always return a string value. If no value is returned or the
+function returns undefined, the incoming record will be filtered from the
+output.
 
 ### UDF Function Specification
+
 | Template              | UDF Input Type | Input Description                               | UDF Output Type | Output Description                                                            |
 |-----------------------|----------------|-------------------------------------------------|-----------------|-------------------------------------------------------------------------------|
 | Datastore Bulk Delete | String         | A JSON string of the entity                     | String          | A JSON string of the entity to delete; filter entities by returning undefined |
@@ -174,10 +273,10 @@ the output.
 | Pub/Sub to Datastore  | String         | A string representation of the incoming payload | String          | A JSON string of the entity to write to Datastore                             |
 | Pub/Sub to Splunk  | String         | A string representation of the incoming payload | String          | The event data to be sent to Splunk HEC events endpoint. Must be a string or a stringified JSON object |
 
-
 ### UDF Examples
 
 #### Adding fields
+
 ```js
 /**
  * A transform which adds a field to the incoming data.
@@ -193,6 +292,7 @@ function transform(inJson) {
 ```
 
 #### Filtering records
+
 ```js
 /**
  * A transform function which only accepts 42 as the answer to life.

@@ -19,6 +19,10 @@ import static com.google.cloud.teleport.templates.TextToBigQueryStreaming.wrapBi
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.templates.PubSubToBigQuery.Options;
 import com.google.cloud.teleport.templates.common.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.templates.common.ErrorConverters;
 import com.google.cloud.teleport.templates.common.JavascriptTextTransformer.FailsafeJavascriptUdf;
@@ -123,6 +127,24 @@ import org.slf4j.LoggerFactory;
  * outputDeadletterTable=${PROJECT_ID}:dataset-id.deadletter-table"
  * </pre>
  */
+@Template(
+    name = "PubSub_Subscription_to_BigQuery",
+    category = TemplateCategory.STREAMING,
+    displayName = "Pub/Sub Subscription to BigQuery",
+    description =
+        "Streaming pipeline. Ingests JSON-encoded messages from a Pub/Sub subscription, transforms them using a JavaScript user-defined function (UDF), and writes them to a pre-existing BigQuery table as BigQuery elements.",
+    optionsClass = Options.class,
+    skipOptions = "inputTopic",
+    contactInformation = "https://cloud.google.com/support")
+@Template(
+    name = "PubSub_to_BigQuery",
+    category = TemplateCategory.STREAMING,
+    displayName = "Pub/Sub Topic to BigQuery",
+    description =
+        "Streaming pipeline. Ingests JSON-encoded messages from a Pub/Sub topic, transforms them using a JavaScript user-defined function (UDF), and writes them to a pre-existing BigQuery table as BigQuery elements.",
+    optionsClass = Options.class,
+    skipOptions = "inputSubscription",
+    contactInformation = "https://cloud.google.com/support")
 public class PubSubToBigQuery {
 
   /** The log to output status messages to. */
@@ -159,34 +181,51 @@ public class PubSubToBigQuery {
    * command-line.
    */
   public interface Options extends PipelineOptions, JavascriptTextTransformerOptions {
-    @Description("Table spec to write the output to")
+    @TemplateParameter.BigQueryTable(
+        order = 1,
+        description = "BigQuery output table",
+        helpText =
+            "BigQuery table location to write the output to. The table’s schema must match the "
+                + "input JSON objects.")
     ValueProvider<String> getOutputTableSpec();
 
     void setOutputTableSpec(ValueProvider<String> value);
 
-    @Description("Pub/Sub topic to read the input from")
+    @TemplateParameter.PubsubTopic(
+        order = 2,
+        description = "Input Pub/Sub topic",
+        helpText = "The Pub/Sub topic to read the input from.")
     ValueProvider<String> getInputTopic();
 
     void setInputTopic(ValueProvider<String> value);
 
-    @Description(
-        "The Cloud Pub/Sub subscription to consume from. "
-            + "The name should be in the format of "
-            + "projects/<project-id>/subscriptions/<subscription-name>.")
+    @TemplateParameter.PubsubSubscription(
+        order = 3,
+        description = "Pub/Sub input subscription",
+        helpText =
+            "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name'")
     ValueProvider<String> getInputSubscription();
 
     void setInputSubscription(ValueProvider<String> value);
 
     @Description(
-        "This determines whether the template reads from " + "a pub/sub subscription or a topic")
+        "This determines whether the template reads from a Pub/sub subscription or a topic")
     @Default.Boolean(false)
     Boolean getUseSubscription();
 
     void setUseSubscription(Boolean value);
 
-    @Description(
-        "The dead-letter table to output to within BigQuery in <project-id>:<dataset>.<table> "
-            + "format. If it doesn't exist, it will be created during pipeline execution.")
+    @TemplateParameter.BigQueryTable(
+        order = 5,
+        optional = true,
+        description =
+            "Table for messages failed to reach the output table (i.e., Deadletter table)",
+        helpText =
+            "Messages failed to reach the output table for all kind of reasons (e.g., "
+                + "mismatched schema, malformed json) are written to this table. It should be in the "
+                + "format of \"your-project-id:your-dataset.your-table-name\". If it doesn't exist, "
+                + "it will be created during pipeline execution. If not specified, "
+                + "\"{outputTableSpec}_error_records\" is used instead.")
     ValueProvider<String> getOutputDeadletterTable();
 
     void setOutputDeadletterTable(ValueProvider<String> value);

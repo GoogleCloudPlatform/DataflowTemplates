@@ -15,6 +15,9 @@
  */
 package com.google.cloud.teleport.templates;
 
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.templates.DatastoreToDatastoreDelete.DatastoreToDatastoreDeleteOptions;
 import com.google.cloud.teleport.templates.common.DatastoreConverters.DatastoreDeleteEntityJson;
 import com.google.cloud.teleport.templates.common.DatastoreConverters.DatastoreDeleteOptions;
 import com.google.cloud.teleport.templates.common.DatastoreConverters.DatastoreReadOptions;
@@ -28,6 +31,36 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 
 /** Dataflow template which deletes pulled Datastore Entities. */
+@Template(
+    name = "Datastore_to_Datastore_Delete",
+    category = TemplateCategory.UTILITIES,
+    displayName = "Bulk Delete Entities in Datastore [Deprecated]",
+    description =
+        "A pipeline which reads in Entities (via a GQL query) from Datastore, optionally passes in the JSON encoded Entities to a JavaScript UDF, and then deletes all matching Entities in the selected target project.",
+    optionsClass = DatastoreToDatastoreDeleteOptions.class,
+    skipOptions = {
+      "firestoreReadGqlQuery",
+      "firestoreReadProjectId",
+      "firestoreReadNamespace",
+      "firestoreDeleteProjectId",
+      "firestoreHintNumWorkers"
+    },
+    contactInformation = "https://cloud.google.com/support")
+@Template(
+    name = "Firestore_to_Firestore_Delete",
+    category = TemplateCategory.UTILITIES,
+    displayName = "Bulk Delete Entities in Firestore (Datastore mode)",
+    description =
+        "A pipeline which reads in Entities (via a GQL query) from Firestore, optionally passes in the JSON encoded Entities to a JavaScript UDF, and then deletes all matching Entities in the selected target project.",
+    optionsClass = DatastoreToDatastoreDeleteOptions.class,
+    skipOptions = {
+      "datastoreReadGqlQuery",
+      "datastoreReadProjectId",
+      "datastoreReadNamespace",
+      "datastoreDeleteProjectId",
+      "datastoreHintNumWorkers"
+    },
+    contactInformation = "https://cloud.google.com/support")
 public class DatastoreToDatastoreDelete {
 
   public static <T> ValueProvider<T> selectProvidedInput(

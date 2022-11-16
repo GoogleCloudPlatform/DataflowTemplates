@@ -18,6 +18,10 @@ package com.google.cloud.teleport.bigtable;
 import static com.google.cloud.teleport.bigtable.AvroToBigtable.toByteString;
 
 import com.google.bigtable.v2.Mutation;
+import com.google.cloud.teleport.bigtable.ParquetToBigtable.Options;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.protobuf.ByteString;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -28,7 +32,6 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
 import org.apache.beam.sdk.io.parquet.ParquetIO;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -92,6 +95,14 @@ import org.slf4j.LoggerFactory;
  * inputFilePattern=${PIPELINE_FOLDER}/path/to/file/filename-*.parquet"
  * </pre>
  */
+@Template(
+    name = "GCS_Parquet_to_Cloud_Bigtable",
+    category = TemplateCategory.BATCH,
+    displayName = "Parquet Files on Cloud Storage to Cloud Bigtable",
+    description =
+        "A pipeline which reads data from Parquet files in Cloud Storage and writes it to Cloud Bigtable table.",
+    optionsClass = Options.class,
+    contactInformation = "https://cloud.google.com/support")
 public class ParquetToBigtable {
   private static final Logger LOG = LoggerFactory.getLogger(AvroToBigtable.class);
 
@@ -102,34 +113,52 @@ public class ParquetToBigtable {
 
   /** Options for the import pipeline. */
   public interface Options extends PipelineOptions {
-    @Description("The project that contains the table to import into.")
+    @TemplateParameter.ProjectId(
+        order = 1,
+        description = "Project ID",
+        helpText =
+            "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to write data to")
     ValueProvider<String> getBigtableProjectId();
 
     @SuppressWarnings("unused")
     void setBigtableProjectId(ValueProvider<String> projectId);
 
-    @Description("The Bigtable instance id that contains the table to import into.")
+    @TemplateParameter.Text(
+        order = 2,
+        regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
+        description = "Instance ID",
+        helpText = "The ID of the Cloud Bigtable instance that contains the table")
     ValueProvider<String> getBigtableInstanceId();
 
     @SuppressWarnings("unused")
     void setBigtableInstanceId(ValueProvider<String> instanceId);
 
-    @Description("The Bigtable table id to import into.")
+    @TemplateParameter.Text(
+        order = 3,
+        regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
+        description = "Table ID",
+        helpText = "The ID of the Cloud Bigtable table to write")
     ValueProvider<String> getBigtableTableId();
 
     @SuppressWarnings("unused")
     void setBigtableTableId(ValueProvider<String> tableId);
 
-    @Description(
-        "The input file patterm to read from. (e.g. gs://mybucket/somefolder/table1*.parquet)")
+    @TemplateParameter.GcsReadFile(
+        order = 4,
+        description = "Input Cloud Storage File(s)",
+        helpText = "The Cloud Storage location of the files you'd like to process.",
+        example = "gs://your-bucket/your-files/*.parquet")
     ValueProvider<String> getInputFilePattern();
 
     @SuppressWarnings("unused")
     void setInputFilePattern(ValueProvider<String> inputFilePattern);
 
-    @Description(
-        "If true, a large row is split into multiple MutateRows requests. When a row is"
-            + " split across requests, updates are not atomic. ")
+    @TemplateParameter.Boolean(
+        order = 5,
+        optional = true,
+        description = "If true, large rows will be split into multiple MutateRows requests",
+        helpText =
+            "The flag for enabling splitting of large rows into multiple MutateRows requests. Note that when a large row is split between multiple API calls, the updates to the row are not atomic. ")
     ValueProvider<Boolean> getSplitLargeRows();
 
     void setSplitLargeRows(ValueProvider<Boolean> splitLargeRows);

@@ -17,9 +17,12 @@ package com.google.cloud.teleport.v2.mongodb.templates;
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.BigQueryWriteOptions;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.MongoDbOptions;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.PubSubOptions;
+import com.google.cloud.teleport.v2.mongodb.templates.MongoDbToBigQueryCdc.Options;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.util.HashMap;
@@ -36,6 +39,15 @@ import org.bson.Document;
  * The {@link BigQueryToMongoDb} pipeline is a streaming pipeline which reads data pushed to PubSub
  * from MongoDB Changestream and outputs the resulting records to BigQuery.
  */
+@Template(
+    name = "MongoDB_to_BigQuery_CDC",
+    category = TemplateCategory.STREAMING,
+    displayName = "MongoDB to BigQuery (CDC)",
+    description =
+        "A streaming pipeline which reads data pushed to Pub/Sub from MongoDB Changestream and writes the resulting records to BigQuery.",
+    optionsClass = Options.class,
+    flexContainerName = "mongodb-to-bigquery-cdc",
+    contactInformation = "https://cloud.google.com/support")
 public class MongoDbToBigQueryCdc {
 
   /** Options interface. */
