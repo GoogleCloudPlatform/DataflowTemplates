@@ -110,7 +110,8 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "Datastream to BigQuery",
     description =
-        "Streaming pipeline. Ingests messages from a stream in Datastream, transforms them, and writes them to a pre-existing BigQuery dataset as a set of tables.",
+        "Streaming pipeline. Ingests messages from a stream in Datastream, transforms them, and"
+            + " writes them to a pre-existing BigQuery dataset as a set of tables.",
     optionsClass = Options.class,
     flexContainerName = "datastream-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
@@ -163,8 +164,8 @@ public class DataStreamToBigQuery {
         order = 3,
         description = "The Pub/Sub subscription on the Cloud Storage bucket.",
         helpText =
-            "The Pub/Sub subscription used by Cloud Storage to notify Dataflow of new files available "
-                + "for processing, in the format: "
+            "The Pub/Sub subscription used by Cloud Storage to notify Dataflow of new files"
+                + " available for processing, in the format: "
                 + "projects/{PROJECT_NAME}/subscriptions/{SUBSCRIPTION_NAME}")
     String getGcsPubSubSubscription();
 
@@ -175,8 +176,8 @@ public class DataStreamToBigQuery {
         optional = true,
         description = "Name or template for the stream to poll for schema information.",
         helpText =
-            "This is the name or template for the stream to poll for schema information. "
-                + "Default is {_metadata_stream}. The default value is enough under most conditions.")
+            "This is the name or template for the stream to poll for schema information. Default is"
+                + " {_metadata_stream}. The default value is enough under most conditions.")
     String getStreamName();
 
     void setStreamName(String value);
@@ -199,7 +200,7 @@ public class DataStreamToBigQuery {
         order = 6,
         optional = true,
         description = "File read concurrency",
-        helpText = "The number of concurrent DataStream files to read.")
+        helpText = "The number of concurrent DataStream files to read. Default is 10.")
     @Default.Integer(10)
     Integer getFileReadConcurrency();
 
@@ -244,9 +245,9 @@ public class DataStreamToBigQuery {
         order = 10,
         description = "Template for the dataset to contain replica tables.",
         helpText =
-            "This is the name for the dataset to contain replica tables. This parameter supports "
-                + "templates (e.g. {_metadata_dataset} or my_dataset). Normally, this parameter is a "
-                + "dataset name.")
+            "This is the name for the dataset to contain replica tables. This parameter supports"
+                + " templates (e.g. {_metadata_dataset} or my_dataset). Normally, this parameter is"
+                + " a dataset name.")
     @Default.String("{_metadata_dataset}")
     String getOutputDatasetTemplate();
 
@@ -328,6 +329,18 @@ public class DataStreamToBigQuery {
     Boolean getApplyMerge();
 
     void setApplyMerge(Boolean value);
+
+    @TemplateParameter.Integer(
+        order = 18,
+        optional = true,
+        description = "Concurrent queries for merge.",
+        helpText =
+            "The number of concurrent BigQuery MERGE queries. Only effective when applyMerge is set"
+                + " to true. Default is 30.")
+    @Default.Integer(MergeConfiguration.DEFAULT_MERGE_CONCURRENCY)
+    Integer getMergeConcurrency();
+
+    void setMergeConcurrency(Integer value);
   }
 
   /**
@@ -526,7 +539,8 @@ public class DataStreamToBigQuery {
               BigQueryMerger.of(
                   MergeConfiguration.bigQueryConfiguration()
                       .withMergeWindowDuration(
-                          Duration.standardMinutes(options.getMergeFrequencyMinutes()))));
+                          Duration.standardMinutes(options.getMergeFrequencyMinutes()))
+                      .withMergeConcurrency(options.getMergeConcurrency())));
     }
 
     /*
