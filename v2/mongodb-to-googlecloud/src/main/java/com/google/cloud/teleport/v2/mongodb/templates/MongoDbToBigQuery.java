@@ -20,12 +20,16 @@ import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.BigQueryWriteOptions;
+import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.JavascriptDocumentTransformerOptions;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.MongoDbOptions;
+import com.google.cloud.teleport.v2.mongodb.templates.JavascriptDocumentTransformer.TransformDocumentViaJavascript;
 import com.google.cloud.teleport.v2.mongodb.templates.MongoDbToBigQuery.Options;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import java.io.IOException;
 import java.util.HashMap;
+import javax.script.ScriptException;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
@@ -34,6 +38,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.values.PCollection;
 import org.bson.Document;
 
 /**
@@ -56,7 +61,11 @@ public class MongoDbToBigQuery {
    * <p>Inherits standard configuration options.
    */
   public interface Options
-      extends PipelineOptions, MongoDbOptions, BigQueryWriteOptions, BigQueryOptions {}
+      extends PipelineOptions,
+          MongoDbOptions,
+          BigQueryWriteOptions,
+          BigQueryOptions,
+          JavascriptDocumentTransformerOptions {}
 
   private static class ParseAsDocumentsFn extends DoFn<String, Document> {
     @ProcessElement
@@ -65,7 +74,8 @@ public class MongoDbToBigQuery {
     }
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args)
+      throws ScriptException, IOException, NoSuchMethodException {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
     BigQueryIOUtils.validateBQStorageApiOptionsBatch(options);
@@ -73,22 +83,45 @@ public class MongoDbToBigQuery {
     run(options);
   }
 
-  public static boolean run(Options options) {
+  public static boolean run(Options options)
+      throws ScriptException, IOException, NoSuchMethodException {
     Pipeline pipeline = Pipeline.create(options);
-    TableSchema bigquerySchema =
-        MongoDbUtils.getTableFieldSchema(
-            options.getMongoDbUri(),
-            options.getDatabase(),
-            options.getCollection(),
-            options.getUserOption());
     String userOption = options.getUserOption();
-    pipeline
-        .apply(
-            "Read Documents",
-            MongoDbIO.read()
-                .withUri(options.getMongoDbUri())
-                .withDatabase(options.getDatabase())
-                .withCollection(options.getCollection()))
+
+    TableSchema bigquerySchema;
+
+    if (options.getUserOption().equals("UDF")) {
+      bigquerySchema =
+          MongoDbUtils.getTableFieldSchemaForUDF(
+              options.getMongoDbUri(),
+              options.getDatabase(),
+              options.getCollection(),
+              options.getJavascriptDocumentTransformGcsPath(),
+              options.getJavascriptDocumentTransformFunctionName());
+    } else {
+      bigquerySchema =
+          MongoDbUtils.getTableFieldSchema(
+              options.getMongoDbUri(),
+              options.getDatabase(),
+              options.getCollection(),
+              options.getUserOption());
+    }
+    PCollection<Document> lines =
+        pipeline
+            .apply(
+                "Read Documents",
+                MongoDbIO.read()
+                    .withUri(options.getMongoDbUri())
+                    .withDatabase(options.getDatabase())
+                    .withCollection(options.getCollection()))
+            .apply(
+                "UDF",
+                TransformDocumentViaJavascript.newBuilder()
+                    .setFileSystemPath(options.getJavascriptDocumentTransformGcsPath())
+                    .setFunctionName(options.getJavascriptDocumentTransformFunctionName())
+                    .build());
+
+    lines
         .apply(
             "Transform to TableRow",
             ParDo.of(

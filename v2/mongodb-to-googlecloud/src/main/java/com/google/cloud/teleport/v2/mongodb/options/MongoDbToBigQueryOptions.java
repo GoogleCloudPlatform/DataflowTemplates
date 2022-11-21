@@ -94,4 +94,26 @@ public class MongoDbToBigQueryOptions {
 
     void setOutputTableSpec(String outputTableSpec);
   }
+
+  public interface JavascriptDocumentTransformerOptions extends PipelineOptions {
+    @TemplateParameter.Text(
+        order = 3,
+        description = "Path to the UDF stored in the GCS bucket.",
+        helpText = "Enter the gcs path in format gs://<bucket-name>/<js-file>.js .",
+        example = "gs://test-bucket/test.js")
+    @Default.String("javascriptDocumentTransformGcsPath")
+    String getJavascriptDocumentTransformGcsPath();
+
+    void setJavascriptDocumentTransformGcsPath(String javascriptDocumentTransformGcsPath);
+
+    @TemplateParameter.Text(
+        order = 3,
+        description = "UDF function name stored in the GCS bucket.",
+        helpText = "Enter the Name of the User defined function .",
+        example = "transform")
+    @Default.String("javascriptDocumentTransformFunctionName")
+    String getJavascriptDocumentTransformFunctionName();
+
+    void setJavascriptDocumentTransformFunctionName(String javascriptDocumentTransformFunctionName);
+  }
 }
