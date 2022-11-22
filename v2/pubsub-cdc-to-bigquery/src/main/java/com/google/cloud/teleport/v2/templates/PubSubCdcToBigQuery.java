@@ -48,6 +48,7 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
@@ -133,7 +134,9 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub CDC to Bigquery",
     description =
-        "Streaming pipeline. Ingests JSON-encoded messages from a Pub/Sub topic, transforms them using a JavaScript user-defined function (UDF), and writes them to a pre-existing BigQuery table as BigQuery elements.",
+        "Streaming pipeline. Ingests JSON-encoded messages from a Pub/Sub topic, transforms them"
+            + " using a JavaScript user-defined function (UDF), and writes them to a pre-existing"
+            + " BigQuery table as BigQuery elements.",
     optionsClass = Options.class,
     flexContainerName = "pubsub-cdc-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
@@ -157,12 +160,13 @@ public class PubSubCdcToBigQuery {
    * The {@link Options} class provides the custom execution options passed by the executor at the
    * command-line.
    */
-  public interface Options extends PipelineOptions, InputUDFOptions {
+  public interface Options extends PipelineOptions, InputUDFOptions, BigQueryOptions {
     @TemplateParameter.PubsubSubscription(
         order = 1,
         description = "Pub/Sub input subscription",
         helpText =
-            "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name'",
+            "Pub/Sub subscription to read the input from, in the format of"
+                + " 'projects/your-project-id/subscriptions/your-subscription-name'",
         example = "projects/your-project-id/subscriptions/your-subscription-name")
     String getInputSubscription();
 
@@ -183,9 +187,9 @@ public class PubSubCdcToBigQuery {
         optional = true,
         description = "Cloud Storage file with BigQuery schema fields to be used in DDL",
         helpText =
-            "This is the file location that contains the table definition to be used when "
-                + "creating the table in BigQuery. If left blank the table will get created with generic "
-                + "string typing.")
+            "This is the file location that contains the table definition to be used when creating"
+                + " the table in BigQuery. If left blank the table will get created with generic"
+                + " string typing.")
     String getSchemaFilePath();
 
     void setSchemaFilePath(String value);
@@ -224,10 +228,10 @@ public class PubSubCdcToBigQuery {
         order = 7,
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
-            "Messages failed to reach the output table for all kind of reasons (e.g., mismatched "
-                + "schema, malformed json) are written to this table. If it doesn't exist, it will be "
-                + "created during pipeline execution. If not specified, \"outputTableSpec_error_records\" "
-                + "is used instead.",
+            "Messages failed to reach the output table for all kind of reasons (e.g., mismatched"
+                + " schema, malformed json) are written to this table. If it doesn't exist, it will"
+                + " be created during pipeline execution. If not specified,"
+                + " \"outputTableSpec_error_records\" is used instead.",
         example = "your-project-id:your-dataset.your-table-name")
     String getOutputDeadletterTable();
 
@@ -250,8 +254,9 @@ public class PubSubCdcToBigQuery {
         optional = true,
         description = "Window duration",
         helpText =
-            "The window duration/size in which DLQ data will be written to Cloud Storage. Allowed formats are: Ns (for "
-                + "seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h).",
+            "The window duration/size in which DLQ data will be written to Cloud Storage. Allowed"
+                + " formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh"
+                + " (for hours, example: 2h).",
         example = "5m")
     @Default.String("5s")
     String getWindowDuration();
