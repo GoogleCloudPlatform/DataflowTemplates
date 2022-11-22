@@ -27,8 +27,6 @@
 
   <properties>
     <beam-splunk.version>2.38.0</beam-splunk.version>
-    <junit.version>4.13.1</junit.version>
-    <truth.version>1.0.1</truth.version>
   </properties>
 
   <dependencies>
@@ -63,21 +61,4 @@
     </dependency>
   </dependencies>
 
-  <build>
-    <directory>${mvn-target-dir}</directory>
-    <plugins>
-      <plugin>
-        <groupId>com.google.cloud.tools</groupId>
-        <artifactId>jib-maven-plugin</artifactId>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>build</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-    </plugins>
-  </build>
 </project>

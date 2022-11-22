@@ -200,7 +200,7 @@ public interface DataplexJdbcIngestionOptions
 
   @TemplateParameter.Enum(
       order = 13,
-      enumOptions = {"WRITE_APPEND", "WRITE_TRUNCATE", "WRITE_EMPTY"},
+      enumOptions = {"SKIP", "WRITE_APPEND", "WRITE_TRUNCATE", "WRITE_EMPTY"},
       optional = true,
       description = "BigQuery write disposition type",
       helpText =

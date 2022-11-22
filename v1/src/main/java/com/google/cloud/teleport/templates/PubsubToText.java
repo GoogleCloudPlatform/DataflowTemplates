@@ -18,6 +18,7 @@ package com.google.cloud.teleport.templates;
 import com.google.cloud.teleport.io.WindowedFilenamePolicy;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateCreationParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.options.WindowedFilenamePolicyOptions;
 import com.google.cloud.teleport.templates.PubsubToText.Options;
@@ -109,7 +110,10 @@ import org.apache.beam.sdk.values.PCollection;
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub to Text Files on Cloud Storage",
     description =
-        "Streaming pipeline. Reads records from Pub/Sub and writes them to Cloud Storage, creating a text file for each five minute window. Note that this pipeline assumes no newlines in the body of the Pub/Sub message and thus each message becomes a single line in the output file.",
+        "Streaming pipeline. Reads records from Pub/Sub and writes them to Cloud Storage, creating"
+            + " a text file for each five minute window. Note that this pipeline assumes no"
+            + " newlines in the body of the Pub/Sub message and thus each message becomes a single"
+            + " line in the output file.",
     optionsClass = Options.class,
     contactInformation = "https://cloud.google.com/support")
 public class PubsubToText {
@@ -127,7 +131,8 @@ public class PubsubToText {
         optional = true,
         description = "Pub/Sub input subscription",
         helpText =
-            "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name'",
+            "Pub/Sub subscription to read the input from, in the format of"
+                + " 'projects/your-project-id/subscriptions/your-subscription-name'",
         example = "projects/your-project-id/subscriptions/your-subscription-name")
     ValueProvider<String> getInputSubscription();
 
@@ -144,6 +149,7 @@ public class PubsubToText {
 
     void setInputTopic(ValueProvider<String> value);
 
+    @TemplateCreationParameter
     @Description(
         "This determines whether the template reads from a Pub/Sub subscription or a topic")
     @Default.Boolean(false)
@@ -155,7 +161,8 @@ public class PubsubToText {
         order = 3,
         description = "Output file directory in Cloud Storage",
         helpText =
-            "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters.")
+            "The path and filename prefix for writing output files. Must end with a slash. DateTime"
+                + " formatting is used to parse directory path for date & time formatters.")
     @Required
     ValueProvider<String> getOutputDirectory();
 

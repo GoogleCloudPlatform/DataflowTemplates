@@ -21,6 +21,7 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateCreationParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.templates.PubSubToBigQuery.Options;
 import com.google.cloud.teleport.templates.common.BigQueryConverters.FailsafeJsonToTableRow;
@@ -132,7 +133,9 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub Subscription to BigQuery",
     description =
-        "Streaming pipeline. Ingests JSON-encoded messages from a Pub/Sub subscription, transforms them using a JavaScript user-defined function (UDF), and writes them to a pre-existing BigQuery table as BigQuery elements.",
+        "Streaming pipeline. Ingests JSON-encoded messages from a Pub/Sub subscription, transforms"
+            + " them using a JavaScript user-defined function (UDF), and writes them to a"
+            + " pre-existing BigQuery table as BigQuery elements.",
     optionsClass = Options.class,
     skipOptions = "inputTopic",
     contactInformation = "https://cloud.google.com/support")
@@ -141,7 +144,9 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub Topic to BigQuery",
     description =
-        "Streaming pipeline. Ingests JSON-encoded messages from a Pub/Sub topic, transforms them using a JavaScript user-defined function (UDF), and writes them to a pre-existing BigQuery table as BigQuery elements.",
+        "Streaming pipeline. Ingests JSON-encoded messages from a Pub/Sub topic, transforms them"
+            + " using a JavaScript user-defined function (UDF), and writes them to a pre-existing"
+            + " BigQuery table as BigQuery elements.",
     optionsClass = Options.class,
     skipOptions = "inputSubscription",
     contactInformation = "https://cloud.google.com/support")
@@ -203,11 +208,13 @@ public class PubSubToBigQuery {
         order = 3,
         description = "Pub/Sub input subscription",
         helpText =
-            "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name'")
+            "Pub/Sub subscription to read the input from, in the format of"
+                + " 'projects/your-project-id/subscriptions/your-subscription-name'")
     ValueProvider<String> getInputSubscription();
 
     void setInputSubscription(ValueProvider<String> value);
 
+    @TemplateCreationParameter
     @Description(
         "This determines whether the template reads from a Pub/sub subscription or a topic")
     @Default.Boolean(false)
@@ -221,11 +228,11 @@ public class PubSubToBigQuery {
         description =
             "Table for messages failed to reach the output table (i.e., Deadletter table)",
         helpText =
-            "Messages failed to reach the output table for all kind of reasons (e.g., "
-                + "mismatched schema, malformed json) are written to this table. It should be in the "
-                + "format of \"your-project-id:your-dataset.your-table-name\". If it doesn't exist, "
-                + "it will be created during pipeline execution. If not specified, "
-                + "\"{outputTableSpec}_error_records\" is used instead.")
+            "Messages failed to reach the output table for all kind of reasons (e.g., mismatched"
+                + " schema, malformed json) are written to this table. It should be in the format"
+                + " of \"your-project-id:your-dataset.your-table-name\". If it doesn't exist, it"
+                + " will be created during pipeline execution. If not specified,"
+                + " \"{outputTableSpec}_error_records\" is used instead.")
     ValueProvider<String> getOutputDeadletterTable();
 
     void setOutputDeadletterTable(ValueProvider<String> value);

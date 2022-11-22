@@ -27,14 +27,8 @@
   <artifactId>structured-logging</artifactId>
 
   <properties>
-    <java.version>11</java.version>
-    <maven-compiler-plugin.version>3.6.2</maven-compiler-plugin.version>
-    <surefire.version>2.21.0</surefire.version>
     <gson.version>2.9.1</gson.version>
-    <slf4j.version>1.7.25</slf4j.version>
     <logback.version>1.2.10</logback.version>
-    <junit.version>4.13.1</junit.version>
-    <truth.version>1.0.1</truth.version>
   </properties>
 
   <dependencies>

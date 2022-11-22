@@ -26,17 +26,65 @@
   <packaging>pom</packaging>
   <description>
     Unifies all the template libraries under one POM for easier automation and
-    to allow
-    for more reusable and modular dependencies.
+    to allow for more reusable and modular dependencies.
   </description>
 
   <properties>
-    <maven-source-plugin.version>3.0.1</maven-source-plugin.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <java.version>11</java.version>
+
+    <!-- Plugins -->
     <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
-    <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
+    <maven-compiler-plugin.version>3.6.2</maven-compiler-plugin.version>
+    <maven-dependency-plugin.version>3.1.2</maven-dependency-plugin.version>
+    <maven-enforcer-plugin.version>3.0.0-M1</maven-enforcer-plugin.version>
+    <maven-jar-plugin.version>3.0.2</maven-jar-plugin.version>
+    <maven-javadoc-plugin.version>3.0.0-M1</maven-javadoc-plugin.version>
+    <maven-shade-plugin.version>3.0.0</maven-shade-plugin.version>
+    <maven-source-plugin.version>3.0.1</maven-source-plugin.version>
+    <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
+
+    <!-- Common dependency versions -->
+    <beam.version>2.42.0</beam.version>
     <checkstyle.version>8.7</checkstyle.version>
-    <metadata.version>1.0-SNAPSHOT</metadata.version>
+    <!-- TODO: upgrade to 26.1.3 -->
+    <cloud-libraries-bom.version>24.4.0</cloud-libraries-bom.version>
+    <conscrypt.version>2.5.2</conscrypt.version>
+    <hamcrest.version>2.1</hamcrest.version>
+    <mockito-core.version>3.0.0</mockito-core.version>
+    <json.version>20200518</json.version>
+    <junit.version>4.13.1</junit.version>
+    <re2j.version>1.5</re2j.version>
+    <slf4j.version>1.7.25</slf4j.version>
+    <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
+    <surefire.version>2.21.0</surefire.version>
+    <truth.version>1.0.1</truth.version>
+
   </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.apache.beam</groupId>
+        <artifactId>beam-sdks-java-bom</artifactId>
+        <version>${beam.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.google.cloud</groupId>
+        <artifactId>libraries-bom</artifactId>
+        <version>${cloud-libraries-bom.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+        <version>${junit.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
   <build>
     <pluginManagement>
@@ -137,21 +185,21 @@
     </plugins>
   </build>
 
-     <profiles>
-     <profile>
-       <id>oss-build</id>
-       <activation>
-          <activeByDefault>true</activeByDefault>
-       </activation>
-       <modules>
-         <module>syndeo-template</module>
-       </modules>
-     </profile>
-   </profiles>
-
+  <profiles>
+    <profile>
+      <id>oss-build</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <modules>
+        <module>syndeo-template</module>
+      </modules>
+    </profile>
+  </profiles>
 
   <modules>
     <module>metadata</module>
+    <module>plugins</module>
     <module>it</module>
     <module>v1</module>
     <module>v2</module>

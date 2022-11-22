@@ -35,46 +35,19 @@
     <packaging>pom</packaging>
 
     <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <autovalue.version>1.7.4</autovalue.version>
         <autovalue.annotations.version>1.7.4</autovalue.annotations.version>
         <autovalue.service.version>1.0-rc6</autovalue.service.version>
-        <beam.version>2.42.0</beam.version>
-        <hamcrest.version>2.1</hamcrest.version>
         <hadoop.version>2.10.1</hadoop.version>
         <guava.version>30.1-jre</guava.version>
-        <java.version>11</java.version>
         <jib.maven.version>2.6.0</jib.maven.version>
-        <junit.version>4.13</junit.version>
         <junit-dep.version>4.10</junit-dep.version>
-        <opensensus.version>0.31.0</opensensus.version>
-        <surefire.version>2.21.0</surefire.version>
-        <maven-compiler-plugin.version>3.6.2</maven-compiler-plugin.version>
-        <maven-dependency-plugin.version>3.1.2</maven-dependency-plugin.version>
-        <maven-enforcer-plugin.version>3.0.0-M1</maven-enforcer-plugin.version>
-        <maven-javadoc-plugin.version>3.0.0-M1</maven-javadoc-plugin.version>
-        <maven-jar-plugin.version>3.0.2</maven-jar-plugin.version>
-        <maven-shade-plugin.version>3.0.0</maven-shade-plugin.version>
-        <maven-source-plugin.version>3.0.1</maven-source-plugin.version>
-        <mockito-core.version>3.0.0</mockito-core.version>
-        <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
-        <re2j.version>1.5</re2j.version>
-        <slf4j.version>1.7.25</slf4j.version>
-        <mvn-target-dir>${basedir}/target</mvn-target-dir>
-        <json.version>20200518</json.version>
-        <conscrypt.version>2.5.2</conscrypt.version>
+        <opencensus.version>0.31.0</opencensus.version>
         <excluded.spanner.tests>com.google.cloud.teleport.v2.spanner.IntegrationTest</excluded.spanner.tests>
     </properties>
 
     <dependencyManagement>
         <dependencies>
-            <dependency>
-                <groupId>org.apache.beam</groupId>
-                <artifactId>beam-sdks-java-bom</artifactId>
-                <version>${beam.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
             <!--
             Force gax version to 2.3.0.
             Beam 2.34 depends on newer Google libraries that need don't work with older gax
@@ -106,7 +79,7 @@
         <dependency>
             <groupId>com.google.cloud.teleport.metadata</groupId>
             <artifactId>metadata</artifactId>
-            <version>${metadata.version}</version>
+            <version>${project.version}</version>
         </dependency>
         <!-- Beam -->
         <dependency>
@@ -201,7 +174,7 @@
         <dependency>
             <groupId>io.opencensus</groupId>
             <artifactId>opencensus-api</artifactId>
-            <version>${opensensus.version}</version>
+            <version>${opencensus.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.auto.service</groupId>
@@ -244,7 +217,6 @@
     </dependencies>
 
     <build>
-        <directory>${mvn-target-dir}</directory>
         <extensions>
             <extension>
                 <groupId>kr.motd.maven</groupId>
@@ -305,7 +277,14 @@
                             </environment>
                         </container>
                     </configuration>
-
+                    <executions>
+                        <execution>
+                            <phase>install</phase>
+                            <goals>
+                                <goal>build</goal>
+                            </goals>
+                        </execution>
+                    </executions>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -321,11 +300,11 @@
                             <configuration>
                                 <extraDirectories>
                                   <paths>
-                                    <path>${mvn-target-dir}/extra_libs</path>
+                                    <path>${basedir}/target/extra_libs</path>
                                   </paths>
                                 </extraDirectories>
                                 <dependencyReducedPomLocation>
-                                    ${mvn-target-dir}/dependency-reduced-pom.xml
+                                    ${basedir}/target/dependency-reduced-pom.xml
                                 </dependencyReducedPomLocation>
                                 <shadeTestJar>true</shadeTestJar>
                                 <artifactSet>
@@ -378,7 +357,7 @@
                           <goal>copy-dependencies</goal>
                         </goals>
                         <configuration>
-                          <outputDirectory>${mvn-target-dir}/extra_libs</outputDirectory>
+                          <outputDirectory>${basedir}/target/extra_libs</outputDirectory>
                           <includeArtifactIds>conscrypt-openjdk-uber</includeArtifactIds>
                           <stripVersion>true</stripVersion>
                         </configuration>
@@ -609,6 +588,94 @@
                     <url>https://packages.confluent.io/maven/</url>
                 </repository>
             </repositories>
+        </profile>
+        <profile>
+            <id>templatesValidate</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.google.cloud.teleport</groupId>
+                        <artifactId>templates-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>validate</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>templatesSpec</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.google.cloud.teleport</groupId>
+                        <artifactId>templates-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>spec</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>templatesStage</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.google.cloud.teleport</groupId>
+                        <artifactId>templates-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>stage</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>templatesRun</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.google.cloud.teleport</groupId>
+                        <artifactId>templates-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
 

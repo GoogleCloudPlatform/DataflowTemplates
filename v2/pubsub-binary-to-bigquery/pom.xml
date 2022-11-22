@@ -18,8 +18,8 @@
   xmlns="http://maven.apache.org/POM/4.0.0"
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
-    <artifactId>dynamic-templates</artifactId>
     <groupId>com.google.cloud.teleport.v2</groupId>
+    <artifactId>dynamic-templates</artifactId>
     <version>1.0-SNAPSHOT</version>
   </parent>
   <artifactId>pubsub-binary-to-bigquery</artifactId>
@@ -27,8 +27,6 @@
 
   <properties>
     <exec-maven-plugin.version>1.6.0</exec-maven-plugin.version>
-    <google-truth.version>1.0.1</google-truth.version>
-    <junit.version>4.13.1</junit.version>
   </properties>
 
   <dependencies>
@@ -47,7 +45,7 @@
     <dependency>
       <groupId>com.google.truth</groupId>
       <artifactId>truth</artifactId>
-      <version>${google-truth.version}</version>
+      <version>${truth.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -59,7 +57,6 @@
   </dependencies>
 
   <build>
-    <directory>${mvn-target-dir}</directory>
     <plugins>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
@@ -69,18 +66,6 @@
           <skip>false</skip>
           <executable>java</executable>
         </configuration>
-      </plugin>
-      <plugin>
-        <groupId>com.google.cloud.tools</groupId>
-        <artifactId>jib-maven-plugin</artifactId>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>build</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
     </plugins>
   </build>

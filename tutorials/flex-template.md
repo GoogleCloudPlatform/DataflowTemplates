@@ -77,10 +77,6 @@ the following content:
     </dependency>
   </dependencies>
 
-  <build>
-    <directory>${mvn-target-dir}</directory>
-  </build>
-
 </project>
 ```
 
@@ -462,7 +458,6 @@ that it now looks like:
 
 ```xml
   <build>
-    <directory>${mvn-target-dir}</directory>
     <plugins>
       <plugin>
         <groupId>com.google.cloud.tools</groupId>

@@ -45,9 +45,6 @@
                 <goal>shade</goal>
               </goals>
               <configuration>
-<!--                 <dependencyReducedPomLocation>
-                  ${mvn-target-dir}/dependency-reduced-pom.xml
-                </dependencyReducedPomLocation> -->
                 <shadeTestJar>true</shadeTestJar>
                 <artifactSet>
                   <includes>
