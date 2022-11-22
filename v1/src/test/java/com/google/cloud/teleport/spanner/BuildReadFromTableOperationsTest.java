@@ -119,7 +119,7 @@ public class BuildReadFromTableOperationsTest {
             .endTable()
             .build();
     assertEquals(
-        "CAST(t.\"colName\" AS VARCHAR) AS colName",
+        "t.\"colName\"",
         buildReadFromTableOperations.createColumnExpression(ddl.table("table").column("colName")));
   }
 }

@@ -36,6 +36,7 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.spanner.common.NumericUtils;
 import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.common.collect.Lists;
 import java.nio.ByteBuffer;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -827,6 +828,46 @@ public class AvroRecordConverterTest {
     Mutation mutation = avroRecordConverter.apply(avroRecord);
     assertArrayEquals(
         readablePgNumericValues,
+        mutation.asMap().get(colName).getStringArray().toArray(new String[0]));
+  }
+
+  @Test
+  public void pgJsonbArray() {
+    String colName = "arrayOfPgJsonb";
+    Schema schema = createArrayAvroSchema(colName, STRING);
+
+    // Null field
+    GenericRecord avroRecord = new GenericRecordBuilder(schema).set("id", 0).build();
+    Optional<List<String>> result =
+        AvroRecordConverter.readStringArray(avroRecord, STRING, colName);
+    assertFalse(result.isPresent());
+
+    String[] readablePgJsonbValues = {
+      null, "[1,null,true,2.2523,\"hello\"]", "false", "{\"a\":{\"a\":2.5},\"b\":null}"
+    };
+
+    List<String> avroPgJsonbValues = Lists.newArrayList(readablePgJsonbValues);
+    avroRecord =
+        new GenericRecordBuilder(schema).set("id", 0).set(colName, avroPgJsonbValues).build();
+    result = AvroRecordConverter.readStringArray(avroRecord, STRING, colName);
+    assertArrayEquals(readablePgJsonbValues, result.get().toArray());
+
+    schema = createArrayAvroSchema(colName, STRING);
+    Table.Builder tableBuilder = Table.builder(Dialect.POSTGRESQL);
+    tableBuilder
+        .name("record")
+        .column("id")
+        .type(Type.int64())
+        .endColumn()
+        .column(colName)
+        .type(Type.pgArray(Type.pgJsonb()))
+        .endColumn();
+    avroRecord =
+        new GenericRecordBuilder(schema).set("id", 2L).set(colName, avroPgJsonbValues).build();
+    AvroRecordConverter avroRecordConverter = new AvroRecordConverter(tableBuilder.build());
+    Mutation mutation = avroRecordConverter.apply(avroRecord);
+    assertArrayEquals(
+        readablePgJsonbValues,
         mutation.asMap().get(colName).getStringArray().toArray(new String[0]));
   }
 

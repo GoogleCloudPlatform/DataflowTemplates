@@ -71,6 +71,7 @@ public final class Type implements Serializable {
   private static final Type TYPE_PG_ARRAY_VARCHAR = new Type(Code.PG_ARRAY, TYPE_PG_VARCHAR, null);
   private static final Type TYPE_PG_ARRAY_TEXT = new Type(Code.PG_ARRAY, TYPE_PG_TEXT, null);
   private static final Type TYPE_PG_ARRAY_NUMERIC = new Type(Code.PG_ARRAY, TYPE_PG_NUMERIC, null);
+  private static final Type TYPE_PG_ARRAY_JSONB = new Type(Code.PG_ARRAY, TYPE_PG_JSONB, null);
   private static final Type TYPE_PG_ARRAY_BYTEA = new Type(Code.PG_ARRAY, TYPE_PG_BYTEA, null);
   private static final Type TYPE_PG_ARRAY_TIMESTAMPTZ =
       new Type(Code.PG_ARRAY, TYPE_PG_TIMESTAMPTZ, null);
@@ -217,6 +218,8 @@ public final class Type implements Serializable {
         return TYPE_PG_ARRAY_FLOAT8;
       case PG_NUMERIC:
         return TYPE_PG_ARRAY_NUMERIC;
+      case PG_JSONB:
+        return TYPE_PG_ARRAY_JSONB;
       case PG_VARCHAR:
         return TYPE_PG_ARRAY_VARCHAR;
       case PG_TEXT:

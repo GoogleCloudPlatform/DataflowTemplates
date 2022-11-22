@@ -158,6 +158,11 @@ public class AvroRecordConverter implements SerializableFunction<GenericRecord, 
                     .set(column.name())
                     .toStringArray(readStringArray(record, arrayType, fieldName).orElse(null));
                 break;
+              case PG_JSONB:
+                builder
+                    .set(column.name())
+                    .toPgJsonbArray(readStringArray(record, arrayType, fieldName).orElse(null));
+                break;
               case BYTES:
               case PG_BYTEA:
                 builder

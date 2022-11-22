@@ -26,6 +26,7 @@ import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.spanner.common.NumericUtils;
 import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
@@ -726,6 +727,9 @@ public class SpannerRecordConverterTest {
             .column("jsonb")
             .type(Type.pgJsonb())
             .endColumn()
+            .column("jsonb_arr")
+            .type(Type.pgArray(Type.pgJsonb()))
+            .endColumn()
             .primaryKey()
             .asc("id")
             .end()
@@ -733,9 +737,19 @@ public class SpannerRecordConverterTest {
             .build();
     Schema schema = converter.convert(ddl).iterator().next();
     SpannerRecordConverter recordConverter = new SpannerRecordConverter(schema, Dialect.POSTGRESQL);
+    String[] jsonbArrayValues = {
+      null, "[1,null,true,2.2523,\"hello\"]", null, "{\"a\":{\"a\":2.5},\"b\":null}"
+    };
 
     Struct struct =
-        Struct.newBuilder().set("id").to(1L).set("jsonb").to("{\"a\": true, \"b\": 2}").build();
+        Struct.newBuilder()
+            .set("id")
+            .to(1L)
+            .set("jsonb")
+            .to(Value.pgJsonb("{\"a\": true, \"b\": 2}"))
+            .set("jsonb_arr")
+            .to(Value.pgJsonbArray(Lists.newArrayList(jsonbArrayValues)))
+            .build();
 
     GenericRecord avroRecord = recordConverter.convert(struct);
 

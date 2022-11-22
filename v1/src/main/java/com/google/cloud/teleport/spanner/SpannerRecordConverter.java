@@ -131,9 +131,10 @@ public class SpannerRecordConverter {
               builder.set(field, nullValue ? null : row.getDate(fieldName).toString());
             }
           } else if (dialect == Dialect.POSTGRESQL) {
-            if (VARCHAR_PATTERN.matcher(spannerType).matches()
-                || spannerType.equals("text")
-                || spannerType.equals("jsonb")) {
+            if (spannerType.equals("jsonb")) {
+              builder.set(field, nullValue ? null : row.getPgJsonb(fieldName));
+            } else if (VARCHAR_PATTERN.matcher(spannerType).matches()
+                || spannerType.equals("text")) {
               builder.set(field, nullValue ? null : row.getString(fieldName));
             } else if (spannerType.equals("timestamp with time zone")) {
               builder.set(field, nullValue ? null : row.getTimestamp(fieldName).toString());
@@ -246,7 +247,9 @@ public class SpannerRecordConverter {
                     }
                   }
                   if (dialect == Dialect.POSTGRESQL) {
-                    if (VARCHAR_ARRAY_PATTERN.matcher(spannerType).matches()
+                    if (spannerType.equals("jsonb[]")) {
+                      builder.set(field, nullValue ? null : row.getPgJsonbList(fieldName));
+                    } else if (VARCHAR_ARRAY_PATTERN.matcher(spannerType).matches()
                         || spannerType.equals("text[]")) {
                       builder.set(field, nullValue ? null : row.getStringList(fieldName));
                     } else if (spannerType.equals("timestamp with time zone[]")) {
