@@ -96,6 +96,7 @@ public class MongoDbToBigQueryOptions {
     void setOutputTableSpec(String outputTableSpec);
   }
 
+  /** UDF options. */
   public interface JavascriptDocumentTransformerOptions extends PipelineOptions {
     @TemplateParameter.Text(
         order = 3,

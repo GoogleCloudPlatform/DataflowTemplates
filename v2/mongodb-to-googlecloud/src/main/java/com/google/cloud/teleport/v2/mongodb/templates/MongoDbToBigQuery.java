@@ -37,8 +37,6 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.bson.Document;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * The {@link MongoDbToBigQuery} pipeline is a batch pipeline which ingests data from MongoDB and
@@ -59,8 +57,6 @@ public class MongoDbToBigQuery {
    *
    * <p>Inherits standard configuration options.
    */
-  private static final Logger LOG = LoggerFactory.getLogger(MongoDbToBigQuery.class);
-
   public interface Options
       extends PipelineOptions,
           MongoDbOptions,

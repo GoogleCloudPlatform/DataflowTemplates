@@ -56,8 +56,6 @@ import org.slf4j.LoggerFactory;
 /** Transforms & DoFns & Options for Teleport DatastoreIO. */
 public class MongoDbUtils implements Serializable {
 
-  private static final Logger LOG = LoggerFactory.getLogger(MongoDbToBigQuery.class);
-
   /**
    * Returns the Table schema for BiQquery table based on user input The tabble schema can be a 3
    * column table with _id, document as a Json string and timestamp by default Or the Table schema
@@ -65,6 +63,8 @@ public class MongoDbUtils implements Serializable {
    */
   static final DateTimeFormatter TIMEFORMAT =
       DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
+
+  private static final Logger LOG = LoggerFactory.getLogger(MongoDbToBigQuery.class);
 
   static final Gson GSON = new Gson();
 
