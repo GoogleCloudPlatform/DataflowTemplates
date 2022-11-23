@@ -115,6 +115,18 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
         "helpText": "Topic Name to read from e.g. projects/<project-name>/topics/<topic-name>",
         "is_optional": false,
         "paramType": "TEXT"
+      },
+      {
+        "name":"javascriptDocumentTransformGcsPath",
+        "label" : "UDF bucket path",
+        "is_optional": "true",
+        "paramType": "TEXT"
+      },
+      {
+        "name":"javascriptDocumentTransformFunctionName",
+        "label" : "UD Function Name",
+        "is_optional": "true",
+        "paramType": "TEXT"
       }
     ]
   },
@@ -152,4 +164,32 @@ gcloud beta dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-east1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
         --parameters mongoDbUri=${MONGODB_HOSTNAME},database=${MONGODB_DATABASE_NAME},collection=${MONGODB_COLLECTION_NAME},outputTableSpec=${OUTPUT_TABLE_SPEC},inputTopic=${INPUT_TOPIC},userOption=${USER_OPTION}
+```
+
+### UDF:
+
+Below is the test function that takes document as input and returns the documents as it is.
+
+```
+/**
+ * A transform which adds a field to the incoming data.
+ * @param {Document} doc
+ * @return {Document} returnObj
+ */
+ function transform(doc) {
+    var obj = doc;
+    var returnObj = new Object();
+    return returnObj;
+  }
+```
+
+The template has the following optional parameters:
+* userOption: The user option to Flatten the document or store it as a jsonString. To Flatten the document pass the parameter as "FLATTEN".
+
+```sh
+gcloud beta dataflow flex-template run ${JOB_NAME} \
+--project=${PROJECT} --region=us-east1 \
+--template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
+--parameters mongoDbUri=${MONGODB_HOSTNAME},database=${MONGODB_DATABASE_NAME},collection=${MONGODB_COLLECTION_NAME},outputTableSpec=${OUTPUT_TABLE_SPEC},\
+inputTopic=${INPUT_TOPIC},userOption=${USER_OPTION},javascriptDocumentTransformGcsPath=${UDF_PATH},javascriptDocumentTransformFunctionName=${UDF_NAME}
 ```

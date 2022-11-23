@@ -36,7 +36,6 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
@@ -51,9 +50,13 @@ import org.apache.beam.sdk.io.fs.MatchResult.Metadata;
 import org.apache.beam.sdk.io.fs.MatchResult.Status;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.io.CharStreams;
 import org.bson.Document;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Transforms & DoFns & Options for Teleport DatastoreIO. */
 public class MongoDbUtils implements Serializable {
+
+  private static final Logger LOG = LoggerFactory.getLogger(MongoDbToBigQuery.class);
 
   /**
    * Returns the Table schema for BiQquery table based on user input The tabble schema can be a 3
@@ -77,6 +80,7 @@ public class MongoDbUtils implements Serializable {
                     .setName(key)
                     .setType(getTableSchemaDataType(value.getClass().getName())));
           });
+      bigquerySchemaFields.add(new TableFieldSchema().setName("timestamp").setType("TIMESTAMP"));
     } else {
       bigquerySchemaFields.add(new TableFieldSchema().setName("id").setType("STRING"));
       bigquerySchemaFields.add(new TableFieldSchema().setName("source_data").setType("STRING"));
@@ -89,12 +93,13 @@ public class MongoDbUtils implements Serializable {
   /** Maps and Returns the Datatype form MongoDb To BigQuery. */
   public static String getTableSchemaDataType(String s) {
     switch (s) {
-      case "java.lang.Integer":
-        return "INTEGER";
       case "java.lang.Boolean":
         return "BOOLEAN";
       case "java.lang.Double":
         return "FLOAT";
+      case "java.lang.Long":
+      case "java.lang.Integer":
+        return "INT64";
     }
     return "STRING";
   }
@@ -108,15 +113,18 @@ public class MongoDbUtils implements Serializable {
     return doc;
   }
 
-  public static TableRow getTableSchema(HashMap<String, Object> parsedMap, String userOption) {
+  public static TableRow getTableSchema(Document document, String userOption) {
     TableRow row = new TableRow();
+    LOG.info("Document" + document);
     if (userOption.equals("FLATTEN")) {
-      parsedMap.forEach(
+      document.forEach(
           (key, value) -> {
             String valueClass = value.getClass().getName();
             switch (valueClass) {
               case "java.lang.Double":
               case "java.lang.Integer":
+              case "java.lang.Long":
+              case "java.lang.Boolean":
                 row.set(key, value);
                 break;
               case "org.bson.Document":
@@ -127,15 +135,17 @@ public class MongoDbUtils implements Serializable {
                 row.set(key, value.toString());
             }
           });
+      LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
+      row.set("timestamp", localdate.format(TIMEFORMAT));
     } else if (userOption.equals("UDF")) {
-      parsedMap.forEach(
+      document.forEach(
           (key, value) -> {
             String valueClass = value.getClass().getName();
             switch (valueClass) {
               case "java.lang.Double":
-                row.set(key, value);
-                break;
               case "java.lang.Integer":
+              case "java.lang.Long":
+              case "java.lang.Boolean":
                 row.set(key, value);
                 break;
               case "org.bson.Document":
@@ -150,8 +160,8 @@ public class MongoDbUtils implements Serializable {
       row.set("timestamp", localdate.format(TIMEFORMAT));
     } else {
       LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
-      String sourceData = GSON.toJson(parsedMap);
-      row.set("id", parsedMap.get("_id").toString())
+      String sourceData = GSON.toJson(document);
+      row.set("id", document.get("_id").toString())
           .set("source_data", sourceData)
           .set("timestamp", localdate.format(TIMEFORMAT));
     }

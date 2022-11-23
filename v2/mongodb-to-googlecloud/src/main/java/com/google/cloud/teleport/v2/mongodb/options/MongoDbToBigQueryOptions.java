@@ -58,10 +58,11 @@ public class MongoDbToBigQueryOptions {
 
     @TemplateParameter.Enum(
         order = 4,
-        enumOptions = {"FLATTEN", "NONE"},
+        enumOptions = {"FLATTEN", "NONE", "UDF"},
         description = "User option",
         helpText =
             "User option: FLATTEN or NONE. FLATTEN will flatten the documents for 1 level. NONE will store the whole document as json string.")
+    @Default.String("NONE")
     String getUserOption();
 
     void setUserOption(String userOption);
@@ -101,7 +102,6 @@ public class MongoDbToBigQueryOptions {
         description = "Path to the UDF stored in the GCS bucket.",
         helpText = "Enter the gcs path in format gs://<bucket-name>/<js-file>.js .",
         example = "gs://test-bucket/test.js")
-    @Default.String("javascriptDocumentTransformGcsPath")
     String getJavascriptDocumentTransformGcsPath();
 
     void setJavascriptDocumentTransformGcsPath(String javascriptDocumentTransformGcsPath);
@@ -111,7 +111,6 @@ public class MongoDbToBigQueryOptions {
         description = "UDF function name stored in the GCS bucket.",
         helpText = "Enter the Name of the User defined function .",
         example = "transform")
-    @Default.String("javascriptDocumentTransformFunctionName")
     String getJavascriptDocumentTransformFunctionName();
 
     void setJavascriptDocumentTransformFunctionName(String javascriptDocumentTransformFunctionName);

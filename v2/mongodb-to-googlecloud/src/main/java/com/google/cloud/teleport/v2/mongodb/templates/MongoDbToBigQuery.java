@@ -25,10 +25,7 @@ import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.Mon
 import com.google.cloud.teleport.v2.mongodb.templates.JavascriptDocumentTransformer.TransformDocumentViaJavascript;
 import com.google.cloud.teleport.v2.mongodb.templates.MongoDbToBigQuery.Options;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import java.io.IOException;
-import java.util.HashMap;
 import javax.script.ScriptException;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
@@ -40,6 +37,8 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.bson.Document;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The {@link MongoDbToBigQuery} pipeline is a batch pipeline which ingests data from MongoDB and
@@ -60,6 +59,8 @@ public class MongoDbToBigQuery {
    *
    * <p>Inherits standard configuration options.
    */
+  private static final Logger LOG = LoggerFactory.getLogger(MongoDbToBigQuery.class);
+
   public interface Options
       extends PipelineOptions,
           MongoDbOptions,
@@ -130,10 +131,7 @@ public class MongoDbToBigQuery {
                   @ProcessElement
                   public void process(ProcessContext c) {
                     Document document = c.element();
-                    Gson gson = new GsonBuilder().create();
-                    HashMap<String, Object> parsedMap =
-                        gson.fromJson(document.toJson(), HashMap.class);
-                    TableRow row = MongoDbUtils.getTableSchema(parsedMap, userOption);
+                    TableRow row = MongoDbUtils.getTableSchema(document, userOption);
                     c.output(row);
                   }
                 }))
