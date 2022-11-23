@@ -17,33 +17,22 @@ package com.google.cloud.teleport.v2.templates.session;
 
 import java.io.Serializable;
 
-/** SyntheticPKey object column information for synthetically added PKs. */
-public class SyntheticPKey implements Serializable {
+/** ColumnDef object to store Spanner table name and column name mapping information. */
+public class ColumnDef implements Serializable {
 
-  /** Represents the name of the synthetic PK column. */
-  private final String colId;
+  /** Represents the name of the Spanner column. */
+  private final String name;
 
-  /**
-   * This is a field in the HarbourBridge session file used to generate PK values. However, we do
-   * not use it in this template.
-   */
-  private long sequence;
-
-  public SyntheticPKey(String colId, long sequence) {
-    this.colId = colId;
-    this.sequence = sequence;
+  public ColumnDef(String name) {
+    this.name = name;
   }
 
-  public String getColId() {
-    return colId;
-  }
-
-  public long getSequence() {
-    return sequence;
+  public String getName() {
+    return name;
   }
 
   public String toString() {
-    return String.format("{ 'colId': '%s', 'sequence': %d }", colId, sequence);
+    return String.format("{ 'name': '%s' }", name);
   }
 
   @Override
@@ -51,10 +40,10 @@ public class SyntheticPKey implements Serializable {
     if (o == this) {
       return true;
     }
-    if (!(o instanceof SyntheticPKey)) {
+    if (!(o instanceof ColumnDef)) {
       return false;
     }
-    final SyntheticPKey other = (SyntheticPKey) o;
-    return this.colId.equals(other.colId) && this.sequence == other.sequence;
+    final ColumnDef other = (ColumnDef) o;
+    return this.name.equals(other.name);
   }
 }
