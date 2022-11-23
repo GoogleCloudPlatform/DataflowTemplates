@@ -116,28 +116,7 @@ public class MongoDbUtils implements Serializable {
   public static TableRow getTableSchema(Document document, String userOption) {
     TableRow row = new TableRow();
     LOG.info("Document" + document);
-    if (userOption.equals("FLATTEN")) {
-      document.forEach(
-          (key, value) -> {
-            String valueClass = value.getClass().getName();
-            switch (valueClass) {
-              case "java.lang.Double":
-              case "java.lang.Integer":
-              case "java.lang.Long":
-              case "java.lang.Boolean":
-                row.set(key, value);
-                break;
-              case "org.bson.Document":
-                String data = GSON.toJson(value);
-                row.set(key, data);
-                break;
-              default:
-                row.set(key, value.toString());
-            }
-          });
-      LocalDateTime localdate = LocalDateTime.now(ZoneId.of("UTC"));
-      row.set("timestamp", localdate.format(TIMEFORMAT));
-    } else if (userOption.equals("UDF")) {
+    if (userOption.equals("FLATTEN") || userOption.equals("UDF")) {
       document.forEach(
           (key, value) -> {
             String valueClass = value.getClass().getName();

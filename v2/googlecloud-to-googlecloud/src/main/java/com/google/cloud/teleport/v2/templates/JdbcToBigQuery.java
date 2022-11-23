@@ -31,7 +31,7 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write;
 import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;  
+import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 
 /**
  * A template that copies data from a relational database using JDBC to an existing BigQuery table.
