@@ -35,7 +35,6 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.values.PCollection;
 import org.bson.Document;
 
 /**
@@ -103,22 +102,20 @@ public class MongoDbToBigQuery {
               options.getCollection(),
               options.getUserOption());
     }
-    PCollection<Document> lines =
-        pipeline
-            .apply(
-                "Read Documents",
-                MongoDbIO.read()
-                    .withUri(options.getMongoDbUri())
-                    .withDatabase(options.getDatabase())
-                    .withCollection(options.getCollection()))
-            .apply(
-                "UDF",
-                TransformDocumentViaJavascript.newBuilder()
-                    .setFileSystemPath(options.getJavascriptDocumentTransformGcsPath())
-                    .setFunctionName(options.getJavascriptDocumentTransformFunctionName())
-                    .build());
 
-    lines
+    pipeline
+        .apply(
+            "Read Documents",
+            MongoDbIO.read()
+                .withUri(options.getMongoDbUri())
+                .withDatabase(options.getDatabase())
+                .withCollection(options.getCollection()))
+        .apply(
+            "UDF",
+            TransformDocumentViaJavascript.newBuilder()
+                .setFileSystemPath(options.getJavascriptDocumentTransformGcsPath())
+                .setFunctionName(options.getJavascriptDocumentTransformFunctionName())
+                .build())
         .apply(
             "Transform to TableRow",
             ParDo.of(

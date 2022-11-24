@@ -118,15 +118,17 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
       },
       {
         "name":"javascriptDocumentTransformGcsPath",
-        "label" : "UDF bucket path",
-        "is_optional": "true",
+        "label" : "JavaScript File Path",
+        "helpText": "JS File Path",
+        "is_optional": true,
         "paramType": "TEXT"
       },
       {
         "name":"javascriptDocumentTransformFunctionName",
-        "label" : "UD Function Name",
-        "is_optional": "true",
-        "paramType": "TEXT"
+        "label":"UDF JavaScript Function Name",
+        "helpText":"JS Function Name",
+        "paramType":"TEXT",
+        "isOptional":true
       }
     ]
   },
@@ -155,7 +157,7 @@ The template requires the following parameters:
 * inputTopic: the Topic where the changes are pushed from MongoDb changestream
 
 The template has the following optional parameters:
-* userOption: The user option to Flatten the document or store it as a jsonString. To Flatten the document pass the parameter as "FLATTEN".
+* userOption: The user option to Flatten the document or store it as a jsonString. To Flatten the document pass the parameter as "FLATTEN". To store the whole document as a JSON String use "NONE". To use the user defined function use "UDF".
 
 Template can be executed using the following gcloud command.
 ```sh
@@ -163,12 +165,12 @@ export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
 gcloud beta dataflow flex-template run ${JOB_NAME} \
         --project=${PROJECT} --region=us-east1 \
         --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
-        --parameters mongoDbUri=${MONGODB_HOSTNAME},database=${MONGODB_DATABASE_NAME},collection=${MONGODB_COLLECTION_NAME},outputTableSpec=${OUTPUT_TABLE_SPEC},inputTopic=${INPUT_TOPIC},userOption=${USER_OPTION}
+        --parameters mongoDbUri=${MONGODB_HOSTNAME},database=${MONGODB_DATABASE_NAME},collection=${MONGODB_COLLECTION_NAME},outputTableSpec=${OUTPUT_TABLE_SPEC},inputTopic=${INPUT_TOPIC},userOption=${USER_OPTION},javascriptDocumentTransformGcsPath=${UDF_PATH},javascriptDocumentTransformFunctionName=${UDF_NAME}
 ```
 
-### UDF:
+### Document Transformer UDFs
 
-Below is the test function that takes document as input and returns the documents as it is.
+The template gives you the option to apply a UDF to the pipeline by loading a script to GCS and providing the path and function name via the {Language}DocumentTransformGcsPath parameter on job creation. Currently, JavaScript is supported. The function should expect to receive and return a Bson Document. Example transformations are provided below.
 
 ```
 /**
@@ -183,13 +185,5 @@ Below is the test function that takes document as input and returns the document
   }
 ```
 
-The template has the following optional parameters:
-* userOption: The user option to Flatten the document or store it as a jsonString. To Flatten the document pass the parameter as "FLATTEN".
 
-```sh
-gcloud beta dataflow flex-template run ${JOB_NAME} \
---project=${PROJECT} --region=us-east1 \
---template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
---parameters mongoDbUri=${MONGODB_HOSTNAME},database=${MONGODB_DATABASE_NAME},collection=${MONGODB_COLLECTION_NAME},outputTableSpec=${OUTPUT_TABLE_SPEC},\
-inputTopic=${INPUT_TOPIC},userOption=${USER_OPTION},javascriptDocumentTransformGcsPath=${UDF_PATH},javascriptDocumentTransformFunctionName=${UDF_NAME}
-```
+

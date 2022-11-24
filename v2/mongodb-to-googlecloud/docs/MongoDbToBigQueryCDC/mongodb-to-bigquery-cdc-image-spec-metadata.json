@@ -49,15 +49,17 @@
     },
     {
       "name":"javascriptDocumentTransformGcsPath",
-      "label" : "UDF bucket path",
-      "is_optional": "true",
+      "label" : "JavaScript File Path",
+      "helpText": "JS File Path",
+      "is_optional": true,
       "paramType": "TEXT"
     },
     {
       "name":"javascriptDocumentTransformFunctionName",
-      "label" : "UD Function Name",
-      "is_optional": "true",
-      "paramType": "TEXT"
+      "label":"UDF JavaScript Function Name",
+      "helpText":"JS Function Name",
+      "paramType":"TEXT",
+      "isOptional":true
     }
   ]
 }
