@@ -15,17 +15,11 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.createGcsClient;
-import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.getFullGcsPath;
 import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.cloud.storage.Storage;
 import com.google.cloud.teleport.it.TemplateTestBase;
-import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.artifacts.Artifact;
-import com.google.cloud.teleport.it.artifacts.ArtifactClient;
-import com.google.cloud.teleport.it.artifacts.GcsArtifactClient;
 import com.google.cloud.teleport.it.dataflow.DataflowOperator;
 import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
 import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient;
@@ -39,11 +33,8 @@ import com.google.common.io.Resources;
 import com.google.re2j.Pattern;
 import java.io.IOException;
 import java.util.List;
-import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
@@ -51,16 +42,9 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(StreamingDataGenerator.class)
 @RunWith(JUnit4.class)
 public final class StreamingDataGeneratorIT extends TemplateTestBase {
-  @Rule public final TestName testName = new TestName();
-
-  private static final String ARTIFACT_BUCKET = TestProperties.artifactBucket();
-  private static final String PROJECT = TestProperties.project();
-  private static final String REGION = TestProperties.region();
 
   private static final String SCHEMA_FILE = "gameevent.json";
   private static final String LOCAL_SCHEMA_PATH = Resources.getResource(SCHEMA_FILE).getPath();
-
-  private static final String TEST_ROOT_DIR = StreamingDataGeneratorIT.class.getSimpleName();
 
   private static final String NUM_SHARDS_KEY = "numShards";
   private static final String OUTPUT_DIRECTORY_KEY = "outputDirectory";
@@ -72,18 +56,9 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
   private static final String DEFAULT_QPS = "15";
   private static final String DEFAULT_WINDOW_DURATION = "60s";
 
-  private static ArtifactClient artifactClient;
-
   @Before
   public void setUp() throws IOException {
-    Storage gcsClient = createGcsClient(credentials);
-    artifactClient = GcsArtifactClient.builder(gcsClient, ARTIFACT_BUCKET, TEST_ROOT_DIR).build();
     artifactClient.uploadArtifact(SCHEMA_FILE, LOCAL_SCHEMA_PATH);
-  }
-
-  @After
-  public void tearDown() {
-    artifactClient.cleanupRun();
   }
 
   @Test
@@ -96,11 +71,11 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
         LaunchConfig.builder(jobName, specPath)
             // TODO(zhoufek): See if it is possible to use the properties interface and generate
             // the map from the set values.
-            .addParameter(SCHEMA_LOCATION_KEY, getGcsSchemaLocation(SCHEMA_FILE))
+            .addParameter(SCHEMA_LOCATION_KEY, getGcsPath(SCHEMA_FILE))
             .addParameter(QPS_KEY, DEFAULT_QPS)
             .addParameter(SINK_TYPE_KEY, SinkType.GCS.name())
             .addParameter(WINDOW_DURATION_KEY, DEFAULT_WINDOW_DURATION)
-            .addParameter(OUTPUT_DIRECTORY_KEY, getTestMethodDirPath(name))
+            .addParameter(OUTPUT_DIRECTORY_KEY, getGcsPath(name))
             .addParameter(NUM_SHARDS_KEY, "1")
             .build();
     DataflowTemplateClient dataflow =
@@ -122,21 +97,5 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
 
     // Assert
     assertThat(result).isEqualTo(Result.CONDITION_MET);
-  }
-
-  private static String getTestMethodDirPath(String testMethod) {
-    return getFullGcsPath(ARTIFACT_BUCKET, TEST_ROOT_DIR, artifactClient.runId(), testMethod);
-  }
-
-  private static String getGcsSchemaLocation(String schemaFile) {
-    return getFullGcsPath(ARTIFACT_BUCKET, TEST_ROOT_DIR, artifactClient.runId(), schemaFile);
-  }
-
-  private static DataflowOperator.Config createConfig(JobInfo info) {
-    return DataflowOperator.Config.builder()
-        .setJobId(info.jobId())
-        .setProject(PROJECT)
-        .setRegion(REGION)
-        .build();
   }
 }

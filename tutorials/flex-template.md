@@ -586,7 +586,8 @@ gcloud dataflow flex-template build "$TEMPLATE_SPEC_GCSPATH" \
 
 export JOB_NAME="wordcount-$USERNAME"
 
-gcloud dataflow flex-template run "$JOB_NAME-$(date +'%Y%m%d%H%M%S')" --region "$REGION" \
+gcloud dataflow flex-template run "$JOB_NAME-$(date +'%Y%m%d%H%M%S')" \
+  --project "$PROJECT" --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
   --parameters inputFile="gs://dataflow-samples/shakespeare/kinglear.txt"  \
   --parameters outputPath="gs://$BUCKET_NAME/output/wordcount/$USERNAME/wordcount"

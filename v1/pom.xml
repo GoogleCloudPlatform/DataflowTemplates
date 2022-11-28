@@ -126,8 +126,8 @@
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-runners-google-cloud-dataflow-java</artifactId>
     </dependency>
+    <!-- Direct runner included for local development and testing. -->
     <dependency>
-      <!-- Direct runner included for local development and testing. -->
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-runners-direct-java</artifactId>
     </dependency>
@@ -227,6 +227,18 @@
     </dependency>
 
     <!-- Test -->
+    <dependency>
+      <groupId>com.google.cloud.teleport</groupId>
+      <artifactId>integration-testing-lib</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-simple</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
     <dependency>
       <groupId>org.hamcrest</groupId>
       <artifactId>hamcrest-core</artifactId>
@@ -480,53 +492,6 @@
 
     <pluginManagement>
       <plugins>
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-shade-plugin</artifactId>
-          <version>${maven-shade-plugin.version}</version>
-          <executions>
-            <execution>
-              <id>bundle-and-repackage</id>
-              <phase>package</phase>
-              <goals>
-                <goal>shade</goal>
-              </goals>
-              <configuration>
-                <extraDirectories>
-                  <paths>
-                    <path>${basedir}/target/extra_libs</path>
-                  </paths>
-                </extraDirectories>
-                <dependencyReducedPomLocation>
-                  ${basedir}/target/dependency-reduced-pom.xml
-                </dependencyReducedPomLocation>
-                <shadeTestJar>true</shadeTestJar>
-                <artifactSet>
-                  <excludes>
-                    <exclude>org.conscrypt:conscrypt-openjdk-uber</exclude>
-                  </excludes>
-                  <includes>
-                    <include>*:*</include>
-                  </includes>
-                </artifactSet>
-                <filters>
-                  <filter>
-                    <artifact>*:*</artifact>
-                    <excludes>
-                      <exclude>META-INF/*.SF</exclude>
-                      <exclude>META-INF/*.DSA</exclude>
-                      <exclude>META-INF/*.RSA</exclude>
-                    </excludes>
-                  </filter>
-                </filters>
-                <transformers>
-                  <transformer
-                      implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
-                </transformers>
-              </configuration>
-            </execution>
-          </executions>
-        </plugin>
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>exec-maven-plugin</artifactId>
@@ -847,7 +812,7 @@
           <!-- Exclude Cloud Spanner integration tests that require a GCP project to run.
           They can be run run manually using
           'mvn -Dexcluded.spanner.tests="" -Dtest=<testname> test' -->
-          <excludedGroups>${excluded.spanner.tests}</excludedGroups>
+          <excludedGroups>${excluded.spanner.tests},com.google.cloud.teleport.metadata.TemplateIntegrationTest</excludedGroups>
         </configuration>
       </plugin>
 
@@ -961,6 +926,66 @@
           <url>https://packages.confluent.io/maven/</url>
         </repository>
       </repositories>
+    </profile>
+    <profile>
+      <id>shade</id>
+      <activation>
+        <property>
+          <name>skipShade</name>
+          <value>!true</value>
+        </property>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-shade-plugin</artifactId>
+            <version>${maven-shade-plugin.version}</version>
+            <executions>
+              <execution>
+                <id>bundle-and-repackage</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>shade</goal>
+                </goals>
+                <configuration>
+                  <extraDirectories>
+                    <paths>
+                      <path>${basedir}/target/extra_libs</path>
+                    </paths>
+                  </extraDirectories>
+                  <dependencyReducedPomLocation>
+                    ${basedir}/target/dependency-reduced-pom.xml
+                  </dependencyReducedPomLocation>
+                  <shadeTestJar>true</shadeTestJar>
+                  <artifactSet>
+                    <excludes>
+                      <exclude>org.conscrypt:conscrypt-openjdk-uber</exclude>
+                    </excludes>
+                    <includes>
+                      <include>*:*</include>
+                    </includes>
+                  </artifactSet>
+                  <filters>
+                    <filter>
+                      <artifact>*:*</artifact>
+                      <excludes>
+                        <exclude>META-INF/*.SF</exclude>
+                        <exclude>META-INF/*.DSA</exclude>
+                        <exclude>META-INF/*.RSA</exclude>
+                      </excludes>
+                    </filter>
+                  </filters>
+                  <transformers>
+                    <transformer
+                        implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                  </transformers>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
     </profile>
     <profile>
       <id>templatesValidate</id>

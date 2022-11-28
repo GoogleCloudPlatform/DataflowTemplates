@@ -142,6 +142,10 @@
           <groupId>com.google.code.gson</groupId>
           <artifactId>gson</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>commons-codec</groupId>
+          <artifactId>commons-codec</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
 
