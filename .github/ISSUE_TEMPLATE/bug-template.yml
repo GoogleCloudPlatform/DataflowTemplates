@@ -30,19 +30,22 @@ body:
       label: Beam Version
       description: What version of beam are you using?
       options:
-        - Newer than 2.35.0
+        - Newer than 2.43.0
+        - 2.43.0
+        - 2.42.0
+        - 2.41.0
+        - 2.40.0
+        - 2.39.0
+        - 2.38.0
+        - 2.37.0
+        - 2.36.0
         - 2.35.0
-        - 2.34.0
-        - 2.33.0
-        - 2.32.0
-        - 2.31.0
-        - 2.30.0
-        - Older than 2.30.0
+        - Older than 2.35.0
     validations:
       required: true
   - type: textarea
     id: logs
     attributes:
       label: Relevant log output
-      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks. In case of exceptions, please paste the entire stracktrace.
       render: shell
