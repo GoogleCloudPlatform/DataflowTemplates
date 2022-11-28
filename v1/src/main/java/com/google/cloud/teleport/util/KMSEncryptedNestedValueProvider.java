@@ -19,6 +19,7 @@ import com.google.cloud.kms.v1.DecryptResponse;
 import com.google.cloud.kms.v1.KeyManagementServiceClient;
 import com.google.protobuf.ByteString;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.regex.Pattern;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -60,7 +61,15 @@ public class KMSEncryptedNestedValueProvider
       kmsKey = input.getY();
 
       if (kmsKey == null) {
-        LOG.info("KMS Key is not specified. Using: " + unencrypted);
+
+        if (unencrypted == null) {
+          LOG.warn("KMS Key is not specified and unencrypted value not given.");
+          return null;
+        }
+
+        LOG.info(
+            "KMS Key is not specified. Using unencrypted value of {} bytes",
+            unencrypted.getBytes(StandardCharsets.UTF_8).length);
         return unencrypted;
       } else if (!testkmsKey(kmsKey)) {
         IllegalArgumentException exception =
