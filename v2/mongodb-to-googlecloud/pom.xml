@@ -29,13 +29,16 @@
 
     <artifactId>mongodb-to-googlecloud</artifactId>
 
+    <properties>
+    <google-truth.version>1.0.1</google-truth.version>
+    </properties>
+
     <name>MongoDB To Googlecloud</name>
     <description>
         Stream data from Google PubSub to a hosted MongoDB Database
     </description>
 
     <dependencies>
-
         <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-sdks-java-io-mongodb</artifactId>
@@ -44,6 +47,14 @@
             <groupId>com.google.cloud.teleport.v2</groupId>
             <artifactId>common</artifactId>
             <version>${project.version}</version>
+        </dependency>
+
+        <!-- Test Dependencies -->
+        <dependency>
+            <groupId>com.google.truth</groupId>
+            <artifactId>truth</artifactId>
+            <version>${google-truth.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
