@@ -25,10 +25,6 @@
   <artifactId>googlecloud-to-splunk</artifactId>
   <modelVersion>4.0.0</modelVersion>
 
-  <properties>
-    <beam-splunk.version>2.38.0</beam-splunk.version>
-  </properties>
-
   <dependencies>
     <dependency>
       <groupId>com.google.cloud.teleport.v2</groupId>
@@ -38,7 +34,7 @@
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-io-splunk</artifactId>
-      <version>${beam-splunk.version}</version>
+      <version>${beam.version}</version>
     </dependency>
     <!-- Test dependencies -->
     <dependency>

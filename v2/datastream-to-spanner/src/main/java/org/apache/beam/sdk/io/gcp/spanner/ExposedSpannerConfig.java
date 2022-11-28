@@ -42,6 +42,8 @@ public class ExposedSpannerConfig extends SpannerConfig {
 
   private final ValueProvider<String> databaseId;
 
+  private final String databaseRole;
+
   private final ValueProvider<String> host;
 
   private final ValueProvider<String> emulatorHost;
@@ -66,6 +68,7 @@ public class ExposedSpannerConfig extends SpannerConfig {
       @Nullable ValueProvider<String> projectId,
       @Nullable ValueProvider<String> instanceId,
       @Nullable ValueProvider<String> databaseId,
+      @Nullable String databaseRole,
       @Nullable ValueProvider<String> host,
       @Nullable ValueProvider<String> emulatorHost,
       @Nullable ValueProvider<Boolean> isLocalChannelProvider,
@@ -79,6 +82,7 @@ public class ExposedSpannerConfig extends SpannerConfig {
     this.projectId = projectId;
     this.instanceId = instanceId;
     this.databaseId = databaseId;
+    this.databaseRole = databaseRole;
     this.host = host;
     this.emulatorHost = emulatorHost;
     this.isLocalChannelProvider = isLocalChannelProvider;
@@ -107,6 +111,11 @@ public class ExposedSpannerConfig extends SpannerConfig {
   @Override
   public ValueProvider<String> getDatabaseId() {
     return databaseId;
+  }
+
+  @Nullable
+  public String getDatabaseRole() {
+    return databaseRole;
   }
 
   @Nullable
@@ -182,6 +191,9 @@ public class ExposedSpannerConfig extends SpannerConfig {
         + "databaseId="
         + databaseId
         + ", "
+        + "databaseRole="
+        + databaseRole
+        + ", "
         + "host="
         + host
         + ", "
@@ -215,6 +227,9 @@ public class ExposedSpannerConfig extends SpannerConfig {
           && ((this.databaseId == null)
               ? (that.getDatabaseId() == null)
               : this.databaseId.equals(that.getDatabaseId()))
+          && ((this.databaseRole == null)
+              ? (that.getDatabaseRole() == null)
+              : this.databaseRole.equals(that.getDatabaseRole()))
           && ((this.host == null) ? (that.getHost() == null) : this.host.equals(that.getHost()))
           && ((this.emulatorHost == null)
               ? (that.getEmulatorHost() == null)
@@ -241,6 +256,8 @@ public class ExposedSpannerConfig extends SpannerConfig {
     hashcode ^= (instanceId == null) ? 0 : instanceId.hashCode();
     hashcode *= 1000003;
     hashcode ^= (databaseId == null) ? 0 : databaseId.hashCode();
+    hashcode *= 1000003;
+    hashcode ^= (databaseRole == null) ? 0 : databaseRole.hashCode();
     hashcode *= 1000003;
     hashcode ^= (host == null) ? 0 : host.hashCode();
     hashcode *= 1000003;
@@ -276,6 +293,7 @@ public class ExposedSpannerConfig extends SpannerConfig {
     private ValueProvider<String> projectId;
     private ValueProvider<String> instanceId;
     private ValueProvider<String> databaseId;
+    private String databaseRole;
     private ValueProvider<String> host;
     private ValueProvider<String> emulatorHost;
     private ValueProvider<Boolean> isLocalChannelProvider;
@@ -293,6 +311,7 @@ public class ExposedSpannerConfig extends SpannerConfig {
       this.projectId = source.getProjectId();
       this.instanceId = source.getInstanceId();
       this.databaseId = source.getDatabaseId();
+      this.databaseRole = source.getDatabaseRole();
       this.host = source.getHost();
       this.emulatorHost = source.getEmulatorHost();
       this.isLocalChannelProvider = source.getIsLocalChannelProvider();
@@ -320,6 +339,11 @@ public class ExposedSpannerConfig extends SpannerConfig {
     @Override
     ExposedSpannerConfig.Builder setDatabaseId(ValueProvider<String> databaseId) {
       this.databaseId = databaseId;
+      return this;
+    }
+
+    ExposedSpannerConfig.Builder setDatabaseRole(String databaseRole) {
+      this.databaseRole = databaseRole;
       return this;
     }
 
@@ -392,6 +416,7 @@ public class ExposedSpannerConfig extends SpannerConfig {
           this.projectId,
           this.instanceId,
           this.databaseId,
+          this.databaseRole,
           this.host,
           this.emulatorHost,
           this.isLocalChannelProvider,

@@ -30,9 +30,7 @@
   <packaging>pom</packaging>
   <properties>
     <debezium.version>0.9.5.Final</debezium.version>
-    <grpc.version>1.45.1</grpc.version>
     <guava.version>25.1-jre</guava.version>
-    <gcp.version>1.82.0</gcp.version>
     <data-catalog.version>0.35.0</data-catalog.version>
   </properties>
   <licenses>
@@ -93,31 +91,6 @@
 
   <dependencyManagement>
     <dependencies>
-    <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-api</artifactId>
-            <version>${grpc.version}</version>
-        </dependency>
-      <dependency>
-        <groupId>io.grpc</groupId>
-        <artifactId>grpc-core</artifactId>
-        <version>${grpc.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>io.grpc</groupId>
-        <artifactId>grpc-protobuf</artifactId>
-        <version>${grpc.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>io.grpc</groupId>
-        <artifactId>grpc-stub</artifactId>
-        <version>${grpc.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>io.grpc</groupId>
-        <artifactId>grpc-netty-shaded</artifactId>
-        <version>${grpc.version}</version>
-      </dependency>
       <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
@@ -138,7 +111,6 @@
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
       <version>${guava.version}</version>
-      <scope>compile</scope>
     </dependency>
 
     <!-- TESTING DEPENDENCIES -->

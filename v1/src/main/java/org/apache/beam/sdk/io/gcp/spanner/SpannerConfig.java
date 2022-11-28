@@ -58,6 +58,8 @@ public abstract class SpannerConfig implements Serializable {
 
   public abstract @Nullable ValueProvider<String> getDatabaseId();
 
+  public abstract @Nullable String getDatabaseRole();
+
   public abstract @Nullable ValueProvider<String> getHost();
 
   public abstract @Nullable ValueProvider<String> getEmulatorHost();
@@ -128,6 +130,8 @@ public abstract class SpannerConfig implements Serializable {
 
     abstract Builder setDatabaseId(ValueProvider<String> databaseId);
 
+    abstract Builder setDatabaseRole(String databaseRole);
+
     abstract Builder setHost(ValueProvider<String> host);
 
     abstract Builder setEmulatorHost(ValueProvider<String> emulatorHost);
@@ -177,6 +181,12 @@ public abstract class SpannerConfig implements Serializable {
   public SpannerConfig withDatabaseId(ValueProvider<String> databaseId) {
     Preconditions.checkNotNull(databaseId);
     return toBuilder().setDatabaseId(databaseId).build();
+  }
+
+  /** Specifies the Cloud Spanner database role. */
+  public SpannerConfig withDatabaseRole(String databaseRole) {
+    Preconditions.checkNotNull(databaseRole);
+    return toBuilder().setDatabaseRole(databaseRole).build();
   }
 
   /** Specifies the Cloud Spanner database ID. */

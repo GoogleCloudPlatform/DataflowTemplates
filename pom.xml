@@ -45,10 +45,9 @@
     <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
 
     <!-- Common dependency versions -->
-    <beam.version>2.42.0</beam.version>
+    <beam.version>2.43.0</beam.version>
     <checkstyle.version>8.7</checkstyle.version>
-    <!-- TODO: upgrade to 26.1.3 -->
-    <cloud-libraries-bom.version>24.4.0</cloud-libraries-bom.version>
+    <cloud-libraries-bom.version>26.1.3</cloud-libraries-bom.version>
     <conscrypt.version>2.5.2</conscrypt.version>
     <hamcrest.version>2.1</hamcrest.version>
     <mockito-core.version>3.0.0</mockito-core.version>
