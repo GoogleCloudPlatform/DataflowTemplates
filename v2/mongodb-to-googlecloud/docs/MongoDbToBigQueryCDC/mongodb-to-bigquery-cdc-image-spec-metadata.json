@@ -33,11 +33,11 @@
     {
       "name": "userOption",
       "label": "User option",
-      "helpText": " ",
-      "is_optional": true,
+      "helpText": "Could be one of FLATTEN or NONE. FLATTEN will flatten the documents for 1 level. NONE will store the whole document as json string.",
+      "is_optional": false,
       "paramType": "TEXT",
       "regexes": [
-        "^(FLATTEN|NONE|UDF)$"
+        "^(FLATTEN|NONE)$"
       ]
     },
     {

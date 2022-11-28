@@ -80,12 +80,11 @@ public class MongoDbUtils implements Serializable {
                     .setName(key)
                     .setType(getTableSchemaDataType(value.getClass().getName())));
           });
-      bigquerySchemaFields.add(new TableFieldSchema().setName("timestamp").setType("TIMESTAMP"));
     } else {
       bigquerySchemaFields.add(new TableFieldSchema().setName("id").setType("STRING"));
       bigquerySchemaFields.add(new TableFieldSchema().setName("source_data").setType("STRING"));
-      bigquerySchemaFields.add(new TableFieldSchema().setName("timestamp").setType("TIMESTAMP"));
     }
+    bigquerySchemaFields.add(new TableFieldSchema().setName("timestamp").setType("TIMESTAMP"));
     TableSchema bigquerySchema = new TableSchema().setFields(bigquerySchemaFields);
     return bigquerySchema;
   }
@@ -115,8 +114,7 @@ public class MongoDbUtils implements Serializable {
 
   public static TableRow getTableSchema(Document document, String userOption) {
     TableRow row = new TableRow();
-    LOG.info("Document" + document);
-    if (userOption.equals("FLATTEN") || userOption.equals("UDF")) {
+    if (userOption.equals("FLATTEN")) {
       document.forEach(
           (key, value) -> {
             String valueClass = value.getClass().getName();
@@ -148,13 +146,16 @@ public class MongoDbUtils implements Serializable {
   }
 
   public static TableSchema getTableFieldSchemaForUDF(
-      String uri, String database, String collection, String udfGcsPath, String udfFunctionName)
+      String uri,
+      String database,
+      String collection,
+      String udfGcsPath,
+      String udfFunctionName,
+      String userOption)
       throws IOException, ScriptException, NoSuchMethodException {
     Document document = getMongoDbDocument(uri, database, collection);
     List<TableFieldSchema> bigquerySchemaFields = new ArrayList<>();
 
-    ScriptEngineManager manager = new ScriptEngineManager();
-    ScriptEngine engine = manager.getEngineByName("JavaScript");
     Collection<String> scripts = getScripts(udfGcsPath);
 
     Invocable invocable = newInvocable(scripts);
@@ -164,13 +165,19 @@ public class MongoDbUtils implements Serializable {
 
     Object result = invocable.invokeFunction(udfFunctionName, document);
     Document doc = (Document) result;
-    doc.forEach(
-        (key, value) -> {
-          bigquerySchemaFields.add(
-              new TableFieldSchema()
-                  .setName(key)
-                  .setType(getTableSchemaDataType(value.getClass().getName())));
-        });
+    if (userOption.equals("FLATTEN")) {
+      doc.forEach(
+          (key, value) -> {
+            bigquerySchemaFields.add(
+                new TableFieldSchema()
+                    .setName(key)
+                    .setType(getTableSchemaDataType(value.getClass().getName())));
+          });
+    } else {
+      bigquerySchemaFields.add(new TableFieldSchema().setName("id").setType("STRING"));
+      bigquerySchemaFields.add(new TableFieldSchema().setName("source_data").setType("STRING"));
+    }
+
     bigquerySchemaFields.add(new TableFieldSchema().setName("timestamp").setType("TIMESTAMP"));
     TableSchema bigquerySchema = new TableSchema().setFields(bigquerySchemaFields);
     return bigquerySchema;

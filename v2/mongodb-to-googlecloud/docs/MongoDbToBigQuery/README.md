@@ -145,7 +145,7 @@ The template requires the following parameters:
 * outputTableSpec: The BQ table where we want to write the data read from MongoDb collection to.
 
 The template has the following optional parameters:
-* userOption: The user option to Flatten the document or store it as a jsonString. To Flatten the document pass the parameter as "FLATTEN". To store the whole document as a JSON String use "NONE". To use the user defined function use "UDF".
+* userOption: The user option to Flatten the document or store it as a jsonString. To Flatten the document pass the parameter as "FLATTEN". To store the whole document as a JSON String use "NONE". 
 
 Template can be executed using the following gcloud command.
 ```sh

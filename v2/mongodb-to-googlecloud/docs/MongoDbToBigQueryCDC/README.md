@@ -1,6 +1,6 @@
 # MongoDB to BigQuery Dataflow Template
 
-The MongoDB to BigQuery template is a streaming pipeline t works together with MongoDB change stream. The pipeline [MongoDbToBigQueryCdc](src/main/java/com/google/cloud/teleport/v2/templates/MongoDbToBigQueryCdc.java) read the json pushed to Pub/Sub via MongoDB change stream and writes to BigQuery based on user input. Currently, this pipeline supports two types of userOptions. First is FLATTEN where the documents are Flattened to first level. Second is NONE where the documents are stored as a json string into BigQuery. 
+The MongoDB to BigQuery template is a streaming pipeline t works together with MongoDB change stream. The pipeline [MongoDbToBigQueryCdc](src/main/java/com/google/cloud/teleport/v2/templates/MongoDbToBigQueryCdc.java) read the json pushed to Pub/Sub via MongoDB change stream and writes to BigQuery based on user input. Currently, this pipeline supports two types of userOptions. First is FLATTEN where the documents are Flattened to first level. Second is NONE where the documents are stored as a json string into BigQuery.
 
 ## Getting Started
 
@@ -157,7 +157,7 @@ The template requires the following parameters:
 * inputTopic: the Topic where the changes are pushed from MongoDb changestream
 
 The template has the following optional parameters:
-* userOption: The user option to Flatten the document or store it as a jsonString. To Flatten the document pass the parameter as "FLATTEN". To store the whole document as a JSON String use "NONE". To use the user defined function use "UDF".
+* userOption: The user option to Flatten the document or store it as a jsonString. To Flatten the document pass the parameter as "FLATTEN". To store the whole document as a JSON String use "NONE".
 
 Template can be executed using the following gcloud command.
 ```sh

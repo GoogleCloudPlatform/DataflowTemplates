@@ -37,7 +37,7 @@
       "is_optional": false,
       "paramType": "TEXT",
       "regexes": [
-        "^(FLATTEN|NONE|UDF)$"
+        "^(FLATTEN|NONE)$"
       ]
     },
     {

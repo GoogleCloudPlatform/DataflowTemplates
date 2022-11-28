@@ -86,14 +86,16 @@ public class MongoDbToBigQuery {
 
     TableSchema bigquerySchema;
 
-    if (options.getUserOption().equals("UDF")) {
+    if (options.getJavascriptDocumentTransformFunctionName() != null
+        && options.getJavascriptDocumentTransformGcsPath() != null) {
       bigquerySchema =
           MongoDbUtils.getTableFieldSchemaForUDF(
               options.getMongoDbUri(),
               options.getDatabase(),
               options.getCollection(),
               options.getJavascriptDocumentTransformGcsPath(),
-              options.getJavascriptDocumentTransformFunctionName());
+              options.getJavascriptDocumentTransformFunctionName(),
+              options.getUserOption());
     } else {
       bigquerySchema =
           MongoDbUtils.getTableFieldSchema(
