@@ -20,12 +20,13 @@ import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.BigQueryWriteOptions;
+import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.JavascriptDocumentTransformerOptions;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.MongoDbOptions;
+import com.google.cloud.teleport.v2.mongodb.templates.JavascriptDocumentTransformer.TransformDocumentViaJavascript;
 import com.google.cloud.teleport.v2.mongodb.templates.MongoDbToBigQuery.Options;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import java.util.HashMap;
+import java.io.IOException;
+import javax.script.ScriptException;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
@@ -56,7 +57,11 @@ public class MongoDbToBigQuery {
    * <p>Inherits standard configuration options.
    */
   public interface Options
-      extends PipelineOptions, MongoDbOptions, BigQueryWriteOptions, BigQueryOptions {}
+      extends PipelineOptions,
+          MongoDbOptions,
+          BigQueryWriteOptions,
+          BigQueryOptions,
+          JavascriptDocumentTransformerOptions {}
 
   private static class ParseAsDocumentsFn extends DoFn<String, Document> {
     @ProcessElement
@@ -65,7 +70,8 @@ public class MongoDbToBigQuery {
     }
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args)
+      throws ScriptException, IOException, NoSuchMethodException {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
     BigQueryIOUtils.validateBQStorageApiOptionsBatch(options);
@@ -73,15 +79,32 @@ public class MongoDbToBigQuery {
     run(options);
   }
 
-  public static boolean run(Options options) {
+  public static boolean run(Options options)
+      throws ScriptException, IOException, NoSuchMethodException {
     Pipeline pipeline = Pipeline.create(options);
-    TableSchema bigquerySchema =
-        MongoDbUtils.getTableFieldSchema(
-            options.getMongoDbUri(),
-            options.getDatabase(),
-            options.getCollection(),
-            options.getUserOption());
     String userOption = options.getUserOption();
+
+    TableSchema bigquerySchema;
+
+    if (options.getJavascriptDocumentTransformFunctionName() != null
+        && options.getJavascriptDocumentTransformGcsPath() != null) {
+      bigquerySchema =
+          MongoDbUtils.getTableFieldSchemaForUDF(
+              options.getMongoDbUri(),
+              options.getDatabase(),
+              options.getCollection(),
+              options.getJavascriptDocumentTransformGcsPath(),
+              options.getJavascriptDocumentTransformFunctionName(),
+              options.getUserOption());
+    } else {
+      bigquerySchema =
+          MongoDbUtils.getTableFieldSchema(
+              options.getMongoDbUri(),
+              options.getDatabase(),
+              options.getCollection(),
+              options.getUserOption());
+    }
+
     pipeline
         .apply(
             "Read Documents",
@@ -90,6 +113,12 @@ public class MongoDbToBigQuery {
                 .withDatabase(options.getDatabase())
                 .withCollection(options.getCollection()))
         .apply(
+            "UDF",
+            TransformDocumentViaJavascript.newBuilder()
+                .setFileSystemPath(options.getJavascriptDocumentTransformGcsPath())
+                .setFunctionName(options.getJavascriptDocumentTransformFunctionName())
+                .build())
+        .apply(
             "Transform to TableRow",
             ParDo.of(
                 new DoFn<Document, TableRow>() {
@@ -97,10 +126,7 @@ public class MongoDbToBigQuery {
                   @ProcessElement
                   public void process(ProcessContext c) {
                     Document document = c.element();
-                    Gson gson = new GsonBuilder().create();
-                    HashMap<String, Object> parsedMap =
-                        gson.fromJson(document.toJson(), HashMap.class);
-                    TableRow row = MongoDbUtils.getTableSchema(parsedMap, userOption);
+                    TableRow row = MongoDbUtils.getTableSchema(document, userOption);
                     c.output(row);
                   }
                 }))
