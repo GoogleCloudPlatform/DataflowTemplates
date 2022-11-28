@@ -47,5 +47,5 @@ body:
     id: logs
     attributes:
       label: Relevant log output
-      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks. In case of exceptions, please paste the entire stracktrace.
+      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks. In case of exceptions, please paste the entire stacktrace.
       render: shell
