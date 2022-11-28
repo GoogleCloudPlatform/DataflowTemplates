@@ -23,13 +23,14 @@ import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.it.TemplateTestBase;
-import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.bigtable.DefaultBigtableResourceManager;
 import com.google.cloud.teleport.it.dataflow.DataflowOperator;
-import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient;
-import com.google.cloud.teleport.it.dataflow.FlexTemplateClient;
+import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
+import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient.JobInfo;
+import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient.JobState;
+import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient.LaunchConfig;
 import com.google.cloud.teleport.it.mongodb.DefaultMongoDBResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
@@ -51,7 +52,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
-/** Integration test for {@link MongoDbToBigQuery} (MongoDB_to_BigQuery).
+/**
+ * Integration test for {@link MongoDbToBigQuery} (MongoDB_to_BigQuery).
  *
  * <p>Example Usage:
  *
@@ -95,7 +97,6 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
   @Rule public final TestName testName = new TestName();
 
   private static final Logger LOG = LoggerFactory.getLogger(DefaultBigtableResourceManager.class);
-  private static final String HOST_IP = TestProperties.hostIp();
 
   private static final String MONGO_URI = "mongoDbUri";
   private static final String MONGO_DB = "database";
@@ -126,14 +127,14 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
     try {
       mongoDbClient.cleanupAll();
     } catch (Exception e) {
-      LOG.error("Failed to delete MongoDB resources. {}", e.getMessage());
+      LOG.error("Failed to delete MongoDB resources.", e);
       producedError = true;
     }
 
     try {
       bigQueryClient.cleanupAll();
     } catch (Exception e) {
-      LOG.error("Failed to delete MongoDB resources. {}", e.getMessage());
+      LOG.error("Failed to delete MongoDB resources.", e);
       producedError = true;
     }
 
@@ -163,28 +164,25 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
     bigQueryClient.createTable(bqTable, bqSchema);
     String tableSpec = PROJECT + ":" + bigQueryClient.getDatasetId() + "." + bqTable;
 
-    // Act
-    DataflowTemplateClient.LaunchConfig options =
-        DataflowTemplateClient.LaunchConfig.builder(jobName, specPath)
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(jobName, specPath)
             .addParameter(MONGO_URI, mongoDbClient.getUri())
             .addParameter(MONGO_DB, mongoDbClient.getDatabaseName())
             .addParameter(MONGO_COLLECTION, collectionName)
             .addParameter(BIGQUERY_TABLE, tableSpec)
-            .addParameter(USER_OPTION, "FLATTEN")
-            .build();
-    DataflowTemplateClient dataflow =
-        FlexTemplateClient.builder().setCredentials(credentials).build();
+            .addParameter(USER_OPTION, "FLATTEN");
 
-    DataflowTemplateClient.JobInfo info = dataflow.launchTemplate(PROJECT, REGION, options);
-    assertThat(info.state()).isIn(DataflowTemplateClient.JobState.ACTIVE_STATES);
+    // Act
+    JobInfo info = launchTemplate(options);
+    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
 
-    DataflowOperator.Result result =
-        new DataflowOperator(dataflow)
-            .waitForConditionAndFinish(
+    Result result =
+        new DataflowOperator(getDataflowClient())
+            .waitForCondition(
                 createConfig(info), () -> bigQueryClient.readTable(bqTable).getTotalRows() != 0);
 
     // Assert
-    assertThat(result).isEqualTo(DataflowOperator.Result.CONDITION_MET);
+    assertThat(result).isEqualTo(Result.CONDITION_MET);
 
     Map<String, JSONObject> mongoMap = new HashMap<>();
     mongoDocuments.forEach(
@@ -210,14 +208,6 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
                       assertThat(mongoMap.get(bigQueryOid).toString())
                           .isEqualTo(bigQueryJson.toString());
                     }));
-  }
-
-  private static DataflowOperator.Config createConfig(DataflowTemplateClient.JobInfo info) {
-    return DataflowOperator.Config.builder()
-        .setJobId(info.jobId())
-        .setProject(PROJECT)
-        .setRegion(REGION)
-        .build();
   }
 
   private static List<Document> generateDocuments() {

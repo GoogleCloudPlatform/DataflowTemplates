@@ -29,10 +29,6 @@
 
     <artifactId>mongodb-to-googlecloud</artifactId>
 
-    <properties>
-    <google-truth.version>1.0.1</google-truth.version>
-    </properties>
-
     <name>MongoDB To Googlecloud</name>
     <description>
         Stream data from Google PubSub to a hosted MongoDB Database
@@ -53,7 +49,7 @@
         <dependency>
             <groupId>com.google.truth</groupId>
             <artifactId>truth</artifactId>
-            <version>${google-truth.version}</version>
+            <version>${truth.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
