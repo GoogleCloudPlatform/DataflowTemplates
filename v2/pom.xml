@@ -203,6 +203,13 @@
             <artifactId>structured-logging</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- Plain text logging for the unit tests -->
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>plaintext-logging</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>

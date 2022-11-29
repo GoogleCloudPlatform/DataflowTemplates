@@ -203,5 +203,6 @@
     <module>v1</module>
     <module>v2</module>
     <module>structured-logging</module>
+    <module>plaintext-logging</module>
   </modules>
 </project>
