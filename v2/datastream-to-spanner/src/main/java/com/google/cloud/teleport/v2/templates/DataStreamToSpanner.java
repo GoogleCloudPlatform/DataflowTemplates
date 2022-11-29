@@ -91,7 +91,8 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "Datastream to Cloud Spanner",
     description =
-        "Streaming pipeline. Ingests messages from a stream in Datastream, transforms them, and writes them to a pre-existing set of tables in Cloud Spanner.",
+        "Streaming pipeline. Ingests messages from a stream in Datastream, transforms them, and"
+            + " writes them to a pre-existing set of tables in Cloud Spanner.",
     optionsClass = Options.class,
     flexContainerName = "datastream-to-spanner",
     contactInformation = "https://cloud.google.com/support")
@@ -112,7 +113,8 @@ public class DataStreamToSpanner {
         order = 1,
         description = "File location for Datastream file output in Cloud Storage.",
         helpText =
-            "This is the file location for Datastream file output in Cloud Storage. Normally, this will be gs://${BUCKET}/${ROOT_PATH}/.")
+            "This is the file location for Datastream file output in Cloud Storage. Normally, this"
+                + " will be gs://${BUCKET}/${ROOT_PATH}/.")
     String getInputFilePattern();
 
     void setInputFilePattern(String value);
@@ -123,7 +125,8 @@ public class DataStreamToSpanner {
         optional = true,
         description = "Datastream output file format (avro/json).",
         helpText =
-            "This is the format of the output file produced by Datastream. By default this will be avro.")
+            "This is the format of the output file produced by Datastream. By default this will be"
+                + " avro.")
     @Default.String("avro")
     String getInputFileFormat();
 
@@ -134,7 +137,8 @@ public class DataStreamToSpanner {
         optional = true,
         description = "Session File Path in Cloud Storage",
         helpText =
-            "Session file path in Cloud Storage that contains mapping information from HarbourBridge")
+            "Session file path in Cloud Storage that contains mapping information from"
+                + " HarbourBridge")
     String getSessionFilePath();
 
     void setSessionFilePath(String value);
@@ -182,8 +186,9 @@ public class DataStreamToSpanner {
         optional = true,
         description = "The Pub/Sub subscription being used in a Cloud Storage notification policy.",
         helpText =
-            "The Pub/Sub subscription being used in a Cloud Storage notification policy. "
-                + "The name should be in the format of projects/<project-id>/subscriptions/<subscription-name>.")
+            "The Pub/Sub subscription being used in a Cloud Storage notification policy. The name"
+                + " should be in the format of"
+                + " projects/<project-id>/subscriptions/<subscription-name>.")
     String getGcsPubSubSubscription();
 
     void setGcsPubSubSubscription(String value);
@@ -246,9 +251,9 @@ public class DataStreamToSpanner {
         optional = true,
         description = "Dead letter queue directory.",
         helpText =
-            "This is the file path to store the deadletter queue output. Default is a "
-                + "directory under the Dataflow job's temp location. The default value is enough under "
-                + "most conditions.")
+            "This is the file path to store the deadletter queue output. Default is a directory"
+                + " under the Dataflow job's temp location. The default value is enough under most"
+                + " conditions.")
     @Default.String("")
     String getDeadLetterQueueDirectory();
 
@@ -258,8 +263,8 @@ public class DataStreamToSpanner {
         order = 15,
         optional = true,
         description = "Dead letter queue retry minutes",
-        helpText = "The number of minutes between dead letter queue retries. Defaults to 1.")
-    @Default.Integer(1)
+        helpText = "The number of minutes between dead letter queue retries. Defaults to 10.")
+    @Default.Integer(10)
     Integer getDlqRetryMinutes();
 
     void setDlqRetryMinutes(Integer value);
@@ -269,8 +274,8 @@ public class DataStreamToSpanner {
         optional = true,
         description = "Dead letter queue maximum retry count",
         helpText =
-            "The max number of times temporary errors can be retried through DLQ. Defaults to 5.")
-    @Default.Integer(5)
+            "The max number of times temporary errors can be retried through DLQ. Defaults to 500.")
+    @Default.Integer(500)
     Integer getDlqMaxRetryCount();
 
     void setDlqMaxRetryCount(Integer value);
