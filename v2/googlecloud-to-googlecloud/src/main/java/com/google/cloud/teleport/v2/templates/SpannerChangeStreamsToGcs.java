@@ -45,7 +45,8 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "Cloud Spanner change streams to Cloud Storage",
     description =
-        "Streaming pipeline. Streams Spanner change stream data records and writes them into a Cloud Storage bucket using Dataflow Runner V2.",
+        "Streaming pipeline. Streams Spanner change stream data records and writes them into a"
+            + " Cloud Storage bucket using Dataflow Runner V2.",
     optionsClass = SpannerChangeStreamsToGcsOptions.class,
     flexContainerName = "spanner-changestreams-to-gcs",
     contactInformation = "https://cloud.google.com/support")
@@ -99,14 +100,7 @@ public class SpannerChangeStreamsToGcs {
     if (experiments == null) {
       experiments = new ArrayList<>();
     }
-    boolean hasUseRunnerV2 = false;
-    for (String experiment : experiments) {
-      if (experiment.toLowerCase().equals(USE_RUNNER_V2_EXPERIMENT)) {
-        hasUseRunnerV2 = true;
-        break;
-      }
-    }
-    if (!hasUseRunnerV2) {
+    if (!experiments.contains(USE_RUNNER_V2_EXPERIMENT)) {
       experiments.add(USE_RUNNER_V2_EXPERIMENT);
     }
     options.setExperiments(experiments);

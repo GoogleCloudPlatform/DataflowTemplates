@@ -76,7 +76,8 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "Cloud Spanner change streams to BigQuery",
     description =
-        "Streaming pipeline. Streams Spanner data change records and writes them into BigQuery using Dataflow Runner V2.",
+        "Streaming pipeline. Streams Spanner data change records and writes them into BigQuery"
+            + " using Dataflow Runner V2.",
     optionsClass = SpannerChangeStreamsToBigQueryOptions.class,
     flexContainerName = "spanner-changestreams-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
@@ -125,14 +126,7 @@ public final class SpannerChangeStreamsToBigQuery {
     if (experiments == null) {
       experiments = new ArrayList<>();
     }
-    boolean hasUseRunnerV2 = false;
-    for (String experiment : experiments) {
-      if (experiment.toLowerCase().equals(USE_RUNNER_V2_EXPERIMENT)) {
-        hasUseRunnerV2 = true;
-        break;
-      }
-    }
-    if (!hasUseRunnerV2) {
+    if (!experiments.contains(USE_RUNNER_V2_EXPERIMENT)) {
       experiments.add(USE_RUNNER_V2_EXPERIMENT);
     }
     options.setExperiments(experiments);
