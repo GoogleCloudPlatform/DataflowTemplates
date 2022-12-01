@@ -2,7 +2,7 @@
 
 This directory contains components for a Change-data Capture (CDC) solution to
 capture data from an MySQL database, and sync it into BigQuery. The solution
-relies on Cloud Dataflow, and [Debezium](https://debezium.io/), and excellent
+relies on Cloud Dataflow, and [Debezium](https://debezium.io/), an excellent
 open source project for change data capture.
 
 To implement the CDC solution in this repository:

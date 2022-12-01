@@ -35,7 +35,6 @@
     </description>
 
     <dependencies>
-
         <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-sdks-java-io-mongodb</artifactId>
@@ -44,6 +43,14 @@
             <groupId>com.google.cloud.teleport.v2</groupId>
             <artifactId>common</artifactId>
             <version>${project.version}</version>
+        </dependency>
+
+        <!-- Test Dependencies -->
+        <dependency>
+            <groupId>com.google.truth</groupId>
+            <artifactId>truth</artifactId>
+            <version>${truth.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
