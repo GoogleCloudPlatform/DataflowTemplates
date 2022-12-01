@@ -412,7 +412,7 @@ public abstract class JavascriptTextTransformer {
    * @param functionName The function name which will be invoked within the JavaScript script.
    * @return The {@link JavascriptRuntime} instance.
    */
-  public static JavascriptRuntime getJavascriptRuntime(String fileSystemPath, String functionName) {
+  private static JavascriptRuntime getJavascriptRuntime(String fileSystemPath, String functionName) {
     JavascriptRuntime javascriptRuntime = null;
 
     if (!Strings.isNullOrEmpty(fileSystemPath) && !Strings.isNullOrEmpty(functionName)) {
