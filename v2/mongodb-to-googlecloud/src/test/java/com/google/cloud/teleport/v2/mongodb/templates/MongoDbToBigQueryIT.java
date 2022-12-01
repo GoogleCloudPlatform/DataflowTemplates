@@ -45,6 +45,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -90,6 +91,7 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
  *   -DmaxEntryLength=&lt;maxEntryLength&gt;  # Sets the maximum length of each document field
  * </pre>
  */
+@Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(MongoDbToBigQuery.class)
 @RunWith(JUnit4.class)
 public final class MongoDbToBigQueryIT extends TemplateTestBase {

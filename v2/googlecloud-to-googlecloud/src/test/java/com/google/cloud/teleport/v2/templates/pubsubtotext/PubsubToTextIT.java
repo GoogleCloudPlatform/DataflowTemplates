@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.pubsubtotext;
 
 import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatArtifacts;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.it.TemplateTestBase;
@@ -40,10 +41,12 @@ import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration test for {@link PubsubToText} (Cloud_PubSub_to_GCS_Text_Flex). */
+@Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(PubsubToText.class)
 @RunWith(JUnit4.class)
 public final class PubsubToTextIT extends TemplateTestBase {
@@ -128,7 +131,7 @@ public final class PubsubToTextIT extends TemplateTestBase {
 
     TopicName topic = pubsubResourceManager.createTopic("input");
 
-    SubscriptionName subscription = pubsubResourceManager.createSubscription(topic, jobName + "-1");
+    SubscriptionName subscription = pubsubResourceManager.createSubscription(topic, "input-1");
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(jobName, specPath)
@@ -158,6 +161,9 @@ public final class PubsubToTextIT extends TemplateTestBase {
 
     // Assert
     assertThat(result).isEqualTo(Result.CONDITION_MET);
+
+    assertThatArtifacts(artifacts.get()).hasFiles();
+    assertThatArtifacts(artifacts.get()).hasContent("blablabla");
 
     // Make sure that files contain only the messages produced by this test
     String allMessages =

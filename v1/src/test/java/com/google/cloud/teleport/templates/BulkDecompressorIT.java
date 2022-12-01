@@ -34,10 +34,12 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration test for {@link BulkDecompressor} (BulkDecompressor). */
+@Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(BulkDecompressor.class)
 @RunWith(JUnit4.class)
 public final class BulkDecompressorIT extends TemplateTestBase {

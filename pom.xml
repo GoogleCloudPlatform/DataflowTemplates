@@ -58,7 +58,7 @@
     <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
     <surefire.version>2.21.0</surefire.version>
     <truth.version>1.0.1</truth.version>
-
+    <excluded.spanner.tests></excluded.spanner.tests>
   </properties>
 
   <dependencyManagement>
@@ -104,6 +104,16 @@
     </pluginManagement>
 
     <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>${surefire.version}</version>
+        <configuration>
+          <!-- Exclude Cloud Spanner integration tests that require a GCP project to run.
+          They can be run manually using 'mvn -Dexcluded.spanner.tests="" -Dtest=<testname> test' -->
+          <excludedGroups>com.google.cloud.teleport.metadata.TemplateIntegrationTest,${excluded.spanner.tests}</excludedGroups>
+        </configuration>
+      </plugin>
       <plugin>
         <groupId>com.diffplug.spotless</groupId>
         <artifactId>spotless-maven-plugin</artifactId>
@@ -185,6 +195,39 @@
   </build>
 
   <profiles>
+    <profile>
+      <id>templatesIntegrationTests</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <properties>
+        <!-- Skip coverage checks, unit tests are skipped -->
+        <jacoco.skip>true</jacoco.skip>
+        <!-- Skip shade for faster runs -->
+        <skipShade>true</skipShade>
+        <!-- Some modules may yield no integration tests -->
+        <failIfNoTests>false</failIfNoTests>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>${surefire.version}</version>
+            <configuration combine.self="override">
+              <includes>
+                <include>**/*IT.java</include>
+              </includes>
+              <excludedGroups></excludedGroups>
+              <groups>
+                com.google.cloud.teleport.metadata.TemplateIntegrationTest
+              </groups>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
     <profile>
       <id>oss-build</id>
       <activation>

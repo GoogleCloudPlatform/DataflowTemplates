@@ -35,10 +35,12 @@ import java.io.IOException;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration test for {@link StreamingDataGenerator}. */
+@Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(StreamingDataGenerator.class)
 @RunWith(JUnit4.class)
 public final class StreamingDataGeneratorIT extends TemplateTestBase {

@@ -43,6 +43,7 @@
         <jib.maven.version>2.6.0</jib.maven.version>
         <junit-dep.version>4.10</junit-dep.version>
         <opencensus.version>0.31.0</opencensus.version>
+
         <excluded.spanner.tests>com.google.cloud.teleport.v2.spanner.IntegrationTest</excluded.spanner.tests>
     </properties>
 
@@ -407,12 +408,7 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>${maven-shade-plugin.version}</version>
-            </plugin>
-            
+
             <plugin>
                 <!-- Set up Javadoc configuration for javadoc run via in the Maven
                      build. Teleport only uses the plugin to create the individual javadoc
@@ -496,27 +492,6 @@
                         <version>1.3</version>
                     </dependency>
                 </dependencies>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>${surefire.version}</version>
-                <configuration>
-                  <!-- Exclude Cloud Spanner integration tests that require a GCP project to run.
-                  They can be run run manually using
-                  TODO: Add support for emulator to run integration tests.
-                  'mvn -Dexcluded.spanner.tests="" -Dtest=<testname> test' -->
-                  <systemProperties>
-                    <property>
-                      <name>nashorn.args</name>
-                      <value>--no-deprecation-warning</value>
-                    </property>
-                  </systemProperties>
-                  <!-- TODO(zhoufek): Try to find an alternative way to avoid writing
-                   sensitive info to disk.-->
-                  <disableXmlReport>true</disableXmlReport>
-                  <excludedGroups>${excluded.spanner.tests},com.google.cloud.teleport.metadata.TemplateIntegrationTest</excludedGroups>
-                </configuration>
             </plugin>
         </plugins>
     </build>
