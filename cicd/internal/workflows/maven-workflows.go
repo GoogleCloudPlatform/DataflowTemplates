@@ -35,6 +35,7 @@ const (
 
 	// regexes
 	javaFileRegex     = "\\.java$"
+	xmlFileRegex      = "\\.xml$"
 	markdownFileRegex = "\\.md$"
 	pomFileRegex      = "pom\\.xml$"
 
@@ -98,7 +99,7 @@ func (*mvnCleanInstallWorkflow) Run(args ...string) error {
 	flags.RegisterCommonFlags()
 	flag.Parse()
 
-	changed := flags.ChangedFiles(javaFileRegex, pomFileRegex)
+	changed := flags.ChangedFiles(javaFileRegex, xmlFileRegex)
 	if len(changed) == 0 {
 		return nil
 	}
