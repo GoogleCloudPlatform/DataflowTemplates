@@ -23,8 +23,8 @@ import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.Big
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.JavascriptDocumentTransformerOptions;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.MongoDbOptions;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.PubSubOptions;
-import com.google.cloud.teleport.v2.mongodb.templates.JavascriptDocumentTransformer.TransformDocumentViaJavascript;
 import com.google.cloud.teleport.v2.mongodb.templates.MongoDbToBigQueryCdc.Options;
+import com.google.cloud.teleport.v2.transforms.JavascriptDocumentTransformer.TransformDocumentViaJavascript;
 import java.io.IOException;
 import javax.script.ScriptException;
 import org.apache.beam.sdk.Pipeline;

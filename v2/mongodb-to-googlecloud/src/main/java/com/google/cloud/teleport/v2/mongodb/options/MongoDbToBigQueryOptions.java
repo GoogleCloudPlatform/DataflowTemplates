@@ -58,7 +58,7 @@ public class MongoDbToBigQueryOptions {
 
     @TemplateParameter.Enum(
         order = 4,
-        enumOptions = {"FLATTEN", "NONE", "UDF"},
+        enumOptions = {"FLATTEN", "NONE"},
         description = "User option",
         helpText =
             "User option: FLATTEN or NONE. FLATTEN will flatten the documents for 1 level. NONE will store the whole document as json string.")
