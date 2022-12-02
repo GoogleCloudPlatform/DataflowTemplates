@@ -194,7 +194,9 @@ public class TemplateStageMojo extends TemplateBaseMojo {
                 "arguments",
                 element("argument", "--runner=DataflowRunner"),
                 element("argument", "--stagingLocation=" + stagingPath),
-                element("argument", "--templateLocation=" + templatePath))),
+                element("argument", "--templateLocation=" + templatePath),
+                element("argument", "--project=" + projectId),
+                element("argument", "--region=" + region))),
         executionEnvironment(project, session, pluginManager));
 
     String[] copyCmd =

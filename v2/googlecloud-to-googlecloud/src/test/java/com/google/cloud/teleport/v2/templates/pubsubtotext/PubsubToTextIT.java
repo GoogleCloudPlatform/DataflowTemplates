@@ -163,7 +163,6 @@ public final class PubsubToTextIT extends TemplateTestBase {
     assertThat(result).isEqualTo(Result.CONDITION_MET);
 
     assertThatArtifacts(artifacts.get()).hasFiles();
-    assertThatArtifacts(artifacts.get()).hasContent("blablabla");
 
     // Make sure that files contain only the messages produced by this test
     String allMessages =

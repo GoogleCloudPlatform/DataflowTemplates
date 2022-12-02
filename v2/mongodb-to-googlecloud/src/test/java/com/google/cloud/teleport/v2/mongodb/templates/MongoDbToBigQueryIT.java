@@ -136,7 +136,7 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
     try {
       bigQueryClient.cleanupAll();
     } catch (Exception e) {
-      LOG.error("Failed to delete MongoDB resources.", e);
+      LOG.error("Failed to delete BigQuery resources.", e);
       producedError = true;
     }
 
