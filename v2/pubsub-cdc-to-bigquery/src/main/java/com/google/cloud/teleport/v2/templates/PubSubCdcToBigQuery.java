@@ -34,6 +34,7 @@ import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.transforms.PubSubToFailSafeElement;
 import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFOptions;
 import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFToTableRow;
+import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import com.google.cloud.teleport.v2.utils.ResourceUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -285,6 +286,7 @@ public class PubSubCdcToBigQuery {
    */
   public static void main(String[] args) {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
+    BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options);
 
     run(options);
   }
@@ -433,7 +435,6 @@ public class PubSubCdcToBigQuery {
                 .withCreateDisposition(CreateDisposition.CREATE_NEVER)
                 .withWriteDisposition(WriteDisposition.WRITE_APPEND)
                 .withExtendedErrorInfo()
-                .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
                 .withFailedInsertRetryPolicy(InsertRetryPolicy.alwaysRetry()));
 
     /*
@@ -446,8 +447,7 @@ public class PubSubCdcToBigQuery {
     // TODO: Cover tableRowRecords.get(TRANSFORM_DEADLETTER_OUT) error values
     if (options.getDeadLetterQueueDirectory() != null) {
 
-      writeResult
-          .getFailedInsertsWithErr()
+      BigQueryIOUtils.writeResultToBigQueryInsertErrors(writeResult, options)
           .apply(
               "DLQ: Write Insert Failures to GCS",
               MapElements.via(new BigQueryDeadLetterQueueSanitizer()))
@@ -503,8 +503,7 @@ public class PubSubCdcToBigQuery {
 
     } else {
       PCollection<FailsafeElement<String, String>> failedInserts =
-          writeResult
-              .getFailedInsertsWithErr()
+          BigQueryIOUtils.writeResultToBigQueryInsertErrors(writeResult, options)
               .apply(
                   "WrapInsertionErrors",
                   MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())

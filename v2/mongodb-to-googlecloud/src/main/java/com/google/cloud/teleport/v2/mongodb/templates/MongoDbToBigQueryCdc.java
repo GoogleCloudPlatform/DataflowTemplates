@@ -25,10 +25,12 @@ import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.Mon
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.PubSubOptions;
 import com.google.cloud.teleport.v2.mongodb.templates.MongoDbToBigQueryCdc.Options;
 import com.google.cloud.teleport.v2.transforms.JavascriptDocumentTransformer.TransformDocumentViaJavascript;
+import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import java.io.IOException;
 import javax.script.ScriptException;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -47,7 +49,8 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "MongoDB to BigQuery (CDC)",
     description =
-        "A streaming pipeline which reads data pushed to Pub/Sub from MongoDB Changestream and writes the resulting records to BigQuery.",
+        "A streaming pipeline which reads data pushed to Pub/Sub from MongoDB Changestream and"
+            + " writes the resulting records to BigQuery.",
     optionsClass = Options.class,
     flexContainerName = "mongodb-to-bigquery-cdc",
     contactInformation = "https://cloud.google.com/support")
@@ -61,7 +64,8 @@ public class MongoDbToBigQueryCdc {
           MongoDbOptions,
           PubSubOptions,
           BigQueryWriteOptions,
-          JavascriptDocumentTransformerOptions {}
+          JavascriptDocumentTransformerOptions,
+          BigQueryOptions{}
 
   /** class ParseAsDocumentsFn. */
   private static class ParseAsDocumentsFn extends DoFn<String, Document> {
@@ -79,8 +83,8 @@ public class MongoDbToBigQueryCdc {
    */
   public static void main(String[] args)
       throws ScriptException, IOException, NoSuchMethodException {
-
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
+    BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options);
     run(options);
   }
 

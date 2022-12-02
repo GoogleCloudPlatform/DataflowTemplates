@@ -20,6 +20,7 @@ import com.google.cloud.dataflow.cdc.applier.CdcToBigQueryChangeApplierPipeline.
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -27,6 +28,7 @@ import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -77,7 +79,7 @@ public class CdcToBigQueryChangeApplierPipeline {
    * The {@link CdcApplierOptions} class provides the custom execution options passed by the
    * executor at the command-line.
    */
-  public interface CdcApplierOptions extends PipelineOptions {
+  public interface CdcApplierOptions extends PipelineOptions, BigQueryOptions {
 
     @TemplateParameter.Text(
         order = 1,
@@ -130,7 +132,8 @@ public class CdcToBigQueryChangeApplierPipeline {
         optional = true,
         description = "Whether to use a single topic for all MySQL table changes.",
         helpText =
-            "Set this to true if you have configured your Debezium connector to publish all table updates to a single topic")
+            "Set this to true if you have configured your Debezium connector to publish all table"
+                + " updates to a single topic")
     @Default.Boolean(false)
     Boolean getUseSingleTopic();
 
@@ -156,6 +159,8 @@ public class CdcToBigQueryChangeApplierPipeline {
   public static void main(String[] args) throws IOException {
     CdcApplierOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(CdcApplierOptions.class);
+
+    BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options);
 
     run(options);
   }

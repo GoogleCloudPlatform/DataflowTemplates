@@ -36,6 +36,7 @@ import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.transforms.StatefulRowCleaner;
 import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFOptions;
 import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFToTableRow;
+import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Splitter;
 import java.util.HashSet;
@@ -377,6 +378,8 @@ public class DataStreamToBigQuery {
       throw new IllegalArgumentException(
           "Input file format must be one of: avro, json or left empty - found " + inputFileFormat);
     }
+
+    BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options);
   }
 
   /**
@@ -510,8 +513,7 @@ public class DataStreamToBigQuery {
                     .ignoreInsertIds()
                     .withCreateDisposition(CreateDisposition.CREATE_NEVER)
                     .withWriteDisposition(WriteDisposition.WRITE_APPEND)
-                    .withExtendedErrorInfo()
-                    .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
+                    .withExtendedErrorInfo() // takes effect only when Storage Write API is off
                     .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
 
     if (options.getApplyMerge()) {
@@ -562,8 +564,7 @@ public class DataStreamToBigQuery {
                 MapElements.via(new RowCleanerDeadLetterQueueSanitizer()));
 
     PCollection<String> bqWriteDlqJson =
-        writeResult
-            .getFailedInsertsWithErr()
+        BigQueryIOUtils.writeResultToBigQueryInsertErrors(writeResult, options)
             .apply("BigQuery Failures", MapElements.via(new BigQueryDeadLetterQueueSanitizer()));
 
     PCollectionList.of(udfDlqJson)

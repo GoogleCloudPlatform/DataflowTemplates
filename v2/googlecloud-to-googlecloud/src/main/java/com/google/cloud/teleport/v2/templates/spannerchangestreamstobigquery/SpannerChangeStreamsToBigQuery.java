@@ -26,6 +26,7 @@ import com.google.cloud.teleport.v2.options.SpannerChangeStreamsToBigQueryOption
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.Mod;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.BigQueryUtils;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
+import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableSet;
 import java.io.IOException;
@@ -114,6 +115,8 @@ public final class SpannerChangeStreamsToBigQuery {
     if (options.getDlqRetryMinutes() <= 0) {
       throw new IllegalArgumentException("dlqRetryMinutes must be positive.");
     }
+
+    BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options);
   }
 
   private static void setOptions(SpannerChangeStreamsToBigQueryOptions options) {
@@ -263,7 +266,6 @@ public final class SpannerChangeStreamsToBigQuery {
                     .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
                     .withWriteDisposition(Write.WriteDisposition.WRITE_APPEND)
                     .withExtendedErrorInfo()
-                    .withMethod(Write.Method.STREAMING_INSERTS)
                     .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
 
     PCollection<String> transformDlqJson =
@@ -274,8 +276,7 @@ public final class SpannerChangeStreamsToBigQuery {
                 MapElements.via(new StringDeadLetterQueueSanitizer()));
 
     PCollection<String> bqWriteDlqJson =
-        writeResult
-            .getFailedInsertsWithErr()
+        BigQueryIOUtils.writeResultToBigQueryInsertErrors(writeResult, options)
             .apply(
                 "Failed Mod JSON During BigQuery Writes",
                 MapElements.via(new BigQueryDeadLetterQueueSanitizer()));
