@@ -263,6 +263,13 @@ gcloud init
 gcloud auth application-default login
 ```
 
+After authenticated, install the plugin into your local repository:
+
+```shell
+mvn install -pl plugins/templates-maven-plugin -am
+```
+
+
 ### Validating annotations
 
 To validate the templates in the current context, the
@@ -315,28 +322,29 @@ mvn package -PtemplatesStage  \
   -pl v2/googlecloud-to-googlecloud -am
 ```
 
-**Note**: if `-DtemplateName` is not specified, all templates for the module will be
-staged.
+**Note**: if `-DtemplateName` is not specified, all templates for the module will be staged.
 
 ### Running a Template
 
 A template can also be executed on Dataflow, directly from the command line. The
 command-line is similar to staging a template, but it is required to
-specify `-Dparameters` with the parameters that will be used when launching the
-template.
+specify `-Dparameters` with the parameters that will be used when launching the template. For example:
 
 ```shell
 mvn package -PtemplatesRun \
   -DskipTests \
   -DprojectId="{projectId}" \
-  -DbucketName="${bucketName}" \
+  -DbucketName="{bucketName}" \
   -DtemplateName="Cloud_PubSub_to_GCS_Text_Flex" \
   -Dparameters="inputTopic=projects/{projectId}/topics/{topicName},windowDuration=15s,outputDirectory=gs://{outputDirectory}/out,outputFilenamePrefix=output-,outputFilenameSuffix=.txt" \
   -pl v2/googlecloud-to-googlecloud -am
 
 ```
 
-**Note**: When running a template, `-DtemplateName` is mandatory.
+**Note**: When running a template, `-DtemplateName` is mandatory, as `-Dparameters=` are different across templates. 
+
+**Note**: `-PtemplatesRun` is self-contained, i.e., it is not required to run **Deploying/Staging Templates** before. In case you want to run a previously staged template, the existing path can be provided as `-DspecPath=gs://.../path`
+
 
 ## Using UDFs
 
