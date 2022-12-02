@@ -341,7 +341,7 @@ mvn package -PtemplatesRun \
 
 ```
 
-**Note**: When running a template, `-DtemplateName` is mandatory, as `-Dparameters=` are different across templates. 
+**Note**: When running a template, `-DtemplateName` is mandatory, as `-Dparameters=` are different across templates.
 
 **Note**: `-PtemplatesRun` is self-contained, i.e., it is not required to run **Deploying/Staging Templates** before. In case you want to run a previously staged template, the existing path can be provided as `-DspecPath=gs://.../path`
 
