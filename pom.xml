@@ -49,6 +49,7 @@
     <checkstyle.version>8.7</checkstyle.version>
     <cloud-libraries-bom.version>26.1.3</cloud-libraries-bom.version>
     <conscrypt.version>2.5.2</conscrypt.version>
+    <hadoop.version>2.10.2</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
     <mockito-core.version>3.0.0</mockito-core.version>
     <json.version>20200518</json.version>
