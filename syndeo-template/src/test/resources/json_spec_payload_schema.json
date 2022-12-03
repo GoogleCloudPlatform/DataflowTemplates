@@ -14,7 +14,7 @@
         "validValues": ["AVRO", "JSON", "CSV"]
       },
       "bootstrapServers": {
-        "description": "The IP addresses and ports for the bootstrap servers in your Kafka c  luster.",
+        "description": "The IP addresses and ports for the bootstrap servers in your Kafka cluster.",
         "optional": false,
         "type": "string"
       },
