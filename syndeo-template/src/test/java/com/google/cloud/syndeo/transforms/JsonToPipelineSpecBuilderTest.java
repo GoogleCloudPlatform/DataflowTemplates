@@ -71,6 +71,7 @@ public class JsonToPipelineSpecBuilderTest {
       Pipeline p = Pipeline.create();
       // Run pipeline from configuration.
       ProviderUtil.applyConfigs(specs, PCollectionRowTuple.empty(p));
+      // TODO(pabloem): Add assertions to verify applications.
     }
   }
 }

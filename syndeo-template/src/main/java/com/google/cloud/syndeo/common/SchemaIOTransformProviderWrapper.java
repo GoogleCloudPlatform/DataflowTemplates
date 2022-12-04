@@ -15,7 +15,6 @@
  */
 package com.google.cloud.syndeo.common;
 
-import avro.shaded.com.google.common.base.Preconditions;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
@@ -33,6 +32,7 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.Row;
+import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions;
 
 /**
  * A class that can wrap a {@link SchemaIO} and {@link SchemaIOProvider} as a read or write {@link

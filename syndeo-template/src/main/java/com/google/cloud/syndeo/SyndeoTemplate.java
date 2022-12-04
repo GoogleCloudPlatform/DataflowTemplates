@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.FileSystems;
@@ -46,10 +47,14 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.vendor.grpc.v1p48p1.com.google.common.io.CharStreams;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SyndeoTemplate {
 
-  public interface Options extends PipelineOptions {
+  private static final Logger LOG = LoggerFactory.getLogger(SyndeoTemplate.class);
+
+  public interface Options extends PipelineOptions, DataflowPipelineOptions {
     @Description("Pipeline Options.")
     @Nullable
     String getPipelineSpec();
@@ -68,7 +73,7 @@ public class SyndeoTemplate {
   }
 
   public static PipelineResult run(String[] args) throws Exception {
-    Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
+    Options options = PipelineOptionsFactory.fromArgs(args).as(Options.class);
     validateOptions(options);
 
     FileSystems.setDefaultPipelineOptions(options);
@@ -81,11 +86,10 @@ public class SyndeoTemplate {
     return run(options, pipeline);
   }
 
-  public static PipelineResult run(
-      PipelineOptions options, PipelineDescription pipelineDescription) {
+  public static PipelineResult run(PipelineOptions options, PipelineDescription pipeline) {
     // Read proto as configuration.
     List<TransformSpec> specs = new ArrayList<>();
-    for (ConfiguredSchemaTransform inst : pipelineDescription.getTransformsList()) {
+    for (ConfiguredSchemaTransform inst : pipeline.getTransformsList()) {
       specs.add(new TransformSpec(inst));
     }
 
@@ -95,10 +99,12 @@ public class SyndeoTemplate {
     return p.run();
   }
 
-  private static ConfiguredSchemaTransform buildFromJsonConfig(JsonNode transformConfig) {
+  public static ConfiguredSchemaTransform buildFromJsonConfig(JsonNode transformConfig) {
     JsonNode params = transformConfig.get("configurationParameters");
     SchemaTransformProvider transformProvider =
         ProviderUtil.getProvider(transformConfig.get("urn").asText());
+    LOG.info(
+        "Transform provider({}) is: {}", transformConfig.get("urn").asText(), transformProvider);
     List<Object> configurationParameters =
         transformProvider.configurationSchema().getFields().stream()
             .map(field -> field.getName())
@@ -113,9 +119,11 @@ public class SyndeoTemplate {
                                 ? fieldNode.asDouble()
                                 : fieldNode.isNumber()
                                     ? fieldNode.asLong()
-                                    : fieldNode.isContainerNode()
-                                        ? new ObjectMapper().convertValue(fieldNode, Map.class)
-                                        : fieldNode.asText())
+                                    : !fieldNode.isContainerNode()
+                                        ? fieldNode.asText()
+                                        : fieldNode.isArray()
+                                            ? new ObjectMapper().convertValue(fieldNode, List.class)
+                                            : new ObjectMapper().convertValue(fieldNode, Map.class))
             .collect(Collectors.toList());
     return new ProviderUtil.TransformSpec(
             transformConfig.get("urn").asText(), configurationParameters)
@@ -126,6 +134,7 @@ public class SyndeoTemplate {
       throws JsonProcessingException {
     ObjectMapper om = new ObjectMapper();
     JsonNode config = om.readTree(jsonPayload);
+    LOG.info("Initializing with JSON Config: {}", config);
     return PipelineDescription.newBuilder()
         .addTransforms(buildFromJsonConfig(config.get("source")))
         .addTransforms(buildFromJsonConfig(config.get("sink")))

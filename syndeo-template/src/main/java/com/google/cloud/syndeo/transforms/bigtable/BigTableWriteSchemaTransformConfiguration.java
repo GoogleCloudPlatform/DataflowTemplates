@@ -35,7 +35,7 @@ public abstract class BigTableWriteSchemaTransformConfiguration {
 
   public abstract List<String> getKeyColumns();
 
-  public abstract String getEndpoint();
+  public abstract @Nullable String getEndpoint();
 
   public abstract @Nullable String getAppProfileId();
 
