@@ -43,9 +43,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-/**
- * Test cases for the {@link BigQueryIOUtils} class.
- */
+/** Test cases for the {@link BigQueryIOUtils} class. */
 public class BigQueryIOUtilsTest {
 
   private BigQueryOptions options;
@@ -55,11 +53,10 @@ public class BigQueryIOUtilsTest {
   private static final String TABLE = "test-table";
   public static final TableRow TABLE_ROW = new TableRow().set("BOOK_ID", "1").set("TITLE", "ABC");
   /** A row with wrong field that should cause "TableRow contained unexpected field" error. */
-  public static final TableRow TABLE_ROW_WITH_WRONG_FIELD = new TableRow().set("BOOK_ID", "1")
-      .set("WRONG_FIELD", "ABC");
+  public static final TableRow TABLE_ROW_WITH_WRONG_FIELD =
+      new TableRow().set("BOOK_ID", "1").set("WRONG_FIELD", "ABC");
 
-  @Rule
-  public final TemporaryFolder tmp = new TemporaryFolder();
+  @Rule public final TemporaryFolder tmp = new TemporaryFolder();
 
   private FakeDatasetService fakeDatasetService;
   private BigQueryServices bigQueryServices;
@@ -116,7 +113,8 @@ public class BigQueryIOUtilsTest {
   public void testValidateBqOptionsBatchAtLeastOnceInvalid() {
     options.setUseStorageWriteApiAtLeastOnce(true);
 
-    assertThrows(IllegalArgumentException.class,
+    assertThrows(
+        IllegalArgumentException.class,
         () -> BigQueryIOUtils.validateBQStorageApiOptionsBatch(options));
   }
 
@@ -142,7 +140,8 @@ public class BigQueryIOUtilsTest {
     BigQueryOptions options = PipelineOptionsFactory.as(BigQueryOptions.class);
     options.setUseStorageWriteApiAtLeastOnce(true);
 
-    assertThrows(IllegalArgumentException.class,
+    assertThrows(
+        IllegalArgumentException.class,
         () -> BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options));
   }
 
@@ -152,7 +151,8 @@ public class BigQueryIOUtilsTest {
     options.setUseStorageWriteApiAtLeastOnce(true);
     options.setStorageWriteApiTriggeringFrequencySec(33);
 
-    assertThrows(IllegalArgumentException.class,
+    assertThrows(
+        IllegalArgumentException.class,
         () -> BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options));
   }
 
@@ -162,7 +162,8 @@ public class BigQueryIOUtilsTest {
     options.setUseStorageWriteApiAtLeastOnce(true);
     options.setNumStorageWriteApiStreams(3);
 
-    assertThrows(IllegalArgumentException.class,
+    assertThrows(
+        IllegalArgumentException.class,
         () -> BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options));
   }
 
@@ -170,9 +171,8 @@ public class BigQueryIOUtilsTest {
   public void testWriteResultToBigQueryInsertErrorsWithStreamingInserts() {
     WriteResult writeResult = generateWriteResultsWithError(Pipeline.create(options), TABLE_ROW);
 
-    assertThat(
-        BigQueryIOUtils.writeResultToBigQueryInsertErrors(writeResult, options)).isSameInstanceAs(
-        writeResult.getFailedInsertsWithErr());
+    assertThat(BigQueryIOUtils.writeResultToBigQueryInsertErrors(writeResult, options))
+        .isSameInstanceAs(writeResult.getFailedInsertsWithErr());
   }
 
   @Test
@@ -184,13 +184,14 @@ public class BigQueryIOUtilsTest {
     WriteResult writeResult = generateWriteResultsWithError(pipeline, TABLE_ROW_WITH_WRONG_FIELD);
 
     PAssert.thatSingleton(BigQueryIOUtils.writeResultToBigQueryInsertErrors(writeResult, options))
-        .satisfies(e -> {
-          assertThat(e.getRow()).isEqualTo(TABLE_ROW_WITH_WRONG_FIELD);
-          assertThat(e.getError().getErrors()).hasSize(1);
-          assertThat(e.getError().getErrors().get(0).getMessage()).contains(
-              "TableRow contained unexpected field with name");
-          return null;
-        });
+        .satisfies(
+            e -> {
+              assertThat(e.getRow()).isEqualTo(TABLE_ROW_WITH_WRONG_FIELD);
+              assertThat(e.getError().getErrors()).hasSize(1);
+              assertThat(e.getError().getErrors().get(0).getMessage())
+                  .contains("TableRow contained unexpected field with name");
+              return null;
+            });
 
     pipeline.run();
   }
@@ -209,15 +210,22 @@ public class BigQueryIOUtilsTest {
   }
 
   private WriteResult generateWriteResultsWithError(Pipeline pipeline, TableRow tableRow) {
-    WriteResult writeResult = pipeline.apply(
-            TestStream.create(TableRowJsonCoder.of())
-                .addElements(tableRow)
-                .advanceWatermarkToInfinity())
-        .apply(BigQueryIO.writeTableRows()
-            .withCreateDisposition(CreateDisposition.CREATE_NEVER)
-            .withExtendedErrorInfo()
-            .to(new TableReference().setProjectId(PROJECT).setDatasetId(DATASET).setTableId(TABLE))
-            .withTestServices(bigQueryServices));
+    WriteResult writeResult =
+        pipeline
+            .apply(
+                TestStream.create(TableRowJsonCoder.of())
+                    .addElements(tableRow)
+                    .advanceWatermarkToInfinity())
+            .apply(
+                BigQueryIO.writeTableRows()
+                    .withCreateDisposition(CreateDisposition.CREATE_NEVER)
+                    .withExtendedErrorInfo()
+                    .to(
+                        new TableReference()
+                            .setProjectId(PROJECT)
+                            .setDatasetId(DATASET)
+                            .setTableId(TABLE))
+                    .withTestServices(bigQueryServices));
     return writeResult;
   }
 }

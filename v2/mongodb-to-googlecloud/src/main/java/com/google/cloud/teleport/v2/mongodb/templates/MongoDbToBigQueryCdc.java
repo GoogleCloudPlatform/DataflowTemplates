@@ -65,7 +65,7 @@ public class MongoDbToBigQueryCdc {
           PubSubOptions,
           BigQueryWriteOptions,
           JavascriptDocumentTransformerOptions,
-          BigQueryOptions{}
+          BigQueryOptions {}
 
   /** class ParseAsDocumentsFn. */
   private static class ParseAsDocumentsFn extends DoFn<String, Document> {

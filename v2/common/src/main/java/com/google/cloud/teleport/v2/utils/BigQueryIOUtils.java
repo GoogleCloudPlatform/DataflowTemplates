@@ -43,7 +43,7 @@ public final class BigQueryIOUtils {
     if (options.getUseStorageWriteApi()
         && !options.getUseStorageWriteApiAtLeastOnce()
         && (options.getNumStorageWriteApiStreams() < 1
-        || options.getStorageWriteApiTriggeringFrequencySec() == null)) {
+            || options.getStorageWriteApiTriggeringFrequencySec() == null)) {
       // the number of streams and triggering frequency are only required for exactly-once semantics
       throw new IllegalArgumentException(
           "When streaming with STORAGE_WRITE_API, the number of streams"
@@ -67,11 +67,11 @@ public final class BigQueryIOUtils {
                           error.getRow(),
                           new InsertErrors()
                               .setErrors(
-                                  List.of(
-                                      new ErrorProto().setMessage(error.getErrorMessage()))),
+                                  List.of(new ErrorProto().setMessage(error.getErrorMessage()))),
                           EMPTY_TABLE_REFERENCE);
                     }
-                  })).setCoder(BigQueryInsertErrorCoder.of());
+                  }))
+          .setCoder(BigQueryInsertErrorCoder.of());
     }
     return writeResult.getFailedInsertsWithErr();
   }
