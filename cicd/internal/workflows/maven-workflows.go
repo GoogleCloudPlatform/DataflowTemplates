@@ -31,6 +31,7 @@ import (
 const (
 	// mvn commands
 	cleanInstallCmd  = "clean install"
+	cleanVerifyCmd   = "clean verify"
 	spotlessCheckCmd = "spotless:check"
 
 	// regexes
@@ -96,6 +97,20 @@ func MvnCleanInstall() Workflow {
 }
 
 func (*mvnCleanInstallWorkflow) Run(args ...string) error {
+	return RunForChangedModules(cleanInstallCmd, args...)
+}
+
+type mvnCleanVerifyWorkflow struct{}
+
+func MvnCleanVerify() Workflow {
+	return &mvnCleanVerifyWorkflow{}
+}
+
+func (*mvnCleanVerifyWorkflow) Run(args ...string) error {
+	return RunForChangedModules(cleanVerifyCmd, args...)
+}
+
+func RunForChangedModules(cmd string, args ...string) error {
 	flags.RegisterCommonFlags()
 	flag.Parse()
 
@@ -139,7 +154,7 @@ func (*mvnCleanInstallWorkflow) Run(args ...string) error {
 		return nil
 	}
 
-	return op.RunMavenOnModule(unifiedPom, cleanInstallCmd, strings.Join(modules, ","), args...)
+	return op.RunMavenOnModule(unifiedPom, cmd, strings.Join(modules, ","), args...)
 }
 
 type spotlessCheckWorkflow struct{}
