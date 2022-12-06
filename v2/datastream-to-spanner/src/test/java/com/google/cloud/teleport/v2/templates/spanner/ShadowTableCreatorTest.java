@@ -78,4 +78,29 @@ public class ShadowTableCreatorTest {
     expectedColumns.add("log_position");
     assertThat(columns, is(expectedColumns));
   }
+
+  @Test
+  public void canConstructShadowTableForPostgres() {
+    Ddl testDdl = ProcessInformationSchemaTest.getTestDdl();
+
+    ShadowTableCreator shadowTableCreator = new ShadowTableCreator("postgresql", "shadow_");
+    Table shadowTable = shadowTableCreator.constructShadowTable(testDdl, "Users_interleaved");
+
+    /* Verify
+     * (1) name of shadow table
+     * (2) primary keys columns are same as data tables
+     * (3) Has postgresql sequence information in addition to primary keys columns
+     */
+    assertEquals(shadowTable.name(), "shadow_Users_interleaved");
+    assertThat(shadowTable.primaryKeys(), is(testDdl.table("Users_interleaved").primaryKeys()));
+    Set<String> columns =
+        shadowTable.columns().stream().map(c -> c.name()).collect(Collectors.toSet());
+    Set<String> expectedColumns =
+        testDdl.table("Users_interleaved").primaryKeys().stream()
+            .map(c -> c.name())
+            .collect(Collectors.toSet());
+    expectedColumns.add("timestamp");
+    expectedColumns.add("lsn");
+    assertThat(columns, is(expectedColumns));
+  }
 }

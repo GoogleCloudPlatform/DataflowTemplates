@@ -40,6 +40,8 @@ class ShadowTableCreator {
       sortOrderMap = DatastreamConstants.ORACLE_SORT_ORDER;
     } else if (DatastreamConstants.MYSQL_SOURCE_TYPE.equals(sourceType)) {
       sortOrderMap = DatastreamConstants.MYSQL_SORT_ORDER;
+    } else if (DatastreamConstants.POSTGRES_SOURCE_TYPE.equals(sourceType)) {
+      sortOrderMap = DatastreamConstants.POSTGRES_SORT_ORDER;
     } else {
       sortOrderMap = null;
       throw new IllegalArgumentException(
