@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
-
 import com.google.auto.value.AutoValue;
 import com.google.gson.Gson;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.DataChangeRecord;

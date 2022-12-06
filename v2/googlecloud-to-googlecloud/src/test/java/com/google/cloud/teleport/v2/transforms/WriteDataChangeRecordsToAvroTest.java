@@ -42,9 +42,10 @@ import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Test cases for the {@link WriteDataChangeRecordsToPubSubAvroTest} class. */
+/** Test cases for the {@link WriteDataChangeRecordsToAvro} class. */
 @RunWith(JUnit4.class)
 public class WriteDataChangeRecordsToAvroTest {
+
   /** Rule for pipeline testing. */
   @Rule public final transient TestPipeline testPipeline = TestPipeline.create();
   /** Rule for exception testing. */
@@ -65,20 +66,10 @@ public class WriteDataChangeRecordsToAvroTest {
     Pipeline p = Pipeline.create(options);
     PCollection<com.google.cloud.teleport.v2.DataChangeRecord> dataChangeRecords =
         p.apply("CreateInput", Create.of(dataChangeRecord))
-            .apply(
-                "Write DataChangeRecord into AVRO",
-                ParDo.of(
-                    new DoFn<DataChangeRecord, com.google.cloud.teleport.v2.DataChangeRecord>() {
-                      @ProcessElement
-                      public void processElement(ProcessContext context) {
-                        DataChangeRecord record = context.element();
-                        context.output(dataChangeRecordToAvro(record));
-                      }
-                    }));
+            .apply("Write DataChangeRecord into AVRO", ParDo.of(new DataChangeRecordToAvroFn()));
     p.run();
 
-    PAssert.that(dataChangeRecords)
-        .containsInAnyOrder(WriteDataChangeRecordsToAvro.dataChangeRecordToAvro(dataChangeRecord));
+    PAssert.that(dataChangeRecords).containsInAnyOrder(dataChangeRecordToAvro(dataChangeRecord));
     testPipeline.run();
   }
 
@@ -105,5 +96,15 @@ public class WriteDataChangeRecordsToAvroTest {
         "transactionTag",
         /*isSystemTransaction*/ false,
         null);
+  }
+
+  static class DataChangeRecordToAvroFn
+      extends DoFn<DataChangeRecord, com.google.cloud.teleport.v2.DataChangeRecord> {
+
+    @ProcessElement
+    public void processElement(ProcessContext context) {
+      DataChangeRecord record = context.element();
+      context.output(dataChangeRecordToAvro(record));
+    }
   }
 }
