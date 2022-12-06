@@ -175,6 +175,10 @@
       <version>${hadoop.version}</version>
       <exclusions>
         <exclusion>
+          <groupId>org.apache.commons</groupId>
+          <artifactId>commons-lang3</artifactId>
+        </exclusion>
+        <exclusion>
           <groupId>org.codehaus.jackson</groupId>
           <artifactId>*</artifactId>
         </exclusion>
@@ -531,6 +535,9 @@
               <ignoreNonCompile>true</ignoreNonCompile>
               <failOnWarning>true</failOnWarning>
               <ignoredUsedUndeclaredDependencies>
+                <ignoredUsedUndeclaredDependency>
+                  com.google.api.grpc:proto-google-cloud-pubsub-v1
+                </ignoredUsedUndeclaredDependency>
                 <ignoredUsedUndeclaredDependency>
                   org.apache.beam:beam-vendor-grpc-1_48_1
                 </ignoredUsedUndeclaredDependency>

@@ -148,8 +148,7 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
   @Test
   public void testMongoDbToBigQuery() throws IOException {
     // Arrange
-    String name = testName.getMethodName();
-    String jobName = createJobName(name);
+    String jobName = createJobName(testName.getMethodName());
 
     String collectionName = testName.getMethodName();
     List<Document> mongoDocuments = generateDocuments();

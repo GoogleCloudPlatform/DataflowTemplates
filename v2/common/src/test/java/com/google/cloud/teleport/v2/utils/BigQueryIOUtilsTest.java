@@ -210,22 +210,20 @@ public class BigQueryIOUtilsTest {
   }
 
   private WriteResult generateWriteResultsWithError(Pipeline pipeline, TableRow tableRow) {
-    WriteResult writeResult =
-        pipeline
-            .apply(
-                TestStream.create(TableRowJsonCoder.of())
-                    .addElements(tableRow)
-                    .advanceWatermarkToInfinity())
-            .apply(
-                BigQueryIO.writeTableRows()
-                    .withCreateDisposition(CreateDisposition.CREATE_NEVER)
-                    .withExtendedErrorInfo()
-                    .to(
-                        new TableReference()
-                            .setProjectId(PROJECT)
-                            .setDatasetId(DATASET)
-                            .setTableId(TABLE))
-                    .withTestServices(bigQueryServices));
-    return writeResult;
+    return pipeline
+        .apply(
+            TestStream.create(TableRowJsonCoder.of())
+                .addElements(tableRow)
+                .advanceWatermarkToInfinity())
+        .apply(
+            BigQueryIO.writeTableRows()
+                .withCreateDisposition(CreateDisposition.CREATE_NEVER)
+                .withExtendedErrorInfo()
+                .to(
+                    new TableReference()
+                        .setProjectId(PROJECT)
+                        .setDatasetId(DATASET)
+                        .setTableId(TABLE))
+                .withTestServices(bigQueryServices));
   }
 }
