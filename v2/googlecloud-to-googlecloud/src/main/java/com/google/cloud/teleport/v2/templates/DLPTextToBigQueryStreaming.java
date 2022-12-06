@@ -107,34 +107,52 @@ import org.slf4j.LoggerFactory;
  *
  * <pre>
  * # Set the pipeline vars
- * PROJECT_ID=PROJECT ID HERE
- * BUCKET_NAME=BUCKET NAME HERE
- * PIPELINE_FOLDER=gs://${BUCKET_NAME}/dataflow/pipelines/dlp-text-to-bigquery
+ * export PROJECT=<project id>
+ * export TEMPLATE_MODULE=googlecloud-to-googlecloud
+ * export TEMPLATE_NAME=dlptext-to-bigquery
+ * export BUCKET_NAME=gs://<bucket name>
+ * export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${TEMPLATE_NAME}-image
+ * export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
+ * export BASE_CONTAINER_IMAGE_VERSION=latest
+ * export APP_ROOT=/template/${TEMPLATE_NAME}
+ * export COMMAND_SPEC=${APP_ROOT}/resources/${TEMPLATE_NAME}-command-spec.json
+ * export TEMPLATE_IMAGE_SPEC=${BUCKET_NAME}/images/${TEMPLATE_NAME}-image-spec.json
  *
- * # Set the runner
- * RUNNER=DataflowRunner
+ * gcloud config set project ${PROJECT}
  *
- * # Build the template
- * mvn compile exec:java \
- * -Dexec.mainClass=com.google.cloud.teleport.templates.DLPTextToBigQueryStreaming \
- * -Dexec.cleanupDaemonThreads=false \
- * -Dexec.args=" \
- * --project=${PROJECT_ID} \
- * --stagingLocation=${PIPELINE_FOLDER}/staging \
- * --tempLocation=${PIPELINE_FOLDER}/temp \
- * --templateLocation=${PIPELINE_FOLDER}/template \
- * --runner=${RUNNER}"
+ * # Build and push image to Google Container Repository
+ * mvn package \
+ *   -Dimage=${TARGET_GCR_IMAGE} \
+ *   -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
+ *   -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \
+ *   -Dapp-root=${APP_ROOT} \
+ *   -Dcommand-spec=${COMMAND_SPEC} \
+ *   -Djib.applicationCache=/tmp/jib-cache \
+ *   -am -pl ${TEMPLATE_MODULE}
  *
- * # Execute the template
- * JOB_NAME=dlp-text-to-bigquery-$USER-`date +"%Y%m%d-%H%M%S%z"`
+ * # Create and upload image spec
+ * echo '{
+ *  "image":"'${TARGET_GCR_IMAGE}'",
+ *  "metadata":{
+ *    "name":"DLP Text To BigQuery Streaming",
+ *    "description":"Apply DLP to CSV files in GCS and store obfuscated data to BigQuery",
+ *  },
+ *  "sdk_info":{"language":"JAVA"}
+ * }' > image_spec.json
+ * gsutil cp image_spec.json ${TEMPLATE_IMAGE_SPEC}
+ * rm image_spec.json
  *
- * gcloud dataflow jobs run ${JOB_NAME} \
- * --gcs-location=${PIPELINE_FOLDER}/template \
- * --zone=us-east1-d \
- * --parameters \
- * "inputFilePattern=gs://<bucketName>/<fileName>.csv, batchSize=15,datasetName=<BQDatasetId>,
- *  dlpProjectId=<projectId>,
- *  deidentifyTemplateName=projects/{projectId}/deidentifyTemplates/{deIdTemplateId}
+ * # Run template
+ * export JOB_NAME="${TEMPLATE_MODULE}-`date +%Y%m%d-%H%M%S-%N`"
+ * gcloud beta dataflow flex-template run ${JOB_NAME} \
+ *       --project=${PROJECT} --region=us-central1 \
+ *       --template-file-gcs-location=${TEMPLATE_IMAGE_SPEC} \
+ *       --parameters \
+ *       "inputFilePattern=gs://<bucketName>/<fileName>.csv,\
+ *        batchSize=15,\
+ *        datasetName=<BQDatasetId>,\
+ *        dlpProjectId=<projectId>,\
+ *        deidentifyTemplateName=projects/{projectId}/deidentifyTemplates/{deIdTemplateId}"
  * </pre>
  */
 @Template(
