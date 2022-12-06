@@ -29,6 +29,7 @@ import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters.WriteKafkaMessageErrors;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
+import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableMap;
@@ -46,6 +47,7 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -147,7 +149,9 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "Kafka to BigQuery",
     description =
-        "A streaming pipeline which ingests data in JSON format from Kafka, performs a transform via a user defined JavaScript function, and writes to a pre-existing BigQuery table.",
+        "A streaming pipeline which ingests data in JSON format from Kafka, performs a transform"
+            + " via a user defined JavaScript function, and writes to a pre-existing BigQuery"
+            + " table.",
     optionsClass = KafkaToBQOptions.class,
     flexContainerName = "kafka-to-bigquery",
     contactInformation = "https://cloud.google.com/support")
@@ -183,7 +187,8 @@ public class KafkaToBigQuery {
    * The {@link KafkaToBQOptions} class provides the custom execution options passed by the executor
    * at the command-line.
    */
-  public interface KafkaToBQOptions extends KafkaReadOptions, JavascriptTextTransformerOptions {
+  public interface KafkaToBQOptions
+      extends KafkaReadOptions, JavascriptTextTransformerOptions, BigQueryOptions {
 
     @TemplateParameter.BigQueryTable(
         order = 1,
@@ -250,9 +255,9 @@ public class KafkaToBigQuery {
         optional = true,
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
-            "Messages failed to reach the output table for all kind of reasons (e.g., mismatched "
-                + "schema, malformed json) are written to this table. If it doesn't exist, it will be "
-                + "created during pipeline execution.",
+            "Messages failed to reach the output table for all kind of reasons (e.g., mismatched"
+                + " schema, malformed json) are written to this table. If it doesn't exist, it will"
+                + " be created during pipeline execution.",
         example = "your-project-id:your-dataset.your-table-name")
     String getOutputDeadletterTable();
 
@@ -284,6 +289,9 @@ public class KafkaToBigQuery {
    * @return The pipeline result.
    */
   public static PipelineResult run(KafkaToBQOptions options) {
+
+    // Validate BQ STORAGE_WRITE_API options
+    BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options);
 
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
@@ -355,7 +363,6 @@ public class KafkaToBigQuery {
                     .withCreateDisposition(CreateDisposition.CREATE_NEVER)
                     .withWriteDisposition(WriteDisposition.WRITE_APPEND)
                     .withExtendedErrorInfo()
-                    .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
                     .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors())
                     .to(options.getOutputTableSpec()));
 
@@ -364,8 +371,7 @@ public class KafkaToBigQuery {
      * Elements that failed inserts into BigQuery are extracted and converted to FailsafeElement
      */
     PCollection<FailsafeElement<String, String>> failedInserts =
-        writeResult
-            .getFailedInsertsWithErr()
+        BigQueryIOUtils.writeResultToBigQueryInsertErrors(writeResult, options)
             .apply(
                 "WrapInsertionErrors",
                 MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())
