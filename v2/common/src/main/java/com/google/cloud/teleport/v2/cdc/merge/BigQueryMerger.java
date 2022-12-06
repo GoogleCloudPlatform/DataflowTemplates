@@ -172,8 +172,7 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
     public void setUp() {
       if (bigQueryClient == null) {
         BigQueryOptions.Builder optionsBuilder = BigQueryOptions.newBuilder();
-        if (mergeConfiguration.projectId() != null
-            && !mergeConfiguration.projectId().isEmpty()) {
+        if (mergeConfiguration.projectId() != null && !mergeConfiguration.projectId().isEmpty()) {
           optionsBuilder = optionsBuilder.setProjectId(mergeConfiguration.projectId());
         }
         bigQueryClient = optionsBuilder.build().getService();
