@@ -161,6 +161,10 @@
           <groupId>io.grpc</groupId>
           <artifactId>grpc-core</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
 
