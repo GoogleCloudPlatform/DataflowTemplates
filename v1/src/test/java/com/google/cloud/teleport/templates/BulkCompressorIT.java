@@ -54,8 +54,7 @@ public final class BulkCompressorIT extends TemplateTestBase {
   @Test
   public void testCompressGzip() throws IOException {
     // Arrange
-    String name = testName.getMethodName();
-    String jobName = createJobName(name);
+    String jobName = createJobName(testName.getMethodName());
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(jobName, specPath)

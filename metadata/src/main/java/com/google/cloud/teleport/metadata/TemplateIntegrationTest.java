@@ -27,4 +27,6 @@ public @interface TemplateIntegrationTest {
 
   /** Class with the template that is being tested. */
   Class<?> value();
+
+  String template() default "";
 }
