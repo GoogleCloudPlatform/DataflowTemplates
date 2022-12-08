@@ -24,13 +24,13 @@ import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.Jav
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.MongoDbOptions;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.PubSubOptions;
 import com.google.cloud.teleport.v2.mongodb.templates.MongoDbToBigQueryCdc.Options;
+import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
 import com.google.cloud.teleport.v2.transforms.JavascriptDocumentTransformer.TransformDocumentViaJavascript;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import java.io.IOException;
 import javax.script.ScriptException;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -65,7 +65,7 @@ public class MongoDbToBigQueryCdc {
           PubSubOptions,
           BigQueryWriteOptions,
           JavascriptDocumentTransformerOptions,
-          BigQueryOptions {}
+          BigQueryStorageApiStreamingOptions {}
 
   /** class ParseAsDocumentsFn. */
   private static class ParseAsDocumentsFn extends DoFn<String, Document> {

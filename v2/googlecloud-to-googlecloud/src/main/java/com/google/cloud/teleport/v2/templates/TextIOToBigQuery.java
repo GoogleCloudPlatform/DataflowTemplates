@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
+import com.google.cloud.teleport.v2.options.BigQueryStorageApiBatchOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.TransformTextViaJavascript;
@@ -36,7 +37,6 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
@@ -54,7 +54,9 @@ public class TextIOToBigQuery {
 
   /** Options supported by {@link TextIOToBigQuery}. */
   public interface Options
-      extends DataflowPipelineOptions, JavascriptTextTransformerOptions, BigQueryOptions {
+      extends DataflowPipelineOptions,
+          JavascriptTextTransformerOptions,
+          BigQueryStorageApiBatchOptions {
     @Description("The GCS location of the text you'd like to process")
     String getInputFilePattern();
 

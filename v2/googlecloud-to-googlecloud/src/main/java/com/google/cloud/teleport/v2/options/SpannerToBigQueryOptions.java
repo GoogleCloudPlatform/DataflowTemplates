@@ -17,14 +17,14 @@ package com.google.cloud.teleport.v2.options;
 
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.v2.options.BigQueryCommonOptions.WriteOptions;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation.Required;
 
 /** Custom options for {@link com.google.cloud.teleport.v2.templates.SpannerToBigQuery} pipeline. */
-public interface SpannerToBigQueryOptions extends PipelineOptions, WriteOptions, BigQueryOptions {
+public interface SpannerToBigQueryOptions
+    extends PipelineOptions, WriteOptions, BigQueryStorageApiBatchOptions {
   @Description("Spanner table to read data from.")
   @Required
   String getSpannerTableId();

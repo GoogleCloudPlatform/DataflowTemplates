@@ -26,6 +26,7 @@ import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.cdc.mappers.BigQueryMappers;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.io.WindowedFilenamePolicy;
+import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
 import com.google.cloud.teleport.v2.templates.PubSubCdcToBigQuery.Options;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.BigQueryTableConfigManager;
@@ -49,7 +50,6 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
@@ -161,7 +161,8 @@ public class PubSubCdcToBigQuery {
    * The {@link Options} class provides the custom execution options passed by the executor at the
    * command-line.
    */
-  public interface Options extends PipelineOptions, InputUDFOptions, BigQueryOptions {
+  public interface Options
+      extends PipelineOptions, InputUDFOptions, BigQueryStorageApiStreamingOptions {
     @TemplateParameter.PubsubSubscription(
         order = 1,
         description = "Pub/Sub input subscription",

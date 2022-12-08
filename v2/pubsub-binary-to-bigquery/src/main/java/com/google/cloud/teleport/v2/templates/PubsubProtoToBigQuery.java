@@ -22,6 +22,7 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.options.BigQueryCommonOptions.WriteOptions;
+import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
 import com.google.cloud.teleport.v2.options.PubsubCommonOptions.ReadSubscriptionOptions;
 import com.google.cloud.teleport.v2.options.PubsubCommonOptions.WriteTopicOptions;
 import com.google.cloud.teleport.v2.templates.PubsubProtoToBigQuery.PubSubProtoToBigQueryOptions;
@@ -45,7 +46,6 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO.Read;
@@ -95,7 +95,7 @@ public final class PubsubProtoToBigQuery {
           WriteOptions,
           WriteTopicOptions,
           JavascriptTextTransformerOptions,
-          BigQueryOptions {
+          BigQueryStorageApiStreamingOptions {
 
     @TemplateParameter.GcsReadFile(
         order = 1,

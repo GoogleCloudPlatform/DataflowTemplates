@@ -16,11 +16,11 @@
 package com.google.cloud.teleport.v2.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.options.Default;
 
 /** Interface used by the JdbcToBigQuery pipeline to accept user input. */
-public interface JdbcToBigQueryOptions extends CommonTemplateOptions, BigQueryOptions {
+public interface JdbcToBigQueryOptions
+    extends CommonTemplateOptions, BigQueryStorageApiBatchOptions {
 
   @TemplateParameter.Text(
       order = 1,
@@ -52,8 +52,8 @@ public interface JdbcToBigQueryOptions extends CommonTemplateOptions, BigQueryOp
       },
       description = "JDBC connection URL string.",
       helpText =
-          "Url connection string to connect to the JDBC source. Connection string can "
-              + "be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS.",
+          "Url connection string to connect to the JDBC source. Connection string can be passed in"
+              + " as plaintext or as a base64 encoded string encrypted by Google Cloud KMS.",
       example = "jdbc:mysql://some-host:3306/sampledb")
   String getConnectionURL();
 
@@ -65,7 +65,8 @@ public interface JdbcToBigQueryOptions extends CommonTemplateOptions, BigQueryOp
       regexes = {"^[a-zA-Z0-9_;!*&=@#-:\\/]+$"},
       description = "JDBC connection property string.",
       helpText =
-          "Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*.",
+          "Properties string to use for the JDBC connection. Format of the string must be"
+              + " [propertyName=property;]*.",
       example = "unicode=true;characterEncoding=UTF-8")
   String getConnectionProperties();
 
@@ -109,7 +110,8 @@ public interface JdbcToBigQueryOptions extends CommonTemplateOptions, BigQueryOp
       order = 8,
       description = "BigQuery output table",
       helpText =
-          "BigQuery table location to write the output to. The name should be in the format <project>:<dataset>.<table_name>. The table's schema must match input objects.")
+          "BigQuery table location to write the output to. The name should be in the format"
+              + " <project>:<dataset>.<table_name>. The table's schema must match input objects.")
   String getOutputTable();
 
   void setOutputTable(String value);
@@ -129,7 +131,9 @@ public interface JdbcToBigQueryOptions extends CommonTemplateOptions, BigQueryOp
       optional = true,
       description = "Google Cloud KMS key",
       helpText =
-          "If this parameter is provided, password, user name and connection string should all be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt",
+          "If this parameter is provided, password, user name and connection string should all be"
+              + " passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. See:"
+              + " https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt",
       example = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key")
   String getKMSEncryptionKey();
 
@@ -140,7 +144,8 @@ public interface JdbcToBigQueryOptions extends CommonTemplateOptions, BigQueryOp
       optional = true,
       description = "Whether to use column alias to map the rows.",
       helpText =
-          "If enabled (set to true) the pipeline will consider column alias (\"AS\") instead of the column name to map the rows to BigQuery. Defaults to false.")
+          "If enabled (set to true) the pipeline will consider column alias (\"AS\") instead of the"
+              + " column name to map the rows to BigQuery. Defaults to false.")
   @Default.Boolean(false)
   Boolean getUseColumnAlias();
 
@@ -151,7 +156,8 @@ public interface JdbcToBigQueryOptions extends CommonTemplateOptions, BigQueryOp
       optional = true,
       description = "Whether to truncate data before writing",
       helpText =
-          "If enabled (set to true) the pipeline will truncate before loading data into BigQuery. Defaults to false, which is used to only append data.")
+          "If enabled (set to true) the pipeline will truncate before loading data into BigQuery."
+              + " Defaults to false, which is used to only append data.")
   @Default.Boolean(false)
   Boolean getIsTruncate();
 

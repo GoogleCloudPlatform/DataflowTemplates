@@ -31,6 +31,7 @@ import com.google.cloud.teleport.v2.cdc.merge.BigQueryMerger;
 import com.google.cloud.teleport.v2.cdc.merge.MergeConfiguration;
 import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
 import com.google.cloud.teleport.v2.templates.DataStreamToBigQuery.Options;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.transforms.StatefulRowCleaner;
@@ -50,7 +51,6 @@ import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.options.Default;
@@ -139,7 +139,10 @@ public class DataStreamToBigQuery {
    * <p>Inherits standard configuration options.
    */
   public interface Options
-      extends PipelineOptions, StreamingOptions, InputUDFOptions, BigQueryOptions {
+      extends PipelineOptions,
+          StreamingOptions,
+          InputUDFOptions,
+          BigQueryStorageApiStreamingOptions {
     @TemplateParameter.Text(
         order = 1,
         description = "File location for Datastream file output in Cloud Storage.",
