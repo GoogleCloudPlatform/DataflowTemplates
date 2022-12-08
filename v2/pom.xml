@@ -286,6 +286,7 @@
                     </configuration>
                     <executions>
                         <execution>
+                            <id>jib</id>
                             <phase>install</phase>
                             <goals>
                                 <goal>build</goal>
@@ -431,6 +432,11 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>${maven-jar-plugin.version}</version>
+            </plugin>
+
+            <plugin>
+                <groupId>com.google.cloud.tools</groupId>
+                <artifactId>jib-maven-plugin</artifactId>
             </plugin>
 
             <plugin>

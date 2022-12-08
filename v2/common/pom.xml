@@ -200,7 +200,7 @@
 
     <build>
         <plugins>
-            <plugin>
+          <plugin>
               <groupId>org.xolstice.maven.plugins</groupId>
               <artifactId>protobuf-maven-plugin</artifactId>
               <version>0.6.1</version>
@@ -221,6 +221,17 @@
                 </execution>
               </executions>
             </plugin>
+          <plugin>
+            <groupId>com.google.cloud.tools</groupId>
+            <artifactId>jib-maven-plugin</artifactId>
+            <executions>
+              <!-- Skip container creation of common module -->
+              <execution>
+                <id>jib</id>
+                <phase>deploy</phase>
+              </execution>
+            </executions>
+          </plugin>
         </plugins>
     </build>
 </project>

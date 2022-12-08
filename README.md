@@ -335,15 +335,18 @@ mvn package -PtemplatesRun \
   -DskipTests \
   -DprojectId="{projectId}" \
   -DbucketName="{bucketName}" \
+  -Dregion="us-central1" \
   -DtemplateName="Cloud_PubSub_to_GCS_Text_Flex" \
   -Dparameters="inputTopic=projects/{projectId}/topics/{topicName},windowDuration=15s,outputDirectory=gs://{outputDirectory}/out,outputFilenamePrefix=output-,outputFilenameSuffix=.txt" \
   -pl v2/googlecloud-to-googlecloud -am
 
 ```
 
-**Note**: When running a template, `-DtemplateName` is mandatory, as `-Dparameters=` are different across templates.
+**Notes**
 
-**Note**: `-PtemplatesRun` is self-contained, i.e., it is not required to run **Deploying/Staging Templates** before. In case you want to run a previously staged template, the existing path can be provided as `-DspecPath=gs://.../path`
+- When running a template, `-DtemplateName` is mandatory, as `-Dparameters=` are different across templates.
+- `-PtemplatesRun` is self-contained, i.e., it is not required to run **Deploying/Staging Templates** before. In case you want to run a previously staged template, the existing path can be provided as `-DspecPath=gs://.../path`
+- `-DjobName="{name}"` may be informed if a specific name is desirable (optional).
 
 
 ## Using UDFs

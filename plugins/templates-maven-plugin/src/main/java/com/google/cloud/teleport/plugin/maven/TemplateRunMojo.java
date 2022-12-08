@@ -61,6 +61,9 @@ public class TemplateRunMojo extends TemplateBaseMojo {
   @Parameter(defaultValue = "${projectId}", readonly = true, required = true)
   protected String projectId;
 
+  @Parameter(defaultValue = "${jobName}", readonly = true, required = false)
+  protected String jobName;
+
   @Parameter(defaultValue = "${templateName}", readonly = true, required = false)
   protected String templateName;
 
@@ -118,6 +121,8 @@ public class TemplateRunMojo extends TemplateBaseMojo {
 
       LOG.info("Staging template {}...", currentTemplateName);
 
+      String useRegion = StringUtils.isNotEmpty(region) ? region : "us-central1";
+
       // TODO: is there a better way to get the plugin on the _same project_?
       TemplateStageMojo configuredMojo =
           new TemplateStageMojo(
@@ -135,16 +140,22 @@ public class TemplateRunMojo extends TemplateBaseMojo {
               artifactRegion,
               baseContainerImage);
 
-      String jobName =
-          templateName.toLowerCase().replace('_', '-')
-              + "-"
-              + new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss").format(new Date());
+      String useJobName =
+          StringUtils.isNotEmpty(jobName)
+              ? jobName
+              : templateName.toLowerCase().replace('_', '-')
+                  + "-"
+                  + new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss").format(new Date());
       Job job;
 
       if (definition.isClassic()) {
-        job = runClassicTemplate(pluginManager, definition, imageSpec, configuredMojo, jobName);
+        job =
+            runClassicTemplate(
+                pluginManager, definition, imageSpec, configuredMojo, useJobName, useRegion);
       } else {
-        job = runFlexTemplate(pluginManager, definition, imageSpec, configuredMojo, jobName);
+        job =
+            runFlexTemplate(
+                pluginManager, definition, imageSpec, configuredMojo, useJobName, useRegion);
       }
 
       LOG.info(
@@ -177,7 +188,8 @@ public class TemplateRunMojo extends TemplateBaseMojo {
       TemplateDefinitions definition,
       ImageSpec imageSpec,
       TemplateStageMojo configuredMojo,
-      String jobName)
+      String jobName,
+      String useRegion)
       throws MojoExecutionException, IOException, InterruptedException {
     Job job;
     String templatePath = configuredMojo.stageClassicTemplate(definition, imageSpec, pluginManager);
@@ -195,7 +207,7 @@ public class TemplateRunMojo extends TemplateBaseMojo {
           "--project",
           projectId,
           "--region",
-          StringUtils.isNotEmpty(region) ? region : "us-central1",
+          useRegion,
           "--staging-location",
           stagingPath,
           "--parameters",
@@ -232,7 +244,8 @@ public class TemplateRunMojo extends TemplateBaseMojo {
       TemplateDefinitions definition,
       ImageSpec imageSpec,
       TemplateStageMojo configuredMojo,
-      String jobName)
+      String jobName,
+      String useRegion)
       throws MojoExecutionException, IOException, InterruptedException {
     Job job;
     String templatePath = configuredMojo.stageFlexTemplate(definition, imageSpec, pluginManager);
@@ -249,7 +262,7 @@ public class TemplateRunMojo extends TemplateBaseMojo {
           "--project",
           projectId,
           "--region",
-          region,
+          useRegion,
           "--parameters",
           parameters
         };
