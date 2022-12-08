@@ -20,6 +20,7 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.Timestamp;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.io.WindowedFilenamePolicy;
 import com.google.cloud.teleport.v2.utils.WriteToGCSUtility;
 import java.util.List;
@@ -32,7 +33,6 @@ import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.TypeCode;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ValueCaptureType;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -233,21 +233,35 @@ public abstract class WriteDataChangeRecordsToGcsAvro
    * executor at the command-line.
    */
   public interface WriteToGcsAvroOptions extends PipelineOptions {
-    @Description("The directory to output files to. Must end with a slash.")
+    @TemplateParameter.GcsWriteFolder(
+        order = 1,
+        description = "Output file directory in Cloud Storage",
+        helpText =
+            "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters.",
+        example = "gs://your-bucket/your-path")
     String getGcsOutputDirectory();
 
     void setGcsOutputDirectory(String gcsOutputDirectory);
 
-    @Description(
-        "The filename prefix of the files to write to. Default file prefix is set to \"output\".")
+    @TemplateParameter.Text(
+        order = 2,
+        optional = true,
+        description = "Output filename prefix of the files to write",
+        helpText = "The prefix to place on each windowed file.",
+        example = "output-")
     @Default.String("output")
     String getOutputFilenamePrefix();
 
     void setOutputFilenamePrefix(String outputFilenamePrefix);
 
-    @Description(
-        "The maximum number of output shards produced when writing. Default number is runner"
-            + " defined.")
+    @TemplateParameter.Integer(
+        order = 3,
+        optional = true,
+        description = "Maximum output shards",
+        helpText =
+            "The maximum number of output shards produced when writing. A higher number of "
+                + "shards means higher throughput for writing to Cloud Storage, but potentially higher "
+                + "data aggregation cost across shards when processing output Cloud Storage files.")
     @Default.Integer(20)
     Integer getNumShards();
 

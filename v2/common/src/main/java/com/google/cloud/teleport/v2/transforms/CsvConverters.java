@@ -18,8 +18,8 @@ package com.google.cloud.teleport.v2.transforms;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
-import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.v2.utils.GCSUtils;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -45,7 +45,6 @@ import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.DefaultValueFactory;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -180,63 +179,100 @@ public class CsvConverters {
   }
 
   /** Necessary {@link PipelineOptions} options for Csv Pipelines. */
-  public interface CsvPipelineOptions extends PipelineOptions, JavascriptTextTransformerOptions {
-    @Description("Pattern to where data lives, ex: gs://mybucket/somepath/*.csv")
+  public interface CsvPipelineOptions extends PipelineOptions {
+    @TemplateParameter.GcsReadFile(
+        order = 1,
+        description = "The input filepattern to read from.",
+        helpText = "Cloud storage file pattern glob to read from. ex: gs://your-bucket/path/*.csv")
     String getInputFileSpec();
 
     void setInputFileSpec(String inputFileSpec);
 
-    @Description("If file(s) contain headers")
+    @TemplateParameter.Boolean(
+        order = 2,
+        optional = true,
+        description = "Input CSV files contain a header record.",
+        helpText =
+            "Input CSV files contain a header record (true/false). Only required if reading CSV files.")
     @Default.Boolean(false)
     Boolean getContainsHeaders();
 
     void setContainsHeaders(Boolean containsHeaders);
 
-    @Description("Deadletter table for failed inserts in form: <project-id>:<dataset>.<table>")
+    @TemplateParameter.BigQueryTable(
+        order = 3,
+        description = "BigQuery Deadletter table to send failed inserts.",
+        helpText =
+            "Messages failed to reach the target for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table.",
+        example = "your-project:your-dataset.your-table-name")
     String getDeadletterTable();
 
     void setDeadletterTable(String deadletterTable);
 
-    @Description("Delimiting character. Default: use delimiter provided in csvFormat")
+    @TemplateParameter.Text(
+        order = 4,
+        optional = true,
+        description = "Column delimiter of the data files.",
+        helpText =
+            "The column delimiter of the input text files. Default: use delimiter provided in csvFormat",
+        example = ",")
     @Default.InstanceFactory(DelimiterFactory.class)
     String getDelimiter();
 
     void setDelimiter(String delimiter);
 
-    @Description(
-        "Csv format according to Apache Commons CSV format. Default is: Apache Commons CSV"
-            + " default\n"
-            + "https://static.javadoc.io/org.apache.commons/commons-csv/1.7/org/apache/commons/csv/CSVFormat.html#DEFAULT\n"
-            + "Must match format names exactly found at: "
-            + "https://static.javadoc.io/org.apache.commons/commons-csv/1.7/org/apache/commons/csv/CSVFormat.Predefined.html")
+    @TemplateParameter.Text(
+        order = 5,
+        optional = true,
+        description = "CSV Format to use for parsing records.",
+        helpText =
+            "CSV format specification to use for parsing records. Default is: Default. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: "
+                + "https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html")
     @Default.String("Default")
     String getCsvFormat();
 
     void setCsvFormat(String csvFormat);
 
-    @Description("Optional: Path to JSON schema, ex gs://path/to/schema. ")
+    @TemplateParameter.Text(
+        order = 6,
+        optional = true,
+        description = "Path to JSON schema",
+        helpText = "Path to JSON schema. Default: null.",
+        example = "gs://path/to/schema")
     String getJsonSchemaPath();
 
     void setJsonSchemaPath(String jsonSchemaPath);
 
-    @Description("Set to true if number of files is in the tens of thousands. Default: false")
+    @TemplateParameter.Boolean(
+        order = 7,
+        optional = true,
+        description = "Set to true if number of files is in the tens of thousands",
+        helpText = "Set to true if number of files is in the tens of thousands.")
     @Default.Boolean(false)
     Boolean getLargeNumFiles();
 
     void setLargeNumFiles(Boolean largeNumFiles);
 
-    @Description(
-        "CSV File encoding format. Default: UTF-8. Allowed Values are US-ASCII"
-            + ",ISO-8859-1,UTF-8,UTF-16")
+    @TemplateParameter.Text(
+        order = 8,
+        optional = true,
+        regexes = {"^(US-ASCII|ISO-8859-1|UTF-8|UTF-16)$"},
+        description = "CSV file encoding",
+        helpText =
+            "CSV file character encoding format. Allowed Values are US-ASCII"
+                + ", ISO-8859-1, UTF-8, UTF-16")
     @Default.String("UTF-8")
     String getCsvFileEncoding();
 
     void setCsvFileEncoding(String csvFileEncoding);
 
-    @Description(
-        "Set to true to enable detailed error logging when CSV parsing fails. Note that this may"
-            + " expose sensitive data in the logs (e.g. if the CSV file contains passwords)."
-            + " Default: false.")
+    @TemplateParameter.Boolean(
+        order = 9,
+        optional = true,
+        description = "Log detailed CSV conversion errors",
+        helpText =
+            "Set to true to enable detailed error logging when CSV parsing fails. Note that this may expose sensitive data in the logs (e.g., if the CSV file contains passwords)."
+                + " Default: false.")
     @Default.Boolean(false)
     Boolean getLogDetailedCsvConversionErrors();
 

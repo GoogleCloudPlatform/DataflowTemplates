@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.io.CdcJdbcIO;
 import com.google.cloud.teleport.v2.transforms.CreateDml;
@@ -38,9 +39,9 @@ import org.slf4j.LoggerFactory;
  * BigQuery Table. If new columns or tables appear, they are automatically added to BigQuery. The
  * data is then inserted into BigQuery staging tables and Merged into a final replica table.
  *
- * <p>NOTE: Future versiosn will support: Pub/Sub, GCS, or Kafka as per DataStream
+ * <p>NOTE: Future version will support: Pub/Sub, GCS, or Kafka as per DataStream
  *
- * <p>Example Usage: TODO: FIX EXMAPLE USAGE
+ * <p>Example Usage: TODO: FIX EXAMPLE USAGE
  *
  * <pre>
  * mvn compile exec:java \
@@ -79,7 +80,11 @@ public class DataStreamToPostgres {
    * <p>Inherits standard configuration options.
    */
   public interface Options extends PipelineOptions, StreamingOptions {
-    @Description("The GCS location of the avro files you'd like to process")
+    @TemplateParameter.GcsReadFile(
+        order = 1,
+        description = "Cloud Storage Input File(s)",
+        helpText = "Path of the file pattern glob to read from.",
+        example = "gs://your-bucket/path/*.avro")
     String getInputFilePattern();
 
     void setInputFilePattern(String value);
@@ -103,14 +108,20 @@ public class DataStreamToPostgres {
 
     void setStreamName(String value);
 
-    @Description(
-        "The starting DateTime used to fetch from GCS (https://tools.ietf.org/html/rfc3339).")
+    @TemplateParameter.DateTime(
+        order = 2,
+        optional = true,
+        description =
+            "The starting DateTime used to fetch from Cloud Storage "
+                + "(https://tools.ietf.org/html/rfc3339).",
+        helpText =
+            "The starting DateTime used to fetch from Cloud Storage "
+                + "(https://tools.ietf.org/html/rfc3339).")
     @Default.String("1970-01-01T00:00:00.00Z")
     String getRfcStartDateTime();
 
     void setRfcStartDateTime(String value);
 
-    // DataStream API Root Url (only used for testing)
     @Description("DataStream API Root Url (only used for testing)")
     @Default.String("https://datastream.googleapis.com/")
     String getDataStreamRootUrl();

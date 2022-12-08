@@ -21,6 +21,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.io.Resources;
@@ -286,8 +287,7 @@ public class CsvConvertersTest {
 
     PCollectionTuple linesTuple = PCollectionTuple.of(CSV_LINES, lines);
 
-    CsvConverters.CsvPipelineOptions options =
-        PipelineOptionsFactory.create().as(CsvConverters.CsvPipelineOptions.class);
+    TestOptions options = PipelineOptionsFactory.create().as(TestOptions.class);
 
     options.setDelimiter(",");
     options.setJavascriptTextTransformGcsPath(TRANSFORM_FILE_PATH);
@@ -337,8 +337,7 @@ public class CsvConvertersTest {
 
     PCollectionTuple linesTuple = PCollectionTuple.of(CSV_LINES, lines);
 
-    CsvConverters.CsvPipelineOptions options =
-        PipelineOptionsFactory.create().as(CsvConverters.CsvPipelineOptions.class);
+    TestOptions options = PipelineOptionsFactory.create().as(TestOptions.class);
 
     options.setDelimiter(",");
     options.setJavascriptTextTransformGcsPath(SCRIPT_PARSE_EXCEPTION_FILE_PATH);
@@ -390,8 +389,7 @@ public class CsvConvertersTest {
 
     PCollectionTuple linesTuple = PCollectionTuple.of(CSV_LINES, lines).and(CSV_HEADERS, header);
 
-    CsvConverters.CsvPipelineOptions options =
-        PipelineOptionsFactory.create().as(CsvConverters.CsvPipelineOptions.class);
+    TestOptions options = PipelineOptionsFactory.create().as(TestOptions.class);
 
     options.setDelimiter(",");
     options.setJavascriptTextTransformFunctionName(null);
@@ -616,4 +614,8 @@ public class CsvConvertersTest {
 
     pipeline.run();
   }
+
+  /** Test Options of CSV with Javascript UDF. */
+  public interface TestOptions
+      extends CsvConverters.CsvPipelineOptions, JavascriptTextTransformerOptions {}
 }

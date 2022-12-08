@@ -16,10 +16,14 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.api.services.datastream.v1.model.SourceConfig;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.templates.DataStreamToSpanner.Options;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.session.ReadSessionFile;
 import com.google.cloud.teleport.v2.templates.session.Session;
@@ -37,7 +41,6 @@ import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
@@ -83,6 +86,16 @@ import org.slf4j.LoggerFactory;
  * --workerMachineType=n1-highcpu-4 \
  * </pre>
  */
+@Template(
+    name = "Cloud_Datastream_to_Spanner",
+    category = TemplateCategory.STREAMING,
+    displayName = "Datastream to Cloud Spanner",
+    description =
+        "Streaming pipeline. Ingests messages from a stream in Datastream, transforms them, and"
+            + " writes them to a pre-existing set of tables in Cloud Spanner.",
+    optionsClass = Options.class,
+    flexContainerName = "datastream-to-spanner",
+    contactInformation = "https://cloud.google.com/support")
 public class DataStreamToSpanner {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpanner.class);
@@ -95,109 +108,194 @@ public class DataStreamToSpanner {
    * <p>Inherits standard configuration options.
    */
   public interface Options extends PipelineOptions, StreamingOptions {
-    @Description("Session file path in GCS that contains mapping information from HarbourBridge")
-    String getSessionFilePath();
 
-    void setSessionFilePath(String value);
-
-    @Description("Instance ID to write to Spanner")
-    String getInstanceId();
-
-    void setInstanceId(String value);
-
-    @Description("Database ID to write to Spanner")
-    String getDatabaseId();
-
-    void setDatabaseId(String value);
-
-    @Description("GCP Project ID to write to Spanner.")
-    String getProjectId();
-
-    void setProjectId(String projectId);
-
-    @Description("Spanner host")
-    @Default.String("https://batch-spanner.googleapis.com")
-    String getSpannerHost();
-
-    void setSpannerHost(String value);
-
-    @Description("The GCS location of the avro files you'd like to process")
+    @TemplateParameter.Text(
+        order = 1,
+        description = "File location for Datastream file output in Cloud Storage.",
+        helpText =
+            "This is the file location for Datastream file output in Cloud Storage. Normally, this"
+                + " will be gs://${BUCKET}/${ROOT_PATH}/.")
     String getInputFilePattern();
 
     void setInputFilePattern(String value);
 
-    @Description(
-        "The Pub/Sub subscription with DataStream file notifications."
-            + "The name should be in the format of "
-            + "projects/<project-id>/subscriptions/<subscription-name>.")
-    String getGcsPubSubSubscription();
-
-    void setGcsPubSubSubscription(String value);
-
-    @Description("The GCS output format avro/json")
+    @TemplateParameter.Enum(
+        order = 2,
+        enumOptions = {"avro", "json"},
+        optional = true,
+        description = "Datastream output file format (avro/json).",
+        helpText =
+            "This is the format of the output file produced by Datastream. By default this will be"
+                + " avro.")
     @Default.String("avro")
     String getInputFileFormat();
 
     void setInputFileFormat(String value);
 
-    @Description("The DataStream Stream to Reference.")
+    @TemplateParameter.GcsReadFile(
+        order = 3,
+        optional = true,
+        description = "Session File Path in Cloud Storage",
+        helpText =
+            "Session file path in Cloud Storage that contains mapping information from"
+                + " HarbourBridge")
+    String getSessionFilePath();
+
+    void setSessionFilePath(String value);
+
+    @TemplateParameter.Text(
+        order = 4,
+        description = "Cloud Spanner Instance Id.",
+        helpText =
+            "This is the name of the Cloud Spanner instance where the changes are replicated.")
+    String getInstanceId();
+
+    void setInstanceId(String value);
+
+    @TemplateParameter.Text(
+        order = 5,
+        description = "Cloud Spanner Database Id.",
+        helpText =
+            "This is the name of the Cloud Spanner database where the changes are replicated.")
+    String getDatabaseId();
+
+    void setDatabaseId(String value);
+
+    @TemplateParameter.ProjectId(
+        order = 6,
+        optional = true,
+        description = "Cloud Spanner Project Id.",
+        helpText = "This is the name of the Cloud Spanner project.")
+    String getProjectId();
+
+    void setProjectId(String projectId);
+
+    @TemplateParameter.Text(
+        order = 7,
+        optional = true,
+        description = "The Cloud Spanner Endpoint to call",
+        helpText = "The Cloud Spanner endpoint to call in the template.",
+        example = "https://batch-spanner.googleapis.com")
+    @Default.String("https://batch-spanner.googleapis.com")
+    String getSpannerHost();
+
+    void setSpannerHost(String value);
+
+    @TemplateParameter.PubsubSubscription(
+        order = 8,
+        optional = true,
+        description = "The Pub/Sub subscription being used in a Cloud Storage notification policy.",
+        helpText =
+            "The Pub/Sub subscription being used in a Cloud Storage notification policy. The name"
+                + " should be in the format of"
+                + " projects/<project-id>/subscriptions/<subscription-name>.")
+    String getGcsPubSubSubscription();
+
+    void setGcsPubSubSubscription(String value);
+
+    @TemplateParameter.Text(
+        order = 9,
+        description = "Datastream stream name.",
+        helpText = "This is the Datastream stream name used to get information.")
     String getStreamName();
 
     void setStreamName(String value);
 
-    @Description("The prefix for shadow tables.")
+    @TemplateParameter.Text(
+        order = 10,
+        optional = true,
+        description = "Cloud Spanner shadow table prefix.",
+        helpText = "The prefix used for the shadow table.")
     @Default.String("shadow_")
     String getShadowTablePrefix();
 
     void setShadowTablePrefix(String value);
 
-    @Description("If true, shadow tables are created for data tables.")
+    @TemplateParameter.Boolean(
+        order = 11,
+        optional = true,
+        description = "If true, create shadow tables in Cloud Spanner.",
+        helpText =
+            "This flag indicates whether shadow tables must be created in Cloud Spanner database.")
     @Default.Boolean(true)
     Boolean getShouldCreateShadowTables();
 
     void setShouldCreateShadowTables(Boolean value);
 
-    @Description(
-        "The starting DateTime used to fetch from GCS " + "(https://tools.ietf.org/html/rfc3339).")
+    @TemplateParameter.DateTime(
+        order = 12,
+        optional = true,
+        description =
+            "The starting DateTime used to fetch from Cloud Storage "
+                + "(https://tools.ietf.org/html/rfc3339).",
+        helpText =
+            "The starting DateTime used to fetch from Cloud Storage "
+                + "(https://tools.ietf.org/html/rfc3339).")
     @Default.String("1970-01-01T00:00:00.00Z")
     String getRfcStartDateTime();
 
     void setRfcStartDateTime(String value);
 
-    @Description("The number of concurrent DataStream files to read.")
+    @TemplateParameter.Integer(
+        order = 13,
+        optional = true,
+        description = "File read concurrency",
+        helpText = "The number of concurrent DataStream files to read.")
     @Default.Integer(30)
     Integer getFileReadConcurrency();
 
     void setFileReadConcurrency(Integer value);
 
-    // Dead Letter Queue GCS Directory
-    @Description("The Dead Letter Queue GCS Prefix to use for errored data")
+    @TemplateParameter.Text(
+        order = 14,
+        optional = true,
+        description = "Dead letter queue directory.",
+        helpText =
+            "This is the file path to store the deadletter queue output. Default is a directory"
+                + " under the Dataflow job's temp location. The default value is enough under most"
+                + " conditions.")
     @Default.String("")
     String getDeadLetterQueueDirectory();
 
     void setDeadLetterQueueDirectory(String value);
 
-    @Description("The number of minutes between DLQ Retries")
-    @Default.Integer(1)
+    @TemplateParameter.Integer(
+        order = 15,
+        optional = true,
+        description = "Dead letter queue retry minutes",
+        helpText = "The number of minutes between dead letter queue retries. Defaults to 10.")
+    @Default.Integer(10)
     Integer getDlqRetryMinutes();
 
     void setDlqRetryMinutes(Integer value);
 
-    @Description("The max number of times temporary errors can be retried through DLQ")
-    @Default.Integer(5)
+    @TemplateParameter.Integer(
+        order = 16,
+        optional = true,
+        description = "Dead letter queue maximum retry count",
+        helpText =
+            "The max number of times temporary errors can be retried through DLQ. Defaults to 500.")
+    @Default.Integer(500)
     Integer getDlqMaxRetryCount();
 
     void setDlqMaxRetryCount(Integer value);
 
     // DataStream API Root Url (only used for testing)
-    @Description("DataStream API Root Url (only used for testing)")
+    @TemplateParameter.Text(
+        order = 17,
+        optional = true,
+        description = "Datastream API Root URL (only required for testing)",
+        helpText = "Datastream API Root URL.")
     @Default.String("https://datastream.googleapis.com/")
     String getDataStreamRootUrl();
 
     void setDataStreamRootUrl(String value);
 
-    // Datastream source type(only used for testing)
-    @Description("Datastream Source type(only used for testing)")
+    @TemplateParameter.Text(
+        order = 18,
+        optional = true,
+        description = "Datastream source type (only required for testing)",
+        helpText = "This is the type of source used for Datastream. Example - mysql/oracle.")
     String getDatastreamSourceType();
 
     void setDatastreamSourceType(String value);

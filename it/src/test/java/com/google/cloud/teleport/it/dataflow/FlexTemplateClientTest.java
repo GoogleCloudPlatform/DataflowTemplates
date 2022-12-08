@@ -27,6 +27,7 @@ import com.google.api.services.dataflow.Dataflow.Projects.Locations;
 import com.google.api.services.dataflow.Dataflow.Projects.Locations.FlexTemplates;
 import com.google.api.services.dataflow.Dataflow.Projects.Locations.FlexTemplates.Launch;
 import com.google.api.services.dataflow.Dataflow.Projects.Locations.Jobs.Get;
+import com.google.api.services.dataflow.model.FlexTemplateRuntimeEnvironment;
 import com.google.api.services.dataflow.model.Job;
 import com.google.api.services.dataflow.model.LaunchFlexTemplateParameter;
 import com.google.api.services.dataflow.model.LaunchFlexTemplateRequest;
@@ -105,7 +106,8 @@ public final class FlexTemplateClientTest {
                 new LaunchFlexTemplateParameter()
                     .setJobName(JOB_NAME)
                     .setContainerSpecGcsPath(SPEC_PATH)
-                    .setParameters(ImmutableMap.of(PARAM_KEY, PARAM_VALUE)));
+                    .setParameters(ImmutableMap.of(PARAM_KEY, PARAM_VALUE))
+                    .setEnvironment(new FlexTemplateRuntimeEnvironment()));
     verify(getFlexTemplates(client))
         .launch(projectCaptor.capture(), regionCaptor.capture(), requestCaptor.capture());
     assertThat(projectCaptor.getValue()).isEqualTo(PROJECT);

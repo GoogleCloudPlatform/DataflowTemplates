@@ -15,13 +15,13 @@
  */
 package com.google.cloud.teleport.v2.options;
 
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.transforms.DeleteBigQueryDataFn;
 import com.google.cloud.teleport.v2.utils.FileFormat.FileFormatOptions;
 import com.google.cloud.teleport.v2.utils.WriteDisposition.WriteDispositionOptions;
 import com.google.cloud.teleport.v2.values.DataplexCompression;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.ExperimentalOptions;
 import org.apache.beam.sdk.options.Validation.Required;
 
@@ -35,96 +35,121 @@ public interface DataplexBigQueryToGcsOptions
         DeleteBigQueryDataFn.Options,
         DataplexUpdateMetadataOptions {
 
-  @Description(
-      "BigQuery dataset to tier data from. Format: "
-          + " projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset"
-          + "-name> (Dataplex asset name) or projects/<name>/datasets/<dataset-id> (BigQuery"
-          + " dataset ID).")
+  @TemplateParameter.Text(
+      order = 1,
+      optional = false,
+      regexes = {
+        "^(projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/lakes\\/[^\\n\\r\\/]+\\/zones\\/[^\\n\\r\\/]+\\/assets\\/[^\\n\\r\\/]+|projects\\/[^\\n\\r\\/]+\\/datasets\\/[^\\n\\r\\/]+)$"
+      },
+      description = "Source BigQuery dataset.",
+      helpText =
+          "Dataplex asset name for the BigQuery dataset to tier data from. Format: projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset name> (Dataplex asset name) or projects/<name>/datasets/<dataset-id> (BigQuery dataset ID).")
   @Required
   String getSourceBigQueryDataset();
 
   void setSourceBigQueryDataset(String sourceBigQueryDataset);
 
-  @Description(
-      "A comma-separated list of BigQuery tables to tier. If none specified, all tables will be"
-          + " tiered. Tables should be specified by their name only (no project/dataset prefix)."
-          + " Case-sensitive!")
+  @TemplateParameter.Text(
+      order = 2,
+      optional = true,
+      regexes = {"^[a-zA-Z0-9_-]+(,[a-zA-Z0-9_-]+)*$"},
+      description = "Source BigQuery tables to tier.",
+      helpText =
+          "A comma-separated list of BigQuery tables to tier. If none specified, all tables will be tiered. Tables should be specified by their name only (no project/dataset prefix). Case-sensitive!")
   String getTables();
 
   void setTables(String tables);
 
-  @Description(
-      "Dataplex asset name for the the Cloud Storage bucket to tier data to. Format:"
-          + " projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset"
-          + " name>.")
+  @TemplateParameter.Text(
+      order = 3,
+      optional = false,
+      regexes = {
+        "^projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/lakes\\/[^\\n\\r\\/]+\\/zones\\/[^\\n\\r\\/]+\\/assets\\/[^\\n\\r\\/]+$"
+      },
+      description = "Dataplex asset name for the destination Cloud Storage bucket.",
+      helpText =
+          "Dataplex asset name for the Cloud Storage bucket to tier data to. Format: projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset name>.")
   @Required
   String getDestinationStorageBucketAssetName();
 
   void setDestinationStorageBucketAssetName(String destinationStorageBucketAssetName);
 
-  @Description(
-      "The parameter can either be: 1) unspecified, 2) date (and optional time) 3) Duration.\n"
-          + "1) If not specified move all tables / partitions.\n"
-          + "2) Move data older than this date (and optional time). For partitioned tables, move"
-          + " partitions last modified before this date/time. For non-partitioned tables, move if"
-          + " the table was last modified before this date/time. If not specified, move all tables"
-          + " / partitions. The date/time is parsed in the default time zone by default, but"
-          + " optinal suffixes Z and +HH:mm are supported. Format: YYYY-MM-DD or"
-          + " YYYY-MM-DDTHH:mm:ss or YYYY-MM-DDTHH:mm:ss+03:00.\n"
-          + "3) Similar to the above (2) but the effective date-time is derived from the current"
-          + " time in the default/system timezone shifted by the provided duration in the format"
-          + " based on ISO-8601 +/-PnDTnHnMn.nS "
-          + "(https://docs.oracle.com/javase/8/docs/api/java/time/Duration.html#parse-java.lang.CharSequence-)."
-          + " However only \"minus\" durations are accepted so only past effective date-times are"
-          + " possible.")
+  @TemplateParameter.Text(
+      order = 4,
+      optional = true,
+      regexes = {
+        "^([0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}(Z|[+-][0-9]{2}:[0-9]{2})?)?|-[pP]([0-9]+(\\.[0-9]+)?Y)?([0-9]+(\\.[0-9]+)?M)?([0-9]+(\\.[0-9]+)?W)?([0-9]+(\\.[0-9]+)?D)?(T([0-9]+(\\.[0-9]+)?H)?([0-9]+(\\.[0-9]+)?M)?([0-9]+(\\.[0-9]+)?S)?)?)$"
+      },
+      description = "Move data older than the date.",
+      helpText =
+          "Move data older than this date (and optional time). For partitioned tables, move partitions last modified before this date/time. For non-partitioned tables, move if the table was last modified before this date/time. If not specified, move all tables / partitions. The date/time is parsed in the default time zone by default, but optional suffixes Z and +HH:mm are supported. Format: YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss or YYYY-MM-DDTHH:mm:ss+03:00. Relative date/time (https://en.wikipedia.org/wiki/ISO_8601#Durations) is also supported. Format: -PnDTnHnMn.nS (must start with -P meaning time in the past).")
   String getExportDataModifiedBeforeDateTime();
 
   void setExportDataModifiedBeforeDateTime(String exportDataModifiedBeforeDateTime);
 
-  @Description(
-      "The maximum number of parallel requests that will be sent to BigQuery when loading"
-          + " table/partition metadata. Default: 5.")
+  @TemplateParameter.Integer(
+      order = 5,
+      description = "Maximum number of parallel requests.",
+      helpText =
+          "The maximum number of parallel requests that will be sent to BigQuery when loading table/partition metadata.")
   @Default.Integer(5)
   @Required
   Integer getMaxParallelBigQueryMetadataRequests();
 
   void setMaxParallelBigQueryMetadataRequests(Integer maxParallelBigQueryMetadataRequests);
 
-  @Description("Output file format in GCS. Format: PARQUET, AVRO, or ORC. Default: PARQUET.")
+  @TemplateParameter.Enum(
+      order = 6,
+      enumOptions = {"AVRO", "PARQUET"},
+      optional = true,
+      description = "Output file format in Cloud Storage.",
+      helpText = "Output file format in Cloud Storage. Format: PARQUET or AVRO.")
   @Default.Enum("PARQUET")
   @Required
   FileFormatOptions getFileFormat();
 
   void setFileFormat(FileFormatOptions fileFormat);
 
-  @Description(
-      "Output file compression. Format: UNCOMPRESSED, SNAPPY, GZIP, or BZIP2. Default:"
-          + " SNAPPY. BZIP2 not supported for PARQUET files.")
+  @TemplateParameter.Enum(
+      order = 7,
+      enumOptions = {"UNCOMPRESSED", "SNAPPY", "GZIP", "BZIP2"},
+      optional = true,
+      description = "Output file compression in Cloud Storage.",
+      helpText =
+          "Output file compression. Format: UNCOMPRESSED, SNAPPY, GZIP, or BZIP2. BZIP2 not supported for PARQUET files.")
   @Default.Enum("SNAPPY")
   DataplexCompression getFileCompression();
 
   void setFileCompression(DataplexCompression fileCompression);
 
-  @Description(
-      "Process partitions with partition ID matching this regexp only. Default: process all.")
+  @TemplateParameter.Text(
+      order = 8,
+      optional = true,
+      description = "Partition ID regular expression filter.",
+      helpText =
+          "Process partitions with partition ID matching this regexp only. Default: process all.")
   String getPartitionIdRegExp();
 
   void setPartitionIdRegExp(String partitionIdRegExp);
 
-  @Description(
-      "Specifies the action that occurs if destination file already exists. Format: OVERWRITE,"
-          + " FAIL, SKIP. Default: SKIP.")
+  @TemplateParameter.Enum(
+      order = 9,
+      enumOptions = {"OVERWRITE", "FAIL", "SKIP"},
+      optional = true,
+      description = "Action that occurs if a destination file already exists.",
+      helpText =
+          "Specifies the action that occurs if a destination file already exists. Format: OVERWRITE, FAIL, SKIP. If SKIP, only files that don't exist in the destination directory will be processed. If FAIL and at least one file already exists, no data will be processed and an error will be produced.")
   @Default.Enum("SKIP")
   WriteDispositionOptions getWriteDisposition();
 
   void setWriteDisposition(WriteDispositionOptions writeDisposition);
 
-  @Description(
-      "Due to a BigQuery limitation, it's not possible to have a partitioned external table with"
-          + " the partition key (in the file path) having the same name as one of the columns in"
-          + " the file. If enforceSamePartitionKey is true (the default), the partition key of"
-          + " the target file will be set to the original partition column name and the column in"
-          + " the file will be renamed. If false, it's the partition key that will be renamed.")
+  @TemplateParameter.Boolean(
+      order = 10,
+      optional = true,
+      description = "Enforce same partition key.",
+      helpText =
+          "Whether to enforce the same partition key. Due to a BigQuery limitation, it's not possible to have a partitioned external table with the partition key (in the file path) to have the same name as one of the columns in the file. If this param is true (the default), the partition key of the target file will be set to the original partition column name and the column in the file will be renamed. If false, it's the partition key that will be renamed.")
   @Default.Boolean(true)
   Boolean getEnforceSamePartitionKey();
 

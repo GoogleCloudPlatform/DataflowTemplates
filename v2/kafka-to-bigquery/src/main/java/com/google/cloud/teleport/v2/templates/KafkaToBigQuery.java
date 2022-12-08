@@ -18,12 +18,17 @@ package com.google.cloud.teleport.v2.templates;
 import static com.google.cloud.teleport.v2.kafka.transforms.KafkaTransform.readFromKafka;
 
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
+import com.google.cloud.teleport.v2.templates.KafkaToBigQuery.KafkaToBQOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters.WriteKafkaMessageErrors;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
+import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableMap;
@@ -43,7 +48,6 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -138,6 +142,15 @@ import org.slf4j.LoggerFactory;
  *      '
  * </pre>
  */
+@Template(
+    name = "Kafka_to_BigQuery",
+    category = TemplateCategory.STREAMING,
+    displayName = "Kafka to BigQuery",
+    description =
+        "A streaming pipeline which ingests data in JSON format from Kafka, performs a transform via a user defined JavaScript function, and writes to a pre-existing BigQuery table.",
+    optionsClass = KafkaToBQOptions.class,
+    flexContainerName = "kafka-to-bigquery",
+    contactInformation = "https://cloud.google.com/support")
 public class KafkaToBigQuery {
 
   /* Logger for class. */
@@ -170,9 +183,14 @@ public class KafkaToBigQuery {
    * The {@link KafkaToBQOptions} class provides the custom execution options passed by the executor
    * at the command-line.
    */
-  public interface KafkaToBQOptions extends KafkaReadOptions {
+  public interface KafkaToBQOptions extends KafkaReadOptions, JavascriptTextTransformerOptions {
 
-    @Description("Table spec to write the output to")
+    @TemplateParameter.BigQueryTable(
+        order = 1,
+        description = "BigQuery output table",
+        helpText =
+            "BigQuery table location to write the output to. The name should be in the format "
+                + "<project>:<dataset>.<table_name>. The table's schema must match input objects.")
     @Required
     String getOutputTableSpec();
 
@@ -184,7 +202,13 @@ public class KafkaToBigQuery {
      * @deprecated This method is no longer acceptable to get bootstrap servers.
      *     <p>Use {@link KafkaToBQOptions#getReadBootstrapServers()} instead.
      */
-    @Description("Kafka Bootstrap Servers")
+    @TemplateParameter.Text(
+        order = 2,
+        optional = true,
+        regexes = {"[,:a-zA-Z0-9._-]+"},
+        description = "Kafka Bootstrap Server list",
+        helpText = "Kafka Bootstrap Server list, separated by commas.",
+        example = "localhost:9092,127.0.0.1:9093")
     @Deprecated
     String getBootstrapServers();
 
@@ -204,7 +228,12 @@ public class KafkaToBigQuery {
      *     <p>Use {@link KafkaToBQOptions#getKafkaReadTopics()} instead.
      */
     @Deprecated
-    @Description("Kafka topic(s) to read the input from")
+    @TemplateParameter.Text(
+        order = 3,
+        regexes = {"[a-zA-Z0-9._-]+"},
+        description = "Kafka topic(s) to read the input from",
+        helpText = "Kafka topic(s) to read the input from.",
+        example = "topic1,topic2")
     String getInputTopics();
 
     /**
@@ -216,22 +245,18 @@ public class KafkaToBigQuery {
     @Deprecated
     void setInputTopics(String inputTopics);
 
-    @Description(
-        "The dead-letter table to output to within BigQuery in <project-id>:<dataset>.<table> "
-            + "format. If it doesn't exist, it will be created during pipeline execution.")
+    @TemplateParameter.BigQueryTable(
+        order = 4,
+        optional = true,
+        description = "The dead-letter table name to output failed messages to BigQuery",
+        helpText =
+            "Messages failed to reach the output table for all kind of reasons (e.g., mismatched "
+                + "schema, malformed json) are written to this table. If it doesn't exist, it will be "
+                + "created during pipeline execution.",
+        example = "your-project-id:your-dataset.your-table-name")
     String getOutputDeadletterTable();
 
     void setOutputDeadletterTable(String outputDeadletterTable);
-
-    @Description("Gcs path to javascript udf source")
-    String getJavascriptTextTransformGcsPath();
-
-    void setJavascriptTextTransformGcsPath(String javascriptTextTransformGcsPath);
-
-    @Description("UDF Javascript Function Name")
-    String getJavascriptTextTransformFunctionName();
-
-    void setJavascriptTextTransformFunctionName(String javascriptTextTransformFunctionName);
   }
 
   /**

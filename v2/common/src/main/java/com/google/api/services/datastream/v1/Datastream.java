@@ -36,8 +36,9 @@ public class Datastream
   // Note: Leave this static initializer at the top of the file.
   static {
     com.google.api.client.util.Preconditions.checkState(
-        com.google.api.client.googleapis.GoogleUtils.MAJOR_VERSION == 1
-            && com.google.api.client.googleapis.GoogleUtils.MINOR_VERSION >= 15,
+        com.google.api.client.googleapis.GoogleUtils.MAJOR_VERSION > 1
+            || (com.google.api.client.googleapis.GoogleUtils.MAJOR_VERSION == 1
+                && com.google.api.client.googleapis.GoogleUtils.MINOR_VERSION >= 15),
         "You are currently running with version %s of google-api-client. "
             + "You need at least version 1.15 of google-api-client to run version "
             + "1.25.0-SNAPSHOT of the Datastream API library.",

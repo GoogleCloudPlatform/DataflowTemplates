@@ -104,7 +104,7 @@ public class ReadFileRangesFn<T> extends DoFn<ReadableFile, T> implements Serial
      * if the exception should be thrown.
      */
     public boolean apply(ReadableFile file, OffsetRange range, Exception e) {
-      LOG.error("Avro File Read Failure {}", file.getMetadata().resourceId().toString());
+      LOG.error("Avro File Read Failure {}", file.getMetadata().resourceId(), e);
       return false;
       // return true;
     }

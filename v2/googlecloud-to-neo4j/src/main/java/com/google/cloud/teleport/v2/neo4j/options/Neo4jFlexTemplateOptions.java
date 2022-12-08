@@ -15,9 +15,9 @@
  */
 package com.google.cloud.teleport.v2.neo4j.options;
 
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.options.CommonTemplateOptions;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.Validation;
 
 /**
@@ -26,30 +26,50 @@ import org.apache.beam.sdk.options.Validation;
  */
 public interface Neo4jFlexTemplateOptions extends CommonTemplateOptions {
 
-  @Description("Path to job specification")
+  @TemplateParameter.GcsReadFile(
+      order = 1,
+      description = "Path to job configuration file",
+      helpText =
+          "The path to the job specification file, which contains the configuration for source and target metadata.")
   @Validation.Required
   String getJobSpecUri();
 
   void setJobSpecUri(String value);
 
-  @Description("Path to Neo4j connection metadata")
+  @TemplateParameter.GcsReadFile(
+      order = 2,
+      description = "Path to Neo4j connection metadata",
+      helpText = "Path to Neo4j connection metadata JSON file.")
   @Validation.Required
   String getNeo4jConnectionUri();
 
   void setNeo4jConnectionUri(String value);
 
-  @Description("Options JSON (see documentation)")
+  @TemplateParameter.Text(
+      order = 3,
+      description = "Options JSON",
+      helpText = "Options JSON. Use runtime tokens.",
+      example = "{token1:value1,token2:value2}")
   String getOptionsJson();
 
   void setOptionsJson(String value);
 
-  @Description("Read query")
+  @TemplateParameter.Text(
+      order = 4,
+      optional = true,
+      description = "Query SQL",
+      helpText = "Override SQL query (optional).")
   @Default.String("")
   String getReadQuery();
 
   void setReadQuery(String value);
 
-  @Description("Input file pattern")
+  @TemplateParameter.GcsReadFile(
+      order = 5,
+      optional = true,
+      description = "Path to Text File",
+      helpText = "Override text file pattern (optional)",
+      example = "gs://your-bucket/path/*.json")
   @Default.String("")
   String getInputFilePattern();
 

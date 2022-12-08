@@ -23,6 +23,8 @@ import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Entity;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Schema;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1SchemaPartitionField;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1StorageFormat;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.clients.DataplexClient;
 import com.google.cloud.teleport.v2.clients.DataplexClientFactory;
 import com.google.cloud.teleport.v2.clients.DefaultDataplexClient;
@@ -32,6 +34,7 @@ import com.google.cloud.teleport.v2.options.DataplexJdbcIngestionOptions;
 import com.google.cloud.teleport.v2.transforms.BeamRowToGenericRecordFn;
 import com.google.cloud.teleport.v2.transforms.DataplexJdbcIngestionUpdateMetadata;
 import com.google.cloud.teleport.v2.transforms.GenericRecordsToGcsPartitioned;
+import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.DataplexJdbcIngestionFilter;
 import com.google.cloud.teleport.v2.utils.DataplexJdbcIngestionNaming;
 import com.google.cloud.teleport.v2.utils.DataplexUtils;
@@ -82,6 +85,15 @@ import org.slf4j.LoggerFactory;
  *
  * <p>TODO: add more comments later
  */
+@Template(
+    name = "Dataplex_JDBC_Ingestion",
+    category = TemplateCategory.BATCH,
+    displayName = "Dataplex JDBC Ingestion",
+    description =
+        "A pipeline that reads from a JDBC source and writes to to a Dataplex asset, which can be either a BigQuery dataset or a Cloud Storage bucket. JDBC connection string, user name and password can be passed in directly as plaintext or encrypted using the Google Cloud KMS API.  If the parameter KMSEncryptionKey is specified, connectionURL, username, and password should be all in encrypted format. A sample curl command for the KMS API encrypt endpoint: curl -s -X POST \"https://cloudkms.googleapis.com/v1/projects/your-project/locations/your-path/keyRings/your-keyring/cryptoKeys/your-key:encrypt\"  -d \"{\\\"plaintext\\\":\\\"PasteBase64EncodedString\\\"}\"  -H \"Authorization: Bearer $(gcloud auth application-default print-access-token)\"  -H \"Content-Type: application/json\"",
+    optionsClass = DataplexJdbcIngestionOptions.class,
+    flexContainerName = "dataplex-jdbc-ingestion",
+    contactInformation = "https://cloud.google.com/support")
 public class DataplexJdbcIngestion {
 
   /* Logger for class.*/
@@ -109,6 +121,8 @@ public class DataplexJdbcIngestion {
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()
             .as(DataplexJdbcIngestionOptions.class);
+
+    BigQueryIOUtils.validateBQStorageApiOptionsBatch(options);
 
     Pipeline pipeline = Pipeline.create(options);
 

@@ -24,6 +24,7 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.LegacySQLTypeName;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.options.BigQueryCommonOptions.WriteOptions;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.v2.utils.SerializableSchemaSupplier;
@@ -58,7 +59,6 @@ import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -212,24 +212,44 @@ public class BigQueryConverters {
    * The {@link BigQueryReadOptions} interface contains option necessary to interface with BigQuery.
    */
   public interface BigQueryReadOptions extends PipelineOptions {
-    @Description("BigQuery table to export from in the form <project>:<dataset>.<table>")
+    @TemplateParameter.BigQueryTable(
+        order = 1,
+        description = "BigQuery source table",
+        helpText = "BigQuery source table spec.",
+        example = "bigquery-project:dataset.input_table")
     String getInputTableSpec();
 
     void setInputTableSpec(String inputTableSpec);
 
-    @Description(
-        "The dead-letter table to output to within BigQuery in <project-id>:<dataset>.<table> "
-            + "format. If it doesn't exist, it will be created during pipeline execution.")
+    @TemplateParameter.BigQueryTable(
+        order = 2,
+        optional = true,
+        description = "The dead-letter table name to output failed messages to BigQuery",
+        helpText =
+            "Messages failed to reach the output table for all kind of reasons (e.g., mismatched "
+                + "schema, malformed json) are written to this table. If it doesn't exist, it will be "
+                + "created during pipeline execution.",
+        example = "your-project-id:your-dataset.your-table-name")
     String getOutputDeadletterTable();
 
     void setOutputDeadletterTable(String outputDeadletterTable);
 
-    @Description("Optional: Query to run against input table")
+    @TemplateParameter.Text(
+        order = 3,
+        optional = true,
+        regexes = {"^.+$"},
+        description = "Input SQL query.",
+        helpText = "Query to be executed on the source to extract the data.",
+        example = "select * from sampledb.sample_table")
     String getQuery();
 
     void setQuery(String query);
 
-    @Description("Set to true to use legacy SQL. Default:false")
+    @TemplateParameter.Boolean(
+        order = 4,
+        optional = true,
+        description = "Set to true to use legacy SQL",
+        helpText = "Set to true to use legacy SQL (only applicable if supplying query).")
     @Default.Boolean(false)
     Boolean getUseLegacySql();
 

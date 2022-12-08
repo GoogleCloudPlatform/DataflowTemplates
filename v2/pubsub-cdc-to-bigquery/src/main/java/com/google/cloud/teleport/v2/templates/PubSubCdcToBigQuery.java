@@ -17,12 +17,16 @@ package com.google.cloud.teleport.v2.templates;
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.bigquery.TableId;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.cdc.dlq.BigQueryDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.cdc.mappers.BigQueryMappers;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.io.WindowedFilenamePolicy;
+import com.google.cloud.teleport.v2.templates.PubSubCdcToBigQuery.Options;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.BigQueryTableConfigManager;
 import com.google.cloud.teleport.v2.transforms.BigQueryDynamicConverters;
@@ -30,6 +34,7 @@ import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.transforms.PubSubToFailSafeElement;
 import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFOptions;
 import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFToTableRow;
+import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import com.google.cloud.teleport.v2.utils.ResourceUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -44,13 +49,13 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesCoder;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -125,6 +130,17 @@ import org.slf4j.LoggerFactory;
  *      --parameters inputSubscription=${SUBSCRIPTION},outputDatasetTemplate=${DATASET_TEMPLATE},outputTableNameTemplate=${TABLE_NAME_TEMPLATE},autoMapTables=${AUTOMAP_TABLES}
  * </pre>
  */
+@Template(
+    name = "PubSub_CDC_to_BigQuery",
+    category = TemplateCategory.STREAMING,
+    displayName = "Pub/Sub CDC to Bigquery",
+    description =
+        "Streaming pipeline. Ingests JSON-encoded messages from a Pub/Sub topic, transforms them"
+            + " using a JavaScript user-defined function (UDF), and writes them to a pre-existing"
+            + " BigQuery table as BigQuery elements.",
+    optionsClass = Options.class,
+    flexContainerName = "pubsub-cdc-to-bigquery",
+    contactInformation = "https://cloud.google.com/support")
 public class PubSubCdcToBigQuery {
 
   /** The log to output status messages to. */
@@ -145,67 +161,115 @@ public class PubSubCdcToBigQuery {
    * The {@link Options} class provides the custom execution options passed by the executor at the
    * command-line.
    */
-  public interface Options extends PipelineOptions, InputUDFOptions {
-    @Description(
-        "The Cloud Pub/Sub subscription to consume from. "
-            + "The name should be in the format of "
-            + "projects/<project-id>/subscriptions/<subscription-name>.")
+  public interface Options extends PipelineOptions, InputUDFOptions, BigQueryOptions {
+    @TemplateParameter.PubsubSubscription(
+        order = 1,
+        description = "Pub/Sub input subscription",
+        helpText =
+            "Pub/Sub subscription to read the input from, in the format of"
+                + " 'projects/your-project-id/subscriptions/your-subscription-name'",
+        example = "projects/your-project-id/subscriptions/your-subscription-name")
     String getInputSubscription();
 
     void setInputSubscription(String value);
 
-    @Description(
-        "This determines if new columns and tables should be automatically created in BigQuery")
+    @TemplateParameter.Boolean(
+        order = 2,
+        description = "Auto Map Tables",
+        helpText =
+            "Determines if new columns and tables should be automatically created in BigQuery")
     @Default.Boolean(true)
     Boolean getAutoMapTables();
 
     void setAutoMapTables(Boolean value);
 
-    @Description("GCS BigQuery schema fields file to be used in DDL")
+    @TemplateParameter.Text(
+        order = 3,
+        optional = true,
+        description = "Cloud Storage file with BigQuery schema fields to be used in DDL",
+        helpText =
+            "This is the file location that contains the table definition to be used when creating"
+                + " the table in BigQuery. If left blank the table will get created with generic"
+                + " string typing.")
     String getSchemaFilePath();
 
     void setSchemaFilePath(String value);
 
-    @Description("The BigQuery Dataset Template")
+    @TemplateParameter.Text(
+        order = 4,
+        description = "BigQuery Dataset Name or Template: dataset_name or {column_name}",
+        helpText = "The name for the dataset to contain the replica table.")
     @Default.String("{_metadata_dataset}")
     String getOutputDatasetTemplate();
 
     void setOutputDatasetTemplate(String value);
 
-    @Description("The BigQuery Table Template")
+    @TemplateParameter.Text(
+        order = 5,
+        description = "BigQuery Table Name or Template: table_name or {column_name}",
+        helpText =
+            "The location of the BigQuery table to write the output to. If a table does not "
+                + "already exist one will be created automatically.")
     @Default.String("_metadata_table")
     String getOutputTableNameTemplate();
 
     void setOutputTableNameTemplate(String value);
 
-    @Description("DEPRECATED: Table spec to write the output to")
+    @TemplateParameter.BigQueryTable(
+        order = 6,
+        description = "BigQuery output table (Deprecated)",
+        helpText =
+            "BigQuery table location to write the output to. The name should be in the format "
+                + "<project>:<dataset>.<table_name>. The table's schema must match input objects.")
     String getOutputTableSpec();
 
     void setOutputTableSpec(String value);
 
-    @Description(
-        "The dead-letter table to output to within BigQuery in <project-id>:<dataset>.<table> "
-            + "format. If it doesn't exist, it will be created during pipeline execution.")
+    @TemplateParameter.BigQueryTable(
+        order = 7,
+        description = "The dead-letter table name to output failed messages to BigQuery",
+        helpText =
+            "Messages failed to reach the output table for all kind of reasons (e.g., mismatched"
+                + " schema, malformed json) are written to this table. If it doesn't exist, it will"
+                + " be created during pipeline execution. If not specified,"
+                + " \"outputTableSpec_error_records\" is used instead.",
+        example = "your-project-id:your-dataset.your-table-name")
     String getOutputDeadletterTable();
 
     void setOutputDeadletterTable(String value);
 
     // Dead Letter Queue GCS Directory
-    @Description("The Dead Letter Queue GCS Prefix to use for errored data")
+    @TemplateParameter.GcsWriteFolder(
+        order = 8,
+        optional = true,
+        description = "Dead Letter Queue Directory",
+        helpText =
+            "The name of the directory on Cloud Storage you want to write dead letters messages to")
     @Default.String("")
     String getDeadLetterQueueDirectory();
 
     void setDeadLetterQueueDirectory(String value);
 
-    // Window Duration
-    @Description("The window duration for DLQ files")
+    @TemplateParameter.Duration(
+        order = 9,
+        optional = true,
+        description = "Window duration",
+        helpText =
+            "The window duration/size in which DLQ data will be written to Cloud Storage. Allowed"
+                + " formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh"
+                + " (for hours, example: 2h).",
+        example = "5m")
     @Default.String("5s")
     String getWindowDuration();
 
     void setWindowDuration(String value);
 
     // Thread Count
-    @Description("The number of threads to spawn")
+    @TemplateParameter.Text(
+        order = 10,
+        optional = true,
+        description = "Thread Number",
+        helpText = "The number of parallel threads you want to split your data into")
     @Default.Integer(100)
     Integer getThreadCount();
 
@@ -222,6 +286,7 @@ public class PubSubCdcToBigQuery {
    */
   public static void main(String[] args) {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
+    BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options);
 
     run(options);
   }
@@ -370,7 +435,6 @@ public class PubSubCdcToBigQuery {
                 .withCreateDisposition(CreateDisposition.CREATE_NEVER)
                 .withWriteDisposition(WriteDisposition.WRITE_APPEND)
                 .withExtendedErrorInfo()
-                .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
                 .withFailedInsertRetryPolicy(InsertRetryPolicy.alwaysRetry()));
 
     /*
@@ -383,8 +447,7 @@ public class PubSubCdcToBigQuery {
     // TODO: Cover tableRowRecords.get(TRANSFORM_DEADLETTER_OUT) error values
     if (options.getDeadLetterQueueDirectory() != null) {
 
-      writeResult
-          .getFailedInsertsWithErr()
+      BigQueryIOUtils.writeResultToBigQueryInsertErrors(writeResult, options)
           .apply(
               "DLQ: Write Insert Failures to GCS",
               MapElements.via(new BigQueryDeadLetterQueueSanitizer()))
@@ -440,8 +503,7 @@ public class PubSubCdcToBigQuery {
 
     } else {
       PCollection<FailsafeElement<String, String>> failedInserts =
-          writeResult
-              .getFailedInsertsWithErr()
+          BigQueryIOUtils.writeResultToBigQueryInsertErrors(writeResult, options)
               .apply(
                   "WrapInsertionErrors",
                   MapElements.into(FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor())

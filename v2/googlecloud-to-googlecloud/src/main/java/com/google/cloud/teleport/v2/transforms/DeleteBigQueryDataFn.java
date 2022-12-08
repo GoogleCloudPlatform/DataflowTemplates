@@ -19,6 +19,7 @@ import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryOptions;
 import com.google.cloud.bigquery.QueryJobConfiguration;
 import com.google.cloud.bigquery.TableId;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.values.BigQueryTable;
 import com.google.cloud.teleport.v2.values.BigQueryTablePartition;
 import com.google.common.annotations.VisibleForTesting;
@@ -27,7 +28,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -164,8 +164,12 @@ public class DeleteBigQueryDataFn extends DoFn<KV<BigQueryTable, BigQueryTablePa
 
   /** Pipeline options supported by {@link DeleteBigQueryDataFn}. */
   public interface Options extends PipelineOptions {
-    @Description(
-        "Whether to delete source data from BigQuery after a successful export. Default: NO.")
+    @TemplateParameter.Boolean(
+        order = 1,
+        optional = true,
+        description = "Delete source data from BigQuery.",
+        helpText =
+            "Whether to delete source data from BigQuery after a successful export. Format: true or false.")
     @Default.Boolean(false)
     @Required
     Boolean getDeleteSourceData();

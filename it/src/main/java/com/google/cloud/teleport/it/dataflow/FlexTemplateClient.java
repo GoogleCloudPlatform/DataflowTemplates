@@ -19,6 +19,7 @@ import static com.google.cloud.teleport.it.logging.LogStrings.formatForLogging;
 
 import com.google.api.client.googleapis.util.Utils;
 import com.google.api.services.dataflow.Dataflow;
+import com.google.api.services.dataflow.model.FlexTemplateRuntimeEnvironment;
 import com.google.api.services.dataflow.model.Job;
 import com.google.api.services.dataflow.model.LaunchFlexTemplateParameter;
 import com.google.api.services.dataflow.model.LaunchFlexTemplateRequest;
@@ -64,19 +65,26 @@ public final class FlexTemplateClient extends AbstractDataflowTemplateClient {
         new LaunchFlexTemplateParameter()
             .setJobName(options.jobName())
             .setParameters(options.parameters())
-            .setContainerSpecGcsPath(options.specPath());
+            .setContainerSpecGcsPath(options.specPath())
+            .setEnvironment(buildEnvironment(options));
     LaunchFlexTemplateRequest request =
         new LaunchFlexTemplateRequest().setLaunchParameter(parameter);
     LOG.info("Sending request:\n{}", formatForLogging(request));
 
     LaunchFlexTemplateResponse response =
         client.projects().locations().flexTemplates().launch(project, region, request).execute();
-    LOG.info("Received response:\n{}", formatForLogging(response));
-
     Job job = response.getJob();
+    printJobResponse(job);
+
     // The initial response will not return the state, so need to explicitly get it
     JobState state = getJobStatus(project, region, job.getId());
     return JobInfo.builder().setJobId(job.getId()).setState(state).build();
+  }
+
+  private FlexTemplateRuntimeEnvironment buildEnvironment(LaunchConfig options) {
+    FlexTemplateRuntimeEnvironment environment = new FlexTemplateRuntimeEnvironment();
+    environment.putAll(options.environment());
+    return environment;
   }
 
   /** Builder for {@link FlexTemplateClient}. */

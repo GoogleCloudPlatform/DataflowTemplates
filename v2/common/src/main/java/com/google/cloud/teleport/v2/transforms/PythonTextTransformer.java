@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.transforms;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Strings;
 import com.google.common.io.CharStreams;
@@ -48,10 +49,8 @@ import org.apache.beam.sdk.io.fs.MatchResult.Status;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.DoFn.StartBundle;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
@@ -73,22 +72,43 @@ public abstract class PythonTextTransformer implements Serializable {
 
   /** Necessary CLI options for running UDF function. */
   public interface PythonTextTransformerOptions extends PipelineOptions {
-    @Description("Gcs path to python udf source")
+
+    @TemplateParameter.GcsReadFile(
+        order = 1,
+        optional = true,
+        description = "Gcs path to python UDF source",
+        helpText =
+            "The Cloud Storage path pattern for the Python code containing your user-defined functions.",
+        example = "gs://your-bucket/your-transforms/*.py")
     String getPythonTextTransformGcsPath();
 
     void setPythonTextTransformGcsPath(String pythonTextTransformGcsPath);
 
-    @Description("UDF Runtime Version")
+    @TemplateParameter.Text(
+        order = 2,
+        optional = true,
+        description = "Python UDF Runtime Version",
+        helpText = "The runtime version to use for this Python UDF.")
     String getPythonRuntimeVersion();
 
     void setPythonRuntimeVersion(String pythonRuntimeVersion);
 
-    @Description("UDF Python Function Name")
+    @TemplateParameter.Text(
+        order = 3,
+        optional = true,
+        description = "UDF Python Function Name",
+        helpText =
+            "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores.",
+        example = "transform_udf1")
     String getPythonTextTransformFunctionName();
 
     void setPythonTextTransformFunctionName(String pythonTextTransformFunctionName);
 
-    @Description("Python runtime retry attempts")
+    @TemplateParameter.Integer(
+        order = 4,
+        optional = true,
+        description = "Python runtime retry attempts",
+        helpText = "The number of times a runtime will be retried before failing.")
     @Default.Integer(5)
     Integer getRuntimeRetries();
 

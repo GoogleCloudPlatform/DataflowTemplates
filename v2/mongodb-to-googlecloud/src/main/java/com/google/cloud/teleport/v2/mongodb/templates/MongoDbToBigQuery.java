@@ -17,13 +17,19 @@ package com.google.cloud.teleport.v2.mongodb.templates;
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.BigQueryWriteOptions;
+import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.JavascriptDocumentTransformerOptions;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.MongoDbOptions;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import java.util.HashMap;
+import com.google.cloud.teleport.v2.mongodb.templates.MongoDbToBigQuery.Options;
+import com.google.cloud.teleport.v2.transforms.JavascriptDocumentTransformer.TransformDocumentViaJavascript;
+import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
+import java.io.IOException;
+import javax.script.ScriptException;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.io.mongodb.MongoDbIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -32,16 +38,30 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.bson.Document;
 
 /**
- * The {@link BigQueryToMongoDb} pipeline is a batch pipeline which ingests data from MongoDB and
+ * The {@link MongoDbToBigQuery} pipeline is a batch pipeline which ingests data from MongoDB and
  * outputs the resulting records to BigQuery.
  */
+@Template(
+    name = "MongoDB_to_BigQuery",
+    category = TemplateCategory.BATCH,
+    displayName = "MongoDB to BigQuery",
+    description =
+        "A batch pipeline which reads data documents from MongoDB and writes them to BigQuery.",
+    optionsClass = Options.class,
+    flexContainerName = "mongodb-to-bigquery",
+    contactInformation = "https://cloud.google.com/support")
 public class MongoDbToBigQuery {
   /**
    * Options supported by {@link MongoDbToBigQuery}
    *
    * <p>Inherits standard configuration options.
    */
-  public interface Options extends PipelineOptions, MongoDbOptions, BigQueryWriteOptions {}
+  public interface Options
+      extends PipelineOptions,
+          MongoDbOptions,
+          BigQueryWriteOptions,
+          BigQueryOptions,
+          JavascriptDocumentTransformerOptions {}
 
   private static class ParseAsDocumentsFn extends DoFn<String, Document> {
     @ProcessElement
@@ -50,20 +70,41 @@ public class MongoDbToBigQuery {
     }
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args)
+      throws ScriptException, IOException, NoSuchMethodException {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
+
+    BigQueryIOUtils.validateBQStorageApiOptionsBatch(options);
+
     run(options);
   }
 
-  public static boolean run(Options options) {
+  public static boolean run(Options options)
+      throws ScriptException, IOException, NoSuchMethodException {
     Pipeline pipeline = Pipeline.create(options);
-    TableSchema bigquerySchema =
-        MongoDbUtils.getTableFieldSchema(
-            options.getMongoDbUri(),
-            options.getDatabase(),
-            options.getCollection(),
-            options.getUserOption());
     String userOption = options.getUserOption();
+
+    TableSchema bigquerySchema;
+
+    if (options.getJavascriptDocumentTransformFunctionName() != null
+        && options.getJavascriptDocumentTransformGcsPath() != null) {
+      bigquerySchema =
+          MongoDbUtils.getTableFieldSchemaForUDF(
+              options.getMongoDbUri(),
+              options.getDatabase(),
+              options.getCollection(),
+              options.getJavascriptDocumentTransformGcsPath(),
+              options.getJavascriptDocumentTransformFunctionName(),
+              options.getUserOption());
+    } else {
+      bigquerySchema =
+          MongoDbUtils.getTableFieldSchema(
+              options.getMongoDbUri(),
+              options.getDatabase(),
+              options.getCollection(),
+              options.getUserOption());
+    }
+
     pipeline
         .apply(
             "Read Documents",
@@ -72,6 +113,12 @@ public class MongoDbToBigQuery {
                 .withDatabase(options.getDatabase())
                 .withCollection(options.getCollection()))
         .apply(
+            "UDF",
+            TransformDocumentViaJavascript.newBuilder()
+                .setFileSystemPath(options.getJavascriptDocumentTransformGcsPath())
+                .setFunctionName(options.getJavascriptDocumentTransformFunctionName())
+                .build())
+        .apply(
             "Transform to TableRow",
             ParDo.of(
                 new DoFn<Document, TableRow>() {
@@ -79,10 +126,7 @@ public class MongoDbToBigQuery {
                   @ProcessElement
                   public void process(ProcessContext c) {
                     Document document = c.element();
-                    Gson gson = new GsonBuilder().create();
-                    HashMap<String, Object> parsedMap =
-                        gson.fromJson(document.toJson(), HashMap.class);
-                    TableRow row = MongoDbUtils.getTableSchema(parsedMap, userOption);
+                    TableRow row = MongoDbUtils.getTableSchema(document, userOption);
                     c.output(row);
                   }
                 }))

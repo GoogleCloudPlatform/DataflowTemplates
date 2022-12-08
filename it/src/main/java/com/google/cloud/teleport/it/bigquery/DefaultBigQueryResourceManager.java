@@ -24,9 +24,9 @@ import com.google.cloud.bigquery.BigQueryError;
 import com.google.cloud.bigquery.BigQueryOptions;
 import com.google.cloud.bigquery.Dataset;
 import com.google.cloud.bigquery.DatasetInfo;
-import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.bigquery.InsertAllResponse;
+import com.google.cloud.bigquery.QueryJobConfiguration;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardTableDefinition;
 import com.google.cloud.bigquery.Table;
@@ -93,11 +93,6 @@ public final class DefaultBigQueryResourceManager implements BigQueryResourceMan
     return projectId;
   }
 
-  /**
-   * Return the dataset ID this Resource Manager uses to create and manage tables in.
-   *
-   * @return the dataset ID.
-   */
   public String getDatasetId() {
     return datasetId;
   }
@@ -169,12 +164,12 @@ public final class DefaultBigQueryResourceManager implements BigQueryResourceMan
   }
 
   @Override
-  public synchronized void createTable(String tableName, Schema schema) {
-    createTable(tableName, schema, System.currentTimeMillis() + 3600000);
+  public synchronized TableId createTable(String tableName, Schema schema) {
+    return createTable(tableName, schema, System.currentTimeMillis() + 3600000); // 1h
   }
 
   @Override
-  public synchronized void createTable(String tableName, Schema schema, Long expirationTime) {
+  public synchronized TableId createTable(String tableName, Schema schema, Long expirationTime) {
     // Check table ID
     checkValidTableId(tableName);
 
@@ -182,13 +177,11 @@ public final class DefaultBigQueryResourceManager implements BigQueryResourceMan
     if (schema == null) {
       throw new IllegalArgumentException("A valid schema must be provided to create a table.");
     }
-
     // Create a default dataset if this resource manager has not already created one
     if (dataset == null) {
       createDataset(DEFAULT_DATASET_REGION);
     }
     checkHasDataset();
-
     LOG.info("Creating table using tableName '{}'.", tableName);
 
     // Create the table if it does not already exist in the dataset
@@ -201,6 +194,10 @@ public final class DefaultBigQueryResourceManager implements BigQueryResourceMan
                 .setExpirationTime(expirationTime)
                 .build();
         bigQuery.create(tableInfo);
+        LOG.info(
+            "Successfully created table {}.{}", dataset.getDatasetId().getDataset(), tableName);
+
+        return tableId;
       } else {
         throw new IllegalStateException(
             "Table " + tableId + " already exists for dataset " + datasetId + ".");
@@ -208,8 +205,6 @@ public final class DefaultBigQueryResourceManager implements BigQueryResourceMan
     } catch (Exception e) {
       throw new BigQueryResourceManagerException("Failed to create table.", e);
     }
-
-    LOG.info("Successfully created table {}.{}", dataset.getDatasetId().getDataset(), tableName);
   }
 
   @Override
@@ -255,32 +250,31 @@ public final class DefaultBigQueryResourceManager implements BigQueryResourceMan
   }
 
   @Override
-  public synchronized ImmutableList<FieldValueList> readTable(String tableName) {
-    Table table = getTableIfExists(tableName);
-
-    // List to store fetched rows
-    ImmutableList.Builder<FieldValueList> immutableListBuilder = ImmutableList.builder();
+  public synchronized TableResult readTable(String tableName) {
+    getTableIfExists(tableName);
 
     LOG.info("Reading all rows from {}.{}", dataset.getDatasetId().getDataset(), tableName);
 
     // Read all the rows from the table given by tableId
+    TableResult results;
     try {
-      TableResult results = bigQuery.listTableData(table.getTableId());
-      for (FieldValueList row : results.getValues()) {
-        immutableListBuilder.add(row);
-      }
+      String query =
+          "SELECT TO_JSON_STRING(t) FROM `"
+              + String.join(".", projectId, datasetId, tableName)
+              + "` AS t;";
+      QueryJobConfiguration queryConfig = QueryJobConfiguration.newBuilder(query).build();
+      results = bigQuery.query(queryConfig);
     } catch (Exception e) {
-      throw new BigQueryResourceManagerException("Failed to read from table.", e);
+      throw new BigQueryResourceManagerException("Failed to read from table " + tableName + ".", e);
     }
 
-    ImmutableList<FieldValueList> tableRows = immutableListBuilder.build();
     LOG.info(
         "Loaded {} rows from {}.{}",
-        tableRows.size(),
+        results.getTotalRows(),
         dataset.getDatasetId().getDataset(),
         tableName);
 
-    return tableRows;
+    return results;
   }
 
   @Override

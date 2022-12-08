@@ -1,8 +1,8 @@
 # DataStream to MongoDB Dataflow Template
 
-The [DataStreamToMongoDB](src/main/java/com/google/cloud/teleport/v2/templates/DataStreamToMongoDB.java) pipeline 
-ingests data supplied by DataStream, optionally applies a Javascript or Python UDF if supplied 
-and writes the data to MongoDB collections.  
+The [DataStreamToMongoDB](src/main/java/com/google/cloud/teleport/v2/templates/DataStreamToMongoDB.java) pipeline
+ingests data supplied by DataStream, optionally applies a Javascript or Python UDF if supplied
+and writes the data to MongoDB collections.
 
 ## Getting Started
 

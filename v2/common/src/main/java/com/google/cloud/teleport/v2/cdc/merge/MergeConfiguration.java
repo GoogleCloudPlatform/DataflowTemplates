@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.cdc.merge;
 
+import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+
 import com.google.auto.value.AutoValue;
 import java.io.Serializable;
 import org.joda.time.Duration;
@@ -49,10 +51,10 @@ public abstract class MergeConfiguration implements Serializable {
           "WHEN NOT MATCHED BY TARGET AND {stagingAlias}.{deleteColumn}!=True ",
           "THEN {mergeInsertSql}");
 
-  private static final Boolean DEFAULT_SUPPORT_PARTITIONED_TABLES = true;
-  private static final Integer DEFAULT_PARTITION_RETENTION_DAYS = 1;
-  private static final Duration DEFAULT_MERGE_WINDOW_DURATION = Duration.standardMinutes(30);
-  private static final int DEFAULT_MERGE_CONCURRENCY = 30;
+  public static final Boolean DEFAULT_SUPPORT_PARTITIONED_TABLES = true;
+  public static final Integer DEFAULT_PARTITION_RETENTION_DAYS = 1;
+  public static final Duration DEFAULT_MERGE_WINDOW_DURATION = Duration.standardMinutes(30);
+  public static final int DEFAULT_MERGE_CONCURRENCY = 30;
 
   // BigQuery-specific properties
   public static final String BIGQUERY_QUOTE_CHARACTER = "`";
@@ -82,6 +84,7 @@ public abstract class MergeConfiguration implements Serializable {
   }
 
   public MergeConfiguration withMergeConcurrency(int mergeConcurrency) {
+    checkArgument(mergeConcurrency > 0, "mergeConcurrency must be greater than 0");
     return this.toBuilder().setMergeConcurrency(mergeConcurrency).build();
   }
 

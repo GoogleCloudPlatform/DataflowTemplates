@@ -19,6 +19,9 @@ import static com.google.cloud.teleport.v2.transforms.StatefulRowCleaner.RowClea
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.bigquery.TableId;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.cdc.mappers.BigQueryDefaultSchemas;
@@ -28,10 +31,12 @@ import com.google.cloud.teleport.v2.cdc.merge.BigQueryMerger;
 import com.google.cloud.teleport.v2.cdc.merge.MergeConfiguration;
 import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.templates.DataStreamToBigQuery.Options;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.transforms.StatefulRowCleaner;
 import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFOptions;
 import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFToTableRow;
+import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Splitter;
 import java.util.HashSet;
@@ -49,7 +54,6 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
@@ -102,6 +106,16 @@ import org.slf4j.LoggerFactory;
  * --workerMachineType=n1-highcpu-16 \
  * </pre>
  */
+@Template(
+    name = "Cloud_Datastream_to_BigQuery",
+    category = TemplateCategory.STREAMING,
+    displayName = "Datastream to BigQuery",
+    description =
+        "Streaming pipeline. Ingests messages from a stream in Datastream, transforms them, and"
+            + " writes them to a pre-existing BigQuery dataset as a set of tables.",
+    optionsClass = Options.class,
+    flexContainerName = "datastream-to-bigquery",
+    contactInformation = "https://cloud.google.com/support")
 public class DataStreamToBigQuery {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToBigQuery.class);
@@ -126,74 +140,138 @@ public class DataStreamToBigQuery {
    */
   public interface Options
       extends PipelineOptions, StreamingOptions, InputUDFOptions, BigQueryOptions {
-    @Description("The GCS location of the files you'd like to process")
+    @TemplateParameter.Text(
+        order = 1,
+        description = "File location for Datastream file output in Cloud Storage.",
+        helpText =
+            "This is the file location for Datastream file output in Cloud Storage, in the "
+                + "format: gs://${BUCKET}/${ROOT_PATH}/.")
     String getInputFilePattern();
 
     void setInputFilePattern(String value);
 
-    @Description("The GCS output format avro/json")
+    @TemplateParameter.Enum(
+        order = 2,
+        enumOptions = {"avro", "json"},
+        description = "Datastream output file format (avro/json).",
+        helpText =
+            "The format of the output files produced by Datastream. Value can be 'avro' or 'json'.")
     @Default.String("avro")
     String getInputFileFormat();
 
     void setInputFileFormat(String value);
 
-    @Description(
-        "The Pub/Sub subscription with DataStream file notifications."
-            + "The name should be in the format of "
-            + "projects/<project-id>/subscriptions/<subscription-name>.")
+    @TemplateParameter.PubsubSubscription(
+        order = 3,
+        description = "The Pub/Sub subscription on the Cloud Storage bucket.",
+        helpText =
+            "The Pub/Sub subscription used by Cloud Storage to notify Dataflow of new files"
+                + " available for processing, in the format: "
+                + "projects/{PROJECT_NAME}/subscriptions/{SUBSCRIPTION_NAME}")
     String getGcsPubSubSubscription();
 
     void setGcsPubSubSubscription(String value);
 
-    @Description("The DataStream Stream to Reference.")
+    @TemplateParameter.Text(
+        order = 4,
+        optional = true,
+        description = "Name or template for the stream to poll for schema information.",
+        helpText =
+            "This is the name or template for the stream to poll for schema information. Default is"
+                + " {_metadata_stream}. The default value is enough under most conditions.")
     String getStreamName();
 
     void setStreamName(String value);
 
-    @Description(
-        "The starting DateTime used to fetch from GCS (https://tools.ietf.org/html/rfc3339).")
+    @TemplateParameter.DateTime(
+        order = 5,
+        optional = true,
+        description =
+            "The starting DateTime used to fetch from Cloud Storage "
+                + "(https://tools.ietf.org/html/rfc3339).",
+        helpText =
+            "The starting DateTime used to fetch from Cloud Storage "
+                + "(https://tools.ietf.org/html/rfc3339).")
     @Default.String("1970-01-01T00:00:00.00Z")
     String getRfcStartDateTime();
 
     void setRfcStartDateTime(String value);
 
-    @Description("The number of concurrent DataStream files to read.")
+    @TemplateParameter.Integer(
+        order = 6,
+        optional = true,
+        description = "File read concurrency",
+        helpText = "The number of concurrent DataStream files to read. Default is 10.")
     @Default.Integer(10)
     Integer getFileReadConcurrency();
 
     void setFileReadConcurrency(Integer value);
 
-    @Description("The BigQuery Project ID. Default is the project for the Dataflow job.")
+    @TemplateParameter.ProjectId(
+        order = 7,
+        optional = true,
+        description = "Project Id for BigQuery datasets.",
+        helpText =
+            "Project for BigQuery datasets to output data into. The default for this parameter "
+                + "is the project where the Dataflow pipeline is running.")
     String getOutputProjectId();
 
     void setOutputProjectId(String projectId);
 
-    @Description("The Staging BigQuery Dataset Template")
+    @TemplateParameter.Text(
+        order = 8,
+        description = "Name or template for the dataset to contain staging tables.",
+        helpText =
+            "This is the name for the dataset to contain staging tables. This parameter supports "
+                + "templates (e.g. {_metadata_dataset}_log or my_dataset_log). Normally, this "
+                + "parameter is a dataset name.")
     @Default.String("{_metadata_dataset}")
     String getOutputStagingDatasetTemplate();
 
     void setOutputStagingDatasetTemplate(String value);
 
-    @Description("The Staging BigQuery Table Template")
+    @TemplateParameter.Text(
+        order = 9,
+        optional = true,
+        description = "Template for the name of staging tables.",
+        helpText =
+            "This is the template for the name of staging tables (e.g. {_metadata_table}). "
+                + "Default is {_metadata_table}_log.")
     @Default.String("{_metadata_table}_log")
     String getOutputStagingTableNameTemplate();
 
     void setOutputStagingTableNameTemplate(String value);
 
-    @Description("The Replica BigQuery Dataset Template")
+    @TemplateParameter.Text(
+        order = 10,
+        description = "Template for the dataset to contain replica tables.",
+        helpText =
+            "This is the name for the dataset to contain replica tables. This parameter supports"
+                + " templates (e.g. {_metadata_dataset} or my_dataset). Normally, this parameter is"
+                + " a dataset name.")
     @Default.String("{_metadata_dataset}")
     String getOutputDatasetTemplate();
 
     void setOutputDatasetTemplate(String value);
 
-    @Description("The Replica BigQuery Table Template")
+    @TemplateParameter.Text(
+        order = 11,
+        optional = true,
+        description = "Template for the name of replica tables.",
+        helpText =
+            "This is the template for the name of replica tables (e.g. {_metadata_table}). "
+                + "Default is {_metadata_table}.")
     @Default.String("{_metadata_table}")
     String getOutputTableNameTemplate();
 
     void setOutputTableNameTemplate(String value);
 
-    @Description(
-        "Fields to ignore in BigQuery (comma separator). eg. _metadata_stream,_metadata_schema")
+    @TemplateParameter.Text(
+        order = 12,
+        optional = true,
+        description = "Fields to be ignored",
+        helpText = "Fields to ignore in BigQuery (comma separator).",
+        example = "_metadata_stream,_metadata_schema")
     @Default.String(
         "_metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_ssn,"
             + "_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,"
@@ -202,35 +280,68 @@ public class DataStreamToBigQuery {
 
     void setIgnoreFields(String value);
 
-    @Description("The number of minutes between merges for a given table")
+    @TemplateParameter.Text(
+        order = 13,
+        optional = true,
+        description = "The number of minutes between merges for a given table",
+        helpText = "The number of minutes between merges for a given table.")
     @Default.Integer(5)
     Integer getMergeFrequencyMinutes();
 
     void setMergeFrequencyMinutes(Integer value);
 
-    @Description("The Dead Letter Queue GCS Prefix to use for errored data")
+    @TemplateParameter.Text(
+        order = 14,
+        description = "Dead letter queue directory.",
+        helpText =
+            "This is the file path for Dataflow to write the dead letter queue output. This "
+                + "path should not be in the same path as the Datastream file output.")
     @Default.String("")
     String getDeadLetterQueueDirectory();
 
     void setDeadLetterQueueDirectory(String value);
 
-    @Description("The number of minutes between DLQ Retries")
+    @TemplateParameter.Text(
+        order = 15,
+        optional = true,
+        description = "The number of minutes between DLQ Retries.",
+        helpText = "The number of minutes between DLQ Retries.")
     @Default.Integer(10)
     Integer getDlqRetryMinutes();
 
     void setDlqRetryMinutes(Integer value);
 
-    @Description("DataStream API Root Url (only used for testing)")
+    @TemplateParameter.Text(
+        order = 16,
+        optional = true,
+        description = "Datastream API Root URL (only required for testing)",
+        helpText = "Datastream API Root URL")
     @Default.String("https://datastream.googleapis.com/")
     String getDataStreamRootUrl();
 
     void setDataStreamRootUrl(String value);
 
-    @Description("Switch to disable MERGE queries for this job.")
+    @TemplateParameter.Boolean(
+        order = 17,
+        optional = true,
+        description = "A switch to disable MERGE queries for the job.",
+        helpText = "A switch to disable MERGE queries for the job.")
     @Default.Boolean(true)
     Boolean getApplyMerge();
 
     void setApplyMerge(Boolean value);
+
+    @TemplateParameter.Integer(
+        order = 18,
+        optional = true,
+        description = "Concurrent queries for merge.",
+        helpText =
+            "The number of concurrent BigQuery MERGE queries. Only effective when applyMerge is set"
+                + " to true. Default is 30.")
+    @Default.Integer(MergeConfiguration.DEFAULT_MERGE_CONCURRENCY)
+    Integer getMergeConcurrency();
+
+    void setMergeConcurrency(Integer value);
   }
 
   /**
@@ -267,6 +378,8 @@ public class DataStreamToBigQuery {
       throw new IllegalArgumentException(
           "Input file format must be one of: avro, json or left empty - found " + inputFileFormat);
     }
+
+    BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options);
   }
 
   /**
@@ -400,8 +513,7 @@ public class DataStreamToBigQuery {
                     .ignoreInsertIds()
                     .withCreateDisposition(CreateDisposition.CREATE_NEVER)
                     .withWriteDisposition(WriteDisposition.WRITE_APPEND)
-                    .withExtendedErrorInfo()
-                    .withMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
+                    .withExtendedErrorInfo() // takes effect only when Storage Write API is off
                     .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
 
     if (options.getApplyMerge()) {
@@ -429,7 +541,8 @@ public class DataStreamToBigQuery {
               BigQueryMerger.of(
                   MergeConfiguration.bigQueryConfiguration()
                       .withMergeWindowDuration(
-                          Duration.standardMinutes(options.getMergeFrequencyMinutes()))));
+                          Duration.standardMinutes(options.getMergeFrequencyMinutes()))
+                      .withMergeConcurrency(options.getMergeConcurrency())));
     }
 
     /*
@@ -451,8 +564,7 @@ public class DataStreamToBigQuery {
                 MapElements.via(new RowCleanerDeadLetterQueueSanitizer()));
 
     PCollection<String> bqWriteDlqJson =
-        writeResult
-            .getFailedInsertsWithErr()
+        BigQueryIOUtils.writeResultToBigQueryInsertErrors(writeResult, options)
             .apply("BigQuery Failures", MapElements.via(new BigQueryDeadLetterQueueSanitizer()));
 
     PCollectionList.of(udfDlqJson)
