@@ -231,7 +231,7 @@ public class TemplateRunMojo extends TemplateBaseMojo {
                   .setLaunchParameters(launchParameters)
                   .setGcsPath(templatePath)
                   .setProjectId(projectId)
-                  .setLocation(region)
+                  .setLocation(useRegion)
                   .build());
 
       job = launchTemplateResponse.getJob();
@@ -284,7 +284,7 @@ public class TemplateRunMojo extends TemplateBaseMojo {
               LaunchFlexTemplateRequest.newBuilder()
                   .setLaunchParameter(launchParameters)
                   .setProjectId(projectId)
-                  .setLocation(region)
+                  .setLocation(useRegion)
                   .build());
 
       job = launchFlexTemplateResponse.getJob();
