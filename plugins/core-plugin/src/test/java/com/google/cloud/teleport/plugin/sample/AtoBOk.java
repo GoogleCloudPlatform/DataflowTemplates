@@ -54,5 +54,12 @@ public class AtoBOk {
         helpText = "Define if A goes to B")
     @Default.Boolean(true)
     Boolean logical();
+
+    @TemplateParameter.Boolean(
+        order = 4,
+        description = "JSON all caps",
+        helpText = "Some JSON property.")
+    @Default.Boolean(true)
+    String getJSON();
   }
 }

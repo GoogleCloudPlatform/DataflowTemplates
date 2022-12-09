@@ -18,6 +18,9 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.options.BigQueryStorageApiBatchOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
@@ -28,6 +31,7 @@ import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -37,7 +41,6 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
@@ -50,6 +53,16 @@ import org.json.JSONObject;
 /**
  * Templated pipeline to read text from TextIO, apply a javascript UDF to it, and write it to GCS.
  */
+@Template(
+    name = "GCS_Text_to_BigQuery_Flex",
+    category = TemplateCategory.BATCH,
+    displayName = "Text Files on Cloud Storage to BigQuery with BigQuery Storage API support",
+    description =
+        "Batch pipeline. Reads text files stored in Cloud Storage, transforms them using a"
+            + " JavaScript user-defined function (UDF), and outputs the result to BigQuery.",
+    optionsClass = TextIOToBigQuery.Options.class,
+    flexContainerName = "text-to-bigquery",
+    contactInformation = "https://cloud.google.com/support")
 public class TextIOToBigQuery {
 
   /** Options supported by {@link TextIOToBigQuery}. */
@@ -57,34 +70,74 @@ public class TextIOToBigQuery {
       extends DataflowPipelineOptions,
           JavascriptTextTransformerOptions,
           BigQueryStorageApiBatchOptions {
-    @Description("The GCS location of the text you'd like to process")
+    @TemplateParameter.Text(
+        order = 1,
+        optional = false,
+        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
+        description = "The GCS location of the text you'd like to process",
+        helpText = "The path to the Cloud Storage text to read.",
+        example = "gs://your-bucket/your-file.txt")
     String getInputFilePattern();
 
     void setInputFilePattern(String value);
 
-    @Description("JSON file with BigQuery Schema description")
+    @TemplateParameter.GcsReadFile(
+        order = 2,
+        optional = false,
+        description = "JSON file with BigQuery Schema description",
+        helpText = "The Cloud Storage path to the JSON file that defines your BigQuery schema.",
+        example = "gs://your-bucket/your-schema.json")
     String getJSONPath();
 
     void setJSONPath(String value);
 
-    @Description("Output table to write to")
+    @TemplateParameter.Text(
+        order = 3,
+        optional = false,
+        regexes = {".+:.+\\..+"},
+        description = "Output table to write to",
+        helpText =
+            "The location of the BigQuery table in which to store your processed data. If you reuse"
+                + " an existing table, it will be overwritten.",
+        example = "your-project:your-dataset.your-table")
     String getOutputTable();
 
     void setOutputTable(String value);
 
-    @Description("GCS path to javascript fn for transforming output")
+    @TemplateParameter.Text(
+        order = 4,
+        optional = false,
+        regexes = {"^gs:\\/\\/[^\\n\\r]+$"},
+        description = "GCS path to javascript fn for transforming output",
+        helpText =
+            "The Cloud Storage path pattern for the JavaScript code containing your user-defined"
+                + " functions.",
+        example = "gs://your-bucket/your-transforms/*.js")
     String getJavascriptTextTransformGcsPath();
 
     void setJavascriptTextTransformGcsPath(String jsTransformPath);
 
     @Validation.Required
-    @Description("UDF Javascript Function Name")
+    @TemplateParameter.Text(
+        order = 5,
+        optional = false,
+        regexes = {"[a-zA-Z0-9_]+"},
+        description = "UDF Javascript Function Name",
+        helpText =
+            "The name of the function to call from your JavaScript file. Use only letters, digits,"
+                + " and underscores.",
+        example = "transform_udf1")
     String getJavascriptTextTransformFunctionName();
 
     void setJavascriptTextTransformFunctionName(String javascriptTextTransformFunctionName);
 
     @Validation.Required
-    @Description("Temporary directory for BigQuery loading process")
+    @TemplateParameter.GcsWriteFolder(
+        order = 6,
+        optional = false,
+        description = "Temporary directory for BigQuery loading process",
+        helpText = "Temporary directory for the BigQuery loading process.",
+        example = "gs://your-bucket/your-files/temp-dir")
     String getBigQueryLoadingTemporaryDirectory();
 
     void setBigQueryLoadingTemporaryDirectory(String directory);
@@ -97,7 +150,7 @@ public class TextIOToBigQuery {
 
   public static void main(String[] args) {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
-    run(options, writeToBQTransform(options));
+    run(options, () -> writeToBQTransform(options));
   }
 
   /**
@@ -108,7 +161,7 @@ public class TextIOToBigQuery {
    * @return The result of the pipeline execution.
    */
   @VisibleForTesting
-  static PipelineResult run(Options options, Write<TableRow> writeToBQ) {
+  static PipelineResult run(Options options, Supplier<Write<TableRow>> writeToBQ) {
     BigQueryIOUtils.validateBQStorageApiOptionsBatch(options);
 
     Pipeline pipeline = Pipeline.create(options);
@@ -128,7 +181,7 @@ public class TextIOToBigQuery {
                     return BigQueryConverters.convertJsonToTableRow(json);
                   }
                 }))
-        .apply("Insert into Bigquery", writeToBQ);
+        .apply("Insert into Bigquery", writeToBQ.get());
 
     return pipeline.run();
   }
@@ -187,6 +240,8 @@ public class TextIOToBigQuery {
    */
   private static JSONObject parseJson(String pathToJson) {
     try {
+      // accessing GCS needs to be done after the pipeline create call, otherwise FileSystems
+      // doesn't know about GCS.
       ReadableByteChannel readableByteChannel =
           FileSystems.open(FileSystems.matchNewResource(pathToJson, false));
       String json =

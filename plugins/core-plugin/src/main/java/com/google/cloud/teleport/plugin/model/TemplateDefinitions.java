@@ -18,6 +18,7 @@ package com.google.cloud.teleport.plugin.model;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCreationParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import java.beans.Introspector;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -237,8 +238,17 @@ public class TemplateDefinitions {
     return imageSpec;
   }
 
+  /** This method is inspired by {@code org.apache.beam.sdk.options.PipelineOptionsReflector}. */
   private String getParameterNameFromMethod(Method method) {
-    return StringUtils.uncapitalize(method.getName().replaceFirst("^get", ""));
+    String methodName;
+    if (method.getName().startsWith("is")) {
+      methodName = method.getName().substring(2);
+    } else if (method.getName().startsWith("get")) {
+      methodName = method.getName().substring(3);
+    } else {
+      methodName = method.getName();
+    }
+    return Introspector.decapitalize(methodName);
   }
 
   private Object getDefault(Method definingMethod) {
