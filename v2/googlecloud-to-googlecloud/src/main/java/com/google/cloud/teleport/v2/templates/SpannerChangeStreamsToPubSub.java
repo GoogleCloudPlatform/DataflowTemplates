@@ -17,6 +17,8 @@ package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Options.RpcPriority;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.options.SpannerChangeStreamsToPubSubOptions;
 import com.google.cloud.teleport.v2.transforms.FileFormatFactorySpannerChangeStreamsToPubSub;
 import java.util.ArrayList;
@@ -32,9 +34,19 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The {@link SpannerChangeStreamsToPubSub} pipeline streams change stream record(s) and stores to
- * pubsub topic in user specified format. The sink data can be stored in a JSON Text or Avro file
+ * pubsub topic in user specified format. The sink data can be stored in a JSON Text or Avro data
  * format.
  */
+@Template(
+    name = "Spanner_Change_Streams_to_PubSub",
+    category = TemplateCategory.STREAMING,
+    displayName = "Cloud Spanner change streams to Pub/Sub",
+    description =
+        "Streaming pipeline. Streams Spanner change stream data records and writes them into a"
+            + " Pub/Sub topic using Dataflow Runner V2.",
+    optionsClass = SpannerChangeStreamsToPubSubOptions.class,
+    flexContainerName = "spanner-changestreams-to-pubsub",
+    contactInformation = "https://cloud.google.com/support")
 public class SpannerChangeStreamsToPubSub {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerChangeStreamsToPubSub.class);
   private static final String USE_RUNNER_V2_EXPERIMENT = "use_runner_v2";
