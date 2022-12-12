@@ -139,7 +139,7 @@ public class ImportPipeline {
 
     void setEarlyIndexCreateFlag(ValueProvider<Boolean> value);
 
-    @TemplateCreationParameter
+    @TemplateCreationParameter(value = "false")
     @Description("If true, wait for job finish")
     @Default.Boolean(true)
     boolean getWaitUntilFinish();

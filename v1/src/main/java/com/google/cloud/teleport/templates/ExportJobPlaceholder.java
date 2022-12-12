@@ -117,7 +117,7 @@ public class ExportJobPlaceholder {
     @Default.String("part")
     ValueProvider<String> getFilenamePrefix();
 
-    @TemplateCreationParameter
+    @TemplateCreationParameter(value = "false")
     @Description("Wait for pipeline to finish.")
     @Default.Boolean(false)
     boolean getWait();

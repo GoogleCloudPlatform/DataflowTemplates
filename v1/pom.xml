@@ -50,8 +50,6 @@
     <google-cloud-bigquery.version>1.108.0</google-cloud-bigquery.version>
     <grpc.gen.version>1.13.1</grpc.gen.version>
     <derby.version>10.14.2.0</derby.version>
-    <commons-codec.version>1.14</commons-codec.version>
-    <commons-io.version>2.4</commons-io.version>
     <kafka.clients.version>1.0.0</kafka.clients.version>
     <threetenbp.version>1.4.4</threetenbp.version>
     <spring.version>5.2.8.RELEASE</spring.version>
@@ -400,16 +398,13 @@
       <artifactId>commons-text</artifactId>
       <version>${commons-text.version}</version>
     </dependency>
-
     <dependency>
       <groupId>commons-codec</groupId>
       <artifactId>commons-codec</artifactId>
-      <version>${commons-codec.version}</version>
     </dependency>
     <dependency>
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
-      <version>${commons-io.version}</version>
     </dependency>
     <!-- https://mvnrepository.com/artifact/org.apache.avro/avro -->
     <dependency>

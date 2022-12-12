@@ -31,7 +31,10 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.BuildPluginManager;
@@ -43,6 +46,7 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.twdata.maven.mojoexecutor.MojoExecutor.Element;
 
 /**
  * Goal which stages the Templates into Cloud Storage / Artifact Registry.
@@ -183,6 +187,28 @@ public class TemplateStageMojo extends TemplateBaseMojo {
     String templatePath = "gs://" + bucketName + "/" + stagePrefix + "/" + currentTemplateName;
     String templateMetadataPath = templatePath + "_metadata";
 
+    List<Element> arguments = new ArrayList<>();
+    arguments.add(element("argument", "--runner=DataflowRunner"));
+    arguments.add(element("argument", "--stagingLocation=" + stagingPath));
+    arguments.add(element("argument", "--templateLocation=" + templatePath));
+    arguments.add(element("argument", "--project=" + projectId));
+    arguments.add(element("argument", "--region=" + region));
+
+    for (Map.Entry<String, String> runtimeParameter :
+        imageSpec.getMetadata().getRuntimeParameters().entrySet()) {
+      arguments.add(
+          element(
+              "argument", "--" + runtimeParameter.getKey() + "=" + runtimeParameter.getValue()));
+    }
+
+    LOG.info(
+        "Running "
+            + imageSpec.getMetadata().getMainClass()
+            + " with parameters: "
+            + arguments.stream()
+                .map(element -> element.toDom().getValue())
+                .collect(Collectors.toList()));
+
     executeMojo(
         plugin("org.codehaus.mojo", "exec-maven-plugin"),
         goal("java"),
@@ -190,13 +216,7 @@ public class TemplateStageMojo extends TemplateBaseMojo {
             // Base image to use
             element("mainClass", imageSpec.getMetadata().getMainClass()),
             element("cleanupDaemonThreads", "false"),
-            element(
-                "arguments",
-                element("argument", "--runner=DataflowRunner"),
-                element("argument", "--stagingLocation=" + stagingPath),
-                element("argument", "--templateLocation=" + templatePath),
-                element("argument", "--project=" + projectId),
-                element("argument", "--region=" + region))),
+            element("arguments", arguments.toArray(new Element[0]))),
         executionEnvironment(project, session, pluginManager));
 
     String[] copyCmd =

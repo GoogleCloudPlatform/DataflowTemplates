@@ -16,19 +16,17 @@
 package com.google.cloud.teleport.metadata;
 
 import java.lang.annotation.ElementType;
-import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/** Template Parameter used only to construct the pipeline. */
+/**
+ * Annotation that marks a method with multiple {@link TemplateCreationParameter} configs (i.e.,
+ * there are different options per template).
+ */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD, ElementType.METHOD})
-@Repeatable(TemplateCreationParameters.class)
-public @interface TemplateCreationParameter {
-  /** Name of the template. */
-  String template() default "";
+public @interface TemplateCreationParameters {
 
-  /** Value of the parameter. */
-  String value() default "";
+  TemplateCreationParameter[] value();
 }

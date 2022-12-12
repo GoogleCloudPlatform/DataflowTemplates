@@ -223,7 +223,7 @@ public class TextImportPipeline {
 
     void setTimestampFormat(ValueProvider<String> value);
 
-    @TemplateCreationParameter
+    @TemplateCreationParameter(value = "false")
     @Description("If true, wait for job finish. The default value is true.")
     @Default.Boolean(true)
     boolean getWaitUntilFinish();

@@ -149,7 +149,7 @@ public class PubsubToText {
 
     void setInputTopic(ValueProvider<String> value);
 
-    @TemplateCreationParameter
+    @TemplateCreationParameter(value = "false")
     @Description(
         "This determines whether the template reads from a Pub/Sub subscription or a topic")
     @Default.Boolean(false)

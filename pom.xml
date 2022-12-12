@@ -51,6 +51,8 @@
 
     <!-- Common dependency versions -->
     <checkstyle.version>8.7</checkstyle.version>
+    <commons-codec.version>1.15</commons-codec.version>
+    <commons-io.version>2.11.0</commons-io.version>
     <conscrypt.version>2.5.2</conscrypt.version>
     <hadoop.version>2.10.2</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
@@ -92,6 +94,16 @@
         <groupId>junit</groupId>
         <artifactId>junit</artifactId>
         <version>${junit.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>commons-codec</groupId>
+        <artifactId>commons-codec</artifactId>
+        <version>${commons-codec.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>commons-io</groupId>
+        <artifactId>commons-io</artifactId>
+        <version>${commons-io.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>

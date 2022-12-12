@@ -17,6 +17,7 @@ package com.google.cloud.teleport.plugin.model;
 
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCreationParameter;
+import com.google.cloud.teleport.metadata.TemplateCreationParameters;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import java.beans.Introspector;
 import java.lang.annotation.Annotation;
@@ -151,6 +152,24 @@ public class TemplateDefinitions {
       Annotation parameterAnnotation = getParameterAnnotation(method);
       if (parameterAnnotation == null) {
 
+        boolean runtime = false;
+
+        TemplateCreationParameters creationParameters =
+            method.getAnnotation(TemplateCreationParameters.class);
+        if (creationParameters != null) {
+          for (TemplateCreationParameter creationParameterCandidate : creationParameters.value()) {
+
+            if ((creationParameterCandidate.template().equals(templateAnnotation.name())
+                    || StringUtils.isEmpty(creationParameterCandidate.template()))
+                && StringUtils.isNotEmpty(creationParameterCandidate.value())) {
+              metadata
+                  .getRuntimeParameters()
+                  .put(getParameterNameFromMethod(method), creationParameterCandidate.value());
+              runtime = true;
+            }
+          }
+        }
+
         TemplateCreationParameter creationParameter =
             method.getAnnotation(TemplateCreationParameter.class);
         if (creationParameter != null) {
@@ -159,13 +178,13 @@ public class TemplateDefinitions {
             metadata
                 .getRuntimeParameters()
                 .put(getParameterNameFromMethod(method), creationParameter.value());
+            runtime = true;
           }
-
-          continue;
         }
 
         // Ignore non-annotated params in this criteria
-        if (method.getName().startsWith("set")
+        if (runtime
+            || method.getName().startsWith("set")
             || IGNORED_FIELDS.contains(method.getName())
             || method.getDeclaringClass().getName().startsWith("org.apache.beam.sdk")
             || method.getDeclaringClass().getName().startsWith("org.apache.beam.runners")
