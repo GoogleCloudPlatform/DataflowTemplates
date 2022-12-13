@@ -159,13 +159,15 @@ public class TemplateDefinitions {
         if (creationParameters != null) {
           for (TemplateCreationParameter creationParameterCandidate : creationParameters.value()) {
 
-            if ((creationParameterCandidate.template().equals(templateAnnotation.name())
-                    || StringUtils.isEmpty(creationParameterCandidate.template()))
-                && StringUtils.isNotEmpty(creationParameterCandidate.value())) {
-              metadata
-                  .getRuntimeParameters()
-                  .put(getParameterNameFromMethod(method), creationParameterCandidate.value());
+            if (creationParameterCandidate.template().equals(templateAnnotation.name())
+                || StringUtils.isEmpty(creationParameterCandidate.template())) {
               runtime = true;
+
+              if (StringUtils.isNotEmpty(creationParameterCandidate.value())) {
+                metadata
+                    .getRuntimeParameters()
+                    .put(getParameterNameFromMethod(method), creationParameterCandidate.value());
+              }
             }
           }
         }
@@ -173,12 +175,12 @@ public class TemplateDefinitions {
         TemplateCreationParameter creationParameter =
             method.getAnnotation(TemplateCreationParameter.class);
         if (creationParameter != null) {
+          runtime = true;
 
           if (StringUtils.isNotEmpty(creationParameter.value())) {
             metadata
                 .getRuntimeParameters()
                 .put(getParameterNameFromMethod(method), creationParameter.value());
-            runtime = true;
           }
         }
 
