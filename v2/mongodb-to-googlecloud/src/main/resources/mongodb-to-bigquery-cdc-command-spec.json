@@ -1,6 +1,6 @@
 {
   "mainClass": "com.google.cloud.teleport.v2.mongodb.templates.MongoDbToBigQueryCdc",
-  "classPath": "/template/mongodb-to-bigquery-cdc/*:/template/mongodb-to-bigquery-cdc/libs/*:/template/mongodb-to-bigquery-cdc/classes",
+  "classPath": "/template/mongodb-to-bigquery-cdc/mongodb-to-bigquery-cdc-conscrypt.jar:/template/mongodb-to-bigquery-cdc/*:/template/mongodb-to-bigquery-cdc/libs/*:/template/mongodb-to-bigquery-cdc/classes",
   "defaultParameterValues": {
     "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"mongodb-to-bigquery-cdc\"}"
   }

@@ -1,6 +1,6 @@
 {
   "mainClass": "com.google.cloud.teleport.v2.templates.TextToBigQueryStreaming",
-  "classPath": "/template/text-to-bigquery-streaming/*:/template/text-to-bigquery-streaming/libs/*:/template/text-to-bigquery-streaming/classes",
+  "classPath": "/template/text-to-bigquery-streaming/text-to-bigquery-streaming-conscrypt.jar:/template/text-to-bigquery-streaming/*:/template/text-to-bigquery-streaming/libs/*:/template/text-to-bigquery-streaming/classes",
   "defaultParameterValues": {
     "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"text-to-bigquery-streaming\"}"
   }

@@ -1,6 +1,6 @@
 {
   "mainClass": "com.google.cloud.teleport.v2.templates.SpannerChangeStreamsToPubSub",
-  "classPath": "/template/spanner-changestreams-to-pubsub/*:/template/spanner-changestreams-to-pubsub/libs/*:/template/spanner-changestreams-to-pubsub/classes",
+  "classPath": "/template/spanner-changestreams-to-pubsub/spanner-changestreams-to-pubsub-conscrypt.jar:/template/spanner-changestreams-to-pubsub/*:/template/spanner-changestreams-to-pubsub/libs/*:/template/spanner-changestreams-to-pubsub/classes",
   "defaultParameterValues": {
     "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"spanner-changestreams-to-pubsub\"}"
   }

@@ -1,6 +1,6 @@
 {
   "mainClass": "com.google.cloud.teleport.v2.templates.DataStreamToSpanner",
-  "classPath": "/template/datastream-to-spanner/*:/template/datastream-to-spanner/libs/*:/template/datastream-to-spanner/classes",
+  "classPath": "/template/datastream-to-spanner/datastream-to-spanner-conscrypt.jar:/template/datastream-to-spanner/*:/template/datastream-to-spanner/libs/*:/template/datastream-to-spanner/classes",
   "defaultParameterValues": {
     "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"datastream_to_spanner\"}"
   }

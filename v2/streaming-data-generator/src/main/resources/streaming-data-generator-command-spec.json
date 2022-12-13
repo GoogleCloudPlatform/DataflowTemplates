@@ -1,6 +1,6 @@
 {
   "mainClass": "com.google.cloud.teleport.v2.templates.StreamingDataGenerator",
-  "classPath": "/template/streaming-data-generator/*:/template/streaming-data-generator/libs/*:/template/streaming-data-generator/classes",
+  "classPath": "/template/streaming-data-generator/streaming-data-generator-conscrypt.jar:/template/streaming-data-generator/*:/template/streaming-data-generator/libs/*:/template/streaming-data-generator/classes",
   "defaultParameterValues": {
     "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"streaming_data_generator\"}",
     "autoscalingAlgorithm": "THROUGHPUT_BASED",

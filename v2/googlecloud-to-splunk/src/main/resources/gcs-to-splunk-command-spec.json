@@ -1,6 +1,6 @@
 {
   "mainClass": "com.google.cloud.teleport.v2.templates.GCSToSplunk",
-  "classPath": "/template/gcs-to-splunk/*:/template/gcs-to-splunk/libs/*:/template/gcs-to-splunk/classes",
+  "classPath": "/template/gcs-to-splunk/gcs-to-splunk-conscrypt.jar:/template/gcs-to-splunk/*:/template/gcs-to-splunk/libs/*:/template/gcs-to-splunk/classes",
   "defaultParameterValues": {
     "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"gcs-to-splunk\"}"
   }

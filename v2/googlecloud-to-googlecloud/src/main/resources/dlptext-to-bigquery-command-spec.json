@@ -1,6 +1,6 @@
 {
   "mainClass": "com.google.cloud.teleport.v2.templates.DLPTextToBigQueryStreaming",
-  "classPath": "/template/dlptext-to-bigquery/*:/template/dlptext-to-bigquery/libs/*:/template/dlptext-to-bigquery/classes",
+  "classPath": "/template/dlptext-to-bigquery/dlptext-to-bigquery-conscrypt.jar:/template/dlptext-to-bigquery/*:/template/dlptext-to-bigquery/libs/*:/template/dlptext-to-bigquery/classes",
   "defaultParameterValues": {
     "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"dlptext-to-bigquery\"}"
   }

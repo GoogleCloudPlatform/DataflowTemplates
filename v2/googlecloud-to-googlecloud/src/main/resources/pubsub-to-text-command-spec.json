@@ -1,6 +1,6 @@
 {
   "mainClass": "com.google.cloud.teleport.v2.templates.pubsubtotext.PubsubToText",
-  "classPath": "/template/pubsub-to-text/*:/template/pubsub-to-text/libs/*:/template/pubsub-to-text/classes",
+  "classPath": "/template/pubsub-to-text/pubsub-to-text-conscrypt.jar:/template/pubsub-to-text/*:/template/pubsub-to-text/libs/*:/template/pubsub-to-text/classes",
   "defaultParameterValues": {
     "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"pubsub-to-text\"}"
   }
