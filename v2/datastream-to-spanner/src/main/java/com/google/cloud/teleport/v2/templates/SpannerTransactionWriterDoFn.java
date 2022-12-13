@@ -31,8 +31,6 @@ import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertorExc
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceFactory;
 import com.google.cloud.teleport.v2.templates.datastream.InvalidChangeEventException;
-import com.google.cloud.teleport.v2.templates.session.ColumnDef;
-import com.google.cloud.teleport.v2.templates.session.CreateTable;
 import com.google.cloud.teleport.v2.templates.session.NameAndCols;
 import com.google.cloud.teleport.v2.templates.session.Session;
 import com.google.cloud.teleport.v2.templates.session.SyntheticPKey;
@@ -42,6 +40,7 @@ import com.google.common.base.Preconditions;
 import java.io.PrintWriter;
 import java.io.Serializable;
 import java.io.StringWriter;
+import java.util.HashMap;
 import java.util.Map;
 import org.apache.beam.sdk.io.gcp.spanner.ExposedSpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -218,13 +217,9 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   JsonNode transformChangeEvent(JsonNode changeEvent, Session session) {
     String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
     if (!session.isEmpty()) {
-      if (!session.getToSpanner().containsKey(tableName)) {
-        throw new IllegalArgumentException(
-            "Missing entry for " + tableName + " in toSpanner map, provide a valid session file.");
-      }
       NameAndCols nameAndCols = session.getToSpanner().get(tableName);
       String spTableName = nameAndCols.getName();
-      Map<String, String> cols = nameAndCols.getCols();
+      HashMap<String, String> cols = nameAndCols.getCols();
 
       // Convert the table name to corresponding Spanner table name.
       ((ObjectNode) changeEvent).put(EVENT_TABLE_NAME_KEY, spTableName);
@@ -236,32 +231,10 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
           ((ObjectNode) changeEvent).remove(srcCol);
         }
       }
-      if (!session.getSrcToID().containsKey(tableName)) {
-        throw new IllegalArgumentException(
-            "Missing entry for " + tableName + " in srcToId map , provide a valid session file.");
-      }
-      nameAndCols = session.getSrcToID().get(tableName);
-      String tableId = nameAndCols.getName();
-      Map<String, SyntheticPKey> synthPks = session.getSyntheticPks();
-      if (synthPks.containsKey(tableId)) {
-        String colID = synthPks.get(tableId).getColId();
-        Map<String, CreateTable> spSchema = session.getSpSchema();
-        if (!spSchema.containsKey(tableId)) {
-          throw new IllegalArgumentException(
-              "Missing entry for " + tableId + " in spSchema, provide a valid session file.");
-        }
-        Map<String, ColumnDef> spCols = spSchema.get(tableId).getColDefs();
-        if (!spCols.containsKey(colID)) {
-          throw new IllegalArgumentException(
-              "Missing entry for "
-                  + colID
-                  + " in colDefs for tableId: "
-                  + tableId
-                  + ", provide a valid session file.");
-        }
-
+      HashMap<String, SyntheticPKey> synthPks = session.getSyntheticPks();
+      if (synthPks.containsKey(spTableName)) {
         ((ObjectNode) changeEvent)
-            .put(spCols.get(colID).getName(), changeEvent.get(EVENT_UUID_KEY).asText());
+            .put(synthPks.get(spTableName).getCol(), changeEvent.get(EVENT_UUID_KEY).asText());
       }
     }
     return changeEvent;
