@@ -20,11 +20,11 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.artifacts.Artifact;
+import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
+import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
+import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
 import com.google.cloud.teleport.it.dataflow.DataflowOperator;
 import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
-import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient.LaunchConfig;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.io.Resources;
 import com.google.re2j.Pattern;

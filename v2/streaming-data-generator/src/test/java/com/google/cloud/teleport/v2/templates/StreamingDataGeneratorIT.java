@@ -20,13 +20,11 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.artifacts.Artifact;
+import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
+import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
+import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
 import com.google.cloud.teleport.it.dataflow.DataflowOperator;
 import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
-import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient;
-import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient.LaunchConfig;
-import com.google.cloud.teleport.it.dataflow.FlexTemplateClient;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.StreamingDataGenerator.SinkType;
 import com.google.common.io.Resources;
@@ -69,7 +67,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
     String name = testName.getMethodName();
     String jobName = createJobName(name);
 
-    LaunchConfig options =
+    LaunchConfig.Builder options =
         LaunchConfig.builder(jobName, specPath)
             // TODO(zhoufek): See if it is possible to use the properties interface and generate
             // the map from the set values.
@@ -78,17 +76,13 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
             .addParameter(SINK_TYPE_KEY, SinkType.GCS.name())
             .addParameter(WINDOW_DURATION_KEY, DEFAULT_WINDOW_DURATION)
             .addParameter(OUTPUT_DIRECTORY_KEY, getGcsPath(name))
-            .addParameter(NUM_SHARDS_KEY, "1")
-            .build();
-    DataflowTemplateClient dataflow =
-        FlexTemplateClient.builder().setCredentials(credentials).build();
-
+            .addParameter(NUM_SHARDS_KEY, "1");
     // Act
-    JobInfo info = dataflow.launchTemplate(PROJECT, REGION, options);
+    JobInfo info = launchTemplate(options);
     assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
 
     Result result =
-        new DataflowOperator(dataflow)
+        new DataflowOperator(getDataflowClient())
             .waitForConditionAndFinish(
                 createConfig(info),
                 () -> {
