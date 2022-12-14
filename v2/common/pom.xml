@@ -32,6 +32,7 @@
         <bigquery.version>2.9.0</bigquery.version>
         <commons.version>1.8</commons.version>
         <commons-text.version>1.10.0</commons-text.version>
+        <kms.version>1.20.0</kms.version>
         <protoc.version>3.15.8</protoc.version>
         <nashorn.version>15.4</nashorn.version>
         <truth-proto-extension.version>1.0.1</truth-proto-extension.version>
@@ -147,6 +148,17 @@
             </exclusion>
           </exclusions>
         </dependency>
+      <dependency>
+        <groupId>com.google.cloud</groupId>
+        <artifactId>google-cloud-kms</artifactId>
+        <version>${kms.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-core-grpc</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
 
         <!-- UDFs -->
         <dependency>

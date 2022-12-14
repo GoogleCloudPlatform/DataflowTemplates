@@ -16,9 +16,9 @@
 package com.google.cloud.teleport.v2.utils;
 
 import static junit.framework.Assert.assertEquals;
-import static junit.framework.TestCase.assertTrue;
 
 import com.google.cloud.teleport.v2.utils.DualInputNestedValue.TranslatorInput;
+import junit.framework.Assert;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.SerializableFunction;
@@ -60,7 +60,7 @@ public class DualInputNestedValueTest {
                   }
                 })
             .get();
-    assertTrue(zvp != null);
+    Assert.assertTrue(zvp != null);
     assertEquals("foo2", zvp);
   }
 }
