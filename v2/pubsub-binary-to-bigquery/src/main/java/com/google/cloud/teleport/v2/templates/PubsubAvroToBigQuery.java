@@ -90,7 +90,7 @@ public final class PubsubAvroToBigQuery {
 
     void setSchemaPath(String schemaPath);
   }
-  
+
   /**
    * Runs the pipeline with the supplied options.
    *
