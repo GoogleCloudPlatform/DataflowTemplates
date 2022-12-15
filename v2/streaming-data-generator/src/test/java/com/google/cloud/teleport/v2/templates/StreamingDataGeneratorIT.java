@@ -26,12 +26,11 @@ import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
 import com.google.cloud.teleport.it.dataflow.DataflowOperator;
 import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.templates.StreamingDataGenerator.SchemaTemplate;
 import com.google.cloud.teleport.v2.templates.StreamingDataGenerator.SinkType;
-import com.google.common.io.Resources;
 import com.google.re2j.Pattern;
 import java.io.IOException;
 import java.util.List;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -42,24 +41,15 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(StreamingDataGenerator.class)
 @RunWith(JUnit4.class)
 public final class StreamingDataGeneratorIT extends TemplateTestBase {
-
-  private static final String SCHEMA_FILE = "gameevent.json";
-  private static final String LOCAL_SCHEMA_PATH = Resources.getResource(SCHEMA_FILE).getPath();
-
   private static final String NUM_SHARDS_KEY = "numShards";
   private static final String OUTPUT_DIRECTORY_KEY = "outputDirectory";
   private static final String QPS_KEY = "qps";
-  private static final String SCHEMA_LOCATION_KEY = "schemaLocation";
+  private static final String SCHEMA_TEMPLATE_KEY = "schemaTemplate";
   private static final String SINK_TYPE_KEY = "sinkType";
   private static final String WINDOW_DURATION_KEY = "windowDuration";
 
   private static final String DEFAULT_QPS = "15";
   private static final String DEFAULT_WINDOW_DURATION = "60s";
-
-  @Before
-  public void setUp() throws IOException {
-    artifactClient.uploadArtifact(SCHEMA_FILE, LOCAL_SCHEMA_PATH);
-  }
 
   @Test
   public void testFakeMessagesToGcs() throws IOException {
@@ -71,7 +61,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
         LaunchConfig.builder(jobName, specPath)
             // TODO(zhoufek): See if it is possible to use the properties interface and generate
             // the map from the set values.
-            .addParameter(SCHEMA_LOCATION_KEY, getGcsPath(SCHEMA_FILE))
+            .addParameter(SCHEMA_TEMPLATE_KEY, String.valueOf(SchemaTemplate.GAME_EVENT))
             .addParameter(QPS_KEY, DEFAULT_QPS)
             .addParameter(SINK_TYPE_KEY, SinkType.GCS.name())
             .addParameter(WINDOW_DURATION_KEY, DEFAULT_WINDOW_DURATION)

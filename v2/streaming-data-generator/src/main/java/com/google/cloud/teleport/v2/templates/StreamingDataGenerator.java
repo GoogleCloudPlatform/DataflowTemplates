@@ -139,18 +139,28 @@ public class StreamingDataGenerator {
 
     void setQps(Long value);
 
-    @TemplateParameter.GcsReadFile(
+    @TemplateParameter.Enum(
         order = 2,
-        description = "Location of Schema file",
+        enumOptions = {"GAME_EVENT"},
+        optional = true,
+        description = "Schema template to generate fake data",
+        helpText = "Pre-existing schema template to use. The value must be one of: [GAME_EVENT]")
+    SchemaTemplate getSchemaTemplate();
+
+    void setSchemaTemplate(SchemaTemplate value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 3,
+        optional = true,
+        description = "Location of Schema file to generate fake data",
         helpText = "Cloud Storage path of schema location.",
         example = "gs://<bucket-name>/prefix")
-    @Required
     String getSchemaLocation();
 
     void setSchemaLocation(String value);
 
     @TemplateParameter.PubsubTopic(
-        order = 3,
+        order = 4,
         optional = true,
         description = "Output Pub/Sub topic",
         helpText = "The name of the topic to which the pipeline should publish data.",
@@ -160,7 +170,7 @@ public class StreamingDataGenerator {
     void setTopic(String value);
 
     @TemplateParameter.Long(
-        order = 4,
+        order = 5,
         optional = true,
         description = "Maximum number of output Messages",
         helpText =
@@ -171,7 +181,7 @@ public class StreamingDataGenerator {
     void setMessagesLimit(Long value);
 
     @TemplateParameter.Enum(
-        order = 5,
+        order = 6,
         enumOptions = {"AVRO", "JSON", "PARQUET"},
         optional = true,
         description = "Output Encoding Type",
@@ -182,7 +192,7 @@ public class StreamingDataGenerator {
     void setOutputType(OutputType value);
 
     @TemplateParameter.GcsReadFile(
-        order = 6,
+        order = 7,
         optional = true,
         description = "Location of Avro Schema file",
         helpText =
@@ -194,7 +204,7 @@ public class StreamingDataGenerator {
     void setAvroSchemaLocation(String value);
 
     @TemplateParameter.Enum(
-        order = 7,
+        order = 8,
         enumOptions = {"BIGQUERY", "GCS", "PUBSUB"},
         optional = true,
         description = "Output Sink Type",
@@ -205,7 +215,7 @@ public class StreamingDataGenerator {
     void setSinkType(SinkType value);
 
     @TemplateParameter.BigQueryTable(
-        order = 8,
+        order = 9,
         optional = true,
         description = "Output BigQuery table",
         helpText = "Output BigQuery table. Mandatory when sinkType is BIGQUERY",
@@ -215,7 +225,7 @@ public class StreamingDataGenerator {
     void setOutputTableSpec(String value);
 
     @TemplateParameter.Enum(
-        order = 9,
+        order = 10,
         enumOptions = {"WRITE_APPEND", "WRITE_EMPTY", "WRITE_TRUNCATE"},
         optional = true,
         description = "Write Disposition to use for BigQuery",
@@ -227,7 +237,7 @@ public class StreamingDataGenerator {
     void setWriteDisposition(String writeDisposition);
 
     @TemplateParameter.BigQueryTable(
-        order = 10,
+        order = 11,
         optional = true,
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
@@ -240,7 +250,7 @@ public class StreamingDataGenerator {
     void setOutputDeadletterTable(String outputDeadletterTable);
 
     @TemplateParameter.Duration(
-        order = 11,
+        order = 12,
         optional = true,
         description = "Window duration",
         helpText =
@@ -254,7 +264,7 @@ public class StreamingDataGenerator {
     void setWindowDuration(String windowDuration);
 
     @TemplateParameter.GcsWriteFolder(
-        order = 12,
+        order = 13,
         description = "Output file directory in Cloud Storage",
         helpText =
             "The path and filename prefix for writing output files. Must end with a slash. DateTime"
@@ -265,7 +275,7 @@ public class StreamingDataGenerator {
     void setOutputDirectory(String outputDirectory);
 
     @TemplateParameter.Text(
-        order = 13,
+        order = 14,
         optional = true,
         description = "Output filename prefix of the files to write",
         helpText = "The prefix to place on each windowed file.",
@@ -276,7 +286,7 @@ public class StreamingDataGenerator {
     void setOutputFilenamePrefix(String outputFilenamePrefix);
 
     @TemplateParameter.Integer(
-        order = 14,
+        order = 15,
         optional = true,
         description = "Maximum output shards",
         helpText =
@@ -288,6 +298,32 @@ public class StreamingDataGenerator {
     Integer getNumShards();
 
     void setNumShards(Integer numShards);
+  }
+
+  /** Allowed list of existing schema templates. */
+  public enum SchemaTemplate {
+    GAME_EVENT(
+        "{\n"
+            + "  \"eventId\": \"{{uuid()}}\",\n"
+            + "  \"eventTimestamp\": {{timestamp()}},\n"
+            + "  \"ipv4\": \"{{ipv4()}}\",\n"
+            + "  \"ipv6\": \"{{ipv6()}}\",\n"
+            + "  \"country\": \"{{country()}}\",\n"
+            + "  \"username\": \"{{username()}}\",\n"
+            + "  \"quest\": \"{{random(\"A Break In the Ice\", \"Ghosts of Perdition\", \"Survive the Low Road\")}}\",\n"
+            + "  \"score\": {{integer(100, 10000)}},\n"
+            + "  \"completed\": {{bool()}}\n"
+            + "}");
+
+    private final String schema;
+
+    SchemaTemplate(String schema) {
+      this.schema = schema;
+    }
+
+    public String getSchema() {
+      return schema;
+    }
   }
 
   /** Allowed list of message encoding types. */
@@ -361,7 +397,9 @@ public class StreamingDataGenerator {
             .apply("Trigger", createTrigger(options))
             .apply(
                 "Generate Fake Messages",
-                ParDo.of(new MessageGeneratorFn(options.getSchemaLocation())));
+                ParDo.of(
+                    new MessageGeneratorFn(
+                        options.getSchemaTemplate(), options.getSchemaLocation())));
 
     if (options.getSinkType().equals(SinkType.GCS)) {
       fakeMessages =
@@ -403,19 +441,22 @@ public class StreamingDataGenerator {
 
     // Not initialized inline or constructor because {@link JsonDataGenerator} is not serializable.
     private transient JsonDataGenerator dataGenerator;
-    private final String schemaLocation;
-    private String schema;
+    private final String schema;
 
-    MessageGeneratorFn(@Nonnull String schemaLocation) {
-      checkNotNull(
-          schemaLocation, "schemaLocation argument of MessageGeneratorFn class cannot be null.");
-      this.schemaLocation = schemaLocation;
+    MessageGeneratorFn(SchemaTemplate schemaTemplate, String schemaLocation) {
+      checkArgument(
+          schemaTemplate != null || schemaLocation != null,
+          "Either schemaTemplate or schemaLocation argument of MessageGeneratorFn class must be provided.");
+      if (schemaLocation != null) {
+        this.schema = GCSUtils.getGcsFileAsString(schemaLocation);
+      } else {
+        this.schema = schemaTemplate.getSchema();
+      }
     }
 
     @Setup
-    public void setup() throws IOException {
+    public void setup() {
       dataGenerator = new JsonDataGeneratorImpl();
-      schema = GCSUtils.getGcsFileAsString(schemaLocation);
     }
 
     @ProcessElement
