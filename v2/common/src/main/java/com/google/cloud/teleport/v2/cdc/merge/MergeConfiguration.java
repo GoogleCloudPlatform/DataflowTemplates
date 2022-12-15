@@ -52,7 +52,7 @@ public abstract class MergeConfiguration implements Serializable {
           "THEN {mergeInsertSql}");
 
   public static final Boolean DEFAULT_SUPPORT_PARTITIONED_TABLES = true;
-  public static final Integer DEFAULT_PARTITION_RETENTION_DAYS = 1;
+  public static final int DEFAULT_PARTITION_RETENTION_DAYS = 1;
   public static final Duration DEFAULT_MERGE_WINDOW_DURATION = Duration.standardMinutes(30);
   public static final int DEFAULT_MERGE_CONCURRENCY = 30;
 
@@ -76,6 +76,7 @@ public abstract class MergeConfiguration implements Serializable {
   }
 
   public MergeConfiguration withPartitionRetention(int partitionRetention) {
+    checkArgument(partitionRetention > 0, "partitionRetention must be greater than 0");
     return this.toBuilder().setPartitionRetention(Integer.valueOf(partitionRetention)).build();
   }
 

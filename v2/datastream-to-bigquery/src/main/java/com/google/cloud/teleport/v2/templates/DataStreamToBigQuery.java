@@ -143,6 +143,7 @@ public class DataStreamToBigQuery {
           StreamingOptions,
           InputUDFOptions,
           BigQueryStorageApiStreamingOptions {
+
     @TemplateParameter.Text(
         order = 1,
         description = "File location for Datastream file output in Cloud Storage.",
@@ -345,6 +346,17 @@ public class DataStreamToBigQuery {
     Integer getMergeConcurrency();
 
     void setMergeConcurrency(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 19,
+        optional = true,
+        description = "Partition retention days.",
+        helpText =
+            "The number of days to use for partition retention when running BigQuery merges. Default is 1.")
+    @Default.Integer(MergeConfiguration.DEFAULT_PARTITION_RETENTION_DAYS)
+    Integer getPartitionRetentionDays();
+
+    void setPartitionRetentionDays(Integer value);
   }
 
   /**
@@ -545,7 +557,8 @@ public class DataStreamToBigQuery {
                   MergeConfiguration.bigQueryConfiguration()
                       .withMergeWindowDuration(
                           Duration.standardMinutes(options.getMergeFrequencyMinutes()))
-                      .withMergeConcurrency(options.getMergeConcurrency())));
+                      .withMergeConcurrency(options.getMergeConcurrency())
+                      .withPartitionRetention(options.getPartitionRetentionDays())));
     }
 
     /*
