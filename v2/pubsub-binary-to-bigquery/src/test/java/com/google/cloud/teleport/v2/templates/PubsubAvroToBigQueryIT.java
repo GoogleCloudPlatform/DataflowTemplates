@@ -130,10 +130,7 @@ public final class PubsubAvroToBigQueryIT extends TemplateTestBase {
             LaunchConfig.builder(jobName, specPath)
                 .addParameter("schemaPath", getGcsPath("schema.avsc"))
                 .addParameter("inputSubscription", subscription.toString())
-                .addParameter(
-                    "outputTableSpec",
-                    String.format(
-                        "%s:%s.%s", people.getProject(), people.getDataset(), people.getTable()))
+                .addParameter("outputTableSpec", toTableSpec(people))
                 .addParameter("outputTopic", dlqTopic.toString()));
     assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
 

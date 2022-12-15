@@ -21,6 +21,7 @@ import static com.google.common.truth.Truth.assertThat;
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
+import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
@@ -162,15 +163,14 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
     Schema bqSchema = Schema.of(bqSchemaFields);
 
     bigQueryClient.createDataset(REGION);
-    bigQueryClient.createTable(bqTable, bqSchema);
-    String tableSpec = PROJECT + ":" + bigQueryClient.getDatasetId() + "." + bqTable;
+    TableId tableId = bigQueryClient.createTable(bqTable, bqSchema);
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(jobName, specPath)
             .addParameter(MONGO_URI, mongoDbClient.getUri())
             .addParameter(MONGO_DB, mongoDbClient.getDatabaseName())
             .addParameter(MONGO_COLLECTION, collectionName)
-            .addParameter(BIGQUERY_TABLE, tableSpec)
+            .addParameter(BIGQUERY_TABLE, toTableSpec(tableId))
             .addParameter(USER_OPTION, "FLATTEN");
 
     // Act
