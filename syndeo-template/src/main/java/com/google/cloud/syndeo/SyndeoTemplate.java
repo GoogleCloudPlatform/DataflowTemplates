@@ -32,6 +32,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
@@ -67,6 +68,29 @@ public class SyndeoTemplate {
 
     void setJsonSpecPayload(String jsonSpecPayload);
   }
+
+  public static final Set<String> SUPPORTED_URNS =
+      Set.of(
+          // Old names:
+          "bigquery:read",
+          "kafka:read",
+          "bigtable:write",
+          "schemaIO:bigquery:read",
+          "schemaIO:bigquery:write",
+
+          // New names:
+          "beam:schematransform:org.apache.beam:sql_transform:v1",
+          "beam:schematransform:org.apache.beam:pubsublite_write:v1",
+          "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
+          "beam:schematransform:org.apache.beam:bigquery_storage_read:v1",
+          "beam:schematransform:org.apache.beam:kafka_write:v1",
+          "beam:schematransform:org.apache.beam:kafka_read:v1",
+          "beam:schematransform:org.apache.beam:spanner_write:v1",
+          "beam:schematransform:org.apache.beam:pubsublite_read:v1",
+          "beam:schematransform:org.apache.beamspanner:read-changestreams:v1",
+          "beam:schematransform:org.apache.beam:debezium_read:v1",
+          "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
+          "syndeo:schematransform:com.google.cloud:files_pubsub:v1");
 
   public static void main(String[] args) throws Exception {
     run(args);
