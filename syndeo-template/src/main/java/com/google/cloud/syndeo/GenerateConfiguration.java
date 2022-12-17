@@ -40,10 +40,7 @@ public class GenerateConfiguration {
     Collection<SchemaTransformProvider> providers = ProviderUtil.getProviders();
     List<TransformDescription> descriptions =
         providers.stream()
-            .filter(
-                provider -> {
-                  return SyndeoTemplate.SUPPORTED_URNS.contains(provider.identifier());
-                })
+            .filter(provider -> SyndeoTemplate.SUPPORTED_URNS.contains(provider.identifier()))
             .map(GenerateConfiguration::providerToConfiguration)
             .collect(Collectors.toList());
 
@@ -51,6 +48,7 @@ public class GenerateConfiguration {
         Paths.get("transform_configs.prototext"),
         BatchGetTransformDescriptionsResponse.newBuilder()
             .addAllTransformDescriptions(descriptions)
+            .build()
             .toString()
             .getBytes(StandardCharsets.UTF_8));
   }
@@ -58,6 +56,7 @@ public class GenerateConfiguration {
   static com.google.cloud.datapipelines.v1.TransformDescription providerToConfiguration(
       SchemaTransformProvider provider) {
     LOG.info("Generating configuration for {}", provider.identifier());
+    System.out.println(String.format("Generating configuration for %s", provider.identifier()));
     try {
       TransformDescription.Builder builder =
           TransformDescription.newBuilder()

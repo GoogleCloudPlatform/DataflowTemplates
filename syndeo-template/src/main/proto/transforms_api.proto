@@ -1,0 +1,292 @@
+syntax = "proto3";
+
+package google.cloud.datapipelines.v1;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/api/field_behavior.proto";
+import "google/api/resource.proto";
+import "google/api/visibility.proto";
+import "google/type/datetime.proto";
+import "google/type/decimal.proto";
+
+option java_multiple_files = true;
+option java_package = "com.google.cloud.datapipelines.v1";
+option java_outer_classname = "TransformsApiProto";
+
+// Response message for
+// [BatchGetTransformDescriptions][Transforms.BatchGetTransformDescriptions]
+message BatchGetTransformDescriptionsResponse {
+  // List of requested transform descriptions.
+  repeated TransformDescription transform_descriptions = 1;
+}
+
+// The raw schema and its type.
+message RawSchemaInfo {
+  // The schema.
+  string raw_schema = 1;
+  // The type of the schema.
+  RawSchemaType type = 2;
+}
+
+// Represents a simplified Apache Beam schema.
+message Schema {
+  // Fields in the schema. Every field within a schema must have a unique name.
+  repeated Field fields = 1;
+
+  // An identifier of the schema for looking it up in a repository. This only
+  // needs to be set if the schema is stored in a repository.
+  string reference_id = 2;
+}
+
+// Holds a schema or a reference to a schema in some repository.
+message SchemaSource {
+  oneof schema {
+    // Schema located locally with the message.
+    Schema local_schema = 1;
+
+    // The `reference_id` value of a schema in a repository.
+    string reference_id = 2;
+  }
+}
+
+// Info for a single field in the schema.
+// (-- api-linter: core::0123::resource-annotation=disabled
+//     aip.dev/not-precedent: `name` is how we identify the field. --)
+message Field {
+  // Name of the field.
+  string name = 1;
+
+  // Type info for the field.
+  FieldType type = 2;
+}
+
+// Type info about a field.
+message FieldType {
+  // Specific type of the field. For non-atomic types, the corresponding
+  // type info for that non-atomic must be set.
+  TypeName type = 1;
+
+  // Whether or not this field is nullable.
+  bool nullable = 2;
+
+  // Type information for non-atomic or logical types.
+  oneof type_info {
+    // If `type` is a logical type, this is the info for the specific logical
+    // type.
+    LogicalType logical_type = 3;
+
+    // If `type` is an array or iterable, this is the type contained in that
+    // array or iterable.
+    FieldType collection_element_type = 4;
+
+    // If `type` is a map, this is the key and value types for that map.
+    MapType map_type = 5;
+
+    // If `type` is a row, this is the schema of that row.
+    Schema row_schema = 6;
+  }
+}
+
+// Represents a map in a schema.
+message MapType {
+  // Key type of the map. Only atomic types are supported.
+  FieldType map_key_type = 1;
+  // Value type of the map.
+  FieldType map_value_type = 2;
+}
+
+// Represents the input for creating a specified logical type.
+message LogicalType {
+  // Represents the Beam EnumerationType logical type.
+  message EnumerationType {
+    // Names of the values. The numeric value is the same as the index.
+    repeated string values = 1;
+  }
+
+  // Represents the Beam FixedBytes logical type.
+  message FixedBytes {
+    // Number of bytes to allocate.
+    int32 size_bytes = 1;
+  }
+
+  oneof type {
+    // The enum represented by this logical type.
+    EnumerationType enumeration_type = 1;
+    // The fixed-size byte collection represented by this logical type.
+    FixedBytes fixed_bytes = 2;
+  }
+}
+
+// Represents an Apache Beam row, though the `Any` nature of values is replaced
+// with more concrete representations of valid values.
+message Row {
+  // The schema of the row's data.
+  SchemaSource schema = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // The values of this Row. A fully built row is required to hold to the schema
+  // specified by `schema`.
+  repeated FieldValue values = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+// A single value in a row. The value set must correspond to the correct type
+// from the row's schema.
+message FieldValue {
+  oneof value {
+    // The atomic value of this field. Must correspond to the correct atomic
+    // type in the schema.
+    AtomicValue atomic_value = 1;
+    // The array value of this field. Corresponds to TYPE_NAME_ARRAY in the
+    // schema.
+    ArrayValue array_value = 2;
+    // The iterable value of this field. Corresponds to TYPE_NAME_ITERABLE in
+    // the schema.
+    IterableValue iterable_value = 3;
+    // The map value of this field. Corresponds to TYPE_NAME_MAP in the schema.
+    MapValue map_value = 4;
+    // The row value of this field. Corresponds to TYPE_NAME_ROW in the schema.
+    // This row also holds to its own schema.
+    Row row_value = 5;
+    // The enum value of this field. Corresponds to TYPE_NAME_LOGICAL_TYPE in
+    // the schema if that logical type represents an `EnumerationType` type.
+    EnumerationValue enum_value = 6;
+    // The fixed-length byte collection of this field. Corresponds to
+    // TYPE_NAME_LOGICAL_TYPE in the schema if that logical type represents a
+    // `FixedBytes` type.
+    FixedBytesValue fixed_bytes_value = 7;
+  }
+}
+
+// Represents a non-dividable value.
+message AtomicValue {
+  oneof value {
+    // An 8-bit signed value.
+    int32 byte_value = 1;
+    // A 16-bit signed value.
+    int32 int16_value = 2;
+    // A 32-bit signed value.
+    int32 int32_value = 3;
+    // A 64-bit signed value.
+    int64 int64_value = 4;
+    // A large decimal value, equivalent to Java BigDecimal.
+    google.type.Decimal decimal_value = 5;
+    // A 32-bit floating point value.
+    float float_value = 6;
+    // A 64-bit floating point value.
+    double double_value = 7;
+    // A string value.
+    string string_value = 8;
+    // A datetime value.
+    google.type.DateTime datetime_value = 9;
+    // A boolean value.
+    bool boolean_value = 10;
+    // An array of raw bytes.
+    bytes bytes_value = 11;
+  }
+}
+
+// Represents an array of values. The elements can be of any type.
+message ArrayValue {
+  // The elements of the array.
+  repeated FieldValue elements = 1;
+}
+
+// Represents an iterable of values. The elements can be of any type.
+message IterableValue {
+  // The elements of the iterable.
+  repeated FieldValue elements = 1;
+}
+
+// Represents a key/value pairing.
+message MapValue {
+  // A single entry in the map. Each entry must have a unique key.
+  message Entry {
+    // The key value. Only atomic values are supported.
+    FieldValue key = 1;
+    // The value associated with the key. It may be of any type.
+    FieldValue value = 2;
+  }
+
+  // The entries in the map.
+  repeated Entry entries = 1;
+}
+
+// Represents a selected value from an EnumerationType.
+message EnumerationValue {
+  // Name of the enum option.
+  string name = 1;
+}
+
+// Represents a collection of bytes whose size is the same as the associated
+// FixedBytes size value.
+message FixedBytesValue {
+  // The raw bytes. It must be exactly the size specified in the schema.
+  bytes value = 1;
+}
+
+message TransformDescription {
+  option (google.api.resource) = {
+    type: "datapipelines.googleapis.com/TransformDescription"
+    pattern: "projects/{project}/locations/{location}/transformDescriptions/{transform_description}"
+  };
+
+  string name = 1 [
+    (google.api.field_behavior) = OUTPUT_ONLY,
+    (google.api.resource_reference).type =
+        "datapipelines.googleapis.com/TransformDescription"
+  ];
+
+  // Unique resource name of the transform.
+  string uniform_resource_name = 2;
+
+  // Available options for configuring the transform.
+  Schema options = 3;
+}
+
+// Raw schemas supported.
+enum RawSchemaType {
+  // The schema type is unknown.
+  RAW_SCHEMA_TYPE_UNSPECIFIED = 0;
+  // The schema is an Avro schema.
+  RAW_SCHEMA_TYPE_AVRO = 1;
+}
+
+// (-- LINT.IfChange --)
+
+// Available field types.
+enum TypeName {
+  // Type name is not set (generally an error)
+  TYPE_NAME_UNSPECIFIED = 0;
+  // 8-bit signed integer
+  TYPE_NAME_BYTE = 1;
+  // 16-bit signed integer
+  TYPE_NAME_INT16 = 2;
+  // 32-bit signed integer
+  TYPE_NAME_INT32 = 3;
+  // 64-bit signed integer
+  TYPE_NAME_INT64 = 4;
+  // Large decimal type (equivalent to Java BigDecimal)
+  TYPE_NAME_DECIMAL = 5;
+  // 32-bit floating point integer
+  TYPE_NAME_FLOAT = 6;
+  // 64-bit floating point integer
+  TYPE_NAME_DOUBLE = 7;
+  // String
+  TYPE_NAME_STRING = 8;
+  // Datetime
+  TYPE_NAME_DATETIME = 9;
+  // Bool
+  TYPE_NAME_BOOLEAN = 10;
+  // Convenience for an ARRAY of BYTE values
+  TYPE_NAME_BYTES = 11;
+  // Array of some other values.
+  TYPE_NAME_ARRAY = 12;
+  // Iterable of some other values.
+  TYPE_NAME_ITERABLE = 13;
+  // Key/Value mapping between values.
+  TYPE_NAME_MAP = 14;
+  // Struct that follows a particular schema
+  TYPE_NAME_ROW = 15;
+  // Beam logical type
+  TYPE_NAME_LOGICAL_TYPE = 16;
+}
