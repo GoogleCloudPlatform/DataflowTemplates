@@ -19,63 +19,42 @@ import com.google.cloud.kms.v1.DecryptResponse;
 import com.google.cloud.kms.v1.KeyManagementServiceClient;
 import com.google.protobuf.ByteString;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.regex.Pattern;
-import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** */
-public class KMSEncryptedNestedValue extends DualInputNestedValue<String, String, String> {
+/** Utilities to decrypt using KMS key. */
+public class KMSUtils {
+
+  /* Logger for class. */
+  private static final Logger LOG = LoggerFactory.getLogger(KMSUtils.class);
   private static final Pattern KEYNAME_PATTERN =
       Pattern.compile(
           "projects/([^/]+)/locations/([a-zA-Z0-9_-]{1,63})/keyRings/"
               + "[a-zA-Z0-9_-]{1,63}/cryptoKeys/[a-zA-Z0-9_-]{1,63}");
 
-  /** The log to output status messages to. */
-  private static final Logger LOG = LoggerFactory.getLogger(KMSEncryptedNestedValue.class);
-
-  private static class KmsTranslatorInput
-      implements SerializableFunction<TranslatorInput<String, String>, String> {
-    private KmsTranslatorInput() {}
-
-    public static KmsTranslatorInput of() {
-      return new KmsTranslatorInput();
-    }
-
-    @Override
-    public String apply(TranslatorInput<String, String> input) {
+  public static String maybeDecrypt(String unencrypted, String kmsKey) {
+    if (kmsKey == null || kmsKey.isEmpty()) {
+      LOG.info("KMS Key is not specified. Not decrypting.");
+      return unencrypted;
+    } else if (!isKmsKey(kmsKey)) {
+      IllegalArgumentException exception =
+          new IllegalArgumentException("Provided KMS Key %s is invalid");
+      throw new RuntimeException(exception);
+    } else {
       String decrypted;
-      String unencrypted;
-      String kmsKey;
-
-      unencrypted = input.getX();
-      kmsKey = input.getY();
-
-      if (kmsKey == null) {
-        LOG.info("KMS Key is not specified. Using: " + unencrypted);
-        return unencrypted;
-      } else if (!testkmsKey(kmsKey)) {
-        IllegalArgumentException exception =
-            new IllegalArgumentException("Provided KMS Key %s is invalid");
-        throw new RuntimeException(exception);
-      } else {
-        try {
-          decrypted = decryptWithKMS(unencrypted /*value*/, kmsKey /*key*/);
-        } catch (IOException e) {
-          throw new RuntimeException(e);
-        }
-        return decrypted;
+      try {
+        decrypted = decryptWithKMS(unencrypted /*value*/, kmsKey /*key*/);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
       }
+      return decrypted;
     }
   }
 
-  /** Creates a {@link KMSEncryptedNestedValue} that wraps the key and the encrypted value. */
-  public KMSEncryptedNestedValue(String value, String key) {
-    super(value, key, KmsTranslatorInput.of());
-  }
-
-  private static boolean testkmsKey(String kmsKey) {
+  private static boolean isKmsKey(String kmsKey) {
     return KEYNAME_PATTERN.matcher(kmsKey).matches();
   }
 
@@ -89,17 +68,13 @@ public class KMSEncryptedNestedValue extends DualInputNestedValue<String, String
    */
   private static String decryptWithKMS(String encryptedValue, String kmsKey) throws IOException {
     /*
-    kmsKey should be in the following format:
-    projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}
+     * kmsKey should be in the following format:
+     * projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}
      */
-
-    byte[] cipherText = Base64.getDecoder().decode(encryptedValue.getBytes("UTF-8"));
-
+    byte[] cipherText = Base64.getDecoder().decode(encryptedValue.getBytes(StandardCharsets.UTF_8));
     try (KeyManagementServiceClient client = KeyManagementServiceClient.create()) {
-
       // Decrypt the ciphertext with Cloud KMS.
       DecryptResponse response = client.decrypt(kmsKey, ByteString.copyFrom(cipherText));
-
       // Extract the plaintext from the response.
       return new String(response.getPlaintext().toByteArray());
     }

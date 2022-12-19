@@ -147,6 +147,20 @@
             </exclusion>
           </exclusions>
         </dependency>
+        <dependency>
+          <groupId>com.google.cloud</groupId>
+          <artifactId>google-cloud-kms</artifactId>
+          <exclusions>
+            <exclusion>
+              <groupId>io.grpc</groupId>
+              <artifactId>*</artifactId>
+            </exclusion>
+            <exclusion>
+              <groupId>com.google.cloud</groupId>
+              <artifactId>google-cloud-core-grpc</artifactId>
+            </exclusion>
+          </exclusions>
+        </dependency>
 
         <!-- UDFs -->
         <dependency>

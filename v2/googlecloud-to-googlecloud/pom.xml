@@ -29,7 +29,6 @@
   <artifactId>googlecloud-to-googlecloud</artifactId>
 
   <properties>
-    <kms.version>1.20.0</kms.version>
     <derby.version>10.14.2.0</derby.version>
     <avro.version>1.8.2</avro.version>
     <dlp.version>2.1.0</dlp.version>
@@ -89,17 +88,6 @@
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
       <version>${guava.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.cloud</groupId>
-      <artifactId>google-cloud-kms</artifactId>
-      <version>${kms.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>com.google.cloud</groupId>
-          <artifactId>google-cloud-core-grpc</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.google.cloud</groupId>

@@ -26,24 +26,17 @@ import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonTo
 import com.google.cloud.teleport.v2.transforms.ErrorConverters.WriteStringMessageErrors;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
+import com.google.cloud.teleport.v2.utils.GCSUtils;
 import com.google.cloud.teleport.v2.utils.ResourceUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
-import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
-import com.google.common.io.ByteStreams;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.CoderRegistry;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.extensions.gcp.util.Transport;
-import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.TextIO;
-import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
@@ -51,12 +44,9 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryInsertError;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.ValueProvider;
-import org.apache.beam.sdk.options.ValueProvider.NestedValueProvider;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.transforms.Watch.Growth;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
@@ -268,7 +258,7 @@ public class TextToBigQueryStreaming {
             .apply(
                 "InsertIntoBigQuery",
                 BigQueryIO.writeTableRows()
-                    .withJsonSchema(getSchemaFromGCS(options.getJSONPath()))
+                    .withJsonSchema(GCSUtils.getGcsFileAsString(options.getJSONPath()))
                     .to(options.getOutputTable())
                     .withExtendedErrorInfo()
                     .withoutValidation()
@@ -329,38 +319,6 @@ public class TextToBigQueryStreaming {
     }
 
     return failsafeElement;
-  }
-
-  /**
-   * Method to read a BigQuery schema file from GCS and return the file contents as a string.
-   *
-   * @param gcsPath Path string for the schema file in GCS.
-   * @return File contents as a string.
-   */
-  private static ValueProvider<String> getSchemaFromGCS(String gcsPath) {
-    return NestedValueProvider.of(
-        StaticValueProvider.of(gcsPath),
-        new SimpleFunction<>() {
-          @Override
-          public String apply(String input) {
-            ResourceId sourceResourceId = FileSystems.matchNewResource(input, false);
-
-            String schema;
-            try (ReadableByteChannel rbc = FileSystems.open(sourceResourceId)) {
-              try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-                try (WritableByteChannel wbc = Channels.newChannel(baos)) {
-                  ByteStreams.copy(rbc, wbc);
-                  schema = baos.toString(Charsets.UTF_8.name());
-                  LOG.info("Extracted schema: " + schema);
-                }
-              }
-            } catch (IOException e) {
-              LOG.error("Error extracting schema: " + e.getMessage());
-              throw new RuntimeException(e);
-            }
-            return schema;
-          }
-        });
   }
 
   /**

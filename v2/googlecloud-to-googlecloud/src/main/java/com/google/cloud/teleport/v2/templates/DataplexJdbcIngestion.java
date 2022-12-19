@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.utils.KMSUtils.maybeDecrypt;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.api.services.bigquery.model.TableRow;
@@ -43,7 +44,6 @@ import com.google.cloud.teleport.v2.utils.JdbcConverters;
 import com.google.cloud.teleport.v2.utils.JdbcIngestionWriteDisposition.MapWriteDisposition;
 import com.google.cloud.teleport.v2.utils.JdbcIngestionWriteDisposition.WriteDispositionException;
 import com.google.cloud.teleport.v2.utils.JdbcIngestionWriteDisposition.WriteDispositionOptions;
-import com.google.cloud.teleport.v2.utils.KMSEncryptedNestedValue;
 import com.google.cloud.teleport.v2.utils.Schemas;
 import com.google.cloud.teleport.v2.values.DataplexCompression;
 import com.google.cloud.teleport.v2.values.DataplexEnums.DataplexAssetResourceSpec;
@@ -90,7 +90,16 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.BATCH,
     displayName = "Dataplex JDBC Ingestion",
     description =
-        "A pipeline that reads from a JDBC source and writes to to a Dataplex asset, which can be either a BigQuery dataset or a Cloud Storage bucket. JDBC connection string, user name and password can be passed in directly as plaintext or encrypted using the Google Cloud KMS API.  If the parameter KMSEncryptionKey is specified, connectionURL, username, and password should be all in encrypted format. A sample curl command for the KMS API encrypt endpoint: curl -s -X POST \"https://cloudkms.googleapis.com/v1/projects/your-project/locations/your-path/keyRings/your-keyring/cryptoKeys/your-key:encrypt\"  -d \"{\\\"plaintext\\\":\\\"PasteBase64EncodedString\\\"}\"  -H \"Authorization: Bearer $(gcloud auth application-default print-access-token)\"  -H \"Content-Type: application/json\"",
+        "A pipeline that reads from a JDBC source and writes to to a Dataplex asset, which can be"
+            + " either a BigQuery dataset or a Cloud Storage bucket. JDBC connection string, user"
+            + " name and password can be passed in directly as plaintext or encrypted using the"
+            + " Google Cloud KMS API.  If the parameter KMSEncryptionKey is specified,"
+            + " connectionURL, username, and password should be all in encrypted format. A sample"
+            + " curl command for the KMS API encrypt endpoint: curl -s -X POST"
+            + " \"https://cloudkms.googleapis.com/v1/projects/your-project/locations/your-path/keyRings/your-keyring/cryptoKeys/your-key:encrypt\""
+            + "  -d \"{\\\"plaintext\\\":\\\"PasteBase64EncodedString\\\"}\"  -H \"Authorization:"
+            + " Bearer $(gcloud auth application-default print-access-token)\"  -H \"Content-Type:"
+            + " application/json\"",
     optionsClass = DataplexJdbcIngestionOptions.class,
     flexContainerName = "dataplex-jdbc-ingestion",
     contactInformation = "https://cloud.google.com/support")
@@ -106,10 +115,6 @@ public class DataplexJdbcIngestion {
 
   /** The tag for existing target file names. */
   private static final TupleTag<String> EXISTING_TARGET_FILES_OUT = new TupleTag<String>() {};
-
-  private static KMSEncryptedNestedValue maybeDecrypt(String unencryptedValue, String kmsKey) {
-    return new KMSEncryptedNestedValue(unencryptedValue, kmsKey);
-  }
 
   /**
    * Main entry point for pipeline execution.
