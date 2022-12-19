@@ -53,6 +53,7 @@ type MavenFlags interface {
 	SkipDependencyAnalysis() string
 	SkipJib() string
 	SkipTests() string
+	SkipIntegrationTests() string
 	FailAtTheEnd() string
 }
 
@@ -80,6 +81,10 @@ func (*mvnFlags) SkipJib() string {
 
 func (*mvnFlags) SkipTests() string {
 	return "-Dmaven.test.skip"
+}
+
+func (*mvnFlags) SkipIntegrationTests() string {
+	return "-DskipIntegrationTests"
 }
 
 func (*mvnFlags) FailAtTheEnd() string {
@@ -121,6 +126,13 @@ func RunForChangedModules(cmd string, args ...string) error {
 
 	// Collect the modules together for a single call. Maven can work out the install order.
 	modules := make([]string, 0)
+
+	// We need to append the base dependency modules, because they are needed to build all
+	// other modules.
+	modules = append(modules, "metadata")
+	modules = append(modules, "it")
+	modules = append(modules, "structured-logging")
+	modules = append(modules, "plaintext-logging")
 	for root, children := range repo.GetModulesForPaths(changed) {
 		if len(children) == 0 {
 			modules = append(modules, root)

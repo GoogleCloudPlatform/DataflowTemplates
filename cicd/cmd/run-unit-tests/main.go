@@ -29,6 +29,7 @@ func main() {
 		mvnFlags.IncludeDependents(),
 		mvnFlags.SkipCheckstyle(),
 		mvnFlags.SkipJib(),
+		mvnFlags.SkipIntegrationTests(),
 		mvnFlags.FailAtTheEnd())
 	if err != nil {
 		log.Fatalf("%v\n", err)

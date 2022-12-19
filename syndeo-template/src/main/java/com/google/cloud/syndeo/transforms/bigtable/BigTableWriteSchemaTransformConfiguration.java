@@ -64,9 +64,9 @@ public abstract class BigTableWriteSchemaTransformConfiguration {
 
     public abstract Builder setKeyColumns(List<String> value);
 
-    public abstract Builder setEndpoint(String endpoint);
+    public abstract Builder setEndpoint(@Nullable String endpoint);
 
-    public abstract Builder setAppProfileId(String appProfile);
+    public abstract Builder setAppProfileId(@Nullable String appProfile);
 
     public abstract BigTableWriteSchemaTransformConfiguration build();
   }

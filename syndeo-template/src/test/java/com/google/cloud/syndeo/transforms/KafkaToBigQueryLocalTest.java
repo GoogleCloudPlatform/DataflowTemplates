@@ -65,16 +65,18 @@ public class KafkaToBigQueryLocalTest {
   public KafkaContainer kafka =
       new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:6.2.1"));
 
-  @Rule public TestName testName = new TestName();
+  @Rule public final TestName testName = new TestName();
 
   // TODO(pabloem): Rely on single implementation for row generator.
   private static final Random RND = new Random();
 
-  private static final Schema INTEGRATION_TEST_SCHEMA =
+  public static final Schema INTEGRATION_TEST_SCHEMA =
       Schema.builder()
           .addStringField("name")
           .addBooleanField("vaccinated")
           .addDoubleField("temperature")
+          // The following fields cannot be included in local tests
+          // due to limitations of the testing utilities.
           .addInt32Field("age")
           .addInt64Field("networth")
           .addDateTimeField("birthday")
@@ -86,7 +88,7 @@ public class KafkaToBigQueryLocalTest {
     return Base64.getEncoder().encodeToString(byteStr);
   }
 
-  private static Row generateRow() {
+  public static Row generateRow() {
     return Row.withSchema(INTEGRATION_TEST_SCHEMA)
         .addValue(randomString(10))
         .addValue(RND.nextBoolean())
@@ -98,8 +100,8 @@ public class KafkaToBigQueryLocalTest {
   }
 
   private static final String KAFKA_TOPIC = "sampleTopic" + UUID.randomUUID();
-  // TODO(pabloem): Vary number of partitions to make sure we're safe on any distribution
-  private static final Integer KAFKA_TOPIC_PARTITIONS = 3;
+  // TODO(pabloem): add more kafka partitions to test a more realistic scenario.
+  private static final Integer KAFKA_TOPIC_PARTITIONS = 1;
   private static final String AVRO_SCHEMA =
       AvroUtils.toAvroSchema(INTEGRATION_TEST_SCHEMA).toString();
 
@@ -125,16 +127,27 @@ public class KafkaToBigQueryLocalTest {
     }
   }
 
-  private JsonNode generateRootConfiguration() {
+  JsonNode generateConfigurationWithKafkaBootstrap(String kafkaBootstrap, String tableName) {
+    JsonNode rootConfig = generateBaseRootConfiguration(tableName);
+    ((ObjectNode) rootConfig.get("source").get("configurationParameters"))
+        .put("bootstrapServers", kafkaBootstrap);
+    return rootConfig;
+  }
+
+  public static JsonNode generateBaseRootConfiguration(String tableName) {
+    if (tableName == null) {
+      tableName = "sampletable";
+    }
     JsonNode rootConfiguration = JsonNodeFactory.instance.objectNode();
     JsonNode kafkaSourceNode = ((ObjectNode) rootConfiguration).putObject("source");
     ((ObjectNode) kafkaSourceNode).put("urn", "kafka:read");
     JsonNode kafkaConfigParams =
         ((ObjectNode) kafkaSourceNode).putObject("configurationParameters");
 
-    ((ObjectNode) kafkaConfigParams).put("bootstrapServers", kafka.getBootstrapServers());
+    ((ObjectNode) kafkaConfigParams).put("bootstrapServers", "");
     ((ObjectNode) kafkaConfigParams).put("topic", KAFKA_TOPIC);
     ((ObjectNode) kafkaConfigParams).put("dataFormat", "AVRO");
+    // TODO(pabloem): Test using Confluent Schema Registry
     ((ObjectNode) kafkaConfigParams).put("avroSchema", AVRO_SCHEMA);
     ((ObjectNode) kafkaConfigParams).put("autoOffsetResetConfig", "earliest");
     ((ObjectNode) kafkaConfigParams).putObject("consumerConfigUpdates");
@@ -147,7 +160,7 @@ public class KafkaToBigQueryLocalTest {
     ((ObjectNode) bqSinkNode).put("urn", "schemaIO:bigquery:write");
     JsonNode bqConfigParams = ((ObjectNode) bqSinkNode).putObject("configurationParameters");
     // TODO(pabloem): Test with different formats for tableSpec.
-    ((ObjectNode) bqConfigParams).put("table", "anyproject.anydataset." + testName.getMethodName());
+    ((ObjectNode) bqConfigParams).put("table", "anyproject.anydataset." + tableName);
     ((ObjectNode) bqConfigParams).put("writeDisposition", "WRITE_APPEND");
     ((ObjectNode) bqConfigParams).put("createDisposition", "CREATE_IF_NECESSARY");
     ((ObjectNode) bqConfigParams).put("useTestingBigQueryServices", true);
@@ -181,7 +194,9 @@ public class KafkaToBigQueryLocalTest {
     PipelineResult result =
         SyndeoTemplate.run(
             new String[] {
-              "--jsonSpecPayload=" + generateRootConfiguration(),
+              "--jsonSpecPayload="
+                  + generateConfigurationWithKafkaBootstrap(
+                      kafka.getBootstrapServers(), testName.getMethodName()),
               "--streaming",
               "--experiments=use_deprecated_read",
               // We need to set this option because otherwise the pipeline will block on p.run() and
@@ -197,7 +212,9 @@ public class KafkaToBigQueryLocalTest {
     result =
         SyndeoTemplate.run(
             new String[] {
-              "--jsonSpecPayload=" + generateRootConfiguration(),
+              "--jsonSpecPayload="
+                  + generateConfigurationWithKafkaBootstrap(
+                      kafka.getBootstrapServers(), testName.getMethodName()),
               "--streaming",
               "--experiments=use_deprecated_read",
               // We need to set this option because otherwise the pipeline will block on p.run() and
@@ -227,7 +244,9 @@ public class KafkaToBigQueryLocalTest {
     PipelineResult result =
         SyndeoTemplate.run(
             new String[] {
-              "--jsonSpecPayload=" + generateRootConfiguration(),
+              "--jsonSpecPayload="
+                  + generateConfigurationWithKafkaBootstrap(
+                      kafka.getBootstrapServers(), testName.getMethodName()),
               "--streaming",
               "--experiments=use_deprecated_read",
               // We need to set this option because otherwise the pipeline will block on p.run() and

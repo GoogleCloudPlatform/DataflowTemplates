@@ -15,6 +15,7 @@
  */
 package com.google.cloud.syndeo.transforms.bigtable;
 
+import com.google.api.gax.rpc.AlreadyExistsException;
 import com.google.bigtable.v2.Mutation;
 import com.google.cloud.bigtable.admin.v2.BigtableTableAdminClient;
 import com.google.cloud.bigtable.admin.v2.BigtableTableAdminSettings;
@@ -43,10 +44,14 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.Row;
 import org.joda.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BigTableIOWriteSchemaBasedTransform
     extends PTransform<PCollectionRowTuple, PCollectionRowTuple> implements SchemaTransform {
 
+  private static final Logger LOG =
+      LoggerFactory.getLogger(BigTableIOWriteSchemaBasedTransform.class);
   private static final String INPUT_TAG = "INPUT";
 
   private final String projectId;
@@ -95,13 +100,28 @@ public class BigTableIOWriteSchemaBasedTransform
   }
 
   private void createTableIfNeeded(Schema inputSchema) {
-    // TODO(pabloem): What happens if we don't have privileges to create the table?
     try (BigtableTableAdminClient client = bigtableTableAdminClient()) {
       CreateTableRequest createTableRequest = CreateTableRequest.of(tableId);
       inputSchema.getFields().forEach(field -> createTableRequest.addFamily(field.getName()));
       client.createTable(createTableRequest);
     } catch (IOException e) {
-      // TODO(pabloem): HANDLE THIS POSSIBILITY
+      throw new RuntimeException(
+          String.format(
+              "Failed to access BigTable instance %s in project %s", instanceId, projectId),
+          e);
+    } catch (io.grpc.StatusRuntimeException | com.google.api.gax.rpc.AlreadyExistsException e) {
+      if (e.getMessage().toLowerCase().contains("already")
+              && e.getMessage().toLowerCase().contains("exists")
+          || e instanceof AlreadyExistsException) {
+        // The table already exists. We do not need to handle this.
+        LOG.info("Bigtable destination table {} already exists. Not creating a new one.", tableId);
+      } else {
+        throw new RuntimeException(
+            String.format(
+                "Unable to create BigTable table in instance %s in project %s",
+                instanceId, projectId),
+            e);
+      }
     }
   }
 
