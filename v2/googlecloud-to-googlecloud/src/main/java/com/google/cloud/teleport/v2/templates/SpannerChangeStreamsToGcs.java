@@ -19,6 +19,7 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SpannerChangeStreamsToGcsOptions;
 import com.google.cloud.teleport.v2.transforms.FileFormatFactorySpannerChangeStreams;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
@@ -55,6 +56,8 @@ public class SpannerChangeStreamsToGcs {
   private static final String USE_RUNNER_V2_EXPERIMENT = "use_runner_v2";
 
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     LOG.info("Starting Input Files to GCS");
 
     SpannerChangeStreamsToGcsOptions options =

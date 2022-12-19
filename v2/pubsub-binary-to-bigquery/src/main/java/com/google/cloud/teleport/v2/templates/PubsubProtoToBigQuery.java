@@ -21,6 +21,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.BigQueryCommonOptions.WriteOptions;
 import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
 import com.google.cloud.teleport.v2.options.PubsubCommonOptions.ReadSubscriptionOptions;
@@ -86,6 +87,7 @@ public final class PubsubProtoToBigQuery {
       FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
 
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
     run(PipelineOptionsFactory.fromArgs(args).as(PubSubProtoToBigQueryOptions.class));
   }
 

@@ -31,6 +31,7 @@ import com.google.cloud.teleport.v2.cdc.merge.BigQueryMerger;
 import com.google.cloud.teleport.v2.cdc.merge.MergeConfiguration;
 import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
 import com.google.cloud.teleport.v2.templates.DataStreamToBigQuery.Options;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
@@ -352,7 +353,8 @@ public class DataStreamToBigQuery {
         optional = true,
         description = "Partition retention days.",
         helpText =
-            "The number of days to use for partition retention when running BigQuery merges. Default is 1.")
+            "The number of days to use for partition retention when running BigQuery merges."
+                + " Default is 1.")
     @Default.Integer(MergeConfiguration.DEFAULT_PARTITION_RETENTION_DAYS)
     Integer getPartitionRetentionDays();
 
@@ -365,6 +367,8 @@ public class DataStreamToBigQuery {
    * @param args The command-line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     LOG.info("Starting Input Files to BigQuery");
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);

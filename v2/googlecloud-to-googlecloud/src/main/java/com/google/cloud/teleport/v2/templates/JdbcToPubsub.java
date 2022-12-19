@@ -19,6 +19,7 @@ import static com.google.cloud.teleport.v2.utils.KMSUtils.maybeDecrypt;
 
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.io.DynamicJdbcIO;
 import com.google.cloud.teleport.v2.options.JdbcToPubsubOptions;
 import java.sql.Clob;
@@ -107,6 +108,8 @@ public class JdbcToPubsub {
    * @param args Command line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     JdbcToPubsubOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(JdbcToPubsubOptions.class);
 

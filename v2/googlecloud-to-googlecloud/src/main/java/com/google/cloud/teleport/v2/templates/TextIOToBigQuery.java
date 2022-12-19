@@ -21,6 +21,7 @@ import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.BigQueryStorageApiBatchOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
@@ -149,6 +150,8 @@ public class TextIOToBigQuery {
   private static final String MODE = "mode";
 
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     run(options, () -> writeToBQTransform(options));
   }

@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.templates.FileFormatConversion.FileFormatConversionOptions;
 import com.google.cloud.teleport.v2.transforms.AvroConverters.AvroOptions;
 import com.google.cloud.teleport.v2.transforms.CsvConverters.CsvPipelineOptions;
@@ -172,6 +173,8 @@ public class FileFormatConversion {
    * @param args Command line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     FileFormatConversionOptions options =
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()

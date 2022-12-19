@@ -19,6 +19,7 @@ import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.BigQueryWriteOptions;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.JavascriptDocumentTransformerOptions;
 import com.google.cloud.teleport.v2.mongodb.options.MongoDbToBigQueryOptions.MongoDbOptions;
@@ -72,6 +73,8 @@ public class MongoDbToBigQuery {
 
   public static void main(String[] args)
       throws ScriptException, IOException, NoSuchMethodException {
+    UncaughtExceptionLogger.register();
+
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
     BigQueryIOUtils.validateBQStorageApiOptionsBatch(options);

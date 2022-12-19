@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates.pubsubtotext;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.io.WindowedFilenamePolicy;
 import com.google.cloud.teleport.v2.options.WindowedFilenamePolicyOptions;
 import com.google.cloud.teleport.v2.templates.pubsubtotext.PubsubToText.Options;
@@ -226,6 +227,7 @@ public class PubsubToText {
    * @param args The command-line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 

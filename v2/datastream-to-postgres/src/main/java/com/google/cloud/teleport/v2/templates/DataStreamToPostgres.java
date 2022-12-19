@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.io.CdcJdbcIO;
 import com.google.cloud.teleport.v2.transforms.CreateDml;
 import com.google.cloud.teleport.v2.transforms.ProcessDml;
@@ -165,6 +166,8 @@ public class DataStreamToPostgres {
    * @param args The command-line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     LOG.info("Starting Avro Python to BigQuery");
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);

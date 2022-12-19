@@ -19,6 +19,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.io.CdcJdbcIO;
 import com.google.cloud.teleport.v2.templates.DataStreamToSQL.Options;
 import com.google.cloud.teleport.v2.transforms.CreateDml;
@@ -76,7 +77,8 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "Datastream to SQL",
     description =
-        "Streaming pipeline. Ingests messages from a stream in Cloud Datastream, transforms them, and writes them to a set of pre-defined Postgres tables.",
+        "Streaming pipeline. Ingests messages from a stream in Cloud Datastream, transforms them,"
+            + " and writes them to a set of pre-defined Postgres tables.",
     optionsClass = Options.class,
     flexContainerName = "datastream-to-sql",
     contactInformation = "https://cloud.google.com/support")
@@ -96,7 +98,8 @@ public class DataStreamToSQL {
         order = 1,
         description = "File location for Datastream file input in Cloud Storage.",
         helpText =
-            "This is the file location for Datastream file input in Cloud Storage. Normally, this will be gs://${BUCKET}/${ROOT_PATH}/.")
+            "This is the file location for Datastream file input in Cloud Storage. Normally, this"
+                + " will be gs://${BUCKET}/${ROOT_PATH}/.")
     String getInputFilePattern();
 
     void setInputFilePattern(String value);
@@ -106,8 +109,9 @@ public class DataStreamToSQL {
         optional = true,
         description = "The Pub/Sub subscription being used in a Cloud Storage notification policy.",
         helpText =
-            "The Pub/Sub subscription being used in a Cloud Storage notification policy. "
-                + "The name should be in the format of projects/<project-id>/subscriptions/<subscription-name>.")
+            "The Pub/Sub subscription being used in a Cloud Storage notification policy. The name"
+                + " should be in the format of"
+                + " projects/<project-id>/subscriptions/<subscription-name>.")
     String getGcsPubSubSubscription();
 
     void setGcsPubSubSubscription(String value);
@@ -118,7 +122,8 @@ public class DataStreamToSQL {
         optional = true,
         description = "Datastream output file format (avro/json).",
         helpText =
-            "This is the format of the output file produced by Datastream. by default this will be avro.")
+            "This is the format of the output file produced by Datastream. by default this will be"
+                + " avro.")
     @Default.String("avro")
     String getInputFileFormat();
 
@@ -129,7 +134,8 @@ public class DataStreamToSQL {
         optional = true,
         description = "Name or template for the stream to poll for schema information.",
         helpText =
-            "This is the name or template for the stream to poll for schema information. Default is {_metadata_stream}. The default value is enough under most conditions.")
+            "This is the name or template for the stream to poll for schema information. Default is"
+                + " {_metadata_stream}. The default value is enough under most conditions.")
     String getStreamName();
 
     void setStreamName(String value);
@@ -220,7 +226,8 @@ public class DataStreamToSQL {
         optional = true,
         description = "A map of key/values used to dictate schema name changes",
         helpText =
-            "A map of key/values used to dictate schema name changes (ie. old_name:new_name,CaseError:case_error)")
+            "A map of key/values used to dictate schema name changes (ie."
+                + " old_name:new_name,CaseError:case_error)")
     @Default.String("")
     String getSchemaMap();
 
@@ -244,6 +251,8 @@ public class DataStreamToSQL {
    * @param args The command-line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     LOG.info("Starting Datastream to SQL");
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);

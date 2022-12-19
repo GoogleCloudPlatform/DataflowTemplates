@@ -20,6 +20,7 @@ import com.google.cloud.dataflow.cdc.applier.CdcToBigQueryChangeApplierPipeline.
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import java.io.IOException;
@@ -157,6 +158,8 @@ public class CdcToBigQueryChangeApplierPipeline {
    * @param args Command line arguments to the pipeline.
    */
   public static void main(String[] args) throws IOException {
+    UncaughtExceptionLogger.register();
+
     CdcApplierOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(CdcApplierOptions.class);
 

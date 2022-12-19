@@ -20,6 +20,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.templates.PubSubToMongoDB.Options;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
@@ -103,7 +104,9 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "Pub/Sub to MongoDB",
     description =
-        "Streaming pipeline that reads JSON encoded messages from a Pub/Sub subscription, transforms them using a JavaScript user-defined function (UDF), and writes them to a MongoDB as documents.",
+        "Streaming pipeline that reads JSON encoded messages from a Pub/Sub subscription,"
+            + " transforms them using a JavaScript user-defined function (UDF), and writes them to"
+            + " a MongoDB as documents.",
     optionsClass = Options.class,
     flexContainerName = "pubsub-to-mongodb",
     contactInformation = "https://cloud.google.com/support")
@@ -146,7 +149,8 @@ public class PubSubToMongoDB {
         order = 1,
         description = "Pub/Sub input subscription",
         helpText =
-            "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name'",
+            "Pub/Sub subscription to read the input from, in the format of"
+                + " 'projects/your-project-id/subscriptions/your-subscription-name'",
         example = "projects/your-project-id/subscriptions/your-subscription-name")
     @Validation.Required
     String getInputSubscription();
@@ -187,9 +191,10 @@ public class PubSubToMongoDB {
         order = 5,
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
-            "Messages failed to reach the output table for all kind of reasons (e.g., mismatched "
-                + "schema, malformed json) are written to this table. If it doesn't exist, it will be "
-                + "created during pipeline execution. If not specified, \"outputTableSpec_error_records\" is used instead.",
+            "Messages failed to reach the output table for all kind of reasons (e.g., mismatched"
+                + " schema, malformed json) are written to this table. If it doesn't exist, it will"
+                + " be created during pipeline execution. If not specified,"
+                + " \"outputTableSpec_error_records\" is used instead.",
         example = "your-project-id:your-dataset.your-table-name")
     @Validation.Required
     String getDeadletterTable();
@@ -211,7 +216,8 @@ public class PubSubToMongoDB {
         optional = true,
         description = "Batch Size in Bytes",
         helpText =
-            "Batch Size in bytes used for batch insertion of documents into MongoDB. Default: 5242880 (5mb)")
+            "Batch Size in bytes used for batch insertion of documents into MongoDB. Default:"
+                + " 5242880 (5mb)")
     @Default.Long(5242880)
     Long getBatchSizeBytes();
 
@@ -283,6 +289,7 @@ public class PubSubToMongoDB {
    * @param args The command-line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
 
     // Parse the user options passed from the command-line.
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);

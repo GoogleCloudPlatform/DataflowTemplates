@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.cdc.merge;
 
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.beam.sdk.Pipeline;
@@ -93,6 +94,7 @@ public class BigQueryMergeValidatorTemplate {
    * @param args The command-line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     run(options);

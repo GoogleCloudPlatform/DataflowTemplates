@@ -19,6 +19,7 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SpannerChangeStreamsToPubSubOptions;
 import com.google.cloud.teleport.v2.transforms.FileFormatFactorySpannerChangeStreamsToPubSub;
 import java.util.ArrayList;
@@ -52,6 +53,8 @@ public class SpannerChangeStreamsToPubSub {
   private static final String USE_RUNNER_V2_EXPERIMENT = "use_runner_v2";
 
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     LOG.info("Starting Input Messages to Pub/Sub");
 
     SpannerChangeStreamsToPubSubOptions options =

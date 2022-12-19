@@ -29,6 +29,7 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.clients.DataplexClient;
 import com.google.cloud.teleport.v2.clients.DataplexClientFactory;
 import com.google.cloud.teleport.v2.clients.DefaultDataplexClient;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.io.DynamicJdbcIO;
 import com.google.cloud.teleport.v2.io.DynamicJdbcIO.DynamicDataSourceConfiguration;
 import com.google.cloud.teleport.v2.options.DataplexJdbcIngestionOptions;
@@ -122,6 +123,8 @@ public class DataplexJdbcIngestion {
    * @param args Command line arguments to the pipeline.
    */
   public static void main(String[] args) throws IOException {
+    UncaughtExceptionLogger.register();
+
     DataplexJdbcIngestionOptions options =
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()

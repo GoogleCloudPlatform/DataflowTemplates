@@ -26,6 +26,7 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.clients.DataplexClient;
 import com.google.cloud.teleport.v2.clients.DefaultDataplexClient;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.io.AvroSinkWithJodaDatesConversion;
 import com.google.cloud.teleport.v2.options.DataplexUpdateMetadataOptions;
 import com.google.cloud.teleport.v2.templates.DataplexFileFormatConversion.FileFormatConversionOptions;
@@ -97,7 +98,8 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.BATCH,
     displayName = "Dataplex: Convert Cloud Storage File Format",
     description =
-        "A pipeline that converts file format of Cloud Storage files, registering metadata for the newly created files in Dataplex.",
+        "A pipeline that converts file format of Cloud Storage files, registering metadata for the"
+            + " newly created files in Dataplex.",
     optionsClass = FileFormatConversionOptions.class,
     flexContainerName = "dataplex-file-format-conversion",
     contactInformation = "https://cloud.google.com/support")
@@ -120,7 +122,12 @@ public class DataplexFileFormatConversion {
         },
         description = "Dataplex asset name or Dataplex entity names for the files to be converted.",
         helpText =
-            "Dataplex asset or Dataplex entities that contain the input files. Format: projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset name> OR projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/entities/<entity 1 name>,projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/entities/<entity 2 name>... .")
+            "Dataplex asset or Dataplex entities that contain the input files. Format:"
+                + " projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset"
+                + " name> OR"
+                + " projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/entities/<entity"
+                + " 1 name>,projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/entities/<entity"
+                + " 2 name>... .")
     String getInputAssetOrEntitiesList();
 
     void setInputAssetOrEntitiesList(String inputAssetOrEntitiesList);
@@ -141,7 +148,8 @@ public class DataplexFileFormatConversion {
         optional = true,
         description = "Output file compression in Cloud Storage.",
         helpText =
-            "Output file compression. Format: UNCOMPRESSED, SNAPPY, GZIP, or BZIP2. BZIP2 not supported for PARQUET files.")
+            "Output file compression. Format: UNCOMPRESSED, SNAPPY, GZIP, or BZIP2. BZIP2 not"
+                + " supported for PARQUET files.")
     @Default.Enum("SNAPPY")
     DataplexCompression getOutputFileCompression();
 
@@ -154,7 +162,10 @@ public class DataplexFileFormatConversion {
         },
         description = "Dataplex asset name for the destination Cloud Storage bucket.",
         helpText =
-            "Name of the Dataplex asset that contains Cloud Storage bucket where output files will be put into. Format: projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset name>.")
+            "Name of the Dataplex asset that contains Cloud Storage bucket where output files will"
+                + " be put into. Format:"
+                + " projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset"
+                + " name>.")
     @Required
     String getOutputAsset();
 
@@ -166,7 +177,10 @@ public class DataplexFileFormatConversion {
         optional = true,
         description = "Action that occurs if a destination file already exists.",
         helpText =
-            "Specifies the action that occurs if a destination file already exists. Format: OVERWRITE, FAIL, SKIP. If SKIP, only files that don't exist in the destination directory will be processed. If FAIL and at least one file already exists, no data will be processed and an error will be produced.")
+            "Specifies the action that occurs if a destination file already exists. Format:"
+                + " OVERWRITE, FAIL, SKIP. If SKIP, only files that don't exist in the destination"
+                + " directory will be processed. If FAIL and at least one file already exists, no"
+                + " data will be processed and an error will be produced.")
     @Default.Enum("SKIP")
     WriteDispositionOptions getWriteDisposition();
 
@@ -203,6 +217,8 @@ public class DataplexFileFormatConversion {
    * @param args Command line arguments to the pipeline.
    */
   public static void main(String[] args) throws IOException {
+    UncaughtExceptionLogger.register();
+
     FileFormatConversionOptions options =
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()

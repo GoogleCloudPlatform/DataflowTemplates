@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.cdc.mappers.BigQueryMappers;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.io.WindowedFilenamePolicy;
 import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
 import com.google.cloud.teleport.v2.templates.PubSubCdcToBigQuery.Options;
@@ -286,6 +287,8 @@ public class PubSubCdcToBigQuery {
    * @param args The command-line args passed by the executor.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options);
 

@@ -20,6 +20,7 @@ import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.coders.SplunkEventCoder;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.templates.GCSToSplunk.GCSToSplunkOptions;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.transforms.CsvConverters.LineToFailsafeJson;
@@ -62,7 +63,8 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.BATCH,
     displayName = "Cloud Storage To Splunk",
     description =
-        "A pipeline that reads a set of Text (CSV) files in Cloud Storage and writes to Splunk's HTTP Event Collector (HEC).",
+        "A pipeline that reads a set of Text (CSV) files in Cloud Storage and writes to Splunk's"
+            + " HTTP Event Collector (HEC).",
     optionsClass = GCSToSplunkOptions.class,
     flexContainerName = "gcs-to-splunk",
     contactInformation = "https://cloud.google.com/support")
@@ -114,7 +116,8 @@ public final class GCSToSplunk {
         order = 1,
         description = "Invalid events output path",
         helpText =
-            "Cloud Storage path where to write objects that could not be converted to Splunk objects or pushed to Splunk.",
+            "Cloud Storage path where to write objects that could not be converted to Splunk"
+                + " objects or pushed to Splunk.",
         example = "gs://your-bucket/your-path")
     String getInvalidOutputPath();
 
@@ -128,6 +131,8 @@ public final class GCSToSplunk {
    * @param args Arguments passed in from the command-line.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     GCSToSplunkOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(GCSToSplunkOptions.class);
 

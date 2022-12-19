@@ -22,6 +22,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.kafka.options.KafkaReadOptions;
 import com.google.cloud.teleport.v2.templates.KafkaToBigQuery.KafkaToBQOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
@@ -273,6 +274,8 @@ public class KafkaToBigQuery {
    * @param args The command-line args passed by the executor.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     KafkaToBQOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(KafkaToBQOptions.class);
 

@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.cdc.sources.DataStreamIO;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -109,7 +110,8 @@ public class DataStreamToMongoDB {
         optional = false,
         description = "Pub/Sub input subscription",
         helpText =
-            "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name'",
+            "Pub/Sub subscription to read the input from, in the format of"
+                + " 'projects/your-project-id/subscriptions/your-subscription-name'",
         example = "projects/your-project-id/subscriptions/your-subscription-name")
     String getInputSubscription();
 
@@ -177,6 +179,8 @@ public class DataStreamToMongoDB {
    * @param args The command-line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     LOG.info("Starting Input Files to BigQuery");
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);

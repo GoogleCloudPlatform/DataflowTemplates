@@ -22,6 +22,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
 import com.google.cloud.teleport.v2.templates.PubSubToBigQuery.Options;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
@@ -264,6 +265,8 @@ public class PubSubToBigQuery {
    * @param args The command-line args passed by the executor.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options);
 

@@ -24,6 +24,7 @@ import com.github.vincentrussell.json.datagenerator.impl.JsonDataGeneratorImpl;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.templates.StreamingDataGenerator.StreamingDataGeneratorOptions;
 import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToBigQuery;
 import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToGcs;
@@ -114,7 +115,8 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.UTILITIES,
     displayName = "Streaming Data Generator",
     description =
-        "A pipeline to publish messages at specified QPS.This template can be used to benchmark performance of streaming pipelines.",
+        "A pipeline to publish messages at specified QPS.This template can be used to benchmark"
+            + " performance of streaming pipelines.",
     optionsClass = StreamingDataGeneratorOptions.class,
     flexContainerName = "streaming-data-generator",
     contactInformation = "https://cloud.google.com/support")
@@ -184,7 +186,8 @@ public class StreamingDataGenerator {
         optional = true,
         description = "Location of Avro Schema file",
         helpText =
-            "Cloud Storage path of Avro schema location. Mandatory when output type is AVRO or PARQUET.",
+            "Cloud Storage path of Avro schema location. Mandatory when output type is AVRO or"
+                + " PARQUET.",
         example = "gs://your-bucket/your-path/schema.avsc")
     String getAvroSchemaLocation();
 
@@ -228,9 +231,9 @@ public class StreamingDataGenerator {
         optional = true,
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
-            "Messages failed to reach the output table for all kind of reasons (e.g., mismatched "
-                + "schema, malformed json) are written to this table. If it doesn't exist, it will be "
-                + "created during pipeline execution.",
+            "Messages failed to reach the output table for all kind of reasons (e.g., mismatched"
+                + " schema, malformed json) are written to this table. If it doesn't exist, it will"
+                + " be created during pipeline execution.",
         example = "your-project-id:your-dataset.your-table-name")
     String getOutputDeadletterTable();
 
@@ -241,8 +244,9 @@ public class StreamingDataGenerator {
         optional = true,
         description = "Window duration",
         helpText =
-            "The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for "
-                + "seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h).",
+            "The window duration/size in which data will be written to Cloud Storage. Allowed"
+                + " formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh"
+                + " (for hours, example: 2h).",
         example = "1m")
     @Default.String("1m")
     String getWindowDuration();
@@ -253,7 +257,8 @@ public class StreamingDataGenerator {
         order = 12,
         description = "Output file directory in Cloud Storage",
         helpText =
-            "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters.",
+            "The path and filename prefix for writing output files. Must end with a slash. DateTime"
+                + " formatting is used to parse directory path for date & time formatters.",
         example = "gs://your-bucket/your-path/")
     String getOutputDirectory();
 
@@ -275,10 +280,10 @@ public class StreamingDataGenerator {
         optional = true,
         description = "Maximum output shards",
         helpText =
-            "The maximum number of output shards produced when writing. A higher number of "
-                + "shards means higher throughput for writing to Cloud Storage, but potentially higher "
-                + "data aggregation cost across shards when processing output Cloud Storage files. "
-                + "Default value is decided by the runner.")
+            "The maximum number of output shards produced when writing. A higher number of shards"
+                + " means higher throughput for writing to Cloud Storage, but potentially higher"
+                + " data aggregation cost across shards when processing output Cloud Storage files."
+                + " Default value is decided by the runner.")
     @Default.Integer(0)
     Integer getNumShards();
 
@@ -320,6 +325,8 @@ public class StreamingDataGenerator {
    * @param args command-line args passed by the executor.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     StreamingDataGeneratorOptions options =
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()
