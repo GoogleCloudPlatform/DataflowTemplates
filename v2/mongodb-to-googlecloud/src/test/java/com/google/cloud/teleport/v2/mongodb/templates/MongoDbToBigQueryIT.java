@@ -17,11 +17,11 @@ package com.google.cloud.teleport.v2.mongodb.templates;
 
 import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
-import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
@@ -157,20 +157,22 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
 
     String bqTable = testName.getMethodName();
     List<Field> bqSchemaFields = new ArrayList<>();
+    bqSchemaFields.add(Field.of("timestamp", StandardSQLTypeName.TIMESTAMP));
     mongoDocuments
         .get(0)
         .forEach((key, val) -> bqSchemaFields.add(Field.of(key, StandardSQLTypeName.STRING)));
     Schema bqSchema = Schema.of(bqSchemaFields);
 
     bigQueryClient.createDataset(REGION);
-    TableId tableId = bigQueryClient.createTable(bqTable, bqSchema);
+    bigQueryClient.createTable(bqTable, bqSchema);
+    String tableSpec = PROJECT + ":" + bigQueryClient.getDatasetId() + "." + bqTable;
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(jobName, specPath)
             .addParameter(MONGO_URI, mongoDbClient.getUri())
             .addParameter(MONGO_DB, mongoDbClient.getDatabaseName())
             .addParameter(MONGO_COLLECTION, collectionName)
-            .addParameter(BIGQUERY_TABLE, toTableSpec(tableId))
+            .addParameter(BIGQUERY_TABLE, tableSpec)
             .addParameter(USER_OPTION, "FLATTEN");
 
     // Act
@@ -189,7 +191,9 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
     mongoDocuments.forEach(
         mongoDocument -> {
           JSONObject mongoDbJson = new JSONObject(mongoDocument.toJson());
-          mongoMap.put(mongoDbJson.getJSONObject(MONGO_DB_ID).getString("$oid"), mongoDbJson);
+          String mongoId = mongoDbJson.getJSONObject(MONGO_DB_ID).getString("$oid");
+          mongoDbJson.put(MONGO_DB_ID, mongoId);
+          mongoMap.put(mongoId, mongoDbJson);
         });
 
     TableResult tableRows = bigQueryClient.readTable(bqTable);
@@ -200,14 +204,11 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
                 row.forEach(
                     val -> {
                       JSONObject bigQueryJson = new JSONObject(val.getStringValue());
-                      JSONObject bigQueryIdJson =
-                          new JSONObject(
-                              bigQueryJson.getString(MONGO_DB_ID).replaceFirst("=", ":"));
-                      String bigQueryOid = bigQueryIdJson.getString("$oid");
-                      bigQueryJson.put(MONGO_DB_ID, bigQueryIdJson);
+                      assertTrue(bigQueryJson.has("timestamp"));
 
-                      assertThat(mongoMap.get(bigQueryOid).toString())
-                          .isEqualTo(bigQueryJson.toString());
+                      bigQueryJson.remove("timestamp");
+                      String bigQueryId = bigQueryJson.getString(MONGO_DB_ID);
+                      assertTrue(mongoMap.get(bigQueryId).similar(bigQueryJson));
                     }));
   }
 
