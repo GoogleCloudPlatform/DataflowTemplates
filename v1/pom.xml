@@ -53,7 +53,7 @@
     <derby.version>10.14.2.0</derby.version>
     <kafka.clients.version>1.0.0</kafka.clients.version>
     <threetenbp.version>1.4.4</threetenbp.version>
-    <spring.version>5.2.8.RELEASE</spring.version>
+    <spring.version>5.2.22.RELEASE</spring.version>
     <autovalue.annotations.version>1.7.4</autovalue.annotations.version>
     <autovalue.version>1.7.4</autovalue.version>
     <tensorflow.version>1.15.0</tensorflow.version>
