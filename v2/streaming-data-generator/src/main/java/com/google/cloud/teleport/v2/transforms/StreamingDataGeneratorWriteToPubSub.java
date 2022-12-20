@@ -21,7 +21,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.templates.StreamingDataGenerator;
-import com.google.cloud.teleport.v2.utils.GCSUtils;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -83,8 +82,6 @@ public final class StreamingDataGeneratorWriteToPubSub {
    */
   private abstract static class FakePubSubMessageFn extends DoFn<byte[], PubsubMessage> {
 
-    private String schema;
-    private JsonParser jsonParser;
     private ObjectMapper mapper;
     private TypeReference<HashMap<String, String>> hashMapRef;
     private static final Pattern ATTRIBUTE_PATTERN =
@@ -92,14 +89,12 @@ public final class StreamingDataGeneratorWriteToPubSub {
     private static final int PUBSUB_ATTRIBUTE_VALUE_MAX_LENGTH = 1024;
     private boolean hasAttributes;
 
-    protected void initialize(String schemaLocation) throws IOException {
-      schema = GCSUtils.getGcsFileAsString(schemaLocation);
+    protected void initialize(String schema) {
       hasAttributes =
           ATTRIBUTE_PATTERN
               .matcher(schema.replace("\n", "").replace("\r", "").replace("\t", ""))
               .find();
       if (hasAttributes) {
-        jsonParser = new JsonParser();
         mapper = new ObjectMapper();
         hashMapRef = new TypeReference<HashMap<String, String>>() {};
       }
@@ -115,7 +110,7 @@ public final class StreamingDataGeneratorWriteToPubSub {
         throws JsonSyntaxException, IOException {
       if (hasAttributes) {
         JsonObject jsonObject =
-            jsonParser.parse(new String(message, StandardCharsets.UTF_8)).getAsJsonObject();
+            JsonParser.parseString(new String(message, StandardCharsets.UTF_8)).getAsJsonObject();
         byte[] payload = jsonObject.get("payload").toString().getBytes();
         Map<String, String> attributeValues =
             mapper.readValue(jsonObject.get("attributes").toString(), hashMapRef);
@@ -139,15 +134,15 @@ public final class StreamingDataGeneratorWriteToPubSub {
    */
   @VisibleForTesting
   public static class JsonPubSubMessageFn extends FakePubSubMessageFn {
-    private final String schemaLocation;
+    private final String schema;
 
-    public JsonPubSubMessageFn(String schemaLocation) {
-      this.schemaLocation = schemaLocation;
+    public JsonPubSubMessageFn(String schema) {
+      this.schema = schema;
     }
 
     @Setup
     public void setup() throws IOException {
-      initialize(schemaLocation);
+      initialize(schema);
     }
 
     @ProcessElement
@@ -170,20 +165,20 @@ public final class StreamingDataGeneratorWriteToPubSub {
    */
   @VisibleForTesting
   public static class AvroPubSubMessageFn extends FakePubSubMessageFn {
-    private final String schemaLocation;
+    private final String schema;
     private final String avroSchemaLocation;
     private Schema schemaObj = null;
     private DatumReader<GenericRecord> genericDatumReader = null;
     private DatumWriter<GenericRecord> genericDatumWriter = null;
 
-    public AvroPubSubMessageFn(String schemaLocation, String avroSchemaLocation) {
-      this.schemaLocation = schemaLocation;
+    public AvroPubSubMessageFn(String schema, String avroSchemaLocation) {
+      this.schema = schema;
       this.avroSchemaLocation = avroSchemaLocation;
     }
 
     @Setup
-    public void setup() throws IOException {
-      initialize(schemaLocation);
+    public void setup() {
+      initialize(schema);
       this.schemaObj = SchemaUtils.getAvroSchema(avroSchemaLocation);
       this.genericDatumReader = new GenericDatumReader<>(schemaObj);
       this.genericDatumWriter = new GenericDatumWriter<>(schemaObj);
@@ -222,7 +217,7 @@ public final class StreamingDataGeneratorWriteToPubSub {
   }
 
   /**
-   * A {@link PTransform} converts fakeMessages to either JSON encoded or Avro encoded PubSub
+   * A {@link PTransform} converts generatedMessages to either JSON encoded or Avro encoded PubSub
    * messages based on Pipeline options and publishes to Google Cloud PubSub.
    */
   @AutoValue
@@ -230,9 +225,13 @@ public final class StreamingDataGeneratorWriteToPubSub {
 
     abstract StreamingDataGenerator.StreamingDataGeneratorOptions getPipelineOptions();
 
-    public static Builder builder(StreamingDataGenerator.StreamingDataGeneratorOptions options) {
+    abstract String getSchema();
+
+    public static Builder builder(
+        StreamingDataGenerator.StreamingDataGeneratorOptions options, String schema) {
       return new AutoValue_StreamingDataGeneratorWriteToPubSub_Writer.Builder()
-          .setPipelineOptions(options);
+          .setPipelineOptions(options)
+          .setSchema(schema);
     }
 
     /** Builder for {@link StreamingDataGeneratorWriteToPubSub.Writer}. */
@@ -241,39 +240,38 @@ public final class StreamingDataGeneratorWriteToPubSub {
       abstract Builder setPipelineOptions(
           StreamingDataGenerator.StreamingDataGeneratorOptions value);
 
+      abstract Builder setSchema(String schema);
+
       public abstract Writer build();
     }
 
     @Override
-    public PDone expand(PCollection<byte[]> fakeMessages) {
+    public PDone expand(PCollection<byte[]> generatedMessages) {
       PCollection<PubsubMessage> pubsubMessages = null;
-      switch (getPipelineOptions().getOutputType()) {
+      StreamingDataGenerator.StreamingDataGeneratorOptions options = getPipelineOptions();
+      switch (options.getOutputType()) {
         case JSON:
           pubsubMessages =
-              fakeMessages.apply(
-                  "Generate JSON PubSub Messages",
-                  ParDo.of(new JsonPubSubMessageFn(getPipelineOptions().getSchemaLocation())));
+              generatedMessages.apply(
+                  "Generate JSON PubSub Messages", ParDo.of(new JsonPubSubMessageFn(getSchema())));
           break;
         case AVRO:
           checkNotNull(
-              getPipelineOptions().getAvroSchemaLocation(),
+              options.getAvroSchemaLocation(),
               String.format(
                   "Missing required value for --avroSchemaLocation for %s output type",
-                  getPipelineOptions().getOutputType()));
+                  options.getOutputType()));
           pubsubMessages =
-              fakeMessages.apply(
+              generatedMessages.apply(
                   "Generate Avro PubSub Messages",
-                  ParDo.of(
-                      new AvroPubSubMessageFn(
-                          getPipelineOptions().getSchemaLocation(),
-                          getPipelineOptions().getAvroSchemaLocation())));
+                  ParDo.of(new AvroPubSubMessageFn(getSchema(), options.getAvroSchemaLocation())));
           break;
         default:
           throw new IllegalArgumentException(
               String.format(
                   "Invalid output type %s.Supported Output types for %s sink are: %s",
-                  getPipelineOptions().getOutputType(),
-                  getPipelineOptions().getSinkType(),
+                  options.getOutputType(),
+                  options.getSinkType(),
                   Joiner.on(",")
                       .join(
                           StreamingDataGenerator.OutputType.JSON.name(),

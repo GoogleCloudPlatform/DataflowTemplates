@@ -24,20 +24,16 @@ import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.io.DynamicJdbcIO;
 import com.google.cloud.teleport.v2.options.PubsubToJdbcOptions;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
+import com.google.cloud.teleport.v2.utils.JsonStringToQueryMapper;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Splitter;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.sql.Types;
 import java.util.List;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
-import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.values.PCollection;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -137,7 +133,7 @@ public class PubsubToJdbc {
                     .withDataSourceConfiguration(dataSourceConfiguration)
                     .withStatement(options.getStatement())
                     .withPreparedStatementSetter(
-                        new MapJsonStringToQuery(getKeyOrder(options.getStatement()))))
+                        new JsonStringToQueryMapper(getKeyOrder(options.getStatement()))))
             .setCoder(FAILSAFE_ELEMENT_CODER);
 
     errors.apply(
@@ -147,32 +143,6 @@ public class PubsubToJdbc {
             .build());
 
     return pipeline.run();
-  }
-
-  /** The {@link JdbcIO.PreparedStatementSetter} implementation for mapping json string to query. */
-  public static class MapJsonStringToQuery implements JdbcIO.PreparedStatementSetter<String> {
-
-    List<String> keyOrder;
-
-    public MapJsonStringToQuery(List<String> keyOrder) {
-      this.keyOrder = keyOrder;
-    }
-
-    public void setParameters(String element, PreparedStatement query) throws SQLException {
-      try {
-        JSONObject object = new JSONObject(element);
-        for (int i = 0; i < keyOrder.size(); i++) {
-          String key = keyOrder.get(i);
-          if (object.get(key) == JSONObject.NULL) {
-            query.setNull(i + 1, Types.NULL);
-          } else {
-            query.setObject(i + 1, object.get(key));
-          }
-        }
-      } catch (Exception e) {
-        LOG.error("Error while mapping PubSub strings to JDBC: {}", e.getMessage());
-      }
-    }
   }
 
   private static List<String> getKeyOrder(String statement) {

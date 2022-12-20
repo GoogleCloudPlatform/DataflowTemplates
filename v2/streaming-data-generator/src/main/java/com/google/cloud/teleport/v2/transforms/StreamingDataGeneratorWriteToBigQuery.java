@@ -38,8 +38,8 @@ import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.MoreObjects;
 
 /**
- * A {@link PTransform} converts fakeMessages to BigQuery Table Rows and loads to BQ. Errors were
- * written to Dead Letter Table.
+ * A {@link PTransform} converts generatedMessages to BigQuery Table Rows and loads to BQ. Errors
+ * were written to Dead Letter Table.
  */
 @AutoValue
 public abstract class StreamingDataGeneratorWriteToBigQuery
@@ -67,9 +67,9 @@ public abstract class StreamingDataGeneratorWriteToBigQuery
   }
 
   @Override
-  public PDone expand(PCollection<byte[]> fakeMessages) {
+  public PDone expand(PCollection<byte[]> generatedMessages) {
     WriteResult writeResults =
-        fakeMessages.apply(
+        generatedMessages.apply(
             "Write Json messsages",
             BigQueryIO.<byte[]>write()
                 .to(getPipelineOptions().getOutputTableSpec())
@@ -113,6 +113,6 @@ public abstract class StreamingDataGeneratorWriteToBigQuery
                 .setErrorRecordsTableSchema(
                     SchemaUtils.DEADLETTER_SCHEMA) // i.e schema in above method
                 .build());
-    return PDone.in(fakeMessages.getPipeline());
+    return PDone.in(generatedMessages.getPipeline());
   }
 }
