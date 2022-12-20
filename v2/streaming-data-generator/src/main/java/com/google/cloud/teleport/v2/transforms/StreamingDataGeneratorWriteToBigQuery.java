@@ -58,7 +58,7 @@ public abstract class StreamingDataGeneratorWriteToBigQuery
         .setPipelineOptions(options);
   }
 
-  /** Builder for {@link StreamingDataGeneratorBigQueryWriter}. */
+  /** Builder for {@link StreamingDataGeneratorWriteToBigQuery}. */
   @AutoValue.Builder
   public abstract static class Builder {
     abstract Builder setPipelineOptions(StreamingDataGenerator.StreamingDataGeneratorOptions value);

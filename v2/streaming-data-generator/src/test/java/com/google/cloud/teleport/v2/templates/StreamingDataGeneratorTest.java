@@ -196,7 +196,8 @@ public class StreamingDataGeneratorTest {
             .apply(
                 "GenerateMessage",
                 ParDo.of(
-                    new StreamingDataGenerator.MessageGeneratorFn(options.getSchemaLocation())))
+                    new StreamingDataGenerator.MessageGeneratorFn(
+                        options.getSchemaTemplate(), options.getSchemaLocation())))
             .apply(
                 "Generate JSON PubSub Messages",
                 ParDo.of(
@@ -259,7 +260,8 @@ public class StreamingDataGeneratorTest {
             .apply(
                 "GenerateMessage",
                 ParDo.of(
-                    new StreamingDataGenerator.MessageGeneratorFn(options.getSchemaLocation())))
+                    new StreamingDataGenerator.MessageGeneratorFn(
+                        options.getSchemaTemplate(), options.getSchemaLocation())))
             .apply(
                 "Generate JSON PubSub Messages",
                 ParDo.of(
@@ -356,7 +358,8 @@ public class StreamingDataGeneratorTest {
             .apply(
                 "GenerateMessage",
                 ParDo.of(
-                    new StreamingDataGenerator.MessageGeneratorFn(options.getSchemaLocation())))
+                    new StreamingDataGenerator.MessageGeneratorFn(
+                        options.getSchemaTemplate(), options.getSchemaLocation())))
             .apply(
                 "Generate JSON PubSub Messages",
                 ParDo.of(
@@ -407,7 +410,8 @@ public class StreamingDataGeneratorTest {
             .apply(
                 "GenerateMessage",
                 ParDo.of(
-                    new StreamingDataGenerator.MessageGeneratorFn(options.getSchemaLocation())));
+                    new StreamingDataGenerator.MessageGeneratorFn(
+                        options.getSchemaTemplate(), options.getSchemaLocation())));
     return results;
   }
 
