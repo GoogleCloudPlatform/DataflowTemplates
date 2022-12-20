@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.plugin.maven;
 
+import static com.google.cloud.teleport.metadata.util.MetadataUtils.bucketNameOnly;
+
 import com.google.api.gax.rpc.InvalidArgumentException;
 import com.google.cloud.teleport.plugin.TemplateDefinitionsParser;
 import com.google.cloud.teleport.plugin.model.ImageSpec;
@@ -96,7 +98,7 @@ public class TemplateRunMojo extends TemplateBaseMojo {
       BuildPluginManager pluginManager =
           (BuildPluginManager) session.lookup("org.apache.maven.plugin.BuildPluginManager");
 
-      LOG.info("Staging Templates...");
+      LOG.info("Staging Templates to bucket {}...", bucketNameOnly(bucketName));
 
       List<TemplateDefinitions> templateDefinitions =
           TemplateDefinitionsParser.scanDefinitions(loader);
@@ -193,7 +195,7 @@ public class TemplateRunMojo extends TemplateBaseMojo {
       throws MojoExecutionException, IOException, InterruptedException {
     Job job;
     String templatePath = configuredMojo.stageClassicTemplate(definition, imageSpec, pluginManager);
-    String stagingPath = "gs://" + bucketName + "/" + stagePrefix + "/staging/";
+    String stagingPath = "gs://" + bucketNameOnly(bucketName) + "/" + stagePrefix + "/staging/";
 
     String[] runCmd =
         new String[] {

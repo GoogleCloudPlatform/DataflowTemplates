@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.plugin.maven;
 
+import static com.google.cloud.teleport.metadata.util.MetadataUtils.bucketNameOnly;
 import static org.twdata.maven.mojoexecutor.MojoExecutor.configuration;
 import static org.twdata.maven.mojoexecutor.MojoExecutor.element;
 import static org.twdata.maven.mojoexecutor.MojoExecutor.executeMojo;
@@ -52,7 +53,7 @@ import org.twdata.maven.mojoexecutor.MojoExecutor.Element;
  * Goal which stages the Templates into Cloud Storage / Artifact Registry.
  *
  * <p>The process is different for Classic Templates and Flex Templates, please check {@link
- * #stageClassicTemplate(BuildPluginManager, TemplateDefinitions, ImageSpec, String)} and {@link
+ * #stageClassicTemplate(TemplateDefinitions, ImageSpec, BuildPluginManager)} and {@link
  * #stageFlexTemplate(TemplateDefinitions, ImageSpec, BuildPluginManager)}, respectively.
  */
 @Mojo(
@@ -126,7 +127,7 @@ public class TemplateStageMojo extends TemplateBaseMojo {
       BuildPluginManager pluginManager =
           (BuildPluginManager) session.lookup("org.apache.maven.plugin.BuildPluginManager");
 
-      LOG.info("Staging Templates...");
+      LOG.info("Staging Templates to bucket {}...", bucketNameOnly(bucketName));
 
       List<TemplateDefinitions> templateDefinitions =
           TemplateDefinitionsParser.scanDefinitions(loader);
@@ -183,8 +184,9 @@ public class TemplateStageMojo extends TemplateBaseMojo {
             .saveMetadata(definition, imageSpec.getMetadata(), outputClassesDirectory);
     String currentTemplateName = imageSpec.getMetadata().getName();
 
-    String stagingPath = "gs://" + bucketName + "/" + stagePrefix + "/staging/";
-    String templatePath = "gs://" + bucketName + "/" + stagePrefix + "/" + currentTemplateName;
+    String stagingPath = "gs://" + bucketNameOnly(bucketName) + "/" + stagePrefix + "/staging/";
+    String templatePath =
+        "gs://" + bucketNameOnly(bucketName) + "/" + stagePrefix + "/" + currentTemplateName;
     String templateMetadataPath = templatePath + "_metadata";
 
     List<Element> arguments = new ArrayList<>();
@@ -291,7 +293,8 @@ public class TemplateStageMojo extends TemplateBaseMojo {
                 element("environment", element("DATAFLOW_JAVA_COMMAND_SPEC", commandSpec)))),
         executionEnvironment(project, session, pluginManager));
 
-    String templatePath = "gs://" + bucketName + "/" + stagePrefix + "/flex/" + currentTemplateName;
+    String templatePath =
+        "gs://" + bucketNameOnly(bucketName) + "/" + stagePrefix + "/flex/" + currentTemplateName;
     String[] flexTemplateBuildCmd =
         new String[] {
           "gcloud",
