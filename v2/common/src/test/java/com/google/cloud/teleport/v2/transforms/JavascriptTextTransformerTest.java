@@ -75,6 +75,8 @@ public class JavascriptTextTransformerTest {
 
   private static final String TRANSFORM_FILE_PATH =
       Resources.getResource(RESOURCES_DIR + "transform.js").getPath();
+  private static final String ES6_TRANSFORM_FILE_PATH =
+      Resources.getResource(RESOURCES_DIR + "es6_transform.js").getPath();
   private static final String SCRIPT_PARSE_EXCEPTION_FILE_PATH =
       Resources.getResource(RESOURCES_DIR + "scriptParseException.js").getPath();
 
@@ -117,6 +119,21 @@ public class JavascriptTextTransformerTest {
     JavascriptRuntime javascriptRuntime =
         JavascriptRuntime.newBuilder()
             .setFileSystemPath(TRANSFORM_FILE_PATH)
+            .setFunctionName("transform")
+            .build();
+    String data = javascriptRuntime.invoke("{\"answerToLife\": 42}");
+    assertEquals("{\"answerToLife\":42,\"someProp\":\"someValue\"}", data);
+  }
+
+  /**
+   * Test {@link JavascriptRuntime#invoke(String)} returns transformed data when an ES6 javascript
+   * transform function is given.
+   */
+  @Test
+  public void testInvokeEs6Function() throws Exception {
+    JavascriptRuntime javascriptRuntime =
+        JavascriptRuntime.newBuilder()
+            .setFileSystemPath(ES6_TRANSFORM_FILE_PATH)
             .setFunctionName("transform")
             .build();
     String data = javascriptRuntime.invoke("{\"answerToLife\": 42}");

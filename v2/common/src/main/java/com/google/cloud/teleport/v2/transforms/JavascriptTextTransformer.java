@@ -53,6 +53,7 @@ import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Throwables;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.io.CharStreams;
+import org.openjdk.nashorn.api.scripting.NashornScriptEngineFactory;
 import org.openjdk.nashorn.api.scripting.ScriptObjectMirror;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -163,20 +164,15 @@ public abstract class JavascriptTextTransformer {
     }
 
     private static ScriptEngine getJavaScriptEngine() {
-      ScriptEngineManager manager = new ScriptEngineManager();
-      for (String engineName : JAVASCRIPT_ENGINE_NAMES) {
-        ScriptEngine engine = manager.getEngineByName(engineName);
-        if (engine != null) {
-          return engine;
-        }
-      }
+      NashornScriptEngineFactory nashornFactory = new NashornScriptEngineFactory();
+      ScriptEngine engine = nashornFactory.getScriptEngine("--language=es6");
 
-      ScriptEngine engine = manager.getEngineByExtension("js");
       if (engine != null) {
         return engine;
       }
 
       List<String> availableEngines = new ArrayList<>();
+      ScriptEngineManager manager = new ScriptEngineManager();
       for (ScriptEngineFactory factory : manager.getEngineFactories()) {
         availableEngines.add(
             factory.getEngineName()
