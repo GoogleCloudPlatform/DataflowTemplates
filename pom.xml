@@ -250,6 +250,15 @@
         </plugins>
       </build>
     </profile>
+    <profile>
+      <id>pluginOutputDir</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <build>
+        <directory>${project.basedir}/target/plugin</directory>
+      </build>
+    </profile>
 
     <profile>
       <id>oss-build</id>
