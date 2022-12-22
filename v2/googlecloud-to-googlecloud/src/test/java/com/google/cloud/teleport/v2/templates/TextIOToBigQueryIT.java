@@ -107,6 +107,7 @@ public final class TextIOToBigQueryIT extends TemplateTestBase {
     artifactClient.uploadArtifact("input.txt", Resources.getResource(INPUT_PATH).getPath());
     artifactClient.uploadArtifact("udf.js", Resources.getResource(UDF_PATH).getPath());
 
+    bigQueryClient.createDataset(REGION);
     bigQueryClient.createTable(
         bqTable,
         Schema.of(
