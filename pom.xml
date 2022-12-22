@@ -255,6 +255,9 @@
         <skipShade>true</skipShade>
         <!-- Some modules may yield no integration tests -->
         <failIfNoTests>false</failIfNoTests>
+        <!-- Parallelism. Default is 1.0C (number of cores), considering methods -->
+        <itParallelismType>classesAndMethods</itParallelismType>
+        <itParallelism>1.0C</itParallelism>
       </properties>
       <build>
         <plugins>
@@ -270,6 +273,9 @@
               <groups>
                 com.google.cloud.teleport.metadata.TemplateIntegrationTest
               </groups>
+              <reuseForks>true</reuseForks>
+              <parallel>${itParallelismType}</parallel>
+              <threadCount>${itParallelism}</threadCount>
             </configuration>
           </plugin>
         </plugins>

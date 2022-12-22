@@ -56,6 +56,7 @@ func main() {
 		mvnFlags.FailAtTheEnd(),
 		mvnFlags.RunIntegrationTests(),
 		mvnFlags.ThreadCount(8),
+		mvnFlags.IntegrationTestParallelism(8),
 		flags.Region(),
 		flags.Project(),
 		flags.ArtifactBucket(),
