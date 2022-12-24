@@ -21,12 +21,10 @@ import com.google.bigtable.v2.Cell;
 import com.google.bigtable.v2.Column;
 import com.google.bigtable.v2.Family;
 import com.google.bigtable.v2.Row;
-import com.google.bigtable.v2.RowFilter;
 import com.google.cloud.teleport.bigtable.BigtableToParquet.Options;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
-import com.google.bigtable.v2.RowFilter;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -130,7 +128,11 @@ public class BigtableToParquet {
     @SuppressWarnings("unused")
     void setNumShards(ValueProvider<Integer> numShards);
 
-    @Description("The first key|last key to include in the export")
+    @TemplateParameter.Text(
+            order = 7,
+            description = "The first key|last key to include in the export",
+            helpText = "The first key|last key to include in the export for filtered export, Default - all keys",
+            example = "start|end")
     ValueProvider<String> getKeyRange();
 
     void setKeyRange(ValueProvider<String> keyRange);
