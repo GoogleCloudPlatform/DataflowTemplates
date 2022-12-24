@@ -21,7 +21,7 @@
 
   <groupId>com.google.cloud.teleport</groupId>
   <artifactId>templates</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>0.1-SNAPSHOT</version>
   <name>Google Cloud Dataflow Templates</name>
   <packaging>pom</packaging>
   <description>
