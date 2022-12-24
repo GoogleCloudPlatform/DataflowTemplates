@@ -1,6 +1,6 @@
 {
   "mainClass": "com.google.cloud.teleport.v2.templates.BigQueryToParquet",
-  "classPath": "/template/bigquery-to-parquet/*:/template/bigquery-to-parquet/libs/*:/template/bigquery-to-parquet/classes",
+  "classPath": "/template/bigquery-to-parquet/bigquery-to-parquet-conscrypt.jar:template/bigquery-to-parquet/*:/template/bigquery-to-parquet/libs/*:/template/bigquery-to-parquet/classes",
   "defaultParameterValues": {
     "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"bigquery_to_parquet\"}"
   }

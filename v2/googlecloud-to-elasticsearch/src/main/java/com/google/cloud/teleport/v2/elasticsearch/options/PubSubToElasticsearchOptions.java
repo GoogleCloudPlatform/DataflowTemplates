@@ -15,10 +15,10 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.options;
 
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.elasticsearch.utils.Dataset;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.Validation;
 
 /**
@@ -32,37 +32,55 @@ import org.apache.beam.sdk.options.Validation;
 public interface PubSubToElasticsearchOptions
     extends JavascriptTextTransformer.JavascriptTextTransformerOptions, ElasticsearchWriteOptions {
 
-  @Description(
-      "The Cloud Pub/Sub subscription to consume from. "
-          + "The name should be in the format of "
-          + "projects/<project-id>/subscriptions/<subscription-name>.")
+  @TemplateParameter.PubsubSubscription(
+      order = 1,
+      description = "Pub/Sub input subscription",
+      helpText =
+          "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name'",
+      example = "projects/your-project-id/subscriptions/your-subscription-name")
   @Validation.Required
   String getInputSubscription();
 
   void setInputSubscription(String inputSubscription);
 
-  @Description(
-      "The type of logs sent via Pub/Sub for which we have out of the box dashboard. "
-          + "Known log types values are audit, vpcflow, and firewall. "
-          + "If no known log type is detected, we default to pubsub")
+  @TemplateParameter.Text(
+      order = 2,
+      optional = true,
+      description = "Dataset, the type of logs that are sent to Pub/Sub",
+      helpText =
+          "The type of logs sent via Pub/Sub for which we have out of the box dashboard. Known "
+              + "log types values are audit, vpcflow, and firewall. If no known log type is "
+              + "detected, we default to 'pubsub'")
   @Default.Enum("PUBSUB")
   Dataset getDataset();
 
   void setDataset(Dataset dataset);
 
-  @Description("The namespace for dataset. Default is default")
+  @TemplateParameter.Text(
+      order = 3,
+      optional = true,
+      description = "The namespace for dataset.",
+      helpText = "The namespace for dataset. Default is default")
   @Default.String("default")
   String getNamespace();
 
   void setNamespace(String namespace);
 
-  @Description("The topic to output errors within Pub/Sub.")
+  @TemplateParameter.PubsubTopic(
+      order = 4,
+      description = "Output deadletter Pub/Sub topic",
+      helpText =
+          "The Pub/Sub topic to publish deadletter records to. The name should be in the format of projects/your-project-id/topics/your-topic-name.")
   @Validation.Required
   String getErrorOutputTopic();
 
   void setErrorOutputTopic(String errorOutputTopic);
 
-  @Description("Dataflow template version, should be set by GCP.")
+  @TemplateParameter.Text(
+      order = 5,
+      optional = true,
+      description = "Template Version.",
+      helpText = "Dataflow Template Version Identifier, usually defined by Google Cloud.")
   @Default.String("1.0.0")
   String getElasticsearchTemplateVersion();
 

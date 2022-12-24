@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.options;
 
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -31,40 +32,61 @@ public final class BigQueryCommonOptions {
   /** Provides {@link PipelineOptions} to write records to a BigQuery table. */
   public interface WriteOptions extends PipelineOptions {
 
-    @Description(
-        "Output BigQuery table spec. "
-            + "The name should be in the format: "
-            + "<project>:<dataset>.<table_name>.")
+    @TemplateParameter.BigQueryTable(
+        order = 1,
+        description = "BigQuery output table",
+        helpText =
+            "BigQuery table location to write the output to. The name should be in the format "
+                + "<project>:<dataset>.<table_name>. The table's schema must match input objects.")
     @Required
     String getOutputTableSpec();
 
     void setOutputTableSpec(String value);
 
-    @Description("Write disposition to use for BigQuery. " + "Default: WRITE_APPEND")
+    @TemplateParameter.Enum(
+        order = 2,
+        enumOptions = {"WRITE_APPEND", "WRITE_EMPTY", "WRITE_TRUNCATE"},
+        optional = true,
+        description = "Write Disposition to use for BigQuery",
+        helpText =
+            "BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE.")
     @Default.String("WRITE_APPEND")
     String getWriteDisposition();
 
     void setWriteDisposition(String writeDisposition);
 
-    @Description("Create disposition to use for BigQuery. " + "Default: CREATE_IF_NEEDED")
+    @TemplateParameter.Enum(
+        order = 3,
+        enumOptions = {"CREATE_IF_NEEDED", "CREATE_NEVER"},
+        optional = true,
+        description = "Create Disposition to use for BigQuery",
+        helpText = "BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER.")
     @Default.String("CREATE_IF_NEEDED")
     String getCreateDisposition();
 
     void setCreateDisposition(String createDisposition);
 
+    /** @deprecated Not being used. */
     @Description(
         "Set partition type to use for BigQuery.  "
             + "Currently 'None' or 'Time' can be available"
             + "Default: None")
     @Default.String("None")
+    @Deprecated
     String getPartitionType();
 
+    /** @deprecated Not being used. */
+    @Deprecated
     void setPartitionType(String partitionType);
 
+    /** @deprecated Not being used. */
     @Description("Set partition column name.  " + "Default: _PARTITIONTIME")
     @Default.String("_PARTITIONTIME")
+    @Deprecated
     String getPartitionCol();
 
+    /** @deprecated Not being used. */
+    @Deprecated
     void setPartitionCol(String partitionCol);
   }
 }

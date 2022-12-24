@@ -54,7 +54,6 @@ import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.BoundedSource;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -521,7 +520,7 @@ public class ElasticsearchIO {
 
     abstract @Nullable ConnectionConfiguration getConnectionConfiguration();
 
-    abstract @Nullable ValueProvider<String> getQuery();
+    abstract @Nullable String getQuery();
 
     abstract boolean isWithMetadata();
 
@@ -535,7 +534,7 @@ public class ElasticsearchIO {
     abstract static class Builder {
       abstract Builder setConnectionConfiguration(ConnectionConfiguration connectionConfiguration);
 
-      abstract Builder setQuery(ValueProvider<String> query);
+      abstract Builder setQuery(String query);
 
       abstract Builder setWithMetadata(boolean withMetadata);
 
@@ -569,21 +568,7 @@ public class ElasticsearchIO {
     public Read withQuery(String query) {
       checkArgument(query != null, "query can not be null");
       checkArgument(!query.isEmpty(), "query can not be empty");
-      return withQuery(ValueProvider.StaticValueProvider.of(query));
-    }
-
-    /**
-     * Provide a {@link ValueProvider} that provides the query used while reading from
-     * Elasticsearch. This is useful for cases when the query must be dynamic.
-     *
-     * @param query the query. See <a
-     *     href="https://www.elastic.co/guide/en/elasticsearch/reference/2.4/query-dsl.html">Query
-     *     DSL</a>
-     * @return a {@link PTransform} reading data from Elasticsearch.
-     */
-    public Read withQuery(ValueProvider<String> query) {
-      checkArgument(query != null, "query can not be null");
-      return builder().setQuery(query).build();
+      return withQuery(query);
     }
 
     /**
@@ -750,7 +735,7 @@ public class ElasticsearchIO {
       long indexSize = indexStats.path("store").path("size_in_bytes").asLong();
       LOG.debug("estimate source byte size: total index size " + indexSize);
 
-      String query = spec.getQuery() != null ? spec.getQuery().get() : null;
+      String query = spec.getQuery();
       if (query == null || query.isEmpty()) { // return index size if no query
         estimatedByteSize = indexSize;
         return estimatedByteSize;
@@ -869,7 +854,7 @@ public class ElasticsearchIO {
     public boolean start() throws IOException {
       restClient = source.spec.getConnectionConfiguration().createClient();
 
-      String query = source.spec.getQuery() != null ? source.spec.getQuery().get() : null;
+      String query = source.spec.getQuery();
       if (query == null) {
         query = "{\"query\": { \"match_all\": {} }}";
       }
@@ -1462,6 +1447,12 @@ public class ElasticsearchIO {
             isDelete = spec.getIsDeleteFn().apply(parsedDocument);
           }
         }
+        long docSizeBytes = document.getBytes(StandardCharsets.UTF_8).length;
+        long newBatchSizeBytes = currentBatchSizeBytes + docSizeBytes;
+        if (newBatchSizeBytes > spec.getMaxBatchSizeBytes()) {
+          flushBatch();
+        }
+
         if (isDelete) {
           // delete request used for deleting a document.
           batch.add(String.format("{ \"delete\" : %s }%n", documentMetadata));
@@ -1483,7 +1474,8 @@ public class ElasticsearchIO {
           }
         }
 
-        currentBatchSizeBytes += document.getBytes(StandardCharsets.UTF_8).length;
+        currentBatchSizeBytes += docSizeBytes;
+
         if (batch.size() >= spec.getMaxBatchSize()
             || currentBatchSizeBytes >= spec.getMaxBatchSizeBytes()) {
           flushBatch();

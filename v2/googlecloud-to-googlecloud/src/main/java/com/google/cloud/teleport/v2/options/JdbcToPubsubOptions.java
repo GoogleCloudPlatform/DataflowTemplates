@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.options;
 
-import org.apache.beam.sdk.options.Description;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.apache.beam.sdk.options.Validation;
 
 /**
@@ -23,60 +23,107 @@ import org.apache.beam.sdk.options.Validation;
  * executor at the command-line.
  */
 public interface JdbcToPubsubOptions extends CommonTemplateOptions {
-  @Description("The JDBC driver class name. " + "For example: com.mysql.jdbc.Driver")
+  @TemplateParameter.Text(
+      order = 1,
+      optional = false,
+      regexes = {"^.+$"},
+      description = "JDBC driver class name.",
+      helpText = "JDBC driver class name to use.",
+      example = "com.mysql.jdbc.Driver")
   String getDriverClassName();
 
   void setDriverClassName(String driverClassName);
 
-  @Description(
-      "The JDBC connection URL string. " + "For example: jdbc:mysql://some-host:3306/sampledb")
+  @TemplateParameter.Text(
+      order = 2,
+      optional = false,
+      regexes = {
+        "(^jdbc:[a-zA-Z0-9/:@.?_+!*=&-;]+$)|(^([A-Za-z0-9+/]{4}){1,}([A-Za-z0-9+/]{0,3})={0,3})"
+      },
+      description = "JDBC connection URL string.",
+      helpText =
+          "Url connection string to connect to the JDBC source. Connection string can "
+              + "be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS.",
+      example = "jdbc:mysql://some-host:3306/sampledb")
   String getConnectionUrl();
 
   void setConnectionUrl(String connectionUrl);
 
-  @Description("JDBC connection user name. ")
+  @TemplateParameter.Text(
+      order = 3,
+      optional = true,
+      regexes = {"^.+$"},
+      description = "JDBC connection username.",
+      helpText =
+          "User name to be used for the JDBC connection. User name can be passed in as plaintext "
+              + "or as a base64 encoded string encrypted by Google Cloud KMS.")
   String getUsername();
 
   void setUsername(String username);
 
-  @Description("JDBC connection password. ")
+  @TemplateParameter.Password(
+      order = 4,
+      optional = true,
+      description = "JDBC connection password.",
+      helpText =
+          "Password to be used for the JDBC connection. Password can be passed in as plaintext "
+              + "or as a base64 encoded string encrypted by Google Cloud KMS.")
   String getPassword();
 
   void setPassword(String password);
 
-  @Description(
-      "Comma separate list of driver class/dependency jar file GCS paths "
-          + "for example "
-          + "gs://<some-bucket>/driver_jar1.jar,gs://<some_bucket>/driver_jar2.jar")
+  @TemplateParameter.Text(
+      order = 5,
+      optional = false,
+      regexes = {"^.+$"},
+      description = "Cloud Storage paths for JDBC drivers",
+      helpText = "Comma separate Cloud Storage paths for JDBC drivers.",
+      example = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar")
   String getDriverJars();
 
   void setDriverJars(String driverJar);
 
-  @Description(
-      "JDBC connection property string. " + "For example: unicode=true&characterEncoding=UTF-8")
+  @TemplateParameter.Text(
+      order = 6,
+      optional = true,
+      regexes = {"^[a-zA-Z0-9_;!*&=@#-:\\/]+$"},
+      description = "JDBC connection property string.",
+      helpText =
+          "Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*.",
+      example = "unicode=true;characterEncoding=UTF-8")
   String getConnectionProperties();
 
   void setConnectionProperties(String connectionProperties);
 
-  @Description(
-      "Executing the SQL query to read from the database. For example: select col1,col2 from"
-          + " tablename")
+  @TemplateParameter.Text(
+      order = 7,
+      optional = false,
+      regexes = {"^.+$"},
+      description = "JDBC source SQL query.",
+      helpText = "Query to be executed on the source to extract the data.",
+      example = "select * from sampledb.sample_table")
   String getQuery();
 
   void setQuery(String query);
 
-  @Description(
-      "The Cloud Pub/Sub topic to publish to. "
-          + "The name should be in the format of "
-          + "projects/<project-id>/topics/<topic-name>.")
+  @TemplateParameter.PubsubTopic(
+      order = 8,
+      description = "Output Pub/Sub topic",
+      helpText =
+          "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name'",
+      example = "projects/your-project-id/topics/your-topic-name")
   @Validation.Required
   String getOutputTopic();
 
   void setOutputTopic(String outputTopic);
 
-  @Description(
-      "KMS Encryption Key. The key should be in the format"
-          + " projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}")
+  @TemplateParameter.KmsEncryptionKey(
+      order = 9,
+      optional = true,
+      description = "Google Cloud KMS key",
+      helpText =
+          "If this parameter is provided, password, user name and connection string should all be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt",
+      example = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key")
   String getKMSEncryptionKey();
 
   void setKMSEncryptionKey(String keyName);

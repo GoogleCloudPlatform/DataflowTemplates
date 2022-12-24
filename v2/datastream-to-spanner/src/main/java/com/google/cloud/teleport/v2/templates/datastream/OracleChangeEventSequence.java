@@ -34,7 +34,7 @@ class OracleChangeEventSequence extends ChangeEventSequence {
   private final Long scn;
 
   OracleChangeEventSequence(Long timestamp, Long scn) {
-    super("oracle");
+    super(DatastreamConstants.ORACLE_SOURCE_TYPE);
     this.timestamp = timestamp;
     this.scn = scn;
   }

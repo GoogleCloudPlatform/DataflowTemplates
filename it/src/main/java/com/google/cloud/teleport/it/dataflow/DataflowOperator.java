@@ -18,7 +18,7 @@ package com.google.cloud.teleport.it.dataflow;
 import static com.google.common.base.Preconditions.checkState;
 
 import com.google.auto.value.AutoValue;
-import com.google.cloud.teleport.it.dataflow.DataflowTemplateClient.JobState;
+import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
 import com.google.common.base.Strings;
 import java.io.IOException;
 import java.time.Duration;
@@ -29,18 +29,20 @@ import org.slf4j.LoggerFactory;
 
 /** Utilities for managing Dataflow jobs. */
 public final class DataflowOperator {
+
   private static final Logger LOG = LoggerFactory.getLogger(DataflowOperator.class);
 
   /** The result of running an operation. */
   public enum Result {
     CONDITION_MET,
     JOB_FINISHED,
+    JOB_FAILED,
     TIMEOUT
   }
 
-  private final DataflowTemplateClient client;
+  private final DataflowClient client;
 
-  public DataflowOperator(DataflowTemplateClient client) {
+  public DataflowOperator(DataflowClient client) {
     this.client = client;
   }
 
@@ -51,11 +53,35 @@ public final class DataflowOperator {
    * will time out unless the job is explicitly cancelled or drained.
    *
    * @param config the configuration for performing the operation
-   * @return the result, which will be either {@link Result#JOB_FINISHED} or {@link Result#TIMEOUT}
+   * @return the result, which will be {@link Result#JOB_FINISHED}, {@link Result#JOB_FAILED} or
+   *     {@link Result#TIMEOUT}
    */
   public Result waitUntilDone(Config config) {
     return finishOrTimeout(
         config, () -> false, () -> jobIsDone(config.project(), config.region(), config.jobId()));
+  }
+
+  /**
+   * Waits until the given job is done, timing out it if runs for too long. In cases of timeout, the
+   * dataflow job is drained.
+   *
+   * <p>If the job is a batch job, it should complete eventually. If it is a streaming job, this
+   * will time out unless the job is explicitly cancelled or drained. After timeout, the job will be
+   * drained.
+   *
+   * <p>If the job is drained, this method will return once the drain call is finalized and the job
+   * is fully drained.
+   *
+   * @param config the configuration for performing the operation
+   * @return the result, which will be {@link Result#JOB_FINISHED}, {@link Result#JOB_FAILED} or
+   *     {@link Result#TIMEOUT}
+   */
+  public Result waitUntilDoneAndFinish(Config config) throws IOException {
+    Result result = waitUntilDone(config);
+    if (result == Result.TIMEOUT) {
+      drainJobAndFinish(config);
+    }
+    return result;
   }
 
   /**
@@ -90,11 +116,22 @@ public final class DataflowOperator {
   public Result waitForConditionAndFinish(Config config, Supplier<Boolean> conditionCheck)
       throws IOException {
     Result conditionStatus = waitForCondition(config, conditionCheck);
-    if (conditionStatus != Result.JOB_FINISHED) {
-      client.cancelJob(config.project(), config.region(), config.jobId());
-      waitUntilDone(config);
+    if (conditionStatus != Result.JOB_FINISHED && conditionStatus != Result.JOB_FAILED) {
+      drainJobAndFinish(config);
     }
     return conditionStatus;
+  }
+
+  /**
+   * Drains the job and waits till its drained.
+   *
+   * @param config the configuration for performing operations
+   * @return the result of waiting for the condition
+   * @throws IOException
+   */
+  public Result drainJobAndFinish(Config config) throws IOException {
+    client.drainJob(config.project(), config.region(), config.jobId());
+    return waitUntilDone(config);
   }
 
   private static Result finishOrTimeout(
@@ -136,6 +173,12 @@ public final class DataflowOperator {
     try {
       JobState state = client.getJobStatus(project, region, jobId);
       LOG.info("Job is in state {}", state);
+      if (JobState.FAILED_STATES.contains(state)) {
+        throw new RuntimeException(
+            String.format(
+                "Job ID %s under %s failed. Please check cloud console for more details.",
+                jobId, project));
+      }
       return JobState.DONE_STATES.contains(state);
     } catch (IOException e) {
       LOG.error("Failed to get current job state. Assuming not done.", e);
@@ -147,6 +190,12 @@ public final class DataflowOperator {
     try {
       JobState state = client.getJobStatus(project, region, jobId);
       LOG.info("Job is in state {}", state);
+      if (JobState.FAILED_STATES.contains(state)) {
+        throw new RuntimeException(
+            String.format(
+                "Job ID %s under %s failed. Please check cloud console for more details.",
+                jobId, project));
+      }
       return JobState.DONE_STATES.contains(state) || JobState.FINISHING_STATES.contains(state);
     } catch (IOException e) {
       LOG.error("Failed to get current job state. Assuming not done.", e);
@@ -161,6 +210,7 @@ public final class DataflowOperator {
   /** Configuration for running an operation. */
   @AutoValue
   public abstract static class Config {
+
     public abstract String project();
 
     public abstract String jobId();
@@ -174,13 +224,14 @@ public final class DataflowOperator {
 
     public static Builder builder() {
       return new AutoValue_DataflowOperator_Config.Builder()
-          .setCheckAfter(Duration.ofSeconds(30))
+          .setCheckAfter(Duration.ofSeconds(15))
           .setTimeoutAfter(Duration.ofMinutes(15));
     }
 
     /** Builder for a {@link Config}. */
     @AutoValue.Builder
     public abstract static class Builder {
+
       public abstract Builder setProject(String value);
 
       public abstract Builder setRegion(String value);

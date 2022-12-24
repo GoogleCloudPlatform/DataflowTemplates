@@ -19,7 +19,7 @@ only the Javascript UDF will be executed.
 
 ### Requirements
 
-* Java 8
+* Java 11
 * Maven
 * Cloud Storage bucket exists
 * Splunk HEC instance exists
@@ -36,7 +36,7 @@ export PROJECT=<my-project>
 export IMAGE_NAME=<my-image-name>
 export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
-export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
+export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export TEMPLATE_MODULE=googlecloud-to-splunk
 export APP_ROOT=/template/gcs-to-splunk 
@@ -46,7 +46,7 @@ export COMMAND_SPEC=${APP_ROOT}/resources/gcs-to-splunk-command-spec.json
 #### Build and Push Image to Google Container Repository
 
 ```sh
-mvn clean package -f unified-templates.xml -pl v2/googlecloud-to-splunk -am \
+mvn clean package -pl v2/googlecloud-to-splunk -am \
     -Dimage=${TARGET_GCR_IMAGE} \
     -Dbase-container-image=${BASE_CONTAINER_IMAGE} \
     -Dbase-container-image.version=${BASE_CONTAINER_IMAGE_VERSION} \

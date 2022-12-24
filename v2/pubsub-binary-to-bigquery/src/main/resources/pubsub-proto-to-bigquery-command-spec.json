@@ -1,6 +1,6 @@
 {
   "mainClass": "com.google.cloud.teleport.v2.templates.PubsubProtoToBigQuery",
-  "classPath": "/template/pubsub-proto-to-bigquery/*:/template/pubsub-proto-to-bigquery/libs/*:/template/pubsub-proto-to-bigquery/classes",
+  "classPath": "/template/pubsub-proto-to-bigquery/pubsub-proto-to-bigquery-conscrypt.jar:/template/pubsub-proto-to-bigquery/*:/template/pubsub-proto-to-bigquery/libs/*:/template/pubsub-proto-to-bigquery/classes",
   "defaultParameterValues": {
     "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"pubsub_proto_to_bigquery\"}"
   }

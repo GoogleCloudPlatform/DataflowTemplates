@@ -17,6 +17,9 @@ package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Options.RpcPriority;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SpannerChangeStreamsToGcsOptions;
 import com.google.cloud.teleport.v2.transforms.FileFormatFactorySpannerChangeStreams;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
@@ -38,11 +41,23 @@ import org.slf4j.LoggerFactory;
  * Google Cloud Storage bucket in user specified format. The sink data can be stored in a Text or
  * Avro file format.
  */
+@Template(
+    name = "Spanner_Change_Streams_to_Google_Cloud_Storage",
+    category = TemplateCategory.STREAMING,
+    displayName = "Cloud Spanner change streams to Cloud Storage",
+    description =
+        "Streaming pipeline. Streams Spanner change stream data records and writes them into a"
+            + " Cloud Storage bucket using Dataflow Runner V2.",
+    optionsClass = SpannerChangeStreamsToGcsOptions.class,
+    flexContainerName = "spanner-changestreams-to-gcs",
+    contactInformation = "https://cloud.google.com/support")
 public class SpannerChangeStreamsToGcs {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerChangeStreamsToGcs.class);
   private static final String USE_RUNNER_V2_EXPERIMENT = "use_runner_v2";
 
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     LOG.info("Starting Input Files to GCS");
 
     SpannerChangeStreamsToGcsOptions options =
@@ -88,14 +103,7 @@ public class SpannerChangeStreamsToGcs {
     if (experiments == null) {
       experiments = new ArrayList<>();
     }
-    boolean hasUseRunnerV2 = false;
-    for (String experiment : experiments) {
-      if (experiment.toLowerCase().equals(USE_RUNNER_V2_EXPERIMENT)) {
-        hasUseRunnerV2 = true;
-        break;
-      }
-    }
-    if (!hasUseRunnerV2) {
+    if (!experiments.contains(USE_RUNNER_V2_EXPERIMENT)) {
       experiments.add(USE_RUNNER_V2_EXPERIMENT);
     }
     options.setExperiments(experiments);

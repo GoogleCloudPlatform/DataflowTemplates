@@ -15,11 +15,15 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.utils.KMSUtils.maybeDecrypt;
+
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.io.DynamicJdbcIO;
 import com.google.cloud.teleport.v2.options.PubsubToJdbcOptions;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
-import com.google.cloud.teleport.v2.utils.KMSEncryptedNestedValue;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Splitter;
 import java.sql.PreparedStatement;
@@ -41,6 +45,24 @@ import org.slf4j.LoggerFactory;
  * The {@link PubsubToJdbc} streaming pipeline reads data from Google Cloud PubSub and publishes to
  * JDBC. <br>
  */
+@Template(
+    name = "Pubsub_to_Jdbc",
+    category = TemplateCategory.STREAMING,
+    displayName = "Pub/Sub to JDBC",
+    description =
+        "A streaming pipeline which ingests data in the form of json strings from Pub/Sub"
+            + " subscription and writes to a JDBC table. JDBC connection string, user name and"
+            + " password can be passed in directly as plaintext or encrypted using the Google Cloud"
+            + " KMS API.  If the parameter KMSEncryptionKey is specified, connectionUrl, username,"
+            + " and password should be all in encrypted format. A sample curl command for the KMS"
+            + " API encrypt endpoint: curl -s -X POST"
+            + " \"https://cloudkms.googleapis.com/v1/projects/your-project/locations/your-path/keyRings/your-keyring/cryptoKeys/your-key:encrypt\""
+            + "  -d \"{\\\"plaintext\\\":\\\"PasteBase64EncodedString\\\"}\"  -H \"Authorization:"
+            + " Bearer $(gcloud auth application-default print-access-token)\" -H \"Content-Type:"
+            + " application/json\"",
+    optionsClass = PubsubToJdbcOptions.class,
+    flexContainerName = "pubsub-to-jdbc",
+    contactInformation = "https://cloud.google.com/support")
 public class PubsubToJdbc {
 
   /* Logger for class.*/
@@ -56,6 +78,8 @@ public class PubsubToJdbc {
    * @param args Command line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     PubsubToJdbcOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(PubsubToJdbcOptions.class);
 
@@ -149,10 +173,6 @@ public class PubsubToJdbc {
         LOG.error("Error while mapping PubSub strings to JDBC: {}", e.getMessage());
       }
     }
-  }
-
-  private static KMSEncryptedNestedValue maybeDecrypt(String unencryptedValue, String kmsKey) {
-    return new KMSEncryptedNestedValue(unencryptedValue, kmsKey);
   }
 
   private static List<String> getKeyOrder(String statement) {

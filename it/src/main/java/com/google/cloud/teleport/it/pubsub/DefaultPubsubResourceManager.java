@@ -15,9 +15,10 @@
  */
 package com.google.cloud.teleport.it.pubsub;
 
-import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkArgument;
 
 import com.google.api.gax.core.CredentialsProvider;
+import com.google.cloud.pubsub.v1.Publisher;
 import com.google.cloud.pubsub.v1.SubscriptionAdminClient;
 import com.google.cloud.pubsub.v1.SubscriptionAdminSettings;
 import com.google.cloud.pubsub.v1.TopicAdminClient;
@@ -26,6 +27,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PubsubMessage;
+import com.google.pubsub.v1.PullResponse;
 import com.google.pubsub.v1.PushConfig;
 import com.google.pubsub.v1.Subscription;
 import com.google.pubsub.v1.SubscriptionName;
@@ -109,13 +111,14 @@ public final class DefaultPubsubResourceManager implements PubsubResourceManager
     checkArgument(!topicName.isEmpty(), "topicName can not be empty");
     checkIsUsable();
 
-    LOG.info("Creating topic '{}'...", topicName);
+    TopicName name = getTopicName(topicName);
+    LOG.info("Creating topic '{}'...", name.toString());
 
-    Topic topic = topicAdminClient.createTopic(getTopicName(topicName));
+    Topic topic = topicAdminClient.createTopic(name);
     TopicName reference = PubsubUtils.toTopicName(topic);
     createdTopics.add(reference);
 
-    LOG.info("Topic '{}' was created successfully!", topicName);
+    LOG.info("Topic '{}' was created successfully!", name);
 
     return reference;
   }
@@ -169,12 +172,25 @@ public final class DefaultPubsubResourceManager implements PubsubResourceManager
         PubsubMessage.newBuilder().putAllAttributes(attributes).setData(data).build();
 
     try {
-      String messageId = publisherFactory.createPublisher(topic).publish(pubsubMessage).get();
+      Publisher publisher = publisherFactory.createPublisher(topic);
+      String messageId = publisher.publish(pubsubMessage).get();
       LOG.info("Message published with id '{}'", messageId);
+      publisher.shutdown();
       return messageId;
     } catch (Exception e) {
       throw new PubsubResourceManagerException("Error publishing message to Pubsub", e);
     }
+  }
+
+  @Override
+  public PullResponse pull(SubscriptionName subscriptionName, int maxMessages) {
+    LOG.info("Pulling messages from subscription '{}'", subscriptionName);
+    PullResponse response = subscriptionAdminClient.pull(subscriptionName, maxMessages);
+    LOG.info(
+        "Received {} messages from subscription '{}'",
+        response.getReceivedMessagesCount(),
+        subscriptionName);
+    return response;
   }
 
   @Override

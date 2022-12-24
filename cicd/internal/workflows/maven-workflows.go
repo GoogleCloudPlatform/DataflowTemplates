@@ -31,15 +31,17 @@ import (
 const (
 	// mvn commands
 	cleanInstallCmd  = "clean install"
+	cleanVerifyCmd   = "clean verify"
 	spotlessCheckCmd = "spotless:check"
 
 	// regexes
 	javaFileRegex     = "\\.java$"
+	xmlFileRegex      = "\\.xml$"
 	markdownFileRegex = "\\.md$"
 	pomFileRegex      = "pom\\.xml$"
 
 	// notable files
-	unifiedPom = "unified-templates.xml"
+	unifiedPom = "pom.xml"
 )
 
 // Interface for retrieving flags that can be passed into the workflow's
@@ -51,6 +53,7 @@ type MavenFlags interface {
 	SkipDependencyAnalysis() string
 	SkipJib() string
 	SkipTests() string
+	SkipIntegrationTests() string
 	FailAtTheEnd() string
 }
 
@@ -80,6 +83,10 @@ func (*mvnFlags) SkipTests() string {
 	return "-Dmaven.test.skip"
 }
 
+func (*mvnFlags) SkipIntegrationTests() string {
+	return "-DskipIntegrationTests"
+}
+
 func (*mvnFlags) FailAtTheEnd() string {
 	return "-fae"
 }
@@ -95,16 +102,37 @@ func MvnCleanInstall() Workflow {
 }
 
 func (*mvnCleanInstallWorkflow) Run(args ...string) error {
+	return RunForChangedModules(cleanInstallCmd, args...)
+}
+
+type mvnCleanVerifyWorkflow struct{}
+
+func MvnCleanVerify() Workflow {
+	return &mvnCleanVerifyWorkflow{}
+}
+
+func (*mvnCleanVerifyWorkflow) Run(args ...string) error {
+	return RunForChangedModules(cleanVerifyCmd, args...)
+}
+
+func RunForChangedModules(cmd string, args ...string) error {
 	flags.RegisterCommonFlags()
 	flag.Parse()
 
-	changed := flags.ChangedFiles(javaFileRegex, pomFileRegex)
+	changed := flags.ChangedFiles(javaFileRegex, xmlFileRegex)
 	if len(changed) == 0 {
 		return nil
 	}
 
 	// Collect the modules together for a single call. Maven can work out the install order.
 	modules := make([]string, 0)
+
+	// We need to append the base dependency modules, because they are needed to build all
+	// other modules.
+	modules = append(modules, "metadata")
+	modules = append(modules, "it")
+	modules = append(modules, "structured-logging")
+	modules = append(modules, "plaintext-logging")
 	for root, children := range repo.GetModulesForPaths(changed) {
 		if len(children) == 0 {
 			modules = append(modules, root)
@@ -138,7 +166,7 @@ func (*mvnCleanInstallWorkflow) Run(args ...string) error {
 		return nil
 	}
 
-	return op.RunMavenOnModule(unifiedPom, cleanInstallCmd, strings.Join(modules, ","), args...)
+	return op.RunMavenOnModule(unifiedPom, cmd, strings.Join(modules, ","), args...)
 }
 
 type spotlessCheckWorkflow struct{}

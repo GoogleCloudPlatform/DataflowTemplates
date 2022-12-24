@@ -29,30 +29,24 @@
   <artifactId>googlecloud-to-googlecloud</artifactId>
 
   <properties>
-    <google-truth.version>1.0.1</google-truth.version>
-    <kms.version>1.20.0</kms.version>
-    <mockito.version>1.10.19</mockito.version>
-    <mockito-core.version>3.0.0</mockito-core.version>
     <derby.version>10.14.2.0</derby.version>
-    <hadoop.version>2.8.5</hadoop.version>
     <avro.version>1.8.2</avro.version>
+    <dlp.version>2.1.0</dlp.version>
   </properties>
 
+  <dependencyManagement>
+    <dependencies>
+      <!-- TODO(bvolpato): remove hardcoded API -->
+      <dependency>
+        <groupId>com.google.api.grpc</groupId>
+        <artifactId>proto-google-cloud-kms-v1</artifactId>
+        <version>0.87.0</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
   <build>
-    <directory>${mvn-target-dir}</directory>
     <plugins>
-        <plugin>
-            <groupId>com.google.cloud.tools</groupId>
-            <artifactId>jib-maven-plugin</artifactId>
-            <executions>
-                <execution>
-                    <phase>package</phase>
-                    <goals>
-                        <goal>build</goal>
-                    </goals>
-                </execution>
-            </executions>
-        </plugin>
         <plugin>
           <groupId>org.apache.avro</groupId>
           <artifactId>avro-maven-plugin</artifactId>
@@ -60,20 +54,23 @@
           <!-- For compatibility reasons (e.g. IntelliJ), the configuration must be duplicated here
             and under execution. -->
           <configuration>
-            <sourceDirectory>${project.basedir}/src/main/resources/schema/avro</sourceDirectory>
-          </configuration>
-          <executions>
-            <execution>
-              <phase>generate-sources</phase>
-              <goals>
-                <goal>schema</goal>
-              </goals>
-              <configuration>
-                <sourceDirectory>${project.basedir}/src/main/resources/schema/avro</sourceDirectory>
-              </configuration>
-            </execution>
-          </executions>
-        </plugin>
+          <sourceDirectory>${project.basedir}/src/main/resources/schema/avro
+          </sourceDirectory>
+        </configuration>
+        <executions>
+          <execution>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>schema</goal>
+            </goals>
+            <configuration>
+              <sourceDirectory>
+                ${project.basedir}/src/main/resources/schema/avro
+              </sourceDirectory>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 
@@ -85,7 +82,7 @@
     <dependency>
       <groupId>com.google.cloud.teleport.v2</groupId>
       <artifactId>common</artifactId>
-      <version>1.0-SNAPSHOT</version>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>
@@ -94,14 +91,17 @@
     </dependency>
     <dependency>
       <groupId>com.google.cloud</groupId>
-      <artifactId>google-cloud-kms</artifactId>
-      <version>${kms.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>com.google.cloud</groupId>
-          <artifactId>google-cloud-core-grpc</artifactId>
-        </exclusion>
-      </exclusions>
+      <artifactId>google-cloud-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-pubsub</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-spanner</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
@@ -114,7 +114,7 @@
         </exclusion>
         <exclusion>
           <groupId>org.slf4j</groupId>
-          <artifactId>slf4j-log4j12</artifactId>
+          <artifactId>*</artifactId>
         </exclusion>
         <exclusion>
           <groupId>com.google.protobuf</groupId>
@@ -133,7 +133,11 @@
         </exclusion>
         <exclusion>
           <groupId>org.slf4j</groupId>
-          <artifactId>slf4j-log4j12</artifactId>
+          <artifactId>*</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>log4j</groupId>
+          <artifactId>*</artifactId>
         </exclusion>
         <exclusion>
           <groupId>com.google.protobuf</groupId>
@@ -143,6 +147,25 @@
           <groupId>com.google.code.gson</groupId>
           <artifactId>gson</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>asm</groupId>
+          <artifactId>asm</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-dlp</artifactId>
+      <version>${dlp.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>io.grpc</groupId>
+          <artifactId>grpc-core</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
 
@@ -150,14 +173,14 @@
     <dependency>
       <groupId>com.google.truth</groupId>
       <artifactId>truth</artifactId>
-      <version>${google-truth.version}</version>
+      <version>${truth.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
-        <artifactId>mockito-core</artifactId>
-        <version>${mockito-core.version}</version>
-        <scope>test</scope>
+      <artifactId>mockito-core</artifactId>
+      <version>${mockito-core.version}</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.derby</groupId>

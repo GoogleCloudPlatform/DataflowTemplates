@@ -26,15 +26,11 @@
 
   <groupId>com.google.cloud.dataflow.cdc</groupId>
   <artifactId>cdc-parent</artifactId>
-  <version>0.1</version>
   <inceptionYear>2019</inceptionYear>
   <packaging>pom</packaging>
   <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <debezium.version>0.9.5.Final</debezium.version>
-    <grpc.version>1.45.1</grpc.version>
     <guava.version>25.1-jre</guava.version>
-    <gcp.version>1.82.0</gcp.version>
     <data-catalog.version>0.35.0</data-catalog.version>
   </properties>
   <licenses>
@@ -59,6 +55,9 @@
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
           <version>2.22.0</version>
+          <configuration>
+            <excludedGroups>com.google.cloud.teleport.metadata.TemplateIntegrationTest</excludedGroups>
+          </configuration>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -95,38 +94,19 @@
 
   <dependencyManagement>
     <dependencies>
-    <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-api</artifactId>
-            <version>${grpc.version}</version>
-        </dependency>
       <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-core</artifactId>
-            <version>${grpc.version}</version>
-        </dependency>
-      <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-protobuf</artifactId>
-            <version>${grpc.version}</version>
-        </dependency>
-      <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-stub</artifactId>
-            <version>${grpc.version}</version>
-        </dependency>
-      <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-netty-shaded</artifactId>
-            <version>${grpc.version}</version>
-        </dependency>
-      <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
-      <version>${slf4j.version}</version>
-      <scope>compile</scope>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-api</artifactId>
+        <version>${slf4j.version}</version>
+        <scope>compile</scope>
       </dependency>
-      </dependencies>
+      <!-- TODO(bvolpato): remove hardcoded version -->
+      <dependency>
+        <groupId>com.google.api.grpc</groupId>
+        <artifactId>grpc-google-cloud-datacatalog-v1beta1</artifactId>
+        <version>${data-catalog.version}</version>
+      </dependency>
+    </dependencies>
   </dependencyManagement>
 
   <dependencies>
@@ -134,7 +114,11 @@
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
       <version>${guava.version}</version>
-      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud.teleport.v2</groupId>
+      <artifactId>common</artifactId>
+      <version>${project.version}</version>
     </dependency>
 
     <!-- TESTING DEPENDENCIES -->

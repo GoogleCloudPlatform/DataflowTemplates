@@ -46,8 +46,6 @@ import org.apache.beam.sdk.io.gcp.bigquery.TableRowJsonCoder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesCoder;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.ValueProvider;
-import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.testing.NeedsRunner;
 import org.apache.beam.sdk.testing.PAssert;
@@ -105,9 +103,6 @@ public class BigQueryConvertersTest {
       "{\"id\":\"007\",\"state\":\"CA\",\"price\":26.23,\"someProp\":\"someValue\"}";
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
   @Rule public ExpectedException expectedException = ExpectedException.none();
-  private ValueProvider<String> entityKind = StaticValueProvider.of("TestEntity");
-  private ValueProvider<String> uniqueNameColumn = StaticValueProvider.of("id");
-  private ValueProvider<String> namespace = StaticValueProvider.of("bq-to-ds-test");
   private static final String AVRO_SCHEMA_TEMPLATE =
       new StringBuilder()
           .append("{")

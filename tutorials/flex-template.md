@@ -77,10 +77,6 @@ the following content:
     </dependency>
   </dependencies>
 
-  <build>
-    <directory>${mvn-target-dir}</directory>
-  </build>
-
 </project>
 ```
 
@@ -326,7 +322,7 @@ Go to the `DataflowTemplates/` directory (the parent of the `v2/` directory) and
 run the following command:
 
 ```shell
-mvn spotless:apply -f unified-templates.xml -pl v2/wordcount
+mvn spotless:apply -pl v2/wordcount
 ```
 
 This will format the code. If you try to build and get checkstyle violations,
@@ -336,19 +332,16 @@ such as missing Javadocs.
 Once formatted, you can run:
 
 ```shell
-mvn clean install -f unified-templates.xml -pl v2/wordcount -am \
+mvn clean package -pl v2/wordcount -am \
   -Dmaven.test.skip \
   -Djib.skip
 ```
 
-`-f unified-templates.xml` specifies the POM we're using, in this case an
-[aggregator POM](https://maven.apache.org/pom.html#Aggregation) that contains
-all the modules in the repository. Combined with the `-am` option, we can
-guarantee that all the necessary local dependencies are included in the build.
+The `-am` option guarantees that all the necessary local dependencies are included in the build.
 
 `-pl v2/wordcount` is how we specify the target module, allowing us to only
 build what we need. You can see all the available modules in the
-`unified-templates.xml` file.
+`pom.xml` file.
 
 Lastly, we use `-Dmaven.test.skip` and `-Djib.skip` to avoid running steps of
 `install` that we want to skip for now.
@@ -446,7 +439,7 @@ equivalent.
 You can run the unit test with the following command:
 
 ```shell
-mvn clean install -f unified-templates.xml -pl v2/wordcount -am \
+mvn clean package -pl v2/wordcount -am \
   -Dtest=WordCountTest -DfailIfNoTests=false \
   -Djib.skip
 ```
@@ -465,7 +458,6 @@ that it now looks like:
 
 ```xml
   <build>
-    <directory>${mvn-target-dir}</directory>
     <plugins>
       <plugin>
         <groupId>com.google.cloud.tools</groupId>
@@ -571,12 +563,12 @@ export IMAGE_NAME="$USERNAME-wordcount"
 export MODULE_NAME=wordcount
 
 export TARGET_GCR_IMAGE="gcr.io/$PROJECT/$IMAGE_NAME"
-export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
+export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export APP_ROOT="/template/$MODULE_NAME"
 export COMMAND_SPEC="$APP_ROOT/resources/$MODULE_NAME-command-spec.json"
 
-mvn clean package -f unified-templates.xml -pl "v2/$MODULE_NAME" -am \
+mvn clean package -pl "v2/$MODULE_NAME" -am \
   -Dimage="$TARGET_GCR_IMAGE" \
   -Dbase-container-image="$BASE_CONTAINER_IMAGE" \
   -Dbase-container-image.version="$BASE_CONTAINER_IMAGE_VERSION" \
@@ -594,7 +586,8 @@ gcloud dataflow flex-template build "$TEMPLATE_SPEC_GCSPATH" \
 
 export JOB_NAME="wordcount-$USERNAME"
 
-gcloud dataflow flex-template run "$JOB_NAME-$(date +'%Y%m%d%H%M%S')" --region "$REGION" \
+gcloud dataflow flex-template run "$JOB_NAME-$(date +'%Y%m%d%H%M%S')" \
+  --project "$PROJECT" --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
   --parameters inputFile="gs://dataflow-samples/shakespeare/kinglear.txt"  \
   --parameters outputPath="gs://$BUCKET_NAME/output/wordcount/$USERNAME/wordcount"

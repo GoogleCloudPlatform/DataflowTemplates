@@ -6,7 +6,7 @@ pipeline is a  batch pipeline that reads records from a Spanner Table and writes
 
 ## Requirements
 
-* Java 8 or 11
+* Java 11
 * Maven
 * The Spanner table exists
 
@@ -28,7 +28,7 @@ export TEMPLATE_MODULE=googlecloud-to-googlecloud
 export COMMAND_MODULE=spanner-to-bigquery
 
 export TARGET_GCR_IMAGE="gcr.io/$PROJECT/images/$IMAGE_NAME"
-export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
+export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export APP_ROOT="/template/$COMMAND_MODULE"
 export COMMAND_SPEC="$APP_ROOT/resources/$COMMAND_MODULE-command-spec.json"
@@ -40,7 +40,7 @@ export IMAGE_SPEC_GCSPATH="$BUCKET/images/$COMMAND_MODULE-image-spec.json"
 **Build and push image to Google Container Repository from the DataflowTemplates directory.**
 
 ```sh
-mvn clean package -f unified-templates.xml \
+mvn clean package \
     -Dimage="$TARGET_GCR_IMAGE" \
     -Dbase-container-image="$BASE_CONTAINER_IMAGE" \
     -Dbase-container-image.version="$BASE_CONTAINER_IMAGE_VERSION" \
@@ -68,7 +68,7 @@ gcloud dataflow flex-template build "$IMAGE_SPEC_GCSPATH" \
 The template unit tests can be run using:
 
 ```sh
-mvn test -f unified-templates.xml -pl v2/"$TEMPLATE_MODULE" -am
+mvn test -pl v2/"$TEMPLATE_MODULE" -am
 ```
 
 ### Executing Template

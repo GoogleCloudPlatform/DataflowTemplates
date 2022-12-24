@@ -291,7 +291,7 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
 
   static class ExtractGcsFile extends DoFn<PubsubMessage, Metadata> {
     @ProcessElement
-    public void process(ProcessContext context) {
+    public void process(ProcessContext context) throws IOException {
       PubsubMessage message = context.element();
 
       String eventType = message.getAttribute("eventType");
@@ -305,6 +305,7 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
           context.output(fileMetadata);
         } catch (IOException e) {
           LOG.error("GCS Failure retrieving {}: {}", fileName, e);
+          throw e;
         }
       }
     }

@@ -16,56 +16,38 @@
 <project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.google.cloud.teleport</groupId>
+        <artifactId>templates</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
     <groupId>com.google.cloud.teleport.v2</groupId>
     <artifactId>dynamic-templates</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <name>Google Cloud Teleport Dynamic</name>
+    <description>
+        Cloud Teleport Classic is a collection of Apache Beam pipelines for common tasks, like data movement
+        across databases or batch transforms on random datasets. They are released as Dataflow Classic Templates.
+
+    </description>
 
     <packaging>pom</packaging>
-    <name>dynamic-templates</name>
 
     <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <autovalue.version>1.7.4</autovalue.version>
         <autovalue.annotations.version>1.7.4</autovalue.annotations.version>
         <autovalue.service.version>1.0-rc6</autovalue.service.version>
-        <checkstyle.version>8.7</checkstyle.version>
-        <beam.version>2.41.0</beam.version>
-        <hamcrest.version>2.1</hamcrest.version>
-        <hadoop.version>2.10.1</hadoop.version>
         <guava.version>30.1-jre</guava.version>
-        <java.version>1.8</java.version>
         <jib.maven.version>2.6.0</jib.maven.version>
-        <junit.version>4.13</junit.version>
         <junit-dep.version>4.10</junit-dep.version>
-        <opensensus.version>0.31.0</opensensus.version>
-        <surefire.version>2.21.0</surefire.version>
-        <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
-        <maven-compiler-plugin.version>3.6.2</maven-compiler-plugin.version>
-        <maven-dependency-plugin.version>3.1.2</maven-dependency-plugin.version>
-        <maven-enforcer-plugin.version>3.0.0-M1</maven-enforcer-plugin.version>
-        <maven-javadoc-plugin.version>3.0.0-M1</maven-javadoc-plugin.version>
-        <maven-jar-plugin.version>3.0.2</maven-jar-plugin.version>
-        <maven-shade-plugin.version>3.0.0</maven-shade-plugin.version>
-        <maven-source-plugin.version>3.0.1</maven-source-plugin.version>
-        <mockito-core.version>3.0.0</mockito-core.version>
-        <os-maven-plugin.version>1.5.0.Final</os-maven-plugin.version>
-        <re2j.version>1.5</re2j.version>
-        <slf4j.version>1.7.25</slf4j.version>
-        <mvn-target-dir>${basedir}/target</mvn-target-dir>
-        <json.version>20200518</json.version>
+        <opencensus.version>0.31.0</opencensus.version>
+
         <excluded.spanner.tests>com.google.cloud.teleport.v2.spanner.IntegrationTest</excluded.spanner.tests>
-        <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
-            <dependency>
-                <groupId>org.apache.beam</groupId>
-                <artifactId>beam-sdks-java-bom</artifactId>
-                <version>${beam.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
             <!--
             Force gax version to 2.3.0.
             Beam 2.34 depends on newer Google libraries that need don't work with older gax
@@ -76,27 +58,29 @@
                 <artifactId>gax</artifactId>
                 <version>2.3.0</version>
             </dependency>
-            <!--
-            Force google-cloud-spanner version to 6.23.3.
-            google-cloud-spanner versions between 6.13.0 and 6.21.0 contain a bug that cause a
-            nullpointer exception to be thrown when recording values in opencensus.
-            -->
-            <dependency>
-                <groupId>com.google.cloud</groupId>
-                <artifactId>google-cloud-spanner-bom</artifactId>
-                <version>6.23.3</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
             <dependency>
                 <groupId>com.google.api</groupId>
                 <artifactId>gax-grpc</artifactId>
                 <version>2.3.0</version>
             </dependency>
+
+            <!-- Enforce Conscrypt version -->
+            <dependency>
+                <groupId>org.conscrypt</groupId>
+                <artifactId>conscrypt-openjdk-uber</artifactId>
+                <version>${conscrypt.version}</version>
+            </dependency>
         </dependencies>
+
     </dependencyManagement>
 
     <dependencies>
+        <!-- Templates Annotations -->
+        <dependency>
+            <groupId>com.google.cloud.teleport.metadata</groupId>
+            <artifactId>metadata</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- Beam -->
         <dependency>
             <groupId>org.apache.beam</groupId>
@@ -107,20 +91,20 @@
             <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
             <exclusions>
                 <exclusion>
-                    <groupId>junit</groupId>
-                    <artifactId>junit</artifactId>
+                  <groupId>junit</groupId>
+                  <artifactId>junit</artifactId>
                 </exclusion>
                 <exclusion>
-                    <groupId>io.grpc</groupId>
-                    <artifactId>grpc-netty-shaded</artifactId>
+                  <groupId>io.grpc</groupId>
+                  <artifactId>grpc-netty-shaded</artifactId>
                 </exclusion>
                 <exclusion>
-                    <groupId>io.grpc</groupId>
-                    <artifactId>grpc-core</artifactId>
+                  <groupId>io.grpc</groupId>
+                  <artifactId>grpc-core</artifactId>
                 </exclusion>
                 <exclusion>
-                    <groupId>io.grpc</groupId>
-                    <artifactId>grpc-api</artifactId>
+                  <groupId>io.grpc</groupId>
+                  <artifactId>grpc-api</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -176,16 +160,21 @@
         <dependency>
             <groupId>com.google.cloud.teleport</groupId>
             <artifactId>integration-testing-lib</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>${project.version}</version>
             <scope>test</scope>
+            <exclusions>
+               <exclusion>
+                 <groupId>org.slf4j</groupId>
+                 <artifactId>slf4j-simple</artifactId>
+               </exclusion>
+            </exclusions>
         </dependency>
-
 
         <!-- Misc -->
         <dependency>
             <groupId>io.opencensus</groupId>
             <artifactId>opencensus-api</artifactId>
-            <version>${opensensus.version}</version>
+            <version>${opencensus.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.auto.service</groupId>
@@ -208,10 +197,18 @@
             <artifactId>re2j</artifactId>
             <version>${re2j.version}</version>
         </dependency>
+        <!-- Structured logging in Google Cloud Format -->
         <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-            <version>${slf4j.version}</version>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>structured-logging</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- Plain text logging for the unit tests -->
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>plaintext-logging</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.json</groupId>
@@ -227,7 +224,6 @@
     </dependencies>
 
     <build>
-        <directory>${mvn-target-dir}</directory>
         <extensions>
             <extension>
                 <groupId>kr.motd.maven</groupId>
@@ -288,44 +284,13 @@
                             </environment>
                         </container>
                     </configuration>
-
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-shade-plugin</artifactId>
-                    <version>3.0.0</version>
                     <executions>
                         <execution>
-                            <id>bundle-and-repackage</id>
-                            <phase>package</phase>
+                            <id>jib</id>
+                            <phase>install</phase>
                             <goals>
-                                <goal>shade</goal>
+                                <goal>build</goal>
                             </goals>
-                            <configuration>
-                                <dependencyReducedPomLocation>
-                                    ${mvn-target-dir}/dependency-reduced-pom.xml
-                                </dependencyReducedPomLocation>
-                                <shadeTestJar>true</shadeTestJar>
-                                <artifactSet>
-                                    <includes>
-                                        <include>*:*</include>
-                                    </includes>
-                                </artifactSet>
-                                <filters>
-                                    <filter>
-                                        <artifact>*:*</artifact>
-                                        <excludes>
-                                            <exclude>META-INF/*.SF</exclude>
-                                            <exclude>META-INF/*.DSA</exclude>
-                                            <exclude>META-INF/*.RSA</exclude>
-                                        </excludes>
-                                    </filter>
-                                </filters>
-                                <transformers>
-                                    <transformer
-                                            implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
-                                </transformers>
-                            </configuration>
                         </execution>
                     </executions>
                 </plugin>
@@ -346,6 +311,18 @@
                 <artifactId>maven-dependency-plugin</artifactId>
                 <version>${maven-dependency-plugin.version}</version>
                 <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>package</phase>
+                        <goals>
+                          <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                          <outputDirectory>${basedir}/target/extra_libs</outputDirectory>
+                          <includeArtifactIds>conscrypt-openjdk-uber</includeArtifactIds>
+                          <stripVersion>true</stripVersion>
+                        </configuration>
+                    </execution>
                     <execution>
                         <id>analyze-dependencies</id>
                         <phase>package</phase>
@@ -431,42 +408,6 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>bundle-and-repackage</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                        <configuration>
-                            <shadeTestJar>true</shadeTestJar>
-                            <artifactSet>
-                                <includes>
-                                    <include>*:*</include>
-                                </includes>
-                            </artifactSet>
-                            <filters>
-                                <filter>
-                                    <artifact>*:*</artifact>
-                                    <excludes>
-                                        <exclude>META-INF/*.SF</exclude>
-                                        <exclude>META-INF/*.DSA</exclude>
-                                        <exclude>META-INF/*.RSA</exclude>
-                                    </excludes>
-                                </filter>
-                            </filters>
-                            <transformers>
-                                <transformer
-                                        implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
-                            </transformers>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
 
             <plugin>
                 <!-- Set up Javadoc configuration for javadoc run via in the Maven
@@ -493,40 +434,9 @@
                 <version>${maven-jar-plugin.version}</version>
             </plugin>
 
-
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-checkstyle-plugin</artifactId>
-                <version>${maven-checkstyle-plugin.version}</version>
-                <dependencies>
-                    <dependency>
-                        <groupId>com.puppycrawl.tools</groupId>
-                        <artifactId>checkstyle</artifactId>
-                        <version>${checkstyle.version}</version>
-                    </dependency>
-                </dependencies>
-                <configuration>
-                    <configLocation>checkstyle/checkstyle.xml</configLocation>
-                    <suppressionsLocation>checkstyle/suppressions.xml</suppressionsLocation>
-                    <consoleOutput>true</consoleOutput>
-                    <failOnViolation>true</failOnViolation>
-                    <includeResources>false</includeResources>
-                    <includeTestSourceDirectory>true</includeTestSourceDirectory>
-                </configuration>
-                <executions>
-                    <!--
-                      Execute checkstyle after compilation but before tests.
-                      This ensures that any parsing or type checking errors are from
-                      javac, so they look as expected. Beyond that, we want to
-                      fail as early as possible.
-                    -->
-                    <execution>
-                        <phase>test-compile</phase>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                    </execution>
-                </executions>
+                <groupId>com.google.cloud.tools</groupId>
+                <artifactId>jib-maven-plugin</artifactId>
             </plugin>
 
             <plugin>
@@ -542,7 +452,7 @@
                         <configuration>
                             <rules>
                                 <enforceBytecodeVersion>
-                                    <maxJdkVersion>1.9</maxJdkVersion>
+                                    <maxJdkVersion>11</maxJdkVersion>
                                     <excludes>
                                         <!--
                                           Supplied by the user JDK and compiled with matching
@@ -588,72 +498,6 @@
                     </dependency>
                 </dependencies>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>${surefire.version}</version>
-                <configuration>
-                  <!-- Exclude Cloud Spanner integration tests that require a GCP project to run.
-                  They can be run run manually using
-                  TODO: Add support for emulator to run integration tests.
-                  'mvn -Dexcluded.spanner.tests="" -Dtest=<testname> test' -->
-                  <systemProperties>
-                    <property>
-                      <name>nashorn.args</name>
-                      <value>--no-deprecation-warning</value>
-                    </property>
-                  </systemProperties>
-                  <!-- TODO(zhoufek): Try to find an alternative way to avoid writing
-                   sensitive info to disk.-->
-                  <disableXmlReport>true</disableXmlReport>
-                  <excludedGroups>${excluded.spanner.tests}</excludedGroups>
-                </configuration>
-            </plugin>
-
-            <!-- Keep this equivalent with ../pom.xml. Unfortunately, we need to duplicate the
-            plugin until we can fix errors introduced by adding v2 as a child module of the root
-            teleport module. -->
-            <plugin>
-              <groupId>com.diffplug.spotless</groupId>
-              <artifactId>spotless-maven-plugin</artifactId>
-              <version>${spotless-maven-plugin.version}</version>
-              <configuration>
-                <formats>
-                  <!-- Avoid trailing whitespace and require ending newline. -->
-                  <format>
-                    <includes>
-                      <!-- .gitignore does not need to be included here. -->
-                      <include>*.md</include>
-                    </includes>
-                    <trimTrailingWhitespace/>
-                    <endWithNewline/>
-                  </format>
-                </formats>
-                <java>
-                  <!-- Exclude Beam code from formatting/license headers -->
-                  <excludes>
-                    <exclude>src/main/java/org/apache/beam/**</exclude>
-                    <exclude>src/test/java/org/apache/beam/**</exclude>
-                  </excludes>
-                  <toggleOffOn />
-                  <googleJavaFormat>
-                    <version>1.8</version>
-                    <style>GOOGLE</style>
-                  </googleJavaFormat>
-                  <licenseHeader>
-                    <file>JAVA_LICENSE_HEADER</file>
-                  </licenseHeader>
-                </java>
-              </configuration>
-              <!-- Bind to verify. -->
-              <executions>
-                <execution>
-                  <goals>
-                    <goal>check</goal>
-                  </goals>
-                </execution>
-              </executions>
-            </plugin>
         </plugins>
     </build>
 
@@ -685,32 +529,183 @@
                 </repository>
             </repositories>
         </profile>
+        <profile>
+            <id>shade</id>
+            <activation>
+                <property>
+                    <name>skipShade</name>
+                    <value>!true</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-shade-plugin</artifactId>
+                        <version>${maven-shade-plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>bundle-and-repackage</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>shade</goal>
+                                </goals>
+                                <configuration>
+                                    <extraDirectories>
+                                        <paths>
+                                            <path>${basedir}/target/extra_libs</path>
+                                        </paths>
+                                    </extraDirectories>
+                                    <dependencyReducedPomLocation>
+                                        ${basedir}/target/dependency-reduced-pom.xml
+                                    </dependencyReducedPomLocation>
+                                    <shadeTestJar>true</shadeTestJar>
+                                    <artifactSet>
+                                        <excludes>
+                                            <exclude>org.conscrypt:conscrypt-openjdk-uber</exclude>
+                                        </excludes>
+                                        <includes>
+                                            <include>*:*</include>
+                                        </includes>
+                                    </artifactSet>
+                                    <filters>
+                                        <filter>
+                                            <artifact>*:*</artifact>
+                                            <excludes>
+                                                <exclude>META-INF/*.SF</exclude>
+                                                <exclude>META-INF/*.DSA</exclude>
+                                                <exclude>META-INF/*.RSA</exclude>
+                                            </excludes>
+                                        </filter>
+                                    </filters>
+                                    <transformers>
+                                        <transformer
+                                            implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                                    </transformers>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>templatesValidate</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.google.cloud.teleport</groupId>
+                        <artifactId>templates-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>validate</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>templatesSpec</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.google.cloud.teleport</groupId>
+                        <artifactId>templates-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>spec</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>templatesStage</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.google.cloud.teleport</groupId>
+                        <artifactId>templates-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>stage</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>templatesRun</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.google.cloud.teleport</groupId>
+                        <artifactId>templates-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 
     <modules>
         <module>bigquery-to-bigtable</module>
         <module>bigquery-to-parquet</module>
-        <module>common</module>
         <module>cdc-parent</module>
+        <module>common</module>
         <module>datastream-to-bigquery</module>
+        <module>datastream-to-mongodb</module>
+        <module>datastream-to-postgres</module>
         <module>datastream-to-spanner</module>
         <module>datastream-to-sql</module>
         <module>elasticsearch-common</module>
         <module>file-format-conversion</module>
         <module>googlecloud-to-elasticsearch</module>
-        <module>googlecloud-to-mongodb</module>
         <module>googlecloud-to-googlecloud</module>
+        <module>googlecloud-to-mongodb</module>
+        <module>googlecloud-to-neo4j</module>
         <module>googlecloud-to-splunk</module>
+        <module>kafka-common</module>
         <module>kafka-to-bigquery</module>
         <module>kafka-to-gcs</module>
-        <module>mongodb-to-googlecloud</module>
+        <module>kafka-to-pubsub</module>
         <module>kudu-to-bigquery</module>
+        <module>mongodb-to-googlecloud</module>
         <module>pubsub-binary-to-bigquery</module>
         <module>pubsub-cdc-to-bigquery</module>
         <module>pubsub-to-mongodb</module>
         <module>streaming-data-generator</module>
-        <module>kafka-to-pubsub</module>
-        <module>kafka-common</module>
     </modules>
 
 </project>

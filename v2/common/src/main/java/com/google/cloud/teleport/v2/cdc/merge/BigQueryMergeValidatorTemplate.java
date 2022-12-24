@@ -16,12 +16,13 @@
 package com.google.cloud.teleport.v2.cdc.merge;
 
 import com.google.cloud.bigquery.TableId;
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Create;
@@ -66,13 +67,21 @@ public class BigQueryMergeValidatorTemplate {
   /** Class {@link Options}. */
   public interface Options extends PipelineOptions {
 
-    @Description("The table to set as staging table.")
+    @TemplateParameter.Text(
+        order = 1,
+        optional = true,
+        description = "Staging Table",
+        helpText = "The table to set as staging.")
     @Default.String("")
     String getStagingTable();
 
     void setStagingTable(String value);
 
-    @Description("The table to merge data into.")
+    @TemplateParameter.Text(
+        order = 1,
+        optional = true,
+        description = "Replica Table",
+        helpText = "The table to set as replica, used to write merge data.")
     @Default.String("")
     String getReplicaTable();
 
@@ -85,6 +94,7 @@ public class BigQueryMergeValidatorTemplate {
    * @param args The command-line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     run(options);

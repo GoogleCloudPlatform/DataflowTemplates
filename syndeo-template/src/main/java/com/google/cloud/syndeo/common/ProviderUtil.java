@@ -72,8 +72,16 @@ public class ProviderUtil {
       if (provider == null) {
         throw new RuntimeException(inputId + " not found ");
       }
-      configuration =
-          Row.withSchema(provider.configurationSchema()).addValues(configurationAsList).build();
+      try {
+        configuration =
+            Row.withSchema(provider.configurationSchema()).addValues(configurationAsList).build();
+      } catch (ClassCastException | IllegalArgumentException e) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Given config schema %s, and configuration %s, we're unable to configure transform.",
+                provider.configurationSchema(), configurationAsList),
+            e);
+      }
     }
 
     public TransformSpec(ConfiguredSchemaTransform schemaTransform) {

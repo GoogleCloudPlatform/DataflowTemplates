@@ -6,7 +6,7 @@ ingests data from a PubSub subscription, optionally applies a Javascript UDF if 
 ## Getting Started
 
 ### Requirements
-* Java 8
+* Java 11
 * Maven
 * PubSub Subscription exists
 * MongoDB host exists and is operational
@@ -22,7 +22,7 @@ export PROJECT=<my-project>
 export IMAGE_NAME=<my-image-name>
 export BUCKET_NAME=gs://<bucket-name>
 export TARGET_GCR_IMAGE=gcr.io/${PROJECT}/${IMAGE_NAME}
-export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java8-template-launcher-base
+export BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
 export BASE_CONTAINER_IMAGE_VERSION=latest
 export TEMPLATE_MODULE=pubsub-to-mongodb
 export APP_ROOT=/template/${TEMPLATE_MODULE}
@@ -89,7 +89,7 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
 		       {
 		        "label": "BigQuery DeadLetter Table",
 		        "name": "deadletterTable",
-		        "helpText": "Messages failed to reach the output table for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. It should be in the format of \"your-project:your-dataset.your-table-name\". If it doesn't exist, it will be created during pipeline execution. If not specified, \"outputTableSpec_error_records\" is used instead.",
+		        "helpText": "Messages failed to reach the output table for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. It should be in the format of \"your-project-id:your-dataset.your-table-name\". If it doesn't exist, it will be created during pipeline execution. If not specified, \"outputTableSpec_error_records\" is used instead.",
 		        "is_optional": false,
 		        "regexes": [".+:.+\\..+"],
 		        "paramType": "TEXT"

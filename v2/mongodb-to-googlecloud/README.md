@@ -7,4 +7,7 @@ of templates enabling data integration between Google Cloud products and MongoDB
 * [MongoDbToBigQuery](docs/MongoDbToBigQuery/README.md)
 * [MongoDbToBigQueryCDC](docs/MongoDbToBigQueryCDC/README.md)
 
+## Guides
+* [Troubleshooting Guide](docs/troubleshooting.md)
+
 Please refer to the corresponding links above for additional information.
