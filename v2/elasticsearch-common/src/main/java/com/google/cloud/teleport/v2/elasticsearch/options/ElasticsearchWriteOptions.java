@@ -235,4 +235,15 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
   BulkInsertMethodOptions getBulkInsertMethod();
 
   void setBulkInsertMethod(BulkInsertMethodOptions bulkInsertMethod);
+
+  @TemplateParameter.Boolean(
+      order = 22,
+      optional = true,
+      description = "trust self-signed certificate",
+      helpText =
+          "Whether to trust self-signed certificate or not. An elasticsearch instance installed might have a self-signed certificate, Enable this to True to by-pass the validation on SSL certificate. (default is False)")
+  @Default.Boolean(false)
+  Boolean getTrustSelfSignedCerts();
+
+  void setTrustSelfSignedCerts(Boolean trustSelfSignedCerts);
 }
