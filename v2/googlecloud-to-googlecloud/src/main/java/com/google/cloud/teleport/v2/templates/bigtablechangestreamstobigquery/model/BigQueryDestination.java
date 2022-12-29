@@ -1,47 +1,103 @@
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model;
 
+import com.google.cloud.bigquery.TableId;
+import com.google.cloud.bigquery.TimePartitioning;
 import com.google.common.collect.ImmutableSet;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 public class BigQueryDestination implements Serializable {
 
-  private final String changelogTableName;
+  private final String bigQueryProject;
+  private final String bigQueryDataset;
+  private final String bigQueryTableName;
+  private final String bigQueryChangelogTablePartitionGranularity;
+  private final Long bigQueryChangelogTablePartitionExpirationMs;
   private final boolean writeRowkeyAsBytes;
   private final boolean writeValueAsBytes;
   private final boolean writeNumericTimestamps;
   private final Set<String> changelogFieldsToIgnore;
 
   public BigQueryDestination(
-      String changelogTableName,
+      String bigQueryProject,
+      String bigQueryDataset,
+      String bigQueryTableName,
       boolean writeRowkeyAsBytes,
       boolean writeValuesAsBytes,
       boolean writeNumericTimestamps,
-      String bigQueryChangelogTablePartitionGranularity, // TODO: how to implement
+      String bigQueryChangelogTablePartitionGranularity,
       Long bigQueryChangelogTablePartitionExpirationMs,
       String bigQueryChangelogTableFieldsToIgnore
   ) {
+    this.bigQueryProject = bigQueryProject;
+    this.bigQueryDataset = bigQueryDataset;
+    this.bigQueryTableName = bigQueryTableName;
+    this.bigQueryChangelogTablePartitionGranularity = safeToUpperCase(
+        bigQueryChangelogTablePartitionGranularity);
+    this.bigQueryChangelogTablePartitionExpirationMs = bigQueryChangelogTablePartitionExpirationMs;
     this.writeRowkeyAsBytes = writeRowkeyAsBytes;
     this.writeValueAsBytes = writeValuesAsBytes;
     this.writeNumericTimestamps = writeNumericTimestamps;
-    this.changelogTableName = changelogTableName;
+
+    if (!StringUtils.isBlank(bigQueryChangelogTablePartitionGranularity)) {
+      try {
+        TimePartitioning.Type.valueOf(bigQueryChangelogTablePartitionGranularity);
+      } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException(
+            "Partition granularity not supported: '" + bigQueryChangelogTablePartitionGranularity
+                + "'. Currently supported values: " +
+                Arrays.toString(TimePartitioning.Type.values()));
+      }
+    }
+
+    if (bigQueryChangelogTablePartitionExpirationMs != null && StringUtils.isBlank(
+        bigQueryChangelogTablePartitionGranularity)) {
+      throw new IllegalArgumentException("Partition expiration can only be used "
+          + "when partition granularity is configured");
+    }
+
     if (StringUtils.isBlank(bigQueryChangelogTableFieldsToIgnore)) {
       this.changelogFieldsToIgnore = Collections.emptySet();
     } else {
       this.changelogFieldsToIgnore = Arrays.stream(
           bigQueryChangelogTableFieldsToIgnore.trim().split("[\\s]*,[\\s]*")
-      ).map(s->s.toLowerCase(Locale.getDefault())).collect(Collectors.toSet());
+      ).map(s -> s.toLowerCase(Locale.getDefault())).collect(Collectors.toSet());
+    }
+
+    for (ChangelogColumn column : ChangelogColumn.values()) {
+      if (!column.isIgnorable() && changelogFieldsToIgnore.contains(column.getBqColumnName())) {
+        throw new IllegalArgumentException("Column '" + column.getBqColumnName()
+            + "' cannot be disabled by the pipeline configuration");
+      }
+    }
+
+    Map<String, ChangelogColumn> bqColumnsToMetadata = new HashMap<>();
+    for (ChangelogColumn column : ChangelogColumn.values()) {
+      // there will be duplicate keys, but it's fine
+      bqColumnsToMetadata.put(column.getBqColumnName(), column);
+    }
+
+    for (String columnRequestedToIgnore : changelogFieldsToIgnore) {
+      if (!bqColumnsToMetadata.containsKey(columnRequestedToIgnore)) {
+        throw new IllegalArgumentException(
+            "Column '" + columnRequestedToIgnore + "' cannot be disabled and is not recognized");
+      }
     }
   }
 
-  public String getChangelogTableName() {
-    return changelogTableName;
+  private String safeToUpperCase(String val) {
+    if (val != null) {
+      return val.toUpperCase(Locale.getDefault());
+    }
+    return null;
   }
 
   public boolean isColumnEnabled(ChangelogColumn column) {
@@ -71,11 +127,31 @@ public class BigQueryDestination implements Serializable {
 
   public ImmutableSet<String> getIgnoredBigQueryColumnsNames() {
     Set<String> ignoredColumns = new HashSet<>();
-    for (ChangelogColumn col: ChangelogColumn.values()) {
+    for (ChangelogColumn col : ChangelogColumn.values()) {
       if (col.isIgnorable() && changelogFieldsToIgnore.contains(col.getBqColumnName())) {
         ignoredColumns.add(col.getBqColumnName());
       }
     }
     return ImmutableSet.copyOf(ignoredColumns);
+  }
+
+  public boolean isPartitioned() {
+    return StringUtils.isNotBlank(bigQueryChangelogTablePartitionGranularity);
+  }
+
+  public String getPartitionByColumnName() {
+    return isPartitioned() ? ChangelogColumn.COMMIT_TIMESTAMP.getBqColumnName() : null;
+  }
+
+  public String getBigQueryChangelogTablePartitionType() {
+    return bigQueryChangelogTablePartitionGranularity;
+  }
+
+  public Long getBigQueryChangelogTablePartitionExpirationMs() {
+    return bigQueryChangelogTablePartitionExpirationMs;
+  }
+
+  public TableId getBigQueryTableId() {
+    return TableId.of(bigQueryProject, bigQueryDataset, bigQueryTableName);
   }
 }
