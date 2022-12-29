@@ -18,8 +18,9 @@ package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.s
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
+import com.google.api.services.bigquery.model.TimePartitioning;
 import com.google.cloud.bigquery.Field;
-import com.google.cloud.teleport.v2.templates.SpannerChangeStreamsToGcs;
+import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.BigQueryDestination;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.BigtableSource;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.ChangelogColumn;
@@ -32,9 +33,13 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.EnumMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Objects;
+import org.apache.beam.sdk.io.gcp.bigquery.DynamicDestinations;
+import org.apache.beam.sdk.io.gcp.bigquery.TableDestination;
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.ValueInSingleWindow;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -68,7 +73,6 @@ public class BigQueryUtils implements Serializable {
       String qualifierEncoded = chg.getString(ChangelogColumn.COLUMN.name());
       return bq.convertBase64ToString(qualifierEncoded);
     });
-    // TODO: we should allow timestamp as a number
     FORMATTERS.put(ChangelogColumn.TIMESTAMP, (bq, chg) -> {
       if (!chg.has(ChangelogColumn.TIMESTAMP.name())) {
         return null;
@@ -136,15 +140,16 @@ public class BigQueryUtils implements Serializable {
     }
   }
 
-  private final String charset;
+  private final BigtableSource source;
+  private final BigQueryDestination destination;
   private final List<ChangelogColumn> configuredChangelogColumns;
 
   private transient Charset charsetObj;
 
-
   public BigQueryUtils(BigtableSource sourceInfo, BigQueryDestination destinationInfo) {
-    this.charset = sourceInfo.getCharset();
-    this.charsetObj = Charset.forName(charset);
+    this.source = sourceInfo;
+    this.destination = destinationInfo;
+    this.charsetObj = Charset.forName(sourceInfo.getCharset());
     this.configuredChangelogColumns = new ArrayList<>();
     for (ChangelogColumn column: ChangelogColumn.values()) {
       if (destinationInfo.isColumnEnabled(column)) {
@@ -153,11 +158,47 @@ public class BigQueryUtils implements Serializable {
     }
   }
 
-  public void setTableRowFields(Mod mod, String modJsonString, TableRow tableRow) throws Exception {
+  public boolean hasIgnoredColumnFamilies() {
+    return this.source.getColumnFamiliesToIgnore().size() > 0;
+  }
+
+  public boolean isIgnoredColumnFamily(String columnFamily) {
+    return this.source.getColumnFamiliesToIgnore().contains(columnFamily);
+  }
+
+  public boolean hasIgnoredColumns() {
+    return this.source.getColumnsToIgnore().size() > 0;
+  }
+
+  public boolean isIgnoredColumn(String column) {
+    return this.source.getColumnsToIgnore().contains(column);
+  }
+
+  /**
+   * @return true if modification should be written to BigQuery, false otherwise
+   */
+  public boolean setTableRowFields(Mod mod, String modJsonString, TableRow tableRow) throws Exception {
     // Metadata columns, not written to BQ
     tableRow.set(TransientColumn.BQ_CHANGELOG_FIELD_NAME_ORIGINAL_PAYLOAD_JSON.getColumnName(), modJsonString);
 
     JSONObject changeJsonParsed = new JSONObject(mod.getChangeJson());
+
+    if (hasIgnoredColumnFamilies() && changeJsonParsed.has(ChangelogColumn.COLUMN_FAMILY.name())) {
+      String columnFamily = Objects.toString(changeJsonParsed.get(ChangelogColumn.COLUMN_FAMILY.name()));
+      if (isIgnoredColumnFamily(columnFamily)) {
+        return false;
+      }
+    }
+
+    if (hasIgnoredColumns() && changeJsonParsed.has(ChangelogColumn.COLUMN.name())) {
+      String columnEncoded = Objects.toString(changeJsonParsed.get(ChangelogColumn.COLUMN.name()));
+      if (!StringUtils.isBlank(columnEncoded)) {
+        String column = convertBase64ToString(columnEncoded);
+        if (isIgnoredColumn(column)) {
+          return false;
+        }
+      }
+    }
 
     for (ChangelogColumn column: configuredChangelogColumns) {
       BigQueryValueFormatter formatter = FORMATTERS.get(column);
@@ -171,10 +212,15 @@ public class BigQueryUtils implements Serializable {
       tableRow.set(column.getBqColumnName(), value);
     }
 
-    LOG.warn("Tablerow created: " + tableRow.toPrettyString());
+    LOG.warn("TableRow created: " + tableRow.toPrettyString());
+    return true;
   }
 
-  public TableSchema getDestinationTableSchema() {
+  public BigQueryDynamicDestinations getDynamicDestinations() {
+    return new BigQueryDynamicDestinations();
+  }
+
+  private TableSchema getDestinationTableSchema() {
     return new TableSchema().setFields(getDestinationTableFields());
   }
 
@@ -194,14 +240,56 @@ public class BigQueryUtils implements Serializable {
 
   private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
     in.defaultReadObject();
-    charsetObj = Charset.forName(charset);
+    charsetObj = Charset.forName(source.getCharset());
   }
 
-  private String convertBase64ToString(String base64String) throws IOException {
+  private String convertBase64ToString(String base64String) {
     return new String(Base64.getDecoder().decode(base64String), charsetObj);
   }
 
   private byte[] convertBase64ToBytes(String base64String) {
     return Base64.getDecoder().decode(base64String);
+  }
+
+  /**
+   * The {@link BigQueryDynamicDestinations} loads into BigQuery tables in a dynamic fashion. The
+   * destination table is always the same, but we'll be using DynamicDestinations to enable
+   * partitioning / clustering and other BigQuery table features if necessary which otherwise are not
+   * present in TableSchema
+   */
+  public final class BigQueryDynamicDestinations
+      extends DynamicDestinations<TableRow, KV<TableId, TableRow>> {
+
+    private BigQueryDynamicDestinations() {
+    }
+
+    @Override
+    public KV<TableId, TableRow> getDestination(ValueInSingleWindow<TableRow> element) {
+      TableRow tableRow = element.getValue();
+      return KV.of(BigQueryUtils.this.destination.getBigQueryTableId(), tableRow);
+    }
+
+    @Override
+    public TableDestination getTable(KV<TableId, TableRow> destination) {
+      TableId tableId = BigQueryUtils.this.destination.getBigQueryTableId();
+      String tableName =
+          String.format("%s:%s.%s", tableId.getProject(), tableId.getDataset(), tableId.getTable());
+
+      TimePartitioning timePartitioning = null;
+      if (BigQueryUtils.this.destination.isPartitioned()) {
+        timePartitioning = new TimePartitioning();
+        timePartitioning.setType(BigQueryUtils.this.destination.getBigQueryChangelogTablePartitionType());
+        timePartitioning.setExpirationMs(BigQueryUtils.this.destination.getBigQueryChangelogTablePartitionExpirationMs());
+        timePartitioning.setField(BigQueryUtils.this.destination.getPartitionByColumnName());
+      }
+
+      return new TableDestination(
+          tableName, "BigQuery changelog table.",  timePartitioning);
+    }
+
+    @Override
+    public TableSchema getSchema(KV<TableId, TableRow> destination) {
+      return BigQueryUtils.this.getDestinationTableSchema();
+    }
   }
 }

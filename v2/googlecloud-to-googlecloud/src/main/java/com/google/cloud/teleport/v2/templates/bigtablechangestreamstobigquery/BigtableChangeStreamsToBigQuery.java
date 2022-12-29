@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery;
 
-import com.google.api.services.bigquery.model.TableReference;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.Timestamp;
 import com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation;
@@ -49,6 +48,7 @@ import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
@@ -62,19 +62,10 @@ import org.apache.beam.sdk.transforms.Values;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// TODO(haikuo-google): Add integration test.
-// TODO(haikuo-google): Add README.
-// TODO(haikuo-google): Add stackdriver metrics.
-// TODO(haikuo-google): Ideally side input should be used to store schema information and shared
-// accrss DoFns, but since side input fix is not yet deployed at the moment, we read schema
-// information in the beginning of the DoFn as a work around. We should use side input instead when
-// it's available.
-// TODO(haikuo-google): Test the case where tables or columns are added while the pipeline is
-// running.
 /**
  * This pipeline ingests {@link ChangeStreamMutation} from Bigtable change stream. The {@link
  * ChangeStreamMutation} is then broken into {@link Mod}, which converted into {@link TableRow} and
@@ -163,10 +154,14 @@ public final class BigtableChangeStreamsToBigQuery {
     BigtableSource sourceInfo = new BigtableSource(
         options.getBigtableInstanceId(),
         options.getBigtableTableId(),
-        getBigtableCharset(options)
+        getBigtableCharset(options),
+        options.getIgnoreColumnFamilies(),
+        options.getIgnoreColumns()
     );
 
     BigQueryDestination destinationInfo = new BigQueryDestination(
+        getBigQueryProjectId(options),
+        options.getBigQueryDataset(),
         changelogTableName,
         options.getWriteRowkeyAsBytes(),
         options.getWriteValuesAsBytes(),
@@ -261,24 +256,18 @@ public final class BigtableChangeStreamsToBigQuery {
     PCollectionTuple tableRowTuple =
         failsafeModJson.apply("Mod JSON To TableRow", failsafeModJsonToTableRow);
 
-
-
     WriteResult writeResult =
         tableRowTuple
             .get(failsafeModJsonToTableRow.transformOut)
             .apply(
                 "Write To BigQuery",
                 BigQueryIO.<TableRow>write()
-                    .to(new TableReference()
-                        .setProjectId(getBigQueryProjectId(options))
-                        .setDatasetId(options.getBigQueryDataset())
-                        .setTableId(changelogTableName))
-                    .withSchema(bigQuery.getDestinationTableSchema())
+                    .to(bigQuery.getDynamicDestinations())
                     .withFormatFunction(
                         BigtableChangeStreamsToBigQuery::removeIntermediateMetadataFields)
                     .withFormatRecordOnFailureFunction(element -> element)
                     .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
-                    .withWriteDisposition(Write.WriteDisposition.WRITE_APPEND)
+                    .withWriteDisposition(WriteDisposition.WRITE_APPEND)
                     .withExtendedErrorInfo()
                     .withMethod(Write.Method.STREAMING_INSERTS)
                     .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
