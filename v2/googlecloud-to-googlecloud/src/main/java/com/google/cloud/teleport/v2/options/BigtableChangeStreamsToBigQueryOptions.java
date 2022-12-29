@@ -123,13 +123,12 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   //     order = 9,
   //     optional = true,
   //     description = "Cloud Bigtable columns to ignore",
-  //     helpText = "A comma-separated list of column names changes to which won't be captured. " +
-  //         "Accepted formats: `col1,col2,col3,...` or " +
-  //         "`column_family1:column1,column_family2:column2,...`")
+  //     helpText = "A comma-separated list of column names changes to which won't be captured")
   @Default.String("")
   String getIgnoreColumns();
 
   void setIgnoreColumns(String value);
+
 
   @Description("REMOVE LATER")
   // @TemplateParameter.DateTime(
@@ -289,15 +288,4 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
 
   void setDlqRetryMinutes(Integer value);
 
-  @Description("REMOVE LATER")
-  // @TemplateParameter.Boolean(
-  //     order = 23,
-  //     optional = true,
-  //     description = "Dead letter queue will be processed once pipeline starts",
-  //     helpText = "When set true the dead letter queue will be processed again, otherwise its " +
-  //         "content will be purged when pipeline is started. Defaults to false.")
-  @Default.Boolean(false)
-  Boolean getDlqReconsume();
-
-  void setDlqReconsume(Boolean value);
 }

@@ -123,15 +123,18 @@ public final class FailsafeModJsonToChangelogTableRowTransformer {
 
         try {
           TableRow tableRow = modJsonStringToTableRow(failsafeModJsonString.getPayload());
-          LOG.warn("TableRow read from failsafe Json payload: " + tableRow.toPrettyString());
+          if (tableRow == null) {
+            // TableRow was not generated because pipeline configuration requires ignoring some
+            // column / column families
+            return;
+          }
+
           for (String ignoreField : ignoreFields) {
             tableRow.remove(ignoreField);
           }
 
-          LOG.warn("Table row passed further: " + tableRow.toPrettyString());
           context.output(tableRow);
         } catch (Exception e) {
-          LOG.warn("Table row moved to DLQ: " + failsafeModJsonString + ": " + e.getMessage());
           context.output(
               transformDeadLetterOut,
               FailsafeElement.of(failsafeModJsonString)
@@ -149,8 +152,11 @@ public final class FailsafeModJsonToChangelogTableRowTransformer {
         }
 
         TableRow tableRow = new TableRow();
-        bigQueryUtils.setTableRowFields(Mod.fromJson(modObjectNode.toString()), modJsonString, tableRow);
-        return tableRow;
+        if (bigQueryUtils.setTableRowFields(Mod.fromJson(modObjectNode.toString()), modJsonString, tableRow)) {
+          return tableRow;
+        } else {
+          return null;
+        }
       }
     }
   }
