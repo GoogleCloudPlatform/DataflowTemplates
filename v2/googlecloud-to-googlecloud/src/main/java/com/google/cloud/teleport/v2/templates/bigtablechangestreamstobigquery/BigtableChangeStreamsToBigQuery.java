@@ -23,8 +23,8 @@ import com.google.cloud.bigtable.data.v2.models.Entry;
 import com.google.cloud.bigtable.data.v2.models.DeleteCells;
 
 import com.google.cloud.bigtable.data.v2.models.SetCell;
-// import com.google.cloud.teleport.metadata.Template;
-// import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
@@ -71,15 +71,15 @@ import org.slf4j.LoggerFactory;
  * ChangeStreamMutation} is then broken into {@link Mod}, which converted into {@link TableRow} and
  * inserted into BigQuery table.
  */
-// @Template(
-//     name = "Bigtable_Change_Streams_to_BigQuery",
-//     category = TemplateCategory.STREAMING,
-//     displayName = "Cloud Bigtable change streams to BigQuery",
-//     description =
-//         "Streaming pipeline. Streams Bigtable data change records and writes them into BigQuery using Dataflow Runner V2.",
-//     optionsClass = BigtableChangeStreamsToBigQueryOptions.class,
-//     flexContainerName = "bigtable-changestreams-to-bigquery",
-//     contactInformation = "https://cloud.google.com/support")
+@Template(
+    name = "Bigtable_Change_Streams_to_BigQuery",
+    category = TemplateCategory.STREAMING,
+    displayName = "Cloud Bigtable change streams to BigQuery",
+    description =
+        "Streaming pipeline. Streams Bigtable data change records and writes them into BigQuery using Dataflow Runner V2.",
+    optionsClass = BigtableChangeStreamsToBigQueryOptions.class,
+    flexContainerName = "bigtable-changestreams-to-bigquery",
+    contactInformation = "https://cloud.google.com/support")
 public final class BigtableChangeStreamsToBigQuery {
 
   /** String/String Coder for {@link FailsafeElement}. */
