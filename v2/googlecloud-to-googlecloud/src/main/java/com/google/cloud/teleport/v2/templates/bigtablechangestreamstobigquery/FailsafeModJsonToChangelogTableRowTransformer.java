@@ -129,8 +129,10 @@ public final class FailsafeModJsonToChangelogTableRowTransformer {
             tableRow.remove(ignoreField);
           }
 
+          LOG.warn("Table row passed further: " + tableRow.toPrettyString());
           context.output(tableRow);
         } catch (Exception e) {
+          LOG.warn("Table row moved to DLQ: " + failsafeModJsonString + ": " + e.getMessage());
           context.output(
               transformDeadLetterOut,
               FailsafeElement.of(failsafeModJsonString)

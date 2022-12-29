@@ -180,17 +180,16 @@ public class BigQueryUtils implements Serializable {
     }
   }
 
-  private final BigtableSource source;
-  private final BigQueryDestination destination;
+  private final String charset;
   private final List<ChangelogColumn> configuredChangelogColumns;
   private final Map<String, Set<String>> ignoredColumnsMap;
 
   private transient Charset charsetObj;
 
+
   public BigQueryUtils(BigtableSource sourceInfo, BigQueryDestination destinationInfo) {
-    this.source = sourceInfo;
-    this.destination = destinationInfo;
-    this.charsetObj = Charset.forName(sourceInfo.getCharset());
+    this.charset = sourceInfo.getCharset();
+    this.charsetObj = Charset.forName(charset);
     this.configuredChangelogColumns = new ArrayList<>();
     for (ChangelogColumn column : ChangelogColumn.values()) {
       if (destinationInfo.isColumnEnabled(column)) {
