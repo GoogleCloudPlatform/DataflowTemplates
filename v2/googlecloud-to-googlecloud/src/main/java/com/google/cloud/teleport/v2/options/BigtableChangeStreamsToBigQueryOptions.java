@@ -178,7 +178,7 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
 
   void setWriteNumericTimestamps(Boolean value);
 
-  @TemplateParameter.ProjectId(
+  @TemplateParameter.Text(
       order = 15,
       optional = true,
       description = "BigQuery charset name when reading values and column qualifiers",
