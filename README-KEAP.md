@@ -2,10 +2,21 @@
 
 ## Testing and Deploying
 
+Recent changes to the main branch have broken made building the project a multi-step process.
+
+From the project root:
+```bash
+mvn install
+```
+
+Some modules may fail to build but so long as the parent project, the metadata and the integration-test modules build successfully you can proceed to build the template and deploy it as below. 
+
 ### Integration
 
 ```bash
 gcloud config set project is-events-dataflow-intg
+
+cd v1
 
 mvn compile exec:java \
 -Dexec.mainClass=com.infusionsoft.dataflow.templates.PubsubToBigQuery \
@@ -40,6 +51,8 @@ Update the parameter in `PubsubToBigQuery.java` to point to Stge
 ```bash
 gcloud config set project is-events-dataflow-stge
 
+cd v1
+
 mvn compile exec:java \
 -Dexec.mainClass=com.infusionsoft.dataflow.templates.PubsubToBigQuery \
 -Dexec.cleanupDaemonThreads=false \
@@ -72,6 +85,8 @@ Update the parameter in `PubsubToBigQuery.java` to point to Prod
 
 ```bash
 gcloud config set project is-events-dataflow-prod
+
+cd v1
 
 mvn compile exec:java \
 -Dexec.mainClass=com.infusionsoft.dataflow.templates.PubsubToBigQuery \

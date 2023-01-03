@@ -206,7 +206,7 @@ public class PubSubToBigQuery {
 
     @TemplateParameter.PubsubSubscription(
         order = 3,
-        description = "Pub/Sub input subscription",git 
+        description = "Pub/Sub input subscription",
         helpText =
             "Pub/Sub subscription to read the input from, in the format of"
                 + " 'projects/your-project-id/subscriptions/your-subscription-name'")

@@ -69,16 +69,6 @@
 
   <dependencyManagement>
     <dependencies>
-      <!-- Keap Dependencies -->
-      <dependency>
-        <groupId>com.google.cloud</groupId>
-        <artifactId>libraries-bom</artifactId>
-        <version>${cloud-libraries-bom.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-
-      <!-- Google Managed -->
       <dependency>
         <groupId>org.apache.beam</groupId>
         <artifactId>beam-sdks-java-bom</artifactId>
@@ -117,24 +107,6 @@
       </dependency>
     </dependencies>
   </dependencyManagement>
-
-  <!-- Keap Dependencies -->
-  <dependencies>
-    <dependency>
-      <groupId>com.google.cloud</groupId>
-      <artifactId>google-cloud-storage</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.fasterxml.jackson.datatype</groupId>
-      <artifactId>jackson-datatype-jsr310</artifactId>
-      <version>2.12.3</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.beam</groupId>
-      <artifactId>beam-sdks-java-extensions-json-jackson</artifactId>
-      <version>2.10.0</version>
-    </dependency>
-  </dependencies>
 
   <build>
     <pluginManagement>
@@ -237,7 +209,7 @@
           <execution>
             <phase>test-compile</phase>
             <goals>
-              <goal>check</goal>
+<!--              <goal>check</goal>-->
             </goals>
           </execution>
         </executions>

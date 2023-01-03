@@ -208,12 +208,11 @@ public class PubsubToBigQuery {
               PubsubIO.readMessagesWithAttributes().fromTopic(options.getInputTopic()));
     }
 
+    /*
+     * Step #2: Transform the PubsubMessages into TableRows
+     */
     PCollectionTuple convertedTableRows =
-        messages
-            /*
-             * Step #2: Transform the PubsubMessages into TableRows
-             */
-            .apply("ConvertMessageToTableRow", new PubsubMessageToTableRow(options));
+        messages.apply("ConvertMessageToTableRow", new PubsubMessageToTableRow(options));
 
     /*
      * Step #3: Write the successful records out to BigQuery

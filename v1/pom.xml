@@ -42,7 +42,7 @@
     <open-census.version>0.24.0</open-census.version>
     <!-- TODO: check if this could be declared on a Beam BOM instead of here -->
     <bigtable-beam-import.version>1.27.1</bigtable-beam-import.version>
-    <protobuf.version>3.11.1</protobuf.version>
+    <protobuf.version>3.21.12</protobuf.version>
     <nashorn.version>15.4</nashorn.version>
     <junit.jupiter.version>5.5.2</junit.jupiter.version>
     <codehaus-jackson.version>1.9.13</codehaus-jackson.version>
@@ -69,6 +69,16 @@
 
   <dependencyManagement>
       <dependencies>
+        <!-- Keap Dependencies -->
+        <dependency>
+          <groupId>com.google.cloud</groupId>
+          <artifactId>libraries-bom</artifactId>
+          <version>${cloud-libraries-bom.version}</version>
+          <type>pom</type>
+          <scope>import</scope>
+        </dependency>
+
+        <!-- Google Managed -->
         <dependency>
           <groupId>org.apache.beam</groupId>
           <artifactId>beam-sdks-java-bom</artifactId>
@@ -86,6 +96,51 @@
   </dependencyManagement>
 
   <dependencies>
+    <!-- Keap Dependencies -->
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-storage</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.datatype</groupId>
+      <artifactId>jackson-datatype-jsr310</artifactId>
+      <version>2.12.3</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-extensions-json-jackson</artifactId>
+      <version>2.10.0</version>
+    </dependency>
+    <!-- These are used but not declared? -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>3.12.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.auth</groupId>
+      <artifactId>google-auth-library-credentials</artifactId>
+      <version>1.11.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.auth</groupId>
+      <artifactId>google-auth-library-oauth2-http</artifactId>
+      <version>1.11.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud.datastore</groupId>
+      <artifactId>datastore-v1-proto-client</artifactId>
+      <version>2.9.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud.bigdataoss</groupId>
+      <artifactId>util</artifactId>
+      <version>2.2.6</version>
+    </dependency>
+
+
+
+
     <!-- Templates Annotations -->
     <dependency>
       <groupId>com.google.cloud.teleport.metadata</groupId>
@@ -320,12 +375,6 @@
           <artifactId>slf4j-api</artifactId>
         </exclusion>
       </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>com.google.cloud.teleport</groupId>
-      <artifactId>integration-testing-lib</artifactId>
-      <version>${project.version}</version>
-      <scope>test</scope>
     </dependency>
 
     <dependency>
