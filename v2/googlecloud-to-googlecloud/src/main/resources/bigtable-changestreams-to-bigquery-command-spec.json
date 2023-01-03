@@ -1,0 +1,8 @@
+{
+
+  "mainClass": "com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.BigtableChangeStreamsToBigQuery",
+  "classPath": "/template/bigtable-changestreams-to-bigquery/*:/template/bigtable-changestreams-to-bigquery/libs/*:/template/bigtable-changestreams-to-bigquery/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"bigtable-changestreams-to-bigquery\"}"
+  }
+}
