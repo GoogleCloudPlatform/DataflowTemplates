@@ -15,15 +15,20 @@
  */
 package com.google.cloud.teleport.v2.options;
 
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation.Required;
 
 /** Pipeline options used by Dataplex templates to configure Dataplex metadata updates. */
 public interface DataplexUpdateMetadataOptions extends PipelineOptions {
-  @Description(
-      "Whether to update Dataplex metadata for the newly created entities. Default: false.")
+
+  @TemplateParameter.Boolean(
+      order = 1,
+      optional = true,
+      description = "Update Dataplex metadata.",
+      helpText =
+          "Whether to update Dataplex metadata for the newly created entities. Only supported for Cloud Storage destination. If enabled, the pipeline will automatically copy the schema from source to the destination Dataplex entities, and the automated Dataplex Discovery won't run for them. Use this flag in cases where you have managed schema at the source.")
   @Default.Boolean(false)
   @Required
   Boolean getUpdateDataplexMetadata();

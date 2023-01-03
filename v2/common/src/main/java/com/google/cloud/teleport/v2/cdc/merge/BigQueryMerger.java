@@ -189,7 +189,8 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
         mergesIssued.inc();
         LOG.info("Merge job executed: {}", statement);
       } catch (Exception e) {
-        LOG.error("Merge Job Failed: Exception: {} Statement: {}", e.toString(), statement);
+        LOG.warn("Merge Job Failed: Exception: {} Statement: {}", e.toString(), statement);
+        throw e;
       }
     }
 

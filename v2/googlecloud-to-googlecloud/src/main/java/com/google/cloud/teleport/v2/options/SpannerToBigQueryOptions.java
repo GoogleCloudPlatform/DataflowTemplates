@@ -23,7 +23,8 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation.Required;
 
 /** Custom options for {@link com.google.cloud.teleport.v2.templates.SpannerToBigQuery} pipeline. */
-public interface SpannerToBigQueryOptions extends PipelineOptions, WriteOptions {
+public interface SpannerToBigQueryOptions
+    extends PipelineOptions, WriteOptions, BigQueryStorageApiBatchOptions {
   @Description("Spanner table to read data from.")
   @Required
   String getSpannerTableId();
@@ -43,7 +44,8 @@ public interface SpannerToBigQueryOptions extends PipelineOptions, WriteOptions 
   void setSpannerDatabaseId(String spannerDatabaseId);
 
   @Description(
-      "The priority of Spanner job. Must be one of the following: [HIGH, MEDIUM, LOW]. Default is HIGH.")
+      "The priority of Spanner job. Must be one of the following: [HIGH, MEDIUM, LOW]. Default is"
+          + " HIGH.")
   @Default.Enum("HIGH")
   RpcPriority getSpannerRpcPriority();
 

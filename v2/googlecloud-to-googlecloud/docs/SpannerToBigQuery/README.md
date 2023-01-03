@@ -40,7 +40,7 @@ export IMAGE_SPEC_GCSPATH="$BUCKET/images/$COMMAND_MODULE-image-spec.json"
 **Build and push image to Google Container Repository from the DataflowTemplates directory.**
 
 ```sh
-mvn clean package -f unified-templates.xml \
+mvn clean package \
     -Dimage="$TARGET_GCR_IMAGE" \
     -Dbase-container-image="$BASE_CONTAINER_IMAGE" \
     -Dbase-container-image.version="$BASE_CONTAINER_IMAGE_VERSION" \
@@ -68,7 +68,7 @@ gcloud dataflow flex-template build "$IMAGE_SPEC_GCSPATH" \
 The template unit tests can be run using:
 
 ```sh
-mvn test -f unified-templates.xml -pl v2/"$TEMPLATE_MODULE" -am
+mvn test -pl v2/"$TEMPLATE_MODULE" -am
 ```
 
 ### Executing Template

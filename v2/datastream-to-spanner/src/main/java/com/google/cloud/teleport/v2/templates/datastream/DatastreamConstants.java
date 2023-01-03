@@ -46,6 +46,9 @@ public class DatastreamConstants {
   /* The value for Oracle databases in the source type key */
   public static final String ORACLE_SOURCE_TYPE = "oracle";
 
+  /* The value for Postgres databases in the source type key */
+  public static final String POSTGRES_SOURCE_TYPE = "postgresql";
+
   /* The key for the table name in the event json */
   public static final String EVENT_TABLE_NAME_KEY = "_metadata_table";
 
@@ -90,6 +93,19 @@ public class DatastreamConstants {
   /* Mapping from Event keys to shadow table information for MySql database */
   public static final Map<String, Pair<String, String>> MYSQL_SORT_ORDER;
 
+  /* List of Event keys, Shadow table information related to sort order in Postgres database. */
+  public static final String POSTGRES_TIMESTAMP_KEY = "_metadata_timestamp";
+
+  public static final Pair<String, String> POSTGRES_TIMESTAMP_SHADOW_INFO =
+      Pair.of("timestamp", "INT64");
+
+  public static final String POSTGRES_LSN_KEY = "_metadata_lsn";
+
+  public static final Pair<String, String> POSTGRES_LSN_SHADOW_INFO = Pair.of("lsn", "STRING(MAX)");
+
+  /* Mapping from Event keys to shadow table information for Postgres database */
+  public static final Map<String, Pair<String, String>> POSTGRES_SORT_ORDER;
+
   /* List of supported */
   public static final List<String> SUPPORTED_DATASTREAM_SOURCES;
 
@@ -105,6 +121,12 @@ public class DatastreamConstants {
             MYSQL_LOGFILE_KEY, MYSQL_LOGFILE_SHADOW_INFO,
             MYSQL_LOGPOSITION_KEY, MYSQL_LOGPOSITION_SHADOW_INFO);
 
-    SUPPORTED_DATASTREAM_SOURCES = ImmutableList.of(ORACLE_SOURCE_TYPE, MYSQL_SOURCE_TYPE);
+    POSTGRES_SORT_ORDER =
+        ImmutableMap.of(
+            POSTGRES_TIMESTAMP_KEY, POSTGRES_TIMESTAMP_SHADOW_INFO,
+            POSTGRES_LSN_KEY, POSTGRES_LSN_SHADOW_INFO);
+
+    SUPPORTED_DATASTREAM_SOURCES =
+        ImmutableList.of(ORACLE_SOURCE_TYPE, MYSQL_SOURCE_TYPE, POSTGRES_SOURCE_TYPE);
   }
 }

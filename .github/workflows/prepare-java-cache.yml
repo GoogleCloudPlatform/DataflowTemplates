@@ -67,7 +67,7 @@ jobs:
       - name: Resolve Dependencies
         if: ${{ steps.setup-java.outputs.cache-hit != 'true' || github.event_name == 'pull_request' }}
         run: |
-          mvn -B clean install -f unified-templates.xml \
+          mvn -B clean install \
             -Dmaven.test.skip \
             -Dcheckstyle.skip \
             -Djib.skip \

@@ -17,13 +17,17 @@ package com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery;
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.Timestamp;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SpannerChangeStreamsToBigQueryOptions;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.Mod;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.BigQueryUtils;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
+import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableSet;
 import java.io.IOException;
@@ -69,6 +73,16 @@ import org.slf4j.LoggerFactory;
  * DataChangeRecord} is then broken into {@link Mod}, which converted into {@link TableRow} and
  * inserted into BigQuery table.
  */
+@Template(
+    name = "Spanner_Change_Streams_to_BigQuery",
+    category = TemplateCategory.STREAMING,
+    displayName = "Cloud Spanner change streams to BigQuery",
+    description =
+        "Streaming pipeline. Streams Spanner data change records and writes them into BigQuery"
+            + " using Dataflow Runner V2.",
+    optionsClass = SpannerChangeStreamsToBigQueryOptions.class,
+    flexContainerName = "spanner-changestreams-to-bigquery",
+    contactInformation = "https://cloud.google.com/support")
 public final class SpannerChangeStreamsToBigQuery {
 
   /** String/String Coder for {@link FailsafeElement}. */
@@ -88,6 +102,8 @@ public final class SpannerChangeStreamsToBigQuery {
    * @param args The command-line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     LOG.info("Starting to replicate change records from Spanner change streams to BigQuery");
 
     SpannerChangeStreamsToBigQueryOptions options =
@@ -102,6 +118,8 @@ public final class SpannerChangeStreamsToBigQuery {
     if (options.getDlqRetryMinutes() <= 0) {
       throw new IllegalArgumentException("dlqRetryMinutes must be positive.");
     }
+
+    BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options);
   }
 
   private static void setOptions(SpannerChangeStreamsToBigQueryOptions options) {
@@ -114,14 +132,7 @@ public final class SpannerChangeStreamsToBigQuery {
     if (experiments == null) {
       experiments = new ArrayList<>();
     }
-    boolean hasUseRunnerV2 = false;
-    for (String experiment : experiments) {
-      if (experiment.toLowerCase().equals(USE_RUNNER_V2_EXPERIMENT)) {
-        hasUseRunnerV2 = true;
-        break;
-      }
-    }
-    if (!hasUseRunnerV2) {
+    if (!experiments.contains(USE_RUNNER_V2_EXPERIMENT)) {
       experiments.add(USE_RUNNER_V2_EXPERIMENT);
     }
     options.setExperiments(experiments);
@@ -258,7 +269,6 @@ public final class SpannerChangeStreamsToBigQuery {
                     .withCreateDisposition(CreateDisposition.CREATE_IF_NEEDED)
                     .withWriteDisposition(Write.WriteDisposition.WRITE_APPEND)
                     .withExtendedErrorInfo()
-                    .withMethod(Write.Method.STREAMING_INSERTS)
                     .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
 
     PCollection<String> transformDlqJson =
@@ -269,8 +279,7 @@ public final class SpannerChangeStreamsToBigQuery {
                 MapElements.via(new StringDeadLetterQueueSanitizer()));
 
     PCollection<String> bqWriteDlqJson =
-        writeResult
-            .getFailedInsertsWithErr()
+        BigQueryIOUtils.writeResultToBigQueryInsertErrors(writeResult, options)
             .apply(
                 "Failed Mod JSON During BigQuery Writes",
                 MapElements.via(new BigQueryDeadLetterQueueSanitizer()));
@@ -367,6 +376,7 @@ public final class SpannerChangeStreamsToBigQuery {
                 input.getRecordSequence(),
                 input.getTableName(),
                 input.getModType(),
+                input.getValueCaptureType(),
                 input.getNumberOfRecordsInTransaction(),
                 input.getNumberOfPartitionsInTransaction());
 

@@ -15,8 +15,13 @@
  */
 package com.google.cloud.teleport.v2.templates.pubsubtotext;
 
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.io.WindowedFilenamePolicy;
 import com.google.cloud.teleport.v2.options.WindowedFilenamePolicyOptions;
+import com.google.cloud.teleport.v2.templates.pubsubtotext.PubsubToText.Options;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import com.google.common.base.Strings;
 import org.apache.beam.sdk.Pipeline;
@@ -25,7 +30,6 @@ import org.apache.beam.sdk.io.FileBasedSink;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
@@ -123,6 +127,18 @@ import org.apache.beam.sdk.values.PCollection;
  *       --parameters inputTopic=<topic>,outputDirectory=<directory>,outputFilenamePrefix=<prefix>
  * </pre>
  */
+@Template(
+    name = "Cloud_PubSub_to_GCS_Text_Flex",
+    category = TemplateCategory.STREAMING,
+    displayName = "Pub/Sub Subscription or Topic to Text Files on Cloud Storage",
+    description =
+        "Streaming pipeline. Reads records from Pub/Sub Subscription or Topic and writes them to"
+            + " Cloud Storage, creating a text file for each five minute window. Note that this"
+            + " pipeline assumes no newlines in the body of the Pub/Sub message and thus each"
+            + " message becomes a single line in the output file.",
+    optionsClass = Options.class,
+    flexContainerName = "pubsub-to-text",
+    contactInformation = "https://cloud.google.com/support")
 public class PubsubToText {
 
   /**
@@ -132,38 +148,73 @@ public class PubsubToText {
    */
   public interface Options
       extends PipelineOptions, StreamingOptions, WindowedFilenamePolicyOptions {
-    @Description(
-        "The Cloud Pub/Sub subscription to consume from. "
-            + "The name should be in the format of "
-            + "projects/<project-id>/subscriptions/<subscription-name>.")
-    String getInputSubscription();
 
-    void setInputSubscription(String value);
-
-    @Description("The Cloud Pub/Sub topic to read from.")
+    @TemplateParameter.PubsubTopic(
+        order = 1,
+        optional = true,
+        description = "Pub/Sub input topic",
+        helpText =
+            "Pub/Sub topic to read the input from, in the format of "
+                + "'projects/your-project-id/topics/your-topic-name'",
+        example = "projects/your-project-id/topics/your-topic-name")
     String getInputTopic();
 
     void setInputTopic(String value);
 
-    @Description("The directory to output files to. Must end with a slash.")
+    @TemplateParameter.PubsubSubscription(
+        order = 2,
+        optional = true,
+        description = "Pub/Sub input subscription",
+        helpText =
+            "Pub/Sub subscription to read the input from, in the format of"
+                + " 'projects/your-project-id/subscriptions/your-subscription-name'",
+        example = "projects/your-project-id/subscriptions/your-subscription-name")
+    String getInputSubscription();
+
+    void setInputSubscription(String value);
+
+    @TemplateParameter.GcsWriteFolder(
+        order = 3,
+        description = "Output file directory in Cloud Storage",
+        helpText =
+            "The path and filename prefix for writing output files. Must end with a slash. DateTime"
+                + " formatting is used to parse directory path for date & time formatters.",
+        example = "gs://your-bucket/your-path")
     @Required
     String getOutputDirectory();
 
     void setOutputDirectory(String value);
 
-    @Description("The directory to output temporary files to. Must end with a slash.")
+    @TemplateParameter.GcsWriteFolder(
+        order = 4,
+        optional = true,
+        description = "User provided temp location",
+        helpText =
+            "The user provided directory to output temporary files to. Must end with a slash.")
     String getUserTempLocation();
 
     void setUserTempLocation(String value);
 
-    @Description("The filename prefix of the files to write to.")
+    @TemplateParameter.Text(
+        order = 5,
+        optional = true,
+        description = "Output filename prefix of the files to write",
+        helpText = "The prefix to place on each windowed file.",
+        example = "output-")
     @Default.String("output")
     @Required
     String getOutputFilenamePrefix();
 
     void setOutputFilenamePrefix(String value);
 
-    @Description("The suffix of the files to write.")
+    @TemplateParameter.Text(
+        order = 6,
+        optional = true,
+        description = "Output filename suffix of the files to write",
+        helpText =
+            "The suffix to place on each windowed file. Typically a file extension such "
+                + "as .txt or .csv.",
+        example = ".txt")
     @Default.String("")
     String getOutputFilenameSuffix();
 
@@ -176,6 +227,7 @@ public class PubsubToText {
    * @param args The command-line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
@@ -224,8 +276,7 @@ public class PubsubToText {
             options.getWindowDuration() + " Window",
             Window.into(FixedWindows.of(DurationUtils.parseDuration(options.getWindowDuration()))))
 
-        // Apply windowed file writes. Use a NestedValueProvider because the filename
-        // policy requires a resourceId generated from the input value at runtime.
+        // Apply windowed file writes
         .apply(
             "Write File(s)",
             TextIO.write()

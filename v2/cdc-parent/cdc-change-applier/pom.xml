@@ -20,10 +20,9 @@
   <parent>
     <groupId>com.google.cloud.dataflow.cdc</groupId>
     <artifactId>cdc-parent</artifactId>
-    <version>0.1</version>
+    <version>1.0-SNAPSHOT</version>
   </parent>
   <artifactId>cdc-change-applier</artifactId>
-  <version>0.1</version>
   <inceptionYear>2019</inceptionYear>
   <build>
     <plugins>
@@ -48,14 +47,11 @@
     <dependency>
       <groupId>com.google.cloud.dataflow.cdc</groupId>
       <artifactId>cdc-common</artifactId>
-      <version>0.1</version>
-      <scope>compile</scope>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-bigquery</artifactId>
-      <version>${gcp.version}</version>
-      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>

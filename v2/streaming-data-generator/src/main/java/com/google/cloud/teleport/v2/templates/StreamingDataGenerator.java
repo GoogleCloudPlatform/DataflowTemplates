@@ -21,6 +21,11 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 import com.github.vincentrussell.json.datagenerator.JsonDataGenerator;
 import com.github.vincentrussell.json.datagenerator.JsonDataGeneratorException;
 import com.github.vincentrussell.json.datagenerator.impl.JsonDataGeneratorImpl;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.templates.StreamingDataGenerator.StreamingDataGeneratorOptions;
 import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToBigQuery;
 import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToGcs;
 import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToPubSub;
@@ -33,7 +38,6 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.GenerateSequence;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
@@ -106,6 +110,16 @@ import org.slf4j.LoggerFactory;
  *
  * </pre>
  */
+@Template(
+    name = "Streaming_Data_Generator",
+    category = TemplateCategory.UTILITIES,
+    displayName = "Streaming Data Generator",
+    description =
+        "A pipeline to publish messages at specified QPS.This template can be used to benchmark"
+            + " performance of streaming pipelines.",
+    optionsClass = StreamingDataGeneratorOptions.class,
+    flexContainerName = "streaming-data-generator",
+    contactInformation = "https://cloud.google.com/support")
 public class StreamingDataGenerator {
 
   private static final Logger logger = LoggerFactory.getLogger(StreamingDataGenerator.class);
@@ -115,98 +129,202 @@ public class StreamingDataGenerator {
    * the executor at the command-line.
    */
   public interface StreamingDataGeneratorOptions extends PipelineOptions {
-    @Description("Indicates rate of messages per second to be published to Pub/Sub.")
+    @TemplateParameter.Text(
+        order = 1,
+        regexes = {"^[1-9][0-9]*$"},
+        description = "Required output rate",
+        helpText = "Indicates rate of messages per second to be published to Pub/Sub")
     @Required
     Long getQps();
 
     void setQps(Long value);
 
-    @Description("The path to the schema to generate.")
-    @Required
+    @TemplateParameter.Enum(
+        order = 2,
+        enumOptions = {"GAME_EVENT"},
+        optional = true,
+        description = "Schema template to generate fake data",
+        helpText = "Pre-existing schema template to use. The value must be one of: [GAME_EVENT]")
+    SchemaTemplate getSchemaTemplate();
+
+    void setSchemaTemplate(SchemaTemplate value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 3,
+        optional = true,
+        description = "Location of Schema file to generate fake data",
+        helpText = "Cloud Storage path of schema location.",
+        example = "gs://<bucket-name>/prefix")
     String getSchemaLocation();
 
     void setSchemaLocation(String value);
 
-    @Description("The Pub/Sub topic to write to.")
+    @TemplateParameter.PubsubTopic(
+        order = 4,
+        optional = true,
+        description = "Output Pub/Sub topic",
+        helpText = "The name of the topic to which the pipeline should publish data.",
+        example = "projects/<project-id>/topics/<topic-name>")
     String getTopic();
 
     void setTopic(String value);
 
-    @Description(
-        "Indicates maximum number of messages to be generated. Default is 0 indicating unlimited.")
+    @TemplateParameter.Long(
+        order = 5,
+        optional = true,
+        description = "Maximum number of output Messages",
+        helpText =
+            "Indicates maximum number of output messages to be generated. 0 means unlimited.")
     @Default.Long(0L)
     Long getMessagesLimit();
 
     void setMessagesLimit(Long value);
 
-    @Description("The message Output type. --outputType must be one of:[JSON,AVRO,PARQUET]")
+    @TemplateParameter.Enum(
+        order = 6,
+        enumOptions = {"AVRO", "JSON", "PARQUET"},
+        optional = true,
+        description = "Output Encoding Type",
+        helpText = "The message Output type. Default is JSON.")
     @Default.Enum("JSON")
     OutputType getOutputType();
 
     void setOutputType(OutputType value);
 
-    @Description("The path to Avro schema for encoding message into AVRO output type.")
+    @TemplateParameter.GcsReadFile(
+        order = 7,
+        optional = true,
+        description = "Location of Avro Schema file",
+        helpText =
+            "Cloud Storage path of Avro schema location. Mandatory when output type is AVRO or"
+                + " PARQUET.",
+        example = "gs://your-bucket/your-path/schema.avsc")
     String getAvroSchemaLocation();
 
     void setAvroSchemaLocation(String value);
 
-    @Description("The message sink type. Must be one of:[PUBSUB,BIGQUERY,GCS]")
+    @TemplateParameter.Enum(
+        order = 8,
+        enumOptions = {"BIGQUERY", "GCS", "PUBSUB"},
+        optional = true,
+        description = "Output Sink Type",
+        helpText = "The message Sink type. Default is PUBSUB")
     @Default.Enum("PUBSUB")
     SinkType getSinkType();
 
     void setSinkType(SinkType value);
 
-    @Description(
-        "Output BigQuery table spec. "
-            + "The name should be in the format: "
-            + "<project>:<dataset>.<table_name>.")
+    @TemplateParameter.BigQueryTable(
+        order = 9,
+        optional = true,
+        description = "Output BigQuery table",
+        helpText = "Output BigQuery table. Mandatory when sinkType is BIGQUERY",
+        example = "<project>:<dataset>.<table_name>")
     String getOutputTableSpec();
 
     void setOutputTableSpec(String value);
 
-    @Description("Write disposition to use for BigQuery. Default: WRITE_APPEND")
+    @TemplateParameter.Enum(
+        order = 10,
+        enumOptions = {"WRITE_APPEND", "WRITE_EMPTY", "WRITE_TRUNCATE"},
+        optional = true,
+        description = "Write Disposition to use for BigQuery",
+        helpText =
+            "BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE.")
     @Default.String("WRITE_APPEND")
     String getWriteDisposition();
 
     void setWriteDisposition(String writeDisposition);
 
-    @Description(
-        "The dead-letter table to output to within BigQuery in <project-id>:<dataset>.<table> "
-            + "format. If it doesn't exist, it will be created during pipeline execution.")
+    @TemplateParameter.BigQueryTable(
+        order = 11,
+        optional = true,
+        description = "The dead-letter table name to output failed messages to BigQuery",
+        helpText =
+            "Messages failed to reach the output table for all kind of reasons (e.g., mismatched"
+                + " schema, malformed json) are written to this table. If it doesn't exist, it will"
+                + " be created during pipeline execution.",
+        example = "your-project-id:your-dataset.your-table-name")
     String getOutputDeadletterTable();
 
     void setOutputDeadletterTable(String outputDeadletterTable);
 
-    @Description(
-        "The window duration in which data will be written. Defaults to 5m."
-            + "Allowed formats are: "
-            + "Ns (for seconds, example: 5s), "
-            + "Nm (for minutes, example: 12m), "
-            + "Nh (for hours, example: 2h).")
+    @TemplateParameter.Duration(
+        order = 12,
+        optional = true,
+        description = "Window duration",
+        helpText =
+            "The window duration/size in which data will be written to Cloud Storage. Allowed"
+                + " formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh"
+                + " (for hours, example: 2h).",
+        example = "1m")
     @Default.String("1m")
     String getWindowDuration();
 
     void setWindowDuration(String windowDuration);
 
-    @Description("The directory to write output files. Must end with a slash. ")
+    @TemplateParameter.GcsWriteFolder(
+        order = 13,
+        description = "Output file directory in Cloud Storage",
+        helpText =
+            "The path and filename prefix for writing output files. Must end with a slash. DateTime"
+                + " formatting is used to parse directory path for date & time formatters.",
+        example = "gs://your-bucket/your-path/")
     String getOutputDirectory();
 
     void setOutputDirectory(String outputDirectory);
 
-    @Description(
-        "The filename prefix of the files to write to. Default file prefix is set to \"output-\". ")
+    @TemplateParameter.Text(
+        order = 14,
+        optional = true,
+        description = "Output filename prefix of the files to write",
+        helpText = "The prefix to place on each windowed file.",
+        example = "output-")
     @Default.String("output-")
     String getOutputFilenamePrefix();
 
     void setOutputFilenamePrefix(String outputFilenamePrefix);
 
-    @Description(
-        "The maximum number of output shards produced while writing to FileSystem. Default number"
-            + " is runner defined.")
+    @TemplateParameter.Integer(
+        order = 15,
+        optional = true,
+        description = "Maximum output shards",
+        helpText =
+            "The maximum number of output shards produced when writing. A higher number of shards"
+                + " means higher throughput for writing to Cloud Storage, but potentially higher"
+                + " data aggregation cost across shards when processing output Cloud Storage files."
+                + " Default value is decided by the runner.")
     @Default.Integer(0)
     Integer getNumShards();
 
     void setNumShards(Integer numShards);
+  }
+
+  /** Allowed list of existing schema templates. */
+  public enum SchemaTemplate {
+    GAME_EVENT(
+        "{\n"
+            + "  \"eventId\": \"{{uuid()}}\",\n"
+            + "  \"eventTimestamp\": {{timestamp()}},\n"
+            + "  \"ipv4\": \"{{ipv4()}}\",\n"
+            + "  \"ipv6\": \"{{ipv6()}}\",\n"
+            + "  \"country\": \"{{country()}}\",\n"
+            + "  \"username\": \"{{username()}}\",\n"
+            + "  \"quest\": \"{{random(\"A Break In the Ice\", \"Ghosts of Perdition\", \"Survive"
+            + " the Low Road\")}}\",\n"
+            + "  \"score\": {{integer(100, 10000)}},\n"
+            + "  \"completed\": {{bool()}}\n"
+            + "}");
+
+    private final String schema;
+
+    SchemaTemplate(String schema) {
+      this.schema = schema;
+    }
+
+    public String getSchema() {
+      return schema;
+    }
   }
 
   /** Allowed list of message encoding types. */
@@ -244,6 +362,8 @@ public class StreamingDataGenerator {
    * @param args command-line args passed by the executor.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     StreamingDataGeneratorOptions options =
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()
@@ -278,7 +398,9 @@ public class StreamingDataGenerator {
             .apply("Trigger", createTrigger(options))
             .apply(
                 "Generate Fake Messages",
-                ParDo.of(new MessageGeneratorFn(options.getSchemaLocation())));
+                ParDo.of(
+                    new MessageGeneratorFn(
+                        options.getSchemaTemplate(), options.getSchemaLocation())));
 
     if (options.getSinkType().equals(SinkType.GCS)) {
       fakeMessages =
@@ -320,19 +442,23 @@ public class StreamingDataGenerator {
 
     // Not initialized inline or constructor because {@link JsonDataGenerator} is not serializable.
     private transient JsonDataGenerator dataGenerator;
-    private final String schemaLocation;
-    private String schema;
+    private final String schema;
 
-    MessageGeneratorFn(@Nonnull String schemaLocation) {
-      checkNotNull(
-          schemaLocation, "schemaLocation argument of MessageGeneratorFn class cannot be null.");
-      this.schemaLocation = schemaLocation;
+    MessageGeneratorFn(SchemaTemplate schemaTemplate, String schemaLocation) {
+      checkArgument(
+          schemaTemplate != null || schemaLocation != null,
+          "Either schemaTemplate or schemaLocation argument of MessageGeneratorFn class must be"
+              + " provided.");
+      if (schemaLocation != null) {
+        this.schema = GCSUtils.getGcsFileAsString(schemaLocation);
+      } else {
+        this.schema = schemaTemplate.getSchema();
+      }
     }
 
     @Setup
-    public void setup() throws IOException {
+    public void setup() {
       dataGenerator = new JsonDataGeneratorImpl();
-      schema = GCSUtils.getGcsFileAsString(schemaLocation);
     }
 
     @ProcessElement

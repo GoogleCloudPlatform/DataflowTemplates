@@ -1,0 +1,23 @@
+{
+    "type": "record",
+    "name": "AvroPubsubMessageRecord",
+    "fields": [
+        {
+            "name": "name",
+            "type": "string"
+        },
+        {
+            "name": "age",
+            "type": "int"
+        },
+        {
+            "name" : "decimal",
+            "type" : {
+                    "type": "bytes",
+                    "logicalType": "decimal",
+                    "precision": 30,
+                    "scale": 17
+                }
+        }
+    ]
+}

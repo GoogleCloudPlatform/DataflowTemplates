@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.transforms;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.io.IOException;
 import java.io.Reader;
@@ -41,7 +42,6 @@ import org.apache.beam.sdk.io.fs.MatchResult.Metadata;
 import org.apache.beam.sdk.io.fs.MatchResult.Status;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -53,6 +53,7 @@ import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Strings;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Throwables;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.io.CharStreams;
+import org.openjdk.nashorn.api.scripting.NashornScriptEngineFactory;
 import org.openjdk.nashorn.api.scripting.ScriptObjectMirror;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,12 +66,26 @@ public abstract class JavascriptTextTransformer {
 
   /** Necessary CLI options for running UDF function. */
   public interface JavascriptTextTransformerOptions extends PipelineOptions {
-    @Description("Gcs path to javascript udf source")
+    @TemplateParameter.GcsReadFile(
+        order = 1,
+        optional = true,
+        description = "Cloud Storage path to Javascript UDF source",
+        helpText =
+            "The Cloud Storage path pattern for the JavaScript code containing your user-defined "
+                + "functions.",
+        example = "gs://your-bucket/your-function.js")
     String getJavascriptTextTransformGcsPath();
 
     void setJavascriptTextTransformGcsPath(String javascriptTextTransformGcsPath);
 
-    @Description("UDF Javascript Function Name")
+    @TemplateParameter.Text(
+        order = 2,
+        optional = true,
+        regexes = {"[a-zA-Z0-9_]+"},
+        description = "UDF Javascript Function Name",
+        helpText =
+            "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores.",
+        example = "'transform' or 'transform_udf1'")
     String getJavascriptTextTransformFunctionName();
 
     void setJavascriptTextTransformFunctionName(String javascriptTextTransformFunctionName);
@@ -149,20 +164,15 @@ public abstract class JavascriptTextTransformer {
     }
 
     private static ScriptEngine getJavaScriptEngine() {
-      ScriptEngineManager manager = new ScriptEngineManager();
-      for (String engineName : JAVASCRIPT_ENGINE_NAMES) {
-        ScriptEngine engine = manager.getEngineByName(engineName);
-        if (engine != null) {
-          return engine;
-        }
-      }
+      NashornScriptEngineFactory nashornFactory = new NashornScriptEngineFactory();
+      ScriptEngine engine = nashornFactory.getScriptEngine("--language=es6");
 
-      ScriptEngine engine = manager.getEngineByExtension("js");
       if (engine != null) {
         return engine;
       }
 
       List<String> availableEngines = new ArrayList<>();
+      ScriptEngineManager manager = new ScriptEngineManager();
       for (ScriptEngineFactory factory : manager.getEngineFactories()) {
         availableEngines.add(
             factory.getEngineName()
@@ -298,6 +308,8 @@ public abstract class JavascriptTextTransformer {
 
     public abstract @Nullable String functionName();
 
+    public abstract @Nullable Boolean loggingEnabled();
+
     public abstract TupleTag<FailsafeElement<T, String>> successTag();
 
     public abstract TupleTag<FailsafeElement<T, String>> failureTag();
@@ -319,6 +331,8 @@ public abstract class JavascriptTextTransformer {
 
       public abstract Builder<T> setFunctionName(@Nullable String functionName);
 
+      public abstract Builder<T> setLoggingEnabled(@Nullable Boolean loggingEnabled);
+
       public abstract Builder<T> setSuccessTag(TupleTag<FailsafeElement<T, String>> successTag);
 
       public abstract Builder<T> setFailureTag(TupleTag<FailsafeElement<T, String>> failureTag);
@@ -333,11 +347,16 @@ public abstract class JavascriptTextTransformer {
           ParDo.of(
                   new DoFn<FailsafeElement<T, String>, FailsafeElement<T, String>>() {
                     private JavascriptRuntime javascriptRuntime;
+                    private boolean loggingEnabled;
 
                     @Setup
                     public void setup() {
                       if (fileSystemPath() != null && functionName() != null) {
                         javascriptRuntime = getJavascriptRuntime(fileSystemPath(), functionName());
+                      }
+
+                      if (loggingEnabled() != null) {
+                        loggingEnabled = loggingEnabled();
                       }
                     }
 
@@ -356,7 +375,17 @@ public abstract class JavascriptTextTransformer {
                               FailsafeElement.of(element.getOriginalPayload(), payloadStr));
                           successCounter.inc();
                         }
-                      } catch (Exception e) {
+                      } catch (Throwable e) {
+                        // Throwable caught because UDFS can trigger Errors (e.g., StackOverflow)
+                        if (loggingEnabled) {
+                          LOG.warn(
+                              "Exception occurred while applying UDF '{}' from file path '{}' due"
+                                  + " to '{}'",
+                              functionName(),
+                              fileSystemPath(),
+                              e.getMessage());
+                        }
+
                         context.output(
                             failureTag(),
                             FailsafeElement.of(element)

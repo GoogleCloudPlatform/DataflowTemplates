@@ -22,6 +22,11 @@ import com.google.cloud.bigquery.storage.v1beta1.ReadOptions.TableReadOptions;
 import com.google.cloud.bigquery.storage.v1beta1.Storage.CreateReadSessionRequest;
 import com.google.cloud.bigquery.storage.v1beta1.Storage.ReadSession;
 import com.google.cloud.bigquery.storage.v1beta1.TableReferenceProto;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.templates.BigQueryToParquet.BigQueryToParquetOptions;
 import com.google.common.base.Strings;
 import java.io.IOException;
 import java.util.Arrays;
@@ -39,7 +44,6 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.TypedRead.Method;
 import org.apache.beam.sdk.io.gcp.bigquery.SchemaAndRecord;
 import org.apache.beam.sdk.io.parquet.ParquetIO;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
@@ -113,6 +117,15 @@ import org.slf4j.LoggerFactory;
  *      '
  * </pre>
  */
+@Template(
+    name = "BigQuery_to_Parquet",
+    category = TemplateCategory.BATCH,
+    displayName = "BigQuery export to Parquet (via Storage API)",
+    description =
+        "A pipeline to export a BigQuery table into Parquet files using the BigQuery Storage API.",
+    optionsClass = BigQueryToParquetOptions.class,
+    flexContainerName = "bigquery-to-parquet",
+    contactInformation = "https://cloud.google.com/support")
 public class BigQueryToParquet {
 
   /* Logger for class. */
@@ -181,34 +194,58 @@ public class BigQueryToParquet {
    * executor at the command-line.
    */
   public interface BigQueryToParquetOptions extends PipelineOptions {
-    @Description("BigQuery table to export from in the form <project>:<dataset>.<table>")
+    @TemplateParameter.BigQueryTable(
+        order = 1,
+        description = "BigQuery table to export",
+        helpText = "BigQuery table location to export in the format <project>:<dataset>.<table>.",
+        example = "your-project:your-dataset.your-table-name")
     @Required
     String getTableRef();
 
     void setTableRef(String tableRef);
 
-    @Description("GCS bucket to export BigQuery table data to (e.g. gs://mybucket/folder/).")
+    @TemplateParameter.GcsWriteFile(
+        order = 2,
+        description = "Output Cloud Storage file(s)",
+        helpText = "Path and filename prefix for writing output files.",
+        example = "gs://your-bucket/export/")
     @Required
     String getBucket();
 
     void setBucket(String bucket);
 
-    @Description("Optional: Number of shards for output file.")
+    @TemplateParameter.Integer(
+        order = 3,
+        optional = true,
+        description = "Maximum output shards",
+        helpText =
+            "The maximum number of output shards produced when writing. A higher number of shards"
+                + " means higher throughput for writing to Cloud Storage, but potentially higher"
+                + " data aggregation cost across shards when processing output Cloud Storage"
+                + " files.")
     @Default.Integer(0)
     Integer getNumShards();
 
     void setNumShards(Integer numShards);
 
-    @Description("Optional: Comma separated list of fields to select from the table.")
+    @TemplateParameter.Text(
+        order = 4,
+        optional = true,
+        description = "List of field names",
+        helpText = "Comma separated list of fields to select from the table.")
     String getFields();
 
     void setFields(String fields);
 
-    @Description(
-        "Read only rows which match the specified filter, which must be a SQL expression "
-            + "compatible with Google standard SQL "
-            + "(https://cloud.google.com/bigquery/docs/reference/standard-sql). If no value is "
-            + "specified, then all rows are returned.")
+    @TemplateParameter.Text(
+        order = 5,
+        optional = true,
+        description = "Row restrictions/filter.",
+        helpText =
+            "Read only rows which match the specified filter, which must be a SQL expression"
+                + " compatible with Google standard SQL"
+                + " (https://cloud.google.com/bigquery/docs/reference/standard-sql). If no value is"
+                + " specified, then all rows are returned.")
     String getRowRestriction();
 
     void setRowRestriction(String restriction);
@@ -237,6 +274,8 @@ public class BigQueryToParquet {
    * @param args Command line arguments to the pipeline.
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     BigQueryToParquetOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(BigQueryToParquetOptions.class);
 

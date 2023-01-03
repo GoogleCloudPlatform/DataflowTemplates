@@ -15,22 +15,21 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import static com.google.cloud.teleport.v2.transforms.WriteDataChangeRecordsToJson.DataChangeRecordToJsonTextFn;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkArgument;
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.io.WindowedFilenamePolicy;
 import com.google.cloud.teleport.v2.utils.WriteToGCSUtility;
-import com.google.gson.Gson;
 import org.apache.beam.sdk.io.FileBasedSink;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.DataChangeRecord;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
-import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.annotations.VisibleForTesting;
@@ -94,35 +93,39 @@ public abstract class WriteDataChangeRecordsToGcsText
                 .withNumShards(numShards()));
   }
 
-  static class DataChangeRecordToJsonTextFn extends SimpleFunction<DataChangeRecord, String> {
-    private static Gson gson = new Gson();
-
-    @Override
-    public String apply(DataChangeRecord record) {
-      return gson.toJson(record, DataChangeRecord.class);
-    }
-  }
-
   /**
    * The {@link WriteToGcsTextOptions} interface provides the custom execution options passed by the
    * executor at the command-line.
    */
   public interface WriteToGcsTextOptions extends PipelineOptions {
-    @Description("The directory to output files to. Must end with a slash.")
+    @TemplateParameter.GcsWriteFolder(
+        order = 1,
+        description = "Output file directory in Cloud Storage",
+        helpText =
+            "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters.",
+        example = "gs://your-bucket/your-path")
     String getGcsOutputDirectory();
 
     void setGcsOutputDirectory(String gcsOutputDirectory);
 
-    @Description(
-        "The filename prefix of the files to write to. Default file prefix is set to \"output\". ")
+    @TemplateParameter.Text(
+        order = 2,
+        description = "Output filename prefix of the files to write",
+        helpText = "The prefix to place on each windowed file.",
+        example = "output-")
     @Default.String("output")
     String getOutputFilenamePrefix();
 
     void setOutputFilenamePrefix(String outputFilenamePrefix);
 
-    @Description(
-        "The maximum number of output shards produced when writing. Default number is runner"
-            + " defined.")
+    @TemplateParameter.Integer(
+        order = 3,
+        optional = true,
+        description = "Maximum output shards",
+        helpText =
+            "The maximum number of output shards produced when writing. A higher number of "
+                + "shards means higher throughput for writing to Cloud Storage, but potentially higher "
+                + "data aggregation cost across shards when processing output Cloud Storage files.")
     @Default.Integer(20)
     Integer getNumShards();
 

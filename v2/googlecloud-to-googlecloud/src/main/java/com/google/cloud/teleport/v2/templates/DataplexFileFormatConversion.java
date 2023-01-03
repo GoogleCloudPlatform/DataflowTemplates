@@ -21,10 +21,15 @@ import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Asset;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Entity;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1Partition;
 import com.google.api.services.dataplex.v1.model.GoogleCloudDataplexV1StorageFormatCsvOptions;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.clients.DataplexClient;
 import com.google.cloud.teleport.v2.clients.DefaultDataplexClient;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.io.AvroSinkWithJodaDatesConversion;
 import com.google.cloud.teleport.v2.options.DataplexUpdateMetadataOptions;
+import com.google.cloud.teleport.v2.templates.DataplexFileFormatConversion.FileFormatConversionOptions;
 import com.google.cloud.teleport.v2.transforms.AvroConverters;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
 import com.google.cloud.teleport.v2.transforms.JsonConverters;
@@ -70,7 +75,6 @@ import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.io.parquet.ParquetIO;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.ExperimentalOptions;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -89,6 +93,16 @@ import org.slf4j.LoggerFactory;
  * given asset or the list of entities to, the new converted files are stored in the bucket
  * referenced by the provided output asset.
  */
+@Template(
+    name = "Dataplex_File_Format_Conversion",
+    category = TemplateCategory.BATCH,
+    displayName = "Dataplex: Convert Cloud Storage File Format",
+    description =
+        "A pipeline that converts file format of Cloud Storage files, registering metadata for the"
+            + " newly created files in Dataplex.",
+    optionsClass = FileFormatConversionOptions.class,
+    flexContainerName = "dataplex-file-format-conversion",
+    contactInformation = "https://cloud.google.com/support")
 public class DataplexFileFormatConversion {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataplexBigQueryToGcs.class);
@@ -101,34 +115,72 @@ public class DataplexFileFormatConversion {
   public interface FileFormatConversionOptions
       extends GcpOptions, PipelineOptions, ExperimentalOptions, DataplexUpdateMetadataOptions {
 
-    @Description("Input asset or entities list.")
+    @TemplateParameter.Text(
+        order = 1,
+        regexes = {
+          "^(projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/lakes\\/[^\\n\\r\\/]+\\/zones\\/[^\\n\\r\\/]+\\/assets\\/[^\\n\\r\\/]+|projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/lakes\\/[^\\n\\r\\/]+\\/zones\\/[^\\n\\r\\/]+\\/entities\\/[^\\n\\r\\/,]+(,projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/lakes\\/[^\\n\\r\\/]+\\/zones\\/[^\\n\\r\\/]+\\/entities\\/[^\\n\\r\\/,]+)*)$"
+        },
+        description = "Dataplex asset name or Dataplex entity names for the files to be converted.",
+        helpText =
+            "Dataplex asset or Dataplex entities that contain the input files. Format:"
+                + " projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset"
+                + " name> OR"
+                + " projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/entities/<entity"
+                + " 1 name>,projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/entities/<entity"
+                + " 2 name>... .")
     String getInputAssetOrEntitiesList();
 
     void setInputAssetOrEntitiesList(String inputAssetOrEntitiesList);
 
-    @Description("Output file format. Format: PARQUET, AVRO, or ORC. Default: none.")
+    @TemplateParameter.Enum(
+        order = 2,
+        enumOptions = {"AVRO", "PARQUET"},
+        description = "Output file format in Cloud Storage.",
+        helpText = "Output file format in Cloud Storage. Format: PARQUET or AVRO.")
     @Required
     FileFormatOptions getOutputFileFormat();
 
     void setOutputFileFormat(FileFormatOptions outputFileFormat);
 
-    @Description(
-        "Output file compression. Format: UNCOMPRESSED, SNAPPY, GZIP, or BZIP2. Default:"
-            + " SNAPPY. BZIP2 not supported for PARQUET files.")
+    @TemplateParameter.Enum(
+        order = 3,
+        enumOptions = {"UNCOMPRESSED", "SNAPPY", "GZIP", "BZIP2"},
+        optional = true,
+        description = "Output file compression in Cloud Storage.",
+        helpText =
+            "Output file compression. Format: UNCOMPRESSED, SNAPPY, GZIP, or BZIP2. BZIP2 not"
+                + " supported for PARQUET files.")
     @Default.Enum("SNAPPY")
     DataplexCompression getOutputFileCompression();
 
     void setOutputFileCompression(DataplexCompression outputFileCompression);
 
-    @Description("Output asset.")
+    @TemplateParameter.Text(
+        order = 4,
+        regexes = {
+          "^projects\\/[^\\n\\r\\/]+\\/locations\\/[^\\n\\r\\/]+\\/lakes\\/[^\\n\\r\\/]+\\/zones\\/[^\\n\\r\\/]+\\/assets\\/[^\\n\\r\\/]+$"
+        },
+        description = "Dataplex asset name for the destination Cloud Storage bucket.",
+        helpText =
+            "Name of the Dataplex asset that contains Cloud Storage bucket where output files will"
+                + " be put into. Format:"
+                + " projects/<name>/locations/<loc>/lakes/<lake-name>/zones/<zone-name>/assets/<asset"
+                + " name>.")
     @Required
     String getOutputAsset();
 
     void setOutputAsset(String outputAsset);
 
-    @Description(
-        "Specifies the behaviour if output files already exist. Format: OVERWRITE,"
-            + " FAIL, SKIP. Default: SKIP.")
+    @TemplateParameter.Enum(
+        order = 5,
+        enumOptions = {"OVERWRITE", "FAIL", "SKIP"},
+        optional = true,
+        description = "Action that occurs if a destination file already exists.",
+        helpText =
+            "Specifies the action that occurs if a destination file already exists. Format:"
+                + " OVERWRITE, FAIL, SKIP. If SKIP, only files that don't exist in the destination"
+                + " directory will be processed. If FAIL and at least one file already exists, no"
+                + " data will be processed and an error will be produced.")
     @Default.Enum("SKIP")
     WriteDispositionOptions getWriteDisposition();
 
@@ -165,6 +217,8 @@ public class DataplexFileFormatConversion {
    * @param args Command line arguments to the pipeline.
    */
   public static void main(String[] args) throws IOException {
+    UncaughtExceptionLogger.register();
+
     FileFormatConversionOptions options =
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()

@@ -15,21 +15,26 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.BigQueryCommonOptions.WriteOptions;
+import com.google.cloud.teleport.v2.options.BigQueryStorageApiStreamingOptions;
 import com.google.cloud.teleport.v2.options.PubsubCommonOptions.ReadSubscriptionOptions;
 import com.google.cloud.teleport.v2.options.PubsubCommonOptions.WriteTopicOptions;
+import com.google.cloud.teleport.v2.templates.PubsubAvroToBigQuery.PubsubAvroToBigQueryOptions;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import com.google.cloud.teleport.v2.transforms.ErrorConverters;
+import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.AvroCoder;
-import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.Method;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.schemas.transforms.Convert;
@@ -42,14 +47,25 @@ import org.apache.beam.sdk.values.Row;
  * <p>Any persistent failures while writing to BigQuery will be written to a Pub/Sub dead-letter
  * topic.
  */
+@Template(
+    name = "PubSub_Avro_to_BigQuery",
+    category = TemplateCategory.STREAMING,
+    displayName = "Pub/Sub Avro to BigQuery",
+    description =
+        "A streaming pipeline which inserts Avro records from a Pub/Sub subscription into a"
+            + " BigQuery table.",
+    optionsClass = PubsubAvroToBigQueryOptions.class,
+    flexContainerName = "pubsub-avro-to-bigquery",
+    contactInformation = "https://cloud.google.com/support")
 public final class PubsubAvroToBigQuery {
-
   /**
    * Validates input flags and executes the Dataflow pipeline.
    *
    * @param args command line arguments to the pipeline
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     PubsubAvroToBigQueryOptions options =
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()
@@ -63,9 +79,15 @@ public final class PubsubAvroToBigQuery {
    * {@link PubsubAvroToBigQuery} pipeline.
    */
   public interface PubsubAvroToBigQueryOptions
-      extends ReadSubscriptionOptions, WriteOptions, WriteTopicOptions {
+      extends ReadSubscriptionOptions,
+          WriteOptions,
+          WriteTopicOptions,
+          BigQueryStorageApiStreamingOptions {
 
-    @Description("GCS path to Avro schema file.")
+    @TemplateParameter.GcsReadFile(
+        order = 1,
+        description = "Cloud Storage path to the Avro schema file",
+        helpText = "Cloud Storage path to Avro schema file. For example, gs://MyBucket/file.avsc.")
     @Required
     String getSchemaPath();
 
@@ -79,6 +101,7 @@ public final class PubsubAvroToBigQuery {
    * @return result of the pipeline execution as a {@link PipelineResult}
    */
   private static PipelineResult run(PubsubAvroToBigQueryOptions options) {
+    BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options);
 
     // Create the pipeline.
     Pipeline pipeline = Pipeline.create(options);
@@ -100,12 +123,9 @@ public final class PubsubAvroToBigQuery {
             .apply(Convert.toRows())
             .apply(
                 "Write to BigQuery",
-                BigQueryConverters.<Row>createWriteTransform(options)
-                    .useBeamSchema()
-                    .withMethod(Method.STREAMING_INSERTS));
+                BigQueryConverters.<Row>createWriteTransform(options).useBeamSchema());
 
-    writeResults
-        .getFailedInsertsWithErr()
+    BigQueryIOUtils.writeResultToBigQueryInsertErrors(writeResults, options)
         .apply(
             "Create error payload",
             ErrorConverters.BigQueryInsertErrorToPubsubMessage.<GenericRecord>newBuilder()
