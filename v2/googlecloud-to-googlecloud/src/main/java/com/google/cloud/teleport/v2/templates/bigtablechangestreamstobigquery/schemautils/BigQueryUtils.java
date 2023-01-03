@@ -33,8 +33,12 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import org.apache.beam.sdk.io.gcp.bigquery.DynamicDestinations;
 import org.apache.beam.sdk.io.gcp.bigquery.TableDestination;
 import org.apache.beam.sdk.values.KV;
@@ -45,13 +49,19 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** {@link BigQueryUtils} provides utils for processing BigQuery schema and generating BigQuery
- * rows. */
+/**
+ * {@link BigQueryUtils} provides utils for processing BigQuery schema and generating BigQuery
+ * rows.
+ */
 public class BigQueryUtils implements Serializable {
+
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryUtils.class);
+
+  public static final String ANY_COLUMN_FAMILY = "*";
 
   private static final EnumMap<ChangelogColumn, BigQueryValueFormatter> FORMATTERS = new EnumMap<>(
       ChangelogColumn.class);
+
   static {
     FORMATTERS.put(ChangelogColumn.ROW_KEY_STRING, (bq, chg) -> {
       String rowkeyEncoded = chg.getString(ChangelogColumn.ROW_KEY_BYTES.name());
@@ -62,10 +72,12 @@ public class BigQueryUtils implements Serializable {
       return bq.convertBase64ToBytes(rowkeyEncoded);
     });
     FORMATTERS.put(ChangelogColumn.MOD_TYPE, (bq, chg) ->
-      chg.getString(ChangelogColumn.MOD_TYPE.name())
+        chg.getString(ChangelogColumn.MOD_TYPE.name())
     );
-    FORMATTERS.put(ChangelogColumn.COMMIT_TIMESTAMP, (bq, chg) -> chg.getString(ChangelogColumn.COMMIT_TIMESTAMP.name()));
-    FORMATTERS.put(ChangelogColumn.COLUMN_FAMILY, (bq, chg) -> chg.getString(ChangelogColumn.COLUMN_FAMILY.name()));
+    FORMATTERS.put(ChangelogColumn.COMMIT_TIMESTAMP,
+        (bq, chg) -> chg.getString(ChangelogColumn.COMMIT_TIMESTAMP.name()));
+    FORMATTERS.put(ChangelogColumn.COLUMN_FAMILY,
+        (bq, chg) -> chg.getString(ChangelogColumn.COLUMN_FAMILY.name()));
     FORMATTERS.put(ChangelogColumn.COLUMN, (bq, chg) -> {
       if (!chg.has(ChangelogColumn.COLUMN.name())) {
         return null;
@@ -126,16 +138,21 @@ public class BigQueryUtils implements Serializable {
       return chg.getString(ChangelogColumn.TIMESTAMP_TO_NUM.name());
     });
     FORMATTERS.put(
-        ChangelogColumn.IS_GC, (bq, chg) -> Boolean.toString(chg.getBoolean(ChangelogColumn.IS_GC.name())));
-    FORMATTERS.put(ChangelogColumn.SOURCE_INSTANCE, (bq, chg) -> chg.getString(ChangelogColumn.SOURCE_INSTANCE.name()));
-    FORMATTERS.put(ChangelogColumn.SOURCE_CLUSTER, (bq, chg) -> chg.getString(ChangelogColumn.SOURCE_CLUSTER.name()));
-    FORMATTERS.put(ChangelogColumn.SOURCE_TABLE, (bq, chg) -> chg.getString(ChangelogColumn.SOURCE_TABLE.name()));
+        ChangelogColumn.IS_GC,
+        (bq, chg) -> Boolean.toString(chg.getBoolean(ChangelogColumn.IS_GC.name())));
+    FORMATTERS.put(ChangelogColumn.SOURCE_INSTANCE,
+        (bq, chg) -> chg.getString(ChangelogColumn.SOURCE_INSTANCE.name()));
+    FORMATTERS.put(ChangelogColumn.SOURCE_CLUSTER,
+        (bq, chg) -> chg.getString(ChangelogColumn.SOURCE_CLUSTER.name()));
+    FORMATTERS.put(ChangelogColumn.SOURCE_TABLE,
+        (bq, chg) -> chg.getString(ChangelogColumn.SOURCE_TABLE.name()));
     FORMATTERS.put(
-        ChangelogColumn.TIEBREAKER, (bq, chg) -> Long.toString(chg.getLong(ChangelogColumn.TIEBREAKER.name())));
+        ChangelogColumn.TIEBREAKER,
+        (bq, chg) -> Long.toString(chg.getLong(ChangelogColumn.TIEBREAKER.name())));
     FORMATTERS.put(ChangelogColumn.BQ_COMMIT_TIMESTAMP, (bq, chg) -> "AUTO");
 
     // Just in case, validate that every column in the enum has a formatter
-    for (ChangelogColumn column: ChangelogColumn.values()) {
+    for (ChangelogColumn column : ChangelogColumn.values()) {
       Validate.notNull(FORMATTERS.get(column));
     }
   }
@@ -143,6 +160,7 @@ public class BigQueryUtils implements Serializable {
   private final BigtableSource source;
   private final BigQueryDestination destination;
   private final List<ChangelogColumn> configuredChangelogColumns;
+  private final Map<String, Set<String>> ignoredColumnsMap;
 
   private transient Charset charsetObj;
 
@@ -151,10 +169,28 @@ public class BigQueryUtils implements Serializable {
     this.destination = destinationInfo;
     this.charsetObj = Charset.forName(sourceInfo.getCharset());
     this.configuredChangelogColumns = new ArrayList<>();
-    for (ChangelogColumn column: ChangelogColumn.values()) {
+    for (ChangelogColumn column : ChangelogColumn.values()) {
       if (destinationInfo.isColumnEnabled(column)) {
         this.configuredChangelogColumns.add(column);
       }
+    }
+
+    ignoredColumnsMap = new HashMap<>();
+    for (String columnFamilyAndColumn : sourceInfo.getColumnsToIgnore()) {
+      int indexOfColon = columnFamilyAndColumn.indexOf(':');
+      String columnFamily = ANY_COLUMN_FAMILY;
+      String columnName = columnFamilyAndColumn;
+      if (indexOfColon > 0) {
+        columnFamily = columnFamilyAndColumn.substring(0, indexOfColon);
+        if (StringUtils.isBlank(columnFamily)) {
+          columnFamily = ANY_COLUMN_FAMILY;
+        }
+        columnName = columnFamilyAndColumn.substring(indexOfColon + 1);
+      }
+
+      Set<String> appliedToColumnFamilies = ignoredColumnsMap.computeIfAbsent(columnName,
+          k -> new HashSet<>());
+      appliedToColumnFamilies.add(columnFamily);
     }
   }
 
@@ -170,21 +206,28 @@ public class BigQueryUtils implements Serializable {
     return this.source.getColumnsToIgnore().size() > 0;
   }
 
-  public boolean isIgnoredColumn(String column) {
-    return this.source.getColumnsToIgnore().contains(column);
+  public boolean isIgnoredColumn(String columnFamily, String column) {
+    Set<String> columnFamilies = ignoredColumnsMap.get(column);
+    if (columnFamilies == null) {
+      return false;
+    }
+    return columnFamilies.contains(columnFamily) || columnFamilies.contains(ANY_COLUMN_FAMILY);
   }
 
   /**
    * @return true if modification should be written to BigQuery, false otherwise
    */
-  public boolean setTableRowFields(Mod mod, String modJsonString, TableRow tableRow) throws Exception {
+  public boolean setTableRowFields(Mod mod, String modJsonString, TableRow tableRow)
+      throws Exception {
     // Metadata columns, not written to BQ
-    tableRow.set(TransientColumn.BQ_CHANGELOG_FIELD_NAME_ORIGINAL_PAYLOAD_JSON.getColumnName(), modJsonString);
+    tableRow.set(TransientColumn.BQ_CHANGELOG_FIELD_NAME_ORIGINAL_PAYLOAD_JSON.getColumnName(),
+        modJsonString);
 
     JSONObject changeJsonParsed = new JSONObject(mod.getChangeJson());
 
+    String columnFamily = null;
     if (hasIgnoredColumnFamilies() && changeJsonParsed.has(ChangelogColumn.COLUMN_FAMILY.name())) {
-      String columnFamily = Objects.toString(changeJsonParsed.get(ChangelogColumn.COLUMN_FAMILY.name()));
+      columnFamily = Objects.toString(changeJsonParsed.get(ChangelogColumn.COLUMN_FAMILY.name()));
       if (isIgnoredColumnFamily(columnFamily)) {
         return false;
       }
@@ -194,13 +237,13 @@ public class BigQueryUtils implements Serializable {
       String columnEncoded = Objects.toString(changeJsonParsed.get(ChangelogColumn.COLUMN.name()));
       if (!StringUtils.isBlank(columnEncoded)) {
         String column = convertBase64ToString(columnEncoded);
-        if (isIgnoredColumn(column)) {
+        if (isIgnoredColumn(columnFamily, column)) {
           return false;
         }
       }
     }
 
-    for (ChangelogColumn column: configuredChangelogColumns) {
+    for (ChangelogColumn column : configuredChangelogColumns) {
       BigQueryValueFormatter formatter = FORMATTERS.get(column);
       // .format might throw RuntimeException
       Object value = formatter.format(this, changeJsonParsed);
@@ -212,7 +255,6 @@ public class BigQueryUtils implements Serializable {
       tableRow.set(column.getBqColumnName(), value);
     }
 
-    LOG.warn("TableRow created: " + tableRow.toPrettyString());
     return true;
   }
 
@@ -227,12 +269,13 @@ public class BigQueryUtils implements Serializable {
   private List<TableFieldSchema> getDestinationTableFields() {
     List<TableFieldSchema> fields = new ArrayList<>();
 
-    for (ChangelogColumn column: configuredChangelogColumns) {
+    for (ChangelogColumn column : configuredChangelogColumns) {
       fields.add(
           new TableFieldSchema()
               .setName(column.getBqColumnName())
               .setType(column.getBqType())
-              .setMode((column.isRequired()? Field.Mode.REQUIRED.name() : Field.Mode.NULLABLE.name())));
+              .setMode(
+                  (column.isRequired() ? Field.Mode.REQUIRED.name() : Field.Mode.NULLABLE.name())));
     }
 
     return fields;
@@ -254,8 +297,8 @@ public class BigQueryUtils implements Serializable {
   /**
    * The {@link BigQueryDynamicDestinations} loads into BigQuery tables in a dynamic fashion. The
    * destination table is always the same, but we'll be using DynamicDestinations to enable
-   * partitioning / clustering and other BigQuery table features if necessary which otherwise are not
-   * present in TableSchema
+   * partitioning / clustering and other BigQuery table features if necessary which otherwise are
+   * not present in TableSchema
    */
   public final class BigQueryDynamicDestinations
       extends DynamicDestinations<TableRow, KV<TableId, TableRow>> {
@@ -278,13 +321,15 @@ public class BigQueryUtils implements Serializable {
       TimePartitioning timePartitioning = null;
       if (BigQueryUtils.this.destination.isPartitioned()) {
         timePartitioning = new TimePartitioning();
-        timePartitioning.setType(BigQueryUtils.this.destination.getBigQueryChangelogTablePartitionType());
-        timePartitioning.setExpirationMs(BigQueryUtils.this.destination.getBigQueryChangelogTablePartitionExpirationMs());
+        timePartitioning.setType(
+            BigQueryUtils.this.destination.getBigQueryChangelogTablePartitionType());
+        timePartitioning.setExpirationMs(
+            BigQueryUtils.this.destination.getBigQueryChangelogTablePartitionExpirationMs());
         timePartitioning.setField(BigQueryUtils.this.destination.getPartitionByColumnName());
       }
 
       return new TableDestination(
-          tableName, "BigQuery changelog table.",  timePartitioning);
+          tableName, "BigQuery changelog table.", timePartitioning);
     }
 
     @Override
