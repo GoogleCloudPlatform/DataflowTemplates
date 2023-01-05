@@ -2,13 +2,12 @@
 
 ## Testing and Deploying
 
-Recent changes to the main branch have broken made building the project a multi-step process.
+Recent changes to the main branch have made building the project a multi-step process.
 
-From the project root:
+To begin, from the project root:
 ```bash
 mvn install
 ```
-
 Some modules may fail to build but so long as the parent project, the metadata and the integration-test modules build successfully you can proceed to build the template and deploy it as below. 
 
 ### Integration
