@@ -31,7 +31,6 @@ import com.google.re2j.Pattern;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -66,24 +65,15 @@ public final class BulkDecompressorIT extends TemplateTestBase {
     JobInfo info = launchTemplate(options);
     assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
 
-    AtomicReference<List<Artifact>> artifacts = new AtomicReference<>();
-
-    Result result =
-        new DataflowOperator(getDataflowClient())
-            .waitForCondition(
-                createConfig(info),
-                () -> {
-                  List<Artifact> outputFiles =
-                      artifactClient.listArtifacts("output/", Pattern.compile(".*compress.*"));
-                  artifacts.set(outputFiles);
-                  return !outputFiles.isEmpty();
-                });
+    Result result = new DataflowOperator(getDataflowClient()).waitUntilDone(createConfig(info));
 
     // Assert
-    assertThat(result).isEqualTo(Result.CONDITION_MET);
+    assertThat(result).isEqualTo(Result.JOB_FINISHED);
 
-    assertThat(artifacts.get()).hasSize(1);
-    assertThat(artifacts.get().get(0).contents())
+    List<Artifact> artifacts =
+        artifactClient.listArtifacts("output/", Pattern.compile(".*compress.*"));
+    assertThat(artifacts).hasSize(1);
+    assertThat(artifacts.get(0).contents())
         .isEqualTo(
             Resources.getResource("BulkCompressorIT/compress.txt").openStream().readAllBytes());
   }

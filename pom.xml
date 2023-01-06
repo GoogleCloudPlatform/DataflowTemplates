@@ -57,6 +57,7 @@
     <hadoop.version>2.10.2</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
     <mockito-core.version>3.0.0</mockito-core.version>
+    <log4j-2.version>2.17.2</log4j-2.version>
     <json.version>20200518</json.version>
     <junit.version>4.13.1</junit.version>
     <re2j.version>1.5</re2j.version>
@@ -104,6 +105,22 @@
         <groupId>commons-io</groupId>
         <artifactId>commons-io</artifactId>
         <version>${commons-io.version}</version>
+      </dependency>
+      <!-- If any module uses log4j 2.x, enforce it is patched by default -->
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j</artifactId>
+        <version>${log4j-2.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-api</artifactId>
+        <version>${log4j-2.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-core</artifactId>
+        <version>${log4j-2.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
