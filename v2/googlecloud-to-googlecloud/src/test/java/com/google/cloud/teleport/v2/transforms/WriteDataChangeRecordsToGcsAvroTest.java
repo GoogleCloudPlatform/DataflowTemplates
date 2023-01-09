@@ -87,8 +87,7 @@ public class WriteDataChangeRecordsToGcsAvroTest {
             AvroIO.read(com.google.cloud.teleport.v2.DataChangeRecord.class)
                 .from(fakeDir + "/avro-output-GlobalWindow-pane-0-last-00-of-01.avro"));
     PAssert.that(dataChangeRecords)
-        .containsInAnyOrder(
-            WriteDataChangeRecordsToGcsAvro.dataChangeRecordToAvro(dataChangeRecord));
+        .containsInAnyOrder(WriteDataChangeRecordsToAvro.dataChangeRecordToAvro(dataChangeRecord));
     pipeline.run();
   }
 
@@ -156,6 +155,8 @@ public class WriteDataChangeRecordsToGcsAvroTest {
         ValueCaptureType.OLD_AND_NEW_VALUES,
         10L,
         2L,
+        "transactionTag",
+        /*isSystemTransaction*/ false,
         null);
   }
 }

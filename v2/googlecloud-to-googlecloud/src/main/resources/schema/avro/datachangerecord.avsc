@@ -60,7 +60,7 @@
       "type" : {
         "name": "ValueCaptureType",
         "type": "enum",
-        "symbols": ["OLD_AND_NEW_VALUES"]
+        "symbols": ["OLD_AND_NEW_VALUES", "NEW_ROW", "NEW_VALUES"]
       }
     },
     { "name" : "numberOfRecordsInTransaction", "type" : "long"},

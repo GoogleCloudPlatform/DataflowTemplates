@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.PubSubToBigQuery",
+  "classPath": "/template/pubsub-to-bigquery/pubsub-to-bigquery-conscrypt.jar:/template/pubsub-to-bigquery/*:/template/pubsub-to-bigquery/libs/*:/template/pubsub-to-bigquery/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"pubsub-to-bigquery\"}"
+  }
+}

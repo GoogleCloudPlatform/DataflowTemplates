@@ -52,6 +52,8 @@ public class ChangeEventContextFactory {
       return new MySqlChangeEventContext(changeEvent, ddl, shadowTablePrefix);
     } else if (DatastreamConstants.ORACLE_SOURCE_TYPE.equals(sourceType)) {
       return new OracleChangeEventContext(changeEvent, ddl, shadowTablePrefix);
+    } else if (DatastreamConstants.POSTGRES_SOURCE_TYPE.equals(sourceType)) {
+      return new PostgresChangeEventContext(changeEvent, ddl, shadowTablePrefix);
     }
 
     throw new InvalidChangeEventException("Unsupported source database: " + sourceType);

@@ -39,6 +39,20 @@
       "regexes": [
         "^(FLATTEN|NONE)$"
       ]
+    },
+    {
+      "name":"javascriptDocumentTransformGcsPath",
+      "label" : "JavaScript File Path",
+      "helpText": "JS File Path",
+      "is_optional": "true",
+      "paramType": "TEXT"
+    },
+    {
+      "name":"javascriptDocumentTransformFunctionName",
+      "label":"UDF JavaScript Function Name",
+      "helpText":"JS Function Name",
+      "paramType":"TEXT",
+      "isOptional":true
     }
   ]
 }

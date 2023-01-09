@@ -44,7 +44,7 @@ inputs:
 outputs:
   changed-files:
     description: 'Comma-separated list of files that were changed'
-    value: ${{ steps.changed-files.outputs.all_changed_files }}
+    value: ${{ steps.changed-files.outputs.all_changed_and_modified_files }}
 
 runs:
   using: 'composite'

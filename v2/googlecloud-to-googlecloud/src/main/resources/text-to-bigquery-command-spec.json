@@ -1,0 +1,7 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.TextIOToBigQuery",
+  "classPath": "/template/text-to-bigquery/text-to-bigquery-conscrypt.jar:/template/text-to-bigquery/*:/template/text-to-bigquery/libs/*:/template/text-to-bigquery/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"text-to-bigquery\"}"
+  }
+}

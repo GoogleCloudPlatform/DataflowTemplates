@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.options;
 
-import org.apache.beam.sdk.options.Description;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation.Required;
 
@@ -30,10 +30,12 @@ public final class PubsubCommonOptions {
   /** Provides {@link PipelineOptions} to read records from a Pub/Sub subscription. */
   public interface ReadSubscriptionOptions extends PipelineOptions {
 
-    @Description(
-        "The Cloud Pub/Sub subscription to consume from. "
-            + "The name should be in the format of "
-            + "projects/<project-id>/subscriptions/<subscription-name>.")
+    @TemplateParameter.PubsubSubscription(
+        order = 1,
+        description = "Pub/Sub input subscription",
+        helpText =
+            "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name'",
+        example = "projects/your-project-id/subscriptions/your-subscription-name")
     @Required
     String getInputSubscription();
 
@@ -43,10 +45,13 @@ public final class PubsubCommonOptions {
   /** Provides {@link PipelineOptions} to read records from a Pub/Sub topic. */
   public interface ReadTopicOptions extends PipelineOptions {
 
-    @Description(
-        "The Cloud Pub/Sub topic to consume from. "
-            + "The name should be in the format of "
-            + "projects/<project-id>/topics/<topic-name>.")
+    @TemplateParameter.PubsubTopic(
+        order = 2,
+        description = "Pub/Sub input topic",
+        helpText =
+            "Pub/Sub topic to read the input from, in the format of "
+                + "'projects/your-project-id/topics/your-topic-name'",
+        example = "projects/your-project-id/topics/your-topic-name")
     @Required
     String getInputTopic();
 
@@ -56,10 +61,12 @@ public final class PubsubCommonOptions {
   /** Provides {@link PipelineOptions} to write records to a Pub/Sub topic. */
   public interface WriteTopicOptions extends PipelineOptions {
 
-    @Description(
-        "The Cloud Pub/Sub topic to write to. "
-            + "The name should be in the format of "
-            + "projects/<project-id>/topics/<topic-name>.")
+    @TemplateParameter.PubsubTopic(
+        order = 3,
+        description = "Output Pub/Sub topic",
+        helpText =
+            "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name'",
+        example = "projects/your-project-id/topics/your-topic-name")
     @Required
     String getOutputTopic();
 

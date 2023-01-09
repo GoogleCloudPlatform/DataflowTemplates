@@ -89,7 +89,7 @@ mvn clean package -Dimage=${TARGET_GCR_IMAGE} \
 		       {
 		        "label": "BigQuery DeadLetter Table",
 		        "name": "deadletterTable",
-		        "helpText": "Messages failed to reach the output table for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. It should be in the format of \"your-project:your-dataset.your-table-name\". If it doesn't exist, it will be created during pipeline execution. If not specified, \"outputTableSpec_error_records\" is used instead.",
+		        "helpText": "Messages failed to reach the output table for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. It should be in the format of \"your-project-id:your-dataset.your-table-name\". If it doesn't exist, it will be created during pipeline execution. If not specified, \"outputTableSpec_error_records\" is used instead.",
 		        "is_optional": false,
 		        "regexes": [".+:.+\\..+"],
 		        "paramType": "TEXT"

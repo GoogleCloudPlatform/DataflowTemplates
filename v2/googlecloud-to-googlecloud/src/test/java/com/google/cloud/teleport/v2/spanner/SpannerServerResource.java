@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
 /** Facilitates setup and deletion of a Spanner database for integration tests. */
 public class SpannerServerResource extends ExternalResource {
   private final String projectId = "span-cloud-testing";
-  private final String instanceId = "changestream";
+  private final String instanceId = "change-stream-test";
   private final String host = "https://spanner.googleapis.com";
   private static final int TIMEOUT_MINUTES = 10;
   private static final Logger LOG = LoggerFactory.getLogger(SpannerServerResource.class);

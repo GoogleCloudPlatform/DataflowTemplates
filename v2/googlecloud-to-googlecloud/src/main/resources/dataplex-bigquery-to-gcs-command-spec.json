@@ -1,6 +1,6 @@
 {
   "mainClass": "com.google.cloud.teleport.v2.templates.DataplexBigQueryToGcs",
-  "classPath": "/template/dataplex-bigquery-to-gcs/*:/template/dataplex-bigquery-to-gcs/libs/*:/template/dataplex-bigquery-to-gcs/classes",
+  "classPath": "/template/dataplex-bigquery-to-gcs/dataplex-bigquery-to-gcs-conscrypt.jar:/template/dataplex-bigquery-to-gcs/*:/template/dataplex-bigquery-to-gcs/libs/*:/template/dataplex-bigquery-to-gcs/classes",
   "defaultParameterValues": {
     "labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"dataplex_bigquery_to_gcs\"}"
   }

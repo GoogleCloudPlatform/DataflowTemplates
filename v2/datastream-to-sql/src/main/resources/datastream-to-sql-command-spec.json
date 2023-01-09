@@ -1,6 +1,6 @@
 {
   "mainClass": "com.google.cloud.teleport.v2.templates.DataStreamToSQL",
-  "classPath": "/template/datastream-to-sql/*:/template/datastream-to-sql/libs/*:/template/datastream-to-sql/classes",
+  "classPath": "/template/datastream-to-sql/datastream-to-sql-conscrypt.jar:/template/datastream-to-sql/*:/template/datastream-to-sql/libs/*:/template/datastream-to-sql/classes",
   "defaultParameterValues": {
     "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"datastream_to_sql\"}"
   }

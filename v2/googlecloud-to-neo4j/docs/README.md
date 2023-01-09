@@ -86,15 +86,13 @@ The following code allows creating a new FlexTemplate image and the JSON templat
 Execute the following command from the directory containing the root pom.xml:
 
 ```sh
-export JAVA_HOME=`/usr/libexec/java_home -v 11`
-mvn -DskipTests=true clean compile -pl v2/googlecloud-to-neo4j -am -f unified-templates.xml
+mvn clean compile -pl v2/googlecloud-to-neo4j -am -DskipTests 
 ```
 
 Running spotless from root
 
 ```sh
-export JAVA_HOME=`/usr/libexec/java_home -v 8`
-mvn spotless:apply -f unified-templates.xml -pl v2/googlecloud-to-neo4j
+mvn -pl v2/googlecloud-to-neo4j spotless:apply
 ```
 
 #### Executing unit tests
@@ -102,7 +100,7 @@ mvn spotless:apply -f unified-templates.xml -pl v2/googlecloud-to-neo4j
 Execute the following command from the directory containing the root pom.xml:
 
 ```shell script
-mvn clean test -pl v2/googlecloud-to-neo4j -am -f unified-templates.xml
+mvn clean test -pl v2/googlecloud-to-neo4j -am 
 ```
 
 ### Building Container Image
@@ -134,7 +132,6 @@ gcloud config set project ${PROJECT}
 
 ```sh
 mvn -DskipTests=true clean package \
-    -f unified-templates.xml \
     -pl v2/${TEMPLATE_POM_MODULE} \
     -am \
     -Djib.container.mainClass=com.google.cloud.teleport.v2.neo4j.templates.GoogleCloudToNeo4j \

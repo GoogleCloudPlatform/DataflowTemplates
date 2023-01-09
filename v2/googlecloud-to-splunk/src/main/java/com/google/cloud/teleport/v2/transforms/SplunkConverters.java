@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.transforms;
 
 import com.google.api.client.util.DateTime;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Throwables;
 import com.google.gson.JsonElement;
@@ -25,7 +26,6 @@ import com.google.gson.JsonSyntaxException;
 import org.apache.beam.sdk.io.splunk.SplunkEvent;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -84,32 +84,53 @@ public final class SplunkConverters {
    */
   public interface SplunkOptions extends PipelineOptions {
 
-    @Description("Splunk Http Event Collector (HEC) authentication token.")
+    @TemplateParameter.Text(
+        order = 1,
+        optional = true,
+        description = "HEC Authentication token.",
+        helpText =
+            "Splunk Http Event Collector (HEC) authentication token. Must be provided if the "
+                + "tokenSource is set to PLAINTEXT or KMS.")
     String getToken();
 
     void setToken(String token);
 
-    @Description(
-        "Splunk Http Event Collector (HEC) url. "
-            + "This should be routable from the VPC in which the Dataflow pipeline runs. "
-            + "e.g. http://splunk-hec-host:8088")
+    @TemplateParameter.Text(
+        order = 2,
+        description = "Splunk HEC URL.",
+        helpText =
+            "Splunk Http Event Collector (HEC) url. This should be routable from the VPC in which the pipeline runs.",
+        example = "https://splunk-hec-host:8088")
     String getUrl();
 
     void setUrl(String url);
 
-    @Description(
-        "Batch count for sending multiple events to "
-            + "Splunk's Http Event Collector in a single POST.")
+    @TemplateParameter.Integer(
+        order = 3,
+        optional = true,
+        description = "Batch size for sending multiple events to Splunk HEC.",
+        helpText = "Batch size for sending multiple events to Splunk HEC. Default 1 (no batching).")
     Integer getBatchCount();
 
     void setBatchCount(Integer batchCount);
 
-    @Description("Disable SSL certificate validation.")
+    @TemplateParameter.Boolean(
+        order = 4,
+        optional = true,
+        description = "Disable SSL certificate validation.",
+        helpText =
+            "Disable SSL certificate validation (true/false). Default false (validation "
+                + "enabled). If true, the certificates are not validated (all certificates are "
+                + "trusted) and  `rootCaCertificatePath` parameter is ignored.")
     Boolean getDisableCertificateValidation();
 
     void setDisableCertificateValidation(Boolean disableCertificateValidation);
 
-    @Description("Maximum number of parallel requests.")
+    @TemplateParameter.Integer(
+        order = 5,
+        optional = true,
+        description = "Maximum number of parallel requests.",
+        helpText = "Maximum number of parallel requests. Default: 1 (no parallelism).")
     Integer getParallelism();
 
     void setParallelism(Integer parallelism);

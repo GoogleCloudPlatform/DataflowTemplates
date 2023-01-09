@@ -19,12 +19,12 @@ import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Prec
 import static org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.io.WindowedFilenamePolicy;
 import com.google.cloud.teleport.v2.utils.WriteToGCSUtility;
 import org.apache.beam.sdk.io.FileBasedSink;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -105,20 +105,31 @@ public abstract class WriteToGCSText extends PTransform<PCollection<KV<String, S
    */
   public interface WriteToGCSTextOptions extends PipelineOptions {
 
-    @Description("The directory to output files to. Must end with a slash. ")
+    @TemplateParameter.GcsWriteFolder(
+        order = 1,
+        description = "Output file directory in Cloud Storage",
+        helpText = "The path and filename prefix for writing output files. Must end with a slash.",
+        example = "gs://your-bucket/your-path")
     String getOutputDirectory();
 
     void setOutputDirectory(String outputDirectory);
 
-    @Description(
-        "The filename prefix of the files to write to. Default file prefix is set to \"output\". ")
+    @TemplateParameter.Text(
+        order = 2,
+        optional = true,
+        description = "Output filename prefix of the files to write",
+        helpText = "The prefix to place on each windowed file.",
+        example = "output-")
+    @Default.String("output")
     String getOutputFilenamePrefix();
 
     void setOutputFilenamePrefix(String outputFilenamePrefix);
 
-    @Description(
-        "The maximum number of output shards produced when writing. Default number is runner"
-            + " defined. ")
+    @TemplateParameter.Integer(
+        order = 3,
+        description = "Number of file shards",
+        helpText =
+            "The maximum number of output shards produced when writing. Default number is runner-dependent.")
     @Default.Integer(0)
     Integer getNumShards();
 

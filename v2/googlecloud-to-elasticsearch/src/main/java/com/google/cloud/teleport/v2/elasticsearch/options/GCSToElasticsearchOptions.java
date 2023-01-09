@@ -15,9 +15,10 @@
  */
 package com.google.cloud.teleport.v2.elasticsearch.options;
 
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.transforms.CsvConverters;
+import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.Validation;
 
 /**
@@ -25,15 +26,27 @@ import org.apache.beam.sdk.options.Validation;
  * executor at the command-line.
  */
 public interface GCSToElasticsearchOptions
-    extends CsvConverters.CsvPipelineOptions, ElasticsearchWriteOptions {
+    extends CsvConverters.CsvPipelineOptions,
+        ElasticsearchWriteOptions,
+        JavascriptTextTransformerOptions {
 
-  @Description("Deadletter table for failed inserts in form: <project-id>:<dataset>.<table>")
+  @TemplateParameter.BigQueryTable(
+      order = 1,
+      description = "BigQuery Deadletter table to send failed inserts.",
+      helpText =
+          "Messages failed to reach the target for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table.",
+      example = "your-project:your-dataset.your-table-name")
   @Validation.Required
   String getDeadletterTable();
 
   void setDeadletterTable(String deadletterTable);
 
-  @Description("Input format, default is CSV")
+  @TemplateParameter.Text(
+      order = 2,
+      optional = true,
+      regexes = {"[a-zA-Z0-9._-]+"},
+      description = "Input file format",
+      helpText = "Input file format. Default is: CSV")
   @Default.String("csv")
   String getInputFormat();
 

@@ -15,6 +15,9 @@
  */
 package com.google.cloud.teleport.v2.neo4j.templates;
 
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.neo4j.actions.ActionDoFnFactory;
 import com.google.cloud.teleport.v2.neo4j.actions.ActionPreloadFactory;
 import com.google.cloud.teleport.v2.neo4j.actions.preload.PreloadAction;
@@ -65,6 +68,14 @@ import org.slf4j.LoggerFactory;
  *
  * <p>In case of BigQuery, the source data can be either a table or a SQL query.
  */
+@Template(
+    name = "Google_Cloud_to_Neo4j",
+    category = TemplateCategory.BATCH,
+    displayName = "Google Cloud to Neo4j",
+    description = "Copy data from Google Cloud (BigQuery, Text) into Neo4j.",
+    optionsClass = Neo4jFlexTemplateOptions.class,
+    flexContainerName = "googlecloud-to-neo4j",
+    contactInformation = "https://support.neo4j.com/")
 public class GoogleCloudToNeo4j {
 
   private static final Logger LOG = LoggerFactory.getLogger(GoogleCloudToNeo4j.class);
@@ -139,13 +150,16 @@ public class GoogleCloudToNeo4j {
    * @param args arguments to the pipeline
    */
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
     Neo4jFlexTemplateOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(Neo4jFlexTemplateOptions.class);
 
     // Allow users to supply their own list of disabled algorithms if necessary
     if (StringUtils.isNotBlank(options.getDisabledAlgorithms())) {
       options.setDisabledAlgorithms(
-          "SSLv3, RC4, DES, MD5withRSA, DH keySize < 1024, EC keySize < 224, 3DES_EDE_CBC, anon, NULL");
+          "SSLv3, RC4, DES, MD5withRSA, DH keySize < 1024, EC keySize < 224, 3DES_EDE_CBC, anon,"
+              + " NULL");
     }
 
     LOG.info("Job: {}", options.getJobSpecUri());

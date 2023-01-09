@@ -36,10 +36,11 @@ public class CloudDataplex
   // Note: Leave this static initializer at the top of the file.
   static {
     com.google.api.client.util.Preconditions.checkState(
-        com.google.api.client.googleapis.GoogleUtils.MAJOR_VERSION == 1
-            && (com.google.api.client.googleapis.GoogleUtils.MINOR_VERSION >= 32
-                || (com.google.api.client.googleapis.GoogleUtils.MINOR_VERSION == 31
-                    && com.google.api.client.googleapis.GoogleUtils.BUGFIX_VERSION >= 1)),
+        (com.google.api.client.googleapis.GoogleUtils.MAJOR_VERSION == 1
+                && (com.google.api.client.googleapis.GoogleUtils.MINOR_VERSION >= 32
+                    || (com.google.api.client.googleapis.GoogleUtils.MINOR_VERSION == 31
+                        && com.google.api.client.googleapis.GoogleUtils.BUGFIX_VERSION >= 1)))
+            || (com.google.api.client.googleapis.GoogleUtils.MAJOR_VERSION > 1),
         "You are currently running with version %s of google-api-client. "
             + "You need at least version 1.31.1 of google-api-client to run version "
             + "1.32.1 of the Cloud Dataplex API library.",
