@@ -58,6 +58,7 @@ import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.spanner.DatabaseClient;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.ReadContext;
 import com.google.cloud.spanner.ResultSet;
@@ -136,7 +137,42 @@ public class SchemaUtilsTest {
                 Collections.emptyList()));
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
-        new SpannerUtils(mockDatabaseClient, changeStreamName).getSpannerTableByName();
+        new SpannerUtils(mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL)
+            .getSpannerTableByName();
+
+    List<TrackedSpannerColumn> singersPkColumns =
+        ImmutableList.of(TrackedSpannerColumn.create("SingerId", Type.int64(), 1, 1));
+    List<TrackedSpannerColumn> singersNonPkColumns =
+        ImmutableList.of(
+            TrackedSpannerColumn.create("FirstName", Type.string(), 2, -1),
+            TrackedSpannerColumn.create("LastName", Type.string(), 3, -1));
+    Map<String, TrackedSpannerTable> expectedSpannerTableByName = new HashMap<>();
+    expectedSpannerTableByName.put(
+        "Singers", new TrackedSpannerTable("Singers", singersPkColumns, singersNonPkColumns));
+    assertThat(actualSpannerTableByName).isEqualTo(expectedSpannerTableByName);
+  }
+
+  @Test
+  public void testChangeStreamTrackAllPostgres() {
+    mockInformationSchemaChangeStreamsQueryPostgres(true);
+    mockInformationSchemaTablesQueryPostgres();
+    mockInformationSchemaColumnsQueryPostgres();
+    mockInformationSchemaKeyColumnUsageQueryPostgres();
+    String sql =
+        "SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.CHANGE_STREAM_COLUMNS "
+            + "WHERE CHANGE_STREAM_NAME = $1";
+    when(mockReadContext.executeQuery(
+            Statement.newBuilder(sql).bind("p1").to(changeStreamName).build()))
+        .thenReturn(
+            ResultSets.forRows(
+                Type.struct(
+                    Type.StructField.of("table_name", Type.string()),
+                    Type.StructField.of("column_name", Type.string())),
+                Collections.emptyList()));
+
+    Map<String, TrackedSpannerTable> actualSpannerTableByName =
+        new SpannerUtils(mockDatabaseClient, changeStreamName, Dialect.POSTGRESQL)
+            .getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
         ImmutableList.of(TrackedSpannerColumn.create("SingerId", Type.int64(), 1, 1));
@@ -169,7 +205,42 @@ public class SchemaUtilsTest {
                 Collections.emptyList()));
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
-        new SpannerUtils(mockDatabaseClient, changeStreamName).getSpannerTableByName();
+        new SpannerUtils(mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL)
+            .getSpannerTableByName();
+
+    List<TrackedSpannerColumn> singersPkColumns =
+        ImmutableList.of(TrackedSpannerColumn.create("SingerId", Type.int64(), 1, 1));
+    List<TrackedSpannerColumn> singersNonPkColumns =
+        ImmutableList.of(
+            TrackedSpannerColumn.create("FirstName", Type.string(), 2, -1),
+            TrackedSpannerColumn.create("LastName", Type.string(), 3, -1));
+    Map<String, TrackedSpannerTable> expectedSpannerTableByName = new HashMap<>();
+    expectedSpannerTableByName.put(
+        "Singers", new TrackedSpannerTable("Singers", singersPkColumns, singersNonPkColumns));
+    assertThat(actualSpannerTableByName).isEqualTo(expectedSpannerTableByName);
+  }
+
+  @Test
+  public void testChangeStreamTrackOneTablePostgres() {
+    mockInformationSchemaChangeStreamsQueryPostgres(false);
+    mockInformationSchemaChangeStreamTablesQueryPostgres();
+    mockInformationSchemaColumnsQueryPostgres();
+    mockInformationSchemaKeyColumnUsageQueryPostgres();
+    String sql =
+        "SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.CHANGE_STREAM_COLUMNS "
+            + "WHERE CHANGE_STREAM_NAME = $1";
+    when(mockReadContext.executeQuery(
+            Statement.newBuilder(sql).bind("p1").to(changeStreamName).build()))
+        .thenReturn(
+            ResultSets.forRows(
+                Type.struct(
+                    Type.StructField.of("TABLE_NAME", Type.string()),
+                    Type.StructField.of("COLUMN_NAME", Type.string())),
+                Collections.emptyList()));
+
+    Map<String, TrackedSpannerTable> actualSpannerTableByName =
+        new SpannerUtils(mockDatabaseClient, changeStreamName, Dialect.POSTGRESQL)
+            .getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
         ImmutableList.of(TrackedSpannerColumn.create("SingerId", Type.int64(), 1, 1));
@@ -227,8 +298,8 @@ public class SchemaUtilsTest {
 
     // Mock the query to INFORMATION_SCHEMA.KEY_COLUMN_USAGE.
     sql =
-        "SELECT TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, CONSTRAINT_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE "
-            + "WHERE TABLE_NAME IN UNNEST (@tableNames)";
+        "SELECT TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, CONSTRAINT_NAME FROM"
+            + " INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE TABLE_NAME IN UNNEST (@tableNames)";
     // spotless:off
     rows =
         new ArrayList<>(
@@ -271,7 +342,8 @@ public class SchemaUtilsTest {
                 Collections.emptyList()));
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
-        new SpannerUtils(mockDatabaseClient, changeStreamName).getSpannerTableByName();
+        new SpannerUtils(mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL)
+            .getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
         ImmutableList.of(
@@ -314,10 +386,57 @@ public class SchemaUtilsTest {
                         .set("COLUMN_NAME")
                         .to(Value.string("FirstName"))
                         .build())));
-        // spotless:on
+    // spotless:on
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
-        new SpannerUtils(mockDatabaseClient, changeStreamName).getSpannerTableByName();
+        new SpannerUtils(mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL)
+            .getSpannerTableByName();
+
+    List<TrackedSpannerColumn> singersPkColumns =
+        Collections.singletonList(TrackedSpannerColumn.create("SingerId", Type.int64(), 1, 1));
+    List<TrackedSpannerColumn> singersNonPkColumns =
+        Collections.singletonList(TrackedSpannerColumn.create("FirstName", Type.string(), 2, -1));
+    Map<String, TrackedSpannerTable> expectedSpannerTableByName = new HashMap<>();
+    expectedSpannerTableByName.put(
+        "Singers", new TrackedSpannerTable("Singers", singersPkColumns, singersNonPkColumns));
+    assertThat(actualSpannerTableByName).isEqualTo(expectedSpannerTableByName);
+  }
+
+  @Test
+  public void testChangeStreamTrackOneColumnPostgres() {
+    mockInformationSchemaChangeStreamsQueryPostgres(false);
+    mockInformationSchemaChangeStreamTablesQueryPostgres();
+    mockInformationSchemaColumnsQueryPostgres();
+    mockInformationSchemaKeyColumnUsageQueryPostgres();
+    String sql =
+        "SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.CHANGE_STREAM_COLUMNS "
+            + "WHERE CHANGE_STREAM_NAME = $1";
+    // spotless:off
+    when(mockReadContext.executeQuery(
+            Statement.newBuilder(sql).bind("p1").to(changeStreamName).build()))
+        .thenReturn(
+            ResultSets.forRows(
+                Type.struct(
+                    Type.StructField.of("table_name", Type.string()),
+                    Type.StructField.of("column_name", Type.string())),
+                ImmutableList.of(
+                    Struct.newBuilder()
+                        .set("table_name")
+                        .to(Value.string("Singers"))
+                        .set("column_name")
+                        .to(Value.string("SingerId"))
+                        .build(),
+                    Struct.newBuilder()
+                        .set("table_name")
+                        .to(Value.string("Singers"))
+                        .set("column_name")
+                        .to(Value.string("FirstName"))
+                        .build())));
+    // spotless:on
+
+    Map<String, TrackedSpannerTable> actualSpannerTableByName =
+        new SpannerUtils(mockDatabaseClient, changeStreamName, Dialect.POSTGRESQL)
+            .getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
         Collections.singletonList(TrackedSpannerColumn.create("SingerId", Type.int64(), 1, 1));
@@ -532,6 +651,23 @@ public class SchemaUtilsTest {
                     Struct.newBuilder().set("ALL").to(Value.bool(isTrackingAll)).build())));
   }
 
+  private void mockInformationSchemaChangeStreamsQueryPostgres(boolean isTrackingAll) {
+    String sql =
+        "SELECT CHANGE_STREAMS.all FROM INFORMATION_SCHEMA.CHANGE_STREAMS "
+            + "WHERE CHANGE_STREAM_NAME = $1";
+
+    when(mockReadContext.executeQuery(
+            Statement.newBuilder(sql).bind("p1").to(changeStreamName).build()))
+        .thenReturn(
+            ResultSets.forRows(
+                Type.struct(Type.StructField.of("all", Type.string())),
+                Collections.singletonList(
+                    Struct.newBuilder()
+                        .set("all")
+                        .to(Value.string(isTrackingAll ? "YES" : "NO"))
+                        .build())));
+  }
+
   private void mockInformationSchemaTablesQuery() {
     String sql = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = \"\"";
 
@@ -541,6 +677,17 @@ public class SchemaUtilsTest {
                 Type.struct(Type.StructField.of("TABLE_NAME", Type.string())),
                 ImmutableList.of(
                     Struct.newBuilder().set("TABLE_NAME").to(Value.string("Singers")).build())));
+  }
+
+  private void mockInformationSchemaTablesQueryPostgres() {
+    String sql = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'public'";
+
+    when(mockReadContext.executeQuery(Statement.of(sql)))
+        .thenReturn(
+            ResultSets.forRows(
+                Type.struct(Type.StructField.of("table_name", Type.string())),
+                ImmutableList.of(
+                    Struct.newBuilder().set("table_name").to(Value.string("Singers")).build())));
   }
 
   private void mockInformationSchemaColumnsQuery() {
@@ -588,6 +735,61 @@ public class SchemaUtilsTest {
                 rows));
   }
 
+  private void mockInformationSchemaColumnsQueryPostgres() {
+    StringBuilder sqlStringBuilder =
+        new StringBuilder(
+            "SELECT TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, SPANNER_TYPE "
+                + "FROM INFORMATION_SCHEMA.COLUMNS");
+    sqlStringBuilder.append(" WHERE TABLE_NAME = ANY (Array[");
+    sqlStringBuilder.append("'Singers'");
+    sqlStringBuilder.append("])");
+    // spotless:off
+    List<Struct> rows =
+        new ArrayList<>(
+            ImmutableList.of(
+                Struct.newBuilder()
+                    .set("table_name")
+                    .to(Value.string("Singers"))
+                    .set("column_name")
+                    .to(Value.string("SingerId"))
+                    .set("ordinal_position")
+                    .to(Value.int64(1))
+                    .set("spanner_type")
+                    .to(Value.string("bigint"))
+                    .build(),
+                Struct.newBuilder()
+                    .set("table_name")
+                    .to(Value.string("Singers"))
+                    .set("column_name")
+                    .to(Value.string("FirstName"))
+                    .set("ordinal_position")
+                    .to(Value.int64(2))
+                    .set("spanner_type")
+                    .to(Value.string("character varying(1024)"))
+                    .build(),
+                Struct.newBuilder()
+                    .set("table_name")
+                    .to(Value.string("Singers"))
+                    .set("column_name")
+                    .to(Value.string("LastName"))
+                    .set("ordinal_position")
+                    .to(Value.int64(3))
+                    .set("spanner_type")
+                    .to(Value.string("character varying"))
+                    .build()));
+    // spotless:on
+
+    when(mockReadContext.executeQuery(Statement.newBuilder(sqlStringBuilder.toString()).build()))
+        .thenReturn(
+            ResultSets.forRows(
+                Type.struct(
+                    Type.StructField.of("table_name", Type.string()),
+                    Type.StructField.of("column_name", Type.string()),
+                    Type.StructField.of("ordinal_position", Type.int64()),
+                    Type.StructField.of("spanner_type", Type.string())),
+                rows));
+  }
+
   private void mockInformationSchemaChangeStreamTablesQuery() {
     String sql =
         "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.CHANGE_STREAM_TABLES "
@@ -602,10 +804,24 @@ public class SchemaUtilsTest {
                     Struct.newBuilder().set("TABLE_NAME").to(Value.string("Singers")).build())));
   }
 
+  private void mockInformationSchemaChangeStreamTablesQueryPostgres() {
+    String sql =
+        "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.CHANGE_STREAM_TABLES "
+            + "WHERE CHANGE_STREAM_NAME = $1";
+
+    when(mockReadContext.executeQuery(
+            Statement.newBuilder(sql).bind("p1").to(changeStreamName).build()))
+        .thenReturn(
+            ResultSets.forRows(
+                Type.struct(Type.StructField.of("table_name", Type.string())),
+                Collections.singletonList(
+                    Struct.newBuilder().set("table_name").to(Value.string("Singers")).build())));
+  }
+
   private void mockInformationSchemaKeyColumnUsageQuery() {
     String sql =
-        "SELECT TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, CONSTRAINT_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE "
-            + "WHERE TABLE_NAME IN UNNEST (@tableNames)";
+        "SELECT TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, CONSTRAINT_NAME FROM"
+            + " INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE TABLE_NAME IN UNNEST (@tableNames)";
     List<String> tableNames = new ArrayList<>();
     tableNames.add("Singers");
     // spotless:off
@@ -613,10 +829,14 @@ public class SchemaUtilsTest {
         new ArrayList<>(
             Collections.singletonList(
                 Struct.newBuilder()
-                    .set("TABLE_NAME").to(Value.string("Singers"))
-                    .set("COLUMN_NAME").to(Value.string("SingerId"))
-                    .set("ORDINAL_POSITION").to(Value.int64(1))
-                    .set("CONSTRAINT_NAME").to(Value.string("PK_Singers"))
+                    .set("TABLE_NAME")
+                    .to(Value.string("Singers"))
+                    .set("COLUMN_NAME")
+                    .to(Value.string("SingerId"))
+                    .set("ORDINAL_POSITION")
+                    .to(Value.int64(1))
+                    .set("CONSTRAINT_NAME")
+                    .to(Value.string("PK_Singers"))
                     .build()));
     // spotless:on
 
@@ -629,6 +849,41 @@ public class SchemaUtilsTest {
                     Type.StructField.of("COLUMN_NAME", Type.string()),
                     Type.StructField.of("ORDINAL_POSITION", Type.int64()),
                     Type.StructField.of("CONSTRAINT_NAME", Type.string())),
+                rows));
+  }
+
+  private void mockInformationSchemaKeyColumnUsageQueryPostgres() {
+    StringBuilder sqlStringBuilder =
+        new StringBuilder(
+            "SELECT TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, CONSTRAINT_NAME FROM"
+                + " INFORMATION_SCHEMA.KEY_COLUMN_USAGE");
+    sqlStringBuilder.append(" WHERE TABLE_NAME = ANY (Array[");
+    sqlStringBuilder.append("'Singers'");
+    sqlStringBuilder.append("])");
+    // spotless:off
+    List<Struct> rows =
+        new ArrayList<>(
+            Collections.singletonList(
+                Struct.newBuilder()
+                    .set("table_name")
+                    .to(Value.string("Singers"))
+                    .set("column_name")
+                    .to(Value.string("SingerId"))
+                    .set("ordinal_position")
+                    .to(Value.int64(1))
+                    .set("constraint_name")
+                    .to(Value.string("PK_singers"))
+                    .build()));
+    // spotless:on
+
+    when(mockReadContext.executeQuery(Statement.newBuilder(sqlStringBuilder.toString()).build()))
+        .thenReturn(
+            ResultSets.forRows(
+                Type.struct(
+                    Type.StructField.of("table_name", Type.string()),
+                    Type.StructField.of("column_name", Type.string()),
+                    Type.StructField.of("ordinal_position", Type.int64()),
+                    Type.StructField.of("constraint_name", Type.string())),
                 rows));
   }
 }

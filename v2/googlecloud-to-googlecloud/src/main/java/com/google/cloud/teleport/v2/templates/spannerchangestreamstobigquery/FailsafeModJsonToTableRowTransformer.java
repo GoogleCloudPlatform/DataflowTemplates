@@ -19,6 +19,8 @@ import com.google.api.gax.grpc.GrpcCallContext;
 import com.google.api.gax.rpc.ApiCallContext;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.value.AutoValue;
+import com.google.cloud.spanner.DatabaseClient;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Key.Builder;
 import com.google.cloud.spanner.KeySet;
 import com.google.cloud.spanner.Options;
@@ -156,9 +158,10 @@ public final class FailsafeModJsonToTableRowTransformer {
 
       @Setup
       public void setUp() {
+        Dialect dialect = getDialect(spannerConfig);
         spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
         spannerTableByName =
-            new SpannerUtils(spannerAccessor.getDatabaseClient(), spannerChangeStream)
+            new SpannerUtils(spannerAccessor.getDatabaseClient(), spannerChangeStream, dialect)
                 .getSpannerTableByName();
         setUpCallContextConfigurator();
       }
@@ -365,5 +368,10 @@ public final class FailsafeModJsonToTableRowTransformer {
 
       abstract FailsafeModJsonToTableRowOptions build();
     }
+  }
+
+  private static Dialect getDialect(SpannerConfig spannerConfig) {
+    DatabaseClient databaseClient = SpannerAccessor.getOrCreate(spannerConfig).getDatabaseClient();
+    return databaseClient.getDialect();
   }
 }
