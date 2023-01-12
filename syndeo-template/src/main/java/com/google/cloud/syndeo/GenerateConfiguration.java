@@ -24,9 +24,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
@@ -40,7 +38,7 @@ public class GenerateConfiguration {
     Collection<SchemaTransformProvider> providers = ProviderUtil.getProviders();
     List<TransformDescription> descriptions =
         providers.stream()
-            .filter(provider -> SyndeoTemplate.SUPPORTED_URNS.contains(provider.identifier()))
+            .filter(provider -> SyndeoTemplate.SUPPORTED_URNS.containsKey(provider.identifier()))
             .map(GenerateConfiguration::providerToConfiguration)
             .collect(Collectors.toList());
 
@@ -55,15 +53,16 @@ public class GenerateConfiguration {
 
   static com.google.cloud.datapipelines.v1.TransformDescription providerToConfiguration(
       SchemaTransformProvider provider) {
+    Set<String> supportedFields = SyndeoTemplate.SUPPORTED_URNS.get(provider.identifier());
     LOG.info("Generating configuration for {}", provider.identifier());
-    System.out.println(String.format("Generating configuration for %s", provider.identifier()));
     try {
       TransformDescription.Builder builder =
           TransformDescription.newBuilder()
               .setName(provider.identifier())
               .setUniformResourceName(provider.identifier())
               .setOptions(
-                  datapipelinesFieldTypeFromBeamSchemaFieldType(provider.configurationSchema()));
+                  datapipelinesFieldTypeFromBeamSchemaFieldType(
+                      provider.configurationSchema(), supportedFields));
       return builder.build();
     } catch (IllegalArgumentException e) {
       throw new IllegalArgumentException(
@@ -74,10 +73,14 @@ public class GenerateConfiguration {
   }
 
   static com.google.cloud.datapipelines.v1.Schema datapipelinesFieldTypeFromBeamSchemaFieldType(
-      Schema beamSchema) {
+      Schema beamSchema, Set<String> supportedFields) {
     com.google.cloud.datapipelines.v1.Schema.Builder schemaBuilder =
         com.google.cloud.datapipelines.v1.Schema.newBuilder();
     for (Schema.Field f : beamSchema.getFields()) {
+      if (supportedFields.size() > 0 && !supportedFields.contains(f.getName())) {
+        // This field is not supported. We will skip it.
+        continue;
+      }
       try {
         schemaBuilder.addFields(
             com.google.cloud.datapipelines.v1.Field.newBuilder()
@@ -139,7 +142,7 @@ public class GenerateConfiguration {
             .setType(TypeName.TYPE_NAME_ROW)
             .setRowSchema(
                 datapipelinesFieldTypeFromBeamSchemaFieldType(
-                    Objects.requireNonNull(beamFieldType.getRowSchema())))
+                    Objects.requireNonNull(beamFieldType.getRowSchema()), new HashSet<>()))
             .build();
       case MAP:
         return typeBuilder

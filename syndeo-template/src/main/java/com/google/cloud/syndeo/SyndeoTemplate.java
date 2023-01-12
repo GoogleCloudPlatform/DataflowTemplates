@@ -69,28 +69,28 @@ public class SyndeoTemplate {
     void setJsonSpecPayload(String jsonSpecPayload);
   }
 
-  public static final Set<String> SUPPORTED_URNS =
-      Set.of(
+  public static final Map<String, Set<String>> SUPPORTED_URNS =
+      Map.of(
           // Old names:
           "bigquery:read",
+          Set.of("table"),
           "kafka:read",
+          Set.of(),
           "bigtable:write",
-          "schemaIO:bigquery:read",
+          Set.of("instanceId", "tableId", "keyColumns", "projectId", "appProfileId"),
           "schemaIO:bigquery:write",
-
+          Set.of("table", "createDisposition", "writeDisposition"),
           // New names:
-          "beam:schematransform:org.apache.beam:sql_transform:v1",
-          "beam:schematransform:org.apache.beam:pubsublite_write:v1",
           "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
+          Set.of("instanceId", "tableId", "keyColumns", "projectId", "appProfileId"),
           "beam:schematransform:org.apache.beam:bigquery_storage_read:v1",
+          Set.of("table"),
           "beam:schematransform:org.apache.beam:kafka_write:v1",
+          Set.of(),
           "beam:schematransform:org.apache.beam:kafka_read:v1",
-          "beam:schematransform:org.apache.beam:spanner_write:v1",
-          "beam:schematransform:org.apache.beam:pubsublite_read:v1",
-          "beam:schematransform:org.apache.beamspanner:read-changestreams:v1",
-          "beam:schematransform:org.apache.beam:debezium_read:v1",
+          Set.of(),
           "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
-          "syndeo:schematransform:com.google.cloud:files_pubsub:v1");
+          Set.of("instanceId", "tableId", "keyColumns", "projectId", "appProfileId"));
 
   public static void main(String[] args) throws Exception {
     run(args);
