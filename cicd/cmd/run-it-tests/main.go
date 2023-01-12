@@ -26,18 +26,42 @@ import (
 
 func main() {
 	flags.RegisterCommonFlags()
+	flags.RegisterItFlags()
 	flag.Parse()
 
+	// Run mvn install before running integration tests
 	mvnFlags := workflows.NewMavenFlags()
-	err := workflows.MvnCleanVerify().Run(
+	err := workflows.MvnCleanInstall().Run(
 		mvnFlags.IncludeDependencies(),
 		mvnFlags.IncludeDependents(),
+		mvnFlags.SkipDependencyAnalysis(),
 		mvnFlags.SkipCheckstyle(),
 		mvnFlags.SkipJib(),
-		mvnFlags.SkipIntegrationTests(),
-		mvnFlags.FailAtTheEnd())
+		mvnFlags.SkipTests(),
+		mvnFlags.SkipJacoco(),
+		mvnFlags.SkipShade(),
+		mvnFlags.ThreadCount(8))
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}
-	log.Println("Verification Successful!")
+
+	// Run integration tests
+	mvnFlags = workflows.NewMavenFlags()
+	err = workflows.MvnVerify().Run(
+		mvnFlags.IncludeDependencies(),
+		mvnFlags.IncludeDependents(),
+		mvnFlags.SkipDependencyAnalysis(),
+		mvnFlags.SkipCheckstyle(),
+		mvnFlags.SkipJib(),
+		mvnFlags.FailAtTheEnd(),
+		mvnFlags.RunIntegrationTests(),
+		mvnFlags.ThreadCount(8),
+		flags.Region(),
+		flags.Project(),
+		flags.ArtifactBucket(),
+		flags.HostIp())
+	if err != nil {
+		log.Fatalf("%v\n", err)
+	}
+	log.Println("Build Successful!")
 }

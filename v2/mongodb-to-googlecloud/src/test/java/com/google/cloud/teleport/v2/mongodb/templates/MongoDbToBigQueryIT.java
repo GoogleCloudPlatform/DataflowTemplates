@@ -65,7 +65,7 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
  * export PROJECT=&lt;project id&gt;
  * export REGION=&lt;dataflow region&gt;
  * export TEMPLATE_MODULE=v2/mongodb-to-googlecloud
- * export TEMPLATE_IMAGE_SPEC=gs://dataflow-templates/latest/flex/MongoDB_to_BigQuery
+ * export ARTIFACT_BUCKET=&lt;bucket name&gt;
  * export HOST_IP=&lt;your host ip&gt;
  *
  * # To set the host ip to the default external ip
@@ -82,7 +82,7 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
  *   -Dtest="MongoDbToBigQueryIT" \
  *   -Dproject=${PROJECT} \
  *   -Dregion=${REGION} \
- *   -DspecPath=${TEMPLATE_IMAGE_SPEC} \
+ *   -DartifactBucket=${ARTIFACT_BUCKET} \
  *   -DhostIp=${HOST_IP} \
  *   -Djib.skip \
  *   -DfailIfNoTests=false
