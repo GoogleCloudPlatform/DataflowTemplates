@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Google LLC
+ * Copyright (C) 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -18,10 +18,9 @@ package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.Timestamp;
 import com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation;
+import com.google.cloud.bigtable.data.v2.models.DeleteCells;
 import com.google.cloud.bigtable.data.v2.models.DeleteFamily;
 import com.google.cloud.bigtable.data.v2.models.Entry;
-import com.google.cloud.bigtable.data.v2.models.DeleteCells;
-
 import com.google.cloud.bigtable.data.v2.models.SetCell;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
@@ -82,7 +81,9 @@ import org.slf4j.LoggerFactory;
     contactInformation = "https://cloud.google.com/support")
 public final class BigtableChangeStreamsToBigQuery {
 
-  /** String/String Coder for {@link FailsafeElement}. */
+  /**
+   * String/String Coder for {@link FailsafeElement}.
+   */
   public static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
       FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
 
@@ -149,7 +150,7 @@ public final class BigtableChangeStreamsToBigQuery {
     validateOptions(options);
 
     String changelogTableName = getBigQueryChangelogTableName(options);
-    String bigtableProject    = getBigtableProjectId(options);
+    String bigtableProject = getBigtableProjectId(options);
 
     BigtableSource sourceInfo = new BigtableSource(
         options.getBigtableInstanceId(),
@@ -173,7 +174,7 @@ public final class BigtableChangeStreamsToBigQuery {
 
     BigQueryUtils bigQuery = new BigQueryUtils(sourceInfo, destinationInfo);
 
-    /**
+    /*
      * Stages: 1) Read {@link ChangeStreamMutation} from change stream. 2) Create {@link
      * FailsafeElement} of {@link Mod} JSON and merge from: - {@link ChangeStreamMutation}. - GCS Dead
      * letter queue. 3) Convert {@link Mod} JSON into {@link TableRow}.
@@ -204,19 +205,19 @@ public final class BigtableChangeStreamsToBigQuery {
             .withMetadataTableInstanceId(options.getBigtableMetadataInstanceId())
             .withInstanceId(options.getBigtableInstanceId())
             .withTableId(options.getBigtableTableId())
-            .withAppProfileId(options.getBigtableAppProfile())
+            .withAppProfileId(options.getBigtableAppProfileId())
             .withStartTime(startTimestamp)
             .withEndTime(endTimestamp);
 
     PCollection<ChangeStreamMutation> dataChangeRecord =
         pipeline
             .apply("Read from Cloud Bigtable Change Streams", readChangeStream)
-            .apply(Values.create())
-            .apply("Reshuffle ChangeStreamMutations", Reshuffle.viaRandomKey()); // TODO: do we need it?
+            .apply(Values.create());
 
     PCollection<FailsafeElement<String, String>> sourceFailsafeModJson =
         dataChangeRecord
-            .apply("ChangeStreamMutation To Mod JSON", ParDo.of(new ChangeStreamMutationToModJsonFn(sourceInfo)))
+            .apply("ChangeStreamMutation To Mod JSON",
+                ParDo.of(new ChangeStreamMutationToModJsonFn(sourceInfo)))
             .apply(
                 "Wrap Mod JSON In FailsafeElement",
                 ParDo.of(
@@ -243,10 +244,10 @@ public final class BigtableChangeStreamsToBigQuery {
 
     FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRowOptions
         failsafeModJsonToTableRowOptions =
-            FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRowOptions.builder()
-                .setCoder(FAILSAFE_ELEMENT_CODER)
-                .setIgnoreFields(destinationInfo.getIgnoredBigQueryColumnsNames())
-                .build();
+        FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRowOptions.builder()
+            .setCoder(FAILSAFE_ELEMENT_CODER)
+            .setIgnoreFields(destinationInfo.getIgnoredBigQueryColumnsNames())
+            .build();
 
     FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRow failsafeModJsonToTableRow =
         new FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRow(
@@ -342,7 +343,8 @@ public final class BigtableChangeStreamsToBigQuery {
         : options.getBigtableProjectId();
   }
 
-  private static String getBigQueryChangelogTableName(BigtableChangeStreamsToBigQueryOptions options) {
+  private static String getBigQueryChangelogTableName(
+      BigtableChangeStreamsToBigQueryOptions options) {
     return StringUtils.isEmpty(options.getBigQueryChangelogTableName())
         ? options.getBigtableTableId() + "_changelog"
         : options.getBigQueryChangelogTableName();
@@ -376,6 +378,7 @@ public final class BigtableChangeStreamsToBigQuery {
    * format.
    */
   static class ChangeStreamMutationToModJsonFn extends DoFn<ChangeStreamMutation, String> {
+
     private final BigtableSource sourceInfo;
 
     ChangeStreamMutationToModJsonFn(BigtableSource source) {

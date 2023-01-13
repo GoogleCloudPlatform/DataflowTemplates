@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Google LLC
+ * Copyright (C) 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -34,17 +34,12 @@ import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Throwables;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.node.ObjectNode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Class {@link FailsafeModJsonToChangelogTableRowTransformer} provides methods that convert a {@link Mod}
  * JSON string wrapped in {@link FailsafeElement} to a {@link TableRow}.
  */
 public final class FailsafeModJsonToChangelogTableRowTransformer {
-
-  private static final Logger LOG =
-      LoggerFactory.getLogger(FailsafeModJsonToChangelogTableRowTransformer.class);
 
   /**
    * Primary class for taking a {@link FailsafeElement} {@link Mod} JSON input and converting to a
@@ -53,7 +48,7 @@ public final class FailsafeModJsonToChangelogTableRowTransformer {
   public static class FailsafeModJsonToTableRow
       extends PTransform<PCollection<FailsafeElement<String, String>>, PCollectionTuple> {
 
-    private BigQueryUtils bigQueryUtils;
+    private final BigQueryUtils bigQueryUtils;
 
     /** The tag for the main output of the transformation. */
     public TupleTag<TableRow> transformOut = new TupleTag<TableRow>() {};
@@ -120,6 +115,9 @@ public final class FailsafeModJsonToChangelogTableRowTransformer {
       @ProcessElement
       public void processElement(ProcessContext context) {
         FailsafeElement<String, String> failsafeModJsonString = context.element();
+        if (failsafeModJsonString == null) {
+          return;
+        }
 
         try {
           TableRow tableRow = modJsonStringToTableRow(failsafeModJsonString.getPayload());
