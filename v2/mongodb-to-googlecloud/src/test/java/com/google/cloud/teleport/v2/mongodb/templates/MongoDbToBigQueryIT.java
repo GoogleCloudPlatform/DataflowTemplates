@@ -24,6 +24,7 @@ import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.it.TemplateTestBase;
+import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.bigtable.DefaultBigtableResourceManager;
@@ -213,9 +214,15 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
   }
 
   private static List<Document> generateDocuments() {
-    int numDocuments = Integer.parseInt(getProperty("numDocs", "100"));
-    int numFields = Integer.parseInt(getProperty("numFields", "20"));
-    int maxEntryLength = Integer.parseInt(getProperty("maxEntryLength", "20"));
+    int numDocuments =
+        Integer.parseInt(
+            TestProperties.getProperty("numDocs", "100", TestProperties.Type.PROPERTY));
+    int numFields =
+        Integer.parseInt(
+            TestProperties.getProperty("numFields", "20", TestProperties.Type.PROPERTY));
+    int maxEntryLength =
+        Integer.parseInt(
+            TestProperties.getProperty("maxEntryLength", "20", TestProperties.Type.PROPERTY));
     List<Document> mongoDocuments = new ArrayList<>();
 
     List<String> mongoDocumentKeys = new ArrayList<>();
@@ -237,10 +244,5 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
     }
 
     return mongoDocuments;
-  }
-
-  private static String getProperty(String name, String defaultValue) {
-    String value = System.getProperty(name);
-    return value != null ? value : defaultValue;
   }
 }
