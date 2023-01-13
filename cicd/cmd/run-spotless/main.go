@@ -17,8 +17,9 @@
 package main
 
 import (
-	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/workflows"
 	"log"
+
+	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/workflows"
 )
 
 func main() {

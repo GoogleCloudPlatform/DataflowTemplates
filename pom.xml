@@ -276,10 +276,9 @@
         <activeByDefault>false</activeByDefault>
       </activation>
       <build>
-        <directory>${project.basedir}/target/plugin</directory>
+        <directory>${project.basedir}/target/plugin/${pluginRunId}</directory>
       </build>
     </profile>
-
     <profile>
       <id>oss-build</id>
       <activation>
