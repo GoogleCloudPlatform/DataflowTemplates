@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Google LLC
+ * Copyright (C) 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -46,16 +46,12 @@ import org.apache.beam.sdk.values.ValueInSingleWindow;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * {@link BigQueryUtils} provides utils for processing BigQuery schema and generating BigQuery
  * rows.
  */
 public class BigQueryUtils implements Serializable {
-
-  private static final Logger LOG = LoggerFactory.getLogger(BigQueryUtils.class);
 
   public static final String ANY_COLUMN_FAMILY = "*";
 
