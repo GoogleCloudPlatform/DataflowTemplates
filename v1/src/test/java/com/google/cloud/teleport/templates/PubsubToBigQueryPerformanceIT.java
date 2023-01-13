@@ -54,8 +54,6 @@ public class PubsubToBigQueryPerformanceIT extends PerformanceBenchmarkingBase {
       MoreObjects.firstNonNull(
           "gs://dataflow-templates/latest/PubSub_Subscription_to_BigQuery",
           TestProperties.specPath());
-  private static final String SCHEMA_LOCATION =
-      "gs://apache-beam-pranavbhandari/fakeDataSchema.json";
   private static final long numMessages = 35000000L;
   private static final String INPUT_PCOLLECTION =
       "ReadPubSubSubscription/PubsubUnboundedSource.out0";
@@ -103,7 +101,7 @@ public class PubsubToBigQueryPerformanceIT extends PerformanceBenchmarkingBase {
             Field.of("completed", StandardSQLTypeName.BOOL));
     bigQueryResourceManager.createTable(jobName, schema);
     DataGenerator dataGenerator =
-        DataGenerator.builder(jobName + "-data-generator", SCHEMA_LOCATION)
+        DataGenerator.builderWithSchemaTemplate(jobName + "-data-generator", "GAME_EVENT")
             .setQPS("1000000")
             .setMessagesLimit(String.valueOf(numMessages))
             .setTopic(backlogTopic.toString())
@@ -156,7 +154,7 @@ public class PubsubToBigQueryPerformanceIT extends PerformanceBenchmarkingBase {
     bigQueryResourceManager.createTable(
         jobName, schema, System.currentTimeMillis() + 7200000); // expire in 2 hrs
     DataGenerator dataGenerator =
-        DataGenerator.builder(jobName + "-data-generator", SCHEMA_LOCATION)
+        DataGenerator.builderWithSchemaTemplate(jobName + "-data-generator", "GAME_EVENT")
             .setQPS("100000")
             .setTopic(inputTopic.toString())
             .setNumWorkers("10")

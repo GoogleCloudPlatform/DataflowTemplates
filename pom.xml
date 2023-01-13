@@ -66,6 +66,7 @@
     <spotless-maven-plugin.version>2.12.1</spotless-maven-plugin.version>
     <surefire.version>2.21.0</surefire.version>
     <truth.version>1.0.1</truth.version>
+    <integration.tests>com.google.cloud.teleport.metadata.TemplateIntegrationTest</integration.tests>
     <excluded.spanner.tests></excluded.spanner.tests>
   </properties>
 
@@ -152,7 +153,8 @@
         <configuration>
           <!-- Exclude Cloud Spanner integration tests that require a GCP project to run.
           They can be run manually using 'mvn -Dexcluded.spanner.tests="" -Dtest=<testname> test' -->
-          <excludedGroups>com.google.cloud.teleport.metadata.TemplateIntegrationTest,${excluded.spanner.tests}</excludedGroups>
+          <excludedGroups>${integration.tests}</excludedGroups>
+          <excludedGroups>${excluded.spanner.tests}</excludedGroups>
         </configuration>
       </plugin>
       <plugin>

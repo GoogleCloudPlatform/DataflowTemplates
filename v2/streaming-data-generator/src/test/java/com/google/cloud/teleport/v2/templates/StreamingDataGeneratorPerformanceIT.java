@@ -37,6 +37,7 @@ import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
 import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.templates.StreamingDataGenerator.SchemaTemplate;
 import com.google.common.base.MoreObjects;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -59,8 +60,6 @@ public class StreamingDataGeneratorPerformanceIT extends PerformanceBenchmarking
       MoreObjects.firstNonNull(
           "gs://dataflow-templates/latest/flex/Streaming_Data_Generator",
           TestProperties.specPath());
-  private static final String SCHEMA_LOCATION =
-      "gs://apache-beam-pranavbhandari/fakeDataSchema.json";
   private static final String FAKE_DATA_PCOLLECTION = "Generate Fake Messages.out0";
   // 10 gb worth of messages
   private static final long numMessages = 35000000L;
@@ -100,7 +99,7 @@ public class StreamingDataGeneratorPerformanceIT extends PerformanceBenchmarking
     String jobName = createJobName(name);
     LaunchConfig options =
         LaunchConfig.builder(jobName, SPEC_PATH)
-            .addParameter("schemaLocation", SCHEMA_LOCATION)
+            .addParameter("schemaTemplate", SchemaTemplate.GAME_EVENT.name())
             .addParameter("qps", "1000000")
             .addParameter("messagesLimit", String.valueOf(numMessages))
             .addParameter("topic", backlogTopic.toString())
@@ -137,7 +136,7 @@ public class StreamingDataGeneratorPerformanceIT extends PerformanceBenchmarking
     Pattern expectedPattern = Pattern.compile(".*output-.*");
     LaunchConfig options =
         LaunchConfig.builder(jobName, SPEC_PATH)
-            .addParameter("schemaLocation", SCHEMA_LOCATION)
+            .addParameter("schemaTemplate", SchemaTemplate.GAME_EVENT.name())
             .addParameter("qps", "1000000")
             .addParameter("messagesLimit", String.valueOf(numMessages))
             .addParameter("sinkType", "GCS")
@@ -185,7 +184,7 @@ public class StreamingDataGeneratorPerformanceIT extends PerformanceBenchmarking
     bigQueryResourceManager.createTable(jobName, schema);
     LaunchConfig options =
         LaunchConfig.builder(jobName, SPEC_PATH)
-            .addParameter("schemaLocation", SCHEMA_LOCATION)
+            .addParameter("schemaTemplate", SchemaTemplate.GAME_EVENT.name())
             .addParameter("qps", "1000000")
             .addParameter("messagesLimit", String.valueOf(numMessages))
             .addParameter("sinkType", "BIGQUERY")

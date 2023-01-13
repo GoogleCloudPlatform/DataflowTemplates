@@ -48,8 +48,6 @@ public class PubsubToPubsubPerformanceIT extends PerformanceBenchmarkingBase {
   private static final String SPEC_PATH =
       MoreObjects.firstNonNull(
           "gs://dataflow-templates/latest/Cloud_PubSub_to_Cloud_PubSub", TestProperties.specPath());
-  private static final String SCHEMA_LOCATION =
-      "gs://apache-beam-pranavbhandari/fakeDataSchema.json";
   private static final long numMessages = 35000000L;
   private static final String INPUT_PCOLLECTION = "Read PubSub Events/PubsubUnboundedSource.out0";
   private static final String OUTPUT_PCOLLECTION = "Write PubSub Events/MapElements/Map.out0";
@@ -80,7 +78,7 @@ public class PubsubToPubsubPerformanceIT extends PerformanceBenchmarkingBase {
         pubsubResourceManager.createSubscription(backlogTopic, "output-subscription");
     TopicName outputTopic = pubsubResourceManager.createTopic("output");
     DataGenerator dataGenerator =
-        DataGenerator.builder(jobName + "-data-generator", SCHEMA_LOCATION)
+        DataGenerator.builderWithSchemaTemplate(jobName + "-data-generator", "GAME_EVENT")
             .setQPS("1000000")
             .setMessagesLimit(String.valueOf(numMessages))
             .setTopic(backlogTopic.toString())
@@ -122,7 +120,7 @@ public class PubsubToPubsubPerformanceIT extends PerformanceBenchmarkingBase {
     SubscriptionName outputSubscription =
         pubsubResourceManager.createSubscription(inputTopic, "output-subscription");
     DataGenerator dataGenerator =
-        DataGenerator.builder(jobName + "-data-generator", SCHEMA_LOCATION)
+        DataGenerator.builderWithSchemaTemplate(jobName + "-data-generator", "GAME_EVENT")
             .setQPS("100000")
             .setTopic(inputTopic.toString())
             .setNumWorkers("10")

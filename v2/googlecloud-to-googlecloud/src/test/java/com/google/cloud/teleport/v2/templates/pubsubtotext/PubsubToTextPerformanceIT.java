@@ -70,8 +70,6 @@ public final class PubsubToTextPerformanceIT extends PerformanceBenchmarkingBase
   private static final String OUTPUT_FILENAME_PREFIX = "outputFilenamePrefix";
   private static final String DEFAULT_WINDOW_DURATION = "10s";
   private static final Pattern EXPECTED_PATTERN = Pattern.compile(".*subscription-output-.*");
-  private static final String SCHEMA_LOCATION =
-      "gs://apache-beam-pranavbhandari/fakeDataSchema.json";
   private static final String INPUT_PCOLLECTION = "Read PubSub Events/PubsubUnboundedSource.out0";
   private static final String OUTPUT_PTRANSFORM =
       "Write File(s)/WriteFiles/WriteShardedBundlesToTempFiles/ApplyShardingKey";
@@ -108,7 +106,7 @@ public final class PubsubToTextPerformanceIT extends PerformanceBenchmarkingBase
         pubsubResourceManager.createSubscription(backlogTopic, "backlog-subscription");
     // Generate fake data to topic
     DataGenerator dataGenerator =
-        DataGenerator.builder(jobName + "-data-generator", SCHEMA_LOCATION)
+        DataGenerator.builderWithSchemaTemplate(jobName + "-data-generator", "GAME_EVENT")
             .setQPS("1000000")
             .setMessagesLimit(String.valueOf(numMessages))
             .setTopic(backlogTopic.toString())
@@ -153,7 +151,7 @@ public final class PubsubToTextPerformanceIT extends PerformanceBenchmarkingBase
         pubsubResourceManager.createSubscription(backlogTopic, "streaming-engine-subscription");
     // Generate fake data to topic
     DataGenerator dataGenerator =
-        DataGenerator.builder(jobName + "-data-generator", SCHEMA_LOCATION)
+        DataGenerator.builderWithSchemaTemplate(jobName + "-data-generator", "GAME_EVENT")
             .setQPS("1000000")
             .setMessagesLimit(String.valueOf(numMessages))
             .setTopic(backlogTopic.toString())
@@ -196,7 +194,7 @@ public final class PubsubToTextPerformanceIT extends PerformanceBenchmarkingBase
     SubscriptionName subscription =
         pubsubResourceManager.createSubscription(topic, "input-subscription");
     DataGenerator dataGenerator =
-        DataGenerator.builder(jobName + "-data-generator", SCHEMA_LOCATION)
+        DataGenerator.builderWithSchemaTemplate(jobName + "-data-generator", "GAME_EVENT")
             .setQPS("100000")
             .setTopic(topic.toString())
             .setNumWorkers("10")
