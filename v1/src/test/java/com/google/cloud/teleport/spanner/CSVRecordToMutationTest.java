@@ -893,6 +893,58 @@ public final class CSVRecordToMutationTest {
     pipeline.run();
   }
 
+  @Test
+  public void parseRowWithGeneratedPrimaryKey() throws Exception {
+    PCollectionView<Ddl> ddlView =
+        pipeline
+            .apply("ddl", Create.of(getTestDdlWithGeneratedPrimaryKey()))
+            .apply(View.asSingleton());
+    PCollectionView<Map<String, List<TableManifest.Column>>> tableColumnsMapView =
+        pipeline
+            .apply(
+                "tableColumnsMap",
+                Create.<Map<String, List<TableManifest.Column>>>of(getEmptyTableColumnsMap())
+                    .withCoder(
+                        MapCoder.of(
+                            StringUtf8Coder.of(),
+                            ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
+            .apply("Map as view", View.asSingleton());
+
+    CSVRecord csvRecord = CSVParser.parse("10,20", csvFormat).getRecords().get(0);
+    // Omit the value of gen_col.
+    PCollection<KV<String, CSVRecord>> input =
+        pipeline.apply(
+            "input",
+            Create.of(KV.of(testTableName, csvRecord))
+                .withCoder(
+                    KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(CSVRecord.class))));
+    PCollection<Mutation> mutations =
+        input.apply(
+            ParDo.of(
+                    new CSVRecordToMutation(
+                        ddlView,
+                        tableColumnsMapView,
+                        columnDelimiter,
+                        StaticValueProvider.of('\''),
+                        StaticValueProvider.of(true),
+                        escape,
+                        nullString,
+                        dateFormat,
+                        timestampFormat))
+                .withSideInputs(ddlView, tableColumnsMapView));
+
+    // Verify that gen_col doesn't appear in the mutation column list.
+    PAssert.that(mutations)
+        .containsInAnyOrder(
+            Mutation.newInsertOrUpdateBuilder(testTableName)
+                .set("int_col")
+                .to(10)
+                .set("val_col")
+                .to(20)
+                .build());
+    pipeline.run();
+  }
+
   private static Ddl getTestDdl() {
     Ddl ddl =
         Ddl.builder()
@@ -1103,6 +1155,31 @@ public final class CSVRecordToMutationTest {
             .endColumn()
             .primaryKey()
             .asc("int_col1")
+            .end()
+            .endTable()
+            .build();
+    return ddl;
+  }
+
+  private static Ddl getTestDdlWithGeneratedPrimaryKey() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(testTableName)
+            .column("int_col")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("val_col")
+            .int64()
+            .endColumn()
+            .column("gen_col")
+            .int64()
+            .generatedAs("MOD(int_col+1, 64)")
+            .stored()
+            .endColumn()
+            .primaryKey()
+            .asc("int_col")
+            .asc("gen_col")
             .end()
             .endTable()
             .build();

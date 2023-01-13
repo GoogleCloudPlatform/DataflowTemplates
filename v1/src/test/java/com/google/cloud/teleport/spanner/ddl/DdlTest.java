@@ -70,6 +70,12 @@ public class DdlTest {
         .int64()
         .notNull()
         .endColumn()
+        .column("gen_id")
+        .int64()
+        .notNull()
+        .generatedAs("MOD(id+1, 64)")
+        .stored()
+        .endColumn()
         .column("first_name")
         .string()
         .size(10)
@@ -87,6 +93,7 @@ public class DdlTest {
         .endColumn()
         .primaryKey()
         .asc("id")
+        .asc("gen_id")
         .end()
         .indexes(ImmutableList.of("CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"))
         .foreignKeys(
@@ -112,11 +119,12 @@ public class DdlTest {
             "ALTER DATABASE `%db_name%` SET OPTIONS ( version_retention_period = \"4d\" )"
                 + " CREATE TABLE `Users` ("
                 + " `id` INT64 NOT NULL,"
+                + " `gen_id` INT64 NOT NULL AS (MOD(id+1, 64)) STORED,"
                 + " `first_name` STRING(10) DEFAULT ('John'),"
                 + " `last_name` STRING(MAX),"
                 + " `full_name` STRING(MAX) AS (CONCAT(first_name, ' ', last_name)) STORED,"
                 + " CONSTRAINT `ck` CHECK (`first_name` != `last_name`),"
-                + " ) PRIMARY KEY (`id` ASC)"
+                + " ) PRIMARY KEY (`id` ASC, `gen_id` ASC)"
                 + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"
                 + " ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
                 + " REFERENCES `AllowedNames` (`first_name`)"));
@@ -127,11 +135,12 @@ public class DdlTest {
         equalToCompressingWhiteSpace(
             " CREATE TABLE `Users` ("
                 + " `id` INT64 NOT NULL,"
+                + " `gen_id` INT64 NOT NULL AS (MOD(id+1, 64)) STORED,"
                 + " `first_name` STRING(10) DEFAULT ('John'),"
                 + " `last_name` STRING(MAX),"
                 + " `full_name` STRING(MAX) AS (CONCAT(first_name, ' ', last_name)) STORED,"
                 + " CONSTRAINT `ck` CHECK (`first_name` != `last_name`),"
-                + " ) PRIMARY KEY (`id` ASC)"));
+                + " ) PRIMARY KEY (`id` ASC, `gen_id` ASC)"));
     assertThat(
         statements.get(1),
         equalToCompressingWhiteSpace(" CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"));
