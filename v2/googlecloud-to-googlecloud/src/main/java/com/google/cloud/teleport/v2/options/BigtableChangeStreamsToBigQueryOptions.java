@@ -55,12 +55,12 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
 
   @TemplateParameter.Text(
       order = 4,
-      description = "Cloud Bigtable application profile name",
+      description = "Cloud Bigtable application profile ID",
       helpText = "The application profile is used to distinguish workload in Cloud Bigtable")
   @Validation.Required
-  String getBigtableAppProfile();
+  String getBigtableAppProfileId();
 
-  void setBigtableAppProfile(String value);
+  void setBigtableAppProfileId(String value);
 
   @TemplateParameter.ProjectId(
       order = 5,

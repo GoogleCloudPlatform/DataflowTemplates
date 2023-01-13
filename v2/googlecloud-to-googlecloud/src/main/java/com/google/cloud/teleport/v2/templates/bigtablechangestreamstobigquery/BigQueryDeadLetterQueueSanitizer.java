@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Google LLC
+ * Copyright (C) 2023 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -33,10 +33,9 @@ public final class BigQueryDeadLetterQueueSanitizer
   @Override
   public String getJsonMessage(BigQueryInsertError input) {
     TableRow tableRow = input.getRow();
-    /** Extract the original payload from the {@link TableRow}. */
-    String message =
+    // Extract the original payload from the {@link TableRow}.
+    return
         (String) tableRow.get(TransientColumn.BQ_CHANGELOG_FIELD_NAME_ORIGINAL_PAYLOAD_JSON.getColumnName());
-    return message;
   }
 
   @Override
