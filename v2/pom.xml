@@ -35,8 +35,6 @@
     <packaging>pom</packaging>
 
     <properties>
-        <autovalue.version>1.7.4</autovalue.version>
-        <autovalue.annotations.version>1.7.4</autovalue.annotations.version>
         <autovalue.service.version>1.0-rc6</autovalue.service.version>
         <guava.version>30.1-jre</guava.version>
         <jib.maven.version>2.6.0</jib.maven.version>
@@ -190,7 +188,7 @@
         <dependency>
             <groupId>com.google.auto.value</groupId>
             <artifactId>auto-value-annotations</artifactId>
-            <version>${autovalue.annotations.version}</version>
+            <version>${autovalue.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.re2j</groupId>
