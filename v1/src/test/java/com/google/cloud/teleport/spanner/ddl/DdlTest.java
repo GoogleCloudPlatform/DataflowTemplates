@@ -165,6 +165,12 @@ public class DdlTest {
         .pgInt8()
         .notNull()
         .endColumn()
+        .column("gen_id")
+        .pgInt8()
+        .notNull()
+        .generatedAs("MOD(id+1, 64)")
+        .stored()
+        .endColumn()
         .column("first_name")
         .pgVarchar()
         .size(10)
@@ -183,6 +189,7 @@ public class DdlTest {
         .endColumn()
         .primaryKey()
         .asc("id")
+        .asc("gen_id")
         .end()
         .indexes(
             ImmutableList.of("CREATE INDEX \"UsersByFirstName\" ON \"Users\" (\"first_name\")"))
@@ -210,12 +217,13 @@ public class DdlTest {
             "ALTER DATABASE \"%db_name%\" SET spanner.version_retention_period = '4d'"
                 + " CREATE TABLE \"Users\" ("
                 + " \"id\" bigint NOT NULL,"
+                + " \"gen_id\" bigint NOT NULL GENERATED ALWAYS AS (MOD(id+1, 64)) STORED,"
                 + " \"first_name\" character varying(10) DEFAULT John,"
                 + " \"last_name\" character varying DEFAULT Lennon,"
                 + " \"full_name\" character varying GENERATED ALWAYS AS"
                 + " (CONCAT(first_name, ' ', last_name)) STORED,"
                 + " CONSTRAINT \"ck\" CHECK (\"first_name\" != \"last_name\"),"
-                + " PRIMARY KEY (\"id\")"
+                + " PRIMARY KEY (\"id\", \"gen_id\")"
                 + " ) "
                 + " CREATE INDEX \"UsersByFirstName\" ON \"Users\" (\"first_name\")"
                 + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"

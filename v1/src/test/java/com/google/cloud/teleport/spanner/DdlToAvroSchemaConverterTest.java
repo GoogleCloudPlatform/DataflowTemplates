@@ -205,8 +205,15 @@ public class DdlToAvroSchemaConverterTest {
             .generatedAs("CONCAT(first_name, ' ', last_name)")
             .stored()
             .endColumn()
+            .column("gen_id")
+            .pgInt8()
+            .notNull()
+            .generatedAs("MOD(id+1, 64)")
+            .stored()
+            .endColumn()
             .primaryKey()
             .asc("id")
+            .asc("gen_id")
             .asc("last_name")
             .end()
             .indexes(
@@ -232,7 +239,7 @@ public class DdlToAvroSchemaConverterTest {
 
     List<Schema.Field> fields = avroSchema.getFields();
 
-    assertThat(fields, hasSize(4));
+    assertThat(fields, hasSize(5));
 
     assertThat(fields.get(0).name(), equalTo("id"));
     // Not null
@@ -269,9 +276,18 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(3).getProp("stored"), equalTo("true"));
     assertThat(fields.get(3).getProp("defaultExpression"), equalTo(null));
 
+    assertThat(fields.get(4).name(), equalTo("gen_id"));
+    assertThat(fields.get(4).schema(), equalTo(Schema.create(Schema.Type.NULL)));
+    assertThat(fields.get(4).getProp("sqlType"), equalTo("bigint"));
+    assertThat(fields.get(4).getProp("notNull"), equalTo("true"));
+    assertThat(fields.get(4).getProp("generationExpression"), equalTo("MOD(id+1, 64)"));
+    assertThat(fields.get(4).getProp("stored"), equalTo("true"));
+    assertThat(fields.get(4).getProp("defaultExpression"), equalTo(null));
+
     // spanner pk
     assertThat(avroSchema.getProp("spannerPrimaryKey_0"), equalTo("\"id\" ASC"));
-    assertThat(avroSchema.getProp("spannerPrimaryKey_1"), equalTo("\"last_name\" ASC"));
+    assertThat(avroSchema.getProp("spannerPrimaryKey_1"), equalTo("\"gen_id\" ASC"));
+    assertThat(avroSchema.getProp("spannerPrimaryKey_2"), equalTo("\"last_name\" ASC"));
     assertThat(avroSchema.getProp("spannerParent"), nullValue());
     assertThat(avroSchema.getProp("spannerOnDeleteAction"), nullValue());
 
