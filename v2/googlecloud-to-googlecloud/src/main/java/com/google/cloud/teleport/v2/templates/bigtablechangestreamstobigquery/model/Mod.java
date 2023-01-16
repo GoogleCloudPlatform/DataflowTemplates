@@ -100,7 +100,6 @@ public final class Mod implements Serializable {
   private void setCommonProperties(Map<String, Object> propertiesMap, BigtableSource source, ChangeStreamMutation mutation) {
     propertiesMap.put(ChangelogColumn.ROW_KEY_BYTES.name(), encodeBytes(mutation.getRowKey()));
     propertiesMap.put(ChangelogColumn.SOURCE_INSTANCE.name(), source.getInstanceId());
-    propertiesMap.put(ChangelogColumn.SOURCE_INSTANCE.name(), source.getInstanceId());
     propertiesMap.put(ChangelogColumn.SOURCE_CLUSTER.name(), mutation.getSourceClusterId());
     propertiesMap.put(ChangelogColumn.SOURCE_TABLE.name(), source.getTableId());
     propertiesMap.put(ChangelogColumn.TIEBREAKER.name(), mutation.getTieBreaker());
