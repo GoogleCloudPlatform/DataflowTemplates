@@ -1085,6 +1085,117 @@ public class ImportFromAvroTest {
                 + " FOR `T`"));
   }
 
+  // TODO: Enable the test once change streams are supported in PG.
+  // @Test
+  public void pgChangeStreams() throws Exception {
+    Map<String, Schema> avroFiles = new HashMap<>();
+    avroFiles.put(
+        "ChangeStreamAll.avro",
+        SchemaBuilder.record("ChangeStreamAll")
+            .prop("spannerChangeStreamForClause", "FOR ALL")
+            .prop("spannerOption_0", "retention_period='7d'")
+            .prop("spannerOption_1", "value_capture_type='OLD_AND_NEW_VALUES'")
+            .fields()
+            .endRecord());
+    avroFiles.put(
+        "ChangeStreamEmpty.avro",
+        SchemaBuilder.record("ChangeStreamEmpty")
+            .prop("spannerChangeStreamForClause", "")
+            .fields()
+            .endRecord());
+    avroFiles.put(
+        "ChangeStreamTable.avro",
+        SchemaBuilder.record("ChangeStreamTable")
+            .prop("spannerChangeStreamForClause", "FOR \"T\"")
+            .fields()
+            .endRecord());
+    avroFiles.put(
+        "ChangeStreamColumns.avro",
+        SchemaBuilder.record("ChangeStreamColumns")
+            .prop("spannerChangeStreamForClause", "FOR \"T\"(\"c1\", \"c2\")")
+            .fields()
+            .endRecord());
+    avroFiles.put(
+        "ChangeStreamKeyOnly.avro",
+        SchemaBuilder.record("ChangeStreamKeyOnly")
+            .prop("spannerChangeStreamForClause", "FOR \"T\"()")
+            .fields()
+            .endRecord());
+
+    ExportProtos.Export.Builder exportProtoBuilder = ExportProtos.Export.newBuilder();
+    exportProtoBuilder.setDialect(ProtoDialect.POSTGRESQL);
+    for (Entry<String, Schema> entry : avroFiles.entrySet()) {
+      String fileName = entry.getKey();
+      Schema schema = entry.getValue();
+      exportProtoBuilder.addChangeStreams(
+          ExportProtos.Export.Table.newBuilder()
+              .setName(schema.getName())
+              .addDataFiles(fileName)
+              .build());
+      // Create the Avro files to be imported.
+      File avroFile = tmpDir.newFile(fileName);
+      try (DataFileWriter<GenericRecord> fileWriter =
+          new DataFileWriter<>(new GenericDatumWriter<>(schema))) {
+        fileWriter.create(schema, avroFile);
+      }
+    }
+
+    // Create the database manifest file.
+    ExportProtos.Export exportProto = exportProtoBuilder.build();
+    File manifestFile = tmpDir.newFile("spanner-export.json");
+    String manifestFileLocation = manifestFile.getParent();
+    Files.write(
+        manifestFile.toPath(),
+        JsonFormat.printer().print(exportProto).getBytes(StandardCharsets.UTF_8));
+
+    // Create the target database.
+    String spannerSchema =
+        "CREATE TABLE \"T\" ("
+            + "\"id\" bigint NOT NULL,"
+            + "\"c1\" boolean,"
+            + "\"c2\" bigint,"
+            + " PRIMARY KEY (\"id\"))";
+    spannerServer.createPgDatabase(dbName, Collections.singleton(spannerSchema));
+
+    // Run the import pipeline.
+    importPipeline.apply(
+        "Import",
+        new ImportTransform(
+            spannerServer.getSpannerConfig(dbName),
+            ValueProvider.StaticValueProvider.of(manifestFileLocation),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(30)));
+    PipelineResult importResult = importPipeline.run();
+    importResult.waitUntilFinish();
+
+    Ddl ddl;
+    try (ReadOnlyTransaction ctx = spannerServer.getDbClient(dbName).readOnlyTransaction()) {
+      ddl = new InformationSchemaScanner(ctx, Dialect.POSTGRESQL).scan();
+    }
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE \"T\" ("
+                + " \"id\"                                    bigint NOT NULL,"
+                + " \"c1\"                                    boolean,"
+                + " \"c2\"                                    bigint,"
+                + " PRIMARY KEY (\"id\")"
+                + " )"
+                + " CREATE CHANGE STREAM \"ChangeStreamAll\""
+                + " FOR ALL"
+                + " WITH (retention_period='7d', value_capture_type='OLD_AND_NEW_VALUES')"
+                + " CREATE CHANGE STREAM \"ChangeStreamColumns\""
+                + " FOR \"T\"(\"c1\", \"c2\")"
+                + " CREATE CHANGE STREAM \"ChangeStreamEmpty\""
+                + " CREATE CHANGE STREAM \"ChangeStreamKeyOnly\""
+                + " FOR \"T\"()"
+                + " CREATE CHANGE STREAM \"ChangeStreamTable\""
+                + " FOR \"T\""));
+  }
+
   private void runTest(Schema avroSchema, String spannerSchema, Iterable<GenericRecord> records)
       throws Exception {
     runTest(avroSchema, spannerSchema, records, Dialect.GOOGLE_STANDARD_SQL);

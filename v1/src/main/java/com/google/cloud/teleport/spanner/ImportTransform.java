@@ -545,7 +545,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           }
 
                           if (!missingChangeStreams.isEmpty()) {
-                            Ddl.Builder builder = Ddl.builder();
+                            Ddl.Builder builder = Ddl.builder(dialect);
                             for (KV<String, Schema> kv : missingChangeStreams) {
                               ChangeStream changeStream =
                                   converter.toChangeStream(kv.getKey(), kv.getValue());

@@ -493,6 +493,65 @@ public class AvroSchemaToDdlConverterTest {
   }
 
   @Test
+  public void pgChangeStreams() {
+    String avroString1 =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"ChangeStreamAll\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerChangeStreamForClause\" : \"FOR ALL\","
+            + "  \"spannerOption_0\" : \"retention_period='7d'\","
+            + "  \"spannerOption_1\" : \"value_capture_type='OLD_AND_NEW_VALUES'\""
+            + "}";
+    String avroString2 =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"ChangeStreamEmpty\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerChangeStreamForClause\" : \"\""
+            + "}";
+    String avroString3 =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"ChangeStreamTableColumns\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerChangeStreamForClause\" : "
+            + "    \"FOR \\\"T1\\\", \\\"T2\\\"(\\\"c1\\\", \\\"c2\\\"), \\\"T3\\\"()\","
+            + "  \"spannerOption_0\" : \"retention_period='24h'\""
+            + "}";
+
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(avroString1));
+    schemas.add(parser.parse(avroString2));
+    schemas.add(parser.parse(avroString3));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl ddl = converter.toDdl(schemas);
+    assertEquals(ddl.dialect(), Dialect.POSTGRESQL);
+    assertThat(ddl.changeStreams(), hasSize(3));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE CHANGE STREAM \"ChangeStreamAll\""
+                + " FOR ALL"
+                + " WITH (retention_period='7d', value_capture_type='OLD_AND_NEW_VALUES')"
+                + " CREATE CHANGE STREAM \"ChangeStreamEmpty\""
+                + " CREATE CHANGE STREAM \"ChangeStreamTableColumns\""
+                + " FOR \"T1\", \"T2\"(\"c1\", \"c2\"), \"T3\"()"
+                + " WITH (retention_period='24h')"));
+  }
+
+  @Test
   public void testInferType() {
     AvroSchemaToDdlConverter avroSchemaToDdlConverter = new AvroSchemaToDdlConverter();
 

@@ -613,6 +613,51 @@ public class DdlTest {
   }
 
   @Test
+  public void pgChangeStreams() {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createChangeStream("ChangeStreamAll")
+            .forClause("FOR ALL")
+            .options(
+                ImmutableList.of(
+                    "retention_period='7d'", "value_capture_type='OLD_AND_NEW_VALUES'"))
+            .endChangeStream()
+            .createChangeStream("ChangeStreamEmpty")
+            .endChangeStream()
+            .createChangeStream("ChangeStreamTableColumns")
+            .forClause("FOR \"T1\", \"T2\"(\"c1\", \"c2\"), \"T3\"()")
+            .endChangeStream()
+            .build();
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE CHANGE STREAM \"ChangeStreamAll\""
+                + " FOR ALL"
+                + " WITH (retention_period='7d', value_capture_type='OLD_AND_NEW_VALUES')"
+                + " CREATE CHANGE STREAM \"ChangeStreamEmpty\""
+                + " CREATE CHANGE STREAM \"ChangeStreamTableColumns\""
+                + " FOR \"T1\", \"T2\"(\"c1\", \"c2\"), \"T3\"()"));
+
+    List<String> statements = ddl.statements();
+    assertEquals(3, statements.size());
+    assertThat(
+        statements.get(0),
+        equalToCompressingWhiteSpace(
+            "CREATE CHANGE STREAM \"ChangeStreamAll\""
+                + " FOR ALL"
+                + " WITH (retention_period='7d', value_capture_type='OLD_AND_NEW_VALUES')"));
+    assertThat(
+        statements.get(1),
+        equalToCompressingWhiteSpace(" CREATE CHANGE STREAM \"ChangeStreamEmpty\""));
+    assertThat(
+        statements.get(2),
+        equalToCompressingWhiteSpace(
+            " CREATE CHANGE STREAM \"ChangeStreamTableColumns\""
+                + " FOR \"T1\", \"T2\"(\"c1\", \"c2\"), \"T3\"()"));
+    assertNotNull(ddl.hashCode());
+  }
+
+  @Test
   public void testDdlEquals() {
     Ddl ddl1 = Ddl.builder(Dialect.GOOGLE_STANDARD_SQL).build();
     Ddl ddl2 = Ddl.builder(Dialect.POSTGRESQL).build();
