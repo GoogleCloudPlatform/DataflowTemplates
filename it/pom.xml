@@ -77,6 +77,10 @@
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-pubsub</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-pubsublite</artifactId>
+    </dependency>
 
     <dependency>
       <groupId>com.google.auto.value</groupId>
