@@ -321,6 +321,26 @@ mvn clean package -PtemplatesRun \
 - `-DjobName="{name}"` may be informed if a specific name is desirable (
   optional).
 
+
+### Running Integration Tests
+
+To run integration tests, the developer plugin can be also used to stage template on-demand (in case the parameter `-DspecPath=` is not specified).
+
+For example, to run all the integration tests in a specific module (in the example below, `v2/googlecloud-to-googlecloud`):
+
+```shell
+mvn clean verify \
+  -PtemplatesIntegrationTests \
+  -Dproject="{project}" \
+  -DartifactBucket="{bucketName}" \
+  -Dregion=us-central1 \
+  -pl v2/googlecloud-to-googlecloud -am
+```
+
+The parameter `-Dtest=` can be given to test a single class (e.g., `-Dtest=PubsubToTextIT`) or single test case (e.g., `-Dtest=PubsubToTextIT#testTopicToGcs`).
+
+The same happens when the test is executed from an IDE, just make sure to add the parameters `-Dproject=`, `-DartifactBucket=` and `-Dregion=` as program or VM arguments.
+
 ### Validating annotations
 
 To simply validate the templates in the current context without building the
