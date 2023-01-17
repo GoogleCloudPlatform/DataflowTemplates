@@ -169,12 +169,13 @@ func RunForChangedModules(cmd string, args ...string) error {
 
 	// We need to append the base dependency modules, because they are needed to build all
 	// other modules.
-	modules = append(modules, "metadata")
-	modules = append(modules, "it")
-	modules = append(modules, "structured-logging")
-	modules = append(modules, "plaintext-logging")
-	modules = append(modules, "plugins/templates-maven-plugin")
+	// modules = append(modules, "metadata")
+	// modules = append(modules, "structured-logging")
+	// modules = append(modules, "plaintext-logging")
 	for root, children := range repo.GetModulesForPaths(changed) {
+		if root == "syndeo-template" {
+			continue
+		}
 		if len(children) == 0 {
 			modules = append(modules, root)
 			continue
@@ -206,6 +207,7 @@ func RunForChangedModules(cmd string, args ...string) error {
 		log.Println("All modules were filtered out.")
 		return nil
 	}
+	modules = append(modules, "plugins/templates-maven-plugin")
 
 	return op.RunMavenOnModule(unifiedPom, cmd, strings.Join(modules, ","), args...)
 }

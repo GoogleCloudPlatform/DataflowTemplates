@@ -76,8 +76,9 @@ jobs:
         uses: ./.github/actions/cleanup-java-env
   java_integration_tests_syndeo:
     name: Syndeo Integration Tests
+    needs: [spotless_check, java_build, java_unit_tests]
     timeout-minutes: 60
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout Code
         uses: actions/checkout@230611dbd0eb52da1e1f4f7bc8bb0c3a339fc8b7
@@ -92,7 +93,7 @@ jobs:
       - name: Build with Maven
         run: mvn install -f pom.xml -pl .,metadata,plaintext-logging,it,syndeo-template,v1 -DskipTests -Djib.skip=true
       - name: Run integration tests with Maven
-        run: mvn verify -Djib.skip=true -DskipUnitTests -f pom.xml -pl syndeo-template -Dproject=cloud-teleport-testing -Dregion=us-central1 -DartifactBucket=gs://cloud-teleport-testing-df-staging/${{ github.job }}/artifacts -DtempLocation=gs://cloud-teleport-testing-df-staging/${{ github.job }}/temp
+        run: mvn verify -Djib.skip=true -DskipUnitTests -f pom.xml -pl syndeo-template -PtemplatesIntegrationTests,oss-build -Dproject=cloud-teleport-testing -Dregion=us-central1 -DartifactBucket=cloud-teleport-testing-it-gitactions
   java_integration_tests_templates:
     name: Dataflow Templates Integration Tests
     needs: [spotless_check, java_build, java_unit_tests]
