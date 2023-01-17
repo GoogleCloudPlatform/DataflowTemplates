@@ -56,9 +56,9 @@ import org.slf4j.LoggerFactory;
     name = "run",
     defaultPhase = LifecyclePhase.PACKAGE,
     requiresDependencyResolution = ResolutionScope.COMPILE_PLUS_RUNTIME)
-public class TemplateRunMojo extends TemplateBaseMojo {
+public class TemplatesRunMojo extends TemplatesBaseMojo {
 
-  private static final Logger LOG = LoggerFactory.getLogger(TemplateRunMojo.class);
+  private static final Logger LOG = LoggerFactory.getLogger(TemplatesRunMojo.class);
 
   @Parameter(defaultValue = "${projectId}", readonly = true, required = true)
   protected String projectId;
@@ -126,8 +126,8 @@ public class TemplateRunMojo extends TemplateBaseMojo {
       String useRegion = StringUtils.isNotEmpty(region) ? region : "us-central1";
 
       // TODO: is there a better way to get the plugin on the _same project_?
-      TemplateStageMojo configuredMojo =
-          new TemplateStageMojo(
+      TemplatesStageMojo configuredMojo =
+          new TemplatesStageMojo(
               project,
               session,
               outputDirectory,
@@ -137,8 +137,9 @@ public class TemplateRunMojo extends TemplateBaseMojo {
               projectId,
               templateName,
               bucketName,
+              bucketName,
               stagePrefix,
-              region,
+              useRegion,
               artifactRegion,
               baseContainerImage);
 
@@ -148,16 +149,15 @@ public class TemplateRunMojo extends TemplateBaseMojo {
               : templateName.toLowerCase().replace('_', '-')
                   + "-"
                   + new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss").format(new Date());
-      Job job;
 
+      String stagedTemplatePath =
+          configuredMojo.stageTemplate(definition, imageSpec, pluginManager);
+
+      Job job;
       if (definition.isClassic()) {
-        job =
-            runClassicTemplate(
-                pluginManager, definition, imageSpec, configuredMojo, useJobName, useRegion);
+        job = runClassicTemplate(stagedTemplatePath, useJobName, useRegion);
       } else {
-        job =
-            runFlexTemplate(
-                pluginManager, definition, imageSpec, configuredMojo, useJobName, useRegion);
+        job = runFlexTemplate(stagedTemplatePath, useJobName, useRegion);
       }
 
       LOG.info(
@@ -185,16 +185,9 @@ public class TemplateRunMojo extends TemplateBaseMojo {
     }
   }
 
-  private Job runClassicTemplate(
-      BuildPluginManager pluginManager,
-      TemplateDefinitions definition,
-      ImageSpec imageSpec,
-      TemplateStageMojo configuredMojo,
-      String jobName,
-      String useRegion)
+  private Job runClassicTemplate(String templatePath, String jobName, String useRegion)
       throws MojoExecutionException, IOException, InterruptedException {
     Job job;
-    String templatePath = configuredMojo.stageClassicTemplate(definition, imageSpec, pluginManager);
     String stagingPath = "gs://" + bucketNameOnly(bucketName) + "/" + stagePrefix + "/staging/";
 
     String[] runCmd =
@@ -241,16 +234,9 @@ public class TemplateRunMojo extends TemplateBaseMojo {
     return job;
   }
 
-  private Job runFlexTemplate(
-      BuildPluginManager pluginManager,
-      TemplateDefinitions definition,
-      ImageSpec imageSpec,
-      TemplateStageMojo configuredMojo,
-      String jobName,
-      String useRegion)
+  private Job runFlexTemplate(String templatePath, String jobName, String useRegion)
       throws MojoExecutionException, IOException, InterruptedException {
     Job job;
-    String templatePath = configuredMojo.stageFlexTemplate(definition, imageSpec, pluginManager);
 
     String[] runCmd =
         new String[] {

@@ -15,12 +15,9 @@
  */
 package com.google.cloud.teleport.plugin.maven;
 
-import com.google.cloud.teleport.plugin.TemplateDefinitionsParser;
-import com.google.cloud.teleport.plugin.model.ImageSpec;
-import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
+import com.google.cloud.teleport.plugin.TemplateSpecsGenerator;
 import java.net.MalformedURLException;
 import java.net.URLClassLoader;
-import java.util.List;
 import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
@@ -30,31 +27,30 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Goal which validates specs/annotations that are required by Templates. It parses the files and
- * looks for Template classes, and then applies specific validations to their structure/metadata
- * definitions.
+ * Goal which generates specs required by Templates. It reads all the annotations for the Template
+ * files in the current context, parses and generates the metadata files in the target folders.
  */
 @Mojo(
-    name = "validate",
-    defaultPhase = LifecyclePhase.COMPILE,
+    name = "spec",
+    defaultPhase = LifecyclePhase.PREPARE_PACKAGE,
     requiresDependencyResolution = ResolutionScope.COMPILE)
-public class TemplateValidateMojo extends TemplateBaseMojo {
+public class TemplatesSpecMojo extends TemplatesBaseMojo {
 
-  private static final Logger LOG = LoggerFactory.getLogger(TemplateValidateMojo.class);
+  private static final Logger LOG = LoggerFactory.getLogger(TemplatesSpecMojo.class);
 
   public void execute() throws MojoExecutionException {
 
     try {
       URLClassLoader loader = buildClassloader();
 
-      LOG.info("Validating Templates...");
+      LOG.info("Generating Template Specs, saving at target: {}", targetDirectory);
 
-      List<TemplateDefinitions> templateDefinitions =
-          TemplateDefinitionsParser.scanDefinitions(loader);
-      for (TemplateDefinitions definition : templateDefinitions) {
-        ImageSpec imageSpec = definition.buildSpecModel(true);
-        imageSpec.validate();
+      if (!targetDirectory.exists()) {
+        targetDirectory.mkdirs();
       }
+
+      TemplateSpecsGenerator generator = new TemplateSpecsGenerator();
+      generator.generateSpecs(loader, targetDirectory);
 
     } catch (DependencyResolutionRequiredException e) {
       throw new MojoExecutionException("Dependency resolution failed", e);

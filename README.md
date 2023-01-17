@@ -283,7 +283,7 @@ mvn clean package -PtemplatesStage  \
   -DskipTests \
   -DprojectId="{projectId}" \
   -DbucketName="{bucketName}" \
-  -DstagePrefix="images/2022-12_v10" \
+  -DstagePrefix="images/$(date +%Y_%m_%d)_v1" \
   -DtemplateName="Cloud_PubSub_to_GCS_Text_Flex" \
   -pl v2/googlecloud-to-googlecloud -am
 ```
@@ -380,6 +380,19 @@ Specs are generated in the folder `target`, with the
 name `{template}-spec-generated-metadata.json`. Please verify if all parameters
 are listed correctly, following the desired order that is intended on the
 templates UI.
+
+### Releasing Templates
+
+There's a specific command to release all Templates, which is a shortcut to
+create specs and stage templates, with additional validations.
+
+```shell
+mvn clean package -PtemplatesRelease  \
+  -DprojectId="{projectId}" \
+  -DbucketName="{bucketName}" \
+  -DlibrariesBucketName="{bucketName}-libraries" \
+  -DstagePrefix="$(date +%Y_%m_%d)-00_RC00"
+```
 
 ## Using UDFs
 

@@ -29,7 +29,7 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 
 /** Base class for all Maven plugin goals used by Templates. */
-public abstract class TemplateBaseMojo extends AbstractMojo {
+public abstract class TemplatesBaseMojo extends AbstractMojo {
 
   @Parameter(defaultValue = "${project}", required = true)
   protected MavenProject project;

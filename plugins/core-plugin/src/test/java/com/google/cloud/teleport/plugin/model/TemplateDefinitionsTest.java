@@ -60,7 +60,7 @@ public class TemplateDefinitionsTest {
     assertEquals("^(true|false)$", logical.getRegexes().get(0));
 
     ImageSpecParameter json = metadata.getParameter("JSON").get();
-    assertEquals(ImageSpecParameterType.TEXT, logical.getParamType());
+    assertEquals(ImageSpecParameterType.TEXT, json.getParamType());
   }
 
   @Test

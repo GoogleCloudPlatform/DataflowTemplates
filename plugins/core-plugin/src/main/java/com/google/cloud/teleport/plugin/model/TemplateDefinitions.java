@@ -21,6 +21,7 @@ import com.google.cloud.teleport.metadata.TemplateCreationParameters;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import java.beans.Introspector;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -100,15 +101,13 @@ public class TemplateDefinitions {
   public ImageSpec buildSpecModel(boolean validateFlag) {
 
     ImageSpec imageSpec = new ImageSpec();
-    imageSpec.setDefaultEnvironment(Map.of());
-    imageSpec.setImage("gcr.io/{project-id}/" + templateAnnotation.flexContainerName());
 
     SdkInfo sdkInfo = new SdkInfo();
     sdkInfo.setLanguage("JAVA");
     imageSpec.setSdkInfo(sdkInfo);
 
     ImageSpecMetadata metadata = new ImageSpecMetadata();
-    metadata.setName(templateAnnotation.name());
+    metadata.setName(templateAnnotation.displayName());
     metadata.setDescription(templateAnnotation.description());
 
     if (isClassic()) {
@@ -156,6 +155,7 @@ public class TemplateDefinitions {
 
         TemplateCreationParameters creationParameters =
             method.getAnnotation(TemplateCreationParameters.class);
+        String methodName = method.getName();
         if (creationParameters != null) {
           for (TemplateCreationParameter creationParameterCandidate : creationParameters.value()) {
 
@@ -166,7 +166,8 @@ public class TemplateDefinitions {
               if (StringUtils.isNotEmpty(creationParameterCandidate.value())) {
                 metadata
                     .getRuntimeParameters()
-                    .put(getParameterNameFromMethod(method), creationParameterCandidate.value());
+                    .put(
+                        getParameterNameFromMethod(methodName), creationParameterCandidate.value());
               }
             }
           }
@@ -180,14 +181,14 @@ public class TemplateDefinitions {
           if (StringUtils.isNotEmpty(creationParameter.value())) {
             metadata
                 .getRuntimeParameters()
-                .put(getParameterNameFromMethod(method), creationParameter.value());
+                .put(getParameterNameFromMethod(methodName), creationParameter.value());
           }
         }
 
         // Ignore non-annotated params in this criteria
         if (runtime
-            || method.getName().startsWith("set")
-            || IGNORED_FIELDS.contains(method.getName())
+            || methodName.startsWith("set")
+            || IGNORED_FIELDS.contains(methodName)
             || method.getDeclaringClass().getName().startsWith("org.apache.beam.sdk")
             || method.getDeclaringClass().getName().startsWith("org.apache.beam.runners")
             || IGNORED_DECLARING_CLASSES.contains(method.getDeclaringClass().getSimpleName())) {
@@ -196,7 +197,7 @@ public class TemplateDefinitions {
 
         LOG.warn(
             "Method {} (declared at {}) does not have an annotation",
-            method.getName(),
+            methodName,
             method.getDeclaringClass().getName());
 
         if (validateFlag && method.getAnnotation(Deprecated.class) == null) {
@@ -204,7 +205,7 @@ public class TemplateDefinitions {
               "Method "
                   + method.getDeclaringClass().getName()
                   + "."
-                  + method.getName()
+                  + methodName
                   + "() does not have a @TemplateParameter annotation (and not deprecated).");
         }
         continue;
@@ -213,34 +214,18 @@ public class TemplateDefinitions {
       methodDefinitions.add(new MethodDefinitions(method, parameterAnnotation, classOrder));
     }
 
+    Set<String> skipOptionsSet = Set.of(templateAnnotation.skipOptions());
     Collections.sort(methodDefinitions);
 
     for (MethodDefinitions method : methodDefinitions) {
-
       Annotation parameterAnnotation = method.getTemplateParameter();
+      ImageSpecParameter parameter =
+          getImageSpecParameter(
+              method.getDefiningMethod().getName(),
+              method.getDefiningMethod(),
+              parameterAnnotation);
 
-      ImageSpecParameter parameter = new ImageSpecParameter();
-      parameter.setName(getParameterNameFromMethod(method.getDefiningMethod()));
-      parameter.processParamType(parameterAnnotation);
-
-      Object defaultValue = getDefault(method.getDefiningMethod());
-      String helpText = parameter.getHelpText();
-      if (defaultValue != null && !helpText.toLowerCase().contains("default")) {
-        if (!helpText.endsWith(".")) {
-          helpText += ".";
-        }
-        helpText += " Defaults to: " + defaultValue;
-        parameter.setHelpText(helpText);
-      }
-
-      if (!method.getDefiningMethod().getName().equalsIgnoreCase("get" + parameter.getName())) {
-        LOG.warn(
-            "Name for the method and annotation do not match! {} vs {}",
-            method.getDefiningMethod().getName(),
-            parameter.getName());
-      }
-
-      if (Set.of(templateAnnotation.skipOptions()).contains(parameter.getName())) {
+      if (skipOptionsSet.contains(parameter.getName())) {
         continue;
       }
 
@@ -254,25 +239,62 @@ public class TemplateDefinitions {
       }
     }
 
+    boolean isFlex =
+        templateAnnotation.flexContainerName() == null
+            || templateAnnotation.flexContainerName().isEmpty();
+    imageSpec.setDefaultEnvironment(
+        Map.of(
+            "additionalUserLabels",
+            Map.of(
+                "goog-dataflow-provided-template-name",
+                templateAnnotation.name().toLowerCase(),
+                "goog-dataflow-provided-template-type",
+                isFlex ? "flex" : "classic")));
+    imageSpec.setImage("gcr.io/{project-id}/" + templateAnnotation.flexContainerName());
     imageSpec.setMetadata(metadata);
 
     return imageSpec;
   }
 
+  private ImageSpecParameter getImageSpecParameter(
+      String originalName, AccessibleObject target, Annotation parameterAnnotation) {
+    ImageSpecParameter parameter = new ImageSpecParameter();
+    parameter.setName(getParameterNameFromMethod(originalName));
+    parameter.processParamType(parameterAnnotation);
+
+    Object defaultValue = getDefault(target);
+    String helpText = parameter.getHelpText();
+    if (defaultValue != null && !helpText.toLowerCase().contains("default")) {
+      if (!helpText.endsWith(".")) {
+        helpText += ".";
+      }
+      helpText += " Defaults to: " + defaultValue;
+      parameter.setHelpText(helpText);
+    }
+
+    if (!originalName.equalsIgnoreCase("get" + parameter.getName())) {
+      LOG.warn(
+          "Name for the method and annotation do not match! {} vs {}",
+          originalName,
+          parameter.getName());
+    }
+    return parameter;
+  }
+
   /** This method is inspired by {@code org.apache.beam.sdk.options.PipelineOptionsReflector}. */
-  private String getParameterNameFromMethod(Method method) {
+  private String getParameterNameFromMethod(String originalName) {
     String methodName;
-    if (method.getName().startsWith("is")) {
-      methodName = method.getName().substring(2);
-    } else if (method.getName().startsWith("get")) {
-      methodName = method.getName().substring(3);
+    if (originalName.startsWith("is")) {
+      methodName = originalName.substring(2);
+    } else if (originalName.startsWith("get")) {
+      methodName = originalName.substring(3);
     } else {
-      methodName = method.getName();
+      methodName = originalName;
     }
     return Introspector.decapitalize(methodName);
   }
 
-  private Object getDefault(Method definingMethod) {
+  private Object getDefault(AccessibleObject definingMethod) {
 
     if (definingMethod.getAnnotation(Default.String.class) != null) {
       return definingMethod.getAnnotation(Default.String.class).value();
@@ -308,11 +330,11 @@ public class TemplateDefinitions {
     return null;
   }
 
-  public Annotation getParameterAnnotation(Method method) {
+  public Annotation getParameterAnnotation(AccessibleObject accessibleObject) {
 
     for (Class<? extends Annotation> annotation : PARAMETER_ANNOTATIONS) {
-      if (method.getAnnotation(annotation) != null) {
-        return method.getAnnotation(annotation);
+      if (accessibleObject.getAnnotation(annotation) != null) {
+        return accessibleObject.getAnnotation(annotation);
       }
     }
 
