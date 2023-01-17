@@ -42,6 +42,8 @@ public abstract class MergeConfiguration implements Serializable {
   private static final String DEFAULT_MERGE_QUERY_TEMPLATE =
       String.join(
           "",
+          "BEGIN ",
+          "BEGIN TRANSACTION; ",
           "MERGE `{replicaTable}` AS {replicaAlias} ",
           "USING ({stagingViewSql}) AS {stagingAlias} ",
           "ON {joinCondition} ",
@@ -49,7 +51,9 @@ public abstract class MergeConfiguration implements Serializable {
               + " DELETE ", // TODO entire block should be configurably removed
           "WHEN MATCHED AND {sortFieldsCompareSql} THEN {mergeUpdateSql} ",
           "WHEN NOT MATCHED BY TARGET AND {stagingAlias}.{deleteColumn}!=True ",
-          "THEN {mergeInsertSql}");
+          "THEN {mergeInsertSql}; ",
+          "COMMIT TRANSACTION; ",
+          "END;");
 
   public static final Boolean DEFAULT_SUPPORT_PARTITIONED_TABLES = true;
   public static final int DEFAULT_PARTITION_RETENTION_DAYS = 1;
