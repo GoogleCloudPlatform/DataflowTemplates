@@ -16,9 +16,8 @@
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model;
 
 import com.google.cloud.bigquery.TableId;
-import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.TestUtil;
-
 import com.google.cloud.teleport.v2.spanner.IntegrationTest;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.TestUtil;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -31,7 +30,6 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 @Category(IntegrationTest.class)
 public class BigQueryDestinationTest {
-
 
   @Test
   public void testDefaultDestinationConfiguration() {
