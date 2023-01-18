@@ -91,6 +91,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
     }
     if (spannerResourceManager != null) {
       spannerResourceManager.cleanupAll();
+      spannerResourceManager = null;
     }
   }
 
