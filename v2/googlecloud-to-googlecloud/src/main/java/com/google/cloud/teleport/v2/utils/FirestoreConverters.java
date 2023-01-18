@@ -157,9 +157,7 @@ public class FirestoreConverters {
     @Deprecated
     void setDatastoreWriteProjectId(ValueProvider<String> datstoreWriteProjectId);
 
-    /**
-     * @deprecated Please use getFirestoreWriteEntityKind() instead.
-     */
+    /** @deprecated Please use getFirestoreWriteEntityKind() instead. */
     @TemplateParameter.Text(
         order = 2,
         description = "Datastore entity kind",
@@ -175,9 +173,7 @@ public class FirestoreConverters {
     @Deprecated
     void setDatastoreWriteEntityKind(ValueProvider<String> value);
 
-    /**
-     * @deprecated Please use getFirestoreWriteNamespace() instead.
-     */
+    /** @deprecated Please use getFirestoreWriteNamespace() instead. */
     @TemplateParameter.Text(
         order = 3,
         optional = true,
@@ -256,9 +252,7 @@ public class FirestoreConverters {
 
   /** Options for deleting Datastore Entities. */
   public interface DatastoreDeleteOptions extends PipelineOptions {
-    /**
-     * @deprecated Please use getFirestoreDeleteProjectId() instead.
-     */
+    /** @deprecated Please use getFirestoreDeleteProjectId() instead. */
     @TemplateParameter.ProjectId(
         order = 1,
         description =
