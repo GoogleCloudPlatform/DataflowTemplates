@@ -143,13 +143,15 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       for (TemplateDefinitions definition : templateDefinitions) {
 
         ImageSpec imageSpec = definition.buildSpecModel(false);
-        String currentTemplateName = imageSpec.getMetadata().getName();
+        String currentTemplateName = definition.getTemplateAnnotation().name();
+        String currentDisplayName = definition.getTemplateAnnotation().displayName();
 
         // Filter out the template if there was a specific one given
         if (templateName != null
             && !templateName.isEmpty()
-            && !templateName.equals(currentTemplateName)) {
-          LOG.info("Skipping template {}", currentTemplateName);
+            && !templateName.equals(currentTemplateName)
+            && !templateName.equals(currentDisplayName)) {
+          LOG.info("Skipping template {} ({})", currentTemplateName, currentDisplayName);
           continue;
         }
 
