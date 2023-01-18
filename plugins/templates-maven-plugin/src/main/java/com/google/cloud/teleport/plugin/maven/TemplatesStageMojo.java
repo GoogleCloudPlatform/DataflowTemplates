@@ -208,7 +208,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     File metadataFile =
         new TemplateSpecsGenerator()
             .saveMetadata(definition, imageSpec.getMetadata(), outputClassesDirectory);
-    String currentTemplateName = imageSpec.getMetadata().getName();
+    String currentTemplateName = definition.getTemplateAnnotation().name();
 
     String stagingPath =
         "gs://" + bucketNameOnly(librariesBucketName) + "/" + stagePrefix + "/staging/";
@@ -283,7 +283,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       TemplateDefinitions definition, ImageSpec imageSpec, BuildPluginManager pluginManager)
       throws MojoExecutionException, IOException, InterruptedException {
 
-    String currentTemplateName = imageSpec.getMetadata().getName();
+    String currentTemplateName = definition.getTemplateAnnotation().name();
     TemplateSpecsGenerator generator = new TemplateSpecsGenerator();
 
     String prefix = "";
