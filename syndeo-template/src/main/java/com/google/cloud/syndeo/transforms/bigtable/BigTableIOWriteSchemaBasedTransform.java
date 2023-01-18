@@ -204,6 +204,7 @@ public class BigTableIOWriteSchemaBasedTransform
     PCollection<KV<byte[], Row>> byteEncodedKeyedRows =
         keyedRows
             .apply(
+                "encodeKeys",
                 ParDo.of(
                     new DoFn<KV<Row, Row>, KV<byte[], Row>>() {
                       @ProcessElement
@@ -252,6 +253,7 @@ public class BigTableIOWriteSchemaBasedTransform
     // STEP 3: Convert KV<bytes, Row> into KV<ByteString, List<SetCell<...>>>
     PCollection<KV<ByteString, Iterable<Mutation>>> bigtableMutations =
         byteEncodedKeyedRows.apply(
+            "buildMutations",
             ParDo.of(
                 new DoFn<KV<byte[], Row>, KV<ByteString, Iterable<Mutation>>>() {
                   @ProcessElement
