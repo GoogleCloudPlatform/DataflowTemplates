@@ -59,6 +59,7 @@ func main() {
 		flags.Region(),
 		flags.Project(),
 		flags.ArtifactBucket(),
+		flags.StageBucket(),
 		flags.HostIp())
 	if err != nil {
 		log.Fatalf("%v\n", err)
