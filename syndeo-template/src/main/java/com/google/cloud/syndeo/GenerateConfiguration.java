@@ -24,13 +24,26 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * A utility that generates Proto Text configuration parameters for supported {@code
+ * SchemaTransform} implementations in the classpath.
+ *
+ * <p>To run:
+ *
+ * <p>{@code mvn compile exec:java -pl syndeo-template/pom.xml \
+ * -Dexec.mainClass="com.google.cloud.syndeo.GenerateConfiguration" \ -Dexec.args="samplyfile" }
+ */
 public class GenerateConfiguration {
   private static final Logger LOG = LoggerFactory.getLogger(GenerateConfiguration.class);
 
@@ -42,8 +55,9 @@ public class GenerateConfiguration {
             .map(GenerateConfiguration::providerToConfiguration)
             .collect(Collectors.toList());
 
+    String fileName = args.length > 0 ? args[0] : "transform_configs.prototext";
     Files.write(
-        Paths.get("transform_configs.prototext"),
+        Paths.get(fileName),
         BatchGetTransformDescriptionsResponse.newBuilder()
             .addAllTransformDescriptions(descriptions)
             .build()
