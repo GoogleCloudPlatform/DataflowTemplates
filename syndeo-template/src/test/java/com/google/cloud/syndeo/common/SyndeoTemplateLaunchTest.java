@@ -52,14 +52,16 @@ public class SyndeoTemplateLaunchTest {
     // TODO(pabloem): Add more checks
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test(expected = IllegalArgumentException.class)
   public void testBuildWithBQToBQConfigBadSink() throws JsonProcessingException {
     SyndeoTemplate.buildFromJsonPayload(BQ_TO_BQ_CONFIG);
   }
 
   @Test
   public void testBuildWithBQToBQConfig() throws JsonProcessingException {
-    // TODO(pabloem): Replace this with "beam:schematransform:org.apache.beam:bigquery_storage_write:v1" for Beam  2.45.0.
-    SyndeoTemplate.buildFromJsonPayload(BQ_TO_BQ_CONFIG.replace("bigquery:write", "schemaIO:bigquery:write"));
+    // TODO(pabloem): Replace this with
+    // "beam:schematransform:org.apache.beam:bigquery_storage_write:v1" for Beam  2.45.0.
+    SyndeoTemplate.buildFromJsonPayload(
+        BQ_TO_BQ_CONFIG.replace("bigquery:write", "schemaIO:bigquery:write"));
   }
 }
