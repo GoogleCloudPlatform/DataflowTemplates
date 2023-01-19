@@ -352,7 +352,8 @@ public class StreamingDataGenerator {
         regexes = {"^[a-zA-Z0-9_;!*&=@#-:\\/]+$"},
         description = "JDBC connection property string.",
         helpText =
-            "Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*.",
+            "Properties string to use for the JDBC connection. Format of the string must be"
+                + " [propertyName=property;]*.",
         example = "unicode=true;characterEncoding=UTF-8")
     String getConnectionProperties();
 
@@ -364,9 +365,9 @@ public class StreamingDataGenerator {
         regexes = {"^.+$"},
         description = "Statement which will be executed against the database.",
         helpText =
-            "SQL statement which will be executed to write to the database. The statement "
-                + "must specify the column names of the table in any order. Only the values of the specified "
-                + "column names will be read from the json and added to the statement.",
+            "SQL statement which will be executed to write to the database. The statement must"
+                + " specify the column names of the table in any order. Only the values of the"
+                + " specified column names will be read from the json and added to the statement.",
         example = "INSERT INTO tableName (column1, column2) VALUES (?,?)")
     String getStatement();
 
@@ -423,9 +424,45 @@ public class StreamingDataGenerator {
             + "  \"ipv6\": \"{{ipv6()}}\",\n"
             + "  \"country\": \"{{country()}}\",\n"
             + "  \"username\": \"{{username()}}\",\n"
-            + "  \"quest\": \"{{random(\"A Break In the Ice\", \"Ghosts of Perdition\", \"Survive the Low Road\")}}\",\n"
+            + "  \"quest\": \"{{random(\"A Break In the Ice\", \"Ghosts of Perdition\", \"Survive"
+            + " the Low Road\")}}\",\n"
             + "  \"score\": {{integer(100, 10000)}},\n"
             + "  \"completed\": {{bool()}}\n"
+            + "}"),
+    LOG_ENTRY(
+        "{\n"
+            + "  \"logName\": \"{{alpha(10,20)}}\",\n"
+            + "  \"resource\": {\n"
+            + "    \"type\": \"{{alpha(5,10)}}\"\n"
+            + "  },\n"
+            + "  \"timestamp\": {{timestamp()}},\n"
+            + "  \"receiveTimestamp\": {{timestamp()}},\n"
+            + "  \"severity\": \"{{random(\"DEFAULT\", \"DEBUG\", \"INFO\", \"NOTICE\","
+            + " \"WARNING\", \"ERROR\", \"CRITICAL\", \"ERROR\")}}\",\n"
+            + "  \"insertId\": \"{{uuid()}}\",\n"
+            + "  \"trace\": \"{{uuid()}}\",\n"
+            + "  \"spanId\": \"{{uuid()}}\",\n"
+            + "  \"jsonPayload\": {\n"
+            + "    \"bytes_sent\": {{integer(1000,20000)}},\n"
+            + "    \"connection\": {\n"
+            + "      \"dest_ip\": \"{{ipv4()}}\",\n"
+            + "      \"dest_port\": {{integer(0,65000)}},\n"
+            + "      \"protocol\": {{integer(0,6)}},\n"
+            + "      \"src_ip\": \"{{ipv4()}}\",\n"
+            + "      \"src_port\": {{integer(0,65000)}}\n"
+            + "    },\n"
+            + "    \"dest_instance\": {\n"
+            + "      \"project_id\": \"{{concat(\"PROJECT\", integer(0,3))}}\",\n"
+            + "      \"region\": \"{{country()}}\",\n"
+            + "      \"vm_name\": \"{{username()}}\",\n"
+            + "      \"zone\": \"{{state()}}\"\n"
+            + "    },\n"
+            + "    \"end_time\": {{timestamp()}},\n"
+            + "    \"packets_sent\": {{integer(100,400)}},\n"
+            + "    \"reporter\": \"{{random(\"SRC\", \"DEST\")}}\",\n"
+            + "    \"rtt_msec\": {{integer(0,20)}},\n"
+            + "    \"start_time\": {{timestamp()}}\n"
+            + "  }\n"
             + "}");
 
     private final String schema;
@@ -668,7 +705,8 @@ public class StreamingDataGenerator {
   private static String getSchema(SchemaTemplate schemaTemplate, String schemaLocation) {
     checkArgument(
         schemaTemplate != null || schemaLocation != null,
-        "Either schemaTemplate or schemaLocation argument of MessageGeneratorFn class must be provided.");
+        "Either schemaTemplate or schemaLocation argument of MessageGeneratorFn class must be"
+            + " provided.");
     if (schemaLocation != null) {
       return GCSUtils.getGcsFileAsString(schemaLocation);
     } else {
