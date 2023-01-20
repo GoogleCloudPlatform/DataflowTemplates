@@ -26,6 +26,20 @@ To apply spotless formatting rules to the Syndeo template code, run the followin
 mvn -B spotless:apply compile -f pom.xml -pl syndeo-template/pom.xml
 ```
 
+### Build `SchemaTransform` configurations
+
+Users and consumers of the Syndeo Template can generate a proto text description of the supported `SchemaTransform`
+implementations, as well as their requirements and parameters. To generate this configuration, see:
+
+```shell
+mvn compile exec:java -pl syndeo-template/pom.xml \
+       -Dexec.mainClass="com.google.cloud.syndeo.GenerateConfiguration" \
+       -Dexec.args="output_file_name.prototext"
+```
+
+Supported `SchemaTransform` and configuration parameters are configured in `SyndeoTemplate.java`. Specifically, the
+`SUPPORTED_URNS` constant.
+
 ### Run tests (unit and integration tests)
 
 Note that syndeo depends of the teleport integration testing framework, so make sure to install that locally:
