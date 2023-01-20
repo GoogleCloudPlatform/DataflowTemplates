@@ -105,6 +105,12 @@ public class SyndeoTemplate {
         ProviderUtil.getProvider(transformConfig.get("urn").asText());
     LOG.info(
         "Transform provider({}) is: {}", transformConfig.get("urn").asText(), transformProvider);
+    if (transformProvider == null) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Unable to load a transform provider for urn [%s]. Available providers are: %s",
+              transformConfig.get("urn").asText(), ProviderUtil.PROVIDERS.keySet()));
+    }
     List<Object> configurationParameters =
         transformProvider.configurationSchema().getFields().stream()
             .map(field -> field.getName())
