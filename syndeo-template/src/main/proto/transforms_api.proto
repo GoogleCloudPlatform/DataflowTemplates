@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package google.cloud.datapipelines.v1;
+package google.cloud.datapipelines.v1.syndeo;
 
 import "google/api/annotations.proto";
 import "google/api/client.proto";
@@ -11,7 +11,7 @@ import "google/type/datetime.proto";
 import "google/type/decimal.proto";
 
 option java_multiple_files = true;
-option java_package = "com.google.cloud.datapipelines.v1";
+option java_package = "com.google.cloud.datapipelines.v1.syndeo";
 option java_outer_classname = "TransformsApiProto";
 
 // Response message for
