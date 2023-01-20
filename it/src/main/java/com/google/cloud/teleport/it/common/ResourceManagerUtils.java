@@ -31,7 +31,7 @@ public class ResourceManagerUtils {
 
   private static final int MIN_PROJECT_ID_LENGTH = 4;
   private static final int MAX_PROJECT_ID_LENGTH = 30;
-  private static final Pattern ILLEGAL_PROJECT_CHARS = Pattern.compile("[^a-zA-Z0-9-!']");
+  private static final Pattern ILLEGAL_PROJECT_CHARS = Pattern.compile("[^a-zA-Z0-9-!'-:]");
   private static final String TIME_ZONE = "UTC";
 
   /**
