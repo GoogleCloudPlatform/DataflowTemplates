@@ -23,6 +23,7 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.GenerateSequence;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
@@ -32,11 +33,16 @@ import org.joda.time.Duration;
 
 public class SyndeoLoadTestUtils {
 
-  public static PCollection<Row> inputData(Pipeline dataGenerator, Long numRows, Duration runtime) {
+  public static PCollection<Row> inputData(
+      Pipeline dataGenerator, Long numRows, Integer runtimeMinutes) {
     Random randomSeed = new Random();
     // TODO(pabloem): Determine rate of production of data.
     return dataGenerator
-        .apply(GenerateSequence.from(0).to(numRows).withRate(numRows, runtime))
+        .apply(
+            GenerateSequence.from(0)
+                .to(numRows)
+                .withRate(numRows / runtimeMinutes / 60, Duration.standardSeconds(1)))
+        .apply(Reshuffle.viaRandomKey())
         .apply(
             MapElements.into(TypeDescriptors.rows())
                 .via(
@@ -53,15 +59,6 @@ public class SyndeoLoadTestUtils {
           .addField(Schema.Field.nullable("commit", Schema.FieldType.STRING))
           .addField(Schema.Field.nullable("repo_name", Schema.FieldType.STRING))
           .addField(Schema.Field.of("parent", Schema.FieldType.array(Schema.FieldType.STRING)))
-          // TODO(pabloem): Add a schema without nested fields.
-          //          .addField(
-          //              Schema.Field.nullable(
-          //                  "author",
-          //                  Schema.FieldType.row(
-          //                      Schema.builder()
-          //                          .addField(Schema.Field.of("name", Schema.FieldType.STRING))
-          //                          .addField(Schema.Field.of("email", Schema.FieldType.STRING))
-          //                          .build())))
           .addField(Schema.Field.of("commitDate", Schema.FieldType.DATETIME))
           .addField(Schema.Field.nullable("message", Schema.FieldType.STRING))
           .addInt64Field("linesAdded")
@@ -69,8 +66,20 @@ public class SyndeoLoadTestUtils {
           .addBooleanField("merged")
           .addByteArrayField("sha1")
           // A decimal field that means nothing but that we include for good measure : )
-          // TODO(pabloem): Enable this field?
-          //          .addDecimalField("decimalForGoodMeasure")
+          .addDecimalField("decimalForGoodMeasure")
+          .build();
+
+  public static final Schema NESTED_TABLE_SCHEMA =
+      Schema.builder()
+          .addFields(SIMPLE_TABLE_SCHEMA.getFields())
+          .addField(
+              Schema.Field.nullable(
+                  "author",
+                  Schema.FieldType.row(
+                      Schema.builder()
+                          .addField(Schema.Field.of("name", Schema.FieldType.STRING))
+                          .addField(Schema.Field.of("email", Schema.FieldType.STRING))
+                          .build())))
           .build();
 
   public static String randomString(Integer length, Random randomSeed) {
@@ -108,7 +117,7 @@ public class SyndeoLoadTestUtils {
         case DECIMAL:
           BigDecimal bigDecimal =
               generateOrNull(
-                  ignored -> BigDecimal.valueOf(randomSeed.nextDouble()),
+                  ignored -> new BigDecimal(String.valueOf(randomSeed.nextLong())),
                   f.getType().getNullable() ? nullProbability : 0,
                   randomSeed);
           if (bigDecimal == null) continue;

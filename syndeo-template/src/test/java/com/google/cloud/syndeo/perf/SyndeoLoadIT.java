@@ -15,12 +15,14 @@
  */
 package com.google.cloud.syndeo.perf;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.io.JsonStringEncoder;
+import com.google.auto.value.AutoValue;
 import com.google.cloud.bigtable.admin.v2.models.StorageType;
 import com.google.cloud.pubsublite.ReservationPath;
 import com.google.cloud.pubsublite.SubscriptionName;
 import com.google.cloud.pubsublite.TopicName;
-import com.google.cloud.syndeo.transforms.bigtable.BigTableWriteSchemaTransformConfiguration;
-import com.google.cloud.syndeo.transforms.bigtable.BigTableWriteSchemaTransformProvider;
+import com.google.cloud.syndeo.SyndeoTemplate;
 import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.bigtable.BigtableResourceManager;
 import com.google.cloud.teleport.it.bigtable.BigtableResourceManagerCluster;
@@ -29,18 +31,17 @@ import com.google.cloud.teleport.it.pubsublite.PubsubLiteResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.io.gcp.pubsublite.PubsubLiteReadSchemaTransformProvider;
 import org.apache.beam.sdk.io.gcp.pubsublite.PubsubLiteWriteSchemaTransformProvider;
 import org.apache.beam.sdk.schemas.NoSuchSchemaException;
 import org.apache.beam.sdk.schemas.SchemaRegistry;
 import org.apache.beam.sdk.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.testing.TestPipeline;
-import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
-import org.apache.beam.sdk.values.Row;
-import org.joda.time.Duration;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -48,6 +49,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 @Category(TemplateIntegrationTest.class)
 @RunWith(JUnit4.class)
@@ -59,8 +61,11 @@ public class SyndeoLoadIT {
   private static final String PROJECT = TestProperties.project();
   private static final String LOCATION = TestProperties.region();
   private static final String ZONE_SUFFIX = "-c";
+  private static final String TEST_CONFIG =
+      TestProperties.getProperty("configuration", "local", TestProperties.Type.PROPERTY);
   // 30 characters is the maximum length for some literals, so we cap it here.
   private final String testUuid = ("syndeo-" + UUID.randomUUID()).substring(0, 30);
+  private static final Long PUBSUB_LITE_CAPACITY = 512L;
 
   private static final PubsubLiteResourceManager pubsubLite =
       new PubsubLiteResourceManager.DefaultPubsubliteResourceManager();
@@ -77,16 +82,49 @@ public class SyndeoLoadIT {
     bigtable.cleanupAll();
   }
 
+  @AutoValue
+  abstract static class PubsubLiteToBigTableConfiguration {
+    public abstract Long getNumRows();
+
+    public abstract Integer getDurationMinutes();
+
+    public abstract String getRunner();
+
+    public static PubsubLiteToBigTableConfiguration create(
+        Long throughput, Integer durationMinutes, String runner) {
+      return new AutoValue_SyndeoLoadIT_PubsubLiteToBigTableConfiguration(
+          throughput, durationMinutes, runner);
+    }
+  }
+
+  private static final PubsubLiteToBigTableConfiguration LOCAL_TEST_CONFIG =
+      PubsubLiteToBigTableConfiguration.create(1_000L, 1, "DirectRunner");
+  private static final PubsubLiteToBigTableConfiguration DATAFLOW_TEST_CONFIG =
+      PubsubLiteToBigTableConfiguration.create(5_000_000L, 20, "DataflowRunner");
+
+  private static final Map<String, PubsubLiteToBigTableConfiguration> TEST_CONFIGS =
+      Map.of(
+          "local", LOCAL_TEST_CONFIG,
+          "medium", DATAFLOW_TEST_CONFIG);
+
   @Test
-  public void testPubsubLiteToBigTableSyndeoFlow() throws NoSuchSchemaException {
-    Long pubsubLiteThroughput = 512L;
+  public void testPubsubLiteToBigTableSyndeoFlow()
+      throws NoSuchSchemaException, JsonProcessingException,
+          org.testcontainers.shaded.com.fasterxml.jackson.core.JsonProcessingException {
+    PubsubLiteToBigTableConfiguration testConfig = TEST_CONFIGS.get(TEST_CONFIG);
+    if (testConfig == null) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Unknown test configuration: [%s]. Known configs: %s",
+              TEST_CONFIG, TEST_CONFIGS.keySet()));
+    }
     String reservationName = "syndeo-reservation-test" + testUuid;
     String topicName = "syndeo-topic-test-" + testUuid;
     String subscriptionName = "syndeo-subscription-test-" + testUuid;
 
     // Create PS Lite resources
     ReservationPath reservationPath =
-        pubsubLite.createReservation(reservationName, LOCATION, PROJECT, pubsubLiteThroughput);
+        pubsubLite.createReservation(reservationName, LOCATION, PROJECT, PUBSUB_LITE_CAPACITY);
     TopicName topicPath = pubsubLite.createTopic(topicName, reservationPath);
     SubscriptionName subscriptionPath =
         pubsubLite.createSubscription(reservationPath, topicPath, subscriptionName);
@@ -100,65 +138,72 @@ public class SyndeoLoadIT {
                 bigTableCluster, LOCATION + ZONE_SUFFIX, 10, StorageType.SSD)));
     bigtable.createTable(bigTableName, SyndeoLoadTestUtils.SIMPLE_TABLE_SCHEMA.getFieldNames());
 
-    // 700GB in the dataset
-    long numRows = 1_000_000_000;
-
     PCollectionRowTuple.of(
             "input",
-            SyndeoLoadTestUtils.inputData(dataGenerator, numRows, Duration.standardMinutes(25)))
-        .apply(
+            SyndeoLoadTestUtils.inputData(
+                dataGenerator, testConfig.getNumRows(), testConfig.getDurationMinutes()))
+        .apply("beam:schematransform:org.apache.beam:pubsublite_write:v1",
             new PubsubLiteWriteSchemaTransformProvider()
                 .from(
                     // TODO(pabloem): Avoid relying on SchemaRegistry and make from(ConfigClass)
                     // public.
-                    SchemaRegistry.createDefault()
-                        .getToRowFunction(
-                            PubsubLiteWriteSchemaTransformProvider
-                                .PubsubLiteWriteSchemaTransformConfiguration.class)
-                        .apply(
-                            PubsubLiteWriteSchemaTransformProvider
-                                .PubsubLiteWriteSchemaTransformConfiguration.builder()
-                                .setFormat("AVRO")
-                                .setTopicName(topicName)
-                                .setLocation(LOCATION)
-                                .setProject(PROJECT)
-                                .build()))
+                        Objects.requireNonNull(SchemaRegistry.createDefault()
+                                .getToRowFunction(
+                                        PubsubLiteWriteSchemaTransformProvider
+                                                .PubsubLiteWriteSchemaTransformConfiguration.class)
+                                .apply(
+                                        PubsubLiteWriteSchemaTransformProvider
+                                                .PubsubLiteWriteSchemaTransformConfiguration.builder()
+                                                .setFormat("AVRO")
+                                                .setTopicName(topicName)
+                                                .setLocation(LOCATION)
+                                                .setProject(PROJECT)
+                                                .build())))
                 .buildTransform());
-    PipelineResult generatorResult = dataGenerator.run();
+    PipelineResult generatorResult =
+        dataGenerator.runWithAdditionalOptionArgs(List.of("--runner=" + testConfig.getRunner()));
 
-    PCollection<Row> inputPcoll =
-        PCollectionRowTuple.empty(syndeoPipeline)
-            .apply(
-                "psLiteRead",
-                new PubsubLiteReadSchemaTransformProvider()
-                    .from(
-                        PubsubLiteReadSchemaTransformProvider
-                            .PubsubLiteReadSchemaTransformConfiguration.builder()
-                            .setLocation(LOCATION)
-                            .setProject(PROJECT)
-                            .setDataFormat("AVRO")
-                            .setSchema(
-                                AvroUtils.toAvroSchema(SyndeoLoadTestUtils.SIMPLE_TABLE_SCHEMA)
-                                    .toString())
-                            .setSubscriptionName(subscriptionName)
-                            .build())
-                    .buildTransform())
-            .get("output");
-    PCollectionRowTuple.of("input", inputPcoll)
-        .apply(
-            "btWrite",
-            new BigTableWriteSchemaTransformProvider()
-                .from(
-                    BigTableWriteSchemaTransformConfiguration.builder()
-                        .setProjectId(PROJECT)
-                        .setTableId(bigTableName)
-                        .setInstanceId(bigtable.getInstanceId())
-                        .setKeyColumns(
-                            Collections.singletonList(
-                                "sha1")) // The sha1 of a commit is a byte array.
-                        .build())
-                .buildTransform());
-    PipelineResult syndeoResult = syndeoPipeline.run();
+    // Build JSON configuration for the template:
+    String jsonPayload =
+        new ObjectMapper()
+            .writeValueAsString(
+                Map.of(
+                    "source",
+                    Map.of(
+                        "urn",
+                        "beam:schematransform:org.apache.beam:pubsublite_read:v1",
+                        "configurationParameters",
+                        Map.of(
+                                "subscriptionName",
+                            subscriptionName,
+                            "location",
+                            LOCATION,
+                            "project",
+                            PROJECT,
+                            "dataFormat",
+                            "AVRO",
+                            "schema",
+                                        AvroUtils.toAvroSchema(
+                                                SyndeoLoadTestUtils.SIMPLE_TABLE_SCHEMA)
+                                            .toString())),
+                    "sink",
+                    Map.of(
+                        "urn",
+                        "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
+                        "configurationParameters",
+                        Map.of(
+                            "projectId",
+                            PROJECT,
+                            "tableId",
+                            bigTableName,
+                            "instanceId",
+                            bigtable.getInstanceId(),
+                            "keyColumns",
+                            List.of("sha1")))));
+
+    SyndeoTemplate.buildPipeline(syndeoPipeline, SyndeoTemplate.buildFromJsonPayload(jsonPayload));
+    PipelineResult syndeoResult =
+        syndeoPipeline.runWithAdditionalOptionArgs(List.of("--runner=" + testConfig.getRunner()));
     syndeoResult.waitUntilFinish();
     generatorResult.waitUntilFinish();
   }

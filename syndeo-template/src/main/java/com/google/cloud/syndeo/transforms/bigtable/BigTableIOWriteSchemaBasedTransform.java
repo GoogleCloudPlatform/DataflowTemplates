@@ -52,7 +52,7 @@ public class BigTableIOWriteSchemaBasedTransform
 
   private static final Logger LOG =
       LoggerFactory.getLogger(BigTableIOWriteSchemaBasedTransform.class);
-  private static final String INPUT_TAG = "input";
+  public static final String INPUT_TAG = "input";
 
   private final String projectId;
   private final String instanceId;

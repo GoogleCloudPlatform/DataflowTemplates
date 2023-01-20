@@ -108,17 +108,20 @@ public class SyndeoTemplate {
     return run(options, pipeline);
   }
 
-  public static PipelineResult run(PipelineOptions options, PipelineDescription pipeline) {
-    // Read proto as configuration.
-    List<TransformSpec> specs = new ArrayList<>();
-    for (ConfiguredSchemaTransform inst : pipeline.getTransformsList()) {
-      specs.add(new TransformSpec(inst));
-    }
-
+  public static PipelineResult run(PipelineOptions options, PipelineDescription description) {
     Pipeline p = Pipeline.create(options);
     // Run pipeline from configuration.
-    ProviderUtil.applyConfigs(specs, PCollectionRowTuple.empty(p));
+    buildPipeline(p, description);
     return p.run();
+  }
+
+  public static void buildPipeline(Pipeline p, PipelineDescription description) {
+    // Read proto as configuration.
+    List<TransformSpec> specs = new ArrayList<>();
+    for (ConfiguredSchemaTransform inst : description.getTransformsList()) {
+      specs.add(new TransformSpec(inst));
+    }
+    ProviderUtil.applyConfigs(specs, PCollectionRowTuple.empty(p));
   }
 
   public static ConfiguredSchemaTransform buildFromJsonConfig(JsonNode transformConfig) {
