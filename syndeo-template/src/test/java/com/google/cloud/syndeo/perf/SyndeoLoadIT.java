@@ -16,7 +16,6 @@
 package com.google.cloud.syndeo.perf;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.io.JsonStringEncoder;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.bigtable.admin.v2.models.StorageType;
 import com.google.cloud.pubsublite.ReservationPath;
@@ -28,7 +27,7 @@ import com.google.cloud.teleport.it.bigtable.BigtableResourceManager;
 import com.google.cloud.teleport.it.bigtable.BigtableResourceManagerCluster;
 import com.google.cloud.teleport.it.bigtable.DefaultBigtableResourceManager;
 import com.google.cloud.teleport.it.pubsublite.PubsubLiteResourceManager;
-import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -51,7 +50,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
-@Category(TemplateIntegrationTest.class)
+@Category(TemplateLoadTest.class)
 @RunWith(JUnit4.class)
 public class SyndeoLoadIT {
   @Rule public TestPipeline dataGenerator = TestPipeline.create();
@@ -142,23 +141,25 @@ public class SyndeoLoadIT {
             "input",
             SyndeoLoadTestUtils.inputData(
                 dataGenerator, testConfig.getNumRows(), testConfig.getDurationMinutes()))
-        .apply("beam:schematransform:org.apache.beam:pubsublite_write:v1",
+        .apply(
+            "beam:schematransform:org.apache.beam:pubsublite_write:v1",
             new PubsubLiteWriteSchemaTransformProvider()
                 .from(
                     // TODO(pabloem): Avoid relying on SchemaRegistry and make from(ConfigClass)
                     // public.
-                        Objects.requireNonNull(SchemaRegistry.createDefault()
-                                .getToRowFunction(
-                                        PubsubLiteWriteSchemaTransformProvider
-                                                .PubsubLiteWriteSchemaTransformConfiguration.class)
-                                .apply(
-                                        PubsubLiteWriteSchemaTransformProvider
-                                                .PubsubLiteWriteSchemaTransformConfiguration.builder()
-                                                .setFormat("AVRO")
-                                                .setTopicName(topicName)
-                                                .setLocation(LOCATION)
-                                                .setProject(PROJECT)
-                                                .build())))
+                    Objects.requireNonNull(
+                        SchemaRegistry.createDefault()
+                            .getToRowFunction(
+                                PubsubLiteWriteSchemaTransformProvider
+                                    .PubsubLiteWriteSchemaTransformConfiguration.class)
+                            .apply(
+                                PubsubLiteWriteSchemaTransformProvider
+                                    .PubsubLiteWriteSchemaTransformConfiguration.builder()
+                                    .setFormat("AVRO")
+                                    .setTopicName(topicName)
+                                    .setLocation(LOCATION)
+                                    .setProject(PROJECT)
+                                    .build())))
                 .buildTransform());
     PipelineResult generatorResult =
         dataGenerator.runWithAdditionalOptionArgs(List.of("--runner=" + testConfig.getRunner()));
@@ -174,7 +175,7 @@ public class SyndeoLoadIT {
                         "beam:schematransform:org.apache.beam:pubsublite_read:v1",
                         "configurationParameters",
                         Map.of(
-                                "subscriptionName",
+                            "subscriptionName",
                             subscriptionName,
                             "location",
                             LOCATION,
@@ -183,9 +184,8 @@ public class SyndeoLoadIT {
                             "dataFormat",
                             "AVRO",
                             "schema",
-                                        AvroUtils.toAvroSchema(
-                                                SyndeoLoadTestUtils.SIMPLE_TABLE_SCHEMA)
-                                            .toString())),
+                            AvroUtils.toAvroSchema(SyndeoLoadTestUtils.SIMPLE_TABLE_SCHEMA)
+                                .toString())),
                     "sink",
                     Map.of(
                         "urn",
