@@ -86,8 +86,9 @@ public class GenerateConfiguration {
     }
   }
 
-  static com.google.cloud.datapipelines.v1.syndeo.Schema datapipelinesFieldTypeFromBeamSchemaFieldType(
-      Schema beamSchema, Set<String> supportedFields) {
+  static com.google.cloud.datapipelines.v1.syndeo.Schema
+      datapipelinesFieldTypeFromBeamSchemaFieldType(
+          Schema beamSchema, Set<String> supportedFields) {
     com.google.cloud.datapipelines.v1.syndeo.Schema.Builder schemaBuilder =
         com.google.cloud.datapipelines.v1.syndeo.Schema.newBuilder();
     for (Schema.Field f : beamSchema.getFields()) {
@@ -109,8 +110,8 @@ public class GenerateConfiguration {
     return schemaBuilder.build();
   }
 
-  static com.google.cloud.datapipelines.v1.syndeo.FieldType datapipelinesFieldTypeFromBeamSchemaFieldType(
-      Schema.FieldType beamFieldType) {
+  static com.google.cloud.datapipelines.v1.syndeo.FieldType
+      datapipelinesFieldTypeFromBeamSchemaFieldType(Schema.FieldType beamFieldType) {
     com.google.cloud.datapipelines.v1.syndeo.FieldType.Builder typeBuilder =
         com.google.cloud.datapipelines.v1.syndeo.FieldType.newBuilder();
     typeBuilder = typeBuilder.setNullable(beamFieldType.getNullable());
