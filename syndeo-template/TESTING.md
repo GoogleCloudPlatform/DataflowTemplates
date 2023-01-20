@@ -75,6 +75,51 @@ mvn clean package test -f unified-templates.xml -pl syndeo-template/pom.xml  \
     -DtempLocation=${TEMP_LOCATION}
 ```
 
+## BigQuery to BigTable tests
+
+The file `BigTableWriteIT` **holds integration tests** for the basic BigTable Syndeo integration. These integration tests
+rely on the existence of a BigTable instance and table, as well as a BigQuery dataset, which holds the BQ data that
+is part of the pipeline's read.
+
+This integration test requires a BigQuery dataset and a BigTable instance, as well as GCS buckets to handle artifacts.
+
+1. Create the BigQuery dataset.
+
+```
+bq mk syndeo_dataset
+```
+
+2. Create the BigTable instance.
+
+```
+gcloud bigtable instances create teleport --display-name=teleport --cluster-config=id=teleport,zone=us-central1-a
+```
+
+3. Create the artifact bucket
+
+```
+ARTIFACT_BUCKET=[CHANGE ME]
+gsutil mb gs://$ARTIFACT_BUCKET
+```
+
+4. Create the temporary location bucket
+
+```
+TEMP_LOCATION_BUCKET=[CHANGE ME]
+gsutil mb gs://$TEMP_LOCATION_BUCKET
+```
+
+5. Run the end-to-end test.
+
+The below command tests the workflow by publishing some data to BQ and checking that it makes it over to Bigtable.
+
+
+```shell
+mvn clean package test -f pom.xml -pl syndeo-template/pom.xml  \
+    -Dtests="BigTableWriteIT#testBigQueryToBigTableSmallNonTemplateJob"  \
+    -Dproject="$(gcloud config get-value project)"  -DartifactBucket="gs://$ARTIFACT_BUCKET"  \
+    -Dregion="us-central1" -DtempLocation=gs://$TEMP_LOCATION_BUCKET
+```
 
 
 
