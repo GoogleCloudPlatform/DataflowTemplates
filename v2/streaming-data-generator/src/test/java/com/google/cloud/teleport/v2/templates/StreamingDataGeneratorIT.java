@@ -21,6 +21,7 @@ import static com.google.common.truth.Truth.assertThat;
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
+import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.artifacts.Artifact;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
@@ -49,12 +50,16 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Integration test for {@link StreamingDataGenerator}. */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(StreamingDataGenerator.class)
 @RunWith(JUnit4.class)
 public final class StreamingDataGeneratorIT extends TemplateTestBase {
+
+  private static final Logger LOG = LoggerFactory.getLogger(StreamingDataGeneratorIT.class);
 
   private static final String SCHEMA_FILE = "gameevent.json";
   private static final String LOCAL_SCHEMA_PATH = Resources.getResource(SCHEMA_FILE).getPath();
@@ -67,12 +72,16 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
   private static final String SINK_TYPE_KEY = "sinkType";
   private static final String WINDOW_DURATION_KEY = "windowDuration";
   private static final String TOPIC_KEY = "topic";
+  private static final String OUTPUT_TABLE_SPEC = "outputTableSpec";
+  private static final String OUTPUT_DEADLETTER_TABLE = "outputDeadletterTable";
 
   private static final String DEFAULT_QPS = "15";
   private static final String DEFAULT_WINDOW_DURATION = "60s";
-  private static PubsubResourceManager pubsubResourceManager;
-  private static BigQueryResourceManager bigQueryResourceManager;
-  private static SpannerResourceManager spannerResourceManager;
+  private static final String HIGH_QPS = "10000";
+
+  private PubsubResourceManager pubsubResourceManager;
+  private BigQueryResourceManager bigQueryResourceManager;
+  private SpannerResourceManager spannerResourceManager;
 
   @After
   public void tearDown() {
@@ -213,16 +222,13 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
     // Arrange
     String name = testName.getMethodName();
     String jobName = createJobName(name);
-    bigQueryResourceManager.createTable(jobName, schema);
+    TableId table = bigQueryResourceManager.createTable(jobName, schema);
     LaunchConfig.Builder options =
         LaunchConfig.builder(jobName, specPath)
-            .addParameter("schemaTemplate", String.valueOf(SchemaTemplate.GAME_EVENT))
-            .addParameter("qps", "1000000")
-            .addParameter("sinkType", "BIGQUERY")
-            .addParameter(
-                "outputTableSpec",
-                String.format(
-                    "%s:%s.%s", PROJECT, bigQueryResourceManager.getDatasetId(), jobName));
+            .addParameter(SCHEMA_TEMPLATE_KEY, String.valueOf(SchemaTemplate.GAME_EVENT))
+            .addParameter(QPS_KEY, HIGH_QPS)
+            .addParameter(SINK_TYPE_KEY, "BIGQUERY")
+            .addParameter(OUTPUT_TABLE_SPEC, toTableSpec(table));
 
     // Act
     JobInfo info = launchTemplate(options);
@@ -231,7 +237,57 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
         new DataflowOperator(getDataflowClient())
             .waitForConditionAndFinish(
                 createConfig(info),
-                () -> bigQueryResourceManager.readTable(jobName).getTotalRows() > 0);
+                () -> bigQueryResourceManager.readTable(table.getTable()).getTotalRows() > 0);
+    // Assert
+    assertThat(result).isEqualTo(Result.CONDITION_MET);
+  }
+
+  @Test
+  public void testFakeMessagesToBigQueryWithErrors() throws IOException {
+    // Set up resource manager
+    bigQueryResourceManager =
+        DefaultBigQueryResourceManager.builder(testName.getMethodName(), PROJECT)
+            .setCredentials(credentials)
+            .build();
+    // removes fields intentionally to reproduce DLQ errors
+    Schema schema =
+        Schema.of(
+            Field.of("eventId", StandardSQLTypeName.STRING),
+            Field.of("eventTimestamp", StandardSQLTypeName.INT64),
+            Field.of("ipv4", StandardSQLTypeName.STRING),
+            Field.of("ipv6", StandardSQLTypeName.STRING),
+            Field.of("country", StandardSQLTypeName.STRING),
+            Field.of("username", StandardSQLTypeName.STRING));
+    // Arrange
+    String name = testName.getMethodName();
+    String jobName = createJobName(name);
+    TableId table = bigQueryResourceManager.createTable(jobName, schema);
+    TableId dlq = TableId.of(table.getDataset(), table.getTable() + "_dlq");
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(jobName, specPath)
+            .addParameter(SCHEMA_TEMPLATE_KEY, String.valueOf(SchemaTemplate.GAME_EVENT))
+            .addParameter(QPS_KEY, HIGH_QPS)
+            .addParameter(SINK_TYPE_KEY, "BIGQUERY")
+            .addParameter(OUTPUT_TABLE_SPEC, toTableSpec(table))
+            .addParameter(OUTPUT_DEADLETTER_TABLE, toTableSpec(dlq));
+
+    // Act
+    JobInfo info = launchTemplate(options);
+    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    Result result =
+        new DataflowOperator(getDataflowClient())
+            .waitForConditionAndFinish(
+                createConfig(info),
+                () -> {
+                  try {
+                    return bigQueryResourceManager.readTable(dlq.getTable()).getTotalRows() > 0;
+                  } catch (Exception e) {
+                    LOG.info("Error pulling records from {}: {}", dlq.getTable(), e.getMessage());
+                    return false;
+                  }
+                });
+
     // Assert
     assertThat(result).isEqualTo(Result.CONDITION_MET);
   }
