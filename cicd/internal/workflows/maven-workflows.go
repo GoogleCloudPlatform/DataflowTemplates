@@ -107,7 +107,7 @@ func (*mvnFlags) FailAtTheEnd() string {
 }
 
 func (*mvnFlags) RunIntegrationTests() string {
-	return "-PtemplatesIntegrationTests"
+	return "-PtemplatesIntegrationTests,oss-build"
 }
 
 func (*mvnFlags) ThreadCount(count int) string {
