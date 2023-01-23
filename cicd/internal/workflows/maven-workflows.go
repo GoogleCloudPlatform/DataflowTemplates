@@ -169,9 +169,10 @@ func RunForChangedModules(cmd string, args ...string) error {
 
 	// We need to append the base dependency modules, because they are needed to build all
 	// other modules.
+	build_syndeo := false
 	for root, children := range repo.GetModulesForPaths(changed) {
-		if root == "syndeo-template" {
-			continue
+		if root == "syndeo-template" && len(children) > 0 {
+			build_syndeo = true
 		}
 		if len(children) == 0 {
 			modules = append(modules, root)
@@ -205,6 +206,10 @@ func RunForChangedModules(cmd string, args ...string) error {
 		return nil
 	}
 	modules = append(modules, "plugins/templates-maven-plugin")
+
+	if !build_syndeo {
+		modules = append(modules, "-syndeo-template")
+	}
 
 	return op.RunMavenOnModule(unifiedPom, cmd, strings.Join(modules, ","), args...)
 }

@@ -32,8 +32,8 @@ import com.google.pubsub.v1.PullResponse;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Before;
@@ -81,24 +81,27 @@ public class TextToPubsubIT extends TemplateTestBase {
     // Act
     JobInfo info = launchTemplate(options);
     assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
-    AtomicReference<PullResponse> records = new AtomicReference<>();
+    List<String> records = new ArrayList<>();
     Result result =
         new DataflowOperator(getDataflowClient())
-            .waitForConditionAndFinish(
+            .waitForCondition(
                 createConfig(info),
                 () -> {
                   PullResponse response =
                       pubsubResourceManager.pull(outputSubscription, expectedArtifacts.size());
-                  records.set(response);
-                  return response.getReceivedMessagesList().size() >= expectedArtifacts.size();
+                  if (response.getReceivedMessagesCount() > 0) {
+                    records.addAll(
+                        response.getReceivedMessagesList().stream()
+                            .map(
+                                receivedMessage ->
+                                    receivedMessage.getMessage().getData().toStringUtf8())
+                            .collect(Collectors.toList()));
+                  }
+                  return records.size() >= expectedArtifacts.size();
                 });
     // TODO: Replace this check by truth subjects (like assertThatArtifacts(), assertThatRecords())
-    List<String> actualMessages =
-        records.get().getReceivedMessagesList().stream()
-            .map(receivedMessage -> receivedMessage.getMessage().getData().toStringUtf8())
-            .collect(Collectors.toList());
     assertThat(result).isEqualTo(Result.CONDITION_MET);
-    assertThat(actualMessages).containsAtLeastElementsIn(expectedArtifacts);
+    assertThat(records).containsAtLeastElementsIn(expectedArtifacts);
   }
 
   private void createArtifacts(List<String> expectedArtifacts) {

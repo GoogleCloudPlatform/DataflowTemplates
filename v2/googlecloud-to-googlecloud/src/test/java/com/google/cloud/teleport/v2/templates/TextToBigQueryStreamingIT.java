@@ -131,7 +131,7 @@ public class TextToBigQueryStreamingIT extends TemplateTestBase {
     Result result =
         new DataflowOperator(getDataflowClient())
             // drain doesn't seem to work with the TextIO GCS files watching that the template uses
-            .waiForConditionAndCancel(
+            .waitForConditionAndCancel(
                 createConfig(info), () -> bigQueryClient.readTable(bqTable).getTotalRows() > 0);
 
     // Assert
