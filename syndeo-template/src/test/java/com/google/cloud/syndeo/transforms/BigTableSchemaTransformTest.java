@@ -24,6 +24,7 @@ import com.google.cloud.syndeo.SyndeoTemplate;
 import com.google.cloud.syndeo.common.ProviderUtil;
 import com.google.cloud.syndeo.transforms.bigquery.BigQuerySyndeoServices;
 import com.google.cloud.syndeo.transforms.bigtable.BigTableWriteSchemaTransformConfiguration;
+import com.google.cloud.syndeo.transforms.bigtable.BigTableWriteSchemaTransformProvider;
 import com.google.cloud.syndeo.v1.SyndeoV1;
 import java.time.Instant;
 import java.util.*;
@@ -40,6 +41,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Lists;
 import org.joda.time.DateTime;
@@ -132,6 +134,35 @@ public class BigTableSchemaTransformTest {
   public BigtableEmulatorContainer bigTableContainer =
       new BigtableEmulatorContainer(
           DockerImageName.parse("gcr.io/google.com/cloudsdktool/cloud-sdk:367.0.0-emulators"));
+
+  @Test(expected = UnsupportedOperationException.class)
+  public void testBigTableSchemaUnsupported() {
+    PipelineOptions setupOptions = PipelineOptionsFactory.create();
+    Pipeline setupP = Pipeline.create(setupOptions);
+
+    PCollectionRowTuple.of(
+            "input",
+            setupP
+                .apply(Create.of(generateRow(true)))
+                .setRowSchema(
+                    Schema.builder()
+                        .addRowField(
+                            "someRowField", Schema.builder().addInt64Field("someint64").build())
+                        .build()))
+        .apply(
+            new BigTableWriteSchemaTransformProvider()
+                .from(
+                    BigTableWriteSchemaTransformConfiguration.builder()
+                        .setProjectId("anyproject")
+                        .setInstanceId("anyinstance")
+                        .setTableId("anytable")
+                        .setKeyColumns(Arrays.asList("name"))
+                        .setEndpoint(bigTableContainer.getEmulatorEndpoint())
+                        .build())
+                .buildTransform());
+
+    setupP.run().waitUntilFinish();
+  }
 
   @Test
   public void testBigTableSchemaTransformIsFound() {
