@@ -41,7 +41,7 @@ public class SyndeoLoadTestUtils {
       Pipeline dataGenerator, Long numRows, Integer runtimeMinutes) {
     Random randomSeed = new Random();
 
-    final long numSplits = numRows / MAX_ROWS_PER_SPLIT;
+    final long numSplits = Math.max(numRows / MAX_ROWS_PER_SPLIT, 1);
     final long periodPerSplitMsecs = Math.max((runtimeMinutes * 60 * 1000) / numSplits, 1);
     System.out.printf(
         "Producing %s rows in %s splits. Each split every %s msecs. Each split has max %s rows.%n",
