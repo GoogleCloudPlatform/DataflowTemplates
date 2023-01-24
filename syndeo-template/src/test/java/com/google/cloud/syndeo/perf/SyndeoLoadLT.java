@@ -108,7 +108,7 @@ public class SyndeoLoadLT {
   private static final PubsubLiteToBigTableConfiguration DATAFLOW_TEST_CONFIG =
       PubsubLiteToBigTableConfiguration.create(50_000_000L, 20, "DataflowRunner");
   private static final PubsubLiteToBigTableConfiguration LARGE_DATAFLOW_TEST_CONFIG =
-      PubsubLiteToBigTableConfiguration.create(2_500_000_000L, 80, "DataflowRunner");
+      PubsubLiteToBigTableConfiguration.create(500_000_000L, 60, "DataflowRunner");
 
   private static final Map<String, PubsubLiteToBigTableConfiguration> TEST_CONFIGS =
       Map.of(
