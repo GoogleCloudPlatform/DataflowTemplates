@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.spanner.ddl;
 
 import com.google.auto.value.AutoValue;
+import com.google.cloud.spanner.Dialect;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 import java.io.IOException;
@@ -50,28 +51,55 @@ public abstract class Table implements Serializable {
 
   public abstract Builder autoToBuilder();
 
+  public abstract Dialect dialect();
+
   public Builder toBuilder() {
     Builder builder = autoToBuilder();
+    builder = builder.dialect(dialect());
     for (Column column : columns()) {
       builder.addColumn(column);
     }
     for (IndexColumn pk : primaryKeys()) {
-      builder.primaryKeyBuilder.set(pk);
+      builder.primaryKeyBuilder().set(pk);
     }
     return builder;
   }
 
-  public static Builder builder() {
+  public static Builder builder(Dialect dialect) {
     return new AutoValue_Table.Builder()
+        .dialect(dialect)
         .indexes(ImmutableList.of())
         .foreignKeys(ImmutableList.of())
         .checkConstraints(ImmutableList.of())
         .onDeleteCascade(false);
   }
 
+  public static Builder builder() {
+    return builder(Dialect.GOOGLE_STANDARD_SQL);
+  }
+
   public void prettyPrint(Appendable appendable, boolean includeIndexes, boolean includeForeignKeys)
       throws IOException {
-    appendable.append("CREATE TABLE `").append(name()).append("` (");
+    switch (dialect()) {
+      case GOOGLE_STANDARD_SQL:
+        prettyPrintGsql(appendable, includeIndexes, includeForeignKeys);
+        break;
+      case POSTGRESQL:
+        prettyPrintPg(appendable, includeIndexes, includeForeignKeys);
+        break;
+      default:
+        throw new IllegalArgumentException(String.format("Unrecognized Dialect: %s", dialect()));
+    }
+  }
+
+  private void prettyPrintPg(
+      Appendable appendable, boolean includeIndexes, boolean includeForeignKeys)
+      throws IOException {
+    String identifierQuote = DdlUtilityComponents.identifierQuote(Dialect.POSTGRESQL);
+    appendable
+        .append("CREATE TABLE " + identifierQuote)
+        .append(name())
+        .append(identifierQuote + " (");
     for (Column column : columns()) {
       appendable.append("\n\t");
       column.prettyPrint(appendable);
@@ -82,7 +110,50 @@ public abstract class Table implements Serializable {
       appendable.append(checkConstraint);
       appendable.append(",");
     }
+    if (primaryKeys() != null) {
+      appendable.append(
+          primaryKeys().stream()
+              .map(c -> identifierQuote + c.name() + identifierQuote)
+              .collect(Collectors.joining(", ", "\n\tPRIMARY KEY (", ")")));
+    }
+    appendable.append("\n)");
+    if (interleaveInParent() != null) {
+      appendable
+          .append(" \nINTERLEAVE IN PARENT " + identifierQuote)
+          .append(interleaveInParent())
+          .append(identifierQuote);
+      if (onDeleteCascade()) {
+        appendable.append(" ON DELETE CASCADE");
+      }
+    }
+    if (includeIndexes) {
+      appendable.append("\n");
+      appendable.append(String.join("\n", indexes()));
+    }
+    if (includeForeignKeys) {
+      appendable.append("\n");
+      appendable.append(String.join("\n", foreignKeys()));
+    }
+  }
 
+  private void prettyPrintGsql(
+      Appendable appendable, boolean includeIndexes, boolean includeForeignKeys)
+      throws IOException {
+    String identifierQuote = DdlUtilityComponents.identifierQuote(Dialect.GOOGLE_STANDARD_SQL);
+    appendable
+        .append("CREATE TABLE " + identifierQuote)
+        .append(name())
+        .append(identifierQuote + " (");
+    for (Column column : columns()) {
+      appendable.append("\n\t");
+      column.prettyPrint(appendable);
+      appendable.append(",");
+    }
+    for (String checkConstraint : checkConstraints()) {
+      appendable.append("\n\t");
+      appendable.append(checkConstraint);
+      appendable.append(",");
+    }
     if (primaryKeys() != null) {
       appendable.append(
           primaryKeys().stream()
@@ -91,7 +162,10 @@ public abstract class Table implements Serializable {
     }
     appendable.append(")");
     if (interleaveInParent() != null) {
-      appendable.append(",\nINTERLEAVE IN PARENT `").append(interleaveInParent()).append("`");
+      appendable
+          .append(",\nINTERLEAVE IN PARENT " + identifierQuote)
+          .append(interleaveInParent())
+          .append(identifierQuote);
       if (onDeleteCascade()) {
         appendable.append(" ON DELETE CASCADE");
       }
@@ -126,8 +200,7 @@ public abstract class Table implements Serializable {
   public abstract static class Builder {
 
     private Ddl.Builder ddlBuilder;
-    private IndexColumn.IndexColumnsBuilder<Builder> primaryKeyBuilder =
-        new IndexColumn.IndexColumnsBuilder<>(this);
+    private IndexColumn.IndexColumnsBuilder<Builder> primaryKeyBuilder;
     private LinkedHashMap<String, Column> columns = Maps.newLinkedHashMap();
 
     Builder ddlBuilder(Ddl.Builder ddlBuilder) {
@@ -155,8 +228,12 @@ public abstract class Table implements Serializable {
 
     abstract ImmutableList<Column> columns();
 
+    abstract Builder dialect(Dialect dialect);
+
+    public abstract Dialect dialect();
+
     public IndexColumn.IndexColumnsBuilder<Builder> primaryKey() {
-      return primaryKeyBuilder;
+      return primaryKeyBuilder();
     }
 
     public Column.Builder column(String name) {
@@ -164,7 +241,7 @@ public abstract class Table implements Serializable {
       if (column != null) {
         return column.toBuilder().tableBuilder(this);
       }
-      return Column.builder().name(name).tableBuilder(this);
+      return Column.builder(dialect()).name(name).tableBuilder(this);
     }
 
     public Builder addColumn(Column column) {
@@ -180,7 +257,7 @@ public abstract class Table implements Serializable {
     abstract Table autoBuild();
 
     public Table build() {
-      return primaryKeys(primaryKeyBuilder.build())
+      return primaryKeys(primaryKeyBuilder().build())
           .columns(ImmutableList.copyOf(columns.values()))
           .autoBuild();
     }
@@ -188,6 +265,13 @@ public abstract class Table implements Serializable {
     public Ddl.Builder endTable() {
       ddlBuilder.addTable(build());
       return ddlBuilder;
+    }
+
+    private IndexColumn.IndexColumnsBuilder<Builder> primaryKeyBuilder() {
+      if (primaryKeyBuilder == null) {
+        primaryKeyBuilder = new IndexColumn.IndexColumnsBuilder<>(this, dialect());
+      }
+      return primaryKeyBuilder;
     }
   }
 
