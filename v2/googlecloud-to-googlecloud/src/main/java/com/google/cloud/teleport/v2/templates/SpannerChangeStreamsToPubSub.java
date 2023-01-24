@@ -85,7 +85,6 @@ public class SpannerChangeStreamsToPubSub {
     String changeStreamName = options.getSpannerChangeStreamName();
     String pubsubTopicName = options.getPubsubTopic();
     String pubsubAPI = options.getPubsubAPI();
-    String outputPubsubTopic = "projects/" + projectId + "/topics/" + pubsubTopicName;
 
     // Retrieve and parse the start / end timestamps.
     Timestamp startTimestamp =
@@ -136,7 +135,12 @@ public class SpannerChangeStreamsToPubSub {
                 .withMetadataTable(metadataTableName))
         .apply(
             "Convert each record to a PubsubMessage",
-            FileFormatFactorySpannerChangeStreamsToPubSub.newBuilder().setOptions(options).build());
+            FileFormatFactorySpannerChangeStreamsToPubSub.newBuilder()
+                .setOutputDataFormat(options.getOutputDataFormat())
+                .setProjectId(projectId)
+                .setPubsubAPI(pubsubAPI)
+                .setPubsubTopicName(pubsubTopicName)
+                .build());
     return pipeline.run();
   }
 }
