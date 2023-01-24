@@ -124,7 +124,7 @@ mvn clean package test -f pom.xml -pl syndeo-template/pom.xml  \
 ## Running load tests
 
 Several end-to-end load tests are implemented for the Syndeo template. These tests are implemented
-as integration tests with the `LoadTest` category, and they are intended to verify that syndeo will
+as integration tests with filenames `*LT.java`. They are intended to verify that syndeo will
 behave properly with larger data loads.
 
 These tests can be run on three different configuration levels:
@@ -136,6 +136,19 @@ These tests can be run on three different configuration levels:
 - `"large"` - This configuration level is meant for tests that check verifiable peak load for the template.
     Tests with `large` configuration level may run for an hour or more if necessary.
 
+To run these tests, you will need to activate the `load-tests` profile, and specify a test configuration,
+as well as a few other parameters. See:
+
+```shell
+GCS_BUCKET=TODO
+GCP_PROJECT=TODO
+
+mvn clean compile integration-test -pl syndeo-template/pom.xml -Pload-tests \
+    -Djib.skip=true -Dconfiguration=medium \
+    -Dproject=${GCP_PROJECT} -DartifactBucket=$GCS_BUCKET/artifacts/ -Dregion=us-central1 \
+    -DtempLocation=$GCS_BUCKET/temp/ \
+    -DbeamTestPipelineOptions="[\"--project=$GCP_PROJECT\", \"--region=us-central1\", \"--streaming\", \"--numWorkers=5\"]"
+```
 
 
 

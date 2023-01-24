@@ -15,7 +15,6 @@
  */
 package com.google.cloud.syndeo.perf;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.bigtable.admin.v2.models.StorageType;
 import com.google.cloud.pubsublite.ReservationPath;
@@ -46,16 +45,24 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 @Category(TemplateLoadTest.class)
 @RunWith(JUnit4.class)
-public class SyndeoLoadIT {
+public class SyndeoLoadLT {
   @Rule public TestPipeline dataGenerator = TestPipeline.create();
 
   @Rule public TestPipeline syndeoPipeline = TestPipeline.create();
+
+  @Rule
+  public Timeout timeoutRule =
+      Timeout.seconds(
+          60L
+              * TEST_CONFIGS.get(TEST_CONFIG).getDurationMinutes()
+              * 3); // 3x the duration of the injection pipeline
 
   private static final String PROJECT = TestProperties.project();
   private static final String LOCATION = TestProperties.region();
@@ -91,7 +98,7 @@ public class SyndeoLoadIT {
 
     public static PubsubLiteToBigTableConfiguration create(
         Long throughput, Integer durationMinutes, String runner) {
-      return new AutoValue_SyndeoLoadIT_PubsubLiteToBigTableConfiguration(
+      return new AutoValue_SyndeoLoadLT_PubsubLiteToBigTableConfiguration(
           throughput, durationMinutes, runner);
     }
   }
@@ -99,17 +106,22 @@ public class SyndeoLoadIT {
   private static final PubsubLiteToBigTableConfiguration LOCAL_TEST_CONFIG =
       PubsubLiteToBigTableConfiguration.create(1_000L, 1, "DirectRunner");
   private static final PubsubLiteToBigTableConfiguration DATAFLOW_TEST_CONFIG =
-      PubsubLiteToBigTableConfiguration.create(5_000_000L, 20, "DataflowRunner");
+      PubsubLiteToBigTableConfiguration.create(50_000_000L, 20, "DataflowRunner");
+  private static final PubsubLiteToBigTableConfiguration LARGE_DATAFLOW_TEST_CONFIG =
+      PubsubLiteToBigTableConfiguration.create(2_500_000_000L, 80, "DataflowRunner");
 
   private static final Map<String, PubsubLiteToBigTableConfiguration> TEST_CONFIGS =
       Map.of(
-          "local", LOCAL_TEST_CONFIG,
-          "medium", DATAFLOW_TEST_CONFIG);
+          "local",
+          LOCAL_TEST_CONFIG,
+          "medium",
+          DATAFLOW_TEST_CONFIG,
+          "large",
+          LARGE_DATAFLOW_TEST_CONFIG);
 
   @Test
   public void testPubsubLiteToBigTableSyndeoFlow()
-      throws NoSuchSchemaException, JsonProcessingException,
-          org.testcontainers.shaded.com.fasterxml.jackson.core.JsonProcessingException {
+      throws NoSuchSchemaException, IOException, InterruptedException {
     PubsubLiteToBigTableConfiguration testConfig = TEST_CONFIGS.get(TEST_CONFIG);
     if (testConfig == null) {
       throw new IllegalArgumentException(
@@ -162,7 +174,8 @@ public class SyndeoLoadIT {
                                     .build())))
                 .buildTransform());
     PipelineResult generatorResult =
-        dataGenerator.runWithAdditionalOptionArgs(List.of("--runner=" + testConfig.getRunner()));
+        dataGenerator.runWithAdditionalOptionArgs(
+            List.of("--runner=" + testConfig.getRunner(), "--experiments=enable_streaming_engine"));
 
     // Build JSON configuration for the template:
     String jsonPayload =
@@ -203,8 +216,12 @@ public class SyndeoLoadIT {
 
     SyndeoTemplate.buildPipeline(syndeoPipeline, SyndeoTemplate.buildFromJsonPayload(jsonPayload));
     PipelineResult syndeoResult =
-        syndeoPipeline.runWithAdditionalOptionArgs(List.of("--runner=" + testConfig.getRunner()));
-    syndeoResult.waitUntilFinish();
+        syndeoPipeline.runWithAdditionalOptionArgs(
+            List.of("--runner=" + testConfig.getRunner(), "--experiments=enable_streaming_engine"));
     generatorResult.waitUntilFinish();
+
+    // TODO(pabloem): Handle cancelling the Syndeo Pipeline based on throughput/processing metrics.
+    Thread.sleep(60 * 5_000); // 5 minutes
+    syndeoResult.cancel();
   }
 }

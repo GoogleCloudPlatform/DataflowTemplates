@@ -19,10 +19,11 @@ import java.math.BigDecimal;
 import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.io.GenerateSequence;
 import org.apache.beam.sdk.schemas.Schema;
-import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.FlatMapElements;
+import org.apache.beam.sdk.transforms.PeriodicImpulse;
 import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollection;
@@ -30,25 +31,46 @@ import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TypeDescriptors;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
+import org.joda.time.Instant;
 
 public class SyndeoLoadTestUtils {
+
+  public static final Long MAX_ROWS_PER_SPLIT = 2000L;
 
   public static PCollection<Row> inputData(
       Pipeline dataGenerator, Long numRows, Integer runtimeMinutes) {
     Random randomSeed = new Random();
-    // TODO(pabloem): Determine rate of production of data.
+
+    final long numSplits = numRows / MAX_ROWS_PER_SPLIT;
+    final long periodPerSplitMsecs = Math.max((runtimeMinutes * 60 * 1000) / numSplits, 1);
+    System.out.printf(
+        "Producing %s rows in %s splits. Each split every %s msecs. Each split has max %s rows.%n",
+        numRows, numSplits, periodPerSplitMsecs, MAX_ROWS_PER_SPLIT);
+
+    final Instant startTime = Instant.now();
+
     return dataGenerator
         .apply(
-            GenerateSequence.from(0)
-                .to(numRows)
-                .withRate(numRows / runtimeMinutes / 60, Duration.standardSeconds(1)))
+            PeriodicImpulse.create()
+                .startAt(startTime)
+                .stopAt(Instant.now().plus(Duration.standardMinutes(runtimeMinutes)))
+                .withInterval(Duration.millis(periodPerSplitMsecs)))
         .apply(Reshuffle.viaRandomKey())
         .apply(
-            MapElements.into(TypeDescriptors.rows())
+            FlatMapElements.into(TypeDescriptors.rows())
                 .via(
-                    longVal ->
-                        SyndeoLoadTestUtils.randomRowForSchema(
-                            SyndeoLoadTestUtils.SIMPLE_TABLE_SCHEMA, 0.05, randomSeed)))
+                    inst -> {
+                      long ordinal =
+                          (inst.minus(Duration.millis(startTime.getMillis())).getMillis()
+                              / periodPerSplitMsecs);
+                      return LongStream.range(
+                              ordinal * MAX_ROWS_PER_SPLIT, (ordinal + 1) * MAX_ROWS_PER_SPLIT)
+                          .mapToObj(
+                              intVal ->
+                                  SyndeoLoadTestUtils.randomRowForSchema(
+                                      SyndeoLoadTestUtils.SIMPLE_TABLE_SCHEMA, 0.05, randomSeed))
+                          .collect(Collectors.toList());
+                    }))
         .setRowSchema(SIMPLE_TABLE_SCHEMA);
   }
 
