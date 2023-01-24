@@ -64,6 +64,7 @@ public abstract class StreamingDataGeneratorWriteToSpanner
         .apply(
             "Write To Spanner",
             SpannerIO.write()
+                .withProjectId(options.getProjectId())
                 .withInstanceId(options.getSpannerInstanceName())
                 .withDatabaseId(options.getSpannerDatabaseName()));
     return PDone.in(generatedMessages.getPipeline());
