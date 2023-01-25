@@ -59,6 +59,19 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
 
   @TemplateParameter.Text(
       order = 4,
+      optional = true,
+      description = "Spanner database role",
+      helpText =
+          "Database role user assumes while reading from the change stream. The database role"
+              + " should have required privileges to read from change stream. If a database role is"
+              + " not specified, the user should have required IAM permissions to read from the"
+              + " database.")
+  String getSpannerDatabaseRole();
+
+  void setSpannerDatabaseRole(String spannerDatabaseRole);
+
+  @TemplateParameter.Text(
+      order = 5,
       description = "Spanner metadata instance ID",
       helpText = "The Spanner instance to use for the change streams connector metadata table.")
   @Validation.Required
@@ -67,7 +80,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
   void setSpannerMetadataInstanceId(String spannerMetadataInstanceId);
 
   @TemplateParameter.Text(
-      order = 5,
+      order = 6,
       description = "Spanner metadata database",
       helpText =
           "The Spanner database to use for the change streams connector metadata table. For change"
@@ -79,7 +92,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
   void setSpannerMetadataDatabase(String spannerMetadataDatabase);
 
   @TemplateParameter.Text(
-      order = 6,
+      order = 7,
       optional = true,
       description = "Cloud Spanner metadata table name",
       helpText =
@@ -92,7 +105,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
   void setSpannerMetadataTableName(String value);
 
   @TemplateParameter.Text(
-      order = 7,
+      order = 8,
       description = "Spanner change stream",
       helpText = "The name of the Spanner change stream to read from.")
   @Validation.Required
@@ -101,7 +114,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
   void setSpannerChangeStreamName(String spannerChangeStreamName);
 
   @TemplateParameter.DateTime(
-      order = 8,
+      order = 9,
       optional = true,
       description = "The timestamp to read change streams from",
       helpText =
@@ -114,7 +127,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
   void setStartTimestamp(String startTimestamp);
 
   @TemplateParameter.DateTime(
-      order = 9,
+      order = 10,
       optional = true,
       description = "The timestamp to read change streams to",
       helpText =
@@ -127,7 +140,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
   void setEndTimestamp(String startTimestamp);
 
   @TemplateParameter.Text(
-      order = 10,
+      order = 11,
       optional = true,
       description = "Cloud Spanner Endpoint to call",
       helpText = "The Cloud Spanner endpoint to call in the template. Only used for testing.",
@@ -138,7 +151,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
   void setSpannerHost(String value);
 
   @TemplateParameter.Text(
-      order = 11,
+      order = 12,
       optional = true,
       description = "Output data format",
       helpText =
@@ -149,7 +162,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
   void setOutputDataFormat(String outputDataFormat);
 
   @TemplateParameter.Text(
-      order = 12,
+      order = 13,
       optional = true,
       description = "Pub/Sub API",
       helpText =
@@ -162,7 +175,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
   void setPubsubAPI(String pubsubAPI);
 
   @TemplateParameter.Text(
-      order = 13,
+      order = 14,
       description = "The output Pub/Sub topic",
       helpText = "The Pub/Sub topic to publish PubsubMessage.")
   @Validation.Required
@@ -171,7 +184,7 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
   void setPubsubTopic(String pubsubTopic);
 
   @TemplateParameter.Enum(
-      order = 14,
+      order = 15,
       enumOptions = {"LOW", "MEDIUM", "HIGH"},
       optional = true,
       description = "Priority for Spanner RPC invocations",
