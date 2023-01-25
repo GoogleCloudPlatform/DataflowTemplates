@@ -48,7 +48,7 @@ import org.junit.runners.JUnit4;
 public class PubsubToPubsubPerformanceIT extends PerformanceBenchmarkingBase {
   private static final String SPEC_PATH =
       MoreObjects.firstNonNull(
-          "gs://dataflow-templates/latest/Cloud_PubSub_to_Cloud_PubSub", TestProperties.specPath());
+          TestProperties.specPath(), "gs://dataflow-templates/latest/Cloud_PubSub_to_Cloud_PubSub");
   private static final long numMessages = 35000000L;
   private static final String INPUT_PCOLLECTION = "Read PubSub Events/PubsubUnboundedSource.out0";
   private static final String OUTPUT_PCOLLECTION = "Write PubSub Events/MapElements/Map.out0";

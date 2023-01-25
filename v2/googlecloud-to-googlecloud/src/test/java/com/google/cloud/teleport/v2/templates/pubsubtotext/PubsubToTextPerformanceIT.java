@@ -58,8 +58,8 @@ public final class PubsubToTextPerformanceIT extends PerformanceBenchmarkingBase
   private static final String ARTIFACT_BUCKET = TestProperties.artifactBucket();
   private static final String SPEC_PATH =
       MoreObjects.firstNonNull(
-          "gs://dataflow-templates/latest/flex/Cloud_PubSub_to_GCS_Text_Flex",
-          TestProperties.specPath());
+          TestProperties.specPath(),
+          "gs://dataflow-templates/latest/flex/Cloud_PubSub_to_GCS_Text_Flex");
   private static final String TEST_ROOT_DIR =
       PubsubToTextPerformanceIT.class.getSimpleName().toLowerCase();
   private static final String INPUT_SUBSCRIPTION = "inputSubscription";

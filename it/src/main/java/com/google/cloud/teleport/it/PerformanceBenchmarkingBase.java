@@ -203,6 +203,9 @@ public class PerformanceBenchmarkingBase {
   protected Map<String, Double> getMetrics(LaunchInfo launchInfo, String inputPcollection)
       throws ParseException, InterruptedException, IOException {
     // Metrics take up to 3 minutes to show up
+    // TODO(pranavbhandari): We should use a library like http://awaitility.org/ to poll for metrics
+    // instead of hardcoding X minutes.
+    LOG.info("Sleeping for 4 minutes to query metrics.");
     Thread.sleep(Duration.ofMinutes(4).toMillis());
     Map<String, Double> metrics = pipelineLauncher.getMetrics(PROJECT, REGION, launchInfo.jobId());
     LOG.info("Calculating approximate cost for {} under {}", launchInfo.jobId(), PROJECT);
@@ -223,7 +226,6 @@ public class PerformanceBenchmarkingBase {
     Double dataProcessed = monitoringClient.getDataProcessed(PROJECT, launchInfo, inputPcollection);
     if (dataProcessed != null) {
       metrics.put("EstimatedDataProcessedGB", dataProcessed / 1e9d);
-      metrics.put("EstimatedCostPerGBProcessed", metrics.get("EstimatedCost") / dataProcessed);
     }
     return metrics;
   }

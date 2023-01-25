@@ -55,8 +55,8 @@ import org.junit.runners.JUnit4;
 public class PubsubToBigQueryPerformanceIT extends PerformanceBenchmarkingBase {
   private static final String SPEC_PATH =
       MoreObjects.firstNonNull(
-          "gs://dataflow-templates/latest/PubSub_Subscription_to_BigQuery",
-          TestProperties.specPath());
+          TestProperties.specPath(),
+          "gs://dataflow-templates/latest/PubSub_Subscription_to_BigQuery");
   private static final long numMessages = 35000000L;
   private static final String INPUT_PCOLLECTION =
       "ReadPubSubSubscription/PubsubUnboundedSource.out0";

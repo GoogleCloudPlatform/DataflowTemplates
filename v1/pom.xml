@@ -533,6 +533,9 @@
               <failOnWarning>true</failOnWarning>
               <ignoredUsedUndeclaredDependencies>
                 <ignoredUsedUndeclaredDependency>
+                  com.google.cloud:google-cloud-storage
+                </ignoredUsedUndeclaredDependency>
+                <ignoredUsedUndeclaredDependency>
                   com.google.api.grpc:proto-google-cloud-pubsub-v1
                 </ignoredUsedUndeclaredDependency>
                 <ignoredUsedUndeclaredDependency>
