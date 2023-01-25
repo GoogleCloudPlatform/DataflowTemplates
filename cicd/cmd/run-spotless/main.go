@@ -17,12 +17,17 @@
 package main
 
 import (
+	"flag"
 	"log"
 
+	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/flags"
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/workflows"
 )
 
 func main() {
+	flags.RegisterCommonFlags()
+	flag.Parse()
+
 	if err := workflows.SpotlessCheck().Run(); err != nil {
 		log.Fatalf("Error running spotless check: %v", err)
 	}
