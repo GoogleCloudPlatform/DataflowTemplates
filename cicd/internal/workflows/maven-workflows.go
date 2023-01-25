@@ -17,7 +17,6 @@
 package workflows
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"path/filepath"
@@ -107,7 +106,7 @@ func (*mvnFlags) FailAtTheEnd() string {
 }
 
 func (*mvnFlags) RunIntegrationTests() string {
-	return "-PtemplatesIntegrationTests,oss-build"
+	return "-PtemplatesIntegrationTests"
 }
 
 func (*mvnFlags) ThreadCount(count int) string {
@@ -208,7 +207,7 @@ func RunForChangedModules(cmd string, args ...string) error {
 	modules = append(modules, "plugins/templates-maven-plugin")
 
 	if !build_syndeo {
-		modules = append(modules, "-syndeo-template")
+		args = append(args, "-P-oss-build")
 	}
 
 	return op.RunMavenOnModule(unifiedPom, cmd, strings.Join(modules, ","), args...)
@@ -221,26 +220,7 @@ func SpotlessCheck() Workflow {
 }
 
 func (*spotlessCheckWorkflow) Run(args ...string) error {
-	flags.RegisterCommonFlags()
-	flag.Parse()
-
-	changed := flags.ChangedFiles(javaFileRegex, markdownFileRegex)
-	if len(changed) == 0 {
-		return nil
-	}
-
-	modules := make([]string, 0)
-	for root, children := range repo.GetModulesForPaths(changed) {
-		if len(children) == 0 || (len(children) == 1 && children[0] == "") {
-			modules = append(modules, root)
-			continue
-		}
-		for _, c := range children {
-			modules = append(modules, fmt.Sprintf("%s/%s", root, c))
-		}
-	}
-
-	return op.RunMavenOnModule(unifiedPom, spotlessCheckCmd, strings.Join(modules, ","), args...)
+	return RunForChangedModules(spotlessCheckCmd, args...)
 }
 
 // Removes root and returns results. This may reorder the input.
