@@ -100,6 +100,7 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
 
   @Rule public final TestName testName = new TestName();
 
+  // TODO - remove
   private static final Logger LOG = LoggerFactory.getLogger(DefaultBigtableResourceManager.class);
 
   private static final String MONGO_URI = "mongoDbUri";
