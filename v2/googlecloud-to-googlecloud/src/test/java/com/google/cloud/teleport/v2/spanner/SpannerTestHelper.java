@@ -31,27 +31,17 @@ import com.google.spanner.v1.TypeCode;
 import java.util.Collections;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
-import org.apache.commons.lang3.RandomStringUtils;
 
 /** Provides helper functions for integration tests. */
 public class SpannerTestHelper {
-
-  protected static String testDatabasePrefix;
-  protected static String testMetadatadbPrefix;
 
   private static final String FAKE_INSTANCE = "fake-instance";
   private static final String FAKE_PROJECT = "fake-project";
   private static final String FAKE_DATABASE = "fake-database";
   private static final String SPANNER_HOST = "my-host";
-  private static final int MAX_TABLE_NAME_LENGTH = 29;
 
   private MockSpannerServiceImpl mockSpannerService;
   private MockServiceHelper serviceHelper;
-
-  public SpannerTestHelper(String testLabel) {
-    testDatabasePrefix = "test_" + testLabel + "_db";
-    testMetadatadbPrefix = "test_" + testLabel + "_meta";
-  }
 
   public void setUp() throws Exception {
     mockSpannerService = new MockSpannerServiceImpl();
@@ -63,12 +53,6 @@ public class SpannerTestHelper {
 
   public void tearDown() throws NoSuchFieldException, IllegalAccessException {
     serviceHelper.stop();
-  }
-
-  protected String generateUniqueTestSuffix() {
-    int prefixLength = Math.max(testDatabasePrefix.length(), testMetadatadbPrefix.length());
-    return RandomStringUtils.randomNumeric(
-        MAX_TABLE_NAME_LENGTH - 1 - prefixLength);
   }
 
   protected SpannerConfig getFakeSpannerConfig() {
