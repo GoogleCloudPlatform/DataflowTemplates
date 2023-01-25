@@ -155,7 +155,7 @@ public abstract class Column implements Serializable {
         return Type.Code.PG_JSONB.getName();
       case ARRAY:
         {
-        Type arrayType = type.getArrayElementType();
+          Type arrayType = type.getArrayElementType();
           return Type.Code.ARRAY + "<" + typeString(arrayType, size) + ">";
         }
       case PG_ARRAY:

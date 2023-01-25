@@ -106,5 +106,4 @@ public class SpannerTestHelper {
     mockSpannerService.putStatementResult(
         StatementResult.query(determineDialectStatement, dialectResultSet));
   }
-
 }
