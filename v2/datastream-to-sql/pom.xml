@@ -61,12 +61,6 @@
             <artifactId>truth</artifactId>
             <version>${truth.version}</version>
             <scope>test</scope>
-            <exclusions>
-              <exclusion>
-                <groupId>com.google.guava</groupId>
-                <artifactId>guava</artifactId>
-              </exclusion>
-            </exclusions>
         </dependency>
     </dependencies>
 

@@ -57,6 +57,7 @@
     <conscrypt.version>2.5.2</conscrypt.version>
     <hadoop.version>2.10.2</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
+    <guava.version>31.0.1-jre</guava.version>
     <mockito-core.version>3.0.0</mockito-core.version>
     <log4j-2.version>2.17.2</log4j-2.version>
     <json.version>20200518</json.version>

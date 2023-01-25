@@ -36,7 +36,6 @@
 
     <properties>
         <autovalue.service.version>1.0-rc6</autovalue.service.version>
-        <guava.version>30.1-jre</guava.version>
         <jib.maven.version>2.6.0</jib.maven.version>
         <junit-dep.version>4.10</junit-dep.version>
         <opencensus.version>0.31.0</opencensus.version>

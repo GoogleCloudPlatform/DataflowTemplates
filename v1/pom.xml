@@ -191,10 +191,6 @@
       <scope>provided</scope>
       <exclusions>
         <exclusion>
-          <groupId>com.google.guava</groupId>
-          <artifactId>guava</artifactId>
-        </exclusion>
-        <exclusion>
           <groupId>org.apache.hadoop</groupId>
           <artifactId>*</artifactId>
         </exclusion>
