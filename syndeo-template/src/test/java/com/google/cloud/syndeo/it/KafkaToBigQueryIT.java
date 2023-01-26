@@ -214,7 +214,39 @@ public class KafkaToBigQueryIT {
     }
   }
 
-  PipelineLauncher.LaunchInfo kickstartSyndeoPipeline() throws Exception {
+  @Test(expected = IllegalStateException.class)
+  public void testBigQueryCreateNeverFailsAsExpected() throws Exception {
+    JsonNode templateConfiguration = generateBaseRootConfiguration(null);
+
+    ObjectNode sourceProps =
+        ((ObjectNode) templateConfiguration.get("source").get("configurationParameters"));
+    sourceProps.put("topic", KAFKA_TOPIC);
+    sourceProps.put("bootstrapServers", KAFKA_BOOTSTRAP_SERVER);
+    ObjectNode kafkaUpdates = (ObjectNode) sourceProps.get("consumerConfigUpdates");
+    kafkaUpdates.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "5000");
+
+    ObjectNode sinkProps =
+        ((ObjectNode) templateConfiguration.get("sink").get("configurationParameters"));
+    sinkProps.put("table", "NON_EXISTENT_BIGQUERY_TABLE");
+    sinkProps.put("createDisposition", "CREATE_NEVER");
+    sinkProps.put("useTestingBigQueryServices", false);
+    String jobName = "syndeo-job-" + UUID.randomUUID();
+
+    DataflowClient.LaunchConfig options =
+        DataflowClient.LaunchConfig.builder(jobName, SPEC_PATH)
+            .addParameter("jsonSpecPayload", templateConfiguration.toString())
+            .addParameter(
+                "experiments", "enable_streaming_engine,enable_streaming_auto_sharding=true")
+            .build();
+
+    DataflowClient.JobInfo actual =
+        FlexTemplateClient.builder()
+            .setCredentials(CREDENTIALS)
+            .build()
+            .launch(PROJECT, REGION, options);
+  }
+
+  DataflowClient.JobInfo kickstartSyndeoPipeline() throws Exception {
     JsonNode templateConfiguration = generateBaseRootConfiguration(null);
 
     ObjectNode sourceProps =
