@@ -18,10 +18,14 @@ package com.google.cloud.syndeo.it;
 import static com.google.cloud.syndeo.transforms.KafkaToBigQueryLocalTest.INTEGRATION_TEST_SCHEMA;
 import static com.google.cloud.syndeo.transforms.KafkaToBigQueryLocalTest.generateBaseRootConfiguration;
 import static com.google.cloud.syndeo.transforms.KafkaToBigQueryLocalTest.generateRow;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.auth.Credentials;
+import com.google.cloud.syndeo.SyndeoTemplate;
+import com.google.cloud.syndeo.transforms.KafkaToBigQueryLocalTest;
 import com.google.cloud.teleport.it.PipelineUtils;
 import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
@@ -61,7 +65,6 @@ import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-@Ignore
 @RunWith(JUnit4.class)
 public class KafkaToBigQueryIT {
   @Rule public final TestName testName = new TestName();
@@ -95,7 +98,42 @@ public class KafkaToBigQueryIT {
   public void setUp() {
     bigQueryResourceManager =
         DefaultBigQueryResourceManager.builder("kafka-bq-test", PROJECT).build();
-    bigQueryResourceManager.createDataset(BIGQUERY_DATASET);
+    bigQueryResourceManager.createDataset(REGION);
+  }
+
+  @Test
+  public void testErrorOnCreateNeverIfTableNotExisting() throws Exception {
+    JsonNode rootConfig =
+        KafkaToBigQueryLocalTest.generateConfigurationWithKafkaBootstrap(
+            KAFKA_BOOTSTRAP_SERVER, testName.getMethodName());
+    ((ObjectNode) rootConfig.get("sink").get("configurationParameters"))
+        .put("createDisposition", "CREATE_NEVER");
+    ((ObjectNode) rootConfig.get("sink").get("configurationParameters"))
+        .put(
+            "table",
+            String.format(
+                "%s.%s.NONEXISTENT_TABLE", PROJECT, bigQueryResourceManager.getDatasetId()));
+    RuntimeException e =
+        assertThrows(
+            RuntimeException.class,
+            () -> {
+              PipelineResult result =
+                  SyndeoTemplate.run(
+                      new String[] {
+                        "--jsonSpecPayload=" + rootConfig,
+                        "--streaming",
+                        "--experiments=use_deprecated_read",
+                        // We need to set this option because otherwise the pipeline will block on
+                        // p.run() and
+                        // never
+                        // reach Thread.sleep (and never be cancelled).
+                        "--blockOnRun=false"
+                      });
+              result.cancel();
+            });
+    assertTrue(
+        "Error message contains missing table name. ",
+        e.getMessage().contains("NONEXISTENT_TABLE"));
   }
 
   @After
@@ -103,6 +141,7 @@ public class KafkaToBigQueryIT {
     bigQueryResourceManager.cleanupAll();
   }
 
+  @Ignore
   @Test
   public void testOnlyWriteDataToKafka() throws Exception {
     // Make sure that Kafka Server exists
@@ -116,6 +155,7 @@ public class KafkaToBigQueryIT {
     }
   }
 
+  @Ignore
   @Test
   public void testKickOffKafkaToBigQuerySyndeoPipeline() throws Exception {
     // Make sure that Kafka Server exists
@@ -212,38 +252,6 @@ public class KafkaToBigQueryIT {
       }
       adminClient.createTopics(topics).all().get(30, TimeUnit.SECONDS);
     }
-  }
-
-  @Test(expected = IllegalStateException.class)
-  public void testBigQueryCreateNeverFailsAsExpected() throws Exception {
-    JsonNode templateConfiguration = generateBaseRootConfiguration(null);
-
-    ObjectNode sourceProps =
-        ((ObjectNode) templateConfiguration.get("source").get("configurationParameters"));
-    sourceProps.put("topic", KAFKA_TOPIC);
-    sourceProps.put("bootstrapServers", KAFKA_BOOTSTRAP_SERVER);
-    ObjectNode kafkaUpdates = (ObjectNode) sourceProps.get("consumerConfigUpdates");
-    kafkaUpdates.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "5000");
-
-    ObjectNode sinkProps =
-        ((ObjectNode) templateConfiguration.get("sink").get("configurationParameters"));
-    sinkProps.put("table", "NON_EXISTENT_BIGQUERY_TABLE");
-    sinkProps.put("createDisposition", "CREATE_NEVER");
-    sinkProps.put("useTestingBigQueryServices", false);
-    String jobName = "syndeo-job-" + UUID.randomUUID();
-
-    DataflowClient.LaunchConfig options =
-        DataflowClient.LaunchConfig.builder(jobName, SPEC_PATH)
-            .addParameter("jsonSpecPayload", templateConfiguration.toString())
-            .addParameter(
-                "experiments", "enable_streaming_engine,enable_streaming_auto_sharding=true")
-            .build();
-
-    DataflowClient.JobInfo actual =
-        FlexTemplateClient.builder()
-            .setCredentials(CREDENTIALS)
-            .build()
-            .launch(PROJECT, REGION, options);
   }
 
   DataflowClient.JobInfo kickstartSyndeoPipeline() throws Exception {
