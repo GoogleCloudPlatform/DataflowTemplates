@@ -20,7 +20,9 @@ import java.sql.Clob;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.text.SimpleDateFormat;
+import java.sql.Timestamp;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
@@ -42,11 +44,14 @@ public class JdbcConverters {
    */
   private static class ResultSetToTableRow implements JdbcIO.RowMapper<TableRow> {
 
-    static SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
-    static DateTimeFormatter datetimeFormatter =
-        DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss.SSSSSS");
-    static SimpleDateFormat timestampFormatter =
-        new SimpleDateFormat("yyyy-MM-dd hh:mm:ss.SSSSSSXXX");
+    private static final ZoneId DEFAULT_TIME_ZONE_ID = ZoneId.systemDefault();
+
+    private static final DateTimeFormatter DATE_FORMATTER =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter DATETIME_FORMATTER =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
+    private static final DateTimeFormatter TIMESTAMP_FORMATTER =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSXXX");
 
     private Boolean useColumnAlias;
 
@@ -56,7 +61,6 @@ public class JdbcConverters {
 
     @Override
     public TableRow mapRow(ResultSet resultSet) throws Exception {
-
       ResultSetMetaData metaData = resultSet.getMetaData();
 
       TableRow outputTableRow = new TableRow();
@@ -69,24 +73,27 @@ public class JdbcConverters {
 
         /*
          * DATE:      EPOCH MILLISECONDS -> yyyy-MM-dd
-         * DATETIME:  EPOCH MILLISECONDS -> yyyy-MM-dd hh:mm:ss.SSSSSS
-         * TIMESTAMP: EPOCH MILLISECONDS -> yyyy-MM-dd hh:mm:ss.SSSSSSXXX
+         * DATETIME:  EPOCH MICROSECONDS -> yyyy-MM-dd HH:mm:ss.SSSSSS
+         * TIMESTAMP: EPOCH MICROSECONDS -> yyyy-MM-dd HH:mm:ss.SSSSSSXXX
          *
          * MySQL drivers have ColumnTypeName in all caps and postgres in small case
          */
         switch (metaData.getColumnTypeName(i).toLowerCase()) {
           case "date":
             outputTableRow.set(
-                getColumnRef(metaData, i), dateFormatter.format(resultSet.getDate(i)));
+                getColumnRef(metaData, i),
+                DATE_FORMATTER.format(resultSet.getDate(i).toLocalDate()));
             break;
           case "datetime":
             outputTableRow.set(
                 getColumnRef(metaData, i),
-                datetimeFormatter.format((TemporalAccessor) resultSet.getObject(i)));
+                DATETIME_FORMATTER.format((TemporalAccessor) resultSet.getObject(i)));
             break;
           case "timestamp":
-            outputTableRow.set(
-                getColumnRef(metaData, i), timestampFormatter.format(resultSet.getTimestamp(i)));
+            Timestamp ts = resultSet.getTimestamp(i);
+            // getTimestamp() returns timestamps in the default (JVM) time zone by default:
+            OffsetDateTime odt = ts.toInstant().atZone(DEFAULT_TIME_ZONE_ID).toOffsetDateTime();
+            outputTableRow.set(getColumnRef(metaData, i), TIMESTAMP_FORMATTER.format(odt));
             break;
           case "clob":
             Clob clobObject = resultSet.getClob(i);
