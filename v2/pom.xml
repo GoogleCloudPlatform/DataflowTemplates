@@ -41,6 +41,8 @@
         <opencensus.version>0.31.0</opencensus.version>
 
         <excluded.spanner.tests>com.google.cloud.teleport.v2.spanner.IntegrationTest</excluded.spanner.tests>
+
+        <licenseHeaderFile>../JAVA_LICENSE_HEADER</licenseHeaderFile>
     </properties>
 
     <dependencyManagement>

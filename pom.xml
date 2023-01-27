@@ -69,6 +69,8 @@
     <truth.version>1.0.1</truth.version>
     <integration.tests>com.google.cloud.teleport.metadata.TemplateIntegrationTest</integration.tests>
     <excluded.spanner.tests></excluded.spanner.tests>
+
+    <licenseHeaderFile>JAVA_LICENSE_HEADER</licenseHeaderFile>
   </properties>
 
   <dependencyManagement>
@@ -186,7 +188,7 @@
               <style>GOOGLE</style>
             </googleJavaFormat>
             <licenseHeader>
-              <file>JAVA_LICENSE_HEADER</file>
+              <file>${licenseHeaderFile}</file>
             </licenseHeader>
           </java>
         </configuration>
