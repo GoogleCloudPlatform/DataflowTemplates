@@ -25,6 +25,7 @@ import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.bigtable.BigtableResourceManager;
 import com.google.cloud.teleport.it.bigtable.BigtableResourceManagerCluster;
 import com.google.cloud.teleport.it.bigtable.DefaultBigtableResourceManager;
+import com.google.cloud.teleport.it.pubsublite.DefaultPubsubliteResourceManager;
 import com.google.cloud.teleport.it.pubsublite.PubsubLiteResourceManager;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import java.io.IOException;
@@ -40,6 +41,7 @@ import org.apache.beam.sdk.schemas.SchemaRegistry;
 import org.apache.beam.sdk.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
+import org.joda.time.Duration;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -74,7 +76,7 @@ public class SyndeoLoadLT {
   private static final Long PUBSUB_LITE_CAPACITY = 512L;
 
   private static final PubsubLiteResourceManager pubsubLite =
-      new PubsubLiteResourceManager.DefaultPubsubliteResourceManager();
+      new DefaultPubsubliteResourceManager();
   private BigtableResourceManager bigtable = null;
 
   @Before
@@ -173,9 +175,6 @@ public class SyndeoLoadLT {
                                     .setProject(PROJECT)
                                     .build())))
                 .buildTransform());
-    PipelineResult generatorResult =
-        dataGenerator.runWithAdditionalOptionArgs(
-            List.of("--runner=" + testConfig.getRunner(), "--experiments=enable_streaming_engine"));
 
     // Build JSON configuration for the template:
     String jsonPayload =
@@ -215,13 +214,24 @@ public class SyndeoLoadLT {
                             List.of("sha1")))));
 
     SyndeoTemplate.buildPipeline(syndeoPipeline, SyndeoTemplate.buildFromJsonPayload(jsonPayload));
+
+    PipelineResult generatorResult =
+        dataGenerator.runWithAdditionalOptionArgs(
+            List.of(
+                "--runner=" + testConfig.getRunner(),
+                "--experiments=enable_streaming_engine",
+                "--blockOnRun=false"));
     PipelineResult syndeoResult =
         syndeoPipeline.runWithAdditionalOptionArgs(
-            List.of("--runner=" + testConfig.getRunner(), "--experiments=enable_streaming_engine"));
+            List.of(
+                "--runner=" + testConfig.getRunner(),
+                "--experiments=enable_streaming_engine",
+                "--blockOnRun=false"));
     generatorResult.waitUntilFinish();
 
-    // TODO(pabloem): Handle cancelling the Syndeo Pipeline based on throughput/processing metrics.
-    Thread.sleep(60 * 5_000); // 5 minutes
+    syndeoResult.waitUntilFinish(Duration.standardMinutes(testConfig.getDurationMinutes()));
     syndeoResult.cancel();
+
+    // TODO(pabloem): verify results
   }
 }
