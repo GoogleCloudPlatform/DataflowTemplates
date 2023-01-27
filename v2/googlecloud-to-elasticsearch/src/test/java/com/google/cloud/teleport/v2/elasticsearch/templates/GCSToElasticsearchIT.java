@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.elasticsearch.templates;
 
 import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatRecords;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.it.TemplateTestBase;
@@ -31,6 +32,7 @@ import com.google.cloud.teleport.it.elasticsearch.ElasticsearchResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.io.Resources;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import org.junit.After;
 import org.junit.Before;
@@ -65,14 +67,14 @@ public final class GCSToElasticsearchIT extends TemplateTestBase {
   }
 
   @Test
-  public void testElasticsearchCsvWithHeaders() throws IOException {
+  public void testElasticsearchCsvWithoutHeaders() throws IOException {
     // Arrange
     artifactClient.uploadArtifact(
         "input/no_header_10.csv",
         Resources.getResource("GCSToElasticsearch/no_header_10.csv").getPath());
     artifactClient.uploadArtifact(
         "input/elasticUdf.js", Resources.getResource("GCSToElasticsearch/elasticUdf.js").getPath());
-    String indexName = createJobName("test-csv-with-headers");
+    String indexName = createJobName(testName.getMethodName());
     elasticsearchResourceManager.createIndex(indexName);
     bigQueryClient.createDataset(REGION);
 
@@ -102,7 +104,45 @@ public final class GCSToElasticsearchIT extends TemplateTestBase {
     assertThat(result).isEqualTo(Result.JOB_FINISHED);
 
     assertThat(elasticsearchResourceManager.count(indexName)).isEqualTo(10);
-    assertThat(elasticsearchResourceManager.fetchAll(indexName))
-        .contains(Map.of("id", "001", "state", "CA", "price", 3.65));
+    assertThatRecords(elasticsearchResourceManager.fetchAll(indexName))
+        .hasRecordsUnordered(List.of(Map.of("id", "001", "state", "CA", "price", 3.65)));
+  }
+
+  @Test
+  public void testElasticsearchCsvWithHeaders() throws IOException {
+    // Arrange
+    artifactClient.uploadArtifact(
+        "input/with_headers_10.csv",
+        Resources.getResource("GCSToElasticsearch/with_headers_10.csv").getPath());
+    String indexName = createJobName(testName.getMethodName());
+    elasticsearchResourceManager.createIndex(indexName);
+    bigQueryClient.createDataset(REGION);
+
+    String name = testName.getMethodName();
+    String jobName = createJobName(name);
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(jobName, specPath)
+            .addParameter("inputFileSpec", getGcsPath("input") + "/*.csv")
+            .addParameter("inputFormat", "csv")
+            .addParameter("containsHeaders", "true")
+            .addParameter("deadletterTable", PROJECT + ":" + bigQueryClient.getDatasetId() + ".dlq")
+            .addParameter("delimiter", ",")
+            .addParameter("connectionUrl", elasticsearchResourceManager.getUri())
+            .addParameter("index", indexName)
+            .addParameter("apiKey", "elastic");
+
+    // Act
+    JobInfo info = launchTemplate(options);
+    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+
+    Result result = new DataflowOperator(getDataflowClient()).waitUntilDone(createConfig(info));
+
+    // Assert
+    assertThat(result).isEqualTo(Result.JOB_FINISHED);
+
+    assertThat(elasticsearchResourceManager.count(indexName)).isEqualTo(10);
+    assertThatRecords(elasticsearchResourceManager.fetchAll(indexName))
+        .hasRecordsUnordered(List.of(Map.of("id", "001", "state", "CA", "price", 3.65)));
   }
 }

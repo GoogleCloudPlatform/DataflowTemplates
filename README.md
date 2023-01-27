@@ -188,7 +188,7 @@ repository, but the general structure is as follows:
 @TemplateParameter.Text(
     order = 2,
     optional = false,
-    regexes = {"[a-zA-Z0-9._-,]+"},
+    regexes = {"[,a-zA-Z0-9._-]+"},
     description = "Kafka topic(s) to read the input from",
     helpText = "Kafka topic(s) to read the input from.",
     example = "topic1,topic2")
