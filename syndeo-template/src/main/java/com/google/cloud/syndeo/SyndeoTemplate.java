@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.syndeo.common.ProviderUtil;
 import com.google.cloud.syndeo.common.ProviderUtil.TransformSpec;
+import com.google.cloud.syndeo.transforms.SyndeoStatsSchemaTransformProvider;
 import com.google.cloud.syndeo.v1.SyndeoV1.ConfiguredSchemaTransform;
 import com.google.cloud.syndeo.v1.SyndeoV1.PipelineDescription;
 import com.google.protobuf.ByteString;
@@ -30,6 +31,7 @@ import java.io.Reader;
 import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -124,6 +126,13 @@ public class SyndeoTemplate {
     ProviderUtil.applyConfigs(specs, PCollectionRowTuple.empty(p));
   }
 
+  public static ConfiguredSchemaTransform buildSyndeoStats(String parent) {
+    SchemaTransformProvider transformProvider = new SyndeoStatsSchemaTransformProvider();
+    return new ProviderUtil.TransformSpec(
+            transformProvider.identifier(), Collections.singletonList(parent))
+        .toProto();
+  }
+
   public static ConfiguredSchemaTransform buildFromJsonConfig(JsonNode transformConfig) {
     JsonNode params = transformConfig.get("configurationParameters");
     SchemaTransformProvider transformProvider =
@@ -168,6 +177,8 @@ public class SyndeoTemplate {
     LOG.info("Initializing with JSON Config: {}", config);
     return PipelineDescription.newBuilder()
         .addTransforms(buildFromJsonConfig(config.get("source")))
+        // TODO(pabloem): Add stats for other
+        .addTransforms(buildSyndeoStats(config.get("source").get("urn").asText()))
         .addTransforms(buildFromJsonConfig(config.get("sink")))
         .build();
   }

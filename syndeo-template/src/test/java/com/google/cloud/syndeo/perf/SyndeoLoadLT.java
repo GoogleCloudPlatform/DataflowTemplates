@@ -15,6 +15,9 @@
  */
 package com.google.cloud.syndeo.perf;
 
+import static com.google.cloud.syndeo.transforms.SyndeoStatsSchemaTransformProvider.getElementsProcessed;
+import static org.junit.Assert.fail;
+
 import com.google.auto.value.AutoValue;
 import com.google.cloud.bigtable.admin.v2.models.StorageType;
 import com.google.cloud.pubsublite.ReservationPath;
@@ -41,13 +44,13 @@ import org.apache.beam.sdk.schemas.SchemaRegistry;
 import org.apache.beam.sdk.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
-import org.joda.time.Duration;
+import org.joda.time.Instant;
+import org.joda.time.Period;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
@@ -58,13 +61,6 @@ public class SyndeoLoadLT {
   @Rule public TestPipeline dataGenerator = TestPipeline.create();
 
   @Rule public TestPipeline syndeoPipeline = TestPipeline.create();
-
-  @Rule
-  public Timeout timeoutRule =
-      Timeout.seconds(
-          60L
-              * TEST_CONFIGS.get(TEST_CONFIG).getDurationMinutes()
-              * 3); // 3x the duration of the injection pipeline
 
   private static final String PROJECT = TestProperties.project();
   private static final String LOCATION = TestProperties.region();
@@ -78,10 +74,12 @@ public class SyndeoLoadLT {
   private static final PubsubLiteResourceManager pubsubLite =
       new DefaultPubsubliteResourceManager();
   private BigtableResourceManager bigtable = null;
+  private Instant testStart = null;
 
   @Before
   public void beforeTest() throws IOException {
     bigtable = DefaultBigtableResourceManager.builder(testUuid, PROJECT).build();
+    testStart = Instant.now();
   }
 
   @After
@@ -106,7 +104,7 @@ public class SyndeoLoadLT {
   }
 
   private static final PubsubLiteToBigTableConfiguration LOCAL_TEST_CONFIG =
-      PubsubLiteToBigTableConfiguration.create(1_000L, 1, "DirectRunner");
+      PubsubLiteToBigTableConfiguration.create(1_000L, 3, "DirectRunner");
   private static final PubsubLiteToBigTableConfiguration DATAFLOW_TEST_CONFIG =
       PubsubLiteToBigTableConfiguration.create(50_000_000L, 20, "DataflowRunner");
   private static final PubsubLiteToBigTableConfiguration LARGE_DATAFLOW_TEST_CONFIG =
@@ -229,9 +227,24 @@ public class SyndeoLoadLT {
                 "--blockOnRun=false"));
     generatorResult.waitUntilFinish();
 
-    syndeoResult.waitUntilFinish(Duration.standardMinutes(testConfig.getDurationMinutes()));
-    syndeoResult.cancel();
-
-    // TODO(pabloem): verify results
+    Long inputElements = getElementsProcessed(generatorResult.metrics());
+    while (true) {
+      Long syndeoProcessed = getElementsProcessed(syndeoResult.metrics());
+      if (syndeoProcessed >= inputElements) {
+        // HAPPY WE SUCCEEDED!
+        break;
+      }
+      int testRuntime = new Period(Instant.now(), testStart).getMinutes();
+      if (testRuntime > testConfig.getDurationMinutes() * 3) {
+        syndeoResult.cancel();
+        fail(
+            String.format(
+                "Test ran for %s minutes. Pipeline only processed %s elements "
+                    + "out of %s. Ending the test with failure.",
+                testRuntime, syndeoProcessed, inputElements));
+      }
+      // Sleep 10 seconds before trying again.
+      Thread.sleep(10_000L);
+    }
   }
 }

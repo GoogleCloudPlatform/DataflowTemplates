@@ -171,7 +171,11 @@ public class BigTableSchemaTransformTest {
     assertEquals(
         1,
         providers.stream()
-            .filter((provider) -> provider.identifier().equals("bigtable:write"))
+            .filter(
+                (provider) ->
+                    provider
+                        .identifier()
+                        .equals("syndeo:schematransform:com.google.cloud:bigtable_write:v1"))
             .count());
   }
 

@@ -15,6 +15,7 @@
  */
 package com.google.cloud.syndeo.perf;
 
+import com.google.cloud.syndeo.transforms.SyndeoStatsSchemaTransformProvider;
 import java.math.BigDecimal;
 import java.util.Random;
 import java.util.stream.Collectors;
@@ -27,6 +28,7 @@ import org.apache.beam.sdk.transforms.PeriodicImpulse;
 import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TypeDescriptors;
 import org.joda.time.DateTime;
@@ -49,29 +51,40 @@ public class SyndeoLoadTestUtils {
 
     final Instant startTime = Instant.now();
 
-    return dataGenerator
+    return PCollectionRowTuple.of(
+            "input",
+            dataGenerator
+                .apply(
+                    PeriodicImpulse.create()
+                        .startAt(startTime)
+                        .stopAt(Instant.now().plus(Duration.standardMinutes(runtimeMinutes)))
+                        .withInterval(Duration.millis(periodPerSplitMsecs)))
+                .apply(Reshuffle.viaRandomKey())
+                .apply(
+                    FlatMapElements.into(TypeDescriptors.rows())
+                        .via(
+                            inst -> {
+                              long ordinal =
+                                  (inst.minus(Duration.millis(startTime.getMillis())).getMillis()
+                                      / periodPerSplitMsecs);
+                              return LongStream.range(
+                                      ordinal * MAX_ROWS_PER_SPLIT,
+                                      (ordinal + 1) * MAX_ROWS_PER_SPLIT)
+                                  .mapToObj(
+                                      intVal ->
+                                          SyndeoLoadTestUtils.randomRowForSchema(
+                                              SyndeoLoadTestUtils.SIMPLE_TABLE_SCHEMA,
+                                              0.05,
+                                              randomSeed))
+                                  .collect(Collectors.toList());
+                            }))
+                .setRowSchema(SIMPLE_TABLE_SCHEMA))
         .apply(
-            PeriodicImpulse.create()
-                .startAt(startTime)
-                .stopAt(Instant.now().plus(Duration.standardMinutes(runtimeMinutes)))
-                .withInterval(Duration.millis(periodPerSplitMsecs)))
-        .apply(Reshuffle.viaRandomKey())
-        .apply(
-            FlatMapElements.into(TypeDescriptors.rows())
-                .via(
-                    inst -> {
-                      long ordinal =
-                          (inst.minus(Duration.millis(startTime.getMillis())).getMillis()
-                              / periodPerSplitMsecs);
-                      return LongStream.range(
-                              ordinal * MAX_ROWS_PER_SPLIT, (ordinal + 1) * MAX_ROWS_PER_SPLIT)
-                          .mapToObj(
-                              intVal ->
-                                  SyndeoLoadTestUtils.randomRowForSchema(
-                                      SyndeoLoadTestUtils.SIMPLE_TABLE_SCHEMA, 0.05, randomSeed))
-                          .collect(Collectors.toList());
-                    }))
-        .setRowSchema(SIMPLE_TABLE_SCHEMA);
+            new SyndeoStatsSchemaTransformProvider()
+                .from(
+                    SyndeoStatsSchemaTransformProvider.SyndeoStatsConfiguration.create("inputData"))
+                .buildTransform())
+        .get("output");
   }
 
   // A schema for a table that has been slightly inspired on the Github public dataset

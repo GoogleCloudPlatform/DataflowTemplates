@@ -60,7 +60,7 @@ import org.junit.runners.JUnit4;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
-@Ignore
+@Ignore("TODO(pabloem): Ensure this can be tested locally with BQ")
 @RunWith(JUnit4.class)
 public class KafkaToBigQueryLocalTest {
   @Rule
