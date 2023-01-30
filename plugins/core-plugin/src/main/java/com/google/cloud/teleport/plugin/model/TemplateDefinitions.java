@@ -15,11 +15,12 @@
  */
 package com.google.cloud.teleport.plugin.model;
 
+import static com.google.cloud.teleport.metadata.util.MetadataUtils.getParameterNameFromMethod;
+
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCreationParameter;
 import com.google.cloud.teleport.metadata.TemplateCreationParameters;
-import com.google.cloud.teleport.metadata.TemplateParameter;
-import java.beans.Introspector;
+import com.google.cloud.teleport.metadata.util.MetadataUtils;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Method;
@@ -42,27 +43,6 @@ import org.slf4j.LoggerFactory;
 public class TemplateDefinitions {
 
   private static final Logger LOG = LoggerFactory.getLogger(TemplateDefinitions.class);
-
-  private static final Class<? extends Annotation>[] PARAMETER_ANNOTATIONS =
-      new Class[] {
-        TemplateParameter.BigQueryTable.class,
-        TemplateParameter.Boolean.class,
-        TemplateParameter.DateTime.class,
-        TemplateParameter.Duration.class,
-        TemplateParameter.Enum.class,
-        TemplateParameter.GcsReadFile.class,
-        TemplateParameter.GcsReadFolder.class,
-        TemplateParameter.GcsWriteFile.class,
-        TemplateParameter.GcsWriteFolder.class,
-        TemplateParameter.Integer.class,
-        TemplateParameter.KmsEncryptionKey.class,
-        TemplateParameter.Long.class,
-        TemplateParameter.Password.class,
-        TemplateParameter.ProjectId.class,
-        TemplateParameter.PubsubSubscription.class,
-        TemplateParameter.PubsubTopic.class,
-        TemplateParameter.Text.class
-      };
 
   /** Options that don't need annotations (i.e., from generic parameters). */
   private static final Set<String> IGNORED_FIELDS = Set.of("as");
@@ -148,7 +128,7 @@ public class TemplateDefinitions {
 
       classOrder.putIfAbsent(method.getDeclaringClass(), order++);
 
-      Annotation parameterAnnotation = getParameterAnnotation(method);
+      Annotation parameterAnnotation = MetadataUtils.getParameterAnnotation(method);
       if (parameterAnnotation == null) {
 
         boolean runtime = false;
@@ -281,19 +261,6 @@ public class TemplateDefinitions {
     return parameter;
   }
 
-  /** This method is inspired by {@code org.apache.beam.sdk.options.PipelineOptionsReflector}. */
-  private String getParameterNameFromMethod(String originalName) {
-    String methodName;
-    if (originalName.startsWith("is")) {
-      methodName = originalName.substring(2);
-    } else if (originalName.startsWith("get")) {
-      methodName = originalName.substring(3);
-    } else {
-      methodName = originalName;
-    }
-    return Introspector.decapitalize(methodName);
-  }
-
   private Object getDefault(AccessibleObject definingMethod) {
 
     if (definingMethod.getAnnotation(Default.String.class) != null) {
@@ -325,17 +292,6 @@ public class TemplateDefinitions {
     }
     if (definingMethod.getAnnotation(Default.Enum.class) != null) {
       return definingMethod.getAnnotation(Default.Enum.class).value();
-    }
-
-    return null;
-  }
-
-  public Annotation getParameterAnnotation(AccessibleObject accessibleObject) {
-
-    for (Class<? extends Annotation> annotation : PARAMETER_ANNOTATIONS) {
-      if (accessibleObject.getAnnotation(annotation) != null) {
-        return accessibleObject.getAnnotation(annotation);
-      }
     }
 
     return null;

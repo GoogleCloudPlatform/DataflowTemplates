@@ -39,6 +39,12 @@
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>com.google.cloud.teleport.metadata</groupId>
+            <artifactId>metadata</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Excluding com.google.protobuf transitive dependencies to avoid version conflicts -->
         <dependency>
             <groupId>org.apache.avro</groupId>

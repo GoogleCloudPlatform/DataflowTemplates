@@ -32,6 +32,7 @@ import com.google.cloud.teleport.v2.transforms.ErrorConverters.WriteKafkaMessage
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptTextTransformerOptions;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
+import com.google.cloud.teleport.v2.utils.MetadataValidator;
 import com.google.cloud.teleport.v2.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.collect.ImmutableMap;
@@ -297,6 +298,7 @@ public class KafkaToBigQuery {
 
     // Validate BQ STORAGE_WRITE_API options
     BigQueryIOUtils.validateBQStorageApiOptionsStreaming(options);
+    MetadataValidator.validate(options);
 
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);

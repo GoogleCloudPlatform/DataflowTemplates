@@ -33,6 +33,7 @@ import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToPubS
 import com.google.cloud.teleport.v2.transforms.StreamingDataGeneratorWriteToSpanner;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import com.google.cloud.teleport.v2.utils.GCSUtils;
+import com.google.cloud.teleport.v2.utils.MetadataValidator;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import javax.annotation.Nonnull;
@@ -534,6 +535,8 @@ public class StreamingDataGenerator {
    */
   public static PipelineResult run(@Nonnull StreamingDataGeneratorOptions options) {
     checkNotNull(options, "options argument to run method cannot be null.");
+    MetadataValidator.validate(options);
+
     // FileSystems does not set the default configuration in workers till Pipeline.run
     // Explicitly registering standard file systems.
     FileSystems.setDefaultPipelineOptions(options);

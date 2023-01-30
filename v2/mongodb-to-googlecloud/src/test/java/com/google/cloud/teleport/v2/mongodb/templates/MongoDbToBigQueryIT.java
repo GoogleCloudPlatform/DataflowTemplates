@@ -228,8 +228,8 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
     List<String> mongoDocumentKeys = new ArrayList<>();
     for (int j = 0; j < numFields; j++) {
       mongoDocumentKeys.add(
-          RandomStringUtils.randomAlphabetic(1)
-              + RandomStringUtils.randomAlphanumeric(0, maxEntryLength - 1));
+          RandomStringUtils.randomAlphabetic(2)
+              + RandomStringUtils.randomAlphanumeric(0, maxEntryLength - 2));
     }
 
     for (int i = 0; i < numDocuments; i++) {

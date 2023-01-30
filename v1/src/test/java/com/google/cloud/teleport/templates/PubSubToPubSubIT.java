@@ -30,11 +30,12 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PullResponse;
+import com.google.pubsub.v1.ReceivedMessage;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Before;
@@ -86,7 +87,7 @@ public class PubSubToPubSubIT extends TemplateTestBase {
     JobInfo info = launchTemplate(options);
     assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
 
-    AtomicReference<PullResponse> records = new AtomicReference<>();
+    List<ReceivedMessage> receivedMessages = new ArrayList<>();
     Result result =
         new DataflowOperator(getDataflowClient())
             .waitForConditionAndFinish(
@@ -94,13 +95,13 @@ public class PubSubToPubSubIT extends TemplateTestBase {
                 () -> {
                   PullResponse response =
                       pubsubResourceManager.pull(outputSubscription, expectedMessages.size());
-                  records.set(response);
-                  return response.getReceivedMessagesList().size() >= expectedMessages.size();
+                  receivedMessages.addAll(response.getReceivedMessagesList());
+                  return receivedMessages.size() >= expectedMessages.size();
                 });
 
     // Assert
     List<String> actualMessages =
-        records.get().getReceivedMessagesList().stream()
+        receivedMessages.stream()
             .map(receivedMessage -> receivedMessage.getMessage().getData().toStringUtf8())
             .collect(Collectors.toList());
     assertThat(result).isEqualTo(Result.CONDITION_MET);
