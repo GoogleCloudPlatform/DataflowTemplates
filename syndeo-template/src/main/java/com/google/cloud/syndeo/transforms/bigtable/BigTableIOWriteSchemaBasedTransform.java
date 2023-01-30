@@ -52,7 +52,7 @@ public class BigTableIOWriteSchemaBasedTransform
 
   private static final Logger LOG =
       LoggerFactory.getLogger(BigTableIOWriteSchemaBasedTransform.class);
-  private static final String INPUT_TAG = "INPUT";
+  private static final String INPUT_TAG = "input";
 
   private final String projectId;
   private final String instanceId;
@@ -157,8 +157,21 @@ public class BigTableIOWriteSchemaBasedTransform
   public PCollectionRowTuple expand(PCollectionRowTuple input) {
     PCollection<Row> inputData = input.get(INPUT_TAG);
 
-    createTableIfNeeded(inputData.getSchema());
+    inputData
+        .getSchema()
+        .getFields()
+        .forEach(
+            f -> {
+              if (f.getType().getTypeName().equals(Schema.TypeName.ROW)) {
+                throw new UnsupportedOperationException(
+                    String.format(
+                        "Nested fields are not supported. Field %s is of type ROW.", f.getName()));
+              }
+            });
+
     verifyTableSchemaMatches(inputData.getSchema());
+    // Create table if needed will not succeed for now. We want expand to be idempotent.
+    createTableIfNeeded(inputData.getSchema());
 
     // STEP 1: Select the key columns from the input Rows
     final Schema keySchema =

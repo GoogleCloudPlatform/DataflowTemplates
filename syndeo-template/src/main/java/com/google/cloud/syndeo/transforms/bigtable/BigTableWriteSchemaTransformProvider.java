@@ -33,7 +33,7 @@ public class BigTableWriteSchemaTransformProvider
 
   @Override
   public List<String> inputCollectionNames() {
-    return Collections.singletonList("INPUT");
+    return Collections.singletonList("input");
   }
 
   @Override
