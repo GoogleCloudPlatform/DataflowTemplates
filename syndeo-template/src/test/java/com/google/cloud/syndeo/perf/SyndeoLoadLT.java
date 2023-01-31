@@ -240,7 +240,7 @@ public class SyndeoLoadLT {
     while (true) {
       Long inputElements = getElementsProcessed(generatorResult.metrics());
       Long syndeoProcessed = getElementsProcessed(syndeoResult.metrics());
-      int testRuntime = new Period(Instant.now(), testStart).toStandardMinutes().getMinutes();
+      int testRuntime = new Period(testStart, Instant.now()).toStandardMinutes().getMinutes();
       LOG.info(
           "Test has ran for {} minutes. Input elements: {}. Elements processed: {}",
           testRuntime,
