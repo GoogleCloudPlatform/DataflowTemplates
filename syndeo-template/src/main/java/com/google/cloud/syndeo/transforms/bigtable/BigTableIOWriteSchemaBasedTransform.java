@@ -169,9 +169,8 @@ public class BigTableIOWriteSchemaBasedTransform
               }
             });
 
-    verifyTableSchemaMatches(inputData.getSchema());
-    // Create table if needed will not succeed for now. We want expand to be idempotent.
     createTableIfNeeded(inputData.getSchema());
+    verifyTableSchemaMatches(inputData.getSchema());
 
     // STEP 1: Select the key columns from the input Rows
     final Schema keySchema =
