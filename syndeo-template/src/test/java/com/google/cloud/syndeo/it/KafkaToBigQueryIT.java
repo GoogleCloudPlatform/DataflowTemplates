@@ -103,16 +103,13 @@ public class KafkaToBigQueryIT {
 
   @Test
   public void testErrorOnCreateNeverIfTableNotExisting() throws Exception {
+    String tableName =
+        String.format("%s.%s.NONEXISTENT_TABLE", PROJECT, bigQueryResourceManager.getDatasetId());
     JsonNode rootConfig =
         KafkaToBigQueryLocalTest.generateConfigurationWithKafkaBootstrap(
-            KAFKA_BOOTSTRAP_SERVER, testName.getMethodName());
+            KAFKA_BOOTSTRAP_SERVER, tableName);
     ((ObjectNode) rootConfig.get("sink").get("configurationParameters"))
         .put("createDisposition", "CREATE_NEVER");
-    ((ObjectNode) rootConfig.get("sink").get("configurationParameters"))
-        .put(
-            "table",
-            String.format(
-                "%s.%s.NONEXISTENT_TABLE", PROJECT, bigQueryResourceManager.getDatasetId()));
     RuntimeException e =
         assertThrows(
             RuntimeException.class,
