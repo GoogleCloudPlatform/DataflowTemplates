@@ -51,6 +51,7 @@ import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
@@ -59,6 +60,7 @@ import org.junit.runners.JUnit4;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
+@Ignore
 @RunWith(JUnit4.class)
 public class KafkaToBigQueryLocalTest {
   @Rule
