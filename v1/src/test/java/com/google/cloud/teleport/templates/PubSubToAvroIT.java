@@ -15,17 +15,16 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.avro.AvroPubsubMessageRecord;
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.artifacts.Artifact;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
@@ -78,37 +77,36 @@ public class PubSubToAvroIT extends TemplateTestBase {
   public void testTopicToAvro() throws IOException {
     // Arrange
     String name = testName.getMethodName();
-    String jobName = createJobName(name);
     Pattern expectedFilePattern = Pattern.compile(".*topic-output-.*");
     TopicName topic = pubsubResourceManager.createTopic("input-topic");
 
     // Act
-    JobInfo info =
+    LaunchInfo info =
         launchTemplate(
-            LaunchConfig.builder(jobName, specPath)
+            LaunchConfig.builder(testName, specPath)
                 .addParameter("inputTopic", topic.toString())
-                .addParameter("outputDirectory", getGcsPath(name))
+                .addParameter("outputDirectory", getGcsPath(testName))
                 .addParameter("avroTempDirectory", getGcsPath("avro_tmp"))
                 .addParameter("outputFilenamePrefix", "topic-output-"));
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    assertThatPipeline(info).isRunning();
 
     ImmutableSet<String> messages =
-        ImmutableSet.of("message1-" + jobName, "message2-" + jobName, "message3-" + jobName);
+        ImmutableSet.of("message1-" + name, "message2-" + name, "message3-" + name);
     messages.forEach(
         m -> pubsubResourceManager.publish(topic, ImmutableMap.of(), ByteString.copyFromUtf8(m)));
 
     AtomicReference<List<Artifact>> artifacts = new AtomicReference<>();
     Result result =
-        new DataflowOperator(getDataflowClient())
+        pipelineOperator()
             .waitForConditionAndFinish(
                 createConfig(info),
                 () -> {
-                  artifacts.set(artifactClient.listArtifacts(name, expectedFilePattern));
+                  artifacts.set(artifactClient.listArtifacts(testName, expectedFilePattern));
                   return !artifacts.get().isEmpty();
                 });
 
     // Assert
-    assertThat(result).isEqualTo(Result.CONDITION_MET);
+    assertThatResult(result).meetsConditions();
     assertThat(
             artifacts.get().stream()
                 .flatMap(a -> deserialize(a.contents()))

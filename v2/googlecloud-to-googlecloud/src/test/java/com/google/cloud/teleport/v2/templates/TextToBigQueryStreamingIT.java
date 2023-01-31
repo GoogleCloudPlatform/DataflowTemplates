@@ -15,9 +15,9 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatRecords;
-import static com.google.common.truth.Truth.assertThat;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
@@ -26,11 +26,9 @@ import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
@@ -99,7 +97,6 @@ public class TextToBigQueryStreamingIT extends TemplateTestBase {
   private void testTextToBigQuery(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException {
     // Arrange
-    String jobName = createJobName(testName.getMethodName());
     String bqTable = testName.getMethodName();
 
     artifactClient.uploadArtifact("schema.json", Resources.getResource(SCHEMA_PATH).getPath());
@@ -114,28 +111,28 @@ public class TextToBigQueryStreamingIT extends TemplateTestBase {
                 Field.of("TITLE", StandardSQLTypeName.STRING)));
 
     // Act
-    JobInfo info =
+    LaunchInfo info =
         launchTemplate(
             paramsAdder.apply(
-                LaunchConfig.builder(jobName, specPath)
+                LaunchConfig.builder(testName, specPath)
                     .addParameter("JSONPath", getGcsPath("schema.json"))
                     .addParameter("inputFilePattern", getGcsPath("input.txt"))
                     .addParameter("javascriptTextTransformGcsPath", getGcsPath("udf.js"))
                     .addParameter("javascriptTextTransformFunctionName", "identity")
                     .addParameter("outputTable", toTableSpec(tableId))
                     .addParameter("bigQueryLoadingTemporaryDirectory", getGcsPath("bq-tmp"))));
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    assertThatPipeline(info).isRunning();
 
     artifactClient.uploadArtifact("input.txt", Resources.getResource(INPUT_PATH).getPath());
 
     Result result =
-        new DataflowOperator(getDataflowClient())
+        pipelineOperator()
             // drain doesn't seem to work with the TextIO GCS files watching that the template uses
             .waitForConditionAndCancel(
                 createConfig(info), () -> bigQueryClient.readTable(bqTable).getTotalRows() > 0);
 
     // Assert
-    assertThat(result).isEqualTo(Result.CONDITION_MET);
+    assertThatResult(result).meetsConditions();
     assertThatRecords(bigQueryClient.readTable(bqTable)).hasRecord(EXPECTED);
   }
 }

@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
-import static com.google.common.truth.Truth.assertThat;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
@@ -26,11 +26,9 @@ import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.artifacts.Artifact;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.it.spanner.DefaultSpannerResourceManager;
@@ -109,24 +107,23 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
     // Arrange
     artifactClient.uploadArtifact(SCHEMA_FILE, LOCAL_SCHEMA_PATH);
     String name = testName.getMethodName();
-    String jobName = createJobName(name);
 
     LaunchConfig.Builder options =
-        LaunchConfig.builder(jobName, specPath)
+        LaunchConfig.builder(testName, specPath)
             // TODO(zhoufek): See if it is possible to use the properties interface and generate
             // the map from the set values.
             .addParameter(SCHEMA_LOCATION_KEY, getGcsPath(SCHEMA_FILE))
             .addParameter(QPS_KEY, DEFAULT_QPS)
             .addParameter(SINK_TYPE_KEY, SinkType.GCS.name())
             .addParameter(WINDOW_DURATION_KEY, DEFAULT_WINDOW_DURATION)
-            .addParameter(OUTPUT_DIRECTORY_KEY, getGcsPath(name))
+            .addParameter(OUTPUT_DIRECTORY_KEY, getGcsPath(testName))
             .addParameter(NUM_SHARDS_KEY, "1");
     // Act
-    JobInfo info = launchTemplate(options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
 
     Result result =
-        new DataflowOperator(getDataflowClient())
+        pipelineOperator()
             .waitForConditionAndFinish(
                 createConfig(info),
                 () -> {
@@ -136,36 +133,35 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
                 });
 
     // Assert
-    assertThat(result).isEqualTo(Result.CONDITION_MET);
+    assertThatResult(result).meetsConditions();
   }
 
   @Test
   public void testFakeMessagesToGcsWithSchemaTemplate() throws IOException {
     // Arrange
-    String name = testName.getMethodName();
-    String jobName = createJobName(name);
-
     LaunchConfig.Builder options =
-        LaunchConfig.builder(jobName, specPath)
+        LaunchConfig.builder(testName, specPath)
             .addParameter(SCHEMA_TEMPLATE_KEY, SchemaTemplate.GAME_EVENT.name())
             .addParameter(QPS_KEY, DEFAULT_QPS)
             .addParameter(SINK_TYPE_KEY, SinkType.GCS.name())
             .addParameter(WINDOW_DURATION_KEY, DEFAULT_WINDOW_DURATION)
-            .addParameter(OUTPUT_DIRECTORY_KEY, getGcsPath(name))
+            .addParameter(OUTPUT_DIRECTORY_KEY, getGcsPath(testName))
             .addParameter(NUM_SHARDS_KEY, "1");
     // Act
-    JobInfo info = launchTemplate(options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
 
     Result result =
-        new DataflowOperator(getDataflowClient())
+        pipelineOperator()
             .waitForConditionAndFinish(
                 createConfig(info),
                 () ->
-                    !artifactClient.listArtifacts(name, Pattern.compile(".*output-.*")).isEmpty());
+                    !artifactClient
+                        .listArtifacts(testName, Pattern.compile(".*output-.*"))
+                        .isEmpty());
 
     // Assert
-    assertThat(result).isEqualTo(Result.CONDITION_MET);
+    assertThatResult(result).meetsConditions();
   }
 
   @Test
@@ -179,25 +175,23 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
     SubscriptionName subscription =
         pubsubResourceManager.createSubscription(backlogTopic, "output-subscription");
     // Arrange
-    String name = testName.getMethodName();
-    String jobName = createJobName(name);
     LaunchConfig.Builder options =
-        LaunchConfig.builder(jobName, specPath)
+        LaunchConfig.builder(testName, specPath)
             .addParameter(SCHEMA_TEMPLATE_KEY, SchemaTemplate.GAME_EVENT.name())
             .addParameter(QPS_KEY, DEFAULT_QPS)
             .addParameter(SINK_TYPE_KEY, SinkType.PUBSUB.name())
             .addParameter(TOPIC_KEY, backlogTopic.toString());
 
     // Act
-    JobInfo info = launchTemplate(options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
     Result result =
-        new DataflowOperator(getDataflowClient())
+        pipelineOperator()
             .waitForConditionAndFinish(
                 createConfig(info),
                 () -> pubsubResourceManager.pull(subscription, 5).getReceivedMessagesCount() > 0);
     // Assert
-    assertThat(result).isEqualTo(Result.CONDITION_MET);
+    assertThatResult(result).meetsConditions();
   }
 
   @Test
@@ -220,26 +214,24 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
             Field.of("score", StandardSQLTypeName.INT64),
             Field.of("completed", StandardSQLTypeName.BOOL));
     // Arrange
-    String name = testName.getMethodName();
-    String jobName = createJobName(name);
-    TableId table = bigQueryResourceManager.createTable(jobName, schema);
+    TableId table = bigQueryResourceManager.createTable(testName.getMethodName(), schema);
     LaunchConfig.Builder options =
-        LaunchConfig.builder(jobName, specPath)
+        LaunchConfig.builder(testName, specPath)
             .addParameter(SCHEMA_TEMPLATE_KEY, String.valueOf(SchemaTemplate.GAME_EVENT))
             .addParameter(QPS_KEY, HIGH_QPS)
             .addParameter(SINK_TYPE_KEY, "BIGQUERY")
             .addParameter(OUTPUT_TABLE_SPEC, toTableSpec(table));
 
     // Act
-    JobInfo info = launchTemplate(options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
     Result result =
-        new DataflowOperator(getDataflowClient())
+        pipelineOperator()
             .waitForConditionAndFinish(
                 createConfig(info),
                 () -> bigQueryResourceManager.readTable(table.getTable()).getTotalRows() > 0);
     // Assert
-    assertThat(result).isEqualTo(Result.CONDITION_MET);
+    assertThatResult(result).meetsConditions();
   }
 
   @Test
@@ -259,13 +251,11 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
             Field.of("country", StandardSQLTypeName.STRING),
             Field.of("username", StandardSQLTypeName.STRING));
     // Arrange
-    String name = testName.getMethodName();
-    String jobName = createJobName(name);
-    TableId table = bigQueryResourceManager.createTable(jobName, schema);
+    TableId table = bigQueryResourceManager.createTable(testName.getMethodName(), schema);
     TableId dlq = TableId.of(table.getDataset(), table.getTable() + "_dlq");
 
     LaunchConfig.Builder options =
-        LaunchConfig.builder(jobName, specPath)
+        LaunchConfig.builder(testName, specPath)
             .addParameter(SCHEMA_TEMPLATE_KEY, String.valueOf(SchemaTemplate.GAME_EVENT))
             .addParameter(QPS_KEY, HIGH_QPS)
             .addParameter(SINK_TYPE_KEY, "BIGQUERY")
@@ -273,10 +263,10 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
             .addParameter(OUTPUT_DEADLETTER_TABLE, toTableSpec(dlq));
 
     // Act
-    JobInfo info = launchTemplate(options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
     Result result =
-        new DataflowOperator(getDataflowClient())
+        pipelineOperator()
             .waitForConditionAndFinish(
                 createConfig(info),
                 () -> {
@@ -289,14 +279,12 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
                 });
 
     // Assert
-    assertThat(result).isEqualTo(Result.CONDITION_MET);
+    assertThatResult(result).meetsConditions();
   }
 
   @Test
   public void testFakeMessagesToSpanner() throws IOException {
     // Arrange
-    String name = testName.getMethodName();
-    String jobName = createJobName(name);
     spannerResourceManager =
         DefaultSpannerResourceManager.builder(testName.getMethodName(), PROJECT, REGION).build();
     String createTableStatement =
@@ -327,7 +315,7 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
     spannerResourceManager.createTable(createTableStatement);
 
     LaunchConfig.Builder options =
-        LaunchConfig.builder(jobName, specPath)
+        LaunchConfig.builder(testName, specPath)
             .addParameter(SCHEMA_TEMPLATE_KEY, SchemaTemplate.GAME_EVENT.name())
             .addParameter(QPS_KEY, DEFAULT_QPS)
             .addParameter(SINK_TYPE_KEY, SinkType.SPANNER.name())
@@ -337,11 +325,11 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
             .addParameter("spannerTableName", testName.getMethodName());
 
     // Act
-    JobInfo info = launchTemplate(options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
 
     Result result =
-        new DataflowOperator(getDataflowClient())
+        pipelineOperator()
             .waitForConditionAndFinish(
                 createConfig(info),
                 () ->
@@ -350,6 +338,6 @@ public final class StreamingDataGeneratorIT extends TemplateTestBase {
                         .isEmpty());
 
     // Assert
-    assertThat(result).isEqualTo(Result.CONDITION_MET);
+    assertThatResult(result).meetsConditions();
   }
 }

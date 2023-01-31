@@ -15,24 +15,23 @@
  */
 package com.google.cloud.teleport.v2.mongodb.templates;
 
-import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
-import static com.google.common.truth.Truth.assertThat;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
+import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.bigtable.DefaultBigtableResourceManager;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.it.mongodb.DefaultMongoDBResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
@@ -150,8 +149,6 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
   @Test
   public void testMongoDbToBigQuery() throws IOException {
     // Arrange
-    String jobName = createJobName(testName.getMethodName());
-
     String collectionName = testName.getMethodName();
     List<Document> mongoDocuments = generateDocuments();
     mongoDbClient.insertDocuments(collectionName, mongoDocuments);
@@ -165,28 +162,27 @@ public final class MongoDbToBigQueryIT extends TemplateTestBase {
     Schema bqSchema = Schema.of(bqSchemaFields);
 
     bigQueryClient.createDataset(REGION);
-    bigQueryClient.createTable(bqTable, bqSchema);
-    String tableSpec = PROJECT + ":" + bigQueryClient.getDatasetId() + "." + bqTable;
+    TableId table = bigQueryClient.createTable(bqTable, bqSchema);
 
     LaunchConfig.Builder options =
-        LaunchConfig.builder(jobName, specPath)
+        LaunchConfig.builder(testName, specPath)
             .addParameter(MONGO_URI, mongoDbClient.getUri())
             .addParameter(MONGO_DB, mongoDbClient.getDatabaseName())
             .addParameter(MONGO_COLLECTION, collectionName)
-            .addParameter(BIGQUERY_TABLE, tableSpec)
+            .addParameter(BIGQUERY_TABLE, toTableSpec(table))
             .addParameter(USER_OPTION, "FLATTEN");
 
     // Act
-    JobInfo info = launchTemplate(options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
 
     Result result =
-        new DataflowOperator(getDataflowClient())
+        pipelineOperator()
             .waitForCondition(
                 createConfig(info), () -> bigQueryClient.readTable(bqTable).getTotalRows() != 0);
 
     // Assert
-    assertThat(result).isEqualTo(Result.CONDITION_MET);
+    assertThatResult(result).meetsConditions();
 
     Map<String, JSONObject> mongoMap = new HashMap<>();
     mongoDocuments.forEach(

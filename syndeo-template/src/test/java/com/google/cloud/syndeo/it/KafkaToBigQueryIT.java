@@ -22,12 +22,12 @@ import static com.google.cloud.syndeo.transforms.KafkaToBigQueryLocalTest.genera
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.auth.Credentials;
+import com.google.cloud.teleport.it.PipelineUtils;
 import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
-import com.google.cloud.teleport.it.dataflow.DataflowClient;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator;
-import com.google.cloud.teleport.it.dataflow.DataflowUtils;
 import com.google.cloud.teleport.it.dataflow.FlexTemplateClient;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher;
+import com.google.cloud.teleport.it.launcher.PipelineOperator;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Collections;
@@ -108,7 +108,7 @@ public class KafkaToBigQueryIT {
     // Make sure that Kafka Server exists
     // Start data generation pipeline
     PipelineResult dataGeneratorPipeline = kickstartDataGeneration();
-    if (!DataflowUtils.waitUntilState(
+    if (!PipelineUtils.waitUntilState(
         dataGeneratorPipeline, PipelineResult.State.RUNNING, SIX_MINUTES_MILLIS)) {
       dataGeneratorPipeline.cancel();
       throw new RuntimeException(
@@ -121,7 +121,7 @@ public class KafkaToBigQueryIT {
     // Make sure that Kafka Server exists
     // Start data generation pipeline
     PipelineResult dataGeneratorPipeline = kickstartDataGeneration();
-    if (!DataflowUtils.waitUntilState(
+    if (!PipelineUtils.waitUntilState(
         dataGeneratorPipeline, PipelineResult.State.RUNNING, SIX_MINUTES_MILLIS)) {
       dataGeneratorPipeline.cancel();
       throw new RuntimeException(
@@ -131,13 +131,13 @@ public class KafkaToBigQueryIT {
     // Start syndeo pipeline.
     FlexTemplateClient templateClient =
         FlexTemplateClient.builder().setCredentials(CREDENTIALS).build();
-    DataflowOperator operator = new DataflowOperator(templateClient);
+    PipelineOperator operator = new PipelineOperator(templateClient);
     {
-      DataflowClient.JobInfo syndeoPipeline = kickstartSyndeoPipeline();
+      PipelineLauncher.LaunchInfo syndeoPipeline = kickstartSyndeoPipeline();
 
       // Wait for two minutes while the pipeline executes, and then drain it.
       operator.waitUntilDoneAndFinish(
-          DataflowOperator.Config.builder()
+          PipelineOperator.Config.builder()
               .setProject(PROJECT)
               .setRegion(REGION)
               .setJobId(syndeoPipeline.jobId())
@@ -146,7 +146,7 @@ public class KafkaToBigQueryIT {
     }
 
     // Start a new syndeo pipeline. We do this to test for appropriate behavior on restarts
-    DataflowClient.JobInfo syndeoPipeline = kickstartSyndeoPipeline();
+    PipelineLauncher.LaunchInfo syndeoPipeline = kickstartSyndeoPipeline();
 
     // Sleep while the pipeline runs to move all the data.
     Thread.sleep(3 * ONE_MINUTE_MILLIS);
@@ -186,7 +186,7 @@ public class KafkaToBigQueryIT {
 
     // Wait three minutes while the pipeline drains
     operator.drainJobAndFinish(
-        DataflowOperator.Config.builder()
+        PipelineOperator.Config.builder()
             .setProject(PROJECT)
             .setRegion(REGION)
             .setJobId(syndeoPipeline.jobId())
@@ -214,7 +214,7 @@ public class KafkaToBigQueryIT {
     }
   }
 
-  DataflowClient.JobInfo kickstartSyndeoPipeline() throws Exception {
+  PipelineLauncher.LaunchInfo kickstartSyndeoPipeline() throws Exception {
     JsonNode templateConfiguration = generateBaseRootConfiguration(null);
 
     ObjectNode sourceProps =
@@ -230,14 +230,14 @@ public class KafkaToBigQueryIT {
     sinkProps.put("useTestingBigQueryServices", false);
     String jobName = "syndeo-job-" + UUID.randomUUID();
 
-    DataflowClient.LaunchConfig options =
-        DataflowClient.LaunchConfig.builder(jobName, SPEC_PATH)
+    PipelineLauncher.LaunchConfig options =
+        PipelineLauncher.LaunchConfig.builder(jobName, SPEC_PATH)
             .addParameter("jsonSpecPayload", templateConfiguration.toString())
             .addParameter(
                 "experiments", "enable_streaming_engine,enable_streaming_auto_sharding=true")
             .build();
 
-    DataflowClient.JobInfo actual =
+    PipelineLauncher.LaunchInfo actual =
         FlexTemplateClient.builder()
             .setCredentials(CREDENTIALS)
             .build()

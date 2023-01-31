@@ -16,15 +16,14 @@
 package com.google.cloud.teleport.templates;
 
 import static com.google.cloud.teleport.it.artifacts.ArtifactUtils.getFullGcsPath;
-import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.it.TemplateTestBase;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -84,24 +83,23 @@ public class TextToPubsubStreamIT extends TemplateTestBase {
   @Test
   public void testTextToTopic() throws IOException {
     // Arrange
-    String jobName = createJobName(testName.getMethodName());
     TopicName outputTopic = pubsubResourceManager.createTopic("topic");
     SubscriptionName outputSubscription =
         pubsubResourceManager.createSubscription(outputTopic, "output-subscription");
-    String messageString = String.format("msg-%s", jobName);
+    String messageString = String.format("msg-%s", testName.getMethodName());
     File file = tempFolder.newFile();
     writeToFile(file.getAbsolutePath(), messageString);
     LaunchConfig.Builder options =
-        LaunchConfig.builder(jobName, specPath)
+        LaunchConfig.builder(testName, specPath)
             .addParameter("inputFilePattern", getInputFilePattern())
             .addParameter("outputTopic", outputTopic.toString());
 
     // Act
-    JobInfo info = launchTemplate(options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
     AtomicReference<PullResponse> records = new AtomicReference<>();
     Result result =
-        new DataflowOperator(getDataflowClient())
+        pipelineOperator()
             .waitForConditionAndFinish(
                 createConfig(info),
                 () -> {
@@ -113,11 +111,12 @@ public class TextToPubsubStreamIT extends TemplateTestBase {
                   records.set(pubsubResourceManager.pull(outputSubscription, 5));
                   return records.get().getReceivedMessagesList().size() > 0;
                 });
+    assertThatResult(result).meetsConditions();
+
     List<String> actualMessages =
         records.get().getReceivedMessagesList().stream()
             .map(receivedMessage -> receivedMessage.getMessage().getData().toStringUtf8())
             .collect(Collectors.toList());
-    assertThat(result).isEqualTo(Result.CONDITION_MET);
     assertThat(actualMessages).isEqualTo(Collections.nCopies(actualMessages.size(), messageString));
   }
 

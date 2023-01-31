@@ -15,16 +15,15 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.artifacts.Artifact;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.io.Resources;
 import com.google.re2j.Pattern;
@@ -53,23 +52,21 @@ public final class BulkCompressorIT extends TemplateTestBase {
   @Test
   public void testCompressGzip() throws IOException {
     // Arrange
-    String jobName = createJobName(testName.getMethodName());
-
     LaunchConfig.Builder options =
-        LaunchConfig.builder(jobName, specPath)
+        LaunchConfig.builder(testName, specPath)
             .addParameter("inputFilePattern", getGcsPath("input") + "/*.txt")
             .addParameter("outputDirectory", getGcsPath("output"))
             .addParameter("outputFailureFile", getGcsPath("output-failure"))
             .addParameter("compression", Compression.GZIP.name());
 
     // Act
-    JobInfo info = launchTemplate(options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
 
-    Result result = new DataflowOperator(getDataflowClient()).waitUntilDone(createConfig(info));
+    Result result = pipelineOperator().waitUntilDone(createConfig(info));
 
     // Assert
-    assertThat(result).isEqualTo(Result.JOB_FINISHED);
+    assertThatResult(result).isLaunchFinished();
 
     List<Artifact> artifacts =
         artifactClient.listArtifacts("output/", Pattern.compile(".*compress.*"));

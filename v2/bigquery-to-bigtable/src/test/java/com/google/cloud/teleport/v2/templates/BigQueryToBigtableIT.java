@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
-import static com.google.common.truth.Truth.assertThat;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static org.junit.Assert.assertEquals;
 
 import com.google.cloud.Tuple;
@@ -30,8 +30,9 @@ import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.bigtable.DefaultBigtableResourceManager;
-import com.google.cloud.teleport.it.dataflow.DataflowClient;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.launcher.PipelineOperator;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
@@ -94,7 +95,6 @@ public class BigQueryToBigtableIT extends TemplateTestBase {
   @Test
   public void testBigQueryToBigtable() throws IOException {
     // Arrange
-    String jobName = createJobName(testName.getMethodName());
     String tableName = "test_table";
 
     Tuple<Schema, List<RowToInsert>> generatedTable = generateBigQueryTable();
@@ -106,8 +106,8 @@ public class BigQueryToBigtableIT extends TemplateTestBase {
     String colFamily = "names";
     bigtableClient.createTable(tableName, ImmutableList.of(colFamily));
 
-    DataflowClient.LaunchConfig.Builder options =
-        DataflowClient.LaunchConfig.builder(jobName, specPath)
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(testName, specPath)
             .addParameter(
                 READ_QUERY,
                 "SELECT * FROM `"
@@ -121,14 +121,13 @@ public class BigQueryToBigtableIT extends TemplateTestBase {
             .addParameter(WRITE_COL_FAMILY, colFamily);
 
     // Act
-    DataflowClient.JobInfo info = launchTemplate(options);
-    assertThat(info.state()).isIn(DataflowClient.JobState.ACTIVE_STATES);
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
 
-    DataflowOperator.Result result =
-        new DataflowOperator(getDataflowClient()).waitUntilDone(createConfig(info));
+    PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(info));
 
     // Assert
-    assertThat(result).isEqualTo(DataflowOperator.Result.JOB_FINISHED);
+    assertThatResult(result).isLaunchFinished();
 
     List<Row> rows = bigtableClient.readTable(tableName);
     rows.forEach(
