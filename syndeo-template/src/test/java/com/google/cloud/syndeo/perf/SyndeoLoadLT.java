@@ -53,11 +53,14 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 @Category(TemplateLoadTest.class)
 @RunWith(JUnit4.class)
 public class SyndeoLoadLT {
+  private static final Logger LOG = LoggerFactory.getLogger(SyndeoLoadLT.class);
   @Rule public TestPipeline dataGenerator = TestPipeline.create();
 
   @Rule public TestPipeline syndeoPipeline = TestPipeline.create();
@@ -69,7 +72,6 @@ public class SyndeoLoadLT {
       TestProperties.getProperty("configuration", "local", TestProperties.Type.PROPERTY);
   // 30 characters is the maximum length for some literals, so we cap it here.
   private final String testUuid = ("syndeo-" + UUID.randomUUID()).substring(0, 30);
-  private static final Long PUBSUB_LITE_CAPACITY = 512L;
 
   private static final PubsubLiteResourceManager pubsubLite =
       new DefaultPubsubliteResourceManager();
@@ -96,19 +98,21 @@ public class SyndeoLoadLT {
 
     public abstract String getRunner();
 
+    public abstract Long pubsubLiteCapacity();
+
     public static PubsubLiteToBigTableConfiguration create(
-        Long throughput, Integer durationMinutes, String runner) {
+        Long throughput, Integer durationMinutes, String runner, Long pubsubLiteCapacity) {
       return new AutoValue_SyndeoLoadLT_PubsubLiteToBigTableConfiguration(
-          throughput, durationMinutes, runner);
+          throughput, durationMinutes, runner, pubsubLiteCapacity);
     }
   }
 
   private static final PubsubLiteToBigTableConfiguration LOCAL_TEST_CONFIG =
-      PubsubLiteToBigTableConfiguration.create(1_000L, 3, "DirectRunner");
+      PubsubLiteToBigTableConfiguration.create(1_000L, 3, "DirectRunner", 100L);
   private static final PubsubLiteToBigTableConfiguration DATAFLOW_TEST_CONFIG =
-      PubsubLiteToBigTableConfiguration.create(50_000_000L, 20, "DataflowRunner");
+      PubsubLiteToBigTableConfiguration.create(50_000_000L, 20, "DataflowRunner", 512L);
   private static final PubsubLiteToBigTableConfiguration LARGE_DATAFLOW_TEST_CONFIG =
-      PubsubLiteToBigTableConfiguration.create(500_000_000L, 60, "DataflowRunner");
+      PubsubLiteToBigTableConfiguration.create(500_000_000L, 60, "DataflowRunner", 512L);
 
   private static final Map<String, PubsubLiteToBigTableConfiguration> TEST_CONFIGS =
       Map.of(
@@ -135,7 +139,8 @@ public class SyndeoLoadLT {
 
     // Create PS Lite resources
     ReservationPath reservationPath =
-        pubsubLite.createReservation(reservationName, LOCATION, PROJECT, PUBSUB_LITE_CAPACITY);
+        pubsubLite.createReservation(
+            reservationName, LOCATION, PROJECT, testConfig.pubsubLiteCapacity());
     TopicName topicPath = pubsubLite.createTopic(topicName, reservationPath);
     SubscriptionName subscriptionPath =
         pubsubLite.createSubscription(reservationPath, topicPath, subscriptionName);
@@ -211,30 +216,40 @@ public class SyndeoLoadLT {
                             "keyColumns",
                             List.of("sha1")))));
 
+    LOG.info("Building syndeo pipeline");
     SyndeoTemplate.buildPipeline(syndeoPipeline, SyndeoTemplate.buildFromJsonPayload(jsonPayload));
 
+    LOG.info("Launching data generation pipeline");
     PipelineResult generatorResult =
         dataGenerator.runWithAdditionalOptionArgs(
             List.of(
                 "--runner=" + testConfig.getRunner(),
                 "--experiments=enable_streaming_engine",
                 "--blockOnRun=false"));
+    LOG.info("Launching Syndeo pipeline");
     PipelineResult syndeoResult =
         syndeoPipeline.runWithAdditionalOptionArgs(
             List.of(
                 "--runner=" + testConfig.getRunner(),
                 "--experiments=enable_streaming_engine",
                 "--blockOnRun=false"));
+    LOG.info("Waiting for data generation pipeline...");
     generatorResult.waitUntilFinish();
+    LOG.info("Data generation pipeline concluded.");
 
-    Long inputElements = getElementsProcessed(generatorResult.metrics());
     while (true) {
+      Long inputElements = getElementsProcessed(generatorResult.metrics());
       Long syndeoProcessed = getElementsProcessed(syndeoResult.metrics());
-      if (syndeoProcessed >= inputElements) {
+      int testRuntime = new Period(Instant.now(), testStart).toStandardMinutes().getMinutes();
+      LOG.info(
+          "Test has ran for {} minutes. Input elements: {}. Elements processed: {}",
+          testRuntime,
+          inputElements,
+          syndeoProcessed);
+      if (0 < syndeoProcessed && 0 < inputElements && syndeoProcessed >= inputElements) {
         // HAPPY WE SUCCEEDED!
         break;
       }
-      int testRuntime = new Period(Instant.now(), testStart).getMinutes();
       if (testRuntime > testConfig.getDurationMinutes() * 3) {
         syndeoResult.cancel();
         fail(
