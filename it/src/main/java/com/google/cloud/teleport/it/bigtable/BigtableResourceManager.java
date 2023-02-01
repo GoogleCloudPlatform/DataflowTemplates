@@ -63,6 +63,8 @@ public interface BigtableResourceManager extends ResourceManager {
    */
   void createTable(String tableId, Iterable<String> columnFamilies);
 
+  void createTable(String tableId, BigtableTableSpec spec);
+
   /**
    * Creates a table within the current instance given a table ID and other configuration settings.
    *
