@@ -43,7 +43,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /**
- * TODO: WIP.
+ * TODO: WIP. Need StaticBigtableResourceManager from other branch.
  */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(BigtableToHbasePipeline.class)
@@ -89,14 +89,6 @@ public class BigtableToHbasePipelineIT extends TemplateTestBase {
             start.getNanos());
     pipelineOptions.setStartTimestamp(start.toString());
     pipelineOptions.setEndTimestamp(endTime.toString());
-
-    // bigtableResourceManager =
-    //     StaticBigtableResourceManager.builder(pipelineOptions.getBigtableProjectId())
-    //         .setCredentialsProvider(credentialsProvider)
-    //         .setInstanceId(pipelineOptions.getInstanceId())
-    //         .setTableId(pipelineOptions.getTableId())
-    //         .setAppProfileId(pipelineOptions.getAppProfileId())
-    //         .build();
   }
 
   @After
@@ -107,11 +99,6 @@ public class BigtableToHbasePipelineIT extends TemplateTestBase {
   @Test
   public void testEndToEnd() throws Exception {
     PipelineResult pipelineResult = BigtableToHbasePipeline.bigtableToHbasePipeline(pipelineOptions, hBaseTestingUtility.getConfiguration());
-
-    // RowMutation rowMutation = RowMutation
-    //     .create(pipelineOptions.getTableId(), rowKey)
-    //     .setCell(colFamily, colQualifier, value);
-    // bigtableResourceManager.write(rowMutation);
 
     try {
       pipelineResult.waitUntilFinish();
