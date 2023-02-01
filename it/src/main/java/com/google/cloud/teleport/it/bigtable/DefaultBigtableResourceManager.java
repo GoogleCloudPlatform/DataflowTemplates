@@ -319,7 +319,6 @@ public class DefaultBigtableResourceManager implements BigtableResourceManager {
     private CredentialsProvider credentialsProvider;
 
     private Builder(String testId, String projectId) {
-
       this.testId = testId;
       this.projectId = projectId;
     }

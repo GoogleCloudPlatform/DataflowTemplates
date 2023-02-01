@@ -28,7 +28,7 @@ public class SyndeoTemplateLaunchTest {
 
   private static final String BIGTABLE_SINK_CONFIG =
       "{\n"
-          + "  \"urn\": \"bigtable:write\",\n"
+          + "  \"urn\": \"syndeo:schematransform:com.google.cloud:bigtable_write:v1\",\n"
           + "  \"configurationParameters\": {\n"
           + "    \"projectId\": \"dataflow-syndeo\",\n"
           + "    \"instanceId\": \"syndeo-bt-test\",\n"

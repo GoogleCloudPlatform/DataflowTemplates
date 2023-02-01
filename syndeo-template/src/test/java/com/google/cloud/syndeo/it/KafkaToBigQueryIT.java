@@ -61,7 +61,6 @@ import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-@Ignore
 @RunWith(JUnit4.class)
 public class KafkaToBigQueryIT {
   @Rule public final TestName testName = new TestName();
@@ -95,7 +94,7 @@ public class KafkaToBigQueryIT {
   public void setUp() {
     bigQueryResourceManager =
         DefaultBigQueryResourceManager.builder("kafka-bq-test", PROJECT).build();
-    bigQueryResourceManager.createDataset(BIGQUERY_DATASET);
+    bigQueryResourceManager.createDataset(REGION);
   }
 
   @After
@@ -103,6 +102,7 @@ public class KafkaToBigQueryIT {
     bigQueryResourceManager.cleanupAll();
   }
 
+  @Ignore
   @Test
   public void testOnlyWriteDataToKafka() throws Exception {
     // Make sure that Kafka Server exists
@@ -116,6 +116,7 @@ public class KafkaToBigQueryIT {
     }
   }
 
+  @Ignore
   @Test
   public void testKickOffKafkaToBigQuerySyndeoPipeline() throws Exception {
     // Make sure that Kafka Server exists

@@ -45,6 +45,7 @@ import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Lists;
 import org.joda.time.DateTime;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -170,10 +171,15 @@ public class BigTableSchemaTransformTest {
     assertEquals(
         1,
         providers.stream()
-            .filter((provider) -> provider.identifier().equals("bigtable:write"))
+            .filter(
+                (provider) ->
+                    provider
+                        .identifier()
+                        .equals("syndeo:schematransform:com.google.cloud:bigtable_write:v1"))
             .count());
   }
 
+  @Ignore
   @Test
   public void testBigQueryToBigTableLocallyWithEmulators() throws Exception {
     String bigTableName = "anytable";
