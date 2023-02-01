@@ -397,3 +397,5 @@ public final class BigQueryDynamicDestinationsTest {
                 + "name=big_query_commit_timestamp, type=TIMESTAMP}}]}}");
   }
 }
+
+
