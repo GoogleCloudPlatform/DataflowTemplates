@@ -34,8 +34,8 @@ public final class BigQueryDeadLetterQueueSanitizer
   public String getJsonMessage(BigQueryInsertError input) {
     TableRow tableRow = input.getRow();
     // Extract the original payload from the {@link TableRow}.
-    return
-        (String) tableRow.get(TransientColumn.BQ_CHANGELOG_FIELD_NAME_ORIGINAL_PAYLOAD_JSON.getColumnName());
+    return (String)
+        tableRow.get(TransientColumn.BQ_CHANGELOG_FIELD_NAME_ORIGINAL_PAYLOAD_JSON.getColumnName());
   }
 
   @Override

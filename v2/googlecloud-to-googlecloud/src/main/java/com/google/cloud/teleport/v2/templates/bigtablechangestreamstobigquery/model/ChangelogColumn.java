@@ -17,9 +17,7 @@ package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.m
 
 import com.google.cloud.bigquery.StandardSQLTypeName;
 
-/**
- * Static metadata class for all changelog columns.
- */
+/** Static metadata class for all changelog columns. */
 public enum ChangelogColumn {
   ROW_KEY_STRING("row_key", StandardSQLTypeName.STRING.name(), true, false),
   ROW_KEY_BYTES("row_key", StandardSQLTypeName.BYTES.name(), true, false),
@@ -40,7 +38,8 @@ public enum ChangelogColumn {
   SOURCE_CLUSTER("source_cluster", StandardSQLTypeName.STRING.name(), false, true),
   SOURCE_TABLE("source_table", StandardSQLTypeName.STRING.name(), false, true),
   TIEBREAKER("tiebreaker", StandardSQLTypeName.INT64.name(), false, true),
-  BQ_COMMIT_TIMESTAMP("big_query_commit_timestamp", StandardSQLTypeName.TIMESTAMP.name(), false, true);
+  BQ_COMMIT_TIMESTAMP(
+      "big_query_commit_timestamp", StandardSQLTypeName.TIMESTAMP.name(), false, true);
 
   private final String bqColumnName;
   private final String bqType;

@@ -39,9 +39,9 @@ import org.apache.beam.sdk.coders.DefaultCoder;
 import org.apache.commons.lang3.StringUtils;
 
 /**
- * The {@link Mod} contains the keys, new values (from {@link com.google.cloud.bigtable.data.v2.models.Entry})
- * and metadata ({@link com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation}) of a
- * Bigtable changelog row.
+ * The {@link Mod} contains the keys, new values (from {@link
+ * com.google.cloud.bigtable.data.v2.models.Entry}) and metadata ({@link
+ * com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation}) of a Bigtable changelog row.
  */
 @DefaultCoder(AvroCoder.class)
 public final class Mod implements Serializable {
@@ -49,8 +49,9 @@ public final class Mod implements Serializable {
   private static final long serialVersionUID = 8703757194338184299L;
 
   private static final String PATTERN_FORMAT = "yyyy-MM-dd HH:mm:ss.SSSSSS";
-  private static final ThreadLocal<DateTimeFormatter> TIMESTAMP_FORMATTER = ThreadLocal.withInitial(
-      () -> DateTimeFormatter.ofPattern(PATTERN_FORMAT).withZone(ZoneId.of("UTC")));
+  private static final ThreadLocal<DateTimeFormatter> TIMESTAMP_FORMATTER =
+      ThreadLocal.withInitial(
+          () -> DateTimeFormatter.ofPattern(PATTERN_FORMAT).withZone(ZoneId.of("UTC")));
 
   private String changeJson;
   private long commitTimestampSeconds;
@@ -58,8 +59,7 @@ public final class Mod implements Serializable {
   private ModType modType;
 
   // Constructor for serialization
-  private Mod() {
-  }
+  private Mod() {}
 
   private Mod(Timestamp commitTimestamp, ModType type) {
     this.commitTimestampNanos = commitTimestamp.getNanos();
@@ -98,16 +98,17 @@ public final class Mod implements Serializable {
     this.changeJson = convertPropertiesToJson(propertiesMap);
   }
 
-  private void setCommonProperties(Map<String, Object> propertiesMap, BigtableSource source,
-      ChangeStreamMutation mutation) {
+  private void setCommonProperties(
+      Map<String, Object> propertiesMap, BigtableSource source, ChangeStreamMutation mutation) {
     propertiesMap.put(ChangelogColumn.ROW_KEY_BYTES.name(), encodeBytes(mutation.getRowKey()));
     propertiesMap.put(ChangelogColumn.SOURCE_INSTANCE.name(), source.getInstanceId());
     propertiesMap.put(ChangelogColumn.SOURCE_CLUSTER.name(), mutation.getSourceClusterId());
     propertiesMap.put(ChangelogColumn.SOURCE_TABLE.name(), source.getTableId());
     propertiesMap.put(ChangelogColumn.TIEBREAKER.name(), mutation.getTieBreaker());
-    propertiesMap.put(ChangelogColumn.IS_GC.name(),
-        mutation.getType() == MutationType.GARBAGE_COLLECTION);
-    propertiesMap.put(ChangelogColumn.COMMIT_TIMESTAMP.name(),
+    propertiesMap.put(
+        ChangelogColumn.IS_GC.name(), mutation.getType() == MutationType.GARBAGE_COLLECTION);
+    propertiesMap.put(
+        ChangelogColumn.COMMIT_TIMESTAMP.name(),
         cbtTimestampToBigQuery(mutation.getCommitTimestamp()));
   }
 
@@ -115,9 +116,10 @@ public final class Mod implements Serializable {
     propertiesMap.put(ChangelogColumn.MOD_TYPE.name(), ModType.SET_CELL.getCode());
     propertiesMap.put(ChangelogColumn.COLUMN_FAMILY.name(), setCell.getFamilyName());
     propertiesMap.put(ChangelogColumn.COLUMN.name(), encodeBytes(setCell.getQualifier()));
-    propertiesMap.put(ChangelogColumn.TIMESTAMP.name(),
-        cbtTimestampMicrosToBigQuery(setCell.getTimestamp()));
-    propertiesMap.put(ChangelogColumn.TIMESTAMP_NUM.name(),
+    propertiesMap.put(
+        ChangelogColumn.TIMESTAMP.name(), cbtTimestampMicrosToBigQuery(setCell.getTimestamp()));
+    propertiesMap.put(
+        ChangelogColumn.TIMESTAMP_NUM.name(),
         cbtTimestampMicrosToBigQueryInt(setCell.getTimestamp()));
     propertiesMap.put(ChangelogColumn.VALUE_BYTES.name(), encodeBytes(setCell.getValue()));
   }
@@ -135,14 +137,14 @@ public final class Mod implements Serializable {
     propertiesMap.put(ChangelogColumn.MOD_TYPE.name(), ModType.DELETE_CELLS.getCode());
     propertiesMap.put(ChangelogColumn.COLUMN_FAMILY.name(), deleteCells.getFamilyName());
     propertiesMap.put(ChangelogColumn.COLUMN.name(), encodeBytes(deleteCells.getQualifier()));
-    propertiesMap.put(ChangelogColumn.TIMESTAMP_FROM.name(),
-        cbtTimestampMicrosToBigQuery(startTimestamp));
-    propertiesMap.put(ChangelogColumn.TIMESTAMP_FROM_NUM.name(),
-        cbtTimestampMicrosToBigQueryInt(startTimestamp));
-    propertiesMap.put(ChangelogColumn.TIMESTAMP_TO.name(),
-        cbtTimestampMicrosToBigQuery(endTimestamp));
-    propertiesMap.put(ChangelogColumn.TIMESTAMP_TO_NUM.name(),
-        cbtTimestampMicrosToBigQueryInt(endTimestamp));
+    propertiesMap.put(
+        ChangelogColumn.TIMESTAMP_FROM.name(), cbtTimestampMicrosToBigQuery(startTimestamp));
+    propertiesMap.put(
+        ChangelogColumn.TIMESTAMP_FROM_NUM.name(), cbtTimestampMicrosToBigQueryInt(startTimestamp));
+    propertiesMap.put(
+        ChangelogColumn.TIMESTAMP_TO.name(), cbtTimestampMicrosToBigQuery(endTimestamp));
+    propertiesMap.put(
+        ChangelogColumn.TIMESTAMP_TO_NUM.name(), cbtTimestampMicrosToBigQueryInt(endTimestamp));
   }
 
   private void setSpecificProperties(Map<String, Object> propertiesMap, DeleteFamily deleteFamily) {
@@ -154,9 +156,7 @@ public final class Mod implements Serializable {
     return new ObjectMapper().readValue(json, Mod.class);
   }
 
-  /**
-   * @return JSON object as String representing the changelog record
-   */
+  /** @return JSON object as String representing the changelog record */
   public String getChangeJson() {
     return changeJson;
   }
@@ -177,9 +177,7 @@ public final class Mod implements Serializable {
     return commitTimestampNanos;
   }
 
-  /**
-   * The type of operation that caused the modifications within this record.
-   */
+  /** The type of operation that caused the modifications within this record. */
   public ModType getModType() {
     return modType;
   }
@@ -201,11 +199,7 @@ public final class Mod implements Serializable {
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        changeJson,
-        commitTimestampSeconds,
-        commitTimestampNanos,
-        modType);
+    return Objects.hash(changeJson, commitTimestampSeconds, commitTimestampNanos, modType);
   }
 
   @Override
@@ -231,11 +225,9 @@ public final class Mod implements Serializable {
     if (rowKey == null) {
       return null;
     } else {
-      return Base64.getEncoder()
-          .encodeToString(rowKey.toByteArray());
+      return Base64.getEncoder().encodeToString(rowKey.toByteArray());
     }
   }
-
 
   private String cbtTimestampToBigQuery(Timestamp timestamp) {
     if (timestamp == null) {
@@ -244,7 +236,8 @@ public final class Mod implements Serializable {
     if (timestamp.getSeconds() == 0 && timestamp.getNanos() == 0) {
       return TIMESTAMP_FORMATTER.get().format(Instant.EPOCH);
     } else {
-      return TIMESTAMP_FORMATTER.get()
+      return TIMESTAMP_FORMATTER
+          .get()
           .format(Instant.ofEpochSecond(timestamp.getSeconds(), timestamp.getNanos()));
     }
   }
@@ -264,7 +257,8 @@ public final class Mod implements Serializable {
       return TIMESTAMP_FORMATTER.get().format(Instant.EPOCH);
     } else {
       long seconds = timestampMicros / 1000000;
-      return TIMESTAMP_FORMATTER.get()
+      return TIMESTAMP_FORMATTER
+          .get()
           .format(Instant.ofEpochSecond(seconds, (timestampMicros - seconds * 1000000) * 1000));
     }
   }
@@ -277,4 +271,3 @@ public final class Mod implements Serializable {
     }
   }
 }
-

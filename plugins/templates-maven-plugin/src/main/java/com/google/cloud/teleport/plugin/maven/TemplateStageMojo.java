@@ -265,8 +265,9 @@ public class TemplateStageMojo extends TemplateBaseMojo {
     }
 
     String containerName = definition.getTemplateAnnotation().flexContainerName();
+    String pF = projectId.replace(':', '/');
     String imagePath =
-        prefix + "gcr.io/" + projectId + "/" + stagePrefix.toLowerCase() + "/" + containerName;
+        prefix + "gcr.io/" + pF + "/" + stagePrefix.toLowerCase() + "/" + containerName;
     LOG.info("Stage image to GCR: {}", imagePath);
 
     File metadataFile =

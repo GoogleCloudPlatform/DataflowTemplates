@@ -78,7 +78,8 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
       order = 6,
       optional = true,
       description = "Cloud Bigtable metadata instance ID",
-      helpText = "The Cloud Bigtable instance to use for the change streams connector metadata table.")
+      helpText =
+          "The Cloud Bigtable instance to use for the change streams connector metadata table.")
   @Default.String("")
   String getBigtableMetadataInstanceId();
 
@@ -148,8 +149,9 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
       order = 12,
       optional = true,
       description = "Write values as BigQuery BYTES",
-      helpText = "When set true rowkeys are written to BYTES column, otherwise to STRING column. " +
-          "Defaults to false.")
+      helpText =
+          "When set true rowkeys are written to BYTES column, otherwise to STRING column. "
+              + "Defaults to false.")
   @Default.Boolean(false)
   Boolean getWriteRowkeyAsBytes();
 
@@ -159,8 +161,9 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
       order = 13,
       optional = true,
       description = "Write values as BigQuery BYTES",
-      helpText = "When set true values are written to BYTES column, otherwise to STRING column. " +
-          "Defaults to false.")
+      helpText =
+          "When set true values are written to BYTES column, otherwise to STRING column. "
+              + "Defaults to false.")
   @Default.Boolean(false)
   Boolean getWriteValuesAsBytes();
 
@@ -170,9 +173,10 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
       order = 14,
       optional = true,
       description = "Write Bigtable timestamp as BigQuery INT",
-      helpText = "When set true values are written to INT column, otherwise to TIMESTAMP column. " +
-          "Columns affected: `timestamp`, `timestamp_from`, `timestamp_to`. " +
-          "Defaults to false.")
+      helpText =
+          "When set true values are written to INT column, otherwise to TIMESTAMP column. "
+              + "Columns affected: `timestamp`, `timestamp_from`, `timestamp_to`. "
+              + "Defaults to false.")
   @Default.Boolean(false)
   Boolean getWriteNumericTimestamps();
 
@@ -182,8 +186,8 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
       order = 15,
       optional = true,
       description = "BigQuery charset name when reading values and column qualifiers",
-      helpText = "BigQuery charset name when reading values and column qualifiers. " +
-          "Default is UTF-8")
+      helpText =
+          "BigQuery charset name when reading values and column qualifiers. " + "Default is UTF-8")
   @Default.String("UTF-8")
   String getBigtableCharset();
 
@@ -203,7 +207,8 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
       order = 17,
       optional = true,
       description = "BigQuery table name",
-      helpText = "The BigQuery table name that contains the change log. Default: {bigtableTableId}_changelog")
+      helpText =
+          "The BigQuery table name that contains the change log. Default: {bigtableTableId}_changelog")
   @Default.String("")
   String getBigQueryChangelogTableName();
 
@@ -213,8 +218,9 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
       order = 18,
       optional = true,
       description = "Changelog table will be partitioned at specified granularity",
-      helpText = "When set, table partitioning will be in effect. Accepted values: `HOUR`, " +
-          "`DAY`, `MONTH`, `YEAR`. Default is no partitioning.")
+      helpText =
+          "When set, table partitioning will be in effect. Accepted values: `HOUR`, "
+              + "`DAY`, `MONTH`, `YEAR`. Default is no partitioning.")
   @Default.String("")
   String getBigQueryChangelogTablePartitionGranularity();
 
@@ -224,8 +230,9 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
       order = 19,
       optional = true,
       description = "Sets partition expiration time in milliseconds",
-      helpText = "When set true partitions older than specified number of milliseconds will be " +
-           "deleted. Default is no expiration.")
+      helpText =
+          "When set true partitions older than specified number of milliseconds will be "
+              + "deleted. Default is no expiration.")
   Long getBigQueryChangelogTablePartitionExpirationMs();
 
   void setBigQueryChangelogTablePartitionExpirationMs(Long value);
@@ -234,10 +241,11 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
       order = 20,
       optional = true,
       description = "Optional changelog table columns to be disabled",
-      helpText = "A comma-separated list of the changelog columns which will not be created and " +
-          "populated if specified. Supported values should be from the following list: `is_gc`, " +
-          "`source_instance`, `source_cluster`, `source_table`, `tiebreaker`, " +
-          "`big_query_commit_timestamp`. Defaults to all columns to be populated")
+      helpText =
+          "A comma-separated list of the changelog columns which will not be created and "
+              + "populated if specified. Supported values should be from the following list: `is_gc`, "
+              + "`source_instance`, `source_cluster`, `source_table`, `tiebreaker`, "
+              + "`big_query_commit_timestamp`. Defaults to all columns to be populated")
   String getBigQueryChangelogTableFieldsToIgnore();
 
   void setBigQueryChangelogTableFieldsToIgnore(String value);
@@ -262,5 +270,4 @@ public interface BigtableChangeStreamsToBigQueryOptions extends DataflowPipeline
   Integer getDlqRetryMinutes();
 
   void setDlqRetryMinutes(Integer value);
-
 }
