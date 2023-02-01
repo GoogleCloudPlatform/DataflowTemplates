@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ~ Copyright (C) 2021 Google Inc.
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License"); you may not
+  ~ use this file except in compliance with the License. You may obtain a copy of
+  ~ the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+  ~ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+  ~ License for the specific language governing permissions and limitations under
+  ~ the License.
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <repositories>
+    <repository>
+      <id>artifact-registry</id>
+<!--      <url>artifactregistry://us-central1-maven.pkg.dev/cloud-bigtable-ecosystem/bigtable-change-streams-preview</url>-->
+      <url>artifactregistry://us-central1-maven.pkg.dev/google.com%3Acloud-bigtable-dev/test-bigtable-change-stream-preview</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>apache.snapshots</id>
+      <name>Apache Development Snapshot Repository</name>
+      <url>https://repository.apache.org/content/repositories/snapshots/</url>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
+  <parent>
+    <groupId>com.google.cloud.teleport.v2</groupId>
+    <artifactId>dynamic-templates</artifactId>
+    <version>1.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>bigtable-cdc-to-hbase</artifactId>
+
+  <properties>
+<!--    <beam.version>2.43</beam.version>-->
+<!--    <slf4j.version>1.7.30</slf4j.version>-->
+  </properties>
+
+
+  <build>
+    <extensions>
+      <extension>
+        <groupId>com.google.cloud.artifactregistry</groupId>
+        <artifactId>artifactregistry-maven-wagon</artifactId>
+        <version>2.1.5</version>
+      </extension>
+    </extensions>
+  </build>
+
+
+  <dependencies>
+<!--    Change stream mutations-->
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-bigtable</artifactId>
+      <version>2.17.1-change-streams-temp1-SNAPSHOT</version>
+    </dependency>
+    <!-- Adds a dependency on the Beam SDK. -->
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-core</artifactId>
+      <version>${beam.version}</version>
+    </dependency>
+    <!-- Adds a dependency on the private preview build of Beam Google Cloud Platform IO module. -->
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
+      <version>2.45.0-change-streams-temp1-SNAPSHOT</version>
+<!--      <version>2.41.0-change-streams-preview1-SNAPSHOT</version>-->
+    </dependency>
+    <!--Serialization proxy -->
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-io-hbase</artifactId>
+      <version>${beam.version}</version>
+    </dependency>
+    <!--Most Hbase Items-->
+    <dependency>
+      <groupId>org.apache.hbase</groupId>
+      <artifactId>hbase-shaded-client</artifactId>
+      <!--      <version>1.2.6</version>-->
+      <version>2.3.6</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hbase</groupId>
+      <artifactId>hbase-shaded-testing-util</artifactId>
+      <version>2.3.6</version>
+      <scope>test</scope>
+    </dependency>
+    <!--TODO: Somehow prod needs this but test will fail if this is around...-->
+<!--        <dependency>-->
+<!--          <groupId>org.apache.hadoop</groupId>-->
+<!--          <artifactId>hadoop-mapreduce-client-core</artifactId>-->
+<!--          <version>3.3.4</version>-->
+<!--        </dependency>-->
+
+    <dependency>
+      <groupId>com.google.auto.service</groupId>
+      <artifactId>auto-service-annotations</artifactId>
+      <version>1.0-rc6</version>
+    </dependency>
+
+    <!--    Needed for apache test cluster -->
+    <dependency>
+      <groupId>log4j</groupId>
+      <artifactId>log4j</artifactId>
+      <version>1.2.17</version>
+    </dependency>
+
+    <!--  Override 2.x client because dataflowTemplates doesn't recognize major versions...  -->
+    <dependency>
+      <groupId>com.google.api-client</groupId>
+      <artifactId>google-api-client</artifactId>
+      <version>1.35.2</version>
+    </dependency>
+
+
+
+  <!--  grpc requirements  -->
+    <dependency>
+      <groupId>com.google.api.grpc</groupId>
+      <artifactId>proto-google-cloud-bigtable-admin-v2</artifactId>
+      <version>2.17.1-change-streams-temp1-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.api.grpc</groupId>
+      <artifactId>proto-google-cloud-bigtable-v2</artifactId>
+      <version>2.17.1-change-streams-temp1-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.api.grpc</groupId>
+      <artifactId>grpc-google-cloud-bigtable-v2</artifactId>
+      <version>2.17.1-change-streams-temp1-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+    <groupId>com.google.api</groupId>
+    <artifactId>gax</artifactId>
+    <version>2.19.2</version>
+    </dependency>
+  </dependencies>
+</project>
