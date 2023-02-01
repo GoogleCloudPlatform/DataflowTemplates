@@ -151,7 +151,7 @@ public final class PipelineOperator {
 
   /** Similar to {@link #drainJobAndFinish} but cancels the job instead of draining. */
   public Result cancelJobAndFinish(Config config) throws IOException {
-    client.drainJob(config.project(), config.region(), config.jobId());
+    client.cancelJob(config.project(), config.region(), config.jobId());
     return waitUntilDone(config);
   }
 
