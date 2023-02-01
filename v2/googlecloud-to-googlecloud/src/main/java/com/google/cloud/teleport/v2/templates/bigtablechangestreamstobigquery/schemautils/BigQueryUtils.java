@@ -49,8 +49,7 @@ import org.apache.commons.lang3.Validate;
 import org.json.JSONObject;
 
 /**
- * {@link BigQueryUtils} provides utils for processing BigQuery schema and generating BigQuery
- * rows.
+ * {@link BigQueryUtils} provides utils for processing BigQuery schema and generating BigQuery rows.
  */
 public class BigQueryUtils implements Serializable {
 
@@ -236,9 +235,7 @@ public class BigQueryUtils implements Serializable {
     return columnFamilies.contains(columnFamily) || columnFamilies.contains(ANY_COLUMN_FAMILY);
   }
 
-  /**
-   * @return true if modification should be written to BigQuery, false otherwise
-   */
+  /** @return true if modification should be written to BigQuery, false otherwise */
   public boolean setTableRowFields(Mod mod, String modJsonString, TableRow tableRow)
       throws Exception {
     // Metadata columns, not written to BQ
@@ -349,8 +346,7 @@ public class BigQueryUtils implements Serializable {
   public final class BigQueryDynamicDestinations
       extends DynamicDestinations<TableRow, KV<TableId, TableRow>> {
 
-    private BigQueryDynamicDestinations() {
-    }
+    private BigQueryDynamicDestinations() {}
 
     @Override
     public KV<TableId, TableRow> getDestination(ValueInSingleWindow<TableRow> element) {
