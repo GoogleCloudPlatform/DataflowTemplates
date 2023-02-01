@@ -25,7 +25,8 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /**
- * Test class for {@link com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.BigQueryDynamicDestinationsTest}.
+ * Test class for {@link
+ * com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.BigQueryDynamicDestinationsTest}.
  */
 @RunWith(JUnit4.class)
 @Category(IntegrationTest.class)
@@ -33,17 +34,17 @@ public class BigQueryDestinationTest {
 
   @Test
   public void testDefaultDestinationConfiguration() {
-    BigQueryDestination destinationInfo = new BigQueryDestination(
-        TestUtil.TEST_BIG_QUERY_PROJECT,
-        TestUtil.TEST_BIG_QUERY_DATESET,
-        TestUtil.TEST_BIG_QUERY_TABLENAME,
-        false,
-        false,
-        false,
-        null,
-        null,
-        null
-    );
+    BigQueryDestination destinationInfo =
+        new BigQueryDestination(
+            TestUtil.TEST_BIG_QUERY_PROJECT,
+            TestUtil.TEST_BIG_QUERY_DATESET,
+            TestUtil.TEST_BIG_QUERY_TABLENAME,
+            false,
+            false,
+            false,
+            null,
+            null,
+            null);
 
     Assert.assertTrue(destinationInfo.isColumnEnabled(ChangelogColumn.IS_GC));
     Assert.assertTrue(destinationInfo.isColumnEnabled(ChangelogColumn.BQ_COMMIT_TIMESTAMP));
@@ -63,26 +64,27 @@ public class BigQueryDestinationTest {
     Assert.assertTrue(destinationInfo.isColumnEnabled(ChangelogColumn.COLUMN));
     Assert.assertTrue(destinationInfo.isColumnEnabled(ChangelogColumn.TIEBREAKER));
     Assert.assertTrue(destinationInfo.isColumnEnabled(ChangelogColumn.COLUMN_FAMILY));
-    Assert.assertEquals(TableId.of(
-        TestUtil.TEST_BIG_QUERY_PROJECT,
-        TestUtil.TEST_BIG_QUERY_DATESET,
-        TestUtil.TEST_BIG_QUERY_TABLENAME
-    ), destinationInfo.getBigQueryTableId());
+    Assert.assertEquals(
+        TableId.of(
+            TestUtil.TEST_BIG_QUERY_PROJECT,
+            TestUtil.TEST_BIG_QUERY_DATESET,
+            TestUtil.TEST_BIG_QUERY_TABLENAME),
+        destinationInfo.getBigQueryTableId());
   }
 
   @Test
   public void testNonDefaultConfiguration() {
-    BigQueryDestination destinationInfo = new BigQueryDestination(
-        TestUtil.TEST_BIG_QUERY_PROJECT,
-        TestUtil.TEST_BIG_QUERY_DATESET,
-        TestUtil.TEST_BIG_QUERY_TABLENAME,
-        true,
-        true,
-        true,
-        null,
-        null,
-        null
-    );
+    BigQueryDestination destinationInfo =
+        new BigQueryDestination(
+            TestUtil.TEST_BIG_QUERY_PROJECT,
+            TestUtil.TEST_BIG_QUERY_DATESET,
+            TestUtil.TEST_BIG_QUERY_TABLENAME,
+            true,
+            true,
+            true,
+            null,
+            null,
+            null);
 
     Assert.assertTrue(destinationInfo.isColumnEnabled(ChangelogColumn.IS_GC));
     Assert.assertTrue(destinationInfo.isColumnEnabled(ChangelogColumn.BQ_COMMIT_TIMESTAMP));
@@ -106,18 +108,18 @@ public class BigQueryDestinationTest {
 
   @Test
   public void testNoOptionalFieldsConfiguration() {
-    BigQueryDestination destinationInfo = new BigQueryDestination(
-        TestUtil.TEST_BIG_QUERY_PROJECT,
-        TestUtil.TEST_BIG_QUERY_DATESET,
-        TestUtil.TEST_BIG_QUERY_TABLENAME,
-        true,
-        true,
-        true,
-        null,
-        null,
-        "is_gc,source_cluster,source_instance,source_table,"
-            + "big_query_commit_timestamp,tiebreaker"
-    );
+    BigQueryDestination destinationInfo =
+        new BigQueryDestination(
+            TestUtil.TEST_BIG_QUERY_PROJECT,
+            TestUtil.TEST_BIG_QUERY_DATESET,
+            TestUtil.TEST_BIG_QUERY_TABLENAME,
+            true,
+            true,
+            true,
+            null,
+            null,
+            "is_gc,source_cluster,source_instance,source_table,"
+                + "big_query_commit_timestamp,tiebreaker");
 
     Assert.assertFalse(destinationInfo.isColumnEnabled(ChangelogColumn.IS_GC));
     Assert.assertFalse(destinationInfo.isColumnEnabled(ChangelogColumn.BQ_COMMIT_TIMESTAMP));
@@ -151,12 +153,11 @@ public class BigQueryDestinationTest {
           true,
           null,
           null,
-          "buggy"
-      );
+          "buggy");
       Assert.fail();
     } catch (IllegalArgumentException e) {
-      Assert.assertEquals("Column 'buggy' cannot be disabled and is not recognized",
-          e.getMessage());
+      Assert.assertEquals(
+          "Column 'buggy' cannot be disabled and is not recognized", e.getMessage());
     }
 
     try {
@@ -169,35 +170,33 @@ public class BigQueryDestinationTest {
           true,
           null,
           null,
-          "row_key"
-      );
+          "row_key");
       Assert.fail();
     } catch (IllegalArgumentException e) {
-      Assert.assertEquals("Column 'row_key' cannot be disabled by the pipeline "
-              + "configuration",
-          e.getMessage());
+      Assert.assertEquals(
+          "Column 'row_key' cannot be disabled by the pipeline " + "configuration", e.getMessage());
     }
   }
 
   @Test
   public void testPartitioning() {
-    BigQueryDestination destinationInfo = new BigQueryDestination(
-        TestUtil.TEST_BIG_QUERY_PROJECT,
-        TestUtil.TEST_BIG_QUERY_DATESET,
-        TestUtil.TEST_BIG_QUERY_TABLENAME,
-        true,
-        true,
-        true,
-        "HOUR",
-        1000000000L,
-        null
-    );
+    BigQueryDestination destinationInfo =
+        new BigQueryDestination(
+            TestUtil.TEST_BIG_QUERY_PROJECT,
+            TestUtil.TEST_BIG_QUERY_DATESET,
+            TestUtil.TEST_BIG_QUERY_TABLENAME,
+            true,
+            true,
+            true,
+            "HOUR",
+            1000000000L,
+            null);
 
-    Assert.assertEquals((Long) 1000000000L,
-        destinationInfo.getBigQueryChangelogTablePartitionExpirationMs());
+    Assert.assertEquals(
+        (Long) 1000000000L, destinationInfo.getBigQueryChangelogTablePartitionExpirationMs());
     Assert.assertEquals("HOUR", destinationInfo.getBigQueryChangelogTablePartitionType());
-    Assert.assertEquals(ChangelogColumn.COMMIT_TIMESTAMP.getBqColumnName(),
+    Assert.assertEquals(
+        ChangelogColumn.COMMIT_TIMESTAMP.getBqColumnName(),
         destinationInfo.getPartitionByColumnName());
   }
-
 }

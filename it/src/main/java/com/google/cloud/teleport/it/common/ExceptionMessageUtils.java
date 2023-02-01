@@ -13,22 +13,24 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model;
+package com.google.cloud.teleport.it.common;
 
-/** Type of Cloud Bigtable mutations. */
-public enum ModType {
-  SET_CELL("SET_CELL"),
-  DELETE_CELLS("DELETE_CELLS"),
-  DELETE_FAMILY("DELETE_FAMILY"),
-  UNKNOWN("UNKNOWN");
+/** Utility class to search for certain error message in the exception chain */
+public class ExceptionMessageUtils {
 
-  private final String code;
-
-  ModType(String code) {
-    this.code = code;
+  private ExceptionMessageUtils() {
+    // don't create
   }
 
-  public String getCode() {
-    return code;
+  public static boolean underlyingErrorContains(Throwable t, String messageToLookFor) {
+    while (t != null) {
+      String msg = t.getMessage();
+      if (msg != null && msg.contains(messageToLookFor)) {
+        return true;
+      } else {
+        t = t.getCause();
+      }
+    }
+    return false;
   }
 }

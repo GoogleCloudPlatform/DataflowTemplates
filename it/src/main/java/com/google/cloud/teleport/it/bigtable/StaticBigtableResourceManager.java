@@ -16,66 +16,53 @@
 package com.google.cloud.teleport.it.bigtable;
 
 import static com.google.cloud.teleport.it.bigtable.BigtableResourceManagerUtils.checkValidTableId;
-import static com.google.cloud.teleport.it.bigtable.BigtableResourceManagerUtils.generateDefaultClusters;
-import static com.google.cloud.teleport.it.bigtable.BigtableResourceManagerUtils.generateInstanceId;
 import static com.google.cloud.teleport.it.common.ResourceManagerUtils.checkValidProjectId;
 
 import com.google.api.gax.core.CredentialsProvider;
 import com.google.api.gax.rpc.ServerStream;
-import com.google.cloud.bigtable.admin.v2.BigtableInstanceAdminClient;
 import com.google.cloud.bigtable.admin.v2.BigtableInstanceAdminSettings;
 import com.google.cloud.bigtable.admin.v2.BigtableTableAdminClient;
 import com.google.cloud.bigtable.admin.v2.BigtableTableAdminSettings;
-import com.google.cloud.bigtable.admin.v2.models.CreateInstanceRequest;
-import com.google.cloud.bigtable.admin.v2.models.CreateTableRequest;
-import com.google.cloud.bigtable.admin.v2.models.GCRules;
-import com.google.cloud.bigtable.admin.v2.models.StorageType;
 import com.google.cloud.bigtable.data.v2.BigtableDataClient;
 import com.google.cloud.bigtable.data.v2.BigtableDataSettings;
 import com.google.cloud.bigtable.data.v2.models.Query;
 import com.google.cloud.bigtable.data.v2.models.Row;
 import com.google.cloud.bigtable.data.v2.models.RowMutation;
-import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import java.io.IOException;
+import java.util.List;
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.threeten.bp.Duration;
 
 /**
- * Default class for implementation of {@link BigtableResourceManager} interface.
- *
- * <p>The class supports one instance, and multiple tables per manager object. An instance is
- * created when the first table is created if one has not been created already.
- *
- * <p>The instance id is formed using testId. The instance id will be "{testId}-{ISO8601 time,
- * microsecond precision}", with additional formatting. Note: If testId is more than 30 characters,
- * a new testId will be formed for naming: {first 21 chars of long testId} + “-” + {8 char hash of
- * testId}.
+ * An implementation for implementation of {@link BigtableResourceManager} interface which allows to
+ * run test as if new resources are created, but reuse pre-created resources all the time.
  *
  * <p>The class is thread-safe.
  */
-public class DefaultBigtableResourceManager implements BigtableResourceManager {
+public class StaticBigtableResourceManager implements BigtableResourceManager {
 
-  private static final Logger LOG = LoggerFactory.getLogger(DefaultBigtableResourceManager.class);
-  private static final String DEFAULT_CLUSTER_ZONE = "us-central1-a";
-  private static final int DEFAULT_CLUSTER_NUM_NODES = 1;
-  private static final StorageType DEFAULT_CLUSTER_STORAGE_TYPE = StorageType.SSD;
-
+  private static final Logger LOG = LoggerFactory.getLogger(StaticBigtableResourceManager.class);
   private final String projectId;
   private final String instanceId;
+
+  private final String appProfileId;
+  private final String tableId;
+
   private final BigtableResourceManagerClientFactory bigtableResourceManagerClientFactory;
 
-  private boolean hasInstance = false;
-
-  private DefaultBigtableResourceManager(DefaultBigtableResourceManager.Builder builder)
+  private StaticBigtableResourceManager(StaticBigtableResourceManager.Builder builder)
       throws IOException {
     // Check that the project ID conforms to GCP standards
     checkValidProjectId(builder.projectId);
 
-    // generate instance id based on given test id.
-    this.instanceId = generateInstanceId(builder.testId);
+    this.instanceId = builder.instanceId;
+    this.tableId = builder.tableId;
+    this.appProfileId = builder.appProfileId;
 
     // create the bigtable admin and data client settings builders, and set the necessary id's for
     // each.
@@ -105,69 +92,37 @@ public class DefaultBigtableResourceManager implements BigtableResourceManager {
             bigtableDataSettings.build());
   }
 
-  @VisibleForTesting
-  DefaultBigtableResourceManager(
-      String testId,
-      String projectId,
-      BigtableResourceManagerClientFactory bigtableResourceManagerClientFactory) {
-    this.projectId = projectId;
-    this.instanceId = generateInstanceId(testId);
-    this.bigtableResourceManagerClientFactory = bigtableResourceManagerClientFactory;
+  public static StaticBigtableResourceManager.Builder builder(String projectId) throws IOException {
+    return new StaticBigtableResourceManager.Builder(projectId);
   }
 
-  public static DefaultBigtableResourceManager.Builder builder(String testId, String projectId)
-      throws IOException {
-    return new DefaultBigtableResourceManager.Builder(testId, projectId);
-  }
-
+  /**
+   * Returns the project ID this Resource Manager is configured to operate on.
+   *
+   * @return the project ID.
+   */
   public String getProjectId() {
     return projectId;
   }
 
+  /**
+   * Return the instance ID this Resource Manager uses to create and manage tables in.
+   *
+   * @return the instance ID.
+   */
   public String getInstanceId() {
     return instanceId;
   }
 
-  @Override
-  public synchronized void createInstance(Iterable<BigtableResourceManagerCluster> clusters) {
-
-    // Check to see if instance already exists, and throw error if it does
-    if (hasInstance) {
-      throw new IllegalStateException(
-          "Instance " + instanceId + " already exists for project " + projectId + ".");
-    }
-
-    LOG.info("Creating instance {} in project {}.", instanceId, projectId);
-
-    // Create instance request object and add all the given clusters to the request
-    CreateInstanceRequest request = CreateInstanceRequest.of(instanceId);
-    for (BigtableResourceManagerCluster cluster : clusters) {
-      request.addCluster(
-          cluster.clusterId(), cluster.zone(), cluster.numNodes(), cluster.storageType());
-    }
-
-    // Send the instance request to Google Cloud
-    try (BigtableInstanceAdminClient instanceAdminClient =
-        bigtableResourceManagerClientFactory.bigtableInstanceAdminClient()) {
-      instanceAdminClient.createInstance(request);
-    } catch (Exception e) {
-      throw new BigtableResourceManagerException(
-          "Failed to create instance " + instanceId + ".", e);
-    }
-    hasInstance = true;
-
-    LOG.info("Successfully created instance {}.", instanceId);
+  public String getTableId() {
+    return tableId;
   }
 
-  /**
-   * Helper method for determining if an instance has been created for the ResourceManager object.
-   *
-   * @throws IllegalStateException if an instance has not yet been created.
-   */
-  private void checkHasInstance() {
-    if (!hasInstance) {
-      throw new IllegalStateException("There is no instance for manager to perform operation on.");
-    }
+  @Override
+  public synchronized void createInstance(Iterable<BigtableResourceManagerCluster> clusters) {
+    LOG.info(
+        "No Cloud Bigtable instances are going to be created. Using static instance: {}",
+        instanceId);
   }
 
   /**
@@ -187,50 +142,13 @@ public class DefaultBigtableResourceManager implements BigtableResourceManager {
   }
 
   @Override
-  public synchronized void createTable(String tableId, BigtableTableSpec spec) {
-    // Check table ID
-    checkValidTableId(tableId);
-
-    // Check for at least one column family
-    if (!spec.getColumnFamilies().iterator().hasNext()) {
-      throw new IllegalArgumentException(
-          "There must be at least one column family specified when creating a table.");
+  public synchronized void createTable(String newTableId, BigtableTableSpec spec) {
+    if (!Objects.equals(tableId, newTableId)) {
+      LOG.warn(
+          "Test tries to create table named differently from static tableId: {}.{}",
+          instanceId,
+          this.tableId);
     }
-
-    // Create a default instance if this resource manager has not already created one
-    if (!hasInstance) {
-      createInstance(
-          generateDefaultClusters(
-              instanceId,
-              DEFAULT_CLUSTER_ZONE,
-              DEFAULT_CLUSTER_NUM_NODES,
-              DEFAULT_CLUSTER_STORAGE_TYPE));
-    }
-    checkHasInstance();
-
-    LOG.info("Creating table using tableId '{}'.", tableId);
-
-    // Fetch the Bigtable Table client and create the table if it does not already exist in the
-    // instance
-    try (BigtableTableAdminClient tableAdminClient =
-        bigtableResourceManagerClientFactory.bigtableTableAdminClient()) {
-      if (!tableAdminClient.exists(tableId)) {
-        CreateTableRequest createTableRequest = CreateTableRequest.of(tableId);
-
-        for (String columnFamily : spec.getColumnFamilies()) {
-          createTableRequest.addFamily(columnFamily, GCRules.GCRULES.maxAge(spec.getMaxAge()));
-        }
-        // TODO: Set CDC enabled
-        tableAdminClient.createTable(createTableRequest);
-      } else {
-        throw new IllegalStateException(
-            "Table " + tableId + " already exists for instance " + instanceId + ".");
-      }
-    } catch (Exception e) {
-      throw new BigtableResourceManagerException("Failed to create table.", e);
-    }
-
-    LOG.info("Successfully created table {}.{}", instanceId, tableId);
   }
 
   @Override
@@ -257,8 +175,6 @@ public class DefaultBigtableResourceManager implements BigtableResourceManager {
 
   @Override
   public synchronized void write(Iterable<RowMutation> tableRows) {
-    checkHasInstance();
-
     // Exit early if there are no mutations
     if (!tableRows.iterator().hasNext()) {
       return;
@@ -281,7 +197,6 @@ public class DefaultBigtableResourceManager implements BigtableResourceManager {
 
   @Override
   public synchronized ImmutableList<Row> readTable(String tableId) {
-    checkHasInstance();
     checkHasTable(tableId);
 
     // List to store fetched rows
@@ -311,29 +226,27 @@ public class DefaultBigtableResourceManager implements BigtableResourceManager {
 
   @Override
   public synchronized void cleanupAll() {
-    LOG.info("Attempting to cleanup manager.");
-    if (hasInstance) {
-      try (BigtableInstanceAdminClient instanceAdminClient =
-          bigtableResourceManagerClientFactory.bigtableInstanceAdminClient()) {
-        instanceAdminClient.deleteInstance(instanceId);
-        hasInstance = false;
-      } catch (Exception e) {
-        throw new BigtableResourceManagerException("Failed to delete resources.", e);
-      }
-    }
-
-    LOG.info("Manager successfully cleaned up.");
+    LOG.info("No cleanup for pre-created resources");
   }
 
-  /** Builder for {@link DefaultBigtableResourceManager}. */
-  public static final class Builder {
+  public void createAppProfile(
+      String newAppProfile, boolean singleClusterRouting, List<String> clusters) {
+    if (!Objects.equals(appProfileId, newAppProfile)) {
+      LOG.warn(
+          "Test tries to create appProfile named differently from static appProfile: {}",
+          this.appProfileId);
+    }
+  }
 
-    private final String testId;
+  /** Builder for {@link StaticBigtableResourceManager}. */
+  public static final class Builder {
     private final String projectId;
+    private String instanceId;
+    private String tableId;
+    private String appProfileId;
     private CredentialsProvider credentialsProvider;
 
-    private Builder(String testId, String projectId) {
-      this.testId = testId;
+    private Builder(String projectId) {
       this.projectId = projectId;
     }
 
@@ -342,8 +255,30 @@ public class DefaultBigtableResourceManager implements BigtableResourceManager {
       return this;
     }
 
-    public DefaultBigtableResourceManager build() throws IOException {
-      return new DefaultBigtableResourceManager(this);
+    public Builder setInstanceId(String instanceId) {
+      if (Strings.isNullOrEmpty(instanceId)) {
+        throw new IllegalArgumentException("InstanceId needs to be specified");
+      }
+      this.instanceId = instanceId;
+      return this;
+    }
+
+    public Builder setTableId(String tableId) {
+      checkValidTableId(tableId);
+      this.tableId = tableId;
+      return this;
+    }
+
+    public Builder setAppProfileId(String appProfileId) {
+      if (Strings.isNullOrEmpty(appProfileId)) {
+        throw new IllegalArgumentException("appProfileId needs to be specified");
+      }
+      this.appProfileId = appProfileId;
+      return this;
+    }
+
+    public StaticBigtableResourceManager build() throws IOException {
+      return new StaticBigtableResourceManager(this);
     }
   }
 }

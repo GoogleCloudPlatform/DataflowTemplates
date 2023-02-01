@@ -16,40 +16,35 @@
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery;
 
 import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
-import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatArtifacts;
 import static com.google.common.truth.Truth.assertThat;
 
 import avro.shaded.com.google.common.collect.Lists;
+import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.bigtable.admin.v2.models.StorageType;
+import com.google.cloud.bigtable.data.v2.models.RowMutation;
 import com.google.cloud.teleport.it.TemplateTestBase;
-import com.google.cloud.teleport.it.artifacts.Artifact;
-import com.google.cloud.teleport.it.bigtable.BigtableResourceManager;
+import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
 import com.google.cloud.teleport.it.bigtable.BigtableResourceManagerCluster;
-import com.google.cloud.teleport.it.bigtable.DefaultBigtableResourceManager;
+import com.google.cloud.teleport.it.bigtable.BigtableTableSpec;
+import com.google.cloud.teleport.it.bigtable.StaticBigtableResourceManager;
+import com.google.cloud.teleport.it.common.ExceptionMessageUtils;
 import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
 import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
 import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
 import com.google.cloud.teleport.it.dataflow.DataflowOperator;
+import com.google.cloud.teleport.it.dataflow.DataflowOperator.Config;
 import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
-import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
-import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.options.BigtableChangeStreamsToBigQueryOptions;
-import com.google.cloud.teleport.v2.templates.pubsubtotext.PubsubToText;
-import com.google.common.collect.ImmutableMap;
-import com.google.protobuf.ByteString;
-import com.google.pubsub.v1.SubscriptionName;
-import com.google.pubsub.v1.TopicName;
-import com.google.re2j.Pattern;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.ChangelogColumn;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
-import org.apache.commons.lang3.RandomStringUtils;
-import org.apache.commons.lang3.RandomUtils;
+import java.util.UUID;
+import java.util.function.Supplier;
+import org.jetbrains.annotations.NotNull;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -62,132 +57,169 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public final class BigtableChangeStreamsToBQIT extends TemplateTestBase {
 
-  private static final String INPUT_TOPIC = "inputTopic";
-  private static final String INPUT_SUBSCRIPTION = "inputSubscription";
-  private static final String NUM_SHARDS_KEY = "numShards";
-  private static final String OUTPUT_DIRECTORY_KEY = "outputDirectory";
-  private static final String WINDOW_DURATION_KEY = "windowDuration";
-  private static final String OUTPUT_FILENAME_PREFIX = "outputFilenamePrefix";
-
-  private static final String DEFAULT_WINDOW_DURATION = "10s";
   public static final String SOURCE_CDC_TABLE = "source_cdc_table";
+  public static final String SOURCE_COLUMN_FAMILY = "cf";
+  public static final String APP_PROFILE_ID = "cdc_app_profile";
+  private static final Duration EXPECTED_REPLICATION_MAX_WAIT_TIME = Duration.ofMinutes(10);
+  private static final String TEST_REGION = "us-central1";
+  private static final String TEST_ZONE = "us-central1-a";
 
-  private static DefaultBigtableResourceManager bigtableResourceManager;
+  private static StaticBigtableResourceManager bigtableResourceManager;
+  private static DefaultBigQueryResourceManager bigQueryResourceManager;
 
-  @Before
-  public void setup() throws IOException {
-    bigtableResourceManager =
-        DefaultBigtableResourceManager.builder(testName.getMethodName(), PROJECT)
-            .setCredentialsProvider(credentialsProvider)
-            .build();
-  }
-
-  @After
-  public void tearDownClass() {
-    bigtableResourceManager.cleanupAll();
-  }
+  private JobInfo jobInfo;
 
   @Test
-  public void testTopicToGcs() throws IOException {
-    // Arrange
+  public void testBigtableChangeStreamsToBigQuerySingleMutationEndToEnd() throws IOException {
+    long timeNowMcsec = System.currentTimeMillis() * 1000;
+
     String name = testName.getMethodName();
     String jobName = createJobName(name);
-    String clusterName = "c1" + RandomStringUtils.randomAlphabetic(6).toLowerCase(Locale.ROOT);
-
-    // String messageString = String.format("msg-%s", jobName);
-    // Pattern expectedFilePattern = Pattern.compile(".*topic-output-.*");
+    String clusterName = "c1_cluster";
 
     List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
-    clusters.add(BigtableResourceManagerCluster.create(clusterName, "us-central1-a", 1, StorageType.HDD));
+    clusters.add(BigtableResourceManagerCluster.create(clusterName, TEST_ZONE, 1, StorageType.HDD));
 
     bigtableResourceManager.createInstance(clusters);
-    bigtableResourceManager.createTable(SOURCE_CDC_TABLE, Lists.asList("cf", new String []{}));
+
+    BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
+    cdcTableSpec.setCdcEnabled(true);
+    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
+    bigtableResourceManager.createTable(SOURCE_CDC_TABLE, cdcTableSpec);
+
+    bigtableResourceManager.createAppProfile(
+        APP_PROFILE_ID, true, Lists.asList(clusterName, new String[] {}));
+
+    bigQueryResourceManager.createDataset(TEST_REGION);
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(jobName, specPath)
             .addParameter("bigtableTableId", SOURCE_CDC_TABLE)
             .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
-            .addParameter("bigtableAppProfileId", "TBD")
-            .addParameter("bigQueryDataset", "TBD")
-            .addParameter("bigQueryChangelogTableName", "TBD");
+            .addParameter("bigtableAppProfileId", APP_PROFILE_ID)
+            .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
+            .addParameter("bigQueryChangelogTableName", SOURCE_CDC_TABLE + "_changes");
 
-    // Act
-    JobInfo info = launchTemplate(options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    jobInfo = launchTemplate(options);
 
-    AtomicReference<List<Artifact>> artifacts = new AtomicReference<>();
-    //
-    // Result result =
-    //     new DataflowOperator(getDataflowClient())
-    //         .waitForConditionAndFinish(
-    //             createConfig(info),
-    //             () -> {
-    //               ByteString messageData = ByteString.copyFromUtf8(messageString);
-    //               pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
-    //
-    //               artifacts.set(artifactClient.listArtifacts(name, expectedFilePattern));
-    //               return !artifacts.get().isEmpty();
-    //             });
-    //
-    // // Assert
-    // assertThat(result).isEqualTo(Result.CONDITION_MET);
-    //
-    // // Make sure that files contain only the messages produced by this test
-    // String allMessages =
-    //     artifacts.get().stream()
-    //         .map(artifact -> new String(artifact.contents()))
-    //         .collect(Collectors.joining());
-    // assertThat(allMessages.replace(messageString, "").trim()).isEmpty();
+    assertThat(jobInfo.state()).isIn(JobState.ACTIVE_STATES);
+
+    String rowkey = UUID.randomUUID().toString();
+    String column = UUID.randomUUID().toString();
+    String value = UUID.randomUUID().toString();
+
+    RowMutation rowMutation =
+        RowMutation.create(SOURCE_CDC_TABLE, rowkey).setCell(SOURCE_COLUMN_FAMILY, column, value);
+    bigtableResourceManager.write(rowMutation);
+
+    String query =
+        String.format(
+            "SELECT * FROM `"
+                + bigQueryResourceManager.getDatasetId()
+                + "."
+                + SOURCE_CDC_TABLE
+                + "_changes`"
+                + " WHERE "
+                + ChangelogColumn.ROW_KEY_STRING.getBqColumnName()
+                + "='%s' AND "
+                + ChangelogColumn.COLUMN_FAMILY.getBqColumnName()
+                + "='%s' AND "
+                + ChangelogColumn.COLUMN.getBqColumnName()
+                + "='%s' AND "
+                + ChangelogColumn.VALUE_STRING.getBqColumnName()
+                + "='%s'",
+            rowkey,
+            SOURCE_COLUMN_FAMILY,
+            column,
+            value);
+
+    Result result =
+        new DataflowOperator(getDataflowClient())
+            .waitForCondition(getWaitForPipelineConfig(jobInfo), dataShownUp(query));
+
+    assertThat(result).isEqualTo(Result.CONDITION_MET);
+
+    TableResult tableResult = bigQueryResourceManager.runQuery(query);
+    tableResult
+        .iterateAll()
+        .forEach(
+            fvl -> {
+              Assert.assertTrue(
+                  fvl.get(ChangelogColumn.TIMESTAMP.getBqColumnName()).getTimestampValue()
+                      >= timeNowMcsec);
+              Assert.assertFalse(
+                  fvl.get(ChangelogColumn.BQ_COMMIT_TIMESTAMP.getBqColumnName()).isNull());
+              Assert.assertFalse(
+                  fvl.get(ChangelogColumn.IS_GC.getBqColumnName()).getBooleanValue());
+              Assert.assertTrue(fvl.get(ChangelogColumn.TIMESTAMP_FROM.getBqColumnName()).isNull());
+              Assert.assertTrue(fvl.get(ChangelogColumn.TIMESTAMP_TO.getBqColumnName()).isNull());
+              Assert.assertEquals(
+                  SOURCE_CDC_TABLE,
+                  fvl.get(ChangelogColumn.SOURCE_TABLE.getBqColumnName()).getStringValue());
+              Assert.assertEquals(
+                  bigtableResourceManager.getInstanceId(),
+                  fvl.get(ChangelogColumn.SOURCE_INSTANCE.getBqColumnName()).getStringValue());
+              Assert.assertTrue(
+                  fvl.get(ChangelogColumn.TIEBREAKER.getBqColumnName()).getLongValue() >= 0);
+            });
   }
 
-  // @Test
-  // public void testSubscriptionToGcs() throws IOException {
-  //   // Arrange
-  //   String name = testName.getMethodName();
-  //   String jobName = createJobName(name);
-  //   String messageString = String.format("msg-%s", jobName);
-  //   Pattern expectedFilePattern = Pattern.compile(".*subscription-output-.*");
-  //
-  //   TopicName topic = pubsubResourceManager.createTopic("input");
-  //
-  //   SubscriptionName subscription = pubsubResourceManager.createSubscription(topic, "input-1");
-  //
-  //   LaunchConfig.Builder options =
-  //       LaunchConfig.builder(jobName, specPath)
-  //           .addParameter(INPUT_SUBSCRIPTION, subscription.toString())
-  //           .addParameter(WINDOW_DURATION_KEY, DEFAULT_WINDOW_DURATION)
-  //           .addParameter(OUTPUT_DIRECTORY_KEY, getGcsPath(name))
-  //           .addParameter(NUM_SHARDS_KEY, "1")
-  //           .addParameter(OUTPUT_FILENAME_PREFIX, "subscription-output-");
-  //
-  //   // Act
-  //   JobInfo info = launchTemplate(options);
-  //   assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
-  //
-  //   AtomicReference<List<Artifact>> artifacts = new AtomicReference<>();
-  //
-  //   Result result =
-  //       new DataflowOperator(getDataflowClient())
-  //           .waitForConditionAndFinish(
-  //               createConfig(info),
-  //               () -> {
-  //                 ByteString messageData = ByteString.copyFromUtf8(messageString);
-  //                 pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
-  //
-  //                 artifacts.set(artifactClient.listArtifacts(name, expectedFilePattern));
-  //                 return !artifacts.get().isEmpty();
-  //               });
-  //
-  //   // Assert
-  //   assertThat(result).isEqualTo(Result.CONDITION_MET);
-  //
-  //   assertThatArtifacts(artifacts.get()).hasFiles();
-  //
-  //   // Make sure that files contain only the messages produced by this test
-  //   String allMessages =
-  //       artifacts.get().stream()
-  //           .map(artifact -> new String(artifact.contents()))
-  //           .collect(Collectors.joining());
-  //   assertThat(allMessages.replace(messageString, "").trim()).isEmpty();
-  // }
+  @Before
+  public void setup() throws IOException {
+    bigQueryResourceManager =
+        DefaultBigQueryResourceManager.builder(testName.getMethodName(), PROJECT).build();
+    // TODO: StaticBigtableResourceManager has to be replaced with DefaultBigtableResourceManager
+    // when it supports CDC configs
+    bigtableResourceManager =
+        StaticBigtableResourceManager.builder(/* testName.getMethodName(), */ PROJECT)
+            .setCredentialsProvider(credentialsProvider)
+            .setInstanceId(System.getProperty("bigtableInstanceId"))
+            .setTableId(System.getProperty("bigtableTableId"))
+            .setAppProfileId(System.getProperty("bigtableAppProfileId"))
+            .build();
+  }
+
+  @After
+  public void tearDownClass() {
+    // If we destroy Cloud Bigtable / BigQuery resources before cancelling job, it might get
+    // stuck in draining
+    if (jobInfo != null) {
+      try {
+        getDataflowClient().cancelJob(PROJECT, TEST_REGION, jobInfo.jobId());
+      } catch (Exception e) {
+        e.printStackTrace(System.err);
+      }
+    }
+
+    if (bigtableResourceManager != null) {
+      bigtableResourceManager.cleanupAll();
+    }
+    if (bigQueryResourceManager != null) {
+      bigQueryResourceManager.cleanupAll();
+    }
+  }
+
+  @NotNull
+  private Supplier<Boolean> dataShownUp(String query) {
+    return () -> {
+      try {
+        return bigQueryResourceManager.runQuery(query).getTotalRows() != 0;
+      } catch (Exception e) {
+        if (ExceptionMessageUtils.underlyingErrorContains(e, "Not found: Table")) {
+          return false;
+        } else {
+          throw e;
+        }
+      }
+    };
+  }
+
+  public Config getWaitForPipelineConfig(JobInfo info) {
+    return Config.builder()
+        .setProject(PROJECT)
+        .setRegion(REGION)
+        .setJobId(info.jobId())
+        .setTimeoutAfter(EXPECTED_REPLICATION_MAX_WAIT_TIME)
+        .build();
+  }
 }
