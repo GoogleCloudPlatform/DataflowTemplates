@@ -22,8 +22,6 @@ import static com.google.cloud.syndeo.transforms.KafkaToBigQueryLocalTest.genera
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.auth.Credentials;
-import com.google.cloud.syndeo.SyndeoTemplate;
-import com.google.cloud.syndeo.transforms.KafkaToBigQueryLocalTest;
 import com.google.cloud.teleport.it.PipelineUtils;
 import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
@@ -217,7 +215,7 @@ public class KafkaToBigQueryIT {
     }
   }
 
-  DataflowClient.JobInfo kickstartSyndeoPipeline() throws Exception {
+  PipelineLauncher.LaunchInfo kickstartSyndeoPipeline() throws Exception {
     JsonNode templateConfiguration = generateBaseRootConfiguration(null);
 
     ObjectNode sourceProps =

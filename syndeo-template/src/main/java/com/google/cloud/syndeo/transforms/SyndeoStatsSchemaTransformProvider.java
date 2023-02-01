@@ -115,6 +115,7 @@ public class SyndeoStatsSchemaTransformProvider
     @DoFn.FinishBundle
     public void finish() {
       elementsCounter.inc(elementsProcessed);
+      this.elementsProcessed = 0L;
     }
   }
 
@@ -130,10 +131,10 @@ public class SyndeoStatsSchemaTransformProvider
           .getCounters()
           .iterator()
           .next()
-          .getCommitted();
+          .getAttempted();
     } catch (NoSuchElementException e) {
       System.out.println("Unable to find elementsProcessed counter for job.");
-      return 0L;
+      return -1L;
     }
   }
 }

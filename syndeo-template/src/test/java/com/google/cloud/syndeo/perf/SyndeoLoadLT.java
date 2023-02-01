@@ -248,9 +248,11 @@ public class SyndeoLoadLT {
           syndeoProcessed);
       if (0 < syndeoProcessed && 0 < inputElements && syndeoProcessed >= inputElements) {
         // HAPPY WE SUCCEEDED!
+        syndeoResult.cancel();
         break;
       }
-      if (testRuntime > testConfig.getDurationMinutes() * 3) {
+      if (testRuntime > testConfig.getDurationMinutes() * 3
+          || syndeoResult.getState().isTerminal()) {
         syndeoResult.cancel();
         fail(
             String.format(
