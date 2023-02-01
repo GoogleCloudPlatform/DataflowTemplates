@@ -82,9 +82,9 @@ public class SyndeoTemplate {
           Set.of("table", "createDisposition", "writeDisposition"),
           // New names:
           "beam:schematransform:org.apache.beam:bigquery_storage_write:v1",
-          Set.of("instanceId", "tableId", "keyColumns", "projectId", "appProfileId"),
+          Set.of(),
           "beam:schematransform:org.apache.beam:bigquery_storage_read:v1",
-          Set.of("table"),
+          Set.of(),
           "beam:schematransform:org.apache.beam:kafka_read:v1",
           Set.of(),
           "syndeo:schematransform:com.google.cloud:bigtable_write:v1",

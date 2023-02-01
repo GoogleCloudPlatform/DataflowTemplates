@@ -60,10 +60,10 @@ public class BigTableSchemaTransformTest {
   private static final Schema INTEGRATION_TEST_SCHEMA =
       Schema.builder()
           .addStringField("name")
-          .addBooleanField("vaccinated")
-          .addDoubleField("temperature")
           // The following fields cannot be included in local tests
           // due to limitations of the testing utilities.
+          .addBooleanField("vaccinated")
+          .addDoubleField("temperature")
           .addInt32Field("age")
           .addInt64Field("networth")
           .addDateTimeField("birthday")
@@ -74,8 +74,8 @@ public class BigTableSchemaTransformTest {
   private static final Schema LOCAL_TEST_INPUT_SCHEMA =
       Schema.builder()
           .addStringField("name")
-          .addBooleanField("vaccinated")
-          .addDoubleField("temperature")
+          // .addBooleanField("vaccinated")
+          // .addDoubleField("temperature")
           .build();
 
   public static String randomString(Integer length) {
@@ -88,8 +88,8 @@ public class BigTableSchemaTransformTest {
     if (local) {
       return Row.withSchema(LOCAL_TEST_INPUT_SCHEMA)
           .addValue(randomString(10))
-          .addValue(RND.nextBoolean())
-          .addValue(RND.nextDouble())
+          // .addValue(RND.nextBoolean())
+          // .addValue(RND.nextDouble())
           .build();
     } else {
       return Row.withSchema(INTEGRATION_TEST_SCHEMA)
