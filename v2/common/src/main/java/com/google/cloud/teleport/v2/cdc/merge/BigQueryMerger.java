@@ -206,6 +206,9 @@ public class BigQueryMerger extends PTransform<PCollection<MergeInfo>, PCollecti
     }
 
     String makeJobId(String jobIdPrefix, String statement) {
+      if (mergeConfiguration.useDeterministicJobId()) {
+        return String.format("%s_%s", jobIdPrefix, UUID.fromString(statement));
+      }
       DateTimeFormatter formatter =
           DateTimeFormatter.ofPattern("yyyy_MM_dd_HH_mm_ssz").withZone(ZoneId.of("UTC"));
       String randomId = UUID.randomUUID().toString();
