@@ -17,9 +17,7 @@ package com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery;
 
 import com.google.protobuf.ByteString;
 
-/**
- * Internal use only. Constants used for testing
- */
+/** Internal use only. Constants used for testing */
 public class TestUtil {
 
   public static final String TEST_PROJECT = "test-project";
@@ -40,11 +38,13 @@ public class TestUtil {
   public static final String TEST_ROWKEY = "some rowkey";
 
   // Code of a Cyrillic capital letter TS ('Ц') in KOI8-R charset.
-  public static final ByteString TEST_NON_UTF_VALUE = ByteString.copyFrom(new byte[]{(byte) 0xE3});
+  public static final ByteString TEST_NON_UTF_VALUE = ByteString.copyFrom(new byte[] {(byte) 0xE3});
   // Code of a Cyrillic capital letter B ('Б') in KOI8-R charset.
-  public static final ByteString TEST_NON_UTF_COLUMN = ByteString.copyFrom(new byte[]{(byte) 0xE2});
+  public static final ByteString TEST_NON_UTF_COLUMN =
+      ByteString.copyFrom(new byte[] {(byte) 0xE2});
   // Code of a Cyrillic capital letter F ('Ф') in KOI8-R charset.
-  public static final ByteString TEST_NON_UTF_ROWKEY = ByteString.copyFrom(new byte[]{(byte) 0xE6});
+  public static final ByteString TEST_NON_UTF_ROWKEY =
+      ByteString.copyFrom(new byte[] {(byte) 0xE6});
 
   public static final String TEST_SPECIFIC_COL_TO_IGNORE_FAMILY = "specific";
   public static final String TEST_SPECIFIC_COL_TO_IGNORE = "col_to_ignore";

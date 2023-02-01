@@ -36,8 +36,8 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.node.ObjectNode;
 
 /**
- * Class {@link FailsafeModJsonToChangelogTableRowTransformer} provides methods that convert a {@link Mod}
- * JSON string wrapped in {@link FailsafeElement} to a {@link TableRow}.
+ * Class {@link FailsafeModJsonToChangelogTableRowTransformer} provides methods that convert a
+ * {@link Mod} JSON string wrapped in {@link FailsafeElement} to a {@link TableRow}.
  */
 public final class FailsafeModJsonToChangelogTableRowTransformer {
 
@@ -104,13 +104,10 @@ public final class FailsafeModJsonToChangelogTableRowTransformer {
       }
 
       @Setup
-      public void setUp() {
-      }
+      public void setUp() {}
 
       @Teardown
-      public void tearDown() {
-
-      }
+      public void tearDown() {}
 
       @ProcessElement
       public void processElement(ProcessContext context) {
@@ -150,7 +147,8 @@ public final class FailsafeModJsonToChangelogTableRowTransformer {
         }
 
         TableRow tableRow = new TableRow();
-        if (bigQueryUtils.setTableRowFields(Mod.fromJson(modObjectNode.toString()), modJsonString, tableRow)) {
+        if (bigQueryUtils.setTableRowFields(
+            Mod.fromJson(modObjectNode.toString()), modJsonString, tableRow)) {
           return tableRow;
         } else {
           return null;
@@ -170,7 +168,8 @@ public final class FailsafeModJsonToChangelogTableRowTransformer {
     public abstract FailsafeElementCoder<String, String> getCoder();
 
     static Builder builder() {
-      return new AutoValue_FailsafeModJsonToChangelogTableRowTransformer_FailsafeModJsonToTableRowOptions.Builder();
+      return new AutoValue_FailsafeModJsonToChangelogTableRowTransformer_FailsafeModJsonToTableRowOptions
+          .Builder();
     }
 
     @AutoValue.Builder

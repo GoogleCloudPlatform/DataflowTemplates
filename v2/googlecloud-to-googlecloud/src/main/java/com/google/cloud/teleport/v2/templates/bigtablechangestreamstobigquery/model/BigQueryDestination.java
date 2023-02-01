@@ -29,9 +29,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 
-/**
- * Descriptor of BigQuery table destination.
- */
+/** Descriptor of BigQuery table destination. */
 public class BigQueryDestination implements Serializable {
 
   private final String bigQueryProject;
@@ -53,13 +51,12 @@ public class BigQueryDestination implements Serializable {
       boolean writeNumericTimestamps,
       String bigQueryChangelogTablePartitionGranularity,
       Long bigQueryChangelogTablePartitionExpirationMs,
-      String bigQueryChangelogTableFieldsToIgnore
-  ) {
+      String bigQueryChangelogTableFieldsToIgnore) {
     this.bigQueryProject = bigQueryProject;
     this.bigQueryDataset = bigQueryDataset;
     this.bigQueryTableName = bigQueryTableName;
-    this.bigQueryChangelogTablePartitionGranularity = safeToUpperCase(
-        bigQueryChangelogTablePartitionGranularity);
+    this.bigQueryChangelogTablePartitionGranularity =
+        safeToUpperCase(bigQueryChangelogTablePartitionGranularity);
     this.bigQueryChangelogTablePartitionExpirationMs = bigQueryChangelogTablePartitionExpirationMs;
     this.writeRowkeyAsBytes = writeRowkeyAsBytes;
     this.writeValueAsBytes = writeValuesAsBytes;
@@ -70,30 +67,34 @@ public class BigQueryDestination implements Serializable {
         TimePartitioning.Type.valueOf(bigQueryChangelogTablePartitionGranularity);
       } catch (IllegalArgumentException e) {
         throw new IllegalArgumentException(
-            "Partition granularity not supported: '" + bigQueryChangelogTablePartitionGranularity
-                + "'. Currently supported values: " +
-                Arrays.toString(TimePartitioning.Type.values()));
+            "Partition granularity not supported: '"
+                + bigQueryChangelogTablePartitionGranularity
+                + "'. Currently supported values: "
+                + Arrays.toString(TimePartitioning.Type.values()));
       }
     }
 
-    if (bigQueryChangelogTablePartitionExpirationMs != null && StringUtils.isBlank(
-        bigQueryChangelogTablePartitionGranularity)) {
-      throw new IllegalArgumentException("Partition expiration can only be used "
-          + "when partition granularity is configured");
+    if (bigQueryChangelogTablePartitionExpirationMs != null
+        && StringUtils.isBlank(bigQueryChangelogTablePartitionGranularity)) {
+      throw new IllegalArgumentException(
+          "Partition expiration can only be used " + "when partition granularity is configured");
     }
 
     if (StringUtils.isBlank(bigQueryChangelogTableFieldsToIgnore)) {
       this.changelogFieldsToIgnore = Collections.emptySet();
     } else {
-      this.changelogFieldsToIgnore = Arrays.stream(
-          bigQueryChangelogTableFieldsToIgnore.trim().split("[\\s]*,[\\s]*")
-      ).map(s -> s.toLowerCase(Locale.getDefault())).collect(Collectors.toSet());
+      this.changelogFieldsToIgnore =
+          Arrays.stream(bigQueryChangelogTableFieldsToIgnore.trim().split("[\\s]*,[\\s]*"))
+              .map(s -> s.toLowerCase(Locale.getDefault()))
+              .collect(Collectors.toSet());
     }
 
     for (ChangelogColumn column : ChangelogColumn.values()) {
       if (!column.isIgnorable() && changelogFieldsToIgnore.contains(column.getBqColumnName())) {
-        throw new IllegalArgumentException("Column '" + column.getBqColumnName()
-            + "' cannot be disabled by the pipeline configuration");
+        throw new IllegalArgumentException(
+            "Column '"
+                + column.getBqColumnName()
+                + "' cannot be disabled by the pipeline configuration");
       }
     }
 

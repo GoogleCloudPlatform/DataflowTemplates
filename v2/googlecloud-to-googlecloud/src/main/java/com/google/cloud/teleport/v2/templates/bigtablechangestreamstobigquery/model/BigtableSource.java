@@ -22,9 +22,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 
-/**
- * Descriptor of the Cloud Bigtable source table where changes are captured from.
- */
+/** Descriptor of the Cloud Bigtable source table where changes are captured from. */
 public class BigtableSource implements Serializable {
 
   private final String instanceId;
@@ -33,8 +31,12 @@ public class BigtableSource implements Serializable {
   private final Set<String> columnFamiliesToIgnore;
   private final Set<String> columnsToIgnore;
 
-  public BigtableSource(String instanceId, String tableId, String charset,
-      String ignoreColumnFamilies, String ignoreColumns) {
+  public BigtableSource(
+      String instanceId,
+      String tableId,
+      String charset,
+      String ignoreColumnFamilies,
+      String ignoreColumns) {
     this.instanceId = instanceId;
     this.tableId = tableId;
     this.charset = charset;
@@ -42,17 +44,16 @@ public class BigtableSource implements Serializable {
     if (StringUtils.isBlank(ignoreColumnFamilies)) {
       this.columnFamiliesToIgnore = Collections.emptySet();
     } else {
-      this.columnFamiliesToIgnore = Arrays.stream(
-          ignoreColumnFamilies.trim().split("[\\s]*,[\\s]*")
-      ).collect(Collectors.toSet());
+      this.columnFamiliesToIgnore =
+          Arrays.stream(ignoreColumnFamilies.trim().split("[\\s]*,[\\s]*"))
+              .collect(Collectors.toSet());
     }
 
     if (StringUtils.isBlank(ignoreColumns)) {
       this.columnsToIgnore = Collections.emptySet();
     } else {
-      this.columnsToIgnore = Arrays.stream(
-          ignoreColumns.trim().split("[\\s]*,[\\s]*")
-      ).collect(Collectors.toSet());
+      this.columnsToIgnore =
+          Arrays.stream(ignoreColumns.trim().split("[\\s]*,[\\s]*")).collect(Collectors.toSet());
     }
   }
 

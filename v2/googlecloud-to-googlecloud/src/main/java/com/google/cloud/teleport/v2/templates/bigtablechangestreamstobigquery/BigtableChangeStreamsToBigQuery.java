@@ -80,9 +80,7 @@ import org.slf4j.LoggerFactory;
     contactInformation = "https://cloud.google.com/support")
 public final class BigtableChangeStreamsToBigQuery {
 
-  /**
-   * String/String Coder for {@link FailsafeElement}.
-   */
+  /** String/String Coder for {@link FailsafeElement}. */
   public static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
       FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of());
 
@@ -151,25 +149,25 @@ public final class BigtableChangeStreamsToBigQuery {
     String changelogTableName = getBigQueryChangelogTableName(options);
     String bigtableProject = getBigtableProjectId(options);
 
-    BigtableSource sourceInfo = new BigtableSource(
-        options.getBigtableInstanceId(),
-        options.getBigtableTableId(),
-        getBigtableCharset(options),
-        options.getIgnoreColumnFamilies(),
-        options.getIgnoreColumns()
-    );
+    BigtableSource sourceInfo =
+        new BigtableSource(
+            options.getBigtableInstanceId(),
+            options.getBigtableTableId(),
+            getBigtableCharset(options),
+            options.getIgnoreColumnFamilies(),
+            options.getIgnoreColumns());
 
-    BigQueryDestination destinationInfo = new BigQueryDestination(
-        getBigQueryProjectId(options),
-        options.getBigQueryDataset(),
-        changelogTableName,
-        options.getWriteRowkeyAsBytes(),
-        options.getWriteValuesAsBytes(),
-        options.getWriteNumericTimestamps(),
-        options.getBigQueryChangelogTablePartitionGranularity(),
-        options.getBigQueryChangelogTablePartitionExpirationMs(),
-        options.getBigQueryChangelogTableFieldsToIgnore()
-    );
+    BigQueryDestination destinationInfo =
+        new BigQueryDestination(
+            getBigQueryProjectId(options),
+            options.getBigQueryDataset(),
+            changelogTableName,
+            options.getWriteRowkeyAsBytes(),
+            options.getWriteValuesAsBytes(),
+            options.getWriteNumericTimestamps(),
+            options.getBigQueryChangelogTablePartitionGranularity(),
+            options.getBigQueryChangelogTablePartitionExpirationMs(),
+            options.getBigQueryChangelogTableFieldsToIgnore());
 
     BigQueryUtils bigQuery = new BigQueryUtils(sourceInfo, destinationInfo);
 
@@ -215,7 +213,8 @@ public final class BigtableChangeStreamsToBigQuery {
 
     PCollection<FailsafeElement<String, String>> sourceFailsafeModJson =
         dataChangeRecord
-            .apply("ChangeStreamMutation To Mod JSON",
+            .apply(
+                "ChangeStreamMutation To Mod JSON",
                 ParDo.of(new ChangeStreamMutationToModJsonFn(sourceInfo)))
             .apply(
                 "Wrap Mod JSON In FailsafeElement",
@@ -243,15 +242,15 @@ public final class BigtableChangeStreamsToBigQuery {
 
     FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRowOptions
         failsafeModJsonToTableRowOptions =
-        FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRowOptions.builder()
-            .setCoder(FAILSAFE_ELEMENT_CODER)
-            .setIgnoreFields(destinationInfo.getIgnoredBigQueryColumnsNames())
-            .build();
+            FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRowOptions.builder()
+                .setCoder(FAILSAFE_ELEMENT_CODER)
+                .setIgnoreFields(destinationInfo.getIgnoredBigQueryColumnsNames())
+                .build();
 
-    FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRow failsafeModJsonToTableRow =
-        new FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRow(
-            bigQuery,
-            failsafeModJsonToTableRowOptions);
+    FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRow
+        failsafeModJsonToTableRow =
+            new FailsafeModJsonToChangelogTableRowTransformer.FailsafeModJsonToTableRow(
+                bigQuery, failsafeModJsonToTableRowOptions);
 
     PCollectionTuple tableRowTuple =
         failsafeModJson.apply("Mod JSON To TableRow", failsafeModJsonToTableRow);
@@ -315,7 +314,6 @@ public final class BigtableChangeStreamsToBigQuery {
     return pipeline.run();
   }
 
-
   private static DeadLetterQueueManager buildDlqManager(
       BigtableChangeStreamsToBigQueryOptions options) {
     String tempLocation =
@@ -334,7 +332,6 @@ public final class BigtableChangeStreamsToBigQuery {
         ? "UTF-8"
         : options.getBigtableCharset();
   }
-
 
   private static String getBigtableProjectId(BigtableChangeStreamsToBigQueryOptions options) {
     return StringUtils.isEmpty(options.getBigtableProjectId())
@@ -404,7 +401,6 @@ public final class BigtableChangeStreamsToBigQuery {
           case UNKNOWN:
             // TODO: skip and complain
             break;
-
         }
 
         if (mod != null) {

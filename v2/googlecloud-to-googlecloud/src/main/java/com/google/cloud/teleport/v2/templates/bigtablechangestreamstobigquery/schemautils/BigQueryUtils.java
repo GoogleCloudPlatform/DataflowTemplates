@@ -48,99 +48,124 @@ import org.apache.commons.lang3.Validate;
 import org.json.JSONObject;
 
 /**
- * {@link BigQueryUtils} provides utils for processing BigQuery schema and generating BigQuery
- * rows.
+ * {@link BigQueryUtils} provides utils for processing BigQuery schema and generating BigQuery rows.
  */
 public class BigQueryUtils implements Serializable {
 
   public static final String ANY_COLUMN_FAMILY = "*";
 
-  private static final EnumMap<ChangelogColumn, BigQueryValueFormatter> FORMATTERS = new EnumMap<>(
-      ChangelogColumn.class);
+  private static final EnumMap<ChangelogColumn, BigQueryValueFormatter> FORMATTERS =
+      new EnumMap<>(ChangelogColumn.class);
 
   static {
-    FORMATTERS.put(ChangelogColumn.ROW_KEY_STRING, (bq, chg) -> {
-      String rowkeyEncoded = chg.getString(ChangelogColumn.ROW_KEY_BYTES.name());
-      return bq.convertBase64ToString(rowkeyEncoded);
-    });
-    FORMATTERS.put(ChangelogColumn.ROW_KEY_BYTES, (bq, chg) -> {
-      String rowkeyEncoded = chg.getString(ChangelogColumn.ROW_KEY_BYTES.name());
-      return bq.convertBase64ToBytes(rowkeyEncoded);
-    });
-    FORMATTERS.put(ChangelogColumn.MOD_TYPE, (bq, chg) ->
-        chg.getString(ChangelogColumn.MOD_TYPE.name())
-    );
-    FORMATTERS.put(ChangelogColumn.COMMIT_TIMESTAMP,
+    FORMATTERS.put(
+        ChangelogColumn.ROW_KEY_STRING,
+        (bq, chg) -> {
+          String rowkeyEncoded = chg.getString(ChangelogColumn.ROW_KEY_BYTES.name());
+          return bq.convertBase64ToString(rowkeyEncoded);
+        });
+    FORMATTERS.put(
+        ChangelogColumn.ROW_KEY_BYTES,
+        (bq, chg) -> {
+          String rowkeyEncoded = chg.getString(ChangelogColumn.ROW_KEY_BYTES.name());
+          return bq.convertBase64ToBytes(rowkeyEncoded);
+        });
+    FORMATTERS.put(
+        ChangelogColumn.MOD_TYPE, (bq, chg) -> chg.getString(ChangelogColumn.MOD_TYPE.name()));
+    FORMATTERS.put(
+        ChangelogColumn.COMMIT_TIMESTAMP,
         (bq, chg) -> chg.getString(ChangelogColumn.COMMIT_TIMESTAMP.name()));
-    FORMATTERS.put(ChangelogColumn.COLUMN_FAMILY,
+    FORMATTERS.put(
+        ChangelogColumn.COLUMN_FAMILY,
         (bq, chg) -> chg.getString(ChangelogColumn.COLUMN_FAMILY.name()));
-    FORMATTERS.put(ChangelogColumn.COLUMN, (bq, chg) -> {
-      if (!chg.has(ChangelogColumn.COLUMN.name())) {
-        return null;
-      }
-      String qualifierEncoded = chg.getString(ChangelogColumn.COLUMN.name());
-      return bq.convertBase64ToString(qualifierEncoded);
-    });
-    FORMATTERS.put(ChangelogColumn.TIMESTAMP, (bq, chg) -> {
-      if (!chg.has(ChangelogColumn.TIMESTAMP.name())) {
-        return null;
-      }
-      return chg.getString(ChangelogColumn.TIMESTAMP.name());
-    });
-    FORMATTERS.put(ChangelogColumn.TIMESTAMP_NUM, (bq, chg) -> {
-      if (!chg.has(ChangelogColumn.TIMESTAMP_NUM.name())) {
-        return null;
-      }
-      return chg.getString(ChangelogColumn.TIMESTAMP_NUM.name());
-    });
-    FORMATTERS.put(ChangelogColumn.VALUE_STRING, (bq, chg) -> {
-      if (!chg.has(ChangelogColumn.VALUE_BYTES.name())) {
-        return null;
-      }
+    FORMATTERS.put(
+        ChangelogColumn.COLUMN,
+        (bq, chg) -> {
+          if (!chg.has(ChangelogColumn.COLUMN.name())) {
+            return null;
+          }
+          String qualifierEncoded = chg.getString(ChangelogColumn.COLUMN.name());
+          return bq.convertBase64ToString(qualifierEncoded);
+        });
+    FORMATTERS.put(
+        ChangelogColumn.TIMESTAMP,
+        (bq, chg) -> {
+          if (!chg.has(ChangelogColumn.TIMESTAMP.name())) {
+            return null;
+          }
+          return chg.getString(ChangelogColumn.TIMESTAMP.name());
+        });
+    FORMATTERS.put(
+        ChangelogColumn.TIMESTAMP_NUM,
+        (bq, chg) -> {
+          if (!chg.has(ChangelogColumn.TIMESTAMP_NUM.name())) {
+            return null;
+          }
+          return chg.getString(ChangelogColumn.TIMESTAMP_NUM.name());
+        });
+    FORMATTERS.put(
+        ChangelogColumn.VALUE_STRING,
+        (bq, chg) -> {
+          if (!chg.has(ChangelogColumn.VALUE_BYTES.name())) {
+            return null;
+          }
 
-      String valueEncoded = chg.getString(ChangelogColumn.VALUE_BYTES.name());
-      return bq.convertBase64ToString(valueEncoded);
-    });
-    FORMATTERS.put(ChangelogColumn.VALUE_BYTES, (bq, chg) -> {
-      if (!chg.has(ChangelogColumn.VALUE_BYTES.name())) {
-        return null;
-      }
+          String valueEncoded = chg.getString(ChangelogColumn.VALUE_BYTES.name());
+          return bq.convertBase64ToString(valueEncoded);
+        });
+    FORMATTERS.put(
+        ChangelogColumn.VALUE_BYTES,
+        (bq, chg) -> {
+          if (!chg.has(ChangelogColumn.VALUE_BYTES.name())) {
+            return null;
+          }
 
-      String valueEncoded = chg.getString(ChangelogColumn.VALUE_BYTES.name());
-      return bq.convertBase64ToBytes(valueEncoded);
-    });
-    FORMATTERS.put(ChangelogColumn.TIMESTAMP_FROM, (bq, chg) -> {
-      if (!chg.has(ChangelogColumn.TIMESTAMP_FROM.name())) {
-        return null;
-      }
-      return chg.getString(ChangelogColumn.TIMESTAMP_FROM.name());
-    });
-    FORMATTERS.put(ChangelogColumn.TIMESTAMP_FROM_NUM, (bq, chg) -> {
-      if (!chg.has(ChangelogColumn.TIMESTAMP_FROM_NUM.name())) {
-        return null;
-      }
-      return chg.getString(ChangelogColumn.TIMESTAMP_FROM_NUM.name());
-    });
-    FORMATTERS.put(ChangelogColumn.TIMESTAMP_TO, (bq, chg) -> {
-      if (!chg.has(ChangelogColumn.TIMESTAMP_TO.name())) {
-        return null;
-      }
-      return chg.getString(ChangelogColumn.TIMESTAMP_TO.name());
-    });
-    FORMATTERS.put(ChangelogColumn.TIMESTAMP_TO_NUM, (bq, chg) -> {
-      if (!chg.has(ChangelogColumn.TIMESTAMP_TO_NUM.name())) {
-        return null;
-      }
-      return chg.getString(ChangelogColumn.TIMESTAMP_TO_NUM.name());
-    });
+          String valueEncoded = chg.getString(ChangelogColumn.VALUE_BYTES.name());
+          return bq.convertBase64ToBytes(valueEncoded);
+        });
+    FORMATTERS.put(
+        ChangelogColumn.TIMESTAMP_FROM,
+        (bq, chg) -> {
+          if (!chg.has(ChangelogColumn.TIMESTAMP_FROM.name())) {
+            return null;
+          }
+          return chg.getString(ChangelogColumn.TIMESTAMP_FROM.name());
+        });
+    FORMATTERS.put(
+        ChangelogColumn.TIMESTAMP_FROM_NUM,
+        (bq, chg) -> {
+          if (!chg.has(ChangelogColumn.TIMESTAMP_FROM_NUM.name())) {
+            return null;
+          }
+          return chg.getString(ChangelogColumn.TIMESTAMP_FROM_NUM.name());
+        });
+    FORMATTERS.put(
+        ChangelogColumn.TIMESTAMP_TO,
+        (bq, chg) -> {
+          if (!chg.has(ChangelogColumn.TIMESTAMP_TO.name())) {
+            return null;
+          }
+          return chg.getString(ChangelogColumn.TIMESTAMP_TO.name());
+        });
+    FORMATTERS.put(
+        ChangelogColumn.TIMESTAMP_TO_NUM,
+        (bq, chg) -> {
+          if (!chg.has(ChangelogColumn.TIMESTAMP_TO_NUM.name())) {
+            return null;
+          }
+          return chg.getString(ChangelogColumn.TIMESTAMP_TO_NUM.name());
+        });
     FORMATTERS.put(
         ChangelogColumn.IS_GC,
         (bq, chg) -> Boolean.toString(chg.getBoolean(ChangelogColumn.IS_GC.name())));
-    FORMATTERS.put(ChangelogColumn.SOURCE_INSTANCE,
+    FORMATTERS.put(
+        ChangelogColumn.SOURCE_INSTANCE,
         (bq, chg) -> chg.getString(ChangelogColumn.SOURCE_INSTANCE.name()));
-    FORMATTERS.put(ChangelogColumn.SOURCE_CLUSTER,
+    FORMATTERS.put(
+        ChangelogColumn.SOURCE_CLUSTER,
         (bq, chg) -> chg.getString(ChangelogColumn.SOURCE_CLUSTER.name()));
-    FORMATTERS.put(ChangelogColumn.SOURCE_TABLE,
+    FORMATTERS.put(
+        ChangelogColumn.SOURCE_TABLE,
         (bq, chg) -> chg.getString(ChangelogColumn.SOURCE_TABLE.name()));
     FORMATTERS.put(
         ChangelogColumn.TIEBREAKER,
@@ -184,8 +209,8 @@ public class BigQueryUtils implements Serializable {
         columnName = columnFamilyAndColumn.substring(indexOfColon + 1);
       }
 
-      Set<String> appliedToColumnFamilies = ignoredColumnsMap.computeIfAbsent(columnName,
-          k -> new HashSet<>());
+      Set<String> appliedToColumnFamilies =
+          ignoredColumnsMap.computeIfAbsent(columnName, k -> new HashSet<>());
       appliedToColumnFamilies.add(columnFamily);
     }
   }
@@ -210,13 +235,12 @@ public class BigQueryUtils implements Serializable {
     return columnFamilies.contains(columnFamily) || columnFamilies.contains(ANY_COLUMN_FAMILY);
   }
 
-  /**
-   * @return true if modification should be written to BigQuery, false otherwise
-   */
+  /** @return true if modification should be written to BigQuery, false otherwise */
   public boolean setTableRowFields(Mod mod, String modJsonString, TableRow tableRow)
       throws Exception {
     // Metadata columns, not written to BQ
-    tableRow.set(TransientColumn.BQ_CHANGELOG_FIELD_NAME_ORIGINAL_PAYLOAD_JSON.getColumnName(),
+    tableRow.set(
+        TransientColumn.BQ_CHANGELOG_FIELD_NAME_ORIGINAL_PAYLOAD_JSON.getColumnName(),
         modJsonString);
 
     JSONObject changeJsonParsed = new JSONObject(mod.getChangeJson());
@@ -299,8 +323,7 @@ public class BigQueryUtils implements Serializable {
   public final class BigQueryDynamicDestinations
       extends DynamicDestinations<TableRow, KV<TableId, TableRow>> {
 
-    private BigQueryDynamicDestinations() {
-    }
+    private BigQueryDynamicDestinations() {}
 
     @Override
     public KV<TableId, TableRow> getDestination(ValueInSingleWindow<TableRow> element) {
@@ -324,8 +347,7 @@ public class BigQueryUtils implements Serializable {
         timePartitioning.setField(BigQueryUtils.this.destination.getPartitionByColumnName());
       }
 
-      return new TableDestination(
-          tableName, "BigQuery changelog table.", timePartitioning);
+      return new TableDestination(tableName, "BigQuery changelog table.", timePartitioning);
     }
 
     @Override
