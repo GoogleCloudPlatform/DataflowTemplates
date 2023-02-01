@@ -292,8 +292,11 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     }
 
     String containerName = definition.getTemplateAnnotation().flexContainerName();
+
+    // GCR paths can not contain ":", if the project id has it, it should be converted to "/".
+    String projectIdUrl = projectId.replace(':', '/');
     String imagePath =
-        prefix + "gcr.io/" + projectId + "/" + stagePrefix.toLowerCase() + "/" + containerName;
+        prefix + "gcr.io/" + projectIdUrl + "/" + stagePrefix.toLowerCase() + "/" + containerName;
     LOG.info("Stage image to GCR: {}", imagePath);
 
     File metadataFile =
