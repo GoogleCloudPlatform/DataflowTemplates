@@ -60,8 +60,8 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 @Category(TemplateLoadTest.class)
 @RunWith(JUnit4.class)
-public class SyndeoLoadLT {
-  private static final Logger LOG = LoggerFactory.getLogger(SyndeoLoadLT.class);
+public class SyndeoPubsubLiteToBigTableLT {
+  private static final Logger LOG = LoggerFactory.getLogger(SyndeoPubsubLiteToBigTableLT.class);
   @Rule public TestPipeline dataGenerator = TestPipeline.create();
 
   @Rule public TestPipeline syndeoPipeline = TestPipeline.create();
@@ -102,7 +102,7 @@ public class SyndeoLoadLT {
 
     public static PubsubLiteToBigTableConfiguration create(
         Long throughput, Integer durationMinutes, String runner, Long pubsubLiteCapacity) {
-      return new AutoValue_SyndeoLoadLT_PubsubLiteToBigTableConfiguration(
+      return new AutoValue_SyndeoPubsubLiteToBigTableLT_PubsubLiteToBigTableConfiguration(
           throughput, durationMinutes, runner, pubsubLiteCapacity);
     }
   }
@@ -112,7 +112,7 @@ public class SyndeoLoadLT {
   private static final PubsubLiteToBigTableConfiguration DATAFLOW_TEST_CONFIG =
       PubsubLiteToBigTableConfiguration.create(50_000_000L, 20, "DataflowRunner", 512L);
   private static final PubsubLiteToBigTableConfiguration LARGE_DATAFLOW_TEST_CONFIG =
-      PubsubLiteToBigTableConfiguration.create(500_000_000L, 60, "DataflowRunner", 512L);
+      PubsubLiteToBigTableConfiguration.create(500_000_000L, 80, "DataflowRunner", 512L);
 
   private static final Map<String, PubsubLiteToBigTableConfiguration> TEST_CONFIGS =
       Map.of(

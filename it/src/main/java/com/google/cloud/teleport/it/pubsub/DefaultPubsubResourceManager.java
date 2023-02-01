@@ -260,6 +260,10 @@ public final class DefaultPubsubResourceManager implements PubsubResourceManager
     }
 
     public DefaultPubsubResourceManager build() throws IOException {
+      if (credentialsProvider == null) {
+        throw new IllegalArgumentException(
+            "Unable to find credentials. Please provide credentials to authenticate to GCP");
+      }
       return new DefaultPubsubResourceManager(this);
     }
   }

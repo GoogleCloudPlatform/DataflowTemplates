@@ -51,7 +51,7 @@ import org.joda.time.Instant;
 
 public class SyndeoLoadTestUtils {
 
-  public static final Long MAX_ROWS_PER_SPLIT = 2000L;
+  public static final Long MAX_ROWS_PER_SPLIT = 1500L;
 
   private static PCollection<Long> longSequence(
       Pipeline dataGenerator, Long numRows, Long runtimeSeconds) {
