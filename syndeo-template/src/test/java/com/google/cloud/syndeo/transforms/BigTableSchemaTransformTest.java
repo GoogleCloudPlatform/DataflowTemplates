@@ -226,7 +226,7 @@ public class BigTableSchemaTransformTest {
                       .toProto())
               .addTransforms(
                   new ProviderUtil.TransformSpec(
-                          "bigtable:write",
+                          "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
                           BigTableWriteSchemaTransformConfiguration.builder()
                               .setProjectId("anyproject")
                               .setInstanceId("anyinstance")

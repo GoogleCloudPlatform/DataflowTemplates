@@ -18,10 +18,14 @@ package com.google.cloud.syndeo.it;
 import static com.google.cloud.syndeo.transforms.KafkaToBigQueryLocalTest.INTEGRATION_TEST_SCHEMA;
 import static com.google.cloud.syndeo.transforms.KafkaToBigQueryLocalTest.generateBaseRootConfiguration;
 import static com.google.cloud.syndeo.transforms.KafkaToBigQueryLocalTest.generateRow;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.auth.Credentials;
+import com.google.cloud.syndeo.SyndeoTemplate;
+import com.google.cloud.syndeo.transforms.KafkaToBigQueryLocalTest;
 import com.google.cloud.teleport.it.PipelineUtils;
 import com.google.cloud.teleport.it.TestProperties;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
@@ -95,6 +99,38 @@ public class KafkaToBigQueryIT {
     bigQueryResourceManager =
         DefaultBigQueryResourceManager.builder("kafka-bq-test", PROJECT).build();
     bigQueryResourceManager.createDataset(REGION);
+  }
+
+  @Test
+  public void testErrorOnCreateNeverIfTableNotExisting() throws Exception {
+    String tableName =
+        String.format("%s.%s.NONEXISTENT_TABLE", PROJECT, bigQueryResourceManager.getDatasetId());
+    JsonNode rootConfig =
+        KafkaToBigQueryLocalTest.generateConfigurationWithKafkaBootstrap(
+            KAFKA_BOOTSTRAP_SERVER, tableName);
+    ((ObjectNode) rootConfig.get("sink").get("configurationParameters"))
+        .put("createDisposition", "CREATE_NEVER");
+    RuntimeException e =
+        assertThrows(
+            RuntimeException.class,
+            () -> {
+              PipelineResult result =
+                  SyndeoTemplate.run(
+                      new String[] {
+                        "--jsonSpecPayload=" + rootConfig,
+                        "--streaming",
+                        "--experiments=use_deprecated_read",
+                        // We need to set this option because otherwise the pipeline will block on
+                        // p.run() and
+                        // never
+                        // reach Thread.sleep (and never be cancelled).
+                        "--blockOnRun=false"
+                      });
+              result.cancel();
+            });
+    assertTrue(
+        "Error message contains missing table name. ",
+        e.getMessage().contains("NONEXISTENT_TABLE"));
   }
 
   @After
