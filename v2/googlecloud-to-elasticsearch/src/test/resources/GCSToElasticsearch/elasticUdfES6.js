@@ -21,12 +21,12 @@
  */
 function transform(line) {
   try {
-    var split = line.split(",");
-    var obj = new Object();
+    const split = line.split(",");
+    const obj = new Object();
     obj.id = split[0];
     obj.state = split[1];
     obj.price = parseFloat(split[2]);
-    var jsonString = JSON.stringify(obj);
+    const jsonString = JSON.stringify(obj);
     return jsonString;
 
   } catch (e) {

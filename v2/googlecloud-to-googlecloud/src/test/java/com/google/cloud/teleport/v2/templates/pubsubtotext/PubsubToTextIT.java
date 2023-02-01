@@ -95,6 +95,9 @@ public final class PubsubToTextIT extends TemplateTestBase {
     LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
 
+    ByteString messageData = ByteString.copyFromUtf8(messageString);
+    pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
+
     AtomicReference<List<Artifact>> artifacts = new AtomicReference<>();
 
     Result result =
@@ -102,9 +105,6 @@ public final class PubsubToTextIT extends TemplateTestBase {
             .waitForConditionAndFinish(
                 createConfig(info),
                 () -> {
-                  ByteString messageData = ByteString.copyFromUtf8(messageString);
-                  pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
-
                   artifacts.set(artifactClient.listArtifacts(testName, expectedFilePattern));
                   return !artifacts.get().isEmpty();
                 });
@@ -142,6 +142,9 @@ public final class PubsubToTextIT extends TemplateTestBase {
     LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
 
+    ByteString messageData = ByteString.copyFromUtf8(messageString);
+    pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
+
     AtomicReference<List<Artifact>> artifacts = new AtomicReference<>();
 
     Result result =
@@ -149,9 +152,6 @@ public final class PubsubToTextIT extends TemplateTestBase {
             .waitForConditionAndFinish(
                 createConfig(info),
                 () -> {
-                  ByteString messageData = ByteString.copyFromUtf8(messageString);
-                  pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
-
                   artifacts.set(artifactClient.listArtifacts(testName, expectedFilePattern));
                   return !artifacts.get().isEmpty();
                 });
