@@ -19,6 +19,7 @@ import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
 import static com.google.common.truth.Truth.assertThat;
 
 import avro.shaded.com.google.common.collect.Lists;
+import com.google.cloud.Timestamp;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.bigtable.admin.v2.models.StorageType;
 import com.google.cloud.bigtable.data.v2.models.RowMutation;
@@ -39,6 +40,7 @@ import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.mo
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -71,7 +73,7 @@ public final class BigtableChangeStreamsToBQIT extends TemplateTestBase {
 
   @Test
   public void testBigtableChangeStreamsToBigQuerySingleMutationEndToEnd() throws IOException {
-    long timeNowMcsec = System.currentTimeMillis() * 1000;
+    long timeNowMicros = System.currentTimeMillis() * 1000;
 
     String name = testName.getMethodName();
     String jobName = createJobName(name);
@@ -146,7 +148,7 @@ public final class BigtableChangeStreamsToBQIT extends TemplateTestBase {
             fvl -> {
               Assert.assertTrue(
                   fvl.get(ChangelogColumn.TIMESTAMP.getBqColumnName()).getTimestampValue()
-                      >= timeNowMcsec);
+                      >= timeNowMicros);
               Assert.assertFalse(
                   fvl.get(ChangelogColumn.BQ_COMMIT_TIMESTAMP.getBqColumnName()).isNull());
               Assert.assertFalse(
@@ -162,6 +164,128 @@ public final class BigtableChangeStreamsToBQIT extends TemplateTestBase {
               Assert.assertTrue(
                   fvl.get(ChangelogColumn.TIEBREAKER.getBqColumnName()).getLongValue() >= 0);
             });
+  }
+
+  @Test
+  public void testBigtableChangeStreamsToBigQuerySingleMutationBoundedEndToEnd() throws Exception {
+    long timeNowMicros = System.currentTimeMillis() * 1000;
+
+    String name = testName.getMethodName();
+    String jobName = createJobName(name);
+    String clusterName = "c1_cluster";
+
+    List<BigtableResourceManagerCluster> clusters = new ArrayList<>();
+    clusters.add(BigtableResourceManagerCluster.create(clusterName, TEST_ZONE, 1, StorageType.HDD));
+
+    bigtableResourceManager.createInstance(clusters);
+
+    BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
+    cdcTableSpec.setCdcEnabled(true);
+    cdcTableSpec.setColumnFamilies(Lists.asList(SOURCE_COLUMN_FAMILY, new String[] {}));
+    bigtableResourceManager.createTable(SOURCE_CDC_TABLE, cdcTableSpec);
+
+    bigtableResourceManager.createAppProfile(
+        APP_PROFILE_ID, true, Lists.asList(clusterName, new String[] {}));
+
+    bigQueryResourceManager.createDataset(TEST_REGION);
+
+    String rowkey = UUID.randomUUID().toString();
+    String column = UUID.randomUUID().toString();
+    String tooEarlyValue = UUID.randomUUID().toString();
+    String valueToBeRead = UUID.randomUUID().toString();
+    String tooLateValue  = UUID.randomUUID().toString();
+
+    RowMutation earlyMutation =
+        RowMutation.create(SOURCE_CDC_TABLE, rowkey).setCell(SOURCE_COLUMN_FAMILY, column, tooEarlyValue);
+    bigtableResourceManager.write(earlyMutation);
+
+    Thread.sleep(10000L);
+    long afterFirstMutation = System.currentTimeMillis();
+    afterFirstMutation -= (afterFirstMutation % 1000);
+    Thread.sleep(10000L);
+
+    RowMutation toBeReadMutation =
+        RowMutation.create(SOURCE_CDC_TABLE, rowkey).setCell(SOURCE_COLUMN_FAMILY, column, valueToBeRead);
+    bigtableResourceManager.write(toBeReadMutation);
+
+    Thread.sleep(10000L);
+    long afterSecondMutation = System.currentTimeMillis();
+    afterSecondMutation -= (afterSecondMutation % 1000);
+    Thread.sleep(10000L);
+
+    RowMutation tooLateMutation =
+        RowMutation.create(SOURCE_CDC_TABLE, rowkey).setCell(SOURCE_COLUMN_FAMILY, column, tooLateValue);
+    bigtableResourceManager.write(tooLateMutation);
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(jobName, specPath)
+            .addParameter("bigtableTableId", SOURCE_CDC_TABLE)
+            .addParameter("bigtableInstanceId", bigtableResourceManager.getInstanceId())
+            .addParameter("bigtableAppProfileId", APP_PROFILE_ID)
+            .addParameter("bigQueryDataset", bigQueryResourceManager.getDatasetId())
+            .addParameter("bigQueryChangelogTableName", SOURCE_CDC_TABLE + "_changes")
+            .addParameter("startTimestamp", Timestamp.of(new Date(afterFirstMutation)).toString())
+            .addParameter("endTimestamp", Timestamp.of(new Date(afterSecondMutation)).toString());
+
+    jobInfo = launchTemplate(options);
+
+    List<JobState> activeOrFinished = new ArrayList<>();
+    activeOrFinished.addAll(JobState.ACTIVE_STATES);
+    activeOrFinished.addAll(JobState.FINISHING_STATES);
+    assertThat(jobInfo.state()).isIn(activeOrFinished);
+
+    String query =
+        String.format(
+            "SELECT * FROM `"
+                + bigQueryResourceManager.getDatasetId()
+                + "."
+                + SOURCE_CDC_TABLE
+                + "_changes`"
+                + " WHERE "
+                + ChangelogColumn.ROW_KEY_STRING.getBqColumnName()
+                + "='%s' AND "
+                + ChangelogColumn.COLUMN_FAMILY.getBqColumnName()
+                + "='%s' AND "
+                + ChangelogColumn.COLUMN.getBqColumnName()
+                + "='%s'",
+            rowkey,
+            SOURCE_COLUMN_FAMILY,
+            column);
+
+    Result waitForData =
+        new DataflowOperator(getDataflowClient())
+            .waitForCondition(getWaitForPipelineConfig(jobInfo), dataShownUp(query));
+    assertThat(waitForData).isEqualTo(Result.CONDITION_MET);
+
+    TableResult tableResult = bigQueryResourceManager.runQuery(query);
+    tableResult
+        .iterateAll()
+        .forEach(
+            fvl -> {
+              Assert.assertEquals(valueToBeRead, fvl.get(ChangelogColumn.VALUE_STRING.getBqColumnName()).getStringValue());
+              Assert.assertTrue(
+                  fvl.get(ChangelogColumn.TIMESTAMP.getBqColumnName()).getTimestampValue()
+                      >= timeNowMicros);
+              Assert.assertFalse(
+                  fvl.get(ChangelogColumn.BQ_COMMIT_TIMESTAMP.getBqColumnName()).isNull());
+              Assert.assertFalse(
+                  fvl.get(ChangelogColumn.IS_GC.getBqColumnName()).getBooleanValue());
+              Assert.assertTrue(fvl.get(ChangelogColumn.TIMESTAMP_FROM.getBqColumnName()).isNull());
+              Assert.assertTrue(fvl.get(ChangelogColumn.TIMESTAMP_TO.getBqColumnName()).isNull());
+              Assert.assertEquals(
+                  SOURCE_CDC_TABLE,
+                  fvl.get(ChangelogColumn.SOURCE_TABLE.getBqColumnName()).getStringValue());
+              Assert.assertEquals(
+                  bigtableResourceManager.getInstanceId(),
+                  fvl.get(ChangelogColumn.SOURCE_INSTANCE.getBqColumnName()).getStringValue());
+              Assert.assertTrue(
+                  fvl.get(ChangelogColumn.TIEBREAKER.getBqColumnName()).getLongValue() >= 0);
+            });
+
+    Result waitForFinish =
+        new DataflowOperator(getDataflowClient())
+            .waitUntilDone(getWaitForPipelineConfig(jobInfo));
+    assertThat(waitForFinish).isEqualTo(Result.JOB_FINISHED);
   }
 
   @Before
