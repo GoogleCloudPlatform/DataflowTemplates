@@ -156,7 +156,7 @@ public class KafkaToBigQuery {
 
     @TemplateParameter.Text(
         order = 3,
-        regexes = {"[a-zA-Z0-9._-,]+"},
+        regexes = {"[,a-zA-Z0-9._-]+"},
         description = "Kafka topic(s) to read input from.",
         helpText = "Kafka topic(s) to read input from.",
         example = "topic1,topic2")

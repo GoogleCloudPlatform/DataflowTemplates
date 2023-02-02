@@ -536,7 +536,7 @@ public abstract class RandomDdlGenerator {
           expr = "(100)";
           break;
         case PG_INT8:
-          expr = "'100::bigint'";
+          expr = "'100'::bigint";
           break;
         case STRING:
         case PG_VARCHAR:

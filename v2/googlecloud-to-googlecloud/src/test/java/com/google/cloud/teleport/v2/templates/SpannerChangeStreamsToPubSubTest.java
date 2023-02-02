@@ -25,11 +25,13 @@ import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.v2.options.SpannerChangeStreamsToPubSubOptions;
 import com.google.cloud.teleport.v2.spanner.IntegrationTest;
 import com.google.cloud.teleport.v2.spanner.SpannerServerResource;
+import com.google.cloud.teleport.v2.spanner.SpannerTestHelper;
 import com.google.cloud.teleport.v2.transforms.FileFormatFactorySpannerChangeStreamsToPubSub;
 import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.Pipeline.PipelineExecutionException;
 import org.apache.beam.sdk.PipelineResult;
@@ -46,13 +48,16 @@ import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.testing.TestPipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.util.CoderUtils;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.TypeDescriptors;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.base.Supplier;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.joda.time.Duration;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -66,7 +71,7 @@ import org.slf4j.LoggerFactory;
 
 /** Test class for {@link SpannerChangeStreamsToPubSubTest}. */
 @RunWith(JUnit4.class)
-public final class SpannerChangeStreamsToPubSubTest {
+public final class SpannerChangeStreamsToPubSubTest extends SpannerTestHelper {
   /** Logger for class. */
   private static final Logger LOG = LoggerFactory.getLogger(SpannerChangeStreamsToPubSubTest.class);
 
@@ -105,6 +110,12 @@ public final class SpannerChangeStreamsToPubSubTest {
     outputTopic = "projects/span-cloud-testing/topics/" + outputTopicName;
     subscriptionName = "change-streams-to-pubsub-template-test-sub";
     subscriptionPath = "projects/" + TEST_PROJECT + "/subscriptions/" + subscriptionName;
+    super.setUp();
+  }
+
+  @After
+  public void tearDown() throws NoSuchFieldException, IllegalAccessException {
+    super.tearDown();
   }
 
   @SuppressWarnings("DefaultAnnotationParam")
@@ -176,6 +187,8 @@ public final class SpannerChangeStreamsToPubSubTest {
   @Test
   @Category(IntegrationTest.class)
   public void testFileFormatFactoryInvalid() {
+    mockGetDialect();
+
     exception.expect(IllegalArgumentException.class);
     exception.expectMessage("Invalid output format:PARQUET. Supported output formats: JSON, AVRO");
 
@@ -186,25 +199,26 @@ public final class SpannerChangeStreamsToPubSubTest {
     Pipeline p = Pipeline.create(options);
     Timestamp startTimestamp = Timestamp.now();
     Timestamp endTimestamp = Timestamp.now();
+    SpannerConfig spannerConfig = getFakeSpannerConfig();
 
     p
         // Reads from the change stream
         .apply(
             SpannerIO.readChangeStream()
-                .withSpannerConfig(
-                    SpannerConfig.create()
-                        .withProjectId("cloud-spanner-backups-loadtest")
-                        .withInstanceId("change-stream-load-test-3")
-                        .withDatabaseId("load-test-change-stream-enable"))
-                .withMetadataInstance("change-stream-load-test-3")
-                .withMetadataDatabase("change-stream-metadata")
+                .withSpannerConfig(spannerConfig)
+                .withMetadataDatabase(spannerConfig.getDatabaseId().get())
                 .withChangeStreamName("changeStreamAll")
                 .withInclusiveStartAt(startTimestamp)
                 .withInclusiveEndAt(endTimestamp)
                 .withRpcPriority(RpcPriority.HIGH))
         .apply(
             "Write To PubSub",
-            FileFormatFactorySpannerChangeStreamsToPubSub.newBuilder().setOptions(options).build());
+            FileFormatFactorySpannerChangeStreamsToPubSub.newBuilder()
+                .setProjectId(options.getSpannerProjectId())
+                .setOutputDataFormat(options.getOutputDataFormat())
+                .setPubsubAPI(options.getPubsubAPI())
+                .setPubsubTopicName(options.getPubsubTopic())
+                .build());
     p.run();
   }
 
@@ -231,7 +245,7 @@ public final class SpannerChangeStreamsToPubSubTest {
     spannerServer.dropDatabase(testDatabase);
 
     // Create a table.
-    List<String> statements = new ArrayList<String>();
+    List<String> statements = new ArrayList<>();
     final String createTable =
         "CREATE TABLE "
             + TEST_TABLE
@@ -268,7 +282,7 @@ public final class SpannerChangeStreamsToPubSubTest {
     options.setPubsubTopic(outputTopicName);
     options.setStartTimestamp(startTimestamp.toString());
     options.setEndTimestamp(endTimestamp.toString());
-    List<String> experiments = new ArrayList<String>();
+    List<String> experiments = new ArrayList<>();
     options.setExperiments(experiments);
 
     options.setOutputDataFormat(AVRO);
@@ -283,28 +297,12 @@ public final class SpannerChangeStreamsToPubSubTest {
         pipeline.apply(
             "Read From Pub/Sub Subscription",
             PubsubIO.readMessages().fromSubscription(subscriptionPath));
+    // Convert PubsubMessage to DataChangeRecord
     PCollection<com.google.cloud.teleport.v2.DataChangeRecord> dataChangeRecords =
-        receivedPubsubMessages.apply(
-            ParDo.of(
-                // Convert PubsubMessage to DataChangeRecord
-                new DoFn<PubsubMessage, com.google.cloud.teleport.v2.DataChangeRecord>() {
-                  @ProcessElement
-                  public void processElement(ProcessContext context) {
-                    PubsubMessage message = context.element();
-                    AvroCoder<com.google.cloud.teleport.v2.DataChangeRecord> coder =
-                        AvroCoder.of(com.google.cloud.teleport.v2.DataChangeRecord.class);
-                    com.google.cloud.teleport.v2.DataChangeRecord record = null;
-                    try {
-                      record = CoderUtils.decodeFromByteArray(coder, message.getPayload());
-                    } catch (CoderException exc) {
-                      LOG.error("Fail to decode DataChangeRecord from PubsubMessage payload.");
-                    }
-                    context.output(record);
-                  }
-                }));
+        receivedPubsubMessages.apply(ParDo.of(new PubsubMessageToDataChangeRecordDoFn()));
     dataChangeRecords.apply(
         "waitForAnyMessage",
-        signal.signalSuccessWhen(dataChangeRecords.getCoder(), anyMessages -> true));
+        signal.signalSuccessWhen(dataChangeRecords.getCoder(), new SignalFunction<>(true)));
     Supplier<Void> start = signal.waitForStart(Duration.standardMinutes(1));
     pipeline.apply(signal.signalStart());
 
@@ -348,7 +346,7 @@ public final class SpannerChangeStreamsToPubSubTest {
     spannerServer.dropDatabase(testDatabase);
 
     // Create a table.
-    List<String> statements = new ArrayList<String>();
+    List<String> statements = new ArrayList<>();
     final String createTable =
         "CREATE TABLE "
             + TEST_TABLE
@@ -385,7 +383,7 @@ public final class SpannerChangeStreamsToPubSubTest {
     options.setPubsubTopic(outputTopicName);
     options.setStartTimestamp(startTimestamp.toString());
     options.setEndTimestamp(endTimestamp.toString());
-    List<String> experiments = new ArrayList<String>();
+    List<String> experiments = new ArrayList<>();
     options.setExperiments(experiments);
 
     options.setOutputDataFormat(JSON);
@@ -402,20 +400,11 @@ public final class SpannerChangeStreamsToPubSubTest {
 
     PCollection<String> dataChangeRecords =
         receivedPubsubMessages.apply(
-            ParDo.of(
-                // Convert PubsubMessage to String
-                new DoFn<PubsubMessage, String>() {
-                  @ProcessElement
-                  public void processElement(ProcessContext context) {
-                    PubsubMessage message = context.element();
-                    byte[] payload = message.getPayload();
-                    String recordStr = new String(payload);
-                    context.output(recordStr);
-                  }
-                }));
+            MapElements.into(TypeDescriptors.strings()).via(new PubsubMessageToString()));
+
     dataChangeRecords.apply(
         "waitForAnyMessage",
-        signal.signalSuccessWhen(dataChangeRecords.getCoder(), anyMessages -> true));
+        signal.signalSuccessWhen(dataChangeRecords.getCoder(), new SignalFunction<>(true)));
     Supplier<Void> start = signal.waitForStart(Duration.standardMinutes(1));
     pipeline.apply(signal.signalStart());
     PAssert.that(dataChangeRecords).satisfies(new VerifyDataChangeRecordText());
@@ -456,7 +445,7 @@ public final class SpannerChangeStreamsToPubSubTest {
     spannerServer.dropDatabase(testDatabase);
 
     // Create a table.
-    List<String> statements = new ArrayList<String>();
+    List<String> statements = new ArrayList<>();
     final String createTable =
         "CREATE TABLE "
             + TEST_TABLE
@@ -512,7 +501,7 @@ public final class SpannerChangeStreamsToPubSubTest {
     options.setPubsubTopic(outputTopicName);
     options.setStartTimestamp(startTimestamp.toString());
     options.setEndTimestamp(endTimestamp.toString());
-    List<String> experiments = new ArrayList<String>();
+    List<String> experiments = new ArrayList<>();
     options.setExperiments(experiments);
 
     options.setOutputDataFormat(AVRO);
@@ -527,28 +516,12 @@ public final class SpannerChangeStreamsToPubSubTest {
         pipeline.apply(
             "Read From Pub/Sub Subscription",
             PubsubIO.readMessages().fromSubscription(subscriptionPath));
+    // Convert PubsubMessage to DataChangeRecord
     PCollection<com.google.cloud.teleport.v2.DataChangeRecord> dataChangeRecords =
-        receivedPubsubMessages.apply(
-            ParDo.of(
-                // Convert PubsubMessage to DataChangeRecord
-                new DoFn<PubsubMessage, com.google.cloud.teleport.v2.DataChangeRecord>() {
-                  @ProcessElement
-                  public void processElement(ProcessContext context) {
-                    PubsubMessage message = context.element();
-                    AvroCoder<com.google.cloud.teleport.v2.DataChangeRecord> coder =
-                        AvroCoder.of(com.google.cloud.teleport.v2.DataChangeRecord.class);
-                    com.google.cloud.teleport.v2.DataChangeRecord record = null;
-                    try {
-                      record = CoderUtils.decodeFromByteArray(coder, message.getPayload());
-                    } catch (CoderException exc) {
-                      LOG.error("Fail to decode DataChangeRecord from PubsubMessage payload.");
-                    }
-                    context.output(record);
-                  }
-                }));
+        receivedPubsubMessages.apply(ParDo.of(new PubsubMessageToDataChangeRecordDoFn()));
     dataChangeRecords.apply(
         "waitForAnyMessage",
-        signal.signalSuccessWhen(dataChangeRecords.getCoder(), anyMessages -> true));
+        signal.signalSuccessWhen(dataChangeRecords.getCoder(), new SignalFunction<>(true)));
     Supplier<Void> start = signal.waitForStart(Duration.standardMinutes(1));
     pipeline.apply(signal.signalStart());
 
@@ -570,5 +543,44 @@ public final class SpannerChangeStreamsToPubSubTest {
     }
     // Drop the database.
     spannerServer.dropDatabase(testDatabase);
+  }
+
+  static class SignalFunction<T> implements SerializableFunction<Set<T>, Boolean> {
+
+    private final boolean signal;
+
+    SignalFunction(boolean signal) {
+      this.signal = signal;
+    }
+
+    @Override
+    public Boolean apply(Set<T> input) {
+      return this.signal;
+    }
+  }
+
+  private static class PubsubMessageToDataChangeRecordDoFn
+      extends DoFn<PubsubMessage, com.google.cloud.teleport.v2.DataChangeRecord> {
+    @ProcessElement
+    public void processElement(ProcessContext context) {
+      PubsubMessage message = context.element();
+      AvroCoder<com.google.cloud.teleport.v2.DataChangeRecord> coder =
+          AvroCoder.of(com.google.cloud.teleport.v2.DataChangeRecord.class);
+      com.google.cloud.teleport.v2.DataChangeRecord record = null;
+      try {
+        record = CoderUtils.decodeFromByteArray(coder, message.getPayload());
+      } catch (CoderException exc) {
+        LOG.error("Fail to decode DataChangeRecord from PubsubMessage payload.");
+      }
+      context.output(record);
+    }
+  }
+
+  private static class PubsubMessageToString
+      implements SerializableFunction<PubsubMessage, String> {
+    @Override
+    public String apply(PubsubMessage message) {
+      return new String(message.getPayload());
+    }
   }
 }

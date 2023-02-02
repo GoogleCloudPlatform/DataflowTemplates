@@ -38,7 +38,7 @@ public interface KafkaWriteOptions extends PipelineOptions {
   @TemplateParameter.Text(
       order = 2,
       optional = true,
-      regexes = {"[a-zA-Z0-9._-,]+"},
+      regexes = {"[,a-zA-Z0-9._-]+"},
       description = "Kafka topic(s) to write to",
       helpText = "Kafka topic(s) to write to.",
       example = "topic1,topic2")

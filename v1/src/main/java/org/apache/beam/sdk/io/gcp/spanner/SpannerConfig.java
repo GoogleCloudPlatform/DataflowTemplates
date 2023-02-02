@@ -58,7 +58,7 @@ public abstract class SpannerConfig implements Serializable {
 
   public abstract @Nullable ValueProvider<String> getDatabaseId();
 
-  public abstract @Nullable String getDatabaseRole();
+  public abstract @Nullable ValueProvider<String> getDatabaseRole();
 
   public abstract @Nullable ValueProvider<String> getHost();
 
@@ -130,7 +130,7 @@ public abstract class SpannerConfig implements Serializable {
 
     abstract Builder setDatabaseId(ValueProvider<String> databaseId);
 
-    abstract Builder setDatabaseRole(String databaseRole);
+    abstract Builder setDatabaseRole(ValueProvider<String> databaseRole);
 
     abstract Builder setHost(ValueProvider<String> host);
 
@@ -184,7 +184,7 @@ public abstract class SpannerConfig implements Serializable {
   }
 
   /** Specifies the Cloud Spanner database role. */
-  public SpannerConfig withDatabaseRole(String databaseRole) {
+  public SpannerConfig withDatabaseRole(ValueProvider<String> databaseRole) {
     Preconditions.checkNotNull(databaseRole);
     return toBuilder().setDatabaseRole(databaseRole).build();
   }

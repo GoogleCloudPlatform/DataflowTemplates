@@ -15,23 +15,21 @@
  */
 package com.google.cloud.teleport.templates;
 
-import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.artifacts.Artifact;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.io.Resources;
 import com.google.re2j.Pattern;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.beam.sdk.io.Compression;
 import org.junit.Before;
 import org.junit.Test;
@@ -54,37 +52,26 @@ public final class BulkCompressorIT extends TemplateTestBase {
   @Test
   public void testCompressGzip() throws IOException {
     // Arrange
-    String jobName = createJobName(testName.getMethodName());
-
     LaunchConfig.Builder options =
-        LaunchConfig.builder(jobName, specPath)
+        LaunchConfig.builder(testName, specPath)
             .addParameter("inputFilePattern", getGcsPath("input") + "/*.txt")
             .addParameter("outputDirectory", getGcsPath("output"))
             .addParameter("outputFailureFile", getGcsPath("output-failure"))
             .addParameter("compression", Compression.GZIP.name());
 
     // Act
-    JobInfo info = launchTemplate(options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
 
-    AtomicReference<List<Artifact>> artifacts = new AtomicReference<>();
-
-    Result result =
-        new DataflowOperator(getDataflowClient())
-            .waitForCondition(
-                createConfig(info),
-                () -> {
-                  List<Artifact> outputFiles =
-                      artifactClient.listArtifacts("output/", Pattern.compile(".*compress.*"));
-                  artifacts.set(outputFiles);
-                  return !outputFiles.isEmpty();
-                });
+    Result result = pipelineOperator().waitUntilDone(createConfig(info));
 
     // Assert
-    assertThat(result).isEqualTo(Result.CONDITION_MET);
+    assertThatResult(result).isLaunchFinished();
 
-    assertThat(artifacts.get()).hasSize(1);
-    assertThat(artifacts.get().get(0).contents())
+    List<Artifact> artifacts =
+        artifactClient.listArtifacts("output/", Pattern.compile(".*compress.*"));
+    assertThat(artifacts).hasSize(1);
+    assertThat(artifacts.get(0).contents())
         .isEqualTo(
             Resources.getResource("BulkCompressorIT/compress.txt.gz").openStream().readAllBytes());
   }

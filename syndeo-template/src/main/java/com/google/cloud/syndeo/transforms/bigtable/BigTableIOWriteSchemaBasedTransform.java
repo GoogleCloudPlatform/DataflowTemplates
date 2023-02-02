@@ -52,7 +52,7 @@ public class BigTableIOWriteSchemaBasedTransform
 
   private static final Logger LOG =
       LoggerFactory.getLogger(BigTableIOWriteSchemaBasedTransform.class);
-  private static final String INPUT_TAG = "INPUT";
+  public static final String INPUT_TAG = "input";
 
   private final String projectId;
   private final String instanceId;
@@ -157,6 +157,18 @@ public class BigTableIOWriteSchemaBasedTransform
   public PCollectionRowTuple expand(PCollectionRowTuple input) {
     PCollection<Row> inputData = input.get(INPUT_TAG);
 
+    inputData
+        .getSchema()
+        .getFields()
+        .forEach(
+            f -> {
+              if (f.getType().getTypeName().equals(Schema.TypeName.ROW)) {
+                throw new UnsupportedOperationException(
+                    String.format(
+                        "Nested fields are not supported. Field %s is of type ROW.", f.getName()));
+              }
+            });
+
     createTableIfNeeded(inputData.getSchema());
     verifyTableSchemaMatches(inputData.getSchema());
 
@@ -192,6 +204,7 @@ public class BigTableIOWriteSchemaBasedTransform
     PCollection<KV<byte[], Row>> byteEncodedKeyedRows =
         keyedRows
             .apply(
+                "encodeKeys",
                 ParDo.of(
                     new DoFn<KV<Row, Row>, KV<byte[], Row>>() {
                       @ProcessElement
@@ -240,6 +253,7 @@ public class BigTableIOWriteSchemaBasedTransform
     // STEP 3: Convert KV<bytes, Row> into KV<ByteString, List<SetCell<...>>>
     PCollection<KV<ByteString, Iterable<Mutation>>> bigtableMutations =
         byteEncodedKeyedRows.apply(
+            "buildMutations",
             ParDo.of(
                 new DoFn<KV<byte[], Row>, KV<ByteString, Iterable<Mutation>>>() {
                   @ProcessElement

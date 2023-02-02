@@ -58,8 +58,7 @@ public class InformationSchemaScanner {
     listViews(builder);
     listColumns(builder);
     listColumnOptions(builder);
-    // Change stream is only supported in GOOGLE_STANDARD_SQL
-    if (dialect == Dialect.GOOGLE_STANDARD_SQL) {
+    if (isChangeStreamsSupported()) {
       listChangeStreams(builder);
       listChangeStreamOptions(builder);
     }
@@ -692,7 +691,32 @@ public class InformationSchemaScanner {
     }
   }
 
+  // TODO: Remove after change streams are supported in POSTGRESQL.
+  private boolean isChangeStreamsSupported() {
+    if (dialect == Dialect.GOOGLE_STANDARD_SQL) {
+      return true;
+    }
+
+    Statement statement =
+        Statement.of(
+            "SELECT COUNT(1)"
+                + " FROM INFORMATION_SCHEMA.TABLES t WHERE "
+                + " t.TABLE_SCHEMA = 'information_schema'"
+                + " AND t.TABLE_NAME = 'change_streams'");
+
+    try (ResultSet resultSet = context.executeQuery(statement)) {
+      // Returns a single row with a 1 if change streams are supported and a 0 if not.
+      resultSet.next();
+      if (resultSet.getLong(0) == 0) {
+        LOG.info("information_schema.change_streams is not present");
+        return false;
+      }
+    }
+    return true;
+  }
+
   private void listChangeStreams(Ddl.Builder builder) {
+    String identifierQuote = DdlUtilityComponents.identifierQuote(dialect);
     ResultSet resultSet =
         context.executeQuery(
             Statement.of(
@@ -700,7 +724,7 @@ public class InformationSchemaScanner {
                     + " cs.all,"
                     + " cst.table_name,"
                     + " cst.all_columns,"
-                    + " ARRAY_AGG(csc.column_name IGNORE NULLS) AS column_name_list"
+                    + " ARRAY_AGG(csc.column_name) AS column_name_list"
                     + " FROM information_schema.change_streams AS cs"
                     + " LEFT JOIN information_schema.change_stream_tables AS cst"
                     + " ON cs.change_stream_catalog = cst.change_stream_catalog"
@@ -713,17 +737,23 @@ public class InformationSchemaScanner {
                     + " AND cst.table_catalog = csc.table_catalog"
                     + " AND cst.table_schema = csc.table_schema"
                     + " AND cst.table_name = csc.table_name"
-                    + " WHERE cs.change_stream_catalog = ''"
-                    + " AND cs.change_stream_schema=''"
                     + " GROUP BY cs.change_stream_name, cs.all, cst.table_name, cst.all_columns"
                     + " ORDER BY cs.change_stream_name, cs.all, cst.table_name"));
 
     Map<String, StringBuilder> allChangeStreams = Maps.newHashMap();
     while (resultSet.next()) {
       String changeStreamName = resultSet.getString(0);
-      boolean all = resultSet.getBoolean(1);
+      boolean all =
+          (dialect == Dialect.GOOGLE_STANDARD_SQL)
+              ? resultSet.getBoolean(1)
+              : resultSet.getString(1).equalsIgnoreCase("YES");
       String tableName = resultSet.isNull(2) ? null : resultSet.getString(2);
-      Boolean allColumns = resultSet.isNull(3) ? null : resultSet.getBoolean(3);
+      Boolean allColumns =
+          resultSet.isNull(3)
+              ? null
+              : (dialect == Dialect.GOOGLE_STANDARD_SQL
+                  ? resultSet.getBoolean(3)
+                  : resultSet.getString(3).equalsIgnoreCase("YES"));
       List<String> columnNameList = resultSet.isNull(4) ? null : resultSet.getStringList(4);
 
       StringBuilder forClause =
@@ -737,15 +767,19 @@ public class InformationSchemaScanner {
       }
 
       forClause.append(forClause.length() == 0 ? "FOR " : ", ");
-      forClause.append("`").append(tableName).append("`");
+      forClause.append(identifierQuote).append(tableName).append(identifierQuote);
       if (allColumns) {
         continue;
       } else if (columnNameList == null) {
         forClause.append("()");
       } else {
         String sortedColumns =
-            columnNameList.stream().sorted().collect(Collectors.joining("`, `", "(`", "`)"));
-        forClause.append(sortedColumns);
+            columnNameList.stream()
+                .filter(s -> s != null)
+                .sorted()
+                .map(s -> identifierQuote + s + identifierQuote)
+                .collect(Collectors.joining(", "));
+        forClause.append("(").append(sortedColumns).append(")");
       }
     }
 
@@ -765,7 +799,6 @@ public class InformationSchemaScanner {
             Statement.of(
                 "SELECT t.change_stream_name, t.option_name, t.option_type, t.option_value"
                     + " FROM information_schema.change_stream_options AS t"
-                    + " WHERE t.change_stream_catalog = '' AND t.change_stream_schema = ''"
                     + " ORDER BY t.change_stream_name, t.option_name"));
 
     Map<String, ImmutableList.Builder<String>> allOptions = Maps.newHashMap();
@@ -780,15 +813,17 @@ public class InformationSchemaScanner {
       if (optionType.equalsIgnoreCase("STRING")) {
         options.add(
             optionName
-                + "=\""
+                + "="
+                + DdlUtilityComponents.GSQL_LITERAL_QUOTE
                 + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
-                + "\"");
+                + DdlUtilityComponents.GSQL_LITERAL_QUOTE);
       } else if (optionType.equalsIgnoreCase("character varying")) {
         options.add(
             optionName
-                + "='"
+                + "="
+                + DdlUtilityComponents.POSTGRESQL_LITERAL_QUOTE
                 + DdlUtilityComponents.OPTION_STRING_ESCAPER.escape(optionValue)
-                + "'");
+                + DdlUtilityComponents.POSTGRESQL_LITERAL_QUOTE);
       } else {
         options.add(optionName + "=" + optionValue);
       }

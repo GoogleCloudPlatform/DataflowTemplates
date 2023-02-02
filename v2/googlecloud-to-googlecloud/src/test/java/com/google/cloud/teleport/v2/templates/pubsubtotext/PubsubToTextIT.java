@@ -15,19 +15,19 @@
  */
 package com.google.cloud.teleport.v2.templates.pubsubtotext;
 
-import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatArtifacts;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.artifacts.Artifact;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
@@ -46,7 +46,8 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration test for {@link PubsubToText} (Cloud_PubSub_to_GCS_Text_Flex). */
-@Category(TemplateIntegrationTest.class)
+// SkipDirectRunnerTest: PubsubIO doesn't trigger panes on the DirectRunner.
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(PubsubToText.class)
 @RunWith(JUnit4.class)
 public final class PubsubToTextIT extends TemplateTestBase {
@@ -78,40 +79,38 @@ public final class PubsubToTextIT extends TemplateTestBase {
   @Test
   public void testTopicToGcs() throws IOException {
     // Arrange
-    String name = testName.getMethodName();
-    String jobName = createJobName(name);
-    String messageString = String.format("msg-%s", jobName);
+    String messageString = String.format("msg-%s", testName.getMethodName());
     Pattern expectedFilePattern = Pattern.compile(".*topic-output-.*");
 
     TopicName topic = pubsubResourceManager.createTopic("input");
     LaunchConfig.Builder options =
-        LaunchConfig.builder(jobName, specPath)
+        LaunchConfig.builder(testName, specPath)
             .addParameter(INPUT_TOPIC, topic.toString())
             .addParameter(WINDOW_DURATION_KEY, DEFAULT_WINDOW_DURATION)
-            .addParameter(OUTPUT_DIRECTORY_KEY, getGcsPath(name))
+            .addParameter(OUTPUT_DIRECTORY_KEY, getGcsPath(testName))
             .addParameter(NUM_SHARDS_KEY, "1")
             .addParameter(OUTPUT_FILENAME_PREFIX, "topic-output-");
 
     // Act
-    JobInfo info = launchTemplate(options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    ByteString messageData = ByteString.copyFromUtf8(messageString);
+    pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
 
     AtomicReference<List<Artifact>> artifacts = new AtomicReference<>();
 
     Result result =
-        new DataflowOperator(getDataflowClient())
+        pipelineOperator()
             .waitForConditionAndFinish(
                 createConfig(info),
                 () -> {
-                  ByteString messageData = ByteString.copyFromUtf8(messageString);
-                  pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
-
-                  artifacts.set(artifactClient.listArtifacts(name, expectedFilePattern));
+                  artifacts.set(artifactClient.listArtifacts(testName, expectedFilePattern));
                   return !artifacts.get().isEmpty();
                 });
 
     // Assert
-    assertThat(result).isEqualTo(Result.CONDITION_MET);
+    assertThatResult(result).meetsConditions();
 
     // Make sure that files contain only the messages produced by this test
     String allMessages =
@@ -124,9 +123,7 @@ public final class PubsubToTextIT extends TemplateTestBase {
   @Test
   public void testSubscriptionToGcs() throws IOException {
     // Arrange
-    String name = testName.getMethodName();
-    String jobName = createJobName(name);
-    String messageString = String.format("msg-%s", jobName);
+    String messageString = String.format("msg-%s", testName.getMethodName());
     Pattern expectedFilePattern = Pattern.compile(".*subscription-output-.*");
 
     TopicName topic = pubsubResourceManager.createTopic("input");
@@ -134,33 +131,33 @@ public final class PubsubToTextIT extends TemplateTestBase {
     SubscriptionName subscription = pubsubResourceManager.createSubscription(topic, "input-1");
 
     LaunchConfig.Builder options =
-        LaunchConfig.builder(jobName, specPath)
+        LaunchConfig.builder(testName, specPath)
             .addParameter(INPUT_SUBSCRIPTION, subscription.toString())
             .addParameter(WINDOW_DURATION_KEY, DEFAULT_WINDOW_DURATION)
-            .addParameter(OUTPUT_DIRECTORY_KEY, getGcsPath(name))
+            .addParameter(OUTPUT_DIRECTORY_KEY, getGcsPath(testName))
             .addParameter(NUM_SHARDS_KEY, "1")
             .addParameter(OUTPUT_FILENAME_PREFIX, "subscription-output-");
 
     // Act
-    JobInfo info = launchTemplate(options);
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    ByteString messageData = ByteString.copyFromUtf8(messageString);
+    pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
 
     AtomicReference<List<Artifact>> artifacts = new AtomicReference<>();
 
     Result result =
-        new DataflowOperator(getDataflowClient())
+        pipelineOperator()
             .waitForConditionAndFinish(
                 createConfig(info),
                 () -> {
-                  ByteString messageData = ByteString.copyFromUtf8(messageString);
-                  pubsubResourceManager.publish(topic, ImmutableMap.of(), messageData);
-
-                  artifacts.set(artifactClient.listArtifacts(name, expectedFilePattern));
+                  artifacts.set(artifactClient.listArtifacts(testName, expectedFilePattern));
                   return !artifacts.get().isEmpty();
                 });
 
     // Assert
-    assertThat(result).isEqualTo(Result.CONDITION_MET);
+    assertThatResult(result).meetsConditions();
 
     assertThatArtifacts(artifacts.get()).hasFiles();
 

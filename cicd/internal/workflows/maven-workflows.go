@@ -17,10 +17,10 @@
 package workflows
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/flags"
@@ -32,6 +32,8 @@ const (
 	// mvn commands
 	cleanInstallCmd  = "clean install"
 	cleanVerifyCmd   = "clean verify"
+	cleanTestCmd     = "clean test"
+	verifyCmd        = "verify"
 	spotlessCheckCmd = "spotless:check"
 
 	// regexes
@@ -53,8 +55,12 @@ type MavenFlags interface {
 	SkipDependencyAnalysis() string
 	SkipJib() string
 	SkipTests() string
+	SkipJacoco() string
+	SkipShade() string
 	SkipIntegrationTests() string
 	FailAtTheEnd() string
+	RunIntegrationTests() string
+	ThreadCount(int) string
 }
 
 type mvnFlags struct{}
@@ -83,12 +89,28 @@ func (*mvnFlags) SkipTests() string {
 	return "-Dmaven.test.skip"
 }
 
+func (*mvnFlags) SkipJacoco() string {
+	return "-Djacoco.skip"
+}
+
+func (*mvnFlags) SkipShade() string {
+	return "-DskipShade"
+}
+
 func (*mvnFlags) SkipIntegrationTests() string {
 	return "-DskipIntegrationTests"
 }
 
 func (*mvnFlags) FailAtTheEnd() string {
 	return "-fae"
+}
+
+func (*mvnFlags) RunIntegrationTests() string {
+	return "-PtemplatesIntegrationTests"
+}
+
+func (*mvnFlags) ThreadCount(count int) string {
+	return "-T" + strconv.Itoa(count)
 }
 
 func NewMavenFlags() MavenFlags {
@@ -105,6 +127,16 @@ func (*mvnCleanInstallWorkflow) Run(args ...string) error {
 	return RunForChangedModules(cleanInstallCmd, args...)
 }
 
+type mvnCleanTestWorkflow struct{}
+
+func MvnCleanTest() Workflow {
+	return &mvnCleanTestWorkflow{}
+}
+
+func (*mvnCleanTestWorkflow) Run(args ...string) error {
+	return RunForChangedModules(cleanTestCmd, args...)
+}
+
 type mvnCleanVerifyWorkflow struct{}
 
 func MvnCleanVerify() Workflow {
@@ -115,10 +147,17 @@ func (*mvnCleanVerifyWorkflow) Run(args ...string) error {
 	return RunForChangedModules(cleanVerifyCmd, args...)
 }
 
-func RunForChangedModules(cmd string, args ...string) error {
-	flags.RegisterCommonFlags()
-	flag.Parse()
+type mvnVerifyWorkflow struct{}
 
+func MvnVerify() Workflow {
+	return &mvnVerifyWorkflow{}
+}
+
+func (*mvnVerifyWorkflow) Run(args ...string) error {
+	return RunForChangedModules(verifyCmd, args...)
+}
+
+func RunForChangedModules(cmd string, args ...string) error {
 	changed := flags.ChangedFiles(javaFileRegex, xmlFileRegex)
 	if len(changed) == 0 {
 		return nil
@@ -129,11 +168,11 @@ func RunForChangedModules(cmd string, args ...string) error {
 
 	// We need to append the base dependency modules, because they are needed to build all
 	// other modules.
-	modules = append(modules, "metadata")
-	modules = append(modules, "it")
-	modules = append(modules, "structured-logging")
-	modules = append(modules, "plaintext-logging")
+	build_syndeo := false
 	for root, children := range repo.GetModulesForPaths(changed) {
+		if root == "syndeo-template" {
+			build_syndeo = true
+		}
 		if len(children) == 0 {
 			modules = append(modules, root)
 			continue
@@ -165,6 +204,13 @@ func RunForChangedModules(cmd string, args ...string) error {
 		log.Println("All modules were filtered out.")
 		return nil
 	}
+	modules = append(modules, "plugins/templates-maven-plugin")
+
+	if !build_syndeo {
+		args = append(args, "-P-oss-build")
+	} else {
+		args = append(args, "-Poss-build")
+	}
 
 	return op.RunMavenOnModule(unifiedPom, cmd, strings.Join(modules, ","), args...)
 }
@@ -176,26 +222,7 @@ func SpotlessCheck() Workflow {
 }
 
 func (*spotlessCheckWorkflow) Run(args ...string) error {
-	flags.RegisterCommonFlags()
-	flag.Parse()
-
-	changed := flags.ChangedFiles(javaFileRegex, markdownFileRegex)
-	if len(changed) == 0 {
-		return nil
-	}
-
-	modules := make([]string, 0)
-	for root, children := range repo.GetModulesForPaths(changed) {
-		if len(children) == 0 || (len(children) == 1 && children[0] == "") {
-			modules = append(modules, root)
-			continue
-		}
-		for _, c := range children {
-			modules = append(modules, fmt.Sprintf("%s/%s", root, c))
-		}
-	}
-
-	return op.RunMavenOnModule(unifiedPom, spotlessCheckCmd, strings.Join(modules, ","), args...)
+	return RunForChangedModules(spotlessCheckCmd, args...)
 }
 
 // Removes root and returns results. This may reorder the input.

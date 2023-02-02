@@ -64,11 +64,12 @@ public interface BigQueryResourceManager {
    *
    * @param tableName The name of the table.
    * @param schema A schema object that defines the table.
-   * @param expirationTime Sets the time when this table expires, in milliseconds since the epoch.
+   * @param expirationTimeMillis Sets the time when this table expires, in milliseconds since the
+   *     epoch.
    * @return The TableId (reference) to the table
    * @throws BigQueryResourceManagerException if there is an error creating the table in BigQuery.
    */
-  TableId createTable(String tableName, Schema schema, Long expirationTime);
+  TableId createTable(String tableName, Schema schema, Long expirationTimeMillis);
 
   /**
    * Writes a given row into a table. This method requires {@link
@@ -100,6 +101,19 @@ public interface BigQueryResourceManager {
    * representation. This method requires {@link BigQueryResourceManager#createTable(String,
    * Schema)} to be called for the target table beforehand.
    *
+   * @param table The table reference to read rows from.
+   * @return A TableResult containing all the rows in the table in JSON.
+   * @throws BigQueryResourceManagerException if method is called after resources have been cleaned
+   *     up, if the manager object has no dataset, if the table does not exist or if there is an
+   *     Exception when attempting to insert the rows.
+   */
+  TableResult readTable(TableId table);
+
+  /**
+   * Reads all the rows in a table and returns a TableResult containing a JSON string
+   * representation. This method requires {@link BigQueryResourceManager#createTable(String,
+   * Schema)} to be called for the target table beforehand.
+   *
    * @param tableName The name of the table to read rows from.
    * @return A TableResult containing all the rows in the table in JSON.
    * @throws BigQueryResourceManagerException if method is called after resources have been cleaned
@@ -107,6 +121,19 @@ public interface BigQueryResourceManager {
    *     Exception when attempting to insert the rows.
    */
   TableResult readTable(String tableName);
+
+  /**
+   * Reads number of rows in a table and returns a TableResult containing a JSON string
+   * representation. This method requires {@link BigQueryResourceManager#createTable(String,
+   * Schema)} to be called for the target table beforehand.
+   *
+   * @param table The table reference to read rows from.
+   * @return A TableResult containing all the rows in the table in JSON.
+   * @throws BigQueryResourceManagerException if method is called after resources have been cleaned
+   *     up, if the manager object has no dataset, if the table does not exist or if there is an
+   *     Exception when attempting to insert the rows.
+   */
+  TableResult readTable(TableId table, int numRows);
 
   /**
    * Reads number of rows in a table and returns a TableResult containing a JSON string

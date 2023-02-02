@@ -19,31 +19,18 @@ import static com.google.cloud.teleport.v2.templates.SpannerChangeStreamsToGcs.r
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import com.google.api.gax.grpc.testing.MockServiceHelper;
-import com.google.api.gax.retrying.RetrySettings;
 import com.google.cloud.Timestamp;
-import com.google.cloud.spanner.MockSpannerServiceImpl;
-import com.google.cloud.spanner.MockSpannerServiceImpl.StatementResult;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Options.RpcPriority;
-import com.google.cloud.spanner.Statement;
 import com.google.cloud.teleport.v2.options.SpannerChangeStreamsToGcsOptions;
 import com.google.cloud.teleport.v2.spanner.IntegrationTest;
 import com.google.cloud.teleport.v2.spanner.SpannerServerResource;
+import com.google.cloud.teleport.v2.spanner.SpannerTestHelper;
 import com.google.cloud.teleport.v2.transforms.FileFormatFactorySpannerChangeStreams;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
 import com.google.cloud.teleport.v2.utils.WriteToGCSUtility.FileFormat;
 import com.google.gson.Gson;
-import com.google.protobuf.ListValue;
-import com.google.protobuf.Value;
-import com.google.spanner.v1.ResultSet;
-import com.google.spanner.v1.ResultSetMetadata;
-import com.google.spanner.v1.StructType;
-import com.google.spanner.v1.StructType.Field;
-import com.google.spanner.v1.Type;
-import com.google.spanner.v1.TypeCode;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -53,7 +40,6 @@ import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.DataChangeRecord;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.SerializableFunction;
@@ -73,7 +59,7 @@ import org.junit.runners.JUnit4;
 
 /** Test class for {@link SpannerChangeStreamsToGcsTest}. */
 @RunWith(JUnit4.class)
-public final class SpannerChangeStreamsToGcsTest {
+public final class SpannerChangeStreamsToGcsTest extends SpannerTestHelper {
 
   /** Rule for exception testing. */
   @Rule public ExpectedException exception = ExpectedException.none();
@@ -86,42 +72,30 @@ public final class SpannerChangeStreamsToGcsTest {
   /** Rule for pipeline testing. */
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
-  public static final String SPANNER_HOST = "my-host";
   private static final String AVRO_FILENAME_PREFIX = "avro-output-";
   private static final String TEXT_FILENAME_PREFIX = "text-output-";
   private static final Integer NUM_SHARDS = 1;
   private static final String TEST_PROJECT = "span-cloud-testing";
-  private static final String TEST_INSTANCE = "changestream";
+  private static final String TEST_INSTANCE = "change-stream-test";
   private static final String TEST_DATABASE_PREFIX = "testdbchangestreams";
   private static final String TEST_TABLE = "Users";
   private static final String TEST_CHANGE_STREAM = "UsersStream";
   private static final int MAX_TABLE_NAME_LENGTH = 29;
 
-  private static final String FAKE_PROJECT = "fake-project";
-  private static final String FAKE_INSTANCE = "fake-instance";
-  private static final String FAKE_DATABASE = "fake-database";
-
   private static String fakeDir;
   private static String fakeTempLocation;
   private static final String FILENAME_PREFIX = "filenamePrefix";
-
-  private MockSpannerServiceImpl mockSpannerService;
-  private MockServiceHelper serviceHelper;
 
   @Before
   public void setup() throws Exception {
     fakeDir = tmpDir.newFolder("output").getAbsolutePath();
     fakeTempLocation = tmpDir.newFolder("temporaryLocation").getAbsolutePath();
-    mockSpannerService = new MockSpannerServiceImpl();
-    serviceHelper =
-        new MockServiceHelper(SPANNER_HOST, Collections.singletonList(mockSpannerService));
-    serviceHelper.start();
-    serviceHelper.reset();
+    super.setUp();
   }
 
   @After
   public void tearDown() throws NoSuchFieldException, IllegalAccessException {
-    serviceHelper.stop();
+    super.tearDown();
   }
 
   @SuppressWarnings("DefaultAnnotationParam")
@@ -209,13 +183,14 @@ public final class SpannerChangeStreamsToGcsTest {
 
     Timestamp startTimestamp = Timestamp.now();
     Timestamp endTimestamp = Timestamp.now();
+    SpannerConfig spannerConfig = getFakeSpannerConfig();
 
     p
         // Reads from the change stream
         .apply(
             SpannerIO.readChangeStream()
-                .withSpannerConfig(getSpannerConfig())
-                .withMetadataDatabase(FAKE_DATABASE)
+                .withSpannerConfig(spannerConfig)
+                .withMetadataDatabase(spannerConfig.getDatabaseId().get())
                 .withChangeStreamName("changestream")
                 .withInclusiveStartAt(startTimestamp)
                 .withInclusiveEndAt(endTimestamp)
@@ -249,13 +224,14 @@ public final class SpannerChangeStreamsToGcsTest {
 
     Timestamp startTimestamp = Timestamp.now();
     Timestamp endTimestamp = Timestamp.now();
+    SpannerConfig spannerConfig = getFakeSpannerConfig();
 
     p
         // Reads from the change stream
         .apply(
             SpannerIO.readChangeStream()
-                .withSpannerConfig(getSpannerConfig())
-                .withMetadataDatabase(FAKE_DATABASE)
+                .withSpannerConfig(spannerConfig)
+                .withMetadataDatabase(spannerConfig.getDatabaseId().get())
                 .withChangeStreamName("changestream")
                 .withInclusiveStartAt(startTimestamp)
                 .withInclusiveEndAt(endTimestamp)
@@ -417,57 +393,5 @@ public final class SpannerChangeStreamsToGcsTest {
 
     // Drop the database.
     spannerServer.dropDatabase(testDatabase);
-  }
-
-  private SpannerConfig getSpannerConfig() {
-    RetrySettings quickRetrySettings =
-        RetrySettings.newBuilder()
-            .setInitialRetryDelay(org.threeten.bp.Duration.ofMillis(250))
-            .setMaxRetryDelay(org.threeten.bp.Duration.ofSeconds(1))
-            .setRetryDelayMultiplier(5)
-            .setTotalTimeout(org.threeten.bp.Duration.ofSeconds(1))
-            .build();
-    return SpannerConfig.create()
-        .withEmulatorHost(StaticValueProvider.of(SPANNER_HOST))
-        .withIsLocalChannelProvider(StaticValueProvider.of(true))
-        .withCommitRetrySettings(quickRetrySettings)
-        .withExecuteStreamingSqlRetrySettings(quickRetrySettings)
-        .withProjectId(FAKE_PROJECT)
-        .withInstanceId(FAKE_INSTANCE)
-        .withDatabaseId(FAKE_DATABASE);
-  }
-
-  private void mockGetDialect() {
-    Statement determineDialectStatement =
-        Statement.newBuilder(
-                "SELECT 'POSTGRESQL' AS DIALECT\n"
-                    + "FROM INFORMATION_SCHEMA.SCHEMATA\n"
-                    + "WHERE SCHEMA_NAME='information_schema'\n"
-                    + "UNION ALL\n"
-                    + "SELECT 'GOOGLE_STANDARD_SQL' AS DIALECT\n"
-                    + "FROM INFORMATION_SCHEMA.SCHEMATA\n"
-                    + "WHERE SCHEMA_NAME='INFORMATION_SCHEMA' AND CATALOG_NAME=''")
-            .build();
-    ResultSetMetadata dialectResultSetMetadata =
-        ResultSetMetadata.newBuilder()
-            .setRowType(
-                StructType.newBuilder()
-                    .addFields(
-                        Field.newBuilder()
-                            .setName("dialect")
-                            .setType(Type.newBuilder().setCode(TypeCode.STRING).build())
-                            .build())
-                    .build())
-            .build();
-    ResultSet dialectResultSet =
-        ResultSet.newBuilder()
-            .addRows(
-                ListValue.newBuilder()
-                    .addValues(Value.newBuilder().setStringValue("GOOGLE_STANDARD_SQL").build())
-                    .build())
-            .setMetadata(dialectResultSetMetadata)
-            .build();
-    mockSpannerService.putStatementResult(
-        StatementResult.query(determineDialectStatement, dialectResultSet));
   }
 }

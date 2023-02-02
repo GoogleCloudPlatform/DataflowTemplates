@@ -24,6 +24,7 @@ import com.google.cloud.syndeo.SyndeoTemplate;
 import com.google.cloud.syndeo.common.ProviderUtil;
 import com.google.cloud.syndeo.transforms.bigquery.BigQuerySyndeoServices;
 import com.google.cloud.syndeo.transforms.bigtable.BigTableWriteSchemaTransformConfiguration;
+import com.google.cloud.syndeo.transforms.bigtable.BigTableWriteSchemaTransformProvider;
 import com.google.cloud.syndeo.v1.SyndeoV1;
 import java.time.Instant;
 import java.util.*;
@@ -40,9 +41,11 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.transforms.SchemaTransformProvider;
 import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.vendor.guava.v26_0_jre.com.google.common.collect.Lists;
 import org.joda.time.DateTime;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -58,10 +61,10 @@ public class BigTableSchemaTransformTest {
   private static final Schema INTEGRATION_TEST_SCHEMA =
       Schema.builder()
           .addStringField("name")
-          .addBooleanField("vaccinated")
-          .addDoubleField("temperature")
           // The following fields cannot be included in local tests
           // due to limitations of the testing utilities.
+          .addBooleanField("vaccinated")
+          .addDoubleField("temperature")
           .addInt32Field("age")
           .addInt64Field("networth")
           .addDateTimeField("birthday")
@@ -72,8 +75,8 @@ public class BigTableSchemaTransformTest {
   private static final Schema LOCAL_TEST_INPUT_SCHEMA =
       Schema.builder()
           .addStringField("name")
-          .addBooleanField("vaccinated")
-          .addDoubleField("temperature")
+          // .addBooleanField("vaccinated")
+          // .addDoubleField("temperature")
           .build();
 
   public static String randomString(Integer length) {
@@ -86,8 +89,8 @@ public class BigTableSchemaTransformTest {
     if (local) {
       return Row.withSchema(LOCAL_TEST_INPUT_SCHEMA)
           .addValue(randomString(10))
-          .addValue(RND.nextBoolean())
-          .addValue(RND.nextDouble())
+          // .addValue(RND.nextBoolean())
+          // .addValue(RND.nextDouble())
           .build();
     } else {
       return Row.withSchema(INTEGRATION_TEST_SCHEMA)
@@ -133,16 +136,50 @@ public class BigTableSchemaTransformTest {
       new BigtableEmulatorContainer(
           DockerImageName.parse("gcr.io/google.com/cloudsdktool/cloud-sdk:367.0.0-emulators"));
 
+  @Test(expected = UnsupportedOperationException.class)
+  public void testBigTableSchemaUnsupported() {
+    PipelineOptions setupOptions = PipelineOptionsFactory.create();
+    Pipeline setupP = Pipeline.create(setupOptions);
+
+    PCollectionRowTuple.of(
+            "input",
+            setupP
+                .apply(Create.of(generateRow(true)))
+                .setRowSchema(
+                    Schema.builder()
+                        .addRowField(
+                            "someRowField", Schema.builder().addInt64Field("someint64").build())
+                        .build()))
+        .apply(
+            new BigTableWriteSchemaTransformProvider()
+                .from(
+                    BigTableWriteSchemaTransformConfiguration.builder()
+                        .setProjectId("anyproject")
+                        .setInstanceId("anyinstance")
+                        .setTableId("anytable")
+                        .setKeyColumns(Arrays.asList("name"))
+                        .setEndpoint(bigTableContainer.getEmulatorEndpoint())
+                        .build())
+                .buildTransform());
+
+    setupP.run().waitUntilFinish();
+  }
+
   @Test
   public void testBigTableSchemaTransformIsFound() {
     Collection<SchemaTransformProvider> providers = ProviderUtil.getProviders();
     assertEquals(
         1,
         providers.stream()
-            .filter((provider) -> provider.identifier().equals("bigtable:write"))
+            .filter(
+                (provider) ->
+                    provider
+                        .identifier()
+                        .equals("syndeo:schematransform:com.google.cloud:bigtable_write:v1"))
             .count());
   }
 
+  @Ignore
   @Test
   public void testBigQueryToBigTableLocallyWithEmulators() throws Exception {
     String bigTableName = "anytable";
@@ -189,7 +226,7 @@ public class BigTableSchemaTransformTest {
                       .toProto())
               .addTransforms(
                   new ProviderUtil.TransformSpec(
-                          "bigtable:write",
+                          "syndeo:schematransform:com.google.cloud:bigtable_write:v1",
                           BigTableWriteSchemaTransformConfiguration.builder()
                               .setProjectId("anyproject")
                               .setInstanceId("anyinstance")

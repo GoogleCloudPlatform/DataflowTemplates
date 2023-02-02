@@ -15,9 +15,9 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.it.dataflow.DataflowUtils.createJobName;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatPipeline;
 import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatRecords;
-import static com.google.common.truth.Truth.assertThat;
+import static com.google.cloud.teleport.it.matchers.TemplateAsserts.assertThatResult;
 
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.StandardSQLTypeName;
@@ -26,13 +26,12 @@ import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.it.TemplateTestBase;
 import com.google.cloud.teleport.it.bigquery.BigQueryResourceManager;
 import com.google.cloud.teleport.it.bigquery.DefaultBigQueryResourceManager;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobInfo;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.JobState;
-import com.google.cloud.teleport.it.dataflow.DataflowClient.LaunchConfig;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator;
-import com.google.cloud.teleport.it.dataflow.DataflowOperator.Result;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchConfig;
+import com.google.cloud.teleport.it.launcher.PipelineLauncher.LaunchInfo;
+import com.google.cloud.teleport.it.launcher.PipelineOperator.Result;
 import com.google.cloud.teleport.it.pubsub.DefaultPubsubResourceManager;
 import com.google.cloud.teleport.it.pubsub.PubsubResourceManager;
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
@@ -63,7 +62,8 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration test for {@link PubsubAvroToBigQuery}. */
-@Category(TemplateIntegrationTest.class)
+// SkipDirectRunnerTest: PubsubIO doesn't trigger panes on the DirectRunner.
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(PubsubAvroToBigQuery.class)
 @RunWith(JUnit4.class)
 public final class PubsubAvroToBigQueryIT extends TemplateTestBase {
@@ -101,9 +101,6 @@ public final class PubsubAvroToBigQueryIT extends TemplateTestBase {
   @Test
   public void testPubsubAvroToBigQuerySimple() throws IOException {
     // Arrange
-    String name = testName.getMethodName();
-    String jobName = createJobName(name);
-
     TopicName topic = pubsubResourceManager.createTopic("input");
     TopicName dlqTopic = pubsubResourceManager.createTopic("dlq");
     SubscriptionName subscription = pubsubResourceManager.createSubscription(topic, "input-1");
@@ -125,19 +122,19 @@ public final class PubsubAvroToBigQueryIT extends TemplateTestBase {
     TableId people = bigQueryResourceManager.createTable("people", bigQuerySchema);
 
     // Act
-    JobInfo info =
+    LaunchInfo info =
         launchTemplate(
-            LaunchConfig.builder(jobName, specPath)
+            LaunchConfig.builder(testName, specPath)
                 .addParameter("schemaPath", getGcsPath("schema.avsc"))
                 .addParameter("inputSubscription", subscription.toString())
                 .addParameter("outputTableSpec", toTableSpec(people))
                 .addParameter("outputTopic", dlqTopic.toString()));
-    assertThat(info.state()).isIn(JobState.ACTIVE_STATES);
+    assertThatPipeline(info).isRunning();
 
     AtomicReference<TableResult> records = new AtomicReference<>();
 
     Result result =
-        new DataflowOperator(getDataflowClient())
+        pipelineOperator()
             .waitForConditionAndFinish(
                 createConfig(info),
                 () -> {
@@ -148,7 +145,7 @@ public final class PubsubAvroToBigQueryIT extends TemplateTestBase {
                 });
 
     // Assert
-    assertThat(result).isEqualTo(Result.CONDITION_MET);
+    assertThatResult(result).meetsConditions();
     assertThatRecords(records.get()).hasRecords(recordMaps);
   }
 

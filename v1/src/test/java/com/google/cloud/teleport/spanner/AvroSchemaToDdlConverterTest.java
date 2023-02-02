@@ -60,6 +60,13 @@ public class AvroSchemaToDdlConverterTest {
             + "    \"type\" : \"long\","
             + "    \"sqlType\" : \"INT64\""
             + "  }, {"
+            + "    \"name\" : \"gen_id\","
+            + "    \"type\" : \"long\","
+            + "    \"sqlType\" : \"INT64\","
+            + "    \"notNull\" : \"true\","
+            + "    \"generationExpression\" : \"MOD(id+1, 64)\","
+            + "    \"stored\" : \"true\""
+            + "  }, {"
             + "    \"name\" : \"first_name\","
             + "    \"type\" : [ \"null\", \"string\" ],"
             + "    \"sqlType\" : \"STRING(10)\","
@@ -132,7 +139,8 @@ public class AvroSchemaToDdlConverterTest {
             + "  \"spannerParent\" : \"\","
             + "  \"googleFormatVersion\" : \"booleans\","
             + "  \"spannerPrimaryKey_0\" : \"`id` ASC\","
-            + "  \"spannerPrimaryKey_1\" : \"`last_name` DESC\","
+            + "  \"spannerPrimaryKey_1\" : \"`gen_id` ASC\","
+            + "  \"spannerPrimaryKey_2\" : \"`last_name` DESC\","
             + "  \"spannerIndex_0\" : "
             + "  \"CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)\","
             + "  \"spannerForeignKey_0\" : "
@@ -153,6 +161,7 @@ public class AvroSchemaToDdlConverterTest {
         equalToCompressingWhiteSpace(
             "CREATE TABLE `Users` ("
                 + " `id`              INT64 NOT NULL,"
+                + " `gen_id`          INT64 NOT NULL AS (MOD(id+1, 64)) STORED,"
                 + " `first_name`      STRING(10) DEFAULT ('John'),"
                 + " `last_name`       STRING(MAX),"
                 + " `full_name`       STRING(MAX) AS (CONCAT(first_name, ' ', last_name)) STORED,"
@@ -171,7 +180,7 @@ public class AvroSchemaToDdlConverterTest {
                 + " `float`           FLOAT64,"
                 + " `timestamp`       TIMESTAMP,"
                 + " CONSTRAINT `ck` CHECK(`first_name` != 'last_name'),"
-                + " ) PRIMARY KEY (`id` ASC, `last_name` DESC)"
+                + " ) PRIMARY KEY (`id` ASC, `gen_id` ASC, `last_name` DESC)"
                 + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"
                 + " ALTER TABLE `Users` ADD CONSTRAINT `fk`"
                 + " FOREIGN KEY (`first_name`) REFERENCES `AllowedNames` (`first_name`)"));
@@ -188,6 +197,13 @@ public class AvroSchemaToDdlConverterTest {
             + "    \"name\" : \"id\","
             + "    \"type\" : \"long\","
             + "    \"sqlType\" : \"bigint\""
+            + "  }, {"
+            + "    \"name\" : \"gen_id\","
+            + "    \"type\" : \"long\","
+            + "    \"sqlType\" : \"bigint\","
+            + "    \"notNull\" : \"false\","
+            + "    \"generationExpression\" : \"MOD(id+1, 64)\","
+            + "    \"stored\" : \"true\""
             + "  }, {"
             + "    \"name\" : \"first_name\","
             + "    \"type\" : [ \"null\", \"string\" ],"
@@ -277,7 +293,8 @@ public class AvroSchemaToDdlConverterTest {
             + "    \"type\" : [ \"null\", {\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}]"
             + "  } ],  \"googleStorage\" : \"CloudSpanner\",  \"spannerParent\" : \"\", "
             + " \"googleFormatVersion\" : \"booleans\",  \"spannerPrimaryKey_0\" : \"\\\"id\\\""
-            + " ASC\",  \"spannerPrimaryKey_1\" : \"\\\"last_name\\\" ASC\",  \"spannerIndex_0\" :"
+            + " ASC\",  \"spannerPrimaryKey_1\" : \"\\\"gen_id\\\" ASC\",  \"spannerPrimaryKey_2\""
+            + " : \"\\\"last_name\\\" ASC\",  \"spannerIndex_0\" :"
             + "   \"CREATE INDEX \\\"UsersByFirstName\\\" ON \\\"Users\\\" (\\\"first_name\\\")\", "
             + " \"spannerForeignKey_0\" :   \"ALTER TABLE \\\"Users\\\" ADD CONSTRAINT \\\"fk\\\""
             + " FOREIGN KEY (\\\"first_name\\\")   REFERENCES \\\"AllowedNames\\\""
@@ -296,6 +313,7 @@ public class AvroSchemaToDdlConverterTest {
         equalToCompressingWhiteSpace(
             "CREATE TABLE \"Users\" ("
                 + " \"id\"              bigint NOT NULL,"
+                + " \"gen_id\"          bigint GENERATED ALWAYS AS (MOD(id+1, 64)) STORED,"
                 + " \"first_name\"      character varying(10) DEFAULT 'John',"
                 + " \"last_name\"       character varying,"
                 + " \"full_name\"       character varying GENERATED ALWAYS AS"
@@ -319,7 +337,7 @@ public class AvroSchemaToDdlConverterTest {
                 + " \"float1\"          double precision,"
                 + " \"timestamp1\"      timestamp with time zone,"
                 + " CONSTRAINT \"ck\" CHECK(\"first_name\" != \"last_name\"),"
-                + " PRIMARY KEY (\"id\", \"last_name\")"
+                + " PRIMARY KEY (\"id\", \"gen_id\", \"last_name\")"
                 + " )"
                 + " CREATE INDEX \"UsersByFirstName\" ON \"Users\" (\"first_name\")"
                 + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"
@@ -472,6 +490,65 @@ public class AvroSchemaToDdlConverterTest {
                 + " CREATE CHANGE STREAM `ChangeStreamTableColumns`"
                 + " FOR `T1`, `T2`(`c1`, `c2`), `T3`()"
                 + " OPTIONS (retention_period=\"24h\")"));
+  }
+
+  @Test
+  public void pgChangeStreams() {
+    String avroString1 =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"ChangeStreamAll\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerChangeStreamForClause\" : \"FOR ALL\","
+            + "  \"spannerOption_0\" : \"retention_period='7d'\","
+            + "  \"spannerOption_1\" : \"value_capture_type='OLD_AND_NEW_VALUES'\""
+            + "}";
+    String avroString2 =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"ChangeStreamEmpty\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerChangeStreamForClause\" : \"\""
+            + "}";
+    String avroString3 =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"ChangeStreamTableColumns\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerChangeStreamForClause\" : "
+            + "    \"FOR \\\"T1\\\", \\\"T2\\\"(\\\"c1\\\", \\\"c2\\\"), \\\"T3\\\"()\","
+            + "  \"spannerOption_0\" : \"retention_period='24h'\""
+            + "}";
+
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(avroString1));
+    schemas.add(parser.parse(avroString2));
+    schemas.add(parser.parse(avroString3));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl ddl = converter.toDdl(schemas);
+    assertEquals(ddl.dialect(), Dialect.POSTGRESQL);
+    assertThat(ddl.changeStreams(), hasSize(3));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE CHANGE STREAM \"ChangeStreamAll\""
+                + " FOR ALL"
+                + " WITH (retention_period='7d', value_capture_type='OLD_AND_NEW_VALUES')"
+                + " CREATE CHANGE STREAM \"ChangeStreamEmpty\""
+                + " CREATE CHANGE STREAM \"ChangeStreamTableColumns\""
+                + " FOR \"T1\", \"T2\"(\"c1\", \"c2\"), \"T3\"()"
+                + " WITH (retention_period='24h')"));
   }
 
   @Test
