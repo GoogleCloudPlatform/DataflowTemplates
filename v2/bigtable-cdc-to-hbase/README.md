@@ -1,3 +1,8 @@
+# TODO
+
+- pom conflict between running in prod and running in test due to serialization proxy
+
+
 # Bigtable CDC to Hbase Dataflow Template
 
 The [BigtableToHBase](src/main/java/com/google/cloud/teleport/v2/templates/BigtableToHbasePipeline.java) pipeline reads from a Bigtable change stream, applies a mutation converter to convert change stream mutations to HBase mutations, and writes the mutations to a specified Hbase instance.

@@ -22,7 +22,9 @@ import static com.google.cloud.teleport.v2.templates.constants.TestConstants.row
 import static com.google.cloud.teleport.v2.templates.constants.TestConstants.value;
 
 import com.google.cloud.Timestamp;
+import com.google.cloud.bigtable.data.v2.models.RowMutation;
 import com.google.cloud.teleport.it.TemplateTestBase;
+import com.google.cloud.teleport.it.bigtable.StaticBigtableResourceManager;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.BigtableToHbasePipeline.BigtableToHbasePipelineOptions;
 import com.google.cloud.teleport.v2.templates.utils.HbaseUtils;
@@ -35,15 +37,18 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.client.Table;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /**
- * TODO: WIP. Need StaticBigtableResourceManager from other branch.
+ * End to end table that runs the pipeline from Bigtable to Hbase.
+ * TODO: make Bigtable resource hermetic after Cdc GA and when we can enable cdc from admin API.
  */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(BigtableToHbasePipeline.class)
@@ -54,24 +59,22 @@ public class BigtableToHbasePipelineIT extends TemplateTestBase {
   private static BigtableToHbasePipelineOptions pipelineOptions;
   private static HBaseTestingUtility hBaseTestingUtility;
   private static Table hbaseTable;
-  @Before
-  public void setUp() throws Exception {
+  private static StaticBigtableResourceManager bigtableResourceManager;
 
-    // Parse input as though from a live run.
+  @BeforeClass
+  public static void setUpCluster() throws Exception {
+
+    // Parse input as though from a live run. This requires passing in params to test via -Dparameters="..."
     String input = System.getProperty("parameters");
     String[] keyValuePairs = input.split(",");
     Map<String, String> args = new HashMap<>();
-
     for (String pair : keyValuePairs) {
       String[] entry = pair.split("=");
       args.put(entry[0], entry[1]);
     }
 
-    hBaseTestingUtility = new HBaseTestingUtility();
-    hBaseTestingUtility.startMiniCluster();
-    hbaseTable = HbaseUtils.createTable(hBaseTestingUtility, args.get("tableId"));
-
-    // Create pipeline options.
+    // Create pipeline options from some args
+    // Note that we set start and end times in actual test run
     pipelineOptions = PipelineOptionsFactory.create().as(BigtableToHbasePipelineOptions.class);
     // Set bigtable change stream options
     pipelineOptions.setBigtableProjectId(args.get("bigtableProjectId"));
@@ -81,23 +84,55 @@ public class BigtableToHbasePipelineIT extends TemplateTestBase {
     // Set pipeline options
     pipelineOptions.setStreaming(true);
     pipelineOptions.setExperiments(Arrays.asList("use_runner_v2"));
-    // Set time to be short-lived for this test
-    Timestamp start = Timestamp.now();
-    Timestamp endTime =
-        Timestamp.ofTimeSecondsAndNanos(
-            start.getSeconds() + 120,
-            start.getNanos());
-    pipelineOptions.setStartTimestamp(start.toString());
-    pipelineOptions.setEndTimestamp(endTime.toString());
+
+    // Create Hbase cluster
+    hBaseTestingUtility = new HBaseTestingUtility();
+    hBaseTestingUtility.startMiniCluster();
+    // Create HBase table that mirrors persistent Hbase table.
+    // TODO: make this hermetic after cdc GA
+    hbaseTable = HbaseUtils.createTable(hBaseTestingUtility, pipelineOptions.getTableId());
   }
 
-  @After
-  public void tearDown() throws IOException {
-    hBaseTestingUtility.shutdownMiniCluster();
+  @Before
+  public void setUp() throws Exception {
+    // TODO: StaticBigtableResourceManager has to be replaced with DefaultBigtableResourceManager
+    //  when it supports CDC configs
+    // Create Bigtable resource manager in setUp because we need credentialsProvider which requires non-static context
+    bigtableResourceManager = StaticBigtableResourceManager.builder(pipelineOptions.getBigtableProjectId())
+        .setCredentialsProvider(credentialsProvider)
+        .setInstanceId(pipelineOptions.getInstanceId())
+        .setTableId(pipelineOptions.getTableId())
+        .setAppProfileId(pipelineOptions.getAppProfileId())
+        .build();
+  }
+
+  @AfterClass
+  public static void tearDown() throws IOException {
+    if (hBaseTestingUtility != null) {
+      hBaseTestingUtility.shutdownMiniCluster();
+    }
+    if (bigtableResourceManager != null) {
+      // TODO: cleanUpAll is a stub because we use persistent resources.
+      bigtableResourceManager.cleanupAll();
+    }
   }
 
   @Test
   public void testEndToEnd() throws Exception {
+    // Set time to just cover the timeframe of the row mutation.
+    Timestamp start = Timestamp.now();
+    Timestamp endTime =
+        Timestamp.ofTimeSecondsAndNanos(
+            start.getSeconds() + 30,
+            start.getNanos());
+    pipelineOptions.setStartTimestamp(start.toString());
+    pipelineOptions.setEndTimestamp(endTime.toString());
+
+    // Write to Bigtable during this timeframe.
+    RowMutation setCell = RowMutation.create(pipelineOptions.getTableId(), rowKey)
+            .setCell(colFamily, colQualifier, value);
+    bigtableResourceManager.write(setCell);
+
     PipelineResult pipelineResult = BigtableToHbasePipeline.bigtableToHbasePipeline(pipelineOptions, hBaseTestingUtility.getConfiguration());
 
     try {
@@ -105,9 +140,16 @@ public class BigtableToHbasePipelineIT extends TemplateTestBase {
     } catch (Exception e) {
       throw new Exception("Error: pipeline could not finish");
     }
+    
+    // Assert same value has been propagated to hbase table
     Assert.assertEquals(
         value,
         HbaseUtils.getCell(hbaseTable, rowKey,colFamily,colQualifier)
     );
+    // delete cell from persisted table if run successful.
+    // TODO: remove this after Cdc GA
+    RowMutation deleteCell = RowMutation.create(pipelineOptions.getTableId(), rowKey)
+        .deleteCells(colFamily, colQualifier);
+    bigtableResourceManager.write(deleteCell);
   }
 }

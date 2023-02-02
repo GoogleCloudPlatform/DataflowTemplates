@@ -108,11 +108,11 @@
       <scope>test</scope>
     </dependency>
     <!--TODO: Somehow prod needs this but test will fail if this is around...-->
-<!--        <dependency>-->
-<!--          <groupId>org.apache.hadoop</groupId>-->
-<!--          <artifactId>hadoop-mapreduce-client-core</artifactId>-->
-<!--          <version>3.3.4</version>-->
-<!--        </dependency>-->
+<!--    <dependency>-->
+<!--      <groupId>org.apache.hadoop</groupId>-->
+<!--      <artifactId>hadoop-mapreduce-client-core</artifactId>-->
+<!--      <version>3.3.4</version>-->
+<!--    </dependency>-->
 
     <dependency>
       <groupId>com.google.auto.service</groupId>
