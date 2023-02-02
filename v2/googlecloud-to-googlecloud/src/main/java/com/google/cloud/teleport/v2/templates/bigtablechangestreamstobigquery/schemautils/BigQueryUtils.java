@@ -19,6 +19,7 @@ import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.api.services.bigquery.model.TimePartitioning;
+import com.google.cloud.Timestamp;
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.BigQueryDestination;
@@ -48,7 +49,8 @@ import org.apache.commons.lang3.Validate;
 import org.json.JSONObject;
 
 /**
- * {@link BigQueryUtils} provides utils for processing BigQuery schema and generating BigQuery rows.
+ * {@link BigQueryUtils} provides utils for processing BigQuery schema and generating BigQuery
+ * rows.
  */
 public class BigQueryUtils implements Serializable {
 
@@ -235,7 +237,9 @@ public class BigQueryUtils implements Serializable {
     return columnFamilies.contains(columnFamily) || columnFamilies.contains(ANY_COLUMN_FAMILY);
   }
 
-  /** @return true if modification should be written to BigQuery, false otherwise */
+  /**
+   * @return true if modification should be written to BigQuery, false otherwise
+   */
   public boolean setTableRowFields(Mod mod, String modJsonString, TableRow tableRow)
       throws Exception {
     // Metadata columns, not written to BQ
@@ -263,6 +267,10 @@ public class BigQueryUtils implements Serializable {
       }
     }
 
+    if (!matchesTimeInterval(mod, source.getStartTimestamp(), source.getEndTimestamp())) {
+      return false;
+    }
+
     for (ChangelogColumn column : configuredChangelogColumns) {
       BigQueryValueFormatter formatter = FORMATTERS.get(column);
       // .format might throw RuntimeException
@@ -275,6 +283,25 @@ public class BigQueryUtils implements Serializable {
       tableRow.set(column.getBqColumnName(), value);
     }
 
+    return true;
+  }
+
+  private boolean matchesTimeInterval(Mod mod, Timestamp startTimestamp, Timestamp endTimestamp) {
+    long commitSec = mod.getCommitTimestampSeconds();
+    long commitNanos = mod.getCommitTimestampNanos();
+
+    if (commitSec < startTimestamp.getSeconds()) {
+      return false;
+    }
+    if (commitSec > endTimestamp.getSeconds()) {
+      return false;
+    }
+    if (commitSec == startTimestamp.getSeconds() && commitNanos < startTimestamp.getNanos()) {
+      return false;
+    }
+    if (commitSec == endTimestamp.getSeconds() && commitNanos > endTimestamp.getNanos()) {
+      return false;
+    }
     return true;
   }
 
@@ -323,7 +350,8 @@ public class BigQueryUtils implements Serializable {
   public final class BigQueryDynamicDestinations
       extends DynamicDestinations<TableRow, KV<TableId, TableRow>> {
 
-    private BigQueryDynamicDestinations() {}
+    private BigQueryDynamicDestinations() {
+    }
 
     @Override
     public KV<TableId, TableRow> getDestination(ValueInSingleWindow<TableRow> element) {
